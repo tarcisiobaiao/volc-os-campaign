@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import GeneralDashboard from "./pages/GeneralDashboard";
 import CampaignDashboard from "./pages/dashboard/CampaignDashboard";
+import ProjectDashboard from "./pages/ProjectDashboard";
 import Reports from "./pages/Reports";
 import ProjectsSettings from "./pages/settings/ProjectsSettings";
 import IntegrationsSettings from "./pages/settings/IntegrationsSettings";
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<GeneralDashboard />} />
           <Route path="/dashboard/campaigns" element={<CampaignDashboard />} />
+          <Route path="/dashboard/project/:projectId" element={<ProjectDashboard />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings/projects" element={<ProjectsSettings />} />
           <Route path="/settings/integrations" element={<IntegrationsSettings />} />

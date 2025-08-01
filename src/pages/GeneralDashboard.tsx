@@ -34,7 +34,7 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { useMockData } from "@/services/mockDataService";

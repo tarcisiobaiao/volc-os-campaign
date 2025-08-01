@@ -1,4 +1,5 @@
 // Sistema de dados mockados com localStorage
+import { useState, useEffect } from 'react';
 import { format, subDays, startOfDay } from 'date-fns';
 
 export interface Project {
@@ -9,6 +10,8 @@ export interface Project {
   revenue: number;
   roas: number;
   roi: number;
+  grossProfit: number;
+  netProfit: number;
   trend: 'up' | 'down' | 'stable';
   campaigns: {
     green: number;
@@ -120,6 +123,8 @@ class MockDataService {
         revenue: 3102,
         roas: 168,
         roi: 52,
+        grossProfit: 1255,
+        netProfit: 1154,
         trend: 'up',
         campaigns: { green: 8, yellow: 3, red: 1 },
         status: 'active',
@@ -134,6 +139,8 @@ class MockDataService {
         revenue: 1076,
         roas: 145,
         roi: 38,
+        grossProfit: 334,
+        netProfit: 284,
         trend: 'down',
         campaigns: { green: 3, yellow: 4, red: 2 },
         status: 'active',
@@ -148,6 +155,8 @@ class MockDataService {
         revenue: 346,
         roas: 134,
         roi: 28,
+        grossProfit: 88,
+        netProfit: 72,
         trend: 'stable',
         campaigns: { green: 1, yellow: 1, red: 0 },
         status: 'active',
@@ -376,8 +385,59 @@ export const useMockData = () => {
 };
 
 export const useProjectData = (projectId: string) => {
-  return {
-    project: mockDataService.getProjectById(projectId),
-    campaigns: mockDataService.getCampaignsByProject(projectId)
-  };
+  const [projectData, setProjectData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!projectId) {
+      setProjectData(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setTimeout(() => {
+      const projects = mockDataService.getProjects();
+      const campaigns = mockDataService.getCampaigns();
+      
+      const project = projects.find(p => p.id === projectId);
+      const projectCampaigns = campaigns.filter(c => c.projectId === projectId);
+      
+      // Generate yesterday data for comparison
+      const yesterdayData = project ? {
+        investment: project.investment * 0.89,
+        revenue: project.revenue * 0.93,
+        roas: project.roas * 1.04,
+        roi: project.roi * 1.11,
+        grossProfit: project.grossProfit * 0.92,
+        netProfit: project.netProfit * 0.91
+      } : null;
+
+      // Generate historical data
+      const historicalData = [];
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        historicalData.push({
+          date: date.toISOString().split('T')[0],
+          dateFormatted: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          revenue: Math.floor(Math.random() * 1000 + 1500),
+          investment: Math.floor(Math.random() * 600 + 800),
+          roas: Math.floor(Math.random() * 50 + 120),
+          roi: Math.floor(Math.random() * 40 + 30)
+        });
+      }
+      
+      setProjectData({
+        project,
+        campaigns: projectCampaigns,
+        dailyMetrics: mockDataService.getDailyMetrics(),
+        yesterdayData,
+        historicalData
+      });
+      setIsLoading(false);
+    }, 300);
+  }, [projectId]);
+
+  return { projectData, isLoading };
 };
