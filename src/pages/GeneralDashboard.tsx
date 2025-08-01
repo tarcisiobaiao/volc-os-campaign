@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge, ROASBadge, PerformanceBadge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -14,7 +15,10 @@ import {
   Zap,
   AlertTriangle,
   CheckCircle,
-  Clock
+  Clock,
+  RefreshCw,
+  Minus,
+  User
 } from "lucide-react";
 import { 
   LineChart, 
@@ -33,35 +37,8 @@ import {
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-
-// Mock data
-const generalMetrics = {
-  totalInvestment: 45800,
-  totalRevenue: 156400, 
-  totalCampaigns: 12,
-  activeCampaigns: 8,
-  avgRoas: 3.4,
-  totalImpressions: 2840000,
-  totalClicks: 68500,
-  avgCtr: 2.4
-};
-
-const projectsOverview = [
-  { name: "E-commerce Store", investment: 15200, roas: 4.2, status: "excellent", campaigns: 4 },
-  { name: "SaaS Platform", investment: 18600, roas: 3.8, status: "good", campaigns: 3 },
-  { name: "Mobile App", investment: 12000, roas: 2.9, status: "average", campaigns: 3 },
-  { name: "Service Business", investment: 8500, roas: 2.1, status: "poor", campaigns: 2 }
-];
-
-const weeklyData = [
-  { day: "Dom", investment: 5200, revenue: 18400, roas: 3.5 },
-  { day: "Seg", investment: 6800, revenue: 22100, roas: 3.3 },
-  { day: "Ter", investment: 7200, revenue: 25600, roas: 3.6 },
-  { day: "Qua", investment: 6500, revenue: 23800, roas: 3.7 },
-  { day: "Qui", investment: 7800, revenue: 28200, roas: 3.6 },
-  { day: "Sex", investment: 8100, revenue: 29800, roas: 3.7 },
-  { day: "Sáb", investment: 4200, revenue: 16500, roas: 3.9 }
-];
+import { useMockData } from "@/services/mockDataService";
+import { format } from "date-fns";
 
 const integrationStatus = [
   { name: "Google Ads", status: "online", lastSync: "2 min atrás" },
@@ -79,6 +56,8 @@ const COLORS = ['hsl(var(--success))', 'hsl(var(--info))', 'hsl(var(--warning))'
 
 export default function GeneralDashboard() {
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState("7d");
+  const { projects, dailyMetrics, summary, refresh } = useMockData();
 
   useEffect(() => {
     // Simulate loading
@@ -91,6 +70,29 @@ export default function GeneralDashboard() {
       currency: 'BRL'
     }).format(value);
   };
+
+  const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
+    switch (trend) {
+      case 'up': return <TrendingUp className="h-4 w-4 text-success" />;
+      case 'down': return <TrendingDown className="h-4 w-4 text-destructive" />;
+      default: return <Minus className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getTrendText = (trend: 'up' | 'down' | 'stable') => {
+    switch (trend) {
+      case 'up': return "Subindo";
+      case 'down': return "Caindo";
+      default: return "Estável";
+    }
+  };
+
+  const handleRefresh = () => {
+    setIsLoading(true);
+    refresh();
+    setTimeout(() => setIsLoading(false), 500);
+  };
+
 
   if (isLoading) {
     return (
@@ -105,14 +107,39 @@ export default function GeneralDashboard() {
   return (
     <Layout>
       <div className="p-6 space-y-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="animate-fade-in">
-          <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
-            Dashboard Geral
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Visão geral de todas as campanhas e projetos
-          </p>
+        {/* Header with User and Controls */}
+        <div className="flex items-center justify-between animate-fade-in">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
+                🏠 Dashboard Geral
+              </h1>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">Felipe</span>
+              </div>
+            </div>
+            <p className="text-muted-foreground">
+              Visão geral de todas as campanhas e projetos
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">📅 Hoje</SelectItem>
+                <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* Alerts */}
@@ -140,60 +167,89 @@ export default function GeneralDashboard() {
           </CardContent>
         </Card>
 
-        {/* KPI Overview */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+        {/* KPI Overview - Cards Resumo */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-fade-in">
           <Card className="shadow-card border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Investimento Total</CardTitle>
+              <CardTitle className="text-sm font-medium">💰 Investido</CardTitle>
               <DollarSign className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(generalMetrics.totalInvestment)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(summary.totalInvestment)}</div>
               <div className="flex items-center text-xs mt-1">
                 <TrendingUp className="mr-1 h-3 w-3 text-success" />
-                <span className="text-success">+12.5%</span>
-                <span className="text-muted-foreground ml-1">vs semana anterior</span>
+                <span className="text-success">↗️ +{summary.trendsPercentage.investment}%</span>
               </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+              <CardTitle className="text-sm font-medium">💵 Faturado</CardTitle>
               <TrendingUp className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(generalMetrics.totalRevenue)}</div>
-              <div className="flex items-center gap-2 mt-1">
-                <ROASBadge roas={generalMetrics.avgRoas} />
+              <div className="text-2xl font-bold">{formatCurrency(summary.totalRevenue)}</div>
+              <div className="flex items-center text-xs mt-1">
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+                <span className="text-success">↗️ +{summary.trendsPercentage.revenue}%</span>
               </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-card border-info/20 bg-gradient-to-br from-info/5 to-info/10">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Campanhas</CardTitle>
+              <CardTitle className="text-sm font-medium">📈 ROAS Geral</CardTitle>
               <BarChart3 className="h-4 w-4 text-info" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{generalMetrics.activeCampaigns}/{generalMetrics.totalCampaigns}</div>
+              <div className="text-2xl font-bold">{summary.generalRoas}%</div>
               <div className="flex items-center text-xs mt-1">
-                <span className="text-muted-foreground">Ativas / Total</span>
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+                <span className="text-success">↗️ +{summary.trendsPercentage.roas}%</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">💚 Lucro Líq</CardTitle>
+              <DollarSign className="h-4 w-4 text-success" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(summary.totalProfit)}</div>
+              <div className="flex items-center text-xs mt-1">
+                <TrendingUp className="mr-1 h-3 w-3 text-success" />
+                <span className="text-success">↗️ +{summary.trendsPercentage.profit}%</span>
               </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-card border-warning/20 bg-gradient-to-br from-warning/5 to-warning/10">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">CTR Médio</CardTitle>
-              <MousePointer className="h-4 w-4 text-warning" />
+              <CardTitle className="text-sm font-medium">👑 ROI Final</CardTitle>
+              <TrendingUp className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{generalMetrics.avgCtr}%</div>
+              <div className="text-2xl font-bold">{summary.finalRoi}%</div>
               <div className="flex items-center text-xs mt-1">
                 <TrendingUp className="mr-1 h-3 w-3 text-success" />
-                <span className="text-success">+0.3%</span>
-                <span className="text-muted-foreground ml-1">vs semana anterior</span>
+                <span className="text-success">↗️ +{summary.trendsPercentage.roi}%</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-card border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">🎯 Campanhas</CardTitle>
+              <Users className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Ativas: {summary.activeCampaigns}</div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs">🔴 {summary.campaignStatus.red}</span>
+                <span className="text-xs">🟡 {summary.campaignStatus.yellow}</span>
+                <span className="text-xs">🟢 {summary.campaignStatus.green}</span>
               </div>
             </CardContent>
           </Card>
@@ -211,11 +267,16 @@ export default function GeneralDashboard() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={weeklyData}>
+                <BarChart data={dailyMetrics}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="day" className="text-xs" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={(value) => format(new Date(value), "dd/MM")}
+                    className="text-xs" 
+                  />
                   <YAxis className="text-xs" />
                   <Tooltip 
+                    labelFormatter={(value) => format(new Date(value), "dd/MM/yyyy")}
                     formatter={(value: number, name: string) => {
                       if (name === "investment" || name === "revenue") {
                         return [formatCurrency(value), name === "investment" ? "Investimento" : "Receita"];
@@ -247,14 +308,14 @@ export default function GeneralDashboard() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={projectsOverview}
+                    data={projects}
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
                     dataKey="investment"
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
                   >
-                    {projectsOverview.map((entry, index) => (
+                    {projects.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -295,25 +356,60 @@ export default function GeneralDashboard() {
                   <tr className="border-b">
                     <th className="text-left p-3 font-medium">Projeto</th>
                     <th className="text-left p-3 font-medium">Investimento</th>
-                    <th className="text-left p-3 font-medium">ROAS</th>
+                    <th className="text-left p-3 font-medium">Performance</th>
                     <th className="text-left p-3 font-medium">Campanhas</th>
-                    <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Tendência</th>
+                    <th className="text-left p-3 font-medium">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {projectsOverview.map((project, index) => (
+                  {projects.map((project, index) => (
                     <tr key={index} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="p-3 font-medium">{project.name}</td>
-                      <td className="p-3">{formatCurrency(project.investment)}</td>
-                      <td className="p-3">
-                        <ROASBadge roas={project.roas} />
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 bg-gradient-dashboard rounded-lg flex items-center justify-center text-white font-bold">
+                            📂
+                          </div>
+                          <div>
+                            <p className="font-medium text-base">{project.domain}</p>
+                            <p className="text-sm text-muted-foreground">{project.name}</p>
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-3">{project.campaigns} ativas</td>
-                      <td className="p-3">
-                        <PerformanceBadge 
-                          value={project.roas * 25} 
-                          thresholds={{ excellent: 100, good: 75, average: 50 }}
-                        />
+                      <td className="p-4">
+                        <div className="text-lg font-bold text-primary">
+                          💰 {formatCurrency(project.investment)}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">ROAS: {project.roas}% | ROI: {project.roi}%</div>
+                          <div className="flex items-center gap-2">
+                            {getTrendIcon(project.trend)}
+                            <span className="text-sm">{getTrendText(project.trend)}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">🟢 {project.campaigns.green}</span>
+                          <span className="text-sm">🟡 {project.campaigns.yellow}</span>
+                          <span className="text-sm">🔴 {project.campaigns.red}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          {project.trend === 'up' && <span className="text-success">📈 ↗️ Subindo</span>}
+                          {project.trend === 'down' && <span className="text-destructive">📉 ↘️ Caindo</span>}
+                          {project.trend === 'stable' && <span className="text-muted-foreground">📊 ➡️ Estável</span>}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <Link to={`/dashboard/campaigns?project=${project.id}`}>
+                          <Button variant="outline" size="sm" className="text-xs">
+                            [Ver Detalhes]
+                          </Button>
+                        </Link>
                       </td>
                     </tr>
                   ))}
