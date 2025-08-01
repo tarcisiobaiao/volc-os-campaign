@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -138,52 +138,67 @@ export default function CampaignDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const { projects, campaigns, dailyMetrics, refresh } = useMockData();
   const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [filteredMetrics, setFilteredMetrics] = useState(dailyMetrics);
+  const [filteredMetrics, setFilteredMetrics] = useState<typeof dailyMetrics>([]);
 
   // Filter campaigns based on selected project
   const availableCampaigns = selectedProject 
     ? campaigns.filter(c => c.projectId === selectedProject.id)
     : [];
 
+  // Fix: Memoize project selection to prevent loops
   useEffect(() => {
-    if (filters.projectId) {
+    if (filters.projectId && projects.length > 0) {
       const project = projects.find(p => p.id === filters.projectId);
-      setSelectedProject(project);
-      setFilters(prev => ({ ...prev, campaignId: "all" }));
-    } else {
+      if (project && (!selectedProject || selectedProject.id !== project.id)) {
+        setSelectedProject(project);
+        setFilters(prev => ({ ...prev, campaignId: "all" }));
+      }
+    } else if (!filters.projectId) {
       setSelectedProject(null);
-    }
-  }, [filters.projectId, projects]);
-
-  // Fetch metrics data
-  useEffect(() => {
-    console.log('[CampaignDashboard]', filters);
-    
-    if (!filters.projectId) {
       setFilteredMetrics([]);
+    }
+  }, [filters.projectId, projects.length]); // Remove selectedProject from deps
+
+  // Fix: Optimize metrics filtering to prevent loops
+  useEffect(() => {
+    console.log('[CampaignDashboard] Filters changed:', {
+      projectId: filters.projectId,
+      campaignId: filters.campaignId,
+      hasProject: !!selectedProject
+    });
+    
+    if (!filters.projectId || !selectedProject) {
+      setFilteredMetrics([]);
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      let metrics = dailyMetrics;
-      
-      // Aqui você faria a filtragem real baseada no projeto/campanha
-      // Por enquanto, retornamos todos os dados
-      setFilteredMetrics(metrics);
-      setIsLoading(false);
-    }, 800);
-  }, [filters, dailyMetrics]);
+    // Use setTimeout to simulate API call and prevent blocking
+    const timeoutId = setTimeout(() => {
+      try {
+        // For now, return all dailyMetrics since they're general data
+        // In real implementation, you'd filter by project/campaign
+        setFilteredMetrics(dailyMetrics);
+      } catch (error) {
+        console.error('Error filtering metrics:', error);
+        setFilteredMetrics([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300); // Reduced timeout for better UX
 
-  // Calculate aggregated KPIs
-  const calculateKPIs = () => {
+    return () => clearTimeout(timeoutId);
+  }, [filters.projectId, filters.campaignId, selectedProject?.id, dailyMetrics.length]); // Stable dependencies
+
+  // Fix: Memoize KPI calculations to prevent unnecessary recalculations
+  const kpis = useMemo(() => {
     if (filteredMetrics.length === 0) {
       return {
         totalInvestment: 0,
-        avgRoas: 0,
         totalRevenue: 0,
+        avgRoas: 0,
         avgCtr: 0,
         avgEcpm: 0,
         avgViewability: 0,
@@ -210,26 +225,25 @@ export default function CampaignDashboard() {
       avgViewability: total.viewability / filteredMetrics.length,
       totalImpressions: total.impressions,
     };
-  };
+  }, [filteredMetrics]);
 
-  const kpis = calculateKPIs();
-
-  const formatCurrency = (value: number) => {
+  // Fix: Memoize format functions to prevent recreations
+  const formatCurrency = useCallback((value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
-  };
+  }, []);
 
-  const formatNumber = (value: number) => {
+  const formatNumber = useCallback((value: number) => {
     return new Intl.NumberFormat('pt-BR').format(value);
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setIsLoading(true);
     refresh();
     setTimeout(() => setIsLoading(false), 500);
-  };
+  }, [refresh]);
 
   return (
     <Layout>
@@ -363,13 +377,17 @@ export default function CampaignDashboard() {
           </CardContent>
         </Card>
 
-        {/* Content */}
+        {/* Content - Add key to force proper animations */}
         {isLoading ? (
-          <LoadingSkeleton />
+          <div key="loading">
+            <LoadingSkeleton />
+          </div>
         ) : !filters.projectId ? (
-          <EmptyState />
+          <div key="empty">
+            <EmptyState />
+          </div>
         ) : (
-          <div className="space-y-6">
+          <div key="content" className="space-y-6">
             {/* KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <KPICard
