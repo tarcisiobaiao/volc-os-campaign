@@ -31,6 +31,12 @@ export interface DailyMetrics {
   clicks: number;
   ctr: number;
   conversions: number;
+  // Novas métricas para gráfico avançado
+  ecpm: number;
+  cpc: number;
+  viewability: number;
+  pmr: number; // Page Match Rate
+  rps: number; // Revenue Per Session
 }
 
 export interface Campaign {
@@ -222,6 +228,9 @@ class MockDataService {
       const baseInvestment = 400 + Math.random() * 200;
       const baseRevenue = baseInvestment * (1.4 + Math.random() * 0.4);
       const profit = baseRevenue - baseInvestment;
+      const impressions = Math.floor(80000 + Math.random() * 40000);
+      const clicks = Math.floor(2000 + Math.random() * 1000);
+      const conversions = Math.floor(150 + Math.random() * 100);
       
       metrics.push({
         date,
@@ -230,10 +239,16 @@ class MockDataService {
         profit: Math.floor(profit),
         roas: Math.floor((baseRevenue / baseInvestment) * 100),
         roi: Math.floor((profit / baseInvestment) * 100),
-        impressions: Math.floor(80000 + Math.random() * 40000),
-        clicks: Math.floor(2000 + Math.random() * 1000),
-        ctr: 2.0 + Math.random() * 1.0,
-        conversions: Math.floor(150 + Math.random() * 100)
+        impressions,
+        clicks,
+        ctr: Number(((clicks / impressions) * 100).toFixed(2)),
+        conversions,
+        // Novas métricas calculadas
+        ecpm: Number((baseRevenue / (impressions / 1000)).toFixed(2)),
+        cpc: Number((baseInvestment / clicks).toFixed(2)),
+        viewability: Number((75 + Math.random() * 20).toFixed(2)), // 75-95%
+        pmr: Number((80 + Math.random() * 15).toFixed(2)), // 80-95%
+        rps: Number((baseRevenue / (clicks * 0.8)).toFixed(2)) // Assumindo 80% de sessões
       });
     }
 

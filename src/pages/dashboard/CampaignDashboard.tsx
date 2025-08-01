@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Zap } from "lucide-react";
+import { CalendarIcon, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Zap, RefreshCw, User } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { 
@@ -17,33 +17,14 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Legend
+  Legend,
+  ComposedChart
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { Layout } from "@/components/layout/Layout";
+import { useMockData } from "@/services/mockDataService";
 
 // Types
-interface CampaignMetrics {
-  date: string;
-  roas: number;
-  investment: number;
-  pageViews: number;
-  ctr: number;
-  ecpm: number;
-  campaign: string;
-  project: string;
-}
-
-interface Project {
-  id: string;
-  name: string;
-}
-
-interface Campaign {
-  id: string;
-  name: string;
-  projectId: string;
-}
-
 interface DashboardFilters {
   projectId: string;
   campaignId: string;
@@ -58,30 +39,6 @@ interface KPICardProps {
   icon: React.ReactNode;
   color: "success" | "warning" | "info" | "primary";
 }
-
-// Mock data - replace with real API calls
-const mockProjects: Project[] = [
-  { id: "1", name: "E-commerce Store" },
-  { id: "2", name: "SaaS Platform" },
-  { id: "3", name: "Mobile App" },
-];
-
-const mockCampaigns: Campaign[] = [
-  { id: "1", name: "Black Friday Sale", projectId: "1" },
-  { id: "2", name: "Summer Campaign", projectId: "1" },
-  { id: "3", name: "Product Launch", projectId: "2" },
-  { id: "4", name: "User Acquisition", projectId: "3" },
-];
-
-const mockMetrics: CampaignMetrics[] = [
-  { date: "2024-01-15", roas: 3.2, investment: 1200, pageViews: 15400, ctr: 2.1, ecpm: 4.5, campaign: "Black Friday Sale", project: "E-commerce Store" },
-  { date: "2024-01-16", roas: 3.8, investment: 1400, pageViews: 16800, ctr: 2.3, ecpm: 4.8, campaign: "Black Friday Sale", project: "E-commerce Store" },
-  { date: "2024-01-17", roas: 4.1, investment: 1600, pageViews: 18200, ctr: 2.5, ecpm: 5.1, campaign: "Black Friday Sale", project: "E-commerce Store" },
-  { date: "2024-01-18", roas: 3.9, investment: 1500, pageViews: 17600, ctr: 2.4, ecpm: 4.9, campaign: "Black Friday Sale", project: "E-commerce Store" },
-  { date: "2024-01-19", roas: 4.3, investment: 1700, pageViews: 19400, ctr: 2.7, ecpm: 5.3, campaign: "Black Friday Sale", project: "E-commerce Store" },
-  { date: "2024-01-20", roas: 4.0, investment: 1550, pageViews: 18800, ctr: 2.6, ecpm: 5.0, campaign: "Black Friday Sale", project: "E-commerce Store" },
-  { date: "2024-01-21", roas: 4.5, investment: 1800, pageViews: 20200, ctr: 2.8, ecpm: 5.5, campaign: "Black Friday Sale", project: "E-commerce Store" },
-];
 
 // KPI Card Component
 const KPICard = ({ title, value, change, icon, color }: KPICardProps) => {
@@ -179,26 +136,31 @@ export default function CampaignDashboard() {
   });
   
   const [isLoading, setIsLoading] = useState(false);
-  const [metrics, setMetrics] = useState<CampaignMetrics[]>([]);
-  const [availableCampaigns, setAvailableCampaigns] = useState<Campaign[]>([]);
+  const { projects, campaigns, dailyMetrics, refresh } = useMockData();
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [filteredMetrics, setFilteredMetrics] = useState(dailyMetrics);
 
   // Filter campaigns based on selected project
+  const availableCampaigns = selectedProject 
+    ? campaigns.filter(c => c.projectId === selectedProject.id)
+    : [];
+
   useEffect(() => {
     if (filters.projectId) {
-      const filteredCampaigns = mockCampaigns.filter(c => c.projectId === filters.projectId);
-      setAvailableCampaigns(filteredCampaigns);
+      const project = projects.find(p => p.id === filters.projectId);
+      setSelectedProject(project);
       setFilters(prev => ({ ...prev, campaignId: "all" }));
     } else {
-      setAvailableCampaigns([]);
+      setSelectedProject(null);
     }
-  }, [filters.projectId]);
+  }, [filters.projectId, projects]);
 
   // Fetch metrics data
   useEffect(() => {
     console.log('[CampaignDashboard]', filters);
     
     if (!filters.projectId) {
-      setMetrics([]);
+      setFilteredMetrics([]);
       return;
     }
 
@@ -206,49 +168,47 @@ export default function CampaignDashboard() {
     
     // Simulate API call
     setTimeout(() => {
-      let filteredMetrics = mockMetrics;
+      let metrics = dailyMetrics;
       
-      // Filter by project/campaign
-      const selectedProject = mockProjects.find(p => p.id === filters.projectId);
-      if (selectedProject) {
-        filteredMetrics = filteredMetrics.filter(m => m.project === selectedProject.name);
-      }
-      
-      if (filters.campaignId && filters.campaignId !== "all") {
-        const selectedCampaign = availableCampaigns.find(c => c.id === filters.campaignId);
-        if (selectedCampaign) {
-          filteredMetrics = filteredMetrics.filter(m => m.campaign === selectedCampaign.name);
-        }
-      }
-      
-      setMetrics(filteredMetrics);
+      // Aqui você faria a filtragem real baseada no projeto/campanha
+      // Por enquanto, retornamos todos os dados
+      setFilteredMetrics(metrics);
       setIsLoading(false);
     }, 800);
-  }, [filters, availableCampaigns]);
+  }, [filters, dailyMetrics]);
 
   // Calculate aggregated KPIs
   const calculateKPIs = () => {
-    if (metrics.length === 0) {
+    if (filteredMetrics.length === 0) {
       return {
         totalInvestment: 0,
         avgRoas: 0,
-        totalPageViews: 0,
+        totalRevenue: 0,
         avgCtr: 0,
+        avgEcpm: 0,
+        avgViewability: 0,
+        totalImpressions: 0,
       };
     }
 
-    const total = metrics.reduce((acc, curr) => ({
+    const total = filteredMetrics.reduce((acc, curr) => ({
       investment: acc.investment + curr.investment,
+      revenue: acc.revenue + curr.revenue,
       roas: acc.roas + curr.roas,
-      pageViews: acc.pageViews + curr.pageViews,
       ctr: acc.ctr + curr.ctr,
-    }), { investment: 0, roas: 0, pageViews: 0, ctr: 0 });
+      ecpm: acc.ecpm + curr.ecpm,
+      viewability: acc.viewability + curr.viewability,
+      impressions: acc.impressions + curr.impressions,
+    }), { investment: 0, revenue: 0, roas: 0, ctr: 0, ecpm: 0, viewability: 0, impressions: 0 });
 
     return {
       totalInvestment: total.investment,
-      avgRoas: total.roas / metrics.length,
-      totalPageViews: total.pageViews,
-      avgCtr: total.ctr / metrics.length,
+      totalRevenue: total.revenue,
+      avgRoas: total.roas / filteredMetrics.length,
+      avgCtr: total.ctr / filteredMetrics.length,
+      avgEcpm: total.ecpm / filteredMetrics.length,
+      avgViewability: total.viewability / filteredMetrics.length,
+      totalImpressions: total.impressions,
     };
   };
 
@@ -265,17 +225,36 @@ export default function CampaignDashboard() {
     return new Intl.NumberFormat('pt-BR').format(value);
   };
 
+  const handleRefresh = () => {
+    setIsLoading(true);
+    refresh();
+    setTimeout(() => setIsLoading(false), 500);
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <Layout>
+      <div className="p-6 space-y-8 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="animate-fade-in">
-          <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
-            Dashboard de Campanhas
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Monitore KPIs e performance das suas campanhas em tempo real
-          </p>
+        <div className="flex items-center justify-between animate-fade-in">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
+                📊 Dashboard de Campanhas
+              </h1>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">Felipe</span>
+              </div>
+            </div>
+            <p className="text-muted-foreground">
+              Monitore KPIs e performance das suas campanhas em tempo real
+            </p>
+          </div>
+          
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Atualizar
+          </Button>
         </div>
 
         {/* Filters */}
@@ -296,7 +275,7 @@ export default function CampaignDashboard() {
                     <SelectValue placeholder="Selecione um projeto" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockProjects.map((project) => (
+                    {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         {project.name}
                       </SelectItem>
@@ -408,8 +387,8 @@ export default function CampaignDashboard() {
                 color="success"
               />
               <KPICard
-                title="Page Views"
-                value={formatNumber(kpis.totalPageViews)}
+                title="Impressões"
+                value={formatNumber(kpis.totalImpressions)}
                 change={-2.1}
                 icon={<Eye />}
                 color="info"
@@ -423,7 +402,140 @@ export default function CampaignDashboard() {
               />
             </div>
 
-            {/* Charts */}
+            {/* Advanced Analytics Chart - Similar to uploaded image */}
+            <Card className="shadow-card animate-fade-in col-span-full">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      📈 Site Analysis
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {format(new Date(), "MMM dd, yyyy")}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">• Revenue</span>
+                        <p className="font-bold">{formatCurrency(kpis.totalRevenue)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">• eCPM</span>
+                        <p className="font-bold">${kpis.avgEcpm.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">• CPC</span>
+                        <p className="font-bold">${(kpis.totalInvestment / kpis.totalImpressions * 1000).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">• Viewability</span>
+                        <p className="font-bold">{kpis.avgViewability.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">• PMR</span>
+                        <p className="font-bold">84.87%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">• CTR</span>
+                        <p className="font-bold">{kpis.avgCtr.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={filteredMetrics}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={(value) => format(new Date(value), "yyyy-MM-dd")}
+                      className="text-xs"
+                    />
+                    <YAxis yAxisId="left" className="text-xs" />
+                    <YAxis yAxisId="right" orientation="right" className="text-xs" />
+                    <Tooltip 
+                      labelFormatter={(value) => format(new Date(value), "yyyy-MM-dd")}
+                      formatter={(value: number, name: string) => {
+                        if (name === "revenue") return [formatCurrency(value), "Revenue"];
+                        if (name === "ecpm") return [`$${value}`, "eCPM"];
+                        if (name === "ctr") return [`${value}%`, "CTR"];
+                        if (name === "viewability") return [`${value}%`, "Viewability"];
+                        return [value, name];
+                      }}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px"
+                      }}
+                    />
+                    <Legend />
+                    
+                    {/* Revenue Bars - Green gradient like in the image */}
+                    <Bar 
+                      yAxisId="left"
+                      dataKey="revenue" 
+                      fill="url(#revenueGradient)"
+                      radius={[4, 4, 0, 0]}
+                      name="Revenue"
+                    />
+                    
+                    {/* Performance Lines - Dotted like in the image */}
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="ecpm" 
+                      stroke="#00bcd4" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="eCPM"
+                      dot={{ fill: "#00bcd4", strokeWidth: 2, r: 3 }}
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="viewability" 
+                      stroke="#e91e63" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Viewability"
+                      dot={{ fill: "#e91e63", strokeWidth: 2, r: 3 }}
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="ctr" 
+                      stroke="#ff5722" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="CTR"
+                      dot={{ fill: "#ff5722", strokeWidth: 2, r: 3 }}
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="pmr" 
+                      stroke="#9c27b0" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="PMR"
+                      dot={{ fill: "#9c27b0", strokeWidth: 2, r: 3 }}
+                    />
+                    
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#4caf50" stopOpacity={0.9} />
+                        <stop offset="50%" stopColor="#4caf50" stopOpacity={0.7} />
+                        <stop offset="100%" stopColor="#4caf50" stopOpacity={0.3} />
+                      </linearGradient>
+                    </defs>
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Secondary Charts */}
             <div className="grid gap-6 lg:grid-cols-2">
               {/* ROAS and CTR Line Chart */}
               <Card className="shadow-card animate-fade-in">
@@ -435,7 +547,7 @@ export default function CampaignDashboard() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={metrics}>
+                    <LineChart data={filteredMetrics}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                       <XAxis 
                         dataKey="date" 
@@ -486,7 +598,7 @@ export default function CampaignDashboard() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={metrics}>
+                    <BarChart data={filteredMetrics}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                       <XAxis 
                         dataKey="date" 
@@ -523,6 +635,6 @@ export default function CampaignDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </Layout>
   );
 }
