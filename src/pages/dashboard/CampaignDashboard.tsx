@@ -173,7 +173,7 @@ const EmptyState = () => (
 export default function CampaignDashboard() {
   const [filters, setFilters] = useState<DashboardFilters>({
     projectId: "",
-    campaignId: "", 
+    campaignId: "all", 
     dateRange: undefined,
     period: "7d"
   });
@@ -187,7 +187,7 @@ export default function CampaignDashboard() {
     if (filters.projectId) {
       const filteredCampaigns = mockCampaigns.filter(c => c.projectId === filters.projectId);
       setAvailableCampaigns(filteredCampaigns);
-      setFilters(prev => ({ ...prev, campaignId: "" }));
+      setFilters(prev => ({ ...prev, campaignId: "all" }));
     } else {
       setAvailableCampaigns([]);
     }
@@ -214,7 +214,7 @@ export default function CampaignDashboard() {
         filteredMetrics = filteredMetrics.filter(m => m.project === selectedProject.name);
       }
       
-      if (filters.campaignId) {
+      if (filters.campaignId && filters.campaignId !== "all") {
         const selectedCampaign = availableCampaigns.find(c => c.id === filters.campaignId);
         if (selectedCampaign) {
           filteredMetrics = filteredMetrics.filter(m => m.campaign === selectedCampaign.name);
@@ -317,7 +317,7 @@ export default function CampaignDashboard() {
                     <SelectValue placeholder="Todas as campanhas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas as campanhas</SelectItem>
+                    <SelectItem value="all">Todas as campanhas</SelectItem>
                     {availableCampaigns.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.id}>
                         {campaign.name}
