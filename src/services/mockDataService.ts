@@ -56,6 +56,7 @@ export interface Campaign {
   ctr: number;
   startDate: string;
   endDate?: string;
+  urls?: string[];
 }
 
 export interface DashboardSummary {

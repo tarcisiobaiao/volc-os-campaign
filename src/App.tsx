@@ -9,6 +9,7 @@ import CampaignDashboard from "./pages/dashboard/CampaignDashboard";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import Reports from "./pages/Reports";
 import ProjectsSettings from "./pages/settings/ProjectsSettings";
+import CampaignsSettings from "./pages/settings/CampaignsSettings";
 import IntegrationsSettings from "./pages/settings/IntegrationsSettings";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/dashboard/project/:projectId" element={<ProjectDashboard />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings/projects" element={<ProjectsSettings />} />
+          <Route path="/settings/campaigns" element={<CampaignsSettings />} />
           <Route path="/settings/integrations" element={<IntegrationsSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
