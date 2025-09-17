@@ -1,150 +1,219 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Modal, useModal } from "@/components/ui/modal";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, Plus, Edit, Copy, Pause, Trash2, Minus } from "lucide-react";
-import { useMockData } from "@/services/mockDataService";
+import { ArrowLeft, Search, Edit, Copy, Pause, Trash2, RefreshCw, Play, Settings, AlertTriangle, User } from "lucide-react";
+import { useSupabaseData, Campaign, Project, supabaseDataService } from "@/services/supabaseDataService";
 import { useNavigate } from "react-router-dom";
-
-interface CampaignUrl {
-  id: string;
-  url: string;
-  isPrimary: boolean;
-}
-
-interface CampaignFormData {
-  projectId: string;
-  name: string;
-  urls: CampaignUrl[];
-  startDate: string;
-  status: "active" | "paused";
-  notes: string;
-}
+import { DateFilter } from "@/components/dashboard/DateFilter";
+import { DataStatus } from "@/components/dashboard/DataStatus";
+import { format } from "date-fns";
+import { getROASColorCategory, getROASColorStyles } from "@/utils/roasCalculations";
 
 const CampaignsSettings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const mockData = useMockData();
-  const { isOpen, openModal, closeModal } = useModal();
   
+  // Estados para filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [formData, setFormData] = useState<CampaignFormData>({
-    projectId: "",
-    name: "",
-    urls: [{ id: "1", url: "", isPrimary: true }],
-    startDate: new Date().toISOString().split('T')[0],
-    status: "active",
-    notes: ""
-  });
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom'>('today');
+  const [selectedDate, setSelectedDate] = useState<string>(""); 
+  const [formattedRevenues, setFormattedRevenues] = useState<{[key: string]: string}>({});
+
+  // Initialize with current server date
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const serverDate = await supabaseDataService.getServerDate();
+        setSelectedDate(serverDate);
+        console.log('🗓️ CampaignsSettings initialized with server date:', serverDate);
+      } catch (error) {
+        console.error('Error getting server date:', error);
+        const now = new Date();
+        const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(now);
+        setSelectedDate(saoPauloDate);
+      }
+    };
+    
+    initialize();
+  }, []);
+
+  // Use filtered data based on current selections
+  const filters = {
+    date: selectedDate,
+    projectId: projectFilter === "all" ? undefined : projectFilter,
+    period: selectedPeriod
+  };
+
+  const { projects, campaigns, loading, error, refresh } = useSupabaseData(filters);
+
+  // Format revenue values when campaigns are loaded
+  useEffect(() => {
+    if (campaigns && campaigns.length > 0) {
+      const formattedValues: {[key: string]: string} = {};
+      
+      for (const campaign of campaigns) {
+        try {
+          // The revenue from getCampaignsWithRevenueFiltered is already the correct value
+          // It uses revenue_converted when available, otherwise the USD value
+          // We just need to format it properly for BRL display
+          const revenueValue = campaign.revenue || 0;
+          formattedValues[campaign.id] = new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+          }).format(revenueValue);
+        } catch (error) {
+          console.error('Error formatting revenue for campaign', campaign.id, error);
+          formattedValues[campaign.id] = 'R$ 0,00';
+        }
+      }
+      
+      setFormattedRevenues(formattedValues);
+    }
+  }, [campaigns]);
+
+  // Função para determinar a cor da campanha baseada no ROI
+  // Using centralized ROAS color category
+  const getCampaignColorCategory = (roasExcess: number) => {
+    return getROASColorCategory(roasExcess);
+  };
 
   const filteredCampaigns = useMemo(() => {
-    if (!mockData.campaigns) return [];
+    if (!campaigns) return [];
     
-    return mockData.campaigns.filter(campaign => {
+    return campaigns.filter(campaign => {
       const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesProject = projectFilter === "all" || campaign.projectId === projectFilter;
-      const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
+      
+      // Nova lógica de filtro por cor ROAS
+      let matchesStatus = true;
+      if (statusFilter !== "all") {
+        const campaignColorCategory = getCampaignColorCategory((campaign.roas || 0) - 100);
+        matchesStatus = statusFilter === campaignColorCategory;
+      }
       
       return matchesSearch && matchesProject && matchesStatus;
     });
-  }, [mockData.campaigns, searchTerm, projectFilter, statusFilter]);
+  }, [campaigns, searchTerm, projectFilter, statusFilter]);
+
+  // Using centralized ROAS color styling
+  const getROIColor = (roasExcess: number) => {
+    return getROASColorStyles(roasExcess);
+  };
 
   const getProjectName = (projectId: string) => {
-    return mockData.projects.find(p => p.id === projectId)?.name || projectId;
+    return projects.find(p => p.id === projectId)?.name || `Projeto ${projectId}`;
   };
 
-  const addUrl = () => {
-    const newUrl: CampaignUrl = {
-      id: Date.now().toString(),
-      url: "",
-      isPrimary: false
-    };
-    setFormData(prev => ({
-      ...prev,
-      urls: [...prev.urls, newUrl]
-    }));
+  // Handlers para filtros de data
+  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom') => {
+    setSelectedPeriod(period);
+    if (period === 'today') {
+      try {
+        supabaseDataService.clearServerDateCache();
+        const serverDate = await supabaseDataService.getServerDate();
+        setSelectedDate(serverDate);
+        console.log('🔄 CampaignsSettings updated to current server date:', serverDate);
+      } catch (error) {
+        console.error('Error getting server date:', error);
+        // Fallback to São Paulo timezone date
+        const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(new Date());
+        setSelectedDate(saoPauloDate);
+      }
+    }
   };
 
-  const removeUrl = (urlId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      urls: prev.urls.filter(url => url.id !== urlId)
-    }));
+  const handleDateChange = (date: string) => {
+    console.log('📅 CampaignsSettings Date changed to:', date, 'period:', selectedPeriod);
+    setSelectedDate(date);
+    const newFilters = { date, projectId: projectFilter === "all" ? undefined : projectFilter, period: selectedPeriod };
+    console.log('🔄 CampaignsSettings Refreshing with new filters:', newFilters);
+    setTimeout(() => {
+      refresh(newFilters);
+    }, 100);
   };
 
-  const updateUrl = (urlId: string, newUrl: string) => {
-    setFormData(prev => ({
-      ...prev,
-      urls: prev.urls.map(url => 
-        url.id === urlId ? { ...url, url: newUrl } : url
-      )
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRefresh = async () => {
+    toast({
+      title: "Sincronizando",
+      description: "Buscando novas campanhas...",
+    });
     
-    if (!formData.projectId || !formData.name || !formData.urls[0].url) {
+    try {
+      await refresh(filters);
+      toast({
+        title: "Sincronizado",
+        description: "Campanhas atualizadas com sucesso!",
+      });
+    } catch (error) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
+        description: "Falha ao sincronizar campanhas.",
         variant: "destructive"
       });
-      return;
     }
-
-    // Simulate campaign creation
-    toast({
-      title: "Sucesso",
-      description: "Campanha criada com sucesso!",
-    });
-    
-    closeModal();
-    // Reset form
-    setFormData({
-      projectId: "",
-      name: "",
-      urls: [{ id: "1", url: "", isPrimary: true }],
-      startDate: new Date().toISOString().split('T')[0],
-      status: "active",
-      notes: ""
-    });
   };
 
-  const handleAction = (action: string, campaignId: string, campaignName: string) => {
+  const handleAction = async (action: string, campaignId: string, campaignName: string) => {
     switch (action) {
+      case 'pause':
+        try {
+          await supabaseDataService.updateCampaignStatus(campaignId, 'paused', 'current_user');
+          await refresh();
+          
+          toast({
+            title: "Campanha Pausada",
+            description: `${campaignName} foi pausada pelo usuário. Status será preservado mesmo com sincronização do Google Ads.`,
+            variant: "default"
+          });
+        } catch (error) {
+          console.error('Error pausing campaign:', error);
+          toast({
+            title: "Erro",
+            description: "Falha ao pausar campanha.",
+            variant: "destructive"
+          });
+        }
+        break;
+      case 'activate':
+        try {
+          await supabaseDataService.updateCampaignStatus(campaignId, 'active', 'current_user');
+          await refresh();
+          
+          toast({
+            title: "Campanha Reativada",
+            description: `${campaignName} foi reativada pelo usuário.`,
+          });
+        } catch (error) {
+          console.error('Error activating campaign:', error);
+          toast({
+            title: "Erro",
+            description: "Falha ao reativar campanha.",
+            variant: "destructive"
+          });
+        }
+        break;
       case 'edit':
         toast({
-          title: "Editar Campanha",
-          description: `Editando campanha: ${campaignName}`,
+          title: "Informação",
+          description: "Campanhas são sincronizadas automaticamente. Use os botões Pausar/Ativar para controle manual.",
         });
         break;
-      case 'copy':
+      default:
         toast({
-          title: "Campanha Copiada",
-          description: `Campanha ${campaignName} copiada com sucesso!`,
-        });
-        break;
-      case 'pause':
-        toast({
-          title: "Campanha Pausada",
-          description: `Campanha ${campaignName} foi pausada.`,
-        });
-        break;
-      case 'delete':
-        toast({
-          title: "Campanha Excluída",
-          description: `Campanha ${campaignName} foi excluída.`,
-          variant: "destructive"
+          title: "Informação",
+          description: "Esta ação não está disponível para campanhas automáticas.",
         });
         break;
     }
@@ -165,80 +234,162 @@ const CampaignsSettings = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(-1)}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">⚙️ Configurações &gt; Campanhas</h1>
+      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+        {/* Header with Controls */}
+        <div className="flex items-center justify-between transition-all duration-300">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Campanhas
+              </h1>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+                <Settings className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">Configurações</span>
+              </div>
             </div>
+            <p className="text-muted-foreground">
+              Campanhas criadas automaticamente via integração GAM/Google Ads
+              {projectFilter !== 'all' && (
+                <span className="ml-2 text-primary">
+                  • Projeto: {projects.find(p => p.id === projectFilter)?.name || 'Selecionado'}
+                </span>
+              )}
+              {selectedPeriod === 'custom' && (
+                <span className="ml-2 text-primary">
+                  • Data: {selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : ''}
+                </span>
+              )}
+              {selectedPeriod !== 'custom' && (
+                <span className="ml-2 text-primary">
+                  • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
+                </span>
+              )}
+            </p>
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
-          <div className="flex items-center gap-2">
-            <Label>Projeto:</Label>
+          
+          <div className="flex items-center gap-3 flex-wrap">
             <Select value={projectFilter} onValueChange={setProjectFilter}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Todos" />
+                <SelectValue placeholder="Filtrar projeto" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {mockData.projects.map(project => (
+                <SelectItem value="all">📂 Todos os Projetos</SelectItem>
+                {projects.map(project => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Label>Status:</Label>
+            
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Todos" />
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filtrar por performance" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="active">Ativas</SelectItem>
-                <SelectItem value="paused">Pausadas</SelectItem>
-                <SelectItem value="stopped">Paradas</SelectItem>
+                <SelectItem value="all"> Todas as Campanhas </SelectItem>
+                <SelectItem value="green">🟢 Campanhas Verdes (ROI ≥ 40%)</SelectItem>
+                <SelectItem value="yellow">🟡 Campanhas Amarelas (ROI 0-39%)</SelectItem>
+                <SelectItem value="red">🔴 Campanhas Vermelhas (ROI &lt; 0%)</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar campanhas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-64"
-              />
-            </div>
-            <Button onClick={openModal} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nova Campanha
+            
+            <DateFilter
+              selectedPeriod={selectedPeriod}
+              selectedDate={selectedDate}
+              onPeriodChange={handlePeriodChange}
+              onDateChange={handleDateChange}
+            />
+            
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar
             </Button>
+            
+            <DataStatus 
+              loading={loading} 
+              error={error} 
+              lastUpdate={new Date().toLocaleTimeString('pt-BR')}
+            />
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar campanhas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-sm">
+              {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campanha' : 'campanhas'}
+            </Badge>
+            {statusFilter === "all" && campaigns && campaigns.length > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  🟢 {campaigns.filter(c => getCampaignColorCategory((c.roas || 0) - 100) === "green").length}
+                </span>
+                <span className="flex items-center gap-1">
+                  🟡 {campaigns.filter(c => getCampaignColorCategory((c.roas || 0) - 100) === "yellow").length}
+                </span>
+                <span className="flex items-center gap-1">
+                  🔴 {campaigns.filter(c => getCampaignColorCategory((c.roas || 0) - 100) === "red").length}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <Card className="p-8 text-center">
+            <LoadingSpinner />
+            <p className="text-muted-foreground mt-4">Carregando campanhas...</p>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Card className="p-6 border-red-200 bg-red-50">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="font-medium">Erro ao carregar campanhas</h3>
+            </div>
+            <p className="text-red-700 text-sm mt-2">{error}</p>
+            <Button 
+              onClick={handleRefresh} 
+              variant="outline" 
+              className="mt-4 gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </Card>
+        )}
+
         {/* Campaigns List */}
+        {!loading && !error && (
         <div className="space-y-4">
           {filteredCampaigns.map(campaign => (
-            <Card key={campaign.id} className="p-6">
+            <Card 
+              key={campaign.id} 
+              className="p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200" 
+              onClick={() => navigate(`/dashboard/campaign/${campaign.utmCampaignValue || campaign.id}`)}
+            >
               <CardContent className="p-0">
                 <div className="space-y-4">
                   {/* Campaign Header */}
@@ -253,73 +404,43 @@ const CampaignsSettings = () => {
                     </div>
                   </div>
 
-                  {/* URLs do Funil */}
+                  {/* Metrics Gasto vs Revenue */}
                   <div>
-                    <h4 className="font-medium mb-2">🎯 URLs do Funil:</h4>
-                    <div className="space-y-1 ml-4">
-                      {campaign.urls?.map((url, index) => (
-                        <p key={index} className="text-sm">
-                          {index + 1}. {url}
-                        </p>
-                      )) || [
-                        <p key="1" className="text-sm">1. {getProjectName(campaign.projectId).toLowerCase().replace('.com.br', '.com.br')}/exemplo-url</p>
-                      ]}
+                    <h4 className="font-medium mb-3">📊 Performance Financeira ({
+                      selectedPeriod === 'today' ? 'Hoje' :
+                      selectedPeriod === '7d' ? 'Últimos 7 dias' :
+                      selectedPeriod === '30d' ? 'Últimos 30 dias' :
+                      `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
+                    }):</h4>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center p-3 bg-red-50 rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Gasto</p>
+                        <p className="font-semibold text-red-600">{new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL'
+                        }).format(campaign.investment || 0)}</p>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Revenue</p>
+                        <p className="font-semibold text-green-600">{formattedRevenues[campaign.id] || 'R$ 0,00'}</p>
+                      </div>
+                      <div className={`text-center p-3 rounded-lg border ${getROIColor((campaign.roas || 0) - 100)}`}>
+                        <p className="text-xs text-muted-foreground mb-1">ROAS</p>
+                        <p className="font-semibold">{((campaign.roas || 0) - 100).toFixed(1)}%</p>
+                      </div>
                     </div>
+
                   </div>
 
-                  {/* Performance */}
+                  {/* Campaign Details */}
                   <div className="flex items-center gap-4 text-sm">
-                    <span>📊 Performance: ROAS {campaign.roas}%</span>
+                    <span>🎯 ID: {campaign.utmCampaignValue || campaign.googleAdsCampaignId || 'N/A'}</span>
+                    <span>|</span>
+                    <span>📅 Criada: {new Date(campaign.startDate).toLocaleDateString('pt-BR')}</span>
                     <span>|</span>
                     <span>Status: {getStatusBadge(campaign.status)}</span>
                   </div>
 
-                  {/* Dates */}
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>📅 Criada: {new Date(campaign.startDate).toLocaleDateString('pt-BR')}</span>
-                    <span>|</span>
-                    <span>Modificada: há {Math.floor(Math.random() * 7) + 1} dias</span>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAction('edit', campaign.id, campaign.name)}
-                      className="gap-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAction('copy', campaign.id, campaign.name)}
-                      className="gap-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Copiar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAction('pause', campaign.id, campaign.name)}
-                      className="gap-2"
-                    >
-                      <Pause className="h-4 w-4" />
-                      Pausar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleAction('delete', campaign.id, campaign.name)}
-                      className="gap-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Excluir
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -331,149 +452,26 @@ const CampaignsSettings = () => {
             </Card>
           )}
         </div>
+        )}
 
-        {/* New Campaign Modal */}
-        <Modal
-          isOpen={isOpen}
-          onClose={closeModal}
-          title="🎯 Cadastrar Nova Campanha"
-          size="lg"
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Project Selection */}
+        {/* System Info */}
+        <Card className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+            🤖 Sistema Automático de Campanhas
+          </h3>
+          <div className="grid grid-cols-2 gap-4 text-sm text-blue-700">
             <div className="space-y-2">
-              <Label htmlFor="project">📂 Projeto: *</Label>
-              <Select value={formData.projectId} onValueChange={(value) => setFormData(prev => ({ ...prev, projectId: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockData.projects.map(project => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p>✓ <strong>Auto-criação:</strong> Campanhas criadas via integração GAM</p>
+              <p>✓ <strong>UTM tracking:</strong> Revenue atribuído via UTM campaign</p>
+              <p>✓ <strong>Validação:</strong> Apenas IDs válidos (10-12 dígitos) processados</p>
             </div>
-
-            {/* Campaign Name */}
             <div className="space-y-2">
-              <Label htmlFor="name">🏷️ Nome da Campanha: *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="D2-XXX/Tema/projeto.com.br/url-slug"
-                required
-              />
+              <p>✓ <strong>Filtros por período:</strong> Dados agregados de daily_campaign_metrics</p>
+              <p>✓ <strong>Conversão automática:</strong> Revenue em BRL via revenue_converted</p>
+              <p>✓ <strong>Timezone:</strong> Dados filtrados no fuso de São Paulo</p>
             </div>
-
-            {/* URLs */}
-            <div className="space-y-4">
-              <Label>🎯 URLs do Funil:</Label>
-              
-              {formData.urls.map((urlItem, index) => (
-                <div key={urlItem.id} className="space-y-2">
-                  <Label className="text-sm">
-                    {index === 0 ? "URL Principal (obrigatória):" : "URL Secundária:"}
-                  </Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Input
-                        value={urlItem.url}
-                        onChange={(e) => updateUrl(urlItem.id, e.target.value)}
-                        placeholder={`${formData.projectId ? getProjectName(formData.projectId).toLowerCase() : 'projeto.com.br'}/exemplo-url`}
-                        required={index === 0}
-                      />
-                    </div>
-                    {index > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeUrl(urlItem.id)}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addUrl}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar URL
-              </Button>
-            </div>
-
-            {/* Start Date */}
-            <div className="space-y-2">
-              <Label htmlFor="startDate">📅 Data de Início:</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              />
-            </div>
-
-            {/* Status */}
-            <div className="space-y-2">
-              <Label>📊 Status Inicial:</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="active"
-                    checked={formData.status === "active"}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as "active" | "paused" }))}
-                  />
-                  Ativa
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="paused"
-                    checked={formData.status === "paused"}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as "active" | "paused" }))}
-                  />
-                  Pausada
-                </label>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">📝 Observações:</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Observações sobre a campanha..."
-                rows={3}
-              />
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={closeModal}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                Salvar Campanha
-              </Button>
-            </div>
-          </form>
-        </Modal>
+          </div>
+        </Card>
       </div>
     </Layout>
   );

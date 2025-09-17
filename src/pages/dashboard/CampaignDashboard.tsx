@@ -22,14 +22,15 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { Layout } from "@/components/layout/Layout";
-import { useMockData } from "@/services/mockDataService";
+import { useSupabaseData, Project } from "@/services/supabaseDataService";
+import { useCurrencyConverter } from "@/services/currencyConversionService";
 
 // Types
 interface DashboardFilters {
   projectId: string;
   campaignId: string;
   dateRange: DateRange | undefined;
-  period: "7d" | "30d" | "custom";
+  period: "today" | "7d" | "30d" | "custom";
 }
 
 interface KPICardProps {
@@ -135,9 +136,11 @@ export default function CampaignDashboard() {
     period: "7d"
   });
   
-  const [isLoading, setIsLoading] = useState(false);
-  const { projects, campaigns, dailyMetrics, refresh } = useMockData();
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const { projects, campaigns, dailyMetrics, loading, error, refresh } = useSupabaseData();
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  // Currency conversion hook
+  const { convertUsdToBrl, formatBrl } = useCurrencyConverter();
   const [filteredMetrics, setFilteredMetrics] = useState<typeof dailyMetrics>([]);
 
   // Filter campaigns based on selected project
@@ -159,50 +162,38 @@ export default function CampaignDashboard() {
     }
   }, [filters.projectId, projects.length]); // Remove selectedProject from deps
 
-  // Fix: Optimize metrics filtering to prevent loops
+  // Filter metrics based on selected project and filters
   useEffect(() => {
-    console.log('[CampaignDashboard] Filters changed:', {
-      projectId: filters.projectId,
-      campaignId: filters.campaignId,
-      hasProject: !!selectedProject
-    });
-    
-    if (!filters.projectId || !selectedProject) {
+    if (!filters.projectId || !selectedProject || loading) {
       setFilteredMetrics([]);
-      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
-    
-    // Use setTimeout to simulate API call and prevent blocking
-    const timeoutId = setTimeout(() => {
-      try {
-        // For now, return all dailyMetrics since they're general data
-        // In real implementation, you'd filter by project/campaign
-        setFilteredMetrics(dailyMetrics);
-      } catch (error) {
-        console.error('Error filtering metrics:', error);
-        setFilteredMetrics([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300); // Reduced timeout for better UX
+    // In Supabase implementation, dailyMetrics are already filtered by project
+    // You could add additional filtering here for specific campaigns
+    setFilteredMetrics(dailyMetrics);
+  }, [filters.projectId, filters.campaignId, selectedProject?.id, dailyMetrics, loading]);
 
-    return () => clearTimeout(timeoutId);
-  }, [filters.projectId, filters.campaignId, selectedProject?.id, dailyMetrics.length]); // Stable dependencies
-
-  // Fix: Memoize KPI calculations to prevent unnecessary recalculations
-  const kpis = useMemo(() => {
+  // Calculate KPIs and trends from real data
+  const { kpis, trends } = useMemo(() => {
     if (filteredMetrics.length === 0) {
       return {
-        totalInvestment: 0,
-        totalRevenue: 0,
-        avgRoas: 0,
-        avgCtr: 0,
-        avgEcpm: 0,
-        avgViewability: 0,
-        totalImpressions: 0,
+        kpis: {
+          totalInvestment: 0,
+          totalRevenue: 0,
+          avgRoas: 0,
+          avgCtr: 0,
+          avgEcpm: 0,
+          avgViewability: 0,
+          totalImpressions: 0,
+          avgPmr: 0
+        },
+        trends: {
+          investment: 0,
+          roas: 0,
+          impressions: 0,
+          ctr: 0
+        }
       };
     }
 
@@ -214,35 +205,69 @@ export default function CampaignDashboard() {
       ecpm: acc.ecpm + curr.ecpm,
       viewability: acc.viewability + curr.viewability,
       impressions: acc.impressions + curr.impressions,
-    }), { investment: 0, revenue: 0, roas: 0, ctr: 0, ecpm: 0, viewability: 0, impressions: 0 });
+      pmr: acc.pmr + curr.pmr,
+    }), { investment: 0, revenue: 0, roas: 0, ctr: 0, ecpm: 0, viewability: 0, impressions: 0, pmr: 0 });
+
+    // Calculate period-over-period changes
+    const currentPeriodLength = Math.min(7, filteredMetrics.length);
+    const previousPeriodLength = Math.min(7, filteredMetrics.length - currentPeriodLength);
+    
+    let trendsData = { investment: 0, roas: 0, impressions: 0, ctr: 0 };
+    
+    if (filteredMetrics.length >= 14) {
+      const currentPeriod = filteredMetrics.slice(0, currentPeriodLength);
+      const previousPeriod = filteredMetrics.slice(currentPeriodLength, currentPeriodLength + previousPeriodLength);
+      
+      const currentTotals = currentPeriod.reduce((acc, curr) => ({
+        investment: acc.investment + curr.investment,
+        roas: acc.roas + curr.roas,
+        impressions: acc.impressions + curr.impressions,
+        ctr: acc.ctr + curr.ctr,
+      }), { investment: 0, roas: 0, impressions: 0, ctr: 0 });
+      
+      const previousTotals = previousPeriod.reduce((acc, curr) => ({
+        investment: acc.investment + curr.investment,
+        roas: acc.roas + curr.roas,
+        impressions: acc.impressions + curr.impressions,
+        ctr: acc.ctr + curr.ctr,
+      }), { investment: 0, roas: 0, impressions: 0, ctr: 0 });
+      
+      // Calculate percentage changes
+      trendsData = {
+        investment: previousTotals.investment > 0 ? ((currentTotals.investment - previousTotals.investment) / previousTotals.investment) * 100 : 0,
+        roas: previousTotals.roas > 0 ? ((currentTotals.roas - previousTotals.roas) / previousTotals.roas) * 100 : 0,
+        impressions: previousTotals.impressions > 0 ? ((currentTotals.impressions - previousTotals.impressions) / previousTotals.impressions) * 100 : 0,
+        ctr: previousTotals.ctr > 0 ? ((currentTotals.ctr - previousTotals.ctr) / previousTotals.ctr) * 100 : 0,
+      };
+    }
 
     return {
-      totalInvestment: total.investment,
-      totalRevenue: total.revenue,
-      avgRoas: total.roas / filteredMetrics.length,
-      avgCtr: total.ctr / filteredMetrics.length,
-      avgEcpm: total.ecpm / filteredMetrics.length,
-      avgViewability: total.viewability / filteredMetrics.length,
-      totalImpressions: total.impressions,
+      kpis: {
+        totalInvestment: total.investment,
+        totalRevenue: total.revenue,
+        avgRoas: total.roas / filteredMetrics.length,
+        avgCtr: total.ctr / filteredMetrics.length,
+        avgEcpm: total.ecpm / filteredMetrics.length,
+        avgViewability: total.viewability / filteredMetrics.length,
+        totalImpressions: total.impressions,
+        avgPmr: total.pmr / filteredMetrics.length,
+      },
+      trends: trendsData
     };
   }, [filteredMetrics]);
 
-  // Fix: Memoize format functions to prevent recreations
-  const formatCurrency = useCallback((value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  }, []);
+  // Currency formatter with automatic USD to BRL conversion
+  const formatCurrency = useCallback((usdValue: number) => {
+    const brlValue = convertUsdToBrl(usdValue);
+    return formatBrl(brlValue);
+  }, [convertUsdToBrl, formatBrl]);
 
   const formatNumber = useCallback((value: number) => {
     return new Intl.NumberFormat('pt-BR').format(value);
   }, []);
 
   const handleRefresh = useCallback(() => {
-    setIsLoading(true);
     refresh();
-    setTimeout(() => setIsLoading(false), 500);
   }, [refresh]);
 
   return (
@@ -325,12 +350,13 @@ export default function CampaignDashboard() {
                 <label className="text-sm font-medium">Período</label>
                 <Select 
                   value={filters.period} 
-                  onValueChange={(value: "7d" | "30d" | "custom") => setFilters(prev => ({ ...prev, period: value }))}
+                  onValueChange={(value: "today" | "7d" | "30d" | "custom") => setFilters(prev => ({ ...prev, period: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="today">Hoje</SelectItem>
                     <SelectItem value="7d">Últimos 7 dias</SelectItem>
                     <SelectItem value="30d">Últimos 30 dias</SelectItem>
                     <SelectItem value="custom">Período customizado</SelectItem>
@@ -377,12 +403,29 @@ export default function CampaignDashboard() {
           </CardContent>
         </Card>
 
+        {/* Error State */}
+        {error && (
+          <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
+            <div className="h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <TrendingDown className="h-8 w-8 text-destructive" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Erro ao carregar dados</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-4">
+              {error}
+            </p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
+          </div>
+        )}
+
         {/* Content - Add key to force proper animations */}
-        {isLoading ? (
+        {loading ? (
           <div key="loading">
             <LoadingSkeleton />
           </div>
-        ) : !filters.projectId ? (
+        ) : error ? null : !filters.projectId ? (
           <div key="empty">
             <EmptyState />
           </div>
@@ -393,28 +436,28 @@ export default function CampaignDashboard() {
               <KPICard
                 title="Investimento Total"
                 value={formatCurrency(kpis.totalInvestment)}
-                change={12.5}
+                change={trends.investment}
                 icon={<DollarSign />}
                 color="primary"
               />
               <KPICard
                 title="ROAS Médio"
                 value={kpis.avgRoas.toFixed(2)}
-                change={8.2}
+                change={trends.roas}
                 icon={<TrendingUp />}
                 color="success"
               />
               <KPICard
                 title="Impressões"
                 value={formatNumber(kpis.totalImpressions)}
-                change={-2.1}
+                change={trends.impressions}
                 icon={<Eye />}
                 color="info"
               />
               <KPICard
                 title="CTR Médio"
                 value={`${kpis.avgCtr.toFixed(2)}%`}
-                change={5.3}
+                change={trends.ctr}
                 icon={<MousePointer />}
                 color="warning"
               />
@@ -452,7 +495,7 @@ export default function CampaignDashboard() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">• PMR</span>
-                        <p className="font-bold">84.87%</p>
+                        <p className="font-bold">{kpis.avgPmr.toFixed(2)}%</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">• CTR</span>

@@ -56,6 +56,13 @@ export interface Campaign {
   ctr: number;
   startDate: string;
   endDate?: string;
+  // Novos campos para nova lógica
+  googleAdsCampaignId?: string;
+  utmCampaignValue?: string;
+  extractedUrl?: string;
+  extractedDomain?: string;
+  customGoal?: string;
+  // URLs mantidas para compatibilidade, mas deprecated
   urls?: string[];
 }
 
@@ -185,7 +192,13 @@ class MockDataService {
           impressions: Math.floor(50000 + Math.random() * 30000),
           clicks: Math.floor(1200 + Math.random() * 800),
           ctr: 2.5 + Math.random() * 1.5,
-          startDate: format(subDays(new Date(), Math.floor(Math.random() * 30)), 'yyyy-MM-dd')
+          startDate: format(subDays(new Date(), Math.floor(Math.random() * 30)), 'yyyy-MM-dd'),
+          // Dados simulados para nova lógica
+          googleAdsCampaignId: `228831901${60 + i}${project.id}`,
+          utmCampaignValue: `214168076${90 + i}${project.id}`,
+          extractedUrl: `${project.domain}/premium-campaign-${i + 1}`,
+          extractedDomain: project.domain,
+          customGoal: `${project.name} - Premium Goal ${i + 1}`
         });
       }
 
@@ -203,7 +216,13 @@ class MockDataService {
           impressions: Math.floor(30000 + Math.random() * 20000),
           clicks: Math.floor(800 + Math.random() * 400),
           ctr: 1.8 + Math.random() * 1.0,
-          startDate: format(subDays(new Date(), Math.floor(Math.random() * 45)), 'yyyy-MM-dd')
+          startDate: format(subDays(new Date(), Math.floor(Math.random() * 45)), 'yyyy-MM-dd'),
+          // Dados simulados para nova lógica
+          googleAdsCampaignId: `228831902${60 + i}${project.id}`,
+          utmCampaignValue: `214168077${90 + i}${project.id}`,
+          extractedUrl: `${project.domain}/standard-campaign-${i + 1}`,
+          extractedDomain: project.domain,
+          customGoal: `${project.name} - Standard Goal ${i + 1}`
         });
       }
 
@@ -221,7 +240,13 @@ class MockDataService {
           impressions: Math.floor(15000 + Math.random() * 10000),
           clicks: Math.floor(300 + Math.random() * 200),
           ctr: 1.0 + Math.random() * 0.8,
-          startDate: format(subDays(new Date(), Math.floor(Math.random() * 60)), 'yyyy-MM-dd')
+          startDate: format(subDays(new Date(), Math.floor(Math.random() * 60)), 'yyyy-MM-dd'),
+          // Dados simulados para nova lógica
+          googleAdsCampaignId: `228831903${60 + i}${project.id}`,
+          utmCampaignValue: `214168078${90 + i}${project.id}`,
+          extractedUrl: `${project.domain}/basic-campaign-${i + 1}`,
+          extractedDomain: project.domain,
+          customGoal: `${project.name} - Basic Goal ${i + 1}`
         });
       }
     });
@@ -247,7 +272,7 @@ class MockDataService {
         investment: Math.floor(baseInvestment),
         revenue: Math.floor(baseRevenue),
         profit: Math.floor(profit),
-        roas: Math.floor((baseRevenue / baseInvestment) * 100),
+        roas: Math.floor(((baseRevenue / baseInvestment) - 1) * 100),  // ROAS as excess
         roi: Math.floor((profit / baseInvestment) * 100),
         impressions,
         clicks,
@@ -285,7 +310,7 @@ class MockDataService {
       totalInvestment,
       totalRevenue,
       totalProfit,
-      generalRoas: Math.floor((totalRevenue / totalInvestment) * 100),
+      generalRoas: Math.floor(((totalRevenue / totalInvestment) - 1) * 100),  // ROAS as excess
       finalRoi: Math.floor((totalProfit / totalInvestment) * 100),
       activeCampaigns,
       campaignStatus,
@@ -349,7 +374,7 @@ class MockDataService {
         const variation = 0.95 + Math.random() * 0.1; // ±5%
         project.investment = Math.floor(project.investment * variation);
         project.revenue = Math.floor(project.revenue * variation);
-        project.roas = Math.floor((project.revenue / project.investment) * 100);
+        project.roas = Math.floor(((project.revenue / project.investment) - 1) * 100);  // ROAS as excess
         project.roi = Math.floor(((project.revenue - project.investment) / project.investment) * 100);
       });
 

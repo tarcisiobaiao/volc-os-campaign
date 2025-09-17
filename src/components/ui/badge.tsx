@@ -13,13 +13,13 @@ const badgeVariants = cva(
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
         // Semáforo variants
-        success: "border-transparent bg-success text-success-foreground",
-        warning: "border-transparent bg-warning text-warning-foreground", 
+        success: "border-transparent bg-green-500 text-white",
+        warning: "border-transparent bg-orange-500 text-white", 
         danger: "border-transparent bg-destructive text-destructive-foreground",
         // Performance variants
-        excellent: "border-transparent bg-success text-success-foreground animate-pulse",
-        good: "border-transparent bg-info text-info-foreground",
-        average: "border-transparent bg-warning text-warning-foreground",
+        excellent: "border-transparent bg-green-500 text-white animate-pulse",
+        good: "border-transparent bg-blue-500 text-white",
+        average: "border-transparent bg-orange-500 text-white",
         poor: "border-transparent bg-destructive text-destructive-foreground",
       },
     },
@@ -105,23 +105,23 @@ export const PerformanceBadge: React.FC<{
 };
 
 export const ROASBadge: React.FC<{ roas: number }> = ({ roas }) => {
-  // Thresholds específicos para ROAS
+  // Thresholds ajustados para ROAS como excedente (excess percentage)
   const roasThresholds = {
-    excellent: 4.0,
-    good: 3.0,
-    average: 2.0
+    excellent: 300.0, // 300% excess (400% traditional)
+    good: 200.0,      // 200% excess (300% traditional)
+    average: 100.0    // 100% excess (200% traditional)
   };
 
   const getROASVariant = (value: number): "excellent" | "good" | "average" | "poor" => {
     if (value >= roasThresholds.excellent) return "excellent";
-    if (value >= roasThresholds.good) return "good"; 
+    if (value >= roasThresholds.good) return "good";
     if (value >= roasThresholds.average) return "average";
     return "poor";
   };
 
   return (
     <Badge variant={getROASVariant(roas)}>
-      ROAS: {roas.toFixed(2)}
+      ROAS: {roas.toFixed(1)}%
     </Badge>
   );
 };

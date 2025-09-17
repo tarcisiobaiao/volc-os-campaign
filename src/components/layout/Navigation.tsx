@@ -13,9 +13,14 @@ import {
   FolderOpen,
   Megaphone,
   DollarSign,
-  Zap
+  Zap,
+  Sparkles,
+  LogOut,
+  User
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavigationProps {
   isCollapsed: boolean;
@@ -30,10 +35,16 @@ const navigationItems = [
     description: "Visão geral de todas as campanhas"
   },
   {
-    title: "Dashboard por Projeto",
-    href: "/dashboard/campaigns",
-    icon: BarChart3,
-    description: "Métricas detalhadas por projeto"
+    title: "Projetos",
+    href: "/dashboard/projects",
+    icon: FolderOpen,
+    description: "Gerenciar projetos"
+  },
+  {
+    title: "Campanhas",
+    href: "/settings/campaigns",
+    icon: Megaphone,
+    description: "Configurar campanhas"
   },
   {
     title: "Relatórios",
@@ -44,18 +55,6 @@ const navigationItems = [
 ];
 
 const configurationItems = [
-  {
-    title: "Projetos",
-    href: "/settings/projects",
-    icon: FolderOpen,
-    description: "Gerenciar projetos"
-  },
-  {
-    title: "Campanhas",
-    href: "/settings/campaigns",
-    icon: Megaphone,
-    description: "Configurar campanhas"
-  },
   {
     title: "Custos",
     href: "/settings/costs",
@@ -72,21 +71,42 @@ const configurationItems = [
 
 export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollapsed }) => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao fazer logout",
+        description: "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const NavItem = ({ item, isActive }: { item: typeof navigationItems[0]; isActive: boolean }) => (
     <Link to={item.href}>
       <Button
         variant={isActive ? "secondary" : "ghost"}
         className={cn(
-          "w-full justify-start gap-3 h-12 transition-all duration-200",
-          isActive && "bg-primary/10 text-primary font-medium border-r-2 border-primary",
-          !isActive && "hover:bg-muted/50",
+          "w-full justify-start gap-3 h-12 transition-all duration-200 relative overflow-hidden",
+          isActive && "bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10 text-primary font-medium border-r-2 border-primary shadow-sm",
+          !isActive && "hover:bg-muted/50 hover:shadow-sm",
           isCollapsed && "justify-center px-2"
         )}
       >
-        <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "text-primary")} />
+        {isActive && (
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50" />
+        )}
+        <item.icon className={cn("h-5 w-5 flex-shrink-0 relative z-10", isActive && "text-primary")} />
         {!isCollapsed && (
-          <div className="flex flex-col items-start">
+          <div className="flex flex-col items-start relative z-10">
             <span className="text-sm font-medium">{item.title}</span>
             <span className="text-xs text-muted-foreground">{item.description}</span>
           </div>
@@ -97,27 +117,34 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
 
   return (
     <div className={cn(
-      "relative bg-card border-r border-border transition-all duration-300 flex flex-col",
+      "relative bg-gradient-to-b from-card via-card to-muted/30 border-r border-border transition-all duration-300 flex flex-col shadow-lg",
       isCollapsed ? "w-16" : "w-80"
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="animate-fade-in">
-              <h2 className="text-lg font-bold bg-gradient-dashboard bg-clip-text text-transparent">
-                Campaign Manager
-              </h2>
-              <p className="text-xs text-muted-foreground">
+      <div className="p-4 border-b border-border bg-gradient-to-r from-background to-muted/20 relative">
+        <div className="flex items-center justify-center w-full">
+          {!isCollapsed ? (
+            <div className="animate-fade-in flex-1 flex flex-col items-center justify-center text-center">
+              <img 
+                src="/logo-webgocontent-horizontal.png" 
+                alt="WebGo Content" 
+                className="h-12 max-w-full object-contain mb-2"
+              />
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
                 Google Ads & Ad Manager
               </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary/10 to-purple-600/10 border border-primary/20">
+              <span className="text-sm font-bold text-primary">W</span>
             </div>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="h-8 w-8 p-0 hover:bg-muted/50"
+            className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors absolute top-4 right-4"
           >
             {isCollapsed ? (
               <Menu className="h-4 w-4" />
@@ -149,7 +176,7 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
             </nav>
           </div>
 
-          <Separator />
+          <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
 
           {/* Configuration */}
           <div>
@@ -171,26 +198,69 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
         </div>
       </ScrollArea>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-border">
+      {/* User Section */}
+      <div className="p-4 border-t border-border bg-gradient-to-r from-muted/20 to-background">
         {!isCollapsed ? (
-          <div className="text-center animate-fade-in">
-            <div className="text-xs text-muted-foreground">
-              Integrado com
+          <div className="space-y-3 animate-fade-in">
+            {/* User Info */}
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/10">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-purple-600 flex items-center justify-center">
+                <User className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-primary truncate">
+                  {user?.email || "Usuário"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Online
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <div className="h-2 w-2 rounded-full bg-success animate-pulse"></div>
-              <span className="text-xs font-medium">Google Ads</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <div className="h-2 w-2 rounded-full bg-success animate-pulse"></div>
-              <span className="text-xs font-medium">Ad Manager</span>
+
+            {/* Logout Button */}
+            <Button
+              onClick={handleSignOut}
+              variant="ghost"
+              className="w-full justify-start gap-3 h-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm">Sair</span>
+            </Button>
+
+            {/* Integration Status */}
+            <div className="text-center">
+              <div className="text-xs text-muted-foreground mb-2">
+                Integrado com
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-xs font-medium text-green-600">Google Ads</span>
+                </div>
+                <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20">
+                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+                  <span className="text-xs font-medium text-blue-600">Ad Manager</span>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-success animate-pulse"></div>
-            <div className="h-2 w-2 rounded-full bg-success animate-pulse"></div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-purple-600 flex items-center justify-center">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <Button
+              onClick={handleSignOut}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+              <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+            </div>
           </div>
         )}
       </div>

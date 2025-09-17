@@ -1,0 +1,114 @@
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, AlertTriangle, Clock, Info } from "lucide-react";
+import { useState, useEffect } from "react";
+import { systemSettingsService } from "@/services/systemSettingsService";
+import { formatSaoPauloTimestamp } from "@/utils/timezone";
+
+interface DataStatusProps {
+  loading: boolean;
+  error: string | null;
+  lastUpdate?: string;
+  showDetails?: boolean; // Optional: show GAM/Google Ads breakdown
+}
+
+export function DataStatus({ loading, error, lastUpdate, showDetails = false }: DataStatusProps) {
+  const [detailedTimestamps, setDetailedTimestamps] = useState<{
+    gamLastUpdate: string | null;
+    googleAdsLastUpdate: string | null;
+    mostRecent: string | null;
+  } | null>(null);
+  const [showDetailView, setShowDetailView] = useState(false);
+  const [globalMostRecent, setGlobalMostRecent] = useState<string | null>(null);
+
+  // Always fetch timestamps to determine the most recent globally
+  useEffect(() => {
+    const fetchTimestamps = async () => {
+      try {
+        // Use systemSettingsService for direct access to system_settings table
+        const timestamps = await systemSettingsService.getSystemTimestamps();
+        setDetailedTimestamps(timestamps);
+        
+        console.log('📊 Raw timestamps from system_settings:', timestamps);
+        
+        // Set global most recent timestamp for display
+        if (timestamps.mostRecent) {
+          // The timestamp from system_settings is already in Brazilian format
+          setGlobalMostRecent(timestamps.mostRecent);
+        } else if (lastUpdate) {
+          setGlobalMostRecent(lastUpdate);
+        }
+      } catch (error) {
+        console.error('Error fetching timestamps from system_settings:', error);
+        // Fallback to provided lastUpdate
+        if (lastUpdate) {
+          setGlobalMostRecent(lastUpdate);
+        }
+      }
+    };
+    
+    fetchTimestamps();
+  }, [lastUpdate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Clock className="h-4 w-4 animate-spin" />
+        <span>Carregando dados...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant="destructive" className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Erro ao carregar
+        </Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge 
+        variant="default" 
+        className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 cursor-pointer"
+        onClick={() => setShowDetailView(!showDetailView)}
+      >
+        <CheckCircle className="h-3 w-3" />
+        Dados atualizados
+        <Info className="h-3 w-3 ml-1" />
+      </Badge>
+      
+      {globalMostRecent && !showDetailView && (
+        <span className="text-xs text-muted-foreground">
+          {globalMostRecent}
+        </span>
+      )}
+
+      {showDetailView && detailedTimestamps && (
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {detailedTimestamps.gamLastUpdate && (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">GAM:</span>
+              <span>{detailedTimestamps.gamLastUpdate}</span>
+            </div>
+          )}
+          {detailedTimestamps.googleAdsLastUpdate && (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Google Ads:</span>
+              <span>{detailedTimestamps.googleAdsLastUpdate}</span>
+            </div>
+          )}
+          {!detailedTimestamps.gamLastUpdate && !detailedTimestamps.googleAdsLastUpdate && globalMostRecent && (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Última atualização:</span>
+              <span>{globalMostRecent}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
