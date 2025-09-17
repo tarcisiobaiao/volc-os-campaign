@@ -73,14 +73,37 @@ export default function CampaignDetailDashboard() {
         // Load campaign data
         console.log('📞 Calling getCampaignDashboardDataFiltered...');
         
-        // When period is "today", use "7d" for charts but keep "today" for metrics
-        const chartPeriod = selectedPeriod === 'today' ? '7d' : selectedPeriod;
-        
-        const data = await supabaseDataService.getCampaignDashboardDataFiltered(campaignId, {
-          period: chartPeriod,
-          date: selectedDate,
-          endDate: selectedEndDate || undefined
-        });
+        // Load both today's metrics and 7-day chart data when period is "today"
+        let data;
+
+        if (selectedPeriod === 'today') {
+          // For "today", get both today's metrics and 7-day chart data
+          const [todayData, chartData] = await Promise.all([
+            supabaseDataService.getCampaignDashboardDataFiltered(campaignId, {
+              period: 'today',
+              date: selectedDate,
+              endDate: selectedEndDate || undefined
+            }),
+            supabaseDataService.getCampaignDashboardDataFiltered(campaignId, {
+              period: '7d',
+              date: selectedDate,
+              endDate: selectedEndDate || undefined
+            })
+          ]);
+
+          // Use today's metrics for main stats, but 7-day data for charts
+          data = {
+            ...todayData,
+            dailyMetrics: chartData.dailyMetrics // Use 7-day chart data
+          };
+        } else {
+          // For other periods, use normal logic
+          data = await supabaseDataService.getCampaignDashboardDataFiltered(campaignId, {
+            period: selectedPeriod,
+            date: selectedDate,
+            endDate: selectedEndDate || undefined
+          });
+        }
 
         console.log('✅ Campaign data loaded:', data);
         setCampaignData(data);

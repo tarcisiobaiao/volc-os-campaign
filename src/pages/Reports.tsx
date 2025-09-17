@@ -48,6 +48,7 @@ import { taxHistoryService } from "@/services/taxHistoryService";
 import { operationalCostsService } from "@/services/operationalCostsService";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
+import jsPDF from 'jspdf';
 
 const COLORS = ['hsl(var(--success))', 'hsl(var(--info))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
 
@@ -450,19 +451,149 @@ export default function Reports() {
   };
 
   const handleExportPDF = async () => {
-    setIsGeneratingPDF(true);
-    try {
-      // Simula geração de PDF
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "PDF Gerado",
-        description: "Relatório exportado com sucesso!",
-      });
-    } catch (error) {
+    if (!reportData) {
       toast({
         title: "Erro",
-        description: "Falha ao gerar relatório PDF.",
+        description: "Dados do relatório não disponíveis para exportação.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPosition = margin;
+
+      // Título do relatório
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Relatório de Performance', margin, yPosition);
+      yPosition += 10;
+
+      // Período
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Período: ${reportData.period}`, margin, yPosition);
+      yPosition += 8;
+
+      if (selectedProject !== 'all') {
+        const projectName = projects?.find(p => p.id === selectedProject)?.name || 'Projeto Selecionado';
+        pdf.text(`Projeto: ${projectName}`, margin, yPosition);
+        yPosition += 8;
+      }
+
+      yPosition += 5;
+
+      // Resumo Geral
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Resumo Geral', margin, yPosition);
+      yPosition += 8;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+
+      const summaryData = [
+        ['Total Investido', formatCostCurrency(reportData.summary.totalInvestment)],
+        ['Total Faturado (Líquido)', formatBrlCurrency(reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue)],
+        ['Lucro Líquido', formatCostCurrency(reportData.summary.netProfit)],
+        ['ROAS Médio', `${reportData.summary.averageRoas.toFixed(1)}%`],
+        ['ROI Final', `${reportData.summary.finalRoi.toFixed(1)}%`],
+        ['Projetos', reportData.summary.projectCount.toString()],
+        ['Campanhas', reportData.summary.campaignCount.toString()]
+      ];
+
+      summaryData.forEach(([label, value]) => {
+        pdf.text(`${label}:`, margin, yPosition);
+        pdf.text(value, margin + 60, yPosition);
+        yPosition += 6;
+      });
+
+      yPosition += 10;
+
+      // Tabela de Projetos
+      if (reportData.projects.length > 0) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Performance por Projeto', margin, yPosition);
+        yPosition += 8;
+
+        // Cabeçalho da tabela
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+
+        const colWidths = [60, 35, 35, 25, 25];
+        const headers = ['Projeto', 'Investimento', 'Revenue', 'ROAS', 'Campanhas'];
+
+        let xPosition = margin;
+        headers.forEach((header, index) => {
+          pdf.text(header, xPosition, yPosition);
+          xPosition += colWidths[index];
+        });
+        yPosition += 6;
+
+        // Linha separadora
+        pdf.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
+        yPosition += 2;
+
+        // Dados dos projetos
+        pdf.setFont('helvetica', 'normal');
+        reportData.projects.forEach((project) => {
+          // Verificar se precisa de nova página
+          if (yPosition > pageHeight - 30) {
+            pdf.addPage();
+            yPosition = margin;
+          }
+
+          xPosition = margin;
+          const projectData = [
+            project.domain || project.name || '',
+            formatCostCurrency(project.investment || 0),
+            formatBrlCurrency(project.revenue || 0),
+            `${project.roas.toFixed(1)}%`,
+            project.campaignCount.toString()
+          ];
+
+          projectData.forEach((data, index) => {
+            // Truncar texto se muito longo
+            const truncatedData = data.length > 15 ? data.substring(0, 12) + '...' : data;
+            pdf.text(truncatedData, xPosition, yPosition);
+            xPosition += colWidths[index];
+          });
+          yPosition += 5;
+        });
+      }
+
+      // Rodapé
+      yPosition = pageHeight - 20;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, yPosition);
+      pdf.text('Sistema Webgo - Relatórios', pageWidth - margin - 50, yPosition);
+
+      // Generate filename
+      const reportDate = new Date().toLocaleDateString('pt-BR');
+      const periodText = selectedPeriod === 'today' ? 'hoje' :
+                        selectedPeriod === '7d' ? '7dias' :
+                        selectedPeriod === '30d' ? '30dias' :
+                        selectedPeriod === 'range' ? 'periodo' : selectedPeriod;
+
+      const fileName = `relatorio_${periodText}_${reportDate.replace(/\//g, '-')}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "PDF Gerado",
+        description: `Relatório "${fileName}" exportado com sucesso!`,
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro",
+        description: `Falha ao gerar relatório PDF: ${error?.message || 'Erro desconhecido'}`,
         variant: "destructive"
       });
     } finally {
