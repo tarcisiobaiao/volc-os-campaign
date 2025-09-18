@@ -1108,7 +1108,7 @@ export default function Reports() {
                       </thead>
                       <tbody>
                         {reportData.projects.map((project, index) => (
-                          <tr key={project.id} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/projects/${project.id}`)}>
+                          <tr key={project.id} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/project/${project.id}`)}>
                             <td className="p-3">
                               <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
