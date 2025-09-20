@@ -16,7 +16,6 @@ import {
   RefreshCw,
   Search,
   Download,
-  Plus,
   Edit,
   Eye,
   DollarSign,
@@ -43,6 +42,7 @@ import { operationalCostsService } from "@/services/operationalCostsService";
 import { taxHistoryService } from "@/services/taxHistoryService";
 import { useCurrencyConverter } from "@/services/currencyConversionService";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
+import { getROASColorCategory, getROASColorStyles } from "@/utils/roasCalculations";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
@@ -93,85 +93,125 @@ const MetricCard = ({ title, value, comparison, change, icon, color }: MetricCar
   );
 };
 
-// Campaign Card Component
-const CampaignCard = ({ 
-  campaign, 
-  onAction, 
-  formatRevenue
-}: { 
-  campaign: any; 
+// Campaign Card Component - Updated to match CampaignsSettings UI
+const CampaignCard = ({
+  campaign,
+  onAction,
+  formatRevenue,
+  currentProject,
+  selectedPeriod,
+  selectedDate,
+  navigate
+}: {
+  campaign: any;
   onAction: (action: string, campaignId: string) => void;
   formatRevenue: (brl: number) => string;
+  currentProject: any;
+  selectedPeriod: string;
+  selectedDate: string;
+  navigate: (path: string) => void;
 }) => {
-  const getStatusColor = (roasStandard: number) => {
-    if (roasStandard >= 50) return "success";   // 50% return over investment
-    if (roasStandard >= 0) return "warning";    // Break-even or positive
-    return "danger";                            // Loss
-  };
-
-  const getStatusIcon = (roasStandard: number) => {
-    if (roasStandard >= 50) return "🟢";   // Good return
-    if (roasStandard >= 0) return "🟡";    // Break-even or small profit
-    return "🔴";                           // Loss
-  };
-
+  // Calculate ROAS using the same logic as CampaignsSettings (excess over investment)
   const calculatedROAS = campaign.investment > 0 ? ((campaign.revenue - campaign.investment) / campaign.investment) * 100 : 0;
-  const isCritical = calculatedROAS < 0;  // Checking for loss
+  const roasExcess = calculatedROAS; // This is already the excess percentage
+
+  // Use centralized ROAS color functions
+  const getCampaignColorCategory = (roasExcess: number) => {
+    return getROASColorCategory(roasExcess);
+  };
+
+  const getROIColor = (roasExcess: number) => {
+    return getROASColorStyles(roasExcess);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge variant="default" className="bg-green-500">🟢 Ativa</Badge>;
+      case 'paused':
+        return <Badge variant="secondary" className="bg-yellow-500">🟡 Pausada</Badge>;
+      case 'stopped':
+        return <Badge variant="destructive" className="bg-red-500">🔴 Parada</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  // Only show edit button for ADSENSE projects
+  const isAdSenseProject = currentProject?.project_type === 'ADSENSE';
 
   return (
-    <Card className={cn(
-      "animate-fade-in hover:shadow-lg transition-all duration-300",
-      isCritical && "border-destructive/40 bg-destructive/5"
-    )}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{getStatusIcon(calculatedROAS)}</span>
+    <Card
+      className="p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200"
+      onClick={() => navigate(`/dashboard/campaign/${campaign.utmCampaignValue || campaign.id}`)}
+    >
+      <CardContent className="p-0">
+        <div className="space-y-4">
+          {/* Campaign Header */}
+          <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-sm">{campaign.name}</h3>
-              <p className="text-xs text-muted-foreground">{campaign.description}</p>
+              <h3 className="font-semibold text-lg">
+                {getStatusBadge(campaign.status || 'active')} {campaign.name}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {campaign.description || 'Campanha do projeto'}
+              </p>
+            </div>
+            {/* Edit button only for ADSENSE projects */}
+            {isAdSenseProject && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction("edit", campaign.id);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-3 w-3" />
+                Editar Funis
+              </Button>
+            )}
+          </div>
+
+          {/* Metrics Section */}
+          <div>
+            <h4 className="font-medium mb-3">📊 Performance Financeira ({
+              selectedPeriod === 'today' ? 'Hoje' :
+              selectedPeriod === '7d' ? 'Últimos 7 dias' :
+              selectedPeriod === '30d' ? 'Últimos 30 dias' :
+              selectedPeriod === 'range' ? 'Período Selecionado' :
+              `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
+            }):</h4>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="text-center p-3 bg-red-50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Gasto</p>
+                <p className="font-semibold text-red-600">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(campaign.investment || 0)}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Revenue</p>
+                <p className="font-semibold text-green-600">{formatRevenue(campaign.revenue || 0)}</p>
+              </div>
+              <div className={`text-center p-3 rounded-lg border ${getROIColor(roasExcess)}`}>
+                <p className="text-xs text-muted-foreground mb-1">ROAS</p>
+                <p className="font-semibold">{roasExcess.toFixed(1)}%</p>
+              </div>
             </div>
           </div>
-          {isCritical && (
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          )}
-        </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Investido</p>
-            <p className="font-semibold">R$ {campaign.investment.toFixed(2)}</p>
+          {/* Campaign Details */}
+          <div className="flex items-center gap-4 text-sm">
+            <span>🎯 ID: {campaign.utmCampaignValue || campaign.googleAdsCampaignId || campaign.id}</span>
+            <span>|</span>
+            <span>📅 Criada: {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString('pt-BR') : 'N/A'}</span>
+            <span>|</span>
+            <span>Tipo: {currentProject?.project_type || 'N/A'}</span>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Faturado (Líquido)</p>
-            <p className="font-semibold">{formatRevenue(campaign.revenue || 0)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">ROAS</p>
-            <Badge variant={getStatusColor(calculatedROAS)}>
-              {Math.round(calculatedROAS)}%
-            </Badge>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end text-xs text-muted-foreground mb-3">
-          <span>👁️ {campaign.views || Math.floor(Math.random() * 1000 + 100)} views</span>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              console.log("🖱️ Button clicked! Campaign ID:", campaign.id);
-              console.log("🖱️ onAction function:", typeof onAction);
-              onAction("edit", campaign.id);
-            }}
-            className="flex-1"
-          >
-            <Edit className="h-3 w-3 mr-1" />
-            Editar
-          </Button>
         </div>
       </CardContent>
     </Card>
@@ -551,17 +591,14 @@ export default function ProjectDashboard() {
     // Calculate project-specific metrics
     const projectInvestment = projectCampaigns.reduce((sum, c) => sum + (c.investment || 0), 0);
     
-    // For ADSENSE projects, revenue comes from daily_project_metrics (already included in currentProject.revenue)
-    // For GAM projects, revenue comes from campaign aggregation
-    const projectRevenue = currentProject?.project_type === 'ADSENSE' 
-      ? currentProject.revenue || 0 
-      : projectCampaigns.reduce((sum, c) => sum + (c.revenue || 0), 0);
-    
+    // All projects use daily_project_metrics for total revenue (optimized for better performance and reduced egress)
+    // Revenue is already pre-calculated with revshare discount in daily_project_metrics
+    const projectRevenue = currentProject.revenue || 0;
+
     console.log('🎯 Revenue calculation method:', {
       projectType: currentProject?.project_type,
-      isAdSense: currentProject?.project_type === 'ADSENSE',
       projectRevenue,
-      source: currentProject?.project_type === 'ADSENSE' ? 'daily_project_metrics (via currentProject.revenue)' : 'daily_campaign_metrics (aggregated campaigns)'
+      source: 'daily_project_metrics (optimized for all project types)'
     });
     const projectProfit = calculateSimplifiedNetProfit(projectRevenue, projectInvestment).netProfit; // Lucro líquido com impostos e custos
     const projectRoas = projectInvestment > 0 ? ((projectRevenue - projectInvestment) / projectInvestment) * 100 : 0; // ROAS padrão: excesso sobre investimento
@@ -1161,27 +1198,61 @@ export default function ProjectDashboard() {
         <Card className="shadow-card animate-fade-in">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Lista de Campanhas</CardTitle>
+              <div>
+                <CardTitle>Lista de Campanhas</CardTitle>
+                <div className="flex items-center gap-4 mt-2">
+                  <Badge variant="outline" className="text-sm">
+                    {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campanha' : 'campanhas'}
+                  </Badge>
+                  {projectCampaigns && projectCampaigns.length > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        🟢 {projectCampaigns.filter(c => {
+                          const roasExcess = c.investment > 0 ? ((c.revenue - c.investment) / c.investment) * 100 : 0;
+                          return getROASColorCategory(roasExcess) === "green";
+                        }).length}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        🟡 {projectCampaigns.filter(c => {
+                          const roasExcess = c.investment > 0 ? ((c.revenue - c.investment) / c.investment) * 100 : 0;
+                          return getROASColorCategory(roasExcess) === "yellow";
+                        }).length}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        🔴 {projectCampaigns.filter(c => {
+                          const roasExcess = c.investment > 0 ? ((c.revenue - c.investment) / c.investment) * 100 : 0;
+                          return getROASColorCategory(roasExcess) === "red";
+                        }).length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline">
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Campanha
-                </Button>
+                {currentProject?.project_type === 'ADSENSE' && (
+                  <Badge variant="secondary" className="text-xs">
+                    Modo AdSense - Edição de funis disponível
+                  </Badge>
+                )}
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-1">
+            <div className="space-y-4">
               {filteredCampaigns?.map((campaign: any) => (
                 <CampaignCard
                   key={campaign.id}
                   campaign={campaign}
                   onAction={handleCampaignAction}
                   formatRevenue={formatRevenue}
+                  currentProject={currentProject}
+                  selectedPeriod={selectedPeriod}
+                  selectedDate={selectedDate}
+                  navigate={navigate}
                 />
               )) || []}
             </div>

@@ -10,10 +10,10 @@ import { ptBR } from "date-fns/locale";
 import { supabaseDataService } from "@/services/supabaseDataService";
 
 interface DateFilterProps {
-  selectedPeriod: 'today' | '7d' | '30d' | 'custom' | 'range';
+  selectedPeriod: 'today' | 'yesterday' | 'custom' | 'range';
   selectedDate?: string;
   selectedEndDate?: string;
-  onPeriodChange: (period: 'today' | '7d' | '30d' | 'custom' | 'range') => void;
+  onPeriodChange: (period: 'today' | 'yesterday' | 'custom' | 'range') => void;
   onDateChange?: (date: string) => void;
   onDateRangeChange?: (startDate: string, endDate: string) => void;
 }
@@ -103,11 +103,13 @@ export function DateFilter({
   }, [selectedDate, customDate]);
 
   const handlePeriodChange = (period: string) => {
-    const typedPeriod = period as 'today' | '7d' | '30d' | 'custom' | 'range';
+    const typedPeriod = period as 'today' | 'yesterday' | 'custom' | 'range';
     onPeriodChange(typedPeriod);
-    
-    if (typedPeriod !== 'custom' && typedPeriod !== 'range' && onDateChange && serverDate) {
-      onDateChange(serverDate); // Use server date instead of local date
+
+    if (typedPeriod === 'today' && onDateChange && serverDate) {
+      onDateChange(serverDate); // Use server date for today
+    } else if (typedPeriod === 'yesterday' && onDateChange && serverYesterday) {
+      onDateChange(serverYesterday); // Use server yesterday date
     }
   };
 
@@ -214,9 +216,8 @@ export function DateFilter({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="today">📅 Hoje</SelectItem>
-          <SelectItem value="7d">📊 7 dias</SelectItem>
-          <SelectItem value="30d">📈 30 dias</SelectItem>
-          <SelectItem value="custom">🗓️ Selecionar período</SelectItem>
+          <SelectItem value="yesterday">📆 Ontem</SelectItem>
+          <SelectItem value="custom">🗓️ Data personalizada</SelectItem>
         </SelectContent>
       </Select>
 
@@ -323,18 +324,16 @@ export function DateFilter({
                   variant="outline"
                   className="flex-1"
                   onClick={() => {
-                    if (serverDate) {
-                      const today = new Date(serverDate + 'T12:00:00');
-                      const lastWeek = new Date(today);
-                      lastWeek.setDate(lastWeek.getDate() - 6);
-                      setTempRangeStartDate(lastWeek);
-                      setTempRangeEndDate(today);
-                      setTempCustomDate(undefined);
+                    if (serverYesterday) {
+                      const yesterday = new Date(serverYesterday + 'T12:00:00');
+                      setTempCustomDate(yesterday);
+                      setTempRangeStartDate(undefined);
+                      setTempRangeEndDate(undefined);
                     }
                   }}
-                  disabled={!serverDate}
+                  disabled={!serverYesterday}
                 >
-                  Últimos 7 dias
+                  Ontem
                 </Button>
               </div>
               <Button 

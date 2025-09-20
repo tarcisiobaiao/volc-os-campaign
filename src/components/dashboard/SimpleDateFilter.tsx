@@ -10,9 +10,9 @@ import { ptBR } from "date-fns/locale";
 import { supabaseDataService } from "@/services/supabaseDataService";
 
 interface SimpleDateFilterProps {
-  selectedPeriod: 'today' | '7d' | '30d' | 'custom';
+  selectedPeriod: 'today' | 'yesterday' | 'custom';
   selectedDate?: string;
-  onPeriodChange: (period: 'today' | '7d' | '30d' | 'custom') => void;
+  onPeriodChange: (period: 'today' | 'yesterday' | 'custom') => void;
   onDateChange?: (date: string) => void;
 }
 
@@ -88,11 +88,13 @@ export function SimpleDateFilter({
   }, [selectedDate, customDate]);
 
   const handlePeriodChange = (period: string) => {
-    const typedPeriod = period as 'today' | '7d' | '30d' | 'custom';
+    const typedPeriod = period as 'today' | 'yesterday' | 'custom';
     onPeriodChange(typedPeriod);
-    
-    if (typedPeriod !== 'custom' && onDateChange && serverDate) {
-      onDateChange(serverDate); // Use server date instead of local date
+
+    if (typedPeriod === 'today' && onDateChange && serverDate) {
+      onDateChange(serverDate); // Use server date for today
+    } else if (typedPeriod === 'yesterday' && onDateChange && serverYesterday) {
+      onDateChange(serverYesterday); // Use server yesterday date
     }
   };
 
@@ -120,8 +122,7 @@ export function SimpleDateFilter({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="today">📅 Hoje</SelectItem>
-          <SelectItem value="7d">📊 7 dias</SelectItem>
-          <SelectItem value="30d">📈 30 dias</SelectItem>
+          <SelectItem value="yesterday">📆 Ontem</SelectItem>
           <SelectItem value="custom">🗓️ Data específica</SelectItem>
         </SelectContent>
       </Select>

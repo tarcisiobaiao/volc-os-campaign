@@ -420,7 +420,7 @@ class SupabaseDataService {
     date?: string;
     endDate?: string;
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
   }): Promise<Project[]> {
     try {
       console.log('📂 getProjects called with filters:', filters);
@@ -523,130 +523,58 @@ class SupabaseDataService {
           // UPDATED: Get revenue - use different sources based on project type
           let totalRevenue = 0;
 
-          // Force ADSENSE logic for project 36
-          if (project.project_type === 'ADSENSE' || project.id === 36) {
-            // 🚀 ADSENSE OTIMIZADO: Apenas campos necessários para reduzir egress
-            let projectRevenueQuery = supabase
-              .from('daily_project_metrics')
-              .select('revenue_converted_revshare')
-              .eq('project_id', project.id);
+          // 🚀 UNIFIED OPTIMIZATION: All projects use daily_project_metrics for total revenue
+          console.log(`🚀 Project ${project.project_name} using optimized daily_project_metrics with minimal SELECT!`);
 
-            // Apply same date filters for ADSENSE project revenue
-            if (filters?.period === 'today' && filters?.date) {
-              projectRevenueQuery = projectRevenueQuery.eq('date', filters.date);
-            } else if (filters?.period === 'custom' && filters?.date) {
-              projectRevenueQuery = projectRevenueQuery.eq('date', filters.date);
-            } else if (filters?.period === '7d' && filters?.date) {
-              const endDate = new Date(filters.date);
-              const startDate = new Date(endDate);
-              startDate.setDate(startDate.getDate() - 6);
-              projectRevenueQuery = projectRevenueQuery
-                .gte('date', startDate.toISOString().split('T')[0])
-                .lte('date', filters.date);
-            } else if (filters?.period === '30d' && filters?.date) {
-              const endDate = new Date(filters.date);
-              const startDate = new Date(endDate);
-              startDate.setDate(startDate.getDate() - 29);
-              projectRevenueQuery = projectRevenueQuery
-                .gte('date', startDate.toISOString().split('T')[0])
-                .lte('date', filters.date);
-            } else if (filters?.period === 'range' && filters?.date && filters?.endDate) {
-              console.log('📊 Applying RANGE filter for ADSENSE project revenue:', filters.date, 'to', filters.endDate);
-              projectRevenueQuery = projectRevenueQuery
-                .gte('date', filters.date)
-                .lte('date', filters.endDate);
-            }
+          let projectRevenueQuery = supabase
+            .from('daily_project_metrics')
+            .select('revenue_converted_revshare')
+            .eq('project_id', project.id);
 
-            const { data: projectRevenueData, error: projectRevenueError } = await projectRevenueQuery;
-            if (projectRevenueError) {
-              console.error(`Error fetching ADSENSE project revenue for project ${project.id}:`, projectRevenueError);
-            }
-
-            totalRevenue = (projectRevenueData || []).reduce((sum, item) => {
-              const revenueRevshare = Number(item.revenue_converted_revshare) || 0;
-              return sum + revenueRevshare;
-            }, 0);
-
-            console.log(`💰 ADSENSE Project ${project.project_name} revenue calculation:`, {
-              totalRevenue,
-              records_count: projectRevenueData?.length || 0,
-              date: filters?.date,
-              period: filters?.period,
-              source: 'daily_project_metrics',
-              raw_data: projectRevenueData
-            });
-
-          } else {
-            // 🚀 GAM OTIMIZADO: Apenas campo necessário para reduzir egress ao máximo
-            console.log(`🚀 GAM Project ${project.project_name} usando daily_project_metrics otimizado com SELECT mínimo!`);
-
-            let projectRevenueQuery = supabase
-              .from('daily_project_metrics')
-              .select('revenue_converted_revshare')
-              .eq('project_id', project.id);
-
-            // Apply same date filters for GAM project revenue (usando daily_project_metrics)
-            if (filters?.period === 'today' && filters?.date) {
-              projectRevenueQuery = projectRevenueQuery.eq('date', filters.date);
-            } else if (filters?.period === 'custom' && filters?.date) {
-              projectRevenueQuery = projectRevenueQuery.eq('date', filters.date);
-            } else if (filters?.period === '7d' && filters?.date) {
-              const endDate = new Date(filters.date);
-              const startDate = new Date(endDate);
-              startDate.setDate(startDate.getDate() - 6);
-              projectRevenueQuery = projectRevenueQuery
-                .gte('date', startDate.toISOString().split('T')[0])
-                .lte('date', filters.date);
-            } else if (filters?.period === '30d' && filters?.date) {
-              const endDate = new Date(filters.date);
-              const startDate = new Date(endDate);
-              startDate.setDate(startDate.getDate() - 29);
-              projectRevenueQuery = projectRevenueQuery
-                .gte('date', startDate.toISOString().split('T')[0])
-                .lte('date', filters.date);
-            } else if (filters?.period === 'range' && filters?.date && filters?.endDate) {
-              console.log('📊 Applying RANGE filter for GAM project revenue:', filters.date, 'to', filters.endDate);
-              projectRevenueQuery = projectRevenueQuery
-                .gte('date', filters.date)
-                .lte('date', filters.endDate);
-            }
-
-            const { data: projectRevenueData, error: projectRevenueError } = await projectRevenueQuery;
-            if (projectRevenueError) {
-              console.error(`Error fetching GAM project revenue for project ${project.id}:`, projectRevenueError);
-            }
-
-            console.log(`🔍 RAW PROJECT DATA for ${project.project_name}:`, {
-              project_id: project.id,
-              hasData: !!projectRevenueData,
-              dataLength: projectRevenueData?.length || 0,
-              allRawData: projectRevenueData,
-              filters: filters
-            });
-
-            totalRevenue = (projectRevenueData || []).reduce((sum, item, index) => {
-              const revenueRevshare = Number(item.revenue_converted_revshare) || 0;
-
-              if (index < 3) { // Log primeiros 3 registros
-                console.log(`💰 GAM Revenue item ${index + 1}:`, {
-                  revenue_converted_revshare: item.revenue_converted_revshare,
-                  parsed_value: revenueRevshare,
-                  current_sum: sum
-                });
-              }
-
-              return sum + revenueRevshare;
-            }, 0);
-
-            console.log(`💰 GAM Project ${project.project_name} revenue calculation (OTIMIZADO):`, {
-              totalRevenue,
-              records_count: projectRevenueData?.length || 0,
-              date: filters?.date,
-              period: filters?.period,
-              source: 'daily_project_metrics_OTIMIZADO',
-              raw_data: projectRevenueData
-            });
+          // Apply date filters based on period
+          if (filters?.period === 'today' && filters?.date) {
+            projectRevenueQuery = projectRevenueQuery.eq('date', filters.date);
+          } else if (filters?.period === 'custom' && filters?.date) {
+            projectRevenueQuery = projectRevenueQuery.eq('date', filters.date);
+          } else if (filters?.period === '7d' && filters?.date) {
+            const endDate = new Date(filters.date);
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 6);
+            projectRevenueQuery = projectRevenueQuery
+              .gte('date', startDate.toISOString().split('T')[0])
+              .lte('date', filters.date);
+          } else if (filters?.period === '30d' && filters?.date) {
+            const endDate = new Date(filters.date);
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 29);
+            projectRevenueQuery = projectRevenueQuery
+              .gte('date', startDate.toISOString().split('T')[0])
+              .lte('date', filters.date);
+          } else if (filters?.period === 'range' && filters?.date && filters?.endDate) {
+            console.log('📊 Applying RANGE filter for project revenue:', filters.date, 'to', filters.endDate);
+            projectRevenueQuery = projectRevenueQuery
+              .gte('date', filters.date)
+              .lte('date', filters.endDate);
           }
+
+          const { data: projectRevenueData, error: projectRevenueError } = await projectRevenueQuery;
+          if (projectRevenueError) {
+            console.error(`Error fetching project revenue for project ${project.id}:`, projectRevenueError);
+          }
+
+          totalRevenue = (projectRevenueData || []).reduce((sum, item) => {
+            const revenueRevshare = Number(item.revenue_converted_revshare) || 0;
+            return sum + revenueRevshare;
+          }, 0);
+
+          console.log(`💰 Project ${project.project_name} revenue calculation (UNIFIED OPTIMIZATION):`, {
+            totalRevenue,
+            records_count: projectRevenueData?.length || 0,
+            date: filters?.date,
+            period: filters?.period,
+            source: 'daily_project_metrics_unified',
+            project_type: project.project_type
+          });
 
           console.log(`💰 Project ${project.project_name}:`, {
             period: filters?.period || 'all',
@@ -800,7 +728,7 @@ class SupabaseDataService {
   // Fetch campaigns from Supabase (novo método que usa a view com revenue)
   async getCampaigns(filters?: {
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
   }): Promise<Campaign[]> {
@@ -846,7 +774,7 @@ class SupabaseDataService {
   // Fetch daily metrics from Supabase with real campaign data
   async getDailyMetrics(filters?: {
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
     days?: number;
@@ -858,11 +786,20 @@ class SupabaseDataService {
       let endDate = date || new Date().toISOString().split('T')[0];
       const startDate = new Date();
       
-      if (period === 'today') {
-        // Para HOJE, usar método específico que filtra apenas o dia atual
-        const currentDate = date || await this.getCurrentServerDate();
-        console.log('📅 getDailyMetrics - Using current server date for today:', currentDate);
-        return this.getTodayMetrics(projectId, currentDate);
+      if (period === 'today' || period === 'yesterday') {
+        // Para HOJE ou ONTEM, usar método específico que filtra apenas o dia específico
+        let targetDate: string;
+        if (period === 'yesterday') {
+          const serverDate = await this.getCurrentServerDate();
+          const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+          const yesterdayObj = new Date(serverDateObj);
+          yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+          targetDate = yesterdayObj.toISOString().split('T')[0];
+        } else {
+          targetDate = date || await this.getCurrentServerDate();
+        }
+        console.log('📅 getDailyMetrics - Using target date for', period + ':', targetDate);
+        return this.getTodayMetrics(projectId, targetDate);
       } else if (period === 'custom' && date) {
         // Para DATA ESPECÍFICA, usar método específico que filtra apenas aquele dia
         console.log('📅 getDailyMetrics - Using specific date for custom:', date);
@@ -1058,7 +995,7 @@ class SupabaseDataService {
     date?: string;
     endDate?: string;
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
   }): Promise<{
     totalSpend: number;
     totalRevenue: number;
@@ -1087,21 +1024,28 @@ class SupabaseDataService {
       const cachedData = localStorage.getItem(cacheKey);
       const lastDataUpdate = localStorage.getItem('lastDataUpdate');
 
+      // 📊 METRICS: Track cache performance
+      const cacheHitMetric = localStorage.getItem('cache_hits') || '0';
+      const cacheMissMetric = localStorage.getItem('cache_misses') || '0';
+
       if (cachedData && cacheTimestamp) {
         const cacheAge = Date.now() - parseInt(cacheTimestamp);
-        const cacheValidTime = period === 'today' ? 2 * 60 * 1000 : 5 * 60 * 1000; // 2min para today, 5min para outros
+        const cacheValidTime = (period === 'today' || period === 'yesterday') ? 2 * 60 * 1000 : 5 * 60 * 1000; // 2min para today/yesterday, 5min para outros
 
         // Se há timestamp de atualização de dados e é mais recente que o cache, invalidar
         const dataWasUpdated = lastDataUpdate && parseInt(lastDataUpdate) > parseInt(cacheTimestamp);
 
         // 🎯 NEW: Check database updated_at for today data
-        if (period === 'today' && date) {
+        if ((period === 'today' || period === 'yesterday') && date) {
           const isCacheStillValid = await this.isCacheValid(cacheKey, parseInt(cacheTimestamp), date);
           if (cacheAge < cacheValidTime && !dataWasUpdated && isCacheStillValid) {
+            // 📊 METRICS: Increment cache hit
+            localStorage.setItem('cache_hits', String(parseInt(cacheHitMetric) + 1));
             console.log('🎯 CACHE HIT - Usando dados cached (validado com DB), economizando egress!', {
               cacheKey,
               cacheAge: `${Math.round(cacheAge / 1000)}s`,
-              validFor: `${Math.round((cacheValidTime - cacheAge) / 1000)}s mais`
+              validFor: `${Math.round((cacheValidTime - cacheAge) / 1000)}s mais`,
+              cacheHitRate: `${((parseInt(cacheHitMetric) + 1) / (parseInt(cacheHitMetric) + parseInt(cacheMissMetric) + 1) * 100).toFixed(1)}%`
             });
             return JSON.parse(cachedData);
           } else if (!isCacheStillValid) {
@@ -1110,10 +1054,13 @@ class SupabaseDataService {
         } else {
           // For other periods, use time-based cache
           if (cacheAge < cacheValidTime && !dataWasUpdated) {
+            // 📊 METRICS: Increment cache hit
+            localStorage.setItem('cache_hits', String(parseInt(cacheHitMetric) + 1));
             console.log('🎯 CACHE HIT - Usando dados cached, economizando egress!', {
               cacheKey,
               cacheAge: `${Math.round(cacheAge / 1000)}s`,
-              validFor: `${Math.round((cacheValidTime - cacheAge) / 1000)}s mais`
+              validFor: `${Math.round((cacheValidTime - cacheAge) / 1000)}s mais`,
+              cacheHitRate: `${((parseInt(cacheHitMetric) + 1) / (parseInt(cacheHitMetric) + parseInt(cacheMissMetric) + 1) * 100).toFixed(1)}%`
             });
             return JSON.parse(cachedData);
           } else if (dataWasUpdated) {
@@ -1122,25 +1069,37 @@ class SupabaseDataService {
         }
       }
       
-      // SEMPRE usar métricas diárias quando period = 'today' ou 'custom'
-      if (period === 'today' || period === 'custom') {
-        // Usar data do servidor para 'today' ou data específica para 'custom'
-        const targetDate = period === 'custom' && date ? date : await this.getCurrentServerDate();
-        console.log('🎯 Final target date for TODAY:', targetDate);
-        console.log('📅 getDashboardData - Using TODAY mode for date:', targetDate, 'filters:', filters);
+      // SEMPRE usar métricas diárias quando period = 'today', 'yesterday' ou 'custom'
+      if (period === 'today' || period === 'yesterday' || period === 'custom') {
+        // Usar data do servidor para 'today', data específica para 'custom', ou calcular yesterday
+        let targetDate: string;
+        if (period === 'custom' && date) {
+          targetDate = date;
+        } else if (period === 'yesterday') {
+          const serverDate = await this.getCurrentServerDate();
+          const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+          const yesterdayObj = new Date(serverDateObj);
+          yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+          targetDate = yesterdayObj.toISOString().split('T')[0];
+        } else {
+          targetDate = await this.getCurrentServerDate();
+        }
+        console.log('🎯 Final target date for SINGLE DAY mode:', targetDate, 'period:', period);
+        console.log('📅 getDashboardData - Using SINGLE DAY mode for date:', targetDate, 'filters:', filters);
 
         console.log('📅 getDashboardData - Searching for date:', targetDate);
         console.log('🔍 DEBUG: Date analysis:', {
           period,
           providedDate: date,
           isCustom: period === 'custom',
+          isYesterday: period === 'yesterday',
           willUseProvidedDate: period === 'custom' && date,
           finalTargetDate: targetDate,
           today: new Date().toISOString().split('T')[0]
         });
 
-        // 🚀 NOVA LÓGICA OTIMIZADA PARA TODAY: usar daily_project_metrics
-        console.log('🚀 NOVA OTIMIZAÇÃO TODAY: Using daily_project_metrics for revenue calculation');
+        // 🚀 NOVA LÓGICA OTIMIZADA PARA SINGLE DAY: usar daily_project_metrics
+        console.log('🚀 NOVA OTIMIZAÇÃO SINGLE DAY: Using daily_project_metrics for revenue calculation, period:', period);
 
         // DEBUG: Primeiro verificar que datas estão disponíveis na tabela
         const { data: availableDates } = await supabase
@@ -1498,7 +1457,17 @@ class SupabaseDataService {
       // 💾 SALVAR NO CACHE: Reduz egress futuro
       localStorage.setItem(cacheKey, JSON.stringify(result));
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
-      console.log('💾 Dados salvos no cache para próximas consultas!', { cacheKey });
+
+      // 📊 METRICS: Increment cache miss (dados foram buscados do banco)
+      localStorage.setItem('cache_misses', String(parseInt(cacheMissMetric) + 1));
+      const totalRequests = parseInt(cacheHitMetric) + parseInt(cacheMissMetric) + 1;
+      const hitRate = (parseInt(cacheHitMetric) / totalRequests * 100);
+
+      console.log('💾 Dados salvos no cache para próximas consultas!', {
+        cacheKey,
+        cacheHitRate: `${hitRate.toFixed(1)}%`,
+        egressSaved: hitRate > 0 ? `~${(hitRate * 500 / 100).toFixed(0)}KB per hit` : 'N/A'
+      });
 
       console.log('🎯 FINAL RESULT for getDashboardData:', result);
       return result;
@@ -1688,7 +1657,7 @@ class SupabaseDataService {
     date?: string;
     endDate?: string;
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
   }): Promise<DashboardSummary> {
     try {
       
@@ -2047,7 +2016,7 @@ class SupabaseDataService {
 
   // New filtered version of getCampaignDashboardData that respects date filters
   async getCampaignDashboardDataFiltered(campaignId: string, filters: {
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
   }): Promise<{
@@ -2330,7 +2299,7 @@ class SupabaseDataService {
       const campaigns = await this.getCampaigns({ projectId });
 
       // Get daily metrics for the project based on period
-      const daysToFetch = period === 'today' ? 2 : (period === '7d' ? 7 : 30); // Fetch 2 days for today to compare with yesterday
+      const daysToFetch = (period === 'today' || period === 'yesterday') ? 2 : (period === '7d' ? 7 : 30); // Fetch 2 days for today/yesterday to compare
       const dailyMetrics = await this.getDailyMetrics({ projectId, period: period || '30d', days: daysToFetch });
 
       // Get yesterday's real data
@@ -2538,7 +2507,7 @@ class SupabaseDataService {
   // Obter campanhas com revenue calculado automaticamente e informações de controle
   async getCampaignsWithRevenue(filters?: {
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
   }): Promise<Campaign[]> {
@@ -2602,10 +2571,11 @@ class SupabaseDataService {
     }
   }
 
+
   // New method that applies date/period filters by building aggregated queries
   private async getCampaignsWithRevenueFiltered(filters: {
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
   }): Promise<Campaign[]> {
@@ -2732,13 +2702,23 @@ class SupabaseDataService {
       // 🚀 Para campanhas individuais, usar daily_campaign_metrics para receita específica por campanha
       // (A otimização com daily_project_metrics é apenas para totais gerais do dashboard)
 
+      // Get project info to determine if it's ADSENSE
+      const projectIds = [...new Set(campaigns.map(c => c.project_id))];
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('id, project_type')
+        .in('id', projectIds);
+
       // For each campaign, aggregate metrics for the date range
       const campaignsWithRevenue = await Promise.all(campaigns.map(async (campaign) => {
-        // Get ALL metrics from daily_campaign_metrics including revenue for campaign-specific data
-        console.log(`🔍 Querying daily_campaign_metrics for campaign ${campaign.campaign_id} (all metrics)`);
+        const project = projects?.find(p => p.id === campaign.project_id);
+
+        console.log(`🔍 Processing campaign ${campaign.campaign_id} (Project Type: ${project?.project_type || 'Unknown'})`);
+
+        // Get spend and engagement metrics from daily_campaign_metrics (used for all project types)
         const { data: dailyMetrics, error: metricsError } = await supabase
           .from('daily_campaign_metrics')
-          .select('spend, clicks, impressions, conversions, revenue_converted_revshare, date')
+          .select('spend, clicks, impressions, date')
           .eq('campaign_id', campaign.campaign_id)
           .gte('date', startDate)
           .lte('date', endDate);
@@ -2747,14 +2727,38 @@ class SupabaseDataService {
           console.error(`❌ Error querying daily_campaign_metrics for campaign ${campaign.campaign_id}:`, metricsError);
         }
 
-        // Aggregate daily metrics including campaign-specific revenue
+        // Aggregate daily metrics (spend and engagement)
         const aggregatedSpend = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.spend) || 0), 0);
         const aggregatedClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
         const aggregatedImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.impressions) || 0), 0);
-        const aggregatedConversions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.conversions) || 0), 0);
 
-        // Use campaign-specific revenue from daily_campaign_metrics
-        const aggregatedRevenue = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.revenue_converted_revshare) || 0), 0);
+        // Revenue calculation: ALL campaigns use daily_campaign_metrics
+        // The system automatically populates daily_campaign_metrics.revenue_converted
+        // based on funnel URLs for ADSENSE campaigns, so we just query this unified source
+        console.log(`💰 Calculating revenue for campaign ${campaign.campaign_id} from daily_campaign_metrics`);
+
+        const { data: campaignRevenueMetrics, error: revenueError } = await supabase
+          .from('daily_campaign_metrics')
+          .select('revenue_converted_revshare')
+          .eq('campaign_id', campaign.campaign_id)
+          .gte('date', startDate)
+          .lte('date', endDate);
+
+        if (revenueError) {
+          console.error(`❌ Error fetching revenue for campaign ${campaign.campaign_id}:`, revenueError);
+        }
+
+        const aggregatedRevenue = (campaignRevenueMetrics || []).reduce((sum, m) => sum + (Number(m.revenue_converted_revshare) || 0), 0);
+
+        console.log(`💰 [Campaign ${campaign.campaign_id}] Revenue from daily_campaign_metrics:`, {
+          campaign_id: campaign.campaign_id,
+          campaign_name: campaign.campaign_name,
+          project_type: project?.project_type,
+          aggregatedRevenue,
+          records_count: (campaignRevenueMetrics || []).length,
+          dateRange: { startDate, endDate },
+          source: 'daily_campaign_metrics_unified'
+        });
 
         console.log(`💰 [Campaign ${campaign.campaign_id}] Revenue calculation:`, {
           campaign_id: campaign.campaign_id,
@@ -2825,7 +2829,7 @@ class SupabaseDataService {
     date?: string;
     endDate?: string;
     projectId?: string;
-    period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
   }): Promise<{
     investment: number;
     revenue: number;
@@ -3264,7 +3268,7 @@ export const useSupabaseData = (filters?: {
   date?: string;
   endDate?: string;
   projectId?: string;
-  period?: 'today' | '7d' | '30d' | 'custom' | 'range';
+  period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
 }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);

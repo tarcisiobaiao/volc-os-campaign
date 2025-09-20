@@ -87,7 +87,7 @@ const CardDecoration = ({ color }: { color: string }) => (
 
 export default function GeneralDashboard() {
   const navigate = useNavigate();
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom'>("today");
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | 'custom'>("today");
   const [selectedDate, setSelectedDate] = useState<string>(""); // Will be set dynamically
   const [exchangeRate, setExchangeRate] = useState<number>(5.50);
   const [webhookStatus, setWebhookStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -129,15 +129,23 @@ export default function GeneralDashboard() {
   }, []);
   
   // Use filtered data based on current selections - sempre mostra todos os projetos
+  // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   const filters = {
     date: selectedDate,
     projectId: 'all', // Sempre todos os projetos no dashboard geral
-    period: selectedPeriod
+    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
   };
 
   // Debug: Log current filters for monitoring
   React.useEffect(() => {
     console.log('🔍 Current filters applied:', filters);
+    console.log('🔍 DETAILED DEBUG:', {
+      selectedPeriod,
+      selectedDate,
+      filterPeriod: filters.period,
+      filterDate: filters.date,
+      isYesterdayTreatedAsCustom: selectedPeriod === 'yesterday' && filters.period === 'custom'
+    });
   }, [filters]);
   
   const { projects, campaigns, dailyMetrics, summary, loading, error, lastUpdate, refresh } = useSupabaseData(filters);
@@ -152,15 +160,15 @@ export default function GeneralDashboard() {
     }
   }, [selectedPeriod, selectedDate]);
   
-  // Force refresh data when period changes to today
+  // Force refresh data when period changes
   React.useEffect(() => {
-    if (selectedPeriod === 'today') {
-      console.log('🔄 Forcing refresh for today period...');
+    if (selectedPeriod === 'today' || selectedPeriod === 'yesterday') {
+      console.log('🔄 Forcing refresh for period:', selectedPeriod);
       setTimeout(() => {
         refresh(filters);
       }, 500);
     }
-  }, [selectedPeriod]);
+  }, [selectedPeriod, selectedDate]);
 
   // Load daily operational costs
   React.useEffect(() => {
@@ -226,9 +234,9 @@ export default function GeneralDashboard() {
     console.log('📊 Chart data:', chartData);
   }
 
-  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom') => {
+  const handlePeriodChange = async (period: 'today' | 'yesterday' | 'custom') => {
     setSelectedPeriod(period);
-    // Reset to current server date when changing to 'today'
+    // Reset to current server date when changing to 'today' or 'yesterday'
     if (period === 'today') {
       try {
         // Clear cache and get fresh server date
@@ -244,6 +252,51 @@ export default function GeneralDashboard() {
         }).format(new Date());
         setSelectedDate(saoPauloDate);
       }
+    } else if (period === 'yesterday') {
+      try {
+        // Clear caches for fresh data
+        supabaseDataService.clearServerDateCache();
+
+        // Get server date and calculate yesterday
+        const serverDate = await supabaseDataService.getServerDate();
+        console.log('🔍 DEBUG YESTERDAY - Server date:', serverDate);
+        const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+        const yesterdayObj = new Date(serverDateObj);
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+        setSelectedDate(yesterdayStr);
+        console.log('🔄 Updated to yesterday:', yesterdayStr);
+        console.log('🔍 DEBUG YESTERDAY - Calculation:', {
+          serverDate,
+          serverDateObj: serverDateObj.toISOString(),
+          yesterdayObj: yesterdayObj.toISOString(),
+          finalYesterdayString: yesterdayStr
+        });
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = { ...filters, date: yesterdayStr, period: 'custom' };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
+      } catch (error) {
+        console.error('Error getting server date for yesterday:', error);
+        // Fallback to São Paulo timezone yesterday
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const saoPauloYesterday = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(yesterday);
+        setSelectedDate(saoPauloYesterday);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = { ...filters, date: saoPauloYesterday, period: 'custom' };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
+      }
     }
   };
 
@@ -251,7 +304,12 @@ export default function GeneralDashboard() {
     console.log('📅 Date changed to:', date, 'period:', selectedPeriod);
     setSelectedDate(date);
     // Force a refresh when date changes to ensure data is up to date
-    const newFilters = { ...filters, date, period: selectedPeriod };
+    // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom'
+    const newFilters = {
+      ...filters,
+      date,
+      period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
+    };
     console.log('🔄 Refreshing with new filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
@@ -574,7 +632,7 @@ export default function GeneralDashboard() {
               )}
               {selectedPeriod !== 'custom' && (
                 <span className="ml-2 text-primary">
-                  • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
+                  • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data personalizada'}
                 </span>
               )}
             </p>
