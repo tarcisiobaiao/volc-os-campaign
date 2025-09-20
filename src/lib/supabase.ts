@@ -65,22 +65,10 @@ export interface DatabaseCampaign {
 export interface DatabaseDailyProjectMetrics {
   id: number
   project_id: number
+  url_projeto: string
   date: string
-  invested_amount: number
-  billed_amount: number
-  roas: number
-  roi: number
-  gross_profit: number
-  net_profit: number
-  page_views: number
-  rpm: number
-  ecpm: number
-  cpc: number
-  viewability: number
-  pmr: number
-  ctr: number
-  rps: number
-  created_at: string
+  revenue_converted: number
+  revenue_converted_revshare: number
   updated_at: string
 }
 

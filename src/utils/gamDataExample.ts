@@ -54,8 +54,8 @@ export async function processIncomingGamData(
       }
     }
 
-    // Process and save GAM data using the service
-    await supabaseDataService.processGamData(gamData, projectId)
+    // Note: GAM data processing is now handled directly by n8n
+    // No need to process through the service - n8n populates daily_project_metrics directly
 
     return {
       success: true,
