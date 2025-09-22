@@ -23,8 +23,9 @@ const CampaignsSettings = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom'>('today');
-  const [selectedDate, setSelectedDate] = useState<string>(""); 
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom' | 'range'>('today');
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedEndDate, setSelectedEndDate] = useState<string>(""); 
   const [formattedRevenues, setFormattedRevenues] = useState<{[key: string]: string}>({});
 
   // Initialize with current server date
@@ -50,6 +51,7 @@ const CampaignsSettings = () => {
   // Use filtered data based on current selections
   const filters = {
     date: selectedDate,
+    endDate: selectedEndDate || undefined,
     projectId: projectFilter === "all" ? undefined : projectFilter,
     period: selectedPeriod
   };
@@ -116,13 +118,14 @@ const CampaignsSettings = () => {
   };
 
   // Handlers para filtros de data
-  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom') => {
+  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom' | 'range') => {
     setSelectedPeriod(period);
     if (period === 'today') {
       try {
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
+        setSelectedEndDate(""); // Clear end date for today
         console.log('🔄 CampaignsSettings updated to current server date:', serverDate);
       } catch (error) {
         console.error('Error getting server date:', error);
@@ -131,6 +134,7 @@ const CampaignsSettings = () => {
           timeZone: 'America/Sao_Paulo'
         }).format(new Date());
         setSelectedDate(saoPauloDate);
+        setSelectedEndDate(""); // Clear end date for today
       }
     }
   };
@@ -138,8 +142,21 @@ const CampaignsSettings = () => {
   const handleDateChange = (date: string) => {
     console.log('📅 CampaignsSettings Date changed to:', date, 'period:', selectedPeriod);
     setSelectedDate(date);
-    const newFilters = { date, projectId: projectFilter === "all" ? undefined : projectFilter, period: selectedPeriod };
+    setSelectedEndDate(""); // Clear end date for single date selection
+    const newFilters = { date, endDate: undefined, projectId: projectFilter === "all" ? undefined : projectFilter, period: selectedPeriod };
     console.log('🔄 CampaignsSettings Refreshing with new filters:', newFilters);
+    setTimeout(() => {
+      refresh(newFilters);
+    }, 100);
+  };
+
+  const handleDateRangeChange = (startDate: string, endDate: string) => {
+    console.log('📅 CampaignsSettings Date range changed to:', startDate, 'to', endDate);
+    setSelectedDate(startDate);
+    setSelectedEndDate(endDate);
+    setSelectedPeriod('range');
+    const newFilters = { date: startDate, endDate, projectId: projectFilter === "all" ? undefined : projectFilter, period: 'range' as const };
+    console.log('🔄 CampaignsSettings Refreshing with range filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
     }, 100);
@@ -269,7 +286,17 @@ const CampaignsSettings = () => {
                   • Data: {selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : ''}
                 </span>
               )}
-              {selectedPeriod !== 'custom' && (
+              {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
+                <span className="ml-2 text-primary">
+                  • Período: {selectedDate} até {selectedEndDate} ({(() => {
+                    const start = new Date(selectedDate + 'T00:00:00');
+                    const end = new Date(selectedEndDate + 'T00:00:00');
+                    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    return diffDays;
+                  })()} dias)
+                </span>
+              )}
+              {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && (
                 <span className="ml-2 text-primary">
                   • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
                 </span>
@@ -308,8 +335,10 @@ const CampaignsSettings = () => {
             <DateFilter
               selectedPeriod={selectedPeriod}
               selectedDate={selectedDate}
+              selectedEndDate={selectedEndDate}
               onPeriodChange={handlePeriodChange}
               onDateChange={handleDateChange}
+              onDateRangeChange={handleDateRangeChange}
             />
             
             <Button onClick={handleRefresh} variant="outline" size="sm">
@@ -427,12 +456,14 @@ const CampaignsSettings = () => {
                       selectedPeriod === 'today' ? 'Hoje' :
                       selectedPeriod === '7d' ? 'Últimos 7 dias' :
                       selectedPeriod === '30d' ? 'Últimos 30 dias' :
-                      `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
+                      selectedPeriod === 'range' && selectedEndDate ?
+                        `${selectedDate} até ${selectedEndDate}` :
+                        `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
                     }):</h4>
                     <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div className="text-center p-3 bg-red-50 rounded-lg">
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
                         <p className="text-xs text-muted-foreground mb-1">Gasto</p>
-                        <p className="font-semibold text-red-600">{new Intl.NumberFormat('pt-BR', {
+                        <p className="font-semibold text-slate-800">{new Intl.NumberFormat('pt-BR', {
                           style: 'currency',
                           currency: 'BRL'
                         }).format(campaign.investment || 0)}</p>

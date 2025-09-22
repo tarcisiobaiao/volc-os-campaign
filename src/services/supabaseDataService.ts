@@ -1245,18 +1245,20 @@ class SupabaseDataService {
         // 🚀 NOVA LÓGICA OTIMIZADA PARA SINGLE DAY: usar daily_project_metrics
         console.log('🚀 NOVA OTIMIZAÇÃO SINGLE DAY: Using daily_project_metrics for revenue calculation, period:', period);
 
-        // DEBUG: Primeiro verificar que datas estão disponíveis na tabela
-        const { data: availableDates } = await supabase
-          .from('daily_project_metrics')
-          .select('date, revenue_converted_revshare')
-          .order('date', { ascending: false })
-          .limit(10);
+        // DEBUG: Primeiro verificar que datas estão disponíveis na tabela (apenas em desenvolvimento)
+        if (import.meta.env.DEV) {
+          const { data: availableDates } = await supabase
+            .from('daily_project_metrics')
+            .select('date, revenue_converted_revshare')
+            .order('date', { ascending: false })
+            .limit(10);
 
-        console.log('🔍 DEBUG: Available dates in daily_project_metrics:', {
-          availableDates: availableDates?.map(d => ({ date: d.date, revenue: d.revenue_converted_revshare })) || [],
-          totalRecords: availableDates?.length || 0,
-          targetDateSearching: targetDate
-        });
+          console.log('🔍 DEBUG: Available dates in daily_project_metrics:', {
+            availableDates: availableDates?.map(d => ({ date: d.date, revenue: d.revenue_converted_revshare })) || [],
+            totalRecords: availableDates?.length || 0,
+            targetDateSearching: targetDate
+          });
+        }
 
         // 1. REVENUE: Consulta eficiente na daily_project_metrics para TODAY
         // 🚀 SELECT OTIMIZADO: Apenas campos necessários
@@ -1582,8 +1584,8 @@ class SupabaseDataService {
       
       const result = {
         totalSpend,
-        totalRevenue: totalRevenueAfterRevshare || (totalRevenue * 0.9), // NOW: Display net revenue (after revshare) as main revenue
-        totalRevenueAfterRevshare: totalRevenueAfterRevshare || (totalRevenue * 0.9), // Keep for compatibility
+        totalRevenue: totalRevenueAfterRevshare, // NOW: Display net revenue (after revshare) as main revenue
+        totalRevenueAfterRevshare: totalRevenueAfterRevshare, // Keep for compatibility
         totalProfit,
         generalRoas,
         finalRoi,
@@ -1630,65 +1632,69 @@ class SupabaseDataService {
     }
   }
 
-  // Debug method to check if data exists for a specific date
+  // Debug method to check if data exists for a specific date (apenas em desenvolvimento)
   async debugDataForDate(targetDate?: string): Promise<void> {
+    if (!import.meta.env.DEV) {
+      return; // Não executar em produção
+    }
+
     try {
       const dateToCheck = targetDate || new Date().toISOString().split('T')[0];
       console.log('🔍 Debugging data for date:', dateToCheck, 'Time zone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
-      
+
       // Check daily_campaign_metrics
       const { data: campaignData, error: campaignError } = await supabase
         .from('daily_campaign_metrics')
         .select('*')
         .eq('date', dateToCheck)
         .limit(5);
-        
+
       // Also check all available dates
       const { data: allDates } = await supabase
         .from('daily_campaign_metrics')
         .select('date')
         .order('date', { ascending: false })
         .limit(10);
-        
+
       console.log('Available dates in daily_campaign_metrics:', allDates?.map(d => d.date));
-        
+
       console.log('daily_campaign_metrics:', campaignData?.length || 0, 'records');
       if (campaignData?.length > 0) {
         console.log('Sample record:', campaignData[0]);
       }
-      
+
       // Check gam_metrics
       const { data: gamData, error: gamError } = await supabase
         .from('gam_metrics')
         .select('date, revenue, impressions, clicks')
         .eq('date', dateToCheck)
         .limit(5);
-        
+
       // Also check all available dates in GAM
       const { data: allGamDates } = await supabase
         .from('gam_metrics')
         .select('date')
         .order('date', { ascending: false })
         .limit(10);
-        
+
       console.log('Available dates in gam_metrics:', allGamDates?.map(d => d.date));
-        
+
       console.log('gam_metrics:', gamData?.length || 0, 'records');
       if (gamData?.length > 0) {
         console.log('Sample record:', gamData[0]);
       }
-      
+
       // Check campaigns_with_revenue view
       const { data: campaignsView, error: campaignsError } = await supabase
         .from('campaigns_with_revenue')
         .select('*')
         .limit(5);
-        
+
       console.log('campaigns_with_revenue view:', campaignsView?.length || 0, 'records');
       if (campaignsView?.length > 0) {
         console.log('Sample record:', campaignsView[0]);
       }
-        
+
     } catch (error) {
       console.error('Error in debugDataForDate:', error);
     }
@@ -1967,6 +1973,7 @@ class SupabaseDataService {
         const result = {
           totalInvestment: totalSpend,
           totalRevenue: totalRevenueAfterRevshare,  // Use after revshare as main revenue
+          totalRevenueAfterRevshare: totalRevenueAfterRevshare, // Keep for compatibility
           totalProfit: totalProfit,
           generalRoas: Math.floor(generalRoas),
           finalRoi: Math.floor(finalRoi),
@@ -1989,7 +1996,7 @@ class SupabaseDataService {
       const result = {
         totalInvestment: dashboardData.totalSpend,
         totalRevenue: dashboardData.totalRevenue,
-        totalRevenueAfterRevshare: dashboardData.totalRevenueAfterRevshare || (dashboardData.totalRevenue * 0.9), // Fallback 10% revshare
+        totalRevenueAfterRevshare: dashboardData.totalRevenueAfterRevshare, // Usar valor direto - já vem com revshare aplicado
         totalProfit: dashboardData.totalProfit,
         generalRoas: Math.floor(dashboardData.generalRoas),
         finalRoi: Math.floor(dashboardData.finalRoi),
@@ -2720,7 +2727,7 @@ class SupabaseDataService {
   }
 
 
-  // New method that applies date/period filters by building aggregated queries
+  // OTIMIZADO: Server-side aggregation usando RPC - reduz egress drasticamente
   private async getCampaignsWithRevenueFiltered(filters: {
     projectId?: string;
     period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
@@ -2728,10 +2735,10 @@ class SupabaseDataService {
     endDate?: string;
   }): Promise<Campaign[]> {
     try {
-      console.log('🔍 getCampaignsWithRevenueFiltered called with filters:', filters);
+      console.log('🚀 getCampaignsWithRevenueFiltered (SERVER-SIDE OPTIMIZED) called with filters:', filters);
 
       // 🚀 CACHE INTELIGENTE para campanhas com validação via daily_campaign_metrics
-      const cacheKey = `campaigns_${JSON.stringify(filters)}`;
+      const cacheKey = `campaigns_optimized_${JSON.stringify(filters)}`;
       const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
       const cachedData = localStorage.getItem(cacheKey);
 
@@ -2828,135 +2835,67 @@ class SupabaseDataService {
 
       console.log('📅 Date range for filtered campaigns:', { startDate, endDate, period: filters.period });
 
-      // Get base campaigns
-      let campaignsQuery = supabase
-        .from('campaigns')
-        .select('*');
+      // 🚀 NOVA IMPLEMENTAÇÃO: Usar RPC para agregação server-side - reduz egress drasticamente
+      const { data: aggregatedCampaigns, error: rpcError } = await supabase
+        .rpc('get_campaigns_aggregated', {
+          p_project_id: filters.projectId && filters.projectId !== 'all' ? parseInt(filters.projectId) : null,
+          p_start_date: startDate,
+          p_end_date: endDate
+        });
 
-      if (filters.projectId && filters.projectId !== 'all') {
-        campaignsQuery = campaignsQuery.eq('project_id', parseInt(filters.projectId));
+      if (rpcError) {
+        console.error('❌ Error calling get_campaigns_aggregated RPC:', rpcError);
+        throw rpcError;
       }
 
-      const { data: campaigns, error: campaignsError } = await campaignsQuery;
-      if (campaignsError) throw campaignsError;
-
-      if (!campaigns || campaigns.length === 0) {
+      if (!aggregatedCampaigns || aggregatedCampaigns.length === 0) {
         console.log('❌ No campaigns found for filters');
         return [];
       }
 
-      console.log(`📋 Found ${campaigns.length} campaigns, aggregating metrics...`);
+      console.log(`🚀 SERVER-SIDE AGGREGATION: Received ${aggregatedCampaigns.length} pre-aggregated campaigns - MASSIVE EGRESS REDUCTION!`);
 
-      // 🚀 Para campanhas individuais, usar daily_campaign_metrics para receita específica por campanha
-      // (A otimização com daily_project_metrics é apenas para totais gerais do dashboard)
+      // Convert RPC results to Campaign format
+      const activeCampaigns = aggregatedCampaigns
+        .filter((c: any) => c.aggregated_revenue > 0 || c.aggregated_spend > 0)
+        .map((campaign: any) => {
+          // Validation: Check if campaign revenue seems unrealistic
+          if (Number(campaign.aggregated_revenue) > 100000) {
+            console.warn('⚠️ SUSPICIOUS CAMPAIGN REVENUE:', {
+              campaignId: campaign.campaign_id,
+              campaignName: campaign.campaign_name,
+              aggregatedRevenue: campaign.aggregated_revenue,
+              dateRange: `${startDate} to ${endDate}`,
+              possibleIssue: 'Campaign revenue seems too high, check data quality'
+            });
+          }
 
-      // Get project info to determine if it's ADSENSE
-      const projectIds = [...new Set(campaigns.map(c => c.project_id))];
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('id, project_type')
-        .in('id', projectIds);
-
-      // For each campaign, aggregate metrics for the date range
-      const campaignsWithRevenue = await Promise.all(campaigns.map(async (campaign) => {
-        const project = projects?.find(p => p.id === campaign.project_id);
-
-        console.log(`🔍 Processing campaign ${campaign.campaign_id} (Project Type: ${project?.project_type || 'Unknown'})`);
-
-        // Get spend and engagement metrics from daily_campaign_metrics (used for all project types)
-        const { data: dailyMetrics, error: metricsError } = await supabase
-          .from('daily_campaign_metrics')
-          .select('*')
-          .eq('campaign_id', campaign.campaign_id)
-          .gte('date', startDate)
-          .lte('date', endDate);
-
-        if (metricsError) {
-          console.error(`❌ Error querying daily_campaign_metrics for campaign ${campaign.campaign_id}:`, metricsError);
-        }
-
-        // Aggregate daily metrics (spend and engagement)
-        const aggregatedSpend = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.spend) || 0), 0);
-        const aggregatedClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
-        const aggregatedImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.impressions) || 0), 0);
-
-        // Revenue calculation: ALL campaigns use daily_campaign_metrics
-        // The system automatically populates daily_campaign_metrics.revenue_converted
-        // based on funnel URLs for ADSENSE campaigns, so we just query this unified source
-        console.log(`💰 Calculating revenue for campaign ${campaign.campaign_id} from daily_campaign_metrics`);
-
-        const { data: campaignRevenueMetrics, error: revenueError } = await supabase
-          .from('daily_campaign_metrics')
-          .select('revenue_converted_revshare')
-          .eq('campaign_id', campaign.campaign_id)
-          .gte('date', startDate)
-          .lte('date', endDate);
-
-        if (revenueError) {
-          console.error(`❌ Error fetching revenue for campaign ${campaign.campaign_id}:`, revenueError);
-        }
-
-        const aggregatedRevenue = (campaignRevenueMetrics || []).reduce((sum, m) => sum + (Number(m.revenue_converted_revshare) || 0), 0);
-
-        console.log(`💰 [Campaign ${campaign.campaign_id}] Revenue from daily_campaign_metrics:`, {
-          campaign_id: campaign.campaign_id,
-          campaign_name: campaign.campaign_name,
-          project_type: project?.project_type,
-          aggregatedRevenue,
-          records_count: (campaignRevenueMetrics || []).length,
-          dateRange: { startDate, endDate },
-          source: 'daily_campaign_metrics_unified'
-        });
-
-        console.log(`💰 [Campaign ${campaign.campaign_id}] Revenue calculation:`, {
-          campaign_id: campaign.campaign_id,
-          project_id: campaign.project_id,
-          aggregatedRevenue,
-          dailyMetricsCount: (dailyMetrics || []).length,
-          source: 'daily_campaign_metrics_filtered'
-        });
-
-        // Validation: Check if campaign revenue seems unrealistic
-        if (aggregatedRevenue > 100000) { // More than 100K BRL per campaign
-          console.warn('⚠️ SUSPICIOUS CAMPAIGN REVENUE:', {
-            campaignId: campaign.campaign_id,
-            campaignName: campaign.campaign_name,
-            aggregatedRevenue,
-            dateRange: `${startDate} to ${endDate}`,
-            possibleIssue: 'Campaign revenue seems too high, check data quality'
-          });
-        }
-
-        return {
-          id: campaign.campaign_id.toString(),
-          name: campaign.campaign_name,
-          projectId: campaign.project_id?.toString() || '1',
-          status: campaign.status === 'Active' || campaign.status === 'ENABLED' ? 'active' : 'paused',
-          performance: this.calculatePerformance(aggregatedRevenue, aggregatedSpend),
-          investment: aggregatedSpend,
-          revenue: aggregatedRevenue,
-          roas: this.calculateRoas(aggregatedRevenue, aggregatedSpend),
-          impressions: aggregatedImpressions,
-          clicks: aggregatedClicks,
-          ctr: aggregatedImpressions > 0 ? (aggregatedClicks / aggregatedImpressions) * 100 : 0,
-          startDate: campaign.start_date,
-          endDate: campaign.end_date,
-          utmCampaignValue: campaign.campaign_id,
-          extractedUrl: campaign.extracted_url || undefined,
-          extractedDomain: campaign.extracted_domain || undefined,
-          customGoal: campaign.custom_goal || undefined,
-          statusSource: 'auto',
-          userPausedAt: undefined,
-          userPausedBy: undefined
-        } as Campaign;
-      }));
-
-      // Filter out campaigns with no activity in the date range and sort by revenue
-      const activeCampaigns = campaignsWithRevenue
-        .filter(c => c.revenue > 0 || c.investment > 0)
+          return {
+            id: campaign.campaign_id.toString(),
+            name: campaign.campaign_name,
+            projectId: campaign.project_id?.toString() || '1',
+            status: campaign.status === 'Active' || campaign.status === 'ENABLED' ? 'active' : 'paused',
+            performance: this.calculatePerformance(Number(campaign.aggregated_revenue), Number(campaign.aggregated_spend)),
+            investment: Number(campaign.aggregated_spend) || 0,
+            revenue: Number(campaign.aggregated_revenue) || 0,
+            roas: Number(campaign.roas) || 0,
+            impressions: Number(campaign.aggregated_impressions) || 0,
+            clicks: Number(campaign.aggregated_clicks) || 0,
+            ctr: Number(campaign.ctr) || 0,
+            startDate: campaign.start_date,
+            endDate: campaign.end_date,
+            utmCampaignValue: campaign.campaign_id,
+            extractedUrl: undefined, // Campo não existe na tabela
+            extractedDomain: undefined, // Campo não existe na tabela
+            customGoal: campaign.custom_goal || undefined,
+            statusSource: 'auto',
+            userPausedAt: undefined,
+            userPausedBy: undefined
+          } as Campaign;
+        })
         .sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
 
-      console.log(`✅ Returning ${activeCampaigns.length} campaigns with activity in date range`);
+      console.log(`✅ SERVER-SIDE OPTIMIZED: Returning ${activeCampaigns.length} campaigns with activity in date range`);
 
       // 💾 SALVAR NO CACHE para próximas consultas
       const currentTimestamp = Date.now().toString();

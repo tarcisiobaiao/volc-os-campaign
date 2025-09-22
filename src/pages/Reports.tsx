@@ -290,7 +290,7 @@ export default function Reports() {
     // NEW: Usar cálculo simplificado com valores pré-calculados
     const numberOfDays = calculateNumberOfDays();
     const simplifiedCalculation = calculateSimplifiedNetProfit(
-      (summary as any).totalRevenueAfterRevshare || totalRevenue * 0.9, // Fallback
+      (summary as any).totalRevenueAfterRevshare || totalRevenue, // Usar valor direto - já vem com revshare aplicado
       totalInvestment,
       currentTaxRate,
       dailyOperationalCosts,
@@ -946,7 +946,7 @@ export default function Reports() {
                               // NEW: Usar cálculo simplificado com valores pré-calculados
                               const numberOfDays = calculateNumberOfDays();
                               const calculation = calculateSimplifiedNetProfit(
-                                reportData?.summary?.totalRevenueAfterRevshare || totalRevenue * 0.9, // Fallback
+                                reportData?.summary?.totalRevenueAfterRevshare || totalRevenue, // Usar valor direto - já vem com revshare aplicado
                                 totalInvestment,
                                 currentTaxRate,
                                 dailyOperationalCosts,
