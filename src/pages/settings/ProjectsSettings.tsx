@@ -83,8 +83,8 @@ export default function ProjectsSettings() {
   const editModal = useModal();
   const deleteModal = useModal();
   
-  // Filter states - mesma lógica de Reports
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom' | 'range'>('today');
+  // Filter states - mesma lógica de Reports com ONTEM adicionado
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range'>('today');
   const [selectedDate, setSelectedDate] = useState<string>(""); // Will be set dynamically
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
   const [selectedProject, setSelectedProject] = useState<string>("all");
@@ -122,12 +122,13 @@ export default function ProjectsSettings() {
     initialize();
   }, []);
   
-  // Use filtered data based on current selections - mesma lógica de Reports
+  // Use filtered data based on current selections - mesma lógica do Dashboard Geral
+  // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   const filters = {
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: selectedProject === "all" ? undefined : selectedProject,
-    period: selectedPeriod
+    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
   };
   
   // Use the same data hook as GeneralDashboard
@@ -147,7 +148,7 @@ export default function ProjectsSettings() {
   }, [projects, campaigns, loading, error, filters, sortBy]);
 
   // Filter handlers - mesma lógica de Reports
-  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom' | 'range') => {
+  const handlePeriodChange = async (period: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range') => {
     setSelectedPeriod(period);
     if (period === 'today') {
       try {
@@ -165,6 +166,63 @@ export default function ProjectsSettings() {
           timeZone: 'America/Sao_Paulo'
         }).format(new Date());
         setSelectedDate(saoPauloDate);
+      }
+    } else if (period === 'yesterday') {
+      try {
+        supabaseDataService.clearServerDateCache();
+        const serverDate = await supabaseDataService.getServerDate();
+        // Calculate yesterday from server date
+        const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+        const yesterdayObj = new Date(serverDateObj);
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+
+        // Manter selectedPeriod como 'yesterday' para visualização front
+        setSelectedDate(yesterdayStr);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = {
+            date: yesterdayStr,
+            endDate: undefined,
+            projectId: selectedProject === "all" ? undefined : selectedProject,
+            period: 'custom'
+          };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
+      } catch (error) {
+        console.error('Error getting server date for yesterday:', error);
+        // Fallback to São Paulo timezone yesterday
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const saoPauloYesterday = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(yesterday);
+
+        // Manter selectedPeriod como 'yesterday' para visualização front
+        setSelectedDate(saoPauloYesterday);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = {
+            date: saoPauloYesterday,
+            endDate: undefined,
+            projectId: selectedProject === "all" ? undefined : selectedProject,
+            period: 'custom'
+          };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
       }
     } else if (period === 'custom') {
       // Para período customizado, não fazemos nada aqui
@@ -452,9 +510,11 @@ export default function ProjectsSettings() {
         <div className="flex gap-4 animate-scale-in flex-wrap items-center">
           {/* Filtro de Período Customizado - igual ao Reports */}
           <div className="flex items-center gap-2">
-            <Select value={selectedPeriod === 'today' ? 'today' : 'custom'} onValueChange={(value) => {
+            <Select value={selectedPeriod === 'today' ? 'today' : selectedPeriod === 'yesterday' ? 'yesterday' : 'custom'} onValueChange={(value) => {
               if (value === 'today') {
                 handlePeriodChange('today');
+              } else if (value === 'yesterday') {
+                handlePeriodChange('yesterday');
               } else {
                 setSelectedPeriod('custom');
               }
@@ -465,6 +525,7 @@ export default function ProjectsSettings() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="today">📅 Hoje</SelectItem>
+                <SelectItem value="yesterday">📆 Ontem</SelectItem>
                 <SelectItem value="custom">🗓️ Selecionar período</SelectItem>
               </SelectContent>
             </Select>

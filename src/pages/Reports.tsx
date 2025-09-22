@@ -72,8 +72,8 @@ export default function Reports() {
   const { toast } = useToast();
   const { getUserFirstName } = useUserProfile();
   
-  // Estados para filtros
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom' | 'range'>('today');
+  // Estados para filtros com ONTEM adicionado
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range'>('today');
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
   const [selectedProject, setSelectedProject] = useState("all");
@@ -119,12 +119,13 @@ export default function Reports() {
     initialize();
   }, []);
 
-  // Use filtered data based on current selections
+  // Use filtered data based on current selections - mesma lógica do Dashboard Geral
+  // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   const filters = {
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: selectedProject === "all" ? undefined : selectedProject,
-    period: selectedPeriod
+    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
   };
 
   const { projects, campaigns, dailyMetrics, summary, loading, error, lastUpdate, refresh } = useSupabaseData(filters);
@@ -324,18 +325,33 @@ export default function Reports() {
     };
   }, [summary, projects, campaigns, selectedPeriod, selectedDate, currentTaxRate]);
 
-  // Chart data for performance visualization
+  // Chart data for performance visualization - adaptado baseado no filtro
   const chartData = useMemo(() => {
+    // Se for hoje ou ontem (período único), mostrar apenas dados sintéticos baseados no summary
+    if (selectedPeriod === 'today' || selectedPeriod === 'yesterday') {
+      if (summary && (summary.totalInvestment > 0 || summary.totalRevenue > 0)) {
+        return [{
+          date: selectedPeriod === 'today' ? 'Hoje' : 'Ontem',
+          investment: summary.totalInvestment || 0,
+          revenue: summary.totalRevenue || 0,
+          roas: summary.totalInvestment && summary.totalRevenue ? calculateROAS(summary.totalRevenue, summary.totalInvestment) : 0,
+          roi: summary.finalRoi || 0
+        }];
+      }
+      return [];
+    }
+
+    // Para períodos múltiplos (custom, range), mostrar dailyMetrics
     if (!dailyMetrics || dailyMetrics.length === 0) return [];
-    
-    return dailyMetrics.slice(-7).map(metric => ({
+
+    return dailyMetrics.map(metric => ({
       date: format(new Date(metric.date), 'dd/MM', { locale: ptBR }),
       investment: metric.investment || 0,
       revenue: metric.revenue || 0,
       roas: metric.revenue && metric.investment ? calculateROAS(metric.revenue, metric.investment) : 0,
       roi: metric.roi || 0
     }));
-  }, [dailyMetrics]);
+  }, [dailyMetrics, selectedPeriod, summary]);
 
   // Project distribution data for pie chart
   const projectDistributionData = useMemo(() => {
@@ -348,7 +364,7 @@ export default function Reports() {
     }));
   }, [reportData]);
 
-  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom' | 'range') => {
+  const handlePeriodChange = async (period: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range') => {
     setSelectedPeriod(period);
     if (period === 'today') {
       try {
@@ -366,6 +382,63 @@ export default function Reports() {
           timeZone: 'America/Sao_Paulo'
         }).format(new Date());
         setSelectedDate(saoPauloDate);
+      }
+    } else if (period === 'yesterday') {
+      try {
+        supabaseDataService.clearServerDateCache();
+        const serverDate = await supabaseDataService.getServerDate();
+        // Calculate yesterday from server date
+        const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+        const yesterdayObj = new Date(serverDateObj);
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+
+        // Manter selectedPeriod como 'yesterday' para visualização front
+        setSelectedDate(yesterdayStr);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = {
+            date: yesterdayStr,
+            endDate: undefined,
+            projectId: selectedProject === "all" ? undefined : selectedProject,
+            period: 'custom'
+          };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
+      } catch (error) {
+        console.error('Error getting server date for yesterday:', error);
+        // Fallback to São Paulo timezone yesterday
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const saoPauloYesterday = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(yesterday);
+
+        // Manter selectedPeriod como 'yesterday' para visualização front
+        setSelectedDate(saoPauloYesterday);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = {
+            date: saoPauloYesterday,
+            endDate: undefined,
+            projectId: selectedProject === "all" ? undefined : selectedProject,
+            period: 'custom'
+          };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
       }
     } else if (period === 'custom') {
       // Para período customizado, não fazemos nada aqui
@@ -701,9 +774,11 @@ export default function Reports() {
             
             {/* Filtro de Período Customizado para Reports */}
             <div className="flex items-center gap-2">
-              <Select value={selectedPeriod === 'today' ? 'today' : 'custom'} onValueChange={(value) => {
+              <Select value={selectedPeriod === 'today' ? 'today' : selectedPeriod === 'yesterday' ? 'yesterday' : 'custom'} onValueChange={(value) => {
                 if (value === 'today') {
                   handlePeriodChange('today');
+                } else if (value === 'yesterday') {
+                  handlePeriodChange('yesterday');
                 } else {
                   setSelectedPeriod('custom');
                 }
@@ -714,6 +789,7 @@ export default function Reports() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">📅 Hoje</SelectItem>
+                  <SelectItem value="yesterday">📆 Ontem</SelectItem>
                   <SelectItem value="custom">🗓️ Selecionar período</SelectItem>
                 </SelectContent>
               </Select>
