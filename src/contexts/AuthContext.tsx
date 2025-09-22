@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [unauthorizedUser, setUnauthorizedUser] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const fetchUserProfile = async (user: User | null): Promise<boolean> => {
     if (!user) {
@@ -73,8 +74,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           console.warn('❌ User not authorized - email not found in users table:', user.email);
           setUserProfile(null);
           setUnauthorizedUser(user.email || 'Email não disponível');
-          // Sign out unauthorized user
-          await supabase.auth.signOut();
+          // Sign out unauthorized user with flag to prevent loop
+          if (!isSigningOut) {
+            console.log('🚪 Signing out unauthorized user to prevent loop');
+            setIsSigningOut(true);
+            await supabase.auth.signOut();
+          } else {
+            console.log('⏭️ Skipping signOut to prevent infinite loop');
+          }
           return false;
         }
       } else {
@@ -85,7 +92,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.error('Error fetching user profile:', error);
       setUserProfile(null);
       setUnauthorizedUser(user.email || 'Email não disponível');
-      await supabase.auth.signOut();
+      // Sign out with flag to prevent loop
+      if (!isSigningOut) {
+        console.log('🚪 Signing out due to error to prevent loop');
+        setIsSigningOut(true);
+        await supabase.auth.signOut();
+      } else {
+        console.log('⏭️ Skipping signOut due to error to prevent infinite loop');
+      }
       return false;
     }
   };
@@ -116,7 +130,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔐 Auth state changed:', event, session?.user?.email);
 
-      if (session?.user) {
+      // Reset signing out flag when signed out
+      if (event === 'SIGNED_OUT') {
+        setIsSigningOut(false);
+      }
+
+      if (session?.user && !isSigningOut) {
         const isAuthorized = await fetchUserProfile(session.user);
         if (isAuthorized) {
           setSession(session);
@@ -148,10 +167,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signInWithGoogle = async () => {
+    // Detecta automaticamente o ambiente e URL de redirecionamento
+    const isLocalhost = window.location.hostname === 'localhost'
+    const redirectUrl = isLocalhost
+      ? window.location.origin + '/'  // Usar localhost em desenvolvimento
+      : (import.meta.env.VITE_SITE_URL || window.location.origin) + '/'  // Usar produção em produção
+
+    console.log('🔐 Google OAuth redirect URL:', redirectUrl)
+    console.log('🌍 Environment:', isLocalhost ? 'Development (localhost)' : 'Production')
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`
+        redirectTo: redirectUrl
       }
     });
     if (error) {
@@ -168,6 +196,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const clearUnauthorizedUser = () => {
     setUnauthorizedUser(null);
+    setIsSigningOut(false);
   };
 
   const value = {
