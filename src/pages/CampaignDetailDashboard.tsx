@@ -13,6 +13,7 @@ import { DateFilter } from "@/components/dashboard/DateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import { format } from "date-fns";
 import { calculateROAS } from "@/utils/roasCalculations";
+import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 
 export default function CampaignDetailDashboard() {
   console.log('🎬 CampaignDetailDashboard component rendering...');
@@ -30,6 +31,7 @@ export default function CampaignDetailDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom' | 'range'>('today');
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
+  const [showFunnelEditor, setShowFunnelEditor] = useState(false);
 
   // Initialize with current server date
   useEffect(() => {
@@ -172,6 +174,17 @@ export default function CampaignDetailDashboard() {
     setSelectedPeriod('range');
   };
 
+  const handleConfigureClick = () => {
+    const projectType = campaign?.project_type;
+
+    if (projectType === 'ADSENSE') {
+      setShowFunnelEditor(true);
+    } else {
+      // Para projetos GAM ou outros, mostrar alerta
+      alert('Configuração não disponível para este tipo de projeto.');
+    }
+  };
+
   // Check campaignId first
   if (!campaignId) {
     return (
@@ -266,7 +279,7 @@ export default function CampaignDetailDashboard() {
   // Function to generate dynamic chart title based on selected period
   const getChartPeriodTitle = () => {
     if (selectedPeriod === 'today') {
-      return 'Últimos 7 dias';
+      return 'Hoje';
     } else if (selectedPeriod === '7d') {
       return '7 dias';
     } else if (selectedPeriod === '30d') {
@@ -317,7 +330,7 @@ export default function CampaignDetailDashboard() {
               lastUpdate={new Date().toLocaleTimeString('pt-BR')}
             />
             
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleConfigureClick}>
               <Settings className="h-4 w-4" />
               Configurar
             </Button>
@@ -506,6 +519,20 @@ export default function CampaignDetailDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Popup de configuração de funis */}
+      {showFunnelEditor && (
+        <FunnelUrlsEditor
+          isOpen={showFunnelEditor}
+          onClose={() => setShowFunnelEditor(false)}
+          campaignId={campaignId}
+          campaignName={campaign?.campaign_name || 'Campanha'}
+          onSave={() => {
+            // Opcional: recarregar dados após salvar
+            console.log('URLs do funil salvas com sucesso');
+          }}
+        />
+      )}
     </Layout>
   );
 }

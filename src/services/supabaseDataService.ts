@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase, DatabaseProject, DatabaseCampaign, DatabaseDailyProjectMetrics, DatabaseDailyCampaignMetrics, DatabaseUrlDailyPerformance } from '@/lib/supabase';
-import { format, subDays } from 'date-fns';
+import { format, subDays, differenceInDays } from 'date-fns';
 import { currencyConversionService } from './currencyConversionService';
 import { getSaoPauloTimestamp } from '@/utils/timezone';
+import { operationalCostsService } from './operationalCostsService';
 
 // Types that match the UI components
 export interface Project {
@@ -240,6 +241,108 @@ class SupabaseDataService {
       formula: `Faturamento Líquido (${revenueAfterRevshare.toFixed(2)}) - Investimento (${totalInvestment.toFixed(2)}) - Impostos (${taxAmount.toFixed(2)}) = ${netProfit.toFixed(2)}`
     };
   }
+
+  // NEW: Calculate net profit with operational costs division for projects list
+  public async calculateProjectNetProfitWithOperationalCosts(
+    revenueAfterRevshare: number,
+    totalInvestment: number,
+    startDate: string,
+    endDate: string,
+    projectCostsDivision: boolean,
+    taxRate: number = 0.081
+  ): Promise<{
+    netRevenue: number;
+    grossProfit: number;
+    taxAmount: number;
+    operationalCostShare: number;
+    netProfit: number;
+    formula: string;
+  }> {
+    try {
+      // Calculate basic values
+      const grossProfit = revenueAfterRevshare - totalInvestment;
+      const taxAmount = revenueAfterRevshare * taxRate;
+
+      let operationalCostShare = 0;
+
+      if (projectCostsDivision) {
+        // Get operational costs for the period
+        const startMonth = startDate.slice(0, 7); // YYYY-MM
+        const endMonth = endDate.slice(0, 7); // YYYY-MM
+
+        // Get all months in the period
+        const months = [];
+        const currentMonth = new Date(startMonth + '-01');
+        const finalMonth = new Date(endMonth + '-01');
+
+        while (currentMonth <= finalMonth) {
+          months.push(currentMonth.toISOString().slice(0, 7));
+          currentMonth.setMonth(currentMonth.getMonth() + 1);
+        }
+
+        // Calculate total operational costs for the period
+        let totalOperationalCosts = 0;
+        for (const month of months) {
+          const activeCosts = await operationalCostsService.getActiveCostsByMonth(month);
+          const monthlyTotal = activeCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0);
+          totalOperationalCosts += monthlyTotal;
+        }
+
+        // Get number of projects participating in cost division
+        const { data: projectsWithCostDivision, error } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('costs_division', true);
+
+        if (error) {
+          console.error('Error fetching projects with cost division:', error);
+        } else {
+          const projectsCount = projectsWithCostDivision?.length || 1;
+
+          // Calculate days in period
+          const daysInPeriod = differenceInDays(new Date(endDate), new Date(startDate)) + 1;
+
+          // Calculate total days in all months
+          let totalDaysInMonths = 0;
+          for (const month of months) {
+            const [year, monthNum] = month.split('-').map(Number);
+            const daysInMonth = new Date(year, monthNum, 0).getDate();
+            totalDaysInMonths += daysInMonth;
+          }
+
+          // Calculate operational cost share
+          const dailyOperationalCost = totalOperationalCosts / totalDaysInMonths;
+          operationalCostShare = (dailyOperationalCost * daysInPeriod) / projectsCount;
+        }
+      }
+
+      const netProfit = grossProfit - taxAmount - operationalCostShare;
+
+      return {
+        netRevenue: revenueAfterRevshare,
+        grossProfit,
+        taxAmount,
+        operationalCostShare,
+        netProfit,
+        formula: `Revenue (${revenueAfterRevshare.toFixed(2)}) - Investimento (${totalInvestment.toFixed(2)}) - Impostos (${taxAmount.toFixed(2)}) - Custo Op. (${operationalCostShare.toFixed(2)}) = ${netProfit.toFixed(2)}`
+      };
+    } catch (error) {
+      console.error('Error calculating operational costs:', error);
+      // Fallback to simple calculation
+      const grossProfit = revenueAfterRevshare - totalInvestment;
+      const taxAmount = revenueAfterRevshare * taxRate;
+      const netProfit = grossProfit - taxAmount;
+
+      return {
+        netRevenue: revenueAfterRevshare,
+        grossProfit,
+        taxAmount,
+        operationalCostShare: 0,
+        netProfit,
+        formula: `Revenue (${revenueAfterRevshare.toFixed(2)}) - Investimento (${totalInvestment.toFixed(2)}) - Impostos (${taxAmount.toFixed(2)}) = ${netProfit.toFixed(2)}`
+      };
+    }
+  }
   
   // Get current server date (cached for performance)
   // Uses São Paulo timezone to match local business hours
@@ -432,7 +535,7 @@ class SupabaseDataService {
         console.log('📅 getProjects - Updated date for TODAY period:', filters.date);
       }
 
-      // Build project query with filters
+      // Build project query with filters - only select needed columns
       let projectsQuery = supabase
         .from('projects')
         .select('*')
@@ -465,7 +568,7 @@ class SupabaseDataService {
           // Step 1: Get campaign IDs first, then query daily_campaign_metrics
           const { data: projectCampaignsForSpend } = await supabase
             .from('campaigns')
-            .select('campaign_id')
+            .select('*')
             .eq('project_id', project.id);
 
           const campaignIdsForSpend = (projectCampaignsForSpend || []).map(c => c.campaign_id).filter(Boolean);
@@ -474,7 +577,7 @@ class SupabaseDataService {
           if (campaignIdsForSpend.length > 0) {
             let spendQuery = supabase
               .from('daily_campaign_metrics')
-              .select('spend')
+              .select('*')
               .in('campaign_id', campaignIdsForSpend);
 
             // Apply date filters for spend
@@ -607,8 +710,49 @@ class SupabaseDataService {
           const redCampaigns = campaignCount - greenCampaigns - yellowCampaigns;
 
           // Determine trend based on ROI
-          const trend: 'up' | 'down' | 'stable' = 
+          const trend: 'up' | 'down' | 'stable' =
             roi > 50 ? 'up' : roi < 10 ? 'down' : 'stable';
+
+          // Calculate net profit with operational costs
+          let netProfitCalculation;
+          try {
+            // Determine date range for calculations
+            let startDate = filters?.date || await this.getCurrentServerDate();
+            let endDate = filters?.endDate || startDate;
+
+            if (filters?.period === '7d' && filters?.date) {
+              const endDateObj = new Date(filters.date);
+              const startDateObj = new Date(endDateObj);
+              startDateObj.setDate(startDateObj.getDate() - 6);
+              startDate = startDateObj.toISOString().split('T')[0];
+              endDate = filters.date;
+            } else if (filters?.period === '30d' && filters?.date) {
+              const endDateObj = new Date(filters.date);
+              const startDateObj = new Date(endDateObj);
+              startDateObj.setDate(startDateObj.getDate() - 29);
+              startDate = startDateObj.toISOString().split('T')[0];
+              endDate = filters.date;
+            }
+
+            netProfitCalculation = await this.calculateProjectNetProfitWithOperationalCosts(
+              totalRevenue, // Already revenue after revshare
+              totalSpend,
+              startDate,
+              endDate,
+              project.costs_division || false
+            );
+          } catch (error) {
+            console.error('Error calculating net profit for project:', project.project_name, error);
+            // Fallback to simple calculation
+            netProfitCalculation = {
+              netProfit: totalProfit,
+              operationalCostShare: 0,
+              taxAmount: 0,
+              grossProfit: totalProfit,
+              netRevenue: totalRevenue,
+              formula: `Fallback calculation: ${totalProfit.toFixed(2)}`
+            };
+          }
 
           return {
             id: project.id.toString(),
@@ -619,7 +763,7 @@ class SupabaseDataService {
             roas: Math.round(roas),
             roi: Math.round(roi),
             grossProfit: totalProfit,
-            netProfit: totalProfit, // Simplified
+            netProfit: netProfitCalculation.netProfit,
             trend,
             campaigns: {
               green: greenCampaigns,
@@ -1513,10 +1657,10 @@ class SupabaseDataService {
         console.log('Sample record:', campaignData[0]);
       }
       
-      // Check gam_metrics 
+      // Check gam_metrics
       const { data: gamData, error: gamError } = await supabase
         .from('gam_metrics')
-        .select('*')
+        .select('date, revenue, impressions, clicks')
         .eq('date', dateToCheck)
         .limit(5);
         
@@ -1909,7 +2053,7 @@ class SupabaseDataService {
       console.log('🚀 Step 2: Checking if campaign exists with simple query');
       const { data: simpleCheck, error: simpleError } = await supabase
         .from('campaigns_with_revenue')
-        .select('campaign_id, campaign_name, spend, gam_revenue')
+        .select('*')
         .eq('campaign_id', campaignId)
         .limit(1);
       
@@ -2062,10 +2206,13 @@ class SupabaseDataService {
 
       console.log('📅 Date range for campaign dashboard:', { startDate, endDate, period: filters.period });
 
-      // Get campaign basic info
+      // Get campaign basic info with project data
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
-        .select('*')
+        .select(`
+          *,
+          projects(project_type, project_name)
+        `)
         .eq('campaign_id', campaignId)
         .limit(1);
 
@@ -2142,7 +2289,8 @@ class SupabaseDataService {
       const campaignMetrics = {
         campaignId: rawCampaign.campaign_id,
         campaign_name: rawCampaign.campaign_name || 'Campanha sem nome',
-        projectName: 'Projeto padrão', // Will be loaded separately
+        projectName: (rawCampaign as any).projects?.project_name || 'Projeto padrão',
+        project_type: (rawCampaign as any).projects?.project_type || 'GAM',
         status: rawCampaign.status || 'ENABLED',
         custom_goal: rawCampaign.custom_goal || 'Meta não definida',
         advertising_channel: rawCampaign.advertising_channel || 'Google Ads',
@@ -2718,7 +2866,7 @@ class SupabaseDataService {
         // Get spend and engagement metrics from daily_campaign_metrics (used for all project types)
         const { data: dailyMetrics, error: metricsError } = await supabase
           .from('daily_campaign_metrics')
-          .select('spend, clicks, impressions, date')
+          .select('*')
           .eq('campaign_id', campaign.campaign_id)
           .gte('date', startDate)
           .lte('date', endDate);
@@ -2920,7 +3068,7 @@ class SupabaseDataService {
     try {
       const { data, error } = await supabase
         .from('url_daily_performance')
-        .select('*')
+        .select('id, project_id, date, url, estimated_earnings_usd, page_views, ecpm, pmr, viewability, ctr')
         .eq('project_id', parseInt(projectId))
         .order('date', { ascending: false })
         .limit(days * 10); // Assuming ~10 URLs per day average
@@ -3003,6 +3151,92 @@ class SupabaseDataService {
   clearServerDateCache(): void {
     this.currentServerDate = null;
     console.log('🗜️ Server date cache cleared');
+  }
+
+  // NEW: Get aggregated campaign metrics for a project (optimized for minimal egress)
+  async getCampaignAggregatedMetrics(
+    projectId: string,
+    startDate: string,
+    endDate?: string
+  ): Promise<{
+    totalRevenue: number;
+    totalInvestment: number;
+    campaignCount: number;
+  }> {
+    try {
+      console.log('📊 getCampaignAggregatedMetrics called:', { projectId, startDate, endDate });
+
+      // Step 1: Get campaign IDs for this project
+      const { data: projectCampaigns, error: campaignsError } = await supabase
+        .from('campaigns')
+        .select('campaign_id')
+        .eq('project_id', projectId);
+
+      if (campaignsError) {
+        console.error('Error fetching campaigns:', campaignsError);
+        return { totalRevenue: 0, totalInvestment: 0, campaignCount: 0 };
+      }
+
+      const campaignIds = (projectCampaigns || []).map(c => c.campaign_id).filter(Boolean);
+
+      if (campaignIds.length === 0) {
+        console.log('📊 No campaigns found for project:', projectId);
+        return { totalRevenue: 0, totalInvestment: 0, campaignCount: 0 };
+      }
+
+      // Step 2: Get aggregated metrics from daily_campaign_metrics with single query
+      let metricsQuery = supabase
+        .from('daily_campaign_metrics')
+        .select('spend, revenue_converted_revshare')
+        .in('campaign_id', campaignIds);
+
+      // Apply date filters
+      if (endDate && endDate !== startDate) {
+        metricsQuery = metricsQuery
+          .gte('date', startDate)
+          .lte('date', endDate);
+      } else {
+        metricsQuery = metricsQuery.eq('date', startDate);
+      }
+
+      const { data: metrics, error: metricsError } = await metricsQuery;
+
+      if (metricsError) {
+        console.error('Error fetching campaign metrics:', metricsError);
+        return { totalRevenue: 0, totalInvestment: 0, campaignCount: campaignIds.length };
+      }
+
+      // Step 3: Aggregate in a single pass
+      const aggregated = (metrics || []).reduce(
+        (acc, metric) => {
+          acc.totalRevenue += this.getRevenueValue(
+            0, // revenueUsd - not used
+            metric.revenue_converted_revshare || 0, // Use revshare-adjusted revenue
+            metric.revenue_converted_revshare // revenueConvertedRevshare
+          );
+          acc.totalInvestment += metric.spend || 0;
+          return acc;
+        },
+        { totalRevenue: 0, totalInvestment: 0 }
+      );
+
+      console.log('📊 Aggregated campaign metrics:', {
+        projectId,
+        campaignCount: campaignIds.length,
+        totalRevenue: aggregated.totalRevenue,
+        totalInvestment: aggregated.totalInvestment,
+        dateRange: endDate ? `${startDate} to ${endDate}` : startDate
+      });
+
+      return {
+        ...aggregated,
+        campaignCount: campaignIds.length
+      };
+
+    } catch (error) {
+      console.error('Error in getCampaignAggregatedMetrics:', error);
+      return { totalRevenue: 0, totalInvestment: 0, campaignCount: 0 };
+    }
   }
 
   // Currency conversion utility methods

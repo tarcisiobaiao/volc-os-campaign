@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Modal, useModal } from "@/components/ui/modal";
 import { Layout } from "@/components/layout/Layout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -32,9 +31,11 @@ import {
   X,
   RefreshCw,
   TrendingUp,
-  ArrowDown
+  ArrowDown,
+  Info
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { supabaseDataService, useSupabaseData, Project } from "@/services/supabaseDataService";
 import { supabase } from "@/lib/supabase";
@@ -42,7 +43,7 @@ import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
-import { calculateROAS, getROASColorStyles } from "@/utils/roasCalculations";
+import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
 
 interface ProjectIntegration {
   googleAds: {
@@ -251,23 +252,6 @@ export default function ProjectsSettings() {
     setSortBy(sortOption);
   };
 
-  const getStatusColor = (status: Project["status"]) => {
-    switch (status) {
-      case "active": return "success";
-      case "paused": return "warning"; 
-      case "completed": return "secondary";
-      default: return "default";
-    }
-  };
-
-  const getStatusLabel = (status: Project["status"]) => {
-    switch (status) {
-      case "active": return "✅ Ativo";
-      case "paused": return "⏸️ Pausado";
-      case "completed": return "✔️ Concluído";
-      default: return status;
-    }
-  };
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -404,10 +388,6 @@ export default function ProjectsSettings() {
   // Função para formatar valores de CUSTOS/GASTOS (já em BRL)
   const formatCurrency = (brlValue: number) => {
     return formatCostCurrency(brlValue);
-  };
-  // Função para calcular lucro (Revenue BRL - Custo BRL)
-  const calculateProfit = (revenueBrl: number, costBrl: number) => {
-    return revenueBrl - costBrl;
   };
   // Using centralized ROAS calculation (excess percentage)
 
@@ -657,10 +637,9 @@ export default function ProjectsSettings() {
               </SelectItem>
             </SelectContent>
           </Select>
-          <DataStatus 
+          <DataStatus
             loading={loading}
             error={error}
-            onRefresh={() => refresh(filters)}
           />
           <div className="flex-1 relative min-w-[280px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -732,9 +711,13 @@ export default function ProjectsSettings() {
                           {sortBy === 'roi' && <ArrowDown className="h-3 w-3" />}
                         </div>
                       </th>
+                      <th className="text-left p-3 font-medium">
+                        <div className="flex items-center gap-1">
+                          Lucro Líquido
+                        </div>
+                      </th>
                       <th className="text-left p-3 font-medium">Campanhas</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Ação</th>
+                      <th className="text-left p-3 font-medium">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -759,6 +742,13 @@ export default function ProjectsSettings() {
                         
                         const roas = calculateROAS(project.revenue || 0, project.investment || 0);
                         
+                        const netProfit = project.netProfit || 0;
+                        const getNetProfitColor = (value: number) => {
+                          if (value > 0) return "text-green-600";
+                          if (value < 0) return "text-red-600";
+                          return "text-gray-600";
+                        };
+
                         return (
                           <tr key={index} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/project/${project.id}`)}>
                             <td className="p-4">
@@ -793,40 +783,121 @@ export default function ProjectsSettings() {
                               </div>
                             </td>
                             <td className="p-4">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-help">
+                                      <div className={`text-lg font-bold flex items-center gap-1 ${getNetProfitColor(netProfit)}`}>
+                                        {formatCurrency(netProfit)}
+                                        <Info className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity" />
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {project.costs_division ? '📊 Div. custos' : '🚫 Sem div.'}
+                                      </div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs p-4">
+                                    <div className="space-y-2 text-sm">
+                                      <div className="font-medium text-primary mb-2">Cálculo do Lucro Líquido</div>
+                                      {(() => {
+                                        // Simular o mesmo cálculo feito no backend
+                                        const revenue = project.revenue || 0;
+                                        const investment = project.investment || 0;
+                                        const taxRate = 0.081; // 8.1%
+                                        const taxAmount = revenue * taxRate;
+
+                                        // Estimar custo operacional (será 0 se não participa da divisão)
+                                        const estimatedOperationalCost = project.costs_division ? (netProfit - (revenue - investment - taxAmount)) * -1 : 0;
+
+                                        return (
+                                          <div className="space-y-1">
+                                            <div className="flex justify-between">
+                                              <span className="text-muted-foreground">Revenue (após RevShare):</span>
+                                              <span className="font-medium text-green-600">{formatRevenue(revenue)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span className="text-muted-foreground">- Investimento:</span>
+                                              <span className="font-medium text-red-600">-{formatCurrency(investment)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span className="text-muted-foreground">- Impostos (8,1%):</span>
+                                              <span className="font-medium text-orange-600">-{formatCurrency(taxAmount)}</span>
+                                            </div>
+                                            {project.costs_division && estimatedOperationalCost > 0 && (
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">- Custo Operacional:</span>
+                                                <span className="font-medium text-purple-600">-{formatCurrency(estimatedOperationalCost)}</span>
+                                              </div>
+                                            )}
+                                            <div className="border-t pt-1 mt-2">
+                                              <div className="flex justify-between font-bold">
+                                                <span>Lucro Líquido:</span>
+                                                <span className={getNetProfitColor(netProfit)}>{formatCurrency(netProfit)}</span>
+                                              </div>
+                                            </div>
+                                            {!project.costs_division && (
+                                              <div className="text-xs text-muted-foreground mt-2 italic">
+                                                * Este projeto não participa da divisão de custos operacionais
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </td>
+                            <td className="p-4">
                               <div className="space-y-1">
                                 <div className="font-medium">
                                   {campaigns.filter(c => c.projectId === project.id).length} total
                                 </div>
-                                <div className="flex items-center gap-2 text-xs">
-                                  <span>🟢 {campaigns.filter(c => c.projectId === project.id && c.status === 'active').length}</span>
-                                  <span>🟡 {campaigns.filter(c => c.projectId === project.id && c.status === 'paused').length}</span>
-                                  <span>👤 {campaigns.filter(c => c.projectId === project.id && c.statusSource === 'user').length}</span>
+                                <div className="flex items-center gap-1 text-xs">
+                                  {(() => {
+                                    const projectCampaigns = campaigns.filter(c => c.projectId === project.id);
+                                    const colors = {
+                                      green: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "green";
+                                      }).length,
+                                      yellow: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "yellow";
+                                      }).length,
+                                      orange: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "orange";
+                                      }).length,
+                                      red: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "red";
+                                      }).length
+                                    };
+
+                                    return (
+                                      <>
+                                        {colors.green > 0 && <span className="text-green-600">🟢{colors.green}</span>}
+                                        {colors.yellow > 0 && <span className="text-yellow-600">🟡{colors.yellow}</span>}
+                                        {colors.orange > 0 && <span className="text-orange-600">🟠{colors.orange}</span>}
+                                        {colors.red > 0 && <span className="text-red-600">🔴{colors.red}</span>}
+                                        {projectCampaigns.length === 0 && <span className="text-gray-400">-</span>}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             </td>
-                            <td className="p-4">
-                              <Badge variant={getStatusColor(project.status) as any}>
-                                {getStatusLabel(project.status)}
-                              </Badge>
-                            </td>
                             <td className="p-4" onClick={(e) => e.stopPropagation()}>
                               <div className="flex gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="text-xs hover:translate-y-1 transition-transform"
-                                  onClick={() => navigate(`/dashboard/project/${project.id}`)}
-                                >
-                                  📈 Dashboard
-                                </Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="text-xs">
-                                      ⚙️
+                                      ⚙️ Menu
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent>
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       onClick={() => {
                                         setSelectedProjectItem(project);
                                         // Pre-fill the edit form with current values
@@ -840,7 +911,7 @@ export default function ProjectsSettings() {
                                       <Edit className="h-4 w-4 mr-2" />
                                       Editar
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       onClick={() => {
                                         setSelectedProjectItem(project);
                                         deleteModal.openModal();

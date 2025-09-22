@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { DateFilter } from "@/components/dashboard/DateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import { format } from "date-fns";
-import { getROASColorCategory, getROASColorStyles } from "@/utils/roasCalculations";
+import { getROASColorCategory, getROASColorStyles, calculateROAS } from "@/utils/roasCalculations";
 
 const CampaignsSettings = () => {
   const navigate = useNavigate();
@@ -97,7 +97,8 @@ const CampaignsSettings = () => {
       // Nova lógica de filtro por cor ROAS
       let matchesStatus = true;
       if (statusFilter !== "all") {
-        const campaignColorCategory = getCampaignColorCategory((campaign.roas || 0) - 100);
+        const roasExcess = calculateROAS(campaign.revenue || 0, campaign.investment || 0);
+        const campaignColorCategory = getCampaignColorCategory(roasExcess);
         matchesStatus = statusFilter === campaignColorCategory;
       }
       
@@ -297,9 +298,10 @@ const CampaignsSettings = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all"> Todas as Campanhas </SelectItem>
-                <SelectItem value="green">🟢 Campanhas Verdes (ROI ≥ 40%)</SelectItem>
-                <SelectItem value="yellow">🟡 Campanhas Amarelas (ROI 0-39%)</SelectItem>
-                <SelectItem value="red">🔴 Campanhas Vermelhas (ROI &lt; 0%)</SelectItem>
+                <SelectItem value="green">🟢 Campanhas Verdes (ROAS ≥ 80%)</SelectItem>
+                <SelectItem value="yellow">🟡 Campanhas Amarelas (ROAS 40-79%)</SelectItem>
+                <SelectItem value="orange">🟠 Campanhas Laranjas (ROAS 0-39%)</SelectItem>
+                <SelectItem value="red">🔴 Campanhas Vermelhas (ROAS negativo)</SelectItem>
               </SelectContent>
             </Select>
             
@@ -341,13 +343,28 @@ const CampaignsSettings = () => {
             {statusFilter === "all" && campaigns && campaigns.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  🟢 {campaigns.filter(c => getCampaignColorCategory((c.roas || 0) - 100) === "green").length}
+                  🟢 {campaigns.filter(c => {
+                    const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                    return getCampaignColorCategory(roasExcess) === "green";
+                  }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🟡 {campaigns.filter(c => getCampaignColorCategory((c.roas || 0) - 100) === "yellow").length}
+                  🟡 {campaigns.filter(c => {
+                    const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                    return getCampaignColorCategory(roasExcess) === "yellow";
+                  }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🔴 {campaigns.filter(c => getCampaignColorCategory((c.roas || 0) - 100) === "red").length}
+                  🟠 {campaigns.filter(c => {
+                    const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                    return getCampaignColorCategory(roasExcess) === "orange";
+                  }).length}
+                </span>
+                <span className="flex items-center gap-1">
+                  🔴 {campaigns.filter(c => {
+                    const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                    return getCampaignColorCategory(roasExcess) === "red";
+                  }).length}
                 </span>
               </div>
             )}
@@ -424,9 +441,15 @@ const CampaignsSettings = () => {
                         <p className="text-xs text-muted-foreground mb-1">Revenue</p>
                         <p className="font-semibold text-green-600">{formattedRevenues[campaign.id] || 'R$ 0,00'}</p>
                       </div>
-                      <div className={`text-center p-3 rounded-lg border ${getROIColor((campaign.roas || 0) - 100)}`}>
+                      <div className={`text-center p-3 rounded-lg border ${(() => {
+                        const roasExcess = calculateROAS(campaign.revenue || 0, campaign.investment || 0);
+                        return getROIColor(roasExcess);
+                      })()}`}>
                         <p className="text-xs text-muted-foreground mb-1">ROAS</p>
-                        <p className="font-semibold">{((campaign.roas || 0) - 100).toFixed(1)}%</p>
+                        <p className="font-semibold">{(() => {
+                          const roasExcess = calculateROAS(campaign.revenue || 0, campaign.investment || 0);
+                          return roasExcess.toFixed(1);
+                        })()}%</p>
                       </div>
                     </div>
 

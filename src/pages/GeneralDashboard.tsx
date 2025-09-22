@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, StatusBadge, ROASBadge, PerformanceBadge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SimpleDateFilter } from "@/components/dashboard/SimpleDateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import { 
@@ -28,7 +29,8 @@ import {
   Activity,
   CheckCircle,
   X,
-  Info
+  Info,
+  Settings
 } from "lucide-react";
 import { 
   LineChart, 
@@ -56,7 +58,7 @@ import { taxHistoryService } from "@/services/taxHistoryService";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBrlCurrency, formatCostCurrency, getCachedExchangeRate, preloadExchangeRate } from "@/utils/currencyUtils";
-import { calculateROAS, getROASColorStyles, getROASBadgeColor } from "@/utils/roasCalculations";
+import { calculateROAS, getROASColorStyles, getROASBadgeColor, getROASColorCategory } from "@/utils/roasCalculations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
 
@@ -1151,6 +1153,11 @@ export default function GeneralDashboard() {
                     <th className="text-left p-3 font-medium">Gasto</th>
                     <th className="text-left p-3 font-medium">Revenue</th>
                     <th className="text-left p-3 font-medium">ROAS</th>
+                    <th className="text-left p-3 font-medium">
+                      <div className="flex items-center gap-1">
+                        Lucro Líquido
+                      </div>
+                    </th>
                     <th className="text-left p-3 font-medium">Campanhas</th>
                     <th className="text-left p-3 font-medium">Ação</th>
                   </tr>
@@ -1199,29 +1206,140 @@ export default function GeneralDashboard() {
                         </div>
                       </td>
                       <td className="p-4">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="cursor-help">
+                                <div className={`text-lg font-bold flex items-center gap-1 ${(() => {
+                                  const netProfit = project.netProfit || 0;
+                                  if (netProfit > 0) return "text-green-600";
+                                  if (netProfit < 0) return "text-red-600";
+                                  return "text-gray-600";
+                                })()}`}>
+                                  {formatCurrency(project.netProfit || 0)}
+                                  <Info className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity" />
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {project.costs_division ? '📊 Div. custos' : '🚫 Sem div.'}
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs p-4">
+                              <div className="space-y-2 text-sm">
+                                <div className="font-medium text-primary mb-2">Cálculo do Lucro Líquido</div>
+                                {(() => {
+                                  // Simular o mesmo cálculo feito no backend
+                                  const revenue = project.revenue || 0;
+                                  const investment = project.investment || 0;
+                                  const taxRate = 0.081; // 8.1%
+                                  const taxAmount = revenue * taxRate;
+                                  const netProfit = project.netProfit || 0;
+
+                                  // Estimar custo operacional (será 0 se não participa da divisão)
+                                  const estimatedOperationalCost = project.costs_division ? (netProfit - (revenue - investment - taxAmount)) * -1 : 0;
+
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Revenue (após RevShare):</span>
+                                        <span className="font-medium text-green-600">{formatRevenue(revenue)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">- Investimento:</span>
+                                        <span className="font-medium text-red-600">-{formatCurrency(investment)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">- Impostos (8,1%):</span>
+                                        <span className="font-medium text-orange-600">-{formatCurrency(taxAmount)}</span>
+                                      </div>
+                                      {project.costs_division && estimatedOperationalCost > 0 && (
+                                        <div className="flex justify-between">
+                                          <span className="text-muted-foreground">- Custo Operacional:</span>
+                                          <span className="font-medium text-purple-600">-{formatCurrency(estimatedOperationalCost)}</span>
+                                        </div>
+                                      )}
+                                      <div className="border-t pt-1 mt-2">
+                                        <div className="flex justify-between font-bold">
+                                          <span>Lucro Líquido:</span>
+                                          <span className={(() => {
+                                            if (netProfit > 0) return "text-green-600";
+                                            if (netProfit < 0) return "text-red-600";
+                                            return "text-gray-600";
+                                          })()}>{formatCurrency(netProfit)}</span>
+                                        </div>
+                                      </div>
+                                      {!project.costs_division && (
+                                        <div className="text-xs text-muted-foreground mt-2 italic">
+                                          * Este projeto não participa da divisão de custos operacionais
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </td>
+                      <td className="p-4">
                         <div className="space-y-1">
                           <div className="font-medium">
                             {campaigns.filter(c => c.projectId === project.id).length} total
                           </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span>🟢 {campaigns.filter(c => c.projectId === project.id && c.status === 'active').length}</span>
-                            <span>🟡 {campaigns.filter(c => c.projectId === project.id && c.status === 'paused').length}</span>
-                            <span>👤 {campaigns.filter(c => c.projectId === project.id && c.statusSource === 'user').length}</span>
+                          <div className="flex items-center gap-1 text-xs">
+                            {(() => {
+                              const projectCampaigns = campaigns.filter(c => c.projectId === project.id);
+                              const colors = {
+                                green: projectCampaigns.filter(c => {
+                                  const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                  return getROASColorCategory(roasExcess) === "green";
+                                }).length,
+                                yellow: projectCampaigns.filter(c => {
+                                  const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                  return getROASColorCategory(roasExcess) === "yellow";
+                                }).length,
+                                orange: projectCampaigns.filter(c => {
+                                  const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                  return getROASColorCategory(roasExcess) === "orange";
+                                }).length,
+                                red: projectCampaigns.filter(c => {
+                                  const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                  return getROASColorCategory(roasExcess) === "red";
+                                }).length
+                              };
+
+                              return (
+                                <>
+                                  {colors.green > 0 && <span className="text-green-600">🟢{colors.green}</span>}
+                                  {colors.yellow > 0 && <span className="text-yellow-600">🟡{colors.yellow}</span>}
+                                  {colors.orange > 0 && <span className="text-orange-600">🟠{colors.orange}</span>}
+                                  {colors.red > 0 && <span className="text-red-600">🔴{colors.red}</span>}
+                                  {projectCampaigns.length === 0 && <span className="text-gray-400">-</span>}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       </td>
                       <td className="p-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-2">
-                          <Link to={`/dashboard/project/${project.id}`}>
-                            <Button variant="outline" size="sm" className="text-xs hover:translate-y-1 transition-transform">
-                              📈 Dashboard
-                            </Button>
-                          </Link>
-                          <Link to={`/settings/campaigns?project=${project.id}`}>
-                            <Button variant="ghost" size="sm" className="text-xs">
-                              🎯 Campanhas
-                            </Button>
-                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-xs">
+                                ⚙️ Menu
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/project/${project.id}`)}>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Dashboard
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/settings/campaigns?project=${project.id}`)}>
+                                <Target className="h-4 w-4 mr-2" />
+                                Campanhas
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>

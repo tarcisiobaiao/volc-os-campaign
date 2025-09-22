@@ -38,11 +38,12 @@ import {
 import { cn } from "@/lib/utils";
 import { Layout } from "@/components/layout/Layout";
 import { useSupabaseData, supabaseDataService } from "@/services/supabaseDataService";
+import { supabase } from "@/lib/supabase";
 import { operationalCostsService } from "@/services/operationalCostsService";
 import { taxHistoryService } from "@/services/taxHistoryService";
 import { useCurrencyConverter } from "@/services/currencyConversionService";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
-import { getROASColorCategory, getROASColorStyles } from "@/utils/roasCalculations";
+import { getROASColorCategory, getROASColorStyles, calculateROAS } from "@/utils/roasCalculations";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
@@ -111,9 +112,8 @@ const CampaignCard = ({
   selectedDate: string;
   navigate: (path: string) => void;
 }) => {
-  // Calculate ROAS using the same logic as CampaignsSettings (excess over investment)
-  const calculatedROAS = campaign.investment > 0 ? ((campaign.revenue - campaign.investment) / campaign.investment) * 100 : 0;
-  const roasExcess = calculatedROAS; // This is already the excess percentage
+  // Calculate ROAS using centralized function (includes special case for revenue without investment)
+  const roasExcess = calculateROAS(campaign.revenue || 0, campaign.investment || 0);
 
   // Use centralized ROAS color functions
   const getCampaignColorCategory = (roasExcess: number) => {
@@ -254,6 +254,10 @@ export default function ProjectDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [currentTaxRate, setCurrentTaxRate] = useState<number>(8.1);
   const [dailyOperationalCosts, setDailyOperationalCosts] = useState<number>(0);
+
+  // State for campaigns revenue to handle async operation
+  const [campaignsRevenue, setCampaignsRevenue] = useState<number>(0);
+  const [projectsWithCostDivisionCount, setProjectsWithCostDivisionCount] = useState<number>(1);
 
   // Estados para o filtro customizado - mesma lógica de Reports
   const [isCustomPeriodOpen, setIsCustomPeriodOpen] = useState(false);
@@ -517,9 +521,10 @@ export default function ProjectDashboard() {
       daysInPeriod = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     }
 
-    // Retornar custos operacionais proporcionais aos dias
-    return dailyOperationalCosts * daysInPeriod;
-  }, [currentProject, dailyOperationalCosts, selectedPeriod, selectedDate, selectedEndDate]);
+    // Dividir custos operacionais pelo número de projetos que participam da divisão
+    const totalOperationalCosts = dailyOperationalCosts * daysInPeriod;
+    return totalOperationalCosts / projectsWithCostDivisionCount;
+  }, [currentProject, dailyOperationalCosts, selectedPeriod, selectedDate, selectedEndDate, projectsWithCostDivisionCount]);
 
   // Função para calcular ROI final com impostos e custos operacionais (similar ao dashboard geral)
   const calculateFinalROI = useCallback((totalRevenue: number, totalInvestment: number) => {
@@ -576,6 +581,91 @@ export default function ProjectDashboard() {
 
 
 
+  // Effect to fetch campaigns revenue using optimized aggregated query
+  useEffect(() => {
+    const fetchCampaignsRevenue = async () => {
+      if (!currentProject || !filters) return;
+
+      try {
+        // Determine date range for campaigns aggregation
+        let startDate = filters?.date || await supabaseDataService.getServerDate();
+        let endDate = filters?.endDate || startDate;
+
+        if (filters?.period === '7d' && filters?.date) {
+          const endDateObj = new Date(filters.date);
+          const startDateObj = new Date(endDateObj);
+          startDateObj.setDate(startDateObj.getDate() - 6);
+          startDate = startDateObj.toISOString().split('T')[0];
+          endDate = filters.date;
+        } else if (filters?.period === '30d' && filters?.date) {
+          const endDateObj = new Date(filters.date);
+          const startDateObj = new Date(endDateObj);
+          startDateObj.setDate(startDateObj.getDate() - 29);
+          startDate = startDateObj.toISOString().split('T')[0];
+          endDate = filters.date;
+        }
+
+        const aggregatedMetrics = await supabaseDataService.getCampaignAggregatedMetrics(
+          currentProject.id,
+          startDate,
+          endDate
+        );
+
+        setCampaignsRevenue(aggregatedMetrics.totalRevenue);
+
+        console.log('🚀 OPTIMIZED: Campaign metrics fetched with single aggregated query:', {
+          projectId: currentProject.id,
+          startDate,
+          endDate,
+          campaignsRevenue: aggregatedMetrics.totalRevenue,
+          campaignCount: aggregatedMetrics.campaignCount
+        });
+
+      } catch (error) {
+        console.error('Error fetching aggregated campaign metrics, falling back to frontend sum:', error);
+        // Fallback to frontend calculation
+        const fallbackRevenue = projectCampaigns?.reduce((sum, campaign) => {
+          return sum + (campaign.revenue || 0);
+        }, 0) || 0;
+        setCampaignsRevenue(fallbackRevenue);
+      }
+    };
+
+    fetchCampaignsRevenue();
+  }, [currentProject, filters, projectCampaigns]);
+
+  // Effect to fetch projects with cost division count for operational cost calculation
+  useEffect(() => {
+    const fetchProjectsWithCostDivision = async () => {
+      if (!currentProject?.costs_division) {
+        setProjectsWithCostDivisionCount(1);
+        return;
+      }
+
+      try {
+        // Query projects with cost division directly
+        const { data: projectsWithCostDivision, error } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('costs_division', true);
+
+        if (error) {
+          console.error('Error fetching projects with cost division:', error);
+          setProjectsWithCostDivisionCount(1);
+        } else {
+          const count = projectsWithCostDivision?.length || 1;
+          setProjectsWithCostDivisionCount(count);
+          console.log('📊 Projects with cost division count:', count);
+        }
+      } catch (error) {
+        console.error('Error fetching projects with cost division:', error);
+        setProjectsWithCostDivisionCount(1);
+      }
+    };
+
+    fetchProjectsWithCostDivision();
+  }, [currentProject]);
+
   // Calculate metrics with comparison - using specific project data
   const metrics = useMemo(() => {
     try {
@@ -590,18 +680,25 @@ export default function ProjectDashboard() {
 
     // Calculate project-specific metrics
     const projectInvestment = projectCampaigns.reduce((sum, c) => sum + (c.investment || 0), 0);
-    
+
     // All projects use daily_project_metrics for total revenue (optimized for better performance and reduced egress)
     // Revenue is already pre-calculated with revshare discount in daily_project_metrics
     const projectRevenue = currentProject.revenue || 0;
 
+    // Calculate organic excedent using the optimized campaigns revenue
+    const organicExcedent = projectRevenue - campaignsRevenue;
+    const organicExcedentPercentage = projectRevenue > 0 ? (organicExcedent / projectRevenue) * 100 : 0;
+
     console.log('🎯 Revenue calculation method:', {
       projectType: currentProject?.project_type,
       projectRevenue,
+      campaignsRevenue,
+      organicExcedent,
+      organicExcedentPercentage: `${organicExcedentPercentage.toFixed(1)}%`,
       source: 'daily_project_metrics (optimized for all project types)'
     });
     const projectProfit = calculateSimplifiedNetProfit(projectRevenue, projectInvestment).netProfit; // Lucro líquido com impostos e custos
-    const projectRoas = projectInvestment > 0 ? ((projectRevenue - projectInvestment) / projectInvestment) * 100 : 0; // ROAS padrão: excesso sobre investimento
+    const projectRoas = calculateROAS(projectRevenue, projectInvestment); // ROAS com caso especial para faturamento sem gasto
     const projectRoi = calculateFinalROI(projectRevenue, projectInvestment); // ROI final com impostos e custos operacionais
 
     console.log('📊 Project metrics calculated:', {
@@ -628,7 +725,7 @@ export default function ProjectDashboard() {
       },
       revenue: {
         value: projectRevenue,
-        comparison: 0, // TODO: Add previous period comparison  
+        comparison: 0, // TODO: Add previous period comparison
         change: summary?.trendsPercentage?.revenue || 0
       },
       roas: {
@@ -645,13 +742,17 @@ export default function ProjectDashboard() {
         value: projectRoi,
         comparison: 0, // TODO: Add previous period comparison
         change: summary?.trendsPercentage?.roi || 0
+      },
+      organicExcedent: {
+        value: organicExcedent,
+        percentage: organicExcedentPercentage
       }
     };
     } catch (error) {
       console.error('💥 Error calculating metrics:', error);
       return null;
     }
-  }, [currentProject, projectCampaigns, summary]);
+  }, [currentProject, projectCampaigns, summary, campaignsRevenue, calculateSimplifiedNetProfit, calculateFinalROI]);
 
   // Filter campaigns
   const filteredCampaigns = useMemo(() => {
@@ -662,7 +763,7 @@ export default function ProjectDashboard() {
       const matchesSearch = campaign.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
                            (campaign.description || '').toLowerCase().includes(searchFilter.toLowerCase());
 
-      const campaignROAS = campaign.investment > 0 ? ((campaign.revenue - campaign.investment) / campaign.investment) * 100 : 0;
+      const campaignROAS = calculateROAS(campaign.revenue || 0, campaign.investment || 0);
       const matchesStatus = statusFilter === "all" ||
                            (statusFilter === "critical" && campaignROAS < 0) ||
                            (statusFilter === "active" && campaign.status === "active") ||
@@ -1092,14 +1193,66 @@ export default function ProjectDashboard() {
               icon={<DollarSign />}
               color="info"
             />
-            <MetricCard
-              title="💵 Faturado (Líquido)"
-              value={formatRevenue(metrics.revenue.value)}
-              comparison={`Ontem: ${formatRevenue(metrics.revenue.comparison)}`}
-              change={metrics.revenue.change}
-              icon={<DollarSign />}
-              color="success"
-            />
+            {/* Custom Revenue Card with organic excedent indicator */}
+            <Card className="animate-fade-in shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">💵 Faturado (Líquido)</CardTitle>
+                  {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className={`w-2 h-2 rounded-full ${
+                            metrics.organicExcedent.value > 0 ? 'bg-blue-500' : 'bg-orange-500'
+                          } opacity-70`} />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs p-3">
+                          <div className="space-y-1 text-sm">
+                            <div className="font-medium text-primary">Revenue Orgânico</div>
+                            <div className="text-muted-foreground">
+                              {metrics.organicExcedent.value > 0 ? 'Excedente' : 'Déficit'}:
+                              <span className={`font-mono ml-1 ${
+                                metrics.organicExcedent.value > 0 ? 'text-blue-600' : 'text-orange-600'
+                              }`}>
+                                {formatRevenue(Math.abs(metrics.organicExcedent.value))}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {Math.abs(metrics.organicExcedent.percentage).toFixed(1)}% do faturamento total
+                            </div>
+                            <div className="text-xs text-muted-foreground border-t pt-1 mt-2">
+                              <div>Faturamento Total: {formatRevenue(metrics.revenue.value)}</div>
+                              <div>Campanhas: {formatRevenue(campaignsRevenue)}</div>
+                              <div className="font-medium">
+                                {metrics.organicExcedent.value > 0 ? 'Orgânico' : 'Déficit'}: {formatRevenue(Math.abs(metrics.organicExcedent.value))}
+                              </div>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+                <div className="h-4 w-4 text-primary"><DollarSign /></div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-1">{formatRevenue(metrics.revenue.value)}</div>
+                <div className="text-xs text-muted-foreground mb-2">{`Ontem: ${formatRevenue(metrics.revenue.comparison)}`}</div>
+                <div className="flex items-center text-xs">
+                  <TrendingUp className="mr-1 h-3 w-3 text-success" />
+                  <span className="text-success">
+                    +{metrics.revenue.change.toFixed(1)}%
+                  </span>
+                  {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
+                    <span className={`ml-2 text-xs ${
+                      metrics.organicExcedent.value > 0 ? 'text-blue-600' : 'text-orange-600'
+                    }`}>
+                      • {metrics.organicExcedent.value > 0 ? 'Org+' : 'Org-'}{Math.abs(metrics.organicExcedent.percentage).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             <MetricCard
               title="📈 ROAS"
               value={`${metrics.roas.value.toFixed(0)}%`}
@@ -1208,19 +1361,25 @@ export default function ProjectDashboard() {
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         🟢 {projectCampaigns.filter(c => {
-                          const roasExcess = c.investment > 0 ? ((c.revenue - c.investment) / c.investment) * 100 : 0;
+                          const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "green";
                         }).length}
                       </span>
                       <span className="flex items-center gap-1">
                         🟡 {projectCampaigns.filter(c => {
-                          const roasExcess = c.investment > 0 ? ((c.revenue - c.investment) / c.investment) * 100 : 0;
+                          const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "yellow";
                         }).length}
                       </span>
                       <span className="flex items-center gap-1">
+                        🟠 {projectCampaigns.filter(c => {
+                          const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                          return getROASColorCategory(roasExcess) === "orange";
+                        }).length}
+                      </span>
+                      <span className="flex items-center gap-1">
                         🔴 {projectCampaigns.filter(c => {
-                          const roasExcess = c.investment > 0 ? ((c.revenue - c.investment) / c.investment) * 100 : 0;
+                          const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "red";
                         }).length}
                       </span>
