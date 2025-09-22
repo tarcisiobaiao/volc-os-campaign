@@ -16,8 +16,11 @@ interface AuthContextType {
   session: Session | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  unauthorizedUser: string | null; // Email do usuário não autorizado
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  clearUnauthorizedUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,11 +42,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unauthorizedUser, setUnauthorizedUser] = useState<string | null>(null);
 
-  const fetchUserProfile = async (user: User | null) => {
+  const fetchUserProfile = async (user: User | null): Promise<boolean> => {
     if (!user) {
       setUserProfile(null);
-      return;
+      return false;
     }
 
     try {
@@ -61,38 +65,72 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           .select('*')
           .eq('email', user.email)
           .single();
-          
+
         if (profileAlt) {
           setUserProfile(profileAlt);
+          return true;
         } else {
-          console.warn('User profile not found in database:', errorAlt);
+          console.warn('❌ User not authorized - email not found in users table:', user.email);
           setUserProfile(null);
+          setUnauthorizedUser(user.email || 'Email não disponível');
+          // Sign out unauthorized user
+          await supabase.auth.signOut();
+          return false;
         }
       } else {
         setUserProfile(profile);
+        return true;
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
       setUserProfile(null);
+      setUnauthorizedUser(user.email || 'Email não disponível');
+      await supabase.auth.signOut();
+      return false;
     }
   };
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      fetchUserProfile(session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const isAuthorized = await fetchUserProfile(session.user);
+        if (isAuthorized) {
+          setSession(session);
+          setUser(session.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } else {
+        setSession(null);
+        setUser(null);
+        setUserProfile(null);
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      fetchUserProfile(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event, session?.user?.email);
+
+      if (session?.user) {
+        const isAuthorized = await fetchUserProfile(session.user);
+        if (isAuthorized) {
+          setSession(session);
+          setUser(session.user);
+        } else {
+          setSession(null);
+          setUser(null);
+          // unauthorizedUser já foi setado no fetchUserProfile
+        }
+      } else {
+        setSession(null);
+        setUser(null);
+        setUserProfile(null);
+      }
       setLoading(false);
     });
 
@@ -109,6 +147,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+    if (error) {
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -116,13 +166,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const clearUnauthorizedUser = () => {
+    setUnauthorizedUser(null);
+  };
+
   const value = {
     user,
     session,
     userProfile,
     loading,
+    unauthorizedUser,
     signIn,
+    signInWithGoogle,
     signOut,
+    clearUnauthorizedUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
