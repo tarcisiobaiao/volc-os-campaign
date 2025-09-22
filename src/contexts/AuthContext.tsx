@@ -43,7 +43,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [unauthorizedUser, setUnauthorizedUser] = useState<string | null>(null);
-  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const fetchUserProfile = async (user: User | null): Promise<boolean> => {
     if (!user) {
@@ -52,54 +51,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
-      // Try to get user profile from users table
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        // Try alternative query by email
-        const { data: profileAlt, error: errorAlt } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', user.email)
-          .single();
-
-        if (profileAlt) {
-          setUserProfile(profileAlt);
-          return true;
-        } else {
-          console.warn('❌ User not authorized - email not found in users table:', user.email);
-          setUserProfile(null);
-          setUnauthorizedUser(user.email || 'Email não disponível');
-          // Sign out unauthorized user with flag to prevent loop
-          if (!isSigningOut) {
-            console.log('🚪 Signing out unauthorized user to prevent loop');
-            setIsSigningOut(true);
-            await supabase.auth.signOut();
-          } else {
-            console.log('⏭️ Skipping signOut to prevent infinite loop');
-          }
-          return false;
+      // Use REST API directly as Supabase JS client has connection issues
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/users?select=*&email=eq.${user.email}`, {
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
         }
-      } else {
-        setUserProfile(profile);
-        return true;
+      });
+
+      if (response.ok) {
+        const profiles = await response.json();
+        if (profiles && profiles.length > 0) {
+          setUserProfile(profiles[0]);
+          return true;
+        }
       }
+
+      // User not found
+      console.warn('User not authorized - email not found in users table:', user.email);
+      setUserProfile(null);
+      setUnauthorizedUser(user.email || 'Email não disponível');
+      await supabase.auth.signOut();
+      return false;
     } catch (error) {
       console.error('Error fetching user profile:', error);
       setUserProfile(null);
       setUnauthorizedUser(user.email || 'Email não disponível');
-      // Sign out with flag to prevent loop
-      if (!isSigningOut) {
-        console.log('🚪 Signing out due to error to prevent loop');
-        setIsSigningOut(true);
-        await supabase.auth.signOut();
-      } else {
-        console.log('⏭️ Skipping signOut due to error to prevent infinite loop');
-      }
+      await supabase.auth.signOut();
       return false;
     }
   };
@@ -128,14 +107,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth state changed:', event, session?.user?.email);
-
-      // Reset signing out flag when signed out
-      if (event === 'SIGNED_OUT') {
-        setIsSigningOut(false);
-      }
-
-      if (session?.user && !isSigningOut) {
+      if (session?.user) {
         const isAuthorized = await fetchUserProfile(session.user);
         if (isAuthorized) {
           setSession(session);
@@ -143,7 +115,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         } else {
           setSession(null);
           setUser(null);
-          // unauthorizedUser já foi setado no fetchUserProfile
         }
       } else {
         setSession(null);
@@ -196,7 +167,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const clearUnauthorizedUser = () => {
     setUnauthorizedUser(null);
-    setIsSigningOut(false);
   };
 
   const value = {

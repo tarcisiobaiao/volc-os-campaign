@@ -345,6 +345,7 @@ export default function Login() {
             </CardContent>
           </Card>
 
+
           {/* Footer */}
           <div className="mt-8 text-center text-sm text-muted-foreground">
             <p>© 2024 Campaign Manager. Todos os direitos reservados.</p>
