@@ -873,9 +873,16 @@ export default function ProjectsSettings() {
                                         return (
                                           <div className="space-y-1">
                                             <div className="flex justify-between">
-                                              <span className="text-muted-foreground">Revenue (após RevShare):</span>
+                                              <span className="text-muted-foreground">
+                                                {project.project_type === 'ADSENSE' ? 'Revenue Total:' : 'Revenue (após RevShare):'}
+                                              </span>
                                               <span className="font-medium text-green-600">{formatRevenue(revenue)}</span>
                                             </div>
+                                            {project.project_type === 'ADSENSE' && (
+                                              <div className="text-xs text-muted-foreground italic mb-2">
+                                                * Projeto AdSense: Revenue sem desconto de RevShare
+                                              </div>
+                                            )}
                                             <div className="flex justify-between">
                                               <span className="text-muted-foreground">- Investimento:</span>
                                               <span className="font-medium text-red-600">-{formatCurrency(investment)}</span>

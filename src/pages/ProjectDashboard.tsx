@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { DateFilter } from "@/components/dashboard/DateFilter";
+// Removed Popover and Calendar - now using SimpleDateFilter
+import { SimpleDateFilter } from "@/components/dashboard/SimpleDateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import {
   ArrowLeft,
@@ -44,7 +43,7 @@ import { taxHistoryService } from "@/services/taxHistoryService";
 import { useCurrencyConverter } from "@/services/currencyConversionService";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
 import { getROASColorCategory, getROASColorStyles, calculateROAS } from "@/utils/roasCalculations";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { useToast } from "@/hooks/use-toast";
@@ -178,8 +177,7 @@ const CampaignCard = ({
           <div>
             <h4 className="font-medium mb-3">📊 Performance Financeira ({
               selectedPeriod === 'today' ? 'Hoje' :
-              selectedPeriod === '7d' ? 'Últimos 7 dias' :
-              selectedPeriod === '30d' ? 'Últimos 30 dias' :
+              selectedPeriod === 'yesterday' ? 'Ontem' :
               selectedPeriod === 'range' ? 'Período Selecionado' :
               `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
             }):</h4>
@@ -247,7 +245,7 @@ export default function ProjectDashboard() {
       </Layout>
     );
   }
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom' | 'range'>('today');
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | 'custom' | 'range'>('today');
   const [selectedDate, setSelectedDate] = useState<string>(""); // Will be set dynamically
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -259,14 +257,7 @@ export default function ProjectDashboard() {
   const [campaignsRevenue, setCampaignsRevenue] = useState<number>(0);
   const [projectsWithCostDivisionCount, setProjectsWithCostDivisionCount] = useState<number>(1);
 
-  // Estados para o filtro customizado - mesma lógica de Reports
-  const [isCustomPeriodOpen, setIsCustomPeriodOpen] = useState(false);
-  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
-  const [rangeStartDate, setRangeStartDate] = useState<Date | undefined>(undefined);
-  const [rangeEndDate, setRangeEndDate] = useState<Date | undefined>(undefined);
-  const [tempCustomDate, setTempCustomDate] = useState<Date | undefined>(undefined);
-  const [tempRangeStartDate, setTempRangeStartDate] = useState<Date | undefined>(undefined);
-  const [tempRangeEndDate, setTempRangeEndDate] = useState<Date | undefined>(undefined);
+  // Note: Filtro customizado agora é gerenciado pelo SimpleDateFilter component
   
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -326,15 +317,37 @@ export default function ProjectDashboard() {
     loadDailyOperationalCosts();
   }, []);
 
-  // Use filtered data based on current selections - same approach as Reports
+  // Use filtered data based on current selections - TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   const filters = {
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: projectId || "",
-    period: selectedPeriod
+    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
   };
 
   console.log('🔍 ProjectDashboard: selectedEndDate:', selectedEndDate);
+
+  // Debug: Log current filters for monitoring
+  React.useEffect(() => {
+    console.log('🔍 ProjectDashboard Current filters applied:', filters);
+    console.log('🔍 ProjectDashboard DETAILED DEBUG:', {
+      selectedPeriod,
+      selectedDate,
+      filterPeriod: filters.period,
+      filterDate: filters.date,
+      isYesterdayTreatedAsCustom: selectedPeriod === 'yesterday' && filters.period === 'custom'
+    });
+  }, [filters]);
+
+  // Force refresh data when period changes
+  React.useEffect(() => {
+    if (selectedPeriod === 'today' || selectedPeriod === 'yesterday') {
+      console.log('🔄 ProjectDashboard Forcing refresh for period:', selectedPeriod);
+      setTimeout(() => {
+        refresh(filters);
+      }, 500);
+    }
+  }, [selectedPeriod, selectedDate]);
 
   // Always call useSupabaseData with filters like GeneralDashboard
   const { projects, campaigns, dailyMetrics, summary, loading: dataLoading, error: dataError, refresh } = useSupabaseData(filters);
@@ -395,11 +408,13 @@ export default function ProjectDashboard() {
   }, [dataLoading, dataError]);
 
 
-  // Handle period changes - mesma lógica de Reports
-  const handlePeriodChange = async (period: 'today' | '7d' | '30d' | 'custom' | 'range') => {
+  // Handle period changes - igual ao GeneralDashboard
+  const handlePeriodChange = async (period: 'today' | 'yesterday' | 'custom' | 'range') => {
     setSelectedPeriod(period);
+    // Reset to current server date when changing to 'today' or 'yesterday'
     if (period === 'today') {
       try {
+        // Clear cache and get fresh server date
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
@@ -407,6 +422,7 @@ export default function ProjectDashboard() {
         setCustomDate(undefined);
         setRangeStartDate(undefined);
         setRangeEndDate(undefined);
+        console.log('🔄 Updated to current server date:', serverDate);
       } catch (error) {
         console.error('Error getting server date:', error);
         // Fallback to São Paulo timezone date
@@ -415,80 +431,84 @@ export default function ProjectDashboard() {
         }).format(new Date());
         setSelectedDate(saoPauloDate);
       }
+    } else if (period === 'yesterday') {
+      try {
+        // Clear caches for fresh data
+        supabaseDataService.clearServerDateCache();
+
+        // Get server date and calculate yesterday
+        const serverDate = await supabaseDataService.getServerDate();
+        console.log('🔍 DEBUG YESTERDAY - Server date:', serverDate);
+        const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+        const yesterdayObj = new Date(serverDateObj);
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+        setSelectedDate(yesterdayStr);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+        console.log('🔄 Updated to yesterday:', yesterdayStr);
+        console.log('🔍 DEBUG YESTERDAY - Calculation:', {
+          serverDate,
+          serverDateObj: serverDateObj.toISOString(),
+          yesterdayObj: yesterdayObj.toISOString(),
+          finalYesterdayString: yesterdayStr
+        });
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = { ...filters, date: yesterdayStr, period: 'custom' };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
+      } catch (error) {
+        console.error('Error getting server date for yesterday:', error);
+        // Fallback to São Paulo timezone yesterday
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const saoPauloYesterday = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(yesterday);
+        setSelectedDate(saoPauloYesterday);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = { ...filters, date: saoPauloYesterday, period: 'custom' };
+          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
+          refresh(yesterdayFilters);
+        }, 100);
+      }
     } else if (period === 'custom') {
       // Para período customizado, não fazemos nada aqui
       // O usuário vai selecionar no calendário
     }
   };
 
-  // Função para aplicar mudanças do filtro customizado - mesma lógica de Reports
-  const handleApplyCustomPeriod = () => {
-    if (tempRangeStartDate && tempRangeEndDate) {
-      // Range selecionado
-      setRangeStartDate(tempRangeStartDate);
-      setRangeEndDate(tempRangeEndDate);
-      setCustomDate(undefined);
-      setSelectedPeriod('range');
-
-      const startDate = new Intl.DateTimeFormat('sv-SE', {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(tempRangeStartDate);
-
-      const endDate = new Intl.DateTimeFormat('sv-SE', {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(tempRangeEndDate);
-
-      setSelectedDate(startDate);
-      setSelectedEndDate(endDate);
-      handleDateRangeChange(startDate, endDate);
-    } else if (tempCustomDate) {
-      // Data única selecionada - também usar 'range' com mesma data de início e fim
-      setCustomDate(tempCustomDate);
-      setRangeStartDate(tempCustomDate);
-      setRangeEndDate(tempCustomDate);
-      setSelectedPeriod('range'); // Mudança aqui: usar 'range' em vez de 'custom'
-
-      const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(tempCustomDate);
-
-      setSelectedDate(saoPauloDate);
-      setSelectedEndDate(saoPauloDate); // Mudança aqui: usar a mesma data como endDate
-
-      // Usar handleDateRangeChange com a mesma data para início e fim
-      handleDateRangeChange(saoPauloDate, saoPauloDate);
-    }
-
-    setIsCustomPeriodOpen(false);
-  };
-
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    console.log('🔄 ProjectDashboard handleDateRangeChange called with:', { startDate, endDate });
-    setSelectedDate(startDate);
-    setSelectedEndDate(endDate);
-    setSelectedPeriod('range');
-
+  const handleDateChange = (date: string) => {
+    console.log('📅 ProjectDashboard Date changed to:', date, 'period:', selectedPeriod);
+    setSelectedDate(date);
+    // Force a refresh when date changes to ensure data is up to date
+    // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom'
     const newFilters = {
-      date: startDate,
-      endDate: endDate,
-      projectId: projectId || "",
-      period: 'range' as const
+      ...filters,
+      date,
+      period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
     };
-    console.log('🔄 ProjectDashboard: Refreshing with range filters:', newFilters);
-    console.log('🔄 ProjectDashboard: About to call refresh with filters');
+    console.log('🔄 ProjectDashboard Refreshing with new filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
     }, 100);
   };
+
+  // Note: handleApplyCustomPeriod removido - SimpleDateFilter gerencia isso
+
+  // Note: handleDateRangeChange removido - SimpleDateFilter gerencia isso
 
 
   // Format functions (revenue is now pre-converted by database)
@@ -509,12 +529,8 @@ export default function ProjectDashboard() {
     // Calcular quantos dias estão no período selecionado
     let daysInPeriod = 1;
 
-    if (selectedPeriod === 'today') {
+    if (selectedPeriod === 'today' || selectedPeriod === 'yesterday' || selectedPeriod === 'custom') {
       daysInPeriod = 1;
-    } else if (selectedPeriod === '7d') {
-      daysInPeriod = 7;
-    } else if (selectedPeriod === '30d') {
-      daysInPeriod = 30;
     } else if (selectedPeriod === 'range' && selectedDate && selectedEndDate) {
       const start = new Date(selectedDate);
       const end = new Date(selectedEndDate);
@@ -560,23 +576,7 @@ export default function ProjectDashboard() {
   }, [currentTaxRate, calculateProportionalOperationalCosts]);
 
 
-  // Calculate corrected net profit with real revenue share
-  const calculateCorrectNetProfit = useCallback((revenueBrl: number, spendBrl: number) => {
-    try {
-      if (!currentProject || typeof revenueBrl !== 'number' || typeof spendBrl !== 'number') {
-        return revenueBrl - spendBrl;
-      }
-
-      const projectRevshare = currentProject.revshare || 0.1;
-      const liquidRevenue = revenueBrl - (revenueBrl * projectRevshare);
-      const netProfit = liquidRevenue - spendBrl;
-
-      return isNaN(netProfit) ? 0 : netProfit;
-    } catch (error) {
-      console.error('💥 Error in calculateCorrectNetProfit:', error);
-      return 0;
-    }
-  }, [currentProject]);
+  // Note: calculateCorrectNetProfit removido - não utilizado no novo modelo
 
 
 
@@ -591,19 +591,8 @@ export default function ProjectDashboard() {
         let startDate = filters?.date || await supabaseDataService.getServerDate();
         let endDate = filters?.endDate || startDate;
 
-        if (filters?.period === '7d' && filters?.date) {
-          const endDateObj = new Date(filters.date);
-          const startDateObj = new Date(endDateObj);
-          startDateObj.setDate(startDateObj.getDate() - 6);
-          startDate = startDateObj.toISOString().split('T')[0];
-          endDate = filters.date;
-        } else if (filters?.period === '30d' && filters?.date) {
-          const endDateObj = new Date(filters.date);
-          const startDateObj = new Date(endDateObj);
-          startDateObj.setDate(startDateObj.getDate() - 29);
-          startDate = startDateObj.toISOString().split('T')[0];
-          endDate = filters.date;
-        }
+        // Note: ProjectDashboard now only supports today, yesterday, custom periods
+        // No 7d or 30d periods like in GeneralDashboard
 
         const aggregatedMetrics = await supabaseDataService.getCampaignAggregatedMetrics(
           currentProject.id,
@@ -971,7 +960,7 @@ export default function ProjectDashboard() {
                 )}
                 {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && (
                   <span className="ml-2 text-primary">
-                    • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
+                    • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data customizada'}
                   </span>
                 )}
                 {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
@@ -1001,165 +990,23 @@ export default function ProjectDashboard() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Filtro de Período Customizado - igual ao Reports */}
-            <div className="flex items-center gap-2">
-              <Select value={selectedPeriod === 'today' ? 'today' : 'custom'} onValueChange={(value) => {
-                if (value === 'today') {
-                  handlePeriodChange('today');
-                } else {
-                  setSelectedPeriod('custom');
-                }
-              }}>
-                <SelectTrigger className="w-40">
-                  <CalendarIcon className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">📅 Hoje</SelectItem>
-                  <SelectItem value="custom">🗓️ Selecionar período</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {(selectedPeriod === 'custom' || selectedPeriod === 'range') && (
-                <Popover open={isCustomPeriodOpen} onOpenChange={(open) => {
-                  setIsCustomPeriodOpen(open);
-                  if (open) {
-                    // Reset temporary states to current values when opening
-                    setTempCustomDate(customDate);
-                    setTempRangeStartDate(rangeStartDate);
-                    setTempRangeEndDate(rangeEndDate);
-                  }
-                }}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[320px] justify-start text-left font-normal",
-                        (!customDate && !rangeStartDate) && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {rangeStartDate && rangeEndDate ? (
-                        <>
-                          {format(rangeStartDate, "dd/MM/yyyy", { locale: ptBR })}
-                          {" até "}
-                          {format(rangeEndDate, "dd/MM/yyyy", { locale: ptBR })}
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({differenceInDays(rangeEndDate, rangeStartDate) + 1} dias)
-                          </span>
-                        </>
-                      ) : customDate ? (
-                        format(customDate, "dd/MM/yyyy", { locale: ptBR })
-                      ) : (
-                        <span>Selecionar período</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <div className="p-3 border-b">
-                      <h4 className="font-medium text-sm">Selecionar período</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Clique em uma data para dia específico, ou selecione intervalo
-                      </p>
-                      {(tempCustomDate || (tempRangeStartDate && tempRangeEndDate)) && (
-                        <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                          <p className="text-xs font-medium text-blue-800">
-                            {tempRangeStartDate && tempRangeEndDate ? (
-                              <>📊 {format(tempRangeStartDate, "dd/MM/yyyy", { locale: ptBR })} até {format(tempRangeEndDate, "dd/MM/yyyy", { locale: ptBR })}</>
-                            ) : tempCustomDate ? (
-                              <>📅 {format(tempCustomDate, "dd/MM/yyyy", { locale: ptBR })}</>
-                            ) : null}
-                          </p>
-                          <p className="text-xs text-blue-600 mt-1">Clique em "Aplicar" para confirmar</p>
+            <div className="flex flex-col gap-1">
+              <SimpleDateFilter
+                selectedPeriod={selectedPeriod}
+                selectedDate={selectedDate}
+                onPeriodChange={handlePeriodChange}
+                onDateChange={handleDateChange}
+              />
+              {selectedPeriod === 'custom' && selectedDate && (
+                <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
+                  📅 Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                  {!loading && (!filteredCampaigns || filteredCampaigns.length === 0) && (
+                    <span className="text-amber-600">⚠️ Sem dados</span>
+                  )}
+                  {!loading && filteredCampaigns && filteredCampaigns.length > 0 && (
+                    <span className="text-green-600">✓ {filteredCampaigns.length} campanhas</span>
+                  )}
                 </div>
-                      )}
-                    </div>
-                    <Calendar
-                      mode="range"
-                      selected={{
-                        from: tempRangeStartDate || tempCustomDate,
-                        to: tempRangeEndDate
-                      }}
-                      onSelect={(dates) => {
-                        if (dates?.from && dates?.to) {
-                          // Range selecionado (temporário)
-                          setTempRangeStartDate(dates.from);
-                          setTempRangeEndDate(dates.to);
-                          setTempCustomDate(undefined);
-                        } else if (dates?.from && !dates?.to) {
-                          // Data única selecionada (temporário)
-                          setTempCustomDate(dates.from);
-                          setTempRangeStartDate(undefined);
-                          setTempRangeEndDate(undefined);
-                        }
-                      }}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                      }
-                      locale={ptBR}
-                      initialFocus
-                      numberOfMonths={2}
-                    />
-                    <div className="p-3 border-t">
-                      <div className="flex gap-2 mb-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={async () => {
-                            try {
-                              const serverDate = await supabaseDataService.getServerDate();
-                              const today = new Date(serverDate + 'T12:00:00');
-                              setTempCustomDate(today);
-                              setTempRangeStartDate(undefined);
-                              setTempRangeEndDate(undefined);
-                            } catch (error) {
-                              const today = new Date();
-                              setTempCustomDate(today);
-                              setTempRangeStartDate(undefined);
-                              setTempRangeEndDate(undefined);
-                            }
-                          }}
-                        >
-                          Hoje
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={async () => {
-                            try {
-                              const serverDate = await supabaseDataService.getServerDate();
-                              const today = new Date(serverDate + 'T12:00:00');
-                              const lastWeek = new Date(today);
-                              lastWeek.setDate(lastWeek.getDate() - 6);
-                              setTempRangeStartDate(lastWeek);
-                              setTempRangeEndDate(today);
-                              setTempCustomDate(undefined);
-                            } catch (error) {
-                              const today = new Date();
-                              const lastWeek = new Date(today);
-                              lastWeek.setDate(lastWeek.getDate() - 6);
-                              setTempRangeStartDate(lastWeek);
-                              setTempRangeEndDate(today);
-                              setTempCustomDate(undefined);
-                            }
-                          }}
-                        >
-                          Últimos 7 dias
-                        </Button>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        onClick={handleApplyCustomPeriod}
-                        disabled={!tempCustomDate && !tempRangeStartDate}
-                      >
-                        Aplicar
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
               )}
             </div>
 
@@ -1197,7 +1044,9 @@ export default function ProjectDashboard() {
             <Card className="animate-fade-in shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">💵 Faturado (Líquido)</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {currentProject?.project_type === 'ADSENSE' ? '💵 Revenue Total' : '💵 Faturado (Líquido)'}
+                  </CardTitle>
                   {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
                     <TooltipProvider>
                       <Tooltip>
@@ -1221,11 +1070,18 @@ export default function ProjectDashboard() {
                               {Math.abs(metrics.organicExcedent.percentage).toFixed(1)}% do faturamento total
                             </div>
                             <div className="text-xs text-muted-foreground border-t pt-1 mt-2">
-                              <div>Faturamento Total: {formatRevenue(metrics.revenue.value)}</div>
+                              <div>
+                                {currentProject?.project_type === 'ADSENSE' ? 'Revenue Total' : 'Faturamento Total'}: {formatRevenue(metrics.revenue.value)}
+                              </div>
                               <div>Campanhas: {formatRevenue(campaignsRevenue)}</div>
                               <div className="font-medium">
                                 {metrics.organicExcedent.value > 0 ? 'Orgânico' : 'Déficit'}: {formatRevenue(Math.abs(metrics.organicExcedent.value))}
                               </div>
+                              {currentProject?.project_type === 'ADSENSE' && (
+                                <div className="text-xs italic mt-1 text-blue-600">
+                                  * AdSense: Revenue sem RevShare
+                                </div>
+                              )}
                             </div>
                           </div>
                         </TooltipContent>
@@ -1287,9 +1143,16 @@ export default function ProjectDashboard() {
                             return (
                               <div className="space-y-1">
                                 <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Faturamento Líquido:</span>
+                                  <span className="text-muted-foreground">
+                                    {currentProject?.project_type === 'ADSENSE' ? 'Revenue Total:' : 'Faturamento Líquido (após RevShare):'}
+                                  </span>
                                   <span className="font-mono text-blue-600">{formatRevenue(calculation.netRevenue)}</span>
                                 </div>
+                                {currentProject?.project_type === 'ADSENSE' && (
+                                  <div className="text-xs text-muted-foreground italic mb-2">
+                                    * Projeto AdSense: Revenue sem desconto de RevShare
+                                  </div>
+                                )}
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Investimento:</span>
                                   <span className="font-mono text-red-600">-{formatCurrency(metrics.investment.value)}</span>
@@ -1429,8 +1292,7 @@ export default function ProjectDashboard() {
           <Card className="shadow-card animate-fade-in">
             <CardHeader>
               <CardTitle>📈 Histórico - {
-                selectedPeriod === '7d' ? 'Últimos 7 dias' :
-                selectedPeriod === '30d' ? 'Últimos 30 dias' :
+                selectedPeriod === 'yesterday' ? 'Ontem' :
                 selectedPeriod === 'range' && selectedDate && selectedEndDate ?
                   `${selectedDate} até ${selectedEndDate}` :
                 `Data: ${format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`

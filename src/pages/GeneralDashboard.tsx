@@ -779,6 +779,7 @@ export default function GeneralDashboard() {
               <RevenueTooltip
                 netRevenue={summary?.totalRevenue || 0}
                 revsharePercentage={0.1}
+                projectType="GAM" // Dashboard geral: mix de projetos, mas mostra como GAM para compatibilidade
               >
                 <div className="text-2xl font-bold text-green-600">{formatRevenue(summary?.totalRevenue || 0)}</div>
               </RevenueTooltip>
@@ -833,8 +834,11 @@ export default function GeneralDashboard() {
                           return (
                             <div className="space-y-1">
                               <div className="flex justify-between">
-                                <span className="text-muted-foreground">Faturamento Líquido (após Rev Share):</span>
+                                <span className="text-muted-foreground">Faturamento Total (pós-processamento):</span>
                                 <span className="font-mono text-blue-600">{formatRevenue(calculation.netRevenue)}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground italic mb-2">
+                                * Inclui GAM (após RevShare) + AdSense (sem RevShare)
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Investimento:</span>
@@ -935,8 +939,11 @@ export default function GeneralDashboard() {
                           return (
                             <div className="space-y-1">
                               <div className="flex justify-between">
-                                <span className="text-muted-foreground">Faturamento Líquido:</span>
+                                <span className="text-muted-foreground">Faturamento Total (pós-processamento):</span>
                                 <span className="font-mono text-blue-600">{formatRevenue(totalRevenue)}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground italic mb-2">
+                                * Inclui GAM (após RevShare) + AdSense (sem RevShare)
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Investimento:</span>
@@ -1085,7 +1092,8 @@ export default function GeneralDashboard() {
                       <div className="text-right flex-shrink-0">
                         <RevenueTooltip
                           netRevenue={campaign.revenue || 0}
-                          revsharePercentage={0.1}
+                          revsharePercentage={project?.revshare || 0.1}
+                          projectType={project?.project_type}
                           showInfo={false}
                         >
                           <div className="text-lg font-bold text-green-600">
@@ -1188,6 +1196,7 @@ export default function GeneralDashboard() {
                         <RevenueTooltip
                           netRevenue={project.revenue}
                           revsharePercentage={project.revshare || 0.1}
+                          projectType={project.project_type}
                           showInfo={false}
                         >
                           <div className="text-lg font-bold text-green-600">
@@ -1241,9 +1250,16 @@ export default function GeneralDashboard() {
                                   return (
                                     <div className="space-y-1">
                                       <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Revenue (após RevShare):</span>
+                                        <span className="text-muted-foreground">
+                                          {project.project_type === 'ADSENSE' ? 'Revenue Total:' : 'Revenue (após RevShare):'}
+                                        </span>
                                         <span className="font-medium text-green-600">{formatRevenue(revenue)}</span>
                                       </div>
+                                      {project.project_type === 'ADSENSE' && (
+                                        <div className="text-xs text-muted-foreground italic mb-2">
+                                          * Projeto AdSense: Revenue sem desconto de RevShare
+                                        </div>
+                                      )}
                                       <div className="flex justify-between">
                                         <span className="text-muted-foreground">- Investimento:</span>
                                         <span className="font-medium text-red-600">-{formatCurrency(investment)}</span>

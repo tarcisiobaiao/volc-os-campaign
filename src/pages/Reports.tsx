@@ -989,6 +989,7 @@ export default function Reports() {
                   <RevenueTooltip
                     netRevenue={reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue}
                     revsharePercentage={0.1}
+                    projectType="GAM" // Reports agregados: deixar como GAM para compatibilidade
                   >
                     <div className="text-2xl font-bold text-green-600">
                       {formatBrlCurrency(reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue)}
@@ -1243,6 +1244,7 @@ export default function Reports() {
                   <RevenueTooltip
                     netRevenue={reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue}
                     revsharePercentage={0.1}
+                    projectType="GAM" // Reports agregados: deixar como GAM para compatibilidade
                   >
                     <p>💰 <strong>Revenue Total (Líquido):</strong> {formatBrlCurrency(reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue)}</p>
                   </RevenueTooltip>
