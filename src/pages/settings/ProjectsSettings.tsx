@@ -38,6 +38,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { supabaseDataService, useSupabaseData, Project } from "@/services/supabaseDataService";
+import { taxHistoryService } from "@/services/taxHistoryService";
 import { supabase } from "@/lib/supabase";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -87,6 +88,7 @@ export default function ProjectsSettings() {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range'>('today');
   const [selectedDate, setSelectedDate] = useState<string>(""); // Will be set dynamically
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
+  const [currentTaxRate, setCurrentTaxRate] = useState<number>(8.1);
   const [selectedProject, setSelectedProject] = useState<string>("all");
 
   // Estados para o filtro customizado - mesma lógica de Reports
@@ -109,6 +111,12 @@ export default function ProjectsSettings() {
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
         console.log('🇧🇷 ProjectsSettings initialized with São Paulo date:', serverDate);
+
+        // Load current tax rate
+        const currentMonth = serverDate.substring(0, 7); // YYYY-MM format
+        const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
+        setCurrentTaxRate(taxRate);
+        console.log('📊 Current tax rate loaded:', taxRate, '%');
       } catch (error) {
         console.error('Error during initialization:', error);
         // Fallback to São Paulo timezone date
@@ -864,7 +872,7 @@ export default function ProjectsSettings() {
                                         // Simular o mesmo cálculo feito no backend
                                         const revenue = project.revenue || 0;
                                         const investment = project.investment || 0;
-                                        const taxRate = 0.081; // 8.1%
+                                        const taxRate = currentTaxRate / 100; // Usar taxa vigente
                                         const taxAmount = revenue * taxRate;
 
                                         // Estimar custo operacional (será 0 se não participa da divisão)
@@ -888,7 +896,7 @@ export default function ProjectsSettings() {
                                               <span className="font-medium text-red-600">-{formatCurrency(investment)}</span>
                                             </div>
                                             <div className="flex justify-between">
-                                              <span className="text-muted-foreground">- Impostos (8,1%):</span>
+                                              <span className="text-muted-foreground">- Impostos ({currentTaxRate}%):</span>
                                               <span className="font-medium text-orange-600">-{formatCurrency(taxAmount)}</span>
                                             </div>
                                             {project.costs_division && estimatedOperationalCost > 0 && (

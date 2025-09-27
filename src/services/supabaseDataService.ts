@@ -4,6 +4,7 @@ import { format, subDays, differenceInDays } from 'date-fns';
 import { currencyConversionService } from './currencyConversionService';
 import { getSaoPauloTimestamp } from '@/utils/timezone';
 import { operationalCostsService } from './operationalCostsService';
+import { taxHistoryService } from './taxHistoryService';
 
 // Types that match the UI components
 export interface Project {
@@ -734,12 +735,17 @@ class SupabaseDataService {
               endDate = filters.date;
             }
 
+            // Get tax rate for the specific month being calculated
+            const currentMonth = startDate.substring(0, 7); // YYYY-MM format
+            const currentTaxRate = await taxHistoryService.getCurrentTaxRate(currentMonth) / 100; // Convert percentage to decimal
+
             netProfitCalculation = await this.calculateProjectNetProfitWithOperationalCosts(
               totalRevenue, // Already revenue after revshare
               totalSpend,
               startDate,
               endDate,
-              project.costs_division || false
+              project.costs_division || false,
+              currentTaxRate
             );
           } catch (error) {
             console.error('Error calculating net profit for project:', project.project_name, error);

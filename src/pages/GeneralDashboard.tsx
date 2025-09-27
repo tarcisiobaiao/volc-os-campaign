@@ -1240,7 +1240,7 @@ export default function GeneralDashboard() {
                                   // Simular o mesmo cálculo feito no backend
                                   const revenue = project.revenue || 0;
                                   const investment = project.investment || 0;
-                                  const taxRate = 0.081; // 8.1%
+                                  const taxRate = currentTaxRate / 100; // Usar taxa vigente
                                   const taxAmount = revenue * taxRate;
                                   const netProfit = project.netProfit || 0;
 
@@ -1265,7 +1265,7 @@ export default function GeneralDashboard() {
                                         <span className="font-medium text-red-600">-{formatCurrency(investment)}</span>
                                       </div>
                                       <div className="flex justify-between">
-                                        <span className="text-muted-foreground">- Impostos (8,1%):</span>
+                                        <span className="text-muted-foreground">- Impostos ({currentTaxRate}%):</span>
                                         <span className="font-medium text-orange-600">-{formatCurrency(taxAmount)}</span>
                                       </div>
                                       {project.costs_division && estimatedOperationalCost > 0 && (
