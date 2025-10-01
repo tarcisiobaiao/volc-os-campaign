@@ -320,23 +320,31 @@ export default function ProjectDashboard() {
     initialize();
   }, []);
 
-  // Load daily operational costs based on selected date
+  // Load tax rate and daily operational costs based on selected date
   React.useEffect(() => {
-    const loadDailyOperationalCosts = async () => {
+    const loadFinancialData = async () => {
       try {
         // Use the month from the selected date being viewed
         const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7); // YYYY-MM
+
+        // Load tax rate for the selected month
+        const taxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
+        setCurrentTaxRate(taxRate);
+        console.log('📊 Tax rate loaded for month:', monthToUse, '=', taxRate, '%');
+
+        // Load daily operational costs for the selected month
         const dailyCosts = await operationalCostsService.getDailyActiveCosts(monthToUse);
         setDailyOperationalCosts(dailyCosts);
         console.log('💼 Daily operational costs loaded for month:', monthToUse, '=', dailyCosts);
       } catch (error) {
-        console.error('Error loading daily operational costs:', error);
+        console.error('Error loading financial data:', error);
+        setCurrentTaxRate(8.1); // Fallback
         setDailyOperationalCosts(0);
       }
     };
 
     if (selectedDate) {
-      loadDailyOperationalCosts();
+      loadFinancialData();
     }
   }, [selectedDate]); // Re-calculate when date changes
 
