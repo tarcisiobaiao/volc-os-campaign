@@ -72,7 +72,10 @@ class OperationalCostsService {
 
   async getCostsByMonth(month: string): Promise<OperationalCost[]> {
     const monthFilter = month.length === 7 ? `${month}-01` : month;
-    
+
+    // Extract year and month for exact filtering
+    const yearMonth = monthFilter.substring(0, 7); // YYYY-MM
+
     const { data, error } = await supabase
       .from('operational_costs')
       .select(`
@@ -84,7 +87,14 @@ class OperationalCostsService {
       .order('name');
 
     if (error) throw error;
-    return data || [];
+
+    // Filter to exact month to avoid duplicates
+    const filteredData = (data || []).filter(cost => {
+      const costYearMonth = cost.month.substring(0, 7);
+      return costYearMonth === yearMonth;
+    });
+
+    return filteredData;
   }
 
   async getCostsByCategory(month: string): Promise<{ [categoryName: string]: OperationalCost[] }> {
@@ -103,7 +113,10 @@ class OperationalCostsService {
   // NEW: Get only ACTIVE costs for calculations
   async getActiveCostsByMonth(month: string): Promise<OperationalCost[]> {
     const monthFilter = month.length === 7 ? `${month}-01` : month;
-    
+
+    // Extract year and month for exact filtering
+    const yearMonth = monthFilter.substring(0, 7); // YYYY-MM
+
     const { data, error } = await supabase
       .from('operational_costs')
       .select(`
@@ -116,7 +129,14 @@ class OperationalCostsService {
       .order('name');
 
     if (error) throw error;
-    return data || [];
+
+    // Filter to exact month to avoid duplicates
+    const filteredData = (data || []).filter(cost => {
+      const costYearMonth = cost.month.substring(0, 7);
+      return costYearMonth === yearMonth;
+    });
+
+    return filteredData;
   }
 
   // NEW: Get only ACTIVE costs grouped by category for calculations

@@ -277,7 +277,7 @@ export default function ProjectDashboard() {
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
         console.log('🇧🇷 Project Dashboard initialized with São Paulo date:', serverDate);
-        
+
         // Preload exchange rate for currency conversion
         await preloadExchangeRate();
         console.log('💱 Exchange rate preloaded');
@@ -287,6 +287,26 @@ export default function ProjectDashboard() {
         const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
         setCurrentTaxRate(taxRate);
         console.log('📊 Current tax rate loaded:', taxRate, '%');
+
+        // AUTO-TRIGGER: Check and copy operational costs for new month (day 1)
+        try {
+          const dataCopied = await operationalCostsService.checkAndCopyMonthData(currentMonth);
+          if (dataCopied) {
+            console.log('✅ Operational costs auto-copied for new month:', currentMonth);
+          }
+        } catch (error) {
+          console.error('⚠️ Error auto-copying operational costs:', error);
+        }
+
+        // AUTO-TRIGGER: Check and create tax record for new month (day 1)
+        try {
+          const taxCreated = await taxHistoryService.checkAndCreateNextMonthTax();
+          if (taxCreated) {
+            console.log('✅ Tax record auto-created for new month:', currentMonth);
+          }
+        } catch (error) {
+          console.error('⚠️ Error auto-creating tax record:', error);
+        }
       } catch (error) {
         console.error('Error during initialization:', error);
         // Fallback to São Paulo timezone date
@@ -300,22 +320,25 @@ export default function ProjectDashboard() {
     initialize();
   }, []);
 
-  // Load daily operational costs
+  // Load daily operational costs based on selected date
   React.useEffect(() => {
     const loadDailyOperationalCosts = async () => {
       try {
-        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-        const dailyCosts = await operationalCostsService.getDailyActiveCosts(currentMonth);
+        // Use the month from the selected date being viewed
+        const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7); // YYYY-MM
+        const dailyCosts = await operationalCostsService.getDailyActiveCosts(monthToUse);
         setDailyOperationalCosts(dailyCosts);
-        console.log('💼 Daily operational costs loaded:', dailyCosts);
+        console.log('💼 Daily operational costs loaded for month:', monthToUse, '=', dailyCosts);
       } catch (error) {
         console.error('Error loading daily operational costs:', error);
         setDailyOperationalCosts(0);
       }
     };
 
-    loadDailyOperationalCosts();
-  }, []);
+    if (selectedDate) {
+      loadDailyOperationalCosts();
+    }
+  }, [selectedDate]); // Re-calculate when date changes
 
   // Use filtered data based on current selections - TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   const filters = {
