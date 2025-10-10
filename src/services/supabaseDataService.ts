@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase, DatabaseProject, DatabaseCampaign, DatabaseDailyProjectMetrics, DatabaseDailyCampaignMetrics, DatabaseUrlDailyPerformance } from '@/lib/supabase';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { currencyConversionService } from './currencyConversionService';
@@ -579,7 +579,8 @@ class SupabaseDataService {
             let spendQuery = supabase
               .from('daily_campaign_metrics')
               .select('*')
-              .in('campaign_id', campaignIdsForSpend);
+              .in('campaign_id', campaignIdsForSpend)
+              .limit(50000); // Aumentar limite para evitar perda de dados
 
             // Apply date filters for spend
             if (filters?.period === 'today' && filters?.date) {
@@ -633,7 +634,8 @@ class SupabaseDataService {
           let projectRevenueQuery = supabase
             .from('daily_project_metrics')
             .select('revenue_converted_revshare')
-            .eq('project_id', project.id);
+            .eq('project_id', project.id)
+            .limit(50000); // Aumentar limite para evitar perda de dados
 
           // Apply date filters based on period
           if (filters?.period === 'today' && filters?.date) {
@@ -1014,7 +1016,8 @@ class SupabaseDataService {
         .from('daily_project_metrics')
         .select('date, revenue_converted_revshare, project_id')
         .gte('date', startDateStr)
-        .lte('date', endDate);
+        .lte('date', endDate)
+        .limit(50000); // Aumentar limite para evitar perda de dados
 
       if (projectId && projectId !== 'all') {
         revenueQuery = revenueQuery.eq('project_id', parseInt(projectId));
@@ -1035,7 +1038,8 @@ class SupabaseDataService {
           campaigns!inner(project_id)
         `)
         .gte('date', startDateStr)
-        .lte('date', endDate);
+        .lte('date', endDate)
+        .limit(50000); // Aumentar limite para evitar perda de dados
 
       if (projectId && projectId !== 'all') {
         spendQuery = spendQuery.eq('campaigns.project_id', parseInt(projectId));
@@ -1271,7 +1275,8 @@ class SupabaseDataService {
         let revenueQuery = supabase
           .from('daily_project_metrics')
           .select('revenue_converted_revshare')
-          .eq('date', targetDate);
+          .eq('date', targetDate)
+          .limit(50000); // Aumentar limite para evitar perda de dados
 
         // Aplicar filtro de projeto se especificado
         if (projectId && projectId !== 'all') {
@@ -1327,18 +1332,32 @@ class SupabaseDataService {
             .from('daily_campaign_metrics')
             .select('spend, campaigns!inner(project_id)')
             .eq('date', targetDate)
-            .eq('campaigns.project_id', parseInt(projectId));
+            .eq('campaigns.project_id', parseInt(projectId))
+            .limit(50000); // Aumentar limite para evitar perda de dados
         } else {
           spendQuery = supabase
             .from('daily_campaign_metrics')
             .select('spend')
-            .eq('date', targetDate);
+            .eq('date', targetDate)
+            .limit(50000); // Aumentar limite para evitar perda de dados
         }
 
         const { data: spendData, error: spendError } = await spendQuery;
         let todayTotalSpend = 0;
 
         if (!spendError && spendData) {
+          // 🔍 DEBUGGING DETALHADO: Verificar se há duplicação
+          const uniqueCampaignIds = [...new Set(spendData.map((d: any) => d.campaign_id))];
+          const spendByCampaign = spendData.reduce((acc: any, item: any) => {
+            const campaignId = item.campaign_id || 'unknown';
+            if (!acc[campaignId]) {
+              acc[campaignId] = { count: 0, total: 0 };
+            }
+            acc[campaignId].count++;
+            acc[campaignId].total += Number(item.spend) || 0;
+            return acc;
+          }, {});
+
           todayTotalSpend = spendData.reduce((sum, item) => sum + (Number(item.spend) || 0), 0);
 
           console.log('✅ TODAY spend calculation from daily_campaign_metrics:', {
@@ -1347,6 +1366,8 @@ class SupabaseDataService {
             recordCount: spendData.length,
             totalSpend: todayTotalSpend
           });
+        } else if (spendError) {
+          console.error('❌ Erro ao buscar spend para TODAY:', spendError);
         }
 
         // ✅ OTIMIZAÇÃO CONCLUÍDA: A lógica GAM antiga foi substituída pela consulta direta
@@ -1467,7 +1488,8 @@ class SupabaseDataService {
         .from('daily_project_metrics')
         .select('revenue_converted_revshare')
         .gte('date', startDateStr)
-        .lte('date', endDateStr);
+        .lte('date', endDateStr)
+        .limit(50000); // Aumentar limite para evitar perda de dados em períodos longos
 
       if (projectId && projectId !== 'all') {
         revenueQuery = revenueQuery.eq('project_id', parseInt(projectId));
@@ -1476,29 +1498,53 @@ class SupabaseDataService {
         console.log('🏠 RANGE: General dashboard mode - no project filter');
       }
 
-      // 2. SPEND: Consulta otimizada na daily_campaign_metrics para RANGE
-      let spendQuery;
+      // 2. SPEND: Consulta otimizada na daily_campaign_metrics para RANGE COM PAGINAÇÃO
+      let spendData: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      if (projectId && projectId !== 'all') {
-        spendQuery = supabase
-          .from('daily_campaign_metrics')
-          .select('spend, campaigns!inner(project_id)')
-          .gte('date', startDateStr)
-          .lte('date', endDateStr)
-          .eq('campaigns.project_id', parseInt(projectId));
-      } else {
-        spendQuery = supabase
-          .from('daily_campaign_metrics')
-          .select('spend')
-          .gte('date', startDateStr)
-          .lte('date', endDateStr);
+      while (hasMore) {
+        let spendQuery;
+
+        if (projectId && projectId !== 'all') {
+          spendQuery = supabase
+            .from('daily_campaign_metrics')
+            .select('spend, campaigns!inner(project_id)')
+            .gte('date', startDateStr)
+            .lte('date', endDateStr)
+            .eq('campaigns.project_id', parseInt(projectId))
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+        } else {
+          spendQuery = supabase
+            .from('daily_campaign_metrics')
+            .select('spend')
+            .gte('date', startDateStr)
+            .lte('date', endDateStr)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+        }
+
+        const { data: pageData, error: spendError } = await spendQuery;
+
+        if (spendError) {
+          console.error('❌ Spend query error for RANGE (page ' + page + '):', spendError);
+          throw spendError;
+        }
+
+        if (pageData && pageData.length > 0) {
+          spendData.push(...pageData);
+          page++;
+          hasMore = pageData.length === pageSize;
+          console.log(`📄 RANGE Página ${page} carregada: ${pageData.length} registros (total: ${spendData.length})`);
+        } else {
+          hasMore = false;
+        }
       }
-      
-      // Executar consultas otimizadas
-      const [
-        { data: revenueData, error: revenueError },
-        { data: spendData, error: spendError }
-      ] = await Promise.all([revenueQuery, spendQuery]);
+
+      console.log(`✅ RANGE Paginação de spend completa: ${spendData.length} registros em ${page} páginas`);
+
+      // Executar consulta de revenue
+      const { data: revenueData, error: revenueError } = await revenueQuery;
 
       if (revenueError) {
         console.error('❌ Revenue query error for RANGE:', revenueError);
@@ -1510,7 +1556,7 @@ class SupabaseDataService {
         throw spendError;
       }
 
-      console.log('📊 RANGE data results OTIMIZADO:', {
+      console.log('📊 RANGE data results:', {
         revenueRecords: revenueData?.length || 0,
         spendRecords: spendData?.length || 0,
         dateRange: `${startDateStr} to ${endDateStr}`,
@@ -1526,12 +1572,11 @@ class SupabaseDataService {
         return sum + (Number(item.spend) || 0);
       }, 0);
 
-      console.log('💰 RANGE TOTALS CALCULATED (OTIMIZADO):', {
+      console.log('💰 RANGE TOTALS CALCULATED:', {
         totalRevenueAfterRevshare,
         totalSpend,
         dateRange: `${startDateStr} to ${endDateStr}`,
-        period,
-        source: 'daily_project_metrics_OTIMIZADO'
+        period
       });
       // 🚀 USAR VALORES JÁ CALCULADOS (evitar duplicação)
       const totalRevenue = totalRevenueAfterRevshare; // Para compatibilidade
@@ -1839,7 +1884,8 @@ class SupabaseDataService {
           .from('daily_project_metrics')
           .select('revenue_converted_revshare, date, project_id')
           .gte('date', filters.date)
-          .lte('date', filters.endDate);
+          .lte('date', filters.endDate)
+          .limit(50000); // Aumentar limite para evitar perda de dados
 
         // Apply project filter if specified
         if (filters.projectId && filters.projectId !== 'all') {
@@ -1852,7 +1898,7 @@ class SupabaseDataService {
           throw revenueError;
         }
 
-        // Step 2: Get spend data from campaigns
+        // Step 2: Get spend data from campaigns WITH PAGINATION
         let spendData: any[] = [];
         if (filters.projectId && filters.projectId !== 'all') {
           // For specific project, get campaigns and their spend
@@ -1863,27 +1909,60 @@ class SupabaseDataService {
 
           if (projectCampaigns && projectCampaigns.length > 0) {
             const campaignIds = projectCampaigns.map(c => c.id);
-            const { data: campaignSpendData } = await supabase
-              .from('daily_campaign_metrics')
-              .select('spend, date')
-              .in('campaign_id', campaignIds)
-              .gte('date', filters.date)
-              .lte('date', filters.endDate);
 
-            spendData = campaignSpendData || [];
+            // 🚀 PAGINAÇÃO: Buscar em lotes para evitar limite de 1000
+            const pageSize = 1000;
+            let page = 0;
+            let hasMore = true;
+
+            while (hasMore) {
+              const { data: campaignSpendData } = await supabase
+                .from('daily_campaign_metrics')
+                .select('spend, date')
+                .in('campaign_id', campaignIds)
+                .gte('date', filters.date)
+                .lte('date', filters.endDate)
+                .range(page * pageSize, (page + 1) * pageSize - 1);
+
+              if (campaignSpendData && campaignSpendData.length > 0) {
+                spendData.push(...campaignSpendData);
+                page++;
+                hasMore = campaignSpendData.length === pageSize;
+              } else {
+                hasMore = false;
+              }
+            }
+
+            console.log(`📊 Paginação completa para projeto específico: ${spendData.length} registros em ${page} páginas`);
           }
         } else {
-          // For all projects, get all spend data
-          const { data: allSpendData } = await supabase
-            .from('daily_campaign_metrics')
-            .select('spend, date')
-            .gte('date', filters.date)
-            .lte('date', filters.endDate);
+          // For all projects, get all spend data WITH PAGINATION
+          const pageSize = 1000;
+          let page = 0;
+          let hasMore = true;
 
-          spendData = allSpendData || [];
+          while (hasMore) {
+            const { data: allSpendData } = await supabase
+              .from('daily_campaign_metrics')
+              .select('spend, date')
+              .gte('date', filters.date)
+              .lte('date', filters.endDate)
+              .range(page * pageSize, (page + 1) * pageSize - 1);
+
+            if (allSpendData && allSpendData.length > 0) {
+              spendData.push(...allSpendData);
+              page++;
+              hasMore = allSpendData.length === pageSize;
+              console.log(`📄 Página ${page} carregada: ${allSpendData.length} registros (total acumulado: ${spendData.length})`);
+            } else {
+              hasMore = false;
+            }
+          }
+
+          console.log(`✅ Paginação completa: ${spendData.length} registros totais em ${page} páginas`);
         }
 
-        console.log(`📦 Optimized query complete:`, {
+        console.log(`📦 Query complete:`, {
           revenueRecords: revenueData?.length || 0,
           spendRecords: spendData?.length || 0
         });
@@ -2733,6 +2812,69 @@ class SupabaseDataService {
   }
 
 
+  // 🛡️ FALLBACK: Buscar campanhas diretamente quando RPC falhar
+  private async getCampaignsWithRevenueDirectFallback(
+    filters: { projectId?: string; period?: string; },
+    startDate: string,
+    endDate: string
+  ): Promise<Campaign[]> {
+    try {
+      console.log('🔄 Usando fallback direto para buscar campanhas');
+
+      // Buscar todas as campanhas ativas
+      let campaignsQuery = supabase
+        .from('campaigns')
+        .select('*')
+        .eq('active', true);
+
+      if (filters.projectId && filters.projectId !== 'all') {
+        campaignsQuery = campaignsQuery.eq('project_id', parseInt(filters.projectId));
+      }
+
+      const { data: campaigns, error: campaignsError } = await campaignsQuery;
+
+      if (campaignsError) {
+        console.error('❌ Erro ao buscar campanhas no fallback:', campaignsError);
+        return [];
+      }
+
+      if (!campaigns || campaigns.length === 0) {
+        console.log('⚠️ Nenhuma campanha encontrada no fallback');
+        return [];
+      }
+
+      console.log(`✅ Fallback: ${campaigns.length} campanhas encontradas`);
+
+      // Mapear para formato Campaign
+      return campaigns.map((campaign: any) => ({
+        id: campaign.campaign_id?.toString() || campaign.id?.toString(),
+        name: campaign.campaign_name || 'Unnamed Campaign',
+        projectId: campaign.project_id?.toString() || '1',
+        status: campaign.status === 'Active' || campaign.status === 'ENABLED' ? 'active' : 'paused',
+        performance: 'unknown',
+        investment: 0,
+        revenue: 0,
+        roas: 0,
+        impressions: 0,
+        clicks: 0,
+        ctr: 0,
+        startDate: campaign.start_date,
+        endDate: campaign.end_date,
+        utmCampaignValue: campaign.campaign_id || campaign.utm_campaign_value,
+        extractedUrl: undefined,
+        extractedDomain: undefined,
+        customGoal: campaign.custom_goal || undefined,
+        statusSource: 'auto',
+        userPausedAt: undefined,
+        userPausedBy: undefined
+      })) as Campaign[];
+
+    } catch (error) {
+      console.error('❌ Erro no fallback getCampaignsWithRevenueDirectFallback:', error);
+      return [];
+    }
+  }
+
   // OTIMIZADO: Server-side aggregation usando RPC - reduz egress drasticamente
   private async getCampaignsWithRevenueFiltered(filters: {
     projectId?: string;
@@ -2851,19 +2993,24 @@ class SupabaseDataService {
 
       if (rpcError) {
         console.error('❌ Error calling get_campaigns_aggregated RPC:', rpcError);
-        throw rpcError;
+        console.warn('⚠️ RPC falhou - usando fallback para buscar campanhas diretamente');
+
+        // 🛡️ FALLBACK: Se RPC falhar, buscar campanhas diretamente
+        return await this.getCampaignsWithRevenueDirectFallback(filters, startDate, endDate);
       }
 
       if (!aggregatedCampaigns || aggregatedCampaigns.length === 0) {
-        console.log('❌ No campaigns found for filters');
-        return [];
+        console.log('⚠️ RPC retornou 0 campanhas - usando fallback');
+
+        // 🛡️ FALLBACK: Se RPC retornar vazio, buscar diretamente para confirmar
+        return await this.getCampaignsWithRevenueDirectFallback(filters, startDate, endDate);
       }
 
       console.log(`🚀 SERVER-SIDE AGGREGATION: Received ${aggregatedCampaigns.length} pre-aggregated campaigns - MASSIVE EGRESS REDUCTION!`);
 
       // Convert RPC results to Campaign format
       const activeCampaigns = aggregatedCampaigns
-        .filter((c: any) => c.aggregated_revenue > 0 || c.aggregated_spend > 0)
+        // 🛡️ NÃO FILTRAR campanhas com revenue/spend = 0, pois campanhas novas podem ter dados vazios temporariamente
         .map((campaign: any) => {
           // Validation: Check if campaign revenue seems unrealistic
           if (Number(campaign.aggregated_revenue) > 100000) {
@@ -3133,7 +3280,8 @@ class SupabaseDataService {
       let metricsQuery = supabase
         .from('daily_campaign_metrics')
         .select('spend, revenue_converted_revshare')
-        .in('campaign_id', campaignIds);
+        .in('campaign_id', campaignIds)
+        .limit(50000); // Aumentar limite para evitar perda de dados
 
       // Apply date filters
       if (endDate && endDate !== startDate) {
@@ -3481,11 +3629,6 @@ export const useSupabaseData = (filters?: {
         metrics: metricsData.length,
         summary: summaryData
       });
-      console.log('🔍 HOOK DEBUG - Summary data details:', {
-        totalInvestment: summaryData?.totalInvestment,
-        totalRevenue: summaryData?.totalRevenue,
-        filterOptions
-      });
 
       setProjects(projectsData);
       setCampaigns(campaignsData);
@@ -3503,11 +3646,12 @@ export const useSupabaseData = (filters?: {
     console.log('🔄 useSupabaseData: Effect triggered', {
       hasFilters: !!filters,
       hasDate: !!filters?.date,
+      hasEndDate: !!filters?.endDate,
       projectId: filters?.projectId
     });
     console.log('✅ useSupabaseData: Fetching data with filters', filters);
     fetchData();
-  }, [filters?.date, filters?.projectId, filters?.period]);
+  }, [filters?.date, filters?.endDate, filters?.projectId, filters?.period]);
 
   const refresh = (newFilters?: typeof filters) => {
     supabaseDataService.refreshData();

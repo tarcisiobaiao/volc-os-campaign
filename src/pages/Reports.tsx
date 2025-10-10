@@ -130,6 +130,7 @@ export default function Reports() {
 
   const { projects, campaigns, dailyMetrics, summary, loading, error, lastUpdate, refresh } = useSupabaseData(filters);
 
+
   // Funções de cálculo - versão correta
   const calculateNetProfitAfterTax = (grossProfit: number, taxRate: number) => {
     // Esta função mantida para compatibilidade, mas agora é apenas um wrapper
@@ -975,7 +976,19 @@ export default function Reports() {
                   <div className="text-2xl font-bold text-red-600">
                     {formatCostCurrency(reportData.summary.totalInvestment)}
                   </div>
-                  <p className="text-xs text-muted-foreground">{reportData.period}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedPeriod === 'range' && selectedDate && selectedEndDate ? (
+                      <>
+                        {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM', { locale: ptBR })} a {format(new Date(selectedEndDate + 'T12:00:00'), 'dd/MM', { locale: ptBR })}
+                        ({(() => {
+                          const start = new Date(selectedDate + 'T00:00:00');
+                          const end = new Date(selectedEndDate + 'T00:00:00');
+                          const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                          return diffDays;
+                        })()} dias)
+                      </>
+                    ) : reportData.period}
+                  </p>
                 </CardContent>
               </Card>
 
