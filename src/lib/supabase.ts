@@ -94,12 +94,13 @@ export interface DatabaseDailyCampaignMetrics {
 }
 
 export interface DatabaseUser {
-  id: number
+  id: string // UUID
   name: string
   email: string
   password_hash?: string
-  role: 'ADMIN' | 'OPERATOR' | 'VIEWER'
-  google_oauth_id?: string
+  role: 'ADMIN' | 'OPERATOR'
+  needs_password_change?: boolean
+  first_login?: boolean
   created_at: string
   updated_at: string
 }

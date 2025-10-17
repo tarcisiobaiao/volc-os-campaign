@@ -3,12 +3,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Home, 
-  BarChart3, 
-  Settings, 
-  FileText, 
-  Menu, 
+import {
+  Home,
+  BarChart3,
+  Settings,
+  FileText,
+  Menu,
   X,
   FolderOpen,
   Megaphone,
@@ -16,7 +16,8 @@ import {
   Zap,
   Sparkles,
   LogOut,
-  User
+  User,
+  Users
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,51 +28,71 @@ interface NavigationProps {
   setIsCollapsed: (collapsed: boolean) => void;
 }
 
-const navigationItems = [
+interface NavigationItem {
+  title: string;
+  href: string;
+  icon: any;
+  description: string;
+  adminOnly?: boolean;
+}
+
+const navigationItems: NavigationItem[] = [
   {
     title: "Dashboard Geral",
     href: "/",
     icon: Home,
-    description: "Visão geral de todas as campanhas"
+    description: "Visão geral de todas as campanhas",
+    adminOnly: true // Apenas admin vê o dashboard geral
   },
   {
     title: "Projetos",
     href: "/dashboard/projects",
     icon: FolderOpen,
-    description: "Gerenciar projetos"
+    description: "Gerenciar projetos",
+    adminOnly: true // Apenas admin vê projetos
   },
   {
     title: "Campanhas",
     href: "/settings/campaigns",
     icon: Megaphone,
-    description: "Configurar campanhas"
+    description: "Ver e configurar campanhas"
   },
   {
     title: "Relatórios",
     href: "/reports",
     icon: FileText,
-    description: "Relatórios e análises avançadas"
+    description: "Relatórios e análises avançadas",
+    adminOnly: true // Apenas admin vê relatórios
   }
 ];
 
-const configurationItems = [
+const configurationItems: NavigationItem[] = [
   {
     title: "Custos",
     href: "/settings/costs",
     icon: DollarSign,
-    description: "Definir custos e orçamentos"
+    description: "Definir custos e orçamentos",
+    adminOnly: true // Apenas admin vê custos
   },
   {
     title: "Integrações",
     href: "/settings/integrations",
     icon: Zap,
-    description: "Google Ads e Ad Manager"
+    description: "Google Ads e Ad Manager",
+    adminOnly: true // Apenas admin vê integrações
+  },
+  {
+    title: "Usuários",
+    href: "/settings/users",
+    icon: Users,
+    description: "Gerenciar usuários e permissões",
+    adminOnly: true
   }
 ];
 
 export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollapsed }) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -90,7 +111,7 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
     }
   };
 
-  const NavItem = ({ item, isActive }: { item: typeof navigationItems[0]; isActive: boolean }) => (
+  const NavItem = ({ item, isActive }: { item: NavigationItem; isActive: boolean }) => (
     <Link to={item.href}>
       <Button
         variant={isActive ? "secondary" : "ghost"}
@@ -166,35 +187,50 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
               </h3>
             )}
             <nav className="space-y-2">
-              {navigationItems.map((item) => (
-                <NavItem
-                  key={item.href}
-                  item={item}
-                  isActive={location.pathname === item.href}
-                />
-              ))}
+              {navigationItems.map((item) => {
+                // Filtrar itens adminOnly para operadores
+                if (item.adminOnly && userProfile?.role !== 'ADMIN') {
+                  return null;
+                }
+                return (
+                  <NavItem
+                    key={item.href}
+                    item={item}
+                    isActive={location.pathname === item.href}
+                  />
+                );
+              })}
             </nav>
           </div>
 
-          <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
-
-          {/* Configuration */}
-          <div>
-            {!isCollapsed && (
-              <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Configurações
-              </h3>
-            )}
-            <nav className="space-y-2">
-              {configurationItems.map((item) => (
-                <NavItem
-                  key={item.href}
-                  item={item}
-                  isActive={location.pathname === item.href}
-                />
-              ))}
-            </nav>
-          </div>
+          {/* Separator e Configuration - Ocultar seção inteira para OPERATORs */}
+          {userProfile?.role !== 'OPERATOR' && (
+            <>
+              <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
+            <div>
+              {!isCollapsed && (
+                <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Configurações
+                </h3>
+              )}
+              <nav className="space-y-2">
+                {configurationItems.map((item) => {
+                  // Hide admin-only items from non-admin users
+                  if (item.adminOnly && userProfile?.role !== 'ADMIN') {
+                    return null;
+                  }
+                  return (
+                    <NavItem
+                      key={item.href}
+                      item={item}
+                      isActive={location.pathname === item.href}
+                    />
+                  );
+                })}
+              </nav>
+            </div>
+            </>
+          )}
         </div>
       </ScrollArea>
 

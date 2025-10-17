@@ -61,6 +61,9 @@ import { formatBrlCurrency, formatCostCurrency, getCachedExchangeRate, preloadEx
 import { calculateROAS, getROASColorStyles, getROASBadgeColor, getROASColorCategory } from "@/utils/roasCalculations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { useUserFilters } from "@/hooks/useUserFilters";
 
 const integrationStatus = [
   { name: "Google Ads", status: "online", lastSync: "2 min atrás" },
@@ -96,11 +99,30 @@ export default function GeneralDashboard() {
   const [currentTaxRate, setCurrentTaxRate] = useState<number>(8.1);
   const [dailyOperationalCosts, setDailyOperationalCosts] = useState<number>(0);
   const { getUserFirstName } = useUserProfile();
+  const { userProfile } = useAuth();
+  const [userProjectIds, setUserProjectIds] = useState<number[]>([]);
   
+  // Fetch user projects for OPERATOR users
+  React.useEffect(() => {
+    const fetchUserProjects = async () => {
+      if (userProfile?.role === 'OPERATOR' && userProfile.id) {
+        const { data, error } = await supabase
+          .from('user_projects')
+          .select('project_id')
+          .eq('user_id', userProfile.id);
+
+        if (!error && data) {
+          setUserProjectIds(data.map(up => up.project_id));
+        }
+      }
+    };
+    fetchUserProjects();
+  }, [userProfile]);
+
   // Initialize with current server date (São Paulo timezone) and preload exchange rate
   React.useEffect(() => {
     const initialize = async () => {
-      try {
+      try{
         // Initialize date
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
@@ -150,12 +172,18 @@ export default function GeneralDashboard() {
     initialize();
   }, []);
   
+  // Get user filters for operators
+  const { allowedProjectIds, allowedCampaignIds, isLoading: filtersLoading } = useUserFilters();
+
   // Use filtered data based on current selections - sempre mostra todos os projetos
   // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
+  // IMPORTANTE: Só passar os filtros se tiverem valores (não passar arrays vazios)
   const filters = {
     date: selectedDate,
     projectId: 'all', // Sempre todos os projetos no dashboard geral
-    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
+    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod,
+    ...(allowedProjectIds.length > 0 && { userProjectIds: allowedProjectIds }),
+    ...(allowedCampaignIds.length > 0 && { userCampaignIds: allowedCampaignIds })
   };
 
   // Debug: Log current filters for monitoring
@@ -1203,6 +1231,13 @@ export default function GeneralDashboard() {
                 </thead>
                 <tbody>
                   {projects
+                    .filter(project => {
+                      // Filter by user projects for OPERATOR users
+                      if (userProfile?.role === 'OPERATOR') {
+                        return userProjectIds.includes(project.id);
+                      }
+                      return true;
+                    })
                     .sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
                     .map((project, index) => (
                     <tr key={index} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/project/${project.id}`)}>

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { OperatorRedirect } from "@/components/OperatorRedirect";
 import Index from "./pages/Index";
 import GeneralDashboard from "./pages/GeneralDashboard";
 import SimpleTest from "./pages/SimpleTest";
@@ -15,7 +16,9 @@ import ProjectsSettings from "./pages/settings/ProjectsSettings";
 import CampaignsSettings from "./pages/settings/CampaignsSettings";
 import CostsSettings from "./pages/settings/CostsSettings";
 import IntegrationsSettings from "./pages/settings/IntegrationsSettings";
+import UsersSettings from "./pages/settings/UsersSettings";
 import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,7 +32,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><GeneralDashboard /></ProtectedRoute>} />
+            <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute><OperatorRedirect><GeneralDashboard /></OperatorRedirect></ProtectedRoute>} />
             <Route path="/test" element={<ProtectedRoute><SimpleTest /></ProtectedRoute>} />
             <Route path="/dashboard/projects" element={<ProtectedRoute><ProjectsSettings /></ProtectedRoute>} />
             <Route path="/dashboard/campaign/:campaignId" element={<ProtectedRoute><CampaignDetailDashboard /></ProtectedRoute>} />
@@ -39,6 +43,7 @@ const App = () => (
             <Route path="/settings/campaigns" element={<ProtectedRoute><CampaignsSettings /></ProtectedRoute>} />
             <Route path="/settings/costs" element={<ProtectedRoute><CostsSettings /></ProtectedRoute>} />
             <Route path="/settings/integrations" element={<ProtectedRoute><IntegrationsSettings /></ProtectedRoute>} />
+            <Route path="/settings/users" element={<ProtectedRoute><UsersSettings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 
-export type UserRole = 'ADMIN' | 'OPERATOR' | 'VIEWER' | null;
+export type UserRole = 'ADMIN' | 'OPERATOR' | null;
 
 export function useUserRole() {
   const { userProfile } = useAuth();
@@ -11,10 +11,6 @@ export function useUserRole() {
 
   const isOperator = (): boolean => {
     return userProfile?.role === 'OPERATOR';
-  };
-
-  const isViewer = (): boolean => {
-    return userProfile?.role === 'VIEWER';
   };
 
   const canManageCategories = (): boolean => {
@@ -36,7 +32,6 @@ export function useUserRole() {
     role: userProfile?.role as UserRole,
     isAdmin,
     isOperator,
-    isViewer,
     canManageCategories,
     canEditCosts,
     canViewCosts

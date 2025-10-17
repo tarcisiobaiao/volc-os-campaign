@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserProfile {
-  id?: number;
+  id?: string; // UUID
   name?: string;
   email?: string;
-  role?: 'ADMIN' | 'OPERATOR' | 'VIEWER';
+  role?: 'ADMIN' | 'OPERATOR';
   created_at?: string;
   updated_at?: string;
 }

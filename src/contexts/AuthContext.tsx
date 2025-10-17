@@ -3,10 +3,11 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export interface UserProfile {
-  id?: number;
+  id?: string; // UUID
   name?: string;
   email?: string;
-  role?: 'ADMIN' | 'OPERATOR' | 'VIEWER';
+  role?: 'ADMIN' | 'OPERATOR';
+  needs_password_change?: boolean;
   created_at?: string;
   updated_at?: string;
 }

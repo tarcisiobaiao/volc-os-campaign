@@ -45,6 +45,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
 import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectIntegration {
   googleAds: {
@@ -65,9 +66,11 @@ interface ProjectIntegration {
 
 export default function ProjectsSettings() {
   console.log('🚀 ProjectsSettings component started loading');
-  
+
   const navigate = useNavigate();
+  const { userProfile } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
+  const [userProjectIds, setUserProjectIds] = useState<number[]>([]);
   const [selectedProjectItem, setSelectedProjectItem] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({
     name: "",
@@ -103,6 +106,23 @@ export default function ProjectsSettings() {
   // Sort state
   const [sortBy, setSortBy] = useState<'revenue' | 'investment' | 'roi'>('revenue');
   
+  // Fetch user projects for OPERATOR users
+  useEffect(() => {
+    const fetchUserProjects = async () => {
+      if (userProfile?.role === 'OPERATOR' && userProfile.id) {
+        const { data, error } = await supabase
+          .from('user_projects')
+          .select('project_id')
+          .eq('user_id', userProfile.id);
+
+        if (!error && data) {
+          setUserProjectIds(data.map(up => up.project_id));
+        }
+      }
+    };
+    fetchUserProjects();
+  }, [userProfile]);
+
   // Initialize with current server date (São Paulo timezone)
   useEffect(() => {
     const initialize = async () => {
@@ -319,10 +339,20 @@ export default function ProjectsSettings() {
   };
 
 
-  const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.domain.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProjects = projects.filter(project => {
+    // Filter by search term
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.domain.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by user projects for OPERATOR users
+    if (userProfile?.role === 'OPERATOR') {
+      // Converter project.id para number se necessário para comparação
+      const projectId = typeof project.id === 'string' ? parseInt(project.id) : project.id;
+      return matchesSearch && userProjectIds.includes(projectId);
+    }
+
+    return matchesSearch;
+  });
 
   const handleAddProject = async () => {
     if (!newProject.name.trim() || !newProject.gamNetworkCode.trim() || !newProject.revenueShare.trim()) {
@@ -504,14 +534,16 @@ export default function ProjectsSettings() {
               </h1>
               <p className="text-muted-foreground mt-2">
                 Configure e gerencie seus projetos e integrações
-                <span className="ml-2 text-primary">• {projects.length} projetos carregados</span>
+                <span className="ml-2 text-primary">• {filteredProjects.length} projeto{filteredProjects.length !== 1 ? 's' : ''} {userProfile?.role === 'OPERATOR' ? 'atribuído' : 'carregado'}{filteredProjects.length !== 1 ? 's' : ''}</span>
               </p>
             </div>
           </div>
-          <Button onClick={addModal.openModal} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Projeto
-          </Button>
+          {userProfile?.role !== 'OPERATOR' && (
+            <Button onClick={addModal.openModal} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Novo Projeto
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -733,12 +765,14 @@ export default function ProjectsSettings() {
                 Gerenciamento completo dos seus projetos
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={addModal.openModal} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Novo Projeto
-              </Button>
-            </div>
+            {userProfile?.role !== 'OPERATOR' && (
+              <div className="flex gap-2">
+                <Button onClick={addModal.openModal} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Novo Projeto
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {filteredProjects.length === 0 ? (

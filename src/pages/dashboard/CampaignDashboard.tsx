@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { Layout } from "@/components/layout/Layout";
 import { useSupabaseData, Project } from "@/services/supabaseDataService";
 import { useCurrencyConverter } from "@/services/currencyConversionService";
+import { useUserFilters } from "@/hooks/useUserFilters";
 
 // Types
 interface DashboardFilters {
@@ -131,12 +132,18 @@ const EmptyState = () => (
 export default function CampaignDashboard() {
   const [filters, setFilters] = useState<DashboardFilters>({
     projectId: "",
-    campaignId: "all", 
+    campaignId: "all",
     dateRange: undefined,
     period: "7d"
   });
-  
-  const { projects, campaigns, dailyMetrics, loading, error, refresh } = useSupabaseData();
+
+  // Get user filters for operators
+  const { allowedProjectIds, allowedCampaignIds, isLoading: filtersLoading } = useUserFilters();
+
+  const { projects, campaigns, dailyMetrics, loading, error, refresh } = useSupabaseData({
+    userProjectIds: allowedProjectIds,
+    userCampaignIds: allowedCampaignIds
+  });
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
   // Currency conversion hook

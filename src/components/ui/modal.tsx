@@ -37,7 +37,7 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -46,13 +46,13 @@ export const Modal: React.FC<ModalProps> = ({
       
       {/* Modal Content */}
       <div className={cn(
-        "relative bg-card border border-border rounded-lg shadow-dashboard w-full animate-scale-in",
+        "relative bg-card border border-border rounded-lg shadow-dashboard w-full animate-scale-in flex flex-col max-h-[90vh]",
         sizeClasses[size],
         className
       )}>
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
             <div>
               {title && (
                 <h2 className="text-lg font-semibold text-foreground">{title}</h2>
@@ -74,8 +74,8 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
         )}
         
-        {/* Body */}
-        <div className="p-6">
+        {/* Body - Scrollable */}
+        <div className="p-6 overflow-y-auto flex-1">
           {children}
         </div>
       </div>
@@ -86,15 +86,19 @@ export const Modal: React.FC<ModalProps> = ({
 // Hook para controlar modal
 export const useModal = () => {
   const [isOpen, setIsOpen] = React.useState(false);
-  
-  const openModal = () => setIsOpen(true);
-  const closeModal = () => setIsOpen(false);
-  const toggleModal = () => setIsOpen(!isOpen);
-  
+
+  const open = () => setIsOpen(true);
+  const close = () => setIsOpen(false);
+  const toggle = () => setIsOpen(!isOpen);
+
   return {
     isOpen,
-    openModal,
-    closeModal,
-    toggleModal
+    open,
+    close,
+    toggle,
+    // Aliases para compatibilidade
+    openModal: open,
+    closeModal: close,
+    toggleModal: toggle
   };
 };

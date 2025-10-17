@@ -14,18 +14,22 @@ import { DateFilter } from "@/components/dashboard/DateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import { format } from "date-fns";
 import { getROASColorCategory, getROASColorStyles, calculateROAS } from "@/utils/roasCalculations";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { useUserFilters } from "@/hooks/useUserFilters";
 
 const CampaignsSettings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userProfile } = useAuth();
   
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | '7d' | '30d' | 'custom' | 'range'>('today');
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range'>('today');
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedEndDate, setSelectedEndDate] = useState<string>(""); 
+  const [selectedEndDate, setSelectedEndDate] = useState<string>("");
   const [formattedRevenues, setFormattedRevenues] = useState<{[key: string]: string}>({});
 
   // Initialize with current server date
@@ -48,12 +52,18 @@ const CampaignsSettings = () => {
     initialize();
   }, []);
 
+  // Get user filters for operators
+  const { allowedProjectIds, allowedCampaignIds } = useUserFilters();
+
   // Use filtered data based on current selections
+  // IMPORTANTE: Só passar os filtros se tiverem valores (não passar arrays vazios)
   const filters = {
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: projectFilter === "all" ? undefined : projectFilter,
-    period: selectedPeriod
+    period: selectedPeriod,
+    ...(allowedProjectIds.length > 0 && { userProjectIds: allowedProjectIds }),
+    ...(allowedCampaignIds.length > 0 && { userCampaignIds: allowedCampaignIds })
   };
 
   const { projects, campaigns, loading, error, refresh } = useSupabaseData(filters);
@@ -96,6 +106,23 @@ const CampaignsSettings = () => {
       const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesProject = projectFilter === "all" || campaign.projectId === projectFilter;
       
+      // Filtro por projetos do operador
+      let matchesUserProjects = true;
+      if (userProfile?.role === 'OPERATOR' && allowedProjectIds.length > 0) {
+        // Converter projectId para number se necessário
+        const campaignProjectId = typeof campaign.projectId === 'string' 
+          ? parseInt(campaign.projectId) 
+          : campaign.projectId;
+        matchesUserProjects = allowedProjectIds.includes(campaignProjectId);
+      }
+      
+      // Filtro por campanhas específicas do operador (se houver)
+      let matchesUserCampaigns = true;
+      if (userProfile?.role === 'OPERATOR' && allowedCampaignIds.length > 0) {
+        // campaign.id é o campaign_id (Google Ads ID) que vem do banco
+        matchesUserCampaigns = allowedCampaignIds.includes(campaign.id);
+      }
+      
       // Nova lógica de filtro por cor ROAS
       let matchesStatus = true;
       if (statusFilter !== "all") {
@@ -104,9 +131,9 @@ const CampaignsSettings = () => {
         matchesStatus = statusFilter === campaignColorCategory;
       }
       
-      return matchesSearch && matchesProject && matchesStatus;
+      return matchesSearch && matchesProject && matchesStatus && matchesUserProjects && matchesUserCampaigns;
     });
-  }, [campaigns, searchTerm, projectFilter, statusFilter]);
+  }, [campaigns, searchTerm, projectFilter, statusFilter, userProfile, allowedProjectIds, allowedCampaignIds]);
 
   // Using centralized ROAS color styling
   const getROIColor = (roasExcess: number) => {
@@ -281,6 +308,11 @@ const CampaignsSettings = () => {
                   • Projeto: {projects.find(p => p.id === projectFilter)?.name || 'Selecionado'}
                 </span>
               )}
+              {selectedPeriod === 'yesterday' && (
+                <span className="ml-2 text-primary">
+                  • Data: Ontem ({selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : ''})
+                </span>
+              )}
               {selectedPeriod === 'custom' && (
                 <span className="ml-2 text-primary">
                   • Data: {selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : ''}
@@ -311,11 +343,20 @@ const CampaignsSettings = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">📂 Todos os Projetos</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
+                {projects
+                  .filter(project => {
+                    // Para OPERATORs, mostrar apenas projetos atribuídos
+                    if (userProfile?.role === 'OPERATOR' && allowedProjectIds.length > 0) {
+                      const projectId = typeof project.id === 'string' ? parseInt(project.id) : project.id;
+                      return allowedProjectIds.includes(projectId);
+                    }
+                    return true;
+                  })
+                  .map(project => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             
@@ -369,28 +410,28 @@ const CampaignsSettings = () => {
             <Badge variant="outline" className="text-sm">
               {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campanha' : 'campanhas'}
             </Badge>
-            {statusFilter === "all" && campaigns && campaigns.length > 0 && (
+            {statusFilter === "all" && filteredCampaigns && filteredCampaigns.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  🟢 {campaigns.filter(c => {
+                  🟢 {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "green";
                   }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🟡 {campaigns.filter(c => {
+                  🟡 {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "yellow";
                   }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🟠 {campaigns.filter(c => {
+                  🟠 {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "orange";
                   }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🔴 {campaigns.filter(c => {
+                  🔴 {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "red";
                   }).length}
@@ -454,6 +495,7 @@ const CampaignsSettings = () => {
                   <div>
                     <h4 className="font-medium mb-3">📊 Performance Financeira ({
                       selectedPeriod === 'today' ? 'Hoje' :
+                      selectedPeriod === 'yesterday' ? 'Ontem' :
                       selectedPeriod === '7d' ? 'Últimos 7 dias' :
                       selectedPeriod === '30d' ? 'Últimos 30 dias' :
                       selectedPeriod === 'range' && selectedEndDate ?

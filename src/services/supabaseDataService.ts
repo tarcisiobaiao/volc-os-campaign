@@ -525,6 +525,8 @@ class SupabaseDataService {
     endDate?: string;
     projectId?: string;
     period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
+    userProjectIds?: number[]; // IDs dos projetos permitidos ao usuário (OPERATOR)
+    userCampaignIds?: string[]; // Google Ads campaign IDs permitidos ao usuário (OPERATOR)
   }): Promise<Project[]> {
     try {
       console.log('📂 getProjects called with filters:', filters);
@@ -545,6 +547,12 @@ class SupabaseDataService {
       // Apply project filter if specified
       if (filters?.projectId && filters.projectId !== 'all') {
         projectsQuery = projectsQuery.eq('id', filters.projectId);
+      }
+
+      // Apply user project filter for OPERATORS
+      if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
+        projectsQuery = projectsQuery.in('id', filters.userProjectIds);
+        console.log('🔐 Aplicando filtro de projetos do usuário:', filters.userProjectIds);
       }
 
       const { data: projects, error: projectsError } = await projectsQuery;
@@ -572,9 +580,39 @@ class SupabaseDataService {
             .select('*')
             .eq('project_id', project.id);
 
-          const campaignIdsForSpend = (projectCampaignsForSpend || []).map(c => c.campaign_id).filter(Boolean);
+          // IMPORTANTE: usar campaign_id (string do Google Ads) não id (PK da tabela)
+          let campaignIdsForSpend = (projectCampaignsForSpend || []).map(c => c.campaign_id).filter(Boolean);
+
+          console.log('📊 Campanhas encontradas para o projeto', project.project_name, ':', {
+            totalCampaigns: (projectCampaignsForSpend || []).length,
+            campaignIds: campaignIdsForSpend,
+            hasUserFilter: !!(filters?.userCampaignIds && filters.userCampaignIds.length > 0),
+            userCampaignIds: filters?.userCampaignIds
+          });
+
+          // Apply user campaign filter if specified
+          // userCampaignIds agora contém campaign_id (Google Ads IDs) diretamente
+          if (filters?.userCampaignIds && filters.userCampaignIds.length > 0) {
+            const beforeFilter = campaignIdsForSpend.length;
+            // Filtrar apenas os campaign_ids que estão na lista permitida
+            campaignIdsForSpend = campaignIdsForSpend.filter(cid =>
+              filters.userCampaignIds!.includes(cid)
+            );
+
+            console.log('🔐 Filtro de campanhas aplicado no projeto', project.project_name, ':', {
+              before: beforeFilter,
+              after: campaignIdsForSpend.length,
+              allowedCampaignIds: filters.userCampaignIds,
+              filteredCampaignIds: campaignIdsForSpend
+            });
+          }
 
           let totalSpend = 0;
+          console.log(`💰 Iniciando cálculo de spend para ${project.project_name}:`, {
+            campaignIdsCount: campaignIdsForSpend.length,
+            campaignIds: campaignIdsForSpend
+          });
+
           if (campaignIdsForSpend.length > 0) {
             let spendQuery = supabase
               .from('daily_campaign_metrics')
@@ -702,10 +740,16 @@ class SupabaseDataService {
             .select('id, status')
             .eq('project_id', project.id);
 
-          const campaignCount = campaigns?.length || 0;
-          const activeCampaigns = campaigns?.filter(c => 
+          // Apply user campaign filter to campaign count
+          let filteredCampaigns = campaigns || [];
+          if (filters?.userCampaignIds && filters.userCampaignIds.length > 0) {
+            filteredCampaigns = filteredCampaigns.filter(c => filters.userCampaignIds!.includes(c.campaign_id));
+          }
+
+          const campaignCount = filteredCampaigns.length;
+          const activeCampaigns = filteredCampaigns.filter(c =>
             c.status && ['Active', 'active', 'ENABLED'].includes(c.status)
-          ).length || 0;
+          ).length;
 
           // Generate performance distribution
           const greenCampaigns = Math.floor(campaignCount * 0.6);
@@ -2750,6 +2794,8 @@ class SupabaseDataService {
     period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
+    userProjectIds?: number[];
+    userCampaignIds?: string[];
   }): Promise<Campaign[]> {
     try {
       // Log filter information for debugging
@@ -2770,19 +2816,47 @@ class SupabaseDataService {
         query = query.eq('project_id', parseInt(filters.projectId));
       }
 
+      // Apply user project filter for OPERATORS
+      if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
+        query = query.in('project_id', filters.userProjectIds);
+        console.log('🔐 Aplicando filtro de projetos nas campanhas:', filters.userProjectIds);
+      }
+
       const { data, error } = await query.order('gam_revenue', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       // Debug log to see available campaigns
-      console.log('🚀 Available campaigns in campaigns_with_revenue:', (data || []).map(item => ({
-        id: item.id,
-        campaign_id: item.campaign_id,
-        name: item.campaign_name
-      })));
-      
+      console.log('🚀 Available campaigns in campaigns_with_revenue:', {
+        total: (data || []).length,
+        hasUserFilter: !!(filters?.userCampaignIds && filters.userCampaignIds.length > 0),
+        userCampaignIds: filters?.userCampaignIds,
+        sampleCampaign: data?.[0] ? {
+          id: data[0].id,
+          campaign_id: data[0].campaign_id,
+          name: data[0].campaign_name
+        } : null
+      });
+
+      // Filter campaigns by user permissions if specified
+      let filteredData = data || [];
+      if (filters?.userCampaignIds && filters.userCampaignIds.length > 0) {
+        console.log('🔐 Tentando filtrar campanhas. Campaign IDs permitidos:', filters.userCampaignIds);
+        filteredData = filteredData.filter((item: any) => {
+          const isAllowed = filters.userCampaignIds!.includes(item.campaign_id);
+          if (!isAllowed) {
+            console.log(`  ❌ Campanha ${item.campaign_id} (${item.campaign_name}) não está nos IDs permitidos`);
+          }
+          return isAllowed;
+        });
+        console.log('🔐 Filtro de campanhas do usuário aplicado:', {
+          total: data?.length,
+          filtered: filteredData.length
+        });
+      }
+
       // Convert to Campaign interface format
-      return (data || []).map((item: any) => ({
+      return filteredData.map((item: any) => ({
         id: item.campaign_id.toString(), // Use campaign_id instead of id for consistency
         name: item.campaign_name,
         projectId: item.project_id?.toString() || '1',
@@ -2881,6 +2955,8 @@ class SupabaseDataService {
     period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
     date?: string;
     endDate?: string;
+    userProjectIds?: number[];
+    userCampaignIds?: string[];
   }): Promise<Campaign[]> {
     try {
       console.log('🚀 getCampaignsWithRevenueFiltered (SERVER-SIDE OPTIMIZED) called with filters:', filters);
@@ -3008,8 +3084,33 @@ class SupabaseDataService {
 
       console.log(`🚀 SERVER-SIDE AGGREGATION: Received ${aggregatedCampaigns.length} pre-aggregated campaigns - MASSIVE EGRESS REDUCTION!`);
 
+      // Apply user filters before converting
+      let filteredAggregatedCampaigns = aggregatedCampaigns;
+
+      // Filter by user allowed project IDs
+      if (filters.userProjectIds && filters.userProjectIds.length > 0) {
+        filteredAggregatedCampaigns = filteredAggregatedCampaigns.filter((campaign: any) =>
+          filters.userProjectIds!.includes(campaign.project_id)
+        );
+        console.log('🔐 Filtro de projetos do usuário aplicado nas campanhas:', {
+          total: aggregatedCampaigns.length,
+          filtered: filteredAggregatedCampaigns.length
+        });
+      }
+
+      // Filter by user allowed campaign IDs
+      if (filters.userCampaignIds && filters.userCampaignIds.length > 0) {
+        filteredAggregatedCampaigns = filteredAggregatedCampaigns.filter((campaign: any) =>
+          filters.userCampaignIds!.includes(campaign.campaign_id)
+        );
+        console.log('🔐 Filtro de campanhas do usuário aplicado:', {
+          total: filteredAggregatedCampaigns.length,
+          filtered: filteredAggregatedCampaigns.length
+        });
+      }
+
       // Convert RPC results to Campaign format
-      const activeCampaigns = aggregatedCampaigns
+      const activeCampaigns = filteredAggregatedCampaigns
         // 🛡️ NÃO FILTRAR campanhas com revenue/spend = 0, pois campanhas novas podem ter dados vazios temporariamente
         .map((campaign: any) => {
           // Validation: Check if campaign revenue seems unrealistic
@@ -3596,6 +3697,8 @@ export const useSupabaseData = (filters?: {
   endDate?: string;
   projectId?: string;
   period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
+  userProjectIds?: number[];
+  userCampaignIds?: string[];
 }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -3647,11 +3750,13 @@ export const useSupabaseData = (filters?: {
       hasFilters: !!filters,
       hasDate: !!filters?.date,
       hasEndDate: !!filters?.endDate,
-      projectId: filters?.projectId
+      projectId: filters?.projectId,
+      userProjectIds: filters?.userProjectIds?.length,
+      userCampaignIds: filters?.userCampaignIds?.length
     });
     console.log('✅ useSupabaseData: Fetching data with filters', filters);
     fetchData();
-  }, [filters?.date, filters?.endDate, filters?.projectId, filters?.period]);
+  }, [filters?.date, filters?.endDate, filters?.projectId, filters?.period, filters?.userProjectIds, filters?.userCampaignIds]);
 
   const refresh = (newFilters?: typeof filters) => {
     supabaseDataService.refreshData();
