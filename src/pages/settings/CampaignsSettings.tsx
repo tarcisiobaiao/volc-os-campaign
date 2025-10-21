@@ -359,7 +359,7 @@ const CampaignsSettings = () => {
                   })()} dias)
                 </span>
               )}
-              {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && (
+              {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && selectedPeriod !== 'yesterday' && (
                 <span className="ml-2 text-primary">
                   • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
                 </span>
