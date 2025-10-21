@@ -46,6 +46,7 @@ export interface Campaign {
   ctr: number;
   startDate: string;
   endDate?: string;
+  commission?: number; // NEW: Comissão do operador
   // Novos campos para nova lógica
   googleAdsCampaignId?: string;
   utmCampaignValue?: string;
@@ -83,6 +84,7 @@ export interface DashboardSummary {
   totalRevenue: number;
   totalRevenueAfterRevshare?: number; // NEW: Faturamento líquido após revenue share
   totalProfit: number;
+  totalCommission?: number; // NEW: Total de comissão dos operadores
   generalRoas: number;
   finalRoi: number;
   activeCampaigns: number;
@@ -3132,6 +3134,7 @@ class SupabaseDataService {
             performance: this.calculatePerformance(Number(campaign.aggregated_revenue), Number(campaign.aggregated_spend)),
             investment: Number(campaign.aggregated_spend) || 0,
             revenue: Number(campaign.aggregated_revenue) || 0,
+            commission: campaign.aggregated_commission && Number(campaign.aggregated_commission) > 0 ? Number(campaign.aggregated_commission) : undefined,
             roas: Number(campaign.roas) || 0,
             impressions: Number(campaign.aggregated_impressions) || 0,
             clicks: Number(campaign.aggregated_clicks) || 0,
@@ -3756,7 +3759,15 @@ export const useSupabaseData = (filters?: {
     });
     console.log('✅ useSupabaseData: Fetching data with filters', filters);
     fetchData();
-  }, [filters?.date, filters?.endDate, filters?.projectId, filters?.period, filters?.userProjectIds, filters?.userCampaignIds]);
+  }, [
+    filters?.date, 
+    filters?.endDate, 
+    filters?.projectId, 
+    filters?.period,
+    // Use JSON.stringify para comparar arrays por valor, não por referência
+    JSON.stringify(filters?.userProjectIds || []),
+    JSON.stringify(filters?.userCampaignIds || [])
+  ]);
 
   const refresh = (newFilters?: typeof filters) => {
     supabaseDataService.refreshData();

@@ -53,20 +53,41 @@ const CampaignsSettings = () => {
   }, []);
 
   // Get user filters for operators
-  const { allowedProjectIds, allowedCampaignIds } = useUserFilters();
+  const { allowedProjectIds, allowedCampaignIds, hasFilters } = useUserFilters();
 
   // Use filtered data based on current selections
   // IMPORTANTE: Só passar os filtros se tiverem valores (não passar arrays vazios)
-  const filters = {
+  // useMemo para evitar re-renders desnecessários quando a referência dos arrays muda
+  const filters = useMemo(() => ({
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: projectFilter === "all" ? undefined : projectFilter,
     period: selectedPeriod,
-    ...(allowedProjectIds.length > 0 && { userProjectIds: allowedProjectIds }),
-    ...(allowedCampaignIds.length > 0 && { userCampaignIds: allowedCampaignIds })
-  };
+    ...(hasFilters && allowedProjectIds.length > 0 && { userProjectIds: allowedProjectIds }),
+    ...(hasFilters && allowedCampaignIds.length > 0 && { userCampaignIds: allowedCampaignIds })
+  }), [selectedDate, selectedEndDate, projectFilter, selectedPeriod, hasFilters, allowedProjectIds, allowedCampaignIds]);
+
+  // Debug log para identificar o problema
+  useEffect(() => {
+    console.log('🔍 CampaignsSettings - Filtros atualizados:', {
+      userRole: userProfile?.role,
+      hasFilters,
+      allowedProjectIds,
+      allowedCampaignIds,
+      finalFilters: filters
+    });
+  }, [hasFilters, allowedProjectIds, allowedCampaignIds, filters, userProfile]);
 
   const { projects, campaigns, loading, error, refresh } = useSupabaseData(filters);
+
+  // Adicionar log quando campaigns mudam
+  useEffect(() => {
+    console.log('📊 Campanhas recebidas do hook:', {
+      count: campaigns?.length || 0,
+      loading,
+      error
+    });
+  }, [campaigns, loading, error]);
 
   // Format revenue values when campaigns are loaded
   useEffect(() => {
@@ -101,28 +122,35 @@ const CampaignsSettings = () => {
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
-    
-    return campaigns.filter(campaign => {
+
+    console.log('🎯 Filtrando campanhas:', {
+      totalCampaigns: campaigns.length,
+      hasFilters,
+      allowedProjectIds,
+      allowedCampaignIds
+    });
+
+    const filtered = campaigns.filter(campaign => {
       const matchesSearch = campaign.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesProject = projectFilter === "all" || campaign.projectId === projectFilter;
-      
-      // Filtro por projetos do operador
+
+      // Filtro por projetos do operador - APENAS se for operador com filtros
       let matchesUserProjects = true;
-      if (userProfile?.role === 'OPERATOR' && allowedProjectIds.length > 0) {
+      if (hasFilters && allowedProjectIds.length > 0) {
         // Converter projectId para number se necessário
-        const campaignProjectId = typeof campaign.projectId === 'string' 
-          ? parseInt(campaign.projectId) 
+        const campaignProjectId = typeof campaign.projectId === 'string'
+          ? parseInt(campaign.projectId)
           : campaign.projectId;
         matchesUserProjects = allowedProjectIds.includes(campaignProjectId);
       }
-      
-      // Filtro por campanhas específicas do operador (se houver)
+
+      // Filtro por campanhas específicas do operador - APENAS se houver filtro de campanhas
       let matchesUserCampaigns = true;
-      if (userProfile?.role === 'OPERATOR' && allowedCampaignIds.length > 0) {
+      if (hasFilters && allowedCampaignIds.length > 0) {
         // campaign.id é o campaign_id (Google Ads ID) que vem do banco
         matchesUserCampaigns = allowedCampaignIds.includes(campaign.id);
       }
-      
+
       // Nova lógica de filtro por cor ROAS
       let matchesStatus = true;
       if (statusFilter !== "all") {
@@ -130,10 +158,13 @@ const CampaignsSettings = () => {
         const campaignColorCategory = getCampaignColorCategory(roasExcess);
         matchesStatus = statusFilter === campaignColorCategory;
       }
-      
+
       return matchesSearch && matchesProject && matchesStatus && matchesUserProjects && matchesUserCampaigns;
     });
-  }, [campaigns, searchTerm, projectFilter, statusFilter, userProfile, allowedProjectIds, allowedCampaignIds]);
+
+    console.log('✅ Campanhas filtradas:', filtered.length);
+    return filtered;
+  }, [campaigns, searchTerm, projectFilter, statusFilter, hasFilters, allowedProjectIds, allowedCampaignIds]);
 
   // Using centralized ROAS color styling
   const getROIColor = (roasExcess: number) => {
@@ -308,14 +339,14 @@ const CampaignsSettings = () => {
                   • Projeto: {projects.find(p => p.id === projectFilter)?.name || 'Selecionado'}
                 </span>
               )}
-              {selectedPeriod === 'yesterday' && (
+              {selectedPeriod === 'yesterday' && selectedDate && (
                 <span className="ml-2 text-primary">
-                  • Data: Ontem ({selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : ''})
+                  • Data: Ontem ({format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')})
                 </span>
               )}
-              {selectedPeriod === 'custom' && (
+              {selectedPeriod === 'custom' && selectedDate && (
                 <span className="ml-2 text-primary">
-                  • Data: {selectedDate ? format(new Date(selectedDate), 'dd/MM/yyyy') : ''}
+                  • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')}
                 </span>
               )}
               {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
@@ -345,8 +376,8 @@ const CampaignsSettings = () => {
                 <SelectItem value="all">📂 Todos os Projetos</SelectItem>
                 {projects
                   .filter(project => {
-                    // Para OPERATORs, mostrar apenas projetos atribuídos
-                    if (userProfile?.role === 'OPERATOR' && allowedProjectIds.length > 0) {
+                    // Para OPERATORs com filtros, mostrar apenas projetos atribuídos
+                    if (hasFilters && allowedProjectIds.length > 0) {
                       const projectId = typeof project.id === 'string' ? parseInt(project.id) : project.id;
                       return allowedProjectIds.includes(projectId);
                     }
@@ -502,7 +533,7 @@ const CampaignsSettings = () => {
                         `${selectedDate} até ${selectedEndDate}` :
                         `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
                     }):</h4>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className={`grid ${campaign.commission && campaign.commission > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-4 text-sm`}>
                       <div className="text-center p-3 bg-blue-50 rounded-lg">
                         <p className="text-xs text-muted-foreground mb-1">Gasto</p>
                         <p className="font-semibold text-slate-800">{new Intl.NumberFormat('pt-BR', {
@@ -524,6 +555,15 @@ const CampaignsSettings = () => {
                           return roasExcess.toFixed(1);
                         })()}%</p>
                       </div>
+                      {campaign.commission && campaign.commission > 0 && (
+                        <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+                          <p className="text-xs text-muted-foreground mb-1">💰 Comissão</p>
+                          <p className="font-semibold text-purple-600">{new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                          }).format(campaign.commission)}</p>
+                        </div>
+                      )}
                     </div>
 
                   </div>

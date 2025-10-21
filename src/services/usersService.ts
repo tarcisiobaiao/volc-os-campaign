@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'OPERATOR';
+  commission_percentage?: number; // 0-100%
   created_at?: string;
 }
 
@@ -13,6 +14,7 @@ export interface CreateUserInput {
   email: string;
   role: 'ADMIN' | 'OPERATOR';
   password: string;
+  commission_percentage?: number; // 0-100%
   project_ids?: number[];
   campaign_ids?: string[]; // Google Ads campaign IDs (varchar)
 }
@@ -22,7 +24,7 @@ class UsersService {
   async getAll(): Promise<User[]> {
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, email, role, created_at')
+      .select('id, name, email, role, commission_percentage, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -76,8 +78,34 @@ class UsersService {
     return data?.map(uc => uc.campaign_id) || [];
   }
 
+  // Get campaigns already assigned to other operators
+  async getAssignedCampaigns(excludeUserId?: string): Promise<string[]> {
+    let query = supabase
+      .from('user_campaigns')
+      .select('campaign_id');
+
+    if (excludeUserId) {
+      query = query.neq('user_id', excludeUserId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data?.map(uc => uc.campaign_id) || [];
+  }
+
   // Create user with Supabase Auth
   async create(input: CreateUserInput): Promise<User> {
+    // Validar se campanhas já estão atribuídas a outros operadores
+    if (input.campaign_ids && input.campaign_ids.length > 0) {
+      const assignedCampaigns = await this.getAssignedCampaigns();
+      const duplicates = input.campaign_ids.filter(cid => assignedCampaigns.includes(cid));
+
+      if (duplicates.length > 0) {
+        throw new Error(`As seguintes campanhas já estão atribuídas a outros operadores: ${duplicates.join(', ')}`);
+      }
+    }
+
     // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: input.email,
@@ -96,17 +124,18 @@ class UsersService {
 
     // 2. Create user in users table (with needs_password_change = true)
     // Nota: O ID do usuário na tabela users é o mesmo do auth.users (UUID)
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError} = await supabase
       .from('users')
       .insert([{
         id: authData.user.id, // UUID do auth.users
         email: input.email,
         name: input.name,
         role: input.role,
+        commission_percentage: input.commission_percentage || 0,
         needs_password_change: true,
         first_login: true
       }])
-      .select('id, name, email, role, created_at')
+      .select('id, name, email, role, commission_percentage, created_at')
       .single();
 
     if (userError) {
@@ -165,17 +194,28 @@ class UsersService {
 
   // Update user
   async update(id: string, input: Partial<CreateUserInput>): Promise<User> {
+    // Validar se campanhas já estão atribuídas a outros operadores (excluindo o usuário atual)
+    if (input.campaign_ids && input.campaign_ids.length > 0) {
+      const assignedCampaigns = await this.getAssignedCampaigns(id);
+      const duplicates = input.campaign_ids.filter(cid => assignedCampaigns.includes(cid));
+
+      if (duplicates.length > 0) {
+        throw new Error(`As seguintes campanhas já estão atribuídas a outros operadores: ${duplicates.join(', ')}`);
+      }
+    }
+
     const updates: any = {
       name: input.name,
       email: input.email,
-      role: input.role
+      role: input.role,
+      commission_percentage: input.commission_percentage !== undefined ? input.commission_percentage : 0
     };
 
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', id)
-      .select('id, name, email, role, created_at')
+      .select('id, name, email, role, commission_percentage, created_at')
       .single();
 
     if (error) throw error;

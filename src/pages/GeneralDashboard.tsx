@@ -178,13 +178,14 @@ export default function GeneralDashboard() {
   // Use filtered data based on current selections - sempre mostra todos os projetos
   // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   // IMPORTANTE: Só passar os filtros se tiverem valores (não passar arrays vazios)
-  const filters = {
+  // useMemo para evitar re-renders desnecessários quando a referência dos arrays muda
+  const filters = React.useMemo(() => ({
     date: selectedDate,
     projectId: 'all', // Sempre todos os projetos no dashboard geral
     period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod,
     ...(allowedProjectIds.length > 0 && { userProjectIds: allowedProjectIds }),
     ...(allowedCampaignIds.length > 0 && { userCampaignIds: allowedCampaignIds })
-  };
+  }), [selectedDate, selectedPeriod, allowedProjectIds, allowedCampaignIds]);
 
   // Debug: Log current filters for monitoring
   React.useEffect(() => {
@@ -1161,6 +1162,11 @@ export default function GeneralDashboard() {
                         </RevenueTooltip>
                         <div className="text-xs text-muted-foreground">
                           💸 {formatCurrency(campaign.investment || 0)} • 📈 {Math.round(calculateROAS(campaign.revenue || 0, campaign.investment || 0))}%
+                          {campaign.commission && campaign.commission > 0 && (
+                            <div className="text-xs text-purple-600 font-medium mt-0.5">
+                              💰 Comissão: {formatCurrency(campaign.commission)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

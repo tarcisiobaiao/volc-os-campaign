@@ -7,7 +7,7 @@ import { Modal, useModal } from "@/components/ui/modal";
 import { Layout } from "@/components/layout/Layout";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Users, Shield, Search, FolderOpen, CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Shield, Search, FolderOpen, CheckCircle2, Circle, AlertCircle, Lock } from "lucide-react";
 import { usersService, User, CreateUserInput } from "@/services/usersService";
 import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,6 +29,7 @@ export default function UsersSettings() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [assignedCampaigns, setAssignedCampaigns] = useState<string[]>([]);
 
   const addModal = useModal();
   const editModal = useModal();
@@ -42,6 +43,7 @@ export default function UsersSettings() {
       email: "",
       role: "OPERATOR",
       password: "",
+      commission_percentage: 0,
       project_ids: [],
       campaign_ids: []
     });
@@ -54,6 +56,7 @@ export default function UsersSettings() {
       name: "",
       email: "",
       role: "OPERATOR",
+      commission_percentage: 0,
       project_ids: [],
       campaign_ids: []
     });
@@ -66,6 +69,7 @@ export default function UsersSettings() {
     email: "",
     role: "OPERATOR",
     password: "",
+    commission_percentage: 0,
     project_ids: [],
     campaign_ids: []
   });
@@ -74,6 +78,7 @@ export default function UsersSettings() {
     name: "",
     email: "",
     role: "OPERATOR",
+    commission_percentage: 0,
     project_ids: [],
     campaign_ids: []
   });
@@ -139,6 +144,7 @@ export default function UsersSettings() {
         email: "",
         role: "OPERATOR",
         password: "",
+        commission_percentage: 0,
         project_ids: [],
         campaign_ids: []
       });
@@ -238,19 +244,25 @@ export default function UsersSettings() {
       setSelectedUserProjects(userProjects);
       setSelectedUserCampaigns(userCampaigns);
 
-      // Carregar campanhas dos projetos selecionados
+      // Carregar campanhas dos projetos selecionados e campanhas já atribuídas
       if (userProjects.length > 0) {
-        const projectCampaigns = await usersService.getCampaignsByProjects(userProjects);
+        const [projectCampaigns, assigned] = await Promise.all([
+          usersService.getCampaignsByProjects(userProjects),
+          usersService.getAssignedCampaigns(user.id)
+        ]);
         setCampaigns(projectCampaigns);
+        setAssignedCampaigns(assigned);
         console.log('📊 Campanhas dos projetos carregadas:', projectCampaigns.length);
       } else {
         setCampaigns([]);
+        setAssignedCampaigns([]);
       }
 
       setEditUser({
         name: user.name,
         email: user.email,
         role: user.role,
+        commission_percentage: user.commission_percentage || 0,
         project_ids: userProjects,
         campaign_ids: userCampaigns
       });
@@ -310,10 +322,15 @@ export default function UsersSettings() {
   const handleNewUserProjectsChange = async (projectIds: number[]) => {
     setNewUser({ ...newUser, project_ids: projectIds, campaign_ids: [] });
     if (projectIds.length > 0) {
-      const projectCampaigns = await usersService.getCampaignsByProjects(projectIds);
+      const [projectCampaigns, assigned] = await Promise.all([
+        usersService.getCampaignsByProjects(projectIds),
+        usersService.getAssignedCampaigns()
+      ]);
       setCampaigns(projectCampaigns);
+      setAssignedCampaigns(assigned);
     } else {
       setCampaigns([]);
+      setAssignedCampaigns([]);
     }
   };
 
@@ -321,8 +338,12 @@ export default function UsersSettings() {
   const handleEditUserProjectsChange = async (projectIds: number[]) => {
     // Primeiro carregar as novas campanhas dos projetos selecionados
     if (projectIds.length > 0) {
-      const projectCampaigns = await usersService.getCampaignsByProjects(projectIds);
+      const [projectCampaigns, assigned] = await Promise.all([
+        usersService.getCampaignsByProjects(projectIds),
+        usersService.getAssignedCampaigns(selectedUser?.id)
+      ]);
       setCampaigns(projectCampaigns);
+      setAssignedCampaigns(assigned);
 
       // Filtrar as campanhas selecionadas anteriormente que ainda pertencem aos projetos atuais
       // IMPORTANTE: Usar campaign_id (VARCHAR) ao invés de id (INTEGER)
@@ -333,6 +354,7 @@ export default function UsersSettings() {
       setEditUser({ ...editUser, project_ids: projectIds, campaign_ids: newCampaignIds });
     } else {
       setCampaigns([]);
+      setAssignedCampaigns([]);
       setEditUser({ ...editUser, project_ids: projectIds, campaign_ids: [] });
     }
   };
@@ -579,6 +601,28 @@ export default function UsersSettings() {
                 </SelectContent>
               </Select>
             </div>
+
+            {newUser.role === "OPERATOR" && (
+              <div className="col-span-2">
+                <Label htmlFor="commission" className="text-sm font-semibold">
+                  Comissão (%)
+                </Label>
+                <Input
+                  id="commission"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={newUser.commission_percentage || 0}
+                  onChange={(e) => setNewUser({ ...newUser, commission_percentage: parseFloat(e.target.value) || 0 })}
+                  className="mt-1.5"
+                  placeholder="Ex: 10.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Porcentagem do lucro líquido (0-100%). Mudanças valem a partir de D0.
+                </p>
+              </div>
+            )}
           </div>
 
           {newUser.role === "OPERATOR" && (
@@ -663,41 +707,62 @@ export default function UsersSettings() {
                             <p className="text-sm font-semibold text-muted-foreground mb-2 px-2">
                               {project.project_name}
                             </p>
-                            {projectCampaigns.map((campaign) => (
-                              <div
-                                key={campaign.id}
-                                className="flex items-center space-x-3 p-2.5 rounded-md hover:bg-background transition-colors"
-                              >
-                                <Checkbox
-                                  id={`new-campaign-${campaign.campaign_id}`}
-                                  checked={newUser.campaign_ids?.includes(campaign.campaign_id)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setNewUser({
-                                        ...newUser,
-                                        campaign_ids: [...(newUser.campaign_ids || []), campaign.campaign_id]
-                                      });
-                                    } else {
-                                      setNewUser({
-                                        ...newUser,
-                                        campaign_ids: newUser.campaign_ids?.filter((id) => id !== campaign.campaign_id) || []
-                                      });
-                                    }
-                                  }}
-                                />
-                                <label
-                                  htmlFor={`new-campaign-${campaign.campaign_id}`}
-                                  className="text-sm font-medium cursor-pointer flex-1 flex items-center gap-2"
+                            {projectCampaigns.map((campaign) => {
+                              const isAssigned = assignedCampaigns.includes(campaign.campaign_id);
+                              return (
+                                <div
+                                  key={campaign.id}
+                                  className={`flex items-center space-x-3 p-2.5 rounded-md transition-colors ${
+                                    isAssigned ? 'bg-muted/50 opacity-60' : 'hover:bg-background'
+                                  }`}
                                 >
-                                  {newUser.campaign_ids?.includes(campaign.campaign_id) ? (
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                  ) : (
-                                    <Circle className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                  {campaign.campaign_name}
-                                </label>
-                              </div>
-                            ))}
+                                  <Checkbox
+                                    id={`new-campaign-${campaign.campaign_id}`}
+                                    checked={newUser.campaign_ids?.includes(campaign.campaign_id)}
+                                    disabled={isAssigned}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setNewUser({
+                                          ...newUser,
+                                          campaign_ids: [...(newUser.campaign_ids || []), campaign.campaign_id]
+                                        });
+                                      } else {
+                                        setNewUser({
+                                          ...newUser,
+                                          campaign_ids: newUser.campaign_ids?.filter((id) => id !== campaign.campaign_id) || []
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`new-campaign-${campaign.campaign_id}`}
+                                    className={`text-sm font-medium flex-1 flex items-center gap-2 ${
+                                      isAssigned ? 'cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                  >
+                                    {isAssigned ? (
+                                      <>
+                                        <Lock className="h-4 w-4 text-orange-500" />
+                                        {campaign.campaign_name}
+                                        <Badge variant="outline" className="ml-auto text-xs bg-orange-50 text-orange-700 border-orange-200">
+                                          Já atribuída
+                                        </Badge>
+                                      </>
+                                    ) : newUser.campaign_ids?.includes(campaign.campaign_id) ? (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        {campaign.campaign_name}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Circle className="h-4 w-4 text-muted-foreground" />
+                                        {campaign.campaign_name}
+                                      </>
+                                    )}
+                                  </label>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })}
@@ -789,6 +854,28 @@ export default function UsersSettings() {
                 </SelectContent>
               </Select>
             </div>
+
+            {editUser.role === "OPERATOR" && (
+              <div className="col-span-2">
+                <Label htmlFor="edit-commission" className="text-sm font-semibold">
+                  Comissão (%)
+                </Label>
+                <Input
+                  id="edit-commission"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={editUser.commission_percentage || 0}
+                  onChange={(e) => setEditUser({ ...editUser, commission_percentage: parseFloat(e.target.value) || 0 })}
+                  className="mt-1.5"
+                  placeholder="Ex: 10.5"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Porcentagem do lucro líquido (0-100%). Mudanças valem a partir de D0.
+                </p>
+              </div>
+            )}
           </div>
 
           {editUser.role === "OPERATOR" && (
@@ -873,41 +960,62 @@ export default function UsersSettings() {
                             <p className="text-sm font-semibold text-muted-foreground mb-2 px-2">
                               {project.project_name}
                             </p>
-                            {projectCampaigns.map((campaign) => (
-                              <div
-                                key={campaign.id}
-                                className="flex items-center space-x-3 p-2.5 rounded-md hover:bg-background transition-colors"
-                              >
-                                <Checkbox
-                                  id={`edit-campaign-${campaign.campaign_id}`}
-                                  checked={editUser.campaign_ids?.includes(campaign.campaign_id)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setEditUser({
-                                        ...editUser,
-                                        campaign_ids: [...(editUser.campaign_ids || []), campaign.campaign_id]
-                                      });
-                                    } else {
-                                      setEditUser({
-                                        ...editUser,
-                                        campaign_ids: editUser.campaign_ids?.filter((id) => id !== campaign.campaign_id) || []
-                                      });
-                                    }
-                                  }}
-                                />
-                                <label
-                                  htmlFor={`edit-campaign-${campaign.campaign_id}`}
-                                  className="text-sm font-medium cursor-pointer flex-1 flex items-center gap-2"
+                            {projectCampaigns.map((campaign) => {
+                              const isAssigned = assignedCampaigns.includes(campaign.campaign_id);
+                              return (
+                                <div
+                                  key={campaign.id}
+                                  className={`flex items-center space-x-3 p-2.5 rounded-md transition-colors ${
+                                    isAssigned ? 'bg-muted/50 opacity-60' : 'hover:bg-background'
+                                  }`}
                                 >
-                                  {editUser.campaign_ids?.includes(campaign.campaign_id) ? (
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                  ) : (
-                                    <Circle className="h-4 w-4 text-muted-foreground" />
-                                  )}
-                                  {campaign.campaign_name}
-                                </label>
-                              </div>
-                            ))}
+                                  <Checkbox
+                                    id={`edit-campaign-${campaign.campaign_id}`}
+                                    checked={editUser.campaign_ids?.includes(campaign.campaign_id)}
+                                    disabled={isAssigned}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setEditUser({
+                                          ...editUser,
+                                          campaign_ids: [...(editUser.campaign_ids || []), campaign.campaign_id]
+                                        });
+                                      } else {
+                                        setEditUser({
+                                          ...editUser,
+                                          campaign_ids: editUser.campaign_ids?.filter((id) => id !== campaign.campaign_id) || []
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`edit-campaign-${campaign.campaign_id}`}
+                                    className={`text-sm font-medium flex-1 flex items-center gap-2 ${
+                                      isAssigned ? 'cursor-not-allowed' : 'cursor-pointer'
+                                    }`}
+                                  >
+                                    {isAssigned ? (
+                                      <>
+                                        <Lock className="h-4 w-4 text-orange-500" />
+                                        {campaign.campaign_name}
+                                        <Badge variant="outline" className="ml-auto text-xs bg-orange-50 text-orange-700 border-orange-200">
+                                          Já atribuída
+                                        </Badge>
+                                      </>
+                                    ) : editUser.campaign_ids?.includes(campaign.campaign_id) ? (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        {campaign.campaign_name}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Circle className="h-4 w-4 text-muted-foreground" />
+                                        {campaign.campaign_name}
+                                      </>
+                                    )}
+                                  </label>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })}

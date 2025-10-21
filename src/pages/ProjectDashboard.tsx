@@ -349,12 +349,13 @@ export default function ProjectDashboard() {
   }, [selectedDate]); // Re-calculate when date changes
 
   // Use filtered data based on current selections - TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
-  const filters = {
+  // useMemo para evitar re-renders desnecessários
+  const filters = React.useMemo(() => ({
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: projectId || "",
     period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
-  };
+  }), [selectedDate, selectedEndDate, projectId, selectedPeriod]);
 
   console.log('🔍 ProjectDashboard: selectedEndDate:', selectedEndDate);
 

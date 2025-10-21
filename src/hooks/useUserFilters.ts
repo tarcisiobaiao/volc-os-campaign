@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usersService } from '@/services/usersService';
 
@@ -9,6 +9,10 @@ export interface UserFilters {
   hasFilters: boolean;
 }
 
+// Arrays vazios constantes para evitar re-renders desnecessários
+const EMPTY_PROJECT_IDS: number[] = [];
+const EMPTY_CAMPAIGN_IDS: string[] = [];
+
 /**
  * Hook para gerenciar os filtros de projetos e campanhas do usuário
  * Operadores têm acesso limitado aos projetos e campanhas configurados pelo admin
@@ -16,8 +20,8 @@ export interface UserFilters {
  */
 export function useUserFilters(): UserFilters {
   const { userProfile } = useAuth();
-  const [allowedProjectIds, setAllowedProjectIds] = useState<number[]>([]);
-  const [allowedCampaignIds, setAllowedCampaignIds] = useState<string[]>([]);
+  const [allowedProjectIds, setAllowedProjectIds] = useState<number[]>(EMPTY_PROJECT_IDS);
+  const [allowedCampaignIds, setAllowedCampaignIds] = useState<string[]>(EMPTY_CAMPAIGN_IDS);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,8 +33,8 @@ export function useUserFilters(): UserFilters {
 
       // Admins não têm filtros - acesso total
       if (userProfile.role === 'ADMIN') {
-        setAllowedProjectIds([]);
-        setAllowedCampaignIds([]);
+        setAllowedProjectIds(EMPTY_PROJECT_IDS);
+        setAllowedCampaignIds(EMPTY_CAMPAIGN_IDS);
         setIsLoading(false);
         return;
       }
@@ -43,8 +47,20 @@ export function useUserFilters(): UserFilters {
             usersService.getUserCampaigns(userProfile.id)
           ]);
 
-          setAllowedProjectIds(projectIds);
-          setAllowedCampaignIds(campaignIds);
+          // Só atualiza se houver mudança real nos valores
+          setAllowedProjectIds(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(projectIds)) {
+              return prev;
+            }
+            return projectIds.length > 0 ? projectIds : EMPTY_PROJECT_IDS;
+          });
+          
+          setAllowedCampaignIds(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(campaignIds)) {
+              return prev;
+            }
+            return campaignIds.length > 0 ? campaignIds : EMPTY_CAMPAIGN_IDS;
+          });
 
           console.log('🔐 Filtros do usuário carregados:', {
             role: userProfile.role,
@@ -54,6 +70,8 @@ export function useUserFilters(): UserFilters {
           });
         } catch (error) {
           console.error('Erro ao carregar filtros do usuário:', error);
+          setAllowedProjectIds(EMPTY_PROJECT_IDS);
+          setAllowedCampaignIds(EMPTY_CAMPAIGN_IDS);
         }
       }
 
@@ -61,12 +79,17 @@ export function useUserFilters(): UserFilters {
     };
 
     loadUserFilters();
-  }, [userProfile]);
+  }, [userProfile?.id, userProfile?.role]);
+
+  // Usar useMemo para garantir estabilidade da flag hasFilters
+  const hasFilters = useMemo(() => {
+    return userProfile?.role === 'OPERATOR' && (allowedProjectIds.length > 0 || allowedCampaignIds.length > 0);
+  }, [userProfile?.role, allowedProjectIds.length, allowedCampaignIds.length]);
 
   return {
     allowedProjectIds,
     allowedCampaignIds,
     isLoading,
-    hasFilters: userProfile?.role === 'OPERATOR' && (allowedProjectIds.length > 0 || allowedCampaignIds.length > 0)
+    hasFilters
   };
 }

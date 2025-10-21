@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Cache - Sistema Webgo</title>
+</head>
+<body>
+    <h1>Limpando Cache...</h1>
+    <div id="status"></div>
+    <script>
+        const status = document.getElementById('status');
+
+        // Limpar todo o localStorage
+        const before = localStorage.length;
+        localStorage.clear();
+        const after = localStorage.length;
+
+        status.innerHTML = `
+            <p>✅ Cache limpo!</p>
+            <p>Items removidos: ${before}</p>
+            <p>Items restantes: ${after}</p>
+            <p><a href="http://localhost:8080">Voltar para o sistema</a></p>
+        `;
+
+        console.log('🧹 Cache completamente limpo!');
+    </script>
+</body>
+</html>

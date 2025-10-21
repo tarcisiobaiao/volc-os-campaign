@@ -152,12 +152,13 @@ export default function ProjectsSettings() {
   
   // Use filtered data based on current selections - mesma lógica do Dashboard Geral
   // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
-  const filters = {
+  // useMemo para evitar re-renders desnecessários
+  const filters = React.useMemo(() => ({
     date: selectedDate,
     endDate: selectedEndDate || undefined,
     projectId: selectedProject === "all" ? undefined : selectedProject,
     period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
-  };
+  }), [selectedDate, selectedEndDate, selectedProject, selectedPeriod]);
   
   // Use the same data hook as GeneralDashboard
   const { projects, campaigns, loading, error, refresh } = useSupabaseData(filters);

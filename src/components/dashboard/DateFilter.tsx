@@ -53,10 +53,15 @@ export function DateFilter({
         setServerDate(currentServerDate);
         
         // Calculate server yesterday
-        const serverDateObj = new Date(currentServerDate + 'T00:00:00-03:00'); // São Paulo timezone
+        const serverDateObj = new Date(currentServerDate + 'T12:00:00'); // Use noon to avoid timezone issues
         const yesterdayObj = new Date(serverDateObj);
         yesterdayObj.setDate(yesterdayObj.getDate() - 1);
-        const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+        const yesterdayStr = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(yesterdayObj);
         setServerYesterday(yesterdayStr);
         
         // Initialize customDate with server date if not set

@@ -91,7 +91,6 @@ export default function Login() {
         description: "Bem-vindo ao Campaign Manager",
       });
 
-      // Aguardar um pouco para o userProfile ser carregado e redirecionar
       setTimeout(() => {
         navigate("/");
       }, 1000);

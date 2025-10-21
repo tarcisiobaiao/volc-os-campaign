@@ -62,3 +62,4 @@ COMMENT ON COLUMN users.role IS 'Role do usuário: ADMIN (acesso total) ou OPERA
 -- ==============================================================
 
 
+
