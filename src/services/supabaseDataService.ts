@@ -535,6 +535,7 @@ class SupabaseDataService {
       let projectsQuery = supabase
         .from('projects')
         .select('*')
+        .eq('visible', true) // Filter only visible projects
         .order('created_at', { ascending: false });
 
       // Apply project filter if specified
@@ -833,6 +834,7 @@ class SupabaseDataService {
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('*')
+        .eq('visible', true) // Filter only visible projects
         .order('created_at', { ascending: false });
 
       if (projectsError) throw projectsError;
