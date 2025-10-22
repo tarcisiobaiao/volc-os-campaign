@@ -16,12 +16,10 @@ import { calculateROAS } from "@/utils/roasCalculations";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 
 export default function CampaignDetailDashboard() {
-  console.log('🎬 CampaignDetailDashboard component rendering...');
 
   const { campaignId } = useParams();
   const navigate = useNavigate();
 
-  console.log('🔍 Campaign ID from URL:', campaignId);
 
   // All hooks must be declared before any conditional returns
   const [campaignData, setCampaignData] = useState<any>(null);
@@ -37,17 +35,14 @@ export default function CampaignDetailDashboard() {
   useEffect(() => {
     const initialize = async () => {
       try {
-        console.log('🚀 Starting initialization...');
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
-        console.log('🗓️ Initialized with server date:', serverDate);
       } catch (error) {
         console.error('❌ Error getting server date:', error);
         const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
           timeZone: 'America/Sao_Paulo'
         }).format(new Date());
         setSelectedDate(saoPauloDate);
-        console.log('🔄 Using fallback date:', saoPauloDate);
       }
     };
 
@@ -58,22 +53,18 @@ export default function CampaignDetailDashboard() {
   useEffect(() => {
     const loadCampaignData = async () => {
       if (!campaignId || !selectedDate) {
-        console.log('❌ Missing campaignId or selectedDate:', { campaignId, selectedDate });
         return;
       }
 
       try {
-        console.log('🎯 Loading campaign data for:', campaignId);
         setLoading(true);
         setError(null);
 
         // Load exchange rate
         const rate = await preloadExchangeRate();
         setExchangeRate(rate);
-        console.log('💱 Exchange rate loaded:', rate);
 
         // Load campaign data
-        console.log('📞 Calling getCampaignDashboardDataFiltered...');
         
         // Load both today's metrics and 7-day chart data when period is "today"
         let data;
@@ -107,13 +98,11 @@ export default function CampaignDetailDashboard() {
           });
         }
 
-        console.log('✅ Campaign data loaded:', data);
         setCampaignData(data);
       } catch (err) {
         console.error('❌ Error loading campaign data:', err);
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados da campanha');
       } finally {
-        console.log('🏁 Setting loading to false');
         setLoading(false);
       }
     };
@@ -529,7 +518,6 @@ export default function CampaignDetailDashboard() {
           campaignName={campaign?.campaign_name || 'Campanha'}
           onSave={() => {
             // Opcional: recarregar dados após salvar
-            console.log('URLs do funil salvas com sucesso');
           }}
         />
       )}

@@ -221,13 +221,9 @@ export default function ProjectDashboard() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  console.log('🚀 ProjectDashboard: Component rendered with projectId:', projectId);
-    console.log('🚀 ProjectDashboard: typeof projectId:', typeof projectId);
-    console.log('🚀 ProjectDashboard: window.location.pathname:', window.location.pathname);
 
   // Early return if no projectId
   if (!projectId) {
-    console.log('❌ ProjectDashboard: No projectId provided');
     return (
       <Layout>
         <div className="p-6">
@@ -276,23 +272,19 @@ export default function ProjectDashboard() {
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
-        console.log('🇧🇷 Project Dashboard initialized with São Paulo date:', serverDate);
 
         // Preload exchange rate for currency conversion
         await preloadExchangeRate();
-        console.log('💱 Exchange rate preloaded');
 
         // Load current tax rate
         const currentMonth = serverDate.substring(0, 7); // YYYY-MM format
         const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
         setCurrentTaxRate(taxRate);
-        console.log('📊 Current tax rate loaded:', taxRate, '%');
 
         // AUTO-TRIGGER: Check and copy operational costs for new month (day 1)
         try {
           const dataCopied = await operationalCostsService.checkAndCopyMonthData(currentMonth);
           if (dataCopied) {
-            console.log('✅ Operational costs auto-copied for new month:', currentMonth);
           }
         } catch (error) {
           console.error('⚠️ Error auto-copying operational costs:', error);
@@ -302,7 +294,6 @@ export default function ProjectDashboard() {
         try {
           const taxCreated = await taxHistoryService.checkAndCreateNextMonthTax();
           if (taxCreated) {
-            console.log('✅ Tax record auto-created for new month:', currentMonth);
           }
         } catch (error) {
           console.error('⚠️ Error auto-creating tax record:', error);
@@ -330,12 +321,10 @@ export default function ProjectDashboard() {
         // Load tax rate for the selected month
         const taxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
         setCurrentTaxRate(taxRate);
-        console.log('📊 Tax rate loaded for month:', monthToUse, '=', taxRate, '%');
 
         // Load daily operational costs for the selected month
         const dailyCosts = await operationalCostsService.getDailyActiveCosts(monthToUse);
         setDailyOperationalCosts(dailyCosts);
-        console.log('💼 Daily operational costs loaded for month:', monthToUse, '=', dailyCosts);
       } catch (error) {
         console.error('Error loading financial data:', error);
         setCurrentTaxRate(8.1); // Fallback
@@ -357,12 +346,10 @@ export default function ProjectDashboard() {
     period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
   }), [selectedDate, selectedEndDate, projectId, selectedPeriod]);
 
-  console.log('🔍 ProjectDashboard: selectedEndDate:', selectedEndDate);
 
   // Debug: Log current filters for monitoring
   React.useEffect(() => {
-    console.log('🔍 ProjectDashboard Current filters applied:', filters);
-    console.log('🔍 ProjectDashboard DETAILED DEBUG:', {
+    console.log({
       selectedPeriod,
       selectedDate,
       filterPeriod: filters.period,
@@ -374,7 +361,6 @@ export default function ProjectDashboard() {
   // Force refresh data when period changes
   React.useEffect(() => {
     if (selectedPeriod === 'today' || selectedPeriod === 'yesterday') {
-      console.log('🔄 ProjectDashboard Forcing refresh for period:', selectedPeriod);
       setTimeout(() => {
         refresh(filters);
       }, 500);
@@ -386,7 +372,7 @@ export default function ProjectDashboard() {
 
   // Get current project data from filtered data - MOVED UP to avoid initialization error
   const currentProject = useMemo(() => {
-    console.log('🔍 ProjectDashboard: Finding project', {
+    console.log({
       projectId,
       projectIdType: typeof projectId,
       projectsCount: projects?.length,
@@ -401,7 +387,7 @@ export default function ProjectDashboard() {
       return pId === projectIdNum || String(p.id) === projectId;
     });
 
-    console.log('🔍 ProjectDashboard: Project search result:', {
+    console.log({
       found: found?.name || 'Not found',
       foundId: found?.id,
       foundProjectType: found?.project_type,
@@ -423,16 +409,15 @@ export default function ProjectDashboard() {
     return campaigns.filter(c => {
       const cProjectId = typeof c.projectId === 'string' ? parseInt(c.projectId, 10) : c.projectId;
       const matches = cProjectId === projectIdNum;
-      console.log('🔍 Campaign filter:', { campaignId: c.id, cProjectId, projectIdNum, matches });
       return matches;
     });
   }, [campaigns, projectId]);
 
   // Set loading and error from useSupabaseData
   useEffect(() => {
-    console.log('🔄 ProjectDashboard: Loading state changed', { 
-      dataLoading, 
-      dataError, 
+    console.log({
+      dataLoading,
+      dataError,
       selectedDate
     });
     setLoading(dataLoading);
@@ -454,7 +439,6 @@ export default function ProjectDashboard() {
         setCustomDate(undefined);
         setRangeStartDate(undefined);
         setRangeEndDate(undefined);
-        console.log('🔄 Updated to current server date:', serverDate);
       } catch (error) {
         console.error('Error getting server date:', error);
         // Fallback to São Paulo timezone date
@@ -470,7 +454,6 @@ export default function ProjectDashboard() {
 
         // Get server date and calculate yesterday
         const serverDate = await supabaseDataService.getServerDate();
-        console.log('🔍 DEBUG YESTERDAY - Server date:', serverDate);
         const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
         const yesterdayObj = new Date(serverDateObj);
         yesterdayObj.setDate(yesterdayObj.getDate() - 1);
@@ -480,8 +463,7 @@ export default function ProjectDashboard() {
         setCustomDate(undefined);
         setRangeStartDate(undefined);
         setRangeEndDate(undefined);
-        console.log('🔄 Updated to yesterday:', yesterdayStr);
-        console.log('🔍 DEBUG YESTERDAY - Calculation:', {
+        console.log({
           serverDate,
           serverDateObj: serverDateObj.toISOString(),
           yesterdayObj: yesterdayObj.toISOString(),
@@ -491,7 +473,6 @@ export default function ProjectDashboard() {
         // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
         setTimeout(() => {
           const yesterdayFilters = { ...filters, date: yesterdayStr, period: 'custom' };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       } catch (error) {
@@ -512,7 +493,6 @@ export default function ProjectDashboard() {
         // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
         setTimeout(() => {
           const yesterdayFilters = { ...filters, date: saoPauloYesterday, period: 'custom' };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       }
@@ -523,7 +503,6 @@ export default function ProjectDashboard() {
   };
 
   const handleDateChange = (date: string) => {
-    console.log('📅 ProjectDashboard Date changed to:', date, 'period:', selectedPeriod);
     setSelectedDate(date);
     // Force a refresh when date changes to ensure data is up to date
     // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom'
@@ -532,7 +511,6 @@ export default function ProjectDashboard() {
       date,
       period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
     };
-    console.log('🔄 ProjectDashboard Refreshing with new filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
     }, 100);
@@ -634,7 +612,7 @@ export default function ProjectDashboard() {
 
         setCampaignsRevenue(aggregatedMetrics.totalRevenue);
 
-        console.log('🚀 OPTIMIZED: Campaign metrics fetched with single aggregated query:', {
+        console.log({
           projectId: currentProject.id,
           startDate,
           endDate,
@@ -676,7 +654,6 @@ export default function ProjectDashboard() {
         } else {
           const count = projectsWithCostDivision?.length || 1;
           setProjectsWithCostDivisionCount(count);
-          console.log('📊 Projects with cost division count:', count);
         }
       } catch (error) {
         console.error('Error fetching projects with cost division:', error);
@@ -691,7 +668,7 @@ export default function ProjectDashboard() {
   const metrics = useMemo(() => {
     try {
       if (!currentProject || !projectCampaigns || !summary) {
-        console.log('⚠️ Metrics calculation skipped - missing data:', {
+        console.log({
           currentProject: !!currentProject,
           projectCampaigns: !!projectCampaigns,
           summary: !!summary
@@ -710,7 +687,7 @@ export default function ProjectDashboard() {
     const organicExcedent = projectRevenue - campaignsRevenue;
     const organicExcedentPercentage = projectRevenue > 0 ? (organicExcedent / projectRevenue) * 100 : 0;
 
-    console.log('🎯 Revenue calculation method:', {
+    console.log({
       projectType: currentProject?.project_type,
       projectRevenue,
       campaignsRevenue,
@@ -722,7 +699,7 @@ export default function ProjectDashboard() {
     const projectRoas = calculateROAS(projectRevenue, projectInvestment); // ROAS com caso especial para faturamento sem gasto
     const projectRoi = calculateFinalROI(projectRevenue, projectInvestment); // ROI final com impostos e custos operacionais
 
-    console.log('📊 Project metrics calculated:', {
+    console.log({
       projectId: currentProject.id,
       projectType: currentProject?.project_type,
       campaignsCount: projectCampaigns.length,
@@ -800,15 +777,14 @@ export default function ProjectDashboard() {
 
   // Handle campaign actions
   const handleCampaignAction = useCallback((action: string, campaignId: string) => {
-    console.log(`🎬 Action: ${action} on campaign: ${campaignId}`);
-    console.log('🔍 Debug currentProject:', {
+    console.log({
       currentProject: currentProject ? {
         id: currentProject.id,
         name: currentProject.name,
         project_type: currentProject.project_type
       } : null
     });
-    console.log('🔍 Debug states:', {
+    console.log({
       isFunnelUrlsOpen,
       selectedCampaignForUrls
     });
@@ -816,41 +792,35 @@ export default function ProjectDashboard() {
     if (action === 'edit') {
       // Verificar se o projeto é do tipo ADSENSE
       const isAdSenseProject = currentProject?.project_type === 'ADSENSE';
-      console.log('🚩 Project type check:', {
+      console.log({
         project_type: currentProject?.project_type,
         isAdSenseProject
       });
 
       if (isAdSenseProject) {
-        console.log('✅ AdSense project detected - opening funnel URLs popup');
         // Para projetos AdSense, abrir popup de URLs do funil
         const campaign = filteredCampaigns?.find(c => c.id === campaignId);
-        console.log('🔍 Campaign found:', campaign ? {
+        console.log(campaign ? {
           id: campaign.id,
           name: campaign.name,
           googleAdsCampaignId: campaign.googleAdsCampaignId
         } : 'Not found');
-        console.log('🔍 filteredCampaigns total:', filteredCampaigns?.length);
-        console.log('🔍 All campaigns:', filteredCampaigns?.map(c => ({ id: c.id, name: c.name })));
 
         if (campaign) {
           // Para projetos AdSense, usar googleAdsCampaignId se disponível, senão usar id
           const funnelCampaignId = campaign.googleAdsCampaignId || campaignId;
-          console.log('🔗 Using funnel campaign ID:', funnelCampaignId);
 
           const campaignData = {
             id: funnelCampaignId,
             name: campaign.name || `Campanha ${campaignId}`
           };
 
-          console.log('🎯 Setting popup state:', campaignData);
           setSelectedCampaignForUrls(campaignData);
           setIsFunnelUrlsOpen(true);
-          console.log('🎯 Popup should open now - states set');
 
           // Verificar se o estado foi definido
           setTimeout(() => {
-            console.log('🔍 States after timeout:', {
+            console.log({
               isFunnelUrlsOpen,
               selectedCampaignForUrls
             });
@@ -861,7 +831,6 @@ export default function ProjectDashboard() {
         }
       } else {
         // Para projetos GAM, mostrar mensagem informativa discreta
-        console.log('📋 GAM project - showing info toast');
         toast({
           title: "Cadastro de Funis por URL",
           description: "Este recurso só está disponível em projetos AdSense. Em projetos GAM, o processo é feito automaticamente pelo sistema.",
@@ -870,11 +839,10 @@ export default function ProjectDashboard() {
       }
     } else {
       // Outras ações (pause, play, etc.)
-      console.log(`Other action: ${action} - TODO: implement`);
     }
   }, [currentProject, filteredCampaigns, isFunnelUrlsOpen, selectedCampaignForUrls]);
 
-  console.log('🎯 ProjectDashboard: Render conditions', {
+  console.log({
     loading,
     error,
     currentProject: !!currentProject,
@@ -887,7 +855,7 @@ export default function ProjectDashboard() {
   });
 
   // Debug do projeto atual
-  console.log('🔍 Current Project Debug:', {
+  console.log({
     currentProject: currentProject ? {
       id: currentProject.id,
       name: currentProject.name,
@@ -899,7 +867,6 @@ export default function ProjectDashboard() {
   });
 
   if (loading) {
-    console.log('🔄 ProjectDashboard: Showing loading state');
     return (
       <Layout>
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
@@ -929,8 +896,8 @@ export default function ProjectDashboard() {
   }
 
   if (!currentProject && !loading) {
-    console.log('❌ ProjectDashboard: Project not found', { 
-      projectId, 
+    console.log({
+      projectId,
       projectsCount: projects?.length,
       projects: projects?.map(p => ({ id: p.id, name: p.name })),
       selectedDate,
@@ -958,7 +925,7 @@ export default function ProjectDashboard() {
     );
   }
 
-  console.log('✅ ProjectDashboard: Rendering main dashboard', {
+  console.log({
     currentProject: currentProject?.name,
     campaignsCount: projectCampaigns?.length,
     metricsAvailable: !!metrics
@@ -1410,7 +1377,7 @@ export default function ProjectDashboard() {
 
       {/* Popup de URLs do funil para projetos AdSense */}
       {(() => {
-        console.log('🎯 Render popup check:', {
+        console.log({
           selectedCampaignForUrls: !!selectedCampaignForUrls,
           isFunnelUrlsOpen,
           campaignId: selectedCampaignForUrls?.id,
@@ -1420,7 +1387,6 @@ export default function ProjectDashboard() {
           <FunnelUrlsEditor
             isOpen={isFunnelUrlsOpen}
             onClose={() => {
-              console.log('🎯 Popup closing');
               setIsFunnelUrlsOpen(false);
               setSelectedCampaignForUrls(null);
             }}
@@ -1428,7 +1394,6 @@ export default function ProjectDashboard() {
             campaignName={selectedCampaignForUrls.name}
             onSave={() => {
               // Opcional: refresh dos dados após salvar
-              console.log('URLs do funil salvas com sucesso');
             }}
           />
         ) : null;

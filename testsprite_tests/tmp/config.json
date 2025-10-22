@@ -1,0 +1,25 @@
+{
+  "status": "active",
+  "type": "frontend",
+  "scope": "full_application",
+  "localEndpoint": "http://localhost:8083",
+  "backendAuthType": "supabase",
+  "testEnvironment": "development",
+  "features": [
+    "authentication",
+    "dashboard_analytics", 
+    "campaign_management",
+    "reporting",
+    "settings_management",
+    "currency_conversion"
+  ],
+  "testTypes": [
+    "functional",
+    "integration", 
+    "ui_ux",
+    "performance",
+    "security"
+  ],
+  "browsers": ["chrome", "firefox", "safari"],
+  "devices": ["desktop", "tablet", "mobile"]
+}

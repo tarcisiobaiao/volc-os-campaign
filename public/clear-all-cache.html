@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗑️ Limpar TUDO - Cache Completo</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .card {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .success {
+            background: #10b981;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            display: none;
+            text-align: center;
+        }
+        .info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .step {
+            background: #f9fafb;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        .emoji {
+            font-size: 48px;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="emoji">🗑️</div>
+        <h1>Limpar Cache Completo</h1>
+        <p class="subtitle">Sistema de Gestão de Campanhas</p>
+
+        <div class="info">
+            <strong>⚠️ Importante:</strong> Esta ação irá limpar completamente o cache do navegador para este site.
+        </div>
+
+        <button onclick="clearEverything()">
+            🚀 LIMPAR TUDO AGORA
+        </button>
+
+        <div id="success" class="success">
+            <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+            <h2 style="margin: 0 0 10px 0;">Cache Limpo com Sucesso!</h2>
+            <p style="margin: 10px 0; font-size: 18px;">
+                <strong>Próximos passos:</strong>
+            </p>
+            <div class="step">1️⃣ Feche esta aba</div>
+            <div class="step">2️⃣ Pressione <strong>Ctrl+Shift+R</strong> (Windows/Linux) ou <strong>Cmd+Shift+R</strong> (Mac)</div>
+            <div class="step">3️⃣ Aguarde o sistema recarregar completamente</div>
+        </div>
+    </div>
+
+    <script>
+        function clearEverything() {
+            console.log('🗑️ Iniciando limpeza completa de cache...');
+
+            try {
+                // 1. Limpar localStorage
+                localStorage.clear();
+                console.log('✅ localStorage limpo');
+
+                // 2. Limpar sessionStorage
+                sessionStorage.clear();
+                console.log('✅ sessionStorage limpo');
+
+                // 3. Limpar cookies deste domínio
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+                console.log('✅ Cookies limpos');
+
+                // 4. Limpar Cache API
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        names.forEach(function(name) {
+                            caches.delete(name);
+                            console.log('✅ Cache deletado:', name);
+                        });
+                    });
+                }
+
+                // 5. Limpar IndexedDB (se houver)
+                if (window.indexedDB) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            if (db.name) {
+                                indexedDB.deleteDatabase(db.name);
+                                console.log('✅ IndexedDB deletado:', db.name);
+                            }
+                        });
+                    }).catch(err => {
+                        console.log('ℹ️ Não foi possível limpar IndexedDB:', err);
+                    });
+                }
+
+                // Mostrar mensagem de sucesso
+                document.getElementById('success').style.display = 'block';
+
+                console.log('🎉 CACHE TOTALMENTE LIMPO! Recarregue a página com Ctrl+Shift+R');
+
+            } catch (error) {
+                console.error('❌ Erro ao limpar cache:', error);
+                alert('Erro ao limpar cache: ' + error.message);
+            }
+        }
+
+        // Adicionar atalho de teclado
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Delete') {
+                clearEverything();
+            }
+        });
+    </script>
+</body>
+</html>

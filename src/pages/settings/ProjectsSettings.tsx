@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { DateFilter } from "@/components/dashboard/DateFilter";
@@ -32,7 +33,9 @@ import {
   RefreshCw,
   TrendingUp,
   ArrowDown,
-  Info
+  Info,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -65,7 +68,6 @@ interface ProjectIntegration {
 
 
 export default function ProjectsSettings() {
-  console.log('🚀 ProjectsSettings component started loading');
 
   const navigate = useNavigate();
   const { userProfile } = useAuth();
@@ -86,6 +88,12 @@ export default function ProjectsSettings() {
   const addModal = useModal();
   const editModal = useModal();
   const deleteModal = useModal();
+  const visibilityModal = useModal();
+
+  // Visibility management states
+  const [allProjectsForVisibility, setAllProjectsForVisibility] = useState<Project[]>([]);
+  const [visibilityChanges, setVisibilityChanges] = useState<Record<string, boolean>>({});
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
   
   // Filter states - mesma lógica de Reports com ONTEM adicionado
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range'>('today');
@@ -130,13 +138,11 @@ export default function ProjectsSettings() {
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
-        console.log('🇧🇷 ProjectsSettings initialized with São Paulo date:', serverDate);
 
         // Load current tax rate
         const currentMonth = serverDate.substring(0, 7); // YYYY-MM format
         const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
         setCurrentTaxRate(taxRate);
-        console.log('📊 Current tax rate loaded:', taxRate, '%');
       } catch (error) {
         console.error('Error during initialization:', error);
         // Fallback to São Paulo timezone date
@@ -163,18 +169,6 @@ export default function ProjectsSettings() {
   // Use the same data hook as GeneralDashboard
   const { projects, campaigns, loading, error, refresh } = useSupabaseData(filters);
   
-  // Debug: Log filtered data
-  useEffect(() => {
-    console.log('🏗️ ProjectsSettings - Filtered data received:', {
-      filters,
-      projects: projects.length,
-      campaigns: campaigns.length,
-      loading,
-      error,
-      sortBy,
-      projectsData: projects.slice(0, 2) // Show first 2 projects for debugging
-    });
-  }, [projects, campaigns, loading, error, filters, sortBy]);
 
   // Filter handlers - mesma lógica de Reports
   const handlePeriodChange = async (period: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range') => {
@@ -189,7 +183,6 @@ export default function ProjectsSettings() {
         setRangeStartDate(undefined);
         setRangeEndDate(undefined);
       } catch (error) {
-        console.error('Error getting server date:', error);
         // Fallback to São Paulo timezone date
         const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
           timeZone: 'America/Sao_Paulo'
@@ -219,13 +212,11 @@ export default function ProjectsSettings() {
             date: yesterdayStr,
             endDate: undefined,
             projectId: selectedProject === "all" ? undefined : selectedProject,
-            period: 'custom'
+            period: 'custom' as const
           };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       } catch (error) {
-        console.error('Error getting server date for yesterday:', error);
         // Fallback to São Paulo timezone yesterday
         const now = new Date();
         const yesterday = new Date(now);
@@ -247,9 +238,8 @@ export default function ProjectsSettings() {
             date: saoPauloYesterday,
             endDate: undefined,
             projectId: selectedProject === "all" ? undefined : selectedProject,
-            period: 'custom'
+            period: 'custom' as const
           };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       }
@@ -310,7 +300,6 @@ export default function ProjectsSettings() {
   };
 
   const handleDateRangeChange = (startDate: string, endDate: string) => {
-    console.log('🔄 ProjectsSettings handleDateRangeChange called with:', { startDate, endDate });
     setSelectedDate(startDate);
     setSelectedEndDate(endDate);
     setSelectedPeriod('range');
@@ -321,7 +310,6 @@ export default function ProjectsSettings() {
       projectId: selectedProject === "all" ? undefined : selectedProject,
       period: 'range' as const
     };
-    console.log('🔄 ProjectsSettings: Refreshing with range filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
     }, 100);
@@ -341,6 +329,11 @@ export default function ProjectsSettings() {
 
 
   const filteredProjects = projects.filter(project => {
+    // FRONTEND-ONLY FILTER: Hide projects marked as invisible
+    if (project.visible === false) {
+      return false;
+    }
+
     // Filter by search term
     const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.domain.toLowerCase().includes(searchTerm.toLowerCase());
@@ -383,12 +376,10 @@ export default function ProjectsSettings() {
         .single();
 
       if (error) {
-        console.error('Error creating project:', error);
         alert('Erro ao criar projeto: ' + error.message);
         return;
       }
 
-      console.log('Project created successfully:', data);
       
       // Reset form
       setNewProject({
@@ -401,7 +392,6 @@ export default function ProjectsSettings() {
       refresh(filters);
       
     } catch (error) {
-      console.error('Error creating project:', error);
       alert('Erro ao criar projeto. Tente novamente.');
     } finally {
       setIsCreatingProject(false);
@@ -444,12 +434,10 @@ export default function ProjectsSettings() {
         .single();
 
       if (error) {
-        console.error('Error updating project:', error);
         alert('Erro ao atualizar projeto: ' + error.message);
         return;
       }
 
-      console.log('Project updated successfully:', data);
       
       // Reset form and close modal
       setEditForm({
@@ -461,7 +449,6 @@ export default function ProjectsSettings() {
       refresh(filters);
       
     } catch (error) {
-      console.error('Error updating project:', error);
       alert('Erro ao atualizar projeto. Tente novamente.');
     } finally {
       setIsUpdatingProject(false);
@@ -474,6 +461,77 @@ export default function ProjectsSettings() {
       setSelectedProjectItem(null);
       deleteModal.closeModal();
       refresh(filters);
+    }
+  };
+
+  // Visibility management functions
+  const handleOpenVisibilityModal = async () => {
+    try {
+      // Fetch ALL projects from database (no filters)
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('project_name', { ascending: true });
+
+
+      if (error) {
+        alert('Erro ao carregar projetos: ' + error.message);
+        return;
+      }
+
+      // Transform to Project format
+      const projectsData = data.map(p => ({
+        id: p.id.toString(),
+        name: p.project_name,
+        domain: p.domain,
+        gamNetworkCode: p.gam_network_code,
+        revshare: p.revshare,
+        visible: p.visible ?? true
+      }));
+
+      setAllProjectsForVisibility(projectsData);
+
+      // Initialize visibility changes with current values
+      const initialChanges: Record<string, boolean> = {};
+      projectsData.forEach(p => {
+        initialChanges[p.id] = p.visible ?? true;
+      });
+      setVisibilityChanges(initialChanges);
+
+      visibilityModal.openModal();
+    } catch (error) {
+      alert('Erro ao abrir configurações de visibilidade: ' + (error as Error).message);
+    }
+  };
+
+  const handleToggleVisibility = (projectId: string) => {
+    setVisibilityChanges(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
+  const handleSaveVisibility = async () => {
+    setIsSavingVisibility(true);
+    try {
+      // Update each project's visibility in database
+      const updates = Object.entries(visibilityChanges).map(([projectId, visible]) =>
+        supabase
+          .from('projects')
+          .update({ visible })
+          .eq('id', parseInt(projectId))
+      );
+
+      await Promise.all(updates);
+
+      visibilityModal.closeModal();
+
+      // Refresh data to reflect changes
+      refresh(filters);
+    } catch (error) {
+      alert('Erro ao salvar configurações de visibilidade');
+    } finally {
+      setIsSavingVisibility(false);
     }
   };
 
@@ -540,10 +598,31 @@ export default function ProjectsSettings() {
             </div>
           </div>
           {userProfile?.role !== 'OPERATOR' && (
-            <Button onClick={addModal.openModal} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Novo Projeto
-            </Button>
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        handleOpenVisibilityModal();
+                      }}
+                      className="h-9 w-9"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Gerenciar visibilidade dos projetos</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button onClick={addModal.openModal} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Projeto
+              </Button>
+            </div>
           )}
         </div>
 
@@ -1222,7 +1301,7 @@ export default function ProjectsSettings() {
                   • Os dados históricos serão perdidos
                 </p>
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={deleteModal.closeModal}>
                   Cancelar
@@ -1233,6 +1312,81 @@ export default function ProjectsSettings() {
               </div>
             </div>
           )}
+        </Modal>
+
+        {/* Visibility Management Modal */}
+        <Modal
+          isOpen={visibilityModal.isOpen}
+          onClose={visibilityModal.closeModal}
+          title="Gerenciar Visibilidade dos Projetos"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <Eye className="h-4 w-4 inline mr-1" />
+                <strong>Controle de Visibilidade:</strong> Escolha quais projetos devem aparecer no sistema. Projetos ocultos não serão exibidos em dashboards, relatórios e filtros.
+              </p>
+            </div>
+
+            <div className="max-h-[500px] overflow-y-auto space-y-2">
+              {allProjectsForVisibility.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold ${
+                      visibilityChanges[project.id] ? 'bg-gradient-to-br from-primary to-purple-600' : 'bg-gray-400'
+                    }`}>
+                      {visibilityChanges[project.id] ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{project.domain}</p>
+                      <p className="text-sm text-muted-foreground">{project.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground min-w-[60px]">
+                      {visibilityChanges[project.id] ? 'Visível' : 'Oculto'}
+                    </span>
+                    <Switch
+                      checked={visibilityChanges[project.id]}
+                      onCheckedChange={() => handleToggleVisibility(project.id)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                {Object.values(visibilityChanges).filter(v => v).length} de {allProjectsForVisibility.length} projetos visíveis
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={visibilityModal.closeModal}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveVisibility}
+                  disabled={isSavingVisibility}
+                  className="gap-2"
+                >
+                  {isSavingVisibility ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      Salvar Configurações
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </Modal>
       </div>
     </Layout>

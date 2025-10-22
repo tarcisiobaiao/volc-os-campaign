@@ -30,6 +30,7 @@ export interface Project {
   revshare?: number;
   gamNetworkCode?: string;
   project_type?: 'GAM' | 'ADSENSE';
+  visible?: boolean; // Frontend-only filter flag
 }
 
 export interface Campaign {
@@ -109,7 +110,6 @@ class SupabaseDataService {
   // 🔄 Invalidar cache quando dados são atualizados
   static invalidateCache(): void {
     localStorage.setItem('lastDataUpdate', Date.now().toString());
-    console.log('🔄 Cache invalidado - próximas consultas buscarão dados frescos');
   }
 
   // 🎯 Check if cache is still valid based on database updated_at
@@ -128,7 +128,7 @@ class SupabaseDataService {
           const dbTimestamp = new Date(latestUpdate[0].updated_at).getTime();
           const cacheIsNewer = cacheTimestamp > dbTimestamp;
 
-          console.log(`📊 Cache validation for ${date} (${table}):`, {
+          console.log({
             cacheKey,
             table,
             cacheTimestamp: new Date(cacheTimestamp).toISOString(),
@@ -164,7 +164,7 @@ class SupabaseDataService {
           const dbTimestamp = new Date(latestUpdate[0].updated_at).getTime();
           const cacheIsNewer = cacheTimestamp > dbTimestamp;
 
-          console.log(`📊 Campaign cache validation for ${dateRange.startDate} to ${dateRange.endDate}:`, {
+          console.log({
             cacheKey,
             table: 'daily_campaign_metrics',
             cacheTimestamp: new Date(cacheTimestamp).toISOString(),
@@ -351,12 +351,10 @@ class SupabaseDataService {
   // Uses São Paulo timezone to match local business hours
   private async getCurrentServerDate(): Promise<string> {
     if (this.currentServerDate) {
-      console.log('📋 Using cached server date:', this.currentServerDate);
       return this.currentServerDate;
     }
     
     try {
-      console.log('🔍 Getting current date in São Paulo timezone...');
 
       // Force São Paulo timezone calculation locally for better reliability
       const now = new Date();
@@ -364,14 +362,11 @@ class SupabaseDataService {
         timeZone: 'America/Sao_Paulo'
       }).format(now);
 
-      console.log('📍 Current UTC time:', now.toISOString());
-      console.log('📍 São Paulo time converted:', saoPauloDate);
 
       // Validate the RPC function but use local calculation as primary
       try {
         const { data: rpcDate, error } = await supabase.rpc('get_current_date');
         if (!error && rpcDate) {
-          console.log('📍 RPC date from server:', rpcDate);
 
           // Compare and warn if there's a mismatch
           if (rpcDate !== saoPauloDate) {
@@ -386,7 +381,6 @@ class SupabaseDataService {
       }
 
       this.currentServerDate = saoPauloDate;
-      console.log('✅ Final São Paulo date selected:', this.currentServerDate);
       return this.currentServerDate;
     } catch (error) {
       console.error('❌ Error getting server date:', error);
@@ -396,13 +390,12 @@ class SupabaseDataService {
         timeZone: 'America/Sao_Paulo'
       }).format(now);
       this.currentServerDate = saoPauloDate;
-      console.log('🔄 Using fallback São Paulo date:', this.currentServerDate);
       return this.currentServerDate;
     }
   }
   // Convert database project to UI project format
   private convertDatabaseProject(dbProject: DatabaseProject, metrics?: DatabaseDailyProjectMetrics[]): Project {
-    console.log('🔧 convertDatabaseProject - Raw dbProject:', {
+    console.log({
       id: dbProject.id,
       project_name: dbProject.project_name,
       project_type: dbProject.project_type,
@@ -531,13 +524,11 @@ class SupabaseDataService {
     userCampaignIds?: string[]; // Google Ads campaign IDs permitidos ao usuário (OPERATOR)
   }): Promise<Project[]> {
     try {
-      console.log('📂 getProjects called with filters:', filters);
       
       // Debug: Force current server date for 'today' period
       if (filters?.period === 'today') {
         const currentDate = await this.getCurrentServerDate();
         filters = { ...filters, date: currentDate };
-        console.log('📅 getProjects - Updated date for TODAY period:', filters.date);
       }
 
       // Build project query with filters - only select needed columns
@@ -554,7 +545,6 @@ class SupabaseDataService {
       // Apply user project filter for OPERATORS
       if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
         projectsQuery = projectsQuery.in('id', filters.userProjectIds);
-        console.log('🔐 Aplicando filtro de projetos do usuário:', filters.userProjectIds);
       }
 
       const { data: projects, error: projectsError } = await projectsQuery;
@@ -563,7 +553,7 @@ class SupabaseDataService {
 
       // Debug: Check if project_type is being returned
       if (projects && projects.length > 0) {
-        console.log('🔍 First project from query:', {
+        console.log({
           id: projects[0].id,
           project_name: projects[0].project_name,
           project_type: projects[0].project_type,
@@ -574,7 +564,6 @@ class SupabaseDataService {
       // Get aggregated metrics for each project using daily_campaign_metrics
       const projectsWithMetrics = await Promise.all(
         (projects || []).map(async (project) => {
-          console.log(`📊 Processing project: ${project.project_name} (ID: ${project.id})`);
 
           // Step 1: Get campaign IDs first, then query daily_campaign_metrics
           const { data: projectCampaignsForSpend } = await supabase
@@ -585,7 +574,7 @@ class SupabaseDataService {
           // IMPORTANTE: usar campaign_id (string do Google Ads) não id (PK da tabela)
           let campaignIdsForSpend = (projectCampaignsForSpend || []).map(c => c.campaign_id).filter(Boolean);
 
-          console.log('📊 Campanhas encontradas para o projeto', project.project_name, ':', {
+          console.log({
             totalCampaigns: (projectCampaignsForSpend || []).length,
             campaignIds: campaignIdsForSpend,
             hasUserFilter: !!(filters?.userCampaignIds && filters.userCampaignIds.length > 0),
@@ -601,7 +590,7 @@ class SupabaseDataService {
               filters.userCampaignIds!.includes(cid)
             );
 
-            console.log('🔐 Filtro de campanhas aplicado no projeto', project.project_name, ':', {
+            console.log({
               before: beforeFilter,
               after: campaignIdsForSpend.length,
               allowedCampaignIds: filters.userCampaignIds,
@@ -610,7 +599,7 @@ class SupabaseDataService {
           }
 
           let totalSpend = 0;
-          console.log(`💰 Iniciando cálculo de spend para ${project.project_name}:`, {
+          console.log({
             campaignIdsCount: campaignIdsForSpend.length,
             campaignIds: campaignIdsForSpend
           });
@@ -642,7 +631,6 @@ class SupabaseDataService {
                 .gte('date', startDate.toISOString().split('T')[0])
                 .lte('date', filters.date);
             } else if (filters?.period === 'range' && filters?.date && filters?.endDate) {
-              console.log('📊 Applying RANGE filter for spend:', filters.date, 'to', filters.endDate);
               spendQuery = spendQuery
                 .gte('date', filters.date)
                 .lte('date', filters.endDate);
@@ -654,7 +642,7 @@ class SupabaseDataService {
             }
 
             totalSpend = (spendData || []).reduce((sum, item) => sum + (Number(item.spend) || 0), 0);
-            console.log(`💸 Total spend calculated for project ${project.project_name}:`, {
+            console.log({
               period: filters?.period,
               dateRange: filters?.period === 'range' ? `${filters.date} to ${filters.endDate}` : filters?.date,
               recordsFound: spendData?.length || 0,
@@ -669,7 +657,6 @@ class SupabaseDataService {
           let totalRevenue = 0;
 
           // 🚀 UNIFIED OPTIMIZATION: All projects use daily_project_metrics for total revenue
-          console.log(`🚀 Project ${project.project_name} using optimized daily_project_metrics with minimal SELECT!`);
 
           let projectRevenueQuery = supabase
             .from('daily_project_metrics')
@@ -697,7 +684,6 @@ class SupabaseDataService {
               .gte('date', startDate.toISOString().split('T')[0])
               .lte('date', filters.date);
           } else if (filters?.period === 'range' && filters?.date && filters?.endDate) {
-            console.log('📊 Applying RANGE filter for project revenue:', filters.date, 'to', filters.endDate);
             projectRevenueQuery = projectRevenueQuery
               .gte('date', filters.date)
               .lte('date', filters.endDate);
@@ -713,7 +699,7 @@ class SupabaseDataService {
             return sum + revenueRevshare;
           }, 0);
 
-          console.log(`💰 Project ${project.project_name} revenue calculation (UNIFIED OPTIMIZATION):`, {
+          console.log({
             totalRevenue,
             records_count: projectRevenueData?.length || 0,
             date: filters?.date,
@@ -722,9 +708,9 @@ class SupabaseDataService {
             project_type: project.project_type
           });
 
-          console.log(`💰 Project ${project.project_name}:`, {
+          console.log({
             period: filters?.period || 'all',
-            date: filters?.date || 'none', 
+            date: filters?.date || 'none',
             campaignIds: campaignIds.length,
             spend: totalSpend,
             revenue: totalRevenue,
@@ -828,12 +814,12 @@ class SupabaseDataService {
             manager: 'Felipe Silva', // Default manager
             description: `Projeto ${project.project_name} - ${project.domain || project.main_url}`,
             costs_division: project.costs_division,
-            project_type: project.project_type
+            project_type: project.project_type,
+            visible: project.visible ?? true // Frontend-only filter flag
           };
         })
       );
 
-      console.log('📂 Projects with filtered metrics:', projectsWithMetrics.length);
       return projectsWithMetrics;
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -911,7 +897,8 @@ class SupabaseDataService {
             },
             // Raw project data for editing
             rawProject: project,
-            project_type: project.project_type
+            project_type: project.project_type,
+            visible: project.visible ?? true // Frontend-only filter flag
           };
         })
       );
@@ -996,15 +983,12 @@ class SupabaseDataService {
         } else {
           targetDate = date || await this.getCurrentServerDate();
         }
-        console.log('📅 getDailyMetrics - Using target date for', period + ':', targetDate);
         return this.getTodayMetrics(projectId, targetDate);
       } else if (period === 'custom' && date) {
         // Para DATA ESPECÍFICA, usar método específico que filtra apenas aquele dia
-        console.log('📅 getDailyMetrics - Using specific date for custom:', date);
         return this.getTodayMetrics(projectId, date);
       } else if (period === 'range' && date && filterEndDate) {
         // Para RANGE DE DATAS, usar intervalo específico
-        console.log('📅 getDailyMetrics - Using date range:', date, 'to', filterEndDate);
         endDate = filterEndDate;
         startDate.setTime(new Date(date).getTime());
       } else if (period === '7d') {
@@ -1036,14 +1020,14 @@ class SupabaseDataService {
         ]);
 
         if (cacheAge < cacheValidTime && projectCacheValid && campaignCacheValid) {
-          console.log('🎯 DAILY METRICS CACHE HIT - Usando dados cached (validado com ambas DBs)!', {
+          console.log({
             cacheKey,
             cacheAge: `${Math.round(cacheAge / 1000)}s`,
             dateRange
           });
           return JSON.parse(cachedData);
         } else if (!projectCacheValid || !campaignCacheValid) {
-          console.log('🔄 DAILY METRICS CACHE INVALIDADO - Database tem dados mais novos', {
+          console.log({
             projectCacheValid,
             campaignCacheValid
           });
@@ -1051,7 +1035,7 @@ class SupabaseDataService {
       }
 
       // 🚀 OTIMIZAÇÃO: Usar daily_project_metrics para revenue + daily_campaign_metrics apenas para spend
-      console.log('🎯 getDailyMetrics - Using optimized queries:', {
+      console.log({
         startDate: startDateStr,
         endDate,
         projectId
@@ -1094,7 +1078,7 @@ class SupabaseDataService {
       const { data: campaignMetrics, error: campaignError } = await spendQuery;
       if (campaignError) throw campaignError;
 
-      console.log(`📊 getDailyMetrics optimized results:`, {
+      console.log({
         revenueRecords: revenueMetrics.length,
         spendRecords: campaignMetrics.length
       });
@@ -1179,7 +1163,6 @@ class SupabaseDataService {
       const currentTimestamp = Date.now().toString();
       localStorage.setItem(cacheKey, JSON.stringify(result));
       localStorage.setItem(`${cacheKey}_timestamp`, currentTimestamp);
-      console.log('💾 Daily metrics data cached for future requests');
 
       return result;
 
@@ -1215,8 +1198,6 @@ class SupabaseDataService {
   }> {
     try {
       const { projectId, period, date } = filters;
-      console.log('🚀🚀🚀 getDashboardData OTIMIZADO called with filters:', filters);
-      console.log('🔍 Checking conditions - period:', period, 'date:', date);
 
       // 🚀 CACHE INTELIGENTE COM INVALIDAÇÃO: Reduz egress mas mantém dados atualizados
       const cacheKey = `dashboard_${JSON.stringify({projectId, period, date})}`;
@@ -1241,7 +1222,7 @@ class SupabaseDataService {
           if (cacheAge < cacheValidTime && !dataWasUpdated && isCacheStillValid) {
             // 📊 METRICS: Increment cache hit
             localStorage.setItem('cache_hits', String(parseInt(cacheHitMetric) + 1));
-            console.log('🎯 CACHE HIT - Usando dados cached (validado com DB), economizando egress!', {
+            console.log({
               cacheKey,
               cacheAge: `${Math.round(cacheAge / 1000)}s`,
               validFor: `${Math.round((cacheValidTime - cacheAge) / 1000)}s mais`,
@@ -1249,14 +1230,13 @@ class SupabaseDataService {
             });
             return JSON.parse(cachedData);
           } else if (!isCacheStillValid) {
-            console.log('🔄 CACHE INVALIDADO - Database tem dados mais novos que o cache');
           }
         } else {
           // For other periods, use time-based cache
           if (cacheAge < cacheValidTime && !dataWasUpdated) {
             // 📊 METRICS: Increment cache hit
             localStorage.setItem('cache_hits', String(parseInt(cacheHitMetric) + 1));
-            console.log('🎯 CACHE HIT - Usando dados cached, economizando egress!', {
+            console.log({
               cacheKey,
               cacheAge: `${Math.round(cacheAge / 1000)}s`,
               validFor: `${Math.round((cacheValidTime - cacheAge) / 1000)}s mais`,
@@ -1264,7 +1244,6 @@ class SupabaseDataService {
             });
             return JSON.parse(cachedData);
           } else if (dataWasUpdated) {
-            console.log('🔄 CACHE INVALIDADO - Dados foram atualizados, buscando novos dados');
           }
         }
       }
@@ -1284,11 +1263,8 @@ class SupabaseDataService {
         } else {
           targetDate = await this.getCurrentServerDate();
         }
-        console.log('🎯 Final target date for SINGLE DAY mode:', targetDate, 'period:', period);
-        console.log('📅 getDashboardData - Using SINGLE DAY mode for date:', targetDate, 'filters:', filters);
 
-        console.log('📅 getDashboardData - Searching for date:', targetDate);
-        console.log('🔍 DEBUG: Date analysis:', {
+        console.log({
           period,
           providedDate: date,
           isCustom: period === 'custom',
@@ -1299,7 +1275,6 @@ class SupabaseDataService {
         });
 
         // 🚀 NOVA LÓGICA OTIMIZADA PARA SINGLE DAY: usar daily_project_metrics
-        console.log('🚀 NOVA OTIMIZAÇÃO SINGLE DAY: Using daily_project_metrics for revenue calculation, period:', period);
 
         // DEBUG: Primeiro verificar que datas estão disponíveis na tabela (apenas em desenvolvimento)
         if (import.meta.env.DEV) {
@@ -1309,7 +1284,7 @@ class SupabaseDataService {
             .order('date', { ascending: false })
             .limit(10);
 
-          console.log('🔍 DEBUG: Available dates in daily_project_metrics:', {
+          console.log({
             availableDates: availableDates?.map(d => ({ date: d.date, revenue: d.revenue_converted_revshare })) || [],
             totalRecords: availableDates?.length || 0,
             targetDateSearching: targetDate
@@ -1327,15 +1302,13 @@ class SupabaseDataService {
         // Aplicar filtro de projeto se especificado
         if (projectId && projectId !== 'all') {
           revenueQuery = revenueQuery.eq('project_id', parseInt(projectId));
-          console.log('🎯 Project filter applied for TODAY:', projectId);
         } else {
-          console.log('🏠 General dashboard mode for TODAY - no project filter');
         }
 
         const { data: revenueData, error: revenueError } = await revenueQuery;
         let todayTotalRevenueAfterRevshare = 0;
 
-        console.log('🔍 DEBUG: Revenue query result:', {
+        console.log({
           targetDate,
           projectFilter: projectId,
           error: revenueError,
@@ -1352,7 +1325,7 @@ class SupabaseDataService {
           todayTotalRevenueAfterRevshare = revenueData.reduce((sum, item) =>
             sum + (Number(item.revenue_converted_revshare) || 0), 0);
 
-          console.log('✅ Efficient TODAY revenue calculation from daily_project_metrics:', {
+          console.log({
             targetDate,
             projectFilter: projectId,
             recordCount: revenueData.length,
@@ -1406,7 +1379,7 @@ class SupabaseDataService {
 
           todayTotalSpend = spendData.reduce((sum, item) => sum + (Number(item.spend) || 0), 0);
 
-          console.log('✅ TODAY spend calculation from daily_campaign_metrics:', {
+          console.log({
             targetDate,
             projectFilter: projectId,
             recordCount: spendData.length,
@@ -1418,11 +1391,10 @@ class SupabaseDataService {
 
         // ✅ OTIMIZAÇÃO CONCLUÍDA: A lógica GAM antiga foi substituída pela consulta direta
         // em daily_project_metrics (muito mais eficiente em termos de egress)
-        console.log('✅ GAM antigo removido - usando daily_project_metrics otimizado!');
 
         const totalProfit = todayTotalRevenueAfterRevshare - todayTotalSpend;
 
-        console.log('📊 Dashboard totals for TODAY mode', targetDate, ':', {
+        console.log({
           totalSpend: todayTotalSpend,
           totalRevenueAfterRevshare: todayTotalRevenueAfterRevshare,
           totalProfit
@@ -1460,7 +1432,7 @@ class SupabaseDataService {
         const finalGeneralRoas = todayTotalSpend > 0 ? ((finalTotalRevenue / todayTotalSpend) - 1) * 100 : 0;
         const todayFinalRoi = todayTotalSpend > 0 ? ((finalTotalProfit / todayTotalSpend) - 1) * 100 : 0;
 
-        console.log('🎯 TODAY FINAL RESULT - OTIMIZADO com daily_project_metrics:', {
+        console.log({
           finalTotalRevenue,
           finalTotalProfit,
           finalGeneralRoas,
@@ -1488,7 +1460,6 @@ class SupabaseDataService {
       }
       
       // Para períodos agregados (7d, 30d, e range), usar a mesma lógica de filtro por data
-      console.log('🚀 getDashboardData - Using aggregated period mode for:', period, 'with date:', date);
       
       // Determinar intervalo de datas baseado no período
       let startDate: Date;
@@ -1498,9 +1469,8 @@ class SupabaseDataService {
         // Para range, usar as datas específicas fornecidas
         startDate = new Date(filters.date);
         endDate = new Date(filters.endDate);
-        console.log('📅 RANGE DEBUG - Using range dates:', filters.date, 'to', filters.endDate);
-        console.log('📅 RANGE DEBUG - Date objects:', { 
-          startDate: startDate.toISOString(), 
+        console.log({
+          startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           startDateStr: startDate.toISOString().split('T')[0],
           endDateStr: endDate.toISOString().split('T')[0]
@@ -1523,11 +1493,8 @@ class SupabaseDataService {
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       
-      console.log('📅 Date range for aggregated period:', { startDate: startDateStr, endDate: endDateStr, period });
-      console.log('🎯 RANGE DEBUG - Project filter applied:', projectId);
       
       // 🚀 OTIMIZAÇÃO RANGE: Usar daily_project_metrics (consistente com TODAY)
-      console.log('🚀 RANGE OTIMIZADO: Usando daily_project_metrics para maximum efficiency!');
 
       // 1. REVENUE: Consulta otimizada na daily_project_metrics para RANGE
       let revenueQuery = supabase
@@ -1539,9 +1506,7 @@ class SupabaseDataService {
 
       if (projectId && projectId !== 'all') {
         revenueQuery = revenueQuery.eq('project_id', parseInt(projectId));
-        console.log('🎯 RANGE: Project filter applied:', projectId);
       } else {
-        console.log('🏠 RANGE: General dashboard mode - no project filter');
       }
 
       // 2. SPEND: Consulta otimizada na daily_campaign_metrics para RANGE COM PAGINAÇÃO
@@ -1581,13 +1546,11 @@ class SupabaseDataService {
           spendData.push(...pageData);
           page++;
           hasMore = pageData.length === pageSize;
-          console.log(`📄 RANGE Página ${page} carregada: ${pageData.length} registros (total: ${spendData.length})`);
         } else {
           hasMore = false;
         }
       }
 
-      console.log(`✅ RANGE Paginação de spend completa: ${spendData.length} registros em ${page} páginas`);
 
       // Executar consulta de revenue
       const { data: revenueData, error: revenueError } = await revenueQuery;
@@ -1602,13 +1565,13 @@ class SupabaseDataService {
         throw spendError;
       }
 
-      console.log('📊 RANGE data results:', {
+      console.log({
         revenueRecords: revenueData?.length || 0,
         spendRecords: spendData?.length || 0,
         dateRange: `${startDateStr} to ${endDateStr}`,
         period
       });
-      
+
       // 🚀 CÁLCULOS OTIMIZADOS PARA RANGE: Usar dados pré-processados
       const totalRevenueAfterRevshare = (revenueData || []).reduce((sum, item) => {
         return sum + (Number(item.revenue_converted_revshare) || 0);
@@ -1618,7 +1581,7 @@ class SupabaseDataService {
         return sum + (Number(item.spend) || 0);
       }, 0);
 
-      console.log('💰 RANGE TOTALS CALCULATED:', {
+      console.log({
         totalRevenueAfterRevshare,
         totalSpend,
         dateRange: `${startDateStr} to ${endDateStr}`,
@@ -1639,8 +1602,8 @@ class SupabaseDataService {
       }
       
       const totalProfit = totalRevenue - totalSpend;
-      
-      console.log('📊 Dashboard totals for aggregated period:', {
+
+      console.log({
         dateRange: `${startDateStr} to ${endDateStr}`,
         period,
         revenueDataCount: revenueData?.length || 0,
@@ -1652,7 +1615,7 @@ class SupabaseDataService {
         allRevenueData: revenueData,
         allSpendData: spendData
       });
-      
+
       const generalRoas = totalSpend > 0 ? ((totalRevenue / totalSpend) - 1) * 100 : 0;  // ROAS as excess
       const finalRoi = totalSpend > 0 ? (totalProfit / totalSpend) * 100 : 0;
       
@@ -1706,13 +1669,12 @@ class SupabaseDataService {
       const totalRequests = parseInt(cacheHitMetric) + parseInt(cacheMissMetric) + 1;
       const hitRate = (parseInt(cacheHitMetric) / totalRequests * 100);
 
-      console.log('💾 Dados salvos no cache para próximas consultas!', {
+      console.log({
         cacheKey,
         cacheHitRate: `${hitRate.toFixed(1)}%`,
         egressSaved: hitRate > 0 ? `~${(hitRate * 500 / 100).toFixed(0)}KB per hit` : 'N/A'
       });
 
-      console.log('🎯 FINAL RESULT for getDashboardData:', result);
       return result;
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -1737,7 +1699,6 @@ class SupabaseDataService {
 
     try {
       const dateToCheck = targetDate || new Date().toISOString().split('T')[0];
-      console.log('🔍 Debugging data for date:', dateToCheck, 'Time zone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
       // Check daily_campaign_metrics
       const { data: campaignData, error: campaignError } = await supabase
@@ -1753,11 +1714,8 @@ class SupabaseDataService {
         .order('date', { ascending: false })
         .limit(10);
 
-      console.log('Available dates in daily_campaign_metrics:', allDates?.map(d => d.date));
 
-      console.log('daily_campaign_metrics:', campaignData?.length || 0, 'records');
       if (campaignData?.length > 0) {
-        console.log('Sample record:', campaignData[0]);
       }
 
       // Check gam_metrics
@@ -1774,11 +1732,8 @@ class SupabaseDataService {
         .order('date', { ascending: false })
         .limit(10);
 
-      console.log('Available dates in gam_metrics:', allGamDates?.map(d => d.date));
 
-      console.log('gam_metrics:', gamData?.length || 0, 'records');
       if (gamData?.length > 0) {
-        console.log('Sample record:', gamData[0]);
       }
 
       // Check campaigns_with_revenue view
@@ -1787,9 +1742,7 @@ class SupabaseDataService {
         .select('*')
         .limit(5);
 
-      console.log('campaigns_with_revenue view:', campaignsView?.length || 0, 'records');
       if (campaignsView?.length > 0) {
-        console.log('Sample record:', campaignsView[0]);
       }
 
     } catch (error) {
@@ -1802,7 +1755,6 @@ class SupabaseDataService {
     try {
       // Fix: Use the current server date dynamically
       const today = targetDate || await this.getCurrentServerDate();
-      console.log('🔍 getTodayMetrics - Searching for date:', today, 'projectId:', projectId);
       
       // Query daily campaign metrics for today only
       let campaignQuery = supabase
@@ -1822,9 +1774,7 @@ class SupabaseDataService {
       const { data: campaignMetrics, error: campaignError } = await campaignQuery;
       if (campaignError) throw campaignError;
 
-      console.log('📊 Campaign metrics found:', campaignMetrics?.length || 0, 'items');
       if (campaignMetrics?.length > 0) {
-        console.log('Sample campaign metric:', campaignMetrics[0]);
       }
 
       // Get GAM revenue data for today only
@@ -1835,9 +1785,7 @@ class SupabaseDataService {
 
       if (gamError) throw gamError;
       
-      console.log('💰 GAM metrics found:', gamMetrics?.length || 0, 'items');
       if (gamMetrics?.length > 0) {
-        console.log('Sample GAM metric:', gamMetrics[0]);
       }
 
       // Create single day data entry
@@ -1885,7 +1833,7 @@ class SupabaseDataService {
       dailyData.ctr = dailyData.impressions > 0 ? (dailyData.clicks / dailyData.impressions) * 100 : 0;
       dailyData.cpc = dailyData.clicks > 0 ? dailyData.investment / dailyData.clicks : 0;
 
-      console.log('📈 Final daily data for', today, ':', {
+      console.log({
         investment: dailyData.investment,
         revenue: dailyData.revenue,
         profit: dailyData.profit,
@@ -1910,16 +1858,16 @@ class SupabaseDataService {
       
       // 🎯 SOLUÇÃO DEFINITIVA: Cálculo direto para intervalos de datas
       if ((filters?.date && filters?.endDate) || filters?.period === 'range') {
-        console.log('🎯 GETSUMMARY RANGE DETECTED:', {
+        console.log({
           date: filters?.date,
           endDate: filters?.endDate,
           period: filters?.period,
           fullFilters: filters,
           methodCalled: 'getSummary'
         });
-        
+
         // 🚀 NOVA OTIMIZAÇÃO: Usar daily_project_metrics em vez de daily_campaign_metrics
-        console.log('🔍 QUERY DEBUG - Using optimized daily_project_metrics:', {
+        console.log({
           table: 'daily_project_metrics',
           dateRange: `${filters.date} to ${filters.endDate}`,
           method: 'Direct revenue_converted_revshare query'
@@ -1979,7 +1927,6 @@ class SupabaseDataService {
               }
             }
 
-            console.log(`📊 Paginação completa para projeto específico: ${spendData.length} registros em ${page} páginas`);
           }
         } else {
           // For all projects, get all spend data WITH PAGINATION
@@ -1999,16 +1946,14 @@ class SupabaseDataService {
               spendData.push(...allSpendData);
               page++;
               hasMore = allSpendData.length === pageSize;
-              console.log(`📄 Página ${page} carregada: ${allSpendData.length} registros (total acumulado: ${spendData.length})`);
             } else {
               hasMore = false;
             }
           }
 
-          console.log(`✅ Paginação completa: ${spendData.length} registros totais em ${page} páginas`);
         }
 
-        console.log(`📦 Query complete:`, {
+        console.log({
           revenueRecords: revenueData?.length || 0,
           spendRecords: spendData?.length || 0
         });
@@ -2053,7 +1998,7 @@ class SupabaseDataService {
 
         const dailyAnalysis = Object.values(dailyBreakdown).sort((a: any, b: any) => a.date.localeCompare(b.date));
 
-        console.log('🎯 GETSUMMARY - Optimized processing complete:', {
+        console.log({
           method: '✅ Optimized daily_project_metrics queries',
           dateRange: `${filters.date} to ${filters.endDate}`,
           revenueRecordsProcessed: revenueData.length,
@@ -2084,7 +2029,7 @@ class SupabaseDataService {
             spend: item.spend
           }))
         });
-        
+
         // Cálculos derivados usando revenue after revshare
         const totalProfit = totalRevenueAfterRevshare - totalSpend;
         const generalRoas = totalSpend > 0 ? ((totalRevenueAfterRevshare / totalSpend) - 1) * 100 : 0;  // ROAS as excess
@@ -2117,7 +2062,6 @@ class SupabaseDataService {
           trendsPercentage: { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 }
         };
         
-        console.log('🎯 GETSUMMARY RANGE RESULT:', result);
         return result;
       }
       
@@ -2140,7 +2084,6 @@ class SupabaseDataService {
         trendsPercentage: dashboardData.trendsPercentage
       };
       
-      console.log('🎯 FINAL RESULT for getSummary (non-range):', result);
       return result;
     } catch (error) {
       console.error('Error calculating summary:', error);
@@ -2176,29 +2119,23 @@ class SupabaseDataService {
     campaignMetrics: any;
   }> {
     try {
-      console.log('🔍 Searching for campaign with ID:', campaignId);
       
       // First, let's make a simpler query to see what we have
-      console.log('🚀 Step 1: Testing basic query on campaigns_with_revenue');
       const { data: allCampaigns, error: allError } = await supabase
         .from('campaigns_with_revenue')
         .select('campaign_id, campaign_name')
         .limit(10);
       
-      console.log('📋 All campaigns available:', allCampaigns, 'Error:', allError);
       
       // Check if our specific campaign exists
-      console.log('🚀 Step 2: Checking if campaign exists with simple query');
       const { data: simpleCheck, error: simpleError } = await supabase
         .from('campaigns_with_revenue')
         .select('*')
         .eq('campaign_id', campaignId)
         .limit(1);
       
-      console.log('📊 Simple check result:', simpleCheck, 'Error:', simpleError);
       
       if (!simpleCheck || simpleCheck.length === 0) {
-        console.log('❌ Campaign not found with simple query');
         return {
           campaign: null,
           dailyMetrics: [],
@@ -2208,19 +2145,16 @@ class SupabaseDataService {
       }
       
       // Now try the complex query
-      console.log('🚀 Step 3: Trying complex query with joins');
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns_with_revenue')
         .select('*')
         .eq('campaign_id', campaignId)
         .limit(1);
 
-      console.log('💾 Complex campaign data query result:', campaignData, 'Error:', campaignError);
       
       if (campaignError) throw campaignError;
       
       if (!campaignData || campaignData.length === 0) {
-        console.log('❌ No campaign data found in complex query');
         return {
           campaign: null,
           dailyMetrics: [],
@@ -2230,7 +2164,6 @@ class SupabaseDataService {
       }
 
       const rawData = campaignData[0];
-      console.log('📄 Raw campaign data:', rawData);
 
       // Use the simple data format without joins for now
       const campaignMetrics = {
@@ -2277,7 +2210,6 @@ class SupabaseDataService {
         };
       }).reverse();
 
-      console.log('✅ Returning campaign data successfully');
       
       return {
         campaign: null, // Not needed for this dashboard format
@@ -2308,7 +2240,6 @@ class SupabaseDataService {
     campaignMetrics: any;
   }> {
     try {
-      console.log('🔍 getCampaignDashboardDataFiltered called with:', { campaignId, filters });
       
       // Determine date range based on filters
       let startDate: string;
@@ -2342,7 +2273,6 @@ class SupabaseDataService {
         endDate = today;
       }
 
-      console.log('📅 Date range for campaign dashboard:', { startDate, endDate, period: filters.period });
 
       // Get campaign basic info with project data
       const { data: campaignData, error: campaignError } = await supabase
@@ -2357,7 +2287,6 @@ class SupabaseDataService {
       if (campaignError) throw campaignError;
       
       if (!campaignData || campaignData.length === 0) {
-        console.log('❌ Campaign not found');
         return {
           campaign: null,
           dailyMetrics: [],
@@ -2367,11 +2296,9 @@ class SupabaseDataService {
       }
 
       const rawCampaign = campaignData[0];
-      console.log('📄 Raw campaign data:', rawCampaign);
 
       // Get daily campaign metrics for date range (including revenue_converted_revshare)
-      console.log(`🔍 Querying daily_campaign_metrics for campaign ${campaignId} between ${startDate} and ${endDate}`);
-      console.log(`🔍 Query details:`, {
+      console.log({
         table: 'daily_campaign_metrics',
         campaign_id: campaignId,
         date_range: `${startDate} to ${endDate}`,
@@ -2389,17 +2316,13 @@ class SupabaseDataService {
       if (metricsError) {
         console.error(`❌ Error querying daily_campaign_metrics:`, metricsError);
       } else {
-        console.log(`📊 Found ${(dailyMetrics || []).length} daily metrics records for campaign ${campaignId}`);
-        console.log(`📊 Daily metrics data sample:`, (dailyMetrics || []).slice(0, 3));
         if (dailyMetrics && dailyMetrics.length > 0) {
-          console.log(`📊 Date range in results: ${dailyMetrics[0]?.date} to ${dailyMetrics[dailyMetrics.length - 1]?.date}`);
         }
       }
 
       // Note: GAM data no longer needed - using revenue_converted_revshare from daily_campaign_metrics
 
       // Aggregate daily metrics
-      console.log(`🧮 Starting aggregation for ${(dailyMetrics || []).length} records...`);
 
       const aggregatedSpend = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.spend) || 0), 0);
       const aggregatedClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
@@ -2412,7 +2335,7 @@ class SupabaseDataService {
         return sum + revenueAfterRevshare;
       }, 0);
 
-      console.log(`🧮 Aggregation results for campaign ${campaignId}:`, {
+      console.log({
         period: filters.period,
         dateRange: `${startDate} to ${endDate}`,
         recordsCount: (dailyMetrics || []).length,
@@ -2462,7 +2385,6 @@ class SupabaseDataService {
         chartEndDate = endDate;
       }
 
-      console.log('📊 Chart date range:', { chartStartDate, chartEndDate, period: filters.period });
 
       const { data: chartMetrics } = await supabase
         .from('daily_campaign_metrics')
@@ -2472,13 +2394,10 @@ class SupabaseDataService {
         .lte('date', chartEndDate)
         .order('date', { ascending: true });
 
-      console.log(`📊 Chart metrics found: ${(chartMetrics || []).length} records`);
 
       // Build historical data by date using daily_campaign_metrics only
       const historicalData = [];
 
-      console.log(`📊 Building historical data from ${chartStartDate} to ${chartEndDate}`);
-      console.log(`📊 Available chart metrics dates:`, (chartMetrics || []).map(m => m.date).sort());
 
       // 🚀 CORREÇÃO: Use string-based date arithmetic with São Paulo timezone awareness
       const addDaysToDateString = (dateStr: string, days: number): string => {
@@ -2502,14 +2421,12 @@ class SupabaseDataService {
       };
 
       const totalDays = getDaysBetweenDates(chartStartDate, chartEndDate);
-      console.log(`📊 Total days to process: ${totalDays + 1} (from ${chartStartDate} to ${chartEndDate})`);
 
       // Iterate through each day in the range
       for (let dayOffset = 0; dayOffset <= totalDays; dayOffset++) {
         const dateStr = addDaysToDateString(chartStartDate, dayOffset);
         const dayMetrics = (chartMetrics || []).filter(m => m.date === dateStr);
 
-        console.log(`📊 Processing date: ${dateStr}, found ${dayMetrics.length} metrics`);
 
         const daySpend = dayMetrics.reduce((sum, m) => sum + (Number(m.spend) || 0), 0);
         const dayRevenue = dayMetrics.reduce((sum, m) => {
@@ -2528,9 +2445,7 @@ class SupabaseDataService {
         });
       }
 
-      console.log(`📊 Historical data built: ${historicalData.length} days from ${chartStartDate} to ${chartEndDate}`);
 
-      console.log('✅ Returning filtered campaign dashboard data');
       
       return {
         campaign: null,
@@ -2660,7 +2575,6 @@ class SupabaseDataService {
         throw error;
       }
       
-      console.log(`Processed Google Ads campaign: ${googleAdsData.campaign_id}`);
     } catch (error) {
       console.error('Error in processGoogleAdsData:', error);
       throw error;
@@ -2735,7 +2649,6 @@ class SupabaseDataService {
               onConflict: 'google_ads_campaign_id'
             });
           
-          console.log(`Processed Google Ads campaign: ${googleAdsData.campaign_id}`);
         }
       }
     } catch (error) {
@@ -2757,7 +2670,6 @@ class SupabaseDataService {
         throw error;
       }
       
-      console.log(`Processed GAM metrics for UTM: ${gamData.value}`);
     } catch (error) {
       console.error('Error in processGamMetrics:', error);
       throw error;
@@ -2782,7 +2694,6 @@ class SupabaseDataService {
           onConflict: 'date,utm_campaign_value,gam_accounts_id'
         });
         
-      console.log(`Processed GAM metrics for UTM campaign: ${gamData.value}`);
     } catch (error) {
       console.error('Error processing GAM metrics:', error);
       throw error;
@@ -2801,7 +2712,6 @@ class SupabaseDataService {
   }): Promise<Campaign[]> {
     try {
       // Log filter information for debugging
-      console.log('🔍 getCampaignsWithRevenue called with filters:', filters);
 
       // For filtered queries, we need to build custom aggregated data instead of using the view
       if (filters?.date || filters?.period) {
@@ -2821,7 +2731,6 @@ class SupabaseDataService {
       // Apply user project filter for OPERATORS
       if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
         query = query.in('project_id', filters.userProjectIds);
-        console.log('🔐 Aplicando filtro de projetos nas campanhas:', filters.userProjectIds);
       }
 
       const { data, error } = await query.order('gam_revenue', { ascending: false });
@@ -2829,7 +2738,7 @@ class SupabaseDataService {
       if (error) throw error;
 
       // Debug log to see available campaigns
-      console.log('🚀 Available campaigns in campaigns_with_revenue:', {
+      console.log({
         total: (data || []).length,
         hasUserFilter: !!(filters?.userCampaignIds && filters.userCampaignIds.length > 0),
         userCampaignIds: filters?.userCampaignIds,
@@ -2843,15 +2752,13 @@ class SupabaseDataService {
       // Filter campaigns by user permissions if specified
       let filteredData = data || [];
       if (filters?.userCampaignIds && filters.userCampaignIds.length > 0) {
-        console.log('🔐 Tentando filtrar campanhas. Campaign IDs permitidos:', filters.userCampaignIds);
         filteredData = filteredData.filter((item: any) => {
           const isAllowed = filters.userCampaignIds!.includes(item.campaign_id);
           if (!isAllowed) {
-            console.log(`  ❌ Campanha ${item.campaign_id} (${item.campaign_name}) não está nos IDs permitidos`);
           }
           return isAllowed;
         });
-        console.log('🔐 Filtro de campanhas do usuário aplicado:', {
+        console.log({
           total: data?.length,
           filtered: filteredData.length
         });
@@ -2895,7 +2802,6 @@ class SupabaseDataService {
     endDate: string
   ): Promise<Campaign[]> {
     try {
-      console.log('🔄 Usando fallback direto para buscar campanhas');
 
       // Buscar todas as campanhas ativas
       let campaignsQuery = supabase
@@ -2915,11 +2821,9 @@ class SupabaseDataService {
       }
 
       if (!campaigns || campaigns.length === 0) {
-        console.log('⚠️ Nenhuma campanha encontrada no fallback');
         return [];
       }
 
-      console.log(`✅ Fallback: ${campaigns.length} campanhas encontradas`);
 
       // Mapear para formato Campaign
       return campaigns.map((campaign: any) => ({
@@ -2961,7 +2865,6 @@ class SupabaseDataService {
     userCampaignIds?: string[];
   }): Promise<Campaign[]> {
     try {
-      console.log('🚀 getCampaignsWithRevenueFiltered (SERVER-SIDE OPTIMIZED) called with filters:', filters);
 
       // 🚀 CACHE INTELIGENTE para campanhas com validação via daily_campaign_metrics
       const cacheKey = `campaigns_optimized_${JSON.stringify(filters)}`;
@@ -3001,19 +2904,18 @@ class SupabaseDataService {
         if (dateRange) {
           const isCacheStillValid = await this.isCampaignCacheValid(cacheKey, parseInt(cacheTimestamp), dateRange);
           if (cacheAge < cacheValidTime && isCacheStillValid) {
-            console.log('🎯 CAMPAIGN CACHE HIT - Usando dados cached (validado com DB), economizando egress!', {
+            console.log({
               cacheKey,
               cacheAge: `${Math.round(cacheAge / 1000)}s`,
               dateRange
             });
             return JSON.parse(cachedData);
           } else if (!isCacheStillValid) {
-            console.log('🔄 CAMPAIGN CACHE INVALIDADO - Database tem dados mais novos que o cache');
           }
         } else {
           // Fallback para cache baseado em tempo quando não temos range
           if (cacheAge < cacheValidTime) {
-            console.log('🎯 CAMPAIGN CACHE HIT - Usando dados cached (time-based)!', {
+            console.log({
               cacheKey,
               cacheAge: `${Math.round(cacheAge / 1000)}s`
             });
@@ -3059,7 +2961,6 @@ class SupabaseDataService {
         endDate = today;
       }
 
-      console.log('📅 Date range for filtered campaigns:', { startDate, endDate, period: filters.period });
 
       // 🚀 NOVA IMPLEMENTAÇÃO: Usar RPC para agregação server-side - reduz egress drasticamente
       const { data: aggregatedCampaigns, error: rpcError } = await supabase
@@ -3078,13 +2979,11 @@ class SupabaseDataService {
       }
 
       if (!aggregatedCampaigns || aggregatedCampaigns.length === 0) {
-        console.log('⚠️ RPC retornou 0 campanhas - usando fallback');
 
         // 🛡️ FALLBACK: Se RPC retornar vazio, buscar diretamente para confirmar
         return await this.getCampaignsWithRevenueDirectFallback(filters, startDate, endDate);
       }
 
-      console.log(`🚀 SERVER-SIDE AGGREGATION: Received ${aggregatedCampaigns.length} pre-aggregated campaigns - MASSIVE EGRESS REDUCTION!`);
 
       // Apply user filters before converting
       let filteredAggregatedCampaigns = aggregatedCampaigns;
@@ -3094,7 +2993,7 @@ class SupabaseDataService {
         filteredAggregatedCampaigns = filteredAggregatedCampaigns.filter((campaign: any) =>
           filters.userProjectIds!.includes(campaign.project_id)
         );
-        console.log('🔐 Filtro de projetos do usuário aplicado nas campanhas:', {
+        console.log({
           total: aggregatedCampaigns.length,
           filtered: filteredAggregatedCampaigns.length
         });
@@ -3105,7 +3004,7 @@ class SupabaseDataService {
         filteredAggregatedCampaigns = filteredAggregatedCampaigns.filter((campaign: any) =>
           filters.userCampaignIds!.includes(campaign.campaign_id)
         );
-        console.log('🔐 Filtro de campanhas do usuário aplicado:', {
+        console.log({
           total: filteredAggregatedCampaigns.length,
           filtered: filteredAggregatedCampaigns.length
         });
@@ -3152,13 +3051,11 @@ class SupabaseDataService {
         })
         .sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
 
-      console.log(`✅ SERVER-SIDE OPTIMIZED: Returning ${activeCampaigns.length} campaigns with activity in date range`);
 
       // 💾 SALVAR NO CACHE para próximas consultas
       const currentTimestamp = Date.now().toString();
       localStorage.setItem(cacheKey, JSON.stringify(activeCampaigns));
       localStorage.setItem(`${cacheKey}_timestamp`, currentTimestamp);
-      console.log('💾 Campaign data cached for future requests');
 
       return activeCampaigns;
 
@@ -3335,7 +3232,6 @@ class SupabaseDataService {
   // Refresh/sync data (placeholder for real-time updates)
   async refreshData(): Promise<void> {
     // In a real implementation, this might trigger data sync from Google Ads/GAM
-    console.log('Data refresh triggered');
   }
 
   // Public method to get current server date
@@ -3346,7 +3242,6 @@ class SupabaseDataService {
   // Force cache refresh
   clearServerDateCache(): void {
     this.currentServerDate = null;
-    console.log('🗜️ Server date cache cleared');
   }
 
   // NEW: Get aggregated campaign metrics for a project (optimized for minimal egress)
@@ -3360,7 +3255,6 @@ class SupabaseDataService {
     campaignCount: number;
   }> {
     try {
-      console.log('📊 getCampaignAggregatedMetrics called:', { projectId, startDate, endDate });
 
       // Step 1: Get campaign IDs for this project
       const { data: projectCampaigns, error: campaignsError } = await supabase
@@ -3376,7 +3270,6 @@ class SupabaseDataService {
       const campaignIds = (projectCampaigns || []).map(c => c.campaign_id).filter(Boolean);
 
       if (campaignIds.length === 0) {
-        console.log('📊 No campaigns found for project:', projectId);
         return { totalRevenue: 0, totalInvestment: 0, campaignCount: 0 };
       }
 
@@ -3417,7 +3310,7 @@ class SupabaseDataService {
         { totalRevenue: 0, totalInvestment: 0 }
       );
 
-      console.log('📊 Aggregated campaign metrics:', {
+      console.log({
         projectId,
         campaignCount: campaignIds.length,
         totalRevenue: aggregated.totalRevenue,
@@ -3488,7 +3381,6 @@ class SupabaseDataService {
         throw error;
       }
       
-      console.log(`Campaign ${utmCampaignId} status updated to ${newStatus} by user ${userId}`);
     } catch (error) {
       console.error('Error in updateCampaignStatus:', error);
       throw error;
@@ -3553,7 +3445,6 @@ class SupabaseDataService {
       `;
 
       // Use real daily metrics instead of mock data
-      console.log('Using real daily metrics for UTM campaigns');
       return await this.getDailyMetrics({ projectId, days });
     } catch (error) {
       console.error('Error fetching UTM campaign daily data:', error);
@@ -3669,7 +3560,7 @@ class SupabaseDataService {
         mostRecent = googleAdsLastUpdate;
       }
 
-      console.log('📊 System timestamps fetched:', {
+      console.log({
         gamLastUpdate,
         googleAdsLastUpdate,
         mostRecent
@@ -3717,7 +3608,6 @@ export const useSupabaseData = (filters?: {
       setError(null);
 
       const filterOptions = currentFilters || filters || {};
-      console.log('🔄 useSupabaseData fetchData called with filters:', filterOptions);
 
       // Continue with data fetching even if date is empty initially
 
@@ -3729,7 +3619,7 @@ export const useSupabaseData = (filters?: {
         supabaseDataService.getLastDataUpdateTimestamp()
       ]);
 
-      console.log('📊 Data fetched successfully:', {
+      console.log({
         projects: projectsData.length,
         campaigns: campaignsData.length,
         metrics: metricsData.length,
@@ -3749,7 +3639,7 @@ export const useSupabaseData = (filters?: {
   };
 
   useEffect(() => {
-    console.log('🔄 useSupabaseData: Effect triggered', {
+    console.log({
       hasFilters: !!filters,
       hasDate: !!filters?.date,
       hasEndDate: !!filters?.endDate,
@@ -3757,7 +3647,6 @@ export const useSupabaseData = (filters?: {
       userProjectIds: filters?.userProjectIds?.length,
       userCampaignIds: filters?.userCampaignIds?.length
     });
-    console.log('✅ useSupabaseData: Fetching data with filters', filters);
     fetchData();
   }, [
     filters?.date, 

@@ -48,8 +48,8 @@ export function SimpleDateFilter({
         if (!selectedDate && !customDate) {
           setCustomDate(new Date(currentServerDate + 'T12:00:00'));
         }
-        
-        console.log('📅 SimpleDateFilter initialized with server dates:', {
+
+        console.log({
           today: currentServerDate,
           yesterday: yesterdayStr
         });

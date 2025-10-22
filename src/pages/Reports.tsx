@@ -106,7 +106,6 @@ export default function Reports() {
         const dailyCosts = await operationalCostsService.getDailyActiveCosts(currentMonth);
         setDailyOperationalCosts(dailyCosts);
         
-        console.log('📊 Reports initialized with server date:', serverDate);
       } catch (error) {
         console.error('Error during initialization:', error);
         const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
@@ -155,8 +154,8 @@ export default function Reports() {
       if (specificProject) {
         const projectRevshare = specificProject.revshare || 0.1;
         const totalRevenueShareAmount = totalRevenue * projectRevshare;
-        
-        console.log('📊 Revenue Share Calculation (Specific Project):', {
+
+        console.log({
           projectName: specificProject.name,
           projectRevshare: (projectRevshare * 100).toFixed(1) + '%',
           totalRevenue,
@@ -185,7 +184,7 @@ export default function Reports() {
     const averageRevshare = totalProjectRevenue > 0 ? totalWeightedRevshare / totalProjectRevenue : 0.1;
     const totalRevenueShareAmount = totalRevenue * averageRevshare;
 
-    console.log('📊 Revenue Share Calculation (All Projects):', {
+    console.log({
       projects: projects.length,
       totalRevenue,
       averageRevshare: (averageRevshare * 100).toFixed(1) + '%',
@@ -410,7 +409,6 @@ export default function Reports() {
             projectId: selectedProject === "all" ? undefined : selectedProject,
             period: 'custom'
           };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       } catch (error) {
@@ -438,7 +436,6 @@ export default function Reports() {
             projectId: selectedProject === "all" ? undefined : selectedProject,
             period: 'custom'
           };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       }
@@ -500,7 +497,6 @@ export default function Reports() {
 
 
   const handleDateRangeChange = (startDate: string, endDate: string) => {
-    console.log('🔄 handleDateRangeChange called with:', { startDate, endDate });
     setSelectedDate(startDate);
     setSelectedEndDate(endDate);
     setSelectedPeriod('range');
@@ -511,7 +507,6 @@ export default function Reports() {
       projectId: selectedProject === "all" ? undefined : selectedProject, 
       period: 'range' as const
     };
-    console.log('🔄 Refreshing with range filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
     }, 100);

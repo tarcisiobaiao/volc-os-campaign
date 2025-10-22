@@ -127,24 +127,20 @@ export default function GeneralDashboard() {
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
-        console.log('🇧🇷 Dashboard initialized with São Paulo date:', serverDate);
 
         // Preload exchange rate for currency conversion
         const rate = await preloadExchangeRate();
         setExchangeRate(rate);
-        console.log('💱 Exchange rate preloaded:', rate);
 
         // Load current tax rate
         const currentMonth = serverDate.substring(0, 7); // YYYY-MM format
         const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
         setCurrentTaxRate(taxRate);
-        console.log('📊 Current tax rate loaded:', taxRate, '%');
 
         // AUTO-TRIGGER: Check and copy operational costs for new month (day 1)
         try {
           const dataCopied = await operationalCostsService.checkAndCopyMonthData(currentMonth);
           if (dataCopied) {
-            console.log('✅ Operational costs auto-copied for new month:', currentMonth);
           }
         } catch (error) {
           console.error('⚠️ Error auto-copying operational costs:', error);
@@ -154,7 +150,6 @@ export default function GeneralDashboard() {
         try {
           const taxCreated = await taxHistoryService.checkAndCreateNextMonthTax();
           if (taxCreated) {
-            console.log('✅ Tax record auto-created for new month:', currentMonth);
           }
         } catch (error) {
           console.error('⚠️ Error auto-creating tax record:', error);
@@ -189,8 +184,7 @@ export default function GeneralDashboard() {
 
   // Debug: Log current filters for monitoring
   React.useEffect(() => {
-    console.log('🔍 Current filters applied:', filters);
-    console.log('🔍 DETAILED DEBUG:', {
+    console.log({
       selectedPeriod,
       selectedDate,
       filterPeriod: filters.period,
@@ -204,7 +198,6 @@ export default function GeneralDashboard() {
   // Debug: Verificar dados no banco para data atual
   React.useEffect(() => {
     if (selectedPeriod === 'today') {
-      console.log('📅 Current selected date for debug:', selectedDate);
       // Clear cache and force fresh data
       supabaseDataService.clearServerDateCache();
       supabaseDataService.debugDataForDate(selectedDate);
@@ -214,7 +207,6 @@ export default function GeneralDashboard() {
   // Force refresh data when period changes
   React.useEffect(() => {
     if (selectedPeriod === 'today' || selectedPeriod === 'yesterday') {
-      console.log('🔄 Forcing refresh for period:', selectedPeriod);
       setTimeout(() => {
         refresh(filters);
       }, 500);
@@ -231,12 +223,10 @@ export default function GeneralDashboard() {
         // Load tax rate for the selected month
         const taxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
         setCurrentTaxRate(taxRate);
-        console.log('📊 Tax rate loaded for month:', monthToUse, '=', taxRate, '%');
 
         // Load daily operational costs for the selected month
         const dailyCosts = await operationalCostsService.getDailyActiveCosts(monthToUse);
         setDailyOperationalCosts(dailyCosts);
-        console.log('💼 Daily operational costs loaded for month:', monthToUse, '=', dailyCosts);
       } catch (error) {
         console.error('Error loading financial data:', error);
         setCurrentTaxRate(8.1); // Fallback
@@ -281,7 +271,7 @@ export default function GeneralDashboard() {
   }, [dailyMetrics, summary]);
   
   // Debug logs
-  console.log('🔍 Dashboard Debug:', {
+  console.log({
     campaigns: campaigns?.length || 0,
     dailyMetrics: dailyMetrics?.length || 0,
     chartData: chartData?.length || 0,
@@ -293,7 +283,6 @@ export default function GeneralDashboard() {
   
   // Log chart data being used
   if (chartData && chartData.length > 0) {
-    console.log('📊 Chart data:', chartData);
   }
 
   const handlePeriodChange = async (period: 'today' | 'yesterday' | 'custom') => {
@@ -305,7 +294,6 @@ export default function GeneralDashboard() {
         supabaseDataService.clearServerDateCache();
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
-        console.log('🔄 Updated to current server date:', serverDate);
       } catch (error) {
         console.error('Error getting server date:', error);
         // Fallback to São Paulo timezone date
@@ -321,14 +309,12 @@ export default function GeneralDashboard() {
 
         // Get server date and calculate yesterday
         const serverDate = await supabaseDataService.getServerDate();
-        console.log('🔍 DEBUG YESTERDAY - Server date:', serverDate);
         const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
         const yesterdayObj = new Date(serverDateObj);
         yesterdayObj.setDate(yesterdayObj.getDate() - 1);
         const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
         setSelectedDate(yesterdayStr);
-        console.log('🔄 Updated to yesterday:', yesterdayStr);
-        console.log('🔍 DEBUG YESTERDAY - Calculation:', {
+        console.log({
           serverDate,
           serverDateObj: serverDateObj.toISOString(),
           yesterdayObj: yesterdayObj.toISOString(),
@@ -338,7 +324,6 @@ export default function GeneralDashboard() {
         // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
         setTimeout(() => {
           const yesterdayFilters = { ...filters, date: yesterdayStr, period: 'custom' };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM:', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       } catch (error) {
@@ -355,7 +340,6 @@ export default function GeneralDashboard() {
         // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
         setTimeout(() => {
           const yesterdayFilters = { ...filters, date: saoPauloYesterday, period: 'custom' };
-          console.log('🔄 Forcing immediate refresh for yesterday AS CUSTOM (fallback):', yesterdayFilters);
           refresh(yesterdayFilters);
         }, 100);
       }
@@ -363,7 +347,6 @@ export default function GeneralDashboard() {
   };
 
   const handleDateChange = (date: string) => {
-    console.log('📅 Date changed to:', date, 'period:', selectedPeriod);
     setSelectedDate(date);
     // Force a refresh when date changes to ensure data is up to date
     // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom'
@@ -372,7 +355,6 @@ export default function GeneralDashboard() {
       date,
       period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
     };
-    console.log('🔄 Refreshing with new filters:', newFilters);
     setTimeout(() => {
       refresh(newFilters);
     }, 100);
@@ -445,7 +427,7 @@ export default function GeneralDashboard() {
     const averageRevshare = totalProjectRevenue > 0 ? totalWeightedRevshare / totalProjectRevenue : 0.1;
     const totalRevenueShareAmount = totalRevenue * averageRevshare;
 
-    console.log('📊 Revenue Share Calculation:', {
+    console.log({
       projects: projects.length,
       totalRevenue,
       averageRevshare: (averageRevshare * 100).toFixed(1) + '%',
@@ -554,13 +536,10 @@ export default function GeneralDashboard() {
   };
 
   const handleRefresh = async () => {
-    console.log('🔄 Manual refresh triggered');
     
     // Check if we need to force revenue conversion
     try {
-      console.log('🔄 Checking if revenue conversion is needed...');
       await currencyConversionService.updateDatabaseConversions();
-      console.log('✅ Revenue conversion check completed');
     } catch (error) {
       console.warn('⚠️ Revenue conversion failed:', error);
     }
@@ -569,7 +548,6 @@ export default function GeneralDashboard() {
   };
 
   const handleUpdateGAM = async () => {
-    console.log('🔄 Triggering N8N GAM update...');
     setWebhookStatus('loading');
 
     try {
@@ -578,7 +556,6 @@ export default function GeneralDashboard() {
       });
       
       if (response.ok) {
-        console.log('✅ N8N webhook triggered successfully');
         setWebhookStatus('success');
         
         // Reset status after 3 seconds
@@ -606,7 +583,6 @@ export default function GeneralDashboard() {
   };
 
   const handleUpdateGoogleAds = async () => {
-    console.log('🔄 Triggering N8N Google Ads update...');
     setWebhookStatus('loading');
 
     try {
@@ -615,7 +591,6 @@ export default function GeneralDashboard() {
       });
 
       if (response.ok) {
-        console.log('✅ N8N Google Ads webhook triggered successfully');
         setWebhookStatus('success');
 
         // Reset status after 3 seconds
@@ -1238,6 +1213,10 @@ export default function GeneralDashboard() {
                 <tbody>
                   {projects
                     .filter(project => {
+                      // FRONTEND-ONLY FILTER: Hide projects marked as invisible
+                      if (project.visible === false) {
+                        return false;
+                      }
                       // Filter by user projects for OPERATOR users
                       if (userProfile?.role === 'OPERATOR') {
                         return userProjectIds.includes(project.id);

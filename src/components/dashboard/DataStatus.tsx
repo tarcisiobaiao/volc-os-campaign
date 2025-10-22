@@ -28,7 +28,6 @@ export function DataStatus({ loading, error, lastUpdate, showDetails = false }: 
         const timestamps = await systemSettingsService.getSystemTimestamps();
         setDetailedTimestamps(timestamps);
         
-        console.log('📊 Raw timestamps from system_settings:', timestamps);
         
         // Set global most recent timestamp for display
         if (timestamps.mostRecent) {

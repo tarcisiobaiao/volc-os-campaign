@@ -1,0 +1,276 @@
+{
+  "testScenarios": [
+    {
+      "id": "auth_001",
+      "name": "User Login Flow",
+      "description": "Test complete user authentication process",
+      "steps": [
+        "Navigate to login page",
+        "Enter valid email and password",
+        "Submit login form",
+        "Verify redirect to dashboard",
+        "Check user session persistence"
+      ],
+      "expectedResult": "User successfully logged in and redirected to dashboard",
+      "priority": "high",
+      "category": "authentication"
+    },
+    {
+      "id": "auth_002", 
+      "name": "Google OAuth Login",
+      "description": "Test Google OAuth authentication",
+      "steps": [
+        "Navigate to login page",
+        "Click Google OAuth button",
+        "Complete Google authentication",
+        "Verify successful login",
+        "Check user profile data"
+      ],
+      "expectedResult": "User authenticated via Google OAuth",
+      "priority": "high",
+      "category": "authentication"
+    },
+    {
+      "id": "auth_003",
+      "name": "Password Change",
+      "description": "Test password change functionality",
+      "steps": [
+        "Login as authenticated user",
+        "Navigate to change password page",
+        "Enter current password",
+        "Enter new password",
+        "Confirm new password",
+        "Submit form",
+        "Verify password change success"
+      ],
+      "expectedResult": "Password successfully changed",
+      "priority": "medium",
+      "category": "authentication"
+    },
+    {
+      "id": "dashboard_001",
+      "name": "General Dashboard Load",
+      "description": "Test general dashboard data loading and display",
+      "steps": [
+        "Login as authenticated user",
+        "Navigate to general dashboard",
+        "Verify projects list loads",
+        "Check metrics display (investment, revenue, ROAS, ROI)",
+        "Verify data accuracy",
+        "Test filtering and sorting"
+      ],
+      "expectedResult": "Dashboard loads with accurate project data and metrics",
+      "priority": "high",
+      "category": "dashboard"
+    },
+    {
+      "id": "dashboard_002",
+      "name": "Project Dashboard Navigation",
+      "description": "Test project-specific dashboard functionality",
+      "steps": [
+        "Navigate to project dashboard",
+        "Select specific project",
+        "Verify campaign performance data",
+        "Check daily metrics visualization",
+        "Test revenue trend charts",
+        "Verify GAM integration data"
+      ],
+      "expectedResult": "Project dashboard displays accurate campaign and performance data",
+      "priority": "high",
+      "category": "dashboard"
+    },
+    {
+      "id": "campaign_001",
+      "name": "Campaign Detail View",
+      "description": "Test campaign detail dashboard functionality",
+      "steps": [
+        "Navigate to campaign detail page",
+        "Verify funnel URL performance data",
+        "Check investment tracking display",
+        "Test conversion data analysis",
+        "Verify campaign status indicators",
+        "Test date range filtering"
+      ],
+      "expectedResult": "Campaign detail dashboard shows comprehensive performance data",
+      "priority": "high",
+      "category": "campaign_management"
+    },
+    {
+      "id": "settings_001",
+      "name": "Projects Settings CRUD",
+      "description": "Test project management functionality",
+      "steps": [
+        "Navigate to projects settings",
+        "Create new project",
+        "Edit existing project",
+        "Update project configuration",
+        "Delete project",
+        "Verify changes persist"
+      ],
+      "expectedResult": "All project CRUD operations function correctly",
+      "priority": "high",
+      "category": "settings"
+    },
+    {
+      "id": "settings_002",
+      "name": "Campaign Settings Management",
+      "description": "Test campaign settings functionality",
+      "steps": [
+        "Navigate to campaigns settings",
+        "Create new campaign",
+        "Set campaign status",
+        "Configure performance thresholds",
+        "Add funnel URLs",
+        "Set operator commission",
+        "Save and verify changes"
+      ],
+      "expectedResult": "Campaign settings management works correctly",
+      "priority": "high",
+      "category": "settings"
+    },
+    {
+      "id": "settings_003",
+      "name": "Costs Settings Configuration",
+      "description": "Test operational costs management",
+      "steps": [
+        "Navigate to costs settings",
+        "Add operational cost",
+        "Configure tax settings",
+        "Set cost sharing between projects",
+        "View tax history",
+        "Verify calculations"
+      ],
+      "expectedResult": "Costs settings function correctly with accurate calculations",
+      "priority": "medium",
+      "category": "settings"
+    },
+    {
+      "id": "settings_004",
+      "name": "Users Settings Management",
+      "description": "Test user management functionality",
+      "steps": [
+        "Navigate to users settings",
+        "Create new user",
+        "Assign user role (ADMIN/OPERATOR)",
+        "Set campaign permissions",
+        "Edit user profile",
+        "Delete user",
+        "Verify role-based access"
+      ],
+      "expectedResult": "User management functions correctly with proper role assignment",
+      "priority": "high",
+      "category": "settings"
+    },
+    {
+      "id": "reports_001",
+      "name": "Report Generation",
+      "description": "Test report generation and export functionality",
+      "steps": [
+        "Navigate to reports page",
+        "Select date range",
+        "Choose projects/campaigns to include",
+        "Generate report",
+        "Export as PDF",
+        "Verify report accuracy",
+        "Test different report types"
+      ],
+      "expectedResult": "Reports generate accurately and export successfully",
+      "priority": "high",
+      "category": "reporting"
+    },
+    {
+      "id": "currency_001",
+      "name": "Currency Conversion",
+      "description": "Test multi-currency support and conversion",
+      "steps": [
+        "Navigate to dashboard with USD data",
+        "Verify automatic BRL conversion",
+        "Check exchange rate integration",
+        "Test currency formatting",
+        "Verify conversion accuracy",
+        "Test different currency displays"
+      ],
+      "expectedResult": "Currency conversion works accurately with proper formatting",
+      "priority": "medium",
+      "category": "currency"
+    },
+    {
+      "id": "ui_001",
+      "name": "Responsive Design",
+      "description": "Test responsive design across devices",
+      "steps": [
+        "Test on desktop (1920x1080)",
+        "Test on tablet (768x1024)",
+        "Test on mobile (375x667)",
+        "Verify navigation works",
+        "Check form usability",
+        "Test data table responsiveness"
+      ],
+      "expectedResult": "Application is fully responsive across all device sizes",
+      "priority": "medium",
+      "category": "ui_ux"
+    },
+    {
+      "id": "ui_002",
+      "name": "Form Validation",
+      "description": "Test form validation and error handling",
+      "steps": [
+        "Test login form validation",
+        "Test project creation form",
+        "Test campaign settings form",
+        "Test user creation form",
+        "Verify error messages",
+        "Test required field validation"
+      ],
+      "expectedResult": "All forms have proper validation and error handling",
+      "priority": "medium",
+      "category": "ui_ux"
+    },
+    {
+      "id": "performance_001",
+      "name": "Dashboard Performance",
+      "description": "Test dashboard loading and rendering performance",
+      "steps": [
+        "Measure initial page load time",
+        "Test data fetching performance",
+        "Check chart rendering speed",
+        "Test with large datasets",
+        "Monitor memory usage",
+        "Test concurrent user scenarios"
+      ],
+      "expectedResult": "Dashboard loads within acceptable performance limits",
+      "priority": "medium",
+      "category": "performance"
+    },
+    {
+      "id": "security_001",
+      "name": "Access Control",
+      "description": "Test role-based access control and security",
+      "steps": [
+        "Test ADMIN user permissions",
+        "Test OPERATOR user limitations",
+        "Verify protected route access",
+        "Test unauthorized access attempts",
+        "Check session timeout",
+        "Verify data isolation"
+      ],
+      "expectedResult": "Access control works correctly with proper security measures",
+      "priority": "high",
+      "category": "security"
+    }
+  ],
+  "testExecution": {
+    "parallel": true,
+    "maxConcurrent": 3,
+    "timeout": 30000,
+    "retryAttempts": 2,
+    "screenshotOnFailure": true,
+    "videoRecording": true
+  },
+  "reporting": {
+    "format": ["html", "json", "pdf"],
+    "includeScreenshots": true,
+    "includeVideos": true,
+    "detailedLogs": true
+  }
+}
