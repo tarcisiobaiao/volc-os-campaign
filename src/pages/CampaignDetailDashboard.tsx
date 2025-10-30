@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ArrowLeft, TrendingUp, DollarSign, MousePointer, Eye, Target, Calendar, Settings, AlertTriangle } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, ComposedChart } from 'recharts';
 import { supabaseDataService } from "@/services/supabaseDataService";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
 import { DateFilter } from "@/components/dashboard/DateFilter";
@@ -14,6 +14,7 @@ import { DataStatus } from "@/components/dashboard/DataStatus";
 import { format } from "date-fns";
 import { calculateROAS } from "@/utils/roasCalculations";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
+import { taxHistoryService } from "@/services/taxHistoryService";
 
 export default function CampaignDetailDashboard() {
 
@@ -30,6 +31,7 @@ export default function CampaignDetailDashboard() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
   const [showFunnelEditor, setShowFunnelEditor] = useState(false);
+  const [taxRate, setTaxRate] = useState<number>(8.1);
 
   // Initialize with current server date
   useEffect(() => {
@@ -60,9 +62,13 @@ export default function CampaignDetailDashboard() {
         setLoading(true);
         setError(null);
 
-        // Load exchange rate
-        const rate = await preloadExchangeRate();
+        // Load exchange rate and tax rate
+        const [rate, currentTaxRate] = await Promise.all([
+          preloadExchangeRate(),
+          taxHistoryService.getLatestTaxRate()
+        ]);
         setExchangeRate(rate);
+        setTaxRate(currentTaxRate);
 
         // Load campaign data
         
@@ -262,7 +268,12 @@ export default function CampaignDetailDashboard() {
   const revenue = campaign.revenue || 0;
   const spend = campaign.spend || 0;
   const profit = revenue - spend;
-  const roi = spend > 0 ? ((profit / spend) * 100).toFixed(1) : 0;
+
+  // Calculate ROI with tax deduction: (revenue * (1 - tax/100) - spend) / spend * 100
+  const revenueAfterTax = revenue * (1 - taxRate / 100);
+  const profitAfterTax = revenueAfterTax - spend;
+  const roi = spend > 0 ? ((profitAfterTax / spend) * 100).toFixed(1) : 0;
+
   const roas = spend > 0 ? calculateROAS(revenue, spend).toFixed(1) : 0;
 
   // Function to generate dynamic chart title based on selected period
@@ -372,7 +383,7 @@ export default function CampaignDetailDashboard() {
                 <TrendingUp className="h-8 w-8 text-green-500" />
               </div>
               <div className="mt-2 text-xs text-green-600">
-                ROI: {roi}%
+                ROAS: {roas}%
               </div>
             </CardContent>
           </Card>
@@ -393,7 +404,27 @@ export default function CampaignDetailDashboard() {
             </CardContent>
           </Card>
 
-          {/* CTR */}
+          {/* Lucro Bruto */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Lucro Bruto</p>
+                  <p className={`text-xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(profit)}
+                  </p>
+                </div>
+                <TrendingUp className={`h-8 w-8 ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+              </div>
+              <div className={`mt-2 text-xs ${Number(roi) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ROI: {roi}% (imposto: {taxRate}%)
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Métricas Secundárias */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -404,19 +435,8 @@ export default function CampaignDetailDashboard() {
                 <MousePointer className="h-8 w-8 text-purple-500" />
               </div>
               <div className="mt-2 text-xs text-muted-foreground">
-                {campaign.clicks} cliques
+                {campaign.clicks.toLocaleString()} cliques • {campaign.impressions.toLocaleString()} impressões
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Métricas Secundárias */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Eye className="h-6 w-6 mx-auto mb-2 text-gray-500" />
-              <p className="text-sm text-muted-foreground">Impressões</p>
-              <p className="text-lg font-semibold">{campaign.impressions.toLocaleString()}</p>
             </CardContent>
           </Card>
 
@@ -456,24 +476,59 @@ export default function CampaignDetailDashboard() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={historicalData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={(date) => {
-                    return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                  }} />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(date) => {
-                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
-                    }}
-                    formatter={(value, name) => [
-                      `R$ ${Number(value).toFixed(2)}`, 
-                      name === 'spend' ? 'Gasto' : 'Revenue'
-                    ]}
-                  />
-                  <Line type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} name="spend" />
-                  <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="revenue" />
-                </LineChart>
+                {historicalData.length <= 1 ? (
+                  // Gráfico de barras para 1 dia
+                  <BarChart data={[
+                    { name: 'Gasto', value: campaign.spend, fill: '#ef4444' },
+                    { name: 'Revenue', value: revenue, fill: '#22c55e' },
+                    { name: 'Lucro Bruto', value: profit, fill: profit >= 0 ? '#3b82f6' : '#f97316' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, '']}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {[
+                        { name: 'Gasto', value: campaign.spend, fill: '#ef4444' },
+                        { name: 'Revenue', value: revenue, fill: '#22c55e' },
+                        { name: 'Lucro Bruto', value: profit, fill: profit >= 0 ? '#3b82f6' : '#f97316' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  // Gráfico de linhas para múltiplos dias
+                  <LineChart data={historicalData.map(item => ({
+                    ...item,
+                    profit: (item.revenue || 0) - (item.spend || 0)
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        const labels: Record<string, string> = {
+                          spend: 'Gasto',
+                          revenue: 'Revenue',
+                          profit: 'Lucro Bruto'
+                        };
+                        return [`R$ ${Number(value).toFixed(2)}`, labels[name] || name];
+                      }}
+                    />
+                    <Line type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} name="spend" />
+                    <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="revenue" />
+                    <Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} name="profit" />
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -485,24 +540,34 @@ export default function CampaignDetailDashboard() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={historicalData}>
+                <ComposedChart data={historicalData.map(item => ({
+                  ...item,
+                  ctr: item.impressions > 0 ? (item.clicks / item.impressions) * 100 : 0
+                }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" tickFormatter={(date) => {
                     return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                   }} />
-                  <YAxis />
-                  <Tooltip 
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" domain={[0, 'auto']} />
+                  <Tooltip
                     labelFormatter={(date) => {
                       return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
                     }}
-                    formatter={(value, name) => [
-                      Number(value).toLocaleString(), 
-                      name === 'clicks' ? 'Clicks' : 'Impressões'
-                    ]}
+                    formatter={(value, name) => {
+                      if (name === 'ctr') {
+                        return [`${Number(value).toFixed(2)}%`, 'CTR'];
+                      }
+                      return [
+                        Number(value).toLocaleString(),
+                        name === 'clicks' ? 'Clicks' : 'Impressões'
+                      ];
+                    }}
                   />
-                  <Bar dataKey="impressions" fill="#3b82f6" name="impressions" />
-                  <Bar dataKey="clicks" fill="#8b5cf6" name="clicks" />
-                </BarChart>
+                  <Bar yAxisId="left" dataKey="impressions" fill="#3b82f6" name="impressions" />
+                  <Bar yAxisId="left" dataKey="clicks" fill="#8b5cf6" name="clicks" />
+                  <Line yAxisId="right" type="monotone" dataKey="ctr" stroke="#f59e0b" strokeWidth={2} name="ctr" dot={{ r: 4 }} />
+                </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>

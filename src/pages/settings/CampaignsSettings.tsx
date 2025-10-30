@@ -533,7 +533,7 @@ const CampaignsSettings = () => {
                         `${selectedDate} até ${selectedEndDate}` :
                         `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
                     }):</h4>
-                    <div className={`grid ${campaign.commission && campaign.commission > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-4 text-sm`}>
+                    <div className={`grid ${campaign.commission && campaign.commission > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-4 text-sm`}>
                       <div className="text-center p-3 bg-blue-50 rounded-lg">
                         <p className="text-xs text-muted-foreground mb-1">Gasto</p>
                         <p className="font-semibold text-slate-800">{new Intl.NumberFormat('pt-BR', {
@@ -554,6 +554,19 @@ const CampaignsSettings = () => {
                           const roasExcess = calculateROAS(campaign.revenue || 0, campaign.investment || 0);
                           return roasExcess.toFixed(1);
                         })()}%</p>
+                      </div>
+                      <div className={`text-center p-3 rounded-lg ${(() => {
+                        const grossProfit = (campaign.revenue || 0) - (campaign.investment || 0);
+                        return grossProfit >= 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200';
+                      })()}`}>
+                        <p className="text-xs text-muted-foreground mb-1">Lucro Bruto</p>
+                        <p className={`font-semibold ${(() => {
+                          const grossProfit = (campaign.revenue || 0) - (campaign.investment || 0);
+                          return grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600';
+                        })()}`}>{new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL'
+                        }).format((campaign.revenue || 0) - (campaign.investment || 0))}</p>
                       </div>
                       {campaign.commission && campaign.commission > 0 && (
                         <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
