@@ -79,6 +79,8 @@ export default function Reports() {
   const [selectedProject, setSelectedProject] = useState("all");
   const [currentTaxRate, setCurrentTaxRate] = useState<number>(8.1);
   const [dailyOperationalCosts, setDailyOperationalCosts] = useState<number>(0);
+  const [totalOperationalCosts, setTotalOperationalCosts] = useState<number>(0);
+  const [operationalCostsBreakdown, setOperationalCostsBreakdown] = useState<Array<{ month: string; costs: number; days: number }>>([]);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   // Estados para o filtro customizado da página Reports
@@ -96,16 +98,19 @@ export default function Reports() {
       try {
         const serverDate = await supabaseDataService.getServerDate();
         setSelectedDate(serverDate);
-        
+
         // Load current tax rate
         const currentMonth = serverDate.substring(0, 7);
         const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
         setCurrentTaxRate(taxRate);
 
-        // Load daily operational costs
+        // Load daily operational costs for current month
         const dailyCosts = await operationalCostsService.getDailyActiveCosts(currentMonth);
         setDailyOperationalCosts(dailyCosts);
-        
+
+        // For single day, set total costs as daily costs
+        setTotalOperationalCosts(dailyCosts);
+
       } catch (error) {
         console.error('Error during initialization:', error);
         const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
@@ -114,7 +119,7 @@ export default function Reports() {
         setSelectedDate(saoPauloDate);
       }
     };
-    
+
     initialize();
   }, []);
 
@@ -129,6 +134,47 @@ export default function Reports() {
   }), [selectedDate, selectedEndDate, selectedProject, selectedPeriod]);
 
   const { projects, campaigns, dailyMetrics, summary, loading, error, lastUpdate, refresh } = useSupabaseData(filters);
+
+  // Update operational costs when date range changes
+  useEffect(() => {
+    const updateOperationalCosts = async () => {
+      try {
+        if (selectedPeriod === 'range' && selectedDate && selectedEndDate) {
+          // Multiple months: use getCostsForDateRange
+          const costsData = await operationalCostsService.getCostsForDateRange(selectedDate, selectedEndDate);
+          setTotalOperationalCosts(costsData.totalCosts);
+          setDailyOperationalCosts(costsData.dailyAverage);
+          setOperationalCostsBreakdown(costsData.monthlyBreakdown);
+
+          console.log('Custos operacionais para range:', {
+            startDate: selectedDate,
+            endDate: selectedEndDate,
+            totalCosts: costsData.totalCosts,
+            dailyAverage: costsData.dailyAverage,
+            numberOfDays: costsData.numberOfDays,
+            breakdown: costsData.monthlyBreakdown
+          });
+        } else if (selectedDate) {
+          // Single day: use getDailyActiveCosts
+          const currentMonth = selectedDate.substring(0, 7);
+          const dailyCosts = await operationalCostsService.getDailyActiveCosts(currentMonth);
+          setDailyOperationalCosts(dailyCosts);
+          setTotalOperationalCosts(dailyCosts);
+          setOperationalCostsBreakdown([{ month: currentMonth, costs: dailyCosts, days: 1 }]);
+
+          console.log('Custos operacionais para dia único:', {
+            date: selectedDate,
+            month: currentMonth,
+            dailyCosts
+          });
+        }
+      } catch (error) {
+        console.error('Error updating operational costs:', error);
+      }
+    };
+
+    updateOperationalCosts();
+  }, [selectedDate, selectedEndDate, selectedPeriod]);
 
 
   // Funções de cálculo - versão correta
@@ -236,25 +282,21 @@ export default function Reports() {
     totalRevenueAfterRevshare: number,
     totalInvestment: number,
     taxRate: number,
-    dailyOperationalCosts: number = 0,
-    numberOfDays: number = 1
+    operationalCostsTotal: number = 0
   ) => {
     // Cálculo simplificado: já temos o faturamento líquido (após revenue share)
     const grossProfit = totalRevenueAfterRevshare - totalInvestment;
     const taxAmount = totalRevenueAfterRevshare * (taxRate / 100);
-    const totalOperationalCosts = dailyOperationalCosts * numberOfDays;
     const netProfitBeforeCosts = grossProfit - taxAmount;
-    const netProfit = netProfitBeforeCosts - totalOperationalCosts;
+    const netProfit = netProfitBeforeCosts - operationalCostsTotal;
 
     return {
       netRevenue: totalRevenueAfterRevshare,
       grossProfit,
       taxAmount,
-      dailyOperationalCosts,
-      totalOperationalCosts,
-      numberOfDays,
+      totalOperationalCosts: operationalCostsTotal,
       netProfit,
-      formula: `Faturamento Líquido (${totalRevenueAfterRevshare.toFixed(2)}) - Investimento (${totalInvestment.toFixed(2)}) - Impostos (${taxAmount.toFixed(2)}) - Custos Op. (${dailyOperationalCosts.toFixed(2)} × ${numberOfDays} dias = ${totalOperationalCosts.toFixed(2)}) = ${netProfit.toFixed(2)}`
+      formula: `Faturamento Líquido (${totalRevenueAfterRevshare.toFixed(2)}) - Investimento (${totalInvestment.toFixed(2)}) - Impostos (${taxAmount.toFixed(2)}) - Custos Op. (${operationalCostsTotal.toFixed(2)}) = ${netProfit.toFixed(2)}`
     };
   };
 
@@ -288,15 +330,13 @@ export default function Reports() {
     // Usar a nova fórmula correta para calcular lucro líquido com revenue share real
     const totalRevenue = summary.totalRevenue || 0;
     const totalInvestment = summary.totalInvestment || 0;
-    
-    // NEW: Usar cálculo simplificado com valores pré-calculados
-    const numberOfDays = calculateNumberOfDays();
+
+    // NEW: Usar cálculo simplificado com valores pré-calculados e custos operacionais totais
     const simplifiedCalculation = calculateSimplifiedNetProfit(
       (summary as any).totalRevenueAfterRevshare || totalRevenue, // Usar valor direto - já vem com revshare aplicado
       totalInvestment,
       currentTaxRate,
-      dailyOperationalCosts,
-      numberOfDays
+      totalOperationalCosts // Usar o valor total já calculado
     );
     const netProfit = simplifiedCalculation.netProfit;
     const finalROI = totalInvestment > 0 ? (netProfit / totalInvestment) * 100 : 0;
@@ -315,7 +355,8 @@ export default function Reports() {
         averageRoas: summary.generalRoas || 0,
         finalRoi: finalROI,
         campaignCount: campaigns?.length || 0,
-        projectCount: projects?.length || 0
+        projectCount: projects?.length || 0,
+        operationalCostsBreakdown // Add breakdown for display
       },
       projects: projects.map(project => ({
         ...project,
@@ -324,7 +365,7 @@ export default function Reports() {
         campaignCount: campaigns?.filter(c => c.projectId === project.id).length || 0
       })).sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
     };
-  }, [summary, projects, campaigns, selectedPeriod, selectedDate, currentTaxRate]);
+  }, [summary, projects, campaigns, selectedPeriod, selectedDate, currentTaxRate, totalOperationalCosts, operationalCostsBreakdown]);
 
   // Chart data for performance visualization - adaptado baseado no filtro
   const chartData = useMemo(() => {
@@ -1028,17 +1069,15 @@ export default function Reports() {
                             {(() => {
                               const totalRevenue = reportData.summary.totalRevenue;
                               const totalInvestment = reportData.summary.totalInvestment;
-                              
+
                               // NEW: Usar cálculo simplificado com valores pré-calculados
-                              const numberOfDays = calculateNumberOfDays();
                               const calculation = calculateSimplifiedNetProfit(
                                 reportData?.summary?.totalRevenueAfterRevshare || totalRevenue, // Usar valor direto - já vem com revshare aplicado
                                 totalInvestment,
                                 currentTaxRate,
-                                dailyOperationalCosts,
-                                numberOfDays
+                                totalOperationalCosts
                               );
-                              
+
                               return (
                                 <div className="space-y-1">
                                   <div className="flex justify-between">
@@ -1054,11 +1093,19 @@ export default function Reports() {
                                     <span className="font-mono text-red-600">-{formatCostCurrency(calculation.taxAmount)}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Custos Op. ({calculation.numberOfDays} {calculation.numberOfDays === 1 ? 'dia' : 'dias'}):
-                                    </span>
+                                    <span className="text-muted-foreground">Custos Operacionais:</span>
                                     <span className="font-mono text-red-600">-{formatCostCurrency(calculation.totalOperationalCosts)}</span>
                                   </div>
+                                  {operationalCostsBreakdown.length > 1 && (
+                                    <div className="ml-4 text-xs space-y-0.5 text-muted-foreground">
+                                      {operationalCostsBreakdown.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between">
+                                          <span>• {item.month} ({item.days} {item.days === 1 ? 'dia' : 'dias'}):</span>
+                                          <span className="font-mono">-{formatCostCurrency(item.costs)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                   <div className="border-t pt-1 border-green-200">
                                     <div className="flex justify-between font-medium">
                                       <span>Lucro Líquido:</span>

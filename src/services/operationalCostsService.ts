@@ -260,6 +260,107 @@ class OperationalCostsService {
     // Return daily cost
     return totalActiveCosts / daysInMonth;
   }
+
+  // NEW: Get operational costs for a date range (multiple months)
+  async getCostsForDateRange(startDate: string, endDate: string): Promise<{
+    totalCosts: number;
+    dailyAverage: number;
+    numberOfDays: number;
+    monthlyBreakdown: Array<{ month: string; costs: number; days: number }>;
+  }> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const numberOfDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Get all unique months in the range
+    const months = new Set<string>();
+    const currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      const monthStr = currentDate.toISOString().slice(0, 7);
+      months.add(monthStr);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Calculate costs for each month
+    const monthlyBreakdown: Array<{ month: string; costs: number; days: number }> = [];
+    let totalCosts = 0;
+
+    for (const month of Array.from(months)) {
+      const activeCosts = await this.getActiveCostsByMonth(month);
+      const monthlyCosts = activeCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0);
+
+      // Calculate days in this month that fall within the date range
+      const [year, monthNum] = month.split('-').map(Number);
+      const monthStart = new Date(year, monthNum - 1, 1);
+      const monthEnd = new Date(year, monthNum, 0);
+
+      const rangeStart = start > monthStart ? start : monthStart;
+      const rangeEnd = end < monthEnd ? end : monthEnd;
+
+      const daysInRange = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+      // Proportional costs for days in range
+      const dailyCost = monthlyCosts / daysInMonth;
+      const proportionalCosts = dailyCost * daysInRange;
+
+      totalCosts += proportionalCosts;
+      monthlyBreakdown.push({ month, costs: proportionalCosts, days: daysInRange });
+    }
+
+    return {
+      totalCosts,
+      dailyAverage: totalCosts / numberOfDays,
+      numberOfDays,
+      monthlyBreakdown
+    };
+  }
+
+  // NEW: Auto-clone costs from previous month if current month has no data
+  async autoClonePreviousMonthCosts(): Promise<{
+    success: boolean;
+    cloned: boolean;
+    message: string;
+    currentMonth: string;
+  }> {
+    try {
+      // Get current month in server time (São Paulo)
+      const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo'
+      }).format(new Date());
+
+      const currentMonth = saoPauloDate.substring(0, 7); // YYYY-MM
+      const currentMonthFilter = `${currentMonth}-01`;
+
+      // Check if current month already has data
+      const hasData = await this.checkAndCopyMonthData(currentMonthFilter);
+
+      if (hasData) {
+        return {
+          success: true,
+          cloned: true,
+          message: `Custos do mês anterior clonados com sucesso para ${currentMonth}`,
+          currentMonth
+        };
+      } else {
+        return {
+          success: true,
+          cloned: false,
+          message: `Mês ${currentMonth} já possui custos cadastrados`,
+          currentMonth
+        };
+      }
+    } catch (error) {
+      console.error('Error in autoClonePreviousMonthCosts:', error);
+      return {
+        success: false,
+        cloned: false,
+        message: `Erro ao clonar custos: ${error.message}`,
+        currentMonth: ''
+      };
+    }
+  }
 }
 
 export const operationalCostsService = new OperationalCostsService();

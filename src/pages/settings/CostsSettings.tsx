@@ -57,6 +57,9 @@ export default function CostsSettings() {
   const [selectedProjectsForCosts, setSelectedProjectsForCosts] = useState<string[]>([]);
   const [costPerProject, setCostPerProject] = useState<number>(0);
 
+  // Clone costs state
+  const [isCloningCosts, setIsCloningCosts] = useState(false);
+
 
   // Load initial data
   useEffect(() => {
@@ -444,6 +447,65 @@ export default function CostsSettings() {
     }, 0);
   };
 
+  // NEW: Manual clone costs from previous month
+  const handleClonePreviousMonth = async () => {
+    if (!canEditCosts()) {
+      toast({
+        title: 'Acesso negado',
+        description: 'Apenas administradores podem clonar custos',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const confirmClone = window.confirm(
+      `Clonar custos do mês anterior para ${formatMonthDisplay(selectedMonth)}?\n\n` +
+      `Isso irá copiar todos os custos do mês anterior para o mês selecionado.`
+    );
+
+    if (!confirmClone) return;
+
+    try {
+      setIsCloningCosts(true);
+
+      // Use the checkAndCopyMonthData method
+      const dataCopied = await operationalCostsService.checkAndCopyMonthData(`${selectedMonth}-01`);
+
+      if (dataCopied) {
+        toast({
+          title: 'Custos clonados com sucesso!',
+          description: `Custos do mês anterior foram copiados para ${formatMonthDisplay(selectedMonth)}`
+        });
+
+        // Reload data
+        const [costsData] = await Promise.all([
+          operationalCostsService.getCostsByMonth(selectedMonth)
+        ]);
+
+        setCosts(costsData);
+
+        // Group costs by category
+        const grouped = await operationalCostsService.getCostsByCategory(selectedMonth);
+        setGroupedCosts(grouped);
+      } else {
+        toast({
+          title: 'Mês já possui custos',
+          description: `O mês ${formatMonthDisplay(selectedMonth)} já possui custos cadastrados. Não é possível clonar.`,
+          variant: 'destructive'
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao clonar custos:', error);
+      toast({
+        title: 'Erro ao clonar custos',
+        description: String(error?.message || error),
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCloningCosts(false);
+    }
+  };
+
   // Render loading state
   if (loading) {
     return (
@@ -626,13 +688,36 @@ export default function CostsSettings() {
                   </Button>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">
-                  Use as setas para navegar entre os meses
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Dados são copiados automaticamente na virada do mês
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">
+                    Use as setas para navegar entre os meses
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Dados são copiados automaticamente na virada do mês
+                  </p>
+                </div>
+                {canEditCosts() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClonePreviousMonth}
+                    disabled={isCloningCosts}
+                    className="gap-2"
+                  >
+                    {isCloningCosts ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        Clonando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Clonar Mês Anterior
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
