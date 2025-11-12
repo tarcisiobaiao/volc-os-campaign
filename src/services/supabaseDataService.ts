@@ -2309,7 +2309,7 @@ class SupabaseDataService {
 
       const { data: dailyMetrics, error: metricsError } = await supabase
         .from('daily_campaign_metrics')
-        .select('spend, clicks, impressions, conversions, revenue_converted_revshare, date')
+        .select('spend, clicks, impressions, conversions, revenue_converted_revshare, date, gam_ecpm, gam_cpc, match_rate, gam_total_requests, gam_impressions, fill_rate, gam_clicks, gam_ctr, viewable_impressions')
         .eq('campaign_id', campaignId)
         .gte('date', startDate)
         .lte('date', endDate)
@@ -2348,6 +2348,24 @@ class SupabaseDataService {
         aggregatedConversions
       });
 
+      // Calculate averages for GAM metrics
+      const metricsCount = (dailyMetrics || []).length;
+      const aggregatedGamEcpm = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_ecpm) || 0), 0);
+      const aggregatedGamCpc = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_cpc) || 0), 0);
+      const aggregatedMatchRate = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).match_rate) || 0), 0);
+      const aggregatedGamTotalRequests = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_total_requests) || 0), 0);
+      const aggregatedGamImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_impressions) || 0), 0);
+      const aggregatedFillRate = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).fill_rate) || 0), 0);
+      const aggregatedGamClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_clicks) || 0), 0);
+      const aggregatedGamCtr = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_ctr) || 0), 0);
+      const aggregatedViewableImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).viewable_impressions) || 0), 0);
+      const avgGamEcpm = metricsCount > 0 ? aggregatedGamEcpm / metricsCount : 0;
+      const avgGamCpc = metricsCount > 0 ? aggregatedGamCpc / metricsCount : 0;
+      const avgMatchRate = metricsCount > 0 ? aggregatedMatchRate / metricsCount : 0;
+      const avgFillRate = metricsCount > 0 ? aggregatedFillRate / metricsCount : 0;
+      const avgGamCtr = metricsCount > 0 ? aggregatedGamCtr / metricsCount : 0;
+      const avgViewableImpressions = metricsCount > 0 ? aggregatedViewableImpressions / metricsCount : 0;
+
       // Build campaign metrics object with filtered data
       const campaignMetrics = {
         campaignId: rawCampaign.campaign_id,
@@ -2370,7 +2388,16 @@ class SupabaseDataService {
         conversions: aggregatedConversions,
         ctr: aggregatedImpressions > 0 ? (aggregatedClicks / aggregatedImpressions) * 100 : 0,
         cpc: aggregatedClicks > 0 ? aggregatedSpend / aggregatedClicks : 0,
-        cost_per_conversion: aggregatedConversions > 0 ? aggregatedSpend / aggregatedConversions : 0
+        cost_per_conversion: aggregatedConversions > 0 ? aggregatedSpend / aggregatedConversions : 0,
+        gam_ecpm: avgGamEcpm,
+        gam_cpc: avgGamCpc,
+        match_rate: avgMatchRate,
+        gam_total_requests: aggregatedGamTotalRequests,
+        gam_impressions: aggregatedGamImpressions,
+        fill_rate: avgFillRate,
+        gam_clicks: aggregatedGamClicks,
+        gam_ctr: avgGamCtr,
+        viewable_impressions: avgViewableImpressions
       };
 
       // Get historical data for charts - use the same range as the main metrics
@@ -2390,7 +2417,7 @@ class SupabaseDataService {
 
       const { data: chartMetrics } = await supabase
         .from('daily_campaign_metrics')
-        .select('spend, clicks, impressions, conversions, revenue_converted_revshare, date')
+        .select('spend, clicks, impressions, conversions, revenue_converted_revshare, date, gam_ecpm, gam_cpc, match_rate, gam_total_requests, gam_impressions, fill_rate, gam_clicks, gam_ctr, viewable_impressions')
         .eq('campaign_id', campaignId)
         .gte('date', chartStartDate)
         .lte('date', chartEndDate)
@@ -2438,12 +2465,39 @@ class SupabaseDataService {
         const dayClicks = dayMetrics.reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
         const dayImpressions = dayMetrics.reduce((sum, m) => sum + (Number(m.impressions) || 0), 0);
 
+        // Calculate averages for GAM metrics for this day
+        const dayMetricsCount = dayMetrics.length;
+        const dayGamEcpmSum = dayMetrics.reduce((sum, m) => sum + (Number((m as any).gam_ecpm) || 0), 0);
+        const dayGamCpcSum = dayMetrics.reduce((sum, m) => sum + (Number((m as any).gam_cpc) || 0), 0);
+        const dayMatchRateSum = dayMetrics.reduce((sum, m) => sum + (Number((m as any).match_rate) || 0), 0);
+        const dayGamTotalRequests = dayMetrics.reduce((sum, m) => sum + (Number((m as any).gam_total_requests) || 0), 0);
+        const dayGamImpressions = dayMetrics.reduce((sum, m) => sum + (Number((m as any).gam_impressions) || 0), 0);
+        const dayFillRateSum = dayMetrics.reduce((sum, m) => sum + (Number((m as any).fill_rate) || 0), 0);
+        const dayGamClicks = dayMetrics.reduce((sum, m) => sum + (Number((m as any).gam_clicks) || 0), 0);
+        const dayGamCtrSum = dayMetrics.reduce((sum, m) => sum + (Number((m as any).gam_ctr) || 0), 0);
+        const dayViewableImpressionsSum = dayMetrics.reduce((sum, m) => sum + (Number((m as any).viewable_impressions) || 0), 0);
+        const dayGamEcpm = dayMetricsCount > 0 ? dayGamEcpmSum / dayMetricsCount : 0;
+        const dayGamCpc = dayMetricsCount > 0 ? dayGamCpcSum / dayMetricsCount : 0;
+        const dayMatchRate = dayMetricsCount > 0 ? dayMatchRateSum / dayMetricsCount : 0;
+        const dayFillRate = dayMetricsCount > 0 ? dayFillRateSum / dayMetricsCount : 0;
+        const dayGamCtr = dayMetricsCount > 0 ? dayGamCtrSum / dayMetricsCount : 0;
+        const dayViewableImpressions = dayMetricsCount > 0 ? dayViewableImpressionsSum / dayMetricsCount : 0;
+
         historicalData.push({
           date: dateStr,
           spend: daySpend,
           revenue: dayRevenue,
           clicks: dayClicks,
-          impressions: dayImpressions
+          impressions: dayImpressions,
+          gam_ecpm: dayGamEcpm,
+          gam_cpc: dayGamCpc,
+          match_rate: dayMatchRate,
+          gam_total_requests: dayGamTotalRequests,
+          gam_impressions: dayGamImpressions,
+          fill_rate: dayFillRate,
+          gam_clicks: dayGamClicks,
+          gam_ctr: dayGamCtr,
+          viewable_impressions: dayViewableImpressions
         });
       }
 

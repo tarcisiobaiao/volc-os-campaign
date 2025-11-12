@@ -571,6 +571,472 @@ export default function CampaignDetailDashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {/* Gráfico ROAS vs ROI */}
+          <Card>
+            <CardHeader>
+              <CardTitle>📈 ROAS vs ROI ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                ROAS: {roas}% • ROI: {roi}% (imposto: {taxRate}%)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {historicalData.length <= 1 ? (
+                  // Gráfico de barras para 1 dia
+                  <BarChart data={[
+                    { name: 'ROAS', value: Number(roas), fill: '#22c55e' },
+                    { name: 'ROI', value: Number(roi), fill: '#3b82f6' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={(value) => `${value}%`} />
+                    <Tooltip
+                      formatter={(value) => [`${Number(value).toFixed(1)}%`, '']}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {[
+                        { name: 'ROAS', value: Number(roas), fill: '#22c55e' },
+                        { name: 'ROI', value: Number(roi), fill: '#3b82f6' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  // Gráfico de linhas para múltiplos dias
+                  <LineChart data={historicalData.map(item => {
+                    const itemRevenue = item.revenue || 0;
+                    const itemSpend = item.spend || 0;
+                    const itemRoas = itemSpend > 0 ? ((itemRevenue / itemSpend) * 100) : 0;
+                    const itemRevenueAfterTax = itemRevenue * (1 - taxRate / 100);
+                    const itemProfitAfterTax = itemRevenueAfterTax - itemSpend;
+                    const itemRoi = itemSpend > 0 ? ((itemProfitAfterTax / itemSpend) * 100) : 0;
+
+                    return {
+                      ...item,
+                      roas: itemRoas,
+                      roi: itemRoi
+                    };
+                  })}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis tickFormatter={(value) => `${value}%`} />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'roas') {
+                          return [`${Number(value).toFixed(1)}%`, 'ROAS'];
+                        }
+                        if (name === 'roi') {
+                          return [`${Number(value).toFixed(1)}%`, 'ROI'];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="roas"
+                      stroke="#22c55e"
+                      strokeWidth={3}
+                      name="roas"
+                      dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="roi"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      name="roi"
+                      dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                    />
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico eCPM vs CPC do Ad Exchange */}
+          <Card>
+            <CardHeader>
+              <CardTitle> eCPM vs CPC - Ad Exchange ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                Médias do período selecionado
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {historicalData.length <= 1 ? (
+                  // Gráfico de barras para 1 dia
+                  <BarChart data={[
+                    { name: 'eCPM', value: campaign.gam_ecpm || 0, fill: '#8b5cf6' },
+                    { name: 'CPC', value: campaign.gam_cpc || 0, fill: '#f59e0b' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={(value) => `$${value.toFixed(2)}`} />
+                    <Tooltip
+                      formatter={(value) => [`$${Number(value).toFixed(2)}`, '']}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {[
+                        { name: 'eCPM', value: campaign.gam_ecpm || 0, fill: '#8b5cf6' },
+                        { name: 'CPC', value: campaign.gam_cpc || 0, fill: '#f59e0b' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  // Gráfico combinado (barras + linha) para múltiplos dias
+                  <ComposedChart data={historicalData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis yAxisId="left" tickFormatter={(value) => `$${value.toFixed(2)}`} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `$${value.toFixed(2)}`} />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'gam_ecpm') {
+                          return [`$${Number(value).toFixed(2)}`, 'eCPM'];
+                        }
+                        if (name === 'gam_cpc') {
+                          return [`$${Number(value).toFixed(4)}`, 'CPC'];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="gam_ecpm"
+                      fill="#8b5cf6"
+                      name="gam_ecpm"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="gam_cpc"
+                      stroke="#f59e0b"
+                      strokeWidth={3}
+                      name="gam_cpc"
+                      dot={{ fill: "#f59e0b", strokeWidth: 2, r: 4 }}
+                    />
+                  </ComposedChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico eCPM vs Taxa de Correspondência */}
+          <Card>
+            <CardHeader>
+              <CardTitle>📊 eCPM vs Taxa de Correspondência - Ad Exchange ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                eCPM médio: ${(campaign.gam_ecpm || 0).toFixed(2)} • Match Rate: {(campaign.match_rate || 0).toFixed(1)}%
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {historicalData.length <= 1 ? (
+                  // Gráfico de barras para 1 dia
+                  <BarChart data={[
+                    { name: 'eCPM', value: campaign.gam_ecpm || 0, fill: '#8b5cf6' },
+                    { name: 'Match Rate', value: campaign.match_rate || 0, fill: '#22c55e' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        if (name === 'eCPM') return [`$${Number(value).toFixed(2)}`, 'eCPM'];
+                        if (name === 'Match Rate') return [`${Number(value).toFixed(1)}%`, 'Match Rate'];
+                        return [value, name];
+                      }}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {[
+                        { name: 'eCPM', value: campaign.gam_ecpm || 0, fill: '#8b5cf6' },
+                        { name: 'Match Rate', value: campaign.match_rate || 0, fill: '#22c55e' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  // Gráfico combinado (barras + linha) para múltiplos dias
+                  <ComposedChart data={historicalData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis yAxisId="left" tickFormatter={(value) => `$${value.toFixed(2)}`} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(0)}%`} />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'gam_ecpm') {
+                          return [`$${Number(value).toFixed(2)}`, 'eCPM'];
+                        }
+                        if (name === 'match_rate') {
+                          return [`${Number(value).toFixed(1)}%`, 'Taxa de Correspondência'];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="gam_ecpm"
+                      fill="#8b5cf6"
+                      name="gam_ecpm"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="match_rate"
+                      stroke="#22c55e"
+                      strokeWidth={3}
+                      name="match_rate"
+                      dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
+                    />
+                  </ComposedChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico Total de Solicitações vs Impressões vs Fill Rate */}
+          <Card>
+            <CardHeader>
+              <CardTitle>📡 Solicitações vs Impressões vs Fill Rate - Ad Exchange ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                Total Solicitações: {(campaign.gam_total_requests || 0).toLocaleString()} • Impressões GAM: {(campaign.gam_impressions || 0).toLocaleString()} • Fill Rate: {(campaign.fill_rate || 0).toFixed(1)}%
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={(date) => {
+                    return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                  }} />
+                  <YAxis yAxisId="left" tickFormatter={(value) => value.toLocaleString()} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(0)}%`} />
+                  <Tooltip
+                    labelFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'gam_total_requests') {
+                        return [Number(value).toLocaleString(), 'Total Solicitações'];
+                      }
+                      if (name === 'gam_impressions') {
+                        return [Number(value).toLocaleString(), 'Impressões GAM'];
+                      }
+                      if (name === 'fill_rate') {
+                        return [`${Number(value).toFixed(1)}%`, 'Fill Rate'];
+                      }
+                      return [value, name];
+                    }}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="gam_total_requests"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    name="gam_total_requests"
+                    dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="gam_impressions"
+                    stroke="#8b5cf6"
+                    strokeWidth={3}
+                    name="gam_impressions"
+                    dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="fill_rate"
+                    stroke="#22c55e"
+                    strokeWidth={3}
+                    name="fill_rate"
+                    dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico Impressões vs Cliques vs CTR vs CPC do Ad Exchange */}
+          <Card>
+            <CardHeader>
+              <CardTitle>🎯 Impressões vs Cliques vs CTR vs CPC - Ad Exchange ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                Impressões GAM: {(campaign.gam_impressions || 0).toLocaleString()} • Cliques GAM: {(campaign.gam_clicks || 0).toLocaleString()} • CTR: {(campaign.gam_ctr || 0).toFixed(2)}% • CPC: {formatCurrency((campaign.gam_cpc || 0) * exchangeRate)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={(date) => {
+                    return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                  }} />
+                  <YAxis yAxisId="left" tickFormatter={(value) => value.toLocaleString()} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(1)}%`} />
+                  <Tooltip
+                    labelFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'gam_impressions') {
+                        return [Number(value).toLocaleString(), 'Impressões GAM'];
+                      }
+                      if (name === 'gam_clicks') {
+                        return [Number(value).toLocaleString(), 'Cliques GAM'];
+                      }
+                      if (name === 'gam_ctr') {
+                        return [`${Number(value).toFixed(2)}%`, 'CTR GAM'];
+                      }
+                      if (name === 'gam_cpc') {
+                        return [formatCurrency(Number(value) * exchangeRate), 'CPC GAM'];
+                      }
+                      return [value, name];
+                    }}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="gam_impressions"
+                    stroke="#8b5cf6"
+                    strokeWidth={3}
+                    name="gam_impressions"
+                    dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="gam_clicks"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    name="gam_clicks"
+                    dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="gam_ctr"
+                    stroke="#22c55e"
+                    strokeWidth={3}
+                    name="gam_ctr"
+                    dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="gam_cpc"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    name="gam_cpc"
+                    dot={{ fill: "#f59e0b", strokeWidth: 2, r: 4 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico Impressões vs Porcentagem de Impressões Visíveis */}
+          <Card>
+            <CardHeader>
+              <CardTitle>👁️ Impressões vs Impressões Visíveis - Ad Exchange ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                Impressões GAM: {(campaign.gam_impressions || 0).toLocaleString()} • Impressões Visíveis: {(campaign.viewable_impressions || 0).toFixed(1)}%
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {historicalData.length <= 1 ? (
+                  <ComposedChart data={[
+                    { name: 'Impressões GAM', value: campaign.gam_impressions || 0, type: 'bar' },
+                    { name: 'Impressões Visíveis', value: campaign.viewable_impressions || 0, type: 'line' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis yAxisId="left" tickFormatter={(value) => value.toLocaleString()} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(0)}%`} />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        if (name === 'Impressões GAM') {
+                          return [Number(value).toLocaleString(), name];
+                        }
+                        if (name === 'Impressões Visíveis') {
+                          return [`${Number(value).toFixed(1)}%`, name];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Bar yAxisId="left" dataKey="value" fill="#8b5cf6" name="Impressões GAM" />
+                  </ComposedChart>
+                ) : (
+                  <ComposedChart data={historicalData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis yAxisId="left" tickFormatter={(value) => value.toLocaleString()} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(0)}%`} />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'gam_impressions') {
+                          return [Number(value).toLocaleString(), 'Impressões GAM'];
+                        }
+                        if (name === 'viewable_impressions') {
+                          return [`${Number(value).toFixed(1)}%`, 'Impressões Visíveis'];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="gam_impressions"
+                      fill="#8b5cf6"
+                      name="gam_impressions"
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="viewable_impressions"
+                      stroke="#22c55e"
+                      strokeWidth={3}
+                      name="viewable_impressions"
+                      dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
+                    />
+                  </ComposedChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
