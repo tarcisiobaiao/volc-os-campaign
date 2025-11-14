@@ -2464,6 +2464,7 @@ class SupabaseDataService {
         }, 0);
         const dayClicks = dayMetrics.reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
         const dayImpressions = dayMetrics.reduce((sum, m) => sum + (Number(m.impressions) || 0), 0);
+        const dayConversions = dayMetrics.reduce((sum, m) => sum + (Number(m.conversions) || 0), 0);
 
         // Calculate averages for GAM metrics for this day
         const dayMetricsCount = dayMetrics.length;
@@ -2483,12 +2484,19 @@ class SupabaseDataService {
         const dayGamCtr = dayMetricsCount > 0 ? dayGamCtrSum / dayMetricsCount : 0;
         const dayViewableImpressions = dayMetricsCount > 0 ? dayViewableImpressionsSum / dayMetricsCount : 0;
 
+        // Calculate derived metrics for the day
+        const dayCpc = dayClicks > 0 ? daySpend / dayClicks : 0;
+        const dayCostPerConversion = dayConversions > 0 ? daySpend / dayConversions : 0;
+
         historicalData.push({
           date: dateStr,
           spend: daySpend,
           revenue: dayRevenue,
           clicks: dayClicks,
           impressions: dayImpressions,
+          conversions: dayConversions,
+          cpc: dayCpc,
+          cost_per_conversion: dayCostPerConversion,
           gam_ecpm: dayGamEcpm,
           gam_cpc: dayGamCpc,
           match_rate: dayMatchRate,

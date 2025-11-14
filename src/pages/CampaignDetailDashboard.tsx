@@ -469,70 +469,6 @@ export default function CampaignDetailDashboard() {
 
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico Gasto vs Revenue */}
-          <Card>
-            <CardHeader>
-              <CardTitle>💰 Gasto vs Revenue ({getChartPeriodTitle()})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                {historicalData.length <= 1 ? (
-                  // Gráfico de barras para 1 dia
-                  <BarChart data={[
-                    { name: 'Gasto', value: campaign.spend, fill: '#ef4444' },
-                    { name: 'Revenue', value: revenue, fill: '#22c55e' },
-                    { name: 'Lucro Bruto', value: profit, fill: profit >= 0 ? '#3b82f6' : '#f97316' }
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, '']}
-                      labelStyle={{ color: '#000' }}
-                    />
-                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                      {[
-                        { name: 'Gasto', value: campaign.spend, fill: '#ef4444' },
-                        { name: 'Revenue', value: revenue, fill: '#22c55e' },
-                        { name: 'Lucro Bruto', value: profit, fill: profit >= 0 ? '#3b82f6' : '#f97316' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                ) : (
-                  // Gráfico de linhas para múltiplos dias
-                  <LineChart data={historicalData.map(item => ({
-                    ...item,
-                    profit: (item.revenue || 0) - (item.spend || 0)
-                  }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={(date) => {
-                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                    }} />
-                    <YAxis />
-                    <Tooltip
-                      labelFormatter={(date) => {
-                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
-                      }}
-                      formatter={(value, name) => {
-                        const labels: Record<string, string> = {
-                          spend: 'Gasto',
-                          revenue: 'Revenue',
-                          profit: 'Lucro Bruto'
-                        };
-                        return [`R$ ${Number(value).toFixed(2)}`, labels[name] || name];
-                      }}
-                    />
-                    <Line type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} name="spend" />
-                    <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="revenue" />
-                    <Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} name="profit" />
-                  </LineChart>
-                )}
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
           {/* Gráfico Clicks vs Impressions */}
           <Card>
             <CardHeader>
@@ -567,6 +503,81 @@ export default function CampaignDetailDashboard() {
                   <Bar yAxisId="left" dataKey="impressions" fill="#3b82f6" name="impressions" />
                   <Bar yAxisId="left" dataKey="clicks" fill="#8b5cf6" name="clicks" />
                   <Line yAxisId="right" type="monotone" dataKey="ctr" stroke="#f59e0b" strokeWidth={2} name="ctr" dot={{ r: 4 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico Taxa de Conversão, CPC e Custo por Conversão */}
+          <Card>
+            <CardHeader>
+              <CardTitle>🎯 Taxa de Conversão, CPC e Custo/Conversão ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                Taxa de Conversão: {campaign.clicks > 0 ? ((campaign.conversions / campaign.clicks) * 100).toFixed(2) : 0}% • CPC: {formatCurrency(campaign.cpc)} • Custo/Conversão: {formatCurrency(campaign.cost_per_conversion)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={historicalData.map(item => {
+                  const itemClicks = item.clicks || 0;
+                  const itemConversions = item.conversions || 0;
+                  const conversionRate = itemClicks > 0 ? ((itemConversions / itemClicks) * 100) : 0;
+
+                  return {
+                    ...item,
+                    conversion_rate: conversionRate,
+                    cpc: item.cpc || 0,
+                    cost_per_conversion: item.cost_per_conversion || 0
+                  };
+                })}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={(date) => {
+                    return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                  }} />
+                  <YAxis yAxisId="left" tickFormatter={(value) => `${value.toFixed(1)}%`} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `R$ ${value.toFixed(2)}`} />
+                  <Tooltip
+                    labelFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'conversion_rate') {
+                        return [`${Number(value).toFixed(2)}%`, 'Taxa de Conversão'];
+                      }
+                      if (name === 'cpc') {
+                        return [`R$ ${Number(value).toFixed(2)}`, 'CPC'];
+                      }
+                      if (name === 'cost_per_conversion') {
+                        return [`R$ ${Number(value).toFixed(2)}`, 'Custo/Conversão'];
+                      }
+                      return [value, name];
+                    }}
+                  />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="conversion_rate"
+                    fill="#8b5cf6"
+                    name="conversion_rate"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="cpc"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    name="cpc"
+                    dot={{ fill: "#f59e0b", strokeWidth: 2, r: 4 }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="cost_per_conversion"
+                    stroke="#ef4444"
+                    strokeWidth={3}
+                    name="cost_per_conversion"
+                    dot={{ fill: "#ef4444", strokeWidth: 2, r: 4 }}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
@@ -1033,6 +1044,160 @@ export default function CampaignDetailDashboard() {
                       dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
                     />
                   </ComposedChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico ROI vs Faturamento */}
+          <Card>
+            <CardHeader>
+              <CardTitle>💰 ROI vs Faturamento ({getChartPeriodTitle()})</CardTitle>
+              <CardDescription className="text-xs">
+                Faturamento: {formatRevenue(revenue)} • ROI: {roi}% (imposto: {taxRate}%)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {historicalData.length <= 1 ? (
+                  // Gráfico de barras para 1 dia
+                  <ComposedChart data={[
+                    { name: 'Faturamento', revenue: revenue, roi: Number(roi) }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis yAxisId="left" tickFormatter={(value) => `R$ ${value.toFixed(0)}`} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(1)}%`} />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        if (name === 'revenue') {
+                          return [`R$ ${Number(value).toFixed(2)}`, 'Faturamento'];
+                        }
+                        if (name === 'roi') {
+                          return [`${Number(value).toFixed(1)}%`, 'ROI'];
+                        }
+                        return [value, name];
+                      }}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar yAxisId="left" dataKey="revenue" fill="#22c55e" name="revenue" radius={[8, 8, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#3b82f6" strokeWidth={3} name="roi" dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }} />
+                  </ComposedChart>
+                ) : (
+                  // Gráfico combinado (barras + linha) para múltiplos dias
+                  <ComposedChart data={historicalData.map(item => {
+                    const itemRevenue = item.revenue || 0;
+                    const itemSpend = item.spend || 0;
+                    const itemRevenueAfterTax = itemRevenue * (1 - taxRate / 100);
+                    const itemProfitAfterTax = itemRevenueAfterTax - itemSpend;
+                    const itemRoi = itemSpend > 0 ? ((itemProfitAfterTax / itemSpend) * 100) : 0;
+
+                    return {
+                      ...item,
+                      roi: itemRoi
+                    };
+                  })}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis yAxisId="left" tickFormatter={(value) => `R$ ${value.toFixed(0)}`} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(1)}%`} />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        if (name === 'revenue') {
+                          return [`R$ ${Number(value).toFixed(2)}`, 'Faturamento'];
+                        }
+                        if (name === 'roi') {
+                          return [`${Number(value).toFixed(1)}%`, 'ROI'];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="revenue"
+                      fill="#22c55e"
+                      name="revenue"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="roi"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      name="roi"
+                      dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
+                    />
+                  </ComposedChart>
+                )}
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico Gasto vs Revenue */}
+          <Card>
+            <CardHeader>
+              <CardTitle>💰 Gasto vs Revenue ({getChartPeriodTitle()})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                {historicalData.length <= 1 ? (
+                  // Gráfico de barras para 1 dia
+                  <BarChart data={[
+                    { name: 'Gasto', value: campaign.spend, fill: '#ef4444' },
+                    { name: 'Revenue', value: revenue, fill: '#22c55e' },
+                    { name: 'Lucro Bruto', value: profit, fill: profit >= 0 ? '#3b82f6' : '#f97316' }
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, '']}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                      {[
+                        { name: 'Gasto', value: campaign.spend, fill: '#ef4444' },
+                        { name: 'Revenue', value: revenue, fill: '#22c55e' },
+                        { name: 'Lucro Bruto', value: profit, fill: profit >= 0 ? '#3b82f6' : '#f97316' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  // Gráfico de linhas para múltiplos dias
+                  <LineChart data={historicalData.map(item => ({
+                    ...item,
+                    profit: (item.revenue || 0) - (item.spend || 0)
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tickFormatter={(date) => {
+                      return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }} />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(date) => {
+                        return parseDateToSaoPaulo(date).toLocaleDateString('pt-BR');
+                      }}
+                      formatter={(value, name) => {
+                        const labels: Record<string, string> = {
+                          spend: 'Gasto',
+                          revenue: 'Revenue',
+                          profit: 'Lucro Bruto'
+                        };
+                        return [`R$ ${Number(value).toFixed(2)}`, labels[name] || name];
+                      }}
+                    />
+                    <Line type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} name="spend" />
+                    <Line type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} name="revenue" />
+                    <Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} name="profit" />
+                  </LineChart>
                 )}
               </ResponsiveContainer>
             </CardContent>
