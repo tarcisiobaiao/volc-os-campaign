@@ -2651,9 +2651,17 @@ class SupabaseDataService {
       // Extrair URL e domínio do nome da campanha
       const campaignName = googleAdsData.campaign_name || '';
       const urlMatch = campaignName.match(/([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[\/\w.-]*)/i);
-      const extractedUrl = urlMatch ? urlMatch[1] : null;
-      const extractedDomain = extractedUrl ? extractedUrl.split('/')[0] : null;
-      
+      let extractedUrl = urlMatch ? urlMatch[1] : null;
+      let extractedDomain = extractedUrl ? extractedUrl.split('/')[0] : null;
+
+      // Remover www. do domínio e URL para evitar duplicatas
+      if (extractedDomain) {
+        extractedDomain = extractedDomain.replace(/^www\./i, '');
+      }
+      if (extractedUrl) {
+        extractedUrl = extractedUrl.replace(/^www\./i, '');
+      }
+
       if (extractedDomain) {
         // Auto-criar projeto se necessário
         const { data: existingProject } = await supabase
