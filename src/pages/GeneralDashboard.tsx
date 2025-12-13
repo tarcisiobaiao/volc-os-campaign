@@ -64,6 +64,7 @@ import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useUserFilters } from "@/hooks/useUserFilters";
+import { CampaignHighlights } from "@/components/dashboard/CampaignHighlights";
 
 const integrationStatus = [
   { name: "Google Ads", status: "online", lastSync: "2 min atrás" },
@@ -1051,6 +1052,9 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Campanhas Destacadas - Rotação Automática */}
+        <CampaignHighlights />
 
         {/* Top 5 Campanhas - Versão Compacta */}
         <Card className="shadow-lg transition-all duration-300 bg-gradient-to-br from-background to-muted/30 hover:shadow-xl transition-shadow">

@@ -449,7 +449,7 @@ export default function CampaignDashboard() {
               />
               <KPICard
                 title="ROAS Médio"
-                value={kpis.avgRoas.toFixed(2)}
+                value={(kpis.avgRoas - 1).toFixed(2)}
                 change={trends.roas}
                 icon={<TrendingUp />}
                 color="success"
