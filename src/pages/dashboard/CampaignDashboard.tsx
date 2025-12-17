@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Zap, RefreshCw, User } from "lucide-react";
+import { CalendarIcon, TrendingUp, TrendingDown, DollarSign, Eye, MousePointer, Zap, RefreshCw, User, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { 
@@ -25,6 +25,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useSupabaseData, Project } from "@/services/supabaseDataService";
 import { useCurrencyConverter } from "@/services/currencyConversionService";
 import { useUserFilters } from "@/hooks/useUserFilters";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 // Types
 interface DashboardFilters {
@@ -130,6 +131,7 @@ const EmptyState = () => (
 );
 
 export default function CampaignDashboard() {
+  const isMobile = useIsMobile();
   const [filters, setFilters] = useState<DashboardFilters>({
     projectId: "",
     campaignId: "all",
@@ -279,25 +281,28 @@ export default function CampaignDashboard() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-8 max-w-7xl mx-auto`}>
         {/* Header */}
-        <div className="flex items-center justify-between animate-fade-in">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} animate-fade-in gap-4`}>
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
-                📊 Dashboard de Campanhas
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+              <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-dashboard bg-clip-text text-transparent`}>
+                <span className="flex items-center gap-2">
+                  <BarChart3 className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
+                  Dashboard de Campanhas
+                </span>
               </h1>
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10">
                 <User className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Felipe</span>
+                <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-primary`}>Felipe</span>
               </div>
             </div>
-            <p className="text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
               Monitore KPIs e performance das suas campanhas em tempo real
             </p>
           </div>
           
-          <Button onClick={handleRefresh} variant="outline" size="sm">
+          <Button onClick={handleRefresh} variant="outline" size="sm" className={isMobile ? 'w-full touch-target' : ''}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
@@ -309,15 +314,15 @@ export default function CampaignDashboard() {
             <CardTitle className="text-lg">Filtros</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
               {/* Project Filter */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Projeto</label>
+                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>Projeto</label>
                 <Select 
                   value={filters.projectId} 
                   onValueChange={(value) => setFilters(prev => ({ ...prev, projectId: value }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={isMobile ? 'touch-target' : ''}>
                     <SelectValue placeholder="Selecione um projeto" />
                   </SelectTrigger>
                   <SelectContent>
@@ -332,13 +337,13 @@ export default function CampaignDashboard() {
 
               {/* Campaign Filter */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Campanha</label>
+                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>Campanha</label>
                 <Select 
                   value={filters.campaignId} 
                   onValueChange={(value) => setFilters(prev => ({ ...prev, campaignId: value }))}
                   disabled={!filters.projectId}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={isMobile ? 'touch-target' : ''}>
                     <SelectValue placeholder="Todas as campanhas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,12 +359,12 @@ export default function CampaignDashboard() {
 
               {/* Period Filter */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Período</label>
+                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>Período</label>
                 <Select 
                   value={filters.period} 
                   onValueChange={(value: "today" | "7d" | "30d" | "custom") => setFilters(prev => ({ ...prev, period: value }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={isMobile ? 'touch-target' : ''}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -374,10 +379,10 @@ export default function CampaignDashboard() {
               {/* Custom Date Range */}
               {filters.period === "custom" && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Datas</label>
+                  <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium`}>Datas</label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <Button variant="outline" className={`w-full justify-start text-left font-normal ${isMobile ? 'touch-target' : ''}`}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {filters.dateRange?.from ? (
                           filters.dateRange.to ? (
@@ -439,7 +444,7 @@ export default function CampaignDashboard() {
         ) : (
           <div key="content" className="space-y-6">
             {/* KPI Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
               <KPICard
                 title="Investimento Total"
                 value={formatCurrency(kpis.totalInvestment)}
@@ -476,7 +481,10 @@ export default function CampaignDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      📈 Site Analysis
+                      <span className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Site Analysis
+                      </span>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
                       {format(new Date(), "MMM dd, yyyy")}
@@ -604,7 +612,7 @@ export default function CampaignDashboard() {
             </Card>
 
             {/* Secondary Charts */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
               {/* ROAS and CTR Line Chart */}
               <Card className="shadow-card animate-fade-in">
                 <CardHeader>

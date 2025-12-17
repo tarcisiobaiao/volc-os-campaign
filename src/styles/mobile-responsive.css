@@ -1,0 +1,120 @@
+/**
+ * Mobile Responsive Utilities
+ * Classes para garantir responsividade mobile em todo o sistema
+ */
+
+/* Grids responsivos automáticos */
+@layer utilities {
+  /* Grid de 3 colunas → 1 coluna em mobile */
+  .grid-cols-3 {
+    @apply md:grid-cols-2 lg:grid-cols-3 grid-cols-1;
+  }
+
+  /* Grid de 4 colunas → 1-2 colunas em mobile */
+  .grid-cols-4 {
+    @apply md:grid-cols-2 lg:grid-cols-4 grid-cols-1;
+  }
+
+  /* Grid de 5 colunas → 1-2 colunas em mobile */
+  .grid-cols-5 {
+    @apply md:grid-cols-3 lg:grid-cols-5 grid-cols-2;
+  }
+
+  /* Touch targets mínimos para mobile */
+  .touch-target {
+    @apply min-h-[44px] md:min-h-[36px];
+  }
+
+  .touch-target-lg {
+    @apply min-h-[48px] md:min-h-[40px];
+  }
+
+  /* Padding responsivo para cards */
+  .card-padding {
+    @apply p-4 md:p-6;
+  }
+
+  /* Font sizes responsivos */
+  .text-responsive-xs {
+    @apply text-sm md:text-xs;
+  }
+
+  .text-responsive-sm {
+    @apply text-base md:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-lg md:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-xl md:text-lg;
+  }
+
+  /* Stack vertical em mobile, horizontal em desktop */
+  .stack-mobile {
+    @apply flex flex-col md:flex-row gap-3;
+  }
+
+  /* Esconder em mobile */
+  .hide-mobile {
+    @apply hidden md:block;
+  }
+
+  /* Mostrar apenas em mobile */
+  .show-mobile {
+    @apply block md:hidden;
+  }
+
+  /* Container com padding responsivo */
+  .container-responsive {
+    @apply px-4 md:px-6 lg:px-8;
+  }
+}
+
+/* Sobrescrever grids que já têm classes fixas */
+@media (max-width: 767px) {
+  /* Forçar 1 coluna em mobile para todos os grids >= 3 cols */
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* Permitir 2 colunas para grids específicos se necessário */
+  .grid-cols-2-mobile {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Tabelas em scroll horizontal em mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Cards com padding reduzido em mobile */
+  .card,
+  [class*="Card"] {
+    padding: 1rem !important;
+  }
+
+  /* Botões full-width em mobile quando em grupo */
+  .button-group > button {
+    width: 100%;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}

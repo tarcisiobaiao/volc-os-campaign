@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Edit, Trash2, Save, BarChart3, DollarSign, Users, Settings, Building, Shield, AlertTriangle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, BarChart3, DollarSign, Users, Settings, Building, Shield, AlertTriangle, ChevronLeft, ChevronRight, Calendar, Lightbulb } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -15,11 +15,13 @@ import { operationalCostsService, OperationalCostCategory, OperationalCost, Oper
 import { taxHistoryService, TaxHistoryDisplay } from '@/services/taxHistoryService';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ProjectCostSharing } from '@/components/cost-sharing/ProjectCostSharing';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 
 export default function CostsSettings() {
   const navigate = useNavigate();
   const { canManageCategories, canEditCosts, isAdmin } = useUserRole();
+  const isMobile = useIsMobile();
   
   // Helper function to get current month in YYYY-MM format
   const getCurrentMonth = () => {
@@ -611,25 +613,27 @@ export default function CostsSettings() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-8 max-w-7xl mx-auto`}>
         {/* Header with enhanced styling */}
-        <div className="flex items-center justify-between transition-all duration-300">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} transition-all duration-300 gap-4`}>
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="touch-target">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
-                Configurações de Custos
-              </h1>
-              {isAdmin() && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Admin
-                </Badge>
-              )}
+              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
+                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
+                  Configurações de Custos
+                </h1>
+                {isAdmin() && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Admin
+                  </Badge>
+                )}
+              </div>
             </div>
-            <p className="text-muted-foreground ml-11">
+            <p className={`text-muted-foreground ${isMobile ? 'text-sm ml-0' : 'ml-11'}`}>
               Gerencie custos operacionais e impostos por mês
               {!canEditCosts() && (
                 <span className="text-amber-600 ml-2">• Visualização apenas</span>
@@ -653,21 +657,21 @@ export default function CostsSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-                <Label className="font-medium">Mês:</Label>
-                <div className="flex items-center gap-2 bg-white/50 rounded-lg border p-1">
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4`}>
+            <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-4`}>
+                <Label className={`font-medium ${isMobile ? 'text-sm' : ''}`}>Mês:</Label>
+                <div className={`flex items-center gap-2 bg-white/50 rounded-lg border p-1 ${isMobile ? 'w-full justify-between' : ''}`}>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => navigateMonth('prev')}
-                    className="h-8 w-8 p-0"
+                    className={`${isMobile ? 'h-10 w-10' : 'h-8 w-8'} p-0 touch-target`}
                     title="Mês anterior"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <div className="flex items-center gap-2 px-4 py-1 min-w-[180px] justify-center">
-                    <span className="font-medium text-lg">
+                  <div className={`flex items-center gap-2 ${isMobile ? 'px-2' : 'px-4'} py-1 ${isMobile ? 'min-w-0 flex-1' : 'min-w-[180px]'} justify-center`}>
+                    <span className={`font-medium ${isMobile ? 'text-base' : 'text-lg'}`}>
                       {formatMonthDisplay(selectedMonth)}
                     </span>
                     {isCurrentMonth() && (
@@ -681,29 +685,31 @@ export default function CostsSettings() {
                     size="sm"
                     onClick={() => navigateMonth('next')}
                     disabled={!canNavigateNext()}
-                    className="h-8 w-8 p-0"
+                    className={`${isMobile ? 'h-10 w-10' : 'h-8 w-8'} p-0 touch-target`}
                     title="Próximo mês"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">
-                    Use as setas para navegar entre os meses
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Dados são copiados automaticamente na virada do mês
-                  </p>
-                </div>
+              <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-4`}>
+                {!isMobile && (
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">
+                      Use as setas para navegar entre os meses
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Dados são copiados automaticamente na virada do mês
+                    </p>
+                  </div>
+                )}
                 {canEditCosts() && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleClonePreviousMonth}
                     disabled={isCloningCosts}
-                    className="gap-2"
+                    className={`gap-2 ${isMobile ? 'w-full touch-target' : ''}`}
                   >
                     {isCloningCosts ? (
                       <>
@@ -717,6 +723,11 @@ export default function CostsSettings() {
                       </>
                     )}
                   </Button>
+                )}
+                {isMobile && (
+                  <div className="text-center text-xs text-muted-foreground">
+                    Use as setas para navegar entre os meses
+                  </div>
                 )}
               </div>
             </div>
@@ -774,19 +785,19 @@ export default function CostsSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-6`}>
               <div className="space-y-2">
-                <Label className="font-medium">Percentual Atual:</Label>
-                <div className="flex items-center gap-2">
+                <Label className={`font-medium ${isMobile ? 'text-sm' : ''}`}>Percentual Atual:</Label>
+                <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-2`}>
                   <Input
                     type="number"
                     value={currentTaxRate}
                     onChange={(e) => setCurrentTaxRate(parseFloat(e.target.value) || 0)}
                     step="0.1"
-                    className="w-20"
+                    className={`${isMobile ? 'w-full touch-target' : 'w-20'}`}
                     disabled={!isCurrentMonth()}
                   />
-                  <span className="text-sm text-muted-foreground">% (Simples Nacional)</span>
+                  <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>% (Simples Nacional)</span>
                 </div>
                 {!isCurrentMonth() && (
                   <p className="text-xs text-amber-600">
@@ -815,11 +826,11 @@ export default function CostsSettings() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-between items-center pt-2">
+            <div className={`flex ${isMobile ? 'flex-col' : 'justify-between items-center'} pt-2 gap-2`}>
               <Button 
                 variant="outline" 
                 size="sm"
-                className="bg-yellow-50 border-yellow-200 hover:bg-yellow-100 text-yellow-800"
+                className={`bg-yellow-50 border-yellow-200 hover:bg-yellow-100 text-yellow-800 ${isMobile ? 'w-full touch-target' : ''}`}
                 disabled={!isCurrentMonth() || isUpdatingTax}
                 onClick={handleUpdateTaxRate}
               >
@@ -832,7 +843,7 @@ export default function CostsSettings() {
               </Button>
               
               {!isCurrentMonth() && (
-                <div className="flex items-center gap-2 text-sm text-amber-600">
+                <div className={`flex items-center gap-2 ${isMobile ? 'text-xs' : 'text-sm'} text-amber-600 ${isMobile ? 'justify-center' : ''}`}>
                   <AlertTriangle className="h-4 w-4" />
                   <span>Para alterar impostos, navegue para o mês atual</span>
                 </div>
@@ -1045,7 +1056,10 @@ export default function CostsSettings() {
                   </p>
                   {selectedProjectsForCosts.length > 0 && (
                     <p className="text-sm text-green-600 font-medium">
-                      💡 Dividido entre {selectedProjectsForCosts.length} {selectedProjectsForCosts.length === 1 ? 'projeto' : 'projetos'} 
+                      <span className="flex items-center gap-1">
+                        <Lightbulb className="h-4 w-4" />
+                        Dividido entre {selectedProjectsForCosts.length} {selectedProjectsForCosts.length === 1 ? 'projeto' : 'projetos'}
+                      </span> 
                       - R$ {costPerProject.toFixed(2).replace('.', ',')} por projeto
                     </p>
                   )}
@@ -1053,7 +1067,7 @@ export default function CostsSettings() {
               </div>
               
               {categories.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-4 pt-4 border-t`}>
                   {categories.slice(0, 3).map((category, index) => {
                     const colors = ['text-blue-600', 'text-green-600', 'text-purple-600'];
                     const categoryCosts = groupedCosts[category.name] || [];
@@ -1078,18 +1092,18 @@ export default function CostsSettings() {
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center">
+        <div className={`flex flex-wrap gap-4 ${isMobile ? 'flex-col' : 'justify-center'}`}>
           {canEditCosts() && (
             <Button 
               onClick={() => window.location.reload()} 
               size="lg" 
-              className="shadow-lg hover:shadow-xl transition-shadow"
+              className={`shadow-lg hover:shadow-xl transition-shadow ${isMobile ? 'w-full touch-target' : ''}`}
             >
             <Save className="h-5 w-5 mr-2" />
               Recarregar Dados
           </Button>
           )}
-          <Button variant="outline" size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
+          <Button variant="outline" size="lg" className={`shadow-lg hover:shadow-xl transition-shadow ${isMobile ? 'w-full touch-target' : ''}`}>
             <BarChart3 className="h-5 w-5 mr-2" />
             Ver Histórico Completo
           </Button>

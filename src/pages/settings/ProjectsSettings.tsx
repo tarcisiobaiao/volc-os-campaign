@@ -35,7 +35,12 @@ import {
   ArrowDown,
   Info,
   Eye,
-  EyeOff
+  EyeOff,
+  Globe,
+  FileText,
+  Lightbulb,
+  MoreVertical,
+  Circle
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -49,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
 import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface ProjectIntegration {
   googleAds: {
@@ -71,6 +77,7 @@ export default function ProjectsSettings() {
 
   const navigate = useNavigate();
   const { userProfile } = useAuth();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [userProjectIds, setUserProjectIds] = useState<number[]>([]);
   const [selectedProjectItem, setSelectedProjectItem] = useState<Project | null>(null);
@@ -579,26 +586,26 @@ export default function ProjectsSettings() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-8 max-w-7xl mx-auto`}>
         {/* Header */}
-        <div className="flex items-center justify-between animate-fade-in">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} animate-fade-in gap-4`}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4`}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className={`gap-2 ${isMobile ? 'w-fit' : ''} touch-target`}>
               <ArrowLeft className="h-4 w-4" />
-              Voltar
+              {isMobile ? '' : 'Voltar'}
             </Button>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
+              <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-dashboard bg-clip-text text-transparent`}>
                 Configurações &gt; Projetos
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm mt-1' : 'mt-2'}`}>
                 Configure e gerencie seus projetos e integrações
-                <span className="ml-2 text-primary">• {filteredProjects.length} projeto{filteredProjects.length !== 1 ? 's' : ''} {userProfile?.role === 'OPERATOR' ? 'atribuído' : 'carregado'}{filteredProjects.length !== 1 ? 's' : ''}</span>
+                <span className={`${isMobile ? 'block' : 'ml-2'} text-primary`}>• {filteredProjects.length} projeto{filteredProjects.length !== 1 ? 's' : ''} {userProfile?.role === 'OPERATOR' ? 'atribuído' : 'carregado'}{filteredProjects.length !== 1 ? 's' : ''}</span>
               </p>
             </div>
           </div>
           {userProfile?.role !== 'OPERATOR' && (
-            <div className="flex items-center gap-2">
+            <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-2`}>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -608,7 +615,7 @@ export default function ProjectsSettings() {
                       onClick={() => {
                         handleOpenVisibilityModal();
                       }}
-                      className="h-9 w-9"
+                      className={`${isMobile ? 'h-10 w-10' : 'h-9 w-9'} touch-target`}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -618,7 +625,7 @@ export default function ProjectsSettings() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button onClick={addModal.openModal} className="gap-2">
+              <Button onClick={addModal.openModal} className={`gap-2 ${isMobile ? 'w-full touch-target' : ''}`}>
                 <Plus className="h-4 w-4" />
                 Novo Projeto
               </Button>
@@ -627,9 +634,9 @@ export default function ProjectsSettings() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-4 animate-scale-in flex-wrap items-center">
+        <div className={`flex ${isMobile ? 'flex-col' : 'gap-4'} animate-scale-in flex-wrap items-center gap-2`}>
           {/* Filtro de Período Customizado - igual ao Reports */}
-          <div className="flex items-center gap-2">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-2`}>
             <Select value={selectedPeriod === 'today' ? 'today' : selectedPeriod === 'yesterday' ? 'yesterday' : 'custom'} onValueChange={(value) => {
               if (value === 'today') {
                 handlePeriodChange('today');
@@ -639,14 +646,29 @@ export default function ProjectsSettings() {
                 setSelectedPeriod('custom');
               }
             }}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className={`${isMobile ? 'w-full touch-target' : 'w-40'}`}>
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="today">📅 Hoje</SelectItem>
-                <SelectItem value="yesterday">📆 Ontem</SelectItem>
-                <SelectItem value="custom">🗓️ Selecionar período</SelectItem>
+                <SelectItem value="today">
+                  <span className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Hoje
+                  </span>
+                </SelectItem>
+                <SelectItem value="yesterday">
+                  <span className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Ontem
+                  </span>
+                </SelectItem>
+                <SelectItem value="custom">
+                  <span className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Selecionar período
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -660,11 +682,11 @@ export default function ProjectsSettings() {
                   setTempRangeEndDate(rangeEndDate);
                 }
               }}>
-                <PopoverTrigger asChild>
+                    <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-[320px] justify-start text-left font-normal",
+                      `${isMobile ? 'w-full' : 'w-[320px]'} justify-start text-left font-normal touch-target`,
                       (!customDate && !rangeStartDate) && "text-muted-foreground"
                     )}
                   >
@@ -695,9 +717,15 @@ export default function ProjectsSettings() {
                       <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
                         <p className="text-xs font-medium text-blue-800">
                           {tempRangeStartDate && tempRangeEndDate ? (
-                            <>📊 {format(tempRangeStartDate, "dd/MM/yyyy", { locale: ptBR })} até {format(tempRangeEndDate, "dd/MM/yyyy", { locale: ptBR })}</>
+                            <>
+                              <BarChart3 className="h-4 w-4 mr-1" />
+                              {format(tempRangeStartDate, "dd/MM/yyyy", { locale: ptBR })} até {format(tempRangeEndDate, "dd/MM/yyyy", { locale: ptBR })}
+                            </>
                           ) : tempCustomDate ? (
-                            <>📅 {format(tempCustomDate, "dd/MM/yyyy", { locale: ptBR })}</>
+                            <>
+                              <CalendarIcon className="h-4 w-4 mr-1" />
+                              {format(tempCustomDate, "dd/MM/yyyy", { locale: ptBR })}
+                            </>
                           ) : null}
                         </p>
                         <p className="text-xs text-blue-600 mt-1">Clique em "Aplicar" para confirmar</p>
@@ -793,7 +821,7 @@ export default function ProjectsSettings() {
             )}
           </div>
           <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger className="w-52">
+            <SelectTrigger className={`${isMobile ? 'w-full touch-target' : 'w-52'}`}>
               <BarChart3 className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
@@ -822,13 +850,13 @@ export default function ProjectsSettings() {
             loading={loading}
             error={error}
           />
-          <div className="flex-1 relative min-w-[280px]">
+          <div className={`${isMobile ? 'w-full' : 'flex-1 relative min-w-[280px]'}`}>
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="🔍 Buscar projetos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className={`pl-10 ${isMobile ? 'w-full touch-target' : ''}`}
             />
           </div>
         </div>
@@ -872,35 +900,35 @@ export default function ProjectsSettings() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[600px]">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Projeto (Domínio)</th>
-                      <th className={`text-left p-3 font-medium ${sortBy === 'investment' ? 'text-red-600 bg-red-50' : ''}`}>
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Projeto (Domínio)</th>
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium ${sortBy === 'investment' ? 'text-red-600 bg-red-50' : ''}`}>
                         <div className="flex items-center gap-1">
                           Gasto
                           {sortBy === 'investment' && <ArrowDown className="h-3 w-3" />}
                         </div>
                       </th>
-                      <th className={`text-left p-3 font-medium ${sortBy === 'revenue' ? 'text-green-600 bg-green-50' : ''}`}>
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium ${sortBy === 'revenue' ? 'text-green-600 bg-green-50' : ''}`}>
                         <div className="flex items-center gap-1">
                           Revenue
                           {sortBy === 'revenue' && <ArrowDown className="h-3 w-3" />}
                         </div>
                       </th>
-                      <th className={`text-left p-3 font-medium ${sortBy === 'roi' ? 'text-blue-600 bg-blue-50' : ''}`}>
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium ${sortBy === 'roi' ? 'text-blue-600 bg-blue-50' : ''}`}>
                         <div className="flex items-center gap-1">
                           ROAS
                           {sortBy === 'roi' && <ArrowDown className="h-3 w-3" />}
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium">
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>
                         <div className="flex items-center gap-1">
                           Lucro Líquido
                         </div>
                       </th>
-                      <th className="text-left p-3 font-medium">Campanhas</th>
-                      <th className="text-left p-3 font-medium">Ações</th>
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Campanhas</th>
+                      <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -934,38 +962,38 @@ export default function ProjectsSettings() {
 
                         return (
                           <tr key={index} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/project/${project.id}`)}>
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="h-12 w-12 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg animate-float">
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
+                                <div className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg animate-float`}>
                                   📂
                                 </div>
                                 <div>
-                                  <p className="font-medium text-base">{project.domain}</p>
-                                  <p className="text-sm text-muted-foreground">{project.name}</p>
+                                  <p className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>{project.domain}</p>
+                                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>{project.name}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="p-4">
-                              <div className="text-lg font-bold">
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold`}>
                                 {formatCurrency(project.investment || 0)}
                               </div>
-                              <div className="text-xs text-muted-foreground">Gasto total</div>
+                              <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Gasto total</div>
                             </td>
-                            <td className="p-4">
-                              <div className="text-lg font-bold text-green-600">
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold text-green-600`}>
                                 {formatRevenue(project.revenue || 0)}
                               </div>
-                              <div className="text-xs text-muted-foreground">Revenue UTM</div>
+                              <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue UTM</div>
                             </td>
-                            <td className="p-4">
-                              <div className={`text-lg font-bold px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
                                 {Math.round(roas)}%
                               </div>
                               <div className="flex items-center gap-1 mt-1">
-                                <span className="text-xs">Performance</span>
+                                <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>Performance</span>
                               </div>
                             </td>
-                            <td className="p-4">
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -974,8 +1002,18 @@ export default function ProjectsSettings() {
                                         {formatCurrency(netProfit)}
                                         <Info className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity" />
                                       </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {project.costs_division ? '📊 Div. custos' : '🚫 Sem div.'}
+                                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                        {project.costs_division ? (
+                                          <>
+                                            <BarChart3 className="h-3 w-3" />
+                                            Div. custos
+                                          </>
+                                        ) : (
+                                          <>
+                                            <X className="h-3 w-3" />
+                                            Sem div.
+                                          </>
+                                        )}
                                       </div>
                                     </div>
                                   </TooltipTrigger>
@@ -1038,12 +1076,12 @@ export default function ProjectsSettings() {
                                 </Tooltip>
                               </TooltipProvider>
                             </td>
-                            <td className="p-4">
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
                               <div className="space-y-1">
-                                <div className="font-medium">
+                                <div className={`font-medium ${isMobile ? 'text-sm' : ''}`}>
                                   {campaigns.filter(c => c.projectId === project.id).length} total
                                 </div>
-                                <div className="flex items-center gap-1 text-xs">
+                                <div className={`flex items-center gap-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
                                   {(() => {
                                     const projectCampaigns = campaigns.filter(c => c.projectId === project.id);
                                     const colors = {
@@ -1067,10 +1105,30 @@ export default function ProjectsSettings() {
 
                                     return (
                                       <>
-                                        {colors.green > 0 && <span className="text-green-600">🟢{colors.green}</span>}
-                                        {colors.yellow > 0 && <span className="text-yellow-600">🟡{colors.yellow}</span>}
-                                        {colors.orange > 0 && <span className="text-orange-600">🟠{colors.orange}</span>}
-                                        {colors.red > 0 && <span className="text-red-600">🔴{colors.red}</span>}
+                                        {colors.green > 0 && (
+                                          <span className="text-green-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-green-600" />
+                                            {colors.green}
+                                          </span>
+                                        )}
+                                        {colors.yellow > 0 && (
+                                          <span className="text-yellow-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-yellow-600" />
+                                            {colors.yellow}
+                                          </span>
+                                        )}
+                                        {colors.orange > 0 && (
+                                          <span className="text-orange-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-orange-600" />
+                                            {colors.orange}
+                                          </span>
+                                        )}
+                                        {colors.red > 0 && (
+                                          <span className="text-red-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-red-600" />
+                                            {colors.red}
+                                          </span>
+                                        )}
                                         {projectCampaigns.length === 0 && <span className="text-gray-400">-</span>}
                                       </>
                                     );
@@ -1078,12 +1136,13 @@ export default function ProjectsSettings() {
                                 </div>
                               </div>
                             </td>
-                            <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                            <td className={isMobile ? 'p-2' : 'p-4'} onClick={(e) => e.stopPropagation()}>
                               <div className="flex gap-2">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="text-xs">
-                                      ⚙️ Menu
+                                    <Button variant="ghost" size="sm" className={`${isMobile ? 'text-[10px] touch-target' : 'text-xs'} flex items-center gap-1`}>
+                                      <Settings className="h-3 w-3" />
+                                      Menu
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent>
@@ -1130,12 +1189,20 @@ export default function ProjectsSettings() {
         <Modal
           isOpen={addModal.isOpen}
           onClose={addModal.closeModal}
-          title="📂 Cadastrar Novo Projeto"
+          title={
+            <span className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Cadastrar Novo Projeto
+            </span>
+          }
           size="md"
         >
           <div className="space-y-4">
             <div>
-              <Label htmlFor="project-name">📝 Nome do Projeto (Domínio):</Label>
+              <Label htmlFor="project-name" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Nome do Projeto (Domínio):
+              </Label>
               <Input 
                 id="project-name" 
                 placeholder="Ex: meusite.com.br (sem https://)"
@@ -1149,7 +1216,10 @@ export default function ProjectsSettings() {
             </div>
             
             <div>
-              <Label htmlFor="gam-network">🌐 GAM Network Code:</Label>
+              <Label htmlFor="gam-network" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                GAM Network Code:
+              </Label>
               <Input 
                 id="gam-network" 
                 placeholder="Ex: 12345678"
@@ -1163,7 +1233,10 @@ export default function ProjectsSettings() {
             </div>
             
             <div>
-              <Label htmlFor="revenue-share">💰 Taxa de Revenue Share (%):</Label>
+              <Label htmlFor="revenue-share" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Taxa de Revenue Share (%):
+              </Label>
               <Input 
                 id="revenue-share" 
                 placeholder="Ex: 70"
@@ -1215,12 +1288,18 @@ export default function ProjectsSettings() {
           {selectedProjectItem && (
             <div className="space-y-4">
               <div className="p-4 bg-muted/50 rounded-lg">
-                <h4 className="font-medium mb-2">📂 {selectedProjectItem.name}</h4>
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  {selectedProjectItem.name}
+                </h4>
                 <p className="text-sm text-muted-foreground">{selectedProjectItem.domain}</p>
               </div>
               
               <div>
-                <Label htmlFor="edit-gam-network">🌐 GAM Network Code: <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                <Label htmlFor="edit-gam-network" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  GAM Network Code: <span className="text-xs text-muted-foreground">(opcional)</span>
+                </Label>
                 <Input 
                   id="edit-gam-network" 
                   placeholder="Ex: 12345678 - deixe vazio para manter atual"
@@ -1231,7 +1310,10 @@ export default function ProjectsSettings() {
               </div>
               
               <div>
-                <Label htmlFor="edit-revenue-share">💰 Taxa de Revenue Share (%): <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                <Label htmlFor="edit-revenue-share" className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Taxa de Revenue Share (%): <span className="text-xs text-muted-foreground">(opcional)</span>
+                </Label>
                 {selectedProjectItem.revshare && (
                   <div className="text-sm text-muted-foreground mb-2">
                     Valor atual: <span className="font-medium text-primary">{(selectedProjectItem.revshare * 100).toFixed(1)}%</span>
@@ -1252,7 +1334,10 @@ export default function ProjectsSettings() {
 
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-700">
-                  💡 <strong>Dica:</strong> Você pode editar apenas um dos campos ou ambos. Campos vazios manterão o valor atual.
+                  <span className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4" />
+                    <strong>Dica:</strong> Você pode editar apenas um dos campos ou ambos. Campos vazios manterão o valor atual.
+                  </span>
                 </p>
               </div>
 

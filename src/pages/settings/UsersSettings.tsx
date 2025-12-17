@@ -13,10 +13,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export default function UsersSettings() {
   const { userProfile } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<{ id: number; project_name: string }[]>([]);
   const [campaigns, setCampaigns] = useState<{ id: number; campaign_id: string; campaign_name: string; project_id: number }[]>([]);
@@ -390,18 +392,18 @@ export default function UsersSettings() {
 
   return (
     <Layout>
-      <div className="space-y-6 p-6">
+      <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-6'}`}>
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className={`flex ${isMobile ? 'flex-col' : 'justify-between items-start'} gap-4`}>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+            <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent`}>
               Gerenciamento de Usuários
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className={`text-muted-foreground ${isMobile ? 'text-sm mt-1' : 'mt-2'}`}>
               Gerencie usuários e controle de acesso aos projetos
             </p>
           </div>
-          <Button onClick={addModal.open} className="shadow-lg">
+          <Button onClick={addModal.open} className={`shadow-lg ${isMobile ? 'w-full touch-target' : ''}`}>
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Usuário
           </Button>
@@ -473,27 +475,27 @@ export default function UsersSettings() {
                     key={user.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-all hover:shadow-md"
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center border-2 border-primary/20">
+                    <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 flex-1`}>
+                      <div className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center border-2 border-primary/20`}>
                         {getRoleIcon(user.role)}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <p className="font-semibold text-lg">{user.name}</p>
+                        <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-1`}>
+                          <p className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>{user.name}</p>
                           <Badge className={getRoleBadgeColor(user.role)}>
                             {getRoleLabel(user.role)}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>{user.email}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className={`flex ${isMobile ? 'flex-col w-full' : 'gap-2'}`}>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => openEditModal(user)}
                         disabled={isLoadingEdit}
-                        className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300"
+                        className={`hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 ${isMobile ? 'w-full touch-target' : ''}`}
                       >
                         {isLoadingEdit ? (
                           <LoadingSpinner className="h-4 w-4 mr-1" />
@@ -506,7 +508,7 @@ export default function UsersSettings() {
                         variant="outline"
                         size="sm"
                         onClick={() => openDeleteModal(user)}
-                        className="hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                        className={`hover:bg-red-50 hover:text-red-600 hover:border-red-300 ${isMobile ? 'w-full touch-target' : ''}`}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Excluir
@@ -529,9 +531,9 @@ export default function UsersSettings() {
         size="lg"
       >
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
             <div className="col-span-2">
-              <Label htmlFor="name" className="text-sm font-semibold">
+              <Label htmlFor="name" className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold`}>
                 Nome Completo <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -539,7 +541,7 @@ export default function UsersSettings() {
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                 placeholder="Ex: João Silva"
-                className="mt-1.5"
+                className={`mt-1.5 ${isMobile ? 'touch-target' : ''}`}
               />
             </div>
 
@@ -777,11 +779,11 @@ export default function UsersSettings() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={handleCloseAddModal}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'justify-end'} gap-3 pt-4 border-t`}>
+            <Button variant="outline" onClick={handleCloseAddModal} className={isMobile ? 'w-full touch-target' : ''}>
               Cancelar
             </Button>
-            <Button onClick={handleCreate} disabled={isCreating} className="min-w-[120px]">
+            <Button onClick={handleCreate} disabled={isCreating} className={`${isMobile ? 'w-full touch-target' : 'min-w-[120px]'}`}>
               {isCreating ? (
                 <>
                   <LoadingSpinner className="h-4 w-4 mr-2" />
@@ -1030,11 +1032,11 @@ export default function UsersSettings() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={handleCloseEditModal}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'justify-end'} gap-3 pt-4 border-t`}>
+            <Button variant="outline" onClick={handleCloseEditModal} className={isMobile ? 'w-full touch-target' : ''}>
               Cancelar
             </Button>
-            <Button onClick={handleEdit} disabled={isUpdating} className="min-w-[140px]">
+            <Button onClick={handleEdit} disabled={isUpdating} className={`${isMobile ? 'w-full touch-target' : 'min-w-[140px]'}`}>
               {isUpdating ? (
                 <>
                   <LoadingSpinner className="h-4 w-4 mr-2" />
@@ -1076,15 +1078,15 @@ export default function UsersSettings() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={deleteModal.close}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'justify-end'} gap-3 pt-2`}>
+            <Button variant="outline" onClick={deleteModal.close} className={isMobile ? 'w-full touch-target' : ''}>
               Cancelar
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="min-w-[120px]"
+              className={`${isMobile ? 'w-full touch-target' : 'min-w-[120px]'}`}
             >
               {isDeleting ? (
                 <>

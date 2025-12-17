@@ -6,17 +6,19 @@ import {
   Clock,
   Sparkles
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export default function IntegrationsSettings() {
+  const isMobile = useIsMobile();
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-4xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-8 max-w-4xl mx-auto`}>
         {/* Header */}
         <div className="animate-fade-in text-center">
-          <h1 className="text-3xl font-bold bg-gradient-dashboard bg-clip-text text-transparent">
+          <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-dashboard bg-clip-text text-transparent`}>
             Integrações
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className={`text-muted-foreground ${isMobile ? 'text-sm mt-1' : 'mt-2'}`}>
             Configure conexões com Google Ads, Ad Manager e outras plataformas
           </p>
         </div>
@@ -52,8 +54,8 @@ export default function IntegrationsSettings() {
 
               {/* Future Integrations Preview */}
               <div className="pt-6 border-t">
-                <h3 className="font-medium mb-4 text-foreground">Integrações Planejadas</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <h3 className={`font-medium mb-4 text-foreground ${isMobile ? 'text-sm' : ''}`}>Integrações Planejadas</h3>
+                <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-3 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-background/50">
                     <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                     Google Ads

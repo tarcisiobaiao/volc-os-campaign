@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { ArrowLeft, TrendingUp, DollarSign, MousePointer, Eye, Target, Calendar, Settings, AlertTriangle } from "lucide-react";
+import { ArrowLeft, TrendingUp, DollarSign, MousePointer, Eye, Target, Calendar, Settings, AlertTriangle, BarChart3, FileText, Circle, Coins, Crown } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, ComposedChart } from 'recharts';
 import { supabaseDataService } from "@/services/supabaseDataService";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { calculateROAS } from "@/utils/roasCalculations";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { taxHistoryService } from "@/services/taxHistoryService";
+import { AnimatedGradient } from "@/components/ui/animated-gradient";
 
 export default function CampaignDetailDashboard() {
 
@@ -246,9 +247,15 @@ export default function CampaignDetailDashboard() {
 
   const getStatusBadge = (status: string) => {
     return status === 'Active' || status === 'ENABLED' ? (
-      <Badge className="bg-green-500">🟢 Ativa</Badge>
+      <Badge className="bg-green-500 flex items-center gap-1">
+        <Circle className="h-2 w-2 fill-white" />
+        Ativa
+      </Badge>
     ) : (
-      <Badge variant="secondary" className="bg-red-500">🔴 Pausada</Badge>
+      <Badge variant="secondary" className="bg-red-500 flex items-center gap-1">
+        <Circle className="h-2 w-2 fill-white" />
+        Pausada
+      </Badge>
     );
   };
 
@@ -297,24 +304,29 @@ export default function CampaignDetailDashboard() {
     return 'Período selecionado';
   };
 
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <Layout>
-      <div className="p-6 space-y-6">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6`}>
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4`}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 flex-1 min-w-0`}>
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className={`${isMobile ? 'w-full' : ''} gap-2 touch-target`}>
               <ArrowLeft className="h-4 w-4" />
               Voltar
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">📊 Dashboard da Campanha</h1>
-              <p className="text-sm text-muted-foreground mt-1">
+            <div className="min-w-0">
+              <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold flex items-center gap-2`}>
+                <BarChart3 className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
+                Dashboard da Campanha
+              </h1>
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground mt-1`}>
                 ID: {campaign.campaignId} • Projeto: {campaign.projectName}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3`}>
             <DateFilter
               selectedPeriod={selectedPeriod}
               selectedDate={selectedDate}
@@ -346,16 +358,25 @@ export default function CampaignDetailDashboard() {
             </CardTitle>
             <CardDescription className="text-sm">
               <div className="space-y-1">
-                <p>📝 <strong>Nome completo:</strong> {campaign.campaign_name}</p>
-                <p>🔍 <strong>Canal:</strong> {campaign.advertising_channel} | <strong>Estratégia:</strong> {campaign.bidding_strategy}</p>
-                <p>📅 <strong>Período:</strong> {new Date(campaign.start_date).toLocaleDateString('pt-BR')} - {new Date(campaign.end_date).toLocaleDateString('pt-BR')}</p>
+                <p className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <strong>Nome completo:</strong> {campaign.campaign_name}
+                </p>
+                <p className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  <strong>Canal:</strong> {campaign.advertising_channel} | <strong>Estratégia:</strong> {campaign.bidding_strategy}
+                </p>
+                <p className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <strong>Período:</strong> {new Date(campaign.start_date).toLocaleDateString('pt-BR')} - {new Date(campaign.end_date).toLocaleDateString('pt-BR')}
+                </p>
               </div>
             </CardDescription>
           </CardHeader>
         </Card>
 
         {/* Métricas Principais */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {/* Gasto */}
           <Card>
             <CardContent className="p-4">
@@ -373,8 +394,9 @@ export default function CampaignDetailDashboard() {
           </Card>
 
           {/* Revenue */}
-          <Card>
-            <CardContent className="p-4">
+          <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+            <AnimatedGradient colors={["#10B981", "#34D399", "#6EE7B7"]} speed={0.05} blur="medium" />
+            <CardContent className="p-4 relative z-10">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Revenue</p>
@@ -389,8 +411,9 @@ export default function CampaignDetailDashboard() {
           </Card>
 
           {/* ROAS */}
-          <Card>
-            <CardContent className="p-4">
+          <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+            <AnimatedGradient colors={["#3B82F6", "#60A5FA", "#93C5FD"]} speed={0.05} blur="medium" />
+            <CardContent className="p-4 relative z-10">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">ROAS</p>
@@ -405,8 +428,9 @@ export default function CampaignDetailDashboard() {
           </Card>
 
           {/* Lucro Bruto */}
-          <Card>
-            <CardContent className="p-4">
+          <Card className={`relative overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] ${profit >= 0 ? '' : ''}`}>
+            <AnimatedGradient colors={profit >= 0 ? ["#10B981", "#34D399", "#6EE7B7"] : ["#EF4444", "#F87171", "#FCA5A5"]} speed={0.05} blur="medium" />
+            <CardContent className="p-4 relative z-10">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Lucro Bruto</p>
@@ -424,7 +448,7 @@ export default function CampaignDetailDashboard() {
         </div>
 
         {/* Métricas Secundárias */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -468,7 +492,7 @@ export default function CampaignDetailDashboard() {
         </div>
 
         {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Gráfico Clicks vs Impressions */}
           <Card>
             <CardHeader>
@@ -586,7 +610,10 @@ export default function CampaignDetailDashboard() {
           {/* Gráfico ROAS vs ROI */}
           <Card>
             <CardHeader>
-              <CardTitle>📈 ROAS vs ROI ({getChartPeriodTitle()})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                ROAS vs ROI ({getChartPeriodTitle()})
+              </CardTitle>
               <CardDescription className="text-xs">
                 ROAS: {roas}% • ROI: {roi}% (imposto: {taxRate}%)
               </CardDescription>
@@ -752,7 +779,10 @@ export default function CampaignDetailDashboard() {
           {/* Gráfico eCPM vs Taxa de Correspondência */}
           <Card>
             <CardHeader>
-              <CardTitle>📊 eCPM vs Taxa de Correspondência - Ad Exchange ({getChartPeriodTitle()})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                eCPM vs Taxa de Correspondência - Ad Exchange ({getChartPeriodTitle()})
+              </CardTitle>
               <CardDescription className="text-xs">
                 eCPM médio: ${(campaign.gam_ecpm || 0).toFixed(2)} • Match Rate: {(campaign.match_rate || 0).toFixed(1)}%
               </CardDescription>
@@ -1052,7 +1082,10 @@ export default function CampaignDetailDashboard() {
           {/* Gráfico ROI vs Faturamento */}
           <Card>
             <CardHeader>
-              <CardTitle>💰 ROI vs Faturamento ({getChartPeriodTitle()})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5" />
+                ROI vs Faturamento ({getChartPeriodTitle()})
+              </CardTitle>
               <CardDescription className="text-xs">
                 Faturamento: {formatRevenue(revenue)} • ROI: {roi}% (imposto: {taxRate}%)
               </CardDescription>
@@ -1142,7 +1175,10 @@ export default function CampaignDetailDashboard() {
           {/* Gráfico Gasto vs Revenue */}
           <Card>
             <CardHeader>
-              <CardTitle>💰 Gasto vs Revenue ({getChartPeriodTitle()})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Coins className="h-5 w-5" />
+                Gasto vs Revenue ({getChartPeriodTitle()})
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>

@@ -22,7 +22,15 @@ import {
   TrendingDown,
   AlertTriangle,
   Calendar as CalendarIcon,
-  Info
+  Info,
+  FolderOpen,
+  BarChart3,
+  Coins,
+  Circle,
+  Crown,
+  FileText,
+  Settings,
+  CheckCircle
 } from "lucide-react";
 import { 
   LineChart, 
@@ -47,6 +55,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { useToast } from "@/hooks/use-toast";
+import { AnimatedGradient } from "@/components/ui/animated-gradient";
 
 // Types
 
@@ -69,13 +78,21 @@ const MetricCard = ({ title, value, comparison, change, icon, color }: MetricCar
     info: "border-info/20 bg-gradient-to-br from-info/5 to-info/10"
   };
 
+  const gradientColors = {
+    success: ["#10B981", "#34D399", "#6EE7B7"],
+    warning: ["#F59E0B", "#FBBF24", "#FCD34D"],
+    danger: ["#EF4444", "#F87171", "#FCA5A5"],
+    info: ["#3B82F6", "#60A5FA", "#93C5FD"]
+  };
+
   return (
-    <Card className={cn("animate-fade-in shadow-card", colorClasses[color])}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className={cn("relative overflow-hidden animate-fade-in shadow-card hover:shadow-xl transition-all duration-300 hover:scale-[1.02]", colorClasses[color])}>
+      <AnimatedGradient colors={gradientColors[color]} speed={0.05} blur="medium" />
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <div className="h-4 w-4 text-primary">{icon}</div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="relative z-10">
         <div className="text-2xl font-bold mb-1">{value}</div>
         <div className="text-xs text-muted-foreground mb-2">{comparison}</div>
         <div className="flex items-center text-xs">
@@ -126,11 +143,20 @@ const CampaignCard = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge variant="default" className="bg-green-500">🟢 Ativa</Badge>;
+        return <Badge variant="default" className="bg-green-500 flex items-center gap-1">
+          <Circle className="h-2 w-2 fill-white" />
+          Ativa
+        </Badge>;
       case 'paused':
-        return <Badge variant="secondary" className="bg-yellow-500">🟡 Pausada</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-500 flex items-center gap-1">
+          <Circle className="h-2 w-2 fill-white" />
+          Pausada
+        </Badge>;
       case 'stopped':
-        return <Badge variant="destructive" className="bg-red-500">🔴 Parada</Badge>;
+        return <Badge variant="destructive" className="bg-red-500 flex items-center gap-1">
+          <Circle className="h-2 w-2 fill-white" />
+          Parada
+        </Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -175,7 +201,9 @@ const CampaignCard = ({
 
           {/* Metrics Section */}
           <div>
-            <h4 className="font-medium mb-3">📊 Performance Financeira ({
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Performance Financeira ({
               selectedPeriod === 'today' ? 'Hoje' :
               selectedPeriod === 'yesterday' ? 'Ontem' :
               selectedPeriod === 'range' ? 'Período Selecionado' :
@@ -206,7 +234,10 @@ const CampaignCard = ({
           <div className="flex items-center gap-4 text-sm">
             <span>🎯 ID: {campaign.utmCampaignValue || campaign.googleAdsCampaignId || campaign.id}</span>
             <span>|</span>
-            <span>📅 Criada: {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString('pt-BR') : 'N/A'}</span>
+            <span className="flex items-center gap-1">
+              <CalendarIcon className="h-3 w-3" />
+              Criada: {campaign.startDate ? new Date(campaign.startDate).toLocaleDateString('pt-BR') : 'N/A'}
+            </span>
             <span>|</span>
             <span>Tipo: {currentProject?.project_type || 'N/A'}</span>
           </div>
@@ -931,39 +962,48 @@ export default function ProjectDashboard() {
     metricsAvailable: !!metrics
   });
 
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <Layout>
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6 max-w-7xl mx-auto`}>
         {/* Header with User and Controls */}
-        <div className="flex items-center justify-between transition-all duration-300">
-          <div className="flex items-center gap-4">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 flex-1 min-w-0`}>
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/")}
+              className={`${isMobile ? 'w-full' : ''} touch-target`}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar ao Dashboard
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-                📂 {currentProject?.name || 'Carregando...'}
+            <div className="min-w-0 flex-1">
+              <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2`}>
+                <span className="flex items-center gap-2">
+                  <FolderOpen className="h-6 w-6" />
+                  {currentProject?.name || 'Carregando...'}
+                </span>
               </h1>
-              <p className="text-muted-foreground">
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
                 Dashboard do projeto • {filteredCampaigns.length} campanhas filtradas •
-                Status: {currentProject?.status === 'active' ? '🟢 Ativo' : '🟡 Pausado'}
+                Status: <span className="flex items-center gap-1 inline-flex">
+                  <Circle className={`h-2 w-2 ${currentProject?.status === 'active' ? 'fill-green-600 text-green-600' : 'fill-yellow-600 text-yellow-600'}`} />
+                  {currentProject?.status === 'active' ? 'Ativo' : 'Pausado'}
+                </span>
                 {selectedPeriod === 'custom' && selectedDate && (
-                  <span className="ml-2 text-primary">
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                     • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                   </span>
                 )}
                 {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && (
-                  <span className="ml-2 text-primary">
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                     • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data customizada'}
                   </span>
                 )}
                 {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
-                  <span className="ml-2 text-primary">
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                     • Período: {selectedDate} até {selectedEndDate} ({(() => {
                       const start = new Date(selectedDate + 'T00:00:00');
                       const end = new Date(selectedEndDate + 'T00:00:00');
@@ -973,7 +1013,7 @@ export default function ProjectDashboard() {
                   </span>
                 )}
               </p>
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground flex ${isMobile ? 'flex-col' : 'items-center'} gap-2 mt-1`}>
                 🌐 {currentProject?.domain}
                 {/* Ícone discreto do tipo de projeto abaixo da URL */}
                 {currentProject?.project_type && (
@@ -988,7 +1028,7 @@ export default function ProjectDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
             <div className="flex flex-col gap-1">
               <SimpleDateFilter
                 selectedPeriod={selectedPeriod}
@@ -998,12 +1038,21 @@ export default function ProjectDashboard() {
               />
               {selectedPeriod === 'custom' && selectedDate && (
                 <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
-                  📅 Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                  <span className="flex items-center gap-1">
+                    <CalendarIcon className="h-3 w-3" />
+                    Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                  </span>
                   {!loading && (!filteredCampaigns || filteredCampaigns.length === 0) && (
-                    <span className="text-amber-600">⚠️ Sem dados</span>
+                    <span className="text-amber-600 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Sem dados
+                    </span>
                   )}
                   {!loading && filteredCampaigns && filteredCampaigns.length > 0 && (
-                    <span className="text-green-600">✓ {filteredCampaigns.length} campanhas</span>
+                    <span className="text-green-600 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      {filteredCampaigns.length} campanhas
+                    </span>
                   )}
                 </div>
               )}
@@ -1030,9 +1079,14 @@ export default function ProjectDashboard() {
 
         {/* Metrics Cards */}
         {metrics && (
-          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+          <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <MetricCard
-              title="💰 Investido"
+              title={
+                <span className="flex items-center gap-2">
+                  <Coins className="h-4 w-4" />
+                  Investido
+                </span>
+              }
               value={formatCurrency(metrics.investment.value)}
               comparison={`Ontem: ${formatCurrency(metrics.investment.comparison)}`}
               change={metrics.investment.change}
@@ -1040,11 +1094,22 @@ export default function ProjectDashboard() {
               color="info"
             />
             {/* Custom Revenue Card with organic excedent indicator */}
-            <Card className="animate-fade-in shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="relative overflow-hidden animate-fade-in shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <AnimatedGradient colors={["#10B981", "#34D399", "#6EE7B7"]} speed={0.05} blur="medium" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {currentProject?.project_type === 'ADSENSE' ? '💵 Revenue Total' : '💵 Faturado (Líquido)'}
+                    {currentProject?.project_type === 'ADSENSE' ? (
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        Revenue Total
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        Faturado (Líquido)
+                      </span>
+                    )}
                   </CardTitle>
                   {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
                     <TooltipProvider>
@@ -1090,7 +1155,7 @@ export default function ProjectDashboard() {
                 </div>
                 <div className="h-4 w-4 text-primary"><DollarSign /></div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative z-10">
                 <div className="text-2xl font-bold mb-1">{formatRevenue(metrics.revenue.value)}</div>
                 <div className="text-xs text-muted-foreground mb-2">{`Ontem: ${formatRevenue(metrics.revenue.comparison)}`}</div>
                 <div className="flex items-center text-xs">
@@ -1109,7 +1174,12 @@ export default function ProjectDashboard() {
               </CardContent>
             </Card>
             <MetricCard
-              title="📈 ROAS"
+              title={
+                <span className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  ROAS
+                </span>
+              }
               value={`${metrics.roas.value.toFixed(0)}%`}
               comparison={`Ontem: ${metrics.roas.comparison.toFixed(0)}%`}
               change={metrics.roas.change}
@@ -1125,10 +1195,14 @@ export default function ProjectDashboard() {
               color="success"
             />
 
-            <Card className="animate-fade-in shadow-card border-info/20 bg-gradient-to-br from-info/5 to-info/10">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="relative overflow-hidden animate-fade-in shadow-card border-info/20 bg-gradient-to-br from-info/5 to-info/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+              <AnimatedGradient colors={["#8B5CF6", "#A78BFA", "#C4B5FD"]} speed={0.05} blur="medium" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">👑 ROI Final</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Crown className="h-4 w-4" />
+                    ROI Final
+                  </CardTitle>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1222,25 +1296,29 @@ export default function ProjectDashboard() {
                   {projectCampaigns && projectCampaigns.length > 0 && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
-                        🟢 {projectCampaigns.filter(c => {
+                        <Circle className="h-2 w-2 fill-green-600 text-green-600" />
+                        {projectCampaigns.filter(c => {
                           const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "green";
                         }).length}
                       </span>
                       <span className="flex items-center gap-1">
-                        🟡 {projectCampaigns.filter(c => {
+                        <Circle className="h-2 w-2 fill-yellow-600 text-yellow-600" />
+                        {projectCampaigns.filter(c => {
                           const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "yellow";
                         }).length}
                       </span>
                       <span className="flex items-center gap-1">
-                        🟠 {projectCampaigns.filter(c => {
+                        <Circle className="h-2 w-2 fill-orange-600 text-orange-600" />
+                        {projectCampaigns.filter(c => {
                           const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "orange";
                         }).length}
                       </span>
                       <span className="flex items-center gap-1">
-                        🔴 {projectCampaigns.filter(c => {
+                        <Circle className="h-2 w-2 fill-red-600 text-red-600" />
+                        {projectCampaigns.filter(c => {
                           const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                           return getROASColorCategory(roasExcess) === "red";
                         }).length}
@@ -1290,7 +1368,9 @@ export default function ProjectDashboard() {
         {dailyMetrics && dailyMetrics.length > 0 && selectedPeriod !== 'today' && (
           <Card className="shadow-card animate-fade-in">
             <CardHeader>
-              <CardTitle>📈 Histórico - {
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Histórico - {
                 selectedPeriod === 'yesterday' ? 'Ontem' :
                 selectedPeriod === 'range' && selectedDate && selectedEndDate ?
                   `${selectedDate} até ${selectedEndDate}` :
@@ -1329,9 +1409,29 @@ export default function ProjectDashboard() {
                     }}
                     formatter={(value: number, name: string) => {
                       if (name === "investment" || name === "revenue") {
-                        return [formatCurrency(value), name === "investment" ? "💸 Investimento" : "💰 Receita"];
+                        return [formatCurrency(value), name === "investment" ? (
+                          <span className="flex items-center gap-1">
+                            <Coins className="h-3 w-3" />
+                            Investimento
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            Receita
+                          </span>
+                        )];
                       }
-                      return [value + "%", name === "roas" ? "📈 ROAS" : "👑 ROI"];
+                      return [value + "%", name === "roas" ? (
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          ROAS
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Crown className="h-3 w-3" />
+                          ROI
+                        </span>
+                      )];
                     }}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",

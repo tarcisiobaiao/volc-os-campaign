@@ -30,7 +30,16 @@ import {
   CheckCircle,
   X,
   Info,
-  Settings
+  Settings,
+  FolderOpen,
+  Calendar,
+  Medal,
+  Circle,
+  Award,
+  Trophy,
+  Coins,
+  FileText,
+  MoreVertical
 } from "lucide-react";
 import { 
   LineChart, 
@@ -65,6 +74,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useUserFilters } from "@/hooks/useUserFilters";
 import { CampaignHighlights } from "@/components/dashboard/CampaignHighlights";
+import { AnimatedGradient } from "@/components/ui/animated-gradient";
 
 const integrationStatus = [
   { name: "Google Ads", status: "online", lastSync: "2 min atrás" },
@@ -102,6 +112,18 @@ export default function GeneralDashboard() {
   const { getUserFirstName } = useUserProfile();
   const { userProfile } = useAuth();
   const [userProjectIds, setUserProjectIds] = useState<number[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar mobile viewport
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Fetch user projects for OPERATOR users
   React.useEffect(() => {
@@ -648,37 +670,45 @@ export default function GeneralDashboard() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
         {/* Header with User and Controls */}
-        <div className="flex items-center justify-between transition-all duration-300">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
+          <div className={isMobile ? 'w-full' : ''}>
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+              <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
                 Dashboard Geral
               </h1>
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
-                <User className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
-              </div>
+              {!isMobile && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
+                </div>
+              )}
             </div>
-            <p className="text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
               Visão geral de todas as campanhas e projetos
               {selectedPeriod === 'custom' && selectedDate && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                 </span>
               )}
               {selectedPeriod !== 'custom' && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data personalizada'}
                 </span>
               )}
             </p>
+            {isMobile && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 mt-2 w-fit">
+                <User className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
+              </div>
+            )}
           </div>
           
-          <div className="flex items-center gap-3 flex-wrap">
-            
-            <div className="flex flex-col gap-1">
+          {/* Mobile: Controles em stack vertical */}
+          {isMobile ? (
+            <div className="flex flex-col gap-3 w-full">
               <SimpleDateFilter
                 selectedPeriod={selectedPeriod}
                 selectedDate={selectedDate}
@@ -687,59 +717,130 @@ export default function GeneralDashboard() {
               />
               {selectedPeriod === 'custom' && selectedDate && (
                 <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
-                  📅 Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                    </span>
                   {!loading && campaigns.length === 0 && (
                     <span className="text-amber-600">⚠️ Sem dados</span>
                   )}
                   {!loading && campaigns.length > 0 && (
-                    <span className="text-green-600">✓ {campaigns.length} campanhas</span>
+                    <span className="text-green-600">✓ {campaigns.length}</span>
                   )}
                 </div>
               )}
-            </div>
-            
-            <Button onClick={handleRefresh} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleUpdateGAM}
-                variant="default"
-                size="sm"
-                disabled={webhookStatus === 'loading'}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
-                Atualizar GAM
-              </Button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={handleRefresh} variant="outline" size="sm" className="h-10">
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Atualizar
+                </Button>
+
+                <Button
+                  onClick={handleUpdateGAM}
+                  variant="default"
+                  size="sm"
+                  disabled={webhookStatus === 'loading'}
+                  className="h-10"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
+                  GAM
+                </Button>
+              </div>
 
               <Button
                 onClick={handleUpdateGoogleAds}
                 variant="default"
                 size="sm"
                 disabled={webhookStatus === 'loading'}
+                className="w-full h-10"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
                 Atualizar Google Ads
+                {webhookStatus === 'success' && (
+                  <CheckCircle className="h-4 w-4 ml-2 text-green-500" />
+                )}
+                {webhookStatus === 'error' && (
+                  <X className="h-4 w-4 ml-2 text-red-500" />
+                )}
               </Button>
-              
-              {webhookStatus === 'success' && (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              )}
-              
-              {webhookStatus === 'error' && (
-                <X className="h-4 w-4 text-red-500" />
-              )}
+
+              <DataStatus
+                loading={loading}
+                error={error}
+                lastUpdate={lastUpdate}
+                showDetails={false}
+              />
             </div>
-            
-            <DataStatus 
-              loading={loading} 
-              error={error} 
-              lastUpdate={lastUpdate}
-              showDetails={true}
-            />
-          </div>
+          ) : (
+            /* Desktop: Layout horizontal original */
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <SimpleDateFilter
+                  selectedPeriod={selectedPeriod}
+                  selectedDate={selectedDate}
+                  onPeriodChange={handlePeriodChange}
+                  onDateChange={handleDateChange}
+                />
+                {selectedPeriod === 'custom' && selectedDate && (
+                  <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                    </span>
+                    {!loading && campaigns.length === 0 && (
+                      <span className="text-amber-600">⚠️ Sem dados</span>
+                    )}
+                    {!loading && campaigns.length > 0 && (
+                      <span className="text-green-600">✓ {campaigns.length} campanhas</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Button onClick={handleRefresh} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleUpdateGAM}
+                  variant="default"
+                  size="sm"
+                  disabled={webhookStatus === 'loading'}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
+                  Atualizar GAM
+                </Button>
+
+                <Button
+                  onClick={handleUpdateGoogleAds}
+                  variant="default"
+                  size="sm"
+                  disabled={webhookStatus === 'loading'}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
+                  Atualizar Google Ads
+                </Button>
+
+                {webhookStatus === 'success' && (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                )}
+
+                {webhookStatus === 'error' && (
+                  <X className="h-4 w-4 text-red-500" />
+                )}
+              </div>
+
+              <DataStatus
+                loading={loading}
+                error={error}
+                lastUpdate={lastUpdate}
+                showDetails={true}
+              />
+            </div>
+          )}
         </div>
 
 
@@ -788,11 +889,15 @@ export default function GeneralDashboard() {
         </div>
 
         {/* KPI Overview - Cards Resumo */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 transition-all duration-300">
-          <Card className="relative overflow-hidden shadow-lg border-info/20 bg-gradient-to-br from-info/5 via-violet-500/5 to-info/10 hover:shadow-xl transition-shadow">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 transition-all duration-300">
+          <Card className="relative overflow-hidden shadow-lg border-info/20 bg-gradient-to-br from-info/5 via-violet-500/5 to-info/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+            <AnimatedGradient colors={["#3B82F6", "#60A5FA", "#93C5FD"]} speed={0.05} blur="medium" />
             <CardDecoration color="hsl(var(--info))" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <CardTitle className="text-sm font-medium">💸 Gasto Total</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Coins className="h-4 w-4" />
+                Gasto Total
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent className="relative z-10">
@@ -805,10 +910,14 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden shadow-lg border-green-500/20 bg-gradient-to-br from-green-500/5 via-green-400/5 to-green-500/10 hover:shadow-xl transition-shadow">
+          <Card className="relative overflow-hidden shadow-lg border-green-500/20 bg-gradient-to-br from-green-500/5 via-green-400/5 to-green-500/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+            <AnimatedGradient colors={["#10B981", "#34D399", "#6EE7B7"]} speed={0.05} blur="medium" />
             <CardDecoration color="rgb(34, 197, 94)" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <CardTitle className="text-sm font-medium">💰 Revenue Total</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Revenue Total
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent className="relative z-10">
@@ -827,10 +936,14 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden shadow-lg border-info/20 bg-gradient-to-br from-info/5 via-violet-500/5 to-info/10 hover:shadow-xl transition-shadow">
+          <Card className="relative overflow-hidden shadow-lg border-info/20 bg-gradient-to-br from-info/5 via-violet-500/5 to-info/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+            <AnimatedGradient colors={["#8B5CF6", "#A78BFA", "#C4B5FD"]} speed={0.05} blur="medium" />
             <CardDecoration color="hsl(var(--info))" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <CardTitle className="text-sm font-medium">📈 ROAS Geral</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                ROAS Geral
+              </CardTitle>
               <BarChart3 className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent className="relative z-10">
@@ -1043,11 +1156,20 @@ export default function GeneralDashboard() {
             <CardContent className="relative z-10">
               <div className="text-2xl font-bold">{campaigns.length} Total</div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs">🟢 {campaigns.filter(c => c.status === 'active').length} Ativas</span>
-                <span className="text-xs">🟡 {campaigns.filter(c => c.status === 'paused').length} Pausadas</span>
+                <span className="text-xs flex items-center gap-1">
+                  <Circle className="h-2 w-2 fill-green-600 text-green-600" />
+                  {campaigns.filter(c => c.status === 'active').length} Ativas
+                </span>
+                <span className="text-xs flex items-center gap-1">
+                  <Circle className="h-2 w-2 fill-yellow-600 text-yellow-600" />
+                  {campaigns.filter(c => c.status === 'paused').length} Pausadas
+                </span>
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs">👤 {campaigns.filter(c => c.statusSource === 'user').length} Controladas</span>
+                <span className="text-xs flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {campaigns.filter(c => c.statusSource === 'user').length} Controladas
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -1058,27 +1180,27 @@ export default function GeneralDashboard() {
 
         {/* Top 5 Campanhas - Versão Compacta */}
         <Card className="shadow-lg transition-all duration-300 bg-gradient-to-br from-background to-muted/30 hover:shadow-xl transition-shadow">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
+          <CardHeader className={`pb-4 ${isMobile ? 'p-4' : ''}`}>
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-3`}>
               <div>
-                <CardTitle className="flex items-center gap-2 text-lg">
+                <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
                   🏆 Top 5 Campanhas por Performance
                 </CardTitle>
-                <CardDescription className="mt-1 text-sm">
+                <CardDescription className={`mt-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                   Maiores revenues por UTM campaign • {campaigns.filter(c => c.revenue && c.revenue > 0).length} campanhas ativas
                 </CardDescription>
               </div>
-              <div className="text-right text-xs text-muted-foreground">
-                <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 px-2 py-1 rounded border border-green-200">
-                  <div className="font-bold text-green-600 text-sm">
+              <div className={`text-right ${isMobile ? 'text-xs w-full' : 'text-xs'} text-muted-foreground`}>
+                <div className={`bg-gradient-to-r from-green-500/20 to-emerald-500/20 ${isMobile ? 'px-3 py-2' : 'px-2 py-1'} rounded border border-green-200 ${isMobile ? 'w-full' : ''}`}>
+                  <div className={`font-bold text-green-600 ${isMobile ? 'text-base' : 'text-sm'}`}>
                     {formatRevenue(campaigns.reduce((sum, c) => sum + (c.revenue || 0), 0))}
                   </div>
                 </div>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className={isMobile ? 'p-4' : ''}>
+            <div className="space-y-2 md:space-y-3">
               {campaigns
                 .filter(campaign => {
                   // Apply status filters
@@ -1090,60 +1212,77 @@ export default function GeneralDashboard() {
                 .slice(0, 5)
                 .map((campaign, index) => {
                   const project = projects.find(p => p.id === campaign.projectId);
-                  const medalEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}°`;
+                  const MedalIcon = index === 0 ? Trophy : index === 1 ? Award : index === 2 ? Medal : Circle;
                   
                   return (
                     <div 
                       key={campaign.id} 
-                      className="group flex items-center gap-3 p-3 rounded-lg border bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 cursor-pointer"
+                      className={`group flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 ${isMobile ? 'p-4' : 'p-3'} rounded-lg border bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 hover:border-slate-300 hover:shadow-md transition-all duration-200 cursor-pointer touch-target`}
                       onClick={() => navigate(`/dashboard/campaign/${campaign.utmCampaignValue || campaign.id}`)}
                     >
-                      {/* Rank */}
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-slate-400 to-gray-400 text-white text-sm font-bold flex-shrink-0">
-                        {medalEmoji}
-                      </div>
-                      
-                      {/* Campaign info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-slate-900 truncate text-sm">
-                            {campaign.name.substring(0, 40)}
-                            {campaign.name.length > 40 && '...'}
-                          </h3>
-                          <div className={`px-1.5 py-0.5 rounded text-xs ${
-                            campaign.status === 'active' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {campaign.status === 'active' ? '🟢' : '🟡'}
-                            {campaign.statusSource === 'user' && ' 👤'}
-                          </div>
+                      {/* Rank e Header */}
+                      <div className={`flex ${isMobile ? 'items-start' : 'items-center'} gap-3 w-full`}>
+                        {/* Rank */}
+                        <div className={`flex items-center justify-center ${isMobile ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gradient-to-r from-primary via-purple-600 to-blue-600 text-white flex-shrink-0 shadow-lg`}>
+                          {index < 3 ? (
+                            <MedalIcon className={`${isMobile ? 'h-5 w-5' : 'h-4 w-4'}`} />
+                          ) : (
+                            <span className={`${isMobile ? 'text-base' : 'text-sm'} font-bold`}>{index + 1}°</span>
+                          )}
                         </div>
                         
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>📂 {project?.domain || project?.name || 'N/A'}</span>
-                          <span>•</span>
-                          <span className="font-mono">ID: {campaign.utmCampaignValue || campaign.id}</span>
+                        {/* Campaign info */}
+                        <div className="flex-1 min-w-0">
+                          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-2 mb-1`}>
+                            <h3 className={`font-medium text-slate-900 truncate ${isMobile ? 'text-base' : 'text-sm'}`}>
+                              {campaign.name.substring(0, isMobile ? 50 : 40)}
+                              {campaign.name.length > (isMobile ? 50 : 40) && '...'}
+                            </h3>
+                            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${isMobile ? 'text-xs' : 'text-xs'} ${
+                              campaign.status === 'active' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              <Circle className={`h-2 w-2 fill-current ${campaign.status === 'active' ? 'text-green-600' : 'text-yellow-600'}`} />
+                              {campaign.statusSource === 'user' && <User className="h-3 w-3 ml-1" />}
+                            </div>
+                          </div>
+                          
+                          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-2 ${isMobile ? 'text-xs' : 'text-xs'} text-muted-foreground`}>
+                            <span className="flex items-center gap-1">
+                              <FolderOpen className="h-3 w-3" />
+                              {project?.domain || project?.name || 'N/A'}
+                            </span>
+                            {!isMobile && <span>•</span>}
+                            <span className="font-mono">ID: {campaign.utmCampaignValue || campaign.id}</span>
+                          </div>
                         </div>
                       </div>
                       
-                      {/* Performance metrics - Compact */}
-                      <div className="text-right flex-shrink-0">
+                      {/* Performance metrics - Mobile: full width */}
+                      <div className={`${isMobile ? 'w-full border-t pt-3 mt-2' : 'text-right flex-shrink-0'}`}>
                         <RevenueTooltip
                           netRevenue={campaign.revenue || 0}
                           revsharePercentage={project?.revshare || 0.1}
                           projectType={project?.project_type}
                           showInfo={false}
                         >
-                          <div className="text-lg font-bold text-green-600">
+                          <div className={`${isMobile ? 'text-xl' : 'text-lg'} font-bold text-green-600`}>
                             {formatRevenue(campaign.revenue || 0)}
                           </div>
                         </RevenueTooltip>
-                        <div className="text-xs text-muted-foreground">
-                          💸 {formatCurrency(campaign.investment || 0)} • 📈 {Math.round(calculateROAS(campaign.revenue || 0, campaign.investment || 0))}%
+                        <div className={`${isMobile ? 'text-sm flex flex-col gap-1 mt-2' : 'text-xs'} text-muted-foreground`}>
+                          <span>💸 {formatCurrency(campaign.investment || 0)}</span>
+                          <span className="flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            {Math.round(calculateROAS(campaign.revenue || 0, campaign.investment || 0))}%
+                          </span>
                           {campaign.commission && campaign.commission > 0 && (
-                            <div className="text-xs text-purple-600 font-medium mt-0.5">
-                              💰 Comissão: {formatCurrency(campaign.commission)}
+                            <div className={`${isMobile ? 'text-sm' : 'text-xs'} text-purple-600 font-medium ${isMobile ? 'mt-1' : 'mt-0.5'}`}>
+                              <span className="flex items-center gap-1">
+                                <Coins className="h-3 w-3" />
+                                Comissão: {formatCurrency(campaign.commission)}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1173,45 +1312,51 @@ export default function GeneralDashboard() {
 
         {/* Projects Table */}
         <Card className="shadow-lg transition-all duration-300 bg-gradient-to-br from-background to-muted/30 hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className={`flex ${isMobile ? 'flex-col' : 'flex-row items-center justify-between'} gap-4`}>
             <div>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
                 <Users className="h-5 w-5 text-primary" />
-                📂 Resumo por Projeto
+                <span className="flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5" />
+                  Resumo por Projeto
+                </span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className={isMobile ? 'text-sm' : ''}>
                 Performance detalhada - Gasto vs Revenue por domínio
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Link to="/settings/campaigns">
-                <Button variant="outline" size="sm" className="hover:translate-y-1 transition-transform">
+            <div className={`flex ${isMobile ? 'flex-col w-full' : 'gap-2'}`}>
+              <Link to="/settings/campaigns" className={isMobile ? 'w-full' : ''}>
+                <Button variant="outline" size="sm" className={`${isMobile ? 'w-full' : ''} hover:translate-y-1 transition-transform touch-target`}>
                   🤖 Ver Campanhas
                 </Button>
               </Link>
-              <Link to="/settings/projects">
-                <Button variant="outline" size="sm" className="hover:translate-y-1 transition-transform">
-                  📂 Ver Projetos
+              <Link to="/settings/projects" className={isMobile ? 'w-full' : ''}>
+                <Button variant="outline" size="sm" className={`${isMobile ? 'w-full mt-2' : ''} hover:translate-y-1 transition-transform touch-target`}>
+                  <span className="flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Ver Projetos
+                  </span>
                 </Button>
               </Link>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+              <table className="w-full min-w-[600px] md:min-w-0">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Projeto (Domínio)</th>
-                    <th className="text-left p-3 font-medium">Gasto</th>
-                    <th className="text-left p-3 font-medium">Revenue</th>
-                    <th className="text-left p-3 font-medium">ROAS</th>
-                    <th className="text-left p-3 font-medium">
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Projeto (Domínio)</th>
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Gasto</th>
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Revenue</th>
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>ROAS</th>
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>
                       <div className="flex items-center gap-1">
                         Lucro Líquido
                       </div>
                     </th>
-                    <th className="text-left p-3 font-medium">Campanhas</th>
-                    <th className="text-left p-3 font-medium">Ação</th>
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Campanhas</th>
+                    <th className={`text-left ${isMobile ? 'p-2 text-xs' : 'p-3'} font-medium`}>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1230,46 +1375,46 @@ export default function GeneralDashboard() {
                     .sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
                     .map((project, index) => (
                     <tr key={index} className="border-b hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/project/${project.id}`)}>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-12 w-12 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg animate-float">
-                            📂
+                      <td className={isMobile ? 'p-2' : 'p-4'}>
+                        <div className={`flex items-center gap-${isMobile ? '2' : '3'}`}>
+                          <div className={`${isMobile ? 'h-8 w-8 text-xs' : 'h-12 w-12'} bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg animate-float`}>
+                            <FolderOpen className="h-6 w-6" />
                           </div>
-                          <div>
-                            <p className="font-medium text-base">{project.domain}</p>
-                            <p className="text-sm text-muted-foreground">{project.name}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-medium ${isMobile ? 'text-sm truncate' : 'text-base'}`}>{project.domain}</p>
+                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground truncate`}>{project.name}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <div className="text-lg font-bold">
+                      <td className={isMobile ? 'p-2' : 'p-4'}>
+                        <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold`}>
                           {formatCurrency(project.investment)}
                         </div>
-                        <div className="text-xs text-muted-foreground">Gasto total</div>
+                        <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Gasto total</div>
                       </td>
-                      <td className="p-4">
+                      <td className={isMobile ? 'p-2' : 'p-4'}>
                         <RevenueTooltip
                           netRevenue={project.revenue}
                           revsharePercentage={project.revshare || 0.1}
                           projectType={project.project_type}
                           showInfo={false}
                         >
-                          <div className="text-lg font-bold text-green-600">
+                          <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold text-green-600`}>
                             {formatRevenue(project.revenue)}
                           </div>
                         </RevenueTooltip>
-                        <div className="text-xs text-muted-foreground">Revenue UTM</div>
+                        <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue UTM</div>
                       </td>
-                      <td className="p-4">
-                        <div className={`text-lg font-bold px-3 py-1 rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
+                      <td className={isMobile ? 'p-2' : 'p-4'}>
+                        <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} font-bold rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
                           {Math.round(calculateROAS(project.revenue, project.investment))}%
                         </div>
-                        <div className="flex items-center gap-1 mt-1">
+                        <div className={`flex items-center gap-1 ${isMobile ? 'mt-0.5' : 'mt-1'}`}>
                           {getTrendIcon(project.trend)}
-                          <span className="text-xs">{getTrendText(project.trend)}</span>
+                          <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>{getTrendText(project.trend)}</span>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className={isMobile ? 'p-2' : 'p-4'}>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1284,7 +1429,19 @@ export default function GeneralDashboard() {
                                   <Info className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity" />
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {project.costs_division ? '📊 Div. custos' : '🚫 Sem div.'}
+                                  <span className="flex items-center gap-1">
+                                    {project.costs_division ? (
+                                      <>
+                                        <BarChart3 className="h-3 w-3" />
+                                        Div. custos
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X className="h-3 w-3" />
+                                        Sem div.
+                                      </>
+                                    )}
+                                  </span>
                                 </div>
                               </div>
                             </TooltipTrigger>
@@ -1381,10 +1538,30 @@ export default function GeneralDashboard() {
 
                               return (
                                 <>
-                                  {colors.green > 0 && <span className="text-green-600">🟢{colors.green}</span>}
-                                  {colors.yellow > 0 && <span className="text-yellow-600">🟡{colors.yellow}</span>}
-                                  {colors.orange > 0 && <span className="text-orange-600">🟠{colors.orange}</span>}
-                                  {colors.red > 0 && <span className="text-red-600">🔴{colors.red}</span>}
+                                  {colors.green > 0 && (
+                                    <span className="text-green-600 flex items-center gap-1">
+                                      <Circle className="h-2 w-2 fill-green-600" />
+                                      {colors.green}
+                                    </span>
+                                  )}
+                                  {colors.yellow > 0 && (
+                                    <span className="text-yellow-600 flex items-center gap-1">
+                                      <Circle className="h-2 w-2 fill-yellow-600" />
+                                      {colors.yellow}
+                                    </span>
+                                  )}
+                                  {colors.orange > 0 && (
+                                    <span className="text-orange-600 flex items-center gap-1">
+                                      <Circle className="h-2 w-2 fill-orange-600" />
+                                      {colors.orange}
+                                    </span>
+                                  )}
+                                  {colors.red > 0 && (
+                                    <span className="text-red-600 flex items-center gap-1">
+                                      <Circle className="h-2 w-2 fill-red-600" />
+                                      {colors.red}
+                                    </span>
+                                  )}
                                   {projectCampaigns.length === 0 && <span className="text-gray-400">-</span>}
                                 </>
                               );
@@ -1392,20 +1569,23 @@ export default function GeneralDashboard() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                      <td className={isMobile ? 'p-2' : 'p-4'} onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-xs">
-                                ⚙️ Menu
+                              <Button variant="ghost" size={isMobile ? 'sm' : 'sm'} className={`${isMobile ? 'text-[10px] px-2' : 'text-xs'} touch-target`}>
+                                <span className="flex items-center gap-1">
+                                  <Settings className="h-4 w-4" />
+                                  {isMobile ? '' : 'Menu'}
+                                </span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => navigate(`/dashboard/project/${project.id}`)}>
+                            <DropdownMenuContent align={isMobile ? 'end' : 'start'}>
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/project/${project.id}`)} className="touch-target">
                                 <Settings className="h-4 w-4 mr-2" />
                                 Dashboard
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/settings/campaigns?project=${project.id}`)}>
+                              <DropdownMenuItem onClick={() => navigate(`/settings/campaigns?project=${project.id}`)} className="touch-target">
                                 <Target className="h-4 w-4 mr-2" />
                                 Campanhas
                               </DropdownMenuItem>
@@ -1422,16 +1602,16 @@ export default function GeneralDashboard() {
         </Card>
 
         {/* Integration Status and Settings */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-3">
           <Card className="lg:col-span-2 shadow-lg transition-all duration-300 bg-gradient-to-br from-background to-muted/30 hover:shadow-xl transition-shadow">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
                 <Zap className="h-5 w-5 text-orange-500" />
                 Status das Integrações
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-3">
                 {integrationStatus.map((integration, index) => (
                   <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors hover:translate-y-1 transition-transform">
                     <div>

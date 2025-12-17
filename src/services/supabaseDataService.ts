@@ -1344,32 +1344,53 @@ class SupabaseDataService {
         }
 
         // 2. SPEND: Consulta na daily_campaign_metrics apenas para spend (TODAY)
-        // 🚀 SELECT OTIMIZADO: Apenas campo spend necessário
-        let spendQuery;
+        // 🚀 SELECT OTIMIZADO COM PAGINAÇÃO: Buscar TODOS os registros (não apenas 1000)
+        let allSpendData: any[] = [];
+        const pageSize = 1000;
+        let page = 0;
+        let hasMore = true;
 
-        if (projectId && projectId !== 'all') {
-          // 🚀 SELECT OTIMIZADO: Apenas campo spend + join necessário
-          spendQuery = supabase
-            .from('daily_campaign_metrics')
-            .select('spend, campaigns!inner(project_id)')
-            .eq('date', targetDate)
-            .eq('campaigns.project_id', parseInt(projectId))
-            .limit(50000); // Aumentar limite para evitar perda de dados
-        } else {
-          spendQuery = supabase
-            .from('daily_campaign_metrics')
-            .select('spend')
-            .eq('date', targetDate)
-            .limit(50000); // Aumentar limite para evitar perda de dados
+        while (hasMore) {
+          let spendQuery;
+
+          if (projectId && projectId !== 'all') {
+            // 🚀 SELECT OTIMIZADO: Apenas campo spend + join necessário
+            spendQuery = supabase
+              .from('daily_campaign_metrics')
+              .select('spend, campaigns!inner(project_id)')
+              .eq('date', targetDate)
+              .eq('campaigns.project_id', parseInt(projectId))
+              .range(page * pageSize, (page + 1) * pageSize - 1);
+          } else {
+            spendQuery = supabase
+              .from('daily_campaign_metrics')
+              .select('spend')
+              .eq('date', targetDate)
+              .range(page * pageSize, (page + 1) * pageSize - 1);
+          }
+
+          const { data: spendData, error: spendError } = await spendQuery;
+
+          if (spendError) {
+            console.error('❌ Erro ao buscar spend para TODAY (página ' + page + '):', spendError);
+            break;
+          }
+
+          if (spendData && spendData.length > 0) {
+            allSpendData.push(...spendData);
+            page++;
+            hasMore = spendData.length === pageSize;
+          } else {
+            hasMore = false;
+          }
         }
 
-        const { data: spendData, error: spendError } = await spendQuery;
         let todayTotalSpend = 0;
 
-        if (!spendError && spendData) {
+        if (allSpendData.length > 0) {
           // 🔍 DEBUGGING DETALHADO: Verificar se há duplicação
-          const uniqueCampaignIds = [...new Set(spendData.map((d: any) => d.campaign_id))];
-          const spendByCampaign = spendData.reduce((acc: any, item: any) => {
+          const uniqueCampaignIds = [...new Set(allSpendData.map((d: any) => d.campaign_id))];
+          const spendByCampaign = allSpendData.reduce((acc: any, item: any) => {
             const campaignId = item.campaign_id || 'unknown';
             if (!acc[campaignId]) {
               acc[campaignId] = { count: 0, total: 0 };
@@ -1379,16 +1400,21 @@ class SupabaseDataService {
             return acc;
           }, {});
 
-          todayTotalSpend = spendData.reduce((sum, item) => sum + (Number(item.spend) || 0), 0);
+          todayTotalSpend = allSpendData.reduce((sum, item) => sum + (Number(item.spend) || 0), 0);
 
-          console.log({
+          console.log('✅ BUG CORRIGIDO - Paginação implementada:', {
             targetDate,
             projectFilter: projectId,
-            recordCount: spendData.length,
-            totalSpend: todayTotalSpend
+            totalPagesProcessed: page,
+            recordCount: allSpendData.length,
+            totalSpend: todayTotalSpend,
+            note: 'Agora busca TODOS os registros, não apenas 1000!'
           });
-        } else if (spendError) {
-          console.error('❌ Erro ao buscar spend para TODAY:', spendError);
+        } else {
+          console.warn('⚠️ Nenhum dado de spend encontrado para TODAY:', {
+            targetDate,
+            projectFilter: projectId
+          });
         }
 
         // ✅ OTIMIZAÇÃO CONCLUÍDA: A lógica GAM antiga foi substituída pela consulta direta

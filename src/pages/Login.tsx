@@ -122,7 +122,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Lado Esquerdo - Background com Gradiente */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-primary via-purple-600 to-blue-600 overflow-hidden">
         <ParticleBackground />
@@ -162,7 +162,7 @@ export default function Login() {
       </div>
 
       {/* Lado Direito - Formulário de Login */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background to-muted/30">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-gradient-to-br from-background to-muted/30">
         <div className="w-full max-w-md">
           {/* Logo para mobile */}
           <div className="lg:hidden text-center mb-8">
@@ -232,7 +232,7 @@ export default function Login() {
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 border-muted-foreground/20 focus:border-primary"
+                      className="pl-10 h-12 md:h-12 border-muted-foreground/20 focus:border-primary touch-target"
                       required
                     />
                   </div>
@@ -249,7 +249,7 @@ export default function Login() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 pr-10 h-12 border-muted-foreground/20 focus:border-primary"
+                      className="pl-10 pr-10 h-12 md:h-12 border-muted-foreground/20 focus:border-primary touch-target"
                       required
                     />
                     <button
@@ -279,7 +279,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-12 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100"
+                  className="w-full h-12 md:h-12 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white font-medium transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 touch-target"
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function Login() {
 
               <Button
                 variant="outline"
-                className="w-full h-12 hover:bg-muted/50"
+                className="w-full h-12 md:h-12 hover:bg-muted/50 touch-target"
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
               >

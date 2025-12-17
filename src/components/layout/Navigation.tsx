@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,10 +22,13 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface NavigationProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  isMobileOpen?: boolean;
+  setIsMobileOpen?: (open: boolean) => void;
 }
 
 interface NavigationItem {
@@ -90,10 +93,23 @@ const configurationItems: NavigationItem[] = [
   }
 ];
 
-export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollapsed }) => {
+export const Navigation: React.FC<NavigationProps> = ({
+  isCollapsed,
+  setIsCollapsed,
+  isMobileOpen = false,
+  setIsMobileOpen
+}) => {
   const location = useLocation();
   const { user, userProfile, signOut } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+
+  // Fechar menu ao navegar em mobile
+  useEffect(() => {
+    if (isMobile && setIsMobileOpen) {
+      setIsMobileOpen(false);
+    }
+  }, [location.pathname, isMobile, setIsMobileOpen]);
 
   const handleSignOut = async () => {
     try {
@@ -116,17 +132,19 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
       <Button
         variant={isActive ? "secondary" : "ghost"}
         className={cn(
-          "w-full justify-start gap-3 h-12 transition-all duration-200 relative overflow-hidden",
+          "w-full justify-start gap-3 transition-all duration-200 relative overflow-hidden",
+          // Touch target aumentado para mobile
+          isMobile ? "h-14" : "h-12",
           isActive && "bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/10 text-primary font-medium border-r-2 border-primary shadow-sm",
           !isActive && "hover:bg-muted/50 hover:shadow-sm",
-          isCollapsed && "justify-center px-2"
+          isCollapsed && !isMobile && "justify-center px-2"
         )}
       >
         {isActive && (
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-50" />
         )}
         <item.icon className={cn("h-5 w-5 flex-shrink-0 relative z-10", isActive && "text-primary")} />
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <div className="flex flex-col items-start relative z-10">
             <span className="text-sm font-medium">{item.title}</span>
             <span className="text-xs text-muted-foreground">{item.description}</span>
@@ -136,19 +154,17 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
     </Link>
   );
 
-  return (
-    <div className={cn(
-      "relative bg-gradient-to-b from-card via-card to-muted/30 border-r border-border transition-all duration-300 flex flex-col shadow-lg",
-      isCollapsed ? "w-16" : "w-80"
-    )}>
+  // Conteúdo da sidebar
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="p-4 border-b border-border bg-gradient-to-r from-background to-muted/20 relative">
         <div className="flex items-center justify-center w-full">
-          {!isCollapsed ? (
+          {(!isCollapsed || isMobile) ? (
             <div className="animate-fade-in flex-1 flex flex-col items-center justify-center text-center">
-              <img 
-                src="/logo-webgocontent-horizontal.png" 
-                alt="WebGo Content" 
+              <img
+                src="/logo-webgocontent-horizontal.png"
+                alt="WebGo Content"
                 className="h-12 max-w-full object-contain mb-2"
               />
               <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -161,18 +177,32 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
               <span className="text-sm font-bold text-primary">W</span>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors absolute top-4 right-4"
-          >
-            {isCollapsed ? (
-              <Menu className="h-4 w-4" />
-            ) : (
-              <X className="h-4 w-4" />
-            )}
-          </Button>
+          {/* Botão de toggle - apenas desktop */}
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors absolute top-4 right-4"
+            >
+              {isCollapsed ? (
+                <Menu className="h-4 w-4" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          {/* Botão fechar - apenas mobile */}
+          {isMobile && setIsMobileOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMobileOpen(false)}
+              className="h-10 w-10 p-0 hover:bg-muted/50 transition-colors absolute top-4 right-4"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -181,7 +211,7 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
         <div className="p-4 space-y-6">
           {/* Main Navigation */}
           <div>
-            {!isCollapsed && (
+            {(!isCollapsed || isMobile) && (
               <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Principal
               </h3>
@@ -208,7 +238,7 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
             <>
               <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
             <div>
-              {!isCollapsed && (
+              {(!isCollapsed || isMobile) && (
                 <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Configurações
                 </h3>
@@ -236,7 +266,7 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
 
       {/* User Section */}
       <div className="p-4 border-t border-border bg-gradient-to-r from-muted/20 to-background">
-        {!isCollapsed ? (
+        {(!isCollapsed || isMobile) ? (
           <div className="space-y-3 animate-fade-in">
             {/* User Info */}
             <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/10">
@@ -257,28 +287,33 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
             <Button
               onClick={handleSignOut}
               variant="ghost"
-              className="w-full justify-start gap-3 h-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+              className={cn(
+                "w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50",
+                isMobile ? "h-12" : "h-10"
+              )}
             >
               <LogOut className="h-4 w-4" />
               <span className="text-sm">Sair</span>
             </Button>
 
-            {/* Integration Status */}
-            <div className="text-center">
-              <div className="text-xs text-muted-foreground mb-2">
-                Integrado com
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
-                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className="text-xs font-medium text-green-600">Google Ads</span>
+            {/* Integration Status - esconder em mobile para economizar espaço */}
+            {!isMobile && (
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground mb-2">
+                  Integrado com
                 </div>
-                <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
-                  <span className="text-xs font-medium text-blue-600">Ad Manager</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
+                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-xs font-medium text-green-600">Google Ads</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20">
+                    <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span className="text-xs font-medium text-blue-600">Ad Manager</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
@@ -300,6 +335,43 @@ export const Navigation: React.FC<NavigationProps> = ({ isCollapsed, setIsCollap
           </div>
         )}
       </div>
+    </>
+  );
+
+  // Mobile: Drawer overlay com backdrop
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        {isMobileOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+            onClick={() => setIsMobileOpen && setIsMobileOpen(false)}
+          />
+        )}
+
+        {/* Drawer */}
+        <div
+          className={cn(
+            "fixed top-0 left-0 h-full w-80 bg-gradient-to-b from-card via-card to-muted/30 border-r border-border flex flex-col shadow-2xl z-50 transition-transform duration-300",
+            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          {sidebarContent}
+        </div>
+      </>
+    );
+  }
+
+  // Desktop: Sidebar normal
+  return (
+    <div
+      className={cn(
+        "relative bg-gradient-to-b from-card via-card to-muted/30 border-r border-border transition-all duration-300 flex flex-col shadow-lg",
+        isCollapsed ? "w-16" : "w-80"
+      )}
+    >
+      {sidebarContent}
     </div>
   );
 };

@@ -23,7 +23,13 @@ import {
   RefreshCw,
   Info,
   PieChart,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  FolderOpen,
+  Coins,
+  FileText,
+  Circle,
+  Crown,
+  Rocket
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -49,6 +55,7 @@ import { operationalCostsService } from "@/services/operationalCostsService";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
 import jsPDF from 'jspdf';
+import { AnimatedGradient } from "@/components/ui/animated-gradient";
 
 const COLORS = ['hsl(var(--success))', 'hsl(var(--info))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
 
@@ -740,49 +747,61 @@ export default function Reports() {
     );
   }
 
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
         {/* Header with User and Controls */}
-        <div className="flex items-center justify-between transition-all duration-300">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(-1)}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </Button>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
-                Relatórios
-              </h1>
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
-                <Settings className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
+          <div className="flex-1 min-w-0">
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(-1)}
+                  className={`${isMobile ? 'w-full' : ''} gap-2 touch-target`}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
+                  Relatórios
+                </h1>
+                {!isMobile && (
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+                    <Settings className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
+                  </div>
+                )}
               </div>
+              {isMobile && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 w-fit mt-2">
+                  <Settings className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
+                </div>
+              )}
             </div>
-            <p className="text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
               Relatórios detalhados de performance e ROI
               {selectedProject !== 'all' && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Projeto: {projects?.find(p => p.id === selectedProject)?.name || 'Selecionado'}
                 </span>
               )}
               {selectedPeriod === 'custom' && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
                 </span>
               )}
               {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
                 </span>
               )}
               {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Período: {selectedDate} até {selectedEndDate} ({(() => {
                     const start = new Date(selectedDate + 'T00:00:00');
                     const end = new Date(selectedEndDate + 'T00:00:00');
@@ -794,14 +813,19 @@ export default function Reports() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
             
             <Select value={selectedProject} onValueChange={setSelectedProject}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filtrar projeto" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">📂 Todos os Projetos</SelectItem>
+                <SelectItem value="all">
+                  <span className="flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Todos os Projetos
+                  </span>
+                </SelectItem>
                 {projects?.map(project => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
@@ -826,9 +850,24 @@ export default function Reports() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">📅 Hoje</SelectItem>
-                  <SelectItem value="yesterday">📆 Ontem</SelectItem>
-                  <SelectItem value="custom">🗓️ Selecionar período</SelectItem>
+                  <SelectItem value="today">
+                    <span className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      Hoje
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="yesterday">
+                    <span className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      Ontem
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="custom">
+                    <span className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      Selecionar período
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -877,9 +916,15 @@ export default function Reports() {
                         <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
                           <p className="text-xs font-medium text-blue-800">
                             {tempRangeStartDate && tempRangeEndDate ? (
-                              <>📊 {format(tempRangeStartDate, "dd/MM/yyyy", { locale: ptBR })} até {format(tempRangeEndDate, "dd/MM/yyyy", { locale: ptBR })}</>
+                              <>
+                                <BarChart3 className="h-4 w-4 mr-1" />
+                                {format(tempRangeStartDate, "dd/MM/yyyy", { locale: ptBR })} até {format(tempRangeEndDate, "dd/MM/yyyy", { locale: ptBR })}
+                              </>
                             ) : tempCustomDate ? (
-                              <>📅 {format(tempCustomDate, "dd/MM/yyyy", { locale: ptBR })}</>
+                              <>
+                                <CalendarIcon className="h-4 w-4 mr-1" />
+                                {format(tempCustomDate, "dd/MM/yyyy", { locale: ptBR })}
+                              </>
                             ) : null}
                           </p>
                           <p className="text-xs text-blue-600 mt-1">Clique em "Aplicar" para confirmar</p>
@@ -1002,11 +1047,15 @@ export default function Reports() {
         {/* Summary Cards */}
         {reportData && (
           <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 transition-all duration-300">
-              <Card className="relative overflow-hidden shadow-lg border-red-500/20 bg-gradient-to-br from-red-500/5 via-red-400/5 to-red-500/10 hover:shadow-xl transition-shadow">
+            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 transition-all duration-300">
+              <Card className="relative overflow-hidden shadow-lg border-red-500/20 bg-gradient-to-br from-red-500/5 via-red-400/5 to-red-500/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <AnimatedGradient colors={["#EF4444", "#F87171", "#FCA5A5"]} speed={0.05} blur="medium" />
                 <CardDecoration color="rgb(239, 68, 68)" />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                  <CardTitle className="text-sm font-medium">💸 Total Investido</CardTitle>
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Coins className="h-4 w-4" />
+                    Total Investido
+                  </CardTitle>
                   <DollarSign className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent className="relative z-10">
@@ -1029,10 +1078,14 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden shadow-lg border-green-500/20 bg-gradient-to-br from-green-500/5 via-green-400/5 to-green-500/10 hover:shadow-xl transition-shadow">
+              <Card className="relative overflow-hidden shadow-lg border-green-500/20 bg-gradient-to-br from-green-500/5 via-green-400/5 to-green-500/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <AnimatedGradient colors={["#10B981", "#34D399", "#6EE7B7"]} speed={0.05} blur="medium" />
                 <CardDecoration color="rgb(34, 197, 94)" />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                  <CardTitle className="text-sm font-medium">💰 Total Faturado (Líquido)</CardTitle>
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Total Faturado (Líquido)
+                  </CardTitle>
                   <TrendingUp className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent className="relative z-10">
@@ -1049,11 +1102,15 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden shadow-lg border-success/20 bg-gradient-to-br from-success/5 via-emerald-500/5 to-success/10 hover:shadow-xl transition-shadow">
+              <Card className="relative overflow-hidden shadow-lg border-success/20 bg-gradient-to-br from-success/5 via-emerald-500/5 to-success/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <AnimatedGradient colors={["#10B981", "#34D399", "#6EE7B7"]} speed={0.05} blur="medium" />
                 <CardDecoration color="hsl(var(--success))" />
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm font-medium">💚 Lucro Líquido</CardTitle>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Circle className="h-4 w-4 fill-green-600 text-green-600" />
+                      Lucro Líquido
+                    </CardTitle>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1065,7 +1122,10 @@ export default function Reports() {
                           style={{ zIndex: 99999, position: 'fixed' }}
                         >
                           <div className="space-y-2 text-sm">
-                            <div className="font-medium text-green-600 mb-2">Cálculo do Lucro Líquido </div>
+                            <div className="font-medium text-green-600 mb-2 flex items-center gap-2">
+                              <Circle className="h-4 w-4 fill-green-600" />
+                              Cálculo do Lucro Líquido
+                            </div>
                             {(() => {
                               const totalRevenue = reportData.summary.totalRevenue;
                               const totalInvestment = reportData.summary.totalInvestment;
@@ -1122,7 +1182,7 @@ export default function Reports() {
                   </div>
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </CardHeader>
-                <CardContent className="relative">
+                <CardContent className="relative z-10">
                   <div className="text-2xl font-bold text-green-600">
                     {formatCostCurrency(reportData.summary.netProfit)}
                   </div>
@@ -1130,10 +1190,14 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              <Card className={`relative overflow-hidden shadow-lg hover:shadow-xl transition-shadow ${getROIColor(reportData.summary.averageRoas)}`}>
+              <Card className={`relative overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] ${getROIColor(reportData.summary.averageRoas)}`}>
+                <AnimatedGradient colors={["#8B5CF6", "#A78BFA", "#C4B5FD"]} speed={0.05} blur="medium" />
                 <CardDecoration color="hsl(var(--primary))" />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                  <CardTitle className="text-sm font-medium">👑 ROI Final</CardTitle>
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Crown className="h-4 w-4" />
+                    ROI Final
+                  </CardTitle>
                   <Target className="h-4 w-4" />
                 </CardHeader>
                 <CardContent className="relative z-10">
@@ -1149,12 +1213,12 @@ export default function Reports() {
 
             {/* Performance Charts */}
             {chartData.length > 0 && (
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-2">
                 <Card className="shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5 text-primary" />
-                      📈 Investimento vs Revenue
+                      Investimento vs Revenue
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -1179,7 +1243,7 @@ export default function Reports() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <PieChart className="h-5 w-5 text-primary" />
-                        📊 Distribuição por Projeto
+                        Distribuição por Projeto
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1217,7 +1281,7 @@ export default function Reports() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5 text-primary" />
-                      📂 Performance por Projeto
+                      Performance por Projeto
                     </CardTitle>
                     <p className="text-muted-foreground text-sm mt-1">
                       Detalhamento de {reportData.projects.length} projetos no período
@@ -1228,8 +1292,8 @@ export default function Reports() {
                   </Badge>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
+                  <div className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+                    <table className="w-full min-w-[600px] md:min-w-0">
                       <thead>
                         <tr className="border-b">
                           <th className="text-left p-3 font-medium">Projeto</th>
@@ -1289,12 +1353,24 @@ export default function Reports() {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-blue-700">
                 <div className="space-y-2">
-                  <p>📊 <strong>Tipo:</strong> Consolidado</p>
-                  <p>🎯 <strong>Projetos:</strong> {reportData.summary.projectCount}</p>
+                  <p className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    <strong>Tipo:</strong> Consolidado
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    <strong>Projetos:</strong> {reportData.summary.projectCount}
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <p>📅 <strong>Período:</strong> {reportData.period}</p>
-                  <p>🚀 <strong>Campanhas:</strong> {reportData.summary.campaignCount}</p>
+                  <p className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    <strong>Período:</strong> {reportData.period}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    <strong>Campanhas:</strong> {reportData.summary.campaignCount}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <RevenueTooltip
@@ -1302,13 +1378,25 @@ export default function Reports() {
                     revsharePercentage={0.1}
                     projectType="GAM" // Reports agregados: deixar como GAM para compatibilidade
                   >
-                    <p>💰 <strong>Revenue Total (Líquido):</strong> {formatBrlCurrency(reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue)}</p>
+                    <p className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      <strong>Revenue Total (Líquido):</strong> {formatBrlCurrency(reportData.summary.totalRevenueAfterRevshare || reportData.summary.totalRevenue)}
+                    </p>
                   </RevenueTooltip>
-                  <p>💸 <strong>Investimento:</strong> {formatCostCurrency(reportData.summary.totalInvestment)}</p>
+                  <p className="flex items-center gap-2">
+                    <Coins className="h-4 w-4" />
+                    <strong>Investimento:</strong> {formatCostCurrency(reportData.summary.totalInvestment)}
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <p>📈 <strong>ROAS Médio:</strong> {reportData.summary.averageRoas.toFixed(1)}%</p>
-                  <p>👑 <strong>ROI Final:</strong> {reportData.summary.finalRoi.toFixed(1)}%</p>
+                  <p className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    <strong>ROAS Médio:</strong> {reportData.summary.averageRoas.toFixed(1)}%
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Crown className="h-4 w-4" />
+                    <strong>ROI Final:</strong> {reportData.summary.finalRoi.toFixed(1)}%
+                  </p>
                 </div>
               </div>
             </Card>

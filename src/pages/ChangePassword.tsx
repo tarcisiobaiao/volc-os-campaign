@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Shield } from "lucide-react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
@@ -19,6 +20,7 @@ export default function ChangePassword() {
   const { userProfile, clearUnauthorizedUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const validatePassword = (password: string): { valid: boolean; message: string } => {
     if (password.length < 8) {
@@ -123,14 +125,14 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10">
-      <div className="w-full max-w-md">
+    <div className={`min-h-screen flex items-center justify-center ${isMobile ? 'p-4' : 'p-4'} bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10`}>
+      <div className={`w-full ${isMobile ? 'max-w-full' : 'max-w-md'}`}>
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-600 mb-4">
-            <Shield className="h-8 w-8 text-white" />
+          <div className={`inline-flex items-center justify-center ${isMobile ? 'w-12 h-12' : 'w-16 h-16'} rounded-full bg-gradient-to-br from-primary to-purple-600 mb-4`}>
+            <Shield className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Primeiro Acesso</h1>
-          <p className="text-muted-foreground">
+          <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-2`}>Primeiro Acesso</h1>
+          <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
             Por segurança, você precisa alterar sua senha provisória
           </p>
         </div>
@@ -156,14 +158,14 @@ export default function ChangePassword() {
                     type={showNewPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="pl-10 pr-10"
+                    className={`pl-10 pr-10 ${isMobile ? 'h-12 touch-target' : ''}`}
                     placeholder="Mínimo 8 caracteres"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground ${isMobile ? 'touch-target' : ''}`}
                   >
                     {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -182,14 +184,14 @@ export default function ChangePassword() {
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-10 pr-10"
+                    className={`pl-10 pr-10 ${isMobile ? 'h-12 touch-target' : ''}`}
                     placeholder="Digite a senha novamente"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground ${isMobile ? 'touch-target' : ''}`}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -238,7 +240,7 @@ export default function ChangePassword() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                className={`w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 ${isMobile ? 'h-12 touch-target' : ''}`}
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

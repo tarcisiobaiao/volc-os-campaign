@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Search, Edit, Copy, Pause, Trash2, RefreshCw, Play, Settings, AlertTriangle, User } from "lucide-react";
+import { ArrowLeft, Search, Edit, Copy, Pause, Trash2, RefreshCw, Play, Settings, AlertTriangle, User, FolderOpen, Calendar, Circle, BarChart3, Coins, DollarSign } from "lucide-react";
 import { useSupabaseData, Campaign, Project, supabaseDataService } from "@/services/supabaseDataService";
 import { useNavigate } from "react-router-dom";
 import { DateFilter } from "@/components/dashboard/DateFilter";
@@ -298,59 +298,80 @@ const CampaignsSettings = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge variant="default" className="bg-green-500">🟢 Ativa</Badge>;
+        return <Badge variant="default" className="bg-green-500 flex items-center gap-1">
+          <Circle className="h-2 w-2 fill-white" />
+          Ativa
+        </Badge>;
       case 'paused':
-        return <Badge variant="secondary" className="bg-yellow-500">🟡 Pausada</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-500 flex items-center gap-1">
+          <Circle className="h-2 w-2 fill-white" />
+          Pausada
+        </Badge>;
       case 'stopped':
-        return <Badge variant="destructive" className="bg-red-500">🔴 Parada</Badge>;
+        return <Badge variant="destructive" className="bg-red-500 flex items-center gap-1">
+          <Circle className="h-2 w-2 fill-white" />
+          Parada
+        </Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
   return (
     <Layout>
-      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
         {/* Header with Controls */}
-        <div className="flex items-center justify-between transition-all duration-300">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(-1)}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </Button>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent">
-                Campanhas
-              </h1>
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
-                <Settings className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Configurações</span>
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
+          <div className="flex-1 min-w-0">
+            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(-1)}
+                  className={`${isMobile ? 'w-full' : ''} gap-2 touch-target`}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
+                  Campanhas
+                </h1>
+                {!isMobile && (
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+                    <Settings className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">Configurações</span>
+                  </div>
+                )}
               </div>
+              {isMobile && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 w-fit mt-2">
+                  <Settings className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">Configurações</span>
+                </div>
+              )}
             </div>
-            <p className="text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
               Campanhas criadas automaticamente via integração GAM/Google Ads
               {projectFilter !== 'all' && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Projeto: {projects.find(p => p.id === projectFilter)?.name || 'Selecionado'}
                 </span>
               )}
               {selectedPeriod === 'yesterday' && selectedDate && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Data: Ontem ({format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')})
                 </span>
               )}
               {selectedPeriod === 'custom' && selectedDate && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')}
                 </span>
               )}
               {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Período: {selectedDate} até {selectedEndDate} ({(() => {
                     const start = new Date(selectedDate + 'T00:00:00');
                     const end = new Date(selectedEndDate + 'T00:00:00');
@@ -360,20 +381,25 @@ const CampaignsSettings = () => {
                 </span>
               )}
               {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && selectedPeriod !== 'yesterday' && (
-                <span className="ml-2 text-primary">
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
                   • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
                 </span>
               )}
             </p>
           </div>
           
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
             <Select value={projectFilter} onValueChange={setProjectFilter}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filtrar projeto" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">📂 Todos os Projetos</SelectItem>
+                <SelectItem value="all">
+                  <span className="flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Todos os Projetos
+                  </span>
+                </SelectItem>
                 {projects
                   .filter(project => {
                     // Para OPERATORs com filtros, mostrar apenas projetos atribuídos
@@ -397,10 +423,30 @@ const CampaignsSettings = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all"> Todas as Campanhas </SelectItem>
-                <SelectItem value="green">🟢 Campanhas Verdes (ROAS ≥ 80%)</SelectItem>
-                <SelectItem value="yellow">🟡 Campanhas Amarelas (ROAS 40-79%)</SelectItem>
-                <SelectItem value="orange">🟠 Campanhas Laranjas (ROAS 0-39%)</SelectItem>
-                <SelectItem value="red">🔴 Campanhas Vermelhas (ROAS negativo)</SelectItem>
+                <SelectItem value="green">
+                  <span className="flex items-center gap-2">
+                    <Circle className="h-3 w-3 fill-green-600 text-green-600" />
+                    Campanhas Verdes (ROAS ≥ 80%)
+                  </span>
+                </SelectItem>
+                <SelectItem value="yellow">
+                  <span className="flex items-center gap-2">
+                    <Circle className="h-3 w-3 fill-yellow-600 text-yellow-600" />
+                    Campanhas Amarelas (ROAS 40-79%)
+                  </span>
+                </SelectItem>
+                <SelectItem value="orange">
+                  <span className="flex items-center gap-2">
+                    <Circle className="h-3 w-3 fill-orange-600 text-orange-600" />
+                    Campanhas Laranjas (ROAS 0-39%)
+                  </span>
+                </SelectItem>
+                <SelectItem value="red">
+                  <span className="flex items-center gap-2">
+                    <Circle className="h-3 w-3 fill-red-600 text-red-600" />
+                    Campanhas Vermelhas (ROAS negativo)
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
             
@@ -427,42 +473,46 @@ const CampaignsSettings = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4`}>
+          <div className={`relative ${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar campanhas..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className={`pl-10 ${isMobile ? 'w-full touch-target' : ''}`}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className={`flex ${isMobile ? 'flex-wrap w-full' : 'items-center'} gap-2`}>
             <Badge variant="outline" className="text-sm">
               {filteredCampaigns.length} {filteredCampaigns.length === 1 ? 'campanha' : 'campanhas'}
             </Badge>
             {statusFilter === "all" && filteredCampaigns && filteredCampaigns.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  🟢 {filteredCampaigns.filter(c => {
+                  <Circle className="h-2 w-2 fill-green-600 text-green-600" />
+                  {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "green";
                   }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🟡 {filteredCampaigns.filter(c => {
+                  <Circle className="h-2 w-2 fill-yellow-600 text-yellow-600" />
+                  {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "yellow";
                   }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🟠 {filteredCampaigns.filter(c => {
+                  <Circle className="h-2 w-2 fill-orange-600 text-orange-600" />
+                  {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "orange";
                   }).length}
                 </span>
                 <span className="flex items-center gap-1">
-                  🔴 {filteredCampaigns.filter(c => {
+                  <Circle className="h-2 w-2 fill-red-600 text-red-600" />
+                  {filteredCampaigns.filter(c => {
                     const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
                     return getCampaignColorCategory(roasExcess) === "red";
                   }).length}
@@ -517,14 +567,19 @@ const CampaignsSettings = () => {
                         {getStatusBadge(campaign.status)} {campaign.name}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        📂 {getProjectName(campaign.projectId)}
+                        <span className="flex items-center gap-1">
+                          <FolderOpen className="h-3 w-3" />
+                          {getProjectName(campaign.projectId)}
+                        </span>
                       </p>
                     </div>
                   </div>
 
                   {/* Metrics Gasto vs Revenue */}
                   <div>
-                    <h4 className="font-medium mb-3">📊 Performance Financeira ({
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      Performance Financeira ({
                       selectedPeriod === 'today' ? 'Hoje' :
                       selectedPeriod === 'yesterday' ? 'Ontem' :
                       selectedPeriod === '7d' ? 'Últimos 7 dias' :
@@ -533,7 +588,7 @@ const CampaignsSettings = () => {
                         `${selectedDate} até ${selectedEndDate}` :
                         `Data: ${new Date(selectedDate).toLocaleDateString('pt-BR')}`
                     }):</h4>
-                    <div className={`grid ${campaign.commission && campaign.commission > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-4 text-sm`}>
+                    <div className={`grid ${campaign.commission && campaign.commission > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'} gap-2 md:gap-4 text-sm`}>
                       <div className="text-center p-3 bg-blue-50 rounded-lg">
                         <p className="text-xs text-muted-foreground mb-1">Gasto</p>
                         <p className="font-semibold text-slate-800">{new Intl.NumberFormat('pt-BR', {
@@ -570,7 +625,10 @@ const CampaignsSettings = () => {
                       </div>
                       {campaign.commission && campaign.commission > 0 && (
                         <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="text-xs text-muted-foreground mb-1">💰 Comissão</p>
+                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                            <Coins className="h-3 w-3" />
+                            Comissão
+                          </p>
                           <p className="font-semibold text-purple-600">{new Intl.NumberFormat('pt-BR', {
                             style: 'currency',
                             currency: 'BRL'
@@ -582,11 +640,14 @@ const CampaignsSettings = () => {
                   </div>
 
                   {/* Campaign Details */}
-                  <div className="flex items-center gap-4 text-sm">
+                  <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-2 md:gap-4 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <span>🎯 ID: {campaign.utmCampaignValue || campaign.googleAdsCampaignId || 'N/A'}</span>
-                    <span>|</span>
-                    <span>📅 Criada: {new Date(campaign.startDate).toLocaleDateString('pt-BR')}</span>
-                    <span>|</span>
+                    {!isMobile && <span>|</span>}
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Criada: {new Date(campaign.startDate).toLocaleDateString('pt-BR')}
+                    </span>
+                    {!isMobile && <span>|</span>}
                     <span>Status: {getStatusBadge(campaign.status)}</span>
                   </div>
 
@@ -605,10 +666,10 @@ const CampaignsSettings = () => {
 
         {/* System Info */}
         <Card className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <h3 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+          <h3 className={`font-medium text-blue-800 mb-3 flex items-center gap-2 ${isMobile ? 'text-base' : ''}`}>
             🤖 Sistema Automático de Campanhas
           </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm text-blue-700">
+          <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-4 ${isMobile ? 'text-xs' : 'text-sm'} text-blue-700`}>
             <div className="space-y-2">
               <p>✓ <strong>Auto-criação:</strong> Campanhas criadas via integração GAM</p>
               <p>✓ <strong>UTM tracking:</strong> Revenue atribuído via UTM campaign</p>

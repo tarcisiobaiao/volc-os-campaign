@@ -437,6 +437,45 @@ All colors MUST be HSL.
   }
 }
 
+@keyframes background-gradient {
+  0%, 100% {
+    transform: translate(calc(var(--tx-1, 0) * 50px), calc(var(--ty-1, 0) * 50px)) scale(1);
+  }
+  25% {
+    transform: translate(calc(var(--tx-2, 0) * 50px), calc(var(--ty-2, 0) * 50px)) scale(1.1);
+  }
+  50% {
+    transform: translate(calc(var(--tx-3, 0) * 50px), calc(var(--ty-3, 0) * 50px)) scale(0.9);
+  }
+  75% {
+    transform: translate(calc(var(--tx-4, 0) * 50px), calc(var(--ty-4, 0) * 50px)) scale(1.05);
+  }
+}
+
+.animate-background-gradient {
+  animation: background-gradient var(--background-gradient-speed, 20s) ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 1000px 100%;
+}
+
 @keyframes success {
   0% {
     transform: scale(1);
@@ -465,4 +504,54 @@ All colors MUST be HSL.
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary));
+}
+
+/* Mobile Responsive Utilities - GARANTIR RESPONSIVIDADE EM TODO O SISTEMA */
+@media (max-width: 767px) {
+  /* Forçar 1 coluna em mobile para grids com 3+ colunas */
+  .grid-cols-3,
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6,
+  [class*="grid-cols-3"],
+  [class*="grid-cols-4"],
+  [class*="grid-cols-5"] {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* Cards com padding reduzido em mobile */
+  [class*="Card"] > div,
+  .card {
+    padding: 1rem !important;
+  }
+
+  /* Touch targets mínimos */
+  button,
+  [role="button"],
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Tabelas com scroll horizontal */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Popovers e dialogs full-width em mobile */
+  [role="dialog"],
+  .popover-content {
+    max-width: 95vw !important;
+  }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grid-cols-4,
+  .grid-cols-5,
+  .grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }

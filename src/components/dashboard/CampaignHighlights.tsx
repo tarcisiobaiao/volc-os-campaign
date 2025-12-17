@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { campaignHighlightsService, CampaignHighlight } from '@/services/campaignHighlightsService';
 import { formatBrlCurrency } from '@/utils/currencyUtils';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface CampaignHighlightsProps {
   className?: string;
@@ -35,6 +36,7 @@ export function CampaignHighlights({ className }: CampaignHighlightsProps) {
     estagnadas: false,        // Estagnadas minimizado por padrão
     em_baixa: false           // Em baixa minimizado por padrão
   });
+  const isMobile = useIsMobile();
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
@@ -109,20 +111,23 @@ export function CampaignHighlights({ className }: CampaignHighlightsProps) {
 
     return (
       <div className="space-y-2">
-        {/* Header com toggle */}
+        {/* Header com toggle - touch target aumentado em mobile */}
         <button
           onClick={() => toggleSection(sectionKey)}
-          className="w-full flex items-center gap-2 mb-3 hover:opacity-70 transition-opacity"
+          className={cn(
+            "w-full flex items-center gap-2 mb-3 hover:opacity-70 transition-opacity rounded-lg p-2 -ml-2",
+            isMobile && "min-h-[48px] active:bg-muted/50"
+          )}
         >
           {icon}
-          <h3 className="font-semibold text-sm">{title}</h3>
-          <Badge variant="outline" className="text-xs">
+          <h3 className={cn("font-semibold", isMobile ? "text-base" : "text-sm")}>{title}</h3>
+          <Badge variant="outline" className={cn(isMobile ? "text-sm" : "text-xs")}>
             {campaigns.length}
           </Badge>
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 ml-auto text-muted-foreground" />
+            <ChevronUp className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", "ml-auto text-muted-foreground")} />
           ) : (
-            <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
+            <ChevronDown className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", "ml-auto text-muted-foreground")} />
           )}
         </button>
 
@@ -133,42 +138,64 @@ export function CampaignHighlights({ className }: CampaignHighlightsProps) {
               <div
                 key={`${campaign.campaign_id}-${index}`}
                 onClick={() => navigate(`/dashboard/campaign/${campaign.campaign_id}`)}
-                className="p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-all hover:shadow-md group"
+                className={cn(
+                  "rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-all hover:shadow-md group",
+                  isMobile ? "p-4 active:scale-[0.98]" : "p-3"
+                )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge className={cn('text-xs', getStatusBadgeColor(campaign.status))}>
+                    {/* Mobile: Layout vertical mais espaçado */}
+                    <div className={cn("flex items-center gap-2", isMobile ? "mb-2 flex-wrap" : "mb-1")}>
+                      <Badge className={cn(isMobile ? "text-sm px-2 py-1" : "text-xs", getStatusBadgeColor(campaign.status))}>
                         {campaign.status === 'alerta_tecnico' ? '🚨' : ''}
                         {campaign.status === 'em_alta' ? '📈' : ''}
                         {campaign.status === 'em_baixa' ? '📉' : ''}
                         {campaign.status === 'estagnada' ? '➡️' : ''}
                       </Badge>
-                      <span className="text-sm font-medium text-foreground">
+                      <span className={cn("font-medium text-foreground", isMobile ? "text-base" : "text-sm")}>
                         {campaign.campaign_name}
                       </span>
-                      <span className="text-xs text-muted-foreground font-mono">
-                        (ID: {campaign.campaign_id})
-                      </span>
+                      {!isMobile && (
+                        <span className="text-xs text-muted-foreground font-mono">
+                          (ID: {campaign.campaign_id})
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm font-medium text-foreground mb-1">
+                    {/* ID separado em mobile */}
+                    {isMobile && (
+                      <span className="text-xs text-muted-foreground font-mono block mb-2">
+                        ID: {campaign.campaign_id}
+                      </span>
+                    )}
+                    <p className={cn("font-medium text-foreground mb-2", isMobile ? "text-sm" : "text-sm")}>
                       {campaign.motivo}
                     </p>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>💸 {formatBrlCurrency(campaign.avg_spend)}</span>
-                      <span>📊 ROAS: {(campaign.roas_inicio - 1).toFixed(2)} → {(campaign.roas_fim - 1).toFixed(2)}</span>
+                    {/* Mobile: métricas em stack vertical */}
+                    <div className={cn(
+                      "text-xs text-muted-foreground",
+                      isMobile ? "flex flex-col gap-2" : "flex items-center gap-4"
+                    )}>
+                      <span className={isMobile ? "text-sm" : ""}>💸 {formatBrlCurrency(campaign.avg_spend)}</span>
+                      <span className={isMobile ? "text-sm" : ""}>
+                        📊 ROAS: {(campaign.roas_inicio - 1).toFixed(2)} → {(campaign.roas_fim - 1).toFixed(2)}
+                      </span>
                       <span
                         className={cn(
                           campaign.variacao_roas.startsWith('-') ? 'text-red-600' : 'text-green-600',
-                          'font-medium cursor-help'
+                          'font-medium',
+                          isMobile ? 'text-sm' : 'cursor-help'
                         )}
-                        title={`Variação do ROAS nos últimos 14 dias (até ontem):\n(${campaign.roas_fim.toFixed(2)} - ${campaign.roas_inicio.toFixed(2)}) / ${campaign.roas_inicio.toFixed(2)} = ${campaign.variacao_roas}`}
+                        title={!isMobile ? `Variação do ROAS nos últimos 14 dias (até ontem):\n(${campaign.roas_fim.toFixed(2)} - ${campaign.roas_inicio.toFixed(2)}) / ${campaign.roas_inicio.toFixed(2)} = ${campaign.variacao_roas}` : undefined}
                       >
                         {campaign.variacao_roas}
                       </span>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  <ArrowRight className={cn(
+                    "text-muted-foreground transition-opacity flex-shrink-0",
+                    isMobile ? "h-5 w-5 opacity-100" : "h-4 w-4 opacity-0 group-hover:opacity-100"
+                  )} />
                 </div>
               </div>
             ))}
@@ -236,22 +263,29 @@ export function CampaignHighlights({ className }: CampaignHighlightsProps) {
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className={isMobile ? "p-4" : ""}>
+        <div className={cn(
+          "flex items-center justify-between",
+          isMobile && "flex-col items-start gap-3"
+        )}>
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className={cn("flex items-center gap-2", isMobile ? "text-xl" : "")}>
               🎯 Campanhas Destacadas
             </CardTitle>
-            <CardDescription className="mt-1">
-              Top 10 em alta, 10 estagnadas e 10 em baixa • Rotacionadas automaticamente a cada 5 dias
+            <CardDescription className={cn("mt-1", isMobile ? "text-sm" : "")}>
+              {isMobile ? (
+                <>Top 10 em alta, 10 estagnadas e 10 em baixa</>
+              ) : (
+                <>Top 10 em alta, 10 estagnadas e 10 em baixa • Rotacionadas automaticamente a cada 5 dias</>
+              )}
             </CardDescription>
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className={cn(isMobile ? "text-sm self-end" : "text-xs")}>
             {totalCampaigns} campanhas
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className={cn("space-y-6", isMobile ? "p-4" : "")}>
         {/* Alertas Técnicos - Prioridade Máxima */}
         {renderCampaignList(
           '🚨 Alertas Técnicos',
@@ -291,6 +325,10 @@ export function CampaignHighlights({ className }: CampaignHighlightsProps) {
     </Card>
   );
 }
+
+
+
+
 
 
 

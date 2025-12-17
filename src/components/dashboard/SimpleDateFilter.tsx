@@ -113,17 +113,19 @@ export function SimpleDateFilter({
     setIsOpen(false);
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-2`}>
       <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
-        <SelectTrigger className="w-40">
+        <SelectTrigger className={isMobile ? "w-full touch-target" : "w-40"}>
           <CalendarIcon className="h-4 w-4 mr-2" />
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="today">📅 Hoje</SelectItem>
-          <SelectItem value="yesterday">📆 Ontem</SelectItem>
-          <SelectItem value="custom">🗓️ Data específica</SelectItem>
+          <SelectItem value="today" className="touch-target">📅 Hoje</SelectItem>
+          <SelectItem value="yesterday" className="touch-target">📆 Ontem</SelectItem>
+          <SelectItem value="custom" className="touch-target">🗓️ Data específica</SelectItem>
         </SelectContent>
       </Select>
 
@@ -133,7 +135,8 @@ export function SimpleDateFilter({
             <Button 
               variant="outline" 
               className={cn(
-                "w-[280px] justify-start text-left font-normal",
+                isMobile ? "w-full touch-target" : "w-[280px]",
+                "justify-start text-left font-normal",
                 !customDate && "text-muted-foreground"
               )}
             >
@@ -145,7 +148,7 @@ export function SimpleDateFilter({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className={cn("w-auto p-0", isMobile && "w-[95vw] max-w-[400px]")} align={isMobile ? "center" : "start"}>
             <div className="p-3 border-b">
               <h4 className="font-medium text-sm">Data específica</h4>
             </div>
@@ -160,11 +163,11 @@ export function SimpleDateFilter({
               initialFocus
             />
             <div className="p-3 border-t">
-              <div className="flex gap-2">
+              <div className={`flex ${isMobile ? 'flex-col' : 'gap-2'}`}>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  className={isMobile ? "w-full touch-target mb-2" : "flex-1 touch-target"}
                   onClick={() => {
                     if (serverDate) {
                       handleCustomDateChange(new Date(serverDate + 'T12:00:00'));
@@ -177,7 +180,7 @@ export function SimpleDateFilter({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  className={isMobile ? "w-full touch-target" : "flex-1 touch-target"}
                   onClick={() => {
                     if (serverYesterday) {
                       handleCustomDateChange(new Date(serverYesterday + 'T12:00:00'));
