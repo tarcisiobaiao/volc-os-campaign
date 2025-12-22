@@ -36,3 +36,5 @@ COMMENT ON COLUMN campaign_highlights.highlighted_at IS 'Data em que a campanha 
 
 
 
+
+

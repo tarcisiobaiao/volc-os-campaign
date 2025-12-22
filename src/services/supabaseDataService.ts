@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase, DatabaseProject, DatabaseCampaign, DatabaseDailyProjectMetrics, DatabaseDailyCampaignMetrics, DatabaseUrlDailyPerformance } from '@/lib/supabase';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { currencyConversionService } from './currencyConversionService';
@@ -1201,6 +1201,14 @@ class SupabaseDataService {
     try {
       const { projectId, period, date } = filters;
 
+      console.log('🔍 getDashboardData INICIANDO:', {
+        period,
+        date,
+        projectId,
+        projectIdType: typeof projectId,
+        allFilters: filters
+      });
+
       // 🚀 CACHE INTELIGENTE COM INVALIDAÇÃO: Reduz egress mas mantém dados atualizados
       const cacheKey = `dashboard_${JSON.stringify({projectId, period, date})}`;
       const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
@@ -1354,12 +1362,26 @@ class SupabaseDataService {
           let spendQuery;
 
           if (projectId && projectId !== 'all') {
-            // 🚀 SELECT OTIMIZADO: Apenas campo spend + join necessário
+            // 🚀 CORREÇÃO BUG 400: Buscar campanhas do projeto primeiro, depois métricas
+            // Supabase não aceita JOIN + range() corretamente, causando erro 400
+            const { data: projectCampaigns } = await supabase
+              .from('campaigns')
+              .select('campaign_id')
+              .eq('project_id', parseInt(projectId));
+
+            if (!projectCampaigns || projectCampaigns.length === 0) {
+              console.warn('⚠️ Nenhuma campanha encontrada para o projeto:', projectId);
+              hasMore = false;
+              break;
+            }
+
+            const campaignIds = projectCampaigns.map(c => c.campaign_id);
+
             spendQuery = supabase
               .from('daily_campaign_metrics')
-              .select('spend, campaigns!inner(project_id)')
+              .select('spend')
               .eq('date', targetDate)
-              .eq('campaigns.project_id', parseInt(projectId))
+              .in('campaign_id', campaignIds)
               .range(page * pageSize, (page + 1) * pageSize - 1);
           } else {
             spendQuery = supabase
@@ -1468,6 +1490,15 @@ class SupabaseDataService {
           optimization: '🚀 Dados vindos de daily_project_metrics!'
         });
 
+        console.log('📊 getDashboardData - retornando para period=' + period + ':', {
+          targetDate,
+          projectFilter: projectId,
+          todayTotalSpend,
+          finalTotalRevenue,
+          finalTotalProfit,
+          activeCampaigns
+        });
+
         return {
           totalSpend: todayTotalSpend,
           totalRevenue: finalTotalRevenue,
@@ -1543,17 +1574,36 @@ class SupabaseDataService {
       let page = 0;
       let hasMore = true;
 
+      // 🚀 CORREÇÃO BUG 400 PARA RANGE: Buscar campanhas do projeto primeiro
+      let campaignIdsForProject: string[] | undefined;
+      if (projectId && projectId !== 'all') {
+        const { data: projectCampaigns } = await supabase
+          .from('campaigns')
+          .select('campaign_id')
+          .eq('project_id', parseInt(projectId));
+
+        if (!projectCampaigns || projectCampaigns.length === 0) {
+          console.warn('⚠️ Nenhuma campanha encontrada para o projeto (RANGE):', projectId);
+          campaignIdsForProject = [];
+        } else {
+          campaignIdsForProject = projectCampaigns.map(c => c.campaign_id);
+        }
+      }
+
       while (hasMore) {
         let spendQuery;
 
-        if (projectId && projectId !== 'all') {
+        if (projectId && projectId !== 'all' && campaignIdsForProject && campaignIdsForProject.length > 0) {
           spendQuery = supabase
             .from('daily_campaign_metrics')
-            .select('spend, campaigns!inner(project_id)')
+            .select('spend')
             .gte('date', startDateStr)
             .lte('date', endDateStr)
-            .eq('campaigns.project_id', parseInt(projectId))
+            .in('campaign_id', campaignIdsForProject)
             .range(page * pageSize, (page + 1) * pageSize - 1);
+        } else if (projectId && projectId !== 'all' && (!campaignIdsForProject || campaignIdsForProject.length === 0)) {
+          // Projeto sem campanhas - não buscar nada
+          break;
         } else {
           spendQuery = supabase
             .from('daily_campaign_metrics')
@@ -1609,11 +1659,14 @@ class SupabaseDataService {
         return sum + (Number(item.spend) || 0);
       }, 0);
 
-      console.log({
+      console.log('✅ RANGE - Dados agregados com sucesso:', {
         totalRevenueAfterRevshare,
         totalSpend,
         dateRange: `${startDateStr} to ${endDateStr}`,
-        period
+        period,
+        projectFilter: projectId,
+        spendRecords: spendData.length,
+        revenueRecords: revenueData?.length || 0
       });
       // 🚀 USAR VALORES JÁ CALCULADOS (evitar duplicação)
       const totalRevenue = totalRevenueAfterRevshare; // Para compatibilidade
@@ -2066,10 +2119,11 @@ class SupabaseDataService {
         // Buscar campanhas ativas (aproximado)
         const { data: campaignsData } = await supabase
           .from('campaigns')
-          .select('id, status')
-          .eq('active', true);
-        
-        const activeCampaigns = campaignsData?.length || 10;
+          .select('id, status');
+
+        const activeCampaigns = (campaignsData || []).filter(c =>
+          c.status && ['Active', 'active', 'ENABLED'].includes(c.status)
+        ).length || 10;
         const greenCampaigns = Math.ceil(activeCampaigns * 0.6);
         const yellowCampaigns = Math.ceil(activeCampaigns * 0.3);
         const redCampaigns = activeCampaigns - greenCampaigns - yellowCampaigns;
@@ -2096,6 +2150,12 @@ class SupabaseDataService {
       // For other periods, use existing logic
       const dashboardData = await this.getDashboardData(filters || {});
 
+      console.log('🔍 getSummary - mapeando dashboardData para result:', {
+        dashboardDataTotalSpend: dashboardData.totalSpend,
+        filters: filters,
+        willMapTo_totalInvestment: dashboardData.totalSpend
+      });
+
       const result = {
         totalInvestment: dashboardData.totalSpend,
         totalRevenue: dashboardData.totalRevenue,
@@ -2111,7 +2171,9 @@ class SupabaseDataService {
         },
         trendsPercentage: dashboardData.trendsPercentage
       };
-      
+
+      console.log('✅ getSummary - result final:', result);
+
       return result;
     } catch (error) {
       console.error('Error calculating summary:', error);
@@ -2817,23 +2879,49 @@ class SupabaseDataService {
       }
 
       // Use the campaigns_with_revenue view only when no date/period filters
-      let query = supabase
-        .from('campaigns_with_revenue')
-        .select('*');
+      // 🚀 COM PAGINAÇÃO para evitar limite de 1000 registros
+      const allData: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      // Apply project filter if specified
-      if (filters?.projectId && filters.projectId !== 'all') {
-        query = query.eq('project_id', parseInt(filters.projectId));
+      while (hasMore) {
+        let query = supabase
+          .from('campaigns_with_revenue')
+          .select('*')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        // Apply project filter if specified
+        if (filters?.projectId && filters.projectId !== 'all') {
+          query = query.eq('project_id', parseInt(filters.projectId));
+        }
+
+        // Apply user project filter for OPERATORS
+        if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
+          query = query.in('project_id', filters.userProjectIds);
+        }
+
+        query = query.order('gam_revenue', { ascending: false });
+
+        const { data: pageData, error } = await query;
+
+        if (error) {
+          console.error(`❌ Erro ao buscar campaigns_with_revenue (página ${page}):`, error);
+          throw error;
+        }
+
+        if (pageData && pageData.length > 0) {
+          allData.push(...pageData);
+          page++;
+          hasMore = pageData.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
 
-      // Apply user project filter for OPERATORS
-      if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
-        query = query.in('project_id', filters.userProjectIds);
-      }
+      console.log(`✅ campaigns_with_revenue: ${allData.length} campanhas carregadas em ${page} página(s)`);
 
-      const { data, error } = await query.order('gam_revenue', { ascending: false });
-
-      if (error) throw error;
+      const data = allData;
 
       // Debug log to see available campaigns
       console.log({
@@ -2901,24 +2989,47 @@ class SupabaseDataService {
   ): Promise<Campaign[]> {
     try {
 
-      // Buscar todas as campanhas ativas
-      let campaignsQuery = supabase
-        .from('campaigns')
-        .select('*')
-        .eq('active', true);
+      // Buscar todas as campanhas ativas COM PAGINAÇÃO
+      const allCampaigns: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      if (filters.projectId && filters.projectId !== 'all') {
-        campaignsQuery = campaignsQuery.eq('project_id', parseInt(filters.projectId));
+      while (hasMore) {
+        let campaignsQuery = supabase
+          .from('campaigns')
+          .select('*')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (filters.projectId && filters.projectId !== 'all') {
+          campaignsQuery = campaignsQuery.eq('project_id', parseInt(filters.projectId));
+        }
+
+        const { data: pageData, error: campaignsError } = await campaignsQuery;
+
+        if (campaignsError) {
+          console.error(`❌ Erro ao buscar campanhas (página ${page}):`, campaignsError);
+          break;
+        }
+
+        if (pageData && pageData.length > 0) {
+          allCampaigns.push(...pageData);
+          page++;
+          hasMore = pageData.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
 
-      const { data: campaigns, error: campaignsError } = await campaignsQuery;
+      console.log(`✅ Fallback: ${allCampaigns.length} campanhas carregadas em ${page} página(s)`);
 
-      if (campaignsError) {
-        console.error('❌ Erro ao buscar campanhas no fallback:', campaignsError);
-        return [];
-      }
+      // Filtrar apenas campanhas ativas
+      const campaigns = allCampaigns.filter(c =>
+        c.status && ['Active', 'active', 'ENABLED'].includes(c.status)
+      );
 
       if (!campaigns || campaigns.length === 0) {
+        console.log('⚠️ Nenhuma campanha ativa encontrada no fallback');
         return [];
       }
 
@@ -3061,12 +3172,25 @@ class SupabaseDataService {
 
 
       // 🚀 NOVA IMPLEMENTAÇÃO: Usar RPC para agregação server-side - reduz egress drasticamente
+      console.log('🔍 Chamando get_campaigns_aggregated com:', {
+        p_project_id: filters.projectId && filters.projectId !== 'all' ? parseInt(filters.projectId) : null,
+        p_start_date: startDate,
+        p_end_date: endDate,
+        period: filters.period
+      });
+
       const { data: aggregatedCampaigns, error: rpcError } = await supabase
         .rpc('get_campaigns_aggregated', {
           p_project_id: filters.projectId && filters.projectId !== 'all' ? parseInt(filters.projectId) : null,
           p_start_date: startDate,
           p_end_date: endDate
         });
+
+      console.log('📊 RPC get_campaigns_aggregated retornou:', {
+        count: aggregatedCampaigns?.length || 0,
+        error: rpcError,
+        firstCampaign: aggregatedCampaigns?.[0]
+      });
 
       if (rpcError) {
         console.error('❌ Error calling get_campaigns_aggregated RPC:', rpcError);
@@ -3077,8 +3201,15 @@ class SupabaseDataService {
       }
 
       if (!aggregatedCampaigns || aggregatedCampaigns.length === 0) {
-
+        console.log('⚠️ RPC retornou vazio - usando fallback');
         // 🛡️ FALLBACK: Se RPC retornar vazio, buscar diretamente para confirmar
+        return await this.getCampaignsWithRevenueDirectFallback(filters, startDate, endDate);
+      }
+
+      // 🚨 DETECTAR LIMITE DE 1000 REGISTROS: Se RPC retornar exatamente 1000, pode ter mais dados
+      // Nesse caso, usar fallback com paginação
+      if (aggregatedCampaigns.length === 1000) {
+        console.warn('⚠️ RPC retornou exatamente 1000 registros - possível limite atingido. Usando fallback com paginação.');
         return await this.getCampaignsWithRevenueDirectFallback(filters, startDate, endDate);
       }
 
@@ -3150,10 +3281,42 @@ class SupabaseDataService {
         .sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
 
 
-      // 💾 SALVAR NO CACHE para próximas consultas
-      const currentTimestamp = Date.now().toString();
-      localStorage.setItem(cacheKey, JSON.stringify(activeCampaigns));
-      localStorage.setItem(`${cacheKey}_timestamp`, currentTimestamp);
+      // 💾 SALVAR NO CACHE para próximas consultas (com tratamento de quota)
+      try {
+        const currentTimestamp = Date.now().toString();
+        localStorage.setItem(cacheKey, JSON.stringify(activeCampaigns));
+        localStorage.setItem(`${cacheKey}_timestamp`, currentTimestamp);
+        console.log('✅ Cache salvo com sucesso:', { cacheKey, campaignsCount: activeCampaigns.length });
+      } catch (storageError) {
+        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+          console.warn('⚠️ localStorage quota exceeded - limpando cache antigo...');
+
+          // Limpar todos os caches de campanhas antigos
+          try {
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.startsWith('campaigns_optimized_') || key.startsWith('campaigns_with_revenue_'))) {
+                keysToRemove.push(key);
+              }
+            }
+
+            console.log(`🗑️ Removendo ${keysToRemove.length} caches antigos...`);
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+
+            // Tentar salvar novamente após limpar
+            const currentTimestamp = Date.now().toString();
+            localStorage.setItem(cacheKey, JSON.stringify(activeCampaigns));
+            localStorage.setItem(`${cacheKey}_timestamp`, currentTimestamp);
+            console.log('✅ Cache salvo após limpeza');
+          } catch (retryError) {
+            console.error('❌ Ainda não foi possível salvar cache após limpeza:', retryError);
+            // Não bloqueia a execução - continua sem cache
+          }
+        } else {
+          console.error('❌ Erro ao salvar cache (não é quota):', storageError);
+        }
+      }
 
       return activeCampaigns;
 
@@ -3717,12 +3880,21 @@ export const useSupabaseData = (filters?: {
         supabaseDataService.getLastDataUpdateTimestamp()
       ]);
 
-      console.log({
+      console.log('📊 useSupabaseData - Dados carregados:', {
         projects: projectsData.length,
         campaigns: campaignsData.length,
         metrics: metricsData.length,
-        summary: summaryData
+        summary: summaryData,
+        filters: filterOptions
       });
+
+      if (campaignsData.length === 0) {
+        console.warn('⚠️ ATENÇÃO: Nenhuma campanha retornada! Verifique:', {
+          filters: filterOptions,
+          projectsCount: projectsData.length,
+          cacheCleared: 'Pode ser cache ou filtros muito restritivos'
+        });
+      }
 
       setProjects(projectsData);
       setCampaigns(campaignsData);
@@ -3736,8 +3908,18 @@ export const useSupabaseData = (filters?: {
     }
   };
 
+  // Memoize array stringifications to avoid infinite re-renders
+  const userProjectIdsStr = useMemo(
+    () => JSON.stringify(filters?.userProjectIds || []),
+    [filters?.userProjectIds]
+  );
+  const userCampaignIdsStr = useMemo(
+    () => JSON.stringify(filters?.userCampaignIds || []),
+    [filters?.userCampaignIds]
+  );
+
   useEffect(() => {
-    console.log({
+    console.log('🔄 useSupabaseData useEffect disparado:', {
       hasFilters: !!filters,
       hasDate: !!filters?.date,
       hasEndDate: !!filters?.endDate,
@@ -3747,13 +3929,12 @@ export const useSupabaseData = (filters?: {
     });
     fetchData();
   }, [
-    filters?.date, 
-    filters?.endDate, 
-    filters?.projectId, 
+    filters?.date,
+    filters?.endDate,
+    filters?.projectId,
     filters?.period,
-    // Use JSON.stringify para comparar arrays por valor, não por referência
-    JSON.stringify(filters?.userProjectIds || []),
-    JSON.stringify(filters?.userCampaignIds || [])
+    userProjectIdsStr,
+    userCampaignIdsStr
   ]);
 
   const refresh = (newFilters?: typeof filters) => {

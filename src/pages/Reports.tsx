@@ -753,66 +753,43 @@ export default function Reports() {
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
         {/* Header with User and Controls */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
-          <div className="flex-1 min-w-0">
-            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
-              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(-1)}
-                  className={`${isMobile ? 'w-full' : ''} gap-2 touch-target`}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
+        <div className="space-y-4 transition-all duration-300">
+          {/* Title Section */}
+          <div className="flex items-start gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="flex-shrink-0 gap-2 touch-target"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent whitespace-nowrap`}>
                   Relatórios
                 </h1>
                 {!isMobile && (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 flex-shrink-0">
                     <Settings className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
                   </div>
                 )}
               </div>
               {isMobile && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 w-fit mt-2">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 w-fit mt-2 mb-2">
                   <Settings className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
                 </div>
               )}
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                Relatórios detalhados de performance e ROI
+              </p>
             </div>
-            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
-              Relatórios detalhados de performance e ROI
-              {selectedProject !== 'all' && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Projeto: {projects?.find(p => p.id === selectedProject)?.name || 'Selecionado'}
-                </span>
-              )}
-              {selectedPeriod === 'custom' && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                </span>
-              )}
-              {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
-                </span>
-              )}
-              {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Período: {selectedDate} até {selectedEndDate} ({(() => {
-                    const start = new Date(selectedDate + 'T00:00:00');
-                    const end = new Date(selectedEndDate + 'T00:00:00');
-                    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    return diffDays;
-                  })()} dias)
-                </span>
-              )}
-            </p>
           </div>
           
+          {/* Filters and Actions Section */}
           <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
             
             <Select value={selectedProject} onValueChange={setSelectedProject}>
@@ -1020,27 +997,30 @@ export default function Reports() {
               )}
             </div>
             
-            <Button onClick={handleRefresh} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-shrink-0">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
 
-            <Button 
-              onClick={handleExportPDF} 
-              variant="default" 
-              size="sm"
-              disabled={isGeneratingPDF}
-            >
-              <Download className={`h-4 w-4 mr-2 ${isGeneratingPDF ? 'animate-spin' : ''}`} />
-              {isGeneratingPDF ? 'Gerando PDF...' : 'Exportar PDF'}
-            </Button>
-            
-            <DataStatus 
-              loading={loading} 
-              error={error} 
-              lastUpdate={lastUpdate}
-              showDetails={true}
-            />
+              <Button 
+                onClick={handleExportPDF} 
+                variant="default" 
+                size="sm"
+                disabled={isGeneratingPDF}
+                className="flex-shrink-0"
+              >
+                <Download className={`h-4 w-4 mr-2 ${isGeneratingPDF ? 'animate-spin' : ''}`} />
+                {isGeneratingPDF ? 'Gerando PDF...' : 'Exportar PDF'}
+              </Button>
+              
+              <DataStatus 
+                loading={loading} 
+                error={error} 
+                lastUpdate={lastUpdate}
+                showDetails={true}
+              />
+            </div>
           </div>
         </div>
 

@@ -8,6 +8,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ArrowLeft, TrendingUp, DollarSign, MousePointer, Eye, Target, Calendar, Settings, AlertTriangle, BarChart3, FileText, Circle, Coins, Crown } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, ComposedChart } from 'recharts';
 import { supabaseDataService } from "@/services/supabaseDataService";
+import { supabase } from "@/lib/supabase";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
 import { DateFilter } from "@/components/dashboard/DateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
@@ -16,6 +17,8 @@ import { calculateROAS } from "@/utils/roasCalculations";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { taxHistoryService } from "@/services/taxHistoryService";
 import { AnimatedGradient } from "@/components/ui/animated-gradient";
+import { OrientacaoBox } from "@/components/campaign/OrientacaoBox";
+import { BiddingActionBox } from "@/components/campaign/BiddingActionBox";
 
 export default function CampaignDetailDashboard() {
 
@@ -33,6 +36,12 @@ export default function CampaignDetailDashboard() {
   const [selectedEndDate, setSelectedEndDate] = useState<string>("");
   const [showFunnelEditor, setShowFunnelEditor] = useState(false);
   const [taxRate, setTaxRate] = useState<number>(8.1);
+  const [orientacaoData, setOrientacaoData] = useState<{
+    orientacao_texto: string | null;
+    orientacao_resumo: string | null;
+    orientacao_json: any | null;
+    date: string | null;
+  } | null>(null);
 
   // Initialize with current server date
   useEffect(() => {
@@ -116,6 +125,52 @@ export default function CampaignDetailDashboard() {
 
     loadCampaignData();
   }, [campaignId, selectedPeriod, selectedDate, selectedEndDate]);
+
+  // Load orientação data for today only
+  useEffect(() => {
+    const loadOrientacaoData = async () => {
+      if (!campaignId || !selectedDate) {
+        return;
+      }
+
+      try {
+        // Get today's date from server
+        const serverDate = await supabaseDataService.getServerDate();
+
+        // Only fetch orientação if we're viewing today's data
+        if (selectedDate !== serverDate) {
+          setOrientacaoData(null);
+          return;
+        }
+
+        // Fetch orientação data from daily_campaign_metrics for today
+        const { data, error } = await supabase
+          .from('daily_campaign_metrics')
+          .select('orientacao_texto, orientacao_resumo, orientacao_json, date')
+          .eq('campaign_id', campaignId)
+          .eq('date', serverDate)
+          .maybeSingle();
+
+        if (error) {
+          console.error('❌ Error loading orientação data:', error);
+          setOrientacaoData(null);
+          return;
+        }
+
+        // Only set data if at least one field is filled
+        if (data && (data.orientacao_texto || data.orientacao_resumo)) {
+          setOrientacaoData(data);
+        } else {
+          setOrientacaoData(null);
+        }
+      } catch (err) {
+        console.error('❌ Error in loadOrientacaoData:', err);
+        setOrientacaoData(null);
+      }
+    };
+
+    loadOrientacaoData();
+  }, [campaignId, selectedDate]);
 
   // Helper function to parse date ensuring São Paulo timezone
   const parseDateToSaoPaulo = (dateStr: string): Date => {
@@ -310,23 +365,26 @@ export default function CampaignDetailDashboard() {
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6`}>
         {/* Header */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4`}>
-          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 flex-1 min-w-0`}>
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className={`${isMobile ? 'w-full' : ''} gap-2 touch-target`}>
+        <div className="space-y-4">
+          {/* Title Section */}
+          <div className="flex items-start gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex-shrink-0 gap-2 touch-target">
               <ArrowLeft className="h-4 w-4" />
               Voltar
             </Button>
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold flex items-center gap-2`}>
-                <BarChart3 className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-                Dashboard da Campanha
+                <BarChart3 className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} flex-shrink-0`} />
+                <span className="whitespace-nowrap">Dashboard da Campanha</span>
               </h1>
               <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground mt-1`}>
                 ID: {campaign.campaignId} • Projeto: {campaign.projectName}
               </p>
             </div>
           </div>
-          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3`}>
+          
+          {/* Filters and Actions Section */}
+          <div className={`flex ${isMobile ? 'flex-col' : 'items-center flex-wrap'} gap-3`}>
             <DateFilter
               selectedPeriod={selectedPeriod}
               selectedDate={selectedDate}
@@ -336,17 +394,21 @@ export default function CampaignDetailDashboard() {
               onDateRangeChange={handleDateRangeChange}
             />
             
-            <DataStatus 
-              loading={loading} 
-              error={error} 
-              lastUpdate={new Date().toLocaleTimeString('pt-BR')}
-            />
-            
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleConfigureClick}>
-              <Settings className="h-4 w-4" />
-              Configurar
-            </Button>
-            {getStatusBadge(campaign.status)}
+            <div className="flex items-center gap-2 flex-wrap">
+              <DataStatus 
+                loading={loading} 
+                error={error} 
+                lastUpdate={new Date().toLocaleTimeString('pt-BR')}
+              />
+              
+              <Button variant="outline" size="sm" className="gap-2 flex-shrink-0" onClick={handleConfigureClick}>
+                <Settings className="h-4 w-4" />
+                Configurar
+              </Button>
+              <div className="flex-shrink-0">
+                {getStatusBadge(campaign.status)}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1239,6 +1301,32 @@ export default function CampaignDetailDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Insights de IA - Orientação do Dia */}
+        {orientacaoData && (
+          <div className="mt-6">
+            <OrientacaoBox
+              orientacaoTexto={orientacaoData.orientacao_texto}
+              orientacaoResumo={orientacaoData.orientacao_resumo}
+              orientacaoGeradoEm={orientacaoData.orientacao_json?.gerado_em || orientacaoData.date}
+            />
+          </div>
+        )}
+
+        {/* Ajuste de Bidding - Ação Sugerida */}
+        {orientacaoData?.orientacao_json?.decisao && (
+          <div className="mt-6">
+            <BiddingActionBox
+              campaignId={campaignId!}
+              currentBid={orientacaoData.orientacao_json.decisao.valor_referencia}
+              suggestedBid={orientacaoData.orientacao_json.decisao.valor_sugerido}
+              action={orientacaoData.orientacao_json.decisao.acao}
+              risk={orientacaoData.orientacao_json.decisao.risco}
+              variationPercent={orientacaoData.orientacao_json.decisao.variacao_percent}
+              dataReferencia={orientacaoData.date || selectedDate}
+            />
+          </div>
+        )}
       </div>
 
       {/* Popup de configuração de funis */}

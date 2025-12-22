@@ -69,19 +69,19 @@ export function DataStatus({ loading, error, lastUpdate, showDetails = false }: 
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-shrink-0">
       <Badge 
         variant="default" 
-        className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 cursor-pointer"
+        className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200 cursor-pointer whitespace-nowrap"
         onClick={() => setShowDetailView(!showDetailView)}
       >
-        <CheckCircle className="h-3 w-3" />
-        Dados atualizados
-        <Info className="h-3 w-3 ml-1" />
+        <CheckCircle className="h-3 w-3 flex-shrink-0" />
+        <span className="whitespace-nowrap">Dados atualizados</span>
+        <Info className="h-3 w-3 ml-1 flex-shrink-0" />
       </Badge>
       
       {globalMostRecent && !showDetailView && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           {globalMostRecent}
         </span>
       )}

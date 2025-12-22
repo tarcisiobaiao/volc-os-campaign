@@ -323,74 +323,76 @@ const CampaignsSettings = () => {
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
         {/* Header with Controls */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
-          <div className="flex-1 min-w-0">
-            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
-              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(-1)}
-                  className={`${isMobile ? 'w-full' : ''} gap-2 touch-target`}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
+        <div className="space-y-4 transition-all duration-300">
+          {/* Title Section */}
+          <div className="flex items-start gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="flex-shrink-0 gap-2 touch-target"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent whitespace-nowrap`}>
                   Campanhas
                 </h1>
                 {!isMobile && (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 flex-shrink-0">
                     <Settings className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium text-primary">Configurações</span>
                   </div>
                 )}
               </div>
               {isMobile && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 w-fit mt-2">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 w-fit mt-2 mb-2">
                   <Settings className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium text-primary">Configurações</span>
                 </div>
               )}
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
+                Campanhas criadas automaticamente via integração GAM/Google Ads
+                {projectFilter !== 'all' && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Projeto: {projects.find(p => p.id === projectFilter)?.name || 'Selecionado'}
+                  </span>
+                )}
+                {selectedPeriod === 'yesterday' && selectedDate && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Data: Ontem ({format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')})
+                  </span>
+                )}
+                {selectedPeriod === 'custom' && selectedDate && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')}
+                  </span>
+                )}
+                {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Período: {selectedDate} até {selectedEndDate} ({(() => {
+                      const start = new Date(selectedDate + 'T00:00:00');
+                      const end = new Date(selectedEndDate + 'T00:00:00');
+                      const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                      return diffDays;
+                    })()} dias)
+                  </span>
+                )}
+                {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && selectedPeriod !== 'yesterday' && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
+                  </span>
+                )}
+              </p>
             </div>
-            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
-              Campanhas criadas automaticamente via integração GAM/Google Ads
-              {projectFilter !== 'all' && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Projeto: {projects.find(p => p.id === projectFilter)?.name || 'Selecionado'}
-                </span>
-              )}
-              {selectedPeriod === 'yesterday' && selectedDate && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Data: Ontem ({format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')})
-                </span>
-              )}
-              {selectedPeriod === 'custom' && selectedDate && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy')}
-                </span>
-              )}
-              {selectedPeriod === 'range' && selectedDate && selectedEndDate && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Período: {selectedDate} até {selectedEndDate} ({(() => {
-                    const start = new Date(selectedDate + 'T00:00:00');
-                    const end = new Date(selectedEndDate + 'T00:00:00');
-                    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    return diffDays;
-                  })()} dias)
-                </span>
-              )}
-              {selectedPeriod !== 'custom' && selectedPeriod !== 'range' && selectedPeriod !== 'yesterday' && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === '7d' ? '7 dias' : '30 dias'}
-                </span>
-              )}
-            </p>
           </div>
           
+          {/* Filters and Actions Section */}
           <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className={`${isMobile ? 'w-full' : 'w-48'}`}>
                 <SelectValue placeholder="Filtrar projeto" />
               </SelectTrigger>
               <SelectContent>
@@ -418,7 +420,7 @@ const CampaignsSettings = () => {
             </Select>
             
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className={`${isMobile ? 'w-full' : 'w-48'}`}>
                 <SelectValue placeholder="Filtrar por performance" />
               </SelectTrigger>
               <SelectContent>
@@ -459,16 +461,18 @@ const CampaignsSettings = () => {
               onDateRangeChange={handleDateRangeChange}
             />
             
-            <Button onClick={handleRefresh} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar
-            </Button>
-            
-            <DataStatus 
-              loading={loading} 
-              error={error} 
-              lastUpdate={new Date().toLocaleTimeString('pt-BR')}
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-shrink-0">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+              
+              <DataStatus 
+                loading={loading} 
+                error={error} 
+                lastUpdate={new Date().toLocaleTimeString('pt-BR')}
+              />
+            </div>
           </div>
         </div>
 

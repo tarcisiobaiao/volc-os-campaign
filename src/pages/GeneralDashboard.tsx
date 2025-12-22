@@ -672,40 +672,44 @@ export default function GeneralDashboard() {
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
         {/* Header with User and Controls */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
-          <div className={isMobile ? 'w-full' : ''}>
-            <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
-              <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent`}>
-                Dashboard Geral
-              </h1>
-              {!isMobile && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+        <div className="space-y-4 transition-all duration-300">
+          {/* Title Section */}
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3 mb-2`}>
+                <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent whitespace-nowrap`}>
+                  Dashboard Geral
+                </h1>
+                {!isMobile && (
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 flex-shrink-0">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
+                  </div>
+                )}
+              </div>
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
+                Visão geral de todas as campanhas e projetos
+                {selectedPeriod === 'custom' && selectedDate && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                  </span>
+                )}
+                {selectedPeriod !== 'custom' && (
+                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
+                    • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data personalizada'}
+                  </span>
+                )}
+              </p>
+              {isMobile && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 mt-2 w-fit">
                   <User className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
                 </div>
               )}
             </div>
-            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
-              Visão geral de todas as campanhas e projetos
-              {selectedPeriod === 'custom' && selectedDate && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                </span>
-              )}
-              {selectedPeriod !== 'custom' && (
-                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} text-primary`}>
-                  • Período: {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data personalizada'}
-                </span>
-              )}
-            </p>
-            {isMobile && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 mt-2 w-fit">
-                <User className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">{getUserFirstName()}</span>
-              </div>
-            )}
           </div>
           
+          {/* Filters and Actions Section */}
           {/* Mobile: Controles em stack vertical */}
           {isMobile ? (
             <div className="flex flex-col gap-3 w-full">
@@ -716,7 +720,7 @@ export default function GeneralDashboard() {
                 onDateChange={handleDateChange}
               />
               {selectedPeriod === 'custom' && selectedDate && (
-                <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
+                <div className="text-xs text-muted-foreground px-2 flex items-center gap-1 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
                       {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
@@ -773,8 +777,8 @@ export default function GeneralDashboard() {
               />
             </div>
           ) : (
-            /* Desktop: Layout horizontal original */
-            <div className="flex items-center gap-3 flex-wrap">
+            /* Desktop: Layout horizontal com flex-wrap */
+            <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
               <div className="flex flex-col gap-1">
                 <SimpleDateFilter
                   selectedPeriod={selectedPeriod}
@@ -783,7 +787,7 @@ export default function GeneralDashboard() {
                   onDateChange={handleDateChange}
                 />
                 {selectedPeriod === 'custom' && selectedDate && (
-                  <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
+                  <div className="text-xs text-muted-foreground px-2 flex items-center gap-1 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
                       Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
@@ -798,17 +802,18 @@ export default function GeneralDashboard() {
                 )}
               </div>
 
-              <Button onClick={handleRefresh} variant="outline" size="sm">
+              <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-shrink-0">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Atualizar
               </Button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   onClick={handleUpdateGAM}
                   variant="default"
                   size="sm"
                   disabled={webhookStatus === 'loading'}
+                  className="flex-shrink-0"
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
                   Atualizar GAM
@@ -819,17 +824,18 @@ export default function GeneralDashboard() {
                   variant="default"
                   size="sm"
                   disabled={webhookStatus === 'loading'}
+                  className="flex-shrink-0"
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
                   Atualizar Google Ads
                 </Button>
 
                 {webhookStatus === 'success' && (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                 )}
 
                 {webhookStatus === 'error' && (
-                  <X className="h-4 w-4 text-red-500" />
+                  <X className="h-4 w-4 text-red-500 flex-shrink-0" />
                 )}
               </div>
 

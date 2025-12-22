@@ -212,10 +212,12 @@ export function DateFilter({
     setIsOpen(false);
   };
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-2 flex-shrink-0`}>
       <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
-        <SelectTrigger className="w-40">
+        <SelectTrigger className={isMobile ? "w-full touch-target" : "w-40"}>
           <CalendarIcon className="h-4 w-4 mr-2" />
           <SelectValue />
         </SelectTrigger>
@@ -240,7 +242,8 @@ export function DateFilter({
             <Button 
               variant="outline" 
               className={cn(
-                "w-[320px] justify-start text-left font-normal",
+                isMobile ? "w-full touch-target" : "w-[320px]",
+                "justify-start text-left font-normal",
                 (!customDate && !rangeStartDate) && "text-muted-foreground"
               )}
             >

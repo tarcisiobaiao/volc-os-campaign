@@ -968,25 +968,24 @@ export default function ProjectDashboard() {
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6 max-w-7xl mx-auto`}>
         {/* Header with User and Controls */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-4 transition-all duration-300`}>
-          <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4 flex-1 min-w-0`}>
+        <div className="space-y-4 transition-all duration-300">
+          {/* Title Section */}
+          <div className="flex items-start gap-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/")}
-              className={`${isMobile ? 'w-full' : ''} touch-target`}
+              className="flex-shrink-0 touch-target"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar ao Dashboard
             </Button>
-            <div className="min-w-0 flex-1">
+            <div className="flex-1 min-w-0">
               <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold bg-gradient-to-r from-primary via-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2`}>
-                <span className="flex items-center gap-2">
-                  <FolderOpen className="h-6 w-6" />
-                  {currentProject?.name || 'Carregando...'}
-                </span>
+                <FolderOpen className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} flex-shrink-0`} />
+                <span className="truncate">{currentProject?.name || 'Carregando...'}</span>
               </h1>
-              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''} mt-1`}>
                 Dashboard do projeto • {filteredCampaigns.length} campanhas filtradas •
                 Status: <span className="flex items-center gap-1 inline-flex">
                   <Circle className={`h-2 w-2 ${currentProject?.status === 'active' ? 'fill-green-600 text-green-600' : 'fill-yellow-600 text-yellow-600'}`} />
@@ -1028,6 +1027,7 @@ export default function ProjectDashboard() {
             </div>
           </div>
 
+          {/* Filters and Actions Section */}
           <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
             <div className="flex flex-col gap-1">
               <SimpleDateFilter
@@ -1037,7 +1037,7 @@ export default function ProjectDashboard() {
                 onDateChange={handleDateChange}
               />
               {selectedPeriod === 'custom' && selectedDate && (
-                <div className="text-xs text-muted-foreground px-2 flex items-center gap-1">
+                <div className="text-xs text-muted-foreground px-2 flex items-center gap-1 flex-wrap">
                   <span className="flex items-center gap-1">
                     <CalendarIcon className="h-3 w-3" />
                     Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
@@ -1058,21 +1058,23 @@ export default function ProjectDashboard() {
               )}
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refresh(filters)}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refresh(filters)}
+                className="flex-shrink-0"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
 
-            
-            <DataStatus 
-              loading={loading} 
-              error={error} 
-              lastUpdate={new Date().toLocaleTimeString('pt-BR')}
-            />
+              <DataStatus 
+                loading={loading} 
+                error={error} 
+                lastUpdate={new Date().toLocaleTimeString('pt-BR')}
+              />
+            </div>
           </div>
         </div>
 
