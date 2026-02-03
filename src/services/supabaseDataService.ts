@@ -269,53 +269,63 @@ class SupabaseDataService {
       let operationalCostShare = 0;
 
       if (projectCostsDivision) {
-        // Get operational costs for the period
-        const startMonth = startDate.slice(0, 7); // YYYY-MM
-        const endMonth = endDate.slice(0, 7); // YYYY-MM
+        // 🚀 RPC OPTIMIZATION: Tentar usar get_operational_costs_aggregated primeiro
+        try {
+          console.log('🚀 calculateProjectNetProfitWithOperationalCosts RPC call:', { startDate, endDate });
 
-        // Get all months in the period
-        const months = [];
-        const currentMonth = new Date(startMonth + '-01');
-        const finalMonth = new Date(endMonth + '-01');
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_operational_costs_aggregated', {
+            p_start_date: startDate,
+            p_end_date: endDate
+          });
 
-        while (currentMonth <= finalMonth) {
-          months.push(currentMonth.toISOString().slice(0, 7));
-          currentMonth.setMonth(currentMonth.getMonth() + 1);
-        }
+          if (!rpcError && rpcData && rpcData.length > 0) {
+            operationalCostShare = Number(rpcData[0].cost_per_project_per_day) || 0;
+            console.log('✅ Operational costs RPC success:', { operationalCostShare });
+          } else {
+            throw new Error(rpcError?.message || 'RPC returned empty');
+          }
+        } catch (rpcException) {
+          console.warn('⚠️ Operational costs RPC failed, using fallback:', rpcException);
 
-        // Calculate total operational costs for the period
-        let totalOperationalCosts = 0;
-        for (const month of months) {
-          const activeCosts = await operationalCostsService.getActiveCostsByMonth(month);
-          const monthlyTotal = activeCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0);
-          totalOperationalCosts += monthlyTotal;
-        }
+          // 🔄 FALLBACK: Método antigo (loop de meses)
+          const startMonth = startDate.slice(0, 7);
+          const endMonth = endDate.slice(0, 7);
 
-        // Get number of projects participating in cost division
-        const { data: projectsWithCostDivision, error } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('costs_division', true);
+          const months = [];
+          const currentMonth = new Date(startMonth + '-01');
+          const finalMonth = new Date(endMonth + '-01');
 
-        if (error) {
-          console.error('Error fetching projects with cost division:', error);
-        } else {
-          const projectsCount = projectsWithCostDivision?.length || 1;
-
-          // Calculate days in period
-          const daysInPeriod = differenceInDays(new Date(endDate), new Date(startDate)) + 1;
-
-          // Calculate total days in all months
-          let totalDaysInMonths = 0;
-          for (const month of months) {
-            const [year, monthNum] = month.split('-').map(Number);
-            const daysInMonth = new Date(year, monthNum, 0).getDate();
-            totalDaysInMonths += daysInMonth;
+          while (currentMonth <= finalMonth) {
+            months.push(currentMonth.toISOString().slice(0, 7));
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
           }
 
-          // Calculate operational cost share
-          const dailyOperationalCost = totalOperationalCosts / totalDaysInMonths;
-          operationalCostShare = (dailyOperationalCost * daysInPeriod) / projectsCount;
+          let totalOperationalCosts = 0;
+          for (const month of months) {
+            const activeCosts = await operationalCostsService.getActiveCostsByMonth(month);
+            const monthlyTotal = activeCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0);
+            totalOperationalCosts += monthlyTotal;
+          }
+
+          const { data: projectsWithCostDivision, error } = await supabase
+            .from('projects')
+            .select('id')
+            .eq('costs_division', true);
+
+          if (!error) {
+            const projectsCount = projectsWithCostDivision?.length || 1;
+            const daysInPeriod = differenceInDays(new Date(endDate), new Date(startDate)) + 1;
+
+            let totalDaysInMonths = 0;
+            for (const month of months) {
+              const [year, monthNum] = month.split('-').map(Number);
+              const daysInMonth = new Date(year, monthNum, 0).getDate();
+              totalDaysInMonths += daysInMonth;
+            }
+
+            const dailyOperationalCost = totalOperationalCosts / totalDaysInMonths;
+            operationalCostShare = (dailyOperationalCost * daysInPeriod) / projectsCount;
+          }
         }
       }
 
@@ -1233,12 +1243,53 @@ class SupabaseDataService {
         }
       }
 
-      // 🚀 OTIMIZAÇÃO: Usar daily_project_metrics para revenue + daily_campaign_metrics apenas para spend
-      console.log({
-        startDate: startDateStr,
-        endDate,
-        projectId
-      });
+      // 🚀 RPC OPTIMIZATION: Tentar usar get_daily_metrics_aggregated primeiro
+      const rpcProjectId = projectId && projectId !== 'all' ? parseInt(projectId) : null;
+
+      console.log('🚀 getDailyMetrics RPC call:', { startDateStr, endDate, rpcProjectId });
+
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_daily_metrics_aggregated', {
+          p_start_date: startDateStr,
+          p_end_date: endDate,
+          p_project_id: rpcProjectId
+        });
+
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          console.log('✅ getDailyMetrics RPC success:', { records: rpcData.length });
+
+          const result: DailyMetrics[] = rpcData.map((row: any) => ({
+            date: row.metric_date,
+            investment: Number(row.investment) || 0,
+            revenue: Number(row.revenue) || 0,
+            profit: Number(row.profit) || 0,
+            roas: Number(row.roas) || 0,
+            roi: Number(row.roi) || 0,
+            impressions: Number(row.impressions) || 0,
+            clicks: Number(row.clicks) || 0,
+            ctr: Number(row.ctr) || 0,
+            conversions: Number(row.conversions) || 0,
+            ecpm: 0,
+            cpc: Number(row.cpc) || 0,
+            viewability: 0,
+            pmr: 0,
+            rps: 0
+          })).slice(0, days);
+
+          // 💾 SALVAR NO CACHE
+          localStorage.setItem(cacheKey, JSON.stringify(result));
+          localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
+
+          return result;
+        } else if (rpcError) {
+          console.warn('⚠️ getDailyMetrics RPC failed, using fallback:', rpcError.message);
+        }
+      } catch (rpcException) {
+        console.warn('⚠️ getDailyMetrics RPC exception, using fallback:', rpcException);
+      }
+
+      // 🔄 FALLBACK: Método antigo (2 queries separadas)
+      console.log('🔄 getDailyMetrics usando fallback');
 
       // Step 1: Get revenue from daily_project_metrics (much more efficient)
       let revenueQuery = supabase
@@ -1246,7 +1297,7 @@ class SupabaseDataService {
         .select('date, revenue_converted_revshare, project_id')
         .gte('date', startDateStr)
         .lte('date', endDate)
-        .limit(50000); // Aumentar limite para evitar perda de dados
+        .limit(50000);
 
       if (projectId && projectId !== 'all') {
         revenueQuery = revenueQuery.eq('project_id', parseInt(projectId));
@@ -1268,7 +1319,7 @@ class SupabaseDataService {
         `)
         .gte('date', startDateStr)
         .lte('date', endDate)
-        .limit(50000); // Aumentar limite para evitar perda de dados
+        .limit(50000);
 
       if (projectId && projectId !== 'all') {
         spendQuery = spendQuery.eq('campaigns.project_id', parseInt(projectId));
@@ -1454,6 +1505,113 @@ class SupabaseDataService {
           }
         }
       }
+      
+      // 🚀 RPC OPTIMIZATION: Tentar usar get_dashboard_totals primeiro
+      try {
+        // Calcular datas baseado no período
+        let rpcStartDate: string;
+        let rpcEndDate: string;
+        
+        if (period === 'today') {
+          const serverDate = await this.getCurrentServerDate();
+          rpcStartDate = serverDate;
+          rpcEndDate = serverDate;
+        } else if (period === 'yesterday') {
+          const serverDate = await this.getCurrentServerDate();
+          const serverDateObj = new Date(serverDate + 'T00:00:00-03:00');
+          const yesterdayObj = new Date(serverDateObj);
+          yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+          rpcStartDate = yesterdayObj.toISOString().split('T')[0];
+          rpcEndDate = rpcStartDate;
+        } else if (period === 'custom' && date) {
+          rpcStartDate = date;
+          rpcEndDate = date;
+        } else if (period === 'range' && date && filters.endDate) {
+          rpcStartDate = date;
+          rpcEndDate = filters.endDate;
+        } else if (period === '7d') {
+          const today = new Date();
+          today.setDate(today.getDate() - 7);
+          rpcStartDate = today.toISOString().split('T')[0];
+          rpcEndDate = new Date().toISOString().split('T')[0];
+        } else if (period === '30d') {
+          const today = new Date();
+          today.setDate(today.getDate() - 30);
+          rpcStartDate = today.toISOString().split('T')[0];
+          rpcEndDate = new Date().toISOString().split('T')[0];
+        } else {
+          // Default: últimos 30 dias
+          const today = new Date();
+          today.setDate(today.getDate() - 30);
+          rpcStartDate = today.toISOString().split('T')[0];
+          rpcEndDate = new Date().toISOString().split('T')[0];
+        }
+
+        const rpcProjectId = projectId && projectId !== 'all' ? parseInt(projectId) : null;
+
+        console.log('🚀 getDashboardData RPC call:', { rpcStartDate, rpcEndDate, rpcProjectId, period });
+
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_dashboard_totals', {
+          p_start_date: rpcStartDate,
+          p_end_date: rpcEndDate,
+          p_project_id: rpcProjectId
+        });
+
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          const rpc = rpcData[0];
+          
+          // 🚀 Buscar tendências com get_period_comparison
+          let trendsPercentage = { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 };
+          try {
+            const { data: trendsData, error: trendsError } = await supabase.rpc('get_period_comparison', {
+              p_current_start: rpcStartDate,
+              p_current_end: rpcEndDate,
+              p_project_id: rpcProjectId
+            });
+
+            if (!trendsError && trendsData && trendsData.length > 0) {
+              const t = trendsData[0];
+              trendsPercentage = {
+                investment: Number(Number(t.trend_investment || 0).toFixed(1)),
+                revenue: Number(Number(t.trend_revenue || 0).toFixed(1)),
+                profit: Number(Number(t.trend_profit || 0).toFixed(1)),
+                roas: Number(Number(t.trend_roas || 0).toFixed(1)),
+                roi: Number(Number(t.trend_roi || 0).toFixed(1))
+              };
+              console.log('✅ Trends RPC success:', trendsPercentage);
+            }
+          } catch (trendsException) {
+            console.warn('⚠️ Trends RPC failed:', trendsException);
+          }
+
+          const result = {
+            totalSpend: Number(rpc.total_spend) || 0,
+            totalRevenue: Number(rpc.total_revenue) || 0,
+            totalRevenueAfterRevshare: Number(rpc.total_revenue) || 0,
+            totalProfit: Number(rpc.total_profit) || 0,
+            generalRoas: Math.floor(Number(rpc.general_roas) || 0),
+            finalRoi: Math.floor(Number(rpc.final_roi) || 0),
+            activeCampaigns: Number(rpc.active_campaigns) || 0,
+            pausedCampaigns: Number(rpc.paused_campaigns) || 0,
+            trendsPercentage
+          };
+
+          console.log('✅ getDashboardData RPC success:', result);
+
+          // Salvar no cache
+          localStorage.setItem(cacheKey, JSON.stringify(result));
+          localStorage.setItem(`${cacheKey}_timestamp`, String(Date.now()));
+
+          return result;
+        } else if (rpcError) {
+          console.warn('⚠️ getDashboardData RPC failed, using fallback:', rpcError.message);
+        }
+      } catch (rpcException) {
+        console.warn('⚠️ getDashboardData RPC exception, using fallback:', rpcException);
+      }
+
+      // 🔄 FALLBACK: Método antigo (múltiplas queries)
+      console.log('🔄 getDashboardData usando fallback (método antigo)');
       
       // SEMPRE usar métricas diárias quando period = 'today', 'yesterday' ou 'custom'
       if (period === 'today' || period === 'yesterday' || period === 'custom') {
@@ -2134,193 +2292,52 @@ class SupabaseDataService {
   }): Promise<DashboardSummary> {
     try {
       
-      // 🎯 SOLUÇÃO DEFINITIVA: Cálculo direto para intervalos de datas
+      // 🎯 SOLUÇÃO DEFINITIVA: Usar RPC get_dashboard_totals (1 linha, sem paginação!)
       if ((filters?.date && filters?.endDate) || filters?.period === 'range') {
-        console.log({
-          date: filters?.date,
-          endDate: filters?.endDate,
-          period: filters?.period,
-          fullFilters: filters,
-          methodCalled: 'getSummary'
-        });
-
-        // 🚀 NOVA OTIMIZAÇÃO: Usar daily_project_metrics em vez de daily_campaign_metrics
-        console.log({
-          table: 'daily_project_metrics',
-          dateRange: `${filters.date} to ${filters.endDate}`,
-          method: 'Direct revenue_converted_revshare query'
-        });
-
-        // Step 1: Get revenue data from daily_project_metrics (much smaller table)
-        let revenueQuery = supabase
-          .from('daily_project_metrics')
-          .select('revenue_converted_revshare, date, project_id')
-          .gte('date', filters.date)
-          .lte('date', filters.endDate)
-          .limit(50000); // Aumentar limite para evitar perda de dados
-
-        // Apply project filter if specified
-        if (filters.projectId && filters.projectId !== 'all') {
-          revenueQuery = revenueQuery.eq('project_id', filters.projectId);
-        }
-
-        const { data: revenueData, error: revenueError } = await revenueQuery;
-        if (revenueError) {
-          console.error('❌ REVENUE QUERY ERROR:', revenueError);
-          throw revenueError;
-        }
-
-        // Step 2: Get spend data from campaigns WITH PAGINATION
-        let spendData: any[] = [];
-        if (filters.projectId && filters.projectId !== 'all') {
-          // For specific project, get campaigns and their spend
-          const { data: projectCampaigns } = await supabase
-            .from('campaigns')
-            .select('id')
-            .eq('project_id', filters.projectId);
-
-          if (projectCampaigns && projectCampaigns.length > 0) {
-            const campaignIds = projectCampaigns.map(c => c.id);
-
-            // 🚀 PAGINAÇÃO: Buscar em lotes para evitar limite de 1000
-            const pageSize = 1000;
-            let page = 0;
-            let hasMore = true;
-
-            while (hasMore) {
-              const { data: campaignSpendData } = await supabase
-                .from('daily_campaign_metrics')
-                .select('spend, date')
-                .in('campaign_id', campaignIds)
-                .gte('date', filters.date)
-                .lte('date', filters.endDate)
-                .range(page * pageSize, (page + 1) * pageSize - 1);
-
-              if (campaignSpendData && campaignSpendData.length > 0) {
-                spendData.push(...campaignSpendData);
-                page++;
-                hasMore = campaignSpendData.length === pageSize;
-              } else {
-                hasMore = false;
-              }
-            }
-
-          }
-        } else {
-          // For all projects, get all spend data WITH PAGINATION
-          const pageSize = 1000;
-          let page = 0;
-          let hasMore = true;
-
-          while (hasMore) {
-            const { data: allSpendData } = await supabase
-              .from('daily_campaign_metrics')
-              .select('spend, date')
-              .gte('date', filters.date)
-              .lte('date', filters.endDate)
-              .range(page * pageSize, (page + 1) * pageSize - 1);
-
-            if (allSpendData && allSpendData.length > 0) {
-              spendData.push(...allSpendData);
-              page++;
-              hasMore = allSpendData.length === pageSize;
-            } else {
-              hasMore = false;
-            }
-          }
-
-        }
-
-        console.log({
-          revenueRecords: revenueData?.length || 0,
-          spendRecords: spendData?.length || 0
-        });
-
-        // Calcular totais a partir dos novos dados otimizados
-        const totalSpend = spendData.reduce((sum, item) => sum + (Number(item.spend) || 0), 0);
-
-        // Usar revenue_converted_revshare já calculado
-        const totalRevenueAfterRevshare = revenueData.reduce((sum, item) =>
-          sum + (Number(item.revenue_converted_revshare) || 0), 0);
-
-        // Verificar quais datas estão presentes nos dados
-        const datesInRevenue = [...new Set(revenueData.map((item: any) => item.date))].sort();
-        const datesInSpend = [...new Set(spendData.map((item: any) => item.date))].sort();
-        const allDates = [...new Set([...datesInRevenue, ...datesInSpend])].sort();
-
-        const startDateObj = new Date(filters.date + 'T00:00:00');
-        const endDateObj = new Date(filters.endDate + 'T00:00:00');
-        const totalDaysExpected = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-        // Análise diária agregando por data
-        const dailyBreakdown: any = {};
-
-        // Aggregate spend data by date
-        spendData.forEach(item => {
-          const date = item.date;
-          if (!dailyBreakdown[date]) {
-            dailyBreakdown[date] = { date, spend: 0, revenue: 0, recordCount: 0 };
-          }
-          dailyBreakdown[date].spend += Number(item.spend) || 0;
-          dailyBreakdown[date].recordCount += 1;
-        });
-
-        // Aggregate revenue data by date
-        revenueData.forEach(item => {
-          const date = item.date;
-          if (!dailyBreakdown[date]) {
-            dailyBreakdown[date] = { date, spend: 0, revenue: 0, recordCount: 0 };
-          }
-          dailyBreakdown[date].revenue += Number(item.revenue_converted_revshare) || 0;
-        });
-
-        const dailyAnalysis = Object.values(dailyBreakdown).sort((a: any, b: any) => a.date.localeCompare(b.date));
-
-        console.log({
-          method: '✅ Optimized daily_project_metrics queries',
-          dateRange: `${filters.date} to ${filters.endDate}`,
-          revenueRecordsProcessed: revenueData.length,
-          spendRecordsProcessed: spendData.length,
-          totalDaysExpected: totalDaysExpected,
-          daysWithRevenueData: datesInRevenue.length,
-          daysWithSpendData: datesInSpend.length,
-          allDatesWithData: allDates,
-
-          // Totais calculados de dados otimizados
-          finalTotals: {
-            totalSpend: totalSpend,
-            totalRevenueAfterRevshare: totalRevenueAfterRevshare,
-            dataSource: 'Optimized daily_project_metrics + campaigns spend'
-          },
-
-          // Breakdown diário
-          dailyBreakdown: dailyAnalysis,
-
-          // Debug: Verificar alguns registros para entender os dados
-          sampleRevenueRecords: revenueData.slice(0, 3).map(item => ({
-            date: item.date,
-            project_id: item.project_id,
-            revenue_converted_revshare: item.revenue_converted_revshare
-          })),
-          sampleSpendRecords: spendData.slice(0, 3).map(item => ({
-            date: item.date,
-            spend: item.spend
-          }))
-        });
-
-        // Cálculos derivados usando revenue after revshare
-        const totalProfit = totalRevenueAfterRevshare - totalSpend;
-        const generalRoas = totalSpend > 0 ? ((totalRevenueAfterRevshare / totalSpend) - 1) * 100 : 0;  // ROAS as excess
-        const finalRoi = totalSpend > 0 ? (totalProfit / totalSpend) * 100 : 0;
+        const projectIdInt = filters.projectId && filters.projectId !== 'all' ? parseInt(filters.projectId) : null;
         
-        // Buscar campanhas ativas (aproximado)
-        const { data: campaignsData } = await supabase
-          .from('campaigns')
-          .select('id, status');
+        console.log('🚀 getSummary: Using RPC get_dashboard_totals (1 row)', {
+          dateRange: `${filters.date} to ${filters.endDate}`,
+          projectId: projectIdInt
+        });
 
-        const activeCampaigns = (campaignsData || []).filter(c =>
-          c.status && ['Active', 'active', 'ENABLED'].includes(c.status)
-        ).length || 10;
+        // 🚀 SINGLE RPC CALL - Returns 1 row with all aggregated totals
+        const { data: dashboardTotals, error: rpcError } = await supabase.rpc('get_dashboard_totals', {
+          p_start_date: filters.date,
+          p_end_date: filters.endDate,
+          p_project_id: projectIdInt
+        });
+
+        if (rpcError) {
+          console.error('❌ RPC get_dashboard_totals error:', rpcError);
+          throw rpcError;
+        }
+
+        if (!dashboardTotals || dashboardTotals.length === 0) {
+          console.warn('⚠️ RPC returned no data, using defaults');
+          return {
+            totalInvestment: 0,
+            totalRevenue: 0,
+            totalRevenueAfterRevshare: 0,
+            totalProfit: 0,
+            generalRoas: 0,
+            finalRoi: 0,
+            activeCampaigns: 0,
+            campaignStatus: { green: 0, yellow: 0, red: 0 },
+            trendsPercentage: { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 }
+          };
+        }
+
+        const totals = dashboardTotals[0];
+        console.log('✅ RPC get_dashboard_totals result (1 row):', totals);
+
+        // Extract values from RPC result
+        const totalSpend = Number(totals.total_spend) || 0;
+        const totalRevenueAfterRevshare = Number(totals.total_revenue) || 0;
+        const totalProfit = Number(totals.total_profit) || 0;
+        const generalRoas = Number(totals.general_roas) || 0;
+        const finalRoi = Number(totals.final_roi) || 0;
+        const activeCampaigns = Number(totals.active_campaigns) || 0;
         const greenCampaigns = Math.ceil(activeCampaigns * 0.6);
         const yellowCampaigns = Math.ceil(activeCampaigns * 0.3);
         const redCampaigns = activeCampaigns - greenCampaigns - yellowCampaigns;
@@ -2609,47 +2626,100 @@ class SupabaseDataService {
 
       // Note: GAM data no longer needed - using revenue_converted_revshare from daily_campaign_metrics
 
-      // Aggregate daily metrics
+      // 🚀 RPC OPTIMIZATION: Tentar usar get_campaign_detailed_metrics primeiro
+      let aggregatedSpend = 0;
+      let aggregatedClicks = 0;
+      let aggregatedImpressions = 0;
+      let aggregatedConversions = 0;
+      let aggregatedRevenue = 0;
+      let aggregatedGamTotalRequests = 0;
+      let aggregatedGamImpressions = 0;
+      let aggregatedGamClicks = 0;
+      let aggregatedViewableImpressions = 0;
+      let avgGamEcpm = 0;
+      let avgGamCpc = 0;
+      let avgMatchRate = 0;
+      let avgFillRate = 0;
+      let avgGamCtr = 0;
+      let avgViewableImpressions = 0;
 
-      const aggregatedSpend = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.spend) || 0), 0);
-      const aggregatedClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
-      const aggregatedImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.impressions) || 0), 0);
-      const aggregatedConversions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.conversions) || 0), 0);
+      try {
+        console.log('🚀 getCampaignDashboardDataFiltered RPC call:', { campaignId, startDate, endDate });
 
-      // UPDATED: Use revenue after revshare from daily_campaign_metrics
-      const aggregatedRevenue = (dailyMetrics || []).reduce((sum, m) => {
-        const revenueAfterRevshare = Number((m as any).revenue_converted_revshare) || 0;
-        return sum + revenueAfterRevshare;
-      }, 0);
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_campaign_detailed_metrics', {
+          p_campaign_id: campaignId,
+          p_start_date: startDate,
+          p_end_date: endDate
+        });
+
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          const rpc = rpcData[0];
+          
+          aggregatedSpend = Number(rpc.total_spend) || 0;
+          aggregatedClicks = Number(rpc.total_clicks) || 0;
+          aggregatedImpressions = Number(rpc.total_impressions) || 0;
+          aggregatedConversions = Number(rpc.total_conversions) || 0;
+          aggregatedRevenue = Number(rpc.total_revenue) || 0;
+          aggregatedGamTotalRequests = Number(rpc.total_gam_total_requests) || 0;
+          aggregatedGamImpressions = Number(rpc.total_gam_impressions) || 0;
+          aggregatedGamClicks = Number(rpc.total_gam_clicks) || 0;
+          aggregatedViewableImpressions = Number(rpc.total_viewable_impressions) || 0;
+          avgGamEcpm = Number(rpc.avg_gam_ecpm) || 0;
+          avgGamCpc = Number(rpc.avg_gam_cpc) || 0;
+          avgMatchRate = Number(rpc.avg_match_rate) || 0;
+          avgFillRate = Number(rpc.avg_fill_rate) || 0;
+          avgGamCtr = Number(rpc.avg_gam_ctr) || 0;
+          avgViewableImpressions = Number(rpc.total_viewable_impressions) || 0;
+
+          console.log('✅ getCampaignDashboardDataFiltered RPC success:', {
+            spend: aggregatedSpend,
+            revenue: aggregatedRevenue,
+            clicks: aggregatedClicks,
+            impressions: aggregatedImpressions
+          });
+        } else {
+          throw new Error(rpcError?.message || 'RPC returned empty');
+        }
+      } catch (rpcException) {
+        console.warn('⚠️ getCampaignDashboardDataFiltered RPC failed, using fallback:', rpcException);
+        
+        // 🔄 FALLBACK: Método antigo com reduces
+        aggregatedSpend = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.spend) || 0), 0);
+        aggregatedClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.clicks) || 0), 0);
+        aggregatedImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.impressions) || 0), 0);
+        aggregatedConversions = (dailyMetrics || []).reduce((sum, m) => sum + (Number(m.conversions) || 0), 0);
+        aggregatedRevenue = (dailyMetrics || []).reduce((sum, m) => {
+          return sum + (Number((m as any).revenue_converted_revshare) || 0);
+        }, 0);
+
+        const metricsCount = (dailyMetrics || []).length;
+        const aggregatedGamEcpmSum = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_ecpm) || 0), 0);
+        const aggregatedGamCpcSum = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_cpc) || 0), 0);
+        const aggregatedMatchRateSum = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).match_rate) || 0), 0);
+        aggregatedGamTotalRequests = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_total_requests) || 0), 0);
+        aggregatedGamImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_impressions) || 0), 0);
+        const aggregatedFillRateSum = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).fill_rate) || 0), 0);
+        aggregatedGamClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_clicks) || 0), 0);
+        const aggregatedGamCtrSum = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_ctr) || 0), 0);
+        aggregatedViewableImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).viewable_impressions) || 0), 0);
+        
+        avgGamEcpm = metricsCount > 0 ? aggregatedGamEcpmSum / metricsCount : 0;
+        avgGamCpc = metricsCount > 0 ? aggregatedGamCpcSum / metricsCount : 0;
+        avgMatchRate = metricsCount > 0 ? aggregatedMatchRateSum / metricsCount : 0;
+        avgFillRate = metricsCount > 0 ? aggregatedFillRateSum / metricsCount : 0;
+        avgGamCtr = metricsCount > 0 ? aggregatedGamCtrSum / metricsCount : 0;
+        avgViewableImpressions = metricsCount > 0 ? aggregatedViewableImpressions / metricsCount : 0;
+      }
 
       console.log({
         period: filters.period,
         dateRange: `${startDate} to ${endDate}`,
-        recordsCount: (dailyMetrics || []).length,
         aggregatedSpend,
         aggregatedRevenue,
         aggregatedClicks,
         aggregatedImpressions,
         aggregatedConversions
       });
-
-      // Calculate averages for GAM metrics
-      const metricsCount = (dailyMetrics || []).length;
-      const aggregatedGamEcpm = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_ecpm) || 0), 0);
-      const aggregatedGamCpc = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_cpc) || 0), 0);
-      const aggregatedMatchRate = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).match_rate) || 0), 0);
-      const aggregatedGamTotalRequests = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_total_requests) || 0), 0);
-      const aggregatedGamImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_impressions) || 0), 0);
-      const aggregatedFillRate = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).fill_rate) || 0), 0);
-      const aggregatedGamClicks = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_clicks) || 0), 0);
-      const aggregatedGamCtr = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).gam_ctr) || 0), 0);
-      const aggregatedViewableImpressions = (dailyMetrics || []).reduce((sum, m) => sum + (Number((m as any).viewable_impressions) || 0), 0);
-      const avgGamEcpm = metricsCount > 0 ? aggregatedGamEcpm / metricsCount : 0;
-      const avgGamCpc = metricsCount > 0 ? aggregatedGamCpc / metricsCount : 0;
-      const avgMatchRate = metricsCount > 0 ? aggregatedMatchRate / metricsCount : 0;
-      const avgFillRate = metricsCount > 0 ? aggregatedFillRate / metricsCount : 0;
-      const avgGamCtr = metricsCount > 0 ? aggregatedGamCtr / metricsCount : 0;
-      const avgViewableImpressions = metricsCount > 0 ? aggregatedViewableImpressions / metricsCount : 0;
 
       // Build campaign metrics object with filtered data
       const campaignMetrics = {
