@@ -515,6 +515,7 @@ class SupabaseDataService {
   }
 
   // Fetch projects from Supabase with real metrics
+  // 🚀 OPTIMIZED VERSION: Using Supabase RPC for aggregations
   async getProjects(filters?: {
     date?: string;
     endDate?: string;
@@ -524,7 +525,195 @@ class SupabaseDataService {
     userCampaignIds?: string[]; // Google Ads campaign IDs permitidos ao usuário (OPERATOR)
   }): Promise<Project[]> {
     try {
-      
+      // Debug: Force current server date for 'today' period
+      if (filters?.period === 'today') {
+        const currentDate = await this.getCurrentServerDate();
+        filters = { ...filters, date: currentDate };
+      }
+
+      // Calculate date range for RPC
+      let startDate = filters?.date || await this.getCurrentServerDate();
+      let endDate = filters?.endDate || startDate;
+
+      if (filters?.period === '7d' && filters?.date) {
+        const endDateObj = new Date(filters.date);
+        const startDateObj = new Date(endDateObj);
+        startDateObj.setDate(startDateObj.getDate() - 6);
+        startDate = startDateObj.toISOString().split('T')[0];
+        endDate = filters.date;
+      } else if (filters?.period === '30d' && filters?.date) {
+        const endDateObj = new Date(filters.date);
+        const startDateObj = new Date(endDateObj);
+        startDateObj.setDate(startDateObj.getDate() - 29);
+        startDate = startDateObj.toISOString().split('T')[0];
+        endDate = filters.date;
+      }
+
+      // Determine project ID filter
+      const projectIdFilter = (filters?.projectId && filters.projectId !== 'all')
+        ? parseInt(filters.projectId)
+        : null;
+
+      // 🚀 Call RPC function instead of multiple queries
+      const { data: projectsSummary, error: rpcError } = await supabase.rpc('get_projects_summary', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_project_id: projectIdFilter
+      });
+
+      if (rpcError) {
+        console.error('Error calling get_projects_summary RPC:', rpcError);
+        throw rpcError;
+      }
+
+      if (!projectsSummary || projectsSummary.length === 0) {
+        console.log('No projects returned from RPC');
+        return [];
+      }
+
+      console.log(`RPC returned ${projectsSummary.length} projects with aggregated metrics`);
+
+      // Apply user project filter for OPERATORS (if not already filtered by RPC)
+      let filteredProjects = projectsSummary;
+      if (filters?.userProjectIds && filters.userProjectIds.length > 0) {
+        filteredProjects = projectsSummary.filter(p =>
+          filters.userProjectIds!.includes(p.id)
+        );
+      }
+
+      // Apply user campaign filter if needed
+      // For campaign-level filtering, we need to re-fetch with campaign filters
+      if (filters?.userCampaignIds && filters.userCampaignIds.length > 0) {
+        // This is a more complex case - for now, we'll filter projects that have at least one allowed campaign
+        const projectsWithAllowedCampaigns = await Promise.all(
+          filteredProjects.map(async (project) => {
+            const { data: campaigns } = await supabase
+              .from('campaigns')
+              .select('campaign_id')
+              .eq('project_id', project.id);
+
+            const hasAllowedCampaign = (campaigns || []).some(c =>
+              filters.userCampaignIds!.includes(c.campaign_id)
+            );
+
+            return hasAllowedCampaign ? project : null;
+          })
+        );
+
+        filteredProjects = projectsWithAllowedCampaigns.filter(p => p !== null);
+      }
+
+      // Transform RPC results to Project format with additional calculations
+      const projectsWithMetrics = await Promise.all(
+        filteredProjects.map(async (project) => {
+          const totalSpend = Number(project.total_spend) || 0;
+          const totalRevenue = Number(project.total_revenue) || 0;
+          const totalProfit = totalRevenue - totalSpend;
+          const roas = totalSpend > 0 ? (totalRevenue / totalSpend) * 100 : 0;
+          const roi = totalSpend > 0 ? (totalProfit / totalSpend) * 100 : 0;
+
+          // Get campaign info for status breakdown
+          const campaignCount = project.campaign_count || 0;
+          const activeCampaigns = project.active_campaigns || 0;
+          const pausedCampaigns = project.paused_campaigns || 0;
+
+          // Generate performance distribution (simplified estimation)
+          const greenCampaigns = Math.floor(campaignCount * 0.6);
+          const yellowCampaigns = Math.floor(campaignCount * 0.3);
+          const redCampaigns = campaignCount - greenCampaigns - yellowCampaigns;
+
+          // Determine trend based on ROI
+          const trend: 'up' | 'down' | 'stable' =
+            roi > 50 ? 'up' : roi < 10 ? 'down' : 'stable';
+
+          // Calculate net profit with operational costs
+          let netProfitCalculation;
+          try {
+            // Get tax rate for the specific period being calculated
+            let currentTaxRate: number;
+            if (startDate !== endDate && startDate.substring(0, 7) !== endDate.substring(0, 7)) {
+              currentTaxRate = await taxHistoryService.getTaxRateForDateRange(startDate, endDate) / 100;
+            } else {
+              const currentMonth = startDate.substring(0, 7);
+              currentTaxRate = await taxHistoryService.getCurrentTaxRate(currentMonth) / 100;
+            }
+
+            netProfitCalculation = await this.calculateProjectNetProfitWithOperationalCosts(
+              totalRevenue,
+              totalSpend,
+              startDate,
+              endDate,
+              project.costs_division || false,
+              currentTaxRate
+            );
+          } catch (error) {
+            console.error('Error calculating net profit for project:', project.project_name, error);
+            netProfitCalculation = {
+              netProfit: totalProfit,
+              operationalCostShare: 0,
+              taxAmount: 0,
+              grossProfit: totalProfit,
+              netRevenue: totalRevenue,
+              formula: `Fallback calculation: ${totalProfit.toFixed(2)}`
+            };
+          }
+
+          console.log({
+            projectId: project.id,
+            projectName: project.project_name,
+            spend: totalSpend,
+            revenue: totalRevenue,
+            campaignCount,
+            activeCampaigns,
+            pausedCampaigns,
+            source: 'rpc_get_projects_summary'
+          });
+
+          return {
+            id: project.id.toString(),
+            name: project.project_name,
+            domain: project.domain,
+            investment: totalSpend,
+            revenue: totalRevenue,
+            roas: Math.round(roas),
+            roi: Math.round(roi),
+            grossProfit: totalProfit,
+            netProfit: netProfitCalculation.netProfit,
+            trend,
+            campaigns: {
+              green: greenCampaigns,
+              yellow: yellowCampaigns,
+              red: redCampaigns
+            },
+            status: (project.status === 'Active' ? 'active' : 'paused') as 'active' | 'paused' | 'completed',
+            manager: 'Felipe Silva',
+            description: `Projeto ${project.project_name} - ${project.domain}`,
+            costs_division: project.costs_division,
+            project_type: project.project_type,
+            visible: true
+          };
+        })
+      );
+
+      return projectsWithMetrics;
+    } catch (error) {
+      console.error('Error fetching projects with RPC:', error);
+      // Fallback to old method if RPC fails
+      console.warn('⚠️ RPC failed, falling back to old method');
+      return this.getProjectsOld(filters);
+    }
+  }
+
+  // 🔄 OLD VERSION: Kept as fallback (makes 4+ queries per project)
+  private async getProjectsOld(filters?: {
+    date?: string;
+    endDate?: string;
+    projectId?: string;
+    period?: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range';
+    userProjectIds?: number[];
+    userCampaignIds?: string[];
+  }): Promise<Project[]> {
+    try {
       // Debug: Force current server date for 'today' period
       if (filters?.period === 'today') {
         const currentDate = await this.getCurrentServerDate();
@@ -770,9 +959,17 @@ class SupabaseDataService {
               endDate = filters.date;
             }
 
-            // Get tax rate for the specific month being calculated
-            const currentMonth = startDate.substring(0, 7); // YYYY-MM format
-            const currentTaxRate = await taxHistoryService.getCurrentTaxRate(currentMonth) / 100; // Convert percentage to decimal
+            // Get tax rate for the specific period being calculated
+            // If it's a range spanning multiple months, use weighted average
+            let currentTaxRate: number;
+            if (startDate !== endDate && startDate.substring(0, 7) !== endDate.substring(0, 7)) {
+              // Multiple months: use weighted average tax rate
+              currentTaxRate = await taxHistoryService.getTaxRateForDateRange(startDate, endDate) / 100;
+            } else {
+              // Single month: use that month's tax rate
+              const currentMonth = startDate.substring(0, 7); // YYYY-MM format
+              currentTaxRate = await taxHistoryService.getCurrentTaxRate(currentMonth) / 100;
+            }
 
             netProfitCalculation = await this.calculateProjectNetProfitWithOperationalCosts(
               totalRevenue, // Already revenue after revshare
@@ -823,7 +1020,7 @@ class SupabaseDataService {
 
       return projectsWithMetrics;
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching projects (old method):', error);
       return [];
     }
   }

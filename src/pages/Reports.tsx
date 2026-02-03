@@ -142,6 +142,35 @@ export default function Reports() {
 
   const { projects, campaigns, dailyMetrics, summary, loading, error, lastUpdate, refresh } = useSupabaseData(filters);
 
+  // Load tax rate based on selected date (not current date!)
+  useEffect(() => {
+    const loadTaxRateForPeriod = async () => {
+      try {
+        let taxRate: number;
+
+        // If it's a range spanning multiple months, use weighted average
+        if (selectedPeriod === 'range' && selectedDate && selectedEndDate &&
+            selectedDate.substring(0, 7) !== selectedEndDate.substring(0, 7)) {
+          // Multiple months: use weighted average tax rate
+          taxRate = await taxHistoryService.getTaxRateForDateRange(selectedDate, selectedEndDate);
+        } else {
+          // Single month: use that month's tax rate
+          const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7);
+          taxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
+        }
+
+        setCurrentTaxRate(taxRate);
+      } catch (error) {
+        console.error('Error loading tax rate for period:', error);
+        setCurrentTaxRate(8.1); // Fallback
+      }
+    };
+
+    if (selectedDate) {
+      loadTaxRateForPeriod();
+    }
+  }, [selectedDate, selectedEndDate, selectedPeriod]); // Update tax rate whenever date range changes
+
   // Update operational costs when date range changes
   useEffect(() => {
     const updateOperationalCosts = async () => {
@@ -1129,7 +1158,7 @@ export default function Reports() {
                                     <span className="font-mono text-red-600">-{formatCostCurrency(totalInvestment)}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Impostos SN ({currentTaxRate}%):</span>
+                                    <span className="text-muted-foreground">Impostos SN ({currentTaxRate.toFixed(2)}%):</span>
                                     <span className="font-mono text-red-600">-{formatCostCurrency(calculation.taxAmount)}</span>
                                   </div>
                                   <div className="flex justify-between">
@@ -1166,7 +1195,7 @@ export default function Reports() {
                   <div className="text-2xl font-bold text-green-600">
                     {formatCostCurrency(reportData.summary.netProfit)}
                   </div>
-                  <p className="text-xs text-muted-foreground">Após {currentTaxRate}% SN</p>
+                  <p className="text-xs text-muted-foreground">Após {currentTaxRate.toFixed(2)}% SN</p>
                 </CardContent>
               </Card>
 

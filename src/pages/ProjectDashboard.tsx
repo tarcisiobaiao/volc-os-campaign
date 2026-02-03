@@ -346,14 +346,23 @@ export default function ProjectDashboard() {
   React.useEffect(() => {
     const loadFinancialData = async () => {
       try {
-        // Use the month from the selected date being viewed
-        const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7); // YYYY-MM
+        let taxRate: number;
 
-        // Load tax rate for the selected month
-        const taxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
+        // If it's a range spanning multiple months, use weighted average
+        if (selectedPeriod === 'range' && selectedDate && selectedEndDate &&
+            selectedDate.substring(0, 7) !== selectedEndDate.substring(0, 7)) {
+          // Multiple months: use weighted average tax rate
+          taxRate = await taxHistoryService.getTaxRateForDateRange(selectedDate, selectedEndDate);
+        } else {
+          // Single month: use that month's tax rate
+          const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7);
+          taxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
+        }
+
         setCurrentTaxRate(taxRate);
 
         // Load daily operational costs for the selected month
+        const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7);
         const dailyCosts = await operationalCostsService.getDailyActiveCosts(monthToUse);
         setDailyOperationalCosts(dailyCosts);
       } catch (error) {
@@ -366,7 +375,7 @@ export default function ProjectDashboard() {
     if (selectedDate) {
       loadFinancialData();
     }
-  }, [selectedDate]); // Re-calculate when date changes
+  }, [selectedDate, selectedEndDate, selectedPeriod]); // Re-calculate when date range changes
 
   // Use filtered data based on current selections - TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
   // useMemo para evitar re-renders desnecessários
@@ -1098,7 +1107,7 @@ export default function ProjectDashboard() {
             {/* Custom Revenue Card with organic excedent indicator */}
             <Card className="relative overflow-hidden animate-fade-in shadow-card border-success/20 bg-gradient-to-br from-success/5 to-success/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
               <AnimatedGradient colors={["#10B981", "#34D399", "#6EE7B7"]} speed={0.05} blur="medium" />
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 overflow-visible">
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {currentProject?.project_type === 'ADSENSE' ? (
@@ -1114,14 +1123,22 @@ export default function ProjectDashboard() {
                     )}
                   </CardTitle>
                   {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
-                    <TooltipProvider>
+                    <TooltipProvider delayDuration={0}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className={`w-2 h-2 rounded-full ${
                             metrics.organicExcedent.value > 0 ? 'bg-blue-500' : 'bg-orange-500'
-                          } opacity-70`} />
+                          } opacity-70 cursor-help`} />
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs p-3">
+                        <TooltipContent
+                          side="bottom"
+                          align="start"
+                          sideOffset={10}
+                          alignOffset={-10}
+                          className="max-w-xs p-3 z-[99999] bg-popover text-popover-foreground shadow-lg border"
+                          avoidCollisions={true}
+                          collisionPadding={20}
+                        >
                           <div className="space-y-1 text-sm">
                             <div className="font-medium text-primary">Revenue Orgânico</div>
                             <div className="text-muted-foreground">
@@ -1199,18 +1216,26 @@ export default function ProjectDashboard() {
 
             <Card className="relative overflow-hidden animate-fade-in shadow-card border-info/20 bg-gradient-to-br from-info/5 to-info/10 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
               <AnimatedGradient colors={["#8B5CF6", "#A78BFA", "#C4B5FD"]} speed={0.05} blur="medium" />
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 overflow-visible">
                 <div className="flex items-center gap-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Crown className="h-4 w-4" />
                     ROI Final
                   </CardTitle>
-                  <TooltipProvider>
+                  <TooltipProvider delayDuration={0}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="h-3 w-3 text-muted-foreground opacity-60 hover:opacity-100 cursor-help transition-opacity" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs p-4">
+                      <TooltipContent
+                        side="bottom"
+                        align="start"
+                        sideOffset={10}
+                        alignOffset={-10}
+                        className="max-w-sm p-4 z-[99999] bg-popover text-popover-foreground shadow-lg border"
+                        avoidCollisions={true}
+                        collisionPadding={20}
+                      >
                         <div className="space-y-2 text-sm">
                           <div className="font-medium text-primary mb-2">Cálculo do ROI Final</div>
                           {(() => {

@@ -72,12 +72,21 @@ export default function CampaignDetailDashboard() {
         setLoading(true);
         setError(null);
 
-        // Load exchange rate and tax rate
-        const [rate, currentTaxRate] = await Promise.all([
-          preloadExchangeRate(),
-          taxHistoryService.getLatestTaxRate()
-        ]);
+        // Load exchange rate
+        const rate = await preloadExchangeRate();
         setExchangeRate(rate);
+
+        // Load tax rate based on selected period
+        let currentTaxRate: number;
+        if (selectedPeriod === 'range' && selectedDate && selectedEndDate &&
+            selectedDate.substring(0, 7) !== selectedEndDate.substring(0, 7)) {
+          // Multiple months: use weighted average tax rate
+          currentTaxRate = await taxHistoryService.getTaxRateForDateRange(selectedDate, selectedEndDate);
+        } else {
+          // Single month: use that month's tax rate
+          const monthToUse = selectedDate ? selectedDate.substring(0, 7) : new Date().toISOString().slice(0, 7);
+          currentTaxRate = await taxHistoryService.getCurrentTaxRate(monthToUse);
+        }
         setTaxRate(currentTaxRate);
 
         // Load campaign data

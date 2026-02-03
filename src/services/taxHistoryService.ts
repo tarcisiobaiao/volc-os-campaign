@@ -193,6 +193,61 @@ class TaxHistoryService {
     }
   }
 
+  // Get weighted average tax rate for a date range (multiple months)
+  async getTaxRateForDateRange(startDate: string, endDate: string): Promise<number> {
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Get all months in the range
+      const months: string[] = [];
+      const current = new Date(start);
+      current.setDate(1); // Set to first day of month
+
+      while (current <= end) {
+        const monthStr = `${current.getFullYear()}-${(current.getMonth() + 1).toString().padStart(2, '0')}`;
+        months.push(monthStr);
+        current.setMonth(current.getMonth() + 1);
+      }
+
+      // If single month, return that month's rate
+      if (months.length === 1) {
+        return await this.getCurrentTaxRate(months[0]);
+      }
+
+      // Calculate weighted average based on days in each month within the range
+      let totalWeightedRate = 0;
+      let totalDays = 0;
+
+      for (const month of months) {
+        const monthDate = new Date(month + '-01');
+        const nextMonth = new Date(monthDate);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+        // Determine the actual start and end dates for this month within the range
+        const monthStart = monthDate < start ? start : monthDate;
+        const monthEnd = nextMonth > end ? end : new Date(nextMonth.getTime() - 1);
+
+        // Calculate days in this month within the range
+        const daysInMonth = Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        // Get tax rate for this month
+        const rate = await this.getCurrentTaxRate(month);
+
+        totalWeightedRate += rate * daysInMonth;
+        totalDays += daysInMonth;
+      }
+
+      // Return weighted average
+      const weightedAverage = totalDays > 0 ? totalWeightedRate / totalDays : 8.1;
+
+      return weightedAverage;
+    } catch (error) {
+      console.error('Error calculating weighted average tax rate for date range:', error);
+      return 8.1; // Default fallback
+    }
+  }
+
   // Check if today is the first day of a month and auto-create next month tax record
   async checkAndCreateNextMonthTax(): Promise<boolean> {
     try {
