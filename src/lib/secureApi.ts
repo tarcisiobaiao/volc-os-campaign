@@ -1,7 +1,9 @@
 // Secure API client for making requests to our backend server
 // This prevents exposing Supabase credentials in the frontend
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// In production (Vercel), VITE_API_URL is '/api' or empty
+// In development, it might be 'http://localhost:3001'
+const API_BASE_URL = import.meta.env.VITE_API_URL === '/api' ? '' : (import.meta.env.VITE_API_URL || '');
 
 interface QueryFilter {
   field: string;
@@ -117,7 +119,7 @@ class SecureApiClient {
 
   // Health check
   async healthCheck(): Promise<{ status: string; message: string }> {
-    return this.request<{ status: string; message: string }>('/health');
+    return this.request<{ status: string; message: string }>('/api/health');
   }
 }
 
