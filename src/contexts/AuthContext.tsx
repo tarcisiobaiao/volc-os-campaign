@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { secureApi } from "@/lib/secureApi";
 
 export interface UserProfile {
   id?: string; // UUID
@@ -52,21 +53,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
-      // Use REST API directly as Supabase JS client has connection issues
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/users?select=*&email=eq.${user.email}`, {
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Use secure API to avoid exposing Supabase credentials
+      const profiles = await secureApi.queryUsers(user.email || '');
 
-      if (response.ok) {
-        const profiles = await response.json();
-        if (profiles && profiles.length > 0) {
-          setUserProfile(profiles[0]);
-          return true;
-        }
+      if (profiles && profiles.length > 0) {
+        setUserProfile(profiles[0]);
+        return true;
       }
 
       // User not found

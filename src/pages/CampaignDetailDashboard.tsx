@@ -453,7 +453,7 @@ export default function CampaignDetailDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Gasto Total</p>
+                  <p className="text-xs text-muted-foreground">Investimento Total</p>
                   <p className="text-xl font-bold text-red-600">{formatCurrency(campaign.spend)}</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-red-500" />
