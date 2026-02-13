@@ -39,8 +39,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Button>
             <div className="ml-3 flex items-center gap-2 flex-1 min-w-0">
               <img
-                src="/logo-webgocontent-horizontal.png"
-                alt="WebGo Content"
+                src="/volc-logo-baixa.png"
+                alt="VOLC O.S."
                 className="h-7 object-contain max-w-[140px]"
               />
             </div>

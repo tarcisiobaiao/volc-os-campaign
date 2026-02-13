@@ -720,7 +720,7 @@ export default function Reports() {
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, margin, yPosition);
-      pdf.text('Sistema Webgo - Relatórios', pageWidth - margin - 50, yPosition);
+      pdf.text('Sistema VOLC O.S. - Relatórios', pageWidth - margin - 50, yPosition);
 
       // Generate filename
       const reportDate = new Date().toLocaleDateString('pt-BR');

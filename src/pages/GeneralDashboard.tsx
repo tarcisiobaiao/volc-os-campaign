@@ -574,7 +574,7 @@ export default function GeneralDashboard() {
     setWebhookStatus('loading');
 
     try {
-      const response = await fetch('https://n8n.srv860769.hstgr.cloud/webhook/a0466725-8a5f-4b7f-b110-04e413eaf9dc', {
+      const response = await fetch('https://n8n.srv860769.hstgr.cloud/webhook/e8c5cc2a-4154-4527-a5e3-f2cf84fae469', {
         method: 'GET'
       });
       
@@ -609,7 +609,7 @@ export default function GeneralDashboard() {
     setWebhookStatus('loading');
 
     try {
-      const response = await fetch('https://n8n.srv860769.hstgr.cloud/webhook/a3aa1e8c-5d20-41af-96e9-30ba589ae35d', {
+      const response = await fetch('https://n8n.srv860769.hstgr.cloud/webhook/43dd1321-07a0-42f0-a119-65c531ef73fc', {
         method: 'GET'
       });
 

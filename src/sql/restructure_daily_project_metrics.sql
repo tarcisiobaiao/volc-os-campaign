@@ -1,4 +1,4 @@
--- Reestruturação da tabela daily_project_metrics para WebgoV2
+-- Reestruturação da tabela daily_project_metrics para VOLC O.S.
 -- Nova estrutura simplificada para dados do n8n
 
 -- 1. BACKUP da tabela atual (se necessário)

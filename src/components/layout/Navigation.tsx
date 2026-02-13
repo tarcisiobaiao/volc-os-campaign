@@ -163,8 +163,8 @@ export const Navigation: React.FC<NavigationProps> = ({
           {(!isCollapsed || isMobile) ? (
             <div className="animate-fade-in flex-1 flex flex-col items-center justify-center text-center">
               <img
-                src="/logo-webgocontent-horizontal.png"
-                alt="WebGo Content"
+                src="/volc-logo-baixa.png"
+                alt="VOLC O.S."
                 className="h-12 max-w-full object-contain mb-2"
               />
               <p className="text-xs text-muted-foreground flex items-center gap-1">

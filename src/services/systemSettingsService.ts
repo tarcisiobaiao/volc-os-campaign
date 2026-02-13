@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { secureApi } from '@/lib/secureApi';
 
 export interface SystemSetting {
   id: number;
@@ -31,27 +31,27 @@ class SystemSettingsService {
       const cacheKey = `setting_${key}`;
       const cached = this.cache.get(cacheKey);
       const expiry = this.cacheExpiry.get(cacheKey);
-      
+
       if (cached && expiry && Date.now() < expiry) {
         return cached;
       }
 
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', key)
-        .single();
+      const data = await secureApi.query<{ value: string }>({
+        table: 'system_settings',
+        select: 'value',
+        filters: [{ field: 'key', operator: 'eq', value: key }]
+      });
 
-      if (error) {
-        console.error(`Error fetching setting ${key}:`, error);
+      if (!data || data.length === 0) {
+        console.error(`Setting ${key} not found`);
         return null;
       }
 
       // Cache the result
-      this.cache.set(cacheKey, data.value);
+      this.cache.set(cacheKey, data[0].value);
       this.cacheExpiry.set(cacheKey, Date.now() + this.CACHE_TTL);
 
-      return data.value;
+      return data[0].value;
     } catch (error) {
       console.error(`Error in getSetting for ${key}:`, error);
       return null;
@@ -61,18 +61,14 @@ class SystemSettingsService {
   // Generic method to set any setting
   async setSetting(key: string, value: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({
+      await secureApi.update({
+        table: 'system_settings',
+        data: {
           value: value,
           updated_at: new Date().toISOString()
-        })
-        .eq('key', key);
-
-      if (error) {
-        console.error(`Error setting ${key}:`, error);
-        return false;
-      }
+        },
+        filters: [{ field: 'key', operator: 'eq', value: key }]
+      });
 
       // Clear cache
       this.cache.delete(`setting_${key}`);
@@ -183,16 +179,11 @@ class SystemSettingsService {
   // Get all settings by category
   async getSettingsByCategory(category: string): Promise<SystemSetting[]> {
     try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .eq('category', category)
-        .order('key');
-
-      if (error) {
-        console.error(`Error fetching settings for category ${category}:`, error);
-        return [];
-      }
+      const data = await secureApi.query<SystemSetting>({
+        table: 'system_settings',
+        select: '*',
+        filters: [{ field: 'category', operator: 'eq', value: category }]
+      });
 
       return data || [];
     } catch (error) {
@@ -204,28 +195,26 @@ class SystemSettingsService {
   // Batch update multiple settings
   async updateMultipleSettings(updates: Array<{ key: string; value: string }>): Promise<boolean> {
     try {
-      const updatePromises = updates.map(({ key, value }) => 
-        supabase
-          .from('system_settings')
-          .update({
+      const updatePromises = updates.map(({ key, value }) =>
+        secureApi.update({
+          table: 'system_settings',
+          data: {
             value: value,
             updated_at: new Date().toISOString()
-          })
-          .eq('key', key)
+          },
+          filters: [{ field: 'key', operator: 'eq', value: key }]
+        })
       );
 
-      const results = await Promise.all(updatePromises);
-      const hasErrors = results.some(result => result.error);
+      await Promise.all(updatePromises);
 
-      if (!hasErrors) {
-        // Clear cache for updated keys
-        updates.forEach(({ key }) => {
-          this.cache.delete(`setting_${key}`);
-          this.cacheExpiry.delete(`setting_${key}`);
-        });
-      }
+      // Clear cache for updated keys
+      updates.forEach(({ key }) => {
+        this.cache.delete(`setting_${key}`);
+        this.cacheExpiry.delete(`setting_${key}`);
+      });
 
-      return !hasErrors;
+      return true;
     } catch (error) {
       console.error('Error in updateMultipleSettings:', error);
       return false;

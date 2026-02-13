@@ -1,7 +1,7 @@
-# WebGo TestSprite Test Plan
+# VOLC O.S. TestSprite Test Plan
 
 ## Project Overview
-WebGo is a comprehensive management system built with React, TypeScript, and Supabase. It includes authentication, dashboard analytics, campaign management, and reporting features.
+VOLC O.S. is a comprehensive management system built with React, TypeScript, and Supabase. It includes authentication, dashboard analytics, campaign management, and reporting features.
 
 ## Test Configuration
 

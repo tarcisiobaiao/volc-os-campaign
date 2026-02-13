@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, RefreshCw, Clock, CheckCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { secureApi } from "@/lib/secureApi";
 import { useToast } from "@/hooks/use-toast";
 import { clearExchangeRateCache } from "@/utils/currencyUtils";
 
@@ -21,21 +21,20 @@ export const FinalExchangeRateManager: React.FC = () => {
   const loadExchangeRate = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('value, updated_at')
-        .eq('key', 'dollar_exchange_rate')
-        .single();
+      const data = await secureApi.query<{ value: string; updated_at: string }>({
+        table: 'system_settings',
+        select: 'value, updated_at',
+        filters: [{ field: 'key', operator: 'eq', value: 'dollar_exchange_rate' }]
+      });
 
-      if (error) throw error;
-
-      if (data) {
-        const rate = parseFloat(data.value);
+      if (data && data.length > 0) {
+        const record = data[0];
+        const rate = parseFloat(record.value);
         setExchangeRate(rate);
         setNewRate(rate.toFixed(2));
-        
-        if (data.updated_at) {
-          const updateDate = new Date(data.updated_at);
+
+        if (record.updated_at) {
+          const updateDate = new Date(record.updated_at);
           setLastUpdate(updateDate.toLocaleString('pt-BR'));
         }
       }
@@ -61,20 +60,14 @@ export const FinalExchangeRateManager: React.FC = () => {
       setIsUpdating(true);
       const rateValue = parseFloat(newRate);
 
-      const { error: settingsError } = await supabase
-        .from('system_settings')
-        .update({
+      await secureApi.update({
+        table: 'system_settings',
+        data: {
           value: rateValue.toString(),
           updated_at: new Date().toISOString()
-        })
-        .eq('key', 'dollar_exchange_rate');
-
-      if (settingsError) throw settingsError;
-
-      await supabase
-        .from('system_settings')
-        .update({ value: new Date().toISOString() })
-        .eq('key', 'last_currency_update');
+        },
+        filters: [{ field: 'key', operator: 'eq', value: 'dollar_exchange_rate' }]
+      });
 
       setExchangeRate(rateValue);
       setLastUpdate(new Date().toLocaleString('pt-BR'));
@@ -83,7 +76,7 @@ export const FinalExchangeRateManager: React.FC = () => {
       clearExchangeRateCache();
 
       toast({
-        title: "✅ Taxa atualizada!",
+        title: "Taxa atualizada!",
         description: `Nova taxa: R$ ${rateValue.toFixed(2)} por USD`,
       });
 

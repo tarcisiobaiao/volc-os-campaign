@@ -1,4 +1,4 @@
-# WebGo - Sistema de Gestão
+# VOLC O.S. - Sistema de Gestão
 
 ## Sobre o Projeto
 
