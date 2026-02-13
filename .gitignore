@@ -13,6 +13,7 @@ dist-ssr
 *.local
 
 # Environment variables - IMPORTANT: Never commit sensitive credentials
+.env
 .env.server
 .env.production
 .env.*.local
