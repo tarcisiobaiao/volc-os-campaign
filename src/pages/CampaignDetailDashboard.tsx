@@ -19,6 +19,7 @@ import { taxHistoryService } from "@/services/taxHistoryService";
 import { AnimatedGradient } from "@/components/ui/animated-gradient";
 import { OrientacaoBox } from "@/components/campaign/OrientacaoBox";
 import { BiddingActionBox } from "@/components/campaign/BiddingActionBox";
+import { OtimizacaoBox } from "@/components/campaign/OtimizacaoBox";
 
 export default function CampaignDetailDashboard() {
 
@@ -41,6 +42,11 @@ export default function CampaignDetailDashboard() {
     orientacao_resumo: string | null;
     orientacao_json: any | null;
     date: string | null;
+  } | null>(null);
+  const [otimizacaoData, setOtimizacaoData] = useState<{
+    otimizacao_resumo: string | null;
+    otimizacao_json: any | null;
+    otimizacao_realizada_em: string | null;
   } | null>(null);
 
   // Initialize with current server date
@@ -179,6 +185,52 @@ export default function CampaignDetailDashboard() {
     };
 
     loadOrientacaoData();
+  }, [campaignId, selectedDate]);
+
+  // Load otimização (auto adjust) data for today only
+  useEffect(() => {
+    const loadOtimizacaoData = async () => {
+      if (!campaignId || !selectedDate) {
+        return;
+      }
+
+      try {
+        // Get today's date from server
+        const serverDate = await supabaseDataService.getServerDate();
+
+        // Only fetch otimização if we're viewing today's data
+        if (selectedDate !== serverDate) {
+          setOtimizacaoData(null);
+          return;
+        }
+
+        // Fetch otimização data from daily_campaign_metrics for today
+        const { data, error } = await supabase
+          .from('daily_campaign_metrics')
+          .select('otimizacao_resumo, otimizacao_json, otimizacao_realizada_em')
+          .eq('campaign_id', campaignId)
+          .eq('date', serverDate)
+          .maybeSingle();
+
+        if (error) {
+          console.error('❌ Error loading otimização data:', error);
+          setOtimizacaoData(null);
+          return;
+        }
+
+        // Only set data if otimizacao_realizada_em is filled (meaning auto adjust was done)
+        if (data && data.otimizacao_realizada_em) {
+          setOtimizacaoData(data);
+        } else {
+          setOtimizacaoData(null);
+        }
+      } catch (err) {
+        console.error('❌ Error in loadOtimizacaoData:', err);
+        setOtimizacaoData(null);
+      }
+    };
+
+    loadOtimizacaoData();
   }, [campaignId, selectedDate]);
 
   // Helper function to parse date ensuring São Paulo timezone
@@ -1333,6 +1385,17 @@ export default function CampaignDetailDashboard() {
               risk={orientacaoData.orientacao_json.decisao.risco}
               variationPercent={orientacaoData.orientacao_json.decisao.variacao_percent}
               dataReferencia={orientacaoData.date || selectedDate}
+            />
+          </div>
+        )}
+
+        {/* Auto Adjust Realizado */}
+        {otimizacaoData && (
+          <div className="mt-6">
+            <OtimizacaoBox
+              otimizacaoResumo={otimizacaoData.otimizacao_resumo}
+              otimizacaoJson={otimizacaoData.otimizacao_json}
+              otimizacaoRealizadaEm={otimizacaoData.otimizacao_realizada_em}
             />
           </div>
         )}
