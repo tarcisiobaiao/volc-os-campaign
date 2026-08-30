@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import logging
-from typing import Any, Dict, List, Literal, Optional, Protocol, Sequence
+from typing import Any, Dict, List, Literal, Optional, Protocol, Sequence, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -19,17 +19,23 @@ from app.trafego import inventario
 log = logging.getLogger("volc.trafego.diagnostico_persistido")
 
 TIPO_SINAL = "DIAGNOSTICO_ENTREGA"
-ESTADOS_COLETA = {
+EstadoDaColeta: TypeAlias = Literal[
     "com_dados", "vazio_confirmado", "parcial", "inelegivel",
     "nao_suportado", "falhou",
-}
+]
+FrescorDoDiagnostico: TypeAlias = Literal["recente", "velho", "nao_apurado"]
+
+ESTADOS_COLETA: frozenset[str] = frozenset({
+    "com_dados", "vazio_confirmado", "parcial", "inelegivel",
+    "nao_suportado", "falhou",
+})
 EIXOS = (
     "conta", "campanha", "orcamento", "grupo", "anuncio", "keyword",
     "segmentacao", "conversao", "leilao",
 )
 
 COLUNAS_CAMPANHA = (
-    "volc_campaign_id,customer_id,nome,moeda,canal,estado_externo,"
+    "volc_campaign_id,customer_id,campaign_id,nome,moeda,canal,estado_externo,"
     "veiculacao,lido_em"
 )
 COLUNAS_COLETA = (
@@ -137,6 +143,8 @@ class DiagnosticoDeEntrega(BaseModel):
     customer_id: str
     nome_campanha: str
     moeda: Optional[str]
+    estado_coleta: Optional[EstadoDaColeta]
+    frescor: FrescorDoDiagnostico
     janela: str
     leitura: Optional[Leitura]
     degraus: List[DegrauDeEntrega]
@@ -203,6 +211,17 @@ def _leitura(coletada_em: Any, agora: Optional[datetime] = None) -> Optional[Lei
     return Leitura(
         lido_em=instante.isoformat(),
         idade_s=max(0, int((referencia - instante).total_seconds())),
+    )
+
+
+def _frescor(leitura: Optional[Leitura]) -> FrescorDoDiagnostico:
+    """Aplica a mesma janela de confiança usada pelo inventário canônico."""
+    if leitura is None:
+        return "nao_apurado"
+    return (
+        "velho"
+        if leitura.idade_s > inventario.SEGUNDOS_PARA_VELHO
+        else "recente"
     )
 
 
@@ -295,21 +314,65 @@ def _degraus_sem_coleta(motivo: str) -> List[DegrauDeEntrega]:
     ]
 
 
-def _mapa_metricas(linhas: Sequence[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+def _mapa_metricas(
+    linhas: Sequence[Dict[str, Any]], campaign_id: str,
+) -> Dict[str, Dict[str, Any]]:
+    """Aceita somente métricas numéricas no grão da campanha solicitada.
+
+    A v12 tipa a identidade como ``recurso_tipo + recurso_externo + nome``.
+    Filtrar só por nome permitiria que uma métrica de keyword/ad fosse exibida
+    como fato da campanha e que ``valor_texto`` arbitrário atravessasse uma
+    allowlist nominalmente numérica.
+    """
     saida: Dict[str, Dict[str, Any]] = {}
     for linha in linhas:
         nome = str(linha.get("nome") or "")
-        if nome in METRICAS_PERMITIDAS and nome not in saida:
-            saida[nome] = linha
+        if nome not in METRICAS_PERMITIDAS:
+            continue
+        if (
+            str(linha.get("recurso_tipo") or "") != "campaign"
+            or str(linha.get("recurso_externo") or "") != campaign_id
+        ):
+            raise ServicoIndisponivelError(
+                f"A métrica '{nome}' não pertence à campanha da coleta v12."
+            )
+        estado = str(linha.get("estado_valor") or "")
+        if estado not in {"medido", "ausente", "nao_aplicavel", "falhou"}:
+            raise ServicoIndisponivelError(
+                f"A métrica '{nome}' contém estado fora do contrato v12."
+            )
+        if estado == "medido":
+            if linha.get("valor_texto") is not None or _valor_numerico(linha) is None:
+                raise ServicoIndisponivelError(
+                    f"A métrica numérica '{nome}' contém valor incompatível."
+                )
+        elif linha.get("valor_numerico") is not None or linha.get("valor_texto") is not None:
+            raise ServicoIndisponivelError(
+                f"A métrica não medida '{nome}' não pode carregar valor."
+            )
+        if nome in saida:
+            raise ServicoIndisponivelError(
+                f"A coleta v12 contém a métrica duplicada '{nome}'."
+            )
+        saida[nome] = linha
     return saida
 
 
-def _itens_por_tipo(linhas: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+def _itens_por_tipo(
+    linhas: Sequence[Dict[str, Any]], campaign_id: str,
+) -> Dict[str, List[Dict[str, Any]]]:
     saida = {tipo: [] for tipo in TIPOS_ITEM}
     for linha in linhas:
         tipo = str(linha.get("tipo_item") or "")
         if tipo not in TIPOS_ITEM:
             continue
+        if (
+            tipo == "campaign"
+            and str(linha.get("recurso_externo") or "") != campaign_id
+        ):
+            raise ServicoIndisponivelError(
+                "O item de campanha não pertence à campanha da coleta v12."
+            )
         payload = linha.get("payload") if isinstance(linha.get("payload"), dict) else {}
         campos = {
             nome: _caminho(payload, caminho)
@@ -324,12 +387,13 @@ def _itens_por_tipo(linhas: Sequence[Dict[str, Any]]) -> Dict[str, List[Dict[str
 def _degraus_observados(
     estado_coleta: str,
     itens: Sequence[Dict[str, Any]],
-    metricas: Sequence[Dict[str, Any]],
+    metricas: Dict[str, Dict[str, Any]],
     janela: str,
     leitura: Optional[Leitura],
+    campaign_id: str,
 ) -> List[DegrauDeEntrega]:
-    por_tipo = _itens_por_tipo(itens)
-    met = _mapa_metricas(metricas)
+    por_tipo = _itens_por_tipo(itens, campaign_id)
+    met = metricas
     degraus: Dict[str, DegrauDeEntrega] = {
         eixo: _nao_apurado(
             eixo, f"A coleta v12 não trouxe evidência suficiente para {eixo}.",
@@ -367,7 +431,11 @@ def _degraus_observados(
             estado, palavra, frase, impedimento = (
                 "limita", "limitada", "A conta observou a campanha ligada, mas com limitação.", None,
             )
-        elif all(v in {"ENABLED", "ELIGIBLE", "SERVING"} for v in observados):
+        elif (
+            primary is not None
+            and serving is not None
+            and all(v in {"ENABLED", "ELIGIBLE", "SERVING"} for v in observados)
+        ):
             estado, palavra, frase, impedimento = (
                 "ok", "ligada", "A conta observou a campanha ligada sem bloqueio nestes campos.", None,
             )
@@ -421,20 +489,28 @@ def _degraus_observados(
                 if tipo == "ad" else
                 ("ad_group_criterion.primary_status",)
             )
-            estados = [
-                linha["campos"].get(campo)
-                for linha in linhas for campo in campos_estado
-            ]
             evidencias = [
                 _evidencia(f"{rotulo} {i + 1}", campo, linha["campos"].get(campo), janela, leitura)
                 for i, linha in enumerate(linhas) for campo in campos_estado
             ]
-            normalizados = [str(v).upper() for v in estados if v is not None]
             negativos = {"DISABLED", "PAUSED", "REMOVED", "NOT_ELIGIBLE", "ENDED"}
-            if any(v in negativos for v in normalizados):
-                estado, palavra, frase = "bloqueia", "sem elegível", f"A conta observou {rotulo} não elegível."
-            elif normalizados and all(v in {"ENABLED", "ELIGIBLE"} for v in normalizados):
+            positivos = {"ENABLED", "ELIGIBLE"}
+            estados_por_entidade = []
+            for linha in linhas:
+                valores = [linha["campos"].get(campo) for campo in campos_estado]
+                normalizados = [str(v).upper() for v in valores if v is not None]
+                if len(normalizados) != len(campos_estado):
+                    estados_por_entidade.append("indeterminado")
+                elif all(v in positivos for v in normalizados):
+                    estados_por_entidade.append("elegivel")
+                elif any(v in negativos for v in normalizados):
+                    estados_por_entidade.append("nao_elegivel")
+                else:
+                    estados_por_entidade.append("indeterminado")
+            if "elegivel" in estados_por_entidade:
                 estado, palavra, frase = "ok", "presente", f"A conta observou {rotulo} habilitado."
+            elif estados_por_entidade and all(v == "nao_elegivel" for v in estados_por_entidade):
+                estado, palavra, frase = "bloqueia", "sem elegível", f"A conta observou {rotulo} não elegível."
             else:
                 estado, palavra, frase = "nao_apurado", "não apurado", f"Os {rotulo}s vieram sem estado conclusivo."
             degraus[eixo] = DegrauDeEntrega(
@@ -523,7 +599,8 @@ async def obter_diagnostico_campanha(
     if coleta is None:
         diagnostico = DiagnosticoDeEntrega(
             volc_campaign_id=chave, customer_id=customer_id, nome_campanha=nome,
-            moeda=moeda, janela="coleta ainda não executada", leitura=None,
+            moeda=moeda, estado_coleta=None, frescor="nao_apurado",
+            janela="coleta ainda não executada", leitura=None,
             degraus=_degraus_sem_coleta("coleta ainda não executada"), parcial=True,
         )
         return RespostaDoDiagnostico(
@@ -535,7 +612,36 @@ async def obter_diagnostico_campanha(
     if estado not in ESTADOS_COLETA:
         raise ServicoIndisponivelError("A coleta persistida contém estado fora do contrato v12.")
     leitura = _leitura(coleta.get("coletada_em"), agora)
+    if leitura is None:
+        raise ServicoIndisponivelError("A coleta v12 não possui coletada_em válido.")
     janela = _janela(coleta)
+    campaign_id = str(campanha.get("campaign_id") or "")
+    identidade_esperada = {
+        "volc_campaign_id": chave,
+        "customer_id": customer_id,
+        "campaign_id": campaign_id,
+    }
+    for campo, esperado in identidade_esperada.items():
+        observado = str(coleta.get(campo) or "")
+        if not esperado or observado != esperado:
+            raise ServicoIndisponivelError(
+                f"A identidade '{campo}' da coleta v12 diverge da campanha canônica."
+            )
+    frescor = _frescor(leitura)
+    if estado != "falhou" and frescor == "velho":
+        motivo = (
+            f"leitura antiga: {leitura.idade_s}s excedem o limite canônico de "
+            f"{inventario.SEGUNDOS_PARA_VELHO}s"
+        )
+        diagnostico = DiagnosticoDeEntrega(
+            volc_campaign_id=chave, customer_id=customer_id, nome_campanha=nome,
+            moeda=moeda, estado_coleta=estado, frescor="velho", janela=janela,
+            leitura=leitura, degraus=_degraus_sem_coleta(motivo), parcial=True,
+        )
+        return RespostaDoDiagnostico(
+            diagnostico=diagnostico,
+            propostas=CaixaDePropostas(volc_campaign_id=chave, leitura=None),
+        )
     if estado in {"falhou", "inelegivel", "nao_suportado", "vazio_confirmado"}:
         motivos = {
             "falhou": "a coleta terminou em falhou",
@@ -552,7 +658,9 @@ async def obter_diagnostico_campanha(
             motivo = f"{motivo}; tentativa registrada em {leitura.lido_em}"
         diagnostico = DiagnosticoDeEntrega(
             volc_campaign_id=chave, customer_id=customer_id, nome_campanha=nome,
-            moeda=moeda, janela=janela, leitura=leitura_diagnostico,
+            moeda=moeda, estado_coleta=estado,
+            frescor="nao_apurado" if estado == "falhou" else frescor,
+            janela=janela, leitura=leitura_diagnostico,
             degraus=_degraus_sem_coleta(motivo), parcial=True,
         )
         return RespostaDoDiagnostico(
@@ -567,14 +675,21 @@ async def obter_diagnostico_campanha(
         raise ServicoIndisponivelError("A coleta v12 não possui coleta_id.")
     itens = await repositorio.itens(coleta_id)
     metricas = await repositorio.metricas(coleta_id)
-    degraus = _degraus_observados(estado, itens, metricas, janela, leitura)
+    metricas_por_nome = _mapa_metricas(metricas, campaign_id)
+    degraus = _degraus_observados(
+        estado, itens, metricas_por_nome, janela, leitura, campaign_id,
+    )
     moeda_medida = next(
-        (m.get("moeda") for m in metricas if m.get("moeda") and m.get("estado_valor") == "medido"),
+        (
+            m.get("moeda") for m in metricas_por_nome.values()
+            if m.get("moeda") and m.get("estado_valor") == "medido"
+        ),
         None,
     )
     diagnostico = DiagnosticoDeEntrega(
         volc_campaign_id=chave, customer_id=customer_id, nome_campanha=nome,
-        moeda=moeda_medida or moeda, janela=janela, leitura=leitura, degraus=degraus,
+        moeda=moeda_medida or moeda, estado_coleta=estado, frescor=frescor,
+        janela=janela, leitura=leitura, degraus=degraus,
         parcial=(estado == "parcial" or any(d.estado == "nao_apurado" for d in degraus)),
     )
     return RespostaDoDiagnostico(

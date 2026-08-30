@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -16,6 +16,7 @@ from app.trafego.diagnostico_persistido import (
     obter_diagnostico_campanha,
     validar_volc_campaign_id,
 )
+from app.trafego import inventario
 
 
 def _dump(modelo: Any) -> Dict[str, Any]:
@@ -61,19 +62,21 @@ class Repo:
 
 CAMPANHA = {
     "volc_campaign_id": "cmp.search:01",
-    "customer_id": "customer-test",
+    "customer_id": "8017851692",
+    "campaign_id": "24156373085",
     "nome": "Search de prova",
     "moeda": None,
 }
+AGORA_RECENTE = datetime(2026, 8, 28, 12, 10, tzinfo=timezone.utc)
 
 
 def coleta(estado: str = "com_dados") -> Dict[str, Any]:
     return {
         "coleta_id": "coleta-01",
         "estado": estado,
-        "customer_id": "customer-test",
+        "customer_id": "8017851692",
         "volc_campaign_id": "cmp.search:01",
-        "campaign_id": "external-test",
+        "campaign_id": "24156373085",
         "janela_inicio": "2026-08-20",
         "janela_fim": "2026-08-27",
         "coletada_em": "2026-08-28T12:00:00Z",
@@ -86,7 +89,7 @@ def coleta(estado: str = "com_dados") -> Dict[str, Any]:
 ITENS = [
     {
         "tipo_item": "campaign",
-        "recurso_externo": "campaign-resource",
+        "recurso_externo": "24156373085",
         "payload": {
             "campaign": {
                 "status": "ENABLED",
@@ -117,19 +120,23 @@ ITENS = [
 
 METRICAS = [
     {
+        "recurso_tipo": "campaign", "recurso_externo": "24156373085",
         "nome": "impressions", "estado_valor": "medido", "valor_numerico": 0,
         "valor_texto": None, "unidade": None, "moeda": None,
     },
     {
+        "recurso_tipo": "campaign", "recurso_externo": "24156373085",
         "nome": "daily_budget_micros", "estado_valor": "medido",
         "valor_numerico": 10_000_000, "valor_texto": None,
         "unidade": "micros", "moeda": "BRL",
     },
     {
+        "recurso_tipo": "campaign", "recurso_externo": "24156373085",
         "nome": "search_budget_lost_impression_share", "estado_valor": "ausente",
         "valor_numerico": None, "valor_texto": None, "unidade": None, "moeda": None,
     },
     {
+        "recurso_tipo": "campaign", "recurso_externo": "24156373085",
         "nome": "campo_futuro_secreto", "estado_valor": "medido",
         "valor_numerico": 999, "valor_texto": "NAO_PODE_VAZAR",
         "unidade": None, "moeda": None,
@@ -141,17 +148,19 @@ def test_contraprova_envelope_bate_com_frontend():
     resposta = asyncio.run(obter_diagnostico_campanha(
         "cmp.search:01",
         Repo(campanha=CAMPANHA, coleta=coleta(), itens=ITENS, metricas=METRICAS),
-        agora=datetime(2026, 8, 29, 12, tzinfo=timezone.utc),
+        agora=AGORA_RECENTE,
     ))
     dados = _dump(resposta)
     assert set(dados) == {"versao", "diagnostico", "propostas"}
     assert dados["versao"] == 1
     assert dados["diagnostico"]["volc_campaign_id"] == "cmp.search:01"
+    assert dados["diagnostico"]["estado_coleta"] == "com_dados"
+    assert dados["diagnostico"]["frescor"] == "recente"
     assert len(dados["diagnostico"]["degraus"]) == 9
     assert dados["propostas"] == {
         "versao": 1, "volc_campaign_id": "cmp.search:01",
         "propostas": [],
-        "leitura": {"lido_em": "2026-08-28T12:00:00+00:00", "idade_s": 86400},
+        "leitura": {"lido_em": "2026-08-28T12:00:00+00:00", "idade_s": 600},
     }
 
 
@@ -161,6 +170,8 @@ def test_contraprova_campanha_existente_sem_coleta_nao_vira_404():
     ))
     dados = _dump(resposta)
     assert dados["diagnostico"]["janela"] == "coleta ainda não executada"
+    assert dados["diagnostico"]["estado_coleta"] is None
+    assert dados["diagnostico"]["frescor"] == "nao_apurado"
     assert dados["diagnostico"]["leitura"] is None
     assert all(d["estado"] == "nao_apurado" for d in dados["diagnostico"]["degraus"])
     assert "coleta ainda não executada" in dados["diagnostico"]["degraus"][0]["impedimento"]
@@ -190,8 +201,10 @@ def test_contraprova_falha_do_banco_nao_vira_404_ou_ausencia():
 def test_contraprova_estados_terminais_nao_viram_sucesso(estado: str, trecho: str):
     resposta = asyncio.run(obter_diagnostico_campanha(
         "cmp.search:01", Repo(campanha=CAMPANHA, coleta=coleta(estado)),
+        agora=AGORA_RECENTE,
     ))
     dados = _dump(resposta)
+    assert dados["diagnostico"]["estado_coleta"] == estado
     assert all(d["estado"] == "nao_apurado" for d in dados["diagnostico"]["degraus"])
     assert trecho in dados["diagnostico"]["degraus"][0]["impedimento"]
     if estado == "falhou":
@@ -203,18 +216,37 @@ def test_contraprova_estado_parcial_permanece_parcial_e_conservador():
     resposta = asyncio.run(obter_diagnostico_campanha(
         "cmp.search:01",
         Repo(campanha=CAMPANHA, coleta=coleta("parcial"), itens=ITENS[:1], metricas=METRICAS[:1]),
+        agora=AGORA_RECENTE,
     ))
     dados = _dump(resposta)["diagnostico"]
+    assert dados["estado_coleta"] == "parcial"
     assert dados["parcial"] is True
     assert any(d["estado"] == "nao_apurado" for d in dados["degraus"])
     # Ausência de ads/keywords numa coleta parcial não afirma zero observado.
     assert next(d for d in dados["degraus"] if d["eixo"] == "anuncio")["estado"] == "nao_apurado"
 
 
+@pytest.mark.parametrize(
+    "estado",
+    [
+        "com_dados", "vazio_confirmado", "parcial", "inelegivel",
+        "nao_suportado", "falhou",
+    ],
+)
+def test_contraprova_os_seis_estados_v12_atravessam_o_json(estado: str):
+    resposta = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        Repo(campanha=CAMPANHA, coleta=coleta(estado)),
+        agora=AGORA_RECENTE,
+    ))
+    assert _dump(resposta)["diagnostico"]["estado_coleta"] == estado
+
+
 def test_contraprova_zero_medido_nao_vira_ausente():
     resposta = asyncio.run(obter_diagnostico_campanha(
         "cmp.search:01",
         Repo(campanha=CAMPANHA, coleta=coleta(), itens=ITENS, metricas=METRICAS),
+        agora=AGORA_RECENTE,
     ))
     leilao = next(d for d in _dump(resposta)["diagnostico"]["degraus"] if d["eixo"] == "leilao")
     assert leilao["estado"] == "limita"
@@ -222,10 +254,141 @@ def test_contraprova_zero_medido_nao_vira_ausente():
     assert "zero impressões" in leilao["frase"]
 
 
+def test_contraprova_null_de_estado_da_campanha_nunca_vira_ok():
+    item_parcial = {
+        "tipo_item": "campaign",
+        "recurso_externo": "24156373085",
+        "payload": {"campaign": {"status": "ENABLED"}},
+    }
+    resposta = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        Repo(campanha=CAMPANHA, coleta=coleta("parcial"), itens=[item_parcial]),
+        agora=AGORA_RECENTE,
+    ))
+    campanha = next(
+        d for d in _dump(resposta)["diagnostico"]["degraus"]
+        if d["eixo"] == "campanha"
+    )
+    assert campanha["estado"] == "nao_apurado"
+    assert any(e["valor"] is None for e in campanha["evidencias"])
+
+
+def test_contraprova_stale_e_tipado_e_falha_fechado():
+    agora_velho = (
+        datetime(2026, 8, 28, 12, tzinfo=timezone.utc)
+        + timedelta(seconds=inventario.SEGUNDOS_PARA_VELHO + 1)
+    )
+    resposta = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        Repo(campanha=CAMPANHA, coleta=coleta(), itens=ITENS, metricas=METRICAS),
+        agora=agora_velho,
+    ))
+    dados = _dump(resposta)
+    assert dados["diagnostico"]["estado_coleta"] == "com_dados"
+    assert dados["diagnostico"]["frescor"] == "velho"
+    assert all(d["estado"] == "nao_apurado" for d in dados["diagnostico"]["degraus"])
+    assert dados["diagnostico"]["parcial"] is True
+    assert dados["propostas"]["leitura"] is None
+
+
+def test_contraprova_entidade_pausada_nao_bloqueia_outra_elegivel():
+    mistos = [
+        ITENS[0],
+        {
+            "tipo_item": "ad",
+            "payload": {"ad_group_ad": {"status": "PAUSED", "primary_status": "NOT_ELIGIBLE"}},
+        },
+        {
+            "tipo_item": "ad",
+            "payload": {"ad_group_ad": {"status": "ENABLED", "primary_status": "ELIGIBLE"}},
+        },
+        {
+            "tipo_item": "keyword",
+            "payload": {"ad_group_criterion": {"primary_status": "PAUSED"}},
+        },
+        {
+            "tipo_item": "keyword",
+            "payload": {"ad_group_criterion": {"primary_status": "ELIGIBLE"}},
+        },
+    ]
+    resposta = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        Repo(campanha=CAMPANHA, coleta=coleta(), itens=mistos),
+        agora=AGORA_RECENTE,
+    ))
+    degraus = {d["eixo"]: d for d in _dump(resposta)["diagnostico"]["degraus"]}
+    assert degraus["anuncio"]["estado"] == "ok"
+    assert degraus["keyword"]["estado"] == "ok"
+
+
+@pytest.mark.parametrize(
+    "alteracao",
+    [
+        {"recurso_tipo": "keyword"},
+        {"recurso_externo": "99999999999"},
+        {"valor_numerico": None, "valor_texto": "NAO_PODE_VAZAR"},
+    ],
+)
+def test_contraprova_metrica_allowlisted_exige_tipo_grao_e_recurso(alteracao):
+    metrica = {**METRICAS[0], **alteracao}
+    with pytest.raises(ServicoIndisponivelError):
+        asyncio.run(obter_diagnostico_campanha(
+            "cmp.search:01",
+            Repo(campanha=CAMPANHA, coleta=coleta(), itens=ITENS, metricas=[metrica]),
+            agora=AGORA_RECENTE,
+        ))
+
+
+@pytest.mark.parametrize(
+    "campo,valor",
+    [
+        ("volc_campaign_id", "cmp.search:outra"),
+        ("customer_id", "5478096539"),
+        ("campaign_id", "24155134757"),
+    ],
+)
+def test_contraprova_identidade_da_coleta_precisa_bater_com_a_campanha(campo, valor):
+    coleta_inconsistente = {**coleta(), campo: valor}
+    with pytest.raises(ServicoIndisponivelError):
+        asyncio.run(obter_diagnostico_campanha(
+            "cmp.search:01",
+            Repo(campanha=CAMPANHA, coleta=coleta_inconsistente),
+            agora=AGORA_RECENTE,
+        ))
+
+
+def test_contraprova_item_de_campanha_precisa_bater_com_a_identidade_canonica():
+    item_inconsistente = {**ITENS[0], "recurso_externo": "24155134757"}
+    with pytest.raises(ServicoIndisponivelError):
+        asyncio.run(obter_diagnostico_campanha(
+            "cmp.search:01",
+            Repo(campanha=CAMPANHA, coleta=coleta(), itens=[item_inconsistente]),
+            agora=AGORA_RECENTE,
+        ))
+
+
+def test_contraprova_metrica_fora_da_allowlist_nao_pode_injetar_moeda():
+    metrica_bruta = {
+        "recurso_tipo": "keyword", "recurso_externo": "segredo",
+        "nome": "campo_futuro_secreto", "estado_valor": "medido",
+        "valor_numerico": None, "valor_texto": "NAO_PODE_VAZAR",
+        "unidade": None, "moeda": "USD",
+    }
+    resposta = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        Repo(campanha=CAMPANHA, coleta=coleta(), itens=ITENS, metricas=[metrica_bruta]),
+        agora=AGORA_RECENTE,
+    ))
+    dados = _dump(resposta)
+    assert dados["diagnostico"]["moeda"] is None
+    assert "NAO_PODE_VAZAR" not in json.dumps(dados, ensure_ascii=False)
+
+
 def test_contraprova_raw_fora_da_allowlist_nao_vaza():
     resposta = asyncio.run(obter_diagnostico_campanha(
         "cmp.search:01",
         Repo(campanha=CAMPANHA, coleta=coleta(), itens=ITENS, metricas=METRICAS),
+        agora=AGORA_RECENTE,
     ))
     serializado = json.dumps(_dump(resposta), ensure_ascii=False)
     assert "NAO_PODE_VAZAR" not in serializado

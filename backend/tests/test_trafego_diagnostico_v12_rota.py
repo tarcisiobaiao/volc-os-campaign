@@ -29,6 +29,7 @@ class Repo:
         return {
             "volc_campaign_id": volc_campaign_id,
             "customer_id": "customer-test",
+            "campaign_id": "external-test",
             "nome": "Search teste",
             "moeda": None,
         }
@@ -74,6 +75,12 @@ def test_contraprova_rota_entrega_envelope_exato(cliente):
     resposta = cliente.get("/api/trafego/campanhas/cmp.search:01/diagnostico")
     assert resposta.status_code == 200
     assert set(resposta.json()) == {"versao", "diagnostico", "propostas"}
+    assert set(resposta.json()["diagnostico"]) == {
+        "versao", "volc_campaign_id", "customer_id", "nome_campanha", "moeda",
+        "estado_coleta", "frescor", "janela", "leitura", "degraus", "parcial",
+    }
+    assert resposta.json()["diagnostico"]["estado_coleta"] is None
+    assert resposta.json()["diagnostico"]["frescor"] == "nao_apurado"
     assert resposta.json()["diagnostico"]["janela"] == "coleta ainda não executada"
 
 
@@ -102,6 +109,9 @@ def test_contraprova_falhou_permanece_explicito_na_rota(cliente):
     _autorizar(Repo(coleta={
         "coleta_id": "coleta-01",
         "estado": "falhou",
+        "customer_id": "customer-test",
+        "volc_campaign_id": "cmp.search:01",
+        "campaign_id": "external-test",
         "coletada_em": "2026-08-29T10:00:00Z",
         "janela_inicio": "2026-08-28",
         "janela_fim": "2026-08-29",
@@ -111,5 +121,7 @@ def test_contraprova_falhou_permanece_explicito_na_rota(cliente):
     resposta = cliente.get("/api/trafego/campanhas/cmp.search:01/diagnostico")
     assert resposta.status_code == 200
     dados = resposta.json()
+    assert dados["diagnostico"]["estado_coleta"] == "falhou"
+    assert dados["diagnostico"]["frescor"] == "nao_apurado"
     assert dados["propostas"]["leitura"] is None
     assert "terminou em falhou" in dados["diagnostico"]["degraus"][0]["impedimento"]

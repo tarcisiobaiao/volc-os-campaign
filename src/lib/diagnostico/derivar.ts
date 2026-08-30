@@ -1028,7 +1028,13 @@ export function derivarDiagnostico(
   const ctx: Contexto = { ev, campaignId, moeda, janela, agora };
   const linha = linhaDaCampanha(ctx);
 
-  const degraus: DegrauDeEntrega[] = [
+  const leitura = leituraDe(ev._meta?.lido_em_utc, agora);
+  const frescor = leitura == null
+    ? 'nao_apurado'
+    : leitura.idade_s > 30 * 60
+      ? 'velho'
+      : 'recente';
+  const degrausObservados: DegrauDeEntrega[] = [
     degrauDaConta(ctx),
     degrauDaCampanha(ctx),
     degrauDoOrcamento(ctx),
@@ -1039,6 +1045,17 @@ export function derivarDiagnostico(
     degrauDaConversao(ctx),
     degrauDoLeilao(ctx),
   ];
+  // Esta ponte de fixture não lê o ledger v12, por isso não inventa um estado
+  // de coleta. Evidência velha também fecha os degraus: o backend é a fonte
+  // canônica do limiar e usa os mesmos 30 minutos do inventário.
+  const degraus = frescor === 'velho'
+    ? degrausObservados.map(({ eixo }) =>
+        degrauNaoApurado(
+          eixo,
+          'leitura velha',
+          'a evidência da fixture ultrapassou a janela de confiança',
+        ))
+    : degrausObservados;
 
   return {
     versao: VERSAO_DIAGNOSTICO,
@@ -1046,8 +1063,10 @@ export function derivarDiagnostico(
     customer_id: ev._meta?.customer_id ?? '',
     nome_campanha: (linha ? texto(linha, 'campaign.name') : null) ?? opcoes.nome ?? campaignId,
     moeda,
+    estado_coleta: null,
+    frescor,
     janela,
-    leitura: leituraDe(ev._meta?.lido_em_utc, agora),
+    leitura,
     degraus,
     parcial: escadaParcial(degraus),
   };

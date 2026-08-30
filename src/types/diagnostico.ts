@@ -98,6 +98,18 @@ export const EIXOS_DE_ENTREGA: readonly EixoDeEntrega[] = [
  */
 export type EstadoDoDegrau = 'bloqueia' | 'limita' | 'ok' | 'nao_apurado';
 
+/** Desfecho persistido pelo ledger v12_01; `null` significa que nunca houve coleta. */
+export type EstadoDaColetaDiagnostico =
+  | 'com_dados'
+  | 'vazio_confirmado'
+  | 'parcial'
+  | 'inelegivel'
+  | 'nao_suportado'
+  | 'falhou';
+
+/** Frescor da fotografia, pela mesma janela canônica usada pelo inventário. */
+export type FrescorDoDiagnostico = 'recente' | 'velho' | 'nao_apurado';
+
 export interface DegrauDeEntrega {
   eixo: EixoDeEntrega;
   estado: EstadoDoDegrau;
@@ -141,6 +153,10 @@ export interface DiagnosticoDeEntrega {
   nome_campanha: string;
   /** Moeda da conta. `null` = não declarada — nunca assumida como BRL. */
   moeda: string | null;
+  /** Estado exato do ledger; `null` = campanha existente ainda sem coleta. */
+  estado_coleta: EstadoDaColetaDiagnostico | null;
+  /** Leitura velha ou sem carimbo nunca autoriza um degrau `ok`. */
+  frescor: FrescorDoDiagnostico;
   /** A janela das métricas, em português. Número sem janela não é medição. */
   janela: string;
   /** Quando o diagnóstico foi apurado. */
