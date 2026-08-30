@@ -1,6 +1,6 @@
 # ADDENDUM V1.2 — execução factual da fila de recuperação
 
-*2026-08-29 · branch `integration/global-closure-20260829`*
+*2026-08-29 · linha oficial `volc-os-v2`*
 
 Este addendum substitui fatos operacionais da v1.1 que envelheceram durante a
 própria janela. Ele não promove tarefas e não autoriza ação externa.
@@ -16,9 +16,9 @@ própria janela. Ele não promove tarefas e não autoriza ação externa.
 | Fronteira Criativa S0 | **aceita e integrada** | `e776da0` + `1415713`; tenant preservado no pós-despacho |
 | Demand Gen | **aceito e integrado, ainda sem criação produtiva** | `ca308d3` + `bdf218e`; fronteira HTTP fail-closed |
 | Ratchet pytest | **rejeitado** | candidato alterava `pytest.ini` para coletar `teste_*`, proibido pela M-W2-03 |
-| Search diagnóstico Gemini | **rejeitado; correção em curso** | consultava tabelas/colunas inexistentes e colapsava falha/ausência em 404 |
-| PMax Gemini | **rejeitado; correção em curso** | campos GAQL v25 inexistentes, zero fabricado, Brand Guidelines ausente e limites incorretos |
-| Health/deadman Gemini | **em revisão independente** | nenhum merge antes do veredito |
+| Search diagnóstico Gemini | **corrigido, aceito e integrado** | ledger v12 real; stale/null/seis estados/grão/identidade provados; `6a55485` + `6cd9380` |
+| PMax Gemini | **corrigido, aceito e integrado read-only** | descriptors v25, envelopes de coleta, Brand Guidelines, limites e resource names reais; `a92349c` |
+| Health/deadman Gemini | **corrigido, aceito e integrado read-only** | tenant/rodada/bucket, sucesso confirmado e taxonomia pública fechada; `94c4682` + `5c25e2e` |
 | RQ-10 — Roadmap/curadoria/grafo | **aguarda convergência técnica** | será uma única passada após Search, PMax e harnesses |
 
 ## Gates da integração já medidos
@@ -30,7 +30,10 @@ própria janela. Ele não promove tarefas e não autoriza ação externa.
   regressão;
 - frontend TypeScript: **76 erros**, exatamente o baseline;
 - Vite build: verde;
-- ORAKUL Predictive após integração: **63 passed**.
+- ORAKUL Predictive após integração: **63 passed**;
+- fechamento Search + PMax + Health na branch oficial: **126 passed**;
+- `volc_ads` após os três merges: **549 passed**;
+- frontend focal do diagnóstico: **76 passed**.
 
 ## Correções à narrativa anterior
 
@@ -44,31 +47,37 @@ própria janela. Ele não promove tarefas e não autoriza ação externa.
 4. O QG não deve subir percentuais por quantidade de commits. Demand Gen e
    ORAKUL continuam, por contrato, parciais; o percentual só muda no RQ-10
    quando cada aceite factual for reconciliado com a fonte viva.
-5. `origin` aponta para um repositório **público** e está centenas de commits
-   atrás. RQ-11 permanece proibido até o dono fornecer um destino privado e
-   autorizar explicitamente o backup.
+5. `origin` aponta para um repositório **público**. O histórico antigo não foi
+   publicado: `volc-os-v2` nasceu de um snapshot saneado e passou a rastrear
+   `origin/volc-os-v2`.
 
 ## Próxima fila, já reordenada
 
-1. concluir correção e revisão Search;
-2. concluir correção e revisão PMax;
-3. concluir revisão Health/deadman;
-4. revisar `6fc7923` (cancelamento/limpeza do harness);
-5. integrar seletivamente o supervisor contínuo, sem importar Roadmap,
+1. revisar `6fc7923` (cancelamento/limpeza do harness);
+2. integrar seletivamente o supervisor contínuo, sem importar Roadmap,
    curadoria ou grafo gerado defasados;
-6. integrar o harness Gemini depois do supervisor e resolver a sobreposição
+3. integrar o harness Gemini depois do supervisor e resolver a sobreposição
    serialmente;
-7. executar gates consolidados em árvore limpa;
-8. reconciliar uma vez o Roadmap Vivo, a curadoria humana e o grafo híbrido;
-9. validar o QG em `localhost:8080`;
-10. somente depois decidir merge na main e backup privado.
+4. executar gates consolidados em árvore limpa;
+5. reconciliar uma vez o Roadmap Vivo, a curadoria humana e o grafo híbrido;
+6. validar o QG em `localhost:8080`.
+
+## Linha oficial criada
+
+`volc-os-v2` passou a ser a branch oficial deste upgrade. Ela nasceu de um
+snapshot saneado da integração porque o histórico antigo continha 14 achados
+de segredo. O snapshot atual passou no verificador forte do projeto; a branch
+foi publicada em `origin/volc-os-v2`. O histórico completo continua preservado
+somente no repositório local.
 
 ## Decisões humanas ainda intactas
 
-- **D9**: URL do repositório privado e autorização de push;
+- **D9**: superada para esta linha — snapshot saneado publicado na branch
+  pública `volc-os-v2`; o histórico antigo permanece somente local;
 - **H1**: confirmação dos vínculos Maquininha e FGTS;
 - **D1/D4/D10**: migrations e janela de segurança que antecedem escrita real;
 - **D5**: `validate_only` real contra a conta de teste.
 
-Nenhuma migration, escrita no Supabase, Google Ads, n8n, push ou deploy foi
-executada nesta convergência.
+Nenhuma migration, escrita no Supabase, Google Ads, n8n ou deploy foi executada
+nesta convergência. O único efeito remoto foi publicar a branch Git saneada
+`volc-os-v2`, com autorização explícita do dono.
