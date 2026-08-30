@@ -1,0 +1,879 @@
+{
+  "$schema_version": 1,
+  "source_kind": "n8n_legacy_metadata",
+  "campos_permitidos": [
+    "ativo",
+    "atualizado_em",
+    "camada",
+    "gatilhos_tipos",
+    "linhas_de_codigo",
+    "nome",
+    "nos",
+    "slug",
+    "source_kind",
+    "source_sha256",
+    "tipos_de_no"
+  ],
+  "campos_recusados": {
+    "id": "ID real do workflow n8n; identificador operacional sensível e desnecessário ao grafo",
+    "gatilhos": "carrega o caminho do webhook (UUID); só o TIPO do gatilho é preservado",
+    "nos_com_codigo": "nomes de nós e volume por nó revelam lógica proprietária; só o agregado é preservado"
+  },
+  "total": 33,
+  "workflows": [
+    {
+      "slug": "atuacao-apply-bidding-webhook-v2",
+      "nome": "Apply Bidding - Webhook v2",
+      "camada": "atuacao",
+      "ativo": true,
+      "nos": 10,
+      "linhas_de_codigo": 146,
+      "atualizado_em": "2025-12-23T13:03:21.000Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "if",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "webhook"
+      ],
+      "source_sha256": "41cda4882e5d8cc1b07e5d553981f44ccd7bb1f1595eb609d70d0988f4112227",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "atuacao-orakul-ai-agent-webgo",
+      "nome": "VOLC - Orakul - AI Agent - Webgo",
+      "camada": "atuacao",
+      "ativo": true,
+      "nos": 61,
+      "linhas_de_codigo": 4812,
+      "atualizado_em": "2026-07-07T19:50:20.722Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "merge",
+        "noOp",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "switch"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "0818283e7bd5ec36928976c22606f6501c868a74a3c8b4399ad59cd75cd5f8d3",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "bola-de-cristal-preditivo",
+      "nome": "Python predict flow final",
+      "camada": "preditivo",
+      "ativo": false,
+      "nos": 46,
+      "linhas_de_codigo": 1102,
+      "atualizado_em": "2026-04-28T19:49:58.509Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "httpRequest",
+        "manualTrigger",
+        "merge",
+        "set"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger"
+      ],
+      "source_sha256": "6f0c1cf9fed24e2b3d8fc5f5cc827cd4fcb0aa6d468e021b14c0b1c806ca791a",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "comportamento-gtm-scroll-funil",
+      "nome": "GTM DATA SCROLL - Funil",
+      "camada": "comportamento",
+      "ativo": false,
+      "nos": 18,
+      "linhas_de_codigo": 888,
+      "atualizado_em": "2026-06-29T16:17:25.934Z",
+      "tipos_de_no": [
+        "clickUp",
+        "code",
+        "httpRequest",
+        "if",
+        "respondToWebhook",
+        "scheduleTrigger",
+        "splitInBatches",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "schedule",
+        "webhook"
+      ],
+      "source_sha256": "e226fdaac545f8cb37f9c1d891c4fb5c463d5712211a0827fe6120d59da64ff3",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "criacao-gads-factory-v3",
+      "nome": "🚀 Google Ads Factory v3.0 - FIXED",
+      "camada": "criacao",
+      "ativo": true,
+      "nos": 171,
+      "linhas_de_codigo": 3308,
+      "atualizado_em": "2026-01-20T19:17:50.000Z",
+      "tipos_de_no": [
+        "chainLlm",
+        "code",
+        "formTrigger",
+        "googleSheets",
+        "httpRequest",
+        "if",
+        "lmChatAzureOpenAi",
+        "lmChatGoogleGemini",
+        "manualTrigger",
+        "outputParserStructured",
+        "scheduleTrigger",
+        "set",
+        "stickyNote"
+      ],
+      "gatilhos_tipos": [
+        "formtrigger",
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "c21e1e21ca4acf927529c06310ef06ce20272763084fe535a8c53315a03bd115",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "custo-force-update-gads",
+      "nome": "FORCE UPDATE GADS",
+      "camada": "custo",
+      "ativo": true,
+      "nos": 2,
+      "linhas_de_codigo": 0,
+      "atualizado_em": "2025-09-15T21:57:52.000Z",
+      "tipos_de_no": [
+        "executeWorkflow",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "webhook"
+      ],
+      "source_sha256": "7f4bb39ef203337d57c8c2321b14a3a8cdf48a1b2b05b006e52b1520d064a313",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "custo-gads-placements-display",
+      "nome": "GOOGLE ADS - PLACEMENTS DISPLAY",
+      "camada": "custo",
+      "ativo": true,
+      "nos": 38,
+      "linhas_de_codigo": 312,
+      "atualizado_em": "2026-08-18T11:06:32.182Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "filter",
+        "httpRequest",
+        "if",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "51edb9e09dfdc750a06e6946287cf3e8fddf2a8b0a109d06f6da5ac182093809",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "custo-gads-placements-display-d1",
+      "nome": "GOOGLE ADS - PLACEMENTS DISPLAY - DAY BEFORE",
+      "camada": "custo",
+      "ativo": true,
+      "nos": 38,
+      "linhas_de_codigo": 312,
+      "atualizado_em": "2026-08-18T11:06:32.707Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "filter",
+        "httpRequest",
+        "if",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "7a53b98978e8f537309350391bbae13d0c41a50c318d20394a0e071c69ded70f",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "custo-gads-report",
+      "nome": "GADS REPORT",
+      "camada": "custo",
+      "ativo": true,
+      "nos": 99,
+      "linhas_de_codigo": 812,
+      "atualizado_em": "2026-07-20T10:41:26.425Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "noOp",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "152bf6cadcdc15f97be92e90e0a4f35be2b50152bb828f2eb74bfb238c4b959c",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "custo-gads-report-d1",
+      "nome": "GADS REPORT - DAY BEFORE OFICIAL",
+      "camada": "custo",
+      "ativo": true,
+      "nos": 91,
+      "linhas_de_codigo": 684,
+      "atualizado_em": "2026-07-20T10:45:31.175Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "noOp",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "d4f882c5f1a039b978b45164c153ba6186824b6d06e573c4dae272a5cd3a48e2",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "front-vincular-campanha-operador",
+      "nome": "WebGo · Vincular campanha ao operador que a criou",
+      "camada": "front",
+      "ativo": true,
+      "nos": 77,
+      "linhas_de_codigo": 884,
+      "atualizado_em": "2026-08-10T13:09:01.964Z",
+      "tipos_de_no": [
+        "code",
+        "filter",
+        "httpRequest",
+        "if",
+        "noOp",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut"
+      ],
+      "gatilhos_tipos": [
+        "schedule"
+      ],
+      "source_sha256": "a34528d9a5b9fd3f62b7bbc06505150c6b3d23727fbda453189711acceef1523",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "front-webgo-new-dashboards",
+      "nome": "Webgo - New dashboards",
+      "camada": "front",
+      "ativo": true,
+      "nos": 29,
+      "linhas_de_codigo": 202,
+      "atualizado_em": "2025-11-10T16:34:59.000Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "stickyNote",
+        "summarize",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "eefc7251a27e6ece78dc787d657901d541d31adcaf50c1eb133eb1418cec424b",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "gads-buscar-id-conversoes",
+      "nome": "Google Ads - Buscar ID de Conversões",
+      "camada": "apoio",
+      "ativo": false,
+      "nos": 7,
+      "linhas_de_codigo": 0,
+      "atualizado_em": "2026-05-11T14:20:18.438Z",
+      "tipos_de_no": [
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger"
+      ],
+      "source_sha256": "f8da8ed0635701c9fb021641db359f73b0f0a2196f9658cdec6a3a6b8dc85c61",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "gads-campaign-search",
+      "nome": "Google Ads Search - Clickup",
+      "camada": "criacao",
+      "ativo": true,
+      "nos": 39,
+      "linhas_de_codigo": 423,
+      "atualizado_em": "2026-02-24T19:57:51.055Z",
+      "tipos_de_no": [
+        "chainLlm",
+        "clickUp",
+        "clickUpTrigger",
+        "code",
+        "filter",
+        "httpRequest",
+        "lmChatGoogleGemini",
+        "noOp",
+        "outputParserStructured",
+        "set"
+      ],
+      "gatilhos_tipos": [
+        "clickuptrigger"
+      ],
+      "source_sha256": "0dc11ab0eabae4c0f7402d5b270b94fc137f8e2710bdb42f5686597b907b80f0",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "gads-new-campaign-validation",
+      "nome": "GOOGLE ADS - New Campaigns Validation",
+      "camada": "decisao",
+      "ativo": false,
+      "nos": 44,
+      "linhas_de_codigo": 486,
+      "atualizado_em": "2026-07-16T20:06:17.909Z",
+      "tipos_de_no": [
+        "aggregate",
+        "clickUp",
+        "code",
+        "filter",
+        "httpRequest",
+        "if",
+        "manualTrigger",
+        "noOp",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "stickyNote"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "b2c385c57705624077528aa42194b8e8d07b6f70d5fc9f853898e878a70ff566",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "gads-search-terms-upgrade-kw",
+      "nome": "KW Optmization - Search Terms upgrade",
+      "camada": "otimizacao",
+      "ativo": false,
+      "nos": 23,
+      "linhas_de_codigo": 636,
+      "atualizado_em": "2026-02-19T23:47:16.388Z",
+      "tipos_de_no": [
+        "code",
+        "gmail",
+        "httpRequest",
+        "if",
+        "merge",
+        "scheduleTrigger",
+        "set",
+        "stickyNote"
+      ],
+      "gatilhos_tipos": [
+        "schedule"
+      ],
+      "source_sha256": "55e736dd23d5249edb251fc05752c86a3050e3f3318d1417481595caec4f8292",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "orakul-02-analysis-engine",
+      "nome": "02 - ORAKUL - Analysis Engine",
+      "camada": "linhagem",
+      "ativo": false,
+      "nos": 14,
+      "linhas_de_codigo": 214,
+      "atualizado_em": "2025-12-23T18:51:31.000Z",
+      "tipos_de_no": [
+        "code",
+        "merge",
+        "postgres",
+        "scheduleTrigger",
+        "set"
+      ],
+      "gatilhos_tipos": [
+        "schedule"
+      ],
+      "source_sha256": "a1cdea1fca9c5efbe9c5e38b8c42323cf9da8354a1da17bc29430ed8805e8977",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "orakul-predictive-integrado-v1",
+      "nome": "ORAKUL + PredictiveModel Integrado v1.0",
+      "camada": "linhagem",
+      "ativo": false,
+      "nos": 12,
+      "linhas_de_codigo": 1405,
+      "atualizado_em": "2025-12-25T22:16:49.000Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "manualTrigger",
+        "merge",
+        "set"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger"
+      ],
+      "source_sha256": "9284f243f6fd511e5ffe6b7cd3ee27c55de3723b980b96938709845a0dc8ea79",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "orakul-vos-auto-adjust",
+      "nome": "ORAKUL V.OS AUTO ADJUST",
+      "camada": "decisao",
+      "ativo": false,
+      "nos": 21,
+      "linhas_de_codigo": 2254,
+      "atualizado_em": "2026-02-19T23:47:42.876Z",
+      "tipos_de_no": [
+        "code",
+        "gmail",
+        "httpRequest",
+        "if",
+        "merge",
+        "noOp",
+        "scheduleTrigger",
+        "splitInBatches"
+      ],
+      "gatilhos_tipos": [
+        "schedule"
+      ],
+      "source_sha256": "666cecf8d3e633c775bd619bc8eb6945e245b23a6a67edc91ba40dcb7c0f8efc",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "otimizacao-cta-congruencia-page",
+      "nome": "CTA Optimization - Congruência de page",
+      "camada": "otimizacao",
+      "ativo": false,
+      "nos": 14,
+      "linhas_de_codigo": 587,
+      "atualizado_em": "2026-05-11T14:08:34.088Z",
+      "tipos_de_no": [
+        "chainLlm",
+        "clickUp",
+        "code",
+        "httpRequest",
+        "lmChatGoogleGemini",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches"
+      ],
+      "gatilhos_tipos": [
+        "schedule"
+      ],
+      "source_sha256": "545cf2afe2579795da9d5b7caae5968c273f215f80aa2b0b037b44c821cbf27a",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "pauta-kw-minning-pautador-pro",
+      "nome": "KW Minning - Pautador Pro",
+      "camada": "pauta",
+      "ativo": true,
+      "nos": 30,
+      "linhas_de_codigo": 1281,
+      "atualizado_em": "2026-08-18T14:03:03.041Z",
+      "tipos_de_no": [
+        "agent",
+        "code",
+        "httpRequest",
+        "if",
+        "lmChatGoogleGemini",
+        "merge",
+        "outputParserStructured",
+        "perplexityTool",
+        "set",
+        "splitInBatches",
+        "toolThink",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "webhook"
+      ],
+      "source_sha256": "a87f71b09e506d6e1ca6a2432d3534a95628bd70ff15ec52e2f61ac97a2ec717",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "pauta-recomendador-semantico-p3",
+      "nome": "Subflow: Recomendador Semântico P3+",
+      "camada": "pauta",
+      "ativo": true,
+      "nos": 33,
+      "linhas_de_codigo": 256,
+      "atualizado_em": "2026-05-11T13:58:44.067Z",
+      "tipos_de_no": [
+        "agent",
+        "clickUp",
+        "code",
+        "executeWorkflowTrigger",
+        "httpRequest",
+        "if",
+        "lmChatOpenAi",
+        "manualTrigger",
+        "noOp",
+        "set",
+        "splitInBatches"
+      ],
+      "gatilhos_tipos": [
+        "executeworkflowtrigger",
+        "manualtrigger"
+      ],
+      "source_sha256": "a64013e0aa14ebd286ff5c4541fb2baf6442199b4f0694428ad22a99f5883daa",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-force-update-gam",
+      "nome": "FORCE UPDATE GAM",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 3,
+      "linhas_de_codigo": 0,
+      "atualizado_em": "2025-09-20T11:16:42.000Z",
+      "tipos_de_no": [
+        "executeWorkflow",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "webhook"
+      ],
+      "source_sha256": "33ee5a7c80ecabb6d0ad4744957c31bf8dff478dfb99b7da8472d987048b68cd",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-adsense-projects",
+      "nome": "GAM + ADSENSE - PROJECTS REVENUE",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 164,
+      "linhas_de_codigo": 1004,
+      "atualizado_em": "2026-07-22T22:41:28.346Z",
+      "tipos_de_no": [
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "stickyNote",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "958aa300f51b53ceca4b02514f9095008b1297ae8c320a8e6611d5405e2d7fb3",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-adsense-projects-d1",
+      "nome": "GAM + ADSENSE - PROJECTS REVENUE - DAY BEFORE",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 163,
+      "linhas_de_codigo": 1004,
+      "atualizado_em": "2026-07-22T22:58:29.006Z",
+      "tipos_de_no": [
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "stickyNote",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "8cec2a95186a8673fcbb40e582d46c89a0b81c219cc8c89846efb876767d2180",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-campaign-id",
+      "nome": "GAM REPORT - CAMPAIGN ID",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 304,
+      "linhas_de_codigo": 2206,
+      "atualizado_em": "2026-07-22T22:33:29.442Z",
+      "tipos_de_no": [
+        "aggregate",
+        "code",
+        "httpRequest",
+        "if",
+        "limit",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "stickyNote",
+        "summarize",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "1c40d7ff8d67b60822a933f677fc3d3afd4c2e8e23e71cf8a840989cb08b1d37",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-campaign-id-d1",
+      "nome": "GAM REPORT - CAMPAIGN ID -  DAY BEFORE OFICIAL",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 295,
+      "linhas_de_codigo": 2176,
+      "atualizado_em": "2026-07-22T22:26:28.749Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "if",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "stickyNote",
+        "summarize",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "1a0b8b07b233fc8614023f808f770dfdc26f1a4d6fcad56629b346deb2238c8f",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-ecpm-hourly",
+      "nome": "GAM - ECPM HOURLY",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 132,
+      "linhas_de_codigo": 630,
+      "atualizado_em": "2026-08-18T10:31:23.870Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "manualTrigger",
+        "noOp",
+        "scheduleTrigger",
+        "set",
+        "splitOut",
+        "stickyNote",
+        "summarize",
+        "supabase",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "789ce45693a6ec76a0a19e7842da5b17ee755f78e742081e33795c615b9bf9c9",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-placements-display",
+      "nome": "GAM - PLACEMENTES DISPLAY",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 165,
+      "linhas_de_codigo": 2642,
+      "atualizado_em": "2026-08-18T14:37:51.857Z",
+      "tipos_de_no": [
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "summarize",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "f307163884418908838f17eba1cb5a8ba0bebf7521ee4bdc26e86f6875977796",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-gam-placements-display-d1",
+      "nome": "GAM - PLACEMENTES DISPLAY - DAY BEFORE",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 165,
+      "linhas_de_codigo": 2642,
+      "atualizado_em": "2026-08-18T14:37:53.106Z",
+      "tipos_de_no": [
+        "code",
+        "filter",
+        "httpRequest",
+        "manualTrigger",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches",
+        "splitOut",
+        "summarize",
+        "wait",
+        "xml"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule"
+      ],
+      "source_sha256": "9c558abf246adbf554ec9441ba0c2c7f8fd07b910710c2ace57efc86ccd15af7",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-joinads-d1",
+      "nome": "JOIN ADS - REPORT - DAY BEFORE",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 17,
+      "linhas_de_codigo": 350,
+      "atualizado_em": "2026-08-11T12:24:15.254Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "if",
+        "manualTrigger",
+        "merge",
+        "scheduleTrigger",
+        "set",
+        "stickyNote",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule",
+        "webhook"
+      ],
+      "source_sha256": "821f3b87925e299a1275407634318a95bfadd1b323287925f2198ec3985cadfb",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "receita-joinads-intraday",
+      "nome": "JOIN ADS - REPORT - INTRA DAY",
+      "camada": "receita",
+      "ativo": true,
+      "nos": 18,
+      "linhas_de_codigo": 387,
+      "atualizado_em": "2026-08-11T12:02:59.515Z",
+      "tipos_de_no": [
+        "code",
+        "httpRequest",
+        "if",
+        "manualTrigger",
+        "merge",
+        "scheduleTrigger",
+        "set",
+        "stickyNote",
+        "webhook"
+      ],
+      "gatilhos_tipos": [
+        "manualtrigger",
+        "schedule",
+        "webhook"
+      ],
+      "source_sha256": "4a5a6bcc1c423df04ed08cb14663faa05c5842e7f8965bd25af67edd11a7e5da",
+      "source_kind": "n8n_legacy_metadata"
+    },
+    {
+      "slug": "rsa-darwin-optimizer-ctr",
+      "nome": "🧬 RSA Darwin Optimizer - Auto-Otimização de CTR (God Beast Mode)",
+      "camada": "otimizacao",
+      "ativo": false,
+      "nos": 21,
+      "linhas_de_codigo": 612,
+      "atualizado_em": "2026-05-11T14:08:07.297Z",
+      "tipos_de_no": [
+        "agent",
+        "code",
+        "filter",
+        "gmail",
+        "httpRequest",
+        "if",
+        "lmChatOpenAi",
+        "merge",
+        "scheduleTrigger",
+        "set",
+        "splitInBatches"
+      ],
+      "gatilhos_tipos": [
+        "schedule"
+      ],
+      "source_sha256": "3752f26e14bc243bf7bf07565d6f121dc69a25bd081a48d0ad5690daead04262",
+      "source_kind": "n8n_legacy_metadata"
+    }
+  ]
+}

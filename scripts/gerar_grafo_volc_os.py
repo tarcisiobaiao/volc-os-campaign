@@ -395,13 +395,33 @@ def add_backend():
     add_edge("cap_capi", nid, "materializa_em")
 
 
+MANIFESTO_N8N = ROOT / "docs" / "volc-os-graph" / "inventario-n8n-sanitizado.json"
+
+
 def add_n8n():
-    meta_paths = sorted((ROOT / "inventario-n8n" / "flows").glob("*.meta.json"))
-    for meta_path in meta_paths:
-        meta = json.loads(meta_path.read_text())
+    """Monta os nós n8n a partir do manifesto sanitizado e RASTREADO.
+
+    Antes, isto lia ``inventario-n8n/flows/*.meta.json`` — diretório gitignored,
+    ausente de qualquer worktree limpa. O build dependia de uma máquina e as 19
+    arestas da curadoria pendiam no vazio. Não há fallback para o diretório
+    local: a fonte é o manifesto ou o build falha.
+
+    Consequência declarada: as arestas que antes vinham da leitura do JSON
+    completo do workflow (tabelas PostgREST, hosts Supabase, integrações
+    externas) não são mais derivadas aqui, porque esses dados não entram no
+    manifesto sanitizado.
+    """
+
+    if not MANIFESTO_N8N.exists():
+        raise SystemExit(
+            f"manifesto n8n rastreado ausente: {MANIFESTO_N8N.relative_to(ROOT)}. "
+            "Gere com scripts/gerar_inventario_n8n_sanitizado.py --source-dir <dir>."
+        )
+    manifesto = json.loads(MANIFESTO_N8N.read_text())
+    for meta in manifesto["workflows"]:
         slug = meta["slug"]
-        flow_path = meta_path.with_name(meta_path.name.replace(".meta.json", ".json"))
-        flow_text = flow_path.read_text(errors="ignore") if flow_path.exists() else ""
+        flow_text = ""
+        meta_path = MANIFESTO_N8N
         cluster = {
             "receita": "measurement", "custo": "measurement", "decisao": "decision",
             "preditivo": "decision", "criacao": "acquisition", "otimizacao": "decision",
@@ -419,10 +439,10 @@ def add_n8n():
         nid = f"n8n:{slug}"
         add_node(nid, meta["nome"], "workflow", cluster, state, 2,
                  f"{meta.get('nos', 0)} nós; {meta.get('linhas_de_codigo', 0)} linhas de código; "
-                 f"gatilhos: {', '.join(meta.get('gatilhos') or []) or 'não identificado'}.",
+                 f"gatilhos: {', '.join(meta.get('gatilhos_tipos') or []) or 'não identificado'}.",
                  f"Ativo declarado: {bool(meta.get('ativo'))}. Referências: hospedado={old_hits}, self-hosted={self_hits}.",
                  str(meta_path.relative_to(ROOT)), active=bool(meta.get("ativo")),
-                 triggers=meta.get("gatilhos") or [], nodes_count=meta.get("nos", 0),
+                 triggers=meta.get("gatilhos_tipos") or [], nodes_count=meta.get("nos", 0),
                  code_lines=meta.get("linhas_de_codigo", 0), old_db_refs=old_hits, self_db_refs=self_hits)
         add_edge("cap_workflows", nid, "contém")
         if meta.get("camada") == "receita": add_edge(nid, "cap_revenue_ingestion", "executa")

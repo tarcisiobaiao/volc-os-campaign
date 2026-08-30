@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-30T12:54:45-03:00",
+  "generated_at": "2026-08-30T18:32:16-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 438,
-    "markdown": 288,
+    "files": 439,
+    "markdown": 289,
     "sql": 150,
-    "tracked": 438,
+    "tracked": 439,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
@@ -15,7 +15,7 @@
       "documentation": 154,
       "generated": 2,
       "module-guide": 30,
-      "product-document": 19,
+      "product-document": 20,
       "project-control": 4,
       "reference": 12,
       "runtime-contract": 20,
@@ -919,9 +919,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 7079,
-      "lines": 88,
-      "sha256": "5ddc513dbc48121850d902460b868656a757c39dc0efecefe1a6fc73328711e1",
+      "bytes": 13985,
+      "lines": 116,
+      "sha256": "1b8c7955d3268cabae022263ba6e23abe6f13aa9f3ef7e09b7e66c04addc8fd8",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1003,9 +1003,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 17692,
+      "bytes": 17693,
       "lines": 250,
-      "sha256": "d81d1b098dfd2e70a8ce9ff04bf15680227190b5ef6a3504c8a7e98ebbbe9cf1",
+      "sha256": "87dc6bdacf192a6eebda1b149b252703f8bf18ac055dd5f8a18690f248ecdb92",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1078,6 +1078,18 @@
       "bytes": 30975,
       "lines": 346,
       "sha256": "9fdad8a6f2d0c0d2fb44f9ec8f529f4961f7739da1dae9636e952dead698412e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/SPEC-P14-T10-V5.md",
+      "extension": ".md",
+      "classification": "product-document",
+      "tracked": true,
+      "bytes": 10756,
+      "lines": 201,
+      "sha256": "826000861fb4d54173dfc7040cb27952eebdb34ee8c983c956f0fc86e61a449e",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2721,7 +2733,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "79fe017e498cd812fdd283ec5e7d9a8d448dd7b54a25cc033e570756ab8cb390",
+      "sha256": "bfa09f55dd6bdd0af499764f20d3fa7822573ac666354902ca2ebb82aa55d0f5",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

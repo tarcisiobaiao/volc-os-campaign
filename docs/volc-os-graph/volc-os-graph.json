@@ -150,7 +150,7 @@
       "state_label": "Planejado",
       "tier": 1,
       "summary": "Audiências, assets, formatos, feed e vídeo/imagem.",
-      "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado.",
+      "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado. 2026-08-30 eec859e: fronteira fail-closed em /provar e /subir; Demand Gen relabelado como Search recusado antes de escopo, ponte, cliente e trava; rota produtiva segue recusada (403). Estado permanece todo: o aceite de P04-T09 declara partial como maximo e tres de cinco criterios seguem sem prova.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -670,7 +670,7 @@
       "state_label": "Inativo / laboratório",
       "tier": 1,
       "summary": "Projeta comportamento futuro e deveria comparar previsão com ocorrido.",
-      "evidence": "Bola de Cristal está inativa e manual: 46 nós, 1.102 linhas, três rotas A/B/C, campanha/data hardcoded, zero persistência. A ideia planned_spend é útil, mas a implementação tem target leakage, avaliação desalinhada e intervalo não calibrado. Registry, predictions, evaluations, drift e schema v12 continuam somente propostas; nenhuma previsão shadow foi persistida no Supabase oficial.",
+      "evidence": "Bola de Cristal está inativa e manual: 46 nós, 1.102 linhas, três rotas A/B/C, campanha/data hardcoded, zero persistência. A ideia planned_spend é útil, mas a implementação tem target leakage, avaliação desalinhada e intervalo não calibrado. Registry, predictions, evaluations, drift e schema v12 continuam somente propostas; nenhuma previsão shadow foi persistida no Supabase oficial. 2026-08-30: permanece inactive. O candidato 7ee202e fechou D1, D3, D4 e a normalizacao idempotente, mas foi rejeitado para integracao por procedencia forjavel; nada disso esta na fonte.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -787,7 +787,7 @@
       "state_label": "Planejado",
       "tier": 1,
       "summary": "Versiona modelos e previsões, mede erro futuro, calibra intervalos, detecta drift e promove challengers somente após vencer baseline com aprovação.",
-      "evidence": "Não existem model registry, prediction ledger, evaluator ou drift events no banco oficial; schema v12, fotografia, previsão e realizado continuam proposta não aplicada. Bola de Cristal não persiste previsões e possui vazamento de futuro.",
+      "evidence": "Não existem model registry, prediction ledger, evaluator ou drift events no banco oficial; schema v12, fotografia, previsão e realizado continuam proposta não aplicada. Bola de Cristal não persiste previsões e possui vazamento de futuro. 2026-08-30: P14-T10 BLOQUEADO. Nada entrou na linha oficial; services/orakul_predictive em eec859e e byte-identico a 51b4e2e. Nao existe ponte confiavel coleta->Core: ObservacaoDiaria so nasce de fixture e de teste, nada converte DocumentoColeta, e o coletor nao modela receita diaria. SPEC v5 rejeitada na revisao adversarial. Proibido promover fixture, replay ou shadow a dado real.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -2359,17 +2359,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "39 nós; 423 linhas de código; gatilhos: clickUpTrigger.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=4.",
-      "source": "inventario-n8n/flows/gads-campaign-search.meta.json",
+      "summary": "39 nós; 423 linhas de código; gatilhos: clickuptrigger.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "clickUpTrigger"
+        "clickuptrigger"
       ],
       "nodes_count": 39,
       "code_lines": 423,
       "old_db_refs": 0,
-      "self_db_refs": 4
+      "self_db_refs": 0
     },
     {
       "id": "n8n:criacao-gads-factory-v3",
@@ -2380,19 +2380,14 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "171 nós; 3308 linhas de código; gatilhos: formTrigger:?, schedule:{}, formTrigger:?, manualTrigger, formTrigger:?, formTrigger:?, formTrigger:?, formTrigger:?.",
+      "summary": "171 nós; 3308 linhas de código; gatilhos: formtrigger, manualtrigger, schedule.",
       "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/criacao-gads-factory-v3.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "formTrigger:?",
-        "schedule:{}",
-        "formTrigger:?",
-        "manualTrigger",
-        "formTrigger:?",
-        "formTrigger:?",
-        "formTrigger:?",
-        "formTrigger:?"
+        "formtrigger",
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 171,
       "code_lines": 3308,
@@ -2462,16 +2457,16 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "10 nós; 146 linhas de código; gatilhos: webhook:1cb2069d-ae6b-4bdc-8773-c1c7fcbf54f3.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=4, self-hosted=0.",
-      "source": "inventario-n8n/flows/atuacao-apply-bidding-webhook-v2.meta.json",
+      "summary": "10 nós; 146 linhas de código; gatilhos: webhook.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "webhook:1cb2069d-ae6b-4bdc-8773-c1c7fcbf54f3"
+        "webhook"
       ],
       "nodes_count": 10,
       "code_lines": 146,
-      "old_db_refs": 4,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -2483,12 +2478,12 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "14 nós; 587 linhas de código; gatilhos: schedule:0 0 6 * * 1.",
+      "summary": "14 nós; 587 linhas de código; gatilhos: schedule.",
       "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/otimizacao-cta-congruencia-page.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:0 0 6 * * 1"
+        "schedule"
       ],
       "nodes_count": 14,
       "code_lines": 587,
@@ -2504,17 +2499,17 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "44 nós; 486 linhas de código; gatilhos: schedule:0 0 6,15 * * *, manualTrigger.",
-      "evidence": "Ativo declarado: False. Referências: hospedado=5, self-hosted=0.",
-      "source": "inventario-n8n/flows/gads-new-campaign-validation.meta.json",
+      "summary": "44 nós; 486 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:0 0 6,15 * * *",
-        "manualTrigger"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 44,
       "code_lines": 486,
-      "old_db_refs": 5,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -2526,12 +2521,12 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "23 nós; 636 linhas de código; gatilhos: schedule:0 6 * * *.",
+      "summary": "23 nós; 636 linhas de código; gatilhos: schedule.",
       "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/gads-search-terms-upgrade-kw.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:0 6 * * *"
+        "schedule"
       ],
       "nodes_count": 23,
       "code_lines": 636,
@@ -2547,17 +2542,17 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "21 nós; 2254 linhas de código; gatilhos: schedule:30 6,18 * * *.",
-      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=4.",
-      "source": "inventario-n8n/flows/orakul-vos-auto-adjust.meta.json",
+      "summary": "21 nós; 2254 linhas de código; gatilhos: schedule.",
+      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:30 6,18 * * *"
+        "schedule"
       ],
       "nodes_count": 21,
       "code_lines": 2254,
       "old_db_refs": 0,
-      "self_db_refs": 4
+      "self_db_refs": 0
     },
     {
       "id": "n8n:bola-de-cristal-preditivo",
@@ -2568,16 +2563,16 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "46 nós; 1102 linhas de código; gatilhos: manualTrigger.",
-      "evidence": "Ativo declarado: False. Referências: hospedado=9, self-hosted=0.",
-      "source": "inventario-n8n/flows/bola-de-cristal-preditivo.meta.json",
+      "summary": "46 nós; 1102 linhas de código; gatilhos: manualtrigger.",
+      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "manualTrigger"
+        "manualtrigger"
       ],
       "nodes_count": 46,
       "code_lines": 1102,
-      "old_db_refs": 9,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -2589,17 +2584,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "61 nós; 4812 linhas de código; gatilhos: manualTrigger, schedule:30 6 * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=20, self-hosted=0.",
-      "source": "inventario-n8n/flows/atuacao-orakul-ai-agent-webgo.meta.json",
+      "summary": "61 nós; 4812 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:30 6 * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 61,
       "code_lines": 4812,
-      "old_db_refs": 20,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -2611,12 +2606,12 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "21 nós; 612 linhas de código; gatilhos: schedule:{\"field\": \"weeks\", \"triggerAtDay\": [3], \"triggerAtHour\": 8}.",
+      "summary": "21 nós; 612 linhas de código; gatilhos: schedule.",
       "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/rsa-darwin-optimizer-ctr.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:{\"field\": \"weeks\", \"triggerAtDay\": [3], \"triggerAtHour\": 8}"
+        "schedule"
       ],
       "nodes_count": 21,
       "code_lines": 612,
@@ -2800,17 +2795,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "30 nós; 1281 linhas de código; gatilhos: webhook:pautador-kw-mining.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=6.",
-      "source": "inventario-n8n/flows/pauta-kw-minning-pautador-pro.meta.json",
+      "summary": "30 nós; 1281 linhas de código; gatilhos: webhook.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "webhook:pautador-kw-mining"
+        "webhook"
       ],
       "nodes_count": 30,
       "code_lines": 1281,
       "old_db_refs": 0,
-      "self_db_refs": 6
+      "self_db_refs": 0
     },
     {
       "id": "n8n:pauta-recomendador-semantico-p3",
@@ -2821,13 +2816,13 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "33 nós; 256 linhas de código; gatilhos: executeWorkflowTrigger, manualTrigger.",
+      "summary": "33 nós; 256 linhas de código; gatilhos: executeworkflowtrigger, manualtrigger.",
       "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/pauta-recomendador-semantico-p3.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "executeWorkflowTrigger",
-        "manualTrigger"
+        "executeworkflowtrigger",
+        "manualtrigger"
       ],
       "nodes_count": 33,
       "code_lines": 256,
@@ -3044,16 +3039,16 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "77 nós; 884 linhas de código; gatilhos: schedule:{\"field\": \"hours\", \"hoursInterval\": 6}.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=8, self-hosted=0.",
-      "source": "inventario-n8n/flows/front-vincular-campanha-operador.meta.json",
+      "summary": "77 nós; 884 linhas de código; gatilhos: schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "schedule:{\"field\": \"hours\", \"hoursInterval\": 6}"
+        "schedule"
       ],
       "nodes_count": 77,
       "code_lines": 884,
-      "old_db_refs": 8,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3065,17 +3060,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "29 nós; 202 linhas de código; gatilhos: manualTrigger, schedule:{\"triggerAtHour\": 6}.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=2, self-hosted=0.",
-      "source": "inventario-n8n/flows/front-webgo-new-dashboards.meta.json",
+      "summary": "29 nós; 202 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:{\"triggerAtHour\": 6}"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 29,
       "code_lines": 202,
-      "old_db_refs": 2,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3266,12 +3261,12 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "2 nós; 0 linhas de código; gatilhos: webhook:a3aa1e8c-5d20-41af-96e9-30ba589ae35d.",
+      "summary": "2 nós; 0 linhas de código; gatilhos: webhook.",
       "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/custo-force-update-gads.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "webhook:a3aa1e8c-5d20-41af-96e9-30ba589ae35d"
+        "webhook"
       ],
       "nodes_count": 2,
       "code_lines": 0,
@@ -3287,12 +3282,12 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "3 nós; 0 linhas de código; gatilhos: webhook:a0466725-8a5f-4b7f-b110-04e413eaf9dc.",
+      "summary": "3 nós; 0 linhas de código; gatilhos: webhook.",
       "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-force-update-gam.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "webhook:a0466725-8a5f-4b7f-b110-04e413eaf9dc"
+        "webhook"
       ],
       "nodes_count": 3,
       "code_lines": 0,
@@ -3308,17 +3303,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "99 nós; 812 linhas de código; gatilhos: manualTrigger, schedule:0 6,12,18,23 * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=32, self-hosted=0.",
-      "source": "inventario-n8n/flows/custo-gads-report.meta.json",
+      "summary": "99 nós; 812 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 6,12,18,23 * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 99,
       "code_lines": 812,
-      "old_db_refs": 32,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3330,17 +3325,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "91 nós; 684 linhas de código; gatilhos: manualTrigger, schedule:{\"triggerAtHour\": 6}.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=28, self-hosted=0.",
-      "source": "inventario-n8n/flows/custo-gads-report-d1.meta.json",
+      "summary": "91 nós; 684 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:{\"triggerAtHour\": 6}"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 91,
       "code_lines": 684,
-      "old_db_refs": 28,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3352,17 +3347,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "164 nós; 1004 linhas de código; gatilhos: manualTrigger, schedule:0 6,12,18,23 * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=28, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-adsense-projects.meta.json",
+      "summary": "164 nós; 1004 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 6,12,18,23 * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 164,
       "code_lines": 1004,
-      "old_db_refs": 28,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3374,17 +3369,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "163 nós; 1004 linhas de código; gatilhos: manualTrigger, schedule:{\"triggerAtHour\": 6}.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=28, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-adsense-projects-d1.meta.json",
+      "summary": "163 nós; 1004 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:{\"triggerAtHour\": 6}"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 163,
       "code_lines": 1004,
-      "old_db_refs": 28,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3396,17 +3391,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "132 nós; 630 linhas de código; gatilhos: manualTrigger, schedule:0 30 * * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=10, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-ecpm-hourly.meta.json",
+      "summary": "132 nós; 630 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 30 * * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 132,
       "code_lines": 630,
-      "old_db_refs": 10,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3418,17 +3413,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "165 nós; 2642 linhas de código; gatilhos: manualTrigger, schedule:0 6,12,18,23 * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=12, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-placements-display.meta.json",
+      "summary": "165 nós; 2642 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 6,12,18,23 * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 165,
       "code_lines": 2642,
-      "old_db_refs": 12,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3440,17 +3435,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "165 nós; 2642 linhas de código; gatilhos: schedule:{\"triggerAtHour\": 6}, manualTrigger.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=12, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-placements-display-d1.meta.json",
+      "summary": "165 nós; 2642 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "schedule:{\"triggerAtHour\": 6}",
-        "manualTrigger"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 165,
       "code_lines": 2642,
-      "old_db_refs": 12,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3462,17 +3457,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "304 nós; 2206 linhas de código; gatilhos: manualTrigger, schedule:0 6,12,18,23 * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=30, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-campaign-id.meta.json",
+      "summary": "304 nós; 2206 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 6,12,18,23 * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 304,
       "code_lines": 2206,
-      "old_db_refs": 30,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3484,17 +3479,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "295 nós; 2176 linhas de código; gatilhos: manualTrigger, schedule:{\"triggerAtHour\": 6}.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=28, self-hosted=0.",
-      "source": "inventario-n8n/flows/receita-gam-campaign-id-d1.meta.json",
+      "summary": "295 nós; 2176 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:{\"triggerAtHour\": 6}"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 295,
       "code_lines": 2176,
-      "old_db_refs": 28,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3506,17 +3501,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "38 nós; 312 linhas de código; gatilhos: manualTrigger, schedule:0 0,6,12,18 * * *.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=6, self-hosted=0.",
-      "source": "inventario-n8n/flows/custo-gads-placements-display.meta.json",
+      "summary": "38 nós; 312 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 0,6,12,18 * * *"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 38,
       "code_lines": 312,
-      "old_db_refs": 6,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3528,17 +3523,17 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "38 nós; 312 linhas de código; gatilhos: manualTrigger, schedule:{\"triggerAtHour\": 6}.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=6, self-hosted=0.",
-      "source": "inventario-n8n/flows/custo-gads-placements-display-d1.meta.json",
+      "summary": "38 nós; 312 linhas de código; gatilhos: manualtrigger, schedule.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:{\"triggerAtHour\": 6}"
+        "manualtrigger",
+        "schedule"
       ],
       "nodes_count": 38,
       "code_lines": 312,
-      "old_db_refs": 6,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -3550,19 +3545,18 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "18 nós; 888 linhas de código; gatilhos: schedule:{\"field\": \"hours\"}, schedule:{\"field\": \"hours\"}, webhook:199df658-e26b-4db5-968c-75e793a6be3b.",
-      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=6.",
-      "source": "inventario-n8n/flows/comportamento-gtm-scroll-funil.meta.json",
+      "summary": "18 nós; 888 linhas de código; gatilhos: schedule, webhook.",
+      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:{\"field\": \"hours\"}",
-        "schedule:{\"field\": \"hours\"}",
-        "webhook:199df658-e26b-4db5-968c-75e793a6be3b"
+        "schedule",
+        "webhook"
       ],
       "nodes_count": 18,
       "code_lines": 888,
       "old_db_refs": 0,
-      "self_db_refs": 6
+      "self_db_refs": 0
     },
     {
       "id": "n8n:receita-joinads-d1",
@@ -3573,19 +3567,19 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "17 nós; 350 linhas de código; gatilhos: manualTrigger, schedule:0 6 * * *, webhook:joinads-day-before.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=8.",
-      "source": "inventario-n8n/flows/receita-joinads-d1.meta.json",
+      "summary": "17 nós; 350 linhas de código; gatilhos: manualtrigger, schedule, webhook.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "manualTrigger",
-        "schedule:0 6 * * *",
-        "webhook:joinads-day-before"
+        "manualtrigger",
+        "schedule",
+        "webhook"
       ],
       "nodes_count": 17,
       "code_lines": 350,
       "old_db_refs": 0,
-      "self_db_refs": 8
+      "self_db_refs": 0
     },
     {
       "id": "n8n:receita-joinads-intraday",
@@ -3596,19 +3590,19 @@
       "state": "declared_active",
       "state_label": "Ativo declarado; eficácia não provada",
       "tier": 2,
-      "summary": "18 nós; 387 linhas de código; gatilhos: schedule:0 6,12,18,23 * * *, webhook:joinads-intraday, manualTrigger.",
-      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=8.",
-      "source": "inventario-n8n/flows/receita-joinads-intraday.meta.json",
+      "summary": "18 nós; 387 linhas de código; gatilhos: manualtrigger, schedule, webhook.",
+      "evidence": "Ativo declarado: True. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": true,
       "triggers": [
-        "schedule:0 6,12,18,23 * * *",
-        "webhook:joinads-intraday",
-        "manualTrigger"
+        "manualtrigger",
+        "schedule",
+        "webhook"
       ],
       "nodes_count": 18,
       "code_lines": 387,
       "old_db_refs": 0,
-      "self_db_refs": 8
+      "self_db_refs": 0
     },
     {
       "id": "component:MetaCapiWizard",
@@ -3737,12 +3731,12 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "14 nós; 214 linhas de código; gatilhos: schedule:{\"field\": \"hours\", \"hoursInterval\": 6}.",
+      "summary": "14 nós; 214 linhas de código; gatilhos: schedule.",
       "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/orakul-02-analysis-engine.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "schedule:{\"field\": \"hours\", \"hoursInterval\": 6}"
+        "schedule"
       ],
       "nodes_count": 14,
       "code_lines": 214,
@@ -3758,12 +3752,12 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "7 nós; 0 linhas de código; gatilhos: manualTrigger.",
+      "summary": "7 nós; 0 linhas de código; gatilhos: manualtrigger.",
       "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
-      "source": "inventario-n8n/flows/gads-buscar-id-conversoes.meta.json",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "manualTrigger"
+        "manualtrigger"
       ],
       "nodes_count": 7,
       "code_lines": 0,
@@ -3779,16 +3773,16 @@
       "state": "inactive",
       "state_label": "Inativo / laboratório",
       "tier": 2,
-      "summary": "12 nós; 1405 linhas de código; gatilhos: manualTrigger.",
-      "evidence": "Ativo declarado: False. Referências: hospedado=3, self-hosted=0.",
-      "source": "inventario-n8n/flows/orakul-predictive-integrado-v1.meta.json",
+      "summary": "12 nós; 1405 linhas de código; gatilhos: manualtrigger.",
+      "evidence": "Ativo declarado: False. Referências: hospedado=0, self-hosted=0.",
+      "source": "docs/volc-os-graph/inventario-n8n-sanitizado.json",
       "active": false,
       "triggers": [
-        "manualTrigger"
+        "manualtrigger"
       ],
       "nodes_count": 12,
       "code_lines": 1405,
-      "old_db_refs": 3,
+      "old_db_refs": 0,
       "self_db_refs": 0
     },
     {
@@ -11202,41 +11196,6 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:atuacao-apply-bidding-webhook-v2",
-      "target": "db:bid_actions",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-apply-bidding-webhook-v2",
-      "target": "db:campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-apply-bidding-webhook-v2",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-apply-bidding-webhook-v2",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-apply-bidding-webhook-v2",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "4 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:atuacao-orakul-ai-agent-webgo",
       "target": "cap_decision",
       "relation": "implementa",
@@ -11249,55 +11208,6 @@
       "relation": "deve_convergir_para",
       "evidence": "",
       "confidence": "curated"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "db:campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "db:projects",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:atuacao-orakul-ai-agent-webgo",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "20 referência(s)",
-      "confidence": "measured"
     },
     {
       "source": "n8n:bola-de-cristal-preditivo",
@@ -11314,27 +11224,6 @@
       "confidence": "curated"
     },
     {
-      "source": "n8n:bola-de-cristal-preditivo",
-      "target": "db:campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:bola-de-cristal-preditivo",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:bola-de-cristal-preditivo",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "9 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:comportamento-gtm-scroll-funil",
       "target": "concept:behavioral_policy_aggregator",
       "relation": "origina",
@@ -11342,51 +11231,9 @@
       "confidence": "curated"
     },
     {
-      "source": "n8n:comportamento-gtm-scroll-funil",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:comportamento-gtm-scroll-funil",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:comportamento-gtm-scroll-funil",
-      "target": "external:supabase-self",
-      "relation": "aponta_para",
-      "evidence": "6 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:criacao-gads-factory-v3",
       "target": "cap_search_birth",
       "relation": "implementa",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:criacao-gads-factory-v3",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:criacao-gads-factory-v3",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:criacao-gads-factory-v3",
-      "target": "external:joinads",
-      "relation": "integra_com",
       "evidence": "",
       "confidence": "measured"
     },
@@ -11405,66 +11252,10 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:custo-gads-placements-display",
-      "target": "db:display_ads_placements",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "6 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:custo-gads-placements-display-d1",
       "target": "cap_cost_ingestion",
       "relation": "executa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display-d1",
-      "target": "db:display_ads_placements",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display-d1",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display-d1",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-placements-display-d1",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "6 referência(s)",
       "confidence": "measured"
     },
     {
@@ -11475,170 +11266,9 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:custo-gads-report",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report",
-      "target": "db:system_settings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "32 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:custo-gads-report-d1",
       "target": "cap_cost_ingestion",
       "relation": "executa",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report-d1",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report-d1",
-      "target": "db:system_settings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report-d1",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report-d1",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report-d1",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:custo-gads-report-d1",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "28 referência(s)",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "db:campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "db:user_campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "db:user_projects",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-vincular-campanha-operador",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "8 referência(s)",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-webgo-new-dashboards",
-      "target": "db:gam_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:front-webgo-new-dashboards",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "2 referência(s)",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-buscar-id-conversoes",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-buscar-id-conversoes",
-      "target": "external:google-ads",
-      "relation": "integra_com",
       "evidence": "",
       "confidence": "measured"
     },
@@ -11647,34 +11277,6 @@
       "target": "cap_search_birth",
       "relation": "implementa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-campaign-search",
-      "target": "db:niche_conversion_mappings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-campaign-search",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-campaign-search",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-campaign-search",
-      "target": "external:supabase-self",
-      "relation": "aponta_para",
-      "evidence": "4 referência(s)",
       "confidence": "measured"
     },
     {
@@ -11692,48 +11294,6 @@
       "confidence": "curated"
     },
     {
-      "source": "n8n:gads-new-campaign-validation",
-      "target": "db:bid_actions",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-new-campaign-validation",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-new-campaign-validation",
-      "target": "db:system_settings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-new-campaign-validation",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-new-campaign-validation",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-new-campaign-validation",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "5 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:gads-search-terms-upgrade-kw",
       "target": "cap_execution",
       "relation": "implementa",
@@ -11746,55 +11306,6 @@
       "relation": "origina",
       "evidence": "",
       "confidence": "curated"
-    },
-    {
-      "source": "n8n:gads-search-terms-upgrade-kw",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-search-terms-upgrade-kw",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:gads-search-terms-upgrade-kw",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-predictive-integrado-v1",
-      "target": "db:campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-predictive-integrado-v1",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-predictive-integrado-v1",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-predictive-integrado-v1",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "3 referência(s)",
-      "confidence": "measured"
     },
     {
       "source": "n8n:orakul-vos-auto-adjust",
@@ -11811,48 +11322,6 @@
       "confidence": "curated"
     },
     {
-      "source": "n8n:orakul-vos-auto-adjust",
-      "target": "db:campaigns",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-vos-auto-adjust",
-      "target": "db:daily_campaign_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-vos-auto-adjust",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-vos-auto-adjust",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-vos-auto-adjust",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:orakul-vos-auto-adjust",
-      "target": "external:supabase-self",
-      "relation": "aponta_para",
-      "evidence": "4 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:otimizacao-cta-congruencia-page",
       "target": "cap_execution",
       "relation": "implementa",
@@ -11867,80 +11336,10 @@
       "confidence": "curated"
     },
     {
-      "source": "n8n:otimizacao-cta-congruencia-page",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:otimizacao-cta-congruencia-page",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:otimizacao-cta-congruencia-page",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:pauta-kw-minning-pautador-pro",
       "target": "cap_keyword_mining",
       "relation": "implementa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "db:pautador_entity_opportunities",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "db:pautador_entity_seed_queries",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "db:pautador_keyword_clusters",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:pauta-kw-minning-pautador-pro",
-      "target": "external:supabase-self",
-      "relation": "aponta_para",
-      "evidence": "6 referência(s)",
       "confidence": "measured"
     },
     {
@@ -11972,52 +11371,10 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:receita-gam-adsense-projects",
-      "target": "db:daily_project_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-adsense-projects",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-adsense-projects",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "28 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:receita-gam-adsense-projects-d1",
       "target": "cap_revenue_ingestion",
       "relation": "executa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-adsense-projects-d1",
-      "target": "db:daily_project_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-adsense-projects-d1",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-adsense-projects-d1",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "28 referência(s)",
       "confidence": "measured"
     },
     {
@@ -12028,73 +11385,10 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:receita-gam-campaign-id",
-      "target": "db:adsense_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id",
-      "target": "db:gam_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id",
-      "target": "db:system_settings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "30 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:receita-gam-campaign-id-d1",
       "target": "cap_revenue_ingestion",
       "relation": "executa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id-d1",
-      "target": "db:adsense_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id-d1",
-      "target": "db:gam_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id-d1",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-campaign-id-d1",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "28 referência(s)",
       "confidence": "measured"
     },
     {
@@ -12105,59 +11399,10 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:receita-gam-ecpm-hourly",
-      "target": "db:hourly_stats",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-ecpm-hourly",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "10 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:receita-gam-placements-display",
       "target": "cap_revenue_ingestion",
       "relation": "executa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display",
-      "target": "db:display_gam_placements",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "12 referência(s)",
       "confidence": "measured"
     },
     {
@@ -12168,41 +11413,6 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:receita-gam-placements-display-d1",
-      "target": "db:display_gam_placements",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display-d1",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display-d1",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display-d1",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-gam-placements-display-d1",
-      "target": "external:supabase-hosted",
-      "relation": "aponta_para",
-      "evidence": "12 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:receita-joinads-d1",
       "target": "cap_revenue_ingestion",
       "relation": "executa",
@@ -12210,80 +11420,10 @@
       "confidence": "measured"
     },
     {
-      "source": "n8n:receita-joinads-d1",
-      "target": "db:daily_project_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-d1",
-      "target": "db:joinads_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-d1",
-      "target": "db:system_settings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-d1",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-d1",
-      "target": "external:supabase-self",
-      "relation": "aponta_para",
-      "evidence": "8 referência(s)",
-      "confidence": "measured"
-    },
-    {
       "source": "n8n:receita-joinads-intraday",
       "target": "cap_revenue_ingestion",
       "relation": "executa",
       "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-intraday",
-      "target": "db:daily_project_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-intraday",
-      "target": "db:joinads_metrics",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-intraday",
-      "target": "db:system_settings",
-      "relation": "lê_ou_escreve",
-      "evidence": "URL PostgREST detectada no workflow",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-intraday",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:receita-joinads-intraday",
-      "target": "external:supabase-self",
-      "relation": "aponta_para",
-      "evidence": "8 referência(s)",
       "confidence": "measured"
     },
     {
@@ -12299,27 +11439,6 @@
       "relation": "origina",
       "evidence": "",
       "confidence": "curated"
-    },
-    {
-      "source": "n8n:rsa-darwin-optimizer-ctr",
-      "target": "external:google",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:rsa-darwin-optimizer-ctr",
-      "target": "external:google-ads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
-    },
-    {
-      "source": "n8n:rsa-darwin-optimizer-ctr",
-      "target": "external:joinads",
-      "relation": "integra_com",
-      "evidence": "",
-      "confidence": "measured"
     },
     {
       "source": "risk:alertas_gaql_no_render",
