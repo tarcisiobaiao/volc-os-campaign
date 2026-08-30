@@ -115,6 +115,8 @@ export interface WorkRoadExecution {
   mission?: string | null;
   heartbeat_at?: string | null;
   failed?: boolean | null;
+  candidate_status?: "ready_for_human" | "changes_requested" | "blocked" | null;
+  run_dir?: string | null;
 }
 
 export interface WorkRoadExecutionsLive {

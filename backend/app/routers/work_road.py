@@ -35,6 +35,7 @@ _INBOX = _RAIZ / "volc-os-workbook" / "INBOX-ROADMAP.json"
 _INBOX_RECIBOS = _RAIZ / "volc-os-workbook" / "INBOX-ROADMAP.receipts.jsonl"
 _COBERTURA = _RAIZ / "volc-os-workbook" / "INBOX-COVERAGE.json"
 _GRAFO_STATUS = _RAIZ / "graphify-out" / "UPDATE_STATUS.json"
+_HARNESS_RUNS = _RAIZ / "tools" / "agent-harness" / "runs"
 _WORKTREE_ROOTS = (
     _RAIZ / ".claude" / "worktrees",
     _RAIZ / ".agent-worktrees",
@@ -229,6 +230,117 @@ def _mudancas_do_roadmap(caminho_da_worktree: Path) -> list[dict[str, Any]]:
     return mudancas[:30]
 
 
+def _json_local(caminho: Path) -> dict[str, Any]:
+    try:
+        valor = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    return valor if isinstance(valor, dict) else {}
+
+
+def _ultimo_heartbeat(caminho_do_run: Path) -> dict[str, Any]:
+    mais_recente: dict[str, Any] = {}
+    for caminho in caminho_do_run.glob("workers/*/heartbeat.jsonl"):
+        try:
+            linhas = caminho.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for linha in reversed(linhas):
+            try:
+                evento = json.loads(linha)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(evento, dict) or not evento.get("at"):
+                continue
+            if str(evento["at"]) > str(mais_recente.get("at") or ""):
+                mais_recente = evento
+            break
+    return mais_recente
+
+
+def _heartbeat_recente(evento: dict[str, Any], agora: datetime) -> bool:
+    if evento.get("state") not in {"started", "active"}:
+        return False
+    try:
+        instante = datetime.fromisoformat(str(evento["at"]))
+    except (KeyError, TypeError, ValueError):
+        return False
+    if instante.tzinfo is None:
+        instante = instante.replace(tzinfo=timezone.utc)
+    try:
+        intervalo = int(evento.get("expected_interval_seconds") or 30)
+    except (TypeError, ValueError):
+        intervalo = 30
+    # Duas janelas completas mais uma tolerância de agendamento. Missões antigas,
+    # que não registravam o intervalo, preservam o limite histórico de 90 s.
+    limite = max(90, min(630, intervalo * 2 + 30))
+    return 0 <= (agora - instante).total_seconds() <= limite
+
+
+def _execucoes_do_harness() -> tuple[list[dict[str, Any]], set[Path]]:
+    """Projeta recibos reais do harness; não infere tarefa pelo diff editorial."""
+    agora = datetime.now(timezone.utc)
+    execucoes: list[dict[str, Any]] = []
+    worktrees_representadas: set[Path] = set()
+    try:
+        runs = sorted(
+            (item for item in _HARNESS_RUNS.iterdir() if item.is_dir()),
+            key=lambda item: item.name,
+            reverse=True,
+        )
+    except OSError:
+        return [], set()
+    for caminho_do_run in runs[:100]:
+        metadata = _json_local(caminho_do_run / "metadata.json")
+        if not metadata.get("run_id"):
+            continue
+        resultado = _json_local(caminho_do_run / "mission-result.json")
+        heartbeat = _ultimo_heartbeat(caminho_do_run)
+        worktrees = resultado.get("worktrees") or {}
+        if isinstance(worktrees, dict):
+            for info in worktrees.values():
+                if isinstance(info, dict) and info.get("path"):
+                    worktrees_representadas.add(Path(str(info["path"])).resolve())
+        workers = metadata.get("workers") or []
+        writer = next(
+            (
+                worker
+                for worker in workers
+                if isinstance(worker, dict) and worker.get("role") == "writer"
+            ),
+            workers[0] if workers and isinstance(workers[0], dict) else {},
+        )
+        task_ids = metadata.get("task_ids") or []
+        if not task_ids:
+            handoff = resultado.get("curation_handoff") or {}
+            task_ids = handoff.get("task_ids") or [] if isinstance(handoff, dict) else []
+        writer_commit = str(resultado.get("writer_commit") or "")
+        terminal = bool(resultado.get("finished_at"))
+        execucoes.append({
+            "id": str(metadata["run_id"]),
+            "name": str(metadata.get("title") or metadata["run_id"]),
+            "branch": "",
+            "head": (writer_commit or str(metadata.get("base_sha") or ""))[:7],
+            "session_active": not terminal and _heartbeat_recente(heartbeat, agora),
+            "worktree_locked": False,
+            "dirty_files": 0,
+            "commits_ahead": 1 if writer_commit else 0,
+            "commits": [],
+            "roadmap_changes": [],
+            "task_ids": [str(item) for item in task_ids if item],
+            "worktree": next(iter(worktrees.values()), {}).get("path")
+            if isinstance(worktrees, dict) and worktrees else None,
+            "agent": writer.get("id") or writer.get("worker_id"),
+            "provider": writer.get("provider"),
+            "mission": metadata.get("mission_id"),
+            "heartbeat_at": heartbeat.get("at"),
+            "failed": resultado.get("ok") is False,
+            "candidate_status": resultado.get("candidate_status"),
+            "run_dir": str(caminho_do_run),
+        })
+    return execucoes, worktrees_representadas
+
+
 def ler_execucoes() -> dict[str, Any]:
     """Fotografa worktrees Claude/ADK sem ler prompt, transcript ou credencial."""
     agora = datetime.now(timezone.utc).isoformat()
@@ -245,10 +357,12 @@ def ler_execucoes() -> dict[str, Any]:
             "reason": "O monitor local de worktrees não está disponível neste ambiente.",
         }
 
-    execucoes: list[dict[str, Any]] = []
+    execucoes, worktrees_representadas = _execucoes_do_harness()
     for bloco in blocos:
         caminho = Path(bloco.get("worktree") or "")
         if not caminho or not _esta_na_pasta_de_agentes(caminho):
+            continue
+        if caminho.resolve() in worktrees_representadas:
             continue
         nome = caminho.name
         head = bloco.get("HEAD") or ""

@@ -18,7 +18,7 @@
     "task_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]+$"},
     "title": {"type": "string", "minLength": 1},
     "base_ref": {"type": "string", "minLength": 7},
-    "provider": {"enum": ["claude", "codex"]},
+    "provider": {"enum": ["claude", "codex", "gemini"]},
     "mode": {"enum": ["read_only", "workspace_write"]},
     "allowed_paths": {
       "type": "array",

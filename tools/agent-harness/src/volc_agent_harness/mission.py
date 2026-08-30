@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 import subprocess
 from contextlib import aclosing
 from datetime import datetime, timezone
@@ -27,8 +28,17 @@ def _utc_now() -> str:
 
 
 def _run_id(mission_id: str) -> str:
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return f"{stamp}-{mission_id}"
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    return f"{stamp}-{mission_id}-{secrets.token_hex(3)}"
+
+
+def _source_linkage(mission: MissionSpec) -> dict[str, Any]:
+    return {
+        "task_ids": mission.task_ids,
+        "inbox_ids": mission.inbox_ids,
+        "parent_run_id": mission.parent_run_id,
+        "attempt": mission.attempt,
+    }
 
 
 def _worker_prompt(
@@ -202,6 +212,8 @@ def _worker_node(
             model=worker.model,
             effort=worker.effort,
             network_access=worker.network_access,
+            allowed_paths=tuple(worker.allowed_paths),
+            writable_paths=tuple(worker.effective_writable_paths),
         )
         try:
             result = await adapter_for(worker.provider).run(request)
@@ -255,6 +267,7 @@ async def _run_read_only_mission(
         "base_sha": base_sha,
         "started_at": _utc_now(),
         "mode": "read_only",
+        **_source_linkage(mission),
         "workers": [
             {
                 "id": worker.id,
@@ -351,7 +364,9 @@ async def _run_implementation_mission(
     repo: Path, mission: MissionSpec
 ) -> tuple[Path, dict[str, Any]]:
     manager = WorktreeManager(repo)
-    base_sha = manager.resolve_implementation_base(mission.base_ref)
+    base_sha = manager.resolve_implementation_base(
+        mission.base_ref, mission.lineage_root_sha
+    )
     run_id = _run_id(mission.mission_id)
     run_dir = repo / "tools" / "agent-harness" / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -364,6 +379,7 @@ async def _run_implementation_mission(
         "base_sha": base_sha,
         "started_at": _utc_now(),
         "mode": "implementation",
+        **_source_linkage(mission),
         "workers": [
             {
                 "id": worker.id,
@@ -395,13 +411,15 @@ async def _run_implementation_mission(
         model=writer.model,
         effort=writer.effort,
         network_access=False,
+        allowed_paths=tuple(writer.allowed_paths),
+        writable_paths=tuple(writer.effective_writable_paths),
     )
     writer_started = _utc_now()
     try:
         writer_result = await adapter_for(writer.provider).run(writer_request)
         manager.assert_head_unchanged(writer_worktree.path, base_sha)
         changed_paths = manager.assert_only_allowed(
-            writer_worktree.path, writer.allowed_paths
+            writer_worktree.path, writer.effective_writable_paths
         )
         gate_results = []
         with project_venv_overlay(repo=repo, worktree=writer_worktree.path):
@@ -439,7 +457,7 @@ async def _run_implementation_mission(
                     )
         manager.assert_head_unchanged(writer_worktree.path, base_sha)
         changed_paths_after_gates = manager.assert_only_allowed(
-            writer_worktree.path, writer.allowed_paths
+            writer_worktree.path, writer.effective_writable_paths
         )
         if changed_paths_after_gates != changed_paths:
             raise RuntimeError(

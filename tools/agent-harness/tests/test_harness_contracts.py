@@ -8,7 +8,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from volc_agent_harness.adapters import AdapterRequest, _execute
-from volc_agent_harness.models import MissionSpec
+from volc_agent_harness.gemini_worker import WorkspaceTools, _thinking_level
+from volc_agent_harness.models import MissionSpec, WorkerSpec
 from volc_agent_harness.mission import _worker_node, _worker_prompt
 from volc_agent_harness.security import redact, sanitized_environment
 from volc_agent_harness.worktrees import WorktreeInfo, safe_slug
@@ -54,6 +55,7 @@ class HarnessContractsTest(unittest.TestCase):
         self.assertEqual(env["PATH"], "/bin")
         self.assertNotIn("SUPABASE_SERVICE_ROLE_KEY", env)
         self.assertNotIn("OPENAI_API_KEY", env)
+        self.assertNotIn("GEMINI_API_KEY", env)
 
     def test_redacts_tokens(self) -> None:
         self.assertEqual(
@@ -157,6 +159,7 @@ class HarnessContractsTest(unittest.TestCase):
                         "effort": "xhigh",
                         "lens": "Implement",
                         "allowed_paths": ["src"],
+                        "writable_paths": ["src"],
                     },
                     {
                         "id": "claude-reviewer",
@@ -174,6 +177,127 @@ class HarnessContractsTest(unittest.TestCase):
         self.assertEqual(mission.workers[0].model, "gpt-5.6-sol")
         self.assertEqual(mission.workers[1].effort, "max")
 
+    def test_provider_defaults_are_explicit_and_economical(self) -> None:
+        claude = WorkerSpec.model_validate({
+            "id": "claude-reader", "provider": "claude", "lens": "read",
+            "allowed_paths": ["src"],
+        })
+        codex = WorkerSpec.model_validate({
+            "id": "codex-writer", "provider": "codex", "role": "writer",
+            "lens": "write", "allowed_paths": ["src"],
+        })
+        self.assertEqual(claude.model, "opus")
+        self.assertEqual(codex.model, "gpt-5.6-sol")
+        self.assertEqual(codex.effort, "high")
+
+    def test_implementation_accepts_exact_gemini_writer(self) -> None:
+        mission = MissionSpec.model_validate({
+            "mission_id": "gemini-implementation",
+            "title": "Gemini implementation",
+            "base_ref": "a" * 40,
+            "briefing": "Implement one slice",
+            "mode": "implementation",
+            "commit_message": "feat(test): gemini",
+            "gates": [{"argv": ["true"]}],
+            "workers": [
+                {
+                    "id": "gemini-writer", "provider": "gemini", "role": "writer",
+                    "model": "gemini-3.7-flash", "effort": "high",
+                    "lens": "Implement", "allowed_paths": ["src"],
+                    "writable_paths": ["src"],
+                },
+                {
+                    "id": "codex-reviewer", "provider": "codex", "role": "reviewer",
+                    "model": "gpt-5.5", "effort": "xhigh",
+                    "lens": "Review", "allowed_paths": ["src"],
+                },
+            ],
+        })
+        self.assertEqual(mission.workers[0].provider, "gemini")
+
+    def test_gemini_rejects_model_fallback_and_unsupported_effort(self) -> None:
+        base = {
+            "id": "gemini-reader", "provider": "gemini", "role": "investigator",
+            "model": "gemini-3.7-flash", "effort": "high",
+            "lens": "Inspect", "allowed_paths": ["src"],
+        }
+        WorkerSpec.model_validate(base)
+        with self.assertRaisesRegex(ValueError, "gemini-3.7-flash"):
+            WorkerSpec.model_validate({**base, "model": "gemini-fallback"})
+        with self.assertRaisesRegex(ValueError, "low, medium ou high"):
+            WorkerSpec.model_validate({**base, "effort": "xhigh"})
+
+    def test_writer_read_context_does_not_expand_write_ownership(self) -> None:
+        worker = WorkerSpec.model_validate({
+            "id": "gemini-writer", "provider": "gemini", "role": "writer",
+            "model": "gemini-3.7-flash", "effort": "high", "lens": "Implement",
+            "allowed_paths": ["src/owned", "src/context.py"],
+            "writable_paths": ["src/owned"],
+        })
+        self.assertEqual(worker.effective_writable_paths, ["src/owned"])
+        with self.assertRaisesRegex(ValueError, "subconjunto"):
+            WorkerSpec.model_validate({**worker.model_dump(), "writable_paths": ["backend"]})
+
+    def test_gemini_thinking_is_hidden_and_capped_at_high(self) -> None:
+        self.assertEqual(_thinking_level("low"), "LOW")
+        self.assertEqual(_thinking_level("medium"), "MEDIUM")
+        self.assertEqual(_thinking_level("high"), "HIGH")
+
+    def test_gemini_workspace_restricts_reads_writes_and_secrets(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "src" / "owned").mkdir(parents=True)
+            (root / "src" / "context.txt").write_text("context\n", encoding="utf-8")
+            (root / "private.txt").write_text("private\n", encoding="utf-8")
+            request = AdapterRequest(
+                worker_id="gemini-writer", worktree=root, prompt="x",
+                schema_path=root / "schema.json", run_dir=root / "run",
+                timeout_seconds=60, mode="workspace_write", model="gemini-3.7-flash",
+                allowed_paths=("src/owned", "src/context.txt"),
+                writable_paths=("src/owned",),
+            )
+            tools = WorkspaceTools(request)
+            self.assertTrue(tools.write_file("src/owned/new.py", "ok\n")["ok"])
+            self.assertEqual(tools.read_file("src/context.txt")["text"], "context")
+            with self.assertRaises(PermissionError):
+                tools.write_file("src/context.txt", "no\n")
+            with self.assertRaises(PermissionError):
+                tools.read_file("private.txt")
+            with self.assertRaisesRegex(ValueError, "protegido"):
+                tools.read_file(".env.local")
+
+    def test_worker_rejects_repository_root_as_allowed_path(self) -> None:
+        with self.assertRaisesRegex(ValueError, "caminhos relativos seguros"):
+            WorkerSpec.model_validate({
+                "id": "gemini-reader",
+                "provider": "gemini",
+                "model": "gemini-3.7-flash",
+                "lens": "Inspect",
+                "allowed_paths": ["."],
+            })
+
+    def test_gemini_workspace_rejects_symlink_escape_from_allowed_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "src" / "owned").mkdir(parents=True)
+            (root / "src" / "private").mkdir(parents=True)
+            (root / "src" / "private" / "secret.txt").write_text(
+                "secret\n", encoding="utf-8"
+            )
+            (root / "src" / "owned" / "escape").symlink_to(
+                root / "src" / "private", target_is_directory=True
+            )
+            request = AdapterRequest(
+                worker_id="gemini-reader", worktree=root, prompt="x",
+                schema_path=root / "schema.json", run_dir=root / "run",
+                timeout_seconds=60, mode="read_only", model="gemini-3.7-flash",
+                allowed_paths=("src/owned",), writable_paths=(),
+            )
+            tools = WorkspaceTools(request)
+            with self.assertRaisesRegex(PermissionError, "resolve fora"):
+                tools.read_file("src/owned/escape/secret.txt")
+            self.assertEqual(tools.search_text("secret")["matches"], [])
+
     def test_implementation_rejects_moving_base_ref(self) -> None:
         payload = {
             "mission_id": "implementation-pilot",
@@ -190,6 +314,7 @@ class HarnessContractsTest(unittest.TestCase):
                     "role": "writer",
                     "lens": "Implement",
                     "allowed_paths": ["src"],
+                    "writable_paths": ["src"],
                 },
                 {
                     "id": "claude-reviewer",
@@ -202,6 +327,39 @@ class HarnessContractsTest(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "SHA completo"):
             MissionSpec.model_validate(payload)
+
+    def test_corrective_base_must_descend_from_authorized_lineage(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            (root / "one.txt").write_text("one\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run([
+                "git", "-c", "user.name=VOLC Test",
+                "-c", "user.email=volc@example.invalid",
+                "commit", "-qm", "one",
+            ], cwd=root, check=True)
+            root_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=root, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+            subprocess.run(["git", "branch", "-M", "main"], cwd=root, check=True)
+            (root / "one.txt").write_text("two\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run([
+                "git", "-c", "user.name=VOLC Test",
+                "-c", "user.email=volc@example.invalid",
+                "commit", "-qm", "two",
+            ], cwd=root, check=True)
+            candidate = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=root, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+            manager = WorktreeManager(root)
+            self.assertEqual(
+                manager.resolve_implementation_base(candidate, root_sha),
+                candidate,
+            )
 
     def test_ownership_rejects_ignored_env_file(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

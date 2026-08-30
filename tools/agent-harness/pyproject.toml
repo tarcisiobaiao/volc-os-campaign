@@ -14,6 +14,7 @@ dependencies = [
 [project.scripts]
 volc-agent-preflight = "volc_agent_harness.preflight:main"
 volc-agent-run = "volc_agent_harness.cli:main"
+volc-agent-supervise = "volc_agent_harness.supervisor:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

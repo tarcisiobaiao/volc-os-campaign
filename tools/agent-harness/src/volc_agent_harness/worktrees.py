@@ -57,18 +57,37 @@ class WorktreeManager:
     def resolve_base(self, base_ref: str) -> str:
         return _git(self.repo, "rev-parse", "--verify", f"{base_ref}^{{commit}}")
 
-    def resolve_implementation_base(self, base_ref: str) -> str:
+    def resolve_implementation_base(
+        self, base_ref: str, lineage_root_sha: str | None = None
+    ) -> str:
         base_sha = self.resolve_base(base_ref)
         if base_sha != base_ref:
             raise ValueError("base_ref de implementação não resolveu para o SHA informado")
+        root = lineage_root_sha or base_sha
+        if self.resolve_base(root) != root:
+            raise ValueError("lineage_root_sha não resolveu para o SHA informado")
+        authority_head = self.resolve_base("HEAD")
         result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", base_sha, "main"],
+            ["git", "merge-base", "--is-ancestor", root, authority_head],
             cwd=self.repo,
             check=False,
             timeout=60,
         )
         if result.returncode != 0:
-            raise ValueError("base_ref de implementação precisa ser ancestral da main local")
+            raise ValueError(
+                "a raiz da linhagem precisa ser ancestral do HEAD controlador"
+            )
+        if lineage_root_sha is not None:
+            result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", root, base_sha],
+                cwd=self.repo,
+                check=False,
+                timeout=60,
+            )
+            if result.returncode != 0:
+                raise ValueError("base_ref corretivo escapou da linhagem autorizada")
+        elif base_sha != root:
+            raise ValueError("base_ref inicial inválido")
         return base_sha
 
     def create(self, run_id: str, worker_id: str, base_sha: str) -> WorktreeInfo:

@@ -8,7 +8,9 @@ qual commit realmente servirá de base para as futuras worktrees.
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -83,6 +85,23 @@ def collect_preflight(repo: Path) -> dict[str, Any]:
         "providers": {
             "claude": _command_version("claude", "--version"),
             "codex": _command_version("codex", "--version"),
+            "gemini": {
+                "available": bool(os.environ.get("GEMINI_API_KEY")),
+                "path": "google-genai/ADK",
+                "version": (
+                    f"google-genai {importlib.metadata.version('google-genai')} / "
+                    "gemini-3.7-flash"
+                    if os.environ.get("GEMINI_API_KEY")
+                    else None
+                ),
+                "optional": True,
+            },
+            "deepseek": {
+                "available": bool(os.environ.get("DEEPSEEK_API_KEY")),
+                "path": "bounded-sniper",
+                "version": "deepseek-v4-flash" if os.environ.get("DEEPSEEK_API_KEY") else None,
+                "optional": True,
+            },
         },
         "repository": {
             "root": str(repo),
@@ -109,7 +128,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     report = collect_preflight(args.repo)
     providers_ok = all(
-        provider["available"] for provider in report["providers"].values()
+        provider["available"]
+        for provider in report["providers"].values()
+        if not provider.get("optional")
     )
     report["ok"] = providers_ok
 

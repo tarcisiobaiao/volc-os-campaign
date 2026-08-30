@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -133,3 +134,87 @@ def test_endpoint_de_execucoes_e_somente_leitura_e_sem_cache(monkeypatch):
     assert resposta.status_code == 200
     assert resposta.headers["cache-control"] == "no-store"
     assert resposta.json() == fotografia
+
+
+def test_execucoes_do_harness_le_heartbeat_e_task_id_explicito(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = runs / "20260829-pilot"
+    worker = run / "workers" / "codex-writer"
+    worker.mkdir(parents=True)
+    (run / "metadata.json").write_text(json.dumps({
+        "run_id": "20260829-pilot",
+        "mission_id": "pilot",
+        "title": "Piloto",
+        "base_sha": "a" * 40,
+        "task_ids": ["P01-T09"],
+        "workers": [{
+            "id": "codex-writer",
+            "provider": "codex",
+            "role": "writer",
+        }],
+    }), encoding="utf-8")
+    (worker / "heartbeat.jsonl").write_text(json.dumps({
+        "at": datetime.now(timezone.utc).isoformat(),
+        "worker_id": "codex-writer",
+        "state": "active",
+    }) + "\n", encoding="utf-8")
+    monkeypatch.setattr(work_road, "_HARNESS_RUNS", runs)
+
+    execucoes, _ = work_road._execucoes_do_harness()
+
+    assert len(execucoes) == 1
+    assert execucoes[0]["session_active"] is True
+    assert execucoes[0]["task_ids"] == ["P01-T09"]
+    assert execucoes[0]["provider"] == "codex"
+
+
+def test_execucao_terminal_nao_fica_ativa_e_preserva_veredito(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = runs / "20260829-pilot"
+    worker = run / "workers" / "codex-writer"
+    worker.mkdir(parents=True)
+    (run / "metadata.json").write_text(json.dumps({
+        "run_id": "20260829-pilot",
+        "mission_id": "pilot",
+        "title": "Piloto",
+        "base_sha": "a" * 40,
+        "task_ids": ["P01-T09"],
+        "workers": [{
+            "id": "codex-writer",
+            "provider": "codex",
+            "role": "writer",
+        }],
+    }), encoding="utf-8")
+    (run / "mission-result.json").write_text(json.dumps({
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "ok": True,
+        "writer_commit": "b" * 40,
+        "candidate_status": "changes_requested",
+        "worktrees": {},
+    }), encoding="utf-8")
+    (worker / "heartbeat.jsonl").write_text(json.dumps({
+        "at": datetime.now(timezone.utc).isoformat(),
+        "worker_id": "codex-writer",
+        "state": "active",
+    }) + "\n", encoding="utf-8")
+    monkeypatch.setattr(work_road, "_HARNESS_RUNS", runs)
+
+    execucoes, _ = work_road._execucoes_do_harness()
+
+    assert execucoes[0]["session_active"] is False
+    assert execucoes[0]["candidate_status"] == "changes_requested"
+    assert execucoes[0]["failed"] is False
+
+
+def test_heartbeat_respeita_intervalo_declarado_sem_falso_inativo():
+    agora = datetime.now(timezone.utc)
+    evento = {
+        "at": (agora - timedelta(seconds=250)).isoformat(),
+        "state": "active",
+        "expected_interval_seconds": 300,
+    }
+
+    assert work_road._heartbeat_recente(evento, agora) is True
+
+    evento["at"] = (agora - timedelta(seconds=631)).isoformat()
+    assert work_road._heartbeat_recente(evento, agora) is False

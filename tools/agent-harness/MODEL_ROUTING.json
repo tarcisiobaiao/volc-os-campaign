@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "default_writer": {
+    "provider": "codex",
+    "model": "gpt-5.6-sol",
+    "effort": "high",
+    "supervisor_v0_enabled": true
+  },
+  "deep_adversarial_reviewer": {
+    "provider": "codex",
+    "model": "gpt-5.5",
+    "effort": "xhigh",
+    "supervisor_v0_enabled": true
+  },
+  "critical_contract_reviewer": {
+    "provider": "claude",
+    "model": "opus",
+    "effort": "high",
+    "supervisor_v0_enabled": false
+  },
+  "exceptional_spec_planner": {
+    "provider": "claude",
+    "model": "fable",
+    "effort": "xhigh",
+    "supervisor_v0_enabled": false
+  },
+  "bounded_repeatable_executor": {
+    "provider": "gemini",
+    "model": "gemini-3.7-flash",
+    "effort": "high",
+    "supervisor_v0_enabled": false
+  },
+  "micro_repair_sniper": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash",
+    "effort": "low",
+    "generic_writer": false,
+    "supervisor_v0_enabled": false
+  },
+  "rules": [
+    "Nao usar gpt-5.6-sol xhigh como padrao.",
+    "Usar gpt-5.5 xhigh para refutacao profunda, nao para escrita rotineira.",
+    "Usar Fable somente quando o contrato ou plano ainda exigir sintese excepcional.",
+    "Gemini nao recebe shell, rede nem caminhos fora do manifesto.",
+    "DeepSeek propoe somente substituicao minima validada por guarda deterministica.",
+    "Nenhum provedor faz merge, push, deploy, migration ou mutacao externa.",
+    "Ready_for_human e o estado terminal maximo do supervisor."
+  ]
+}

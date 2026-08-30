@@ -1,4 +1,4 @@
-"""Adapters read-only para Claude Code e Codex CLI."""
+"""Adapters isolados para Claude Code, Codex CLI e Gemini via ADK."""
 
 from __future__ import annotations
 
@@ -33,6 +33,8 @@ class AdapterRequest:
     model: str | None = None
     effort: str = "high"
     network_access: bool = False
+    allowed_paths: tuple[str, ...] = ()
+    writable_paths: tuple[str, ...] = ()
 
 
 class AdapterError(RuntimeError):
@@ -65,6 +67,7 @@ def _emit_heartbeat(
         "stdout_bytes": stdout_bytes,
         "stderr_bytes": stderr_bytes,
         "returncode": returncode,
+        "expected_interval_seconds": request.heartbeat_seconds,
     }
     with (request.run_dir / "heartbeat.jsonl").open(
         "a", encoding="utf-8"
@@ -334,9 +337,21 @@ class CodexAdapter:
         return _validate(payload, request.schema_path)
 
 
-def adapter_for(provider: str) -> ClaudeAdapter | CodexAdapter:
+class GeminiAdapter:
+    """Executa Gemini pelo Google ADK, sem shell e sem fallback de modelo."""
+
+    async def run(self, request: AdapterRequest) -> dict[str, Any]:
+        from .gemini_worker import run_gemini_worker
+
+        payload = await run_gemini_worker(request)
+        return _validate(payload, request.schema_path)
+
+
+def adapter_for(provider: str) -> ClaudeAdapter | CodexAdapter | GeminiAdapter:
     if provider == "claude":
         return ClaudeAdapter()
     if provider == "codex":
         return CodexAdapter()
+    if provider == "gemini":
+        return GeminiAdapter()
     raise ValueError(f"provider desconhecido: {provider}")
