@@ -1,0 +1,36 @@
+{
+  "mission_id": "pilot-search-zero",
+  "title": "Auditar o caminho para criar campanha Google Search do zero",
+  "base_ref": "HEAD",
+  "briefing": "Determine, no estado commitado do repositório, o que já existe e o que falta para um operador autenticado iniciar uma campanha Google Search sem depender de uma oportunidade do Pautador. Não implemente. Separe frontend, contrato, backend, Google Ads API, autorização, validate_only, idempotência, recibo e releitura. Identifique o menor corte vertical honesto que possa ser implementado depois.",
+  "timeout_seconds": 1200,
+  "heartbeat_seconds": 15,
+  "workers": [
+    {
+      "id": "claude-architecture",
+      "provider": "claude",
+      "lens": "Arquitetura de produto e fluxo ponta a ponta. Procure reaproveitamento, estados de UX, contratos e dependências reais; não proponha um sistema paralelo.",
+      "allowed_paths": [
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/types/trafego.ts",
+        "backend/app",
+        "volc_ads",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "codex-adversarial",
+      "provider": "codex",
+      "lens": "Revisão adversarial de engenharia e segurança. Tente refutar que o caminho atual consegue criar do zero e localize gates ausentes, identidades erradas, fallbacks, escritas no navegador e testes que não provam produção.",
+      "allowed_paths": [
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/types/trafego.ts",
+        "backend/app",
+        "volc_ads",
+        "supabase/migrations"
+      ]
+    }
+  ]
+}

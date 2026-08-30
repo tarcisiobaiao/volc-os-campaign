@@ -1,0 +1,3832 @@
+{
+  "$schema_version": 1,
+  "meta": {
+    "title": "Curadoria operacional VOLC O.S.",
+    "papel": "FONTE HUMANA. Editável à mão. O pipeline lê este arquivo e NUNCA o sobrescreve.",
+    "saida_gerada": "docs/volc-os-graph/volc-os-graph.json",
+    "snapshot_date": "2026-08-22",
+    "curadoria_atualizada_em": "2026-08-29",
+    "method": "Código + PostgREST vivo + inventário n8n + ClickUp + fontes oficiais + decisões do dono",
+    "warning": "Ativo declarado no n8n não equivale a execução comprovada."
+  },
+  "capabilities": [
+    {
+      "id": "cap_portfolio",
+      "label": "Portfólio e economia global",
+      "cluster": "strategy",
+      "state": "implemented",
+      "summary": "Dashboard geral, projetos, relatórios, custos, impostos, câmbio e permissões.",
+      "evidence": "Rotas /, /dashboard/project/:id, /reports e configurações existem no front. A revisão visual global a407381..7cad5ec integrou o shell e as superfícies herdadas ao contrato canônico, com 1080 testes, build verde e 48 combinações visuais sem falha de contraste ou overflow. O aceite é visual: falhas de RPC convertidas em zero, estados ausentes e desvios silenciosos de permissão continuam como dívidas funcionais abertas."
+    },
+    {
+      "id": "cap_campaign_cockpit",
+      "label": "Cockpit de campanha",
+      "cluster": "measurement",
+      "state": "implemented",
+      "summary": "Visão por campanha com custo, receita, lucro, ROAS, ROI, CTR, CPC, conversões, GAM, orientação, otimização, funil e Display.",
+      "evidence": "CampaignDetailDashboard.tsx possui mais de dez famílias de métricas e ações."
+    },
+    {
+      "id": "cap_discovery",
+      "label": "Descoberta de oportunidades",
+      "cluster": "discovery",
+      "state": "live",
+      "summary": "Entidades, países, dores, eixos, oportunidades, validação e inteligência cultural.",
+      "evidence": "Banco atual: 20 entidades, 20 oportunidades, 88 eixos e 40 dores."
+    },
+    {
+      "id": "cap_keyword_mining",
+      "label": "Mineração e arquitetura de keywords",
+      "cluster": "discovery",
+      "state": "live",
+      "summary": "Valida demanda, cria seeds, clusters e hipóteses de funil.",
+      "evidence": "Banco atual: 143 seed queries, 3 clusters e 11 validações."
+    },
+    {
+      "id": "cap_funnel",
+      "label": "Redator e fábrica de funis",
+      "cluster": "production",
+      "state": "live",
+      "summary": "Gera matriz, páginas, revisão, prova visual e publicação WordPress.",
+      "evidence": "Banco atual: 3 runs; um vínculo WordPress; páginas e artefatos persistidos."
+    },
+    {
+      "id": "cap_incubator",
+      "label": "Incubadora de publishers",
+      "cluster": "production",
+      "state": "empty",
+      "summary": "Configura sites, títulos, calendário, artigos, publicação e logs de pipeline.",
+      "evidence": "Telas e schema existem; tabelas da incubadora estão vazias no banco atual."
+    },
+    {
+      "id": "cap_search_birth",
+      "label": "Nascimento de campanha Search",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Origem, keyword, copy, conta, lance, prova real, criação pausada e recibo.",
+      "evidence": "Cockpit /trafego/nova/:opportunityId e engine Google Ads v25."
+    },
+    {
+      "id": "cap_traffic_queue",
+      "label": "Hub de Tráfego",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Fila de oportunidades, campanhas já no ar, alertas de entrega e política.",
+      "evidence": "Rota /trafego e backend /api/trafego/*."
+    },
+    {
+      "id": "cap_cost_ingestion",
+      "label": "Ingestão de custo Google Ads",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Atualiza campanha, gasto, leilão, conversões e placements.",
+      "evidence": "Em 28/08/2026, os workflows VOLC D0 e D-1 foram corrigidos diretamente no n8n para API v25 e database.agenciavolc.com.br: customer_id real no RPC, cost_per_conversion observado, dedupe conta+campanha e duas gravações sincronizadas. Permanecem inativos. daily_campaign_metrics ainda não carrega conta, execução, moeda ou frescor, e por isso a ingestão canônica continua parcial."
+    },
+    {
+      "id": "cap_revenue_ingestion",
+      "label": "Ingestão de receita",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Une AdSense, GAM e JoinAds por projeto, campanha, URL e placement.",
+      "evidence": "daily_project_metrics chegou a 22/08; tabelas GAM/JoinAds estão vazias e AdSense parou em fevereiro."
+    },
+    {
+      "id": "cap_behavior",
+      "label": "Sensor comportamental",
+      "cluster": "measurement",
+      "state": "live",
+      "summary": "Mede sessão, scroll, engajamento, clique interno, dead/rage click e comportamento por página/funil.",
+      "evidence": "923 eventos brutos até 22/08 e 671 fatos de página; 34 linhas já têm ad views."
+    },
+    {
+      "id": "cap_attribution",
+      "label": "Atribuição campanha → funil → página",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Conecta origem de mídia, campanha, funil, URL e comportamento.",
+      "evidence": "1 de 4 campanhas tem funnel_run_id; a campanha nova tem 0 URLs em campaign_funnel_urls."
+    },
+    {
+      "id": "cap_offline_conversion",
+      "label": "Loop de conversão offline",
+      "cluster": "measurement",
+      "state": "empty",
+      "summary": "Transforma visitas identificadas em sinais enviados ao Google Ads.",
+      "evidence": "9.407 visitas com GCLID; 9.468 pendentes; fila, lotes e valores calculados permanecem zerados."
+    },
+    {
+      "id": "cap_health",
+      "label": "Saúde e notificações",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Sino, alertas de entrega, data status, timestamps e force update.",
+      "evidence": "Sino global existe; alertas ainda não formam memória única de execução, leitura e resolução."
+    },
+    {
+      "id": "cap_decision",
+      "label": "Orientação e motor de decisão",
+      "cluster": "decision",
+      "state": "historical",
+      "summary": "Heurísticas, BEAST, ORAKUL, orientação diária e fila conceitual de ações.",
+      "evidence": "Nove workflows proprietários foram resgatados e congelados em 28/08/2026. ORAKUL tem mutações históricas e cinco famílias defensáveis de política, mas continua misturado a I/O, literais e caminhos mortos; NEXUS possui duas versões incompatíveis; Search Terms e RSA Darwin podiam mutar fora do portão canônico. As 19 políticas herdadas seguem como proposta e zero são publicáveis sem frescor, owner, replay, limite e rollback."
+    },
+    {
+      "id": "cap_execution",
+      "label": "Atuação em lance e orçamento",
+      "cluster": "decision",
+      "state": "partial",
+      "summary": "Aplica mudança no Google Ads e registra o resultado.",
+      "evidence": "A esteira existe desenhada e provada em cluster descartável (19 tabelas), com idempotência para \"timeout mas criou\" e T2 ausente. O canário Search restringe conta, MCC, canal, status PAUSED, tetos e duplicidade remota. A auditoria registra exatamente três famílias de snapshots com mutate (Webhook, Form Triggers e ClickUp); active:true é estado do snapshot, não prova de execução viva. Continua parcial porque v10_01 não foi aplicada nem ligada às rotas e as superfícies legadas ainda precisam ser autenticadas ou aposentadas."
+    },
+    {
+      "id": "cap_forecast",
+      "label": "Preditivo / Crystal Ball",
+      "cluster": "decision",
+      "state": "inactive",
+      "summary": "Projeta comportamento futuro e deveria comparar previsão com ocorrido.",
+      "evidence": "Bola de Cristal está inativa e manual: 46 nós, 1.102 linhas, três rotas A/B/C, campanha/data hardcoded, zero persistência. A ideia planned_spend é útil, mas a implementação tem target leakage, avaliação desalinhada e intervalo não calibrado. Registry, predictions, evaluations, drift e schema v12 continuam somente propostas; nenhuma previsão shadow foi persistida no Supabase oficial."
+    },
+    {
+      "id": "cap_display",
+      "label": "ROI e atuação em Display",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Cruza custo e receita por placement e permite negativação.",
+      "evidence": "UI existe; tabelas de placements e view de ROI estão vazias hoje."
+    },
+    {
+      "id": "cap_finance",
+      "label": "Câmbio, impostos, revshare e custos",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Normaliza a economia da operação e o resultado líquido.",
+      "evidence": "Taxa e câmbio têm estrutura; histórico de câmbio termina em 18/02 e custos operacionais estão vazios."
+    },
+    {
+      "id": "cap_people",
+      "label": "Usuários, acesso, comissões e payouts",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "Usuários, acesso, comissões e payouts. ⚠️ O RBAC legado NÃO é portão confiável.",
+      "evidence": "Medido em 24/08/2026: get_current_user_role lê current_setting que ninguém define; public.users sem RLS, zero policies, anon com escrita; proxies com service_role sem autenticação. Segue em risco depois de v8_01: a fonte de autorização do Hub passou a existir, mas public.users continua com RLS desligada e anon com escrita — isso só cai com v8_02..v8_06, que NÃO foram aplicadas (autorização do dono cobriu apenas v8_01)."
+    },
+    {
+      "id": "cap_capi",
+      "label": "Meta CAPI e sites",
+      "cluster": "platform",
+      "state": "implemented",
+      "summary": "Wizard de configuração por site e Edge Function de roteamento.",
+      "evidence": "MetaCapiWizard e supabase/functions/capi-router existem no repositório."
+    },
+    {
+      "id": "cap_workflows",
+      "label": "Orquestração e rotinas",
+      "cluster": "platform",
+      "state": "risk",
+      "summary": "n8n, pg_cron, webhooks e tarefas ClickUp coordenam ingestão e atuação.",
+      "evidence": "Inventário read-only atualizado em 28/08/2026: 33 workflows no núcleo e 23 ativos declarados. Os dois GADS REPORT da operação Webgo foram preservados como referência; somente os dois alvos VOLC autorizados foram editados, ficaram inativos e possuem backup privado reversível. Nove legados possuem manifesto de SHA-256, classificação e sucessor. Estado ativo continua sendo declaração, não prova de execução ou saúde."
+    },
+    {
+      "id": "cap_publisher_quality",
+      "label": "Performance e monetização do publisher",
+      "cluster": "publisher_quality",
+      "state": "todo",
+      "summary": "CWV, loader de anúncios, dataLayer, LCP, INP, CLS e correlação com receita.",
+      "evidence": "ClickUp oficial: 11 tarefas, todas em “to do”."
+    },
+    {
+      "id": "cap_source_truth",
+      "label": "Fonte única de verdade",
+      "cluster": "data",
+      "state": "decision",
+      "summary": "O Supabase self-hosted em database.agenciavolc.com.br é a única autoridade operacional do VOLC O.S.; nenhum Supabase hospedado é alternativa válida.",
+      "evidence": "Decisão explícita do dono em 27/08/2026, registrada em ADR: frontend, Node, FastAPI e ambientes vivos apontam para https://database.agenciavolc.com.br. As 271 referências hospedadas inventariadas permanecem dívida de migração ou aposentadoria, não uma segunda fonte de verdade."
+    },
+    {
+      "id": "cap_identidade_hub",
+      "label": "Identidade e autorização do Hub",
+      "cluster": "governance",
+      "state": "implemented",
+      "summary": "Toda rota do backend exige identidade comprovada no servidor: sessão do Supabase para o navegador, credencial própria para serviço. O papel vem de app_auth.user_roles, fora do alcance do REST.",
+      "evidence": "v8_01 aplicada em produção em 24/08/2026 (executor supabase_admin): public.volc_role_of(uuid) existe, 1 ADMIN ativo casando com o sub de auth.users, RPC via service_role devolve ADMIN e via anon devolve 401 permission denied. app_auth fora de PGRST_DB_SCHEMAS, sem USAGE para anon/authenticated/service_role. No código: api/_lib/identidade.js e backend/app/seguranca/identidade.py, com portão no APIRouter — 66 rotas, 14 admin, 2 abertas (/health e /). Commits 4a08ef2, 020cbc4, ef5cdf0."
+    },
+    {
+      "id": "cap_inventario_trafego",
+      "label": "Inventário operacional de Tráfego",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "O Hub de Tráfego responde, com dado real: o que existe nas contas, em que estado, quão recente é a leitura e o que pede atenção. Três abas, inventário agrupado por conta, busca e filtros resolvidos no servidor sobre o universo.",
+      "evidence": "VALIDADO EM NAVEGADOR em 25/08/2026, autenticado, com as 84 campanhas reais de 3 contas. v9_01 e v9_02 aplicadas no Supabase oficial; PostgREST real validado; primeira varredura real concluída (Crédito Up 5, PMUNDO+ 74, Portal Mundo Mais 5 — zero falha, GAQL somente SELECT, trava de escrita fechada). ATENÇÃO CONCORDA EM TRÊS LUGARES: API `totais.atencao`=2, rótulo da aba `atenção2`, e a fila com Maquininha e FGTS — as duas únicas ENABLED, ligadas e sem clique. As 79 removidas ficam no inventário como histórico, não na fila. BUSCA E FILTROS sobre o universo, provados no navegador: busca=FGTS→3 de 84, busca=Maquininha→2 (ativa e removida), conta=Crédito Up→5 (as que a paginação escondia), atencao=1→2. Zero erro de console, zero overflow horizontal em desktop e mobile, aria-expanded na expansão inline. Gates: frontend 518, backend 647, volc_ads 218, tipos 76 (composição idêntica ao baseline), build em árvore limpa verde, zero GAQL no render, nenhum JWT privilegiado no bundle. Commits dc9b29f, e5a0118, 87c00fc, 42e3afd, 30cc5c4."
+    },
+    {
+      "id": "cap_work_road",
+      "label": "Work Road e QG Agêntico",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Sala de comando que lê a fonte versionada do Work Road, mostra prioridades, ondas, tarefas, provas e progresso, e falha fechado se a fonte não puder ser validada.",
+      "evidence": "Integração Codex em 29/08/2026: /settings/qg-agentico tem Agora, Timeline, Kanban, Lista, Grafo, Execuções e Inbox; cada tarefa tem URL própria; exporta JSON/HTML/PDF selecionável. O Inbox é serializado entre processos, append-only por recibo e separado do percentual; reordenação ADMIN usa hash esperado e recusa sobrescrever uma fonte nova. Commits d2ed5cb, 5445c5e, 230214c, 28b7b50, 81f9f69, e4699a9 e 0f3bf60. A edição completa de conteúdo das tarefas pela interface e o heartbeat unificado de todos os provedores continuam pendentes; por isso permanece partial."
+    },
+    {
+      "id": "cap_knowledge_graph",
+      "label": "Mapa Vivo e grafo de conhecimento",
+      "cluster": "data",
+      "state": "partial",
+      "summary": "Curadoria humana, extração técnica, grafo híbrido e exports para agentes, Obsidian, GraphML, Cypher e HTML. A infraestrutura é permanente; a cobertura estratégica e o snapshot técnico ainda precisam convergir.",
+      "evidence": "Pipeline em scripts/atualizar_grafo_volc_os.py e arquitetura em docs/volc-os-graph/ARQUITETURA-PERMANENTE.md. Em 26/08/2026, a curadoria do ecossistema de atenção foi incorporada e o híbrido reconstruído reutilizando a camada técnica; UPDATE_STATUS voltou a current=true."
+    },
+    {
+      "id": "cap_google_multichannel",
+      "label": "Google Ads multicanal",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Evolui o núcleo Search para operar Display, Demand Gen, Performance Max, Vídeo e Shopping por perfis e adaptadores de canal, sem duplicar o Hub.",
+      "evidence": "Display deixou de ser reconhecimento e virou construtor: volc_ads/campanha/display.py monta o grafo completo num mutate — budget, campanha, geo, idioma, ad group e responsive display ad — com 51 testes próprios. Desde 3eeafbc/07dfe3c o mesmo mutate carrega o ASSET DE IMAGEM: MutateOperation.asset_operation nasce ali, com os bytes dentro (ImageAsset.data é mutate-only), referenciado pelo anúncio por id temporário de faixa própria; sem duas fases, não existe o estado 'o asset subiu e a campanha não'. O perfil de canal (volc_ads/campanha/perfil.py) declara cada fato UMA vez no módulo do canal e é referenciado por identidade, não copiado; a coerência com o manifesto do Hub é provada por leitura de árvore sintática, sem o backend importar o SDK do Google. FALTA validate_only contra a conta real — nenhuma prova nesta capability tocou a conta, e é isso que impede `implemented`. Falta também a ligação HTTP dos assets: a fronteira de criativo existe desde db39f0b e só é alcançável por linha de comando do operador, porque `ProvarEntrada` não tem campo de imagem. Demand Gen e PMax continuam sem construtor, e o manifesto declara isso. Segmentação positiva por placement ficou de fora: a documentação oficial se contradiz e a prova exigiria validate_only na conta real."
+    },
+    {
+      "id": "cap_meta_ads",
+      "label": "Operação Meta Ads",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Contrato de briefing, jornada, criação de imagens e vídeos, integração por system user, campanha, conjunto, anúncio, criativo, análise e gestão assistida.",
+      "evidence": "Estratégia de tráfego direto declarada pelo dono em 26/08/2026 e material externo em /Users/mac/Downloads/Co-Piloto de Criação Meta Ads. Meta CAPI não equivale à compra de mídia; os documentos antigos de chat e LTV pertencem a cap_meta_retention, não a esta capacidade."
+    },
+    {
+      "id": "cap_creative_engines",
+      "label": "Engines de imagem e vídeo",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Parque externo comprovado de geração agentic, composição com foto real, render determinístico de imagem e fábrica contratual de vídeo, ligado a uma primeira porta interna com procedência e validação. Adaptadores e operação runtime ainda faltam.",
+      "evidence": "Imagem está fotografada em pacote reproduzível com 64 renders classificados. Vídeo está fotografado em docs/creative-engines/snapshots/motor-video-2026-08-26.json: 17 formatos, 15 skins, 38 MP4s 1080x1920, 20 QAs técnicos, 4 QAs visuais e 2 snapshots de publicação; a execução continua em /Users/mac/volc-factory e não foi provada integralmente pela raiz organizada. A porta volc_ads/criativo mantém identidade, procedência, dedup e falha por asset. Desde 3eeafbc/07dfe3c existe a porta de entrada no construtor: `ImagemParaSubir` em brief.imagens_display, que deliberadamente NÃO importa volc_ads/criativo — são donos diferentes. CORRIGIDO em 27/08/2026 (db39f0b), e a correção vale nos DOIS EIXOS, porque a evidência anterior era ambígua entre eles. PRIMEIRO EIXO: volc_ads/criativo/validacao.py DEIXOU de ser capacidade sem chamador — volc_ads/criativo_ponte.py chama `validar_lote()` fora de teste, antes de existir qualquer payload, e um lote reprovado não produz `ImagensDisplay` nenhum; a garantia é estrutural, não disciplinar. SEGUNDO EIXO, e ele NÃO mudou: nenhum caminho HTTP alcança essa validação, e é mais forte do que se pensava — o corpo `ProvarEntrada` de backend/app/routers/trafego.py NÃO TEM CAMPO DE IMAGEM NENHUM, então não é só `pautador_ponte.montar_brief` que não preenche `imagens_display`: o contrato HTTP não tem onde receber. Consequência medida: `Preparo.linhagem` e `Recibo.linhagem` chegam ao JSON de /provar e /subir como CHAVE EXISTENTE E VALOR SEMPRE VAZIO. O único consumidor é o OPERADOR, por linha de comando (`python -m volc_ads.criativo_ponte --pasta … --motor … --insumo …`), offline: o módulo não importa `gads` e não tem como falar com o Google. E `criativo_ponte` não é importado por nenhum módulo de produção — só por testes. O construtor de Display continua AVISANDO e não recusando; a mensagem mudou de 'não foi medida' para 'sem linhagem' / 'linhagem incompleta', e a escolha é deliberada: `display` não sabe geometria, e um segundo juiz dela criaria as duas verdades que se quer evitar. A ponta de `procedencia` fechou por SUBSTITUIÇÃO e não por leitura: `ImagemParaSubir.procedencia:str` foi removida — não tinha um único produtor nem consumidor, nem nos testes — e trocada por `Linhagem`, que subir.py deriva DO PAYLOAD (`_linhagem_do_payload`) e reconfere contra os bytes que vão sair, com `confirmada` como propriedade calculada e nunca campo gravado. Medido: volc_ads 354 → 458 passed; testes_subir 23/24 pelo harness próprio (`python -m volc_ads.testes_subir`, que NÃO entra nos 458 — ele contribui 4 testes para a coleta do pytest), com o mesmo único reprovado herdado; trava fechada antes e depois; zero chamada à Ads API. Requisitos de vídeo por canal, adapters e runtime persistido continuam pendentes."
+    },
+    {
+      "id": "cap_bia_copilot",
+      "label": "Bia — copiloto operacional contextual",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Camada conversacional contextual sobre o VOLC O.S.: interpreta fatos, frescor, relações, playbooks e decisões; começa somente leitura e nunca executa ação externa sem confirmação.",
+      "evidence": "Hermes Agent declarado pelo dono em 26/08/2026, rodando em VPS com API compatível com /v1/chat/completions. Integração VOLC, gateway e contratos ainda não implementados."
+    },
+    {
+      "id": "cap_asset_vault",
+      "label": "Cofre de Ativos",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Registro operacional de páginas, perfis, contas, domínios, propriedades monetizadas, integrações, engines e referências seguras de credencial, com dono, estado, evidência, relações e próximo uso.",
+      "evidence": "Contrato público v1 e rota administrativa /settings/cofre-ativos implementados em 27/08/2026. A interface organiza o patrimônio em sete gavetas operacionais, mantém relações como lente secundária e recusa campos sensíveis e URLs não HTTP(S). O retrato atual é editorial: schema privado, API, cadastro persistido, importadores e escrita de correspondências no grafo ainda não existem."
+    },
+    {
+      "id": "cap_organic_content",
+      "label": "Operação de conteúdo orgânico",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Transforma pauta em peças próprias para cada canal, passa por aprovação, publica em ativos sociais e devolve métricas e aprendizado para o sistema.",
+      "evidence": "VOS PRIME e Organic Attention Matrix descrevem o ciclo; o dono declara engines de imagem e vídeo e uma página monetizada. Em 28/08/2026 foi aceita a divisão Postiz como núcleo externo de publicação, MultiPost como fallback e AdsPower MCP como QA pós-publicação. Nenhum dos três está integrado, não há publicação comprovada nem histórico de aprendizado no VOLC O.S."
+    },
+    {
+      "id": "cap_meta_retention",
+      "label": "Meta, conversa e retenção",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Vertical separada do Meta direto: captura consentida por conversa, relacionamento, retorno ao conteúdo e atribuição de clique e receita por página e lead.",
+      "evidence": "ChatPion publicado respondeu HTTP 200 em 26/08/2026; Black Book Meta descreve arquitetura, schema e agentes. O dono informa que a operação nunca rodou e os workflows encontrados estão desativados."
+    },
+    {
+      "id": "cap_affiliate_promotions",
+      "label": "Promoções e afiliados",
+      "cluster": "strategy",
+      "state": "todo",
+      "summary": "Capta ofertas por API, valida condição, produz mensagens e distribui em canais próprios de WhatsApp ou Telegram com rastreio de clique e resultado.",
+      "evidence": "Protótipo n8n declarado pelo dono em 26/08/2026. A raiz de fluxos.agenciavolc.com.br respondeu HTTP 200, mas a rota direta hA1hLumyH33xH549 respondeu 404 sem sessão; conteúdo e execução não foram verificados."
+    },
+    {
+      "id": "cap_owned_audience_retention",
+      "label": "Audiência própria e retenção",
+      "cluster": "strategy",
+      "state": "todo",
+      "summary": "Transforma uma visita ou interação consentida em possibilidade de retorno por um canal próprio, com opt-out, frequência, identidade e resultado mensuráveis.",
+      "evidence": "O caderno de 21/06/2026 lista push, e-mail, SMS, WhatsApp, Telegram e Messenger. Meta/ChatPion é uma implementação parcial dessa visão; não existe ainda uma capacidade geral no VOLC O.S."
+    },
+    {
+      "id": "cap_interactive_journeys",
+      "label": "Jornadas e ativos interativos",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Quiz, calculadora, simulador, mini game e blocos enriquecidos que ajudam o leitor e produzem sinais de navegação e monetização mensuráveis.",
+      "evidence": "O caderno propõe a capacidade; FunnelForge já possui infraestrutura e testes para widgets/calculadora e o sensor comportamental mede interação. Não há catálogo, publicação e loop de resultado integrados como produto."
+    },
+    {
+      "id": "cap_incrementality_mmm",
+      "label": "Incrementalidade e alocação com Meridian",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Camada estratégica de MMM para estimar contribuição incremental, ROI marginal, saturação e cenários de orçamento por canal e, quando houver suficiência, por geo.",
+      "evidence": "Decisão arquitetural registrada em 27/08/2026 após revisão do Google Meridian 1.6.1 e da documentação oficial. Nenhum mart semanal, EDA, modelo treinado, calibração ou cenário VOLC existe ainda; portanto a capacidade permanece `todo`."
+    },
+    {
+      "id": "cap_bancada_criativa",
+      "label": "Bancada de execução criativa",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Executa trabalhos tipados de imagem e vídeo com reivindicação, lease, retomada, cancelamento, validação, artefato e recibo sem acoplar a fábrica ao processo web.",
+      "evidence": "A convergência 4da6a26 integrou o Template Lab e a bancada local: 234 provas backend, 226 provas frontend e ciclo v11_03 com 129/129. O runtime ativo ainda usa SQLite local; v11_03 não foi aplicada no Supabase oficial, não há writer Postgres, worker remoto nem storage remoto verificado."
+    }
+  ],
+  "concepts": [
+    {
+      "id": "concept:media_hub",
+      "label": "Hub de Controle de Mídia",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "O destino da camada de Tráfego: inventariar, reconciliar, diagnosticar e atuar sobre toda mídia comprada, sob governança e em qualquer canal.",
+      "evidence": "Fundação U0/H0 validada contra o Supabase oficial em 26/08/2026: 84 campanhas reais, histórico lazy, atenção 2, H0 canônico e zero GAQL no render. O destino multicanal e a atuação ainda não estão completos."
+    },
+    {
+      "id": "concept:campaign_instance",
+      "label": "Campanha / instância",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Identidade interna 1:1 com uma campanha externa: endereço estável, auditoria e recibo. Identidade externa continua sendo (customer_id, campaign_id).",
+      "evidence": "H0 canônico implementado em /trafego/campanhas/:volcCampaignId; id externo não abre a rota e a página não percorre o inventário. Validado em navegador em 26/08/2026."
+    },
+    {
+      "id": "concept:campaign_lineage",
+      "label": "Linhagem de campanha",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Agrupa a intenção operacional: testes, relançamentos e substituições. É o sinal de intenção que autoriza bloquear duplicidade.",
+      "evidence": "Instância canônica e sinais de lançamento existem; agrupamento explícito de testes, relançamentos e substituições ainda não está fechado. A FGTS possui três campanhas externas e a Maquininha, duas."
+    },
+    {
+      "id": "concept:multichannel_inventory",
+      "label": "Inventário multicanal",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Lista reconciliada contra a conta, agrupada por conta, com estado de presença, procedência, vínculo e frescor. Canal é coluna, não tela separada.",
+      "evidence": "Inventário real agrupado por conta, com histórico, filtros, presença e frescor, validado com 84 campanhas. Vocabulário de seis canais existe no front; somente Search possui adaptador funcional."
+    },
+    {
+      "id": "concept:channel_profile",
+      "label": "Perfil de canal",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Declara, de forma tipada, que estágios o cockpit mostra, que painéis injeta, que campos o pedido carrega, que provas rodam e que tipos de proposta existem.",
+      "evidence": "Contrato e manifesto de canal existem; Search está operado e os demais canais devolvem ausência honesta. Perfis verticais de Display, Demand Gen, Performance Max, Vídeo e Shopping continuam pendentes."
+    },
+    {
+      "id": "concept:channel_adapter",
+      "label": "Adaptador por canal",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Traduz entre o núcleo e a API de cada canal: o que ler na varredura e como escrever no mutate. O núcleo nunca importa um tipo de canal.",
+      "evidence": "adaptador_search.py colhe a conta e preserva url_final; o núcleo não importa tipos específicos. Adaptadores dos demais canais ainda não existem."
+    },
+    {
+      "id": "concept:snapshot_freshness",
+      "label": "Snapshot e frescor",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "A tela lê snapshot com carimbo, nunca a API. Dado velho aparece com a idade; conta não lida aparece como não lida.",
+      "evidence": "v9_01..v9_04 aplicadas; inventário projeta carimbo, ausência e degradação sem consultar Google Ads no render. Três contas relidas em 26/08/2026 com zero falha e trava fechada."
+    },
+    {
+      "id": "concept:reconciliation",
+      "label": "Reconciliação campanha ↔ funil",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "O sistema sugere pela URL final; o operador confirma. Vínculo auditável, corrigível e reversível.",
+      "evidence": "FGTS e Maquininha aparecem como correspondência provável e não liberam montagem duplicada; endpoint de confirmação existe, mas trafego_vinculo permanece vazia."
+    },
+    {
+      "id": "concept:operational_event",
+      "label": "Evento operacional",
+      "cluster": "governance",
+      "state": "todo",
+      "summary": "Registro append-only com chave de agrupamento opaca. É o que o P0 entrega; o P1 promove a Ocorrência e agrega em Incidente.",
+      "evidence": "ADR-14. Nenhuma tabela de alerta, incidente ou recibo existe no banco (E-06)."
+    },
+    {
+      "id": "concept:duplicity_proof",
+      "label": "Prova de duplicidade",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Prova somente leitura na conta antes de subir. Bloqueio exige mesma conta e dois sinais fortes, um deles de intenção.",
+      "evidence": "A reconciliação real bloqueia montagem da FGTS e da Maquininha; prova por composição de sinais existe, mas vínculo confirmado e linhagem completa continuam pendentes."
+    },
+    {
+      "id": "channel:SEARCH",
+      "label": "Canal Search",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Keywords, termos de busca, match type, negativas, RSA e CPC. Nasce PAUSED, CPC manual, phrase.",
+      "evidence": "Único construtor de grafo: volc_ads/campanha/search.py (E-21)."
+    },
+    {
+      "id": "channel:DISPLAY",
+      "label": "Canal Display",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Públicos, placements, exclusões, formatos e criativos.",
+      "evidence": "CORRIGIDO em 27/08/2026: a evidência anterior dizia 'SEM construtor de grafo, não implementado', e isso é comprovadamente falso desde 646d25e. volc_ads/campanha/display.py constrói o grafo completo — budget, campanha (DISPLAY, PAUSED, maximize_conversions, rede de conteúdo), geo, idioma, ad group DISPLAY_STANDARD e responsive display ad — e desde 3eeafbc/07dfe3c emite também o asset de imagem no mesmo mutate atômico. 51 testes. Fica `partial` e não `implemented` por uma razão só: nenhuma prova tocou a conta real. validate_only está implementado e exercitado com cliente falso; contra a conta ele exige autorização. Segmentação positiva por placement está declarada como indisponibilidade explicada — a documentação oficial se contradiz e a prova exigiria validate_only real. Em db39f0b a fronteira de criativo passou a existir (volc_ads/criativo_ponte.py) e a procedência viaja como `Linhagem` até o recibo, conferida contra os bytes que vão sair. Isso NÃO muda o estado deste canal, e a razão é dupla: continua sem qualquer prova contra a conta real, e o caminho HTTP não chega à ponte — `ProvarEntrada` não tem campo de imagem no corpo, então toda campanha de Display nascida pela API hoje sobe SEM imagem e com `linhagem: []`. Testes de campanha/testes_display.py: 51 → 62."
+    },
+    {
+      "id": "channel:DEMAND_GEN",
+      "label": "Canal Demand Gen",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Audiências, assets, formatos, feed e vídeo/imagem.",
+      "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado."
+    },
+    {
+      "id": "channel:PERFORMANCE_MAX",
+      "label": "Canal Performance Max",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Asset groups, sinais, metas, listing groups e criativos.",
+      "evidence": "NÃO EXISTE: comum.py levanta ValueError. O front declara PMAX, a taxonomia declara PERFORMANCE_MAX (E-21)."
+    },
+    {
+      "id": "channel:VIDEO",
+      "label": "Canal Vídeo",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Campanhas de vídeo e inventário YouTube, com assets, públicos, formatos e objetivos próprios.",
+      "evidence": "Vocabulário canônico aceito pelo contrato U0 em 26/08/2026; builder e perfil funcional ainda não existem."
+    },
+    {
+      "id": "channel:SHOPPING",
+      "label": "Canal Shopping",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Campanhas baseadas em feed, Merchant Center, produtos, listing groups e objetivos de comércio.",
+      "evidence": "Vocabulário canônico aceito pelo contrato U0 em 26/08/2026; builder e perfil funcional ainda não existem."
+    },
+    {
+      "id": "wave:P0-A",
+      "label": "P0-A · Diagnóstico de entrega",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Bateria somente leitura para explicar por que duas campanhas ligadas há cinco dias não gastam.",
+      "evidence": "A aba Atenção explica as duas campanhas ligadas sem clique e sugere a próxima ação segura; diagnóstico aprofundado de aprovação, leilão e volume ainda não forma uma bateria completa no produto."
+    },
+    {
+      "id": "wave:P0-S",
+      "label": "P0-S · Segurança dos executores",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Investigar e conter as sete superfícies públicas do n8n. Nada é desativado; indeterminado exige aceitação com prazo.",
+      "evidence": "Portões de código, identidade do Hub e v8_01 foram implementados; risco de credenciais foi aceito temporariamente e o hardening/deploy final permanecem pendentes."
+    },
+    {
+      "id": "wave:P0-T",
+      "label": "P0-T · Inventário real",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Identidade, linhagem, sincronizador, inventário na tela, estados de presença e degradação honesta.",
+      "evidence": "Validado em 26/08/2026 com 84 campanhas reais, 3 contas, 5 operacionais, 79 históricas, estados de presença, frescor, filtros e degradação honesta."
+    },
+    {
+      "id": "wave:P0-R",
+      "label": "P0-R · Reconciliação",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Sugestão por URL final e confirmação humana obrigatória, com auditoria e reversibilidade.",
+      "evidence": "Sugestão por URL final e confirmação no contrato existem; FGTS e Maquininha são correspondências prováveis. Nenhuma linha foi confirmada em trafego_vinculo."
+    },
+    {
+      "id": "wave:P0-D",
+      "label": "P0-D · Prevenção de duplicidade",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Prova por composição de sinais, contrato de persistência corrigido e evento operacional.",
+      "evidence": "FGTS e Maquininha não recebem mais ação de montagem; linhagem explícita, confirmação e evento operacional completo ainda faltam."
+    },
+    {
+      "id": "wave:P0-F",
+      "label": "P0-F · Frescor",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Carimbo por fonte e atualização manual limitada por escopo e frequência.",
+      "evidence": "Carimbo e estado de frescor atravessam schema, API e front; v9_03/v9_04 aplicadas e três contas relidas sem mutação em 26/08/2026."
+    },
+    {
+      "id": "concept:work_road_source",
+      "label": "Fonte compartilhada do Work Road",
+      "cluster": "governance",
+      "state": "implemented",
+      "summary": "Fonte estruturada e versionada para iniciativas, estados, dependências, tarefas e provas. Alimenta QG, grafo e Workbook sem manter um snapshot paralelo no navegador.",
+      "evidence": "volc-os-workbook/ROADMAP-VIVO.json continua a fonte editorial, validada por backend/app/routers/work_road.py e relida automaticamente pelo QG. INBOX-ROADMAP.json é a fila anterior, tem recibos e não entra no percentual. Reordenação exige ADMIN, permutação exata e expected_sha256; alteração concorrente responde conflito em vez de apagar trabalho. A ingestão automática de commits continua fora deste fechamento."
+    },
+    {
+      "id": "concept:agent_completion_protocol",
+      "label": "Gate de fechamento dos agentes",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Obriga Codex, Claude, Grok e workers ADK a devolver tarefa, nós, evidência, lacunas e estado honesto para um curador único após a integração.",
+      "evidence": "AGENTS.md, CLAUDE.md, PROTOCOLO-FECHAMENTO-AGENTES.md e o schema writer-result exigem curation_handoff. Ainda falta o curador automático pós-merge e o recibo correspondente no QG."
+    },
+    {
+      "id": "concept:strategy_intake",
+      "label": "Inbox estratégico do dono",
+      "cluster": "strategy",
+      "state": "todo",
+      "summary": "Fila explícita para estratégias, engines, documentos e ideias ainda não incorporados. Nada recebe percentual nem prioridade definitiva antes de ser classificado e ligado ao grafo.",
+      "evidence": "O dono declarou em 26/08/2026 que possui muitas capacidades prontas e validadas ainda fora do VOLC O.S."
+    },
+    {
+      "id": "system:hermes",
+      "label": "Hermes Agent na VPS",
+      "cluster": "platform",
+      "state": "live",
+      "summary": "Runtime do agente Bia, com API compatível com chat completions e acesso a skills e cérebros operacionais.",
+      "evidence": "Serviço e endpoint local 127.0.0.1:8642 declarados pela proprietária do agente em 26/08/2026; conectividade a partir do VOLC O.S. ainda não foi provada."
+    },
+    {
+      "id": "concept:attention_ecosystem",
+      "label": "Ecossistema de atenção",
+      "cluster": "strategy",
+      "state": "decision",
+      "summary": "Visão que conecta mídia paga, conteúdo orgânico, ativos próprios, retenção e monetização sem confundir suas regras operacionais.",
+      "evidence": "Síntese curada de VOS PRIME, Organic Attention Matrix, Meta Programmatic e declarações do dono em 26/08/2026. A visão foi aceita como mapa; módulos e projeções dos documentos não foram aceitos automaticamente."
+    },
+    {
+      "id": "concept:facebook_page_monetized",
+      "label": "Página de Facebook monetizada adquirida",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Primeiro ativo social real para onboarding no Cofre e piloto de conteúdo orgânico.",
+      "evidence": "Existência, aquisição há mais de um mês e monetização declaradas pelo dono em 26/08/2026. Nome, page_id, propriedade, acesso e monetização ainda não foram inventariados."
+    },
+    {
+      "id": "system:chatpion",
+      "label": "ChatPion próprio",
+      "cluster": "platform",
+      "state": "live",
+      "summary": "Plataforma self-hosted disponível para fluxos de conversa e relacionamento; deve entrar no VOLC O.S. por inventário, contrato e governança, não por acoplamento direto de segredos.",
+      "evidence": "https://chatpion.agenciavolc.com.br/ respondeu HTTP 200 em 26/08/2026. Configuração funcional, páginas conectadas, permissões, fluxos e entregabilidade não foram verificados."
+    },
+    {
+      "id": "concept:meta_direct_traffic",
+      "label": "Meta direto para o site",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Contrato criativo → campanha → conjunto → anúncio → site, com gestão e análise no Hub de Tráfego.",
+      "evidence": "Direção atual declarada pelo dono; o chassi Meta existe no Hub, mas integração, criação e gestão reais ainda não estão implementadas."
+    },
+    {
+      "id": "concept:meta_chat_retention",
+      "label": "Meta para conversa e retenção",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Comentário ou mensagem consentida → ChatPion → identidade → relacionamento → retorno ao conteúdo ou oferta → atribuição.",
+      "evidence": "Arquitetura documentada no Black Book Meta e infraestrutura ChatPion publicada; nenhuma operação ponta a ponta foi comprovada."
+    },
+    {
+      "id": "concept:beast_meta_lab",
+      "label": "BEAST Mode Meta — laboratório histórico",
+      "cluster": "decision",
+      "state": "historical",
+      "summary": "Pacote experimental de precheck, observação, avaliação, decisão e rotação criativa que pode fornecer padrões, testes e contratos, mas não política pronta de automação.",
+      "evidence": "Encontrados 4 workflows legados e 5 V2, todos active=false, além de SQL com 14 tabelas e 2 views. O mestre anuncia sete agentes, mas os artefatos presentes não comprovam todos eles nem execuções reais."
+    },
+    {
+      "id": "concept:affiliate_promo_loop",
+      "label": "Loop de promoções afiliadas",
+      "cluster": "strategy",
+      "state": "todo",
+      "summary": "Oferta por API → validação → peça → canal próprio → clique atribuído → resultado, preservado como frente separada de mídia paga e conteúdo editorial.",
+      "evidence": "Direção e protótipo declarados pelo dono; workflow ainda não foi exportado ou inspecionado nesta curadoria."
+    },
+    {
+      "id": "concept:low_ticket_reserved",
+      "label": "Infoproduto low ticket — reservado",
+      "cluster": "strategy",
+      "state": "todo",
+      "summary": "Espaço reservado no mapa para futura engenharia de infoprodutos baseada em análise de dados; sem backlog até novos insumos.",
+      "evidence": "O dono pediu explicitamente em 26/08/2026 que a frente seja apenas preservada e detalhada depois."
+    },
+    {
+      "id": "risk:legacy_attention_tactics",
+      "label": "Táticas legadas de atenção não aprovadas",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "Projeções fixas, aquecimento artificial, pods, disfarce de padrão, rotação para contornar bloqueio, manipulação editorial e automações sem consentimento aparecem nos documentos antigos e não governam o produto.",
+      "evidence": "Trechos identificados em VOS PRIME, Organic Attention Matrix e Meta Programmatic. Exigem revisão de política, plataforma, consentimento, segurança e evidência antes de qualquer reaproveitamento."
+    },
+    {
+      "id": "concept:attention_map",
+      "label": "Mapa da Atenção",
+      "cluster": "strategy",
+      "state": "decision",
+      "summary": "Lente que mostra origem da atenção, pouso, avanço, retorno, receita e aprendizado sem reduzir toda a operação a campanha ou keyword.",
+      "evidence": "Conceito central das oito páginas do caderno humano de 21/06/2026, promovido à curadoria em 26/08/2026."
+    },
+    {
+      "id": "concept:topic_ecosystem",
+      "label": "Tema como ecossistema",
+      "cluster": "strategy",
+      "state": "decision",
+      "summary": "Um tema pode gerar busca, página, vídeo, post, criativo, isca, grupo e entidade semântica; keyword continua sendo uma expressão, não o universo inteiro.",
+      "evidence": "Decisão estratégica registrada no caderno humano; ainda não existe modelo canônico que una todas as manifestações do tema."
+    },
+    {
+      "id": "concept:brand_media_ecosystem",
+      "label": "Marca como ecossistema de mídia",
+      "cluster": "strategy",
+      "state": "decision",
+      "summary": "Cada projeto pode reunir portal, ativos sociais, canais de vídeo e meios de retorno sob uma identidade e economia comuns.",
+      "evidence": "O caderno usa Crédito Up como exemplo concreto; propriedade e estado dos satélites ainda precisam do Cofre de Ativos."
+    },
+    {
+      "id": "concept:content_shortcut",
+      "label": "Conteúdo como atalho legítimo",
+      "cluster": "production",
+      "state": "decision",
+      "summary": "A peça deve economizar tempo, dinheiro ou esforço, usando brevidade inteligente, clareza e progressão em vez de parede de texto ou clickbait vazio.",
+      "evidence": "Princípio editorial explícito na página 6 do caderno humano."
+    },
+    {
+      "id": "concept:retention_capture_model",
+      "label": "Retenção HIGH FIVE × EXCHANGE",
+      "cluster": "strategy",
+      "state": "decision",
+      "summary": "Ordena mecanismos de retorno por fricção: opt-in leve versus identidade recebida em troca de uma isca útil; política e consentimento continuam sendo portões externos.",
+      "evidence": "Taxonomia criada no caderno humano; não equivale a autorização de captura ou envio."
+    },
+    {
+      "id": "concept:organic_distribution_channels",
+      "label": "Canais de distribuição orgânica",
+      "cluster": "production",
+      "state": "todo",
+      "summary": "Facebook, Instagram, TikTok, Kwai, YouTube Shorts e Pinterest como destinos possíveis de peças adaptadas por plataforma.",
+      "evidence": "Canais listados no caderno; apenas uma página de Facebook foi declarada como ativo real. Postiz foi escolhido como control plane externo e MultiPost como fallback experimental; nenhum destino foi conectado ou publicado por esse caminho."
+    },
+    {
+      "id": "concept:organic_publication_control_plane",
+      "label": "Control plane de publicação orgânica",
+      "cluster": "production",
+      "state": "decision",
+      "summary": "O VOLC governa pauta, aprovação, linhagem e aprendizado; um serviço isolado agenda e publica por canal, devolvendo IDs, URLs e recibos sem se tornar a fonte de verdade.",
+      "evidence": "Decisão de 28/08/2026 em docs/architecture/ADR-DISTRIBUICAO-ORGANICA-E-QA-VISUAL.md: Postiz é o núcleo escolhido, integrado por API/CLI como serviço separável por causa do contrato funcional e da licença AGPL-3.0."
+    },
+    {
+      "id": "concept:published_surface_visual_gate",
+      "label": "Portão visual da superfície publicada",
+      "cluster": "governance",
+      "state": "todo",
+      "summary": "Após publicar, abre a URL no perfil isolado correto, registra screenshot, DOM, console e sinais de layout e devolve aprovado, corrigir ou indeterminado ao Redator.",
+      "evidence": "Caso de uso declarado pelo dono em 28/08/2026. AdsPower MCP oferece controle do navegador, mas nenhuma integração, regra Gutenberg/ad slot, screenshot ou recibo existe no VOLC O.S."
+    },
+    {
+      "id": "system:postiz",
+      "label": "Postiz — publicação multicanal",
+      "cluster": "platform",
+      "state": "todo",
+      "summary": "Serviço self-hosted escolhido para calendário, drafts, agendamento, publicação e analytics multicanal, acessado por uma porta VOLC.",
+      "evidence": "Fontes oficiais consultadas em 28/08/2026 confirmam API pública, OAuth2, SDK, CLI, nó n8n, self-hosting, draft/schedule/now e dezenas de providers. Repositório AGPL-3.0. Nenhuma instância VOLC foi implantada."
+    },
+    {
+      "id": "system:multipost",
+      "label": "MultiPost — fallback de publicação por navegador",
+      "cluster": "platform",
+      "state": "reference",
+      "summary": "Extensão Apache-2.0 para publicar texto, imagem e vídeo usando sessões já abertas; reservada para canais sem adapter confiável no núcleo.",
+      "evidence": "README e site oficiais consultados em 28/08/2026 declaram mais de dez plataformas, Extension API e REST API. Não foram provadas idempotência, reconciliação, cobertura dos canais VOLC nem execução local."
+    },
+    {
+      "id": "system:adspower-browser-mcp",
+      "label": "AdsPower Browser MCP",
+      "cluster": "platform",
+      "state": "todo",
+      "summary": "Executor local e isolado de perfis de navegador para navegação agentic, screenshots e inspeção da superfície publicada.",
+      "evidence": "Repositório oficial MIT consultado em 28/08/2026 oferece skill, CLI e MCP para Claude, Codex e Cursor, cliente headless, porta 50325 e API_KEY. AdsPower, perfil e integração VOLC não foram observados em execução."
+    },
+    {
+      "id": "system:onepassword-mcp",
+      "label": "1Password Environments MCP",
+      "cluster": "platform",
+      "state": "todo",
+      "summary": "Autoridade local de segredos para agentes e ferramentas de desenvolvimento, capaz de montar variáveis sem revelar o valor ao modelo ou gravá-lo no repositório.",
+      "evidence": "Documentação oficial consultada em 28/08/2026 confirma servidor stdio no app desktop, aprovação por ambiente e visibilidade apenas de nomes. Nenhuma instalação, autorização ou chamada VOLC foi executada; processos remotos exigirão mecanismo de runtime separado."
+    },
+    {
+      "id": "system:google-adk-runtime",
+      "label": "Google ADK — runtime agêntico do produto",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Candidato a orquestrador de agentes pequenos dentro da API do VOLC para diagnóstico, recuperação limitada, ferramentas tipadas e confirmação humana.",
+      "evidence": "Google ADK 2.8.0 está instalado no harness local de desenvolvimento e já orquestra CLIs; não existe runtime ADK no backend do produto, adapter do Redator, ledger ou ferramenta de produção."
+    },
+    {
+      "id": "system:deepseek-v4-flash",
+      "label": "DeepSeek V4 Flash",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Modelo candidato de baixo custo para microdiagnósticos e reparos tipados, acessado por API compatível e nunca tratado como autoridade de decisão ou escrita.",
+      "evidence": "Em 28/08/2026, 8 chamadas reais e sanitizadas ao deepseek-v4-flash com thinking ligado e effort low produziram 7 propostas aceitas pela guarda e zero escrita externa. O reparo Python fez 4/4 com allowlist, AST e prova funcional. Copy não recebeu aceite semântico humano e permanece sem autoaplicação. O adapter ADK/LiteLLM testado perdeu a resposta final ao mapear o thinking; a prova válida usou o endpoint oficial OpenAI-compatible. Evidência: docs/architecture/evidence/DEEPSEEK-AUTOREPAIR-SNIPER-SMOKE-2026-08-28.json."
+    },
+    {
+      "id": "system:aprova-ad-studio",
+      "label": "Aprova Ad Studio oficial",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Produto Vite/React + FastAPI que pesquisa, cria blueprints e gera a peça inteira por LLM para dimensões exatas, com providers, progresso real e pacote de variações.",
+      "evidence": "Autoridade corrigida para o projeto IESDE/2026, HEAD a1d9ae6. O request aceita dimensions; o provider gpt-image-2 mapeia o alvo para tamanho nativo, compõe na proporção e entrega pixels exatos com resize/cover. Oito presets de UI e 12 mappings de backend foram observados; o contrato não se limita aos presets. Ainda externo ao VOLC O.S."
+    },
+    {
+      "id": "system:positivo-ad-studio",
+      "label": "Positivo Ad Studio",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Produto criativo que tanto gera a peça inteira por LLM em dimensões exatas quanto preserva foto real e compõe ao redor dela por estratégias nativa, visão, chroma e híbrida.",
+      "evidence": "Path oficial auditado, HEAD 9d0035d. O request aceita dimensions, com 11 presets no front e 14 mappings no backend; a família de utilities/provider entrega pixels exatos. PhotoAnalyzer, VisionZoneAgent, CoordinateCompositor e PhotoAdComposer implementam as alternativas com foto. Ainda externo ao VOLC O.S."
+    },
+    {
+      "id": "system:motor-imagem-volc",
+      "label": "Motor de Imagem VOLC",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Parque de contratos, brand packs, destinos, renderizadores, gates e laboratórios que separa pixels variáveis por IA de pixels exatos controlados por código.",
+      "evidence": "Snapshot reproduzível em docs/creative-engines/snapshots/motor-imagem-2026-08-26.json: 856 arquivos lidos, 443 fontes/contratos hasheados, 18 specs, 7 skins e 94 imagens no out canônico. Entre 64 renders, 26 são tipografia pura, 12 são gráfico+tipografia por código e 26 são híbridos com asset de IA. Não é um repo ou serviço único."
+    },
+    {
+      "id": "system:motor-video-volc",
+      "label": "Motor de Vídeo VOLC",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Fábrica contratual de vídeos verticais que combina roteiro, hooks por vídeo/avatar/imagem, assets, voz, som, legendas, Remotion, QA, ledger e portão de publicação.",
+      "evidence": "Snapshot reproduzível em docs/creative-engines/snapshots/motor-video-2026-08-26.json: contrato 1.2.1, 17 formatos, 15 skins, 15 nichos, 14 vozes e 38 MP4s 1080x1920 observados na fábrica /Users/mac/volc-factory. Há 20 QAs técnicos, 4 visuais e 2 snapshots congelados; um render tem QA técnico FAIL. A raiz organizada ainda não provou render integral e não existe adapter ou runtime no VOLC O.S."
+    },
+    {
+      "id": "system:prensa",
+      "label": "PRENSA",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Renderer e pipeline de qualidade que resolve tokens, mede tipografia real no Chromium, aplica layers físicos, recompõe variantes e falha fechado quando DOM ou pixels finais não passam.",
+      "evidence": "Código e POC auditados em /Users/mac/Desktop/Volc Mídia Global/motor-imagem/{prensa,compartilhado/prensa-poc}. Além de iPhone e Kintsugi, o carrossel Método 90 prova 20 saídas sem assets de imagem e Anderson prova gráficos SVG determinísticos. Snapshot conta 47 pixel gates aprovados. Ainda é biblioteca/CLI, sem gateway runtime no VOLC O.S."
+    },
+    {
+      "id": "system:volc-creative-port",
+      "label": "Porta interna de criativos VOLC",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Contrato, requisitos por canal, validação, catálogo por conteúdo e Protocol assíncrono que permitem receber motores sem acoplar o núcleo ao projeto externo.",
+      "evidence": "Implementado em volc_ads/criativo no commit 6eed77f: 80 testes, adaptador de imagem FunnelForge e motor falso; zero Google, upload ou segredo. Aprova, Positivo e PRENSA ainda não possuem adaptadores. Em db39f0b a porta ganhou saída própria: criativo/adaptadores/medir_imagem.py mede PNG/JPEG/GIF só com stdlib (`struct`), sem Pillow — que está no venv e NÃO está em requirements algum, e cujo modo de falha seria devolver medida ausente em silêncio. E criativo/requisitos.exigencia_binaria_de() projeta a exigência do canal SÓ na parte de arquivo. Essa projeção não é conveniência: validar um lote de imagens contra a exigência completa de DISPLAY produzia `Q1.faltam` de severidade erro para headline, headline_longa, descricao e nome_da_empresa, e `ResultadoDeValidacao.ok` seria False SEMPRE — um portão que reprova 100% das vezes por um motivo que não é dele é um portão que alguém desliga na primeira semana. A saída é consumida por volc_ads/criativo_ponte.py, que mora fora dos dois pacotes. Aprova, Positivo e PRENSA continuam sem adaptadores."
+    },
+    {
+      "id": "concept:creative-engine-registry",
+      "label": "Registro de motores criativos",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Catálogo canônico de motores, versões, entradas, saídas, formatos, provas, limitações e adaptadores; diz quem sabe fazer o quê sem acoplar o Hub a um projeto de cliente.",
+      "evidence": "Manifesto externo em docs/creative-engines/motores-de-imagem.json e Catalogo interno em memória no commit 6eed77f. Persistência, leitura runtime e adaptadores dos três motores auditados ainda não existem."
+    },
+    {
+      "id": "concept:creative-job-contract",
+      "label": "Contrato de job criativo",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Envelope versionado de briefing, brand pack, assets, destinos, variantes, gates, custo, aprovação e vínculo com campanha ou publicação.",
+      "evidence": "O núcleo Asset/Procedencia/Exigencia/Violacao/Falha/Lote e a porta MotorDeCriativo foram implementados em volc_ads/criativo no commit 6eed77f. Briefing, brand pack, gates PRENSA, aprovação humana e vínculo posterior ainda não fecham o envelope completo."
+    },
+    {
+      "id": "concept:deterministic-creative-render",
+      "label": "Render criativo determinístico",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Código pode controlar sozinho fonte, texto, gráficos, geometria, layers, contraste, formatos e aprovação; quando há imagem, ela entra como asset opcional e separado.",
+      "evidence": "PRENSA POC executada: 26 renders typography_only, 12 deterministic_graphics_and_typography e 26 híbridos com asset IA no snapshot de 26/08/2026. Biblioteca/CLI existe fora do VOLC O.S.; gateway e workers não."
+    },
+    {
+      "id": "concept:creative-production-modes",
+      "label": "Modos de produção criativa",
+      "cluster": "production",
+      "state": "decision",
+      "summary": "O job escolhe explicitamente entre tipografia pura, gráfico determinístico, full-LLM multi-formato, foto real preservada, PRENSA híbrida ou geração full-LLM finalizada pela PRENSA.",
+      "evidence": "Implementações observadas no Aprova/Positivo e provas da PRENSA, consolidadas no ADR-001 e no catálogo PRENSA em 26/08/2026. A seleção por job ainda não existe no runtime do VOLC O.S."
+    },
+    {
+      "id": "concept:typography-only-creative",
+      "label": "Criativo tipográfico sem imagem generativa",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Peça ou carrossel em que todos os pixels vêm de tipografia real, formas, gráficos e atmosfera determinística; nenhum provider de imagem é necessário.",
+      "evidence": "spec_carrossel.json não possui assets e gerou 20 PNGs do Método 90 em base, FX, FXD, Titanium e Dossier. Snapshot registra 26 saídas typography_only e 12 com gráficos determinísticos; integração runtime no VOLC O.S. ainda não existe."
+    },
+    {
+      "id": "concept:video-production-contract",
+      "label": "Contrato de produção de vídeo",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Envelope que resolve tema, fatos, nicho, skin, voz, idioma, hook, beats, assets, identidade, CTA, publicação e compliance antes da composição.",
+      "evidence": "contrato/motor/mapa.json versão 1.2.1 e contrato/schema/contrato.schema.json no Motor de Vídeo. O mapa possui 15 regras globais, 15 skins e três famílias de hook; ainda não é consumido por CreativeJob do VOLC O.S."
+    },
+    {
+      "id": "concept:video-publication-gate",
+      "label": "Portão de publicação de vídeo",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "QA técnico e visual, ledger, licenças, disclosure, congelamento por hash, metadados, pacote e log impedem que um MP4 apenas renderizado seja tratado como publicável.",
+      "evidence": "motor/{qa.py,qa_visual.py,finish.py,publicar.py}; 20 relatórios técnicos, 4 visuais e 2 snapshots congelados observados. Cobertura ainda parcial e nenhum portão integrado ao VOLC O.S."
+    },
+    {
+      "id": "system:blotato",
+      "label": "Blotato / autopost multicanal",
+      "cluster": "platform",
+      "state": "reference",
+      "summary": "Candidato histórico a autopost multicanal, substituído pelo Postiz como escolha principal e preservado apenas para comparação futura baseada em evidência.",
+      "evidence": "Nome anotado no caderno humano. Em 28/08/2026 Postiz foi escolhido por possuir self-hosting, API pública, CLI e integração n8n verificadas; Blotato não foi inventariado ou executado."
+    },
+    {
+      "id": "concept:micro_saas_reserved",
+      "label": "Micro-SaaS — reservado",
+      "cluster": "strategy",
+      "state": "todo",
+      "summary": "Família futura de receita própria derivada de audiência e ferramentas úteis; preservada sem backlog.",
+      "evidence": "Citada no caderno humano junto de low ticket e afiliados, sem produto, escopo ou prova operacional."
+    },
+    {
+      "id": "concept:interactive_monetization",
+      "label": "Monetização da jornada interativa",
+      "cluster": "measurement",
+      "state": "todo",
+      "summary": "Hipótese de que ativos interativos elevem valor por sessão e qualidade de sinal; interstitial e offerwall exigem teste de experiência, política e receita incremental.",
+      "evidence": "Hipótese do caderno humano; nenhum teste controlado foi apresentado."
+    },
+    {
+      "id": "risk:superficie_privilegiada",
+      "label": "Superfície privilegiada — removida do código, ainda publicada",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "Endpoints com service_role, sem autenticação, aceitando tabela e RPC arbitrários, com Allow-Origin *. Alcançam public.users, incluindo password_hash e tokens de primeiro acesso. REMOVIDOS DO REPOSITÓRIO em 24/08/2026 — e ainda no ar, porque o deployment de produção não foi atualizado. Risco ATUAL: o que protege hoje é ninguém ter descoberto, não o código novo.",
+      "evidence": "Medido em 24/08/2026. NO CÓDIGO (corrigido, commit 4a08ef2): api/supabase/{query,insert,update,rpc}.js e api/users/{query,create}.js foram REMOVIDOS, junto com os equivalentes do Express (inclusive o delete, que só existia lá). No lugar: rotas nomeadas onde nenhum identificador de banco vem da requisição. EM PRODUÇÃO (aberto): deployment dpl_49TwodSU7GvKGcoAeGFbL9AftB27, de 16/02/2026, publicado há 189 dias com essas funções — e com SUPABASE_SERVICE_ROLE_KEY no ambiente do projeto. Zero deploy foi feito. O vínculo local apontava para o projeto webgo e foi corrigido para volc-os-campaign (prj_tn56w79cDSALjzdqLruqeGYKMaVs); scripts/guarda-vercel.sh recusa deploy divergente. Exploração INDETERMINADA: vercel logs só transmite logs novos. Ver docs/seguranca/EXPOSICAO-VERCEL.md."
+    },
+    {
+      "id": "risk:grants_anon",
+      "label": "anon escreve direto em users e system_settings",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "public.users e public.system_settings estão com RLS desabilitada, zero policies, e anon com SELECT/INSERT/UPDATE/DELETE/TRUNCATE. A anon key vai no bundle por desenho, então fechar os proxies sem a migration deixa a janela aberta.",
+      "evidence": "information_schema.role_table_grants em 24/08/2026, verificado duas vezes. Reconfirmado no preflight de v8_01: public.users com relrowsecurity=f, zero policies e anon com escrita. A auditoria ORAKUL B2 amplia o gate às seis tabelas operacionais: REVOKE/RLS e smoke anônimo sem escrita continuam pendentes. v8_01 cria a fonte de autorização, não fecha essas superfícies."
+    },
+    {
+      "id": "risk:supabase_demo_jwt_secret",
+      "label": "Segredo JWT do Supabase igual ao exemplo público",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "A configuração viva foi comparada por hash com o exemplo publicado e permanece sob aceite temporário de risco; a rotação é gate pré-lançamento.",
+      "evidence": "Auditoria sanitizada em docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json e REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md. O grafo registra somente classe, comparação e owner P02-T05; nunca o valor."
+    },
+    {
+      "id": "risk:portao_falha_aberta",
+      "label": "Portão legado que falhava aberta (aposentado no código)",
+      "cluster": "governance",
+      "state": "historical",
+      "summary": "require_api_key retornava sem erro quando PAUTADOR_API_KEY não estava setada, e a mesma chave era exposta ao navegador por VITE_PAUTADOR_API_KEY. APOSENTADO no repositório em 24/08/2026: a função não existe mais e um teste impede que volte, nem consertada — um portão consertado continuaria sendo autenticação por segredo compartilhado com o navegador. NÃO PUBLICADO: o deployment em produção ainda carrega o código antigo.",
+      "evidence": "Era backend/app/deps.py:17-23 e src/lib/pautadorApi.ts:37,97,682. Hoje: deps.py não exporta a função, o bundle não contém X-API-Key nem VITE_PAUTADOR_API_KEY, e test_seguranca_hub.py::test_require_api_key_foi_APOSENTADA varre o código atrás de reincidência. No lugar, exigir_usuario/exigir_admin/exigir_servico, com portão no APIRouter: 66 rotas, 14 admin, 2 abertas (/health e /). Commit ef5cdf0. Nenhum deploy realizado."
+    },
+    {
+      "id": "concept:contencao_1a",
+      "label": "Contenção do Sprint 1A",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Fechamento da superfície privilegiada. O REPOSITÓRIO está fechado; a PRODUÇÃO não. Os proxies genéricos foram removidos, o X-API-Key saiu do bundle e as 66 rotas do FastAPI ganharam portão — mas nada disso foi publicado, e no banco só v8_01 rodou.",
+      "evidence": "APLICADO EM PRODUÇÃO: v8_01 em 24/08/2026 14:48-03 (executor supabase_admin) — cria app_auth, semeia 1 ADMIN e publica public.volc_role_of(), que é a autoridade do portão. PENDENTE NO BANCO: v8_02..v8_06 e a v8_07 opcional NÃO foram aplicadas. PENDENTE NO DEPLOY: nada foi publicado na Vercel; o deployment de produção continua sendo o de 16/02/2026. NO REPOSITÓRIO: commits 4a08ef2 (proxies removidos), 020cbc4 (login) e ef5cdf0 (portão nas 66 rotas); backend/tests/test_seguranca_hub.py com 48 testes verdes."
+    },
+    {
+      "id": "risk:alertas_gaql_no_render",
+      "label": "O sino gastava cota da conta de anúncios (fechado)",
+      "cluster": "acquisition",
+      "state": "historical",
+      "summary": "FECHADO em 25/08/2026. `GET /api/trafego/alertas` foi REMOVIDA — não mantida como atalho, porque enquanto existisse um consumidor esquecido continuaria pagando a cota. No lugar, `GET /api/trafego/inventario/alertas` projeta o snapshot já gravado, mesma fonte da aba Atenção.",
+      "evidence": "Quatro provas de zero GAQL, uma por caminho: render de /trafego, render do sino, abertura da aba Atenção, e a prova de que a atualização explícita é o único caminho que consulta. São armadilhas de import, não asserção sobre intenção. O que não é derivável do snapshot (`aprovacao_do_anuncio`, `origem`, `quem`) sai como null e a tela diz que não sabe, em vez de inventar a partir do espelho. Commit 5412519."
+    },
+    {
+      "id": "concept:creative_channel_boundary",
+      "label": "Fronteira criativo → canal",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "O único lugar que conhece os dois lados: valida o lote pela régua do canal antes de existir payload, reconfere o sha256 dos bytes contra o hash declarado, e projeta a procedência numa linhagem que viaja até o recibo. Nenhum dos dois pacotes importa o outro.",
+      "evidence": "volc_ads/criativo_ponte.py em db39f0b, com testes próprios em volc_ads/testes_criativo_ponte.py. Ela existe porque criativo/__init__.py e campanha/brief.py declaram, cada um, que não importam o outro — logo quem conhece os dois não pode ser nenhum dos dois; é o mesmo lugar que volc_ads/pautador_ponte.py ocupa do lado da mineração. Lote reprovado NÃO produz `ImagensDisplay`: a garantia de que lote inválido não avança é estrutural, não disciplinar. Um papel obrigatório que esvazia por falta de BYTES derruba a entrega separadamente, porque `validar_lote` julga assets e não sabe se os arquivos estão em mãos. Fica `partial` por dois motivos nomeados: nenhum caminho HTTP a alcança — `ProvarEntrada` não tem campo de imagem — e nenhum módulo de produção a importa; o consumidor é o CLI `python -m volc_ads.criativo_ponte`, offline, que não importa `gads`."
+    },
+    {
+      "id": "concept:asset_lineage",
+      "label": "Linhagem de asset criativo",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "De onde veio ESTE arquivo — motor, versão, insumo, pedido, instante, medida, custo e régua — achatada em campos JSON-nativos, derivada do payload que vai sair e não da intenção do brief, com `confirmada` como propriedade calculada.",
+      "evidence": "campanha/brief.Linhagem em db39f0b. Guarda de regressão recusa `datetime` em `quando`, porque o recibo serializa com json.dumps SEM `default=` e a primeira gravação acontece DENTRO do `with modo.destravar(...)` — o melhor lugar para descobrir que a procedência não serializa não é com a trava aberta. Medida ausente é None e nunca 0; custo ausente é None e nunca 0.0. `confere(bytes)` devolve False quando não há hash declarado, porque não se confirma o que não foi afirmado. subir.py a deriva com `_linhagem_do_payload`, que reconcilia por BYTES e não por nome: linhagem que afirma hash falso vira `Linhagem.desconhecida`, linhagem sem hash sobrevive só como nome e papel, e mime ou dimensão que contradizem os bytes também derrubam a atribuição. A CHAVE `linhagem` existe no JSON de /provar e /subir por backend/app/trafego/projecao.py, cujo `_linhagem` NAO levanta: um item que nao sabe virar JSON vira `confirmada: null` mais `erro_de_projecao`, porque essa funcao roda no `/subir` ANTES de `_registrar_campanha` e fora do try — uma excecao ali viraria 500 depois de a campanha existir na conta e antes de ela ser gravada no banco. O VALOR e sempre vazio por esse caminho, porque o corpo HTTP não recebe imagem. NÃO chega à tela. ⚠️ NÃO CONFUNDIR com concept:campaign_lineage: aquela é `campaign_lineage_id`, do inventário, e JÁ é renderizada com o rótulo 'linhagem' em src/components/trafego/inventario/LinhaDeCampanha.tsx. Quando esta aqui chegar à interface, os dois nomes colidem na mesma tela."
+    },
+    {
+      "id": "risk:gates_nao_versionados",
+      "label": "Os gates citados como prova não existem num clone",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "Dois arquivos de que os números de prova dependem existem só na cópia de trabalho do dono, não estão no git e não estão no .gitignore. Num clone limpo, a suíte do backend não coleta e a do volc_ads coleta zero e sai verde.",
+      "evidence": "Medido em 27/08/2026 no worktree p04-display-finalizacao, que ramifica do HEAD e por isso só contém o que está versionado. (1) `pytest.ini` não é rastreado — `git ls-files` não o lista e `.gitignore` não o menciona. Sem ele o padrão do pytest é `test_*.py`, e os arquivos da casa se chamam `testes_*.py`: `pytest volc_ads` coleta ZERO e sai 0 — um gate que sempre passa, a mesma armadilha que o CLAUDE.md documenta para `npx tsc --noEmit`. (2) `backend/app/routers/publicacao.py` é importado por backend/app/main.py e NUNCA existiu no git (`git log --all` devolve vazio); também não está ignorado. Resultado: 6 módulos de backend/tests não coletam, todos com `ImportError: cannot import name 'publicacao' from 'app.routers'`. (3) Mesmo COM o pytest.ini do dono, `python_functions = test_* prova_*` não casa `teste_*` — o glob exige o sublinhado — e os 32 testes de volc_ads/testes_pautador_ponte.py nunca rodam sob a config oficial; rodados à força, os 32 passam. (4) Armadilha correlata: `python volc_ads/testes_subir.py` por caminho quebra, porque volc_ads/copy/ sombreia o `copy` da stdlib e o SDK do Google morre em `from copy import deepcopy`; só `python -m volc_ads.testes_subir` funciona. Consequência para a cadeia de evidência: os números de teste citados nesta curadoria só são reproduzíveis com arquivos que não estão no repositório."
+    },
+    {
+      "id": "system:google-meridian",
+      "label": "Google Meridian / MMM",
+      "cluster": "platform",
+      "state": "todo",
+      "summary": "Framework open-source de Marketing Mix Modeling escolhido como candidato oficial para a camada analítica estratégica do VOLC O.S.",
+      "evidence": "Projeto oficial google/meridian, licença Apache-2.0 e release 1.6.1 observada em 27/08/2026. Não instalado nem integrado ao runtime VOLC; execução futura será isolada do backend transacional."
+    },
+    {
+      "id": "concept:mmm_weekly_dataset",
+      "label": "Painel semanal causal para MMM",
+      "cluster": "data",
+      "state": "todo",
+      "summary": "Snapshot reprodutível no grão semana × geo × canal, com mídia, spend, KPI somável, controles, moeda, cobertura, imputações e linhagem.",
+      "evidence": "Contrato proposto em SPEC-MERIDIAN-MMM-VOLC.md. As fontes existem de forma parcial e com frescor divergente; nenhuma tabela ou exportação canônica para Meridian foi implementada."
+    },
+    {
+      "id": "concept:mmm_shadow_mode",
+      "label": "Meridian em shadow mode",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Cenários e recomendações do MMM são registrados, comparados com decisões e resultados posteriores e nunca ganham autoridade direta de escrita.",
+      "evidence": "Decisão de governança de 27/08/2026. Depende de dataset, modelo aceito, intervalos explícitos e retrospectiva; nada implementado."
+    },
+    {
+      "id": "concept:google_technology_radar",
+      "label": "Radar Google Open Source",
+      "cluster": "strategy",
+      "state": "implemented",
+      "summary": "Registro vivo que classifica referências Google em padrão a extrair, spike, referência ou estacionamento, sem transformar descoberta em feature ou instalação automática.",
+      "evidence": "docs/architecture/RADAR-GOOGLE-OPEN-SOURCE-VOLC.md revisa 22 repositórios em 27/08/2026 e corrige a finalidade do negative_keyword_cleaner; nenhuma instalação, credencial ou mutação foi autorizada."
+    },
+    {
+      "id": "concept:data_pipeline_registry",
+      "label": "VOLC Data Pipeline Registry",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Catálogo operacional de fontes, jobs, runs, schedules, owner, heartbeat, retry, destino, recibo e último sucesso/erro.",
+      "evidence": "Inventário n8n e recibos parciais já existem. O ledger v12 e o coletor Google Ads v3 estão provados no Supabase oficial, mas os workflows D0/D-1 ainda usam o contrato legado e nenhuma agenda contínua foi ativada. Falta decidir uma única autoridade de schedule — preferencialmente n8n, por já ser o plano operacional — e ligar heartbeat, retry, idempotência e recibo sem concorrer com systemd."
+    },
+    {
+      "id": "concept:ads_health_monitor",
+      "label": "VOLC Ads Health Monitor",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Camada de saúde de mídia com séries, baselines, severidade, deduplicação, resolução e links de investigação por conta e entidade.",
+      "evidence": "Inventário, frescor e fila de atenção já existem. cost_spike e routine_stale foram provados apenas no Lab sintético; baseline de três dias produz risco de falso positivo sazonal e não pode virar veto antes de baseline por dia da semana e janela mínima declarada. Ainda faltam séries reais, regras versionadas, heartbeat, deduplicação e resolução."
+    },
+    {
+      "id": "concept:search_intelligence",
+      "label": "VOLC Search Intelligence",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Diagnóstico unificado de escala, Quality Score, impression share, termos, negativas candidatas e negativas existentes que bloqueiam tráfego.",
+      "evidence": "Engine Search possui critérios e negativas tipados. Faltam GoogleAdsRow real, componentes reais de Quality Score/IS e o caminho inverso de conflito. PMax exige campaign_search_term_view e contrato próprio; search_term_view não cobre essa superfície."
+    },
+    {
+      "id": "concept:secret-reference-boundary",
+      "label": "Fronteira segredo ↔ referência",
+      "cluster": "governance",
+      "state": "decision",
+      "summary": "1Password guarda valores; Supabase oficial, Cofre, grafo e Roadmap guardam somente referências, propósito, owner, validade e auditoria sanitizada.",
+      "evidence": "Decisão formalizada em 28/08/2026 no ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md. Schema privado, API, MCP e broker ainda não foram implementados."
+    },
+    {
+      "id": "concept:agentic-recovery-runtime",
+      "label": "Runtime de recuperação agêntica",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Camada limitada que recebe falha sanitizada, recorte do grafo e ferramentas allowlisted para explicar, reparar em sandbox, revalidar ou escalar sem assumir o lugar do motor determinístico.",
+      "evidence": "Smoke real com DeepSeek executou oito chamadas: o reparo mínimo de identificadores Python passou em 4/4 pela allowlist, AST e asserção funcional; copy passou estruturalmente em 3/4, mas 0/4 na aceitação semântica humana. O runtime segue fora do produto e ainda precisa de recipes, equipe multiagente especializada, revisor independente, ledger e promoção candidate→shadow→enabled."
+    },
+    {
+      "id": "concept:volc-gold-site-factory",
+      "label": "VOLC Gold Site Factory",
+      "cluster": "production",
+      "state": "todo",
+      "summary": "Golden path futuro para domínio, infraestrutura, WordPress, identidade visual, tema, tracking, QA, rollback e recibo por adapters governados.",
+      "evidence": "Visão declarada pelo dono e estacionada no P16 em 28/08/2026. Não há CLI, contrato de compra, adapter de provedor, ambiente descartável ou prova de GoDaddy MCP/API."
+    },
+    {
+      "id": "concept:search_paused_canary",
+      "label": "Canário Search pausado",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Primeiro lançamento real de engenharia, limitado à Portal Mundo Mais, com plano efetivo aprovado, criação pausada, idempotência e reconciliação.",
+      "evidence": "Canário real executado em 28/08/2026 na Portal Mundo Mais 547-809-6539. validate_only aceitou 72 operações; a mutação atômica criou a campanha 24183717006 e a releitura confirmou SEARCH, R$ 10/dia e campanha-mãe PAUSED, em REVIEW_IN_PROGRESS. Crédito Up não foi tocada. Faltam ledger v10_01 ligado, persistência da intenção, vínculo e reconciliação no inventário/H0 e decisão final de política antes de qualquer ativação."
+    },
+    {
+      "id": "concept:tracking_control_plane",
+      "label": "VOLC Tracking Control Plane",
+      "cluster": "measurement",
+      "state": "todo",
+      "summary": "Inventário e governança de GA4, GTM, UTMs, eventos, conversões, streams, dimensões, vínculos e drift antes de qualquer alteração.",
+      "evidence": "ga4-gtm-utilities, google-analytics-utilities e ga4_dataform foram aceitos como referências; não existe inventário canônico nem contrato de drift no VOLC O.S."
+    },
+    {
+      "id": "concept:topic_radar",
+      "label": "VOLC Topic Radar",
+      "cluster": "discovery",
+      "state": "partial",
+      "summary": "Consolida tendências, Search Console, GA4, termos, RPM, geo, sazonalidade e risco numa prioridade de pauta/campanha sem duplicar o Pautador.",
+      "evidence": "Pautador e mineração de keywords existem. Topic Mine foi aceito apenas para gap analysis; a saída unificada e seu histórico ainda não existem."
+    },
+    {
+      "id": "concept:visual_asset_governance",
+      "label": "VOLC Creative Governance",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Governa geração, adaptação, biblioteca, aprovação, linhagem, associação a canais, experimento e resultado de imagens e vídeos.",
+      "evidence": "Porta criativa, linhagem e Estúdio existem em graus diferentes. Adios, Copycat e Vigenair foram classificados para gap analysis, sem substituir PRENSA, Motor de Imagem ou Motor de Vídeo."
+    },
+    {
+      "id": "concept:intervention_impact_lab",
+      "label": "VOLC Intervention Impact Lab",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Laboratório de hipóteses, desenho experimental, potência, controle/tratamento, intervenção, washout e efeito com intervalo.",
+      "evidence": "Causmos e FeedX foram aceitos como referências complementares; nenhum contrato de experimento ou análise causal de intervenção existe no runtime VOLC."
+    },
+    {
+      "id": "concept:ads_agent_gateway",
+      "label": "VOLC Ads Agent Gateway",
+      "cluster": "platform",
+      "state": "todo",
+      "summary": "Gateway backend para consultas contextuais e auditadas da Bia/Hermes ao Google Ads, inicialmente somente leitura.",
+      "evidence": "Google Ads MCP e google/skills foram aceitos como referência. Não há gateway, escopo contextual, telemetria ou integração no VOLC O.S.; mutate e segredo no navegador continuam proibidos."
+    },
+    {
+      "id": "concept:pmax_observability",
+      "label": "Observabilidade PMax",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Leitura de asset groups, cobertura e qualidade de assets, resultados e riscos de PMax antes de liberar criação ou atuação.",
+      "evidence": "pMaximizer foi aceito como referência de consultas e painel. O VOLC ainda não coleta nem opera PMax."
+    },
+    {
+      "id": "system:google-ads-monitor-reference",
+      "label": "Google Ads Monitor — referência",
+      "cluster": "platform",
+      "state": "reference",
+      "summary": "Google Ads API via Gaarf exporter, Prometheus, Grafana e Alertmanager para saúde e alertas.",
+      "evidence": "Repo ativo, Apache-2.0, README e metadados conferidos em 27/08/2026. Extrair padrões; stack inteira não é requisito imediato."
+    },
+    {
+      "id": "system:google-crmint-reference",
+      "label": "Google CRMint — referência",
+      "cluster": "platform",
+      "state": "reference",
+      "summary": "UI e engine para criar, executar e agendar pipelines de integração e processamento.",
+      "evidence": "Repo ativo conferido em 27/08/2026. Referência para o Data Pipeline Registry; instalação integral recusada por sobreposição com n8n e VOLC O.S."
+    },
+    {
+      "id": "system:google-arba-reference",
+      "label": "Google ARBA — referência",
+      "cluster": "acquisition",
+      "state": "reference",
+      "summary": "Ad Rank Booster para causas de perda de escala e componentes de Quality Score.",
+      "evidence": "Repo ativo, Apache-2.0, com Gaarf/BigQuery/Looker/Vertex. Aceito para spike de consultas e regras, não implantação integral."
+    },
+    {
+      "id": "system:google-negative-keyword-cleaner-reference",
+      "label": "Google Negative Keyword Cleaner — referência",
+      "cluster": "acquisition",
+      "state": "reference",
+      "summary": "Detecta negativas existentes que bloqueiam tráfego; não é minerador de novos termos a negativar.",
+      "evidence": "Finalidade corrigida pela leitura do README oficial em 27/08/2026. Deve inspirar auditoria de conflito/desnegativação com aprovação."
+    },
+    {
+      "id": "system:google-ga4-dataform-reference",
+      "label": "Google GA4 Dataform — referência",
+      "cluster": "data",
+      "state": "reference",
+      "summary": "Modelos Dataform para transformar exportação GA4 no BigQuery.",
+      "evidence": "Repo ativo, Apache-2.0. Spike condicionado à existência de exportação GA4/BigQuery real e decisão de infraestrutura."
+    },
+    {
+      "id": "system:google-ga4-gtm-utilities-reference",
+      "label": "Google GA4/GTM Utilities — referência",
+      "cluster": "measurement",
+      "state": "reference",
+      "summary": "Apps Script/Sheets para listar e modificar tags, parâmetros, properties e variáveis do GTM.",
+      "evidence": "Repo ativo, Apache-2.0. Somente o inventário é aceito agora; qualquer escrita futura precisa proposta, diff, aprovação e recibo."
+    },
+    {
+      "id": "system:google-analytics-utilities-reference",
+      "label": "Google Analytics Utilities — referência",
+      "cluster": "measurement",
+      "state": "reference",
+      "summary": "Inventário de configurações, contas, propriedades e recursos GA4.",
+      "evidence": "Repo ativo, Apache-2.0. Aceito como referência para o Tracking Control Plane em leitura."
+    },
+    {
+      "id": "system:google-topic-mine-reference",
+      "label": "Google Topic Mine — referência",
+      "cluster": "discovery",
+      "state": "reference",
+      "summary": "Identifica tópicos a partir de dados próprios/externos e usa Gemini para keywords e textos.",
+      "evidence": "Repo ativo, Apache-2.0. Deve ser confrontado com o Pautador; proibido criar um segundo motor de pauta."
+    },
+    {
+      "id": "system:google-pmaximizer-reference",
+      "label": "Google pMaximizer — referência",
+      "cluster": "acquisition",
+      "state": "reference",
+      "summary": "Dashboard de PMax e qualidade/cobertura de assets sobre Gaarf, BigQuery e Looker Studio.",
+      "evidence": "Repo ativo conferido em 27/08/2026. Spike somente quando o VOLC tiver dados PMax reais."
+    },
+    {
+      "id": "system:google-ml-toast-reference",
+      "label": "Google ML Toast — referência arquivada",
+      "cluster": "discovery",
+      "state": "reference",
+      "summary": "Clustering semântico multilíngue de search terms em janelas diferentes.",
+      "evidence": "Repo arquivado; último push observado em 2024. Referência conceitual, nunca dependência produtiva."
+    },
+    {
+      "id": "system:google-causmos-reference",
+      "label": "Google Causmos — referência",
+      "cluster": "decision",
+      "state": "reference",
+      "summary": "Web app de Causal Impact para comparar KPI observado com contrafactual após uma intervenção.",
+      "evidence": "Repo ativo, Apache-2.0, README conferido em 27/08/2026. Candidato a spike isolado, não substituto de experimento randomizado ou Meridian."
+    },
+    {
+      "id": "system:google-feedx-reference",
+      "label": "Google FeedX — referência",
+      "cluster": "decision",
+      "state": "reference",
+      "summary": "Desenho e análise de experimentos de feed com MDE, CUPED, crossover, washout e trimming.",
+      "evidence": "Repo ativo, Apache-2.0. Referência de método; não serve para budget/bid e normalmente exige muitos itens."
+    },
+    {
+      "id": "system:google-fractional-uplift-reference",
+      "label": "Google Fractional Uplift — referência arquivada",
+      "cluster": "decision",
+      "state": "reference",
+      "summary": "Modelagem de uplift sensível a custo.",
+      "evidence": "Repo arquivado em 2026. Leitura técnica apenas; não será base produtiva."
+    },
+    {
+      "id": "system:google-if-this-then-ad-reference",
+      "label": "Google If This Then Ad — referência",
+      "cluster": "decision",
+      "state": "reference",
+      "summary": "Regras que consultam APIs/eventos e podem controlar entidades Google Ads ou DV360.",
+      "evidence": "Repo ativo e mutation-capable. O VOLC extrairá o padrão evento→recomendação; alvo direto e instalação foram recusados."
+    },
+    {
+      "id": "system:google-copycat-reference",
+      "label": "Google Copycat — referência",
+      "cluster": "production",
+      "state": "reference",
+      "summary": "Geração de anúncios Search alinhados ao estilo da marca.",
+      "evidence": "Repo ativo, Apache-2.0. Gap analysis com o engine Search VOLC; não vira segunda fábrica de RSA."
+    },
+    {
+      "id": "system:google-adios-reference",
+      "label": "Google Adios — referência",
+      "cluster": "production",
+      "state": "reference",
+      "summary": "Gestão de image assets: geração, aprovação, biblioteca, vínculo e experimento.",
+      "evidence": "Repo ativo, Apache-2.0. Gap analysis prioritário com Estúdio/linhagem; não substitui engines próprios."
+    },
+    {
+      "id": "system:google-vigenair-reference",
+      "label": "Google Vigenair — referência",
+      "cluster": "production",
+      "state": "reference",
+      "summary": "Recrafting de vídeo ads com IA para formatos, orientações e durações diferentes.",
+      "evidence": "Repo ativo, Apache-2.0. Gap analysis com Motor de Vídeo; não será novo core de vídeo."
+    },
+    {
+      "id": "system:google-feedgen-reference",
+      "label": "Google Feedgen — referência estacionada",
+      "cluster": "production",
+      "state": "reference",
+      "summary": "Otimização generativa de Shopping feeds.",
+      "evidence": "Repo ativo, Apache-2.0. Fora do caminho atual de arbitragem; scoring de conteúdo pode ser revisto depois."
+    },
+    {
+      "id": "system:google-argon-reference",
+      "label": "Google Argon — referência histórica",
+      "cluster": "data",
+      "state": "reference",
+      "summary": "Conector histórico de relatórios CM360/DV360 para BigQuery.",
+      "evidence": "Repo arquivado/deprecated; referência de arquitetura apenas, nunca instalação."
+    },
+    {
+      "id": "system:google-crystalvalue-reference",
+      "label": "Google CrystalValue — referência estacionada",
+      "cluster": "data",
+      "state": "reference",
+      "summary": "Biblioteca de pLTV com Vertex AI.",
+      "evidence": "Repo ativo, Apache-2.0. Fora do cérebro de arbitragem editorial imediato; reavaliar para leads/recorrência."
+    },
+    {
+      "id": "system:google-skills-reference",
+      "label": "Google Agent Skills — referência",
+      "cluster": "platform",
+      "state": "reference",
+      "summary": "Skills de engenharia para Ads, Data Manager, Analytics, BigQuery, lineage, monitoring e segurança agêntica.",
+      "evidence": "Repo google/skills ativo, Apache-2.0. Serve a implementação e checklists; não prova nenhuma feature do VOLC O.S."
+    },
+    {
+      "id": "concept:n8n_ip_rescue",
+      "label": "Resgate da inteligência proprietária n8n",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Preserva a genealogia dos workflows, extrai contratos e políticas defensáveis e declara um sucessor sem reativar automações perigosas.",
+      "evidence": "Nove flows receberam export privado atualizado, SHA-256, classificação, sucessor, análise individual e tarefas em 28/08/2026. Fórmulas ainda não foram extraídas para módulos privados e o registry de jobs não está completo."
+    },
+    {
+      "id": "concept:campaign_onboarding_guard",
+      "label": "Guardião das primeiras 72 horas",
+      "cluster": "acquisition",
+      "state": "todo",
+      "summary": "Diagnostica maturidade, aprovação, entrega, conversão, lance, verba, anúncio, termos e leilão de campanha nova sem usar remédio fixo ou executar mudança.",
+      "evidence": "O flow gads-new-campaign-validation preserva NEXUS v3.0 e v4.9 incompatíveis. nexus_guardiao_72h existe somente como política sintética do Lab e não é sucessor produtivo; nenhum guardião real canônico foi implementado."
+    },
+    {
+      "id": "concept:orakul_policy_kernel",
+      "label": "Kernel de políticas ORAKUL",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Pacote Python puro que transforma fatos em features, políticas versionadas, arbitragem e proposta, sem I/O nem mutação.",
+      "evidence": "ORAKUL histórico contém maturidade, histerese, piso/teto, evento externo, lance por RPC e fila de ações. REPORT, SPEC e AUDIT Fable confirmam que o conhecimento permanece em 1.678 linhas misturadas a I/O, inputs mortos e execução paralela; as políticas do Lab são calibração sintética e zero régua histórica foi promovida como política publicável."
+    },
+    {
+      "id": "concept:adaptive_budget_allocator",
+      "label": "VOLC Budget-ROI Allocator",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Aloca orçamento global entre unidades de mídia elegíveis com restrições explícitas de ROI, risco e gasto, inicialmente por replay e shadow, sem substituir Smart Bidding ou executar mutações.",
+      "evidence": "SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md confronta o paper arXiv:2302.01523 com ORAKUL, Decision Lab e Meridian. Nenhum allocator foi implementado; campanhas que não consomem budget são explicitamente inelegíveis."
+    },
+    {
+      "id": "concept:decision_intelligence_lab",
+      "label": "Laboratório de Inteligência de Decisão Search",
+      "cluster": "decision",
+      "state": "partial",
+      "summary": "Fatia sintética e determinística que normaliza projeções raw com recibo e linhagem, combina sinais de escala, saúde e eventos com políticas NEXUS/ORAKUL e prova diagnóstico causal, recomendação, conflito, decisão humana e recibo antes de tocar dados reais.",
+      "evidence": "Integrado em c846b56 e blindado em 6ff6fa7: oito cenários sintéticos, 28 contraprovas fail-closed e 10 provas de UI. A fronteira raw sintética → contrato VOLC entrou em 51437f3..7f0b768 após quatro recusas adversariais; possui normalizador hermético, cobertura, linhagem, fingerprint, ausência diferente de zero e 134 contraprovas próprias. Kernel + fronteira: 162 provas; gates amplos: 1.195 backend e 518 volc_ads. REPORT/AUDIT Fable reproduziram 8/8 e confirmaram que a crítica LLM não altera a decisão. Permanece partial: nenhum GoogleAdsRow real atravessou a fronteira; zero shadow real foi persistido e faltam ledger, replay futuro, aprovação e recibo produtivo."
+    },
+    {
+      "id": "concept:decision_timeline",
+      "label": "Timeline auditável de decisão",
+      "cluster": "decision",
+      "state": "partial",
+      "summary": "Apresenta fato, evidência, diagnóstico, previsão, proposta, autorização, aplicação, follow-up e reversão como objetos distintos.",
+      "evidence": "Schema v10 e partes do frontend existem, mas writer, aprovação, ledger e executor não fecham ponta a ponta. O writer ORAKUL grava no Supabase legado enquanto o front lê orientacao_* no self-hosted oficial."
+    },
+    {
+      "id": "concept:forecast_lifecycle",
+      "label": "Lifecycle preditivo champion/challenger",
+      "cluster": "decision",
+      "state": "todo",
+      "summary": "Versiona modelos e previsões, mede erro futuro, calibra intervalos, detecta drift e promove challengers somente após vencer baseline com aprovação.",
+      "evidence": "Não existem model registry, prediction ledger, evaluator ou drift events no banco oficial; schema v12, fotografia, previsão e realizado continuam proposta não aplicada. Bola de Cristal não persiste previsões e possui vazamento de futuro."
+    },
+    {
+      "id": "concept:search_terms_workbench",
+      "label": "Mesa de Termos de Busca",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Coleta termos e critérios para propor promover, negativar, preservar, despromover ou desfazer negativa conflitante com base em evidência e margem.",
+      "evidence": "Criterio tipado e Mesa de Critérios existem. O flow histórico de 636 linhas está inativo; faltam coleta v25.1, persistência, margem, conflito reverso, aprovação e recibo."
+    },
+    {
+      "id": "concept:behavioral_policy_aggregator",
+      "label": "Agregador de políticas comportamentais",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Transforma scroll, engagement, viewability, CTA e dead/rage clicks em observações e alertas versionados com amostra, janela e frescor.",
+      "evidence": "Sensor, fatos e RPCs existem; GHMVIgFAv6oytKuj está inativo, contém 888 linhas, datas fixas e heurísticas ainda não governadas por policy/version/owner."
+    },
+    {
+      "id": "concept:cta_experiment_lab",
+      "label": "Laboratório de experimento de CTA",
+      "cluster": "production",
+      "state": "todo",
+      "summary": "Converte congruência termo→página→CTA em hipótese com controle, variante, aprovação, guardrails e outcome, nunca edição automática.",
+      "evidence": "O flow awNXK3BdPTplsmKy está inativo, usa identidade frágil e gera alternativas/ClickUp; não existe experimento causal canônico."
+    },
+    {
+      "id": "concept:rsa_asset_experiment_loop",
+      "label": "Loop de experimento de assets RSA",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Observa assets com identidade completa, suficiência e sinais oficiais, propõe um diff e mede um eixo por experimento pelo executor canônico.",
+      "evidence": "Copy engine e propostas existem. RSA Darwin está inativo e perdia ad group/ad/asset antes de mutar sem validate_only, aprovação, idempotência ou rollback."
+    },
+    {
+      "id": "concept:semantic_recommender_convergence",
+      "label": "Convergência do recomendador semântico",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Mantém uma única rota semântica no Redator/FunnelForge, com sitemap real, preview, aprovação, renderer determinístico e resultado de clique.",
+      "evidence": "O subflow NlDpiKPIqHCDblto está ativo declarado, porém o caminho de match não persiste nem retorna ao loop e duplica uma capacidade mais madura do FunnelForge."
+    },
+    {
+      "id": "concept:google_ads_collection_ledger",
+      "label": "Ledger canônico de coleta Google Ads",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Separa recibo, item e métrica da inteligência Google Ads por conta, campanha, fonte, janela, versão e frescor sem colapsar zero, ausência, inelegibilidade, vazio confirmado e falha.",
+      "evidence": "A v12_01 foi aplicada no Supabase oficial em 29/08/2026. A coleta completa v3 da Crédito Up registrou 10 recibos reais sem falha: diagnósticos com 12/83 itens, forecasts com 4/3 cenários e recomendações/simulações vazias confirmadas com quantidade zero. Falha e retry bem-sucedido possuem identidades distintas. O agendamento contínuo ainda não foi ativado; a decisão pendente é adaptar os workflows n8n existentes ao ledger v12 ou adotar o worker, nunca manter ambos concorrendo."
+    },
+    {
+      "id": "concept:execution-receipt",
+      "label": "Recibo de execução imutável",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Prova append-only que liga intenção, reivindicação, executor, artefato, validação, custo e desfecho sem permitir que um resultado concluído seja reescrito.",
+      "evidence": "A bancada local e a migration v11_03 barram troca de dono e forja do recibo em provas adversariais. A garantia produtiva permanece parcial porque o runtime SQLite e o schema Postgres ainda são duas implementações separadas e v11_03 não está aplicada."
+    },
+    {
+      "id": "concept:asset-provenance",
+      "label": "Procedência de asset criativo",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Mantém briefing, motor, versão, parâmetros, seed, hashes, medidas, validações, armazenamento e destino associados a cada peça.",
+      "evidence": "O contrato e o parque criativo viajam com identidade e recibo no laboratório integrado. Nenhuma peça real completou ainda produção, storage remoto verificado, aprovação e vínculo ao destino pelo contrato novo."
+    },
+    {
+      "id": "concept:decision-lab-l6-surface",
+      "label": "Bancada visual de decisão L6",
+      "cluster": "decision",
+      "state": "partial",
+      "summary": "Projeta evidência, suficiência, diagnóstico, proposta e bloqueio sem recalcular regra ou autorização no navegador.",
+      "evidence": "3f9e22a e 9c1c907 foram integrados em 9f10d39 com 44 provas; fixtures sintéticas não podem afirmar dado real. Falta bundle shadow verdadeiro do backend e GoogleAdsRow real atravessando o normalizador."
+    },
+    {
+      "id": "concept:creative-storage-lifecycle",
+      "label": "Ciclo verificável de storage criativo",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Move um artefato de local para enviado e verificado, preservando chave canônica, bytes e hash e tornando divergência terminal.",
+      "evidence": "A máquina LOCAL → UPLOADED_UNVERIFIED → VERIFIED_OK|VERIFIED_MISMATCH possui 17 provas negativas. Bucket, uploader e reconciliação remotos ainda não existem."
+    },
+    {
+      "id": "risk:remotion-network-fonts",
+      "label": "Remotion depende de fontes em rede",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "Um render pode baixar famílias que não pertencem à composição pedida; sem rede, a execução falha duro.",
+      "evidence": "A medição do Template Lab observou 34 chamadas em 11 famílias e até 15 composições. O modo hermético é viável, mas as fontes locais e o carregamento seletivo ainda não foram incorporados."
+    },
+    {
+      "id": "risk:remotion-license",
+      "label": "Licença do runtime Remotion para uso comercial",
+      "cluster": "governance",
+      "state": "risk",
+      "summary": "A decisão de licença e custo precisa anteceder faturamento ou operação comercial do motor de vídeo.",
+      "evidence": "Risco registrado no handoff da bancada; não existe ainda decisão operacional versionada."
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc:official-plan",
+      "label": "Plano oficial Foco Genial",
+      "cluster": "publisher_quality",
+      "documenta": "cap_publisher_quality"
+    },
+    {
+      "id": "doc:prd",
+      "label": "PRD Arbitragem",
+      "cluster": "strategy",
+      "documenta": "cap_portfolio"
+    },
+    {
+      "id": "doc:spec",
+      "label": "SPEC Arbitragem",
+      "cluster": "strategy",
+      "documenta": "cap_decision"
+    },
+    {
+      "id": "doc:blueprint",
+      "label": "Publisher Global Blueprint",
+      "cluster": "strategy",
+      "documenta": "cap_portfolio"
+    },
+    {
+      "id": "doc:second-brain",
+      "label": "Second Brain Media Arbitrage",
+      "cluster": "strategy",
+      "documenta": "cap_forecast"
+    },
+    {
+      "id": "doc:n8n-map",
+      "label": "MAPA do sistema de arbitragem",
+      "cluster": "platform",
+      "documenta": "cap_workflows"
+    },
+    {
+      "id": "doc:front-campaigns",
+      "label": "SPEC Front de Campanhas",
+      "cluster": "acquisition",
+      "documenta": "cap_search_birth"
+    },
+    {
+      "id": "doc:smart-bidding",
+      "label": "Smart Bidding 17/08/2026",
+      "cluster": "decision",
+      "documenta": "cap_decision"
+    },
+    {
+      "id": "doc:trafego-porta",
+      "label": "Tráfego — porta de entrada",
+      "cluster": "acquisition",
+      "documenta": "cap_traffic_queue"
+    },
+    {
+      "id": "doc:trafego-evidencias",
+      "label": "Ledger de evidências — Tráfego",
+      "cluster": "acquisition",
+      "documenta": "cap_traffic_queue"
+    },
+    {
+      "id": "doc:trafego-prd",
+      "label": "PRD Tráfego como Operação",
+      "cluster": "acquisition",
+      "documenta": "cap_traffic_queue"
+    },
+    {
+      "id": "doc:trafego-spec-p0",
+      "label": "SPEC do P0 — Tráfego",
+      "cluster": "acquisition",
+      "documenta": "cap_traffic_queue"
+    },
+    {
+      "id": "doc:trafego-p0a",
+      "label": "Plano P0-A — diagnóstico",
+      "cluster": "acquisition",
+      "documenta": "cap_health"
+    },
+    {
+      "id": "doc:trafego-p0s",
+      "label": "Plano P0-S — segurança",
+      "cluster": "governance",
+      "documenta": "cap_workflows"
+    },
+    {
+      "id": "doc:trafego-adr",
+      "label": "ADRs da camada de Tráfego",
+      "cluster": "acquisition",
+      "documenta": "cap_traffic_queue"
+    },
+    {
+      "id": "doc:graph-architecture",
+      "label": "Arquitetura permanente do Mapa Vivo",
+      "cluster": "data",
+      "documenta": "cap_knowledge_graph"
+    },
+    {
+      "id": "doc:work-road",
+      "label": "Contrato provisório do Work Road",
+      "cluster": "governance",
+      "documenta": "cap_work_road"
+    },
+    {
+      "id": "doc:meta-copilot",
+      "label": "Co-Piloto de Criação Meta Ads",
+      "cluster": "acquisition",
+      "documenta": "cap_meta_ads"
+    },
+    {
+      "id": "doc:bia-proposal",
+      "label": "Proposta Bia dentro do VOLC O.S.",
+      "cluster": "decision",
+      "documenta": "cap_bia_copilot"
+    },
+    {
+      "id": "doc:strategy-inbox",
+      "label": "Inbox estratégico do VOLC O.S.",
+      "cluster": "strategy",
+      "documenta": "cap_knowledge_graph"
+    },
+    {
+      "id": "doc:creative-engines-inventory",
+      "label": "Inventário dos motores de imagem VOLC",
+      "cluster": "production",
+      "documenta": "cap_creative_engines",
+      "summary": "Leitura humana e manifesto estruturado dos motores Aprova, Positivo, Motor de Imagem e PRENSA, com autoridade, capacidades, provas, riscos e ordem de integração.",
+      "evidence": "docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md, motores-de-imagem.json, CATALOGO-PRENSA-E-MOTOR-IMAGEM.md e snapshot reproduzível, auditados em 26/08/2026."
+    },
+    {
+      "id": "doc:creative-service-adr",
+      "label": "ADR do serviço criativo VOLC",
+      "cluster": "platform",
+      "documenta": "concept:creative-engine-registry",
+      "summary": "Decide extrair um serviço dentro do monorepo, com runtime separável e seis modos, sem transformar o Positivo em núcleo permanente.",
+      "evidence": "docs/creative-engines/ADR-001-SERVICO-CRIATIVO-VOLC.md"
+    },
+    {
+      "id": "doc:prensa-catalog",
+      "label": "Catálogo vivo PRENSA e Motor de Imagem",
+      "cluster": "production",
+      "documenta": "concept:typography-only-creative",
+      "summary": "Inventário reproduzível de specs, skins, famílias, modos, gates, módulos reutilizáveis e provas antes/depois do Motor de Imagem.",
+      "evidence": "docs/creative-engines/CATALOGO-PRENSA-E-MOTOR-IMAGEM.md, PACOTE-REUSO-MOTOR-IMAGEM.json e snapshots/motor-imagem-2026-08-26.json."
+    },
+    {
+      "id": "doc:video-engine-catalog",
+      "label": "Catálogo vivo do Motor de Vídeo",
+      "cluster": "production",
+      "documenta": "system:motor-video-volc",
+      "summary": "Inventário reproduzível de contrato, formatos, skins, hooks, providers, gates, renders observados, dívidas e pacote de extração do Motor de Vídeo.",
+      "evidence": "docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md, motores-de-video.json, PACOTE-REUSO-MOTOR-VIDEO.json, ADR-002-INTEGRACAO-MOTOR-VIDEO.md e snapshots/motor-video-2026-08-26.json."
+    },
+    {
+      "id": "doc:vos-prime",
+      "label": "VOS PRIME — visão do ecossistema de atenção",
+      "cluster": "strategy",
+      "documenta": "cap_organic_content",
+      "summary": "Documento histórico que descreve o ciclo observar, interpretar, criar, publicar, monetizar, proteger e aprender.",
+      "evidence": "Analisado em 26/08/2026; arquitetura e linguagem são aspiracionais, e números e módulos não comprovam implementação."
+    },
+    {
+      "id": "doc:organic-attention-matrix",
+      "label": "Organic Attention Matrix V.OS",
+      "cluster": "production",
+      "documenta": "cap_organic_content",
+      "summary": "Catálogo estratégico de perfis, pilares editoriais e adaptação por canal; não é inventário de ativos possuídos.",
+      "evidence": "Analisado em 26/08/2026; handles, quantidades, metas e projeções foram mantidos como hipóteses."
+    },
+    {
+      "id": "doc:meta-programmatic-retention",
+      "label": "Meta Programmatic / Black Book — retenção",
+      "cluster": "acquisition",
+      "documenta": "cap_meta_retention",
+      "summary": "Fonte histórica da tese Meta → conversa → identidade → retorno → monetização.",
+      "evidence": "Os DOCX BLACK BOOK e VOLC META PROGRAMMATIC têm texto extraído idêntico; são uma referência lógica duplicada, não duas arquiteturas."
+    },
+    {
+      "id": "doc:beast-meta-autopilot",
+      "label": "BEAST Mode Autopilot Meta",
+      "cluster": "decision",
+      "documenta": "concept:beast_meta_lab",
+      "summary": "Mestre, SQL e workflows de uma automação experimental de observação, avaliação, decisão e rotação criativa.",
+      "evidence": "Pacote analisado em 26/08/2026: 9 JSON desativados e schema não comprovado no banco oficial."
+    },
+    {
+      "id": "doc:attention-ingestion",
+      "label": "Ingestão do ecossistema de atenção — 26/08/2026",
+      "cluster": "strategy",
+      "documenta": "cap_knowledge_graph",
+      "summary": "Matriz factual que separa aquisição direta, conteúdo orgânico, retenção, afiliados e itens reservados.",
+      "evidence": "docs/volc-os-graph/INGESTAO-ECOSSISTEMA-ATENCAO-2026-08-26.md"
+    },
+    {
+      "id": "doc:human-notebook-attention",
+      "label": "Caderno humano — Mapa da Atenção",
+      "cluster": "strategy",
+      "documenta": "concept:attention_map",
+      "summary": "Oito páginas manuscritas sobre atenção, jornada, retenção, canais, automações e diversificação, depuradas para o roadmap.",
+      "evidence": "Transcrições em /Users/mac/Desktop/Volc-2-Brain/_oficina-codex/arbitragem/insights-humanos/2026-06-21-caderno e síntese em docs/volc-os-graph/INGESTAO-CADERNO-HUMANO-2026-06-21.md."
+    },
+    {
+      "id": "doc:meridian-mmm-spec",
+      "label": "SPEC Meridian MMM no VOLC O.S.",
+      "cluster": "decision",
+      "documenta": "cap_incrementality_mmm",
+      "summary": "Posiciona Meridian como camada estratégica de incrementalidade, saturação e cenários, separada do controle operacional de campanhas.",
+      "evidence": "docs/architecture/SPEC-MERIDIAN-MMM-VOLC.md, fundamentado em fontes oficiais consultadas em 27/08/2026."
+    },
+    {
+      "id": "doc:google-open-source-radar",
+      "label": "Radar Google Open Source — decisão VOLC",
+      "cluster": "strategy",
+      "documenta": "concept:google_technology_radar",
+      "summary": "Revisão item a item que converte referências Google em padrões, spikes, referências ou estacionamento e as liga ao Roadmap Vivo.",
+      "evidence": "docs/architecture/RADAR-GOOGLE-OPEN-SOURCE-VOLC.md, baseado no DOCX recebido e em READMEs/metadados oficiais conferidos em 27/08/2026."
+    },
+    {
+      "id": "doc:organic-distribution-adr",
+      "label": "ADR — distribuição orgânica e QA visual",
+      "cluster": "production",
+      "documenta": "concept:organic_publication_control_plane",
+      "summary": "Define Postiz como núcleo isolado, MultiPost como fallback e AdsPower MCP como executor do portão visual pós-publicação.",
+      "evidence": "docs/architecture/ADR-DISTRIBUICAO-ORGANICA-E-QA-VISUAL.md, com fontes oficiais consultadas em 28/08/2026."
+    },
+    {
+      "id": "doc:adspower-browser-mcp",
+      "label": "AdsPower Browser MCP oficial",
+      "cluster": "platform",
+      "documenta": "system:adspower-browser-mcp",
+      "summary": "Skill, CLI e servidor MCP oficiais para a Local API do AdsPower.",
+      "evidence": "https://github.com/AdsPower/adspower-browser e artigo oficial do AdsPower, consultados em 28/08/2026."
+    },
+    {
+      "id": "doc:postiz-official",
+      "label": "Postiz — repositório e API oficiais",
+      "cluster": "platform",
+      "documenta": "system:postiz",
+      "summary": "Fonte do contrato self-hosted, API, CLI, integrações, providers e licença do núcleo de publicação escolhido.",
+      "evidence": "https://github.com/gitroomhq/postiz-app e https://docs.postiz.com/public-api/introduction, consultados em 28/08/2026."
+    },
+    {
+      "id": "doc:multipost-official",
+      "label": "MultiPost — extensão e documentação oficiais",
+      "cluster": "platform",
+      "documenta": "system:multipost",
+      "summary": "Fonte da alternativa browser-assisted para publicação multicanal.",
+      "evidence": "https://github.com/leaperone/MultiPost-Extension e https://multipost.app/, consultados em 28/08/2026."
+    },
+    {
+      "id": "doc:orakul-decision-intelligence",
+      "label": "ORAKUL Decision Intelligence — SPEC, ADR e auditoria Fable",
+      "cluster": "decision",
+      "documenta": "concept:decision_intelligence_lab",
+      "summary": "Pacote documental que separa laboratório sintético, kernel legado, runtime durável, shadow real e execução governada.",
+      "evidence": "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md, SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md, ADR-RUNTIME-ORAKUL-E-WORKERS.md e ORAKUL-DECISION-INTELLIGENCE-AUDIT.json, versionados em 40358dd. São auditoria e proposta; não promovem capacidade nem aplicam migration."
+    },
+    {
+      "id": "doc:budget-roi-allocator-spec",
+      "label": "SPEC VOLC Budget-ROI Allocator",
+      "cluster": "decision",
+      "documenta": "concept:adaptive_budget_allocator",
+      "summary": "Traduz com limites explícitos o SGD-UCB multicanal do paper para um allocator VOLC em replay e shadow mode.",
+      "evidence": "docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md, fundamentado no arXiv:2302.01523 e confrontado com a arquitetura real em 29/08/2026."
+    },
+    {
+      "id": "doc:n8n-orakul-predictive-rescue",
+      "label": "Resgate n8n, ORAKUL e preditivo",
+      "cluster": "decision",
+      "documenta": "concept:n8n_ip_rescue",
+      "summary": "Análise individual dos nove workflows, valor proprietário, riscos, destino arquitetural, modelo de dados, superfícies e rollout governado.",
+      "evidence": "docs/architecture/RESGATE-INTELIGENCIA-N8N-ORAKUL-PREDITIVO.md e docs/growth-engine/legado-n8n/MANIFESTO-PROPRIEDADE.json, produzidos a partir do inventário sanitizado atualizado via API read-only em 28/08/2026."
+    },
+    {
+      "id": "doc:secrets-agentic-recovery-adr",
+      "label": "ADR — segredos, AdsPower e recuperação agêntica",
+      "cluster": "governance",
+      "documenta": "concept:secret-reference-boundary",
+      "summary": "Decide a autoridade de segredos, o broker seguro do AdsPower, o envelope ADK/DeepSeek e o estacionamento da VOLC Gold Site Factory.",
+      "evidence": "docs/architecture/ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md e docs/architecture/contracts/agentic-recovery-smoke-v1.json, fundamentados em fontes oficiais consultadas em 28/08/2026."
+    },
+    {
+      "id": "doc:gads-report-data-contract",
+      "label": "Contrato D0/D-1 e dados Google Ads",
+      "cluster": "measurement",
+      "documenta": "concept:google_ads_collection_ledger",
+      "summary": "Registra a adaptação reversível dos coletores VOLC e a migration necessária para identidade, granularidade, frescor e recibo.",
+      "evidence": "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md, medido contra os quatro workflows n8n e o OpenAPI do Supabase oficial em 28/08/2026."
+    },
+    {
+      "id": "doc:v11-03",
+      "label": "v11_03 — execução criativa durável",
+      "cluster": "governance",
+      "documenta": "cap_bancada_criativa",
+      "summary": "Migration e rollback da fila criativa Postgres com RLS, papéis, guardas de transição e recibo imutável.",
+      "evidence": "supabase/migrations/v11_03_execucao_criativa.sql e v11_03_rollback.sql passaram o ciclo aplicar→operar→reverter→reaplicar com 129/129; não foram aplicadas no Supabase oficial."
+    },
+    {
+      "id": "doc:template-lab-handoff",
+      "label": "Handoff do Template Lab e da bancada criativa",
+      "cluster": "production",
+      "documenta": "cap_bancada_criativa",
+      "summary": "Separa o que está integrado localmente do que ainda depende de Postgres, worker, storage e render hermético.",
+      "evidence": "docs/architecture/HANDOFF-CURADORIA-ESTUDIO-CRIATIVO.md e commits integrados até 4da6a26."
+    }
+  ],
+  "edges": [
+    {
+      "source": "cap_discovery",
+      "target": "cap_keyword_mining",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_keyword_mining",
+      "target": "cap_funnel",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_funnel",
+      "target": "cap_search_birth",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_search_birth",
+      "target": "cap_attribution",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_attribution",
+      "target": "cap_campaign_cockpit",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_campaign_cockpit",
+      "target": "cap_decision",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_decision",
+      "target": "cap_execution",
+      "relation": "alimenta"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "cap_workflows",
+      "relation": "governa_resgate_de"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:gads-new-campaign-validation",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:orakul-vos-auto-adjust",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:bola-de-cristal-preditivo",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:atuacao-orakul-ai-agent-webgo",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:gads-search-terms-upgrade-kw",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:comportamento-gtm-scroll-funil",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:otimizacao-cta-congruencia-page",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:rsa-darwin-optimizer-ctr",
+      "relation": "preserva"
+    },
+    {
+      "source": "concept:n8n_ip_rescue",
+      "target": "n8n:pauta-recomendador-semantico-p3",
+      "relation": "preserva"
+    },
+    {
+      "source": "n8n:gads-new-campaign-validation",
+      "target": "concept:campaign_onboarding_guard",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:campaign_onboarding_guard",
+      "target": "concept:search_intelligence",
+      "relation": "especializa"
+    },
+    {
+      "source": "n8n:orakul-vos-auto-adjust",
+      "target": "concept:orakul_policy_kernel",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:orakul_policy_kernel",
+      "target": "cap_decision",
+      "relation": "materializa_politicas_de"
+    },
+    {
+      "source": "concept:orakul_policy_kernel",
+      "target": "concept:decision_timeline",
+      "relation": "produz_propostas_para"
+    },
+    {
+      "source": "concept:decision_intelligence_lab",
+      "target": "concept:orakul_policy_kernel",
+      "relation": "prova_em_laboratorio"
+    },
+    {
+      "source": "concept:decision_intelligence_lab",
+      "target": "concept:adaptive_budget_allocator",
+      "relation": "prova_em_replay_e_shadow"
+    },
+    {
+      "source": "concept:adaptive_budget_allocator",
+      "target": "concept:orakul_policy_kernel",
+      "relation": "submete_propostas_ao_arbitro"
+    },
+    {
+      "source": "concept:adaptive_budget_allocator",
+      "target": "concept:decision_timeline",
+      "relation": "produz_propostas_para"
+    },
+    {
+      "source": "cap_incrementality_mmm",
+      "target": "concept:adaptive_budget_allocator",
+      "relation": "pode_informar_priors_estrategicos_sem_autorizar"
+    },
+    {
+      "source": "concept:adaptive_budget_allocator",
+      "target": "cap_execution",
+      "relation": "depende_de_aprovacao_antes_de"
+    },
+    {
+      "source": "doc:budget-roi-allocator-spec",
+      "target": "concept:adaptive_budget_allocator",
+      "relation": "documenta"
+    },
+    {
+      "source": "concept:decision_intelligence_lab",
+      "target": "concept:campaign_onboarding_guard",
+      "relation": "prova_em_laboratorio"
+    },
+    {
+      "source": "concept:decision_intelligence_lab",
+      "target": "concept:search_intelligence",
+      "relation": "consome_sinais_de"
+    },
+    {
+      "source": "concept:decision_intelligence_lab",
+      "target": "concept:ads_health_monitor",
+      "relation": "consome_saude_de"
+    },
+    {
+      "source": "system:google-arba-reference",
+      "target": "concept:decision_intelligence_lab",
+      "relation": "informa_sinais"
+    },
+    {
+      "source": "system:google-ads-monitor-reference",
+      "target": "concept:decision_intelligence_lab",
+      "relation": "informa_saude"
+    },
+    {
+      "source": "system:google-if-this-then-ad-reference",
+      "target": "concept:decision_intelligence_lab",
+      "relation": "informa_regras_sem_autorizar"
+    },
+    {
+      "source": "doc:orakul-decision-intelligence",
+      "target": "concept:decision_intelligence_lab",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:orakul-decision-intelligence",
+      "target": "concept:orakul_policy_kernel",
+      "relation": "especifica"
+    },
+    {
+      "source": "doc:orakul-decision-intelligence",
+      "target": "concept:data_pipeline_registry",
+      "relation": "define_runtime_de"
+    },
+    {
+      "source": "doc:orakul-decision-intelligence",
+      "target": "concept:forecast_lifecycle",
+      "relation": "especifica_memoria_de"
+    },
+    {
+      "source": "risk:supabase_demo_jwt_secret",
+      "target": "wave:P0-S",
+      "relation": "bloqueia"
+    },
+    {
+      "source": "concept:orakul_policy_kernel",
+      "target": "n8n:orakul-vos-auto-adjust",
+      "relation": "substitui_sem_reativar"
+    },
+    {
+      "source": "n8n:atuacao-orakul-ai-agent-webgo",
+      "target": "concept:decision_timeline",
+      "relation": "deve_convergir_para"
+    },
+    {
+      "source": "concept:decision_timeline",
+      "target": "cap_campaign_cockpit",
+      "relation": "aparece_em"
+    },
+    {
+      "source": "n8n:bola-de-cristal-preditivo",
+      "target": "concept:forecast_lifecycle",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:forecast_lifecycle",
+      "target": "cap_forecast",
+      "relation": "governa"
+    },
+    {
+      "source": "concept:forecast_lifecycle",
+      "target": "concept:decision_timeline",
+      "relation": "informa_sem_autorizar"
+    },
+    {
+      "source": "n8n:gads-search-terms-upgrade-kw",
+      "target": "concept:search_terms_workbench",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:search_terms_workbench",
+      "target": "concept:search_intelligence",
+      "relation": "especializa"
+    },
+    {
+      "source": "n8n:comportamento-gtm-scroll-funil",
+      "target": "concept:behavioral_policy_aggregator",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:behavioral_policy_aggregator",
+      "target": "cap_behavior",
+      "relation": "interpreta"
+    },
+    {
+      "source": "n8n:otimizacao-cta-congruencia-page",
+      "target": "concept:cta_experiment_lab",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:cta_experiment_lab",
+      "target": "cap_interactive_journeys",
+      "relation": "mede_em_experimento"
+    },
+    {
+      "source": "n8n:rsa-darwin-optimizer-ctr",
+      "target": "concept:rsa_asset_experiment_loop",
+      "relation": "origina"
+    },
+    {
+      "source": "concept:rsa_asset_experiment_loop",
+      "target": "concept:search_intelligence",
+      "relation": "alimenta"
+    },
+    {
+      "source": "n8n:pauta-recomendador-semantico-p3",
+      "target": "concept:semantic_recommender_convergence",
+      "relation": "deve_convergir_para"
+    },
+    {
+      "source": "concept:semantic_recommender_convergence",
+      "target": "cap_funnel",
+      "relation": "unifica_em"
+    },
+    {
+      "source": "cap_cost_ingestion",
+      "target": "cap_campaign_cockpit",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_cost_ingestion",
+      "target": "cap_decision",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_revenue_ingestion",
+      "target": "cap_campaign_cockpit",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_revenue_ingestion",
+      "target": "cap_decision",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_behavior",
+      "target": "cap_campaign_cockpit",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_behavior",
+      "target": "cap_decision",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_traffic_queue",
+      "target": "cap_search_birth",
+      "relation": "organiza"
+    },
+    {
+      "source": "cap_search_birth",
+      "target": "cap_campaign_cockpit",
+      "relation": "deve_retornar_para",
+      "evidence": "Correção central: o cockpit de monitoramento já existe."
+    },
+    {
+      "source": "cap_behavior",
+      "target": "cap_attribution",
+      "relation": "exige_contexto"
+    },
+    {
+      "source": "cap_attribution",
+      "target": "cap_offline_conversion",
+      "relation": "habilita"
+    },
+    {
+      "source": "cap_offline_conversion",
+      "target": "cap_decision",
+      "relation": "fornece_sinal"
+    },
+    {
+      "source": "cap_finance",
+      "target": "cap_revenue_ingestion",
+      "relation": "normaliza"
+    },
+    {
+      "source": "cap_source_truth",
+      "target": "cap_cost_ingestion",
+      "relation": "governa"
+    },
+    {
+      "source": "cap_source_truth",
+      "target": "cap_revenue_ingestion",
+      "relation": "governa"
+    },
+    {
+      "source": "cap_source_truth",
+      "target": "cap_decision",
+      "relation": "governa"
+    },
+    {
+      "source": "cap_health",
+      "target": "cap_workflows",
+      "relation": "observa"
+    },
+    {
+      "source": "cap_workflows",
+      "target": "cap_cost_ingestion",
+      "relation": "executa"
+    },
+    {
+      "source": "cap_workflows",
+      "target": "cap_revenue_ingestion",
+      "relation": "executa"
+    },
+    {
+      "source": "cap_workflows",
+      "target": "cap_decision",
+      "relation": "executa"
+    },
+    {
+      "source": "cap_decision",
+      "target": "cap_forecast",
+      "relation": "amadurece_para"
+    },
+    {
+      "source": "cap_display",
+      "target": "cap_campaign_cockpit",
+      "relation": "aparece_em"
+    },
+    {
+      "source": "cap_people",
+      "target": "cap_portfolio",
+      "relation": "restringe_e_rateia"
+    },
+    {
+      "source": "cap_publisher_quality",
+      "target": "cap_revenue_ingestion",
+      "relation": "melhora_economia"
+    },
+    {
+      "source": "cap_incubator",
+      "target": "cap_publisher_quality",
+      "relation": "cria_ativos"
+    },
+    {
+      "source": "doc:official-plan",
+      "target": "cap_publisher_quality",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:prd",
+      "target": "cap_portfolio",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:spec",
+      "target": "cap_decision",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:blueprint",
+      "target": "cap_portfolio",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:second-brain",
+      "target": "cap_forecast",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:n8n-map",
+      "target": "cap_workflows",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:front-campaigns",
+      "target": "cap_search_birth",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:smart-bidding",
+      "target": "cap_decision",
+      "relation": "documenta"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:campaign_instance",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:campaign_lineage",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:multichannel_inventory",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:channel_profile",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:channel_adapter",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:snapshot_freshness",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:reconciliation",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:operational_event",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "concept:duplicity_proof",
+      "relation": "compreende"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "cap_traffic_queue",
+      "relation": "evolui_de",
+      "evidence": "O Hub é o destino da camada que hoje é fila de lançamento."
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "cap_campaign_cockpit",
+      "relation": "reaproveita",
+      "evidence": "Cockpit preservado; muda a fonte, não a tela (ADR-07)."
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "cap_search_birth",
+      "relation": "organiza"
+    },
+    {
+      "source": "concept:multichannel_inventory",
+      "target": "external:google-ads",
+      "relation": "reconcilia_contra",
+      "evidence": "A conta é a autoridade sobre existência e status (ADR-01)."
+    },
+    {
+      "source": "concept:snapshot_freshness",
+      "target": "external:google-ads",
+      "relation": "le_de"
+    },
+    {
+      "source": "concept:snapshot_freshness",
+      "target": "cap_health",
+      "relation": "alimenta"
+    },
+    {
+      "source": "concept:reconciliation",
+      "target": "cap_attribution",
+      "relation": "fecha_junta",
+      "evidence": "Vínculo campanha ↔ funil é o elo que falta (E-02, E-03)."
+    },
+    {
+      "source": "concept:reconciliation",
+      "target": "cap_funnel",
+      "relation": "liga_a"
+    },
+    {
+      "source": "concept:campaign_instance",
+      "target": "cap_campaign_cockpit",
+      "relation": "enderecada_por",
+      "evidence": "Rota canônica /trafego/campanhas/:volcCampaignId (ADR-02)."
+    },
+    {
+      "source": "concept:campaign_lineage",
+      "target": "concept:duplicity_proof",
+      "relation": "fornece_sinal",
+      "evidence": "Linhagem é sinal de intenção; sem ele o veredito máximo é advertência."
+    },
+    {
+      "source": "concept:duplicity_proof",
+      "target": "cap_search_birth",
+      "relation": "protege"
+    },
+    {
+      "source": "concept:operational_event",
+      "target": "cap_health",
+      "relation": "fundamenta",
+      "evidence": "O sino passa a ser projeção, não fonte (ADR-04)."
+    },
+    {
+      "source": "concept:operational_event",
+      "target": "cap_execution",
+      "relation": "registra"
+    },
+    {
+      "source": "concept:channel_profile",
+      "target": "concept:channel_adapter",
+      "relation": "declara_contrato_de"
+    },
+    {
+      "source": "concept:channel_adapter",
+      "target": "external:google-ads",
+      "relation": "fala_com"
+    },
+    {
+      "source": "channel:SEARCH",
+      "target": "concept:channel_profile",
+      "relation": "implementa_perfil"
+    },
+    {
+      "source": "channel:SEARCH",
+      "target": "cap_search_birth",
+      "relation": "materializa_em"
+    },
+    {
+      "source": "channel:DISPLAY",
+      "target": "concept:channel_profile",
+      "relation": "previsto_como_perfil"
+    },
+    {
+      "source": "channel:DEMAND_GEN",
+      "target": "concept:channel_profile",
+      "relation": "previsto_como_perfil"
+    },
+    {
+      "source": "channel:PERFORMANCE_MAX",
+      "target": "concept:channel_profile",
+      "relation": "previsto_como_perfil"
+    },
+    {
+      "source": "wave:P0-A",
+      "target": "concept:media_hub",
+      "relation": "constroi"
+    },
+    {
+      "source": "wave:P0-S",
+      "target": "concept:media_hub",
+      "relation": "constroi"
+    },
+    {
+      "source": "wave:P0-T",
+      "target": "concept:media_hub",
+      "relation": "constroi"
+    },
+    {
+      "source": "wave:P0-R",
+      "target": "concept:media_hub",
+      "relation": "constroi"
+    },
+    {
+      "source": "wave:P0-D",
+      "target": "concept:media_hub",
+      "relation": "constroi"
+    },
+    {
+      "source": "wave:P0-F",
+      "target": "concept:media_hub",
+      "relation": "constroi"
+    },
+    {
+      "source": "wave:P0-A",
+      "target": "cap_health",
+      "relation": "diagnostica"
+    },
+    {
+      "source": "wave:P0-S",
+      "target": "cap_workflows",
+      "relation": "contem"
+    },
+    {
+      "source": "wave:P0-S",
+      "target": "cap_execution",
+      "relation": "contem",
+      "evidence": "Executor de bidding armado sem controlador (E-12)."
+    },
+    {
+      "source": "wave:P0-T",
+      "target": "concept:multichannel_inventory",
+      "relation": "entrega"
+    },
+    {
+      "source": "wave:P0-R",
+      "target": "concept:reconciliation",
+      "relation": "entrega"
+    },
+    {
+      "source": "wave:P0-D",
+      "target": "concept:duplicity_proof",
+      "relation": "entrega"
+    },
+    {
+      "source": "wave:P0-F",
+      "target": "concept:snapshot_freshness",
+      "relation": "entrega"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "cap_cost_ingestion",
+      "relation": "consome"
+    },
+    {
+      "source": "concept:media_hub",
+      "target": "cap_revenue_ingestion",
+      "relation": "consome"
+    },
+    {
+      "source": "cap_workflows",
+      "target": "concept:snapshot_freshness",
+      "relation": "pode_agendar",
+      "evidence": "n8n como scheduler chamando contrato interno (ADR-05)."
+    },
+    {
+      "source": "cap_identidade_hub",
+      "target": "concept:media_hub",
+      "relation": "protege"
+    },
+    {
+      "source": "cap_identidade_hub",
+      "target": "cap_people",
+      "relation": "substitui_portao",
+      "evidence": "O RBAC legado não é confiável: get_current_user_role lê variável de sessão que ninguém define."
+    },
+    {
+      "source": "risk:superficie_privilegiada",
+      "target": "cap_people",
+      "relation": "ameaca"
+    },
+    {
+      "source": "risk:grants_anon",
+      "target": "cap_people",
+      "relation": "ameaca"
+    },
+    {
+      "source": "risk:portao_falha_aberta",
+      "target": "cap_identidade_hub",
+      "relation": "motiva"
+    },
+    {
+      "source": "concept:contencao_1a",
+      "target": "risk:superficie_privilegiada",
+      "relation": "fecha"
+    },
+    {
+      "source": "concept:contencao_1a",
+      "target": "risk:grants_anon",
+      "relation": "fecha"
+    },
+    {
+      "source": "concept:contencao_1a",
+      "target": "risk:portao_falha_aberta",
+      "relation": "fecha"
+    },
+    {
+      "source": "concept:contencao_1a",
+      "target": "cap_source_truth",
+      "relation": "governa"
+    },
+    {
+      "source": "cap_identidade_hub",
+      "target": "cap_traffic_queue",
+      "relation": "protege"
+    },
+    {
+      "source": "cap_identidade_hub",
+      "target": "cap_funnel",
+      "relation": "protege"
+    },
+    {
+      "source": "cap_identidade_hub",
+      "target": "cap_people",
+      "relation": "protege"
+    },
+    {
+      "source": "cap_inventario_trafego",
+      "target": "cap_traffic_queue",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_inventario_trafego",
+      "target": "cap_identidade_hub",
+      "relation": "depende de"
+    },
+    {
+      "source": "risk:alertas_gaql_no_render",
+      "target": "cap_inventario_trafego",
+      "relation": "bloqueia"
+    },
+    {
+      "source": "channel:VIDEO",
+      "target": "concept:channel_profile",
+      "relation": "previsto_como_perfil"
+    },
+    {
+      "source": "channel:SHOPPING",
+      "target": "concept:channel_profile",
+      "relation": "previsto_como_perfil"
+    },
+    {
+      "source": "cap_google_multichannel",
+      "target": "concept:media_hub",
+      "relation": "expande"
+    },
+    {
+      "source": "cap_google_multichannel",
+      "target": "concept:channel_profile",
+      "relation": "implementa"
+    },
+    {
+      "source": "cap_google_multichannel",
+      "target": "concept:channel_adapter",
+      "relation": "implementa"
+    },
+    {
+      "source": "cap_meta_ads",
+      "target": "concept:media_hub",
+      "relation": "integra_em"
+    },
+    {
+      "source": "cap_meta_ads",
+      "target": "cap_creative_engines",
+      "relation": "consome"
+    },
+    {
+      "source": "cap_capi",
+      "target": "cap_meta_ads",
+      "relation": "fornece_base_de_medicao"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "concept:work_road_source",
+      "relation": "precisa_persistir_em"
+    },
+    {
+      "source": "concept:strategy_intake",
+      "target": "concept:work_road_source",
+      "relation": "alimenta"
+    },
+    {
+      "source": "cap_knowledge_graph",
+      "target": "cap_work_road",
+      "relation": "contextualiza"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "cap_knowledge_graph",
+      "relation": "projeta_estado_em"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "cap_source_truth",
+      "relation": "depende_de"
+    },
+    {
+      "source": "cap_bia_copilot",
+      "target": "system:hermes",
+      "relation": "usa_runtime"
+    },
+    {
+      "source": "cap_bia_copilot",
+      "target": "cap_knowledge_graph",
+      "relation": "consulta_contexto"
+    },
+    {
+      "source": "cap_bia_copilot",
+      "target": "cap_work_road",
+      "relation": "interpreta"
+    },
+    {
+      "source": "cap_bia_copilot",
+      "target": "cap_decision",
+      "relation": "moderniza"
+    },
+    {
+      "source": "cap_bia_copilot",
+      "target": "concept:media_hub",
+      "relation": "explica"
+    },
+    {
+      "source": "cap_workflows",
+      "target": "cap_bia_copilot",
+      "relation": "pode_enviar_eventos"
+    },
+    {
+      "source": "concept:attention_ecosystem",
+      "target": "cap_meta_ads",
+      "relation": "organiza_como_aquisicao_direta"
+    },
+    {
+      "source": "concept:attention_ecosystem",
+      "target": "cap_organic_content",
+      "relation": "organiza_como_operacao_organica"
+    },
+    {
+      "source": "concept:attention_ecosystem",
+      "target": "cap_meta_retention",
+      "relation": "organiza_como_retencao"
+    },
+    {
+      "source": "concept:attention_ecosystem",
+      "target": "cap_affiliate_promotions",
+      "relation": "reserva_como_monetizacao"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "concept:facebook_page_monetized",
+      "relation": "deve_inventariar"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "system:chatpion",
+      "relation": "deve_registrar"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "cap_creative_engines",
+      "relation": "deve_catalogar"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "system:aprova-ad-studio",
+      "relation": "compreende"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "system:positivo-ad-studio",
+      "relation": "compreende"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "system:motor-imagem-volc",
+      "relation": "compreende"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "system:motor-video-volc",
+      "relation": "compreende"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "system:prensa",
+      "relation": "compreende"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "system:volc-creative-port",
+      "relation": "internaliza_por"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "concept:creative-engine-registry",
+      "relation": "sera_orquestrado_por"
+    },
+    {
+      "source": "concept:creative-engine-registry",
+      "target": "concept:creative-job-contract",
+      "relation": "oferece_adaptadores_para"
+    },
+    {
+      "source": "system:volc-creative-port",
+      "target": "concept:creative-engine-registry",
+      "relation": "implementa_parcialmente"
+    },
+    {
+      "source": "system:volc-creative-port",
+      "target": "concept:creative-job-contract",
+      "relation": "implementa_nucleo_de"
+    },
+    {
+      "source": "concept:creative-job-contract",
+      "target": "concept:creative-production-modes",
+      "relation": "exige_escolha_de"
+    },
+    {
+      "source": "system:aprova-ad-studio",
+      "target": "concept:creative-production-modes",
+      "relation": "prova_full_llm"
+    },
+    {
+      "source": "system:positivo-ad-studio",
+      "target": "concept:creative-production-modes",
+      "relation": "prova_full_llm_e_foto_preservada"
+    },
+    {
+      "source": "system:prensa",
+      "target": "concept:creative-production-modes",
+      "relation": "prova_hibrido_deterministico"
+    },
+    {
+      "source": "system:prensa",
+      "target": "concept:typography-only-creative",
+      "relation": "materializa_sem_provider"
+    },
+    {
+      "source": "concept:typography-only-creative",
+      "target": "concept:creative-production-modes",
+      "relation": "e_modo_de"
+    },
+    {
+      "source": "concept:typography-only-creative",
+      "target": "channel:DISPLAY",
+      "relation": "pode_fornecer_asset_para"
+    },
+    {
+      "source": "concept:typography-only-creative",
+      "target": "channel:DEMAND_GEN",
+      "relation": "pode_fornecer_asset_para"
+    },
+    {
+      "source": "concept:typography-only-creative",
+      "target": "channel:PERFORMANCE_MAX",
+      "relation": "pode_fornecer_asset_para"
+    },
+    {
+      "source": "concept:typography-only-creative",
+      "target": "cap_meta_ads",
+      "relation": "pode_fornecer_criativo_para"
+    },
+    {
+      "source": "concept:typography-only-creative",
+      "target": "cap_organic_content",
+      "relation": "pode_abastecer"
+    },
+    {
+      "source": "doc:prensa-catalog",
+      "target": "system:motor-imagem-volc",
+      "relation": "inventaria"
+    },
+    {
+      "source": "doc:prensa-catalog",
+      "target": "system:prensa",
+      "relation": "documenta"
+    },
+    {
+      "source": "system:motor-imagem-volc",
+      "target": "concept:deterministic-creative-render",
+      "relation": "implementa_parcialmente"
+    },
+    {
+      "source": "system:motor-imagem-volc",
+      "target": "system:prensa",
+      "relation": "contem"
+    },
+    {
+      "source": "system:prensa",
+      "target": "concept:deterministic-creative-render",
+      "relation": "materializa"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "concept:video-production-contract",
+      "relation": "implementa_fora_do_os"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "concept:video-publication-gate",
+      "relation": "implementa_parcialmente"
+    },
+    {
+      "source": "concept:video-production-contract",
+      "target": "concept:creative-job-contract",
+      "relation": "deve_ser_adaptado_para"
+    },
+    {
+      "source": "concept:video-publication-gate",
+      "target": "cap_organic_content",
+      "relation": "deve_governar"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "cap_meta_ads",
+      "relation": "pode_fornecer_video_para"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "cap_organic_content",
+      "relation": "pode_abastecer"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "channel:VIDEO",
+      "relation": "precisa_adaptar_destino"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "channel:DEMAND_GEN",
+      "relation": "precisa_adaptar_destino"
+    },
+    {
+      "source": "system:motor-video-volc",
+      "target": "channel:PERFORMANCE_MAX",
+      "relation": "precisa_adaptar_destino"
+    },
+    {
+      "source": "doc:video-engine-catalog",
+      "target": "system:motor-video-volc",
+      "relation": "inventaria"
+    },
+    {
+      "source": "system:positivo-ad-studio",
+      "target": "concept:creative-job-contract",
+      "relation": "fornece_compositor_de_foto_real"
+    },
+    {
+      "source": "system:aprova-ad-studio",
+      "target": "concept:creative-job-contract",
+      "relation": "fornece_orquestracao_agentic"
+    },
+    {
+      "source": "cap_google_multichannel",
+      "target": "cap_creative_engines",
+      "relation": "consome_assets_de"
+    },
+    {
+      "source": "channel:DISPLAY",
+      "target": "concept:creative-job-contract",
+      "relation": "exige_variantes_de"
+    },
+    {
+      "source": "channel:DEMAND_GEN",
+      "target": "concept:creative-job-contract",
+      "relation": "exige_variantes_de"
+    },
+    {
+      "source": "channel:PERFORMANCE_MAX",
+      "target": "concept:creative-job-contract",
+      "relation": "exige_variantes_de"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "cap_work_road",
+      "relation": "fornece_ativos_para"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "cap_knowledge_graph",
+      "relation": "projeta_relacoes_em"
+    },
+    {
+      "source": "cap_organic_content",
+      "target": "concept:facebook_page_monetized",
+      "relation": "ativa_como_primeiro_piloto"
+    },
+    {
+      "source": "cap_organic_content",
+      "target": "cap_creative_engines",
+      "relation": "consome"
+    },
+    {
+      "source": "cap_organic_content",
+      "target": "cap_behavior",
+      "relation": "precisa_medir_com"
+    },
+    {
+      "source": "cap_meta_ads",
+      "target": "concept:meta_direct_traffic",
+      "relation": "implementa"
+    },
+    {
+      "source": "cap_meta_retention",
+      "target": "concept:meta_chat_retention",
+      "relation": "implementa"
+    },
+    {
+      "source": "cap_meta_retention",
+      "target": "system:chatpion",
+      "relation": "usa"
+    },
+    {
+      "source": "cap_meta_retention",
+      "target": "cap_attribution",
+      "relation": "depende_de"
+    },
+    {
+      "source": "cap_affiliate_promotions",
+      "target": "concept:affiliate_promo_loop",
+      "relation": "implementa"
+    },
+    {
+      "source": "concept:low_ticket_reserved",
+      "target": "concept:strategy_intake",
+      "relation": "aguarda_novos_insumos_em"
+    },
+    {
+      "source": "concept:beast_meta_lab",
+      "target": "cap_decision",
+      "relation": "fornece_padroes_historicos_para"
+    },
+    {
+      "source": "concept:beast_meta_lab",
+      "target": "cap_meta_ads",
+      "relation": "nao_comprova_operacao_de"
+    },
+    {
+      "source": "risk:legacy_attention_tactics",
+      "target": "cap_organic_content",
+      "relation": "nao_governa"
+    },
+    {
+      "source": "risk:legacy_attention_tactics",
+      "target": "cap_meta_retention",
+      "relation": "exige_revisao_antes_de"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "cap_asset_vault",
+      "relation": "acompanha_implantacao"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "cap_organic_content",
+      "relation": "acompanha_piloto"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "cap_meta_retention",
+      "relation": "mantem_separado_de_meta_direto"
+    },
+    {
+      "source": "concept:attention_map",
+      "target": "concept:attention_ecosystem",
+      "relation": "torna_operacional"
+    },
+    {
+      "source": "concept:attention_map",
+      "target": "cap_traffic_queue",
+      "relation": "observa_aquisicao_em"
+    },
+    {
+      "source": "concept:attention_map",
+      "target": "cap_organic_content",
+      "relation": "observa_organico_em"
+    },
+    {
+      "source": "concept:attention_map",
+      "target": "cap_owned_audience_retention",
+      "relation": "observa_retorno_em"
+    },
+    {
+      "source": "concept:attention_map",
+      "target": "cap_revenue_ingestion",
+      "relation": "fecha_receita_com"
+    },
+    {
+      "source": "concept:topic_ecosystem",
+      "target": "cap_keyword_mining",
+      "relation": "amplia_alem_de"
+    },
+    {
+      "source": "concept:topic_ecosystem",
+      "target": "cap_organic_content",
+      "relation": "organiza_pecas_em"
+    },
+    {
+      "source": "concept:brand_media_ecosystem",
+      "target": "cap_asset_vault",
+      "relation": "depende_de_inventario_em"
+    },
+    {
+      "source": "concept:brand_media_ecosystem",
+      "target": "cap_portfolio",
+      "relation": "agrupa_projetos_em"
+    },
+    {
+      "source": "concept:content_shortcut",
+      "target": "cap_funnel",
+      "relation": "orienta"
+    },
+    {
+      "source": "cap_interactive_journeys",
+      "target": "cap_funnel",
+      "relation": "estende"
+    },
+    {
+      "source": "cap_interactive_journeys",
+      "target": "cap_behavior",
+      "relation": "deve_ser_medida_por"
+    },
+    {
+      "source": "concept:interactive_monetization",
+      "target": "cap_interactive_journeys",
+      "relation": "e_hipotese_de_resultado_de"
+    },
+    {
+      "source": "cap_owned_audience_retention",
+      "target": "concept:retention_capture_model",
+      "relation": "usa_taxonomia"
+    },
+    {
+      "source": "cap_owned_audience_retention",
+      "target": "cap_meta_retention",
+      "relation": "generaliza"
+    },
+    {
+      "source": "cap_owned_audience_retention",
+      "target": "cap_affiliate_promotions",
+      "relation": "pode_distribuir"
+    },
+    {
+      "source": "concept:organic_distribution_channels",
+      "target": "cap_organic_content",
+      "relation": "recebe_pecas_de"
+    },
+    {
+      "source": "system:blotato",
+      "target": "concept:organic_distribution_channels",
+      "relation": "pode_distribuir_em"
+    },
+    {
+      "source": "concept:micro_saas_reserved",
+      "target": "concept:strategy_intake",
+      "relation": "aguarda_novos_insumos_em"
+    },
+    {
+      "source": "cap_work_road",
+      "target": "cap_owned_audience_retention",
+      "relation": "mantem_fora_da_fila_ativa_ate_prova"
+    },
+    {
+      "source": "system:volc-creative-port",
+      "target": "concept:creative_channel_boundary",
+      "relation": "alimenta",
+      "evidence": "criativo_ponte importa criativo.{requisitos,validacao,contrato,adaptadores.medir_imagem}; nada em criativo/ importa a ponte — sem ciclo."
+    },
+    {
+      "source": "concept:creative_channel_boundary",
+      "target": "channel:DISPLAY",
+      "relation": "fornece_ativos_para",
+      "evidence": "PAPEL_POR_TIPO monta as quatro famílias do responsive display ad. Vídeo é recusado com motivo nomeado: entra por youtube_videos, que é resource name de asset já na conta — outro caminho, outro dono."
+    },
+    {
+      "source": "concept:creative_channel_boundary",
+      "target": "concept:asset_lineage",
+      "relation": "materializa",
+      "evidence": "linhagem_de(asset, papel, exigencia) projeta Asset+Procedencia. Projetar é copiar, nunca completar: custo_usd sai None quando o motor não reportou, e jamais 0.0."
+    },
+    {
+      "source": "cap_google_multichannel",
+      "target": "concept:creative_channel_boundary",
+      "relation": "depende_de",
+      "evidence": "Enquanto ProvarEntrada não tiver campo de imagem e montar_brief não preencher imagens_display, o nascimento de Display pela API sobe sem asset e com linhagem vazia. A dependência existe e está desligada."
+    },
+    {
+      "source": "concept:asset_lineage",
+      "target": "cap_google_multichannel",
+      "relation": "deve_retornar_para",
+      "evidence": "A linhagem existe como chave no JSON de /provar e /subir, com valor sempre vazio por esse caminho, e não é declarada em src/types/trafego.ts nem renderizada por componente algum. As duas últimas pernas são de backend e de frontend, e estão abertas."
+    },
+    {
+      "source": "risk:gates_nao_versionados",
+      "target": "cap_inventario_trafego",
+      "relation": "ameaca",
+      "evidence": "Os números de teste do backend citados naquela evidência não são reproduzíveis a partir do repositório: no worktree do HEAD a coleta para com 6 ImportError."
+    },
+    {
+      "source": "cap_cost_ingestion",
+      "target": "concept:mmm_weekly_dataset",
+      "relation": "fornece_investimento_e_exposicao"
+    },
+    {
+      "source": "cap_revenue_ingestion",
+      "target": "concept:mmm_weekly_dataset",
+      "relation": "fornece_kpi_reconciliado"
+    },
+    {
+      "source": "cap_finance",
+      "target": "concept:mmm_weekly_dataset",
+      "relation": "normaliza_moeda_e_custos"
+    },
+    {
+      "source": "cap_attribution",
+      "target": "concept:mmm_weekly_dataset",
+      "relation": "fornece_linhagem_e_confronto"
+    },
+    {
+      "source": "cap_organic_content",
+      "target": "concept:mmm_weekly_dataset",
+      "relation": "fornece_midia_organica_quando_medida"
+    },
+    {
+      "source": "concept:mmm_weekly_dataset",
+      "target": "system:google-meridian",
+      "relation": "alimenta_modelo"
+    },
+    {
+      "source": "system:google-meridian",
+      "target": "cap_incrementality_mmm",
+      "relation": "implementa_quando_integrado"
+    },
+    {
+      "source": "cap_incrementality_mmm",
+      "target": "concept:mmm_shadow_mode",
+      "relation": "deve_estrear_em"
+    },
+    {
+      "source": "cap_incrementality_mmm",
+      "target": "cap_decision",
+      "relation": "informa_planejamento_estrategico"
+    },
+    {
+      "source": "cap_incrementality_mmm",
+      "target": "cap_bia_copilot",
+      "relation": "fornece_cenarios_explicaveis"
+    },
+    {
+      "source": "cap_incrementality_mmm",
+      "target": "cap_execution",
+      "relation": "informa_mas_nao_autoriza"
+    },
+    {
+      "source": "cap_health",
+      "target": "concept:mmm_weekly_dataset",
+      "relation": "governa_frescor_e_cobertura"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-ads-monitor-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-crmint-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-arba-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-negative-keyword-cleaner-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-ga4-dataform-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-ga4-gtm-utilities-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-analytics-utilities-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-topic-mine-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-pmaximizer-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-ml-toast-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-causmos-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-meridian",
+      "relation": "reconfirma"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-feedx-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-fractional-uplift-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-if-this-then-ad-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-copycat-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-adios-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-vigenair-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-feedgen-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-argon-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-crystalvalue-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "concept:google_technology_radar",
+      "target": "system:google-skills-reference",
+      "relation": "classifica"
+    },
+    {
+      "source": "system:google-ads-monitor-reference",
+      "target": "concept:ads_health_monitor",
+      "relation": "inspira"
+    },
+    {
+      "source": "concept:ads_health_monitor",
+      "target": "cap_health",
+      "relation": "especializa"
+    },
+    {
+      "source": "system:google-crmint-reference",
+      "target": "concept:data_pipeline_registry",
+      "relation": "inspira"
+    },
+    {
+      "source": "concept:data_pipeline_registry",
+      "target": "cap_workflows",
+      "relation": "governa"
+    },
+    {
+      "source": "system:google-arba-reference",
+      "target": "concept:search_intelligence",
+      "relation": "inspira_diagnostico_de_escala"
+    },
+    {
+      "source": "system:google-negative-keyword-cleaner-reference",
+      "target": "concept:search_intelligence",
+      "relation": "inspira_auditoria_de_conflito"
+    },
+    {
+      "source": "system:google-ml-toast-reference",
+      "target": "concept:search_intelligence",
+      "relation": "inspira_clusterizacao"
+    },
+    {
+      "source": "concept:search_intelligence",
+      "target": "cap_search_birth",
+      "relation": "aprimora"
+    },
+    {
+      "source": "concept:search_intelligence",
+      "target": "cap_campaign_cockpit",
+      "relation": "explica"
+    },
+    {
+      "source": "system:google-ga4-dataform-reference",
+      "target": "concept:tracking_control_plane",
+      "relation": "inspira_modelagem"
+    },
+    {
+      "source": "system:google-ga4-gtm-utilities-reference",
+      "target": "concept:tracking_control_plane",
+      "relation": "inspira_governanca"
+    },
+    {
+      "source": "system:google-analytics-utilities-reference",
+      "target": "concept:tracking_control_plane",
+      "relation": "inspira_inventario"
+    },
+    {
+      "source": "concept:tracking_control_plane",
+      "target": "cap_attribution",
+      "relation": "protege_qualidade"
+    },
+    {
+      "source": "concept:tracking_control_plane",
+      "target": "cap_offline_conversion",
+      "relation": "valida_eventos"
+    },
+    {
+      "source": "system:google-topic-mine-reference",
+      "target": "concept:topic_radar",
+      "relation": "inspira"
+    },
+    {
+      "source": "system:google-ml-toast-reference",
+      "target": "concept:topic_radar",
+      "relation": "inspira_clusterizacao"
+    },
+    {
+      "source": "concept:topic_radar",
+      "target": "cap_discovery",
+      "relation": "prioriza_sinais_para"
+    },
+    {
+      "source": "concept:topic_radar",
+      "target": "cap_keyword_mining",
+      "relation": "consome_e_enriquece"
+    },
+    {
+      "source": "system:google-pmaximizer-reference",
+      "target": "concept:pmax_observability",
+      "relation": "inspira"
+    },
+    {
+      "source": "concept:pmax_observability",
+      "target": "channel:PERFORMANCE_MAX",
+      "relation": "precede_operacao"
+    },
+    {
+      "source": "system:google-copycat-reference",
+      "target": "concept:visual_asset_governance",
+      "relation": "inspira_copy"
+    },
+    {
+      "source": "system:google-adios-reference",
+      "target": "concept:visual_asset_governance",
+      "relation": "inspira_assets"
+    },
+    {
+      "source": "system:google-vigenair-reference",
+      "target": "concept:visual_asset_governance",
+      "relation": "inspira_recrafting"
+    },
+    {
+      "source": "concept:visual_asset_governance",
+      "target": "cap_creative_engines",
+      "relation": "governa"
+    },
+    {
+      "source": "system:google-causmos-reference",
+      "target": "concept:intervention_impact_lab",
+      "relation": "inspira_impacto_causal"
+    },
+    {
+      "source": "system:google-feedx-reference",
+      "target": "concept:intervention_impact_lab",
+      "relation": "inspira_desenho_experimental"
+    },
+    {
+      "source": "system:google-fractional-uplift-reference",
+      "target": "concept:intervention_impact_lab",
+      "relation": "inspira_uplift_com_custo"
+    },
+    {
+      "source": "concept:intervention_impact_lab",
+      "target": "cap_incrementality_mmm",
+      "relation": "fornece_calibracao"
+    },
+    {
+      "source": "system:google-if-this-then-ad-reference",
+      "target": "concept:operational_event",
+      "relation": "inspira_regra_de_evento"
+    },
+    {
+      "source": "system:google-if-this-then-ad-reference",
+      "target": "cap_execution",
+      "relation": "nao_pode_contornar_governanca"
+    },
+    {
+      "source": "system:google-skills-reference",
+      "target": "concept:ads_agent_gateway",
+      "relation": "inspira_implementacao"
+    },
+    {
+      "source": "concept:ads_agent_gateway",
+      "target": "cap_bia_copilot",
+      "relation": "fornece_consulta_contextual"
+    },
+    {
+      "source": "concept:ads_agent_gateway",
+      "target": "cap_execution",
+      "relation": "nao_autoriza"
+    },
+    {
+      "source": "system:google-feedgen-reference",
+      "target": "channel:SHOPPING",
+      "relation": "referencia_futura"
+    },
+    {
+      "source": "system:google-argon-reference",
+      "target": "concept:data_pipeline_registry",
+      "relation": "referencia_historica"
+    },
+    {
+      "source": "system:google-crystalvalue-reference",
+      "target": "cap_forecast",
+      "relation": "fora_do_escopo_atual"
+    },
+    {
+      "source": "concept:organic_publication_control_plane",
+      "target": "cap_organic_content",
+      "relation": "governa_publicacao_de"
+    },
+    {
+      "source": "system:postiz",
+      "target": "concept:organic_publication_control_plane",
+      "relation": "executa_como_nucleo_isolado"
+    },
+    {
+      "source": "system:postiz",
+      "target": "concept:organic_distribution_channels",
+      "relation": "publica_em"
+    },
+    {
+      "source": "system:postiz",
+      "target": "cap_creative_engines",
+      "relation": "recebe_assets_de"
+    },
+    {
+      "source": "system:multipost",
+      "target": "concept:organic_publication_control_plane",
+      "relation": "serve_como_fallback_de"
+    },
+    {
+      "source": "system:multipost",
+      "target": "concept:organic_distribution_channels",
+      "relation": "pode_cobrir_excecao_em"
+    },
+    {
+      "source": "system:adspower-browser-mcp",
+      "target": "concept:published_surface_visual_gate",
+      "relation": "pode_executar"
+    },
+    {
+      "source": "concept:published_surface_visual_gate",
+      "target": "cap_funnel",
+      "relation": "devolve_prova_visual_para"
+    },
+    {
+      "source": "concept:published_surface_visual_gate",
+      "target": "cap_organic_content",
+      "relation": "protege_publicacao_de"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "system:adspower-browser-mcp",
+      "relation": "deve_referenciar_perfis_de"
+    },
+    {
+      "source": "system:blotato",
+      "target": "system:postiz",
+      "relation": "deixa_de_ser_candidato_principal_em_favor_de"
+    },
+    {
+      "source": "concept:search_paused_canary",
+      "target": "cap_search_birth",
+      "relation": "prova_em_producao"
+    },
+    {
+      "source": "concept:search_paused_canary",
+      "target": "cap_execution",
+      "relation": "depende_de_porta_governada"
+    },
+    {
+      "source": "concept:search_paused_canary",
+      "target": "cap_traffic_queue",
+      "relation": "reconcilia_em"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "concept:secret-reference-boundary",
+      "relation": "obedece"
+    },
+    {
+      "source": "concept:secret-reference-boundary",
+      "target": "system:onepassword-mcp",
+      "relation": "usa_como_autoridade_local"
+    },
+    {
+      "source": "concept:secret-reference-boundary",
+      "target": "external:supabase-self",
+      "relation": "persiste_apenas_referencias_em"
+    },
+    {
+      "source": "system:adspower-browser-mcp",
+      "target": "concept:secret-reference-boundary",
+      "relation": "recebe_credencial_por"
+    },
+    {
+      "source": "system:google-adk-runtime",
+      "target": "concept:agentic-recovery-runtime",
+      "relation": "orquestra"
+    },
+    {
+      "source": "system:deepseek-v4-flash",
+      "target": "concept:agentic-recovery-runtime",
+      "relation": "pode_servir_como_modelo"
+    },
+    {
+      "source": "concept:agentic-recovery-runtime",
+      "target": "cap_funnel",
+      "relation": "recupera_falhas_limitadas_de"
+    },
+    {
+      "source": "concept:agentic-recovery-runtime",
+      "target": "concept:search_intelligence",
+      "relation": "organiza_diagnostico_read_only_de"
+    },
+    {
+      "source": "concept:agentic-recovery-runtime",
+      "target": "cap_knowledge_graph",
+      "relation": "consulta_contexto_sanitizado_em"
+    },
+    {
+      "source": "concept:agentic-recovery-runtime",
+      "target": "concept:data_pipeline_registry",
+      "relation": "registra_runs_em"
+    },
+    {
+      "source": "concept:agent_completion_protocol",
+      "target": "concept:work_road_source",
+      "relation": "reconcilia"
+    },
+    {
+      "source": "concept:agent_completion_protocol",
+      "target": "cap_knowledge_graph",
+      "relation": "reconcilia"
+    },
+    {
+      "source": "system:google-adk-runtime",
+      "target": "concept:agent_completion_protocol",
+      "relation": "emite_handoff_para"
+    },
+    {
+      "source": "concept:volc-gold-site-factory",
+      "target": "cap_asset_vault",
+      "relation": "registra_ativos_em"
+    },
+    {
+      "source": "concept:volc-gold-site-factory",
+      "target": "cap_creative_engines",
+      "relation": "reusa"
+    },
+    {
+      "source": "concept:volc-gold-site-factory",
+      "target": "system:google-ga4-gtm-utilities-reference",
+      "relation": "consulta_como_referencia"
+    },
+    {
+      "source": "concept:google_ads_collection_ledger",
+      "target": "cap_cost_ingestion",
+      "relation": "torna_canonica"
+    },
+    {
+      "source": "concept:google_ads_collection_ledger",
+      "target": "concept:data_pipeline_registry",
+      "relation": "registra_execucoes_em"
+    },
+    {
+      "source": "concept:google_ads_collection_ledger",
+      "target": "concept:ads_health_monitor",
+      "relation": "alimenta"
+    },
+    {
+      "source": "concept:google_ads_collection_ledger",
+      "target": "system:google-arba-reference",
+      "relation": "habilita_adaptacao_de"
+    },
+    {
+      "source": "cap_creative_engines",
+      "target": "cap_bancada_criativa",
+      "relation": "executa_por"
+    },
+    {
+      "source": "cap_bancada_criativa",
+      "target": "concept:execution-receipt",
+      "relation": "produz"
+    },
+    {
+      "source": "cap_bancada_criativa",
+      "target": "concept:creative-storage-lifecycle",
+      "relation": "governa"
+    },
+    {
+      "source": "concept:execution-receipt",
+      "target": "concept:asset-provenance",
+      "relation": "prova"
+    },
+    {
+      "source": "concept:decision_intelligence_lab",
+      "target": "concept:decision-lab-l6-surface",
+      "relation": "exposto_por"
+    },
+    {
+      "source": "risk:remotion-network-fonts",
+      "target": "cap_bancada_criativa",
+      "relation": "limita"
+    },
+    {
+      "source": "risk:remotion-license",
+      "target": "cap_bancada_criativa",
+      "relation": "condiciona"
+    },
+    {
+      "source": "doc:v11-03",
+      "target": "cap_bancada_criativa",
+      "relation": "documenta"
+    },
+    {
+      "source": "doc:template-lab-handoff",
+      "target": "cap_bancada_criativa",
+      "relation": "documenta"
+    }
+  ],
+  "priorities": [
+    {
+      "rank": 1,
+      "title": "Fechar o universo estratégico e a fonte do trabalho",
+      "state": "AGORA · CURADORIA",
+      "why": "Não existe percentual honesto enquanto capacidades prontas, engines externos e estratégias ainda podem estar fora do mapa.",
+      "proof": "Toda estratégia conhecida está classificada, ligada a uma fonte e marcada como implementada, parcial, histórica, planejada, risco ou decisão; lacunas ficam numa inbox explícita.",
+      "nodes": [
+        "cap_knowledge_graph",
+        "cap_work_road",
+        "concept:strategy_intake",
+        "concept:work_road_source"
+      ]
+    },
+    {
+      "rank": 2,
+      "title": "Unificar a verdade operacional",
+      "state": "DECISÃO FECHADA · MIGRAÇÃO",
+      "why": "A autoridade já é única e explícita; agora é preciso retirar, sem perda silenciosa, as gravações legadas que ainda apontam para o Supabase hospedado.",
+      "proof": "Cada rotina crítica usa exclusivamente database.agenciavolc.com.br, deixa recibo e não alimenta destinos hospedados; referências antigas ficam aposentadas ou arquivadas com evidência.",
+      "nodes": [
+        "cap_source_truth",
+        "cap_workflows",
+        "external:supabase-self",
+        "external:supabase-hosted"
+      ]
+    },
+    {
+      "rank": 3,
+      "title": "Inventariar e ativar o patrimônio digital",
+      "state": "AGORA · ATIVOS",
+      "why": "Uma página monetizada, ChatPion, engines e outros ativos existem fora do sistema; sem identidade, dono, acesso e próximo uso, patrimônio pronto continua parado e invisível.",
+      "proof": "A página de Facebook é o primeiro ativo verificado no Cofre; páginas, perfis, contas, domínios, engines e integrações têm identidade, evidência, referência segura de credencial e próximo uso decidido.",
+      "nodes": [
+        "cap_asset_vault",
+        "concept:facebook_page_monetized",
+        "system:chatpion",
+        "cap_creative_engines",
+        "system:adspower-browser-mcp",
+        "system:onepassword-mcp",
+        "concept:secret-reference-boundary"
+      ]
+    },
+    {
+      "rank": 4,
+      "title": "Destravar Google Ads além de Search",
+      "state": "EXPANSÃO OPERACIONAL",
+      "why": "O Hub e o contrato multicanal já possuem fundação; a operação precisa criar Display, Demand Gen e Performance Max sem abrir engines paralelos.",
+      "proof": "Um primeiro canal novo percorre contrato, assets, validate_only, criação pausada, recibo, inventário e H0 reutilizando o núcleo comum.",
+      "nodes": [
+        "cap_google_multichannel",
+        "concept:channel_profile",
+        "concept:channel_adapter",
+        "channel:DISPLAY",
+        "channel:DEMAND_GEN",
+        "channel:PERFORMANCE_MAX",
+        "concept:pmax_observability",
+        "concept:visual_asset_governance"
+      ]
+    },
+    {
+      "rank": 5,
+      "title": "Ligar a nova Camada de Tráfego ao cockpit que já existe",
+      "state": "INTEGRAÇÃO",
+      "why": "A criação Search e o dashboard de campanha são bons produtos separados; o retorno entre eles ainda não é uma jornada única.",
+      "proof": "Depois de lançar, o recibo abre /dashboard/campaign/:id com origem, funil, URLs, prova e política preservados.",
+      "nodes": [
+        "cap_search_birth",
+        "cap_campaign_cockpit",
+        "cap_attribution",
+        "concept:search_intelligence",
+        "concept:search_paused_canary",
+        "concept:campaign_onboarding_guard",
+        "concept:search_terms_workbench",
+        "concept:rsa_asset_experiment_loop"
+      ]
+    },
+    {
+      "rank": 6,
+      "title": "Restabelecer frescor e reconciliação de custo/receita",
+      "state": "PIPELINE PARCIAL",
+      "why": "Projeto chegou a 22/08, campanha terminou em 19/08; fontes GAM/JoinAds estão vazias e AdSense é histórica.",
+      "proof": "Cada fonte declara última atualização, janela provisória/fechada, moeda, linhas aceitas/descartadas e divergência.",
+      "nodes": [
+        "cap_cost_ingestion",
+        "cap_revenue_ingestion",
+        "cap_health",
+        "cap_finance",
+        "concept:ads_health_monitor",
+        "concept:tracking_control_plane"
+      ]
+    },
+    {
+      "rank": 7,
+      "title": "Fechar o loop de conversão offline",
+      "state": "CAPACIDADE AUSENTE",
+      "why": "9.407 GCLIDs já foram capturados, mas 9.468 visitas continuam pendentes e fila/lotes estão zerados.",
+      "proof": "Conversão passa por fila, lote, envio, resposta e reconciliação com idempotência e autorização.",
+      "nodes": [
+        "cap_offline_conversion",
+        "db:site_visits",
+        "db:conversion_queue",
+        "db:conversion_batches"
+      ]
+    },
+    {
+      "rank": 8,
+      "title": "Completar a atribuição campanha → funil → comportamento",
+      "state": "ELO PARCIAL",
+      "why": "A campanha nova tem funnel_run_id, mas nenhuma URL associada; 671 fatos ainda têm host vazio.",
+      "proof": "Campanha, run, URL, host e path formam uma cadeia consultável; comportamento é atribuído ao ativo certo.",
+      "nodes": [
+        "cap_attribution",
+        "cap_behavior",
+        "db:campaign_funnel_urls",
+        "db:fact_page_daily",
+        "concept:topic_radar",
+        "concept:behavioral_policy_aggregator",
+        "concept:cta_experiment_lab",
+        "concept:semantic_recommender_convergence"
+      ]
+    },
+    {
+      "rank": 9,
+      "title": "Separar fato, recomendação e ação",
+      "state": "GOVERNANÇA",
+      "why": "Métricas, orientação e otimização convivem na mesma linha; bid_actions permanece vazio.",
+      "proof": "Recomendação tem versão/razão; autorização tem dono; ação tem recibo e verificação.",
+      "nodes": [
+        "cap_decision",
+        "cap_execution",
+        "cap_bia_copilot",
+        "concept:ads_agent_gateway",
+        "concept:orakul_policy_kernel",
+        "concept:decision_timeline",
+        "db:daily_campaign_metrics",
+        "db:bid_actions"
+      ]
+    },
+    {
+      "rank": 10,
+      "title": "Consolidar rotinas e observabilidade",
+      "state": "SIMPLIFICAÇÃO",
+      "why": "33 workflows no núcleo, 23 ativos declarados e múltiplas cópias tornam o verde pouco confiável; estado ativo não prova reachability, sucesso ou autoridade correta.",
+      "proof": "Uma rotina por fonte/data, idempotente, com recibo, alerta e owner; cópias antigas desligadas.",
+      "nodes": [
+        "cap_workflows",
+        "cap_health",
+        "concept:data_pipeline_registry",
+        "concept:n8n_ip_rescue",
+        "system:google-adk-runtime",
+        "system:deepseek-v4-flash",
+        "concept:agentic-recovery-runtime"
+      ]
+    },
+    {
+      "rank": 11,
+      "title": "Fundar a operação Meta Ads",
+      "state": "NOVA VERTICAL",
+      "why": "Contrato estratégico e engines criativos existem fora do produto, enquanto Meta CAPI cobre apenas medição e não compra de mídia.",
+      "proof": "Briefing, jornada, criativos, system user, campanha, conjunto, anúncio e análise formam uma vertical rastreável com primeira criação em modo seguro.",
+      "nodes": [
+        "cap_meta_ads",
+        "cap_creative_engines",
+        "cap_capi"
+      ]
+    },
+    {
+      "rank": 12,
+      "title": "Ativar a primeira operação orgânica real",
+      "state": "PILOTO CONTROLADO",
+      "why": "A página monetizada está parada apesar de já existirem tese editorial e engines criativos; o valor só aparece quando uma cadeia pequena publica e aprende com dado real.",
+      "proof": "Uma página, uma vertical e uma semana percorrem pauta, peça, aprovação humana, publicação, métricas e decisão seguinte, com artefatos e versões rastreáveis.",
+      "nodes": [
+        "cap_organic_content",
+        "concept:facebook_page_monetized",
+        "cap_creative_engines",
+        "cap_behavior",
+        "cap_interactive_journeys",
+        "concept:brand_media_ecosystem",
+        "concept:organic_publication_control_plane",
+        "concept:published_surface_visual_gate",
+        "system:postiz",
+        "system:adspower-browser-mcp"
+      ]
+    },
+    {
+      "rank": 13,
+      "title": "Revalidar retenção, promoções e afiliados",
+      "state": "DEPOIS · PROVA E POLÍTICA",
+      "why": "ChatPion e documentos existem, mas a operação nunca rodou; mensagens e automações exigem consentimento, regras atuais, atribuição e circuit breaker antes de escalar.",
+      "proof": "Um piloto ponta a ponta, consentido e auditável comprova identidade, envio, opt-out, clique e resultado; o protótipo de promoções é inspecionado antes de virar backlog.",
+      "nodes": [
+        "cap_owned_audience_retention",
+        "cap_meta_retention",
+        "system:chatpion",
+        "cap_affiliate_promotions",
+        "risk:legacy_attention_tactics"
+      ]
+    },
+    {
+      "rank": 14,
+      "title": "Reabrir otimização avançada e preditivo",
+      "state": "DEPOIS DO CHÃO",
+      "why": "ORAKUL e Crystal Ball dependem de dados, atribuição e governança já fechados para não automatizar ruído.",
+      "proof": "Replay e shadow explicam recomendações e comparam previsão com o ocorrido antes de qualquer atuação automática.",
+      "nodes": [
+        "cap_decision",
+        "cap_forecast",
+        "concept:orakul_policy_kernel",
+        "concept:forecast_lifecycle"
+      ]
+    },
+    {
+      "rank": 15,
+      "title": "Fundar incrementalidade e alocação com Meridian",
+      "state": "COLETAR AGORA · MODELAR QUANDO MADURO",
+      "why": "A atribuição operacional mostra onde o resultado foi observado; o MMM deve confrontar se mídia, canal e geo produziram incremento e onde a resposta marginal satura.",
+      "proof": "Um painel semanal versionado passa por EDA, modelo aceito e shadow mode; só então cenários com intervalos entram no QG e na Bia, sem autoridade direta de escrita.",
+      "nodes": [
+        "cap_incrementality_mmm",
+        "system:google-meridian",
+        "concept:mmm_weekly_dataset",
+        "concept:mmm_shadow_mode",
+        "concept:intervention_impact_lab"
+      ]
+    },
+    {
+      "rank": 16,
+      "title": "Reservar a VOLC Gold Site Factory",
+      "state": "RESERVADO · NÃO COMPETE COM ROI",
+      "why": "A fábrica pode reduzir o tempo de lançar publishers, mas comprar domínio e alterar infraestrutura antes de fechar o chão de mídia aumenta superfície e dispersão.",
+      "proof": "Um alvo descartável percorre contrato, domínio/subdomínio, WordPress, identidade visual, GTM/GA4, QA, rollback e recibo, com aprovação humana para toda compra ou mudança externa.",
+      "nodes": [
+        "concept:volc-gold-site-factory",
+        "cap_asset_vault",
+        "cap_creative_engines",
+        "system:google-ga4-gtm-utilities-reference"
+      ]
+    },
+    {
+      "rank": 17,
+      "title": "Levar o Estúdio Criativo do laboratório à produção",
+      "state": "LABORATÓRIO PROVADO · RUNTIME PENDENTE",
+      "why": "Imagem e vídeo servem mídia paga e orgânico; sem worker, storage e recibo únicos, cada destino cria uma fábrica paralela e perde procedência.",
+      "proof": "Um pedido aprovado percorre contrato, depósito Postgres, worker durável, storage verificado, validação, recibo, biblioteca e destino sem depender do processo web nem promover prova local a produção.",
+      "nodes": [
+        "cap_creative_engines",
+        "cap_bancada_criativa",
+        "concept:execution-receipt",
+        "concept:asset-provenance",
+        "concept:creative-storage-lifecycle",
+        "risk:remotion-network-fonts",
+        "risk:remotion-license",
+        "doc:v11-03"
+      ]
+    }
+  ]
+}

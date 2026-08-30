@@ -1,0 +1,116 @@
+{
+  "mission_id": "search-intelligence-vertical-max",
+  "title": "Search Intelligence Control Plane — primeira fatia vertical operacional",
+  "base_ref": "6d49fb5a18955255a511fb0379f265e4a775f639",
+  "mode": "implementation",
+  "commit_message": "feat(trafego): integra primeira fatia do Search Intelligence Control Plane",
+  "briefing": "Implemente a primeira fatia vertical realmente utilizável do Search Intelligence Control Plane do VOLC OS, sem criar um motor paralelo. Cruze a inteligência proprietária já existente em volc_ads e backend/app/trafego, os contratos e migrations já desenhados, a documentação Google Ads API v25 versionada em volc_ads/google_ads_api, o frontend canônico de Tráfego e a autoridade operacional do Supabase self-hosted database.agenciavolc.com.br. O diagnóstico convergido anterior mostrou que o sistema tem contratos e control plane parciais, mas ainda não possui produtores canônicos de inteligência Search para search_term_view, keyword_view e componentes de Quality Score, landing_page_view, simulações e RecommendationService; existe também risco de autoridades paralelas no navegador e no n8n. Entregue um corte coerente entre OBSERVAR, QUALIFICAR_EVIDÊNCIA, DIAGNOSTICAR e PROPOR: consultas/portas read-only do Google Ads para termos de busca, palavras-chave e qualidade; projeções backend autenticadas com identidade, escopo, frescor, ausência honesta e procedência; integração com a persistência e contratos Supabase já existentes sem aplicar migration; e uma superfície de campanha Search no frontend que mostre evidências, termos, keywords, Quality Score, oportunidades de negativas e propostas de orçamento/lance como propostas — nunca como mutações silenciosas. Reuse o detalhe canônico por volc_campaign_id, os recibos, idempotência, autoridade de decisão e capacidades atuais. Não use mock como dado de produção. Quando a conta ainda não tiver sido lida, renderize ausência/indisponibilidade honesta. Não chame Google Ads no render e não transporte chave privilegiada ao browser. Google Recommendations, AI Max e recomendações automáticas são sinais explicáveis, nunca autoridade. Não implemente regra universal de bid, budget, pausa, negativa ou período de aprendizado. Negativas precisam de termo real, contexto de negócio, motivo e revisão de overblocking. Toda futura escrita deve permanecer atrás da trava, aprovação humana, diff before/after, idempotência, audit log, teto e verificação; esta rodada não abre a trava e não chama mutate nem validate_only. Faça testes de contrato, ausência, autenticação, isolamento por conta/campanha, falha parcial e UI. Se uma parte depender de migration ainda não aplicada ou de leitura real, entregue o contrato e o estado honesto sem fingir funcionamento. Preserve Search, Display, PMax e Demand Gen já existentes; esta fatia aprofunda Search sem degradar os outros canais.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests",
+        "volc_ads",
+        "-q"
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules/.bin/vitest",
+        "run",
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/hooks",
+        "src/lib"
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules/.bin/vite",
+        "build"
+      ],
+      "timeout_seconds": 900
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-search-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Seja o implementador principal e único. Faça descoberta progressiva no grafo e no código, escolha o menor corte vertical que produza inteligência Search real e implemente backend, engine, contratos, UI e testes de forma integrada. Não espalhe decisões entre dois motores e não aumente escopo para mutation ou migration em produção.",
+      "allowed_paths": [
+        "backend/app/main.py",
+        "backend/app/routers/trafego.py",
+        "backend/app/trafego",
+        "backend/tests",
+        "volc_ads",
+        "src/components/trafego",
+        "src/hooks",
+        "src/lib/pautadorApi.ts",
+        "src/lib/trafego",
+        "src/pages/trafego",
+        "src/types/trafego.ts",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "claude-google-api-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": true,
+      "lens": "Audite a aderência à Google Ads API vigente usando apenas documentação oficial. Confira GAQL, resource/field compatibility, escopos de Search, ausência de mutate, limites de RecommendationService/AI Max, Quality Score e search terms. Refute qualquer capacidade que o código afirme sem suporte real.",
+      "allowed_paths": [
+        "volc_ads/google_ads_api",
+        "volc_ads",
+        "backend/app/trafego",
+        "backend/tests"
+      ]
+    },
+    {
+      "id": "codex-control-plane-reviewer",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Faça revisão adversarial de engenharia: identidade interna/externa, isolamento por conta, ausência versus zero, frescor, idempotência, autoridade, autenticação, persistência Supabase, falha parcial, N+1/GAQL no render, propostas versus ações e compatibilidade com o control plane existente.",
+      "allowed_paths": [
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "backend/tests",
+        "volc_ads",
+        "src/types/trafego.ts",
+        "src/lib/pautadorApi.ts"
+      ]
+    },
+    {
+      "id": "claude-product-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Audite produto e frontend contra o grafo e os contratos reais. Verifique se a página de campanha Search ajuda o operador a decidir, não inventa dados, não parece mock, mostra hierarquia, estados, explicações e próximos passos, preserva acessibilidade/responsividade e não replica inteligência do backend no browser.",
+      "allowed_paths": [
+        "graphify-out/graph.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/hooks",
+        "src/lib/pautadorApi.ts",
+        "src/types/trafego.ts"
+      ]
+    }
+  ]
+}

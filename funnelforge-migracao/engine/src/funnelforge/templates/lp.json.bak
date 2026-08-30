@@ -1,0 +1,1701 @@
+{
+ "content": [
+  {
+   "id": "748ba38a",
+   "settings": {
+    "flex_direction": "column",
+    "min_height": {
+     "unit": "custom",
+     "size": "calc(100vh - 95px)",
+     "sizes": []
+    },
+    "min_height_tablet": {
+     "unit": "vh",
+     "size": "",
+     "sizes": []
+    },
+    "min_height_mobile": {
+     "unit": "custom",
+     "size": "calc(100vh - 85px)",
+     "sizes": []
+    },
+    "flex_justify_content": "center",
+    "flex_justify_content_mobile": "flex-end",
+    "background_background": "classic",
+    "background_color": "#FD0049",
+    "background_image": {
+     "id": "",
+     "url": ""
+    },
+    "background_image_mobile": {
+     "url": "{{HERO_IMAGE}}",
+     "id": "",
+     "size": "",
+     "alt": "",
+     "source": "library"
+    },
+    "background_position": "top center",
+    "background_position_mobile": "top center",
+    "background_repeat": "no-repeat",
+    "background_repeat_mobile": "no-repeat",
+    "background_size": "cover",
+    "padding_mobile": {
+     "unit": "px",
+     "top": "50",
+     "right": "10",
+     "bottom": "20",
+     "left": "10",
+     "isLinked": false
+    },
+    "flex_align_items": "flex-start",
+    "presetTitle": "Contêiner",
+    "presetIcon": "eicon-container",
+    "hide_desktop": "hidden-desktop",
+    "hide_tablet": "hidden-tablet",
+    "background_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_slideshow_gallery": [],
+    "background_hover_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_hover_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_hover_slideshow_gallery": [],
+    "background_overlay_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_slideshow_gallery": [],
+    "background_overlay_hover_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_hover_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_hover_slideshow_gallery": [],
+    "background_size_mobile": "cover"
+   },
+   "elements": [
+    {
+     "id": "24c1093f",
+     "settings": {
+      "content_width": "full",
+      "flex_gap_mobile": {
+       "unit": "px",
+       "size": 10,
+       "sizes": [],
+       "column": "10",
+       "row": "10",
+       "isLinked": true
+      },
+      "flex_align_items": "flex-start",
+      "margin_mobile": {
+       "unit": "px",
+       "top": "60",
+       "right": "0",
+       "bottom": "0",
+       "left": "0",
+       "isLinked": false
+      },
+      "background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_slideshow_gallery": [],
+      "background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_hover_slideshow_gallery": [],
+      "background_overlay_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_overlay_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_overlay_slideshow_gallery": [],
+      "background_overlay_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_overlay_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_overlay_hover_slideshow_gallery": []
+     },
+     "elements": [
+      {
+       "id": "700d60b5",
+       "settings": {
+        "title": "Ingreso Mínimo Garantizado",
+        "title_color": "#FFFFFF",
+        "text_shadow_text_shadow_type": "yes",
+        "text_shadow_text_shadow": {
+         "horizontal": 4,
+         "vertical": 1,
+         "blur": 15,
+         "color": "rgba(0, 0, 0, 0.99)"
+        },
+        "typography_typography": "custom",
+        "typography_font_family": "Inter",
+        "typography_font_size": {
+         "unit": "px",
+         "size": 40,
+         "sizes": []
+        },
+        "typography_font_size_tablet": {
+         "unit": "px",
+         "size": 28,
+         "sizes": []
+        },
+        "typography_font_size_mobile": {
+         "unit": "px",
+         "size": 28,
+         "sizes": []
+        },
+        "typography_font_weight": "600",
+        "typography_line_height": {
+         "unit": "px",
+         "size": 48,
+         "sizes": []
+        },
+        "typography_line_height_tablet": {
+         "unit": "px",
+         "size": 30,
+         "sizes": []
+        },
+        "_margin_mobile": {
+         "unit": "px",
+         "top": "70",
+         "right": "0",
+         "bottom": "0",
+         "left": "0",
+         "isLinked": false
+        },
+        "_background_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_slideshow_gallery": [],
+        "_background_hover_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_slideshow_gallery": [],
+        "_mask_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        }
+       },
+       "elements": [],
+       "isInner": false,
+       "widgetType": "heading",
+       "elType": "widget"
+      },
+      {
+       "id": "1059294b",
+       "settings": {
+        "width_mobile": {
+         "unit": "%",
+         "size": 28,
+         "sizes": []
+        },
+        "text": "Divisor",
+        "color": "#F9B200",
+        "weight": {
+         "unit": "px",
+         "size": 4,
+         "sizes": []
+        },
+        "gap_mobile": {
+         "unit": "px",
+         "size": 0,
+         "sizes": []
+        },
+        "icon": {
+         "value": "fas fa-star",
+         "library": "fa-solid"
+        },
+        "_background_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_slideshow_gallery": [],
+        "_background_hover_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_slideshow_gallery": [],
+        "_mask_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        }
+       },
+       "elements": [],
+       "isInner": false,
+       "widgetType": "divider",
+       "elType": "widget"
+      },
+      {
+       "id": "53aabb56",
+       "settings": {
+        "title": "Requisitos, montos y fechas de pago que debes conocer",
+        "title_color": "#FFFFFF",
+        "text_shadow_text_shadow_type": "yes",
+        "text_shadow_text_shadow": {
+         "horizontal": 0,
+         "vertical": 0,
+         "blur": 10,
+         "color": "rgba(0, 0, 0, 0.72)"
+        },
+        "_margin_mobile": {
+         "unit": "px",
+         "top": "5",
+         "right": "0",
+         "bottom": "20",
+         "left": "0",
+         "isLinked": false
+        },
+        "_background_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_slideshow_gallery": [],
+        "_background_hover_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_slideshow_gallery": [],
+        "_mask_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "typography_typography": "custom",
+        "typography_font_family": "Inter",
+        "typography_font_size": {
+         "unit": "px",
+         "size": 18,
+         "sizes": []
+        },
+        "typography_font_size_mobile": {
+         "unit": "px",
+         "size": 16,
+         "sizes": []
+        },
+        "typography_font_weight": "400",
+        "typography_line_height": {
+         "unit": "px",
+         "size": 26,
+         "sizes": []
+        }
+       },
+       "elements": [],
+       "isInner": false,
+       "widgetType": "heading",
+       "elType": "widget"
+      },
+      {
+       "id": "1240cfd0",
+       "settings": {
+        "text": "¿Cómo postular al Ingreso Mínimo Garantizado?",
+        "align_mobile": "justify",
+        "size": "lg",
+        "icon_align": "right",
+        "typography_typography": "custom",
+        "typography_font_family": "Inter",
+        "typography_font_weight": "700",
+        "button_text_color": "#FFFFFF",
+        "background_color": "#F9B200",
+        "border_border": "none",
+        "border_width_mobile": {
+         "unit": "px",
+         "top": "0",
+         "right": "0",
+         "bottom": "0",
+         "left": "0",
+         "isLinked": true
+        },
+        "align": "justify",
+        "__dynamic__": [],
+        "link": {
+         "url": "{{FUNNEL_HREF}}",
+         "is_external": "",
+         "nofollow": "",
+         "custom_attributes": ""
+        },
+        "_margin_mobile": {
+         "unit": "px",
+         "top": "10",
+         "right": "0",
+         "bottom": "0",
+         "left": "0",
+         "isLinked": false
+        },
+        "content_width": "full",
+        "selected_icon": {
+         "value": "far fa-arrow-alt-circle-right",
+         "library": "fa-regular"
+        },
+        "background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "background_slideshow_gallery": [],
+        "button_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "button_background_hover_slideshow_gallery": [],
+        "_background_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_slideshow_gallery": [],
+        "_background_hover_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_slideshow_gallery": [],
+        "_mask_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_element_width": "inherit"
+       },
+       "elements": [],
+       "isInner": false,
+       "widgetType": "button",
+       "elType": "widget"
+      },
+      {
+       "id": "366c8707",
+       "settings": {
+        "text": "¿Cómo consultar por cédula?",
+        "align_mobile": "justify",
+        "size": "lg",
+        "icon_align": "right",
+        "typography_typography": "custom",
+        "typography_font_family": "Inter",
+        "typography_font_weight": "700",
+        "button_text_color": "#FFFFFF",
+        "background_color": "#3BD404",
+        "border_border": "none",
+        "border_width_mobile": {
+         "unit": "px",
+         "top": "0",
+         "right": "0",
+         "bottom": "0",
+         "left": "0",
+         "isLinked": true
+        },
+        "align": "justify",
+        "__dynamic__": [],
+        "link": {
+         "url": "{{FUNNEL_HREF}}",
+         "is_external": "",
+         "nofollow": "",
+         "custom_attributes": ""
+        },
+        "content_width": "full",
+        "selected_icon": {
+         "value": "far fa-arrow-alt-circle-right",
+         "library": "fa-regular"
+        },
+        "background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "background_slideshow_gallery": [],
+        "button_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "button_background_hover_slideshow_gallery": [],
+        "_background_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_slideshow_gallery": [],
+        "_background_hover_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_video_fallback": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_background_hover_slideshow_gallery": [],
+        "_mask_image": {
+         "url": "",
+         "id": "",
+         "size": ""
+        },
+        "_element_width": "inherit"
+       },
+       "elements": [],
+       "isInner": false,
+       "widgetType": "button",
+       "elType": "widget"
+      }
+     ],
+     "isInner": true,
+     "elType": "container"
+    }
+   ],
+   "isInner": false,
+   "elType": "container"
+  },
+  {
+   "id": "1494e482",
+   "settings": {
+    "flex_direction": "column",
+    "flex_align_items": "center",
+    "background_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_slideshow_gallery": [],
+    "background_hover_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_hover_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_hover_slideshow_gallery": [],
+    "background_overlay_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_slideshow_gallery": [],
+    "background_overlay_hover_image": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_hover_video_fallback": {
+     "url": "",
+     "id": "",
+     "size": ""
+    },
+    "background_overlay_hover_slideshow_gallery": [],
+    "margin": {
+     "unit": "px",
+     "top": "50",
+     "right": "0",
+     "bottom": "0",
+     "left": "0",
+     "isLinked": false
+    },
+    "margin_mobile": {
+     "unit": "px",
+     "top": "0",
+     "right": "0",
+     "bottom": "0",
+     "left": "0",
+     "isLinked": false
+    }
+   },
+   "elements": [
+    {
+     "id": "1368ac57",
+     "settings": {
+      "title": "Ingreso Mínimo Garantizado: requisitos, montos y fechas de pago que debes conocer",
+      "header_size": "h3",
+      "align": "left",
+      "title_color": "#000000",
+      "content_width": "full",
+      "hide_mobile": "hidden-mobile",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_weight": "700"
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "heading",
+     "elType": "widget"
+    },
+    {
+     "id": "3c913fa3",
+     "settings": {
+      "width": {
+       "unit": "%",
+       "size": 25,
+       "sizes": []
+      },
+      "align": "center",
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 4,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 0,
+       "sizes": []
+      },
+      "hide_mobile": "hidden-mobile",
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "bb56414",
+     "settings": {
+      "editor": "<p>¿Sabías que Bogotá tiene un programa que ayuda a<strong> los hogares más vulnerables a cubrir sus necesidades básicas cada mes</strong>?</p><p>Se trata del <strong>Ingreso Mínimo Garantizado (IMG)</strong>, una estrategia clave de la Alcaldía para reducir la pobreza monetaria y apoyar a quienes más lo necesitan. Si vives en Bogotá, esta puede ser una ayuda directa para ti o tu familia.</p><p>En esta guía te explicamos en detalle <strong>qué es el IMG</strong>, <strong>cómo saber si tienes derecho</strong>, los montos que puedes recibir y cómo están organizados los pagos según el Sisbén.</p>",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    },
+    {
+     "id": "744af9fd",
+     "settings": {
+      "title": "¿Qué es el Ingreso Mínimo Garantizado?",
+      "header_size": "h3",
+      "align": "left",
+      "title_color": "#000000",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_weight": "700"
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "heading",
+     "elType": "widget"
+    },
+    {
+     "id": "4491220c",
+     "settings": {
+      "width": {
+       "unit": "%",
+       "size": 25,
+       "sizes": []
+      },
+      "align": "center",
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 4,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 0,
+       "sizes": []
+      },
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "793da29e",
+     "settings": {
+      "editor": "<p>El <strong>Ingreso Mínimo Garantizado</strong> es un programa de transferencias monetarias que busca garantizar un ingreso básico a las familias más pobres de Bogotá.</p><p>A través de pagos mensuales, el distrito complementa los ingresos de los hogares clasificados como vulnerables, permitiéndoles cubrir necesidades como alimentación, transporte, salud y educación.</p><p>Este programa <strong>no reemplaza otras ayudas</strong>: busca sumar, no restar. Por eso, se calcula tomando en cuenta los ingresos que ya recibe el hogar y <strong>completa lo que falta</strong> para alcanzar un mínimo vital, dependiendo del número de personas y su clasificación en el Sisbén IV.</p>",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    },
+    {
+     "id": "7002a4b6",
+     "settings": {
+      "title": "Tres puntos importantes que necesitas saber sobre el Ingreso Mínimo Garantizado",
+      "header_size": "h3",
+      "align": "left",
+      "title_color": "#000000",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_weight": "700"
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "heading",
+     "elType": "widget"
+    },
+    {
+     "id": "3da8aa45",
+     "settings": {
+      "width": {
+       "unit": "%",
+       "size": 25,
+       "sizes": []
+      },
+      "align": "center",
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 4,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 0,
+       "sizes": []
+      },
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "57a0519c",
+     "settings": {
+      "editor": "<p>1️⃣ <strong>Solo aplica en Bogotá</strong>: El IMG es un programa exclusivo del Distrito Capital, no se aplica en otras ciudades del país.</p><p>2️⃣ <strong>Se necesita estar en el Sisbén IV</strong>: Para recibir esta ayuda, tu hogar debe estar clasificado en los <strong>grupos A o B</strong> del Sisbén versión IV.</p><p>3️⃣ <strong>Los pagos son mensuales y digitales</strong>: Se hacen a través de cuentas o billeteras digitales como <strong>Daviplata, Nequi, Movii, Dale o Bancolombia a la Mano</strong>. Si no tienes una, puedes abrir una fácilmente desde el celular.</p>",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    },
+    {
+     "id": "5a1221c4",
+     "settings": {
+      "text": "¿Cómo postular al Ingreso Mínimo Garantizado?",
+      "align_mobile": "center",
+      "size": "lg",
+      "icon_align": "right",
+      "typography_typography": "custom",
+      "typography_font_family": "Inter",
+      "typography_font_weight": "700",
+      "button_text_color": "#FFFFFF",
+      "background_color": "#008755",
+      "border_border": "none",
+      "border_width_mobile": {
+       "unit": "px",
+       "top": "0",
+       "right": "0",
+       "bottom": "0",
+       "left": "0",
+       "isLinked": true
+      },
+      "align": "center",
+      "__dynamic__": [],
+      "link": {
+       "url": "{{FUNNEL_HREF}}",
+       "is_external": "",
+       "nofollow": "",
+       "custom_attributes": ""
+      },
+      "_margin_mobile": {
+       "unit": "px",
+       "top": "0",
+       "right": "0",
+       "bottom": "20",
+       "left": "0",
+       "isLinked": false
+      },
+      "selected_icon": {
+       "value": "far fa-arrow-alt-circle-right",
+       "library": "fa-regular"
+      },
+      "background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "background_slideshow_gallery": [],
+      "button_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "button_background_hover_slideshow_gallery": [],
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "button",
+     "elType": "widget"
+    },
+    {
+     "id": "1359be53",
+     "settings": {
+      "title": "¿Quiénes tienen derecho al Ingreso Mínimo Garantizado?",
+      "header_size": "h3",
+      "align": "left",
+      "title_color": "#000000",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_weight": "700"
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "heading",
+     "elType": "widget"
+    },
+    {
+     "id": "22ab7844",
+     "settings": {
+      "width": {
+       "unit": "%",
+       "size": 25,
+       "sizes": []
+      },
+      "align": "center",
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 4,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 0,
+       "sizes": []
+      },
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "509012df",
+     "settings": {
+      "editor": "<p>Para ser <strong>beneficiario del IMG en 2025</strong>, tu hogar debe cumplir con todos estos requisitos:</p><p>[su_note note_color=\"#f0f0f0\" radius=\"2\"]</p><ol><li><strong>Vivir en Bogotá.</strong></li><li><strong>Estar registrado en el Sisbén IV,</strong> en los grupos A1 hasta B7.</li><li><strong>No recibir otras transferencias monetarias del Gobierno Nacional,</strong> como Renta Ciudadana, Jóvenes en Acción o Colombia Mayor.</li><li><strong>Tener una cuenta activa</strong> en alguna de las entidades financieras aliadas: Daviplata, Nequi, Movii, Dale o Bancolombia a la Mano.</li></ol><p>[/su_note]</p><p>⚠️ <strong>¡ATENCIÓN!</strong> <em>Os pagamentos são feitos para um adulto responsável pelo núcleo familiar e o valor varia conforme a composição do grupo familiar e sua classificação no Sisbén.</em></p>",
+      "align": "left",
+      "align_mobile": "left",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    },
+    {
+     "id": "d9d5538",
+     "settings": {
+      "title": "Entiende los niveles del programa: Sisbén A, B y C",
+      "header_size": "h3",
+      "align": "left",
+      "title_color": "#000000",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_weight": "700"
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "heading",
+     "elType": "widget"
+    },
+    {
+     "id": "3c9ee01b",
+     "settings": {
+      "width": {
+       "unit": "%",
+       "size": 25,
+       "sizes": []
+      },
+      "align": "center",
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 4,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 0,
+       "sizes": []
+      },
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "284629d5",
+     "settings": {
+      "editor": "<p>O Sisbén IV é o sistema que identifica quais famílias estão em situação de vulnerabilidade na Colômbia. Ele é dividido em grupos, e <strong>apenas os grupos A e B</strong> são considerados para o Ingreso Mínimo Garantizado.</p><p>🔸 <strong>Grupo A (pobreza extrema)</strong>: Subgrupos A1 a A5. Os lares com maior necessidade, que recebem os maiores valores.</p><p>Exemplo:</p><ul><li>1-2 personas: $172.000</li><li>3-4 personas: $516.000</li><li>5 o más: $860.000</li></ul><p>🔸 <strong>Grupo B (pobreza moderada)</strong>: Subgrupos B1 a B7. Recebem valores menores, mas ainda têm direito ao apoio.</p><p>Exemplo:</p><ul><li>1-2 personas: $60.000 a $72.000</li><li>3-4 personas: $180.000 a $216.000</li><li>5 o más: $300.000 a $360.000</li></ul><p>🔸 <strong>Grupo C (vulnerabilidad económica)</strong>: <strong>Não é contemplado no IMG</strong>. Famílias neste grupo podem acessar outros programas, mas não este.</p>",
+      "align": "left",
+      "align_mobile": "left",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    },
+    {
+     "id": "378b2929",
+     "settings": {
+      "title": "Preguntas más frecuentes sobre el Ingreso Mínimo Garantizado",
+      "header_size": "h3",
+      "align": "left",
+      "title_color": "#000000",
+      "content_width": "full",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_weight": "700"
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "heading",
+     "elType": "widget"
+    },
+    {
+     "id": "1a3f67de",
+     "settings": {
+      "width": {
+       "unit": "%",
+       "size": 25,
+       "sizes": []
+      },
+      "align": "center",
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 4,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 0,
+       "sizes": []
+      },
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "354f2d3a",
+     "settings": {
+      "editor": "<p>[su_accordion]</p><p>[su_spoiler title=\"1. ¿Cómo puedo saber si soy beneficiario?\" open=\"yes\" style=\"fancy\" icon=\"plus\" anchor=\"\" anchor_in_url=\"no\" class=\"\"]Accede a este enlace oficial: Consulta de beneficiarios. Digita tu número de cédula y la fecha de expedición.[/su_spoiler]</p><p>[su_spoiler title=\"2. ¿Cuándo se hacen los pagos?\" open=\"no\" style=\"fancy\" icon=\"plus\" anchor=\"\" anchor_in_url=\"no\" class=\"\"]Los pagos se realizan una vez al mes. Se anuncia el inicio de cada ciclo en medios oficiales y los beneficiarios reciben un mensaje de texto cuando el dinero está disponible.​[/su_spoiler]</p><p>[su_spoiler title=\"3. ¿Qué pasa si tengo Nequi pero no recibo el pago?\" open=\"no\" style=\"fancy\" icon=\"plus\" anchor=\"\" anchor_in_url=\"no\" class=\"\"]Verifica que la cuenta esté activa y registrada a tu nombre. También asegúrate de que no estés recibiendo otros programas nacionales.[/su_spoiler]</p><p>[su_spoiler title=\"4. ¿Puedo inscribirme al programa?\" open=\"no\" style=\"fancy\" icon=\"plus\" anchor=\"\" anchor_in_url=\"no\" class=\"\"]No hay inscripciones directas. Debes estar registrado en el Sisbén IV de Bogotá, grupo A o B, e cumprir os critérios. A atualização do cadastro no Sisbén é fundamental.[/su_spoiler]</p><p>[su_spoiler title=\"5. ¿El valor del subsidio siempre es el mismo?\" open=\"no\" style=\"fancy\" icon=\"plus\" anchor=\"\" anchor_in_url=\"no\" class=\"\"]No. Varia según el grupo del Sisbén, la cantidad de personas en tu hogar y si recibes otras ayudas. El IMG ajusta el valor para completar el ingreso necesario.[/su_spoiler]</p><p>[/su_accordion]</p>",
+      "align": "left",
+      "align_mobile": "left",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    },
+    {
+     "id": "7b137802",
+     "settings": {
+      "text": "Separador",
+      "color": "#F9B200",
+      "weight": {
+       "unit": "px",
+       "size": 2,
+       "sizes": []
+      },
+      "gap": {
+       "unit": "px",
+       "size": 5,
+       "sizes": []
+      },
+      "icon": {
+       "value": "fas fa-star",
+       "library": "fa-solid"
+      },
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "divider",
+     "elType": "widget"
+    },
+    {
+     "id": "6b84a70f",
+     "settings": {
+      "editor": "<p>Sigue en la página 2 y aprende cómo consultar, cobrar y no perder tu Ingreso Mínimo Garantizado.</p>",
+      "align": "left",
+      "align_mobile": "left",
+      "_background_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_slideshow_gallery": [],
+      "_background_hover_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_video_fallback": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "_background_hover_slideshow_gallery": [],
+      "_mask_image": {
+       "url": "",
+       "id": "",
+       "size": ""
+      },
+      "typography_typography": "custom",
+      "typography_font_family": "Roboto",
+      "typography_font_size": {
+       "unit": "px",
+       "size": 18,
+       "sizes": []
+      }
+     },
+     "elements": [],
+     "isInner": false,
+     "widgetType": "text-editor",
+     "elType": "widget"
+    }
+   ],
+   "isInner": false,
+   "elType": "container"
+  }
+ ],
+ "page_settings": {
+  "hide_title": "yes",
+  "background_image": {
+   "url": "",
+   "id": "",
+   "size": ""
+  },
+  "background_video_fallback": {
+   "url": "",
+   "id": "",
+   "size": ""
+  },
+  "background_slideshow_gallery": []
+ },
+ "version": "0.4",
+ "type": "page"
+}

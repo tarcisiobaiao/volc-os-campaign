@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "generated_from": "inventario-n8n sanitizado, atualizado via API n8n read-only em 2026-08-28",
+  "source_policy": "Os exports brutos permanecem privados e ignorados pelo Git. Este manifesto guarda identidade, hash, classificação e sucessor sem credenciais.",
+  "license": "VOLC proprietary",
+  "workflows": [
+    {
+      "id": "pjItRZhP2yrNyrDs",
+      "slug": "gads-new-campaign-validation",
+      "sha256": "f9d26bc9bbed38494673c4bb5e8606c6d3afc6489a3d1fbda3e4a924ff1701b0",
+      "declared_active": false,
+      "classification": "historical_conflicting_versions",
+      "successor": "campaign_onboarding_guard"
+    },
+    {
+      "id": "Q6IunKtTI0gY0KgX",
+      "slug": "orakul-vos-auto-adjust",
+      "sha256": "538d63389771035d2b0512748833a8c2f5bb2af942a63da00570256e43133984",
+      "declared_active": false,
+      "classification": "historical_proven_mutator_do_not_reactivate",
+      "successor": "orakul_policy_kernel"
+    },
+    {
+      "id": "i21UFesZCR3nkMfN",
+      "slug": "bola-de-cristal-preditivo",
+      "sha256": "42ac78767f022b18805f8bf12a414db7206751d6822b133fa30cd94118cfaa6f",
+      "declared_active": false,
+      "classification": "historical_manual_ml_lab",
+      "successor": "forecast_lifecycle"
+    },
+    {
+      "id": "dbpKlrxR6B2pqiAs",
+      "slug": "atuacao-orakul-ai-agent-webgo",
+      "sha256": "ac03ffd5dcf3d130893632710d59f5b9ef58b1a570ca00c38c08f7c8aaa3fb01",
+      "declared_active": true,
+      "classification": "declared_active_split_authority",
+      "successor": "decision_timeline_on_self_hosted"
+    },
+    {
+      "id": "svJWqv5r1NSxB8MO",
+      "slug": "gads-search-terms-upgrade-kw",
+      "sha256": "cecd8f19d4c20eb53ae7ca46c892d28b49641bf35d216a7016d50b14acc8f330",
+      "declared_active": false,
+      "classification": "historical_dangerous_mutator",
+      "successor": "search_terms_workbench"
+    },
+    {
+      "id": "GHMVIgFAv6oytKuj",
+      "slug": "comportamento-gtm-scroll-funil",
+      "sha256": "2bd1f2e3dd88aac18e7c178bbdb173cc3857aa2785f6de909561a3bf0b41b876",
+      "declared_active": false,
+      "classification": "dormant_reference",
+      "successor": "behavioral_policy_aggregator"
+    },
+    {
+      "id": "awNXK3BdPTplsmKy",
+      "slug": "otimizacao-cta-congruencia-page",
+      "sha256": "08d517b8dff3007b109a89fee3fc460b697d66ed83ccaa2008015561fbb312c2",
+      "declared_active": false,
+      "classification": "dormant_experiment_reference",
+      "successor": "cta_experiment_lab"
+    },
+    {
+      "id": "RYmky2S9FCy2dVuz",
+      "slug": "rsa-darwin-optimizer-ctr",
+      "sha256": "7209026d85ad9501a8320803da819d618faeb0fdca7620340a68b8615d426168",
+      "declared_active": false,
+      "classification": "dormant_dangerous_mutator",
+      "successor": "rsa_asset_experiment_loop"
+    },
+    {
+      "id": "NlDpiKPIqHCDblto",
+      "slug": "pauta-recomendador-semantico-p3",
+      "sha256": "57d5d6be31434ae30699d0d4752f87f96c90928cd3d2d648317cf25b470bf6b2",
+      "declared_active": true,
+      "classification": "active_broken_duplicate",
+      "successor": "redator_funnelforge_semantic_route"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://volc.local/schemas/agent-task.schema.json",
+  "title": "VOLC Agent Task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "title",
+    "base_ref",
+    "provider",
+    "mode",
+    "allowed_paths",
+    "prompt",
+    "gates"
+  ],
+  "properties": {
+    "task_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]+$"},
+    "title": {"type": "string", "minLength": 1},
+    "base_ref": {"type": "string", "minLength": 7},
+    "provider": {"enum": ["claude", "codex"]},
+    "mode": {"enum": ["read_only", "workspace_write"]},
+    "allowed_paths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "prompt": {"type": "string", "minLength": 1},
+    "gates": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "human_approval_before_merge": {"type": "boolean", "default": true},
+    "update_graph_after_merge": {"type": "boolean", "default": false}
+  }
+}

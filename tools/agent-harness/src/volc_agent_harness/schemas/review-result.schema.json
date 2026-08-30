@@ -1,0 +1,42 @@
+{
+  "title": "VOLC Candidate Review Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "summary",
+    "confirmed_findings",
+    "required_changes",
+    "evidence",
+    "limitations"
+  ],
+  "properties": {
+    "verdict": {"enum": ["accept", "changes_requested", "blocked"]},
+    "summary": {"type": "string"},
+    "confirmed_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "title", "evidence"],
+        "properties": {
+          "severity": {"enum": ["critical", "high", "medium", "low"]},
+          "title": {"type": "string"},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "required_changes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "evidence": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

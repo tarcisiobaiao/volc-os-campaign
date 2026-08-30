@@ -1,0 +1,84 @@
+WEBGO
+
+Briefing de Funil
+Devolução do Seguro Prestamista
+Valores a Receber de Seguro Embutido em Empréstimo e Financiamento Quitado
+Brasil  |  Agosto 2026
+
+Funil: Devolução do Seguro Prestamista
+Avatar: Brasileiro adulto que já quitou (ou está quitando antes do prazo) um empréstimo pessoal, consignado, financiamento de veículo ou crédito imobiliário. Assinou o contrato sem reparar que havia um seguro embutido nas parcelas e não sabe que a quitação antecipada pode gerar devolução proporcional do que foi pago. Não tem intimidade com termos de contrato, desconfia de intermediário que cobra adiantado e teme "mexer com o banco". A pergunta que ele carrega é simples: tem dinheiro meu parado que eu não sei sacar?
+Tom de voz: Calmo, editorial e verificável. Jornalismo de serviço: explica o mecanismo, mostra onde conferir no próprio documento e aponta o canal oficial. Nunca promete valor, nunca promete prazo, nunca sugere que há dinheiro garantido.
+Arquitetura: 5 páginas em jornada de descoberta → qualificação → execução → destravamento.
+Landing Page (Pouso) · Seguro Prestamista: O Que É e Por Que Você Pode Ter Valor a Receber Após Quitar
+URL: /seguro-prestamista-devolucao
+Objetivo da página: Transformar uma linha ignorada do contrato em uma pergunta pessoal e urgente — "isso estava no meu empréstimo?" —, sem prometer valor nem prazo. O leitor sai sabendo o que procurar no próprio documento.
+Keywords-alvo: seguro prestamista, seguro prestamista devolução, devolução seguro empréstimo quitado, seguro embutido no empréstimo, restituição seguro prestamista
+Estrutura da página (H2)
+•	H2: O que é o seguro prestamista e por que ele aparece em quase todo empréstimo
+•	H2: Por que existe devolução: o que muda no contrato quando a dívida é quitada antes do prazo
+•	H2: Onde essa cobrança aparece no contrato e no extrato, linha por linha
+•	H2: Quem costuma ter valor a receber sem saber que pagou
+•	H2: Perguntas frequentes sobre a devolução do seguro prestamista
+Links internos
+•	A devolução não é automática e não vale para todo contrato: depende do tipo de crédito, da forma como a dívida foi encerrada e do que está escrito na apólice. Veja em qual situação o seu contrato se encaixa antes de procurar o banco. → /quem-tem-direito-devolucao-seguro-pr
+Ficha de redação
+
+
+Pre-sell · Quem Tem Direito à Devolução do Seguro Prestamista e o Que Conferir Antes de Pedir
+URL: /quem-tem-direito-devolucao-seguro-pr
+Objetivo da página: Servir de índice honesto do assunto. Cada H2 antecipa uma página de solução, e o leitor escolhe por onde entrar conforme a situação dele — qualificar-se, executar o pedido ou destravar uma recusa. Alívio por entender o mecanismo, tensão por perceber que há prazo e que documento perdido atrasa tudo.
+Keywords-alvo: quem tem direito devolução seguro prestamista, seguro prestamista quitação antecipada, como saber se paguei seguro prestamista
+Estrutura da página (H2)
+•	H2: Em quais contratos o seguro prestamista costuma estar embutido e como confirmar (Linkar para /seguro-prestamista-quem-tem-direito-p1)
+•	H2: Quitação, portabilidade e liquidação: o que cada forma de encerrar a dívida muda no direito (Linkar para /seguro-prestamista-quem-tem-direito-p1)
+•	H2: Como formalizar o pedido no banco e o que precisa estar no protocolo (Linkar para /como-pedir-devolucao-seguro-prestamista-p2)
+•	H2: Pedido negado ou sem resposta: por onde seguir a partir daí (Linkar para /banco-negou-devolucao-seguro-p3)
+•	H2: ALERTA DE SEGURANÇA: por que nenhum serviço legítimo pede senha do banco nem pagamento adiantado para "liberar" a devolução
+Links internos
+•	O primeiro passo não é ligar para o banco: é descobrir se o seu contrato tinha o seguro e sob qual condição a devolução é prevista. Comece pela qualificação, para não perder tempo com um pedido que não se aplica ao seu caso. → /seguro-prestamista-quem-tem-direito-p1
+Ficha de redação
+
+
+Página Solução 1 · Quem Tem Direito à Devolução: Tipo de Contrato, Forma de Quitação e Prazo
+URL: /seguro-prestamista-quem-tem-direito-p1
+Objetivo da página: Levar o leitor por uma árvore de condições até uma conclusão pessoal — "no meu caso se aplica" ou "no meu caso não se aplica" —, com a mesma clareza nos dois desfechos. Quem descobre que não tem direito também sai servido.
+Keywords-alvo: seguro prestamista quem tem direito, devolução seguro prestamista consignado, seguro prestamista financiamento veículo, prazo para pedir devolução seguro
+Estrutura da página (H2)
+•	H2: Os tipos de crédito em que o seguro prestamista costuma aparecer e como o contrato descreve isso
+•	H2: Quitação antecipada, portabilidade e liquidação por refinanciamento: o que muda em cada caso
+•	H2: As situações em que não há devolução, e por que isso não é recusa indevida
+•	H2: Prazo: a partir de quando conta e o que acontece quando ele se esgota
+•	H2: Como localizar a apólice e o número do certificado no seu documento
+Links internos
+•	Se a sua situação se encaixa nas condições acima, o passo seguinte é formalizar o pedido do jeito certo — com os documentos que o banco costuma exigir e um protocolo que possa ser cobrado depois. → /como-pedir-devolucao-seguro-prestamista-p2
+Ficha de redação
+
+
+Página Solução 2 · Como Pedir a Devolução do Seguro Prestamista ao Banco, Passo a Passo
+URL: /como-pedir-devolucao-seguro-prestamista-p2
+Objetivo da página: Conduzir a execução ordenada do pedido, do documento reunido ao protocolo registrado, deixando claro em cada etapa o que é responsabilidade do leitor e o que é prazo da instituição.
+Keywords-alvo: como pedir devolução seguro prestamista, solicitar restituição seguro empréstimo, protocolo devolução seguro banco, documentos devolução seguro prestamista
+Estrutura da página (H2)
+•	H2: Passo 1: reunir contrato, apólice, extrato e comprovante de quitação
+•	H2: Passo 2: onde protocolar o pedido no seu banco ou na seguradora e o que escrever
+•	H2: Passo 3: registrar o número de protocolo e acompanhar o prazo de resposta
+•	H2: Passo 4: se o prazo vencer sem retorno, os canais oficiais de reclamação
+•	H2: O que mais costuma atrasar um pedido e como evitar cada situação
+Links internos
+•	Nem todo pedido é aceito de primeira, e a recusa às vezes vem com uma justificativa genérica. Veja o que cada resposta costuma significar e o que dá para conferir antes de aceitá-la. → /banco-negou-devolucao-seguro-p3
+Ficha de redação
+
+
+Página Solução 3 · O Banco Negou a Devolução: O Que Cada Resposta Significa e O Que Fazer Agora
+URL: /banco-negou-devolucao-seguro-p3
+Objetivo da página: Atender quem já tentou e travou. Cada recusa comum é traduzida em causa provável e conduta seguinte, sempre descrevendo a exigência do sistema em vez de culpar o leitor. Fecha com o caminho formal de reclamação.
+Keywords-alvo: banco negou devolução seguro prestamista, recusa restituição seguro empréstimo, reclamar devolução seguro prestamista, prazo resposta banco devolução
+Estrutura da página (H2)
+•	H2: "Não havia seguro no seu contrato": como conferir isso no documento antes de aceitar
+•	H2: "O prazo já passou": quando a justificativa procede e quando ela merece revisão
+•	H2: "O valor apurado é zero": como o cálculo proporcional funciona e o que dá para conferir
+•	H2: Pedido sem resposta dentro do prazo: como registrar a reclamação formal
+•	H2: Quando faz sentido buscar orientação especializada e como não pagar por algo gratuito
+Links internos
+•	Guia relacionado: entenda como identificar cobranças de tarifas e pacotes de serviço que aparecem na conta sem contratação clara.
+Ficha de redação

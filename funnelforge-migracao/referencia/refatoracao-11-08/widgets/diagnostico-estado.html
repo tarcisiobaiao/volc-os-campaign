@@ -1,0 +1,250 @@
+<!--
+WIDGET: Diagnóstico de estado após demissão, antecipação ou pedido de retorno
+POSICIONAMENTO RECOMENDADO: P3, antes das explicações detalhadas.
+FUNÇÃO: distinguir multa rescisória, saldo principal, quitação e retorno de modalidade.
+ÂNCORAS NECESSÁRIAS EM P3: #multa-rescisoria, #saldo-principal, #quitar-antecipacao, #voltar-saque-rescisao.
+NÃO COLETA: CPF, nome, empregador, data de desligamento, saldo exato ou número de contrato.
+-->
+<section class="cup-widget cup-state" id="cupStateDiagnosis" aria-labelledby="cup-sd-title">
+  <div class="cup-widget__intro">
+    <div class="cup-widget__eyebrow">Diagnóstico de estado</div>
+    <h2 id="cup-sd-title">Demissão, empréstimo ou troca de modalidade: onde você está?</h2>
+      <div class="cup-widget__chamada">Responda as quatro perguntas e o resultado leva direto à seção que trata do seu caso.</div>
+    <div>Use somente informações que você consegue confirmar no App FGTS ou no contrato. O resultado explica a regra aplicável; não libera valores.</div>
+  </div>
+
+  <div class="cup-widget__stage">
+    <form class="cup-widget__panel is-active" id="cup-sd-form" novalidate aria-hidden="false">
+      <div class="cup-widget__error-summary" id="cup-sd-summary" role="alert" tabindex="-1" hidden></div>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="dismissal" aria-describedby="cup-sd-dismissal-hint cup-sd-dismissal-error">
+        <legend>1. Houve demissão sem justa causa?</legend>
+        <div class="cup-field__hint" id="cup-sd-dismissal-hint">Responda “não” se você continua empregado ou se sua dúvida não envolve esse desligamento.</div>
+        <label><input type="radio" name="dismissal" value="yes"> Sim</label>
+        <label><input type="radio" name="dismissal" value="no"> Não</label>
+        <label><input type="radio" name="dismissal" value="unknown"> Não sei confirmar o tipo de desligamento</label>
+        <div class="cup-field__error" id="cup-sd-dismissal-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="modality" aria-describedby="cup-sd-modality-hint cup-sd-modality-error">
+        <legend>2. Qual estado de modalidade aparece no App FGTS?</legend>
+        <div class="cup-field__hint" id="cup-sd-modality-hint">Um pedido de retorno ainda em espera não equivale ao Saque-Rescisão já efetivo.</div>
+        <label><input type="radio" name="modality" value="birthday"> Saque-Aniversário ativo</label>
+        <label><input type="radio" name="modality" value="return_pending"> Retorno ao Saque-Rescisão solicitado, ainda em espera</label>
+        <label><input type="radio" name="modality" value="termination"> Saque-Rescisão já efetivo</label>
+        <label><input type="radio" name="modality" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-sd-modality-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="loan" aria-describedby="cup-sd-loan-hint cup-sd-loan-error">
+        <legend>3. Existe antecipação do Saque-Aniversário ainda ativa?</legend>
+        <div class="cup-field__hint" id="cup-sd-loan-hint">Consulte o contrato e os bloqueios mostrados no aplicativo.</div>
+        <label><input type="radio" name="loan" value="yes"> Sim</label>
+        <label><input type="radio" name="loan" value="no"> Não</label>
+        <label><input type="radio" name="loan" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-sd-loan-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="goal" aria-describedby="cup-sd-goal-hint cup-sd-goal-error">
+        <legend>4. O que você quer resolver agora?</legend>
+        <div class="cup-field__hint" id="cup-sd-goal-hint">Escolha uma única prioridade.</div>
+        <label><input type="radio" name="goal" value="penalty"> Sacar ou entender a multa rescisória</label>
+        <label><input type="radio" name="goal" value="main_balance"> Sacar ou desbloquear o saldo principal</label>
+        <label><input type="radio" name="goal" value="settle"> Quitar a antecipação</label>
+        <label><input type="radio" name="goal" value="return"> Voltar ao Saque-Rescisão</label>
+        <div class="cup-field__error" id="cup-sd-goal-error" aria-live="polite"></div>
+      </fieldset>
+
+      <button class="cup-widget__submit" type="submit">Entender meu estado</button>
+      <div class="cup-widget__privacy">As respostas ficam no navegador. Nenhum dado pessoal ou valor exato é solicitado.</div>
+    </form>
+
+    <div class="cup-widget__panel cup-result" id="cup-sd-result" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" inert>
+      <div class="cup-result__eyebrow">Resultado do diagnóstico</div>
+      <h3 id="cup-sd-result-title" tabindex="-1"></h3>
+      <div id="cup-sd-result-body"></div>
+      <div class="cup-result__reason" id="cup-sd-result-reason"></div>
+      <a class="cup-widget__submit cup-result__cta" id="cup-sd-result-cta" href="#"></a>
+      <button class="cup-widget__back" id="cup-sd-back" type="button">Alterar respostas</button>
+      <div class="cup-widget__privacy">O aplicativo oficial e a instituição contratada são as referências para confirmar movimentações e quitação.</div>
+    </div>
+  </div>
+</section>
+
+<style>
+    [id^="cup"] .cup-widget__chamada{margin:8px 0 20px;color:#526079;font-size:.94rem;line-height:1.55}
+    [id^="cup"] .cup-txt,[id^="cup"] .cup-sub,[id^="cup"] .cup-hint,[id^="cup"] .cup-nota,[id^="cup"] .cup-erro,[id^="cup"] .cup-porque,[id^="cup"] .cup-field__hint,[id^="cup"] .cup-field__error{margin:0 0 8px}
+#cupStateDiagnosis{--cw-ink:#14213d;--cw-muted:#536079;--cw-line:#dce3ed;--cw-soft:#f7f8fb;--cw-accent:#0b7167;--cw-danger:#a32323;box-sizing:border-box;max-width:760px;margin:2rem auto;padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:18px;background:#fff;color:var(--cw-ink);box-shadow:0 16px 40px rgba(20,33,61,.08);font-family:inherit}
+#cupStateDiagnosis *{box-sizing:border-box}
+#cupStateDiagnosis .cup-widget__eyebrow,#cupStateDiagnosis .cup-result__eyebrow{margin:0 0 .35rem;color:var(--cw-accent);font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+#cupStateDiagnosis h2{margin:.2rem 0 .55rem;line-height:1.15}#cupStateDiagnosis h3{margin:.25rem 0 .75rem;line-height:1.2}
+#cupStateDiagnosis .cup-widget__intro>div:last-child{margin-bottom:1.25rem;color:var(--cw-muted);line-height:1.55}
+#cupStateDiagnosis .cup-widget__stage{display:grid;align-items:start}
+#cupStateDiagnosis .cup-widget__panel{grid-area:1/1;min-width:0;visibility:hidden;opacity:0;pointer-events:none}
+#cupStateDiagnosis .cup-widget__panel.is-active{visibility:visible;opacity:1;pointer-events:auto}
+#cupStateDiagnosis .cup-field{min-width:0;margin:0 0 1rem;padding:1rem;border:1px solid var(--cw-line);border-radius:12px;background:var(--cw-soft)}
+#cupStateDiagnosis .cup-field[data-invalid="true"]{border-color:var(--cw-danger)}
+#cupStateDiagnosis legend{padding:0 .25rem;font-weight:750;line-height:1.35}
+#cupStateDiagnosis .cup-field__hint{margin:.25rem 0 .7rem;color:var(--cw-muted);font-size:.9rem;line-height:1.45}
+#cupStateDiagnosis label{display:flex;gap:.55rem;align-items:flex-start;margin:.45rem 0;line-height:1.4;cursor:pointer}
+#cupStateDiagnosis input{width:1.15rem;height:1.15rem;margin-top:.14rem;accent-color:var(--cw-accent);flex:0 0 auto}
+#cupStateDiagnosis input:focus-visible,#cupStateDiagnosis button:focus-visible,#cupStateDiagnosis a:focus-visible,#cupStateDiagnosis h3:focus-visible{outline:3px solid #f4b942;outline-offset:3px}
+#cupStateDiagnosis .cup-field__error{min-height:0;margin:.45rem 0 0;color:var(--cw-danger);font-size:.88rem;font-weight:700}
+#cupStateDiagnosis .cup-widget__error-summary{margin:0 0 1rem;padding:.8rem 1rem;border:1px solid var(--cw-danger);border-radius:10px;color:var(--cw-danger);background:#fff7f7;font-weight:700}
+#cupStateDiagnosis .cup-widget__submit{display:inline-flex;justify-content:center;align-items:center;width:100%;min-height:48px;padding:.75rem 1rem;border:2px solid var(--cw-accent);border-radius:10px;background:var(--cw-accent);color:#fff;font:inherit;font-weight:800;text-align:center;text-decoration:none;cursor:pointer}
+#cupStateDiagnosis .cup-widget__submit:hover{background:#075b53;border-color:#075b53}
+#cupStateDiagnosis .cup-widget__privacy{margin:.75rem 0 0;color:var(--cw-muted);font-size:.82rem;line-height:1.45}
+#cupStateDiagnosis .cup-result{padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:14px;background:linear-gradient(145deg,#f8fffd,#eef9f6)}
+#cupStateDiagnosis .cup-result__reason{margin:1rem 0;padding:1rem;border-left:4px solid var(--cw-accent);border-radius:0 9px 9px 0;background:#fff;line-height:1.5}
+#cupStateDiagnosis .cup-result__cta{margin-top:.25rem}
+#cupStateDiagnosis .cup-widget__back{display:block;margin:.9rem auto 0;padding:.45rem;border:0;background:transparent;color:var(--cw-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){#cupStateDiagnosis .cup-widget__panel{transition:opacity .18s ease}#cupStateDiagnosis button,#cupStateDiagnosis a{transition:background-color .18s ease,border-color .18s ease}}
+@media (max-width:520px){#cupStateDiagnosis{border-radius:13px}#cupStateDiagnosis .cup-field{padding:.85rem}}
+</style>
+
+<script>
+(function(){
+  'use strict';
+  var root=document.getElementById('cupStateDiagnosis');
+  if(!root||root.dataset.ready==='true'){return;}
+  root.dataset.ready='true';
+
+  var form=root.querySelector('#cup-sd-form');
+  var result=root.querySelector('#cup-sd-result');
+  var title=root.querySelector('#cup-sd-result-title');
+  var body=root.querySelector('#cup-sd-result-body');
+  var reason=root.querySelector('#cup-sd-result-reason');
+  var cta=root.querySelector('#cup-sd-result-cta');
+  var back=root.querySelector('#cup-sd-back');
+  var summary=root.querySelector('#cup-sd-summary');
+  var names=['dismissal','modality','loan','goal'];
+  var emitted={};
+  var p1='https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/';
+  var p3='https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/';
+
+  var routes={
+    check_dismissal:{title:'Confirme primeiro o tipo de desligamento',body:'A multa rescisória e as hipóteses de saque dependem do motivo registrado para a saída.',reason:'Por quê: “demissão” é um termo amplo. Sem justa causa, pedido de demissão e acordo não produzem exatamente os mesmos efeitos.',cta:'Ver o que conferir no aplicativo',url:p1},
+    no_dismissal_penalty:{title:'Sem demissão sem justa causa, esta não é a rota da multa rescisória',body:'Confirme se houve outro evento previsto em lei ou se sua dúvida é sobre o saldo e a modalidade.',reason:'Por quê: a multa rescisória está ligada ao desligamento e não nasce da contratação ou quitação da antecipação.',cta:'Consultar saldo e movimentações',url:p1},
+    birthday_penalty:{title:'A multa rescisória não é o saldo principal',body:'Na demissão sem justa causa, quem está no Saque-Aniversário pode movimentar a multa rescisória, quando devida. O saldo principal não é liberado automaticamente.',reason:'Por quê: a lei preserva a movimentação da multa, enquanto o restante segue as regras do Saque-Aniversário e outras hipóteses legais.',cta:'Entender a multa rescisória',url:p3+'#multa-rescisoria'},
+    termination_dismissal:{title:'Confirme a liberação no App FGTS',body:'Com Saque-Rescisão efetivo e demissão sem justa causa, consulte o aplicativo para verificar os valores liberados e o canal de recebimento.',reason:'Por quê: o estado efetivo da modalidade e o evento de desligamento precisam constar no sistema.',cta:'Ver onde consultar o FGTS',url:p1},
+    check_mode:{title:'Confirme a modalidade antes de interpretar o saldo',body:'O resultado muda se o aplicativo mostra Saque-Aniversário ativo, retorno ainda em espera ou Saque-Rescisão efetivo.',reason:'Por quê: pedir o retorno não altera a modalidade imediatamente.',cta:'Consultar a modalidade no App FGTS',url:p1},
+    main_locked_by_mode:{title:'A demissão não libera automaticamente o saldo principal',body:'Enquanto o Saque-Aniversário estiver vigente — inclusive durante a espera do retorno — a demissão sem justa causa libera a multa rescisória quando devida, não todo o saldo.',reason:'Por quê: o saldo principal permanece sujeito aos saques anuais e às demais hipóteses previstas em lei.',cta:'Entender saldo principal e demissão',url:p3+'#saldo-principal'},
+    no_withdrawal_event:{title:'Quitar ou consultar o saldo não cria um saque livre',body:'Sem uma hipótese legal de movimentação, o saldo principal continua no FGTS mesmo que não exista empréstimo ativo.',reason:'Por quê: desbloqueio de garantia e autorização de saque são coisas diferentes.',cta:'Ver as regras do saldo principal',url:p3+'#saldo-principal'},
+    check_main_balance:{title:'Confirme modalidade e desligamento antes de buscar o saldo',body:'Esses dois estados determinam se há uma hipótese de movimentação ligada à rescisão.',reason:'Por quê: saldo disponível no aplicativo não significa, sozinho, saldo liberado para saque.',cta:'Consultar os estados no App FGTS',url:p1},
+    settle_active:{title:'Peça o saldo devedor à instituição do contrato',body:'A quitação antecipada usa recursos próprios e depende do processamento da instituição e do FGTS para retirar a garantia.',reason:'Importante: retirar o bloqueio da garantia não cria, por si só, o direito de sacar o saldo principal nem antecipa o retorno ao Saque-Rescisão.',cta:'Entender quitação e desaverbação',url:p3+'#quitar-antecipacao'},
+    no_active_loan:{title:'Não há antecipação ativa informada para quitar',body:'Se ainda aparece um bloqueio, confirme no aplicativo a origem e procure a instituição indicada no registro.',reason:'Por quê: bloqueios podem estar associados a uma operação ainda em processamento ou a outro estado que precisa ser identificado.',cta:'Ver como interpretar o bloqueio',url:p3+'#quitar-antecipacao'},
+    check_loan:{title:'Confirme o contrato ativo antes de agir',body:'Verifique no aplicativo e no contrato se existe operação vigente e qual instituição responde por ela.',reason:'Por quê: quitação, retorno de modalidade e reutilização de uma competência dependem dessa informação.',cta:'Consultar contrato e bloqueio',url:p3+'#quitar-antecipacao'},
+    settle_before_return:{title:'A operação ativa precisa ser resolvida antes do retorno',body:'O pedido de mudança para o Saque-Rescisão só pode seguir sem antecipação vigente.',reason:'Depois da quitação e do processamento, o retorno ainda respeita o primeiro dia do 25º mês após o pedido; a quitação não encurta esse prazo.',cta:'Ver a ordem correta das etapas',url:p3+'#voltar-saque-rescisao'},
+    return_pending:{title:'Seu pedido ainda está no período de espera',body:'Até a mudança produzir efeito, as regras do Saque-Aniversário continuam valendo.',reason:'Por quê: o retorno passa a valer no primeiro dia do 25º mês após o pedido, desde que não haja antecipação vigente.',cta:'Entender a data efetiva do retorno',url:p3+'#voltar-saque-rescisao'},
+    request_return:{title:'Você pode solicitar o retorno se não houver antecipação vigente',body:'Faça o pedido no canal oficial e confira a data prevista para a mudança.',reason:'Por quê: o retorno não é imediato; produz efeito no primeiro dia do 25º mês após o pedido.',cta:'Ver como funciona o retorno',url:p3+'#voltar-saque-rescisao'},
+    already_termination:{title:'O Saque-Rescisão já aparece como efetivo',body:'Não é necessário pedir novamente a mudança. Consulte no aplicativo as hipóteses de movimentação disponíveis para o seu caso.',reason:'Por quê: a modalidade define a sistemática, mas cada saque ainda depende de um evento autorizado em lei.',cta:'Consultar movimentações no App FGTS',url:p1}
+  };
+
+  function pushOnce(key,eventName,data){
+    if(emitted[key]){return;}
+    emitted[key]=true;
+    window.dataLayer=window.dataLayer||[];
+    window.dataLayer.push(Object.assign({event:eventName,widget_id:'state_diagnosis'},data||{}));
+  }
+
+  function valueOf(name){
+    var selected=form.querySelector('input[name="'+name+'"]:checked');
+    return selected?selected.value:'';
+  }
+
+  function clearErrors(){
+    summary.hidden=true;
+    summary.textContent='';
+    root.querySelectorAll('.cup-field').forEach(function(field){field.removeAttribute('data-invalid');field.removeAttribute('aria-invalid');field.querySelectorAll('input[type="radio"]').forEach(function(input){input.removeAttribute('aria-invalid');});});
+    root.querySelectorAll('.cup-field__error').forEach(function(error){error.textContent='';});
+  }
+
+  function validate(){
+    clearErrors();
+    var missing=names.filter(function(name){return !valueOf(name);});
+    if(!missing.length){return true;}
+    missing.forEach(function(name){
+      var field=form.querySelector('[data-question="'+name+'"]');
+      field.dataset.invalid='true';
+      field.setAttribute('aria-invalid','true');
+      field.querySelectorAll('input[type="radio"]').forEach(function(input){input.setAttribute('aria-invalid','true');});
+      field.querySelector('.cup-field__error').textContent='Escolha uma opção para continuar.';
+    });
+    summary.textContent='Responda às '+missing.length+' pergunta'+(missing.length>1?'s':'')+' marcada'+(missing.length>1?'s':'')+'.';
+    summary.hidden=false;
+    summary.focus();
+    pushOnce('validation','widget_validation_error',{error_type:'missing_answer'});
+    return false;
+  }
+
+  function decide(){
+    var dismissal=valueOf('dismissal');
+    var modality=valueOf('modality');
+    var loan=valueOf('loan');
+    var goal=valueOf('goal');
+
+    if(goal==='settle'){
+      if(loan==='yes'){return 'settle_active';}
+      if(loan==='no'){return 'no_active_loan';}
+      return 'check_loan';
+    }
+    if(goal==='return'){
+      if(loan==='yes'){return 'settle_before_return';}
+      if(loan==='unknown'){return 'check_loan';}
+      if(modality==='unknown'){return 'check_mode';}
+      if(modality==='return_pending'){return 'return_pending';}
+      if(modality==='termination'){return 'already_termination';}
+      return 'request_return';
+    }
+    if(goal==='penalty'){
+      if(dismissal==='unknown'){return 'check_dismissal';}
+      if(dismissal==='no'){return 'no_dismissal_penalty';}
+      if(modality==='unknown'){return 'check_mode';}
+      if(modality==='termination'){return 'termination_dismissal';}
+      return 'birthday_penalty';
+    }
+    if(modality==='unknown'||dismissal==='unknown'){return 'check_main_balance';}
+    if((modality==='birthday'||modality==='return_pending')&&dismissal==='yes'){return 'main_locked_by_mode';}
+    if(modality==='termination'&&dismissal==='yes'){return 'termination_dismissal';}
+    return 'no_withdrawal_event';
+  }
+
+  function setPanel(showResult){
+    form.classList.toggle('is-active',!showResult);
+    form.setAttribute('aria-hidden',String(showResult));
+    form.inert=showResult;
+    result.classList.toggle('is-active',showResult);
+    result.setAttribute('aria-hidden',String(!showResult));
+    result.inert=!showResult;
+  }
+
+  form.addEventListener('change',function(){pushOnce('start','widget_start');});
+  form.addEventListener('submit',function(event){
+    event.preventDefault();
+    pushOnce('start','widget_start');
+    if(!validate()){return;}
+    var type=decide();
+    var route=routes[type];
+    title.textContent=route.title;
+    body.textContent=route.body;
+    reason.textContent=route.reason;
+    cta.textContent=route.cta;
+    cta.href=route.url;
+    cta.dataset.resultType=type;
+    setPanel(true);
+    title.focus({preventScroll:true});
+    root.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    pushOnce('complete','widget_complete');
+    pushOnce('result:'+type,'widget_result',{result_type:type});
+  });
+
+  back.addEventListener('click',function(){
+    setPanel(false);
+    root.querySelector('input:checked, input').focus();
+  });
+
+  cta.addEventListener('click',function(){
+    pushOnce('cta:'+cta.dataset.resultType,'widget_cta_click',{result_type:cta.dataset.resultType,destination:new URL(cta.href).pathname+new URL(cta.href).hash});
+  });
+})();
+</script>

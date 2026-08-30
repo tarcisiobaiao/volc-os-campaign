@@ -1,0 +1,127 @@
+{
+  "mission_id": "google-demand-gen-builder-executor-v1",
+  "title": "Google Ads Demand Gen — builder seguro e porta de prova",
+  "base_ref": "9885459e44cb7394aed61bd198a379a174abab77",
+  "mode": "implementation",
+  "commit_message": "feat(google-ads): implementa builder seguro de Demand Gen",
+  "briefing": "Implemente a primeira onda executora do plano Google Ads multicanal produzido pela run 20260829-154946-google-multichannel-creative-spec-godmode-v1. Os artefatos dessa run são especificações candidatas, não autoridade absoluta: confronte divergências com o código, a matriz oficial versionada e documentação oficial vigente. O objetivo desta fatia é tornar DEMAND_GEN um canal realmente montável e provável em validate-only no engine VOLC, sem habilitar criação real, sem alargar o canário e sem tocar o Supabase oficial. Reuse o padrão atômico e as faixas de IDs temporários de display.py, os contratos de brief/assets aprovados, o perfil canônico de canal e o único executor volc_ads/subir.py. O plano deve montar budget, campanha PAUSED, ad group e anúncio/asset compatíveis com a API vigente, declarando explicitamente toda escolha imutável ou default perigoso. Controles de superfície devem refletir exatamente a semântica de Demand Gen; audiência, intenção e exclusão não podem ser colapsadas num mesmo campo. A porta HTTP pode expor somente a PROVA validate-only atrás de capacidade/flag de servidor desligada por padrão; /subir e o canário real continuam recusando DEMAND_GEN. Nenhuma chamada real à API deve ocorrer nesta missão. Não invente orçamento mínimo, tipo de anúncio, campo, enum, limite, selected_channels ou requisito criativo: quando a documentação oficial e o SDK local divergirem, falhe fechado e registre a lacuna. Campaign nasce PAUSED e nenhuma operação filha pode produzir ativação remota nesta rodada. Preserve ausência, zero, vazio confirmado, inelegível, não suportado e falha. Não crie outro motor criativo nem duplique a autoridade do Estúdio. Não edite migrations, Roadmap, curadoria ou grafo. Entregue testes de construção, atomicidade, ordem de operações, IDs temporários, limites, campos imutáveis, assets, recusa por dados incompletos, coerência do manifesto, trava fechada, zero chamada externa e regressão de Search/Display. O resultado permanece partial até validate-only real autorizado em conta de teste.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests",
+        "volc_ads",
+        "-q"
+      ],
+      "timeout_seconds": 2400
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules/.bin/vitest",
+        "run",
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/lib/trafego"
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules/.bin/vite",
+        "build"
+      ],
+      "timeout_seconds": 900
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-demand-gen-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Seja o único implementador. Construa a menor fatia vertical Demand Gen que seja estruturalmente verdadeira: builder atômico, contrato de brief/assets, perfil/manifesto e porta de prova desligada por padrão. Reuse autoridades existentes; não contorne a trava, não habilite /subir e não transforme hipótese da spec em enum da API.",
+      "allowed_paths": [
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "volc_ads/criativo_ponte.py",
+        "volc_ads/subir.py",
+        "backend/app/trafego/capacidades.py",
+        "backend/app/trafego/plataforma.py",
+        "backend/app/routers/trafego.py",
+        "backend/tests",
+        "src/types/trafego.ts",
+        "src/lib/pautadorApi.ts",
+        "src/components/trafego",
+        "src/pages/trafego",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "fable-demand-gen-spec-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Revise se o writer executou a especificação sem teatro: Demand Gen deve ser de fato construível pelo contrato local, mas continuar impossível de criar remotamente. Confira coerência com Estúdio, manifesto, capacidades, UX, estados de ausência e critérios de aceite; rejeite TODO vendido como done ou mock vendido como integração.",
+      "allowed_paths": [
+        "tools/agent-harness/runs/20260829-154946-google-multichannel-creative-spec-godmode-v1",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "volc_ads/campanha",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/types/trafego.ts"
+      ]
+    },
+    {
+      "id": "opus-demand-gen-api-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": true,
+      "lens": "Faça fact-check adversarial somente contra documentação oficial Google Ads vigente e o SDK local. Verifique Campaign.advertising_channel_type, DemandGenCampaignSettings, DemandGenAdGroupSettings/channel controls, audience semantics, tipos de anúncio, assets, bidding, orçamento, enums, imutabilidade, atomicidade e validate-only. Rejeite qualquer campo ou limite não sustentado.",
+      "allowed_paths": [
+        "docs/growth-engine/matriz-api/demand-gen.md",
+        "volc_ads/google_ads_api",
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "backend/app/trafego",
+        "backend/tests"
+      ]
+    },
+    {
+      "id": "codex-demand-gen-adversary",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente quebrar a entrega: IDs temporários repetidos, operação fora de ordem, asset sem aprovação/linhagem, default imutável omitido, superfície tratada como métrica, ausência virando zero, campaign/ad group/ad habilitado, flag falhando aberta, /subir ou canário alargado, validate-only real, credencial no browser, divergência entre perfil e construtor e regressão de Search/Display. Só aceite com provas negativas específicas.",
+      "allowed_paths": [
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "volc_ads/subir.py",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "backend/tests",
+        "src/types/trafego.ts",
+        "src/lib/pautadorApi.ts",
+        "src/components/trafego",
+        "src/pages/trafego"
+      ]
+    }
+  ]
+}

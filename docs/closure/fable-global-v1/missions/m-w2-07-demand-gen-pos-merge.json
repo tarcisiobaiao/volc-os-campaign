@@ -1,0 +1,49 @@
+{
+  "mission_id": "closure-w2-07-demand-gen-pos-merge",
+  "title": "Demand Gen pós-merge: canal registrado e gates verdes na main",
+  "base_ref": "SUBSTITUIR-PELO-SHA-DA-MAIN-POS-M-W1-03",
+  "mode": "implementation",
+  "commit_message": "feat(volc_ads): canal DEMAND_GEN registrado e provado na main pós-integração\n\nP04 (expansão Demand Gen): depois do fast-forward da autonomous-closure, o\nconstrutor demand_gen.py existe na árvore; esta missão fecha o elo que\nfaltar (registro no registry de canais, testes_subir, colheita aprovada da\nM-W2-06) e prova o conjunto pelos gates na main.",
+  "briefing": "PINO DE ARMAR: o base_ref acima é INVÁLIDO de propósito — o harness recusa a missão até o integrador substituí-lo pelo SHA-40 da main DEPOIS do fast-forward de integration/autonomous-closure-20260829 (M-W1-03). Não rode antes. CONTEXTO (FACT-MATRIX F005): o FF traz volc_ads/campanha/demand_gen.py + testes_demand_gen.py (builder da 1ª onda: DemandGenMultiAssetAdInfo, mutate atômico, tudo PAUSED); na main anterior o canal DEMAND_GEN falhava por design em testes_subir.py (sem construtor no registry). A missão M-W2-06 (colheita) pode ter listado hunks de valor novo dos fix-writers — o integrador anexará essa lista ao contexto se existir. MISSÃO: (1) verificar o estado pós-FF: o construtor está registrado no registry de canais? testes_subir ainda espera a falha por design? (2) fechar o que faltar: registro, parametrização da falha esperada trocada por prova do canal, portar hunks aprovados da colheita (somente os listados); (3) garantir a MESMA disciplina do Display: validate_only implementado e testado com cliente falso, zero rede, criação sempre PAUSED, avisos de linhagem coerentes; (4) provas novas para cada comportamento novo. PROIBIÇÕES: zero chamada real ao Google (nem validate_only real — isso é D5); zero mudança fora de volc_ads; não enfraquecer nenhum teste existente. ACEITE: suite volc_ads verde com contagem ≥ a da main pós-FF; canal DEMAND_GEN monta, valida e recusa exatamente como o contrato do chassi manda.",
+  "gates": [
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "volc_ads", "-q"],
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "volc_ads/campanha/testes_demand_gen.py", "volc_ads/testes_subir.py", "-q"],
+      "timeout_seconds": 900
+    }
+  ],
+  "timeout_seconds": 5400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-demandgen-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "Registrar e provar o canal DEMAND_GEN na main pós-FF com a disciplina do chassi (PAUSED, validate_only falso, zero rede).",
+      "allowed_paths": ["volc_ads"]
+    },
+    {
+      "id": "codex-demandgen-adversario",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "REFUTAR: caminho que permite ENABLED, chamada de rede possível, teste de falha-por-design removido sem substituto, hunk portado fora da lista aprovada da colheita.",
+      "allowed_paths": ["volc_ads", "backend"]
+    },
+    {
+      "id": "claude-demandgen-contrato",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "high",
+      "lens": "Conferir paridade de disciplina com display.py (atomicidade, ids temporários, avisos de linhagem) e coerência com o vocabulário canônico de canais.",
+      "allowed_paths": ["volc_ads", "docs/architecture"]
+    }
+  ]
+}

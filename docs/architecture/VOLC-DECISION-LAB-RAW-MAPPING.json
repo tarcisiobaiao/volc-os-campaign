@@ -1,0 +1,379 @@
+{
+  "schema_version": 4,
+  "status": "synthetic_hermetic_contract_hardening_proven_only",
+  "scope": {
+    "input": "synthetic explicit dotted-path projection flattened after MessageToDict at Google Ads resource grain",
+    "output": "current Decision Intelligence Lab observation contract",
+    "implementation": "volc_ads/inteligencia_decisao/normalizacao_google_ads.py",
+    "fixture": "volc_ads/inteligencia_decisao/dados/linhas_google_ads_sinteticas.json",
+    "test": "backend/tests/test_inteligencia_decisao_normalizador.py",
+    "network_calls": 0,
+    "external_repository_imports": 0,
+    "mutations": 0
+  },
+  "api_namespace": "v25",
+  "release_baseline": "v25.1",
+  "raw_row_envelope": {
+    "required_exact_keys": [
+      "raw_grain",
+      "janela",
+      "lido_em",
+      "source_fields"
+    ],
+    "janela_required_exact_keys": [
+      "inicio",
+      "fim"
+    ],
+    "one_batch_scope": "one customer.id, one campaign.id, one campaign resource, one customer.currency_code, one janela and one lido_em",
+    "clock": "explicit timezone-aware agora argument; no process clock",
+    "required_batch_arguments": [
+      "as_of_date",
+      "calendar_timezone",
+      "coverage_receipt"
+    ],
+    "capture_encoding": "explicit flattened projection produced after MessageToDict(preserving_proto_field_name=True, always_print_fields_with_no_presence=False): identity int64 is a canonical decimal string in 1..2^63-1, metric int64 is a decimal string in 0..2^63-1, int32 is a JSON integer, double is a JSON number, bool is boolean, enum is its name string",
+    "projection_between_message_to_dict_and_boundary": {
+      "input": "source_fields is the explicit dotted-path projection flattened by an adapter after MessageToDict for one GoogleAdsRow; a nested dict is not accepted by this boundary",
+      "output": "the same closed source_fields projection constrained by the grain mapping; the normalizer does not recursively flatten or materialize omitted scalars",
+      "selection_evidence": "coverage_receipt.grains.<grain>.selected_fields records the exact GAQL fields selected; selection is not proof that a scalar was measured or materially present",
+      "omitted_no_presence_defaults": "zero-fill is forbidden: no omitted int64, int32, double or bool becomes zero or false inside the normalizer",
+      "not_selected": "remains absent; a required field rejects the batch and nullable Quality Info remains absent while blocking decision eligibility",
+      "explicit_null": "every required scalar rejects null; Quality Score/components null are treated as absent and never receive an invented value",
+      "live_presence_limit": "the synthetic fixture does not prove live protobuf presence semantics or that a production adapter distinguished omission from an observed zero"
+    },
+    "coverage_receipt": {
+      "schema_version": 3,
+      "required_exact_keys": [
+        "schema_version",
+        "customer_time_zone",
+        "query_window",
+        "adapter_conversions",
+        "grains"
+      ],
+      "customer_time_zone": "observed IANA account timezone; calendar_timezone must match it byte-for-byte",
+      "query_window": "required exact inicio/fim object; it must equal every raw row janela and is the authority for exact campaign_day date coverage",
+      "adapter_conversions": "closed field-to-conversion map; only ad_group_criterion.quality_info.quality_score mapped to int32_to_canonical_decimal_string permits a canonical decimal string instead of the native int32 JSON integer",
+      "grain_required_exact_keys": [
+        "estado",
+        "linhas_recebidas",
+        "selected_fields"
+      ],
+      "selected_fields": "required on every grain, including zero-row vazio_confirmado; it proves GAQL selection, never measurement or scalar presence"
+    }
+  },
+  "mappings": [
+    {
+      "raw_grain": "campaign_day",
+      "required_source_fields": [
+        "customer.id",
+        "campaign.id",
+        "campaign.resource_name",
+        "campaign.status",
+        "campaign.serving_status",
+        "customer.currency_code",
+        "segments.date",
+        "metrics.impressions",
+        "metrics.clicks",
+        "metrics.cost_micros",
+        "metrics.conversions",
+        "metrics.conversions_value"
+      ],
+      "normalized_target": "daily_metrics[]",
+      "target_fields": [
+        "customer_id",
+        "campaign_id",
+        "resource_name",
+        "status",
+        "serving_status",
+        "currency",
+        "date",
+        "impressions",
+        "clicks",
+        "cost_micros",
+        "conversions",
+        "conversion_value_micros"
+      ],
+      "rule": "metrics.conversions_value is a required protobuf double JSON number converted with Decimal(str(source)) * 1000000 and must yield exact integer micros; binary-double noise beyond an exact micro is rejected fail-closed. Int64 metrics arrive as decimal strings in 0..2^63-1 and become canonical integers. Explicit zero is accepted, while omission or null rejects. campaign_day completo must cover every inclusive coverage_receipt.query_window date exactly once"
+    },
+    {
+      "raw_grain": "campaign_window",
+      "required_source_fields": [
+        "customer.id",
+        "campaign.id",
+        "campaign.resource_name",
+        "campaign.status",
+        "campaign.serving_status",
+        "metrics.search_impression_share",
+        "metrics.search_budget_lost_impression_share",
+        "metrics.search_rank_lost_impression_share"
+      ],
+      "forbidden_source_field": "segments.date",
+      "normalized_target": "window_metrics",
+      "normalized_source_grain": "campaign_window_without_segments_date",
+      "target_fields": [
+        "customer_id",
+        "campaign_id",
+        "resource_name",
+        "status",
+        "serving_status",
+        "search_impression_share",
+        "search_budget_lost_impression_share",
+        "search_rank_lost_impression_share"
+      ],
+      "rule": "required share and lost-share ratios are the campaign-window observation and are never reconstructed by averaging campaign_day rows; explicit zero is accepted while omission or null rejects"
+    },
+    {
+      "raw_grain": "keyword_criterion",
+      "required_source_fields": [
+        "customer.id",
+        "campaign.id",
+        "ad_group.id",
+        "ad_group_criterion.criterion_id",
+        "ad_group_criterion.resource_name",
+        "ad_group_criterion.type",
+        "ad_group_criterion.status",
+        "ad_group_criterion.system_serving_status",
+        "ad_group_criterion.negative",
+        "ad_group_criterion.keyword.text",
+        "ad_group_criterion.keyword.match_type"
+      ],
+      "optional_nullable_source_fields": [
+        "ad_group_criterion.quality_info.quality_score",
+        "ad_group_criterion.quality_info.creative_quality_score",
+        "ad_group_criterion.quality_info.post_click_quality_score",
+        "ad_group_criterion.quality_info.search_predicted_ctr"
+      ],
+      "normalized_target": "quality[]",
+      "target_fields": [
+        "customer_id",
+        "campaign_id",
+        "ad_group_id",
+        "criterion_id",
+        "resource_name",
+        "criterion_type",
+        "negative",
+        "status",
+        "system_serving_status",
+        "keyword_text",
+        "keyword_match_type",
+        "quality_score",
+        "ad_relevance",
+        "landing_page_experience",
+        "expected_ctr"
+      ],
+      "rule": "Quality Score and each component preserve absent/null by omitting the normalized key. Present Quality Score is a native int32 JSON integer 1..10; a canonical decimal string is accepted only when coverage_receipt.adapter_conversions explicitly declares int32_to_canonical_decimal_string. Present components must be ABOVE_AVERAGE, AVERAGE or BELOW_AVERAGE. Any absent quality field, including a wholly empty quality collection, makes decision_eligible false. negative must be explicitly present false; type=KEYWORD, status and system_serving_status remain mandatory observed evidence"
+    },
+    {
+      "raw_grain": "search_term_view",
+      "required_source_fields": [
+        "customer.id",
+        "campaign.id",
+        "ad_group.id",
+        "search_term_view.resource_name",
+        "search_term_view.search_term",
+        "search_term_view.status",
+        "segments.search_term_match_type",
+        "metrics.impressions",
+        "metrics.clicks",
+        "metrics.cost_micros",
+        "metrics.conversions"
+      ],
+      "normalized_target": "search_terms[]",
+      "target_fields": [
+        "customer_id",
+        "campaign_id",
+        "ad_group_id",
+        "resource_name",
+        "search_term",
+        "status",
+        "search_term_match_type",
+        "impressions",
+        "clicks",
+        "cost_micros",
+        "conversions"
+      ],
+      "rule": "SearchTermMatchType is preserved as its own proto enum token and is not mapped through KeywordMatchType; search_term_view.status is also preserved. UNKNOWN/UNSPECIFIED rejects. The resource suffix convention used here is URL-safe base64 without padding over the exact UTF-8 search_term; this premise is covered synthetically with a padding-requiring term but remains unverified against a live GoogleAdsRow. VOLC business annotations remain outside this normalizer"
+    },
+    {
+      "raw_grain": "campaign_negative",
+      "required_source_fields": [
+        "customer.id",
+        "campaign.id",
+        "campaign_criterion.criterion_id",
+        "campaign_criterion.resource_name",
+        "campaign_criterion.type",
+        "campaign_criterion.status",
+        "campaign_criterion.negative",
+        "campaign_criterion.keyword.text",
+        "campaign_criterion.keyword.match_type"
+      ],
+      "normalized_target": "negatives[]",
+      "derived_level": "CAMPAIGN",
+      "target_fields": [
+        "customer_id",
+        "campaign_id",
+        "ad_group_id",
+        "criterion_id",
+        "resource_name",
+        "criterion_type",
+        "negative",
+        "status",
+        "keyword_text",
+        "level",
+        "keyword_match_type",
+        "match_type"
+      ],
+      "rule": "type must be KEYWORD and campaign_criterion.negative must be explicitly present true; omission or null rejects before the polarity gate. match_type is a compatibility alias carrying the same KeywordMatchType value"
+    },
+    {
+      "raw_grain": "ad_group_negative",
+      "required_source_fields": [
+        "customer.id",
+        "campaign.id",
+        "ad_group.id",
+        "ad_group_criterion.criterion_id",
+        "ad_group_criterion.resource_name",
+        "ad_group_criterion.type",
+        "ad_group_criterion.status",
+        "ad_group_criterion.system_serving_status",
+        "ad_group_criterion.negative",
+        "ad_group_criterion.keyword.text",
+        "ad_group_criterion.keyword.match_type"
+      ],
+      "normalized_target": "negatives[]",
+      "derived_level": "AD_GROUP",
+      "target_fields": [
+        "customer_id",
+        "campaign_id",
+        "ad_group_id",
+        "criterion_id",
+        "resource_name",
+        "criterion_type",
+        "negative",
+        "status",
+        "system_serving_status",
+        "keyword_text",
+        "level",
+        "keyword_match_type",
+        "match_type"
+      ],
+      "rule": "type must be KEYWORD and ad_group_criterion.negative must be explicitly present true; omission or null rejects before the polarity gate. status/system_serving_status must be observed rather than UNKNOWN/UNSPECIFIED; match_type is a compatibility alias carrying KeywordMatchType"
+    }
+  ],
+  "lineage_on_every_normalized_row": {
+    "raw_grain": "exact raw grain",
+    "janela": "exact batch window",
+    "lido_em": "same normalized UTC instant for the batch",
+    "as_of_date": "explicit closed calendar date for the batch",
+    "calendar_timezone": "observed account IANA calendar copied from the matching coverage receipt and used for as-of/read comparisons",
+    "fields": [
+      {
+        "target_field": "normalized field name",
+        "source_field": "exact Google Ads source field name"
+      }
+    ],
+    "absent_optional_field": "has no target key and no fields mapping entry"
+  },
+  "temporal_authority": {
+    "normalizer": "the account calendar observed as coverage_receipt.customer_time_zone is authoritative for deciding which account day is closed; calendar_timezone must match exactly",
+    "normalized_instant": "lido_em is emitted in UTC after closure was evaluated in the observed IANA calendar",
+    "kernel": "the existing kernel uses the timezone carried by its explicit agora argument for replay as-of and future-read checks; its window-closure comparison uses lido_em.date() in lido_em's normalized offset, naive datetimes fall back to UTC in _dt, and every ambiguity remains fail-closed; this second gate does not replace or reinterpret the account calendar"
+  },
+  "batch_output": {
+    "top_level_fields": [
+      "observation_version",
+      "api_namespace",
+      "release_baseline",
+      "source",
+      "lido_em",
+      "as_of_date",
+      "calendar_timezone",
+      "janela",
+      "campaign",
+      "daily_metrics",
+      "window_metrics",
+      "quality",
+      "search_terms",
+      "negatives",
+      "normalization_manifest",
+      "raw_row_counts",
+      "coverage_receipt",
+      "decision_eligible",
+      "decision_blockers",
+      "normalization_fingerprint"
+    ],
+    "campaign_fields": [
+      "customer_id",
+      "campaign_id",
+      "resource_name",
+      "currency",
+      "status",
+      "serving_status"
+    ],
+    "required_grains": [
+      "campaign_day",
+      "campaign_window"
+    ],
+    "optional_grains": [
+      "keyword_criterion",
+      "search_term_view",
+      "campaign_negative",
+      "ad_group_negative"
+    ],
+    "coverage_states": [
+      "completo",
+      "nao_consultado",
+      "falha",
+      "parcial",
+      "vazio_confirmado"
+    ],
+    "eligibility": "normalization succeeds only when every grain is completo or zero-row vazio_confirmado, every receipt declares selected_fields, required grains are completo, every row window equals coverage_receipt.query_window, campaign_day covers every inclusive query_window date exactly once, required scalars are materially present/non-null and enums are observed; absent Quality Info or a wholly empty quality collection marks source partial and makes decision_eligible=false",
+    "fingerprint": "SHA-256 of the canonical normalized Google contract, including query_window, adapter_conversions, selected_fields per grain, customer_time_zone, coverage, as_of_date and calendar_timezone",
+    "order_invariant": true,
+    "external_revenue": "absent by contract; caller attaches external revenue after Google normalization"
+  },
+  "closed_gates": [
+    "require customer_time_zone, query_window and adapter_conversions globally and selected_fields on every per-grain receipt, including vazio_confirmado",
+    "reject unknown or mixed raw grain and every extra, non-selected or required missing source field",
+    "reject mixed customer_id, campaign_id, resource_name, janela or lido_em; every row janela must exactly equal coverage_receipt.query_window",
+    "reject dates outside coverage_receipt.query_window, any future janela, segments.date or lido_em, and campaign_day completo without exactly one row for every inclusive query_window date",
+    "reject duplicate natural keys within every raw grain",
+    "reject omitted, zero, leading-zero, signed, overflow or otherwise non-canonical identity decimal strings in 1..2^63-1 before resource_name or duplicate comparisons; then reject resource names inconsistent with IDs",
+    "reject a search_term_view resource suffix that is not the URL-safe base64 encoding without padding of exact search_term UTF-8; this convention remains a non-live premise",
+    "reject mixed or malformed customer.currency_code",
+    "forbid zero-fill: selected_fields proves selection only; every omitted/null required scalar rejects and nullable Quality Info remains absent",
+    "reject MessageToDict scalar shape mismatches: int64 must be a canonical decimal string in 0..2^63-1 without leading zero, double JSON number, bool boolean and enum token string",
+    "reject negative or null required metrics, booleans as numbers, invalid int64 strings and int64 overflow",
+    "preserve absent/null Quality Score/components as omitted normalized keys; accept native int32 JSON integer 1..10 and accept a canonical decimal string only with the adapter conversion declared in the receipt; reject present unknown components; any omission or wholly empty quality collection blocks decision eligibility",
+    "require type=KEYWORD and negative=true for campaign/ad-group negatives; require negative=false for positive keyword quality rows",
+    "reject contradictory criterion/resource reuse across positive and negative grains",
+    "validate KeywordMatchType only against the supported EXACT/PHRASE/BROAD subset; preserve SearchTermMatchType separately without claiming its entire Google domain; reject UNKNOWN/UNSPECIFIED in status, serving status and search-term match type families",
+    "reject share percentages outside [0,1]",
+    "preserve campaign/criterion status and applicable serving status; absence or unknown sentinel rejects the exact grain contract",
+    "require calendar_timezone to match the observed account customer_time_zone exactly, require as_of_date before lido_em in that IANA calendar and reject a window after as-of or not closed before the read",
+    "retain the kernel's independent temporal gate: explicit agora timezone for replay as-of and future-read checks, lido_em.date() in its normalized offset for window closure, UTC fallback for naive datetimes in _dt, all fail-closed",
+    "canonicalize integral doubles, decimals and signed zero before fingerprint so 5 equals 5.0 and -0.0 equals 0.0",
+    "sort daily_metrics chronologically",
+    "preserve nullable absence separately from selected-and-measured explicit zero",
+    "reject monetary protobuf-double noise fail-closed when Decimal(str(source)) cannot produce exact integer currency micros"
+  ],
+  "non_authoritative_references": [
+    "ARBA",
+    "Google Ads Monitor",
+    "If This Then Ad"
+  ],
+  "not_proven_here": [
+    "Google Ads collection or a production GoogleAdsRow adapter",
+    "authenticity of a production coverage receipt",
+    "live MessageToDict capture exercised by this synthetic fixture",
+    "real protobuf scalar presence or an adapter that proves omission versus observed zero",
+    "the URL-safe base64 without-padding search_term_view suffix convention against a live GoogleAdsRow",
+    "external revenue normalization",
+    "persistence or ledger",
+    "future-real replay",
+    "shadow execution",
+    "approval",
+    "endpoint or UI",
+    "mutate or T2 autonomy"
+  ]
+}

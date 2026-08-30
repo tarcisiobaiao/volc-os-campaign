@@ -1,0 +1,155 @@
+<BIBLIOTECA_DE_BLOCOS_GUTENBERG>
+Estes são os BLOCOS DE APOIO que deixam a página dinâmica, escaneável e "wow" — do jeito
+que converte no funil de arbitragem. Copie o HTML EXATAMENTE (espaçamentos já calibrados),
+troque só o [conteúdo]. Use MUITOS deles (não 2-3 — bastante), VARIADOS e DISTRIBUÍDOS ao
+longo do texto: idealmente 1 bloco de apoio a cada 1-2 parágrafos/seção. Nunca empilhe dois
+blocos ricos seguidos sem texto entre eles.
+
+REGRAS DE OURO:
+- 100% ESTÁTICOS: sem <script>, <button>, <iframe>, <form>. Os CTAs continuam sendo os
+  wp:buttons/CTAs inline de sempre (destino único do funil). Estes blocos NÃO viram CTA.
+- Número/valor/data/percentual SÓ pode vir da BASE FACTUAL. Sem dado real → não use "cards
+  de número" nem "barra de progresso". Nunca invente cifra.
+- Mobile-first: parágrafos curtos; um bloco de apoio por vez. Os blocos SUBSTITUEM texto
+  denso — não somam parágrafos, deixam a leitura mais leve.
+- VARIE de página para página: não use sempre os mesmos. Escolha conforme o conteúdo.
+- Dentro de `wp:html`, NUNCA use `<p>` (nem com atributos): use `<div>`/`<span>`.
+  Parágrafos só existem como blocos nativos `wp:paragraph`, fora do HTML bruto.
+- PRIORIZE os blocos de maior impacto que quase ninguém usa e estão mais ABAIXO nesta lista:
+  TABELA COMPARATIVA (wp:table), DUAS COLUNAS (wp:columns) e PULLQUOTE (wp:pullquote). Não caia
+  sempre em caixa + FAQ — a tabela/colunas/pullquote é o que separa "wow" de "mais do mesmo".
+
+════════ CAIXAS DE DESTAQUE (wp:group nativo — 4 variações de cor) ════════
+
+RESUMO / "EM RESUMO" (slate #f1f5f9) — abre a seção com um sumário do que vem:
+<!-- wp:group {"style":{"color":{"background":"#f1f5f9"},"spacing":{"padding":{"top":"24px","right":"26px","bottom":"24px","left":"26px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-radius:12px;background-color:#f1f5f9;margin:24px 0;padding:24px 26px">
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Em resumo</h3>
+<!-- /wp:heading -->
+<!-- wp:list -->
+<ul class="wp-block-list"><!-- wp:list-item --><li>[ponto-chave 1]</li><!-- /wp:list-item --><!-- wp:list-item --><li>[ponto-chave 2]</li><!-- /wp:list-item --></ul>
+<!-- /wp:list -->
+</div>
+<!-- /wp:group -->
+
+DICA (azul #eff6ff) — orientação prática:
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> [orientação prática e específica].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+VOCÊ SABIA? (âmbar #fffbeb) — curiosidade / definição de termo (abre loop):
+<!-- wp:group {"style":{"color":{"background":"#fffbeb"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#d97706","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#d97706;border-left-width:5px;border-radius:10px;background-color:#fffbeb;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>Você sabia?</strong> [fato curioso e útil, curto].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+ATENÇÃO (vermelho #fef2f2 / texto #7f1d1d) — consequência REAL do fato (nunca escassez inventada):
+<!-- wp:group {"style":{"color":{"background":"#fef2f2","text":"#7f1d1d"},"spacing":{"padding":{"top":"22px","right":"24px","bottom":"22px","left":"24px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px","left":{"color":"#dc2626","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-text-color has-background" style="border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px">
+<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">⚠️ Atenção</h3><!-- /wp:heading -->
+<!-- wp:paragraph --><p>[consequência real e verificável — ex.: "sem o cadastro atualizado o benefício pode ser bloqueado". Nunca prazo/escassez fabricados].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+════════ CARDS DE NÚMERO (wp:html — 2-3 valores REAIS da base factual) ════════
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">[VALOR REAL]</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">[rótulo curto]</div>
+</div>
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">[VALOR REAL]</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">[rótulo curto]</div>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ PRÓS × CONTRAS (wp:html — 2 colunas verde/vermelho) ════════
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 220px;background:#ecfdf5;border-radius:12px;padding:18px 20px">
+<div style="margin:0 0 8px;font-weight:700;color:#065f46">A favor</div>
+<ul style="margin:0;padding-left:18px;color:#065f46"><li>[vantagem 1]</li><li>[vantagem 2]</li></ul>
+</div>
+<div style="flex:1 1 220px;background:#fef2f2;border-radius:12px;padding:18px 20px">
+<div style="margin:0 0 8px;font-weight:700;color:#991b1b">Atenção</div>
+<ul style="margin:0;padding-left:18px;color:#991b1b"><li>[cuidado 1]</li><li>[cuidado 2]</li></ul>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ PASSO A PASSO COM BADGES NUMERADOS (wp:html — dos prints) ════════
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><div style="margin:0;font-weight:700">[Ação do passo 1]</div><div style="margin:3px 0 0;color:#475569;font-size:0.95em">[detalhe curto].</div></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><div style="margin:0;font-weight:700">[Ação do passo 2]</div><div style="margin:3px 0 0;color:#475569;font-size:0.95em">[detalhe curto].</div></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ TIMELINE / CRONOLOGIA (wp:html — prazos, etapas no tempo) ════════
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><div style="margin:0;font-weight:700">[Etapa 1 - o que acontece]</div><div style="margin:2px 0 0;color:#475569;font-size:0.95em">[detalhe].</div></div>
+<div><div style="margin:0;font-weight:700">[Etapa 2 - o que acontece]</div><div style="margin:2px 0 0;color:#475569;font-size:0.95em">[detalhe].</div></div>
+</div>
+<!-- /wp:html -->
+
+════════ CHECKLIST EM PILLS (wp:html — requisitos/documentos) ════════
+<!-- wp:html -->
+<ul style="list-style:none;padding:0;margin:24px 0">
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ [requisito ou documento 1]</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ [requisito ou documento 2]</li>
+</ul>
+<!-- /wp:html -->
+
+════════ BARRA DE PROGRESSO (wp:html — [PERCENTUAL] REAL da base; senão não use) ════════
+<!-- wp:html -->
+<div style="background:#e5e7eb;border-radius:999px;height:14px;overflow:hidden;margin:16px 0 4px">
+<div style="width:[PERCENTUAL]%;background:#16a34a;height:100%"></div>
+</div>
+<div style="margin:0 0 24px;font-size:0.9em;color:#475569">[o que esse percentual representa]</div>
+<!-- /wp:html -->
+
+════════ TABELA COMPARATIVA (wp:table striped — dados lado a lado) ════════
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>[Coluna 1]</th><th>[Coluna 2]</th></tr></thead><tbody><tr><td>[dado]</td><td>[dado]</td></tr><tr><td>[dado]</td><td>[dado]</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+════════ DUAS COLUNAS (wp:columns — texto/comparação lado a lado) ════════
+<!-- wp:columns {"style":{"spacing":{"margin":{"top":"24px","bottom":"24px"}}}} -->
+<div class="wp-block-columns"><!-- wp:column -->
+<div class="wp-block-column"><!-- wp:paragraph --><p>[coluna A]</p><!-- /wp:paragraph --></div>
+<!-- /wp:column --><!-- wp:column -->
+<div class="wp-block-column"><!-- wp:paragraph --><p>[coluna B]</p><!-- /wp:paragraph --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+════════ PULLQUOTE (frase-chave de destaque — abre curiosidade) ════════
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>[frase memorável que provoca a próxima dúvida]</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+════════ SEPARADOR (wp:separator — respiro entre grandes blocos) ════════
+<!-- wp:separator {"className":"is-style-wide"} -->
+<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
+<!-- /wp:separator -->
+
+════════ FAQ NATIVO (wp:details — accordion nativo, sem shortcode) ════════
+<!-- wp:details -->
+<details class="wp-block-details"><summary>[Pergunta frequente?]</summary><!-- wp:paragraph -->
+<p>[Resposta objetiva, começando por Sim./Não./Depende.]</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+(Repita o bloco wp:details por pergunta — 4 a 6 perguntas reais.)
+</BIBLIOTECA_DE_BLOCOS_GUTENBERG>

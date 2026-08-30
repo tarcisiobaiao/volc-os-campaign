@@ -1,0 +1,113 @@
+{
+  "_": "PROPOSTA. Nao aplicada. O integrador unico (Codex) converge. Nao editar curadoria-operacional.json, ROADMAP-VIVO.json nem saidas geradas do Graphify a partir deste arquivo sem reconferir a evidencia.",
+  "gerado_em": "2026-08-29",
+  "branch": "feat/estudio-template-lab",
+  "commits": ["9a4b9c9", "f532b90", "6d14fe9", "fbd5749", "932e7e7"],
+  "regra_de_promocao": "Nada vira `implemented` enquanto v11_03 nao estiver aplicada, o worker remoto nao existir e nenhum job real tiver nascido em producao. Prova local nao promove capacidade.",
+
+  "nos_existentes": [
+    {
+      "id": "cap_creative_engines",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_sobe": "Um motor local real (tipografico) e um observado (Remotion). Nenhum executor remoto, nenhuma peca em producao, v11_03 nao aplicada.",
+      "evidencia_a_acrescentar": "29/08/2026 — executor portatil provado localmente: contrato sem infraestrutura, deposito duravel em SQLite com lease e batimento, reaper, retomada com linhagem, cancelamento alcancavel, tenant na identidade. 79 provas, mutation score 95,2% com o unico sobrevivente classificado como equivalente a maquina de estados. Artefato conferido contra o DISCO (existencia, bytes e sha256 medidos), nao contra o que o motor declara."
+    },
+    {
+      "id": "concept:creative-engine-registry",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_sobe": "Continua: 1 de 3 motores com adaptador real, resolucao de FK best-effort, catalogo em tres lugares sem teste que compare os tres.",
+      "evidencia_a_acrescentar": "29/08/2026 — GET /bancada/motores separa 'quais motores existem no patrimonio' de 'quais ESTA maquina roda agora'. A tela nao oferece botao de produzir para motor que a maquina nao tem."
+    },
+    {
+      "id": "concept:asset-provenance",
+      "estado_atual": "implemented",
+      "estado_proposto": "implemented",
+      "evidencia_a_acrescentar": "29/08/2026 — o recibo congela semente, versoes (incluindo sha256 da fonte empacotada), parametros e hashes medidos, com `assinatura_determinista` que exclui id e carimbo de tempo. Determinismo provado nos dois motores; no Remotion, sha256 identico em dois stills independentes."
+    },
+    {
+      "id": "risco:c01-isolacao-video",
+      "estado_atual": "open",
+      "estado_proposto": "open",
+      "evidencia_a_corrigir": "⚠️ CORRECAO DE RECORTE. A evidencia anterior tratava '21 de 26 geradores em singleton' como risco de concorrencia DO REMOTION. Medido em 29/08/2026: o render do Remotion e isolado por processo e por caminho de saida — o hash do render concorrente bate com o do sequencial. Quem compartilha estado sao os wrappers Python da fabrica, um andar acima. O risco continua real e muda de lugar."
+    }
+  ],
+
+  "nos_novos": [
+    {
+      "id": "cap_bancada_criativa",
+      "rotulo": "Bancada criativa (executor portatil)",
+      "cluster": "production",
+      "estado": "partial",
+      "evidencia": "backend/app/criativo/bancada/ — contrato sem infraestrutura (varrido por AST), deposito duravel, operario, reaper, motor tipografico local. 79 provas, 95,2% de mutation score. Local apenas: nenhum executor remoto, nenhuma peca em producao."
+    },
+    {
+      "id": "concept:execution-receipt",
+      "rotulo": "Recibo de execucao reproduzivel",
+      "cluster": "production",
+      "estado": "partial",
+      "evidencia": "Recibo com semente, versoes congeladas, hashes MEDIDOS do disco, validacoes com NUMERO (contraste WCAG, nao PASS/FAIL) e assinatura determinista. Persistencia definitiva depende da v11_03."
+    },
+    {
+      "id": "doc:v11-03",
+      "rotulo": "v11_03 — execucao criativa persistida",
+      "cluster": "governance",
+      "estado": "planned",
+      "evidencia": "supabase/migrations/v11_03_execucao_criativa.sql + rollback + scripts/provas-v11_03.sql. Ciclo aplicar -> operar -> reverter -> reaplicar: 53 provas, 0 falhas, em cluster descartavel. NAO APLICADA em producao."
+    },
+    {
+      "id": "defeito:executor-serverless-fire-and-forget",
+      "rotulo": "Executor antigo e fire-and-forget em funcao serverless",
+      "cluster": "platform",
+      "estado": "open",
+      "evidencia": "backend/vercel.json + execucao.py:253-262. A bancada e a resposta, e ela NAO substituiu o executor antigo — os dois coexistem. Enquanto `criar_job_de_imagem` continuar usando asyncio.create_task, o defeito segue vivo no caminho de producao."
+    },
+    {
+      "id": "risco:remotion-nao-hermetico",
+      "rotulo": "Render Remotion depende de rede para fontes",
+      "cluster": "production",
+      "estado": "open",
+      "evidencia": "~290 requisicoes por quadro; o download e das 15 composicoes, nao da pedida. Hermetismo provado viavel com fontes locais (zero conexao externa, monitor ao vivo com controle positivo), e exige as 11 familias licenciadas e tocar 15 arquivos da fabrica. Sem rede a falha e DURA e sem artefato — nao ha substituicao silenciosa."
+    },
+    {
+      "id": "risco:remotion-licenca",
+      "rotulo": "Licenca Remotion sem numero levantado",
+      "cluster": "governance",
+      "estado": "open",
+      "evidencia": "Free License cobre organizacao de ate 3 pessoas; acima disso exige Company License paga. 1 render conta igual em local, Lambda ou Cloud Run; preview no Player e no Studio nao conta. Precos NAO CONFIRMADOS."
+    }
+  ],
+
+  "arestas_novas": [
+    ["cap_bancada_criativa", "produz", "concept:execution-receipt"],
+    ["cap_bancada_criativa", "sera_persistida_por", "doc:v11-03"],
+    ["cap_bancada_criativa", "substitui_quando_ligada", "defeito:executor-serverless-fire-and-forget"],
+    ["cap_creative_engines", "depende_de", "cap_bancada_criativa"],
+    ["risco:remotion-nao-hermetico", "bloqueia", "executor remoto de video"],
+    ["concept:execution-receipt", "prova", "concept:asset-provenance"]
+  ],
+
+  "roadmap_sugerido": {
+    "_": "O Estudio Criativo continua SEM iniciativa propria no Roadmap Vivo. Isto e o vazio de governanca mais visivel desta frente: ha codigo, schema em producao, ADR e cinco commits, e nenhuma tarefa que os represente.",
+    "iniciativa_proposta": {
+      "id": "P17",
+      "titulo": "Estudio Criativo: do patrimonio a producao",
+      "tarefas": [
+        {"id": "P17-T01", "titulo": "Ligar o executor de imagem a bancada", "estado": "todo", "dependencia": "nenhuma", "aceite": "criar_job_de_imagem deixa de usar asyncio.create_task e passa pela bancada; o defeito serverless fecha"},
+        {"id": "P17-T02", "titulo": "Aplicar a v11_03 em producao", "estado": "todo", "dependencia": "P17-T01", "aceite": "backup conferido, ciclo verde, decisao sobre tenant_id tomada antes"},
+        {"id": "P17-T03", "titulo": "13 indices de FK das v11_01/v11_02", "estado": "todo", "dependencia": "nenhuma", "aceite": "CREATE INDEX CONCURRENTLY, sem lock de escrita"},
+        {"id": "P17-T04", "titulo": "Executor remoto de render", "estado": "todo", "dependencia": "P17-T02", "aceite": "ADR decidido entre Vercel Sandbox e Cloud Run Job; nunca a caixa do Supabase"},
+        {"id": "P17-T05", "titulo": "Hermetismo do Remotion", "estado": "blocked", "dependencia": "11 fontes licenciadas", "aceite": "render offline com hash igual ao online, em checkout limpo"},
+        {"id": "P17-T06", "titulo": "Licenca Remotion", "estado": "blocked", "dependencia": "decisao do dono", "aceite": "numero levantado antes de faturar video"}
+      ]
+    }
+  },
+
+  "o_que_NAO_mudar": [
+    "Nenhuma capacidade vira `implemented`. Tudo foi provado LOCALMENTE.",
+    "Nao registrar a v11_03 como aplicada. Ela nao foi.",
+    "Nao registrar o bucket de storage como existente. Continua em 0.",
+    "Nao registrar custo real de render. O motor local nao cobra; o Remotion nao foi faturado."
+  ]
+}

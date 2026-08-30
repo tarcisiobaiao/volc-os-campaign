@@ -1,0 +1,130 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Runtime local do start-dev.sh (logs + pids + stamps de dependência)
+.dev/
+
+# Environment variables - IMPORTANT: Never commit sensitive credentials
+.env
+.env.server
+# qualquer variação/backup de arquivo de env (um .env.server.bak-<ts> já quase
+# foi commitado com a chave mestra dentro)
+.env.*.bak*
+.env.server.*
+*.bak-*
+# os templates continuam versionados (são eles que documentam as variáveis)
+!.env.example
+!.env.server.example
+.env.production
+.env.*.local
+backend/.env
+backend/.env.local
+
+# Python backend (/backend)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.venv-graphify/
+.venv-adk/
+venv/
+# NÃO ignorar .python-version: ele fixa a versão do Python na Vercel (uv).
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Backups de env — nunca commitar (contêm segredos)
+.env*.bak
+*.bak-*
+
+# Inventário do n8n — contém código e configuração de produção. NUNCA versionar.
+inventario-n8n/
+
+# Knowledge graph: technical cache and generated Obsidian vault.
+# The canonical curated and hybrid JSON files remain outside these ignored paths.
+.graphify-cache/
+graphify-out/obsidian-volc-os/
+graphify-out/graph.graphml
+graphify-out/cypher.txt
+graphify-out/hybrid-nodes.csv
+graphify-out/hybrid-edges.csv
+
+# ── Mapa Vivo: o que é FONTE e o que é SAÍDA ────────────────────────────────
+# A fonte humana (docs/volc-os-graph/curadoria-operacional.json) e o snapshot
+# operacional gerado (volc-os-graph.json) SÃO versionados — são pequenos e
+# carregam significado de negócio. O resto de graphify-out/ é derivado, pesado
+# e reconstruído por scripts/atualizar_grafo_volc_os.py: 13 MB de graph.json
+# mudariam a cada build e transformariam revisão de mapa em revisão de blob.
+graphify-out/
+entregaveis/
+# Views derivadas dentro da pasta da fonte (nível 5 da ordem das fontes).
+docs/volc-os-graph/index.html
+docs/volc-os-graph/*.csv
+docs/volc-os-graph/*.graphml
+docs/volc-os-graph/*.mmd
+
+# ── Runtime e artefatos locais do engine ────────────────────────────────────
+# Recibos são produto de execução, não fonte: carregam customer_id e nome de
+# campanha reais e crescem a cada lançamento.
+volc_ads/dados/recibos/
+# ⚠️ Export CRU do n8n com 12 blocos "credentials" — mesma razão de inventario-n8n/.
+volc_ads/volc-orakul-n8n.json
+volc_ads/Untitled
+# Artefatos da CLI da Vercel. `.vercel/project.json` é a EXCEÇÃO: ele é
+# versionado de propósito, para que um clone já nasça vinculado ao projeto
+# certo — em 24/08/2026 o valor commitado apontava para `webgo` e uma
+# investigação inteira foi feita no sistema errado. A autoridade, ainda assim,
+# é `scripts/guarda-vercel.sh`, que tem o ID escrito e recusa deploy divergente.
+.vercel/*
+!.vercel/project.json
+
+# `vercel link` baixa as env vars do projeto para cá — incluindo
+# SUPABASE_SERVICE_ROLE_KEY. A regra `.env.*.local` da linha 30 NÃO casa com
+# `.env.local` (falta o segmento do meio), então esta linha não é redundante.
+.env*.local
+
+# ── worktrees de agente ─────────────────────────────────────────────────────
+# `.git/info/exclude` já cobria este caminho, e `.git/info/exclude` NÃO é
+# versionado: a proteção existia só nesta cópia do repositório. Quem clonasse
+# passaria a commitar worktrees inteiras sem que nada avisasse.
+#
+# ⚠️ O que NÃO entra numa worktree: `.env`, `.env.server` e qualquer segredo.
+# Eles já são ignorados acima, e o harness não os copia — uma worktree com
+# credencial dentro é uma cópia da credencial que ninguém lembra de apagar.
+.claude/worktrees/
+
+# Runtime local do orquestrador multiagente. O harness e seus contratos são
+# versionados; worktrees, journals e saídas de execução são descartáveis.
+.agent-worktrees/
+tools/agent-harness/runs/
+
+# Snapshots locais de repositórios externos usados em pesquisa arquitetural.
+# O código de terceiros não entra no produto nem no histórico do VOLC O.S.;
+# somente manifestos, decisões e mapas sanitizados em docs/ são versionáveis.
+.research/
+
+# Snapshot bruto do catálogo PostgreSQL. Pode conter metadados e registros
+# operacionais do banco vivo; mantenha apenas local e gere documentação
+# sanitizada em docs/reference/database/.
+docs/reference/database/catalogo-functions-postgresql.md

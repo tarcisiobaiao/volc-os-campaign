@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "volc-agent-harness"
+version = "0.2.0"
+description = "Orquestrador local e isolado de Claude Code e Codex CLI para o desenvolvimento VOLC."
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "google-adk==2.8.0",
+]
+
+[project.scripts]
+volc-agent-preflight = "volc_agent_harness.preflight:main"
+volc-agent-run = "volc_agent_harness.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+volc_agent_harness = ["schemas/*.json"]

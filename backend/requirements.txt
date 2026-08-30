@@ -1,0 +1,35 @@
+# Pautador Pro — FastAPI backend RUNTIME deps (deploy as a 2nd Vercel project, root = /backend)
+# Keep this lean: Vercel installs it for the serverless build. Dev-only tools
+# (uvicorn, pytest) live in requirements-dev.txt.
+fastapi==0.115.6
+# pydantic 2.10.4 (pydantic-core 2.27.2) NÃO tem wheel pra CPython 3.14, que é o
+# que a Vercel usa por padrão -> tentava compilar (Rust) e o build quebrava.
+#
+# A faixa abaixo foi exercitada nas duas pontas relevantes para o contrato
+# OpenAPI da bancada (2.11.7 e 2.13.4, sempre com FastAPI 0.115.6). Não volte a
+# abrir até <3 sem regenerar e comparar o golden: schema gerado é contrato HTTP,
+# não detalhe de implementação. requirements-dev.txt fixa 2.13.4 para os testes.
+pydantic>=2.11.7,<2.14
+pydantic-settings>=2.7,<3
+httpx==0.28.1
+python-dotenv==1.0.1
+# Briefing de funil em DOCX (padrão VOLC) + anexo no ClickUp. Import: `docx`.
+# Traz lxml (wheel manylinux — instala na Vercel sem compilar).
+python-docx==1.2.0
+# Only needed for GOOGLE_ADS_AUTH_MODE=service_account (RS256 JWT signing).
+# OAuth-refresh-token mode and the mock path do not import it.
+cryptography>=42.0
+
+# Normalizacao de imagem do Estudio Criativo. Import: `PIL`.
+#
+# ⚠️ Entra em `requirements.txt` e nao em `requirements-dev.txt` de proposito: a
+# normalizacao (`services/creative_engine/enquadramento.py`) e CAPACIDADE DE
+# PRODUTO, nao ferramenta de teste. Sem ela a peca sai na dimensao nativa do
+# provider em vez da pedida, e o operador recebe 768x1376 onde pediu 1080x1920.
+#
+# `volc_ads/criativo/adaptadores/medir_imagem.py` ja tinha escrito o perigo de
+# depender de Pillow sem declarar; a auditoria de 28/08/2026 mediu que o Estudio
+# fez exatamente isso. Este e o conserto.
+#
+# Wheel manylinux/macos: instala na Vercel sem compilar.
+Pillow>=11.0

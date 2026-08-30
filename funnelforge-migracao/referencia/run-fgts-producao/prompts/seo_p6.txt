@@ -1,0 +1,194 @@
+[user]
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 21/07/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: <!-- wp:paragraph -->
+<p>Se você tem pouco saldo ou medo de ter o fundo travado em caso de demissão, entender as regras de saque é essencial para não comprometer seu dinheiro. Descubra como funciona o piso de contratação e as alternativas para movimentar sua conta de forma segura em 2026.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#008353"><strong>Passo a passo do saque-aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Atualmente, em 2026, <strong>nenhum banco ou fintech</strong> realiza a antecipação do fundo de garantia em valores de R$ 20, R$ 30, R$ 40 ou R$ 50 reais.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Essa limitação ocorre devido às diretrizes estabelecidas pela <u>Resolução CCFGTS nº 1.130/2025</u>, emitida pelo Conselho Curador do Fundo de Garantia do Tempo de Serviço (CCFGTS).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A regulamentação determina que o valor mínimo obrigatório por parcela antecipada seja de <strong>R$ 100,00</strong>. Por essa razão, instituições financeiras tradicionais e plataformas digitais operam exclusivamente a partir deste piso nacional para quem tem saldo menor na conta ativa ou inativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Instituição Financeira</th><th>Valor Mínimo por Parcela (2026)</th></tr></thead><tbody><tr><td><a href="https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/" rel="nofollow sponsored">Banco BMG</a></td><td>R$ 100,00</td></tr><tr><td><a href="https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/" rel="nofollow sponsored">meutudo</a></td><td>R$ 100,00</td></tr><tr><td><a href="https://www.upp.com.br/" rel="nofollow sponsored">Up.p</a></td><td>R$ 100,00</td></tr><tr><td>Caixa Econômica Federal (CEF)</td><td>R$ 100,00</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Portanto, se você encontrar ofertas prometendo saques inferiores a essa margem regulamentada, desconfie de possíveis fraudes. As regras do Banco Central do Brasil (BCB) exigem total transparência das instituições parceiras na hora de simular o crédito.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Como antecipar o FGTS pelo WhatsApp</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Realizar a simulação e a contratação diretamente pelo celular é um processo simples, seguro e totalmente digital. Para garantir a segurança dos seus dados, utilize sempre os canais oficiais de atendimento das instituições financeiras autorizadas.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">Acesse o aplicativo oficial</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Abra o aplicativo oficial do FGTS em seu smartphone e realize o login com sua senha do Gov.br.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">Ative a modalidade de saque</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Selecione a opção "Saque-Aniversário" para confirmar sua adesão, lembrando que há carência de 90 dias para novas mudanças.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<div><p style="margin:0;font-weight:700">Autorize a consulta ao saldo</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Toque em "Autorizar bancos" e selecione a instituição de sua preferência, como o Banco Mercantil ou o <a href="https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/" rel="nofollow sponsored">Banco BMG</a>.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+<div><p style="margin:0;font-weight:700">Inicie o atendimento digital</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Acesse a <a href="https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx">página de antecipação do saque-aniversário da CEF</a> para conferir as regras oficiais, ou chame o assistente virtual do banco no WhatsApp.</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> Ao autorizar o banco no aplicativo, você não contrata nada automaticamente. Isso apenas permite que o sistema consulte se você tem o saldo mínimo de R$ 100,00 para liberar a proposta.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Saber como agir em caso de desligamento da empresa evita que seu saldo fique retido por anos no sistema.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Se você tem dúvidas sobre o que acontece com o seu saldo caso seja demitido após realizar uma antecipação, vale a pena entender as regras de proteção ao trabalhador antes de finalizar qualquer contrato.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>Ver o guia do saque-rescisão »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Qual banco antecipa 50 reais do FGTS via Pix na hora?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Como o limite mínimo nacional é de R$ 100,00, não é possível receber valores menores.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>No entanto, para quem precisa de velocidade, plataformas como a <a href="https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/" rel="nofollow sponsored">meutudo</a> e a <a href="https://www.upp.com.br/" rel="nofollow sponsored">Up.p</a> realizam a transferência via Pix em prazos extremamente curtos, que variam de 10 minutos a 24 horas úteis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Tanto o Banco Mercantil quanto o Banco BMG também efetuam o depósito em conta corrente ou poupança no mesmo dia útil, logo após a validação dos documentos e a assinatura digital do contrato eletrônico.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>Posso antecipar menos de R$ 100,00?</summary><!-- wp:paragraph -->
+<p>Não. A Resolução CCFGTS nº 1.130/2025 impede qualquer operação abaixo desse valor mínimo por parcela em 2026.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>O dinheiro cai na conta aos finais de semana?</summary><!-- wp:paragraph -->
+<p>Depende. Embora o Pix funcione 24 horas, a maioria dos bancos realiza a análise de crédito e a liberação de contratos apenas em dias úteis.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para acompanhar o andamento do seu saldo de forma segura, você pode sempre <a href="https://www.caixa.gov.br">Consultar no canal oficial</a> da Caixa Econômica Federal.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja entender melhor o impacto de antecipar o saldo e como reverter o bloqueio em caso de demissão, acesse 👉 <a href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3">Como funciona a demissão no saque-aniversário »</a> para planejar seus próximos passos com total segurança.</p>
+<!-- /wp:paragraph -->
+
+<p><em><small>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</small></em></p>
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

@@ -1,0 +1,49 @@
+{
+  "mission_id": "closure-w2-01-diagnostico-search-endpoint",
+  "title": "Endpoint GET /api/trafego/campanhas/{id}/diagnostico — primeiro consumidor do ledger v12_01",
+  "base_ref": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "mode": "implementation",
+  "commit_message": "feat(trafego): diagnóstico de entrega lê o ledger v12_01 com portão de identidade\n\nP05-T07: a rota que o frontend já chama passa a existir, projetando as\ncoletas reais de inteligência Google Ads persistidas pela v12_01, sem\nconsultar o Google no render e sem colapsar ausência com zero.",
+  "briefing": "FATOS JÁ CONFIRMADOS (não redescubra; FACT-MATRIX F007/F008 do pacote docs/closure/fable-global-v1): (1) o frontend está PRONTO: src/pages/trafego/CampanhaCanonPage.tsx chama pautadorApi.diagnosticoDeEntrega → GET /api/trafego/campanhas/{volc_campaign_id}/diagnostico, e src/hooks/useDiagnosticoDeEntrega.ts trata 404/501 como 'naoImplementado'; NÃO altere o frontend. (2) As tabelas trafego_google_inteligencia_coleta/item/metrica (v12_01) estão aplicadas no Supabase oficial com 10 recibos reais da conta Crédito Up; o único código que as conhece é volc_ads/inteligencia_google/persistencia.py. (3) Uma tentativa anterior desta rota REPROVOU no gate backend/tests/test_seguranca_hub.py::test_toda_rota_de_leitura_declara_um_portao_de_identidade — a rota nova DEVE declarar o portão de identidade padrão do hub (siga o padrão das rotas vizinhas em backend/app/routers/trafego_inventario.py). MISSÃO: implementar a rota lendo o ledger v12_01 via o padrão de persistência do backend (backend/app/trafego/persistencia.py — PostgREST no Supabase oficial), projetando por volc_campaign_id: status/aprovação/estratégia, impression share, lost budget, lost rank, Quality Score e componentes, termos — cada item com fonte, janela e lido_em. CONTRATO DE AUSÊNCIA (aceite do roadmap P05-T07): ausência é null; 'vazio_confirmado', 'não coletado', 'inelegível', 'não suportado' e 'falhou' permanecem estados distintos e atravessam o JSON; o render NUNCA consulta Google. Se não houver coleta para a campanha, a resposta declara isso como estado, não como 404. TESTES: novos testes em backend/tests cobrindo: portão de identidade presente; campanha com coleta real projetada; campanha sem coleta → estado explícito; nenhum estado colapsado; contrato JSON estável para o hook existente (confira os campos que useDiagnosticoDeEntrega.ts espera LENDO o hook — sem editá-lo). PROIBIÇÕES: zero mutate/validate_only/chamada Google; zero alteração em src/; zero migração; zero segredo. Diferencie no seu result: teste existente vs executado (cite contagens dos gates).",
+  "gates": [
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "backend/tests/test_seguranca_hub.py", "-q"],
+      "timeout_seconds": 600
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "backend/tests", "-q"],
+      "timeout_seconds": 3000
+    }
+  ],
+  "timeout_seconds": 5400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-diagnostico-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Implementar a rota de diagnóstico como primeiro consumidor do ledger v12_01, com portão de identidade e estados de ausência distintos, mais testes.",
+      "allowed_paths": ["backend/app", "backend/tests"]
+    },
+    {
+      "id": "codex-diagnostico-adversario",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "REFUTAR: procurar ausência tratada como zero, estado colapsado, rota sem portão, consulta ao Google no caminho de leitura, contrato JSON incompatível com useDiagnosticoDeEntrega.ts, e teste que aceita qualquer erro.",
+      "allowed_paths": ["backend", "src/hooks", "src/lib", "src/pages/trafego", "supabase/migrations"]
+    },
+    {
+      "id": "claude-diagnostico-contrato",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "high",
+      "lens": "Revisar o contrato de dados contra o aceite de P05-T07 no ROADMAP-VIVO e contra a semântica de estados da v12_01 (vazio_confirmado ≠ falhou ≠ null); verificar que fonte/janela/lido_em atravessam até o JSON.",
+      "allowed_paths": ["backend", "volc_ads/inteligencia_google", "supabase/migrations", "volc-os-workbook"]
+    }
+  ]
+}

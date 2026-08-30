@@ -1,0 +1,45 @@
+{
+  "mission_id": "orakul-predictive-core-v1-codex-retry",
+  "title": "ORAKUL Predictive Core V1 — retomada exclusiva da lente adversarial Codex",
+  "base_ref": "8e58caecc3fc96d2979f77e67af7f637b10c34e0",
+  "mode": "read_only",
+  "briefing": "Retome somente a lente Codex que não chegou a executar na revisão anterior por incompatibilidade local do CLI. Revise adversarialmente o spike offline ORAKUL Predictive Core V1 em services/orakul_predictive/**, os testes em backend/tests/orakul_predictive/** e docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md. Tente quebrar cada afirmação por reprodução ou linha exata: as-of civil e intraday, leakage direto/indireto, walk-forward, targets D+1, intervalos, WAPE/MAE, champion/challenger, determinismo, identidade, idempotência e separação de ausente/zero/falha/antigo/não aplicável. Compare com os dois fluxos legados, sem promover o spike a produção e sem sugerir substituição do ORAKUL. Não escreva arquivos, não acesse segredos, Supabase, Google Ads ou n8n, não edite Roadmap/grafo e não faça merge/push/deploy. Entregue verdict; achados confirmados com gravidade e prova; alegações refutadas; ratchets exatos; lacunas de contrato; e recomendação accept, changes_requested ou reject.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-orakul-adversarial-reviewer-v2",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente quebrar o core e o relatório. Execute testes e mutantes read-only; procure leakage por datas e cálculo de features, contagem dupla de targets, intervalos contaminados, degeneração numérica, hash/idempotência incompletos, colapso semântico, comparação em janelas diferentes e dados sintéticos infiltrando métricas reais. Toda crítica precisa de reprodução ou linha exata; transforme achados confirmados em ratchets objetivos.",
+      "allowed_paths": [
+        "services/orakul_predictive",
+        "backend/tests/orakul_predictive",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "inventario-n8n/flows/orakul-predictive-integrado-v1.json",
+        "inventario-n8n/flows/bola-de-cristal-preditivo.json",
+        "tools/agent-harness"
+      ]
+    },
+    {
+      "id": "codex-orakul-ratchet-reviewer-v2",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Concentre-se na força das provas e nos ratchets. Crie mutantes apenas em cópia temporária ou por monkeypatch, nunca editando o worktree: quantil off-by-one, cutoff intraday ignorado, dados futuros, alvos desalinhados, challenger em subconjunto favorável, n_total duplicado, cenário colinear, intercepto penalizado e synthetic-as-real. Diga quais testes hoje permaneceriam verdes diante de cada defeito e qual contraprova mínima deve nascer antes de integração.",
+      "allowed_paths": [
+        "services/orakul_predictive",
+        "backend/tests/orakul_predictive",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "inventario-n8n/flows/orakul-predictive-integrado-v1.json",
+        "inventario-n8n/flows/bola-de-cristal-preditivo.json",
+        "tools/agent-harness"
+      ]
+    }
+  ]
+}

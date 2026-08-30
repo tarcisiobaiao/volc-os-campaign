@@ -1,0 +1,392 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React 18",
+    "Vite",
+    "Supabase (PostgreSQL)",
+    "TanStack Query (React Query)",
+    "React Router DOM",
+    "Tailwind CSS",
+    "shadcn/ui",
+    "Recharts",
+    "date-fns",
+    "Zod",
+    "React Hook Form"
+  ],
+  "features": [
+    {
+      "name": "Authentication & Authorization",
+      "description": "User authentication system with role-based access control (ADMIN/OPERATOR), Google OAuth support, password management, and protected routes",
+      "files": [
+        "src/contexts/AuthContext.tsx",
+        "src/pages/Login.tsx",
+        "src/pages/ChangePassword.tsx",
+        "src/components/ProtectedRoute.tsx",
+        "src/components/OperatorRedirect.tsx",
+        "src/hooks/useUserRole.ts",
+        "src/hooks/useUserProfile.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/auth/signin": {
+            "post": {
+              "summary": "Sign in with email and password",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "email": {"type": "string"},
+                        "password": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/auth/google": {
+            "post": {
+              "summary": "Sign in with Google OAuth"
+            }
+          },
+          "/rest/v1/users": {
+            "get": {
+              "summary": "Fetch user profile",
+              "parameters": [
+                {
+                  "name": "email",
+                  "in": "query",
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "General Dashboard",
+      "description": "Main dashboard displaying overview of all projects with metrics including investment, revenue, ROAS, ROI, gross/net profit, and campaign status indicators",
+      "files": [
+        "src/pages/GeneralDashboard.tsx",
+        "src/services/supabaseDataService.ts",
+        "src/hooks/useUserFilters.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/projects": {
+            "get": {
+              "summary": "Get all projects with metrics",
+              "responses": {
+                "200": {
+                  "description": "List of projects",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "domain": {"type": "string"},
+                            "investment": {"type": "number"},
+                            "revenue": {"type": "number"},
+                            "roas": {"type": "number"},
+                            "roi": {"type": "number"}
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Project Dashboard",
+      "description": "Detailed project view with campaign performance, daily metrics, revenue trends, and GAM integration data",
+      "files": [
+        "src/pages/ProjectDashboard.tsx",
+        "src/services/supabaseDataService.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/projects/{projectId}": {
+            "get": {
+              "summary": "Get project details by ID",
+              "parameters": [
+                {
+                  "name": "projectId",
+                  "in": "path",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          },
+          "/rest/v1/daily_project_metrics": {
+            "get": {
+              "summary": "Get daily metrics for a project",
+              "parameters": [
+                {
+                  "name": "project_id",
+                  "in": "query",
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Campaign Detail Dashboard",
+      "description": "Detailed campaign analytics with funnel URLs performance, daily metrics, investment tracking, and conversion data",
+      "files": [
+        "src/pages/CampaignDetailDashboard.tsx",
+        "src/services/campaignFunnelUrlsService.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/campaigns/{campaignId}": {
+            "get": {
+              "summary": "Get campaign details",
+              "parameters": [
+                {
+                  "name": "campaignId",
+                  "in": "path",
+                  "required": true,
+                  "schema": {"type": "string"}
+                }
+              ]
+            }
+          },
+          "/rest/v1/daily_campaign_metrics": {
+            "get": {
+              "summary": "Get daily metrics for a campaign"
+            }
+          },
+          "/rest/v1/url_daily_performance": {
+            "get": {
+              "summary": "Get URL performance data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Reports",
+      "description": "Comprehensive reporting system with PDF export, date range filtering, project/campaign comparison, and visual charts",
+      "files": [
+        "src/pages/Reports.tsx"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/reports": {
+            "get": {
+              "summary": "Generate reports with date filters",
+              "parameters": [
+                {
+                  "name": "start_date",
+                  "in": "query",
+                  "schema": {"type": "string", "format": "date"}
+                },
+                {
+                  "name": "end_date",
+                  "in": "query",
+                  "schema": {"type": "string", "format": "date"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Projects Settings",
+      "description": "CRUD operations for projects including GAM network configuration, cost division settings, and project type management",
+      "files": [
+        "src/pages/settings/ProjectsSettings.tsx",
+        "src/services/supabaseDataService.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/projects": {
+            "post": {
+              "summary": "Create new project",
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {"type": "string"},
+                        "domain": {"type": "string"},
+                        "project_type": {"type": "string", "enum": ["GAM", "ADSENSE"]},
+                        "gam_network_code": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "patch": {
+              "summary": "Update project"
+            },
+            "delete": {
+              "summary": "Delete project"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Campaigns Settings",
+      "description": "Campaign management with status control, performance thresholds, funnel URL tracking, and operator commission settings",
+      "files": [
+        "src/pages/settings/CampaignsSettings.tsx"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/campaigns": {
+            "get": {
+              "summary": "List all campaigns"
+            },
+            "post": {
+              "summary": "Create new campaign"
+            },
+            "patch": {
+              "summary": "Update campaign"
+            },
+            "delete": {
+              "summary": "Delete campaign"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Costs Settings",
+      "description": "Operational costs management including tax configuration, cost sharing between projects, and historical tax tracking",
+      "files": [
+        "src/pages/settings/CostsSettings.tsx",
+        "src/services/operationalCostsService.ts",
+        "src/services/taxHistoryService.ts",
+        "src/services/projectCostSharingService.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/operational_costs": {
+            "get": {
+              "summary": "Get operational costs"
+            },
+            "post": {
+              "summary": "Create operational cost"
+            }
+          },
+          "/rest/v1/tax_history": {
+            "get": {
+              "summary": "Get tax history"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Users Settings",
+      "description": "User management system with role assignment (ADMIN/OPERATOR), campaign permissions, and user-specific data filtering",
+      "files": [
+        "src/pages/settings/UsersSettings.tsx",
+        "src/services/usersService.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/users": {
+            "get": {
+              "summary": "List all users"
+            },
+            "post": {
+              "summary": "Create new user"
+            },
+            "patch": {
+              "summary": "Update user"
+            },
+            "delete": {
+              "summary": "Delete user"
+            }
+          },
+          "/rest/v1/user_campaigns": {
+            "get": {
+              "summary": "Get user-campaign associations"
+            },
+            "post": {
+              "summary": "Associate user with campaigns"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Integrations Settings",
+      "description": "External integrations configuration including GAM (Google Ad Manager) API setup and credentials management",
+      "files": [
+        "src/pages/settings/IntegrationsSettings.tsx",
+        "src/services/systemSettingsService.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/system_settings": {
+            "get": {
+              "summary": "Get system settings including GAM credentials"
+            },
+            "patch": {
+              "summary": "Update integration settings"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Currency Conversion",
+      "description": "Multi-currency support with automatic USD to BRL conversion using exchange rates from tax history",
+      "files": [
+        "src/services/currencyConversionService.ts",
+        "src/utils/currencyUtils.ts",
+        "src/hooks/useCurrencyFormatter.ts"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/rest/v1/tax_history": {
+            "get": {
+              "summary": "Get exchange rates from tax history",
+              "parameters": [
+                {
+                  "name": "date",
+                  "in": "query",
+                  "schema": {"type": "string", "format": "date"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

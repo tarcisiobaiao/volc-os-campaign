@@ -1,0 +1,237 @@
+<!--
+WIDGET: Roteador de elegibilidade básica
+POSICIONAMENTO RECOMENDADO: P2, antes de qualquer comparação comercial.
+FUNÇÃO: impedir que o visitante compare ofertas antes de verificar modalidade, prazo, piso do direito anual e operação existente.
+NÃO COLETA: CPF, nome, telefone, saldo exato ou dado bancário.
+-->
+<section class="cup-widget cup-eligibility" id="cupEligibilityRouter" aria-labelledby="cup-er-title">
+  <div class="cup-widget__intro">
+    <div class="cup-widget__eyebrow">Verificação rápida</div>
+    <h2 id="cup-er-title">Qual é o seu próximo passo?</h2>
+      <div class="cup-widget__chamada">Cinco condições decidem se você já pode contratar. Nenhuma delas depende do banco.</div>
+    <div>Responda apenas o que aparece no App FGTS. Isto não é análise de crédito nem promessa de aprovação.</div>
+  </div>
+
+  <div class="cup-widget__stage">
+    <form class="cup-widget__panel is-active" id="cup-er-form" novalidate aria-hidden="false">
+      <div class="cup-widget__error-summary" id="cup-er-summary" role="alert" tabindex="-1" hidden></div>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="modality" aria-describedby="cup-er-modality-hint cup-er-modality-error">
+        <legend>1. Qual modalidade aparece como ativa?</legend>
+        <div class="cup-field__hint" id="cup-er-modality-hint">Consulte a área de modalidade de saque no App FGTS.</div>
+        <label><input type="radio" name="modality" value="birthday"> Saque-Aniversário</label>
+        <label><input type="radio" name="modality" value="termination"> Saque-Rescisão</label>
+        <label><input type="radio" name="modality" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-er-modality-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="waiting" aria-describedby="cup-er-waiting-hint cup-er-waiting-error">
+        <legend>2. Já se passaram 90 dias desde a adesão ao Saque-Aniversário?</legend>
+        <div class="cup-field__hint" id="cup-er-waiting-hint">O prazo conta da data da opção pela modalidade.</div>
+        <label><input type="radio" name="waiting" value="yes"> Sim</label>
+        <label><input type="radio" name="waiting" value="no"> Não</label>
+        <label><input type="radio" name="waiting" value="unknown"> Não sei a data</label>
+        <div class="cup-field__error" id="cup-er-waiting-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="annual" aria-describedby="cup-er-annual-hint cup-er-annual-error">
+        <legend>3. Seu direito anual disponível para cessão chega a R$ 100?</legend>
+        <div class="cup-field__hint" id="cup-er-annual-hint">Não use o saldo total como resposta. Consulte o saque anual calculado.</div>
+        <label><input type="radio" name="annual" value="at_least_100"> Sim, R$ 100 ou mais</label>
+        <label><input type="radio" name="annual" value="below_100"> Não, fica abaixo de R$ 100</label>
+        <label><input type="radio" name="annual" value="unknown"> Não sei calcular</label>
+        <div class="cup-field__error" id="cup-er-annual-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="operation" aria-describedby="cup-er-operation-hint cup-er-operation-error">
+        <legend>4. Existe antecipação ativa vinculada à próxima competência anual?</legend>
+        <div class="cup-field__hint" id="cup-er-operation-hint">Cada competência anual pode estar ligada a apenas um contrato.</div>
+        <label><input type="radio" name="operation" value="no"> Não</label>
+        <label><input type="radio" name="operation" value="yes"> Sim</label>
+        <label><input type="radio" name="operation" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-er-operation-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="authorization" aria-describedby="cup-er-authorization-hint cup-er-authorization-error">
+        <legend>5. A instituição que você pretende consultar já está autorizada no App FGTS?</legend>
+        <div class="cup-field__hint" id="cup-er-authorization-hint">Autorizar a consulta permite acesso aos dados necessários, mas não contrata o empréstimo.</div>
+        <label><input type="radio" name="authorization" value="yes"> Sim</label>
+        <label><input type="radio" name="authorization" value="no"> Não</label>
+        <label><input type="radio" name="authorization" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-er-authorization-error" aria-live="polite"></div>
+      </fieldset>
+
+      <button class="cup-widget__submit" type="submit">Ver meu próximo passo</button>
+      <div class="cup-widget__privacy">Suas respostas ficam no navegador e não incluem dados pessoais ou valores exatos.</div>
+    </form>
+
+    <div class="cup-widget__panel cup-result" id="cup-er-result" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" inert>
+      <div class="cup-result__eyebrow" id="cup-er-result-label">Resultado da verificação</div>
+      <h3 id="cup-er-result-title" tabindex="-1"></h3>
+      <div id="cup-er-result-body"></div>
+      <div class="cup-result__reason" id="cup-er-result-reason"></div>
+      <a class="cup-widget__submit cup-result__cta" id="cup-er-result-cta" href="#"></a>
+      <button class="cup-widget__back" id="cup-er-back" type="button">Alterar respostas</button>
+      <div class="cup-widget__privacy">A resposta organiza o próximo passo; somente uma instituição pode avaliar e aprovar uma contratação.</div>
+    </div>
+  </div>
+</section>
+
+<style>
+    [id^="cup"] .cup-widget__chamada{margin:8px 0 20px;color:#526079;font-size:.94rem;line-height:1.55}
+    [id^="cup"] .cup-txt,[id^="cup"] .cup-sub,[id^="cup"] .cup-hint,[id^="cup"] .cup-nota,[id^="cup"] .cup-erro,[id^="cup"] .cup-porque,[id^="cup"] .cup-field__hint,[id^="cup"] .cup-field__error{margin:0 0 8px}
+#cupEligibilityRouter{--cw-ink:#14213d;--cw-muted:#536079;--cw-line:#dce3ed;--cw-soft:#f5f8fc;--cw-accent:#0968c7;--cw-danger:#a32323;box-sizing:border-box;max-width:760px;margin:2rem auto;padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:18px;background:#fff;color:var(--cw-ink);box-shadow:0 16px 40px rgba(20,33,61,.08);font-family:inherit}
+#cupEligibilityRouter *{box-sizing:border-box}
+#cupEligibilityRouter .cup-widget__eyebrow,#cupEligibilityRouter .cup-result__eyebrow{margin:0 0 .35rem;color:var(--cw-accent);font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+#cupEligibilityRouter h2{margin:.2rem 0 .55rem;line-height:1.15}#cupEligibilityRouter h3{margin:.25rem 0 .75rem;line-height:1.2}
+#cupEligibilityRouter .cup-widget__intro>div:last-child{margin-bottom:1.25rem;color:var(--cw-muted);line-height:1.55}
+#cupEligibilityRouter .cup-widget__stage{display:grid;align-items:start}
+#cupEligibilityRouter .cup-widget__panel{grid-area:1/1;min-width:0;visibility:hidden;opacity:0;pointer-events:none}
+#cupEligibilityRouter .cup-widget__panel.is-active{visibility:visible;opacity:1;pointer-events:auto}
+#cupEligibilityRouter .cup-field{min-width:0;margin:0 0 1rem;padding:1rem;border:1px solid var(--cw-line);border-radius:12px;background:var(--cw-soft)}
+#cupEligibilityRouter .cup-field[data-invalid="true"]{border-color:var(--cw-danger)}
+#cupEligibilityRouter legend{padding:0 .25rem;font-weight:750;line-height:1.35}
+#cupEligibilityRouter .cup-field__hint{margin:.25rem 0 .7rem;color:var(--cw-muted);font-size:.9rem;line-height:1.45}
+#cupEligibilityRouter label{display:flex;gap:.55rem;align-items:flex-start;margin:.45rem 0;line-height:1.4;cursor:pointer}
+#cupEligibilityRouter input{width:1.15rem;height:1.15rem;margin-top:.14rem;accent-color:var(--cw-accent);flex:0 0 auto}
+#cupEligibilityRouter input:focus-visible,#cupEligibilityRouter button:focus-visible,#cupEligibilityRouter a:focus-visible,#cupEligibilityRouter h3:focus-visible{outline:3px solid #f4b942;outline-offset:3px}
+#cupEligibilityRouter .cup-field__error{min-height:0;margin:.45rem 0 0;color:var(--cw-danger);font-size:.88rem;font-weight:700}
+#cupEligibilityRouter .cup-widget__error-summary{margin:0 0 1rem;padding:.8rem 1rem;border:1px solid var(--cw-danger);border-radius:10px;color:var(--cw-danger);background:#fff7f7;font-weight:700}
+#cupEligibilityRouter .cup-widget__submit{display:inline-flex;justify-content:center;align-items:center;width:100%;min-height:48px;padding:.75rem 1rem;border:2px solid var(--cw-accent);border-radius:10px;background:var(--cw-accent);color:#fff;font:inherit;font-weight:800;text-align:center;text-decoration:none;cursor:pointer}
+#cupEligibilityRouter .cup-widget__submit:hover{background:#0756a5;border-color:#0756a5}
+#cupEligibilityRouter .cup-widget__privacy{margin:.75rem 0 0;color:var(--cw-muted);font-size:.82rem;line-height:1.45}
+#cupEligibilityRouter .cup-result{padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:14px;background:linear-gradient(145deg,#f8fbff,#eef5ff)}
+#cupEligibilityRouter .cup-result__reason{margin:1rem 0;padding:1rem;border-left:4px solid var(--cw-accent);border-radius:0 9px 9px 0;background:#fff;line-height:1.5}
+#cupEligibilityRouter .cup-result__cta{margin-top:.25rem}
+#cupEligibilityRouter .cup-widget__back{display:block;margin:.9rem auto 0;padding:.45rem;border:0;background:transparent;color:var(--cw-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){#cupEligibilityRouter .cup-widget__panel{transition:opacity .18s ease}#cupEligibilityRouter button,#cupEligibilityRouter a{transition:background-color .18s ease,border-color .18s ease}}
+@media (max-width:520px){#cupEligibilityRouter{border-radius:13px}#cupEligibilityRouter .cup-field{padding:.85rem}}
+</style>
+
+<script>
+(function(){
+  'use strict';
+  var root=document.getElementById('cupEligibilityRouter');
+  if(!root||root.dataset.ready==='true'){return;}
+  root.dataset.ready='true';
+
+  var form=root.querySelector('#cup-er-form');
+  var result=root.querySelector('#cup-er-result');
+  var title=root.querySelector('#cup-er-result-title');
+  var body=root.querySelector('#cup-er-result-body');
+  var reason=root.querySelector('#cup-er-result-reason');
+  var cta=root.querySelector('#cup-er-result-cta');
+  var back=root.querySelector('#cup-er-back');
+  var summary=root.querySelector('#cup-er-summary');
+  var names=['modality','waiting','annual','operation','authorization'];
+  var emitted={};
+
+  var routes={
+    activate:{title:'Primeiro, confirme ou ative a modalidade',body:'A antecipação depende do Saque-Aniversário ativo. Se o aplicativo mostra Saque-Rescisão, siga o passo a passo antes de comparar ofertas.',reason:'Por quê: a modalidade informada ainda não permite avançar para a autorização da antecipação.',cta:'Ver onde conferir a modalidade',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    confirm_modality:{title:'Confirme a modalidade no App FGTS',body:'Sem saber qual modalidade está ativa, qualquer estimativa pode levar ao caminho errado.',reason:'Por quê: Saque-Aniversário e Saque-Rescisão têm efeitos diferentes sobre antecipação e demissão.',cta:'Ver onde consultar no App FGTS',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    wait_90:{title:'O prazo de 90 dias ainda precisa terminar',body:'A autorização necessária à antecipação só pode ocorrer depois de pelo menos 90 dias da opção pelo Saque-Aniversário.',reason:'Por quê: esse é um prazo regulatório; não depende da velocidade de análise de um banco.',cta:'Revisar o passo a passo e o prazo',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    confirm_date:{title:'Confirme a data da sua adesão',body:'Localize no aplicativo quando o Saque-Aniversário foi ativado e conte os 90 dias antes de seguir.',reason:'Por quê: sem a data, não é possível afirmar que a autorização já está disponível.',cta:'Ver o passo a passo no App FGTS',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    below_floor:{title:'O direito anual informado fica abaixo do piso de cessão',body:'A regra atual exige pelo menos R$ 100 em cada direito anual cedido ao empréstimo.',reason:'Por quê: saldo total, saque anual calculado e valor cedido não são o mesmo número. Refaça o cálculo com a tabela legal.',cta:'Recalcular o saque anual',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/#calculo'},
+    calculate:{title:'Calcule o saque anual antes de comparar',body:'Use a soma dos saldos vinculados, a alíquota da faixa e a parcela adicional. Não responda com o saldo total.',reason:'Por quê: a faixa de R$ 100 a R$ 500 se aplica a cada direito anual cedido, não ao saldo mostrado na tela inicial.',cta:'Usar a tabela oficial explicada',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/#calculo'},
+    active_operation:{title:'Verifique a operação que já está vinculada',body:'A próxima competência anual não pode ficar ligada a dois contratos. Pode ser necessário liquidar a operação relacionada antes de reutilizá-la.',reason:'Por quê: a regra permite um contrato por competência anual.',cta:'Entender quitação e bloqueio',url:'https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/#quitar-antecipacao'},
+    confirm_operation:{title:'Confirme se existe antecipação ativa',body:'Consulte os contratos ou bloqueios antes de iniciar uma nova comparação.',reason:'Por quê: uma operação vinculada à próxima competência altera o que pode ser contratado agora.',cta:'Ver como interpretar esse estado',url:'https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/'},
+    authorize:{title:'Falta autorizar a consulta no App FGTS',body:'Escolha a instituição no menu de autorização do aplicativo. Essa etapa permite a consulta; não cria contrato.',reason:'Por quê: sem a autorização da instituição selecionada, ela não consegue consultar os dados necessários para apresentar a operação.',cta:'Ver o caminho exato no App FGTS',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    confirm_authorization:{title:'Confirme a autorização antes de seguir',body:'Abra a lista de instituições autorizadas no App FGTS e verifique se a instituição desejada aparece.',reason:'Por quê: autorizar consulta e contratar são etapas diferentes, mas a consulta precisa estar autorizada para a instituição escolhida.',cta:'Ver onde conferir a autorização',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    compare:{title:'As condições informadas permitem comparar caminhos',body:'Agora compare taxa, CET, quantidade de competências cedidas e valor líquido. Isso ainda não representa aprovação.',reason:'Por quê: você informou Saque-Aniversário ativo, prazo de 90 dias cumprido, direito anual a partir de R$ 100, nenhuma operação vinculada à próxima competência e consulta autorizada.',cta:'Comparar limites e caminhos para receber',url:'#comparar'}
+  };
+
+  function pushOnce(key,eventName,data){
+    if(emitted[key]){return;}
+    emitted[key]=true;
+    window.dataLayer=window.dataLayer||[];
+    window.dataLayer.push(Object.assign({event:eventName,widget_id:'eligibility_router'},data||{}));
+  }
+
+  function valueOf(name){
+    var selected=form.querySelector('input[name="'+name+'"]:checked');
+    return selected?selected.value:'';
+  }
+
+  function clearErrors(){
+    summary.hidden=true;
+    summary.textContent='';
+    root.querySelectorAll('.cup-field').forEach(function(field){field.removeAttribute('data-invalid');field.removeAttribute('aria-invalid');field.querySelectorAll('input[type="radio"]').forEach(function(input){input.removeAttribute('aria-invalid');});});
+    root.querySelectorAll('.cup-field__error').forEach(function(error){error.textContent='';});
+  }
+
+  function validate(){
+    clearErrors();
+    var missing=names.filter(function(name){return !valueOf(name);});
+    if(!missing.length){return true;}
+    missing.forEach(function(name){
+      var field=form.querySelector('[data-question="'+name+'"]');
+      field.dataset.invalid='true';
+      field.setAttribute('aria-invalid','true');
+      field.querySelectorAll('input[type="radio"]').forEach(function(input){input.setAttribute('aria-invalid','true');});
+      field.querySelector('.cup-field__error').textContent='Escolha uma opção para continuar.';
+    });
+    summary.textContent='Responda às '+missing.length+' pergunta'+(missing.length>1?'s':'')+' marcada'+(missing.length>1?'s':'')+'.';
+    summary.hidden=false;
+    summary.focus();
+    pushOnce('validation','widget_validation_error',{error_type:'missing_answer'});
+    return false;
+  }
+
+  function decide(){
+    var modality=valueOf('modality');
+    var waiting=valueOf('waiting');
+    var annual=valueOf('annual');
+    var operation=valueOf('operation');
+    var authorization=valueOf('authorization');
+    if(modality==='termination'){return 'activate';}
+    if(modality==='unknown'){return 'confirm_modality';}
+    if(waiting==='no'){return 'wait_90';}
+    if(waiting==='unknown'){return 'confirm_date';}
+    if(annual==='below_100'){return 'below_floor';}
+    if(annual==='unknown'){return 'calculate';}
+    if(operation==='yes'){return 'active_operation';}
+    if(operation==='unknown'){return 'confirm_operation';}
+    if(authorization==='no'){return 'authorize';}
+    if(authorization==='unknown'){return 'confirm_authorization';}
+    return 'compare';
+  }
+
+  function setPanel(showResult){
+    form.classList.toggle('is-active',!showResult);
+    form.setAttribute('aria-hidden',String(showResult));
+    form.inert=showResult;
+    result.classList.toggle('is-active',showResult);
+    result.setAttribute('aria-hidden',String(!showResult));
+    result.inert=!showResult;
+  }
+
+  form.addEventListener('change',function(){pushOnce('start','widget_start');});
+  form.addEventListener('submit',function(event){
+    event.preventDefault();
+    pushOnce('start','widget_start');
+    if(!validate()){return;}
+    var type=decide();
+    var route=routes[type];
+    title.textContent=route.title;
+    body.textContent=route.body;
+    reason.textContent=route.reason;
+    cta.textContent=route.cta;
+    cta.href=route.url;
+    cta.dataset.resultType=type;
+    setPanel(true);
+    title.focus({preventScroll:true});
+    root.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    pushOnce('complete','widget_complete');
+    pushOnce('result:'+type,'widget_result',{result_type:type});
+  });
+
+  back.addEventListener('click',function(){
+    setPanel(false);
+    root.querySelector('input:checked, input').focus();
+  });
+
+  cta.addEventListener('click',function(){
+    pushOnce('cta:'+cta.dataset.resultType,'widget_cta_click',{result_type:cta.dataset.resultType,destination:new URL(cta.href).pathname});
+  });
+})();
+</script>

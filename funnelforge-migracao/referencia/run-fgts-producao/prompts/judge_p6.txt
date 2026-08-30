@@ -1,0 +1,376 @@
+[user]
+<identidade>
+Você é o JUIZ DE QUALIDADE E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) de um
+portal editorial de utilidade pública brasileiro. Você NÃO reescreve o conteúdo. Sua única função é
+AUDITAR a página abaixo contra a checklist de aceite do "WINNING LP BLUEPRINT" (engenharia reversa de
+LPs vencedoras de arbitragem) e devolver um veredito estruturado em JSON.
+</identidade>
+
+<principios>
+- Seja um leitor cético e um crítico rigoroso, não um torcedor do texto.
+- Julgue apenas o que está escrito em <!-- wp:paragraph -->
+<p>Se você tem pouco saldo ou medo de ter o fundo travado em caso de demissão, entender as regras de saque é essencial para não comprometer seu dinheiro. Descubra como funciona o piso de contratação e as alternativas para movimentar sua conta de forma segura em 2026.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#008353"><strong>Passo a passo do saque-aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Atualmente, em 2026, <strong>nenhum banco ou fintech</strong> realiza a antecipação do fundo de garantia em valores de R$ 20, R$ 30, R$ 40 ou R$ 50 reais.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Essa limitação ocorre devido às diretrizes estabelecidas pela <u>Resolução CCFGTS nº 1.130/2025</u>, emitida pelo Conselho Curador do Fundo de Garantia do Tempo de Serviço (CCFGTS).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A regulamentação determina que o valor mínimo obrigatório por parcela antecipada seja de <strong>R$ 100,00</strong>. Por essa razão, instituições financeiras tradicionais e plataformas digitais operam exclusivamente a partir deste piso nacional para quem tem saldo menor na conta ativa ou inativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Instituição Financeira</th><th>Valor Mínimo por Parcela (2026)</th></tr></thead><tbody><tr><td><a href="https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/" rel="nofollow sponsored">Banco BMG</a></td><td>R$ 100,00</td></tr><tr><td><a href="https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/" rel="nofollow sponsored">meutudo</a></td><td>R$ 100,00</td></tr><tr><td><a href="https://www.upp.com.br/" rel="nofollow sponsored">Up.p</a></td><td>R$ 100,00</td></tr><tr><td>Caixa Econômica Federal (CEF)</td><td>R$ 100,00</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Portanto, se você encontrar ofertas prometendo saques inferiores a essa margem regulamentada, desconfie de possíveis fraudes. As regras do Banco Central do Brasil (BCB) exigem total transparência das instituições parceiras na hora de simular o crédito.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Como antecipar o FGTS pelo WhatsApp</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Realizar a simulação e a contratação diretamente pelo celular é um processo simples, seguro e totalmente digital. Para garantir a segurança dos seus dados, utilize sempre os canais oficiais de atendimento das instituições financeiras autorizadas.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">Acesse o aplicativo oficial</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Abra o aplicativo oficial do FGTS em seu smartphone e realize o login com sua senha do Gov.br.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">Ative a modalidade de saque</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Selecione a opção "Saque-Aniversário" para confirmar sua adesão, lembrando que há carência de 90 dias para novas mudanças.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<div><p style="margin:0;font-weight:700">Autorize a consulta ao saldo</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Toque em "Autorizar bancos" e selecione a instituição de sua preferência, como o Banco Mercantil ou o <a href="https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/" rel="nofollow sponsored">Banco BMG</a>.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+<div><p style="margin:0;font-weight:700">Inicie o atendimento digital</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Acesse a <a href="https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx">página de antecipação do saque-aniversário da CEF</a> para conferir as regras oficiais, ou chame o assistente virtual do banco no WhatsApp.</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> Ao autorizar o banco no aplicativo, você não contrata nada automaticamente. Isso apenas permite que o sistema consulte se você tem o saldo mínimo de R$ 100,00 para liberar a proposta.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Saber como agir em caso de desligamento da empresa evita que seu saldo fique retido por anos no sistema.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Se você tem dúvidas sobre o que acontece com o seu saldo caso seja demitido após realizar uma antecipação, vale a pena entender as regras de proteção ao trabalhador antes de finalizar qualquer contrato.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>Ver o guia do saque-rescisão »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Qual banco antecipa 50 reais do FGTS via Pix na hora?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Como o limite mínimo nacional é de R$ 100,00, não é possível receber valores menores.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>No entanto, para quem precisa de velocidade, plataformas como a <a href="https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/" rel="nofollow sponsored">meutudo</a> e a <a href="https://www.upp.com.br/" rel="nofollow sponsored">Up.p</a> realizam a transferência via Pix em prazos extremamente curtos, que variam de 10 minutos a 24 horas úteis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Tanto o Banco Mercantil quanto o Banco BMG também efetuam o depósito em conta corrente ou poupança no mesmo dia útil, logo após a validação dos documentos e a assinatura digital do contrato eletrônico.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>Posso antecipar menos de R$ 100,00?</summary><!-- wp:paragraph -->
+<p>Não. A Resolução CCFGTS nº 1.130/2025 impede qualquer operação abaixo desse valor mínimo por parcela em 2026.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>O dinheiro cai na conta aos finais de semana?</summary><!-- wp:paragraph -->
+<p>Depende. Embora o Pix funcione 24 horas, a maioria dos bancos realiza a análise de crédito e a liberação de contratos apenas em dias úteis.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para acompanhar o andamento do seu saldo de forma segura, você pode sempre <a href="https://www.caixa.gov.br">Consultar no canal oficial</a> da Caixa Econômica Federal.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja entender melhor o impacto de antecipar o saldo e como reverter o bloqueio em caso de demissão, acesse 👉 <a href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3">Como funciona a demissão no saque-aniversário »</a> para planejar seus próximos passos com total segurança.</p>
+<!-- /wp:paragraph -->
+
+<p><em><small>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</small></em></p>. Não invente lacunas nem assuma boa-fé.
+- Cada nota deve ser justificada por evidência textual (cite o trecho problemático em feedback).
+- Se um critério não se aplica ao tipo de página (ex.: FAQ respondida vs. transição), julgue pela
+  variante correta da regra, não penalize por a página não usar a outra variante.
+</principios>
+
+<CONTEUDO_A_AVALIAR>
+<!-- wp:paragraph -->
+<p>Se você tem pouco saldo ou medo de ter o fundo travado em caso de demissão, entender as regras de saque é essencial para não comprometer seu dinheiro. Descubra como funciona o piso de contratação e as alternativas para movimentar sua conta de forma segura em 2026.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#008353"><strong>Passo a passo do saque-aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Atualmente, em 2026, <strong>nenhum banco ou fintech</strong> realiza a antecipação do fundo de garantia em valores de R$ 20, R$ 30, R$ 40 ou R$ 50 reais.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Essa limitação ocorre devido às diretrizes estabelecidas pela <u>Resolução CCFGTS nº 1.130/2025</u>, emitida pelo Conselho Curador do Fundo de Garantia do Tempo de Serviço (CCFGTS).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A regulamentação determina que o valor mínimo obrigatório por parcela antecipada seja de <strong>R$ 100,00</strong>. Por essa razão, instituições financeiras tradicionais e plataformas digitais operam exclusivamente a partir deste piso nacional para quem tem saldo menor na conta ativa ou inativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Instituição Financeira</th><th>Valor Mínimo por Parcela (2026)</th></tr></thead><tbody><tr><td><a href="https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/" rel="nofollow sponsored">Banco BMG</a></td><td>R$ 100,00</td></tr><tr><td><a href="https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/" rel="nofollow sponsored">meutudo</a></td><td>R$ 100,00</td></tr><tr><td><a href="https://www.upp.com.br/" rel="nofollow sponsored">Up.p</a></td><td>R$ 100,00</td></tr><tr><td>Caixa Econômica Federal (CEF)</td><td>R$ 100,00</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Portanto, se você encontrar ofertas prometendo saques inferiores a essa margem regulamentada, desconfie de possíveis fraudes. As regras do Banco Central do Brasil (BCB) exigem total transparência das instituições parceiras na hora de simular o crédito.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Como antecipar o FGTS pelo WhatsApp</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Realizar a simulação e a contratação diretamente pelo celular é um processo simples, seguro e totalmente digital. Para garantir a segurança dos seus dados, utilize sempre os canais oficiais de atendimento das instituições financeiras autorizadas.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">Acesse o aplicativo oficial</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Abra o aplicativo oficial do FGTS em seu smartphone e realize o login com sua senha do Gov.br.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">Ative a modalidade de saque</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Selecione a opção "Saque-Aniversário" para confirmar sua adesão, lembrando que há carência de 90 dias para novas mudanças.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<div><p style="margin:0;font-weight:700">Autorize a consulta ao saldo</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Toque em "Autorizar bancos" e selecione a instituição de sua preferência, como o Banco Mercantil ou o <a href="https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/" rel="nofollow sponsored">Banco BMG</a>.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+<div><p style="margin:0;font-weight:700">Inicie o atendimento digital</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Acesse a <a href="https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx">página de antecipação do saque-aniversário da CEF</a> para conferir as regras oficiais, ou chame o assistente virtual do banco no WhatsApp.</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> Ao autorizar o banco no aplicativo, você não contrata nada automaticamente. Isso apenas permite que o sistema consulte se você tem o saldo mínimo de R$ 100,00 para liberar a proposta.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Saber como agir em caso de desligamento da empresa evita que seu saldo fique retido por anos no sistema.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Se você tem dúvidas sobre o que acontece com o seu saldo caso seja demitido após realizar uma antecipação, vale a pena entender as regras de proteção ao trabalhador antes de finalizar qualquer contrato.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>Ver o guia do saque-rescisão »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Qual banco antecipa 50 reais do FGTS via Pix na hora?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Como o limite mínimo nacional é de R$ 100,00, não é possível receber valores menores.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>No entanto, para quem precisa de velocidade, plataformas como a <a href="https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/" rel="nofollow sponsored">meutudo</a> e a <a href="https://www.upp.com.br/" rel="nofollow sponsored">Up.p</a> realizam a transferência via Pix em prazos extremamente curtos, que variam de 10 minutos a 24 horas úteis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Tanto o Banco Mercantil quanto o Banco BMG também efetuam o depósito em conta corrente ou poupança no mesmo dia útil, logo após a validação dos documentos e a assinatura digital do contrato eletrônico.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>Posso antecipar menos de R$ 100,00?</summary><!-- wp:paragraph -->
+<p>Não. A Resolução CCFGTS nº 1.130/2025 impede qualquer operação abaixo desse valor mínimo por parcela em 2026.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>O dinheiro cai na conta aos finais de semana?</summary><!-- wp:paragraph -->
+<p>Depende. Embora o Pix funcione 24 horas, a maioria dos bancos realiza a análise de crédito e a liberação de contratos apenas em dias úteis.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para acompanhar o andamento do seu saldo de forma segura, você pode sempre <a href="https://www.caixa.gov.br">Consultar no canal oficial</a> da Caixa Econômica Federal.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja entender melhor o impacto de antecipar o saldo e como reverter o bloqueio em caso de demissão, acesse 👉 <a href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3">Como funciona a demissão no saque-aniversário »</a> para planejar seus próximos passos com total segurança.</p>
+<!-- /wp:paragraph -->
+
+<p><em><small>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</small></em></p>
+</CONTEUDO_A_AVALIAR>
+
+<CONTEXTO_DE_APOIO>
+Domínio/destino único esperado: https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3
+Keywords-alvo: 
+Base factual da PESQUISA (Gemini + web search) — CONFIE nestes dados. Um número/valor/data coerente com
+esta base é válido mesmo sem estar palavra-por-palavra aqui; penalize apenas o que a CONTRADIZ: {"resumo":"## Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais?\nAtualmente, em 2026, nenhum banco ou instituição financeira realiza o empréstimo do FGTS (antecipação do saque-aniversário) em valores de R$ 20, R$ 30, R$ 40 ou R$ 50 reais. Isso ocorre devido às regras estabelecidas pela Resolução CCFGTS nº 1.130/2025, vigentes em 2026. De acordo com essa regulamentação do Conselho Curador do FGTS, o valor mínimo obrigatório por parcela antecipada é de R$ 100,00 (e o máximo de R$ 500,00). Portanto, bancos como BMG, Mercantil, Caixa Econômica Federal e fintechs como meutudo e Up.p operam exclusivamente com o valor mínimo de R$ 100,00 para quem tem pouco saldo na conta do FGTS.\n\n## Como antecipar o FGTS pelo WhatsApp\nPara fazer a simulação e contratação rápida utilizando o WhatsApp de instituições confiáveis como Banco BMG e Banco Mercantil, o trabalhador deve seguir um processo simples e 100% digital. Primeiro, é necessário acessar o aplicativo oficial do FGTS e aderir à modalidade Saque-Aniversário (respeitando a carência obrigatória de 90 dias para novas adesões). Em seguida, o usuário deve autorizar o banco escolhido (como o BMG ou Mercantil) a consultar o seu saldo do FGTS. Após essa autorização, basta entrar em contato com o canal oficial de atendimento do banco via WhatsApp (como o número do BMG ou o assistente virtual 'Mel' do Mercantil) para realizar a simulação e concluir a contratação de forma rápida e segura.\n\n## Qual banco antecipa 50 reais do FGTS via Pix na hora?\nComo detalhado, em 2026 não é mais permitido antecipar R$ 50 reais do FGTS devido ao piso nacional de R$ 100,00 por parcela. No entanto, para quem deseja antecipar o valor mínimo de R$ 100,00 via Pix na hora, diversas instituições oferecem depósitos extremamente rápidos após a assinatura digital do contrato. A fintech meutudo e a Up.p, por exemplo, realizam o pagamento via Pix em um prazo que varia de 10 minutos a 24 horas úteis. O Banco Mercantil e o Banco BMG também efetuam o crédito na conta do trabalhador em até 24 horas úteis (frequentemente no mesmo dia) após a validação e assinatura digital do contrato.","dados_validados":[{"fato":"Em 2026, o valor mínimo para contratação de empréstimo FGTS (antecipação do saque-aniversário) é de R$ 100,00 por parcela, conforme a Resolução CCFGTS nº 1.130/2025.","fonte":"https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx"},{"fato":"Não é possível realizar empréstimo FGTS de R$ 20, R$ 30, R$ 40 ou R$ 50 reais devido às regras do Conselho Curador do FGTS vigentes em 2026.","fonte":"https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/"},{"fato":"O Banco Mercantil permite simular e contratar a antecipação do saque-aniversário do FGTS pelo WhatsApp, com valor mínimo de R$ 100,00 por parcela.","fonte":"https://bancomercantil.com.br/voce/emprestimos/saque-aniversario-fgts/"},{"fato":"O Banco BMG oferece a antecipação do saque-aniversário do FGTS com contratação digital via WhatsApp e aplicativo, com valor mínimo de R$ 100,00.","fonte":"https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A fintech meutudo realiza o pagamento da antecipação do FGTS via Pix em um prazo de 10 minutos a 24 horas úteis após a assinatura digital.","fonte":"https://meutudo.com.br/blog/como-sacar-o-fgts/"},{"fato":"A Up.p oferece antecipação do saque-aniversário do FGTS a partir de R$ 100,00 com pagamento rápido via Pix.","fonte":"https://www.upp.com.br/"}],"passo_a_passo":["Acesse o aplicativo oficial do FGTS no seu celular e faça o login.","Selecione a opção 'Saque-Aniversário' e confirme a adesão a essa modalidade (atente-se à carência de 90 dias para novas adesões).","No aplicativo do FGTS, vá em 'Autorizar bancos a consultarem seu FGTS' e selecione a instituição financeira desejada (como Banco BMG ou Banco Mercantil).","Acesse o site oficial da instituição financeira escolhida e clique no botão para iniciar o atendimento via WhatsApp.","Siga as instruções do assistente virtual no WhatsApp para realizar a simulação do saldo disponível.","Confirme as condições da proposta (taxas de juros e parcelas) e realize a assinatura digital do contrato.","Aguarde a liberação do dinheiro, que será depositado via Pix ou em conta corrente em até 24 horas úteis."],"fontes":["https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx","https://bancomercantil.com.br/voce/emprestimos/saque-aniversario-fgts/","https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/","https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/","https://meutudo.com.br/blog/como-sacar-o-fgts/","https://www.upp.com.br/"],"sparse":false}
+</CONTEXTO_DE_APOIO>
+
+<CHECKLIST_DE_ACEITE>
+Avalie cada critério de 0 a 10 e registre o motivo em feedback quando a nota for menor que 8.
+
+1. tone_e_e_a_t — Tom de utilidade pública: calmo, editorial, factual. ZERO medo, ZERO escassez,
+   ZERO urgência fabricada. Reprove frases como "muitos perdem", "não perca o prazo", "cuidado, um
+   detalhe bloqueia", "poucos sabem". Nota baixa se o texto usa gatilhos de pânico ou compulsão.
+
+2. cta_discipline —
+
+   Esta é uma página interna do funil (HUB/SOLUTION), doutrina calma: CTAs são DESCRIÇÕES de
+   curiosidade em 3ª pessoa/infinitivo, igual à Landing Page (ex.: "Ver o passo a passo",
+   "Conferir os requisitos"). NÃO exija nem penalize o uso de 1ª pessoa aqui — a proibição
+   exclusiva de 1ª pessoa emocional é regra da LANDING PAGE, não desta página. Penalize somente:
+   (a) gatilho de medo/escassez/urgência no TEXTO do botão, ou (b) spam de verbo de execução de
+   serviço repetido nos botões. Para ONDE cada botão aponta (destino único vs. múltiplos destinos
+   tipados) é avaliado no critério 6, conforme o tipo de página — não avalie roteamento aqui.
+   O registro tátil mobile-first ("Toque abaixo e veja...", "Toque na opção certa...") é uma
+   variação VÁLIDA de descrição de curiosidade/navegação — "tocar" não é verbo de execução de
+   serviço e não deve reduzir a nota.
+
+
+3. proof_and_authority — Critério ADVISÓRIO: dá sinal de qualidade e feedback, mas NÃO reprova a
+   página (não é existencial). Fundamentação é avaliada por PÁGINA, não frase a frase. CONFIE na base
+   factual da pesquisa: um número/valor/data/norma coerente com {"resumo":"## Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais?\nAtualmente, em 2026, nenhum banco ou instituição financeira realiza o empréstimo do FGTS (antecipação do saque-aniversário) em valores de R$ 20, R$ 30, R$ 40 ou R$ 50 reais. Isso ocorre devido às regras estabelecidas pela Resolução CCFGTS nº 1.130/2025, vigentes em 2026. De acordo com essa regulamentação do Conselho Curador do FGTS, o valor mínimo obrigatório por parcela antecipada é de R$ 100,00 (e o máximo de R$ 500,00). Portanto, bancos como BMG, Mercantil, Caixa Econômica Federal e fintechs como meutudo e Up.p operam exclusivamente com o valor mínimo de R$ 100,00 para quem tem pouco saldo na conta do FGTS.\n\n## Como antecipar o FGTS pelo WhatsApp\nPara fazer a simulação e contratação rápida utilizando o WhatsApp de instituições confiáveis como Banco BMG e Banco Mercantil, o trabalhador deve seguir um processo simples e 100% digital. Primeiro, é necessário acessar o aplicativo oficial do FGTS e aderir à modalidade Saque-Aniversário (respeitando a carência obrigatória de 90 dias para novas adesões). Em seguida, o usuário deve autorizar o banco escolhido (como o BMG ou Mercantil) a consultar o seu saldo do FGTS. Após essa autorização, basta entrar em contato com o canal oficial de atendimento do banco via WhatsApp (como o número do BMG ou o assistente virtual 'Mel' do Mercantil) para realizar a simulação e concluir a contratação de forma rápida e segura.\n\n## Qual banco antecipa 50 reais do FGTS via Pix na hora?\nComo detalhado, em 2026 não é mais permitido antecipar R$ 50 reais do FGTS devido ao piso nacional de R$ 100,00 por parcela. No entanto, para quem deseja antecipar o valor mínimo de R$ 100,00 via Pix na hora, diversas instituições oferecem depósitos extremamente rápidos após a assinatura digital do contrato. A fintech meutudo e a Up.p, por exemplo, realizam o pagamento via Pix em um prazo que varia de 10 minutos a 24 horas úteis. O Banco Mercantil e o Banco BMG também efetuam o crédito na conta do trabalhador em até 24 horas úteis (frequentemente no mesmo dia) após a validação e assinatura digital do contrato.","dados_validados":[{"fato":"Em 2026, o valor mínimo para contratação de empréstimo FGTS (antecipação do saque-aniversário) é de R$ 100,00 por parcela, conforme a Resolução CCFGTS nº 1.130/2025.","fonte":"https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx"},{"fato":"Não é possível realizar empréstimo FGTS de R$ 20, R$ 30, R$ 40 ou R$ 50 reais devido às regras do Conselho Curador do FGTS vigentes em 2026.","fonte":"https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/"},{"fato":"O Banco Mercantil permite simular e contratar a antecipação do saque-aniversário do FGTS pelo WhatsApp, com valor mínimo de R$ 100,00 por parcela.","fonte":"https://bancomercantil.com.br/voce/emprestimos/saque-aniversario-fgts/"},{"fato":"O Banco BMG oferece a antecipação do saque-aniversário do FGTS com contratação digital via WhatsApp e aplicativo, com valor mínimo de R$ 100,00.","fonte":"https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A fintech meutudo realiza o pagamento da antecipação do FGTS via Pix em um prazo de 10 minutos a 24 horas úteis após a assinatura digital.","fonte":"https://meutudo.com.br/blog/como-sacar-o-fgts/"},{"fato":"A Up.p oferece antecipação do saque-aniversário do FGTS a partir de R$ 100,00 com pagamento rápido via Pix.","fonte":"https://www.upp.com.br/"}],"passo_a_passo":["Acesse o aplicativo oficial do FGTS no seu celular e faça o login.","Selecione a opção 'Saque-Aniversário' e confirme a adesão a essa modalidade (atente-se à carência de 90 dias para novas adesões).","No aplicativo do FGTS, vá em 'Autorizar bancos a consultarem seu FGTS' e selecione a instituição financeira desejada (como Banco BMG ou Banco Mercantil).","Acesse o site oficial da instituição financeira escolhida e clique no botão para iniciar o atendimento via WhatsApp.","Siga as instruções do assistente virtual no WhatsApp para realizar a simulação do saldo disponível.","Confirme as condições da proposta (taxas de juros e parcelas) e realize a assinatura digital do contrato.","Aguarde a liberação do dinheiro, que será depositado via Pix ou em conta corrente em até 24 horas úteis."],"fontes":["https://www.caixa.gov.br/voce/emprestimo-financiamento/Paginas/antecipacao-saque-aniversario-fgts.aspx","https://bancomercantil.com.br/voce/emprestimos/saque-aniversario-fgts/","https://www.bancobmg.com.br/emprestimo/antecipacao-saque-aniversario-fgts/","https://meutudo.com.br/blog/existe-emprestimo-fgts-a-partir-de-20-ou-25-reais-via-pix/","https://meutudo.com.br/blog/como-sacar-o-fgts/","https://www.upp.com.br/"],"sparse":false}
+   é VÁLIDO mesmo sem estar palavra-por-palavra na base — NÃO o trate como alucinação. Idealmente a
+   página traz ao menos 1 dado concreto e de 2 a 5 órgãos/instituições reais (sigla na 1ª menção).
+   Baixe a nota e registre em feedback SOMENTE quando: (a) um número/afirmação CONTRADIZ a base
+   factual da pesquisa; (b) há CONTRADIÇÃO INTERNA de valores na própria página (ex.: "a partir de
+   R$ 20" no título vs. "mínimo de R$ 100" no corpo); ou (c) a página não cita nenhuma instituição
+   real. Prova apenas "fraca" (poucos números) reduz a nota mas NUNCA é motivo de reprovação/bloqueio.
+
+4. faq_resolution —
+
+   Página interna do funil (HUB/SOLUTION): FAQ é OPCIONAL nesta página. NÃO penalize a ausência de
+   FAQ — uma transição calma de "próximo passo" que explicite o que a próxima página entrega é
+   suficiente. Se a página tiver FAQ mesmo assim, exija as mesmas 5 perguntas respondidas acima.
+   Nota baixa somente se houver pergunta sem resposta completa, gancho manipulativo sem entrega, ou
+   nenhuma transição/indicação do que vem a seguir.
+
+
+5. compliance — Exige APENAS a camada de CONTEÚDO: um aviso de utilidade pública visível no corpo,
+   deixando claro que o site é informativo, não tem vínculo com os
+   órgãos citados e não pede dados pessoais nem pagamento. O rodapé institucional "Sobre o Site",
+   CNPJ, navegação e byline de autor são injetados globalmente pelo TEMA do WordPress (footer fixo,
+   igual em todas as páginas) — NÃO os exija no conteúdo da página nem penalize a ausência deles aqui.
+   Nota baixa somente se o aviso de utilidade pública no corpo estiver ausente ou não deixar claros
+   esses pontos.
+
+6. single_destination —
+
+   Esta é uma página SOLUTION: pelo grafo de roteamento vencedor, ela CORRETAMENTE aponta para
+   MÚLTIPLOS destinos tipados — as soluções-irmãs, 1 link externo OFICIAL (ex.: gov.br) e 1 saída
+   cross-funil (LP de outro funil, MESMO domínio). Múltiplos destinos são o padrão CORRETO aqui;
+   NÃO penalize "múltiplos destinos" nesta página. Dê nota ALTA (>= 8) quando os destinos seguem
+   esse padrão (irmãs + oficial + cross-funil, todos no mesmo domínio, nenhum "/rec" nu/sem slug).
+   Nota baixa SOMENTE se houver um link monetizado/comercial fora do domínio permitido (destino
+   cross-domínio proibido) ou "//" duplicado após /rec.
+   BACKSTOP DE CONGRUÊNCIA DE DESTINO (CARD-0011): cada BOTÃO de avanço (destino `funnel`) tem de
+   DIZER A VERDADE sobre para onde leva — o texto do botão e/ou o PARÁGRAFO-PONTE de prosa
+   imediatamente ANTES dele nomeiam a próxima página (um termo distintivo do H1 do destino), e há
+   uma ponte congruente logo antes de cada botão que não seja o hero (o hero é ancorado pela
+   introdução). REDUZA a nota deste critério (não dê >= 8) quando um botão de avanço usa teaser
+   open-loop INCONGRUENTE — curiosidade sobre a página ATUAL que esconde o destino (ex.: "o passo
+   que quase todo mundo pula »") — ou aparece sem a ponte congruente antes; cite o trecho em
+   feedback. Este backstop é de QUALIDADE (afeta só a nota/aprovação-como-aviso deste critério);
+   NÃO altera quais critérios são bloqueantes nem as notas de corte definidas abaixo.
+
+
+7. authorship_signal — A autoria/credencial (byline, nav de portal, rodapé institucional) é fornecida
+   pelo TEMA do WordPress em TODAS as páginas, FORA do conteúdo gerado aqui. NÃO penalize a ausência
+   de byline/rodapé no corpo. Dê nota ALTA por padrão; só reduza se o PRÓPRIO corpo alegar uma
+   autoria/credencial FALSA ou fabricada (ex.: "licenciado pela/pelo [órgão]" que o site não possui).
+
+SINAL ADVISÓRIO DE ESTRUTURA (widget interativo) — NÃO é um critério numerado, NÃO tem nota própria,
+NÃO entra em "scores" e NÃO afeta "blocking"/"approved". É apenas um reforço de qualidade editorial que
+você pode registrar em "feedback":
+- É um SINAL POSITIVO quando a página traz um WIDGET INTERATIVO ÚTIL e adequado ao tema — a variedade é
+  o que vale: roteador de elegibilidade, verificador/detector de golpe, comparador de rotas, quiz de
+  mito ou verdade, glossário/tradutor de termos, planejador/priorizador de próximos passos, termômetro
+  de prontidão, navegador de jornada… Premie a DIVERSIDADE e a ADEQUAÇÃO ao tema; NUNCA privilegie um
+  TIPO ESPECÍFICO de widget acima dos demais.
+- A AUSÊNCIA de widget NÃO penaliza nenhuma nota: o subsistema é OPCIONAL (controlado por flag) e muitas
+  páginas corretamente não trazem widget. Nunca reduza uma nota "porque falta um widget".
+</CHECKLIST_DE_ACEITE>
+
+<REGRA_DE_APROVACAO>
+Confiamos na pesquisa (Gemini + web search): um número/entidade coerente com a base factual NÃO conta
+como alucinação e NÃO afeta "blocking".
+
+"blocking" (EXISTENCIAL — reprova e faz a página ser pulada) é true SOMENTE quando um destes tem
+nota < 7: compliance, cta_discipline
+— OU o texto simula ser um órgão público / usa falsa oficialidade. proof_and_authority e "número fora da base
+factual" NUNCA setam "blocking".
+
+"approved" é true apenas quando todas as notas forem >= 7 e não houver contradição (com a pesquisa ou
+interna de valores). Quando proof_and_authority for baixa ou houver contradição de valores, deixe
+"approved" = false e explique em "feedback" — isso é registrado como AVISO no relatório, NÃO como
+bloqueio (a página segue para build/publish). Se "blocking" é true, "approved" é obrigatoriamente false.
+</REGRA_DE_APROVACAO>
+
+<FORMATO_DE_SAIDA>
+CRÍTICO: responda SOMENTE com um objeto JSON válido (UTF-8), sem texto antes ou depois, sem markdown,
+sem crases, seguindo estritamente este schema:
+
+{
+  "approved": true,
+  "blocking": false,
+  "scores": {
+    "tone_e_e_a_t": 0,
+    "cta_discipline": 0,
+    "proof_and_authority": 0,
+    "faq_resolution": 0,
+    "compliance": 0,
+    "single_destination": 0,
+    "authorship_signal": 0
+  },
+  "feedback": [
+    "descrição objetiva do problema encontrado, com o trecho citado, ou string vazia se não houver"
+  ]
+}
+</FORMATO_DE_SAIDA>

@@ -1,0 +1,170 @@
+<div class="cup-widget" id="cup-calc" data-widget="annual_calculator">
+  <style>
+    [id^="cup"] .cup-txt,[id^="cup"] .cup-sub,[id^="cup"] .cup-hint,[id^="cup"] .cup-nota,[id^="cup"] .cup-erro,[id^="cup"] .cup-porque,[id^="cup"] .cup-field__hint,[id^="cup"] .cup-field__error{margin:0 0 8px}
+    #cup-calc{--ink:#17233c;--muted:#526079;--line:#dfe5ee;--soft:#f5f7fb;--verde:#008353;--laranja:#ea580c;
+      max-width:640px;margin:28px auto;padding:24px;border:1px solid var(--line);border-radius:16px;background:#fff;
+      color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+    #cup-calc h3{margin:0 0 4px;font-size:1.15rem;line-height:1.3}
+    #cup-calc .cup-sub{margin:0 0 18px;color:var(--muted);font-size:.92rem;line-height:1.5}
+    #cup-calc label{display:block;font-weight:600;margin-bottom:6px}
+    #cup-calc .cup-hint{margin:0 0 8px;color:var(--muted);font-size:.86rem}
+    #cup-calc .cup-inputwrap{display:flex;align-items:center;gap:8px;border:1px solid var(--line);
+      border-radius:10px;padding:0 12px;background:var(--soft)}
+    #cup-calc .cup-inputwrap:focus-within{border-color:var(--verde);box-shadow:0 0 0 3px rgba(0,131,83,.15)}
+    #cup-calc .cup-prefix{color:var(--muted);font-weight:600}
+    #cup-calc input{flex:1;border:0;background:transparent;padding:13px 0;font-size:1.1rem;color:var(--ink);
+      font-variant-numeric:tabular-nums;min-width:0}
+    #cup-calc input:focus{outline:none}
+    #cup-calc [aria-invalid="true"] .cup-inputwrap,#cup-calc .cup-inputwrap[data-invalid="true"]{border-color:#b42318}
+    #cup-calc .cup-erro{margin:6px 0 0;color:#b42318;font-size:.87rem;min-height:1.1em}
+    #cup-calc button{margin-top:16px;width:100%;padding:14px 18px;border:0;border-radius:10px;
+      background:var(--verde);color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
+    #cup-calc button:hover{filter:brightness(1.07)}
+    #cup-calc .cup-out{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+    #cup-calc .cup-out[hidden]{display:none}
+    #cup-calc .cup-num{font-size:2rem;font-weight:800;color:var(--verde);line-height:1.15;
+      font-variant-numeric:tabular-nums;margin:2px 0 10px}
+    #cup-calc .cup-porque{background:var(--soft);border-radius:10px;padding:14px 16px;margin:0 0 14px;
+      font-size:.9rem;line-height:1.6;color:var(--muted)}
+    #cup-calc .cup-porque strong{color:var(--ink)}
+    #cup-calc .cup-nota{font-size:.92rem;line-height:1.6;margin:0 0 14px}
+    #cup-calc .cup-alerta{border-left:3px solid var(--laranja);padding-left:14px;margin:0 0 14px;
+      font-size:.92rem;line-height:1.6}
+    #cup-calc .cup-cta{display:block;text-align:center;background:var(--laranja);color:#fff;font-weight:700;
+      text-decoration:none;padding:14px 18px;border-radius:10px}
+    #cup-calc .cup-fonte{margin:14px 0 0;font-size:.8rem;color:var(--muted);line-height:1.5}
+    @media (max-width:520px){#cup-calc{padding:18px;border-radius:12px}#cup-calc .cup-num{font-size:1.7rem}}
+  </style>
+
+  <h3 id="cup-calc-titulo">Quanto o seu saldo gera de Saque-Aniversário por ano</h3>
+  <div class="cup-sub">O cálculo é o da tabela do Anexo da Lei nº 8.036/1990. Nada é enviado para lugar nenhum — a conta acontece no seu próprio aparelho.</div>
+
+  <div class="cup-campo">
+    <label for="cup-calc-saldo">Soma de todas as suas contas do FGTS</label>
+    <div class="cup-hint" id="cup-calc-dica">Contas ativas e inativas juntas, como aparece na tela inicial do aplicativo.</div>
+    <div class="cup-inputwrap" id="cup-calc-wrap">
+      <span class="cup-prefix" aria-hidden="true">R$</span>
+      <input type="text" id="cup-calc-saldo" inputmode="decimal" autocomplete="off"
+             placeholder="3.000,00" aria-describedby="cup-calc-dica cup-calc-erro">
+    </div>
+    <div class="cup-erro" id="cup-calc-erro" aria-live="polite"></div>
+  </div>
+
+  <button type="button" id="cup-calc-btn">Calcular meu saque anual</button>
+
+  <div class="cup-out" id="cup-calc-out" role="status" aria-live="polite" tabindex="-1" hidden>
+    <div style="margin:0;font-weight:600">Seu Saque-Aniversário anual</div>
+    <div class="cup-num" id="cup-calc-valor"></div>
+    <div class="cup-porque" id="cup-calc-porque"></div>
+    <div class="cup-nota" id="cup-calc-cessao"></div>
+    <div id="cup-calc-alerta"></div>
+    <a class="cup-cta" id="cup-calc-cta" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2/">Comparar quem antecipa e quanto custa &raquo;</a>
+    <div class="cup-fonte">Tabela do Anexo da Lei nº 8.036/1990. Os limites de R$ 100 e R$ 500 por saque anual cedido vêm da Resolução CCFGTS nº 1.130/2025, art. 1º, § 4º. Verificado em 11/08/2026.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.getElementById('cup-calc');
+  if(!root||root.dataset.pronto)return; root.dataset.pronto='1';
+
+  var campo=document.getElementById('cup-calc-saldo'),
+      wrap=document.getElementById('cup-calc-wrap'),
+      erro=document.getElementById('cup-calc-erro'),
+      btn=document.getElementById('cup-calc-btn'),
+      out=document.getElementById('cup-calc-out'),
+      elValor=document.getElementById('cup-calc-valor'),
+      elPorque=document.getElementById('cup-calc-porque'),
+      elCessao=document.getElementById('cup-calc-cessao'),
+      elAlerta=document.getElementById('cup-calc-alerta'),
+      cta=document.getElementById('cup-calc-cta');
+
+  // Anexo da Lei 8.036/1990 — faixa, alíquota, parcela adicional.
+  var FAIXAS=[
+    {teto:500,     aliq:0.50, add:0,    rotulo:'até R$ 500,00'},
+    {teto:1000,    aliq:0.40, add:50,   rotulo:'de R$ 500,01 a R$ 1.000,00'},
+    {teto:5000,    aliq:0.30, add:150,  rotulo:'de R$ 1.000,01 a R$ 5.000,00'},
+    {teto:10000,   aliq:0.20, add:650,  rotulo:'de R$ 5.000,01 a R$ 10.000,00'},
+    {teto:15000,   aliq:0.15, add:1150, rotulo:'de R$ 10.000,01 a R$ 15.000,00'},
+    {teto:20000,   aliq:0.10, add:1900, rotulo:'de R$ 15.000,01 a R$ 20.000,00'},
+    {teto:Infinity,aliq:0.05, add:2900, rotulo:'acima de R$ 20.000,00'}
+  ];
+  var PISO=100, TETO=500;
+
+  var emitidos={};
+  function evento(chave,nome,dados){
+    if(chave&&emitidos[chave])return; if(chave)emitidos[chave]=true;
+    window.dataLayer=window.dataLayer||[];
+    var base={event:nome,widget_id:'annual_calculator'};
+    for(var k in (dados||{})) base[k]=dados[k];
+    window.dataLayer.push(base);
+  }
+  function brl(n){return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+  function lerSaldo(){
+    var t=(campo.value||'').replace(/[^0-9.,]/g,'');
+    if(!t)return null;
+    t=t.replace(/\./g,'').replace(',','.');       // 3.000,00 -> 3000.00
+    var v=parseFloat(t);
+    return isNaN(v)?null:v;
+  }
+  function marcarErro(msg){
+    erro.textContent=msg;
+    wrap.setAttribute('data-invalid','true');
+    campo.setAttribute('aria-invalid','true');
+    evento(null,'widget_validation_error',{error_type:msg?'invalid_amount':'missing_amount'});
+  }
+  function limparErro(){
+    erro.textContent='';
+    wrap.removeAttribute('data-invalid');
+    campo.removeAttribute('aria-invalid');
+  }
+
+  function calcular(){
+    limparErro();
+    var saldo=lerSaldo();
+    if(saldo===null){ marcarErro('Digite o valor do seu saldo para continuar.'); campo.focus(); return; }
+    if(saldo<=0){ marcarErro('O saldo precisa ser maior que zero.'); campo.focus(); return; }
+
+    var f=FAIXAS[0],i;
+    for(i=0;i<FAIXAS.length;i++){ if(saldo<=FAIXAS[i].teto){ f=FAIXAS[i]; break; } }
+    var anual=saldo*f.aliq+f.add;
+
+    elValor.textContent='R$ '+brl(anual);
+    elPorque.innerHTML='Seu saldo de <strong>R$ '+brl(saldo)+'</strong> cai na faixa <strong>'+f.rotulo+
+      '</strong>, que aplica <strong>'+Math.round(f.aliq*100)+'%</strong> mais parcela adicional de <strong>R$ '+
+      brl(f.add)+'</strong>. Conta: R$ '+brl(saldo)+' &times; '+Math.round(f.aliq*100)+'% + R$ '+brl(f.add)+
+      ' = <strong>R$ '+brl(anual)+'</strong>.';
+
+    var tipo;
+    if(anual<PISO){
+      tipo='below_floor';
+      elCessao.innerHTML='Esse é o valor que você pode <strong>sacar</strong> por ano no mês do seu aniversário.';
+      elAlerta.innerHTML='<p class="cup-alerta"><strong>A antecipação não é possível com esse saldo hoje.</strong> '+
+        'Cada saque anual cedido precisa ficar entre R$ 100 e R$ 500, e o seu não alcança o piso de R$ 100. '+
+        'O saque anual em si continua disponível.</p>';
+      cta.textContent='Ver o que muda conforme o saldo cresce »';
+    }else{
+      var cedivel=Math.min(anual,TETO);
+      tipo=(anual>TETO)?'above_cap':'within_range';
+      elCessao.innerHTML='Esse é o valor que você pode <strong>sacar</strong> por ano. Para a antecipação, o que se cede '+
+        'de cada ano é no máximo <strong>R$ '+brl(cedivel)+'</strong>'+
+        (anual>TETO?' — o teto legal por saque anual cedido é R$ 500, mesmo que o seu saque anual seja maior.':'.');
+      elAlerta.innerHTML='<p class="cup-alerta">O valor do <strong>contrato</strong> e o <strong>líquido</strong> que cai na '+
+        'sua conta são outros dois números: dependem de taxa, CET e de quantos anos você cede.</p>';
+      cta.textContent='Comparar quem antecipa e quanto custa »';
+    }
+
+    out.hidden=false;
+    out.focus();
+    evento(null,'widget_complete',{});
+    evento(null,'widget_result',{result_type:tipo, faixa:f.rotulo});
+  }
+
+  campo.addEventListener('focus',function(){ evento('start','widget_start',{}); });
+  campo.addEventListener('input',function(){ if(erro.textContent) limparErro(); });
+  campo.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); calcular(); } });
+  btn.addEventListener('click',calcular);
+  cta.addEventListener('click',function(){ evento(null,'widget_cta_click',{destination:'p2'}); });
+})();
+</script>

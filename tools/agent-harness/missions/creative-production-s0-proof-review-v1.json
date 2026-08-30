@@ -1,0 +1,44 @@
+{
+  "mission_id": "creative-production-s0-proof-review-v1",
+  "title": "Estúdio Criativo S0 — revisão final das provas de equivalência e ownership",
+  "base_ref": "7bf4ecf",
+  "mode": "read_only",
+  "briefing": "Revise somente a correção final do S0 do Estúdio Criativo. A entrega move mecanicamente oito rotas /api/criativos/bancada para um router dedicado sem mudar contrato. O commit 7bf4ecf acrescenta: hash do fragmento OpenAPI completo contra o baseline 9885459; prova por identidade do callable exigir_usuario; matriz HTTP 401 para credencial ausente/inválida em todas as rotas; e caminhos/transferência explícitos de ownership P17-T04 a T08. Tente refutar equivalência, força da prova, estabilidade do hash, segurança e disjunção de ownership. Não escreva arquivos, não acesse rede/segredos/banco, não edite Roadmap/grafo e não faça merge/push/deploy. Entregue apenas achados comprovados e verdict accept ou changes_requested.",
+  "timeout_seconds": 5400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "opus-creative-s0-proof-reviewer",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Audite FastAPI/OpenAPI e segurança. Verifique se o hash cobre operações e schemas transitivos, se o callable exato está em cada rota e se a matriz HTTP realmente atravessa o portão antes do handler.",
+      "allowed_paths": [
+        "backend/app/main.py",
+        "backend/app/routers/criativos.py",
+        "backend/app/routers/criativos_execucao.py",
+        "backend/app/seguranca/identidade.py",
+        "backend/tests/test_criativo_rotas_equivalentes.py",
+        "docs/architecture/ORDEM-INTEGRACAO-P17.md"
+      ]
+    },
+    {
+      "id": "codex-creative-s0-proof-adversary",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente produzir mutantes read-only que escapem: operaçãoId/schema/response alterado, guarda homônima falsa, rota duplicada, body inválido mascarando auth e ownership concorrente. Só aceite se as provas realmente detectarem as regressões relevantes.",
+      "allowed_paths": [
+        "backend/app/main.py",
+        "backend/app/routers/criativos.py",
+        "backend/app/routers/criativos_execucao.py",
+        "backend/tests/test_criativo_rotas_equivalentes.py",
+        "docs/architecture/ORDEM-INTEGRACAO-P17.md"
+      ]
+    }
+  ]
+}

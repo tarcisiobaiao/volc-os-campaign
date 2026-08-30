@@ -1,0 +1,48 @@
+{
+  "mission_id": "decision-raw-normalizer-final-gaps-v1",
+  "title": "Decision Intelligence — fechar lacunas finais do normalizador",
+  "base_ref": "a9e0a0aee9c1e98658807cd8b388e319656bb574",
+  "mode": "implementation",
+  "commit_message": "fix(trafego): fecha cobertura e materialização do normalizador",
+  "briefing": "Corrija somente os findings confirmados sobre a9e0a0a, mantendo a fronteira hermética e os cinco caminhos autorizados. Exija que o recibo de cada grão carregue selected_fields e que o recibo global carregue customer_time_zone observado; calendar_timezone deve casar exatamente com essa evidência. Defaults omitidos por MessageToDict só podem ser materializados como zero/false quando o campo consta em selected_fields; campo não selecionado continua ausência e bloqueia/rejeita conforme nulabilidade. Para campaign_day completo, prove cobertura exata de todas as datas inclusivas da janela; dia faltante ou extra recusa. UNKNOWN/UNSPECIFIED em status, serving status e search-term match type nunca podem sair elegíveis. Defina nulabilidade por campo: métricas obrigatórias null recusam; Quality Score/componentes null permanecem ausência e bloqueiam a decisão sem inventar valor. Valide int64 em 0..2^63-1. Declare a projeção achatada explícita entre MessageToDict e a fronteira, inclusive defaults omitidos. Documente a convenção URL-safe sem padding do sufixo search_term_view como premissa ainda não verificada e teste um termo UTF-8 cujo tamanho exija padding. Mantenha o calendário IANA do normalizador como autoridade observada da conta e registre que o kernel repete gate UTC de modo fail-closed. Adicione contraprovas para: 1/3 dias declarado completo; selected_fields ausente; zero omitido com e sem campo selecionado; negative omitido/presente; UNKNOWN por família; métricas null; timezone divergente; overflow int64; termo com padding. Não altere política, endpoint, UI, banco, n8n, Roadmap, grafo ou curadoria. Zero rede, produção, validate_only ou mutate.",
+  "timeout_seconds": 3600,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": ["env", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=backend:.", "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-B", "-m", "pytest", "-p", "no:cacheprovider", "backend/tests/test_inteligencia_decisao_lab.py", "backend/tests/test_inteligencia_decisao_normalizador.py", "-q"],
+      "timeout_seconds": 1200
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-normalizer-final-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Único escritor. Feche apenas cobertura, selected_fields/defaults, nulabilidade, status desconhecido, timezone observado e limites escalares. Reproduza antes de corrigir.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao/__init__.py", "volc_ads/inteligencia_decisao/normalizacao_google_ads.py", "volc_ads/inteligencia_decisao/dados/linhas_google_ads_sinteticas.json", "backend/tests/test_inteligencia_decisao_normalizador.py", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"]
+    },
+    {
+      "id": "claude-normalizer-final-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Reproduza todos os findings da rodada anterior e tente novas falsificações de cobertura, defaults omitidos, null, UNKNOWN, timezone, int64 e sufixo base64. Recuse qualquer manifesto mais otimista que a prova.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "backend/tests/test_inteligencia_decisao_normalizador.py", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"]
+    },
+    {
+      "id": "codex-normalizer-final-adversary",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Ataque especialmente a diferença entre zero omitido e campo não selecionado, datas faltantes, timezone controlado pelo chamador, overflow, equivalência numérica, decisão sobre fotografia incompleta e zero I/O.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "backend/tests/test_inteligencia_decisao_normalizador.py", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"]
+    }
+  ]
+}

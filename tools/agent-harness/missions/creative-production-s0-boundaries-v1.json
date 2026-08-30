@@ -1,0 +1,115 @@
+{
+  "mission_id": "creative-production-s0-boundaries-v1",
+  "title": "Estúdio Criativo produção — S0 fronteiras e ownership executável",
+  "base_ref": "9885459e44cb7394aed61bd198a379a174abab77",
+  "mode": "implementation",
+  "commit_message": "refactor(criativos): separa fronteiras da execução produtiva",
+  "briefing": "Execute o passo S0 da especificação produzida pela run 20260829-161950-creative-studio-production-godmode-spec-v1. Esta é uma refatoração mecânica que prepara os pacotes de produção P17-T03 a P17-T08 sem alterar comportamento, contrato HTTP ou estado externo. Separe as rotas /bancada do router de produto, preserve paths, DTOs, autenticação, status e payloads byte-equivalentes, e crie apenas as fronteiras mínimas que permitem que depósito, worker e destino sejam implementados depois em ownership disjunto. Congele por documentação quais contratos existentes são autoridades: criativo_job é o job de produto; criativo_render_job será attempt de execução; Asset/Lote/Linhagem de volc_ads continuam canônicos; nenhuma nova fila, storage ou motor é implementado nesta missão. Crie esqueletos sem comportamento somente quando necessários para reservar imports/territórios, sem TODO que seja apresentado como capacidade. Não toque em Supabase/migrations, frontend, motores, storage, Roadmap, curadoria ou grafo. Não leia segredo e não faça rede, render, publicação, upload, migration, deploy ou mutação externa. Esta missão termina com testes de equivalência das rotas, segurança e imports; qualquer diferença funcional é falha.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests/test_criativo_bancada.py",
+        "backend/tests/test_criativo_estudio.py",
+        "backend/tests/test_criativo_execucao.py",
+        "-q"
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests",
+        "-q"
+      ],
+      "timeout_seconds": 2400
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-creative-s0-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Seja o único escritor. Faça uma refatoração estritamente mecânica: mova as rotas /bancada para um router de execução dedicado, registre-o no app e publique o mapa de ownership. Preserve comportamento e segurança por testes comparativos; não implemente fila, worker, storage ou destino nesta fatia.",
+      "allowed_paths": [
+        "backend/app/main.py",
+        "backend/app/routers/criativos.py",
+        "backend/app/routers/criativos_execucao.py",
+        "backend/app/criativo/deposito",
+        "backend/app/criativo/worker",
+        "backend/app/criativo/destino.py",
+        "deploy/creative-worker",
+        "backend/tests/test_criativo_bancada.py",
+        "backend/tests/test_criativo_estudio.py",
+        "backend/tests/test_criativo_execucao.py",
+        "backend/tests/test_criativo_rotas_equivalentes.py",
+        "docs/architecture/ORDEM-INTEGRACAO-P17.md"
+      ]
+    },
+    {
+      "id": "fable-creative-s0-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Confira se S0 realmente separa ownership sem antecipar implementação nem alterar o produto. Rejeite esqueletos que se anunciem como capacidade, segunda autoridade de job, mudança silenciosa de endpoint ou mapa de ownership com sobreposição.",
+      "allowed_paths": [
+        "tools/agent-harness/runs/20260829-161950-creative-studio-production-godmode-spec-v1",
+        "backend/app/main.py",
+        "backend/app/routers/criativos.py",
+        "backend/app/routers/criativos_execucao.py",
+        "backend/app/criativo",
+        "backend/tests",
+        "docs/architecture/ORDEM-INTEGRACAO-P17.md"
+      ]
+    },
+    {
+      "id": "opus-creative-runtime-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Audite equivalência de FastAPI: prefixes, paths, dependências de auth/admin, response models, status, OpenAPI, imports e ciclo de vida. Confirme que nenhuma execução, fila ou storage foi alterada e que os territórios futuros P1/P2/P3 ficaram disjuntos.",
+      "allowed_paths": [
+        "backend/app/main.py",
+        "backend/app/routers/criativos.py",
+        "backend/app/routers/criativos_execucao.py",
+        "backend/app/criativo",
+        "backend/tests",
+        "docs/architecture/ORDEM-INTEGRACAO-P17.md"
+      ]
+    },
+    {
+      "id": "codex-creative-s0-adversary",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente refutar a equivalência: rota duplicada ou ausente, prefixo diferente, auth perdida, OpenAPI alterado, import circular, estado global duplicado, instanciação diferente de depósito/serviço, path novo sem teste, esqueleto importável fingindo implementação e ownership sobreposto. Exija contraprovas específicas.",
+      "allowed_paths": [
+        "backend/app/main.py",
+        "backend/app/routers/criativos.py",
+        "backend/app/routers/criativos_execucao.py",
+        "backend/app/criativo",
+        "backend/tests",
+        "docs/architecture/ORDEM-INTEGRACAO-P17.md"
+      ]
+    }
+  ]
+}

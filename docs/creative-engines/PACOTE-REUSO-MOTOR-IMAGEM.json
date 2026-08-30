@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-26",
+  "source_snapshot": "docs/creative-engines/snapshots/motor-imagem-2026-08-26.json",
+  "source_authority": "/Users/mac/Desktop/Volc Mídia Global/motor-imagem",
+  "target": "services/creative-engine",
+  "rule": "Extrair capacidades por contrato e adapter; não importar frontend, paths locais ou branding de cliente.",
+  "production_modes": [
+    {
+      "id": "typography_only",
+      "image_provider_required": false,
+      "renderer": "prensa",
+      "proof": "carrossel_produtividade_metodo90",
+      "status": "executed_external_not_integrated"
+    },
+    {
+      "id": "deterministic_graphics",
+      "image_provider_required": false,
+      "renderer": "prensa",
+      "proof": "anderson_grafico",
+      "status": "executed_external_not_integrated"
+    },
+    {
+      "id": "full_llm",
+      "image_provider_required": true,
+      "renderer": "aprova_or_positivo_provider",
+      "proof": "exact-dimension provider paths observed in Aprova and Positivo",
+      "status": "executed_external_not_integrated"
+    },
+    {
+      "id": "existing_asset_plus_prensa",
+      "image_provider_required": false,
+      "renderer": "positivo_photo_then_prensa",
+      "proof": "photo preservation observed in Positivo; combined adapter pending",
+      "status": "components_observed_combination_pending"
+    },
+    {
+      "id": "prensa_hybrid_llm_asset",
+      "image_provider_required": true,
+      "renderer": "provider_then_prensa",
+      "proof": "kintsugi_planejado and volcnews_iphone_laranja",
+      "status": "executed_external_not_integrated"
+    },
+    {
+      "id": "full_llm_then_prensa",
+      "image_provider_required": true,
+      "renderer": "aprova_or_positivo_then_prensa",
+      "proof": "both components exist separately",
+      "status": "planned_combination"
+    }
+  ],
+  "modules": [
+    {"source": "prensa/api.py", "target": "adapters/prensa.py", "action": "wrap", "risk": "process_global_context"},
+    {"source": "prensa/erros.py", "target": "core/errors.py", "action": "reuse_semantics", "risk": "low"},
+    {"source": "compartilhado/prensa-poc/resolve.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "path_globals"},
+    {"source": "compartilhado/prensa-poc/render.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "browser_per_call"},
+    {"source": "compartilhado/prensa-poc/medida.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "chromium_measurement"},
+    {"source": "compartilhado/prensa-poc/gates_pixel.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "environment_parity"},
+    {"source": "compartilhado/prensa-poc/gate_traco.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "numpy_pillow_runtime"},
+    {"source": "compartilhado/prensa-poc/graficos.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "low"},
+    {"source": "compartilhado/prensa-poc/composicao.py", "target": "runtime/prensa", "action": "vendor_versioned", "risk": "semantic_zone_contract"},
+    {"source": "compartilhado/prensa-poc/tokens_*.json", "target": "brand_packs", "action": "migrate_with_hashes", "risk": "client_literals"},
+    {"source": "compartilhado/prensa-poc/fonts/*.ttf", "target": "brand_packs/*/fonts", "action": "copy_with_license_and_hash", "risk": "font_licensing"},
+    {"source": "destinos/variantes.py", "target": "core/destinations.py", "action": "adapt", "risk": "platform_specs_must_be_current"}
+  ],
+  "acceptance": [
+    "typography-only job runs without any image-provider credential",
+    "same resolved spec and pinned runtime produce identical PNG bytes",
+    "cross-machine geometry evidence remains stable",
+    "one failed carousel slide promotes zero final slides",
+    "brand literals exist only in versioned brand packs",
+    "all output carries spec hash, output hash, gates and human approval",
+    "browser receives no provider secret"
+  ]
+}

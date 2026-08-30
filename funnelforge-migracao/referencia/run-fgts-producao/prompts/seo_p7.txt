@@ -1,0 +1,252 @@
+[user]
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 21/07/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: <!-- wp:paragraph -->
+<p>Se você foi demitido sem justa causa e está associado à modalidade de Saque-Aniversário, o receio de ficar com o saldo do Fundo de Garantia do Tempo de Serviço (<strong>FGTS</strong>) travado na Caixa Econômica Federal (<strong>CEF</strong>) é imediato.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Este guia prático mostra exatamente como resgatar a sua multa rescisória, quitar contratos ativos para destravar o seu dinheiro e as regras de antecipação válidas para o ano de 2026.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/" style="border-radius:10px;background-color:#008353"><strong>Guia completo da restituição de descontos »</strong></a></div>
+<!-- /wp:button -->
+</div>
+<!-- /wp:buttons -->
+
+<!-- wp:html -->
+<div style="text-align:center;font-size:0.85em;color:#475569;margin-top:4px;margin-bottom:24px"><em>* Você permanece neste mesmo site *</em></div>
+<!-- /wp:html -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a <strong>multa rescisória de 40%</strong> paga pelo empregador.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Essa regra é garantida por lei e fiscalizada pelo Ministério do Trabalho e Emprego (<strong>MTE</strong>), mas o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato caso você mantenha a opção ativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Essa divisão de valores exige planejamento, pois apenas a multa de 40% é liberada de forma rápida para movimentação em conta, enquanto o restante do fundo fica restrito às retiradas anuais no mês de aniversário.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:columns {"style":{"spacing":{"margin":{"top":"24px","bottom":"24px"}}}} -->
+<div class="wp-block-columns">
+<!-- wp:column -->
+<div class="wp-block-column">
+<!-- wp:paragraph -->
+<p><strong>Multa de 40%</strong><br>Valores liberados de forma integral na conta indicada pelo trabalhador em caso de demissão sem justa causa.</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:column -->
+<!-- wp:column -->
+<div class="wp-block-column">
+<!-- wp:paragraph -->
+<p><strong>Saldo Principal</strong><br>Permanece retido no Fundo de Garantia, sendo liberado apenas nas parcelas anuais ou em situações de quitação total.</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:column -->
+</div>
+<!-- /wp:columns -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Já antecipei o saque-aniversário, posso antecipar de novo?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Sim.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido pelas instituições parceiras.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>A contratação de empréstimo de antecipação exige uma carência de <strong>90 dias</strong> após a adesão à modalidade para que o trabalhador possa autorizar os bancos a consultarem seu saldo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">R$ 100,00</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">Valor mínimo de cada saque antecipado</div>
+</div>
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">R$ 500,00</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">Valor máximo por saque anual</div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>As regras vigentes para o ano corrente de 2026 estabelecem limites de acordo com o calendário anual. Os trabalhadores que desejam planejar novas antecipações devem observar as datas de transição operacional.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><p style="margin:0;font-weight:700">Até o dia 31 de outubro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O trabalhador pode antecipar até 5 saques anuais do FGTS.</p></div>
+<div><p style="margin:0;font-weight:700">A partir de 1º de novembro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.</p></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para acelerar o desbloqueio do saldo principal e possibilitar o retorno à modalidade de Saque-Rescisão, o trabalhador pode realizar a amortização ou quitação do saldo devedor junto ao banco credor utilizando recursos próprios (dinheiro de conta corrente ou poupança).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">Contato com a instituição credora</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Entre em contato por meio do aplicativo, internet banking ou agência física.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">Solicitação do saldo devedor</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Peça o valor atualizado para quitação antecipada, que segue os parâmetros descritos na 👉 <a href="https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/">página oficial de antecipação de crédito da Caixa</a>.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<div><p style="margin:0;font-weight:700">Pagamento do boleto de quitação</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Gere o boleto bancário emitido pelo banco credor e realize o pagamento integral.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+<div><p style="margin:0;font-weight:700">Verificação do desbloqueio</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Após compensar o pagamento, acompanhe se o saldo foi liberado no 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/">portal oficial do Saque-Aniversário da Caixa</a>.</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Com o saldo livre e sem contratos de empréstimo ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão, que possui carência de 25 meses para entrar em vigor.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como funciona o desconto do empréstimo e como sacar no caixa eletrônico</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O desconto das parcelas do empréstimo de antecipação é feito de forma <strong>100% automática e anual</strong>, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para sacar os valores liberados em espécie após o processamento, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#fef2f2","text":"#7f1d1d"},"spacing":{"padding":{"top":"22px","right":"24px","bottom":"22px","left":"24px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px","left":{"color":"#dc2626","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-text-color has-background" style="border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px">
+<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">⚠️ Atenção</h3><!-- /wp:heading -->
+<!-- wp:paragraph --><p>A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>O que acontece com o saldo se eu não quitar o empréstimo?</summary><!-- wp:paragraph -->
+<p>Depende. Se você optar por não quitar o empréstimo com recursos próprios, o saldo continuará bloqueado como garantia e as parcelas anuais serão debitadas automaticamente até o fim do contrato, impedindo a migração imediata para o Saque-Rescisão.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para um tema relacionado, porém diverso, veja como consultar e reaver cobranças que acontecem diretamente na folha de pagamento de forma simples, protegendo o seu orçamento.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/" style="border-radius:10px;background-color:#ea580c"><strong>Ver o passo a passo da restituição »</strong></a></div>
+<!-- /wp:button -->
+</div>
+<!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center"} -->
+<p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A gestão inteligente dos seus recursos garante que você não perca dinheiro com taxas e tarifas desnecessárias aplicadas incorretamente em outros benefícios.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você quer se proteger de cobranças abusivas no seu pagamento mensal, veja 👉 <a href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/">como identificar descontos indevidos do INSS »</a>.</p>
+<!-- /wp:paragraph -->
+
+<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</p>
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

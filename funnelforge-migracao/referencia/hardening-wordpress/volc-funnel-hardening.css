@@ -1,0 +1,4 @@
+/* Preserve the same rhythm as the default 0.5em gap inside a Buttons block. */
+.single-rec .content :where(.wp-block-buttons + .wp-block-buttons) {
+	margin-block-start: 0.5em;
+}

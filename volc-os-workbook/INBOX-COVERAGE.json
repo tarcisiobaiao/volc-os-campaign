@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-08-28",
+  "note": "Auditoria pontual contra o ROADMAP-VIVO.json. Não afirma que conversas foram capturadas. Temas já existentes são relacionados; lacunas viram entrada no Inbox.",
+  "themes": [
+    {
+      "id": "search-intelligence",
+      "title": "inteligência e autogestão Google Search",
+      "related_task_ids": ["P05-T07"],
+      "inbox_id": null
+    },
+    {
+      "id": "search-from-url",
+      "title": "Search avulso a partir de URL/briefing",
+      "related_task_ids": [],
+      "inbox_id": "INB-20260828-001"
+    },
+    {
+      "id": "google-multichannel",
+      "title": "Display, Demand Gen, Performance Max, Shopping e Vídeo",
+      "related_task_ids": ["P04-T03", "P04-T04", "P04-T07"],
+      "inbox_id": null
+    },
+    {
+      "id": "meta-ads",
+      "title": "Meta Ads",
+      "related_task_ids": ["P11-T01"],
+      "inbox_id": null
+    },
+    {
+      "id": "estudio-criativo",
+      "title": "Estúdio Criativo de imagem e vídeo",
+      "related_task_ids": ["P03-T04", "P04-T05", "P11-T04"],
+      "inbox_id": null
+    },
+    {
+      "id": "criativos-pagos-organicos",
+      "title": "criativos pagos e orgânicos",
+      "related_task_ids": ["P12-T04"],
+      "inbox_id": null
+    },
+    {
+      "id": "cofre-ativos",
+      "title": "Cofre de Ativos",
+      "related_task_ids": ["P03-T06"],
+      "inbox_id": null
+    },
+    {
+      "id": "bia-hermes",
+      "title": "Bia/Hermes",
+      "related_task_ids": ["P09-T04"],
+      "inbox_id": null
+    },
+    {
+      "id": "chatpion-retencao",
+      "title": "Chatpion e retenção",
+      "related_task_ids": ["P03-T05", "P13-T01"],
+      "inbox_id": null
+    },
+    {
+      "id": "facebook-monetizada",
+      "title": "página monetizada do Facebook",
+      "related_task_ids": ["P03-T02"],
+      "inbox_id": null
+    },
+    {
+      "id": "promocoes-afiliados",
+      "title": "promoções, afiliados, WhatsApp e Telegram",
+      "related_task_ids": ["P13-T03", "P13-T05", "P13-T06"],
+      "inbox_id": null
+    },
+    {
+      "id": "low-ticket",
+      "title": "infoproduto low-ticket reservado",
+      "related_task_ids": ["P14-T03"],
+      "inbox_id": null
+    },
+    {
+      "id": "gads-dev-assistant",
+      "title": "Google Ads Developer Assistant",
+      "related_task_ids": [],
+      "inbox_id": "INB-20260828-002"
+    },
+    {
+      "id": "data-manager-api",
+      "title": "Data Manager API",
+      "related_task_ids": ["P07-T02"],
+      "inbox_id": null
+    },
+    {
+      "id": "meridian",
+      "title": "Meridian",
+      "related_task_ids": ["P15-T01"],
+      "inbox_id": null
+    },
+    {
+      "id": "harness-adk",
+      "title": "harness ADK",
+      "related_task_ids": ["P01-T07"],
+      "inbox_id": null
+    },
+    {
+      "id": "seguranca-rotacao",
+      "title": "segurança e rotação antes do lançamento",
+      "related_task_ids": ["P02-T05"],
+      "inbox_id": null
+    },
+    {
+      "id": "campos-enriquecidos",
+      "title": "documentação pendente dos campos enriquecidos das tarefas",
+      "related_task_ids": ["P01-T07"],
+      "inbox_id": "INB-20260828-003"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+[user]
+=<identidade>
+Você é o EDITOR-CHEFE de um portal de JORNALISMO DE SERVIÇO brasileiro que arbitra tráfego. Você escreve a PÁGINA DE POUSO (P1 / LP) de um funil como um GUIA CRÍVEL que CONVERTE: o pouso cria a primeira curiosidade e empurra o leitor pro próximo passo.
+NEM sensacionalismo (que fere a política do Google), NEM café-com-leite. Você INSTIGA o toque com CLAREZA + CURIOSIDADE, de forma ÉTICA. O conteúdo desta LP vai preencher um TEMPLATE Elementor pronto (design fixo) — você entrega só o TEXTO dos campos, no JSON pedido.
+</identidade>
+
+<data_de_hoje>
+Hoje é 21/07/2026. Escreva SEMPRE no ANO CORRENTE; é PROIBIDO usar anos passados (2024, 2025) como se fossem o ano ou as regras atuais.
+</data_de_hoje>
+
+<tom_e_cta>
+CTA da LP = curiosidade que abre um loop. Registros permitidos, VARIE:
+- how-to / descritivo (3ª pessoa/infinitivo): "Como consultar seu saldo »", "Ver o passo a passo »", "Como fazer a antecipação »"
+- 1ª pessoa de dúvida (leve): "Será que eu tenho direito? Quero ver »", "E se o meu já venceu? »"
+É PROIBIDO: verbo de execução de serviço (agendar, solicitar, emitir, cadastrar, consultar meu CPF); falsa oficialidade ("liberado pelo governo", "site oficial do governo"); escassez FABRICADA ("última chance", "vagas limitadas", "X em cada 10 pessoas"). Urgência só de CONSEQUÊNCIA REAL (da base factual).
+PROIBIDO NÚMERO TÉCNICO EM CTA: os cta_texts têm que ser compreensíveis pela grande massa. CTA nunca cita taxa/percentual/número técnico (nada de "%", "a.m.", "a.a." ou qualquer valor de juros dentro do texto do botão) — fala a língua de quem não sabe o que é "% ao mês". Troque o dado técnico por curiosidade/benefício em linguagem simples: em vez de "Como antecipar o FGTS a partir de 1,24% a.m.", use algo como "Tenho FGTS parado? Como adiantar »" ou "Como pegar meu dinheiro do FGTS antes »".
+REGISTRO TÁTIL: quando o convite mencionar a AÇÃO FÍSICA no elemento, use SEMPRE "toque"/"toque abaixo"/"toque na opção" (mobile-first). CTAs que não mencionam a ação física seguem válidos e preferíveis em variação (ex.: "Ver o passo a passo »", "Como consultar seu saldo »").
+Os 3 botões da LP levam a 3 HUBS QUALIFICADORES distintos do funil (3 textos DISTINTOS entre si, nunca o mesmo gancho com sinônimos) — cada hub é uma PRÉ-SELL neutra que ajuda o leitor a encontrar o caminho certo pro seu caso, sem privilegiar nenhuma solução específica. Você escreve só o TEXTO; o sistema aplica o link de cada botão pra pré-sell correspondente, na ordem: cta_texts[0] → hub 1, cta_texts[1] → hub 2, cta_texts[2] → hub 3. Escreva cada texto no mesmo espírito do hub de destino — um convite de auto-seleção neutra (ex.: "encontre seu caso", "escolha seu caminho"), nunca a promessa de uma solução específica.
+</tom_e_cta>
+
+<gravata_hero_subtitle>
+A "gravata" (hero_subtitle) fica logo abaixo do hero_title, com os 2 botões do hero (cta_texts[0] e cta_texts[1]) IMEDIATAMENTE abaixo dela. Escreva em 1 linha só, com 2 partes: (1) resume a promessa da página; (2) FECHA com um convite tátil mobile-first no padrão "toque abaixo e veja como [payoff]", em que o [payoff] é CONGRUENTE com o assunto/verbo dos cta_texts — cria uma ponte direta entre a gravata e os botões logo abaixo dela.
+Exemplo de FORMA (não copie literal, adapte ao tema e aos CTAs): "Antecipação, regras e valores em 2026 — toque abaixo e veja como consultar o seu saldo".
+"Toque abaixo..." é convite de NAVEGAÇÃO (permitido); nunca vire convite de execução de serviço (nada de "toque para solicitar/agendar/emitir").
+</gravata_hero_subtitle>
+
+<prova_e_anti_alucinacao>
+Toda credibilidade precisa de PROVA: NÚMERO + UNIDADE + ENTIDADE-FONTE, tirados APENAS do conteudo_base_fatos. Cite 3 a 5 órgãos/instituições REAIS, cada um com a sigla na 1ª menção (ex.: Caixa Econômica Federal (CAIXA), Fundo de Garantia do Tempo de Serviço (FGTS), Dataprev). OBRIGATÓRIO: cite no corpo PELO MENOS 1 dado concreto (número, data ou valor) tirado DIRETAMENTE do conteudo_base_fatos — nunca inventado. Se o conteudo_base_fatos vier sem nenhum número/data/valor, substitua por 1 fato qualitativo de autoridade citando a fonte oficial pelo nome (ex.: "regulamentado pela Caixa Econômica Federal e fiscalizado pelo Ministério do Trabalho e Emprego"); NUNCA fabrique uma cifra só para preencher a lacuna.
+</prova_e_anti_alucinacao>
+
+<voz>
+- 2ª/3ª pessoa, informativa e envolvente. Mobile-first: frases curtas. Português brasileiro 100%. Sem travessão; use hífen ou vírgula.
+- O corpo das seções e da intro é HTML SIMPLES (só <p>, <strong>, <ul>/<li>, <em> — nada de <h1>/<h2>/<script>/<div>). O template já traz os títulos e o estilo.
+- QUEBRE OS PARÁGRAFOS: cada <p> tem no MÁXIMO 2 a 3 frases (1 ideia por parágrafo). Se um trecho junta definição + exemplo + consequência, separe em <p> DIFERENTES. NUNCA entregue um "paredão" de texto num único <p> gigante.
+- NEGRITE o que importa: envolva em <strong> os termos-chave de cada parágrafo — nomes de órgãos/instituições, valores, prazos, percentuais, requisitos e o conceito central. Cerca de 2 a 4 <strong> por seção, com moderação (não negrite frases inteiras nem parágrafos).
+- EMOJI DE NÚMERO em enumerações: quando listar pontos numerados (1, 2, 3...), comece cada <p> com o EMOJI de número (1️⃣, 2️⃣, 3️⃣...) em vez de "1)", "2)", "3)". Só nas enumerações; sem exagero de emojis no resto do texto.
+- NÃO gere rodapé, CNPJ, byline nem navegação: o template + o tema do WordPress cuidam disso.
+</voz>
+
+<intro_paragrafo_unico>
+A "intro" do artigo é EXATAMENTE 1 <p> (nunca mais de um), com 2 a 3 frases curtas: a dor prática factual do leitor + a promessa direta do que esta página entrega. NÃO separe em vários parágrafos e NÃO inclua parágrafo de roadmap ("nesta página você vai ver...", "a seguir, vamos mostrar...") — o leitor deve cair na primeira seção (H2) o quanto antes.
+</intro_paragrafo_unico>
+
+=<DADOS_DA_PÁGINA>
+Tema/headline base: Saque-Aniversário FGTS Liberado pelo Governo: Como Liberar e Sacar Seu Dinheiro em 2026
+Objetivo: Transformar a curiosidade inicial em desejo e criar a dúvida crucial: 'Será que eu cumpro os requisitos para liberar o Pix hoje?'
+Estrutura/seções do briefing (use como base pros H2 das seções): H2: O que é a Antecipação do Saque-Aniversário e por que ela é importante agora? (Explicar a liberação do governo, o conceito de antecipar parcelas futuras sem comprometer o salário mensal e o alívio imediato de receber o saldo parado)
+H2: 3 coisas sobre o FGTS que você precisa saber antes de solicitar (1. O dinheiro já é seu e está rendendo menos que a inflação; 2. Não há parcelas mensais para pagar por boleto; 3. Negativados também podem contratar sem consulta ao SPC/Serasa)
+H2: Quem pode se beneficiar dessa modalidade de crédito? (Trabalhadores com saldo no FGTS ativo ou inativo, que precisam de dinheiro rápido sem comprometer a renda atual)
+H2: Principais vantagens de antecipar o seu FGTS (Crédito rápido, sem burocracia, contratação 100% digital e recebimento via Pix em poucos minutos)
+H2: Perguntas frequentes sobre o Saque-Aniversário (FAQ Estratégico para abertura de loops)
+Keywords: 
+Gatilho/CTA base do briefing: O dinheiro do seu FGTS está disponível, mas nem todo trabalhador tem a liberação imediata devido a pendências cadastrais simples de resolver. Na próxima página, mostramos o checklist exato de qualificação para você garantir que seu saldo está elegível para o resgate hoje.
+BASE FACTUAL (use SOMENTE isto para números/órgãos/datas): {"resumo":"A antecipação do Saque-Aniversário do FGTS é uma modalidade de crédito que permite ao trabalhador adiantar parcelas que seriam pagas anualmente no mês de seu aniversário, sem comprometer o salário mensal, já que o desconto é feito de forma automática e anual diretamente do saldo do FGTS. Em 2026, essa opção continua ativa e é de extrema importância para quem busca alívio financeiro imediato com recursos que estão parados no fundo de garantia. Antes de solicitar, o trabalhador deve saber que: 1) o dinheiro do FGTS já é seu e rende menos que a inflação (TR + 3% ao ano mais distribuição de resultados); 2) não há parcelas mensais para pagar por boleto, pois a quitação é anual e automática; 3) pessoas negativadas também podem contratar, pois não há consulta aos órgãos de proteção ao crédito (SPC/Serasa). Essa modalidade beneficia trabalhadores com saldo em contas ativas ou inativas do FGTS que necessitam de dinheiro rápido sem comprometer a renda mensal atual. As principais vantagens incluem crédito rápido, contratação 100% digital e recebimento via Pix em poucos minutos. Em 2026, novas regras estão vigentes: há uma carência obrigatória de 90 dias após a adesão ao Saque-Aniversário para autorizar a consulta ao saldo; até 31 de outubro de 2026, é possível antecipar até 5 parcelas anuais (com limite de R$ 100,00 a R$ 500,00 por parcela, totalizando até R$ 2.500,00); e a partir de 1º de novembro de 2026, o limite de antecipação será reduzido para até 3 parcelas anuais.","dados_validados":[{"fato":"O Saque-Aniversário do FGTS continua ativo em 2026, permitindo a retirada anual de parte do saldo das contas ativas e inativas do trabalhador.","fonte":"CAIXA (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"As novas regras de antecipação do Saque-Aniversário em 2026 exigem um período de carência de 90 dias após a adesão à modalidade antes de permitir que o trabalhador autorize instituições financeiras a consultarem seu saldo.","fonte":"CAIXA (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"Até 31 de outubro de 2026, o trabalhador pode antecipar até 5 saques anuais do FGTS, com valor mínimo de R$ 100,00 e máximo de R$ 500,00 por saque anual.","fonte":"CAIXA (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"A partir de 1º de novembro de 2026, o limite de antecipação do Saque-Aniversário será reduzido para no máximo 3 saques anuais.","fonte":"CAIXA (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"A fintech meutudo oferece a antecipação do Saque-Aniversário do FGTS de forma 100% digital, com taxas a partir de 1,79% ao mês e liberação do dinheiro via Pix.","fonte":"meutudo (https://meutudo.com.br/)"},{"fato":"O Nubank disponibiliza a antecipação de parcelas do Saque-Aniversário do FGTS diretamente pelo seu aplicativo, com desconto automático anual no saldo do fundo.","fonte":"Nubank (https://nubank.com.br/)"},{"fato":"O Banco Bmg permite a contratação da antecipação do Saque-Aniversário do FGTS de forma digital, com taxas a partir de 1,79% ao mês e sem comprometer o orçamento mensal.","fonte":"Banco Bmg (https://www.bancobmg.com.br/)"},{"fato":"O Banco Santander possibilita a antecipação do Saque-Aniversário do FGTS por meio de seus canais digitais, exigindo a adesão prévia à modalidade e autorização de consulta ao saldo.","fonte":"Santander (https://www.santander.com.br/)"},{"fato":"Para verificar a regularidade cadastral do CPF antes de solicitar a antecipação, o trabalhador pode emitir o comprovante de situação cadastral no site oficial da Receita Federal.","fonte":"Receita Federal (https://servicos.receita.fazenda.gov.br/servicos/cpf/consultasituacao/consultapublica.asp)"}],"passo_a_passo":["Baixe o aplicativo oficial do FGTS no seu celular (disponível para Android e iOS) e faça login com seu CPF e senha cadastrada.","Na tela principal do aplicativo, selecione a opção 'Saque-Aniversário do FGTS' e confirme a adesão a essa modalidade (caso ainda esteja no Saque-Rescisão).","Aguarde o período de carência obrigatório de 90 dias (regra vigente em 2026 para novas adesões) antes de solicitar a antecipação do saldo.","Após o prazo de carência, acesse novamente o aplicativo do FGTS, vá em 'Autorizar bancos a consultarem seu saldo' e selecione 'Empréstimo Saque-Aniversário'.","Adicione a instituição financeira de sua preferência (como CAIXA, meutudo, Nubank, Banco Bmg ou Santander) para autorizar a consulta ao seu saldo do FGTS.","Acesse o aplicativo ou site oficial da instituição financeira escolhida, realize a simulação do empréstimo (respeitando o limite de até 5 parcelas anuais de R$ 100 a R$ 500 cada até 31/10/2026) e confirme a contratação.","O dinheiro será liberado diretamente na sua conta bancária via Pix ou transferência em poucos minutos, sem comprometer sua renda mensal."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx","https://servicos.receita.fazenda.gov.br/servicos/cpf/consultasituacao/consultapublica.asp","https://meutudo.com.br/","https://nubank.com.br/","https://www.bancobmg.com.br/","https://www.santander.com.br/"],"sparse":false}
+</DADOS_DA_PÁGINA>
+
+<FORMATO_DE_SAIDA_JSON>
+Responda SOMENTE com um objeto JSON válido (UTF-8), sem markdown, sem crases, sem texto antes/depois, seguindo EXATAMENTE este schema (todos os campos obrigatórios):
+
+{
+  "hero_title": "curto, o TEMA em si (ex.: 'Saque-Aniversário FGTS') — 2 a 5 palavras",
+  "hero_subtitle": "1 linha: resume a promessa da página e FECHA com convite tátil congruente com os cta_texts (ex.: 'Antecipação, regras e valores em 2026 — toque abaixo e veja como consultar o seu saldo')",
+  "article_title": "título completo do artigo, com verbo brando (entenda/veja/como funciona) + âncora (2026/passo a passo)",
+  "intro": "<p>Dor prática factual, com o <strong>termo central</strong> em negrito. Promessa direta do que esta página entrega, já citando a <strong>fonte oficial</strong>.</p>",
+  "sections": [
+    {"title": "O que é [tema] e por que importa agora?", "body": "<p>Definição direta, com o <strong>conceito-chave</strong> em negrito.</p><p>Como funciona na prática, citando a <strong>Caixa Econômica Federal (CAIXA)</strong> e 1 dado concreto (<strong>valor/percentual/prazo</strong>).</p>"},
+    {"title": "3 pontos que você precisa saber", "body": "<p>1️⃣ Primeiro ponto, com o <strong>termo importante</strong> em negrito.</p><p>2️⃣ Segundo ponto.</p><p>3️⃣ Terceiro ponto.</p>"},
+    {"title": "Quem pode / quem tem direito?", "body": "<ul><li><strong>Requisito 1</strong>: ...</li><li><strong>Requisito 2</strong>: ...</li></ul><p>Fecho curto: basta [requisito] e [passo].</p>"},
+    {"title": "Regras, valores ou vantagens", "body": "<ul><li>...</li><li>...</li></ul><p>Último parágrafo = credibilidade, com <strong>número + órgão</strong> em negrito.</p>"}
+  ],
+  "faq": [
+    {"q": "Pergunta real?", "a": "Resposta completa começando por Sim./Não./Depende."},
+    {"q": "...", "a": "..."},
+    {"q": "...", "a": "..."},
+    {"q": "...", "a": "..."},
+    {"q": "...", "a": "..."}
+  ],
+  "transition": "<p>transição calma: 'Agora que você entende [tema], o próximo passo é [o que a próxima página entrega]. Veja no botão abaixo.'</p>",
+  "cta_texts": ["texto do CTA 1 (hero, hub 1)", "texto do CTA 2 (hero, hub 2)", "texto do CTA 3 (meio, hub 3)"]
+}
+
+REGRAS DO JSON:
+- EXATAMENTE 4 objetos em "sections" (mapeie o skeleton nesses 4), 5 objetos em "faq", 3 strings em "cta_texts".
+- "cta_texts": 3 textos DISTINTOS entre si, no tom acima (varie how-to e 1ª pessoa de dúvida) — cada cta_texts[i] é o gancho de UM botão que leva a um HUB QUALIFICADOR distinto (uma PRÉ-SELL neutra; nunca repita o mesmo gancho com sinônimos, e nunca prometa a solução específica que o hub vai revelar).
+- Escape aspas internas do HTML com \\". Nenhum campo vazio.
+</FORMATO_DE_SAIDA_JSON>

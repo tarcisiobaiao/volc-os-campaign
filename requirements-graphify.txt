@@ -1,0 +1,2 @@
+# Pinned knowledge-graph toolchain. The sql extra indexes the repository's SQL files.
+graphifyy[sql]==0.9.48

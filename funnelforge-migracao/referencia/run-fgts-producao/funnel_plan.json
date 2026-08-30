@@ -1,0 +1,252 @@
+{
+  "avatar_summary": "Trabalhador CLT ativo ou desempregado recente, entre 22 e 45 anos, com contas atrasadas e nome sujo. Ele precisa de dinheiro rápido (R$ 50 a R$ 500) para cobrir emergências imediatas (mercado, água, luz). Ele sabe que tem saldo no FGTS, mas teme burocracia ou cair em golpes.",
+  "tone_voice": "Urgente, empático, direto, desbancarizado e altamente instrutivo.",
+  "total_pages": 7,
+  "pages": [
+    {
+      "page_number": 1,
+      "page_type": "LANDING PAGE",
+      "h1_title": "Saque-Aniversário FGTS Liberado pelo Governo: Como Liberar e Sacar Seu Dinheiro em 2026",
+      "slug": "antecipacao-saque-aniversario-fgts",
+      "emotional_objective": "Transformar a curiosidade inicial em desejo e criar a dúvida crucial: 'Será que eu cumpro os requisitos para liberar o Pix hoje?'",
+      "main_content_structure": [
+        "H2: O que é a Antecipação do Saque-Aniversário e por que ela é importante agora? (Explicar a liberação do governo, o conceito de antecipar parcelas futuras sem comprometer o salário mensal e o alívio imediato de receber o saldo parado)",
+        "H2: 3 coisas sobre o FGTS que você precisa saber antes de solicitar (1. O dinheiro já é seu e está rendendo menos que a inflação; 2. Não há parcelas mensais para pagar por boleto; 3. Negativados também podem contratar sem consulta ao SPC/Serasa)",
+        "H2: Quem pode se beneficiar dessa modalidade de crédito? (Trabalhadores com saldo no FGTS ativo ou inativo, que precisam de dinheiro rápido sem comprometer a renda atual)",
+        "H2: Principais vantagens de antecipar o seu FGTS (Crédito rápido, sem burocracia, contratação 100% digital e recebimento via Pix em poucos minutos)",
+        "H2: Perguntas frequentes sobre o Saque-Aniversário (FAQ Estratégico para abertura de loops)"
+      ],
+      "hook_to_next_page": "O dinheiro do seu FGTS está disponível, mas nem todo trabalhador tem a liberação imediata devido a pendências cadastrais simples de resolver. Na próxima página, mostramos o checklist exato de qualificação para você garantir que seu saldo está elegível para o resgate hoje.",
+      "next_page_slug": "quem-tem-direito-antecipar-fgts-pr",
+      "target_keywords": [],
+      "role": "LP",
+      "ordinal": 0,
+      "routes": [
+        {
+          "placement": "hero",
+          "kind": "funnel",
+          "target": "quem-tem-direito-antecipar-fgts-pr1",
+          "anchor": "Ver o guia de antecipar >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "quem-tem-direito-antecipar-fgts-pr2",
+          "anchor": "Ver o guia de antecipar >>>"
+        },
+        {
+          "placement": "footer",
+          "kind": "funnel",
+          "target": "quem-tem-direito-antecipar-fgts-pr3",
+          "anchor": "Ver o guia de antecipar >>>"
+        }
+      ]
+    },
+    {
+      "page_number": 2,
+      "page_type": "HUB",
+      "h1_title": "Antecipar FGTS: Requisitos, Valores Mínimos e Tudo que Você Precisa Saber: por onde começar",
+      "slug": "quem-tem-direito-antecipar-fgts-pr1",
+      "emotional_objective": "Confirmar a elegibilidade do usuário para gerar alívio, ao mesmo tempo em que cria o medo de cometer erros no processo que possam travar o saldo.",
+      "main_content_structure": [
+        "H2: Requisitos de Elegibilidade: Quem realmente pode antecipar? (Apresentar os critérios: ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo. Linkar para /como-consultar-fgts-pelo-cpf-p1)",
+        "H2: Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp (Mostrar que é possível antecipar valores pequenos sem precisar de grandes saldos, utilizando canais práticos. Linkar para /bancos-antecipar-fgts-pix-whatsapp-p2)",
+        "H2: Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações (Explicar brevemente o impacto da demissão e a possibilidade de realizar novas antecipações mesmo já tendo feito uma antes. Linkar para /regras-demissao-quitar-emprestimo-fgts-p3)"
+      ],
+      "hook_to_next_page": "",
+      "next_page_slug": "",
+      "target_keywords": [],
+      "role": "PRESELL",
+      "ordinal": 0,
+      "routes": [
+        {
+          "placement": "hero",
+          "kind": "funnel",
+          "target": "como-consultar-fgts-pelo-cpf-p1",
+          "anchor": "Ver o guia de aniversário >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "bancos-antecipar-fgts-pix-whatsapp-p2",
+          "anchor": "Ver o guia de bancos >>>"
+        },
+        {
+          "placement": "footer",
+          "kind": "funnel",
+          "target": "regras-demissao-quitar-emprestimo-fgts-p3",
+          "anchor": "Ver o guia de aniversário >>>"
+        }
+      ]
+    },
+    {
+      "page_number": 3,
+      "page_type": "HUB",
+      "h1_title": "Antecipar FGTS: Requisitos, Valores Mínimos e Tudo que Você Precisa Saber: resolver o seu caso",
+      "slug": "quem-tem-direito-antecipar-fgts-pr2",
+      "emotional_objective": "Confirmar a elegibilidade do usuário para gerar alívio, ao mesmo tempo em que cria o medo de cometer erros no processo que possam travar o saldo.",
+      "main_content_structure": [
+        "H2: Requisitos de Elegibilidade: Quem realmente pode antecipar? (Apresentar os critérios: ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo. Linkar para /como-consultar-fgts-pelo-cpf-p1)",
+        "H2: Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp (Mostrar que é possível antecipar valores pequenos sem precisar de grandes saldos, utilizando canais práticos. Linkar para /bancos-antecipar-fgts-pix-whatsapp-p2)",
+        "H2: Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações (Explicar brevemente o impacto da demissão e a possibilidade de realizar novas antecipações mesmo já tendo feito uma antes. Linkar para /regras-demissao-quitar-emprestimo-fgts-p3)"
+      ],
+      "hook_to_next_page": "",
+      "next_page_slug": "",
+      "target_keywords": [],
+      "role": "PRESELL",
+      "ordinal": 0,
+      "routes": [
+        {
+          "placement": "hero",
+          "kind": "funnel",
+          "target": "bancos-antecipar-fgts-pix-whatsapp-p2",
+          "anchor": "Ver o guia de bancos >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "regras-demissao-quitar-emprestimo-fgts-p3",
+          "anchor": "Ver o guia de aniversário >>>"
+        },
+        {
+          "placement": "footer",
+          "kind": "funnel",
+          "target": "como-consultar-fgts-pelo-cpf-p1",
+          "anchor": "Ver o guia de aniversário >>>"
+        }
+      ]
+    },
+    {
+      "page_number": 4,
+      "page_type": "HUB",
+      "h1_title": "Antecipar FGTS: Requisitos, Valores Mínimos e Tudo que Você Precisa Saber: ir direto à sua etapa",
+      "slug": "quem-tem-direito-antecipar-fgts-pr3",
+      "emotional_objective": "Confirmar a elegibilidade do usuário para gerar alívio, ao mesmo tempo em que cria o medo de cometer erros no processo que possam travar o saldo.",
+      "main_content_structure": [
+        "H2: Requisitos de Elegibilidade: Quem realmente pode antecipar? (Apresentar os critérios: ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo. Linkar para /como-consultar-fgts-pelo-cpf-p1)",
+        "H2: Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp (Mostrar que é possível antecipar valores pequenos sem precisar de grandes saldos, utilizando canais práticos. Linkar para /bancos-antecipar-fgts-pix-whatsapp-p2)",
+        "H2: Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações (Explicar brevemente o impacto da demissão e a possibilidade de realizar novas antecipações mesmo já tendo feito uma antes. Linkar para /regras-demissao-quitar-emprestimo-fgts-p3)"
+      ],
+      "hook_to_next_page": "",
+      "next_page_slug": "",
+      "target_keywords": [],
+      "role": "PRESELL",
+      "ordinal": 0,
+      "routes": [
+        {
+          "placement": "hero",
+          "kind": "funnel",
+          "target": "regras-demissao-quitar-emprestimo-fgts-p3",
+          "anchor": "Ver o guia de aniversário >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "como-consultar-fgts-pelo-cpf-p1",
+          "anchor": "Ver o guia de aniversário >>>"
+        },
+        {
+          "placement": "footer",
+          "kind": "funnel",
+          "target": "bancos-antecipar-fgts-pix-whatsapp-p2",
+          "anchor": "Ver o guia de bancos >>>"
+        }
+      ]
+    },
+    {
+      "page_number": 5,
+      "page_type": "SOLUTION",
+      "h1_title": "Como Consultar o FGTS pelo CPF e Ativar o Saque-Aniversário no Aplicativo",
+      "slug": "como-consultar-fgts-pelo-cpf-p1",
+      "emotional_objective": "Guiar o usuário na execução prática da consulta e ativação, eliminando a ansiedade de não saber mexer no aplicativo da Caixa.",
+      "main_content_structure": [
+        "H2: Passo 1: Como consultar seu FGTS pelo CPF de forma rápida e segura (Passo a passo para baixar o aplicativo oficial do FGTS e realizar a consulta de saldo atualizado usando o CPF)",
+        "H2: Passo 2: Como migrar para a modalidade Saque-Aniversário no aplicativo (Tutorial visual explicando onde clicar dentro do app para alterar a modalidade de Saque-Rescisão para Saque-Aniversário)",
+        "H2: Passo 3: Como autorizar as instituições financeiras a consultarem seu saldo (O passo mais importante: como permitir que os bancos vejam seu saldo para poder liberar a antecipação do dinheiro)",
+        "H2: Como sacar o FGTS pelo aplicativo mesmo trabalhando (Explicação sobre a possibilidade de retirar o dinheiro do saldo ativo sem precisar pedir demissão)"
+      ],
+      "hook_to_next_page": "Com o saldo verificado e o aplicativo autorizado, o próximo passo é escolher onde receber o dinheiro mais rápido. Alguns bancos exigem saldos altos, enquanto outros liberam a partir de R$ 20 reais direto no Pix e com contratação via WhatsApp em 2 minutos. Descubra quais são esses bancos na próxima página.",
+      "next_page_slug": "bancos-antecipar-fgts-pix-whatsapp-p2",
+      "target_keywords": [],
+      "role": "SOLUTION",
+      "ordinal": 1,
+      "routes": [
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "bancos-antecipar-fgts-pix-whatsapp-p2",
+          "anchor": "Ver o guia de bancos >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "regras-demissao-quitar-emprestimo-fgts-p3",
+          "anchor": "Ver o guia de aniversário >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "external_official",
+          "target": "https://www.gov.br",
+          "anchor": "Consultar no canal oficial >>>"
+        }
+      ]
+    },
+    {
+      "page_number": 6,
+      "page_type": "SOLUTION",
+      "h1_title": "Empréstimo FGTS a partir de R$ 20 a R$ 50 Reais via Pix e WhatsApp: Melhores Bancos",
+      "slug": "bancos-antecipar-fgts-pix-whatsapp-p2",
+      "emotional_objective": "Facilitar a conversão imediata, mostrando opções extremamente acessíveis e de contratação instantânea pelo celular.",
+      "main_content_structure": [
+        "H2: Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais? (Lista atualizada de bancos que aceitam margens mínimas de saque para quem tem pouco saldo na conta do FGTS)",
+        "H2: Como antecipar o FGTS pelo WhatsApp (O passo a passo para fazer a simulação e contratação rápida utilizando o WhatsApp de instituições confiáveis como BMG, Mercantil e outras)",
+        "H2: Qual banco antecipa 50 reais do FGTS via Pix na hora? (Detalhamento do tempo de depósito do dinheiro na conta do trabalhador após a assinatura digital do contrato)"
+      ],
+      "hook_to_next_page": "Agora você já sabe onde conseguir o Pix rápido. Mas atenção: se você já antecipou o FGTS antes, sabe se pode pedir de novo? E o que acontece se você for demitido amanhã? Há uma regra oculta que protege seu bolso nesses casos e que 90% das pessoas ignoram. Veja tudo na próxima página.",
+      "next_page_slug": "regras-demissao-quitar-emprestimo-fgts-p3",
+      "target_keywords": [],
+      "role": "SOLUTION",
+      "ordinal": 2,
+      "routes": [
+        {
+          "placement": "inline",
+          "kind": "funnel",
+          "target": "regras-demissao-quitar-emprestimo-fgts-p3",
+          "anchor": "Ver o guia de aniversário >>>"
+        },
+        {
+          "placement": "inline",
+          "kind": "external_official",
+          "target": "https://www.caixa.gov.br",
+          "anchor": "Consultar no canal oficial >>>"
+        }
+      ]
+    },
+    {
+      "page_number": 7,
+      "page_type": "SOLUTION",
+      "h1_title": "Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo",
+      "slug": "regras-demissao-quitar-emprestimo-fgts-p3",
+      "emotional_objective": "Sanar as maiores objeções e medos de longo prazo (perda de emprego, saldo travado, recontratação), gerando segurança total para a tomada de decisão.",
+      "main_content_structure": [
+        "H2: Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%? (Explicar que a multa de 40% é paga normalmente e pode ser sacada, enquanto o saldo principal da rescisão fica retido caso o trabalhador mantenha o saque-aniversário ativo)",
+        "H2: Já antecipei o saque-aniversário, posso antecipar de novo? (Explicar que sim, desde que o trabalhador tenha saldo remanescente suficiente para cobrir o valor mínimo exigido pelos bancos parceiros)",
+        "H2: Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS (Passo a passo para amortizar ou quitar o saldo devedor junto ao banco credor e voltar à modalidade de Saque-Rescisão mais rápido)",
+        "H2: Como funciona o desconto do empréstimo e como sacar no caixa eletrônico (Esclarecer que o desconto é feito anualmente de forma automática, direto do saldo do FGTS, sem boletos. Explicar como sacar os valores liberados nas agências ou lotéricas caso prefira dinheiro em espécie)"
+      ],
+      "hook_to_next_page": "Parabéns! Você agora tem o controle total sobre o seu dinheiro. Escolha uma das opções de contratação segura listadas nos nossos guias anteriores e faça sua antecipação com total segurança.",
+      "next_page_slug": "antecipacao-saque-aniversario-fgts",
+      "target_keywords": [],
+      "role": "SOLUTION",
+      "ordinal": 3,
+      "routes": [
+        {
+          "placement": "footer",
+          "kind": "cross_funnel",
+          "target": "https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/",
+          "anchor": "Ver outro guia completo >>>"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "mission_id": "closure-w1-06-verificacao-estudio-14-achados",
+  "title": "Verificar se o fix '14 achados' do Estúdio Criativo (c1dd576) está contido na main (ee68085)",
+  "base_ref": "HEAD",
+  "mode": "read_only",
+  "briefing": "CONTEXTO (não redescubra): a linhagem do Estúdio Criativo (feat/estudio-criativo-c0-c1-c3 → integration → review) foi declarada SUPERADA porque o conteúdo entrou na main via ee68085. Porém o commit de review c1dd576 ('fix: 14 achados') tem diffstat divergente do feat (17556 vs 17055 inserções) e NÃO foi provado contido em ee68085 (FACT-MATRIX F004; INTEGRATION-LEDGER seção 2). MISSÃO: provar ou refutar, arquivo a arquivo, que cada um dos 14 achados corrigidos em c1dd576 está presente na árvore da main atual. MÉTODO: (1) git show c1dd576 para extrair a lista de hunks/arquivos; (2) para cada arquivo tocado, comparar o conteúdo na main (git show main:<path>) com o conteúdo pós-fix (git show c1dd576:<path>); diferenças de contexto são aceitáveis, ausência do COMPORTAMENTO corrigido não é; (3) listar por achado: presente_na_main | ausente_na_main | indeterminado, com caminho e linha. REGRAS: read-only absoluto; nenhum checkout; nenhuma edição; cite sempre caminho+linha. RESULTADO: veredito por achado + recomendação binária: 'poda segura das 5 refs do Estúdio' ou 'cherry-pick de c1dd576 necessário antes da poda' (nesse caso, liste exatamente os hunks a portar). Estados que devem permanecer distintos: conteúdo idêntico ≠ comportamento equivalente ≠ superado por refactor posterior.",
+  "timeout_seconds": 2400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-estudio-diff-prover",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "Extrair os 14 achados de c1dd576 e provar presença/ausência de cada um na árvore da main, com evidência git caminho+linha.",
+      "allowed_paths": ["src", "backend", "supabase"]
+    },
+    {
+      "id": "codex-estudio-adversario",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "REFUTAR a hipótese de superação: procurar ativamente comportamento corrigido em c1dd576 que NÃO exista na main (regressões escondidas por refactor), e qualquer achado dos 14 sem prova conclusiva.",
+      "allowed_paths": ["src", "backend", "supabase"]
+    }
+  ]
+}

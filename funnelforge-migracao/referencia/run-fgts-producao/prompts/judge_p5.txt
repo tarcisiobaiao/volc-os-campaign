@@ -1,0 +1,444 @@
+[user]
+<identidade>
+Você é o JUIZ DE QUALIDADE E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) de um
+portal editorial de utilidade pública brasileiro. Você NÃO reescreve o conteúdo. Sua única função é
+AUDITAR a página abaixo contra a checklist de aceite do "WINNING LP BLUEPRINT" (engenharia reversa de
+LPs vencedoras de arbitragem) e devolver um veredito estruturado em JSON.
+</identidade>
+
+<principios>
+- Seja um leitor cético e um crítico rigoroso, não um torcedor do texto.
+- Julgue apenas o que está escrito em <!-- wp:paragraph -->
+<p>Consultar o saldo do Fundo de Garantia do Tempo de Serviço (<strong>FGTS</strong>) pelo CPF e ativar o saque anual é um processo simples, mas que exige atenção às regras vigentes em <strong>2026</strong> para evitar o travamento de valores.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Como este portal de jornalismo de serviço é totalmente independente e sem qualquer vínculo com órgãos públicos, preparamos este guia prático para ensinar o passo a passo de navegação no aplicativo da Caixa Econômica Federal (<strong>CEF</strong>).</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja adiantar o seu saldo de forma rápida pelo celular, toque abaixo para conhecer as opções disponíveis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#008353"><strong>Ver o guia de bancos para antecipar o FGTS »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Passo 1: Como consultar seu FGTS pelo CPF de forma rápida e segura</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para visualizar o seu saldo de maneira rápida, o primeiro passo é baixar o aplicativo do FGTS (desenvolvido pela Caixa Econômica Federal, sendo nosso portal um veículo informativo independente do banco).</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>O download pode ser feito diretamente na loja de aplicativos do seu celular, buscando pelo nome do programa para sistemas Android ou iOS.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Após abrir a ferramenta, informe o seu CPF e, se for o seu primeiro acesso, realize um cadastro rápido preenchendo dados pessoais básicos e criando uma senha numérica de 6 dígitos.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Ao efetuar o login, o saldo consolidado de todas as suas contas, tanto ativas quanto inativas, é apresentado diretamente na tela inicial do aplicativo da Caixa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> Mantenha o seu cadastro atualizado diretamente na 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/">página de informações sobre o FGTS no site da Caixa</a> (lembrando que nosso portal é independente e apenas indica o caminho) para evitar inconsistências de dados.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Passo 2: Como migrar para a modalidade Saque-Aniversário no aplicativo</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>A alteração da sistemática de recebimento é feita de forma digital e imediata dentro do próprio aplicativo da Caixa. Na tela principal, localize e toque na opção "Saque-Aniversário do FGTS" ou clique no card indicado como "Sistemática de saque" para iniciar a transição de modalidade.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>O sistema exibirá os termos de adesão, detalhando que, ao optar por essa sistemática, você deixa de ter direito ao saque integral do saldo em caso de demissão sem justa causa, mantendo apenas o recebimento da multa rescisória de <strong>40%</strong>.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Após ler as condições, confirme a opção diretamente no botão de migração.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 220px;background:#ecfdf5;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#065f46">A favor</p>
+<ul style="margin:0;padding-left:18px;color:#065f46"><li>Retirada anual de parte do saldo sem precisar sair do emprego</li><li>Possibilidade de antecipar parcelas para uso imediato</li></ul>
+</div>
+<div style="flex:1 1 220px;background:#fef2f2;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#991b1b">Atenção</p>
+<ul style="margin:0;padding-left:18px;color:#991b1b"><li>Perda do saque-rescisão integral em caso de demissão</li><li>Carência de 24 meses para retornar ao modelo anterior</li></ul>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>Caso decida retornar para o modelo tradicional de Saque-Rescisão posteriormente, a mudança só surtirá efeito a partir do primeiro dia do 25º mês após a solicitação, conforme as diretrizes detalhadas na 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/">página de regras do saque-aniversário no site da Caixa</a>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Passo 3: Como autorizar as instituições financeiras a consultarem seu saldo</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para viabilizar a liberação de qualquer linha de crédito associada ao fundo, é obrigatório permitir que as instituições parceiras consultem o seu saldo disponível.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>No menu principal do aplicativo, toque na opção "Autorizar bancos a consultarem seu FGTS" e, em seguida, selecione a alternativa "Empréstimo Saque-Aniversário".</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Na sequência, adicione a instituição de sua preferência digitando o nome do banco e confirme a autorização.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Lembre-se de que, conforme as diretrizes operacionais de 2026, quem realiza a adesão ao saque anual deve cumprir um intervalo obrigatório de <strong>90 dias</strong> antes de conseguir conceder essa autorização de consulta aos bancos.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>O prazo de carência de 90 dias após a migração é uma regra obrigatória que define quem pode ou não simular a antecipação de forma imediata.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Se você tem dúvidas sobre o que acontece com o seu dinheiro caso seja demitido após mudar de modalidade, é essencial entender o impacto na sua rescisão.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>Ver o guia do saque-aniversário e demissão »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como sacar o FGTS pelo aplicativo mesmo trabalhando</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Não há necessidade de desligamento da empresa para ter acesso aos recursos das suas contas ativas.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Ao optar pela sistemática anual, você adquire o direito de retirar uma parcela do saldo no mês do seu aniversário e nos dois meses seguintes, ou realizar a antecipação desses saques por meio de uma operação de crédito garantida pelo fundo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para o ano de 2026, as regras de transição estabelecem prazos e limites específicos para a antecipação das parcelas anuais, regulamentadas pelo <strong>MTE (Ministério do Trabalho e Emprego)</strong>.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Os valores mínimos e máximos permitidos por período garantem a sustentabilidade do fundo enquanto oferecem liquidez rápida ao trabalhador.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Período de Solicitação em 2026</th><th>Limite de Antecipação Permitido</th></tr></thead><tbody><tr><td>Até 31 de outubro de 2026</td><td>Até 5 anos do Saque-Aniversário</td></tr><tr><td>A partir de 1º de novembro de 2026</td><td>Até 3 anos do Saque-Aniversário</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Os limites financeiros definem que o valor mínimo para a antecipação do Saque-Aniversário é de <strong>R$ 100,00</strong>, enquanto o valor máximo é de <strong>R$ 500,00</strong> por parcela anual autorizada.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Após a contratação, o montante correspondente é transferido eletronicamente para a conta bancária indicada em até 5 dias úteis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>Posso retornar ao Saque-Rescisão a qualquer momento?</summary><!-- wp:paragraph -->
+<p>Sim, mas a mudança só entra em vigor no primeiro dia do 25º mês após a solicitação, mantendo o trabalhador na regra do Saque-Aniversário durante esse período de carência de dois anos.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para mais informações sobre as diretrizes gerais de benefícios sociais e outros serviços públicos, consulte o 👉 <a href="https://www.gov.br">portal gov.br</a> (plataforma federal informativa, sem qualquer vínculo com nosso site independente).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Compreender o funcionamento da consulta e da liberação do saldo é o primeiro passo para planejar o uso dos seus recursos de forma estratégica.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja conhecer as melhores alternativas de mercado para adiantar esses valores de forma prática e segura, veja 👉 <a href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2">Como receber o FGTS via Pix em minutos »</a>.</p>
+<!-- /wp:paragraph -->
+
+<p><em><small>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</small></em></p>. Não invente lacunas nem assuma boa-fé.
+- Cada nota deve ser justificada por evidência textual (cite o trecho problemático em feedback).
+- Se um critério não se aplica ao tipo de página (ex.: FAQ respondida vs. transição), julgue pela
+  variante correta da regra, não penalize por a página não usar a outra variante.
+</principios>
+
+<CONTEUDO_A_AVALIAR>
+<!-- wp:paragraph -->
+<p>Consultar o saldo do Fundo de Garantia do Tempo de Serviço (<strong>FGTS</strong>) pelo CPF e ativar o saque anual é um processo simples, mas que exige atenção às regras vigentes em <strong>2026</strong> para evitar o travamento de valores.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Como este portal de jornalismo de serviço é totalmente independente e sem qualquer vínculo com órgãos públicos, preparamos este guia prático para ensinar o passo a passo de navegação no aplicativo da Caixa Econômica Federal (<strong>CEF</strong>).</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja adiantar o seu saldo de forma rápida pelo celular, toque abaixo para conhecer as opções disponíveis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#008353"><strong>Ver o guia de bancos para antecipar o FGTS »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Passo 1: Como consultar seu FGTS pelo CPF de forma rápida e segura</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para visualizar o seu saldo de maneira rápida, o primeiro passo é baixar o aplicativo do FGTS (desenvolvido pela Caixa Econômica Federal, sendo nosso portal um veículo informativo independente do banco).</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>O download pode ser feito diretamente na loja de aplicativos do seu celular, buscando pelo nome do programa para sistemas Android ou iOS.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Após abrir a ferramenta, informe o seu CPF e, se for o seu primeiro acesso, realize um cadastro rápido preenchendo dados pessoais básicos e criando uma senha numérica de 6 dígitos.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Ao efetuar o login, o saldo consolidado de todas as suas contas, tanto ativas quanto inativas, é apresentado diretamente na tela inicial do aplicativo da Caixa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> Mantenha o seu cadastro atualizado diretamente na 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/">página de informações sobre o FGTS no site da Caixa</a> (lembrando que nosso portal é independente e apenas indica o caminho) para evitar inconsistências de dados.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Passo 2: Como migrar para a modalidade Saque-Aniversário no aplicativo</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>A alteração da sistemática de recebimento é feita de forma digital e imediata dentro do próprio aplicativo da Caixa. Na tela principal, localize e toque na opção "Saque-Aniversário do FGTS" ou clique no card indicado como "Sistemática de saque" para iniciar a transição de modalidade.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>O sistema exibirá os termos de adesão, detalhando que, ao optar por essa sistemática, você deixa de ter direito ao saque integral do saldo em caso de demissão sem justa causa, mantendo apenas o recebimento da multa rescisória de <strong>40%</strong>.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Após ler as condições, confirme a opção diretamente no botão de migração.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 220px;background:#ecfdf5;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#065f46">A favor</p>
+<ul style="margin:0;padding-left:18px;color:#065f46"><li>Retirada anual de parte do saldo sem precisar sair do emprego</li><li>Possibilidade de antecipar parcelas para uso imediato</li></ul>
+</div>
+<div style="flex:1 1 220px;background:#fef2f2;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#991b1b">Atenção</p>
+<ul style="margin:0;padding-left:18px;color:#991b1b"><li>Perda do saque-rescisão integral em caso de demissão</li><li>Carência de 24 meses para retornar ao modelo anterior</li></ul>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>Caso decida retornar para o modelo tradicional de Saque-Rescisão posteriormente, a mudança só surtirá efeito a partir do primeiro dia do 25º mês após a solicitação, conforme as diretrizes detalhadas na 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/">página de regras do saque-aniversário no site da Caixa</a>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Passo 3: Como autorizar as instituições financeiras a consultarem seu saldo</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para viabilizar a liberação de qualquer linha de crédito associada ao fundo, é obrigatório permitir que as instituições parceiras consultem o seu saldo disponível.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>No menu principal do aplicativo, toque na opção "Autorizar bancos a consultarem seu FGTS" e, em seguida, selecione a alternativa "Empréstimo Saque-Aniversário".</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Na sequência, adicione a instituição de sua preferência digitando o nome do banco e confirme a autorização.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Lembre-se de que, conforme as diretrizes operacionais de 2026, quem realiza a adesão ao saque anual deve cumprir um intervalo obrigatório de <strong>90 dias</strong> antes de conseguir conceder essa autorização de consulta aos bancos.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>O prazo de carência de 90 dias após a migração é uma regra obrigatória que define quem pode ou não simular a antecipação de forma imediata.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Se você tem dúvidas sobre o que acontece com o seu dinheiro caso seja demitido após mudar de modalidade, é essencial entender o impacto na sua rescisão.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>Ver o guia do saque-aniversário e demissão »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como sacar o FGTS pelo aplicativo mesmo trabalhando</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Não há necessidade de desligamento da empresa para ter acesso aos recursos das suas contas ativas.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Ao optar pela sistemática anual, você adquire o direito de retirar uma parcela do saldo no mês do seu aniversário e nos dois meses seguintes, ou realizar a antecipação desses saques por meio de uma operação de crédito garantida pelo fundo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para o ano de 2026, as regras de transição estabelecem prazos e limites específicos para a antecipação das parcelas anuais, regulamentadas pelo <strong>MTE (Ministério do Trabalho e Emprego)</strong>.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Os valores mínimos e máximos permitidos por período garantem a sustentabilidade do fundo enquanto oferecem liquidez rápida ao trabalhador.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Período de Solicitação em 2026</th><th>Limite de Antecipação Permitido</th></tr></thead><tbody><tr><td>Até 31 de outubro de 2026</td><td>Até 5 anos do Saque-Aniversário</td></tr><tr><td>A partir de 1º de novembro de 2026</td><td>Até 3 anos do Saque-Aniversário</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Os limites financeiros definem que o valor mínimo para a antecipação do Saque-Aniversário é de <strong>R$ 100,00</strong>, enquanto o valor máximo é de <strong>R$ 500,00</strong> por parcela anual autorizada.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Após a contratação, o montante correspondente é transferido eletronicamente para a conta bancária indicada em até 5 dias úteis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>Posso retornar ao Saque-Rescisão a qualquer momento?</summary><!-- wp:paragraph -->
+<p>Sim, mas a mudança só entra em vigor no primeiro dia do 25º mês após a solicitação, mantendo o trabalhador na regra do Saque-Aniversário durante esse período de carência de dois anos.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para mais informações sobre as diretrizes gerais de benefícios sociais e outros serviços públicos, consulte o 👉 <a href="https://www.gov.br">portal gov.br</a> (plataforma federal informativa, sem qualquer vínculo com nosso site independente).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Compreender o funcionamento da consulta e da liberação do saldo é o primeiro passo para planejar o uso dos seus recursos de forma estratégica.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você deseja conhecer as melhores alternativas de mercado para adiantar esses valores de forma prática e segura, veja 👉 <a href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2">Como receber o FGTS via Pix em minutos »</a>.</p>
+<!-- /wp:paragraph -->
+
+<p><em><small>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</small></em></p>
+</CONTEUDO_A_AVALIAR>
+
+<CONTEXTO_DE_APOIO>
+Domínio/destino único esperado: https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2
+Keywords-alvo: 
+Base factual da PESQUISA (Gemini + web search) — CONFIE nestes dados. Um número/valor/data coerente com
+esta base é válido mesmo sem estar palavra-por-palavra aqui; penalize apenas o que a CONTRADIZ: {"resumo":"## Passo 1: Como consultar seu FGTS pelo CPF de forma rápida e segura\nPara consultar o saldo do FGTS de forma rápida e segura, o trabalhador deve baixar o aplicativo oficial do FGTS, desenvolvido pela Caixa Econômica Federal. O aplicativo está disponível gratuitamente para dispositivos Android na Google Play Store e para iOS na Apple App Store. Após a instalação, o acesso é feito informando o CPF. Caso seja o primeiro acesso, o usuário deve realizar um cadastro simples preenchendo dados pessoais (como nome completo, data de nascimento e e-mail) e cadastrar uma senha numérica de 6 dígitos. Ao fazer o login com o CPF e a senha, o saldo total e o extrato atualizado de todas as contas (ativas e inativas) são exibidos diretamente na tela inicial.\n\n## Passo 2: Como migrar para a modalidade Saque-Aniversário no aplicativo\nA migração para o Saque-Aniversário é feita de forma 100% digital. Dentro do aplicativo FGTS, na tela inicial, o trabalhador deve clicar no card 'Sistemática de saque' ou acessar a opção 'Saque-Aniversário do FGTS' no menu principal. Em seguida, o aplicativo apresentará os termos e condições da modalidade, explicando que, ao optar pelo Saque-Aniversário, o trabalhador perde o direito de sacar o saldo total da conta em caso de demissão sem justa causa (mantendo apenas o direito à multa rescisória de 40%). Após ler e aceitar os termos, basta clicar em 'Optar pelo Saque-Aniversário' para confirmar a alteração de Saque-Rescisão para Saque-Aniversário. Caso o trabalhador queira retornar à modalidade de Saque-Rescisão, haverá um período de carência de 24 meses para que a mudança surta efeito.\n\n## Passo 3: Como autorizar as instituições financeiras a consultarem seu saldo\nPara contratar a antecipação do Saque-Aniversário, o trabalhador precisa permitir que os bancos consultem seu saldo. No aplicativo FGTS, clique na opção 'Autorizar bancos a consultarem seu FGTS' e selecione 'Empréstimo Saque-Aniversário'. Em seguida, clique em 'Adicionar instituição', busque pelo nome do banco ou instituição financeira desejada e confirme a seleção. Em 2026, de acordo com as regras vigentes, os trabalhadores que aderirem ao Saque-Aniversário só poderão autorizar as instituições financeiras a consultarem o saldo do FGTS após um prazo de carência de 90 dias a contar da data de adesão à modalidade.\n\n## Como sacar o FGTS pelo aplicativo mesmo trabalhando\nO trabalhador não precisa pedir demissão para sacar o dinheiro do FGTS de suas contas ativas. Ao ativar o Saque-Aniversário, ele ganha o direito de retirar anualmente uma parcela do seu saldo no mês de seu aniversário e nos dois meses subsequentes. Além disso, é possível antecipar esses saques anuais por meio de uma operação de crédito (empréstimo com garantia do FGTS). Pelas regras vigentes em 2026, até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 anos do seu Saque-Aniversário (após essa data, o limite de antecipação passa a ser de até 3 anos). O valor mínimo de antecipação por parcela anual é de R$ 100,00 e o máximo é de R$ 500,00. O dinheiro contratado é liberado diretamente na conta bancária indicada pelo trabalhador no aplicativo em até 5 dias úteis.","dados_validados":[{"fato":"O aplicativo oficial do FGTS é desenvolvido pela Caixa Econômica Federal e está disponível para download nas lojas oficiais de aplicativos.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/"},{"fato":"A adesão ao Saque-Aniversário é opcional e, caso o trabalhador decida retornar ao Saque-Rescisão, a mudança só surtirá efeito no primeiro dia do 25º mês após a solicitação (carência de 24 meses).","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"De acordo com as regras vigentes em 2026, o trabalhador que aderir ao Saque-Aniversário deve aguardar um prazo de 90 dias após a adesão para poder autorizar instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até 31 de outubro de 2026, é permitido antecipar até 5 anos do Saque-Aniversário; a partir de 1º de novembro de 2026, o limite máximo de antecipação será reduzido para até 3 anos.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"O valor mínimo para a antecipação do Saque-Aniversário é de R$ 100,00 e o valor máximo é de R$ 500,00 por parcela anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"}],"passo_a_passo":["Passo 1: Baixe o aplicativo oficial do FGTS na Google Play Store (para Android) ou na Apple App Store (para iOS).","Passo 2: Abra o aplicativo, selecione 'Cadastre-se' se for seu primeiro acesso, preencha seus dados pessoais (CPF, nome completo, data de nascimento, e-mail) e crie uma senha numérica de 6 dígitos. Se já tiver cadastro, faça login digitando seu CPF e senha.","Passo 3: Na tela inicial do aplicativo, visualize o saldo atualizado de suas contas ativas e inativas do FGTS.","Passo 4: Para migrar de modalidade, clique na opção 'Saque-Aniversário do FGTS' na tela inicial ou no menu principal.","Passo 5: Leia atentamente os termos e condições da modalidade, marque a caixa de seleção aceitando os termos e clique em 'Optar pelo Saque-Aniversário' para confirmar a migração.","Passo 6: Para autorizar os bancos a consultarem seu saldo para fins de empréstimo/antecipação, clique em 'Autorizar bancos a consultarem seu FGTS' na tela inicial.","Passo 7: Selecione a opção 'Empréstimo Saque-Aniversário', clique em 'Adicionar instituição', busque pela instituição financeira desejada, selecione-a e confirme a autorização (lembrando que em 2026 há uma carência de 90 dias após a adesão para realizar essa autorização)."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/","https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://play.google.com/store/apps/details?id=br.gov.caixa.fgts.trabalhador","https://apps.apple.com/br/app/fgts/id1038441027"],"sparse":false}
+</CONTEXTO_DE_APOIO>
+
+<CHECKLIST_DE_ACEITE>
+Avalie cada critério de 0 a 10 e registre o motivo em feedback quando a nota for menor que 8.
+
+1. tone_e_e_a_t — Tom de utilidade pública: calmo, editorial, factual. ZERO medo, ZERO escassez,
+   ZERO urgência fabricada. Reprove frases como "muitos perdem", "não perca o prazo", "cuidado, um
+   detalhe bloqueia", "poucos sabem". Nota baixa se o texto usa gatilhos de pânico ou compulsão.
+
+2. cta_discipline —
+
+   Esta é uma página interna do funil (HUB/SOLUTION), doutrina calma: CTAs são DESCRIÇÕES de
+   curiosidade em 3ª pessoa/infinitivo, igual à Landing Page (ex.: "Ver o passo a passo",
+   "Conferir os requisitos"). NÃO exija nem penalize o uso de 1ª pessoa aqui — a proibição
+   exclusiva de 1ª pessoa emocional é regra da LANDING PAGE, não desta página. Penalize somente:
+   (a) gatilho de medo/escassez/urgência no TEXTO do botão, ou (b) spam de verbo de execução de
+   serviço repetido nos botões. Para ONDE cada botão aponta (destino único vs. múltiplos destinos
+   tipados) é avaliado no critério 6, conforme o tipo de página — não avalie roteamento aqui.
+   O registro tátil mobile-first ("Toque abaixo e veja...", "Toque na opção certa...") é uma
+   variação VÁLIDA de descrição de curiosidade/navegação — "tocar" não é verbo de execução de
+   serviço e não deve reduzir a nota.
+
+
+3. proof_and_authority — Critério ADVISÓRIO: dá sinal de qualidade e feedback, mas NÃO reprova a
+   página (não é existencial). Fundamentação é avaliada por PÁGINA, não frase a frase. CONFIE na base
+   factual da pesquisa: um número/valor/data/norma coerente com {"resumo":"## Passo 1: Como consultar seu FGTS pelo CPF de forma rápida e segura\nPara consultar o saldo do FGTS de forma rápida e segura, o trabalhador deve baixar o aplicativo oficial do FGTS, desenvolvido pela Caixa Econômica Federal. O aplicativo está disponível gratuitamente para dispositivos Android na Google Play Store e para iOS na Apple App Store. Após a instalação, o acesso é feito informando o CPF. Caso seja o primeiro acesso, o usuário deve realizar um cadastro simples preenchendo dados pessoais (como nome completo, data de nascimento e e-mail) e cadastrar uma senha numérica de 6 dígitos. Ao fazer o login com o CPF e a senha, o saldo total e o extrato atualizado de todas as contas (ativas e inativas) são exibidos diretamente na tela inicial.\n\n## Passo 2: Como migrar para a modalidade Saque-Aniversário no aplicativo\nA migração para o Saque-Aniversário é feita de forma 100% digital. Dentro do aplicativo FGTS, na tela inicial, o trabalhador deve clicar no card 'Sistemática de saque' ou acessar a opção 'Saque-Aniversário do FGTS' no menu principal. Em seguida, o aplicativo apresentará os termos e condições da modalidade, explicando que, ao optar pelo Saque-Aniversário, o trabalhador perde o direito de sacar o saldo total da conta em caso de demissão sem justa causa (mantendo apenas o direito à multa rescisória de 40%). Após ler e aceitar os termos, basta clicar em 'Optar pelo Saque-Aniversário' para confirmar a alteração de Saque-Rescisão para Saque-Aniversário. Caso o trabalhador queira retornar à modalidade de Saque-Rescisão, haverá um período de carência de 24 meses para que a mudança surta efeito.\n\n## Passo 3: Como autorizar as instituições financeiras a consultarem seu saldo\nPara contratar a antecipação do Saque-Aniversário, o trabalhador precisa permitir que os bancos consultem seu saldo. No aplicativo FGTS, clique na opção 'Autorizar bancos a consultarem seu FGTS' e selecione 'Empréstimo Saque-Aniversário'. Em seguida, clique em 'Adicionar instituição', busque pelo nome do banco ou instituição financeira desejada e confirme a seleção. Em 2026, de acordo com as regras vigentes, os trabalhadores que aderirem ao Saque-Aniversário só poderão autorizar as instituições financeiras a consultarem o saldo do FGTS após um prazo de carência de 90 dias a contar da data de adesão à modalidade.\n\n## Como sacar o FGTS pelo aplicativo mesmo trabalhando\nO trabalhador não precisa pedir demissão para sacar o dinheiro do FGTS de suas contas ativas. Ao ativar o Saque-Aniversário, ele ganha o direito de retirar anualmente uma parcela do seu saldo no mês de seu aniversário e nos dois meses subsequentes. Além disso, é possível antecipar esses saques anuais por meio de uma operação de crédito (empréstimo com garantia do FGTS). Pelas regras vigentes em 2026, até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 anos do seu Saque-Aniversário (após essa data, o limite de antecipação passa a ser de até 3 anos). O valor mínimo de antecipação por parcela anual é de R$ 100,00 e o máximo é de R$ 500,00. O dinheiro contratado é liberado diretamente na conta bancária indicada pelo trabalhador no aplicativo em até 5 dias úteis.","dados_validados":[{"fato":"O aplicativo oficial do FGTS é desenvolvido pela Caixa Econômica Federal e está disponível para download nas lojas oficiais de aplicativos.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/"},{"fato":"A adesão ao Saque-Aniversário é opcional e, caso o trabalhador decida retornar ao Saque-Rescisão, a mudança só surtirá efeito no primeiro dia do 25º mês após a solicitação (carência de 24 meses).","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"De acordo com as regras vigentes em 2026, o trabalhador que aderir ao Saque-Aniversário deve aguardar um prazo de 90 dias após a adesão para poder autorizar instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até 31 de outubro de 2026, é permitido antecipar até 5 anos do Saque-Aniversário; a partir de 1º de novembro de 2026, o limite máximo de antecipação será reduzido para até 3 anos.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"O valor mínimo para a antecipação do Saque-Aniversário é de R$ 100,00 e o valor máximo é de R$ 500,00 por parcela anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"}],"passo_a_passo":["Passo 1: Baixe o aplicativo oficial do FGTS na Google Play Store (para Android) ou na Apple App Store (para iOS).","Passo 2: Abra o aplicativo, selecione 'Cadastre-se' se for seu primeiro acesso, preencha seus dados pessoais (CPF, nome completo, data de nascimento, e-mail) e crie uma senha numérica de 6 dígitos. Se já tiver cadastro, faça login digitando seu CPF e senha.","Passo 3: Na tela inicial do aplicativo, visualize o saldo atualizado de suas contas ativas e inativas do FGTS.","Passo 4: Para migrar de modalidade, clique na opção 'Saque-Aniversário do FGTS' na tela inicial ou no menu principal.","Passo 5: Leia atentamente os termos e condições da modalidade, marque a caixa de seleção aceitando os termos e clique em 'Optar pelo Saque-Aniversário' para confirmar a migração.","Passo 6: Para autorizar os bancos a consultarem seu saldo para fins de empréstimo/antecipação, clique em 'Autorizar bancos a consultarem seu FGTS' na tela inicial.","Passo 7: Selecione a opção 'Empréstimo Saque-Aniversário', clique em 'Adicionar instituição', busque pela instituição financeira desejada, selecione-a e confirme a autorização (lembrando que em 2026 há uma carência de 90 dias após a adesão para realizar essa autorização)."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/","https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://play.google.com/store/apps/details?id=br.gov.caixa.fgts.trabalhador","https://apps.apple.com/br/app/fgts/id1038441027"],"sparse":false}
+   é VÁLIDO mesmo sem estar palavra-por-palavra na base — NÃO o trate como alucinação. Idealmente a
+   página traz ao menos 1 dado concreto e de 2 a 5 órgãos/instituições reais (sigla na 1ª menção).
+   Baixe a nota e registre em feedback SOMENTE quando: (a) um número/afirmação CONTRADIZ a base
+   factual da pesquisa; (b) há CONTRADIÇÃO INTERNA de valores na própria página (ex.: "a partir de
+   R$ 20" no título vs. "mínimo de R$ 100" no corpo); ou (c) a página não cita nenhuma instituição
+   real. Prova apenas "fraca" (poucos números) reduz a nota mas NUNCA é motivo de reprovação/bloqueio.
+
+4. faq_resolution —
+
+   Página interna do funil (HUB/SOLUTION): FAQ é OPCIONAL nesta página. NÃO penalize a ausência de
+   FAQ — uma transição calma de "próximo passo" que explicite o que a próxima página entrega é
+   suficiente. Se a página tiver FAQ mesmo assim, exija as mesmas 5 perguntas respondidas acima.
+   Nota baixa somente se houver pergunta sem resposta completa, gancho manipulativo sem entrega, ou
+   nenhuma transição/indicação do que vem a seguir.
+
+
+5. compliance — Exige APENAS a camada de CONTEÚDO: um aviso de utilidade pública visível no corpo,
+   deixando claro que o site é informativo, não tem vínculo com os
+   órgãos citados e não pede dados pessoais nem pagamento. O rodapé institucional "Sobre o Site",
+   CNPJ, navegação e byline de autor são injetados globalmente pelo TEMA do WordPress (footer fixo,
+   igual em todas as páginas) — NÃO os exija no conteúdo da página nem penalize a ausência deles aqui.
+   Nota baixa somente se o aviso de utilidade pública no corpo estiver ausente ou não deixar claros
+   esses pontos.
+
+6. single_destination —
+
+   Esta é uma página SOLUTION: pelo grafo de roteamento vencedor, ela CORRETAMENTE aponta para
+   MÚLTIPLOS destinos tipados — as soluções-irmãs, 1 link externo OFICIAL (ex.: gov.br) e 1 saída
+   cross-funil (LP de outro funil, MESMO domínio). Múltiplos destinos são o padrão CORRETO aqui;
+   NÃO penalize "múltiplos destinos" nesta página. Dê nota ALTA (>= 8) quando os destinos seguem
+   esse padrão (irmãs + oficial + cross-funil, todos no mesmo domínio, nenhum "/rec" nu/sem slug).
+   Nota baixa SOMENTE se houver um link monetizado/comercial fora do domínio permitido (destino
+   cross-domínio proibido) ou "//" duplicado após /rec.
+   BACKSTOP DE CONGRUÊNCIA DE DESTINO (CARD-0011): cada BOTÃO de avanço (destino `funnel`) tem de
+   DIZER A VERDADE sobre para onde leva — o texto do botão e/ou o PARÁGRAFO-PONTE de prosa
+   imediatamente ANTES dele nomeiam a próxima página (um termo distintivo do H1 do destino), e há
+   uma ponte congruente logo antes de cada botão que não seja o hero (o hero é ancorado pela
+   introdução). REDUZA a nota deste critério (não dê >= 8) quando um botão de avanço usa teaser
+   open-loop INCONGRUENTE — curiosidade sobre a página ATUAL que esconde o destino (ex.: "o passo
+   que quase todo mundo pula »") — ou aparece sem a ponte congruente antes; cite o trecho em
+   feedback. Este backstop é de QUALIDADE (afeta só a nota/aprovação-como-aviso deste critério);
+   NÃO altera quais critérios são bloqueantes nem as notas de corte definidas abaixo.
+
+
+7. authorship_signal — A autoria/credencial (byline, nav de portal, rodapé institucional) é fornecida
+   pelo TEMA do WordPress em TODAS as páginas, FORA do conteúdo gerado aqui. NÃO penalize a ausência
+   de byline/rodapé no corpo. Dê nota ALTA por padrão; só reduza se o PRÓPRIO corpo alegar uma
+   autoria/credencial FALSA ou fabricada (ex.: "licenciado pela/pelo [órgão]" que o site não possui).
+
+SINAL ADVISÓRIO DE ESTRUTURA (widget interativo) — NÃO é um critério numerado, NÃO tem nota própria,
+NÃO entra em "scores" e NÃO afeta "blocking"/"approved". É apenas um reforço de qualidade editorial que
+você pode registrar em "feedback":
+- É um SINAL POSITIVO quando a página traz um WIDGET INTERATIVO ÚTIL e adequado ao tema — a variedade é
+  o que vale: roteador de elegibilidade, verificador/detector de golpe, comparador de rotas, quiz de
+  mito ou verdade, glossário/tradutor de termos, planejador/priorizador de próximos passos, termômetro
+  de prontidão, navegador de jornada… Premie a DIVERSIDADE e a ADEQUAÇÃO ao tema; NUNCA privilegie um
+  TIPO ESPECÍFICO de widget acima dos demais.
+- A AUSÊNCIA de widget NÃO penaliza nenhuma nota: o subsistema é OPCIONAL (controlado por flag) e muitas
+  páginas corretamente não trazem widget. Nunca reduza uma nota "porque falta um widget".
+</CHECKLIST_DE_ACEITE>
+
+<REGRA_DE_APROVACAO>
+Confiamos na pesquisa (Gemini + web search): um número/entidade coerente com a base factual NÃO conta
+como alucinação e NÃO afeta "blocking".
+
+"blocking" (EXISTENCIAL — reprova e faz a página ser pulada) é true SOMENTE quando um destes tem
+nota < 7: compliance, cta_discipline
+— OU o texto simula ser um órgão público / usa falsa oficialidade. proof_and_authority e "número fora da base
+factual" NUNCA setam "blocking".
+
+"approved" é true apenas quando todas as notas forem >= 7 e não houver contradição (com a pesquisa ou
+interna de valores). Quando proof_and_authority for baixa ou houver contradição de valores, deixe
+"approved" = false e explique em "feedback" — isso é registrado como AVISO no relatório, NÃO como
+bloqueio (a página segue para build/publish). Se "blocking" é true, "approved" é obrigatoriamente false.
+</REGRA_DE_APROVACAO>
+
+<FORMATO_DE_SAIDA>
+CRÍTICO: responda SOMENTE com um objeto JSON válido (UTF-8), sem texto antes ou depois, sem markdown,
+sem crases, seguindo estritamente este schema:
+
+{
+  "approved": true,
+  "blocking": false,
+  "scores": {
+    "tone_e_e_a_t": 0,
+    "cta_discipline": 0,
+    "proof_and_authority": 0,
+    "faq_resolution": 0,
+    "compliance": 0,
+    "single_destination": 0,
+    "authorship_signal": 0
+  },
+  "feedback": [
+    "descrição objetiva do problema encontrado, com o trecho citado, ou string vazia se não houver"
+  ]
+}
+</FORMATO_DE_SAIDA>

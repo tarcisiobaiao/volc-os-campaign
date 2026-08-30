@@ -1,0 +1,36 @@
+{
+  "mission_id": "decision-intelligence-lab-review-v1",
+  "title": "Revisão adversarial do VOLC Decision Intelligence Lab",
+  "base_ref": "9483c49",
+  "briefing": "Audite o commit 9483c49, candidato isolado do Decision Intelligence Lab. Não edite arquivo algum. O candidato deve permanecer um laboratório sintético, hermético e inequivocamente separado da operação real. Tente refutar o replay, a modelagem de ausência, o grão, a causalidade, a segurança, o contrato Google Ads e a interface. Classifique cada achado como confirmado, hipótese ou refutado, com arquivo/linha, reprodução e correção mínima. Verifique especialmente: zero-fill; leakage temporal; denominadores e amostra; limiares universais; identidade de conta/campanha; conflito de negativas; fingerprint/idempotência; capacidade da LLM de alterar veredito/diff/autorização; rede, banco ou mutate acidental; endpoint autenticado; rota sintética nunca aceitar volcCampaignId; nenhum CTA de aplicação; nenhum cálculo decisório no React; estados loading/stale/parcial/vazio/falha/versão desconhecida; contraste, densidade, acessibilidade e responsividade. API Google Ads: trate v25/v25.1 como a documentação vigente conferida e não aceite afirmação de v25.2 sem fonte oficial. ARBA, Ads Monitor e If This Then Ad são referências Apache-2.0, nunca autoridade ou runtime. NEXUS, ORAKUL e search terms são linhagem proprietária, nunca thresholds universais. Não acesse Google Ads, Supabase, n8n ou qualquer dado real; zero migration, validate_only ou mutate.",
+  "timeout_seconds": 3600,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "claude-google-reference-reviewer",
+      "provider": "claude",
+      "model": "opus",
+      "effort": "max",
+      "network_access": true,
+      "lens": "Documentação oficial Google Ads e fidelidade dos campos/grãos: Quality Score e componentes, impression share e perdas, search_term_view, keyword_view, recomendações e versão v25/v25.1. Procure campos impossíveis, semântica errada e alegações futuras.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "volc_ads/inteligencia_search", "backend/app/trafego", "backend/tests", "docs/architecture"]
+    },
+    {
+      "id": "codex-decision-science-reviewer",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Ciência de decisão e segurança. Tente quebrar os oito cenários, separar associação de causa, detectar leakage, missingness, zero inventado, thresholds sem calibração, conflitos, fingerprints instáveis e autoridade indevida da LLM.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "volc_ads/inteligencia_search", "backend/app/trafego", "backend/tests", "src/types", "docs/architecture"]
+    },
+    {
+      "id": "claude-product-lab-reviewer",
+      "provider": "claude",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Produto, UX e frontend conforme PRODUCT.md, DESIGN.md e impeccable. Confirme que a interface não parece produção nem mock genérico, possui uma cadeia causal dominante, estados honestos, nenhuma regra decisória no browser, nenhum CTA de aplicação e boa acessibilidade/responsividade.",
+      "allowed_paths": ["PRODUCT.md", "DESIGN.md", "src/App.tsx", "src/components/trafego", "src/pages/trafego", "src/hooks", "src/lib", "src/types"]
+    }
+  ]
+}

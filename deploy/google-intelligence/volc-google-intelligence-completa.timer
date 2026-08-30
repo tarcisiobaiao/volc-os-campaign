@@ -1,0 +1,11 @@
+[Unit]
+Description=VOLC Google Ads intelligence — leitura completa diaria
+
+[Timer]
+OnCalendar=*-*-* 06:15:00 America/Sao_Paulo
+RandomizedDelaySec=5m
+Persistent=true
+Unit=volc-google-intelligence@completa.service
+
+[Install]
+WantedBy=timers.target

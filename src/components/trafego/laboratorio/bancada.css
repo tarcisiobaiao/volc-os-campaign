@@ -1,0 +1,124 @@
+.di-bancada {
+  --di-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --di-fast: 160ms;
+  --di-surface-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 30px -12px rgba(30, 58, 95, 0.14);
+  min-width: 0;
+  overflow-x: clip;
+  overflow-wrap: break-word;
+  padding-bottom: max(4.5rem, env(safe-area-inset-bottom));
+}
+
+.dark .di-bancada {
+  --di-surface-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Assinatura de identidade: 2px, longe de número operacional. */
+.di-assinatura {
+  display: block;
+  width: 2.75rem;
+  height: 2px;
+  margin-top: 1rem;
+  background: var(--gradient-aurora);
+  pointer-events: none;
+}
+
+.di-truth-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+@media (min-width: 1280px) {
+  .di-truth-meta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.di-executiva[data-changed="true"] {
+  animation: di-reveal var(--di-fast) var(--di-ease) both;
+}
+
+.di-familia {
+  min-width: 0;
+}
+
+.di-familia + .di-familia {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 20px;
+}
+
+@media (min-width: 1280px) {
+  .di-familias {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 32px;
+  }
+
+  .di-familia + .di-familia {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .di-familia:nth-child(n + 4) {
+    border-top: 1px solid hsl(var(--border));
+    padding-top: 20px;
+    margin-top: 20px;
+  }
+}
+
+.di-spine {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .di-spine {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+  }
+}
+
+.di-station {
+  min-width: 0;
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .di-station:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 13px;
+    right: 0;
+    width: calc(100% - 28px);
+    height: 1px;
+    background: hsl(var(--border));
+    transform: translateX(100%);
+    pointer-events: none;
+  }
+}
+
+.di-medida {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .di-executiva[data-changed="true"] {
+    animation: none;
+  }
+}
+
+@keyframes di-reveal {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}

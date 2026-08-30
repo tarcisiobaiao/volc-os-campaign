@@ -1,0 +1,1561 @@
+{
+  "components": {
+    ".DS_Store": {
+      "bytes": 6148,
+      "files": 1
+    },
+    ".env.exemplo": {
+      "bytes": 1317,
+      "files": 1
+    },
+    ".gitignore": {
+      "bytes": 24,
+      "files": 1
+    },
+    "INDICE.md": {
+      "bytes": 5205,
+      "files": 1
+    },
+    "INVENTARIO.md": {
+      "bytes": 10299,
+      "files": 1
+    },
+    "ORGANIZACAO.md": {
+      "bytes": 6262,
+      "files": 1
+    },
+    "PONTE-PRENSA.md": {
+      "bytes": 5059,
+      "files": 1
+    },
+    "_extracao.json": {
+      "bytes": 2675,
+      "files": 1
+    },
+    "contrato": {
+      "bytes": 295441,
+      "files": 27
+    },
+    "destinos": {
+      "bytes": 400,
+      "files": 5
+    },
+    "doutrina": {
+      "bytes": 16098,
+      "files": 4
+    },
+    "formatos": {
+      "bytes": 662605,
+      "files": 64
+    },
+    "motor": {
+      "bytes": 243267,
+      "files": 29
+    }
+  },
+  "contract": {
+    "global_rules": [
+      "REGRA:sem-zumbido — proibido riser/sfx de seno puro estático; usar swell de ruído filtrado",
+      "REGRA:anti-colisao — beat com sting+card: sting entra 0.1s, card espera 1.55s (card_slot)",
+      "REGRA:copy-punch — fala de avatar: ≤9 palavras/3s, ≤12/4s; prompt sempre com 'EXACTLY N SECONDS' + 'finishes speaking 0.3s before the end'",
+      "REGRA:sem-histeria — estilos TTS calibrados naturais; proibido 'MUITO empolgada/indignação' no style",
+      "REGRA:legenda-integra — CaptionsPro: overflow visible, lineHeight ≥1.16 (nunca decapitar glifos)",
+      "REGRA:disclosure — avatar/cena IA simulando UGC ⇒ marcar conteúdo sintético na plataforma + ledger synthid",
+      "REGRA:2-fontes — fato sensível: 2+ fontes; sem prova primária ⇒ 'registros apontam'",
+      "REGRA:nunca-clipe-de-terceiro — zero vídeo de terceiros (Content ID); stills/imagens apenas",
+      "REGRA:pessoa-real-so-wikimedia — rosto real só via Commons CC/PD creditado ou still de divulgação editorial",
+      "REGRA:zero-gore — tragédia narrada, nunca mostrada; selos RECONSTITUIÇÃO em cena IA",
+      "REGRA:ledger — todo vídeo escreve clips_registry.json com licença por asset",
+      "REGRA:qa-gate — build aborta se QA reprovar (set -o pipefail)",
+      "REGRA:emoji-props — testar emoji em card (🔫 vira pistola d'água verde; usar ⚡/🔎)",
+      "REGRA:metadata-gate — MP4 aprovado no QA ainda não é publicável: freeze→gen→check de publicar.py é obrigatório antes do upload",
+      "REGRA:ledger-incompleto — toda cena do props congelado deve constar no ledger; ausência = FAIL na publicação"
+    ],
+    "locales": {
+      "dir": "contrato/locales/<skin>.json",
+      "langs": [
+        "pt",
+        "en",
+        "es"
+      ],
+      "loader": "motor/locales.py (get/validate/verify-source/scaffold→draft→promote; fail-fast em placeholder sem fmt e compliance vazio)",
+      "regra": "idioma só entra com VOZ:* resolvível no grafo; scaffold nunca derruba skin em produção (draft+promote)",
+      "skins_cobertas": [
+        "corta",
+        "gossip",
+        "holerite"
+      ]
+    },
+    "map_sha256": "878cffb957ca9e574d43987a7c4b78dd19204cd3860388a3d6f9cc072f09913f",
+    "publication": {
+      "canais": "motor/canais.json (i18n por idioma: h_creditos/ia_line/disclosure/...)",
+      "checks_gate": [
+        "ledger_incompleto (scenes×ledger)",
+        "disclosure/altered_content",
+        "creditos CC",
+        "qa_visual (FAIL bloqueia; SKIPPED exige --allow-skip-visual com motivo)"
+      ],
+      "cli": "motor/publicar.py",
+      "fluxo": "QA gate → qa_visual → freeze → gen → check → pack → log",
+      "regras": [
+        "REGRA:metadata-gate",
+        "REGRA:ledger-por-video",
+        "REGRA:disclosure"
+      ],
+      "snapshot": "out/meta/<slug>/ (props+ledger+timings+qa+qa_visual congelados; freeze valida identidade e sha)"
+    },
+    "reference_costs": {
+      "SRC:geminiimg": "US$0.039/img",
+      "SRC:gptimg": "low ~US$0.02-0.04/img",
+      "SRC:grok": "kie.ai por clipe 6s",
+      "SRC:omni": "US$0.10/s (~0.40/hook 4s)",
+      "SRC:pexels": "grátis",
+      "SRC:wikimedia": "grátis+crédito"
+    },
+    "required_fields": [
+      "tema"
+    ],
+    "schema_sha256": "7f83eeb3e1319681a657cdddf8d567d8d43bfb46c3a29061949b57f82a6045de",
+    "version": "1.2.1",
+    "visual_qa": {
+      "cli": "motor/qa_visual.py <video.mp4> [--props|--times]",
+      "custo": "<US/bin/zsh.01/vídeo (frames 720px)",
+      "o_que_faz": "extrai frames nos wowEvents/stings/fichas e julga via Gemini vision com checklist dos bugs reais (legenda decapitada, card sobre rosto, emoji errado, selo cortado, artefato IA)",
+      "saida": "out/<slug>.qa_visual.json com mp4_sha256 + summary.coverage; exit 1=conteúdo FAIL, 2=uso, 3=infra",
+      "testes": "motor/test_qa_visual_aceitacao.py (0 chamadas de API)"
+    }
+  },
+  "execution_evidence": {
+    "dimensions": {
+      "1080x1920": 38
+    },
+    "note": "renders observados na fábrica externa; não provam execução integral a partir de motor-video",
+    "organized_root_full_render_proven": false,
+    "renders": [
+      {
+        "audio_codec": "aac",
+        "bytes": 31430087,
+        "duration_s": 48.6,
+        "file": "short_ach.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 28427082,
+        "duration_s": 40.3,
+        "file": "short_achadinho.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 73951309,
+        "duration_s": 51.4,
+        "file": "short_arquivo.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_arquivo.json",
+          "sha256": "720e3ef5f9722a290746743ab18fe2697100350a7281057ca738c488beabc7f1",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 33068473,
+        "duration_s": 35.0,
+        "file": "short_briga.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_briga.json",
+          "sha256": "7cb9ae00056973799f377fb73b54caf96faec556e89f72b49d80b9d9c5561e3f",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 35754456,
+        "duration_s": 50.3,
+        "file": "short_cartas_perdidas.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_cartas_perdidas.json",
+          "sha256": "c7b53d63862d7241d723b77f4cf377d5c299afcc0bf97439efadcd461bad4e31",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 40811669,
+        "duration_s": 37.4,
+        "file": "short_causa_familia.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 24,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_causa_familia.json",
+          "sha256": "00b7aee416d28f3c0aa640ce0880125661f2d5d74d0aebe4228d41bf427cffef",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 33974756,
+        "duration_s": 28.8,
+        "file": "short_copa.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 41080118,
+        "duration_s": 28.8,
+        "file": "short_copa_broll.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 13,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_copa_broll.json",
+          "sha256": "182d32e07f595273cd1e0d578a7894cc458b7187a14b20dfbe86308da06bf2fd",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 35863079,
+        "duration_s": 36.1,
+        "file": "short_coracao_acelerado.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 15,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_coracao_acelerado.json",
+          "sha256": "7792312cdb9b4e62d3d5fbfdac3f8d9b1b86e2f436bb50c6d69bbc02afb26f00",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 58205721,
+        "duration_s": 55.6,
+        "file": "short_corta_en.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 19,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_corta_en.json",
+          "sha256": "94798182dfd9a64d512c9b97c5243f0109d7506f08ebf5049e28f515761dcdf0",
+          "verdict": "WARN",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": {
+          "checks": 0,
+          "fails": 0,
+          "mp4_sha256": "92de38e3d63437f68d7eb12bcb1c2fd838c521c8f0fa4e2f39d0f5c0c746ca54",
+          "path": "/Users/mac/volc-factory/out/short_corta_en.qa_visual.json",
+          "sha256": "45b9db534c6c63b939a154de789be686741605976d071d6c48e8641f5a030e83",
+          "verdict": "WARN",
+          "warns": 6
+        },
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 57636245,
+        "duration_s": 54.2,
+        "file": "short_corta_pt.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 19,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_corta_pt.json",
+          "sha256": "387d38a50d55933c7103f4fa22e4c0c351a72aaaf89f3a4124cdf50a0f4ccc12",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": {
+          "checks": 0,
+          "fails": 0,
+          "mp4_sha256": "650d20a8465a02f3c300b220ce93e215ceb4195cd418fe43b94971a5e6bc0b1e",
+          "path": "/Users/mac/volc-factory/out/short_corta_pt.qa_visual.json",
+          "sha256": "9dcf21071798676e3b6e8dfd0eacbc2ad1a021098ff562500fc862663c94f5a0",
+          "verdict": "WARN",
+          "warns": 4
+        },
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 15436033,
+        "duration_s": 23.1,
+        "file": "short_das.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_das.json",
+          "sha256": "b9a83cfce7484d9c52e16f8d3ed20029ec6a0f855e32499a66a0335930b60c54",
+          "verdict": "WARN",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 40019181,
+        "duration_s": 39.5,
+        "file": "short_entnews.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 14,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_entnews.json",
+          "sha256": "c645b62ccc58e7f7bde6580290ec55a4805c9f6d0b385c4dcf6bb3d66d84e552",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 28851345,
+        "duration_s": 42.0,
+        "file": "short_eso.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 13,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_eso.json",
+          "sha256": "94c73472fec72334af5a98b2ef26b329a1135093eab85b105b364f29c7d4aa68",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 44201387,
+        "duration_s": 26.3,
+        "file": "short_fofoca.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 44526784,
+        "duration_s": 25.9,
+        "file": "short_fofoca_v2.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 56006998,
+        "duration_s": 55.5,
+        "file": "short_holerite.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_holerite.json",
+          "sha256": "4c4a6f5ed584f5f05b8acda212f27c84c1a62c59c5ec877c8d6a0d1419fdbc48",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 44984625,
+        "duration_s": 45.7,
+        "file": "short_horoscopo.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 13,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_horoscopo.json",
+          "sha256": "2fc8c82baf92c286d9327a646a69e4ad7fd4fa1b537b834b0bf85263d9ba3d4b",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 26283077,
+        "duration_s": 31.3,
+        "file": "short_irpf_final.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 31256396,
+        "duration_s": 32.0,
+        "file": "short_itau_40s.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 30713446,
+        "duration_s": 32.0,
+        "file": "short_itau_v2_final.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 31258514,
+        "duration_s": 32.0,
+        "file": "short_itau_v3_final.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 45332572,
+        "duration_s": 46.8,
+        "file": "short_lenda.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 14,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_lenda.json",
+          "sha256": "15a2a6b774c15014429dd89ce874a00894ba4f8187724438ce89c9823e615290",
+          "verdict": "WARN",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 37015798,
+        "duration_s": 53.0,
+        "file": "short_mei.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [
+          "freeze.json",
+          "ledger.json",
+          "metadata.json",
+          "props.json",
+          "pubqa.json",
+          "qa.json",
+          "qa_visual.json",
+          "timings.json"
+        ],
+        "publication_snapshot": true,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_mei.json",
+          "sha256": "6e9c768d259f3c67d7132a9b775d1b455a291b279f232078f8c6eb7d6b89c922",
+          "verdict": "WARN",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": {
+          "checks": 0,
+          "fails": 0,
+          "mp4_sha256": "33d83922875a78618f8da0da5872bec776ca6866f920e4876ab99affe0ffaffc",
+          "path": "/Users/mac/volc-factory/out/short_mei.qa_visual.json",
+          "sha256": "388056b6700361c66fa841ad9f2ca01736a9921ee260c1d923cf79c6b029fbf0",
+          "verdict": "WARN",
+          "warns": 2
+        },
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 43249707,
+        "duration_s": 44.3,
+        "file": "short_news.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 46116828,
+        "duration_s": 46.5,
+        "file": "short_news_solo.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 31690802,
+        "duration_s": 31.6,
+        "file": "short_novela.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 49402116,
+        "duration_s": 64.3,
+        "file": "short_nubank.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 28161804,
+        "duration_s": 38.3,
+        "file": "short_nubank_40s.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 23688399,
+        "duration_s": 33.0,
+        "file": "short_nubank_40s_v2.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 40025604,
+        "duration_s": 57.4,
+        "file": "short_nubank_v2.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 41323436,
+        "duration_s": 57.4,
+        "file": "short_nubank_v3.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 40555197,
+        "duration_s": 43.8,
+        "file": "short_odete.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [
+          "freeze.json",
+          "ledger.json",
+          "props.json",
+          "qa.json",
+          "qa_visual.json",
+          "timings.json"
+        ],
+        "publication_snapshot": true,
+        "technical_qa": {
+          "checks": 15,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_odete.json",
+          "sha256": "a6bf1302fd95eba1d5a6c95ed350c72dde4efc7cafba9ffae66b9b5dedc57985",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": {
+          "checks": 0,
+          "fails": 0,
+          "mp4_sha256": "dc2e6cb803ecf0aaec2281b03ccac9f8891c9a75d0d4cca8d7a8180cf2123cbb",
+          "path": "/Users/mac/volc-factory/out/short_odete.qa_visual.json",
+          "sha256": "b800006f03491065cad6342099914dbe221fd95c66ce864f997773c76fb371b2",
+          "verdict": "WARN",
+          "warns": 1
+        },
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 7449615,
+        "duration_s": 15.2,
+        "file": "short_promo.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 13,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_promo.json",
+          "sha256": "229c8061cf70f4122b720582c53216dc80f2152133eacd76d0ce6bbbc0342361",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 35189051,
+        "duration_s": 41.5,
+        "file": "short_qac_v2.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 14,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_qac_v2.json",
+          "sha256": "b9644824d108686093da9f861c4c1aca8574df02746b954fe5b2c29d035ebb37",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 34041941,
+        "duration_s": 54.5,
+        "file": "short_relato_proibido.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_relato_proibido.json",
+          "sha256": "0b4857d8d1ac154fd40d374317209cc5f651982b7a6c81ac623692f9c48acca0",
+          "verdict": "FAIL",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 33261843,
+        "duration_s": 41.4,
+        "file": "short_tribunal_zap.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": {
+          "checks": 20,
+          "fails": null,
+          "mp4_sha256": null,
+          "path": "/Users/mac/volc-factory/out/qa_short_tribunal_zap.json",
+          "sha256": "6839325bff45911041e6843d522889fa3110b7f2b52391f0b7132fdd127aff40",
+          "verdict": "PASS",
+          "warns": null
+        },
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      },
+      {
+        "audio_codec": "aac",
+        "bytes": 33099669,
+        "duration_s": 34.3,
+        "file": "short_v6.mp4",
+        "fps": "30/1",
+        "height": 1920,
+        "probe": "ok",
+        "publication_files": [],
+        "publication_snapshot": false,
+        "technical_qa": null,
+        "video_codec": "h264",
+        "visual_qa": null,
+        "width": 1080
+      }
+    ],
+    "root": "/Users/mac/volc-factory/out"
+  },
+  "extensions": {
+    ".exemplo": 1,
+    ".json": 27,
+    ".md": 37,
+    ".py": 51,
+    ".ts": 1,
+    ".tsx": 17,
+    "[no_extension]": 3
+  },
+  "factory_root": "/Users/mac/volc-factory",
+  "formats": [
+    {
+      "compositor": true,
+      "contract_skins": [
+        "achadinhos"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente",
+        "som_proprio_ausente"
+      ],
+      "id": "achadinhos",
+      "makers": [
+        "make.py",
+        "make_padrao.py"
+      ],
+      "shared_notes": [],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "arquivo"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente"
+      ],
+      "id": "arquivo",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "brigaestado"
+      ],
+      "design": true,
+      "filesystem_complete": true,
+      "gaps": [],
+      "id": "briga_estado",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "cartasperdidas"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente"
+      ],
+      "id": "cartas_perdidas",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "causafamilia"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente"
+      ],
+      "id": "causa_familia",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "copa"
+      ],
+      "design": true,
+      "filesystem_complete": false,
+      "gaps": [
+        "som_proprio_ausente"
+      ],
+      "id": "copa",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "corta"
+      ],
+      "design": true,
+      "filesystem_complete": true,
+      "gaps": [],
+      "id": "corta",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "esoterico"
+      ],
+      "design": true,
+      "filesystem_complete": true,
+      "gaps": [],
+      "id": "esoterico",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [],
+      "design": true,
+      "filesystem_complete": false,
+      "gaps": [
+        "som_proprio_ausente"
+      ],
+      "id": "fofoca",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "holerite"
+      ],
+      "design": true,
+      "filesystem_complete": true,
+      "gaps": [],
+      "id": "holerite",
+      "makers": [
+        "make.py",
+        "make_padrao.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": false,
+      "contract_skins": [
+        "esoterico"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente",
+        "compositor_proprio_ausente",
+        "som_proprio_ausente"
+      ],
+      "id": "horoscopo",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [
+        "COMPARTILHADO.md"
+      ],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "lendas"
+      ],
+      "design": true,
+      "filesystem_complete": false,
+      "gaps": [
+        "som_proprio_ausente"
+      ],
+      "id": "lenda",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "main"
+      ],
+      "design": true,
+      "filesystem_complete": false,
+      "gaps": [
+        "som_proprio_ausente"
+      ],
+      "id": "news",
+      "makers": [
+        "make.py",
+        "make_entretenimento.py",
+        "make_solo.py"
+      ],
+      "shared_notes": [],
+      "sound": false
+    },
+    {
+      "compositor": false,
+      "contract_skins": [
+        "gossip"
+      ],
+      "design": true,
+      "filesystem_complete": false,
+      "gaps": [
+        "compositor_proprio_ausente",
+        "som_proprio_ausente"
+      ],
+      "id": "novela",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [
+        "COMPARTILHADO.md"
+      ],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "promo"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente",
+        "som_proprio_ausente"
+      ],
+      "id": "promo",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": false
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "relatoproibido"
+      ],
+      "design": false,
+      "filesystem_complete": false,
+      "gaps": [
+        "design_ausente"
+      ],
+      "id": "relato_proibido",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    },
+    {
+      "compositor": true,
+      "contract_skins": [
+        "tribunalzap"
+      ],
+      "design": true,
+      "filesystem_complete": true,
+      "gaps": [],
+      "id": "tribunal_zap",
+      "makers": [
+        "make.py"
+      ],
+      "shared_notes": [],
+      "sound": true
+    }
+  ],
+  "hook_modes": {
+    "grok": 8,
+    "imagem": 5,
+    "omni": 2
+  },
+  "providers": {
+    "configured_variable_names": [
+      "GEMINI_API_KEY",
+      "KIE_API_KEY",
+      "OPENAI_API_KEY",
+      "PEXELS_API_KEY"
+    ],
+    "secret_values_captured": false
+  },
+  "read_only": true,
+  "schema_version": 1,
+  "secrets_policy": "arquivo .env excluido; somente nomes de variaveis do .env.exemplo",
+  "skins": [
+    {
+      "asset_sources": [
+        "SRC:pexels",
+        "SRC:gptimg"
+      ],
+      "composition": "Achadinhos",
+      "hook_mode": "grok",
+      "id": "achadinhos",
+      "qa_profile": "base",
+      "qa_retrofit": true,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/achadinhos/make_padrao.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:fofoqueira-natural"
+    },
+    {
+      "asset_sources": [
+        "SRC:grok",
+        "SRC:wikimedia",
+        "SRC:gptimg",
+        "SRC:pexels"
+      ],
+      "composition": "Arquivo",
+      "hook_mode": "grok",
+      "id": "arquivo",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/arquivo/make.py",
+      "sound": "SND:arquivo",
+      "voice": "VOZ:documentarista-grave"
+    },
+    {
+      "asset_sources": [
+        "SRC:grok",
+        "SRC:gptimg",
+        "SRC:pexels"
+      ],
+      "composition": "BrigaEstado",
+      "hook_mode": "grok",
+      "id": "brigaestado",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": true,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/briga_estado/make.py",
+      "sound": "SND:briga",
+      "voice": "VOZ:ancora-urgente"
+    },
+    {
+      "asset_sources": [
+        "SRC:gptimg"
+      ],
+      "composition": "CartasPerdidas",
+      "hook_mode": "imagem",
+      "id": "cartasperdidas",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/cartas_perdidas/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:documentarista-grave"
+    },
+    {
+      "asset_sources": [
+        "SRC:gptimg"
+      ],
+      "composition": "CausaFamilia",
+      "hook_mode": "imagem",
+      "id": "causafamilia",
+      "qa_profile": "viral_docu_v1",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/causa_familia/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:ancora-urgente"
+    },
+    {
+      "asset_sources": [
+        "SRC:pexels",
+        "SRC:wikimedia",
+        "SRC:gptimg"
+      ],
+      "composition": "Copa",
+      "hook_mode": "grok",
+      "id": "copa",
+      "qa_profile": "base",
+      "qa_retrofit": true,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/copa/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:narrador-esportivo"
+    },
+    {
+      "asset_sources": [
+        "SRC:grok",
+        "SRC:omni",
+        "SRC:wikimedia-pd",
+        "SRC:gptimg"
+      ],
+      "composition": "Corta",
+      "hook_mode": "grok",
+      "id": "corta",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova-real",
+        "corta+cta"
+      ],
+      "runner": "formatos/corta/make.py",
+      "sound": "SND:corta",
+      "voice": "VOZ:documentarista-grave"
+    },
+    {
+      "asset_sources": [
+        "SRC:grok",
+        "SRC:gptimg",
+        "SRC:pexels"
+      ],
+      "composition": "Esoterico",
+      "hook_mode": "grok",
+      "id": "esoterico",
+      "qa_profile": "base",
+      "qa_retrofit": true,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/esoterico/make.py | formatos/horoscopo/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:mistica"
+    },
+    {
+      "asset_sources": [
+        "SRC:omni",
+        "SRC:grok",
+        "SRC:wikimedia",
+        "SRC:stills-divulgacao",
+        "SRC:gptimg"
+      ],
+      "composition": "Gossip",
+      "hook_mode": "omni",
+      "id": "gossip",
+      "qa_profile": "base",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "revelação",
+        "payoff+cta"
+      ],
+      "runner": "formatos/novela/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:fofoqueira-natural"
+    },
+    {
+      "asset_sources": [
+        "SRC:omni",
+        "SRC:grok",
+        "SRC:gptimg",
+        "SRC:pexels"
+      ],
+      "composition": "Holerite",
+      "hook_mode": "omni",
+      "id": "holerite",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "susto",
+        "cta"
+      ],
+      "runner": "formatos/holerite/make_padrao.py (clonar padrão; make_holerite.py = ep fixo)",
+      "sound": "SND:holerite",
+      "voice": "VOZ:amigo-contador"
+    },
+    {
+      "asset_sources": [
+        "SRC:grok",
+        "SRC:gptimg",
+        "SRC:pexels"
+      ],
+      "composition": "Lendas",
+      "hook_mode": "grok",
+      "id": "lendas",
+      "qa_profile": "base",
+      "qa_retrofit": true,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/lenda/make.py",
+      "sound": "SND:terror",
+      "voice": "VOZ:documentarista-grave"
+    },
+    {
+      "asset_sources": [
+        "SRC:grok",
+        "SRC:wikimedia",
+        "SRC:gptimg",
+        "SRC:pexels"
+      ],
+      "composition": "Main",
+      "hook_mode": "grok",
+      "id": "main",
+      "qa_profile": "base",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/news/make_entretenimento.py (padrão)",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:ancora-urgente"
+    },
+    {
+      "asset_sources": [
+        "SRC:gptimg"
+      ],
+      "composition": "Promo",
+      "hook_mode": "imagem",
+      "id": "promo",
+      "qa_profile": "base",
+      "qa_retrofit": true,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/promo/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:ancora-urgente"
+    },
+    {
+      "asset_sources": [
+        "SRC:gptimg"
+      ],
+      "composition": "RelatoProibido",
+      "hook_mode": "imagem",
+      "id": "relatoproibido",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/relato_proibido/make.py",
+      "sound": "SND:terror",
+      "voice": "VOZ:sussurro-confissao"
+    },
+    {
+      "asset_sources": [
+        "SRC:gptimg"
+      ],
+      "composition": "TribunalZap",
+      "hook_mode": "imagem",
+      "id": "tribunalzap",
+      "qa_profile": "wow_v2",
+      "qa_retrofit": false,
+      "required_roles": [
+        "hook",
+        "prova",
+        "revelação",
+        "cta"
+      ],
+      "runner": "formatos/tribunal_zap/make.py",
+      "sound": "SND:base(sound_design.py)",
+      "voice": "VOZ:ancora-urgente"
+    }
+  ],
+  "snapshot_date": "2026-08-26",
+  "source_fingerprint_sha256": "e3e74424da4e19397b6f6b6e87bca6e45111f7390b7d97913bb2e2f1c8d5ecfa",
+  "source_root": "/Users/mac/Desktop/Volc Mídia Global/motor-video",
+  "summary": {
+    "contract_global_rules": 15,
+    "contract_niches": 15,
+    "contract_skins": 15,
+    "contract_voices": 14,
+    "files_scanned": 137,
+    "filesystem_complete_formats": 5,
+    "formats": 17,
+    "observed_final_renders": 38,
+    "renders_with_publication_snapshot": 2,
+    "renders_with_technical_qa": 20,
+    "renders_with_visual_qa": 4,
+    "source_files_hashed": 133
+  }
+}

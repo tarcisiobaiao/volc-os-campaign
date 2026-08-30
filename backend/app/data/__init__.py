@@ -1,0 +1,1 @@
+"""Canonical reference data (countries)."""

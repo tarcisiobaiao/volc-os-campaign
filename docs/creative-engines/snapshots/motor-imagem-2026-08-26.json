@@ -1,0 +1,2886 @@
+{
+  "artifacts": [
+    {
+      "bytes": 2158119,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "amostrario_tipografia",
+      "file": "amostrario_tipografia.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "d32f0877912ee4dda712a2d6079b54fd0f14bffbba9e236753b5ed5ddb097fab",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "amostrario_tipografia.veredito.json",
+          "sha256": "7a98f422de1ad4ae8e0adfafbc53419a4399cef235c664f8744ff538848469c8",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2007689,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_grafico",
+      "file": "anderson_grafico_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "23c15eba2b7206c897bc005d9b7edf36028d9277e5d52f2bf48acba1dd5b26fa",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_grafico_s01.pixelgate.json",
+          "sha256": "d9d89c8ab29c41fc3dfbba035c074b0f7031e7ce087f5f213493021014351cf8",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_grafico_s01.veredito.json",
+          "sha256": "1ff053e75a19c384a95c324e3bf2cd27bcbfd2275b349d19494cde407215c433",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2058616,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_grafico",
+      "file": "anderson_grafico_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "cfdf360ef314aacc2d36916efed54d4e1461c1826c9ff7e866f21f19998f7055",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_grafico_s02.pixelgate.json",
+          "sha256": "48048ad9ccbb84a6a5b86062a2f36d1288d70b76bf4751318cb2f88cab4c5938",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_grafico_s02.veredito.json",
+          "sha256": "51d9feb95922ddaaf0b75769a15114c9b3ee356e6ef0875ab0a9da64f6fc0d04",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2037015,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_grafico",
+      "file": "anderson_grafico_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "fab2ef59e1db37d251d2b3f456a3533197db797e5e1ed858e5b3366659c0de10",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_grafico_s03.pixelgate.json",
+          "sha256": "ce367254760ff1881ec322b71d5de5b0f71e3e61c891634a3030704a5df0eb71",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_grafico_s03.veredito.json",
+          "sha256": "3b02111226dac25a4e17ce400ac0877675222129108838de6d701f32e98cf65d",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2075054,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_grafico",
+      "file": "anderson_grafico_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "2a76524714b80829d4ce304ef0371c14730933ff418c8f052ff8494f66e6d823",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_grafico_s04.pixelgate.json",
+          "sha256": "64a567be64d90695dadc3519caa140de6351a3b7d734a78efd15d8810aeacbdc",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_grafico_s04.veredito.json",
+          "sha256": "c481dc12787af2bf8f29d18ee94b6b0811ee22376b31eaaa59ae6aaa76940ab3",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2073798,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_grafico",
+      "file": "anderson_grafico_s05.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "b0a0523888b0d6060bf494ffe4e9ee7e29ae6706cd23167cfa1093f57dc35c1d",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_grafico_s05.pixelgate.json",
+          "sha256": "a0c8670a9875647a39cc1928e799ac2020fd3648f789edeff23ae7c97dfa0624",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_grafico_s05.veredito.json",
+          "sha256": "bae9c75a708663c34c2622deeee489b2d3144612757e5d892dad81122e9eb764",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2093608,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_grafico",
+      "file": "anderson_grafico_s06.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "b1d58a9fb542899efa01df2f1050d0882430b72acdc5f56f01bb6cee43019d05",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_grafico_s06.pixelgate.json",
+          "sha256": "a880a43dc892995d4ab20fe53a21a9830f0beb8d7c2b1208daf28313e756863c",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_grafico_s06.veredito.json",
+          "sha256": "94875f59e5ce8065bf21bd540bb142c8563f32c537e93477cbeda1f4c92c4528",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2067542,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_sono",
+      "file": "anderson_sono_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "d27a3f605712ffd9a268ada7415a5654fc9f1c104429b1611da2deeaa53e3fae",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_sono_s01.pixelgate.json",
+          "sha256": "8be2e74d4d2d7c7ad3b22ab9e1dfbc639e95f231ac706e87452dd35de7c4f885",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_sono_s01.veredito.json",
+          "sha256": "41833b9dc00cc39ca464c265b35bbb548b52ea9025c9a5ca3fc8bed2c5d37c33",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2104047,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_sono",
+      "file": "anderson_sono_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "62965dc727d5fa4f52ecf1cedf4e4a12f7cbce4d05e9d2e95cba5b016ce7029e",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_sono_s02.pixelgate.json",
+          "sha256": "d15f9d4e2ebf022abb35a87ad2ff85342be1019ea03526d55f28727b2b462d47",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_sono_s02.veredito.json",
+          "sha256": "0e68cb628ee86a7df22394c94ae40ee9ebd53a0712b6610f9fbb7559c8fb48e6",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2093410,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_sono",
+      "file": "anderson_sono_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "3e21d3e40145f33c7183ebe36f0cbffdfa38278bd1c60403fac914abd5a06450",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "anderson_sono_s03.pixelgate.json",
+          "sha256": "c0bd0fb0f0fc8d8f3c4400a98d08ce82abb27c8c8e48b632dc378f6d2915c014",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_sono_s03.veredito.json",
+          "sha256": "4a78ebcad39454bf0ed123877f166c870523f4022eb222bab5513695732d88f6",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2121006,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_sono",
+      "file": "anderson_sono_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "30542800cfa55ab8ef61be14e894c188066afcab21b991a3402700addd30f151",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 1,
+          "checks_total": 15,
+          "ok": null,
+          "passed": false,
+          "path": "anderson_sono_s04.pixelgate.json",
+          "sha256": "4b90f0c6960ee0e44157b6a0ca20d19c01c79754c9f73e37903e87e3c47d20c5",
+          "status": "REJECTED"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_sono_s04.veredito.json",
+          "sha256": "94ec0a57333f10a04550e714b168254ea95e74f118dc3282e3c9482c15d5028b",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2121825,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_sono",
+      "file": "anderson_sono_s05.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "a07ed4fe131e3ecad877d0589f4fc4cca845d288771ea3f9e450cb5377650050",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 1,
+          "checks_total": 15,
+          "ok": null,
+          "passed": false,
+          "path": "anderson_sono_s05.pixelgate.json",
+          "sha256": "b8813d912b04b16547e2ba68c7a26b9214bbf5f3300b1f660c2e00c62449d2cb",
+          "status": "REJECTED"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_sono_s05.veredito.json",
+          "sha256": "94ea1a5aae8d11d425093e8da1983028c42b69dd7fa1c3ba7e96eebed91c4e75",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2005627,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_vitrine",
+      "file": "anderson_vitrine_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "5026703d14f59810c0162389f558fbc0b75a466fda336e800dcf4050b31101e6",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_vitrine_s01.veredito.json",
+          "sha256": "736d8cc2ef17b85af2d1ffec00667da1b4b2fa52c24f4c677edc80919f42b5ed",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2070184,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_vitrine",
+      "file": "anderson_vitrine_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "e7095b46d333a13757b10fa980f7a5719cddbce25719bab7c7a5fec8baa1204d",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_vitrine_s02.veredito.json",
+          "sha256": "3fcbf71952930e11540b81a3427707da31b41d9aaa0c98e71e4b84df0078cb62",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2067000,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_vitrine",
+      "file": "anderson_vitrine_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "e84221c6cec4b57b53921d83590a0910ca5070f58c9bcdb5efbf408b034689e3",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_vitrine_s03.veredito.json",
+          "sha256": "8fe2a21e30b97e59d82b3882e3193b424d9caba80d6cb40c177faf79c04083fd",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2036305,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_vitrine",
+      "file": "anderson_vitrine_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "2a48fe25bce5caa63a14734bf31b39fdcc722e24391d47dede69333640357fb3",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_vitrine_s04.veredito.json",
+          "sha256": "add6f5811885df4e5c129f25df7a6a04af02cd0027c3f9e57dc1d8466164983f",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2058699,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_vitrine",
+      "file": "anderson_vitrine_s05.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "761fde7d3929a0707de83a24ab26034b723f313bee52d056c3d4c52992f18f5e",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_vitrine_s05.veredito.json",
+          "sha256": "4186bb641614552ce3096302a97d23bffc9d3ddc860910beacb0632062288949",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2024233,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "anderson_vitrine",
+      "file": "anderson_vitrine_s06.png",
+      "kind": "rendered_output",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "72e79073571a09188e53fce2887d9eccefb2ba0a521ae3f4fd39efafc1c8f8a9",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "anderson_vitrine_s06.veredito.json",
+          "sha256": "9c6ddd8101f94fac4b12550bb3f1fc6278161561bb5e290c0ebbd10aa5212fa2",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2023322,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_food",
+      "file": "bg_food.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "fde972a3f5d63b80e2a4385f595a8d436668a027bb01ee87cfc9ec2729b91c5f",
+      "sidecars": {}
+    },
+    {
+      "bytes": 2254055,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_kintsugi",
+      "file": "bg_kintsugi.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "51aacbc2640b5084eb1bda4f613c5fafeb87c112649e8af7e03779d9bdf1ef0f",
+      "sidecars": {}
+    },
+    {
+      "bytes": 2151458,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_kintsugi_low",
+      "file": "bg_kintsugi_low.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "85a9a41abab737f9b550f1bef7c5db4ef4c4dd9e2adb4ae3665f7767c96d8642",
+      "sidecars": {}
+    },
+    {
+      "bytes": 2244008,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_kintsugi_medium",
+      "file": "bg_kintsugi_medium.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "f64a7c909d187340b277cc134eefe664ff63805028d5b5154d98e1749563903b",
+      "sidecars": {}
+    },
+    {
+      "bytes": 1617792,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_layoffs",
+      "file": "bg_layoffs.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "54dcc7b5ca3cd7e5c7dadd3580627854683ba4f16275564a83211ae15f16c163",
+      "sidecars": {}
+    },
+    {
+      "bytes": 1753208,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_news",
+      "file": "bg_news.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "e5d66753ca3f07b1540ae093f5e8f04f006b8a01f05f541920ae442b513816a7",
+      "sidecars": {}
+    },
+    {
+      "bytes": 1931687,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_plano_coluna_direita",
+      "file": "bg_plano_coluna_direita.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "a48833786632987b589f0e0e7f0cea64ef0603cf983c2fe862b989ba179bb8f2",
+      "sidecars": {}
+    },
+    {
+      "bytes": 1986790,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_plano_coluna_esquerda",
+      "file": "bg_plano_coluna_esquerda.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "9cef562cc1529473da3485ab2cb26446e2e808a18ce232b2bab07e2957831866",
+      "sidecars": {}
+    },
+    {
+      "bytes": 2031049,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_plano_diagonal_superior_direita",
+      "file": "bg_plano_diagonal_superior_direita.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "417919b9629aa1704e5b9728376ee7e8cd5c910020b86418678689066daca8be",
+      "sidecars": {}
+    },
+    {
+      "bytes": 1824822,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_plano_faixa_inferior",
+      "file": "bg_plano_faixa_inferior.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "39ead98c6b3fba707084a220108f2769fd4e53ebcd2ef1226a9ea880d3b5e408",
+      "sidecars": {}
+    },
+    {
+      "bytes": 1443437,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "bg_volcnews",
+      "file": "bg_volcnews.png",
+      "kind": "source_asset",
+      "production_mode": "support_or_unmapped",
+      "sha256": "e136ef75ef8fb15436b2be2d398b39ebbbe7d90701fa8ecf1fc08c046673f782",
+      "sidecars": {}
+    },
+    {
+      "bytes": 2100328,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "capas_referencia",
+      "file": "capas_referencia_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "9bc82a2832cd97351d87fc0318cacb30aa99fc52203d21185b3f25c7f368d3f8",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "capas_referencia_s01.pixelgate.json",
+          "sha256": "9498705083489bb5b610ef3afd9cc5ae0107b575b0b6cfd6556a1df0d8d4d43c",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "capas_referencia_s01.veredito.json",
+          "sha256": "99aca49c44cd61cc31dc93d8cf6c924f4986647844ad65b092e7d9d4a5483bd2",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2237737,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "capas_referencia",
+      "file": "capas_referencia_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "5cc533b7aa6cb102154f3990d964ea770aab4e8936a8e4f50d93051db58796cf",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "capas_referencia_s02.pixelgate.json",
+          "sha256": "6e7839b7e4f1a0223030e3c794a1f7d5f7ffdb8ab5019b3059bd6de010726ed1",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "capas_referencia_s02.veredito.json",
+          "sha256": "478d09778b845bcb49bbc487faed48188e0996e4ead541813f9cbf99fa717873",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2291761,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "capas_referencia",
+      "file": "capas_referencia_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "a3ffe7bc4e0f63ebd95879c97bec176cc33e33cab9971657945d5e4dc42d25a7",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "capas_referencia_s03.pixelgate.json",
+          "sha256": "2e87ddc0fce83e64d430eab91a1eef64cb9f1e05ec1526c3ebbfda43dd60f842",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "capas_referencia_s03.veredito.json",
+          "sha256": "10eecce0738ce4ab4472a8902b5c3bad08733b18fec0ed4cc843257c62d4d2d7",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2267671,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "capas_referencia",
+      "file": "capas_referencia_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "809726b7bf65c4eb8355b4e5addff780fc70248651803495184a52d3436840b6",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "capas_referencia_s04.pixelgate.json",
+          "sha256": "e24c4b5d68b1159b309e50df6de5b0a92272391e78fa9175847495dd9a48d48d",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "capas_referencia_s04.veredito.json",
+          "sha256": "40beebab93efad5d55383a84c78a0e7235629d423a699e6e3da5fc548735c53e",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2129980,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "capas_referencia",
+      "file": "capas_referencia_s05.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "b300c444d86b40e01018e8c893c1327653d9628a55ade2b220b76a5c26d4a457",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "capas_referencia_s05.pixelgate.json",
+          "sha256": "c571fe68c35d17f8bbfbcc69c8dae80e3879b8a08788f41d5d76b678466ffca4",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "capas_referencia_s05.veredito.json",
+          "sha256": "1b647a6b51eac1b07e61c36fb885de87b5f178beedbe606f0b84b60e27c0a28d",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2260203,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "capas_referencia",
+      "file": "capas_referencia_s06.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "375551dc4e6392689f6f715ea55a54f53d06685d5090a82c39450341a65ab455",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "capas_referencia_s06.pixelgate.json",
+          "sha256": "b645f2e8437aae9f0cccf1277fec6d21f1ac02f230d93ac39da53bff4b9f226f",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "capas_referencia_s06.veredito.json",
+          "sha256": "a9c70c87d3dc05b9b60d2d4144bf343f25a95b9c935af649d8f76abfc779699f",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 102085,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.dossier_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "bc5e4f454e8ec4bb4b19f8c58226d7fe5230fee44533f812302963b1c3c856bf",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.dossier_s01.pixelgate.json",
+          "sha256": "f5aefec5497efbd485b2f838eb2dbbdb9c53278c4acc36053c3a87a3b1f602ab",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.dossier_s01.veredito.json",
+          "sha256": "fe335120f2326f06c8d051ae3496f8af11356970f1b522278ed0ebde5be0e328",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 116178,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.dossier_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "51bc88d8f5a9feade1e72a3d1249e5033ca2e6fd3ba77c82e409dc382c952dc3",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.dossier_s02.pixelgate.json",
+          "sha256": "4afba4633006ca6b9994103f18e46696bccf3c8bd5a0ac207ae4e6979a412227",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.dossier_s02.veredito.json",
+          "sha256": "2641b1afd4e792d9348ddc1f9f59c53c4cfecff316335c5d1e941773f729d1c1",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 111076,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.dossier_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "ca8ade44eab3546cc3be6c2663c2e72c222dbe602cdb08b56de10576da4dfe1a",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.dossier_s03.pixelgate.json",
+          "sha256": "ee99a5e364ca05e389820dbbab0bb44836c649c725c6c3b15500d67035c9dfb3",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.dossier_s03.veredito.json",
+          "sha256": "5ac41361b09cf217bfc99d88ca1c834f4f5191268f97a05c58ed50d3c35a9a58",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 119333,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.dossier_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "9ae354964752d389f768ca7d8e8d431883a20c546864a5e5114859835d8479ee",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 18,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.dossier_s04.pixelgate.json",
+          "sha256": "97b448b979589ff3ecc6d1738b5c297b0ad40483f8cbe50296c5aa087e7ea0f5",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.dossier_s04.veredito.json",
+          "sha256": "4864767e8415cc130de017dca97edd23a0e6394defac55eed8dc481299701643",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1528954,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fx_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "56894f87de5dba036d6afcf8960f51e1c1620c315262c00eccc5d10b8f7e28d5",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fx_s01.pixelgate.json",
+          "sha256": "16bc81a63c45a58ba8720c151d9776a0f083084d7ac5cd2c678461d39b2285d8",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fx_s01.veredito.json",
+          "sha256": "85f9afadefb3b73e7c5b7c4b7005d7ab83693d6adb2946c777a01528423e3cd5",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1564043,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fx_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "da472d076df827dcb6a08ad8c9704de38607660cc1e73408a95ee7dc668cf078",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fx_s02.pixelgate.json",
+          "sha256": "00d87900c3808bfd679eb91bb71bf4e51fde21a76887e54c10f7aaf53668c231",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fx_s02.veredito.json",
+          "sha256": "c6e8a0ac27b37e1c8a4de19e6e70fe6f89f0cf6f3e6774b3d72d3ce81684b87e",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1558139,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fx_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "933f464d815088008837a6fd415ee0af741e76c9cb68e9f072e1080283f89dc6",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fx_s03.pixelgate.json",
+          "sha256": "1e5c9180d1605a6b6fb40052c50eb3279e9fa07c9f3f0539c8fc92394957febe",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fx_s03.veredito.json",
+          "sha256": "f838e406b0f453eb8594696d74714d7560b0d5ad2202084a701f4106efcd6b47",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1559981,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fx_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "fc3755fa3ee7b1a32ca36f58db64affb1d400d281c398e655e37a6b88277d725",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 18,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fx_s04.pixelgate.json",
+          "sha256": "0c1f7656f959ef5996353b5aa930a8deb58ae83b0ba0cecffea605a6062207c2",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fx_s04.veredito.json",
+          "sha256": "cded0c77f13bb4c43fce6cf2e42464764c5dcea66c7fce370ec9123a82917465",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1749357,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fxd_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "372bed78ea0b4e502723b22add012644992f7e97223f0fe9eb1ee3b1c6143d79",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fxd_s01.pixelgate.json",
+          "sha256": "f85983844ebd69bf1fc8165231e2dbfbf88a26e5f9a6aa33d371c767a8f98294",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fxd_s01.veredito.json",
+          "sha256": "fe335120f2326f06c8d051ae3496f8af11356970f1b522278ed0ebde5be0e328",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1760827,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fxd_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "1d4ec879cf2fe8d8f090e7aad8bfde8a8a7558633fab1ecd1282318887439ce0",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fxd_s02.pixelgate.json",
+          "sha256": "f1f5443b4f0fc9749d0b54020f46d9f3dd194e40fcf7fcdb974f89a4dd58adfc",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fxd_s02.veredito.json",
+          "sha256": "2641b1afd4e792d9348ddc1f9f59c53c4cfecff316335c5d1e941773f729d1c1",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1762890,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fxd_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "32eb4ebdd157975d6646299a1aa0e77acb7209b189457e9f2d77e6ff15f0b9e4",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fxd_s03.pixelgate.json",
+          "sha256": "b580fb4ec59c3e0b88d96487e8278ff8f8733fcab3ae1056e06f40762164219a",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fxd_s03.veredito.json",
+          "sha256": "5ac41361b09cf217bfc99d88ca1c834f4f5191268f97a05c58ed50d3c35a9a58",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1760273,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.fxd_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "76661e0d7a1d5994378e96608013f125a744779f8d117387b401aac560d02fb9",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 18,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.fxd_s04.pixelgate.json",
+          "sha256": "13789f9e0fc5074b9947d7d4ba9d02df74eaca9e0a1a85fb158bb90c8aa9250b",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.fxd_s04.veredito.json",
+          "sha256": "4864767e8415cc130de017dca97edd23a0e6394defac55eed8dc481299701643",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 83461,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.titanium_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "c87365eda5d0c9e3c1a87487e578d58b7c31801df7a61c3daa4e798d02108e41",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.titanium_s01.pixelgate.json",
+          "sha256": "bd583489b8074ed2e04df4797f469829f33a125f243b1c62aaf56884d6a2c256",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.titanium_s01.veredito.json",
+          "sha256": "1bb113568c87d3e6ce799c222338150646ed436f005bef2fb79998dc8429ef0e",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 96507,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.titanium_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "82e7e8775dba621c61d3e9b4573105d99cd9df8f226d8c9c3b4c747ab362662e",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.titanium_s02.pixelgate.json",
+          "sha256": "26e417dca297c54930c26485cd559f59604ec6ab535666343f002c2a8037b43f",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.titanium_s02.veredito.json",
+          "sha256": "5a001be14a07df538710e70dbb961d47f38b40a8a87edc827b6b3b108ae6e9aa",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 98038,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.titanium_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "d9a02be18225dd820f49e9275e53f2c63aa62e7199bcd7fc1931e2483c4349ed",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 15,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.titanium_s03.pixelgate.json",
+          "sha256": "0a21f69ea44d0b63f6a385583be32382258b806f6a4e2104fc8958e4872464fa",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.titanium_s03.veredito.json",
+          "sha256": "eb22c8a44eb682a4e034e946c25f61a96d4c6e0ecd30bd447228dd4d5dd0bc32",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 94572,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90.titanium_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "bd98cbcda036f86312a6c93d4746a3ab5374b90e64eb210ddd8666f070460cdb",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 18,
+          "ok": null,
+          "passed": true,
+          "path": "carrossel_produtividade_metodo90.titanium_s04.pixelgate.json",
+          "sha256": "f4f9a75f34662869612ccb5f9abb84affe13daddd63a7d71fb062fcb58fbbffe",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90.titanium_s04.veredito.json",
+          "sha256": "7d76b2d215deda84a14f57d45c30e8032a725732a3a5ee525e2035e410cfd0eb",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1528954,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "56894f87de5dba036d6afcf8960f51e1c1620c315262c00eccc5d10b8f7e28d5",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90_s01.veredito.json",
+          "sha256": "fb7a9b7fd786ebbf82c625198ae09accd256c8cd73f01b66925089e50ab599d1",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1564043,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "da472d076df827dcb6a08ad8c9704de38607660cc1e73408a95ee7dc668cf078",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90_s02.veredito.json",
+          "sha256": "474d83d3b1451e403e5dd2a92e9096434e3adcd27cf3ae227fee0cba769d5996",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1558139,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "933f464d815088008837a6fd415ee0af741e76c9cb68e9f072e1080283f89dc6",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90_s03.veredito.json",
+          "sha256": "1e660630d4aa6966f47742e9001210cfca38a12800f7a456af6ae7d4496d095a",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1559981,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "carrossel_produtividade_metodo90",
+      "file": "carrossel_produtividade_metodo90_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "typography_only",
+      "sha256": "fc3755fa3ee7b1a32ca36f58db64affb1d400d281c398e655e37a6b88277d725",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "carrossel_produtividade_metodo90_s04.veredito.json",
+          "sha256": "23a94135455ebbc384bf92c9b8f092af211493a31940e508c258b09448fee483",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 44825,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_antes_01",
+      "file": "cmp_antes_01.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "5fbe9b2c89141ba771060e5c453e0effd50185d0ad00c341c787a1cd230b52ab",
+      "sidecars": {}
+    },
+    {
+      "bytes": 47160,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_antes_02",
+      "file": "cmp_antes_02.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "dffd534b0f509729231c5d5508ad76f4e2f8b9596879a7cc8433f1d8558f3695",
+      "sidecars": {}
+    },
+    {
+      "bytes": 43133,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_antes_03",
+      "file": "cmp_antes_03.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "a5649987ece32793c0dfac2ed3f346c7a0c1eaad0930e0874c08bd415f2ebb9e",
+      "sidecars": {}
+    },
+    {
+      "bytes": 45022,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_antes_04",
+      "file": "cmp_antes_04.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "b4e0676e6f19d3501b164bb6a0e6176613c9ecf6c9ca5c145ddbf9694a10336c",
+      "sidecars": {}
+    },
+    {
+      "bytes": 44794,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_antes_05",
+      "file": "cmp_antes_05.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "886ec1c11320718a544c584e0024df2562ce8294e816677cbaadac31b51a1f4b",
+      "sidecars": {}
+    },
+    {
+      "bytes": 43709,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_antes_06",
+      "file": "cmp_antes_06.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "b7071cb4b78483edc01b1b4effcde659b9e823d7d585cda4fb5df73c0baa65ce",
+      "sidecars": {}
+    },
+    {
+      "bytes": 44755,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_depois_01",
+      "file": "cmp_depois_01.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "ae3a42db5d0f823ee9e5a2b7a0593c192ebc96b1a0fb59674ca1cc1d9f8b77b9",
+      "sidecars": {}
+    },
+    {
+      "bytes": 47091,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_depois_02",
+      "file": "cmp_depois_02.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "517784e49c38804485eebf93768b383a1a621d1f916c4ce3a65c70d85ccca52b",
+      "sidecars": {}
+    },
+    {
+      "bytes": 45677,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_depois_03",
+      "file": "cmp_depois_03.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "0c2eedc2015c6fee87b4de1276507dbdf1b83c9b3a803e62e24f510f4ef4cd84",
+      "sidecars": {}
+    },
+    {
+      "bytes": 45548,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_depois_04",
+      "file": "cmp_depois_04.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "9f480f38ad23d2b8e8c34959dc4a39f14b3517788bd016821eb6748d25c588d3",
+      "sidecars": {}
+    },
+    {
+      "bytes": 45839,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_depois_05",
+      "file": "cmp_depois_05.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "3c5092ffab43f3a0853e42423d33ebab4c934d8713ef5353b7c4fe5d1d0fec61",
+      "sidecars": {}
+    },
+    {
+      "bytes": 44905,
+      "dimensions": [
+        520,
+        650
+      ],
+      "family": "cmp_depois_06",
+      "file": "cmp_depois_06.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "c76d98a74d8a4fc47031bdd22fe5ebda997a3adaf01890fc5a8eb36628068505",
+      "sidecars": {}
+    },
+    {
+      "bytes": 2052688,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "falso_traco",
+      "file": "falso_traco.png",
+      "kind": "adversarial_fixture",
+      "production_mode": "deterministic_graphics_and_typography",
+      "sha256": "7d5a449d350d8c7fdd55de869ab29cd9ed1d76e2451f77c5371a758185dac195",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "falso_traco.pixelgate.json",
+          "sha256": "2a05c6072000a9b2dfbc5bf0d4f7313adb574cc1dee754c8c574b56a4a7d221f",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "falso_traco.veredito.json",
+          "sha256": "f5d40be7edb7a633b7720b16ab973773066a0d9b373398bad221879ff621f535",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2305258,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "food_marmita",
+      "file": "food_marmita.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "c315117518affbb43e4886022bc0f7d8ac5c2fb17474cd75a3af29b8b2243bf7",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "food_marmita.pixelgate.json",
+          "sha256": "58a0450f1b3aeed70dfe1f5c9728b574a488c7958c54addd8141961b7b191ea9",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "food_marmita.veredito.json",
+          "sha256": "d0f479c0b98062aa9ed32f972fb70f2d874923576e6cd5fa2dc8e4d571eccb5d",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2739758,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "kintsugi_gentileza",
+      "file": "kintsugi_gentileza.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "0d7c66e2c66c7ad219c5445de9121a205fc1aecd48a1ff47480cef5daf51f223",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "kintsugi_gentileza.pixelgate.json",
+          "sha256": "488c87009b5d77a6771340f1e62b2c7a7a7a249eae0bd545281f697c40e15e3d",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "kintsugi_gentileza.veredito.json",
+          "sha256": "800563bad67b86fb138d6647e35bf02a5368edf4364ca7d0030e938bd8ef4bb4",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2631359,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "kintsugi_low",
+      "file": "kintsugi_low.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "018b5f434a85fe064d26ee977553786ee0d7402b446918d59fec9ba97b4d2107",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "kintsugi_low.pixelgate.json",
+          "sha256": "60dee35cb7e447ce04bfdf05082024900a4982cb9eb514be95f3782b57293e64",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "kintsugi_low.veredito.json",
+          "sha256": "8f09abbd7ebb2e53a750a1afddebc119bc8c45148fc9f89c2427e16fd798ed3d",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2663761,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "kintsugi_medium",
+      "file": "kintsugi_medium.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "936d0f6512399ea1110ef7d942ebd663fdac25c9f656b646c93ef9aedde67d23",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "kintsugi_medium.pixelgate.json",
+          "sha256": "301882ed48624054594ed7dadd102bfe73a937b9d0995926c0b4494b4052de8b",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "kintsugi_medium.veredito.json",
+          "sha256": "5ac06d0425a0ab15a56f77e8e12d5ae42103ff5b80eb7f1cef92831a464902ec",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2736772,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "kintsugi_ouro",
+      "file": "kintsugi_ouro.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "37ff453fb4e8d80f08de0ad69c70c0b5914f0a256e755043c15dd11dd5435668",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "kintsugi_ouro.pixelgate.json",
+          "sha256": "3b1dc783c5f53e9ae61b1a604cf1476681e247ffa525a1f738661ffec152dc87",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "kintsugi_ouro.veredito.json",
+          "sha256": "0fb284ef220f4f0f9856699ed378b9018c5157076cbc843288a3aa3d67e77b4e",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2454220,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "kintsugi_planejado",
+      "file": "kintsugi_planejado.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "f7e14efab99e4d46c5f89c2748d5bde536c545bf64d821d970a96562f1004307",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 12,
+          "ok": null,
+          "passed": true,
+          "path": "kintsugi_planejado.pixelgate.json",
+          "sha256": "00b5f7811598aa3f3b567ea2c9f328c990d65df8eda02c1d110822fd2d00d3fd",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "kintsugi_planejado.veredito.json",
+          "sha256": "8e27e6a8aedc04fa68670a97557d1e2f99a175c1ba71f5b3330dd8c0cdd9b1b9",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1859495,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "layoffs_variacoes",
+      "file": "layoffs_variacoes_s01.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "8c72e98e057dc687b9456f72a34078f91691a6119cfe3b78456a4ed69ebb7438",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "layoffs_variacoes_s01.pixelgate.json",
+          "sha256": "2bc3d613f1a7d9cd6f180dce03b06b2eabf05e48c0b20bac7968475b55685541",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "layoffs_variacoes_s01.veredito.json",
+          "sha256": "aa807d5fd519127503e875d7f5b6ef18f78a5fbc887c1bef095edaf8d0500025",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1866025,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "layoffs_variacoes",
+      "file": "layoffs_variacoes_s02.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "993c32d46f745bf4fee5a63bca8fa8ce9e3a731190a7680d4dfc29ba4275798b",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "layoffs_variacoes_s02.pixelgate.json",
+          "sha256": "1d08672fd183805dd2b4c73449b031bec03b20646c65356c036c0941d15bd3c2",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "layoffs_variacoes_s02.veredito.json",
+          "sha256": "e73de01366a10408bd9fc99242abc41283cf951bdf14eec52ed04df5ff1dbbd3",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1867118,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "layoffs_variacoes",
+      "file": "layoffs_variacoes_s03.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "cac480abe937a0e5b48b3ccaba0fc1bb2f23f55ad011a0c6f659ce1cca86c331",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "layoffs_variacoes_s03.pixelgate.json",
+          "sha256": "6e27440c0e7a396a9dd211df83a17012c10e2279574b3d2a9496f8244a79f70b",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "layoffs_variacoes_s03.veredito.json",
+          "sha256": "907477c57ec20c6bf52a91c5fd01e2356a9477a23c66dbe90088aa1032de3708",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1844139,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "layoffs_variacoes",
+      "file": "layoffs_variacoes_s04.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "0ae5a344ab5e66e67a4b34e3bc585a8607162af6f5f71e66cf23d0ea375dfcfb",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "layoffs_variacoes_s04.pixelgate.json",
+          "sha256": "57c80305b60c872d0cbd99dbf443353727a598d59db724f5da9fb7f73bb0f7a9",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "layoffs_variacoes_s04.veredito.json",
+          "sha256": "3a8e00ab253a9a1583076557d799784a362e243737bbbab6a9bb09f81bb92f27",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1898365,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "layoffs_variacoes",
+      "file": "layoffs_variacoes_s05.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "dae61bda3f0cca483bf2f9c602f4997942de390b4036395e1e38e410631d7208",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "layoffs_variacoes_s05.pixelgate.json",
+          "sha256": "9f51c199e8a6a18c21a69971328b9b0354c36d625150eb7fb323884d0b9ed16f",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "layoffs_variacoes_s05.veredito.json",
+          "sha256": "58a8d5edebde32da7f2fdb082d0d185a250096e4a25fc71857841b7ae53074e2",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1919446,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "layoffs_variacoes",
+      "file": "layoffs_variacoes_s06.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "bed455a9d9a13772a457da208c5b882ad73d44722febdcb229d29a023708c873",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "layoffs_variacoes_s06.pixelgate.json",
+          "sha256": "1b7373f9a8b95314de1656f3c693cd6873e27a7cc8e553935bf15b80a124a8a3",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "layoffs_variacoes_s06.veredito.json",
+          "sha256": "d1959168ca5c9ff130a953933f8ebd10ac69cf328160d651d8127fccc7b4faeb",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1742610,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "post_2026-08-15_inss-13o_news_poc",
+      "file": "post_2026-08-15_inss-13o_news_poc.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "75384d580e143cbc79016c5443d50d14d0a64e146e586cc86356f337702468d6",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "post_2026-08-15_inss-13o_news_poc.pixelgate.json",
+          "sha256": "bed4f4d37e0593b166a2fc1dceb95dc9d89b77c4738a785b9b1450e8c1e75417",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "post_2026-08-15_inss-13o_news_poc.veredito.json",
+          "sha256": "11f9f2ce94b31742b6b7c26944bc5c8e648069eacf9ae411625cc5ca9fdede30",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1646098,
+      "dimensions": [
+        1080,
+        1350
+      ],
+      "family": "post_2026-08-15_inss-13o_news_poc",
+      "file": "post_2026-08-15_inss-13o_news_poc_runb.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "f425b72da35f1755d36ccac2ca32fa7f0bf64503f67d2ada366c86e575f59a4c",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "post_2026-08-15_inss-13o_news_poc_runb.veredito.json",
+          "sha256": "b746ea62cd679a0cac672fd94ab0e662508ad00d2a0c6785863fbf6d94aef130",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1857090,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "volcnews_ia_demissoes",
+      "file": "volcnews_ia_demissoes.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "c18d5405b0f2dd1a376184cd9be423c021487d46f213b4cd106af1499e9fcf0f",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "volcnews_ia_demissoes.pixelgate.json",
+          "sha256": "965093899e828fc1c4d0ba84a7367ec07795b474300e3b66be25695364056781",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "volcnews_ia_demissoes.veredito.json",
+          "sha256": "e207b242d4eef3a3e183080aa2a72b1eb37356199b85bb5b603e8c2d07b2eebb",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1793114,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "volcnews_iphone_laranja",
+      "file": "volcnews_iphone_laranja.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "f4dd369fe9229f311d5cc530704de479f5643aa550af510e302717331278055d",
+      "sidecars": {
+        "pixel_gate": {
+          "checks_failed": 0,
+          "checks_total": 9,
+          "ok": null,
+          "passed": true,
+          "path": "volcnews_iphone_laranja.pixelgate.json",
+          "sha256": "571f55cd08c9196dcce88f6c53b2c0d90b9b2959d21755984031adde9686bf9b",
+          "status": "PIXEL_READY"
+        },
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "volcnews_iphone_laranja.veredito.json",
+          "sha256": "69fdc6108fc3e4d4b54863d5b5182583c6206f82c9472531a0bb54b705595a39",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 2360832,
+      "dimensions": [
+        1080,
+        1920
+      ],
+      "family": "volcnews_iphone_laranja",
+      "file": "volcnews_iphone_laranja__demandgen__img_9x16.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "e55d23edb5e17b43176f06deb9cf6eb65d504b2751546015e7c7335856034827",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "volcnews_iphone_laranja__demandgen__img_9x16.veredito.json",
+          "sha256": "bdb53ba1b4e557cbe9ecc3e2e990bac97a6d10e233e4a7480bbb8e7e52020690",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 996965,
+      "dimensions": [
+        1200,
+        628
+      ],
+      "family": "volcnews_iphone_laranja",
+      "file": "volcnews_iphone_laranja__pmax__img_191x1.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "bd7ea6497ed9247befb10731a806130047ba8f60c2fab1ff1c06bbd3ff307d3e",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "volcnews_iphone_laranja__pmax__img_191x1.veredito.json",
+          "sha256": "0ef75f68df69db955efbb436f41e08fb38e2c8706c7d1fb3b89b0f9cf05a2553",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1699441,
+      "dimensions": [
+        1200,
+        1200
+      ],
+      "family": "volcnews_iphone_laranja",
+      "file": "volcnews_iphone_laranja__pmax__img_1x1.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "d09c1596bbc93defbded4f2f936a0794627f5bd829be78f8dd9de9194a20e7f2",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "volcnews_iphone_laranja__pmax__img_1x1.veredito.json",
+          "sha256": "6750c7a4bc619744be14a470a798937c5cc67f25a42a1badf75bbd5059f85435",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 1796719,
+      "dimensions": [
+        1088,
+        1360
+      ],
+      "family": "volcnews_iphone_laranja",
+      "file": "volcnews_iphone_laranja__pmax__img_4x5.png",
+      "kind": "rendered_output",
+      "production_mode": "prensa_hybrid_llm_asset",
+      "sha256": "6de865d400111cddb49974fd1be1448f75f2df7163128aadc31e937bfc9886fc",
+      "sidecars": {
+        "verdict": {
+          "checks_failed": 0,
+          "checks_total": 0,
+          "ok": true,
+          "passed": null,
+          "path": "volcnews_iphone_laranja__pmax__img_4x5.veredito.json",
+          "sha256": "1079a3fd7e0691fd5ca9198179b0a9936f2527a6f41db3e1eb2cdf4e5da1c37d",
+          "status": null
+        }
+      }
+    },
+    {
+      "bytes": 85822,
+      "dimensions": [
+        720,
+        900
+      ],
+      "family": "web",
+      "file": "web_s01.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "f852d24da7f30c8f57996a70be2de5b7bb0da18fc7629ee772245e3b798a7fbe",
+      "sidecars": {}
+    },
+    {
+      "bytes": 89502,
+      "dimensions": [
+        720,
+        900
+      ],
+      "family": "web",
+      "file": "web_s02.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "e7a32d4d94d1a6501c7abce52f3ed6f6ed0660dfd91927c554d94d91c10cfabb",
+      "sidecars": {}
+    },
+    {
+      "bytes": 83075,
+      "dimensions": [
+        720,
+        900
+      ],
+      "family": "web",
+      "file": "web_s03.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "e250fdc6cde348bf547054e39dd0b62cbc02eefccfd0ae8dbd018a27642d80c7",
+      "sidecars": {}
+    },
+    {
+      "bytes": 87249,
+      "dimensions": [
+        720,
+        900
+      ],
+      "family": "web",
+      "file": "web_s04.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "a07b14aee3f0cde8a8d2bca4018596a231e14f6caf984bd72a9c6948dd93cd81",
+      "sidecars": {}
+    },
+    {
+      "bytes": 86575,
+      "dimensions": [
+        720,
+        900
+      ],
+      "family": "web",
+      "file": "web_s05.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "da97d92cf06b98469a709fc13bf52a61310e3492c67b1a37763328c5ff654ca4",
+      "sidecars": {}
+    },
+    {
+      "bytes": 85204,
+      "dimensions": [
+        720,
+        900
+      ],
+      "family": "web",
+      "file": "web_s06.jpg",
+      "kind": "comparison_evidence",
+      "production_mode": "support_or_unmapped",
+      "sha256": "0c3d874dcf7450192e7d8574d57ed0476e8f81af85acf020558b6609fac24601",
+      "sidecars": {}
+    }
+  ],
+  "components": {
+    "INDICE.md": {
+      "bytes": 4299,
+      "files": 1
+    },
+    "bancada-n8n": {
+      "bytes": 837250,
+      "files": 20
+    },
+    "compartilhado": {
+      "bytes": 288853432,
+      "files": 379
+    },
+    "contrato": {
+      "bytes": 10962831,
+      "files": 33
+    },
+    "dace": {
+      "bytes": 2524823,
+      "files": 232
+    },
+    "destinos": {
+      "bytes": 14070836,
+      "files": 34
+    },
+    "positivo": {
+      "bytes": 640568,
+      "files": 151
+    },
+    "prensa": {
+      "bytes": 48201,
+      "files": 6
+    }
+  },
+  "extensions": {
+    ".bak": 1,
+    ".css": 2,
+    ".exemplo": 1,
+    ".html": 3,
+    ".ini": 1,
+    ".j2": 31,
+    ".jpg": 18,
+    ".json": 242,
+    ".md": 86,
+    ".png": 165,
+    ".py": 180,
+    ".sh": 1,
+    ".toml": 2,
+    ".ts": 14,
+    ".tsx": 65,
+    ".ttf": 10,
+    ".txt": 8,
+    ".yaml": 25,
+    "[no_extension]": 1
+  },
+  "historical_output": {
+    "byte_identical_to_current_same_name": 64,
+    "images": 71,
+    "path": "/Users/mac/Desktop/Volc Mídia Global/motor-imagem/compartilhado/prensa-poc/out_antes_costura",
+    "purpose": "before_after_evidence_not_current_authority"
+  },
+  "production_modes": {
+    "deterministic_graphics_and_typography": 12,
+    "prensa_hybrid_llm_asset": 26,
+    "typography_only": 26
+  },
+  "read_only": true,
+  "rendered_families": {
+    "amostrario_tipografia": 1,
+    "anderson_grafico": 6,
+    "anderson_sono": 5,
+    "anderson_vitrine": 6,
+    "capas_referencia": 6,
+    "carrossel_produtividade_metodo90": 20,
+    "food_marmita": 1,
+    "kintsugi_gentileza": 1,
+    "kintsugi_low": 1,
+    "kintsugi_medium": 1,
+    "kintsugi_ouro": 1,
+    "kintsugi_planejado": 1,
+    "layoffs_variacoes": 6,
+    "post_2026-08-15_inss-13o_news_poc": 2,
+    "volcnews_ia_demissoes": 1,
+    "volcnews_iphone_laranja": 5
+  },
+  "schema_version": 1,
+  "skins": [
+    {
+      "effects": [
+        "grao",
+        "halacao_accent",
+        "vazamento",
+        "verniz",
+        "vinheta"
+      ],
+      "file": "tokens_anderson.json",
+      "font_files": [
+        "fonts/BarlowCondensed-Bold.ttf",
+        "fonts/BarlowCondensed-Medium.ttf",
+        "fonts/InstrumentSerif-Italic.ttf",
+        "fonts/Inter-Variable.ttf"
+      ],
+      "id": "anderson",
+      "sha256": "4daf7d2582d95aa2e12667ffa1751c32b77e95ade08643b5e747715a3056f198",
+      "version": "1.0.0-poc"
+    },
+    {
+      "effects": [
+        "grao",
+        "sangria",
+        "verniz",
+        "vinheta"
+      ],
+      "file": "tokens_dossier.json",
+      "font_files": [
+        "fonts/CormorantGaramond-Variable.ttf",
+        "fonts/InstrumentSerif-Italic.ttf",
+        "fonts/Inter-Variable.ttf",
+        "fonts/SourceSerif4-Variable.ttf"
+      ],
+      "id": "dossier",
+      "sha256": "21aff0b3fc3291100ab9c50efca40b99a13fa934e65ef494565c381138c1fc74",
+      "version": "1.4.0-poc"
+    },
+    {
+      "effects": [
+        "grao",
+        "vinheta"
+      ],
+      "file": "tokens_food.json",
+      "font_files": [
+        "fonts/Archivo-Variable.ttf"
+      ],
+      "id": "food",
+      "sha256": "c7c2ac0713ffe0adc9c96aab89e482ea059c2d761c64c957a00a73d056f52652",
+      "version": "1.0.0-poc"
+    },
+    {
+      "effects": [
+        "grao",
+        "halacao_accent",
+        "vinheta"
+      ],
+      "file": "tokens_kintsugi.json",
+      "font_files": [
+        "fonts/InstrumentSerif-Italic.ttf",
+        "fonts/Inter-Variable.ttf"
+      ],
+      "id": "kintsugi",
+      "sha256": "a73a27ac516bfe9af57b98fc480bd544fca29d282955f622c88a1e1bf89d69db",
+      "version": "4.0.0-poc"
+    },
+    {
+      "effects": [
+        "grao",
+        "vazamento",
+        "vinheta"
+      ],
+      "file": "tokens_news.json",
+      "font_files": [
+        "fonts/Inter-Variable.ttf"
+      ],
+      "id": "news",
+      "sha256": "87f084d30d228345edfa724f0e260e98be729dcf8ebd54420088e9a4cae9bd90",
+      "version": "3.2.0-poc"
+    },
+    {
+      "effects": [
+        "grao",
+        "halacao_accent",
+        "vazamento",
+        "verniz",
+        "vinheta"
+      ],
+      "file": "tokens_titanium.json",
+      "font_files": [
+        "fonts/BarlowCondensed-Bold.ttf",
+        "fonts/BarlowCondensed-Medium.ttf",
+        "fonts/InstrumentSerif-Italic.ttf",
+        "fonts/Inter-Variable.ttf"
+      ],
+      "id": "titanium",
+      "sha256": "d9b086aae11893a3ae4ba83e3db4fab609f825bc296abef7b2f17e73960017f1",
+      "version": "1.5.0-poc"
+    },
+    {
+      "effects": [
+        "grao",
+        "vinheta"
+      ],
+      "file": "tokens_volcnews.json",
+      "font_files": [
+        "fonts/Archivo-Variable.ttf",
+        "fonts/BodoniModa-Italic.ttf",
+        "fonts/IBMPlexMono-Light.ttf"
+      ],
+      "id": "volcnews",
+      "sha256": "541dcb19bab80b4e89bd55c31a2bc278f11541f372295656c55587fb90e03d8b",
+      "version": "1.1.0-poc"
+    }
+  ],
+  "snapshot_date": "2026-08-26",
+  "source_fingerprint_sha256": "9a348cab5df286c47915fa7480e85f2d2eda14925515d7bbfa14a58c9c8072a2",
+  "source_root": "/Users/mac/Desktop/Volc Mídia Global/motor-imagem",
+  "specs": [
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "dots",
+        "frame",
+        "text",
+        "texture"
+      ],
+      "production_mode": "typography_only",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "d288c1b8c54f0d21f4562d2d922f79135caac0214828fc2d68bad87551a74cd1",
+      "skin": "VOS:titanium-protocol",
+      "skin_version": "1.0.0-poc",
+      "slides": 4,
+      "source": "spec_accent_estourado.json",
+      "spec_id": "carrossel_accent_estourado"
+    },
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "typography_only",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "872dc441f817000bc211f9f1828b10cae36084a1b6da5d17e87947f4251253d0",
+      "skin": "VOS:titanium-protocol",
+      "skin_version": "1.4.0-poc",
+      "slides": 1,
+      "source": "spec_amostrario.json",
+      "spec_id": "amostrario_tipografia"
+    },
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "dots",
+        "frame",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "typography_only",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "f77d557235d82ea9c32d20453ee67a06a6d3b46dbbc49be6c0a53ff87eeabefc",
+      "skin": "VOS:titanium-protocol",
+      "skin_version": "1.5.0-poc",
+      "slides": 5,
+      "source": "spec_anderson.json",
+      "spec_id": "anderson_sono"
+    },
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "colunas",
+        "dots",
+        "frame",
+        "medidor",
+        "tabela",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "deterministic_graphics_and_typography",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "548aa6e320a293db41cbdd82169d69af1c72655b06efd4392533a930a19e4743",
+      "skin": "VOS:anderson-navy",
+      "skin_version": "1.0.0-poc",
+      "slides": 6,
+      "source": "spec_anderson2.json",
+      "spec_id": "anderson_vitrine"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "dots",
+        "frame",
+        "image",
+        "scrim",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "8c93868ca80317847a0e4ed63684cf0d4fc8bd5e3225dbc14aa69e3d1ab799f3",
+      "skin": "VOS:titanium-protocol",
+      "skin_version": "1.4.0-poc",
+      "slides": 6,
+      "source": "spec_capas.json",
+      "spec_id": "capas_referencia"
+    },
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "dots",
+        "frame",
+        "rect",
+        "text",
+        "texture",
+        "vazamento",
+        "vinheta"
+      ],
+      "production_mode": "typography_only",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "e9033d14398803cba9fb6bdff6fd9e4bef981c65934e1093f0868bfbdbf055dc",
+      "skin": "VOS:titanium-protocol",
+      "skin_version": "1.1.0-poc",
+      "slides": 4,
+      "source": "spec_carrossel.json",
+      "spec_id": "carrossel_produtividade_metodo90"
+    },
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "dots",
+        "frame",
+        "grafico",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "deterministic_graphics_and_typography",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "722ebfbde44a38aa338b5b854af1b3e69dd5dfac2bca82d6f96a50227608e9cf",
+      "skin": "VOS:anderson-navy",
+      "skin_version": "1.0.0-poc",
+      "slides": 1,
+      "source": "spec_falso_traco.json",
+      "spec_id": "falso_traco"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "773b9834b3da01170a3964e5b8559090ae5ea102018aa4d615b6d19d1b21a562",
+      "skin": "VOS:food-viral",
+      "skin_version": "1.0.0-poc",
+      "slides": 1,
+      "source": "spec_food.json",
+      "spec_id": "food_marmita"
+    },
+    {
+      "asset_kinds": [],
+      "layer_types": [
+        "dots",
+        "frame",
+        "grafico",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "deterministic_graphics_and_typography",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "dc443f229b9fa00c068e1bc6d5ac888e330269bc77b4da9c78cd5d56e32b160b",
+      "skin": "VOS:anderson-navy",
+      "skin_version": "1.0.0-poc",
+      "slides": 6,
+      "source": "spec_grafico.json",
+      "spec_id": "anderson_grafico"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "e7d05a2145efc393c9e52667dddcab7a3bfeab3845e42949db35dd4711280456",
+      "skin": "VOS:kintsugi",
+      "skin_version": "4.0.0-poc",
+      "slides": 1,
+      "source": "spec_kintsugi.json",
+      "spec_id": "kintsugi_gentileza"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "0f76c735af9ad8de473035797be4bde1cf90e94f4697710750aba4506330454b",
+      "skin": "VOS:kintsugi",
+      "skin_version": "4.0.0-poc",
+      "slides": 1,
+      "source": "spec_kintsugi_b.json",
+      "spec_id": "kintsugi_ouro"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "f3758d6c78b89539fe78b9a76dae5ea25a48c7206df6acd49d68202a669fc65d",
+      "skin": "VOS:kintsugi",
+      "skin_version": "4.0.0-poc",
+      "slides": 1,
+      "source": "spec_kintsugi_low.json",
+      "spec_id": "kintsugi_low"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "a7d7ae8f2e5168d0879e67fb4e8bc4ae311d83490f55cf2a30a177418e5cbfea",
+      "skin": "VOS:kintsugi",
+      "skin_version": "4.0.0-poc",
+      "slides": 1,
+      "source": "spec_kintsugi_medium.json",
+      "spec_id": "kintsugi_medium"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "17708c26056a85bd0ecc10fe302e94463d1ce700c8c9c1db7f99aa5ac6757158",
+      "skin": "VOS:kintsugi",
+      "skin_version": "4.0.0-poc",
+      "slides": 1,
+      "source": "spec_kintsugi_planejado.json",
+      "spec_id": "kintsugi_planejado"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "d7c476276ef5f5ddce0dcef3fb484ca643764e13d774747d39c4e8e38c748519",
+      "skin": "VOS:volc-news",
+      "skin_version": "1.1.0-poc",
+      "slides": 1,
+      "source": "spec_layoffs.json",
+      "spec_id": "volcnews_ia_demissoes"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "text",
+        "texture",
+        "vazamento",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "3405a47b47bf2f837f824083525f921ae1fd3d36cd859d2f7e1014e65e478cb4",
+      "skin": "VOS:volc-news",
+      "skin_version": "1.1.0-poc",
+      "slides": 6,
+      "source": "spec_layoffs_var.json",
+      "spec_id": "layoffs_variacoes"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "scrim",
+        "text",
+        "texture",
+        "vazamento",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "0f686029a34bd4963decb8b36bd5a41eb8d9894ec325d5d1736f4f8406683952",
+      "skin": "VOS:prime-editorial",
+      "skin_version": "2.3.0-poc",
+      "slides": 1,
+      "source": "spec_news.json",
+      "spec_id": "post_2026-08-15_inss-13o_news_poc"
+    },
+    {
+      "asset_kinds": [
+        "photo_ia"
+      ],
+      "layer_types": [
+        "frame",
+        "image",
+        "text",
+        "texture",
+        "vinheta"
+      ],
+      "production_mode": "prensa_hybrid_llm_asset",
+      "schema_version": "post.spec/1.0.0-poc",
+      "sha256": "c9b557e61a8922a7e84c14ee46c6a4d119bbefdaf4a65241136cd075732489b1",
+      "skin": "VOS:volc-news",
+      "skin_version": "1.1.0-poc",
+      "slides": 1,
+      "source": "spec_volcnews.json",
+      "spec_id": "volcnews_iphone_laranja"
+    }
+  ],
+  "summary": {
+    "adversarial_fixtures": 1,
+    "comparison_evidence": 18,
+    "files_scanned": 856,
+    "images_in_prensa_out": 94,
+    "outputs_with_pixel_gate_passed": 47,
+    "outputs_with_verdict_ok": 65,
+    "rendered_outputs": 64,
+    "skins": 7,
+    "source_assets": 11,
+    "source_files_hashed": 443,
+    "specs": 18
+  }
+}

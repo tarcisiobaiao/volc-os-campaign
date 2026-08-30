@@ -1,0 +1,66 @@
+{
+  "mission_id": "fable-global-closure-planner-v1",
+  "title": "VOLC OS — plano mestre de fechamento executável até domingo",
+  "base_ref": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "mode": "read_only",
+  "briefing": "Atue como núcleo de planejamento do fechamento global do VOLC OS. O objetivo não é produzir mais um relatório aspiracional: é decompor o estado factual atual em pacotes de execução pequenos o bastante para Opus, Codex e DeepSeek concluírem sem reinventar arquitetura, com prioridade máxima para lançar campanhas Google Ads pausadas e seguras, observar dados reais, operar o Estúdio Criativo para Ads e orgânico e manter inteligência ORAKUL/Decision Lab honesta. Consulte primeiro AGENTS.md, UPDATE_STATUS, grafo híbrido, curadoria humana e ROADMAP Vivo; depois confronte código, testes, migrations, resultados recentes do harness e branches candidatas. Três candidatos foram revisados e NÃO estão aceitos: Demand Gen aebbaef (risco de relabeling Search→Demand Gen, assets/linhagem e extensões); Creative S0 7bf4ecf (mutação de payload/ownership); ORAKUL predictive 8e58cae (identidade de conta, as-of intraday, identidade de modelo, champion/challenger, estados e idempotência). Eles devem virar pacotes corretivos, não ser promovidos. Search está mais maduro; Display é parcial; Demand Gen e PMax não podem ser descritos como produtivos; Video/Shopping permanecem limitados pela capacidade factual. Preserve as autoridades: database.agenciavolc.com.br é o único Supabase operacional deste projeto; frontend nunca chama Google Ads; Recommendations/Simulations/LLM são sinais e nunca autoridade de mutação; toda escrita nasce como proposta tipada, validate_only autorizado e canário pausado com aprovação humana. Produza um DAG priorizado MUST/SHOULD/LATER. Para cada pacote forneça: objetivo não técnico, fatos e lacunas, task_ids existentes ou proposta de inbox quando ausente, dependências declaradas, ownership de arquivos disjunto, base/candidato a aproveitar, alterações exatas, contratos de entrada/saída e estados semânticos, critérios de aceite observáveis, testes negativos/mutantes, gates completos, rollback, dados reais versus sintéticos, permissões e ações externas proibidas. Gere também prompts prontos para um writer menor e dois reviewers, estimativa de esforço relativo, sequência de integração e condições explícitas de parada/reativação do supervisor. Separe tarefas que exigem migration/Supabase numa única linha de ownership. Não edite arquivo algum, não atualize Roadmap/grafo, não acesse segredos ou .env, não faça chamada externa, migration, merge, push, deploy ou mutação em Google Ads/n8n/Supabase.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 15,
+  "workers": [
+    {
+      "id": "fable-closure-architect",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Seja o arquiteto-chefe. Reconstrua o caminho crítico do produto e entregue o DAG mínimo que realmente fecha operação, campanhas, criativos, dados e inteligência. Remova duplicações, separe autoridade de sinal, impeça mocks de virarem capacidade e escreva specs executáveis por modelos menores.",
+      "allowed_paths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "graphify-out/UPDATE_STATUS.json",
+        "graphify-out/graph.json",
+        "graphify-out/wiki",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "tools/agent-harness/runs",
+        "tools/agent-harness/missions",
+        "volc_ads",
+        "services",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "supabase/migrations",
+        "src/components/trafego",
+        "src/components/criativos",
+        "src/pages/trafego",
+        "src/pages/criativos"
+      ]
+    },
+    {
+      "id": "fable-closure-proof-engineer",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Seja o engenheiro de prova e Ratchet. Tente refutar o plano, transforme cada lacuna em aceite verificável e prepare pacotes corretivos completos para Demand Gen, Creative S0 e ORAKUL predictive, além dos gates globais de integração. Foque em identidade, temporalidade, idempotência, ausência versus zero/falha, segurança e fronteiras de mutação.",
+      "allowed_paths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "graphify-out/UPDATE_STATUS.json",
+        "graphify-out/graph.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "tools/agent-harness",
+        "volc_ads",
+        "services/orakul_predictive",
+        "backend/tests",
+        "supabase/migrations",
+        "src/components/trafego",
+        "src/components/criativos"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+# Limites do Google Ads v25. Número mágico não mora em código.
+# Fonte: restrições da API — confirmadas por validate_only contra conta real.
+
+texto:
+  headline_rsa:        {max_chars: 30,  min_itens: 3,  max_itens: 15}
+  description_rsa:     {max_chars: 90,  min_itens: 2,  max_itens: 4}
+  # ⚠️ 30, e não 40. O 40 vinha do código anterior e não tinha fonte. Arbitrado
+  # em 26/08/2026 contra a definição proto do SDK instalado —
+  # `DemandGenMultiAssetAdInfo.headlines`: "Maximum display width is 30. At
+  # least 1 and max 5 headlines can be specified." A matriz oficial da API diz
+  # o mesmo. Um limite folgado demais aqui não avisa: o texto passa na validação
+  # local e a API recusa o mutate inteiro depois, com o erro apontando para o
+  # asset e não para a regra.
+  #
+  # É largura de EXIBIÇÃO, não contagem de caracteres — use
+  # `validacao.comprimento_efetivo()`, que já trata caractere largo.
+  headline_demandgen:  {max_chars: 30,  min_itens: 1,  max_itens: 5}
+  long_headline:       {max_chars: 90,  min_itens: 1,  max_itens: 5}
+  description_dgen:    {max_chars: 90,  min_itens: 1,  max_itens: 5}
+  business_name:       {max_chars: 25,  min_itens: 1,  max_itens: 1}
+
+  # ── Display (responsive display ad) ──────────────────────────────────────
+  # Fonte: as definições proto do SDK instalado —
+  # `google/ads/googleads/v25/common/types/ad_type_infos.py`,
+  # `ResponsiveDisplayAdInfo`, lidas em 26/08/2026. São chaves PRÓPRIAS e não
+  # reaproveitamento das de Search: o RSA aceita 15 títulos e o RDA aceita 5,
+  # e herdar o limite errado é subir um payload que a API recusa inteiro.
+  #
+  # ⚠️ `long_headline_display` tem `max_itens: 1` porque o campo do proto é
+  # SINGULAR (`long_headline: AdTextAsset`), não repetido — diferente de
+  # `long_headline`, que serve o Demand Gen e aceita cinco. Duas chaves porque
+  # são dois campos de verdade, não porque alguém duplicou.
+  headline_display:      {max_chars: 30,  min_itens: 1,  max_itens: 5}
+  description_display:   {max_chars: 90,  min_itens: 1,  max_itens: 5}
+  long_headline_display: {max_chars: 90,  min_itens: 1,  max_itens: 1}
+  sitelink_texto:      {max_chars: 25,  min_itens: 2,  max_itens: 20}
+  sitelink_desc:       {max_chars: 35,  min_itens: 0,  max_itens: 2}
+  callout:             {max_chars: 25,  min_itens: 2,  max_itens: 20}
+  snippet_valor:       {max_chars: 25,  min_itens: 3,  max_itens: 10}
+  keyword:             {max_chars: 80,  min_itens: 1,  max_itens: 20000}
+
+keyword:
+  max_palavras: 10
+
+# Headers de structured snippet aceitos pela API em pt-BR.
+snippet_headers_pt:
+  - Marcas
+  - Comodidades
+  - Estilos
+  - Tipos
+  - Destinos
+  - Serviços
+  - Cursos
+  - Bairros
+  - Programas
+  - Cobertura do seguro
+  - Programas de graduação
+  - Hotéis em destaque
+  - Modelos
+
+# Headers oficiais de espanhol, de `google_ads_api/structured_snippets.md`.
+#
+# ⚠️ É A INTERSEÇÃO DE `es-419` COM `es`, E O MOTIVO É OPERACIONAL.
+#
+# O Google publica DUAS listas de espanhol e elas divergem: `es-419` (América
+# Latina — MX, CO, CL, PE, AR) tem "Barrios", e `es` (Espanha) tem essa coluna
+# VAZIA; na coluna de espetáculos, `es-419` diz "Programas" e `es` diz
+# "Espectáculos". A operação atende os seis países com a MESMA lista, então
+# gravar a união faria um header válido no México ser recusado na Espanha —
+# erro que só apareceria no `validate_only` daquele país, depois de a copy
+# estar escrita e paga.
+#
+# Sobram onze headers, e onze é mais do que qualquer anúncio usa (o snippet
+# leva um).
+snippet_headers_es:
+  - Marcas
+  - Servicios adicionales
+  - Estilos
+  - Tipos
+  - Destinos
+  - Servicios
+  - Cursos
+  - Cobertura de seguro
+  - Carreras universitarias
+  - Hoteles destacados
+  - Modelos
+
+# Termos que reprovam o texto ANTES de ir para a API. Não substituem a
+# revisão do Google — antecipam a reprovação e evitam o strike na conta.
+politica:
+  proibidos:
+    - empréstimo
+    - emprestimo
+    - crédito aprovado
+    - antecipação
+    - garantido
+    - 100% aprovado
+    - dinheiro na conta
+    - digite seu cpf
+    - consulte seu cpf
+    - seu cpf está bloqueado
+    - cura
+    - milagre
+    - resultado em 1 minuto
+    - sem fila sem cadastro
+  # Padrões que sugerem que o site EXECUTA o serviço (é portal informativo).
+  suspeitos_execucao:
+    - consulta grátis aqui
+    - confira seu nome
+    - saque disponível
+
+# Contagem de asset do responsive display ad. Mesma fonte proto, mesma data.
+#
+#   marketing_images        "At least one `marketing_image` is required.
+#                            Combined with `square_marketing_images`, the
+#                            maximum is 15."
+#   square_marketing_images "At least one square `marketing_image` is
+#                            required."
+#   logo_images             "Combined with `square_logo_images`, the maximum
+#                            is 5."  — o proto NÃO declara logo obrigatório.
+#   youtube_videos          "A maximum of 5 videos can be specified."
+#
+# ⚠️ `logo_min` é 0 de propósito e a diferença é medida, não opinião: o proto
+# escreve "is required" para as duas famílias de imagem de marketing e NÃO
+# escreve para logo. Barrar por logo ausente recusaria localmente um payload
+# que a API aceita — e portão que dá falso positivo é portão que alguém
+# desliga. Falta de logo vira AVISO até `docs/growth-engine/matriz-api/display.md`
+# dizer o contrário com fonte oficial e data.
+display_asset:
+  marketing_min: 1
+  marketing_quadrada_min: 1
+  marketing_total_max: 15
+  logo_min: 0
+  logo_total_max: 5
+  video_max: 5
+
+# Contagens do `DemandGenMultiAssetAdInfo` (proto v25). A camada criativa
+# referencia estas chaves para que campanha e Estúdio não mantenham dois tetos.
+demand_gen_asset:
+  marketing_pair_min: 1
+  marketing_total_max: 20
+  logo_min: 1
+  logo_max: 5

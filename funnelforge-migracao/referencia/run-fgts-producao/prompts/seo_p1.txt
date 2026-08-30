@@ -1,0 +1,80 @@
+[user]
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 21/07/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: {"hero_title": "Saque-Aniversário FGTS", "hero_subtitle": "Regras de antecipação e prazos em 2026 - toque abaixo e veja como consultar seu saldo", "article_title": "Como funciona o Saque-Aniversário do FGTS em 2026: entenda o passo a passo", "intro": "<p>Ter o dinheiro preso no fundo de garantia enquanto as contas se acumulam é uma realidade difícil para muitos trabalhadores brasileiros. Este guia prático mostra como adiantar esses valores de forma segura, com base nas instruções oficiais da <strong>Caixa Econômica Federal (CAIXA)</strong> para este ano.</p>", "sections": [{"title": "O que é a antecipação do Saque-Aniversário e por que ela importa?", "body": "<p>A antecipação é uma modalidade de crédito que permite ao trabalhador adiantar parcelas que seriam pagas apenas no mês do seu aniversário. O grande diferencial é que o saldo acumulado serve como garantia, liberando recursos sem pesar no bolso mensalmente.</p><p>Na prática, essa operação é regulamentada pela <strong>Caixa Econômica Federal (CAIXA)</strong>. Até o dia <strong>31 de outubro de 2026</strong>, você pode adiantar até <strong>5 parcelas anuais</strong>, garantindo um alívio financeiro rápido com o dinheiro que já é seu.</p>"}, {"title": "3 pontos cruciais que você precisa saber antes de avançar", "body": "<p>1️⃣ O dinheiro parado no fundo rende menos que a inflação, seguindo a taxa de <strong>TR mais 3% ao ano</strong>. Deixar o saldo estagnado significa perder poder de compra ao longo do tempo.</p><p>2️⃣ Não há boletos mensais para pagar, pois a quitação do saldo antecipado ocorre de forma <strong>automática e anual</strong> diretamente da sua conta de garantia.</p><p>3️⃣ Pessoas com restrição no nome podem contratar normalmente, pois o processo não realiza consultas ao <strong>SPC ou Serasa</strong> para a liberação do crédito.</p>"}, {"title": "Quem tem direito a essa liberação de recursos?", "body": "<ul><li><strong>Trabalhadores ativos ou inativos</strong>: qualquer pessoa com saldo em contas do FGTS pode solicitar.</li><li><strong>Opção pelo Saque-Aniversário</strong>: é necessário ter feito a adesão à modalidade antes de pedir o adiantamento.</li><li><strong>Situação regular do CPF</strong>: o documento deve estar regularizado perante a <strong>Receita Federal</strong>.</li></ul><p>Para ter acesso, basta possuir saldo disponível e autorizar um banco parceiro, como o <strong>Banco Bmg</strong> ou o <strong>Santander</strong>, a consultar o seu fundo.</p>"}, {"title": "As principais vantagens e prazos vigentes em 2026", "body": "<ul><li><strong>Rapidez no Pix</strong>: a liberação do dinheiro costuma ocorrer em poucos minutos após a contratação digital.</li><li><strong>Planejamento flexível</strong>: você pode antecipar valores de <strong>R$ 100,00 a R$ 500,00</strong> por parcela anual.</li><li><strong>Sem burocracia</strong>: todo o processo de autorização e simulação é feito diretamente pelo celular.</li></ul><p>Fique atento ao calendário oficial da <strong>CAIXA</strong>: a partir de <strong>1º de novembro de 2026</strong>, o limite de antecipação será reduzido para no máximo <strong>3 saques anuais</strong>.</p>"}], "faq": [{"q": "Quem está negativado consegue antecipar o Saque-Aniversário?", "a": "Sim. Como a garantia do pagamento é o próprio saldo do FGTS retido, as instituições financeiras não realizam consultas aos órgãos de proteção ao crédito como SPC e Serasa."}, {"q": "Existe algum período de carência para quem acabou de mudar de modalidade?", "a": "Sim. De acordo com as novas regras da CAIXA para 2026, existe uma carência obrigatória de 90 dias após a adesão ao Saque-Aniversário para poder autorizar a consulta ao saldo."}, {"q": "Qual é o valor mínimo e máximo permitido por parcela até outubro?", "a": "Depende do seu saldo acumulado. Até o dia 31 de outubro de 2026, é permitido antecipar parcelas com valor mínimo de R$ 100,00 e limite máximo de R$ 500,00 por ano antecipado."}, {"q": "Posso fazer a antecipação por qual banco?", "a": "Depende da sua escolha. Você pode optar por fintechs 100% digitais como a meutudo, ou bancos tradicionais como o Nubank, Banco Bmg e Santander, desde que autorize a consulta no aplicativo oficial."}, {"q": "O que acontece se eu for demitido após fazer a antecipação?", "a": "Depende da modalidade escolhida. Ao optar pelo Saque-Aniversário, você perde o direito de sacar o saldo total em caso de demissão sem justa causa, mantendo apenas o direito à multa rescisória de 40%."}], "transition": "<p>Agora que você entende como funciona o Saque-Aniversário, o próximo passo é descobrir se o seu cadastro está totalmente regularizado para liberar o Pix sem travas. Veja no botão abaixo.</p>", "cta_texts": ["Será que tenho direito ao saque? Ver »", "Como consultar o saldo atualizado »", "Ver o passo a passo de liberação »"]}
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

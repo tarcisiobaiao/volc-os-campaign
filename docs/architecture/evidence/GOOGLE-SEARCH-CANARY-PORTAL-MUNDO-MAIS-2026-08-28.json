@@ -1,0 +1,56 @@
+{
+  "schema_version": "volc.google_ads.canary_evidence.v1",
+  "recorded_at": "2026-08-28T12:31:00-03:00",
+  "purpose": "Provar o caminho canônico de criação Search sem ativar entrega nem gerar gasto.",
+  "scope": {
+    "platform": "GOOGLE_ADS",
+    "channel": "SEARCH",
+    "customer_id": "5478096539",
+    "account_label": "Portal Mundo Mais",
+    "login_customer_id": "6016739364",
+    "source_landing_page": "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/"
+  },
+  "preflight": {
+    "mode": "validate_only",
+    "accepted": true,
+    "operation_count": 72,
+    "effective_plan_fingerprint": "fec7e345501c7bbde27521573b67fd116aa742d9abd0b3288b4ebcdb139d9344"
+  },
+  "mutation": {
+    "authorized_reason": "canario Search pausado do engine VOLC na Portal Mundo Mais em 28-08-2026",
+    "result": "ACEITO",
+    "operation_count": 72,
+    "receipt_fingerprint": "9af79721b173e68fc85c3ee277b2804daea680e5d8280892094b38ea130e6174",
+    "receipt_path": "volc_ads/dados/recibos/20260828_123051_5478096539_9af79721.json",
+    "campaign_resource_name": "customers/5478096539/campaigns/24183717006",
+    "campaign_id": "24183717006",
+    "campaign_budget_resource_name": "customers/5478096539/campaignBudgets/15824890766",
+    "ad_group_resource_name": "customers/5478096539/adGroups/199013227185",
+    "ad_resource_name": "customers/5478096539/adGroupAds/199013227185~822513058308"
+  },
+  "remote_readback": {
+    "campaign_status": "PAUSED",
+    "advertising_channel_type": "SEARCH",
+    "daily_budget_micros": 10000000,
+    "daily_budget_brl": 10.0,
+    "ad_group_status": "ENABLED",
+    "ad_status": "ENABLED",
+    "policy_approval_status": "UNKNOWN",
+    "policy_review_status": "REVIEW_IN_PROGRESS",
+    "delivery_possible_while_parent_paused": false
+  },
+  "safety": {
+    "campaign_was_enabled": false,
+    "spend_was_authorized": false,
+    "deletion_was_performed": false,
+    "credit_up_was_touched": false,
+    "credentials_in_evidence": false
+  },
+  "remaining_gates": [
+    "Aplicar e integrar o ledger v10_01 ao executor canônico.",
+    "Persistir a intenção e reconciliar o ID externo no inventário e na H0.",
+    "Confirmar o vínculo operacional correto, sem inferi-lo apenas pela URL.",
+    "Reconsultar a decisão de política depois da revisão do Google.",
+    "Exigir nova autorização explícita antes de qualquer ativação ou mudança que possa gerar gasto."
+  ]
+}

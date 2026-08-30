@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-29T21:10:00-03:00",
+  "base_main": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "warning": "Fila para o INTEGRADOR ÚNICO (sessão Codex/Opus). NÃO foi executada. Estritamente serial: cada item só arma quando 'unlocks_when' do anterior estiver provado. Nenhum item toca produto externo; RQ-11 é o único com efeito externo e exige autorização explícita.",
+  "queue": [
+    {
+      "id": "RQ-01",
+      "title": "Snapshot preflight",
+      "base": "main@e858651",
+      "ownership_paths": [],
+      "preconditions": ["nenhuma"],
+      "inspect_cmds": [
+        "git rev-parse main",
+        "git worktree list --porcelain > /private/tmp/volc-recovery-snapshot/worktrees.txt",
+        "ps aux | grep -iE 'supervisor|codex exec' | grep -v grep > /private/tmp/volc-recovery-snapshot/ps.txt",
+        "for b in integration/autonomous-closure-20260829 feat/supervisor-continuo-v0 feat/harness-gemini-37-flash-v1; do git log -1 --format='%H %s' $b; done"
+      ],
+      "gate_cmds": [],
+      "acceptance": "Snapshot gravado; main ainda em e858651; se main mudou, PARE e reavalie o addendum inteiro.",
+      "expected_evidence": "arquivos em /private/tmp/volc-recovery-snapshot/ + SHAs impressos",
+      "rollback": "n/a (read-only)",
+      "unlocks": "RQ-02 e RQ-03 (RQ-03 pode rodar em paralelo com RQ-02)"
+    },
+    {
+      "id": "RQ-03",
+      "title": "Preservar a colheita: diffs sujos das 4 worktrees viram patches",
+      "base": "worktrees em /private/tmp/volc-autonomous-closure/.agent-worktrees/",
+      "ownership_paths": ["/private/tmp/volc-harvest-v1/ (fora do repo)"],
+      "preconditions": ["RQ-01 ok", "NENHUM git clean/worktree remove antes deste item"],
+      "inspect_cmds": [
+        "mkdir -p /private/tmp/volc-harvest-v1",
+        "git -C <worktree-demand-gen-a2> diff > /private/tmp/volc-harvest-v1/demand-gen-a2.patch",
+        "git -C <worktree-orakul-a2> diff > /private/tmp/volc-harvest-v1/orakul-a2.patch",
+        "git -C <worktree-creative-s0-a2> diff > /private/tmp/volc-harvest-v1/creative-s0-a2.patch",
+        "git -C <worktree-pytest-a2> diff > /private/tmp/volc-harvest-v1/pytest-a2.patch",
+        "shasum -a 256 /private/tmp/volc-harvest-v1/*.patch"
+      ],
+      "gate_cmds": [],
+      "acceptance": "4 patches não vazios com sha256 registrado (esperado: ~11/31/5/1 arquivos respectivamente); worktrees intactas.",
+      "expected_evidence": "listagem + hashes; nota de que pytest-a2.patch toca pytest.ini (proibido pela spec M-W2-03 — confrontar antes de portar)",
+      "rollback": "n/a (cópia)",
+      "unlocks": "RQ-08 (porte via missões, após RQ-02)"
+    },
+    {
+      "id": "RQ-02",
+      "title": "Fast-forward da autonomous-closure ATUALIZADA",
+      "base": "main@e858651 -> bdf9e1c",
+      "ownership_paths": ["main (integrador único)"],
+      "preconditions": ["RQ-01 ok", "git rev-list --left-right --count main...bdf9e1c == '0 10'", "git merge-base --is-ancestor main bdf9e1c"],
+      "inspect_cmds": [
+        "git log --oneline main..bdf9e1c (esperado: exatamente os 10 do ADDENDUM §2.1)",
+        "git rev-parse main > /private/tmp/volc-recovery-snapshot/pre-ff.txt"
+      ],
+      "gate_cmds": [
+        "git merge --ff-only bdf9e1c",
+        "backend/.venv/bin/python -m pytest volc_ads -q",
+        "backend/.venv/bin/python -m pytest backend/tests -q",
+        "backend/.venv/bin/python -m pytest backend/tests/orakul_predictive -q",
+        "npx tsc --noEmit -p tsconfig.app.json 2>&1 | grep -c 'error TS'",
+        "npm run build"
+      ],
+      "acceptance": "FF limpo; volc_ads e backend sem falha NOVA vs baseline (F025/F026); orakul_predictive coleta e passa; tsc == 76; build verde. Falha nova = registrar e PARAR (não desfazer em pânico).",
+      "expected_evidence": "contagens exatas de cada gate no handoff",
+      "rollback": "git reset --hard $(cat /private/tmp/volc-recovery-snapshot/pre-ff.txt)",
+      "unlocks": "RQ-04; M-W2-07 (com base_ref = novo SHA); M-W2-06 formal se desejado"
+    },
+    {
+      "id": "RQ-04",
+      "title": "Merge dos commits exclusivos do supervisor-continuo",
+      "base": "feat/supervisor-continuo-v0@14fe1b4",
+      "ownership_paths": ["tools/agent-harness/"],
+      "preconditions": ["RQ-02 ok", "git cherry main feat/supervisor-continuo-v0 mostra EXATAMENTE 4 '+' (8de010d, 061fdf8, 9f72a13, 5810036) e 2 '-' — se mostrar 6 '+', PARE (o FF não cobriu o venv-fix)"],
+      "inspect_cmds": ["git cherry main feat/supervisor-continuo-v0", "git diff main...feat/supervisor-continuo-v0 --stat"],
+      "gate_cmds": [
+        "git merge --no-ff feat/supervisor-continuo-v0 -m 'merge(harness): supervisor contínuo + ratchet + linhagem'",
+        ".venv-adk/bin/python -m pytest tools/agent-harness/tests -q  (se deps faltarem: instalar pytest+jsonschema no .venv-adk e REGISTRAR)",
+        "backend/.venv/bin/python -m pytest volc_ads -q"
+      ],
+      "acceptance": "Merge sem perda (diff pós-merge contém supervisor.py/supervisor_store.py/supervisor_models.py); suite do harness roda e passa (PROVA da alegação '42 verdes' — número real registrado).",
+      "expected_evidence": "SHA do merge + contagem real da suite do harness",
+      "rollback": "git reset --hard <sha pré-merge registrado>",
+      "unlocks": "RQ-05"
+    },
+    {
+      "id": "RQ-05",
+      "title": "Merge do harness-gemini (inclui fix de escopo 8380b2d)",
+      "base": "feat/harness-gemini-37-flash-v1@8380b2d",
+      "ownership_paths": ["tools/agent-harness/"],
+      "preconditions": ["RQ-04 ok", "conflitos ESPERADOS em mission.py/models.py/worktrees.py/supervisor*/tests (ADDENDUM §3) — resolver preservando AMBOS: resolução de venv (gates.py) e escopo de leitura ancestral"],
+      "inspect_cmds": ["git diff main...feat/harness-gemini-37-flash-v1 --stat", "git show 8380b2d --stat"],
+      "gate_cmds": [
+        "git merge --no-ff feat/harness-gemini-37-flash-v1 -m 'merge(harness): provider gemini + escopo de leitura + diff ao reviewer'",
+        ".venv-adk/bin/python -m pytest tools/agent-harness/tests -q",
+        "python3 -c \"import json;[json.load(open(f)) for f in __import__('glob').glob('tools/agent-harness/missions/*.json')]\""
+      ],
+      "acceptance": "Suite do harness verde (PROVA da alegação '45 verdes'); missões v1 existentes continuam parseáveis; GEMINI_API_KEY documentada fora de dotenv (se ainda vier de .env.local, abrir item corretivo — NÃO bloquear o merge por isso, registrar).",
+      "expected_evidence": "SHA do merge + contagem da suite + resolução de cada conflito descrita no handoff",
+      "rollback": "git reset --hard <sha pré-merge>",
+      "unlocks": "RQ-06"
+    },
+    {
+      "id": "RQ-06",
+      "title": "Revisão substituta + merge do 6fc7923 (cancel/cleanup)",
+      "base": "6fc7923",
+      "ownership_paths": ["tools/agent-harness/"],
+      "preconditions": ["RQ-05 ok", "ler o review-result com ressalvas em /private/tmp/volc-supervisor-continuo-v0/tools/agent-harness/runs/ (claim ffe46ead)"],
+      "inspect_cmds": ["git diff main...6fc7923", "git cherry main 6fc7923"],
+      "gate_cmds": [
+        "git merge --no-ff 6fc7923 -m 'merge(harness): cancelamento e cleanup conservador (revisão substituta)'",
+        ".venv-adk/bin/python -m pytest tools/agent-harness/tests -q"
+      ],
+      "acceptance": "Cada ressalva do review anterior acatada ou rejeitada com motivo escrito; cleanup NUNCA remove worktree suja; suite verde.",
+      "expected_evidence": "veredito por ressalva + SHA + contagem",
+      "rollback": "git reset --hard <sha pré-merge>",
+      "unlocks": "RQ-07"
+    },
+    {
+      "id": "RQ-07",
+      "title": "Revisão substituta + merge dos candidatos Gemini",
+      "base": "656d72df72516c003af59097b338d063075f72b4 e 5eb6b38a65ba98b88365f73c99e0a721ff59e690",
+      "ownership_paths": ["volc_ads/", "backend/ (conforme diffs)"],
+      "preconditions": ["RQ-02 ok (independe de RQ-04..06, mas mantém a serialização de escrita na main)", "usar o prompt m-w1-04 como roteiro: revisão HUMANA/Opus contra os blocos acceptance de P10-T04 e P04-T07 ANTES de cada merge; commits separados"],
+      "inspect_cmds": ["git diff main...656d72d", "git diff main...5eb6b38"],
+      "gate_cmds": [
+        "backend/.venv/bin/python -m pytest backend/tests/test_google_inteligencia_saude.py -q  (deadman; esperado ~41)",
+        "backend/.venv/bin/python -m pytest volc_ads -q",
+        "backend/.venv/bin/python -m pytest backend/tests -q"
+      ],
+      "acceptance": "Aprovado→merge com mensagem citando 'revisão substituta'; reprovado→objeções escritas viram missão corretiva, SEM merge. Teste focal verde NÃO substitui a revisão.",
+      "expected_evidence": "por candidato: veredito, SHA do merge (ou objeções), contagens",
+      "rollback": "git reset --hard <sha pré-merge do candidato>",
+      "unlocks": "RQ-08"
+    },
+    {
+      "id": "RQ-08",
+      "title": "Portar a colheita (patches do RQ-03) via missões, não à mão",
+      "base": "patches em /private/tmp/volc-harvest-v1/",
+      "ownership_paths": ["por frente, conforme spec de cada missão"],
+      "preconditions": ["RQ-03 e RQ-07 ok", "classificar cada patch: ja_coberto | valor_novo | quebrado (roteiro do prompt m-w2-06)"],
+      "inspect_cmds": ["git apply --check /private/tmp/volc-harvest-v1/<frente>.patch (contra a main atual)"],
+      "gate_cmds": ["gates da missão destino (m-w2-07 para demand-gen; corretiva CL-08 para orakul; cotejo com m-w2-03 para pytest — o patch toca pytest.ini, que a spec PROÍBE; creative-s0 → corretiva CL-07)"],
+      "acceptance": "Nenhum hunk aplicado fora de missão com reviewer; hunks 'ja_coberto' descartados com registro; teste auto-relatado dos writers NUNCA citado como prova.",
+      "expected_evidence": "tabela frente→veredito→destino no handoff",
+      "rollback": "por missão (branch própria)",
+      "unlocks": "RQ-09"
+    },
+    {
+      "id": "RQ-09",
+      "title": "Gates finais consolidados + missões de valor (diagnóstico)",
+      "base": "main pós RQ-08",
+      "ownership_paths": ["leitura"],
+      "preconditions": ["RQ-08 ok", "M-W2-01 pode rodar aqui se ainda não rodou (base_ref = main atual)"],
+      "inspect_cmds": [],
+      "gate_cmds": [
+        "backend/.venv/bin/python -m pytest volc_ads backend/tests -q",
+        "npx tsc --noEmit -p tsconfig.app.json 2>&1 | grep -c 'error TS'",
+        "npm run build",
+        ".venv-adk/bin/python -m pytest tools/agent-harness/tests -q"
+      ],
+      "acceptance": "Tudo verde/baseline; diagnóstico provado em localhost (prova visual do prompt m-w2-01 item 5).",
+      "expected_evidence": "contagens finais + screenshot/descrição do diagnóstico real",
+      "rollback": "n/a",
+      "unlocks": "RQ-10"
+    },
+    {
+      "id": "RQ-10",
+      "title": "Atualização ÚNICA de Roadmap/curadoria/grafo + poda",
+      "base": "main pós RQ-09",
+      "ownership_paths": ["volc-os-workbook/", "docs/volc-os-graph/curadoria-operacional.json", "refs"],
+      "preconditions": ["RQ-09 ok", "vereditos de M-W1-06 e M-W1-08 registrados", "usar prompt m-w1-09 + ROADMAP-CURATION-PROPOSAL.json — aplicar SÓ linhas com gate provado"],
+      "inspect_cmds": [],
+      "gate_cmds": ["python3 scripts/atualizar_grafo_volc_os.py", "python3 scripts/atualizar_grafo_volc_os.py --check"],
+      "acceptance": "current:true no HEAD novo; nenhuma promoção sem prova; poda só de refs com veredito; worktrees removidas com git worktree remove (nunca rm -rf) e SÓ depois do RQ-03.",
+      "expected_evidence": "task IDs promovidos com prova, nós alterados, refs podadas, --check",
+      "rollback": "commits de curadoria revertíveis individualmente",
+      "unlocks": "RQ-11"
+    },
+    {
+      "id": "RQ-11",
+      "title": "Backup remoto (ÚNICO item com efeito externo)",
+      "base": "main final",
+      "ownership_paths": ["remoto escolhido pelo dono"],
+      "preconditions": ["AUTORIZAÇÃO EXPLÍCITA D9 registrada (URL do remoto + ok do dono)", "NUNCA para o upstream webgo"],
+      "inspect_cmds": ["git remote -v"],
+      "gate_cmds": ["git push <backup> main --force-with-lease", "git ls-remote <backup> refs/heads/main"],
+      "acceptance": "ls-remote devolve o SHA local; branches exclusivas restantes também empurradas.",
+      "expected_evidence": "saída do ls-remote",
+      "rollback": "n/a (push é aditivo no remoto novo)",
+      "unlocks": "fila encerrada; sessão de decisões D1-D13 com OPEN-DECISIONS.md"
+    }
+  ],
+  "never_execute": [
+    "aplicar v10_01/02, v11_03 ou v13 nesta fila (decisões D1/D6 + janela própria)",
+    "tocar n8n, Supabase, Google Ads, webhook apply-bidding",
+    "git clean / worktree remove antes do RQ-03",
+    "push sem D9",
+    "graphify update .",
+    "promover tarefa por inferência ou por teste focal auto-relatado"
+  ]
+}

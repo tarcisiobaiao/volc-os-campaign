@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-26",
+  "engines": [
+    {
+      "id": "motor-video-volc",
+      "name": "Motor de Vídeo VOLC",
+      "state": "external_partial",
+      "organized_root": "/Users/mac/Desktop/Volc Mídia Global/motor-video",
+      "execution_root": "/Users/mac/volc-factory",
+      "contract_version": "1.2.1",
+      "formats": 17,
+      "skins": 15,
+      "niches": 15,
+      "voices": 14,
+      "hook_modes": {
+        "grok": 8,
+        "imagem": 5,
+        "omni": 2
+      },
+      "observed_evidence": {
+        "final_mp4": 38,
+        "resolution": "1080x1920",
+        "technical_qa": 20,
+        "visual_qa": 4,
+        "publication_snapshots": 2
+      },
+      "strengths": [
+        "contrato criativo legivel por maquina",
+        "skins, nichos, vozes e arcos",
+        "hooks por video, avatar ou imagem",
+        "Remotion, audio, legendas e assets licenciados",
+        "QA tecnico e visual",
+        "ledger, disclosure e portao de publicacao"
+      ],
+      "limits": [
+        "runtime ainda depende da fabrica externa",
+        "nenhuma prova integral a partir da raiz organizada",
+        "destinos publicitarios ainda nao adaptados",
+        "sem adapter, jobs, fila, storage ou UI no VOLC O.S.",
+        "cobertura de QA visual e freeze ainda pequena"
+      ],
+      "integration": {
+        "port": "volc_ads.criativo.MotorDeCriativo",
+        "media_kind": "VIDEO",
+        "adapter": "todo",
+        "runtime": "todo",
+        "browser_secrets": false,
+        "human_approval_required": true
+      }
+    }
+  ]
+}

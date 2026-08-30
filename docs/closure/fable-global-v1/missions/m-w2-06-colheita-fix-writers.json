@@ -1,0 +1,29 @@
+{
+  "mission_id": "closure-w2-06-colheita-fix-writers",
+  "title": "Colheita das worktrees dos fix-writers do supervisor: o que existe além de 951fe3f?",
+  "base_ref": "HEAD",
+  "mode": "read_only",
+  "briefing": "PRÉ-CONDIÇÃO: rodar SOMENTE depois que integration/autonomous-closure-20260829 (951fe3f) tiver entrado na main (M-W1-03) — antes disso a comparação mede a coisa errada. CONTEXTO (FACT-MATRIX F010/F011): o supervisor de fechamento em /private/tmp/volc-autonomous-closure rodou frentes corretivas cujos writers Codex completaram código com testes auto-relatados verdes (ex.: demand-gen '545+1374 passed', 15 arquivos), mas NENHUMA tentativa virou candidate_sha porque os gates morriam em FileNotFoundError antes de rodar. As worktrees vivem em /private/tmp/volc-autonomous-closure/.agent-worktrees/*/codex-*-writer (frentes: google-demand-gen-safe-proof-closure-v2, orakul-predictive-scientific-repair-v2, creative-production-s0-contract-ratchets-v2, pytest-legacy-collection-ratchet-v1; tentativas a1 e a2). MISSÃO (read-only absoluto; processos e bancos dos supervisores são INTOCÁVEIS): para cada frente, (1) localizar a worktree/branch mais avançada; (2) extrair o diff real contra 951fe3f (git -C <worktree> diff 951fe3f --stat e leitura dos hunks relevantes); (3) classificar o conteúdo: ja_coberto_pela_main | valor_novo(descrever) | quebrado/incompleto; (4) para valor novo: listar exatamente os arquivos/hunks a portar e qual missão futura deveria absorvê-los; (5) registrar se o writer mudou algo fora do ownership da frente. NUNCA confie no auto-relato de testes dos writers: diga explicitamente 'testes auto-relatados, não verificados' — a verificação real acontece na missão que portar o código. RESULTADO: tabela frente → veredito → hunks a portar → missão destino.",
+  "timeout_seconds": 3000,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-colheita-demand-orakul",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "Frentes demand-gen e orakul-predictive: diff das worktrees contra 951fe3f, classificação e hunks a portar.",
+      "allowed_paths": ["volc_ads", "services", "backend"]
+    },
+    {
+      "id": "codex-colheita-creative-pytest",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "Frentes creative-s0 e pytest-ratchet: diff das worktrees contra 951fe3f, classificação e hunks a portar.",
+      "allowed_paths": ["volc_ads", "backend", "tools/agent-harness"]
+    }
+  ]
+}

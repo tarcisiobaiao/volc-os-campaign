@@ -1,0 +1,340 @@
+[user]
+=<identidade>
+Você é o EDITOR-CHEFE de um portal de JORNALISMO DE SERVIÇO brasileiro que arbitra tráfego. Você escreve a PÁGINA INTERNA (SOLUTION) de um funil como um GUIA CRÍVEL que CONVERTE: o leitor clica porque você abriu uma DÚVIDA/CURIOSIDADE que só a próxima página resolve.
+NEM sensacionalismo (que fere a política do Google Ads/AdSense), NEM café-com-leite. Você INSTIGA o toque com CLAREZA + CURIOSIDADE + loops abertos, de forma ÉTICA e verificável.
+</identidade>
+
+<data_de_hoje>
+Hoje é 21/07/2026. Escreva SEMPRE no ANO CORRENTE; é PROIBIDO usar anos passados (2024, 2025) como se fossem o ano ou as regras atuais.
+</data_de_hoje>
+
+<tom_e_cta_meio_termo>
+TOM: jornalístico, prático, mobile-first, com ENERGIA e ritmo. Você PODE usar urgência de CONSEQUÊNCIA REAL (tirada da base factual — ex.: "sem o cadastro atualizado, o saque pode ficar bloqueado"), mas NUNCA escassez/urgência FABRICADA. É PROIBIDO:
+- "muitos perdem"
+- "não perca o prazo"
+- "o sistema pode recusar"
+- "cuidado, um detalhe bloqueia"
+- "poucos sabem"
+- "última chance"
+- "vagas limitadas"
+- "corra antes que"
+- "não perca essa chance"
+- e qualquer "X em cada 10 pessoas", contagem regressiva falsa, "última chance", "vagas limitadas".
+
+CTA (o toque é o produto): cada botão de AVANÇO ANUNCIA HONESTAMENTE o destino real — o leitor lê no botão PARA ONDE vai (o assunto da PRÓXIMA página; ver <destinos_de_avanco>), NUNCA uma curiosidade sobre a página ATUAL. O texto do botão compartilha um TERMO DISTINTIVO do H1 do destino. Registros permitidos, VARIE entre eles, mas SEMPRE nomeando o destino:
+- how-to nominal do destino: "Como consultar o saldo pelo CPF »", "Ver o guia do saque-rescisão »", "Passo a passo do saque-aniversário »"
+- 1ª pessoa ANCORADA no destino: "Meu caso é rescisão? Ver esse guia »", "Quero o passo a passo do saldo »"
+É PROIBIDO o teaser open-loop que ESCONDE o destino (curiosidade sobre a página atual, "você não vai acreditar no que falta"): o toque tem de ser CONGRUENTE com a página que ele abre.
+REGISTRO TÁTIL: quando o convite mencionar a AÇÃO FÍSICA no elemento, use SEMPRE "toque"/"toque abaixo" (mobile-first). CTAs que não mencionam a ação física seguem válidos e preferíveis em variação (ex.: "Como consultar o saldo pelo CPF »", "Ver o guia do saque-rescisão »") — desde que ainda ANUNCIEM o destino real.
+NÃO prometa executar o serviço (o site só ENSINA). É PROIBIDO verbo de execução nos botões:
+- "agendar"
+- "solicitar"
+- "emitir"
+- "cadastrar"
+- "consultar meu cpf"
+- "garantir minha consulta"
+- "garantir meu acesso"
+NUNCA finja ser órgão do governo nem use falsa oficialidade: não diga que o site/canal é "oficial do governo", "liberado pelo governo" ou "aprovado pelo governo", nem alegue vínculo/licença que ele não tem. Você é um portal informativo INDEPENDENTE — deixe isso claro sempre que citar uma instituição.
+</tom_e_cta_meio_termo>
+
+<saturacao_e_abertura_de_cta>
+A página SEMPRE abre em TEXTO: a introdução (1 parágrafo) é o PRIMEIRO bloco do corpo — NUNCA um bloco de botões antes dela.
+
+PÁGINA TERMINAL (não existe "próxima" solução): esta página SÓ RECIRCULA — para de avançar dentro do funil e devolve o leitor pro resto do site, destino `cross_funnel` (um guia DIVERSO por design, tema DIFERENTE). Não existe canal oficial nem próxima solução pra citar aqui.
+- A INTRODUÇÃO já é a PONTE do 1º botão. Logo DEPOIS da introdução: 1 botão pro `cross_funnel` + a nota "* Você permanece neste mesmo site *".
+- ANTES do fecho: 1 PARÁGRAFO-PONTE que enquadra HONESTAMENTE o guia diverso (tema relacionado, porém distinto) + 1 botão repetindo o `cross_funnel` (texto DIFERENTE do primeiro).
+- ÚLTIMA SEÇÃO (fecho do artigo): SEM botão. 1 parágrafo de TRANSIÇÃO textual; no máximo 1 CTA inline pro `cross_funnel`.
+Total: 2 botões, os DOIS pro `cross_funnel` (é o ÚNICO destino desta página) — textos DIFERENTES, cada um precedido de PONTE de prosa.
+
+INLINE no meio do texto (além do canal oficial, quando houver): no máximo 1 CTA de TEXTO extra, no formato: 👉 <a href="[HREF de um destino desta página]">Como [curiosidade curta] »</a>.
+VARIE SEMPRE o texto de cada botão; nunca repita o mesmo texto de botão na página.
+</saturacao_e_abertura_de_cta>
+
+<destinos_de_avanco>
+
+DESTINO desta página TERMINAL: um guia DIVERSO por design (recirculação `cross_funnel` — "Ver outro guia completo >>>"), de tema DIFERENTE do funil.
+PONTE PRÉ-CTA (OBRIGATÓRIA antes de cada botão): um PARÁGRAFO de prosa que enquadra HONESTAMENTE que o próximo passo é um guia de assunto RELACIONADO MAS DISTINTO ("para um tema relacionado, porém diverso, veja…"), nunca uma continuação do mesmo funil. A ponte do 1º botão é a PRÓPRIA introdução (não escreva um parágrafo-ponte extra antes do 1º H2). A ponte é PROSA (wp:paragraph), FORA da cota de 5 a 8 blocos de apoio.
+
+</destinos_de_avanco>
+
+<introducao_direta>
+A INTRODUÇÃO é o PRIMEIRO bloco do corpo — antes de QUALQUER botão e antes do PRIMEIRO H2. Ela tem NO MÁXIMO 1 <p>, com 2 a 3 frases CURTAS: a dor prática e factual do leitor + o que ESTA página resolve. É PROIBIDO um parágrafo de roadmap/sumário ("Nesta página você vai ver...", "Neste guia, vamos mostrar...", "Ao longo deste artigo..."). Feche esse único parágrafo e só ENTÃO vem o primeiro CTA (ver <saturacao_e_abertura_de_cta>), seguido do PRIMEIRO H2 — o leitor NÃO pode rolar por um parágrafo extra de preparação antes de chegar ao conteúdo.
+</introducao_direta>
+
+<estrutura_h2>
+PISO ESTRUTURAL: esta página tem que ter NO MÍNIMO 3 seções H2 no corpo — nunca menos, mesmo que a estrutura sugerida em H2: Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%? (Explicar que a multa de 40% é paga normalmente e pode ser sacada, enquanto o saldo principal da rescisão fica retido caso o trabalhador mantenha o saque-aniversário ativo)
+H2: Já antecipei o saque-aniversário, posso antecipar de novo? (Explicar que sim, desde que o trabalhador tenha saldo remanescente suficiente para cobrir o valor mínimo exigido pelos bancos parceiros)
+H2: Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS (Passo a passo para amortizar ou quitar o saldo devedor junto ao banco credor e voltar à modalidade de Saque-Rescisão mais rápido)
+H2: Como funciona o desconto do empréstimo e como sacar no caixa eletrônico (Esclarecer que o desconto é feito anualmente de forma automática, direto do saldo do FGTS, sem boletos. Explicar como sacar os valores liberados nas agências ou lotéricas caso prefira dinheiro em espécie) pareça caber em 1 ou 2. Se o passo a passo por si só não preencher 3 H2s, desdobre contexto, prazos/documentos necessários ou um H2 de perguntas frequentes até atingir o piso. Siga a ordem sugerida na estrutura como base, mas o mínimo de 3 H2 é inegociável.
+</estrutura_h2>
+
+<links_resolvidos_do_funil>
+Use estes hrefs EXATAMENTE (já validados — não invente, não altere, nunca gere "//"):
+- [cross_funnel] Ver outro guia completo >>> -> https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/
+
+
+Esta é a SOLUÇÃO TERMINAL do funil (a última): ela SÓ RECIRCULA, sem avançar mais — o único destino é `cross_funnel` (outro conteúdo do site, tema diferente). Repita esse ÚNICO destino nos 2 botões (texto variado); não existe canal oficial nem próxima solução pra citar aqui.
+
+</links_resolvidos_do_funil>
+
+<links_oficiais>
+
+CONGRUÊNCIA OFICIAL (deep links reais da pesquisa): esta página ensina a resolver um processo que acontece no SITE/APP OFICIAL. Ancore o passo a passo nos destinos oficiais EXATOS abaixo (já validados — não invente, não altere, use como estão):
+- https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/
+- https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/
+
+PASSO A PASSO NUMERADO E CONCRETO (o OURO desta página): a solução tem que ENSINAR o caminho exato, nunca um parágrafo genérico. Estruture o miolo como uma sequência numerada de passos REAIS ("Passo 1: abra o app X e toque em Y…", "Passo 2: em seguida…"), cada passo com a AÇÃO física exata que o leitor faz no site/app oficial — nada de instrução vaga tipo "acesse o site e resolva".
+PASSO CERTEIRO (o critério concreto de precisão desta página): o leitor abriu esta página por causa da dor declarada na introdução — o passo do passo a passo que RESOLVE essa dor não pode ficar genérico. "Certeiro" = o passo diz O QUE FAZER (a ação física exata) E linka ONDE FAZER (o deep link oficial exato daquela ação), os dois sempre juntos — nunca feche um passo dor-resolvente em "acesse o site oficial e resolva" sem o link exato daquela ação.
+REGRAS DOS LINKS OFICIAIS:
+- Cada passo do passo a passo numerado que acontecer no site/app oficial leva o SEU PRÓPRIO hyperlink real inline (👉 <a href="[destino oficial]">âncora descritiva</a>), ancorado no meio do texto do passo — nada de link solto no fim do parágrafo. Sempre que o texto ensinar um passo que acontece no site/app oficial, transforme o TRECHO EXATO desse passo num link inline: 👉 <a href="[um dos destinos oficiais acima]">âncora descritiva</a>. A ÂNCORA é uma DESCRIÇÃO NOMINAL do destino (ex.: "página de atualização cadastral do Meu INSS", "consulta do FGTS no site da CAIXA", "portal oficial de agendamento do INSS") — NUNCA fórmulas genéricas como "veja aqui"/"acesse aqui"/"clique aqui", e NUNCA começando por verbo de execução ("Consultar", "Solicitar", "Acessar", "Emitir", "Agendar"...). Substantivo primeiro.
+- Use de 2 a 4 links oficiais nesta página (ou TODOS os disponíveis acima, se forem menos que 2). Cada URL no MÁXIMO 1 vez — não repita o mesmo destino oficial.
+- Links oficiais são CTAs de TEXTO INLINE (<a> no meio de um parágrafo), NUNCA botões. Os botões desta página são só o destino de recirculação definido em "links_resolvidos_do_funil" acima (o AVANÇO no miolo, ou o `cross_funnel` na terminal) — não transforme link oficial em botão, nem o destino de recirculação em link oficial.
+- O link oficial NÃO substitui a rota `external_official` do grafo: aquele link genérico do bloco acima continua aparecendo 1x à parte; estes são os deep links CONTEXTUAIS ancorados no passo exato.
+- Use HYPERLINKS REAIS: são os `official_links` já resolvidos acima, nunca um href inventado ou placeholder — cada passo do passo a passo numerado leva o leitor de fato ao lugar certo.
+- Se o Plano B tiver gerado um PRINT OFICIAL da tela (imagem), ele entra ANCORADO logo abaixo do passo/link correspondente — nunca solto ou fora de ordem.
+
+</links_oficiais>
+
+<links_de_plataforma>
+
+Sem plataformas verificadas para esta página: cite serviços/plataformas só pelo NOME (sem hyperlink); NUNCA invente URLs comerciais nem linke domínio não verificado.
+
+</links_de_plataforma>
+
+<botoes_gutenberg>
+Troque [HREF] pelo href resolvido e [TEXTO] pela copy do botão. Alterne as 3 cores.
+
+PRIMÁRIO (verde):
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="[HREF]" style="border-radius:10px;background-color:#008353"><strong>[TEXTO]</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+SECUNDÁRIO (laranja):
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="[HREF]" style="border-radius:10px;background-color:#ea580c"><strong>[TEXTO]</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+AZUL (terciário):
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="[HREF]" style="border-radius:10px;background-color:#2563eb"><strong>[TEXTO]</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+ESPAÇADOR entre 2 botões (5px):
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+
+NOTA (logo após o par de botões):
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+</botoes_gutenberg>
+
+<BIBLIOTECA_DE_BLOCOS_GUTENBERG>
+Estes são os BLOCOS DE APOIO que deixam a página dinâmica, escaneável e "wow" — do jeito
+que converte no funil de arbitragem. Copie o HTML EXATAMENTE (espaçamentos já calibrados),
+troque só o [conteúdo]. Use MUITOS deles (não 2-3 — bastante), VARIADOS e DISTRIBUÍDOS ao
+longo do texto: idealmente 1 bloco de apoio a cada 1-2 parágrafos/seção. Nunca empilhe dois
+blocos ricos seguidos sem texto entre eles.
+
+REGRAS DE OURO:
+- 100% ESTÁTICOS: sem <script>, <button>, <iframe>, <form>. Os CTAs continuam sendo os
+  wp:buttons/CTAs inline de sempre (destino único do funil). Estes blocos NÃO viram CTA.
+- Número/valor/data/percentual SÓ pode vir da BASE FACTUAL. Sem dado real → não use "cards
+  de número" nem "barra de progresso". Nunca invente cifra.
+- Mobile-first: parágrafos curtos; um bloco de apoio por vez. Os blocos SUBSTITUEM texto
+  denso — não somam parágrafos, deixam a leitura mais leve.
+- VARIE de página para página: não use sempre os mesmos. Escolha conforme o conteúdo.
+- PRIORIZE os blocos de maior impacto que quase ninguém usa e estão mais ABAIXO nesta lista:
+  TABELA COMPARATIVA (wp:table), DUAS COLUNAS (wp:columns) e PULLQUOTE (wp:pullquote). Não caia
+  sempre em caixa + FAQ — a tabela/colunas/pullquote é o que separa "wow" de "mais do mesmo".
+
+════════ CAIXAS DE DESTAQUE (wp:group nativo — 4 variações de cor) ════════
+
+RESUMO / "EM RESUMO" (slate #f1f5f9) — abre a seção com um sumário do que vem:
+<!-- wp:group {"style":{"color":{"background":"#f1f5f9"},"spacing":{"padding":{"top":"24px","right":"26px","bottom":"24px","left":"26px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-radius:12px;background-color:#f1f5f9;margin:24px 0;padding:24px 26px">
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Em resumo</h3>
+<!-- /wp:heading -->
+<!-- wp:list -->
+<ul class="wp-block-list"><!-- wp:list-item --><li>[ponto-chave 1]</li><!-- /wp:list-item --><!-- wp:list-item --><li>[ponto-chave 2]</li><!-- /wp:list-item --></ul>
+<!-- /wp:list -->
+</div>
+<!-- /wp:group -->
+
+DICA (azul #eff6ff) — orientação prática:
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> [orientação prática e específica].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+VOCÊ SABIA? (âmbar #fffbeb) — curiosidade / definição de termo (abre loop):
+<!-- wp:group {"style":{"color":{"background":"#fffbeb"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#d97706","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#d97706;border-left-width:5px;border-radius:10px;background-color:#fffbeb;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>Você sabia?</strong> [fato curioso e útil, curto].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+ATENÇÃO (vermelho #fef2f2 / texto #7f1d1d) — consequência REAL do fato (nunca escassez inventada):
+<!-- wp:group {"style":{"color":{"background":"#fef2f2","text":"#7f1d1d"},"spacing":{"padding":{"top":"22px","right":"24px","bottom":"22px","left":"24px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px","left":{"color":"#dc2626","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-text-color has-background" style="border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px">
+<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">⚠️ Atenção</h3><!-- /wp:heading -->
+<!-- wp:paragraph --><p>[consequência real e verificável — ex.: "sem o cadastro atualizado o benefício pode ser bloqueado". Nunca prazo/escassez fabricados].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+════════ CARDS DE NÚMERO (wp:html — 2-3 valores REAIS da base factual) ════════
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">[VALOR REAL]</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">[rótulo curto]</div>
+</div>
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">[VALOR REAL]</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">[rótulo curto]</div>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ PRÓS × CONTRAS (wp:html — 2 colunas verde/vermelho) ════════
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 220px;background:#ecfdf5;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#065f46">A favor</p>
+<ul style="margin:0;padding-left:18px;color:#065f46"><li>[vantagem 1]</li><li>[vantagem 2]</li></ul>
+</div>
+<div style="flex:1 1 220px;background:#fef2f2;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#991b1b">Atenção</p>
+<ul style="margin:0;padding-left:18px;color:#991b1b"><li>[cuidado 1]</li><li>[cuidado 2]</li></ul>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ PASSO A PASSO COM BADGES NUMERADOS (wp:html — dos prints) ════════
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">[Ação do passo 1]</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">[detalhe curto].</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">[Ação do passo 2]</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">[detalhe curto].</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ TIMELINE / CRONOLOGIA (wp:html — prazos, etapas no tempo) ════════
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><p style="margin:0;font-weight:700">[Etapa 1 - o que acontece]</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">[detalhe].</p></div>
+<div><p style="margin:0;font-weight:700">[Etapa 2 - o que acontece]</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">[detalhe].</p></div>
+</div>
+<!-- /wp:html -->
+
+════════ CHECKLIST EM PILLS (wp:html — requisitos/documentos) ════════
+<!-- wp:html -->
+<ul style="list-style:none;padding:0;margin:24px 0">
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ [requisito ou documento 1]</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ [requisito ou documento 2]</li>
+</ul>
+<!-- /wp:html -->
+
+════════ BARRA DE PROGRESSO (wp:html — [PERCENTUAL] REAL da base; senão não use) ════════
+<!-- wp:html -->
+<div style="background:#e5e7eb;border-radius:999px;height:14px;overflow:hidden;margin:16px 0 4px">
+<div style="width:[PERCENTUAL]%;background:#16a34a;height:100%"></div>
+</div>
+<p style="margin:0 0 24px;font-size:0.9em;color:#475569">[o que esse percentual representa]</p>
+<!-- /wp:html -->
+
+════════ TABELA COMPARATIVA (wp:table striped — dados lado a lado) ════════
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>[Coluna 1]</th><th>[Coluna 2]</th></tr></thead><tbody><tr><td>[dado]</td><td>[dado]</td></tr><tr><td>[dado]</td><td>[dado]</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+════════ DUAS COLUNAS (wp:columns — texto/comparação lado a lado) ════════
+<!-- wp:columns {"style":{"spacing":{"margin":{"top":"24px","bottom":"24px"}}}} -->
+<div class="wp-block-columns"><!-- wp:column -->
+<div class="wp-block-column"><!-- wp:paragraph --><p>[coluna A]</p><!-- /wp:paragraph --></div>
+<!-- /wp:column --><!-- wp:column -->
+<div class="wp-block-column"><!-- wp:paragraph --><p>[coluna B]</p><!-- /wp:paragraph --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+════════ PULLQUOTE (frase-chave de destaque — abre curiosidade) ════════
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>[frase memorável que provoca a próxima dúvida]</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+════════ SEPARADOR (wp:separator — respiro entre grandes blocos) ════════
+<!-- wp:separator {"className":"is-style-wide"} -->
+<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
+<!-- /wp:separator -->
+
+════════ FAQ NATIVO (wp:details — accordion nativo, sem shortcode) ════════
+<!-- wp:details -->
+<details class="wp-block-details"><summary>[Pergunta frequente?]</summary><!-- wp:paragraph -->
+<p>[Resposta objetiva, começando por Sim./Não./Depende.]</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+(Repita o bloco wp:details por pergunta — 4 a 6 perguntas reais.)
+</BIBLIOTECA_DE_BLOCOS_GUTENBERG>
+
+
+<uso_dos_blocos>
+Use de 5 a 8 BLOCOS DE APOIO VARIADOS ao todo (NÃO passe de 8), distribuídos (no máximo 1 por seção), NUNCA dois seguidos sem texto entre eles. Eles substituem parágrafos densos — é o que separa "post profissional" de "blocão de texto". Copie o HTML EXATAMENTE; troque só o conteúdo. Todo número/valor/data vem da BASE FACTUAL — sem dado real, não use cards/barra de progresso.
+COTA OBRIGATÓRIA DE VARIEDADE (não caia só em caixas + FAQ):
+- pelo menos 1 TABELA (wp:table) OU 1 bloco de COLUNAS (wp:columns);
+- pelo menos 1 PULLQUOTE (wp:pullquote);
+- no MÁXIMO 2 blocos de FAQ (wp:details) — não encha de accordion;
+- OBRIGATÓRIO usar, nesta página, pelo menos uma vez o bloco: DUAS COLUNAS (wp:columns).
+BALANCEAMENTO OBRIGATÓRIO: cada `<!-- wp:X -->` que você abrir TEM que ter o `<!-- /wp:X -->` correspondente. Um único bloco sem fechamento INVALIDA a página inteira. Antes de entregar, confira que todo bloco aberto foi fechado.
+</uso_dos_blocos>
+
+<prova_e_anti_alucinacao>
+Toda credibilidade precisa de PROVA: NÚMERO + UNIDADE + ENTIDADE-FONTE, tirados APENAS de {"resumo":"Guia completo sobre as regras vigentes em 2026 para trabalhadores demitidos sem justa causa que optaram pelo Saque-Aniversário do FGTS. Explica como funciona o saque da multa rescisória de 40% (que é liberada normalmente, enquanto o saldo principal fica retido), as condições para novas antecipações de empréstimo sob as regras atuais de 2026, o passo a passo detalhado para quitar o empréstimo com recursos próprios e liberar o saldo bloqueado, além do funcionamento do desconto automático anual e as formas de realizar o saque dos valores liberados.","dados_validados":[{"fato":"O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a multa rescisória de 40% paga pelo empregador, porém o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido. Pelas regras vigentes, o valor mínimo de cada saque antecipado é de R$ 100,00 e o máximo é de R$ 500,00 por saque anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"A contratação de empréstimo de antecipação exige uma carência de 90 dias após a adesão à modalidade de Saque-Aniversário para que o trabalhador possa autorizar as instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"O desconto das parcelas do empréstimo de antecipação é feito de forma 100% automática e anual, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.","fonte":"https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml"}],"passo_a_passo":["Entre em contato com a instituição financeira credora onde o empréstimo de antecipação do Saque-Aniversário foi contratado (por meio de aplicativo, internet banking, telefone ou agência física).","Solicite o saldo devedor atualizado para fins de quitação antecipada do contrato. Por lei, a instituição deve aplicar o desconto proporcional dos juros sobre as parcelas futuras.","Gere o boleto bancário de quitação emitido pelo banco credor e realize o pagamento integral utilizando recursos próprios (dinheiro de conta corrente, poupança ou outra reserva financeira).","Acompanhe a compensação do pagamento. Após o processamento bancário, a instituição financeira notificará a Caixa Econômica Federal para realizar o desbloqueio do saldo do FGTS.","Acesse o aplicativo oficial do FGTS para verificar se o saldo foi totalmente desbloqueado. Com o saldo livre e sem contratos ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão (que possui carência de 25 meses para entrar em vigor).","Para sacar os valores liberados em espécie, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/","https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml","https://www.serasa.com.br/credito/blog/quitar-emprestimo-fgts-caixa/"],"sparse":false}. Cite 3 a 5 órgãos reais com a sigla na 1ª menção. OBRIGATÓRIO: cite no corpo PELO MENOS 1 dado concreto (número, data ou valor) tirado DIRETAMENTE de {"resumo":"Guia completo sobre as regras vigentes em 2026 para trabalhadores demitidos sem justa causa que optaram pelo Saque-Aniversário do FGTS. Explica como funciona o saque da multa rescisória de 40% (que é liberada normalmente, enquanto o saldo principal fica retido), as condições para novas antecipações de empréstimo sob as regras atuais de 2026, o passo a passo detalhado para quitar o empréstimo com recursos próprios e liberar o saldo bloqueado, além do funcionamento do desconto automático anual e as formas de realizar o saque dos valores liberados.","dados_validados":[{"fato":"O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a multa rescisória de 40% paga pelo empregador, porém o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido. Pelas regras vigentes, o valor mínimo de cada saque antecipado é de R$ 100,00 e o máximo é de R$ 500,00 por saque anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"A contratação de empréstimo de antecipação exige uma carência de 90 dias após a adesão à modalidade de Saque-Aniversário para que o trabalhador possa autorizar as instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"O desconto das parcelas do empréstimo de antecipação é feito de forma 100% automática e anual, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.","fonte":"https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml"}],"passo_a_passo":["Entre em contato com a instituição financeira credora onde o empréstimo de antecipação do Saque-Aniversário foi contratado (por meio de aplicativo, internet banking, telefone ou agência física).","Solicite o saldo devedor atualizado para fins de quitação antecipada do contrato. Por lei, a instituição deve aplicar o desconto proporcional dos juros sobre as parcelas futuras.","Gere o boleto bancário de quitação emitido pelo banco credor e realize o pagamento integral utilizando recursos próprios (dinheiro de conta corrente, poupança ou outra reserva financeira).","Acompanhe a compensação do pagamento. Após o processamento bancário, a instituição financeira notificará a Caixa Econômica Federal para realizar o desbloqueio do saldo do FGTS.","Acesse o aplicativo oficial do FGTS para verificar se o saldo foi totalmente desbloqueado. Com o saldo livre e sem contratos ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão (que possui carência de 25 meses para entrar em vigor).","Para sacar os valores liberados em espécie, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/","https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml","https://www.serasa.com.br/credito/blog/quitar-emprestimo-fgts-caixa/"],"sparse":false}. Se a base vier sem nenhum número/data/valor, use em vez disso 1 fato qualitativo de autoridade citando a fonte oficial pelo nome. Nunca invente cifra.
+</prova_e_anti_alucinacao>
+
+<voz>
+- 2ª/3ª pessoa, informativa e envolvente. Abra por uma dor PRÁTICA e factual, nunca por ameaça inventada.
+- QUEBRE OS PARÁGRAFOS (mobile-first): cada <p> tem 1 IDEIA e no MÁXIMO 2 a 3 frases curtas. Se um trecho junta 2 fatos, ou uma frase longa + a consequência, separe em <p> DIFERENTES. NUNCA entregue um "paredão" de texto num <p> gigante. No passo a passo em particular, use PARÁGRAFOS CURTOS de 1 a 2 frases por passo, mobile-first: cada solução ENSINA o caminho exato com links reais e o print da tela; nada de parágrafo genérico/paredão.
+- QUEBRA DE PADRÃO VISUAL pra reter o leitor: <strong> nos termos-chave (órgãos, valores, prazos, o conceito central), <em> pra ênfase/nuance e <u> pontual num detalhe crítico. Com moderação — 2 a 4 destaques por seção, nunca frases ou parágrafos inteiros.
+- Emoji só como marcador de escaneabilidade (🔴🔵🟢 em bullets de passo, ✔️ em checklist, ⚠️ em alerta real), com parcimônia.
+</voz>
+
+<formato_de_saida>
+Output = HTML WordPress-ready no padrão Gutenberg (comentários <!-- wp: -->). SEM H1, SEM <article>/<section>, SEM <script>. TODO bloco wp: tem abertura e fechamento. Comece SEMPRE pela introdução (1 parágrafo) — SÓ DEPOIS vem o 1º botão + nota. Não repita botão após cada H2: só mais 1 botão (mesmo destino, texto variado) antes do fecho. A última seção termina em texto (parágrafo de transição), NUNCA em bloco de botões. NUNCA coloque um divisor (wp:separator / <hr>) entre botões ou colado num grupo de botões — separador só entre SEÇÕES de texto, se precisar.
+</formato_de_saida>
+
+=<TAREFA>
+Tema/headline: Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo
+Objetivo desta página: Sanar as maiores objeções e medos de longo prazo (perda de emprego, saldo travado, recontratação), gerando segurança total para a tomada de decisão.
+Estrutura (H2 obrigatórios, siga fielmente): H2: Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%? (Explicar que a multa de 40% é paga normalmente e pode ser sacada, enquanto o saldo principal da rescisão fica retido caso o trabalhador mantenha o saque-aniversário ativo)
+H2: Já antecipei o saque-aniversário, posso antecipar de novo? (Explicar que sim, desde que o trabalhador tenha saldo remanescente suficiente para cobrir o valor mínimo exigido pelos bancos parceiros)
+H2: Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS (Passo a passo para amortizar ou quitar o saldo devedor junto ao banco credor e voltar à modalidade de Saque-Rescisão mais rápido)
+H2: Como funciona o desconto do empréstimo e como sacar no caixa eletrônico (Esclarecer que o desconto é feito anualmente de forma automática, direto do saldo do FGTS, sem boletos. Explicar como sacar os valores liberados nas agências ou lotéricas caso prefira dinheiro em espécie)
+Keywords: 
+BASE FACTUAL (use SOMENTE isto para números/órgãos/datas): {"resumo":"Guia completo sobre as regras vigentes em 2026 para trabalhadores demitidos sem justa causa que optaram pelo Saque-Aniversário do FGTS. Explica como funciona o saque da multa rescisória de 40% (que é liberada normalmente, enquanto o saldo principal fica retido), as condições para novas antecipações de empréstimo sob as regras atuais de 2026, o passo a passo detalhado para quitar o empréstimo com recursos próprios e liberar o saldo bloqueado, além do funcionamento do desconto automático anual e as formas de realizar o saque dos valores liberados.","dados_validados":[{"fato":"O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a multa rescisória de 40% paga pelo empregador, porém o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido. Pelas regras vigentes, o valor mínimo de cada saque antecipado é de R$ 100,00 e o máximo é de R$ 500,00 por saque anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"A contratação de empréstimo de antecipação exige uma carência de 90 dias após a adesão à modalidade de Saque-Aniversário para que o trabalhador possa autorizar as instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"O desconto das parcelas do empréstimo de antecipação é feito de forma 100% automática e anual, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.","fonte":"https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml"}],"passo_a_passo":["Entre em contato com a instituição financeira credora onde o empréstimo de antecipação do Saque-Aniversário foi contratado (por meio de aplicativo, internet banking, telefone ou agência física).","Solicite o saldo devedor atualizado para fins de quitação antecipada do contrato. Por lei, a instituição deve aplicar o desconto proporcional dos juros sobre as parcelas futuras.","Gere o boleto bancário de quitação emitido pelo banco credor e realize o pagamento integral utilizando recursos próprios (dinheiro de conta corrente, poupança ou outra reserva financeira).","Acompanhe a compensação do pagamento. Após o processamento bancário, a instituição financeira notificará a Caixa Econômica Federal para realizar o desbloqueio do saldo do FGTS.","Acesse o aplicativo oficial do FGTS para verificar se o saldo foi totalmente desbloqueado. Com o saldo livre e sem contratos ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão (que possui carência de 25 meses para entrar em vigor).","Para sacar os valores liberados em espécie, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/","https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml","https://www.serasa.com.br/credito/blog/quitar-emprestimo-fgts-caixa/"],"sparse":false}
+</TAREFA>
+
+<COMPLIANCE>
+AVISO: gere UMA única vez, como um <p> simples (sem destaque, sem caixa), o texto: "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos." — o SISTEMA reposiciona esse aviso automaticamente no FINAL do artigo, discreto (itálico, fonte menor, tom de rodapé). Não o coloque no topo nem o destaque; trate como nota de rodapé.
+NÃO gere rodapé institucional "Sobre o Site", CNPJ nem byline de autor: o tema fixo do WordPress já injeta isso em todas as páginas. Gere APENAS o corpo do funil + este AVISO.
+</COMPLIANCE>
+
+<checklist_antes_de_entregar>
+- [ ] Abertura SEMPRE em TEXTO: a introdução (1 parágrafo) é o PRIMEIRO bloco do corpo — NENHUM botão antes dela.
+- [ ] TERMINAL: 2 botões (logo após a introdução + antes do fecho), os DOIS pro MESMO destino `cross_funnel` (guia diverso, não avança mais), cada um precedido de PONTE; sem canal oficial nesta página.
+- [ ] A ÚLTIMA seção fecha com 1 parágrafo de TRANSIÇÃO textual (nunca bloco de botões); no máximo 1 CTA inline 👉 dentro dele (nesta página TERMINAL, prefira o cross_funnel como esse CTA).
+- [ ] INTRODUÇÃO (antes de QUALQUER botão e do 1º H2) com NO MÁXIMO 1 parágrafo (2 a 3 frases: dor prática + o que a página resolve); SEM parágrafo de roadmap/sumário.
+- [ ] Estrutura com NO MÍNIMO 3 seções H2 no corpo (piso obrigatório desta página, ver <estrutura_h2>).
+- [ ] PONTE de prosa que enquadra o DESTINO REAL (não gancho de curiosidade sobre a página atual) imediatamente antes de cada botão de avanço; o texto do botão ANUNCIA o destino (termo distintivo do H1 do destino); no máximo 1 CTA inline 👉 extra no meio.
+- [ ] 5 a 8 BLOCOS DE APOIO variados e distribuídos, cumprindo a COTA: >=1 tabela OU colunas, >=1 pullquote, no máx 2 FAQ, + o bloco obrigatório da rotação.
+- [ ] Nenhum verbo de execução nos botões; nenhuma escassez fabricada; nenhuma alegação de vínculo oficial.
+- [ ] Botões usam SOMENTE os hrefs resolvidos; nenhum destino inventado; sem "//".
+- [ ] PASSO CERTEIRO: o(s) passo(s) que resolve(m) a dor declarada diz(em) O QUE fazer e linka(m) ONDE fazer. 2 a 4 LINKS OFICIAIS de TEXTO inline (👉 <a>...</a>) para os deep links reais da pesquisa, ancorados no trecho exato do passo, âncora NOMINAL descritiva (sem verbo de execução, sem "clique aqui"), cada URL 1x, NUNCA como botão.
+- [ ] Pelo menos 1 dado concreto (número/data/valor) da base factual — ou 1 fato qualitativo de autoridade com fonte nomeada se não houver número — + 3 a 5 órgãos com sigla; zero cifra fora da base factual.
+- [ ] Aviso de utilidade pública gerado UMA vez como <p> simples (o sistema move pro final, discreto); NENHUM divisor entre botões.
+- [ ] Parágrafos curtos (1 ideia cada), com <strong>/<em> pra quebra de padrão visual — sem paredão de texto.
+Gere agora o HTML Gutenberg, começando SEMPRE pela introdução (1 parágrafo).
+</checklist_antes_de_entregar>

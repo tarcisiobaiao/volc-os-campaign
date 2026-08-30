@@ -1,0 +1,65 @@
+{
+  "contract_version": "1.0",
+  "funnel_id": "antecipacao-saque-aniversario-fgts",
+  "funnel_name": "Antecipacao Saque-Aniversario FGTS",
+  "vertical": "credito_fgts",
+  "market": "BR",
+  "taxonomy": {
+    "page_type_by_slug_suffix": {
+      "LP": "slug SEM sufixo",
+      "presell": "slug termina em -pr",
+      "solution": "slug termina em -p1 | -p2 | -p3"
+    },
+    "interlink_rules": {
+      "LP": "todos os CTAs -> presell (-pr); destino unico",
+      "presell": "FAN-OUT: 1 CTA por solucao (p1, p2, p3); cada H2 preview de uma solucao",
+      "solution": "mesh entre irmas (sem self-loop) + 1 saida oficial externa + 1 cross-funnel (URL real do sitemap, relacionado-mas-diverso); terminal (p3) exige cross-funnel"
+    }
+  },
+  "pages": [
+    {
+      "page_type": "LP",
+      "slug": "antecipacao-saque-aniversario-fgts",
+      "cta_targets": ["quem-tem-direito-antecipar-fgts-pr"],
+      "cta_kind": "funnel (destino unico -> presell)"
+    },
+    {
+      "page_type": "presell",
+      "slug": "quem-tem-direito-antecipar-fgts-pr",
+      "cta_targets": [
+        "como-consultar-fgts-pelo-cpf-p1",
+        "bancos-antecipar-fgts-pix-whatsapp-p2",
+        "regras-demissao-quitar-emprestimo-fgts-p3"
+      ],
+      "cta_kind": "funnel (fan-out -> 1 por solucao)",
+      "h2_to_solution": {
+        "Requisitos de Elegibilidade": "como-consultar-fgts-pelo-cpf-p1",
+        "Valores e Canais Rapidos (R$20 Pix/WhatsApp)": "bancos-antecipar-fgts-pix-whatsapp-p2",
+        "Regras Especiais (Demissao/Quitacao)": "regras-demissao-quitar-emprestimo-fgts-p3"
+      }
+    },
+    {
+      "page_type": "solution",
+      "solution_index": 1,
+      "slug": "como-consultar-fgts-pelo-cpf-p1",
+      "cta_targets": ["bancos-antecipar-fgts-pix-whatsapp-p2", "regras-demissao-quitar-emprestimo-fgts-p3"],
+      "cta_kind": "funnel (mesh irmas) + external_official + cross_funnel"
+    },
+    {
+      "page_type": "solution",
+      "solution_index": 2,
+      "slug": "bancos-antecipar-fgts-pix-whatsapp-p2",
+      "cta_targets": ["como-consultar-fgts-pelo-cpf-p1", "regras-demissao-quitar-emprestimo-fgts-p3"],
+      "cta_kind": "funnel (mesh irmas) + external_official + cross_funnel"
+    },
+    {
+      "page_type": "solution",
+      "solution_index": 3,
+      "slug": "regras-demissao-quitar-emprestimo-fgts-p3",
+      "terminal": true,
+      "cta_targets": ["como-consultar-fgts-pelo-cpf-p1", "bancos-antecipar-fgts-pix-whatsapp-p2"],
+      "cross_funnel_source": "sitemap (relacionado-mas-diverso; ex.: PIS/PASEP, abono, restituicao)",
+      "cta_kind": "funnel (mesh irmas) + external_official + cross_funnel (URL real, OBRIGATORIO no terminal)"
+    }
+  ]
+}

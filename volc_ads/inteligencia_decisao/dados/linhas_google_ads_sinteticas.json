@@ -1,0 +1,355 @@
+{
+  "$schema_version": 4,
+  "as_of": "2026-08-28T12:00:00Z",
+  "as_of_date": "2026-08-27",
+  "calendar_timezone": "America/Sao_Paulo",
+  "coverage_receipt": {
+    "schema_version": 3,
+    "customer_time_zone": "America/Sao_Paulo",
+    "query_window": {
+      "inicio": "2026-08-25",
+      "fim": "2026-08-27"
+    },
+    "adapter_conversions": {},
+    "grains": {
+      "campaign_day": {
+        "estado": "completo",
+        "linhas_recebidas": 3,
+        "selected_fields": [
+          "customer.id",
+          "campaign.id",
+          "campaign.resource_name",
+          "campaign.status",
+          "campaign.serving_status",
+          "customer.currency_code",
+          "segments.date",
+          "metrics.impressions",
+          "metrics.clicks",
+          "metrics.cost_micros",
+          "metrics.conversions",
+          "metrics.conversions_value"
+        ]
+      },
+      "campaign_window": {
+        "estado": "completo",
+        "linhas_recebidas": 1,
+        "selected_fields": [
+          "customer.id",
+          "campaign.id",
+          "campaign.resource_name",
+          "campaign.status",
+          "campaign.serving_status",
+          "metrics.search_impression_share",
+          "metrics.search_budget_lost_impression_share",
+          "metrics.search_rank_lost_impression_share"
+        ]
+      },
+      "keyword_criterion": {
+        "estado": "completo",
+        "linhas_recebidas": 1,
+        "selected_fields": [
+          "customer.id",
+          "campaign.id",
+          "ad_group.id",
+          "ad_group_criterion.criterion_id",
+          "ad_group_criterion.resource_name",
+          "ad_group_criterion.type",
+          "ad_group_criterion.status",
+          "ad_group_criterion.system_serving_status",
+          "ad_group_criterion.negative",
+          "ad_group_criterion.keyword.text",
+          "ad_group_criterion.keyword.match_type",
+          "ad_group_criterion.quality_info.quality_score",
+          "ad_group_criterion.quality_info.creative_quality_score",
+          "ad_group_criterion.quality_info.post_click_quality_score",
+          "ad_group_criterion.quality_info.search_predicted_ctr"
+        ]
+      },
+      "search_term_view": {
+        "estado": "completo",
+        "linhas_recebidas": 1,
+        "selected_fields": [
+          "customer.id",
+          "campaign.id",
+          "ad_group.id",
+          "search_term_view.resource_name",
+          "search_term_view.search_term",
+          "search_term_view.status",
+          "segments.search_term_match_type",
+          "metrics.impressions",
+          "metrics.clicks",
+          "metrics.cost_micros",
+          "metrics.conversions"
+        ]
+      },
+      "campaign_negative": {
+        "estado": "completo",
+        "linhas_recebidas": 1,
+        "selected_fields": [
+          "customer.id",
+          "campaign.id",
+          "campaign_criterion.criterion_id",
+          "campaign_criterion.resource_name",
+          "campaign_criterion.type",
+          "campaign_criterion.status",
+          "campaign_criterion.negative",
+          "campaign_criterion.keyword.text",
+          "campaign_criterion.keyword.match_type"
+        ]
+      },
+      "ad_group_negative": {
+        "estado": "completo",
+        "linhas_recebidas": 1,
+        "selected_fields": [
+          "customer.id",
+          "campaign.id",
+          "ad_group.id",
+          "ad_group_criterion.criterion_id",
+          "ad_group_criterion.resource_name",
+          "ad_group_criterion.type",
+          "ad_group_criterion.status",
+          "ad_group_criterion.system_serving_status",
+          "ad_group_criterion.negative",
+          "ad_group_criterion.keyword.text",
+          "ad_group_criterion.keyword.match_type"
+        ]
+      }
+    }
+  },
+  "scenario_id": "raw-budget-limited-healthy",
+  "label": "Raw Google Ads — orçamento limitado com qualidade saudável",
+  "observation_context": {
+    "source": {
+      "nome": "google_ads_rows_fixture",
+      "tipo": "sintetica_hermetica",
+      "estado": "completa"
+    },
+    "policy_profile_id": "lab-calibracao-sintetica-v1",
+    "campaign": {
+      "name": "LAB raw normalizer",
+      "start_date_time": "2026-08-01",
+      "status": "ENABLED",
+      "account_status": "ENABLED",
+      "channel": "SEARCH",
+      "bidding": "MANUAL_CPC",
+      "currency": "BRL",
+      "budget_micros": 20000000,
+      "checks": {
+        "billing_active": true,
+        "groups_enabled": true,
+        "ads_approved": true,
+        "keywords_enabled": true,
+        "targeting_valid": true,
+        "conversion_tracking": true
+      }
+    },
+    "routine": {
+      "job_id": "synthetic-cost-reader",
+      "status": "success",
+      "last_success_at": "2026-08-28T09:00:00Z"
+    },
+    "last_action": {
+      "action_id": null,
+      "cooldown_until": null
+    }
+  },
+  "external_revenue": [
+    {
+      "date": "2026-08-25",
+      "revenue_micros": 13000000,
+      "rpc_micros": 342105,
+      "source": "external_rpc_fixture"
+    },
+    {
+      "date": "2026-08-26",
+      "revenue_micros": 14000000,
+      "rpc_micros": 341463,
+      "source": "external_rpc_fixture"
+    },
+    {
+      "date": "2026-08-27",
+      "revenue_micros": 15000000,
+      "rpc_micros": 348837,
+      "source": "external_rpc_fixture"
+    }
+  ],
+  "google_ads_rows": [
+    {
+      "raw_grain": "campaign_day",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "campaign.resource_name": "customers/9990000001/campaigns/88000000001",
+        "campaign.status": "ENABLED",
+        "campaign.serving_status": "SERVING",
+        "customer.currency_code": "BRL",
+        "segments.date": "2026-08-25",
+        "metrics.impressions": "700",
+        "metrics.clicks": "38",
+        "metrics.cost_micros": "7000000",
+        "metrics.conversions": 5.0,
+        "metrics.conversions_value": 15.0
+      }
+    },
+    {
+      "raw_grain": "campaign_day",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "campaign.resource_name": "customers/9990000001/campaigns/88000000001",
+        "campaign.status": "ENABLED",
+        "campaign.serving_status": "SERVING",
+        "customer.currency_code": "BRL",
+        "segments.date": "2026-08-26",
+        "metrics.impressions": "740",
+        "metrics.clicks": "41",
+        "metrics.cost_micros": "7500000",
+        "metrics.conversions": 5.0,
+        "metrics.conversions_value": 15.8
+      }
+    },
+    {
+      "raw_grain": "campaign_day",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "campaign.resource_name": "customers/9990000001/campaigns/88000000001",
+        "campaign.status": "ENABLED",
+        "campaign.serving_status": "SERVING",
+        "customer.currency_code": "BRL",
+        "segments.date": "2026-08-27",
+        "metrics.impressions": "760",
+        "metrics.clicks": "43",
+        "metrics.cost_micros": "7800000",
+        "metrics.conversions": 6.0,
+        "metrics.conversions_value": 17.0
+      }
+    },
+    {
+      "raw_grain": "campaign_window",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "campaign.resource_name": "customers/9990000001/campaigns/88000000001",
+        "campaign.status": "ENABLED",
+        "campaign.serving_status": "SERVING",
+        "metrics.search_impression_share": 0.44,
+        "metrics.search_budget_lost_impression_share": 0.29,
+        "metrics.search_rank_lost_impression_share": 0.06
+      }
+    },
+    {
+      "raw_grain": "keyword_criterion",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "ad_group.id": "770001",
+        "ad_group_criterion.criterion_id": "771001",
+        "ad_group_criterion.resource_name": "customers/9990000001/adGroupCriteria/770001~771001",
+        "ad_group_criterion.type": "KEYWORD",
+        "ad_group_criterion.status": "ENABLED",
+        "ad_group_criterion.system_serving_status": "ELIGIBLE",
+        "ad_group_criterion.negative": false,
+        "ad_group_criterion.keyword.text": "seguro viagem família",
+        "ad_group_criterion.keyword.match_type": "PHRASE",
+        "ad_group_criterion.quality_info.quality_score": 8,
+        "ad_group_criterion.quality_info.creative_quality_score": "ABOVE_AVERAGE",
+        "ad_group_criterion.quality_info.post_click_quality_score": "AVERAGE",
+        "ad_group_criterion.quality_info.search_predicted_ctr": "ABOVE_AVERAGE"
+      }
+    },
+    {
+      "raw_grain": "search_term_view",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "ad_group.id": "770001",
+        "search_term_view.resource_name": "customers/9990000001/searchTermViews/88000000001~770001~c2VndXJvIHZpYWdlbSBmYW3DrWxpYSBpbnRlcm5hY2lvbmFs",
+        "search_term_view.search_term": "seguro viagem família internacional",
+        "search_term_view.status": "NONE",
+        "segments.search_term_match_type": "PHRASE",
+        "metrics.impressions": "0",
+        "metrics.clicks": "0",
+        "metrics.cost_micros": "0",
+        "metrics.conversions": 0
+      }
+    },
+    {
+      "raw_grain": "campaign_negative",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "campaign_criterion.criterion_id": "8801",
+        "campaign_criterion.resource_name": "customers/9990000001/campaignCriteria/88000000001~8801",
+        "campaign_criterion.type": "KEYWORD",
+        "campaign_criterion.status": "ENABLED",
+        "campaign_criterion.negative": true,
+        "campaign_criterion.keyword.text": "gratuito",
+        "campaign_criterion.keyword.match_type": "BROAD"
+      }
+    },
+    {
+      "raw_grain": "ad_group_negative",
+      "janela": {
+        "inicio": "2026-08-25",
+        "fim": "2026-08-27"
+      },
+      "lido_em": "2026-08-28T11:00:00Z",
+      "source_fields": {
+        "customer.id": "9990000001",
+        "campaign.id": "88000000001",
+        "ad_group.id": "770001",
+        "ad_group_criterion.criterion_id": "8802",
+        "ad_group_criterion.resource_name": "customers/9990000001/adGroupCriteria/770001~8802",
+        "ad_group_criterion.type": "KEYWORD",
+        "ad_group_criterion.status": "ENABLED",
+        "ad_group_criterion.system_serving_status": "ELIGIBLE",
+        "ad_group_criterion.negative": true,
+        "ad_group_criterion.keyword.text": "emprego",
+        "ad_group_criterion.keyword.match_type": "EXACT"
+      }
+    }
+  ],
+  "expected": {
+    "estado_da_leitura": "atual",
+    "veredito": "limitado",
+    "propostas": 1,
+    "operacao": "orcamento",
+    "mutacoes_executadas": 0
+  }
+}

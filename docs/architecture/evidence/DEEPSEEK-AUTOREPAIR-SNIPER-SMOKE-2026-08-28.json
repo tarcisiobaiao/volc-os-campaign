@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-28",
+  "model": "deepseek-v4-flash",
+  "model_version_documented": "DeepSeek-V4-Flash-0731",
+  "transport": "OpenAI-compatible official endpoint",
+  "thinking": "enabled",
+  "reasoning_effort": "low",
+  "thinking_logged": false,
+  "external_product_writes": 0,
+  "results": {
+    "total_calls": 8,
+    "schema_and_guard_accepted": 7,
+    "guard_rejected": 1,
+    "python_identifier": {
+      "accepted": 4,
+      "total": 4,
+      "deterministic_validation": ["allowlist", "AST", "functional assertion"]
+    },
+    "copy_flag": {
+      "schema_and_guard_accepted": 3,
+      "total": 4,
+      "human_semantic_acceptance": 0,
+      "finding": "A guarda estrutural protegeu o span, mas as trocas previstas, possível e potencial ficaram pouco naturais no contexto. Copy ainda exige segundo revisor semântico ou confirmação humana."
+    }
+  },
+  "verdict": "Viável para correções determinísticas estreitas; ainda não habilitado para autoaplicar copy sem revisão semântica.",
+  "private_raw_reports": [
+    "/private/tmp/volc-autorepair-sniper/20260828-121648.json",
+    "/private/tmp/volc-autorepair-sniper/20260828-121750.json"
+  ],
+  "implementation": "tools/agentic-recovery-smoke/sniper.py"
+}

@@ -1,0 +1,32 @@
+{
+  "slots": [
+    {
+      "slot_id": "sol-inline-1",
+      "page_role": "SOLUTION",
+      "placement": "inline",
+      "sizes": [
+        "fluid",
+        "300x250"
+      ],
+      "min_height_px": 250,
+      "refresh_eligible": true,
+      "source_key": ""
+    },
+    {
+      "slot_id": "sol-footer",
+      "page_role": "SOLUTION",
+      "placement": "footer",
+      "sizes": [
+        "fluid"
+      ],
+      "min_height_px": 250,
+      "refresh_eligible": false,
+      "source_key": ""
+    }
+  ],
+  "vignette": {
+    "enabled": true,
+    "max_per_window": 1,
+    "window_seconds": 600
+  }
+}

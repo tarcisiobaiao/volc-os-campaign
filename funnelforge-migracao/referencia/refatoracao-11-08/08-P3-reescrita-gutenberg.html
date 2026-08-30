@@ -1,0 +1,396 @@
+<!-- REGRA_MOTOR: SOLUTION diagnóstica. Nunca prometer saque do saldo principal fora das hipóteses legais. -->
+
+<!-- wp:paragraph -->
+<p>Demissão, quitação e volta ao Saque-Rescisão são três situações diferentes que quase sempre aparecem juntas — e são confundidas justamente porque parecem a mesma coisa. Não são, e a diferença decide se o seu dinheiro sai ou não.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/" style="border-radius:10px;background-color:#008353"><strong>Ainda não conferi minha modalidade no App FGTS &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"8px"} -->
+<div style="height:8px" aria-hidden="true" class="wp-block-spacer"></div>
+<!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2/" style="border-radius:10px;background-color:#ea580c"><strong>Quero comparar antes de contratar &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center","fontSize":"small"} -->
+<p class="has-text-align-center has-small-font-size"><em>* Você permanece neste mesmo site *</em></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"anchor":"diagnostico"} -->
+<h2 class="wp-block-heading" id="diagnostico">Em que estado você está?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:html -->
+<!--
+WIDGET: Diagnóstico de estado após demissão, antecipação ou pedido de retorno
+POSICIONAMENTO RECOMENDADO: P3, antes das explicações detalhadas.
+FUNÇÃO: distinguir multa rescisória, saldo principal, quitação e retorno de modalidade.
+ÂNCORAS NECESSÁRIAS EM P3: #multa-rescisoria, #saldo-principal, #quitar-antecipacao, #voltar-saque-rescisao.
+NÃO COLETA: CPF, nome, empregador, data de desligamento, saldo exato ou número de contrato.
+-->
+<section class="cup-widget cup-state" id="cupStateDiagnosis" aria-labelledby="cup-sd-title">
+  <div class="cup-widget__intro">
+    <div class="cup-widget__eyebrow">Diagnóstico de estado</div>
+    <h2 id="cup-sd-title">Demissão, empréstimo ou troca de modalidade: onde você está?</h2>
+      <div class="cup-widget__chamada">Responda as quatro perguntas e o resultado leva direto à seção que trata do seu caso.</div>
+    <div>Use somente informações que você consegue confirmar no App FGTS ou no contrato. O resultado explica a regra aplicável; não libera valores.</div>
+  </div>
+
+  <div class="cup-widget__stage">
+    <form class="cup-widget__panel is-active" id="cup-sd-form" novalidate aria-hidden="false">
+      <div class="cup-widget__error-summary" id="cup-sd-summary" role="alert" tabindex="-1" hidden></div>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="dismissal" aria-describedby="cup-sd-dismissal-hint cup-sd-dismissal-error">
+        <legend>1. Houve demissão sem justa causa?</legend>
+        <div class="cup-field__hint" id="cup-sd-dismissal-hint">Responda “não” se você continua empregado ou se sua dúvida não envolve esse desligamento.</div>
+        <label><input type="radio" name="dismissal" value="yes"> Sim</label>
+        <label><input type="radio" name="dismissal" value="no"> Não</label>
+        <label><input type="radio" name="dismissal" value="unknown"> Não sei confirmar o tipo de desligamento</label>
+        <div class="cup-field__error" id="cup-sd-dismissal-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="modality" aria-describedby="cup-sd-modality-hint cup-sd-modality-error">
+        <legend>2. Qual estado de modalidade aparece no App FGTS?</legend>
+        <div class="cup-field__hint" id="cup-sd-modality-hint">Um pedido de retorno ainda em espera não equivale ao Saque-Rescisão já efetivo.</div>
+        <label><input type="radio" name="modality" value="birthday"> Saque-Aniversário ativo</label>
+        <label><input type="radio" name="modality" value="return_pending"> Retorno ao Saque-Rescisão solicitado, ainda em espera</label>
+        <label><input type="radio" name="modality" value="termination"> Saque-Rescisão já efetivo</label>
+        <label><input type="radio" name="modality" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-sd-modality-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="loan" aria-describedby="cup-sd-loan-hint cup-sd-loan-error">
+        <legend>3. Existe antecipação do Saque-Aniversário ainda ativa?</legend>
+        <div class="cup-field__hint" id="cup-sd-loan-hint">Consulte o contrato e os bloqueios mostrados no aplicativo.</div>
+        <label><input type="radio" name="loan" value="yes"> Sim</label>
+        <label><input type="radio" name="loan" value="no"> Não</label>
+        <label><input type="radio" name="loan" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-sd-loan-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="goal" aria-describedby="cup-sd-goal-hint cup-sd-goal-error">
+        <legend>4. O que você quer resolver agora?</legend>
+        <div class="cup-field__hint" id="cup-sd-goal-hint">Escolha uma única prioridade.</div>
+        <label><input type="radio" name="goal" value="penalty"> Sacar ou entender a multa rescisória</label>
+        <label><input type="radio" name="goal" value="main_balance"> Sacar ou desbloquear o saldo principal</label>
+        <label><input type="radio" name="goal" value="settle"> Quitar a antecipação</label>
+        <label><input type="radio" name="goal" value="return"> Voltar ao Saque-Rescisão</label>
+        <div class="cup-field__error" id="cup-sd-goal-error" aria-live="polite"></div>
+      </fieldset>
+
+      <button class="cup-widget__submit" type="submit">Entender meu estado</button>
+      <div class="cup-widget__privacy">As respostas ficam no navegador. Nenhum dado pessoal ou valor exato é solicitado.</div>
+    </form>
+
+    <div class="cup-widget__panel cup-result" id="cup-sd-result" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" inert>
+      <div class="cup-result__eyebrow">Resultado do diagnóstico</div>
+      <h3 id="cup-sd-result-title" tabindex="-1"></h3>
+      <div id="cup-sd-result-body"></div>
+      <div class="cup-result__reason" id="cup-sd-result-reason"></div>
+      <a class="cup-widget__submit cup-result__cta" id="cup-sd-result-cta" href="#"></a>
+      <button class="cup-widget__back" id="cup-sd-back" type="button">Alterar respostas</button>
+      <div class="cup-widget__privacy">O aplicativo oficial e a instituição contratada são as referências para confirmar movimentações e quitação.</div>
+    </div>
+  </div>
+</section>
+
+<style>
+    [id^="cup"] .cup-widget__chamada{margin:8px 0 20px;color:#526079;font-size:.94rem;line-height:1.55}
+    [id^="cup"] .cup-txt,[id^="cup"] .cup-sub,[id^="cup"] .cup-hint,[id^="cup"] .cup-nota,[id^="cup"] .cup-erro,[id^="cup"] .cup-porque,[id^="cup"] .cup-field__hint,[id^="cup"] .cup-field__error{margin:0 0 8px}
+#cupStateDiagnosis{--cw-ink:#14213d;--cw-muted:#536079;--cw-line:#dce3ed;--cw-soft:#f7f8fb;--cw-accent:#0b7167;--cw-danger:#a32323;box-sizing:border-box;max-width:760px;margin:2rem auto;padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:18px;background:#fff;color:var(--cw-ink);box-shadow:0 16px 40px rgba(20,33,61,.08);font-family:inherit}
+#cupStateDiagnosis *{box-sizing:border-box}
+#cupStateDiagnosis .cup-widget__eyebrow,#cupStateDiagnosis .cup-result__eyebrow{margin:0 0 .35rem;color:var(--cw-accent);font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+#cupStateDiagnosis h2{margin:.2rem 0 .55rem;line-height:1.15}#cupStateDiagnosis h3{margin:.25rem 0 .75rem;line-height:1.2}
+#cupStateDiagnosis .cup-widget__intro>div:last-child{margin-bottom:1.25rem;color:var(--cw-muted);line-height:1.55}
+#cupStateDiagnosis .cup-widget__stage{display:grid;align-items:start}
+#cupStateDiagnosis .cup-widget__panel{grid-area:1/1;min-width:0;visibility:hidden;opacity:0;pointer-events:none}
+#cupStateDiagnosis .cup-widget__panel.is-active{visibility:visible;opacity:1;pointer-events:auto}
+#cupStateDiagnosis .cup-field{min-width:0;margin:0 0 1rem;padding:1rem;border:1px solid var(--cw-line);border-radius:12px;background:var(--cw-soft)}
+#cupStateDiagnosis .cup-field[data-invalid="true"]{border-color:var(--cw-danger)}
+#cupStateDiagnosis legend{padding:0 .25rem;font-weight:750;line-height:1.35}
+#cupStateDiagnosis .cup-field__hint{margin:.25rem 0 .7rem;color:var(--cw-muted);font-size:.9rem;line-height:1.45}
+#cupStateDiagnosis label{display:flex;gap:.55rem;align-items:flex-start;margin:.45rem 0;line-height:1.4;cursor:pointer}
+#cupStateDiagnosis input{width:1.15rem;height:1.15rem;margin-top:.14rem;accent-color:var(--cw-accent);flex:0 0 auto}
+#cupStateDiagnosis input:focus-visible,#cupStateDiagnosis button:focus-visible,#cupStateDiagnosis a:focus-visible,#cupStateDiagnosis h3:focus-visible{outline:3px solid #f4b942;outline-offset:3px}
+#cupStateDiagnosis .cup-field__error{min-height:0;margin:.45rem 0 0;color:var(--cw-danger);font-size:.88rem;font-weight:700}
+#cupStateDiagnosis .cup-widget__error-summary{margin:0 0 1rem;padding:.8rem 1rem;border:1px solid var(--cw-danger);border-radius:10px;color:var(--cw-danger);background:#fff7f7;font-weight:700}
+#cupStateDiagnosis .cup-widget__submit{display:inline-flex;justify-content:center;align-items:center;width:100%;min-height:48px;padding:.75rem 1rem;border:2px solid var(--cw-accent);border-radius:10px;background:var(--cw-accent);color:#fff;font:inherit;font-weight:800;text-align:center;text-decoration:none;cursor:pointer}
+#cupStateDiagnosis .cup-widget__submit:hover{background:#075b53;border-color:#075b53}
+#cupStateDiagnosis .cup-widget__privacy{margin:.75rem 0 0;color:var(--cw-muted);font-size:.82rem;line-height:1.45}
+#cupStateDiagnosis .cup-result{padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:14px;background:linear-gradient(145deg,#f8fffd,#eef9f6)}
+#cupStateDiagnosis .cup-result__reason{margin:1rem 0;padding:1rem;border-left:4px solid var(--cw-accent);border-radius:0 9px 9px 0;background:#fff;line-height:1.5}
+#cupStateDiagnosis .cup-result__cta{margin-top:.25rem}
+#cupStateDiagnosis .cup-widget__back{display:block;margin:.9rem auto 0;padding:.45rem;border:0;background:transparent;color:var(--cw-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){#cupStateDiagnosis .cup-widget__panel{transition:opacity .18s ease}#cupStateDiagnosis button,#cupStateDiagnosis a{transition:background-color .18s ease,border-color .18s ease}}
+@media (max-width:520px){#cupStateDiagnosis{border-radius:13px}#cupStateDiagnosis .cup-field{padding:.85rem}}
+</style>
+
+<script>
+(function(){
+  'use strict';
+  var root=document.getElementById('cupStateDiagnosis');
+  if(!root||root.dataset.ready==='true'){return;}
+  root.dataset.ready='true';
+
+  var form=root.querySelector('#cup-sd-form');
+  var result=root.querySelector('#cup-sd-result');
+  var title=root.querySelector('#cup-sd-result-title');
+  var body=root.querySelector('#cup-sd-result-body');
+  var reason=root.querySelector('#cup-sd-result-reason');
+  var cta=root.querySelector('#cup-sd-result-cta');
+  var back=root.querySelector('#cup-sd-back');
+  var summary=root.querySelector('#cup-sd-summary');
+  var names=['dismissal','modality','loan','goal'];
+  var emitted={};
+  var p1='https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/';
+  var p3='https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/';
+
+  var routes={
+    check_dismissal:{title:'Confirme primeiro o tipo de desligamento',body:'A multa rescisória e as hipóteses de saque dependem do motivo registrado para a saída.',reason:'Por quê: “demissão” é um termo amplo. Sem justa causa, pedido de demissão e acordo não produzem exatamente os mesmos efeitos.',cta:'Ver o que conferir no aplicativo',url:p1},
+    no_dismissal_penalty:{title:'Sem demissão sem justa causa, esta não é a rota da multa rescisória',body:'Confirme se houve outro evento previsto em lei ou se sua dúvida é sobre o saldo e a modalidade.',reason:'Por quê: a multa rescisória está ligada ao desligamento e não nasce da contratação ou quitação da antecipação.',cta:'Consultar saldo e movimentações',url:p1},
+    birthday_penalty:{title:'A multa rescisória não é o saldo principal',body:'Na demissão sem justa causa, quem está no Saque-Aniversário pode movimentar a multa rescisória, quando devida. O saldo principal não é liberado automaticamente.',reason:'Por quê: a lei preserva a movimentação da multa, enquanto o restante segue as regras do Saque-Aniversário e outras hipóteses legais.',cta:'Entender a multa rescisória',url:p3+'#multa-rescisoria'},
+    termination_dismissal:{title:'Confirme a liberação no App FGTS',body:'Com Saque-Rescisão efetivo e demissão sem justa causa, consulte o aplicativo para verificar os valores liberados e o canal de recebimento.',reason:'Por quê: o estado efetivo da modalidade e o evento de desligamento precisam constar no sistema.',cta:'Ver onde consultar o FGTS',url:p1},
+    check_mode:{title:'Confirme a modalidade antes de interpretar o saldo',body:'O resultado muda se o aplicativo mostra Saque-Aniversário ativo, retorno ainda em espera ou Saque-Rescisão efetivo.',reason:'Por quê: pedir o retorno não altera a modalidade imediatamente.',cta:'Consultar a modalidade no App FGTS',url:p1},
+    main_locked_by_mode:{title:'A demissão não libera automaticamente o saldo principal',body:'Enquanto o Saque-Aniversário estiver vigente — inclusive durante a espera do retorno — a demissão sem justa causa libera a multa rescisória quando devida, não todo o saldo.',reason:'Por quê: o saldo principal permanece sujeito aos saques anuais e às demais hipóteses previstas em lei.',cta:'Entender saldo principal e demissão',url:p3+'#saldo-principal'},
+    no_withdrawal_event:{title:'Quitar ou consultar o saldo não cria um saque livre',body:'Sem uma hipótese legal de movimentação, o saldo principal continua no FGTS mesmo que não exista empréstimo ativo.',reason:'Por quê: desbloqueio de garantia e autorização de saque são coisas diferentes.',cta:'Ver as regras do saldo principal',url:p3+'#saldo-principal'},
+    check_main_balance:{title:'Confirme modalidade e desligamento antes de buscar o saldo',body:'Esses dois estados determinam se há uma hipótese de movimentação ligada à rescisão.',reason:'Por quê: saldo disponível no aplicativo não significa, sozinho, saldo liberado para saque.',cta:'Consultar os estados no App FGTS',url:p1},
+    settle_active:{title:'Peça o saldo devedor à instituição do contrato',body:'A quitação antecipada usa recursos próprios e depende do processamento da instituição e do FGTS para retirar a garantia.',reason:'Importante: retirar o bloqueio da garantia não cria, por si só, o direito de sacar o saldo principal nem antecipa o retorno ao Saque-Rescisão.',cta:'Entender quitação e desaverbação',url:p3+'#quitar-antecipacao'},
+    no_active_loan:{title:'Não há antecipação ativa informada para quitar',body:'Se ainda aparece um bloqueio, confirme no aplicativo a origem e procure a instituição indicada no registro.',reason:'Por quê: bloqueios podem estar associados a uma operação ainda em processamento ou a outro estado que precisa ser identificado.',cta:'Ver como interpretar o bloqueio',url:p3+'#quitar-antecipacao'},
+    check_loan:{title:'Confirme o contrato ativo antes de agir',body:'Verifique no aplicativo e no contrato se existe operação vigente e qual instituição responde por ela.',reason:'Por quê: quitação, retorno de modalidade e reutilização de uma competência dependem dessa informação.',cta:'Consultar contrato e bloqueio',url:p3+'#quitar-antecipacao'},
+    settle_before_return:{title:'A operação ativa precisa ser resolvida antes do retorno',body:'O pedido de mudança para o Saque-Rescisão só pode seguir sem antecipação vigente.',reason:'Depois da quitação e do processamento, o retorno ainda respeita o primeiro dia do 25º mês após o pedido; a quitação não encurta esse prazo.',cta:'Ver a ordem correta das etapas',url:p3+'#voltar-saque-rescisao'},
+    return_pending:{title:'Seu pedido ainda está no período de espera',body:'Até a mudança produzir efeito, as regras do Saque-Aniversário continuam valendo.',reason:'Por quê: o retorno passa a valer no primeiro dia do 25º mês após o pedido, desde que não haja antecipação vigente.',cta:'Entender a data efetiva do retorno',url:p3+'#voltar-saque-rescisao'},
+    request_return:{title:'Você pode solicitar o retorno se não houver antecipação vigente',body:'Faça o pedido no canal oficial e confira a data prevista para a mudança.',reason:'Por quê: o retorno não é imediato; produz efeito no primeiro dia do 25º mês após o pedido.',cta:'Ver como funciona o retorno',url:p3+'#voltar-saque-rescisao'},
+    already_termination:{title:'O Saque-Rescisão já aparece como efetivo',body:'Não é necessário pedir novamente a mudança. Consulte no aplicativo as hipóteses de movimentação disponíveis para o seu caso.',reason:'Por quê: a modalidade define a sistemática, mas cada saque ainda depende de um evento autorizado em lei.',cta:'Consultar movimentações no App FGTS',url:p1}
+  };
+
+  function pushOnce(key,eventName,data){
+    if(emitted[key]){return;}
+    emitted[key]=true;
+    window.dataLayer=window.dataLayer||[];
+    window.dataLayer.push(Object.assign({event:eventName,widget_id:'state_diagnosis'},data||{}));
+  }
+
+  function valueOf(name){
+    var selected=form.querySelector('input[name="'+name+'"]:checked');
+    return selected?selected.value:'';
+  }
+
+  function clearErrors(){
+    summary.hidden=true;
+    summary.textContent='';
+    root.querySelectorAll('.cup-field').forEach(function(field){field.removeAttribute('data-invalid');field.removeAttribute('aria-invalid');field.querySelectorAll('input[type="radio"]').forEach(function(input){input.removeAttribute('aria-invalid');});});
+    root.querySelectorAll('.cup-field__error').forEach(function(error){error.textContent='';});
+  }
+
+  function validate(){
+    clearErrors();
+    var missing=names.filter(function(name){return !valueOf(name);});
+    if(!missing.length){return true;}
+    missing.forEach(function(name){
+      var field=form.querySelector('[data-question="'+name+'"]');
+      field.dataset.invalid='true';
+      field.setAttribute('aria-invalid','true');
+      field.querySelectorAll('input[type="radio"]').forEach(function(input){input.setAttribute('aria-invalid','true');});
+      field.querySelector('.cup-field__error').textContent='Escolha uma opção para continuar.';
+    });
+    summary.textContent='Responda às '+missing.length+' pergunta'+(missing.length>1?'s':'')+' marcada'+(missing.length>1?'s':'')+'.';
+    summary.hidden=false;
+    summary.focus();
+    pushOnce('validation','widget_validation_error',{error_type:'missing_answer'});
+    return false;
+  }
+
+  function decide(){
+    var dismissal=valueOf('dismissal');
+    var modality=valueOf('modality');
+    var loan=valueOf('loan');
+    var goal=valueOf('goal');
+
+    if(goal==='settle'){
+      if(loan==='yes'){return 'settle_active';}
+      if(loan==='no'){return 'no_active_loan';}
+      return 'check_loan';
+    }
+    if(goal==='return'){
+      if(loan==='yes'){return 'settle_before_return';}
+      if(loan==='unknown'){return 'check_loan';}
+      if(modality==='unknown'){return 'check_mode';}
+      if(modality==='return_pending'){return 'return_pending';}
+      if(modality==='termination'){return 'already_termination';}
+      return 'request_return';
+    }
+    if(goal==='penalty'){
+      if(dismissal==='unknown'){return 'check_dismissal';}
+      if(dismissal==='no'){return 'no_dismissal_penalty';}
+      if(modality==='unknown'){return 'check_mode';}
+      if(modality==='termination'){return 'termination_dismissal';}
+      return 'birthday_penalty';
+    }
+    if(modality==='unknown'||dismissal==='unknown'){return 'check_main_balance';}
+    if((modality==='birthday'||modality==='return_pending')&&dismissal==='yes'){return 'main_locked_by_mode';}
+    if(modality==='termination'&&dismissal==='yes'){return 'termination_dismissal';}
+    return 'no_withdrawal_event';
+  }
+
+  function setPanel(showResult){
+    form.classList.toggle('is-active',!showResult);
+    form.setAttribute('aria-hidden',String(showResult));
+    form.inert=showResult;
+    result.classList.toggle('is-active',showResult);
+    result.setAttribute('aria-hidden',String(!showResult));
+    result.inert=!showResult;
+  }
+
+  form.addEventListener('change',function(){pushOnce('start','widget_start');});
+  form.addEventListener('submit',function(event){
+    event.preventDefault();
+    pushOnce('start','widget_start');
+    if(!validate()){return;}
+    var type=decide();
+    var route=routes[type];
+    title.textContent=route.title;
+    body.textContent=route.body;
+    reason.textContent=route.reason;
+    cta.textContent=route.cta;
+    cta.href=route.url;
+    cta.dataset.resultType=type;
+    setPanel(true);
+    title.focus({preventScroll:true});
+    root.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    pushOnce('complete','widget_complete');
+    pushOnce('result:'+type,'widget_result',{result_type:type});
+  });
+
+  back.addEventListener('click',function(){
+    setPanel(false);
+    root.querySelector('input:checked, input').focus();
+  });
+
+  cta.addEventListener('click',function(){
+    pushOnce('cta:'+cta.dataset.resultType,'widget_cta_click',{result_type:cta.dataset.resultType,destination:new URL(cta.href).pathname+new URL(cta.href).hash});
+  });
+})();
+</script>
+<!-- /wp:html -->
+
+<!-- wp:heading {"anchor":"multa-rescisoria"} -->
+<h2 class="wp-block-heading" id="multa-rescisoria">Demissão sem justa causa: o que você recebe</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Estando no Saque-Aniversário, a demissão sem justa causa dá acesso à <strong>multa rescisória</strong> — os 40% que o empregador deposita. Está garantido em lei e vale com a modalidade ativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:columns -->
+<div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:heading {"level":3} --><h3 class="wp-block-heading">Você recebe</h3><!-- /wp:heading --><!-- wp:paragraph --><p>A multa rescisória, quando devida.</p><!-- /wp:paragraph --></div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column"><!-- wp:heading {"level":3} --><h3 class="wp-block-heading">Você não recebe</h3><!-- /wp:heading --><!-- wp:paragraph --><p>O saldo principal. Ele continua saindo em parcelas anuais, pela regra da modalidade.</p><!-- /wp:paragraph --></div><!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+<!-- wp:pullquote -->
+<figure class="wp-block-pullquote"><blockquote><p>Essa é a troca que a adesão ao Saque-Aniversário representa — e é o ponto que mais gera arrependimento, normalmente descoberto no pior momento.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:heading {"anchor":"saldo-principal"} -->
+<h2 class="wp-block-heading" id="saldo-principal">O saldo principal: quando ele sai</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Com o Saque-Aniversário ativo, o saldo principal sai <strong>nas parcelas anuais</strong> e nas demais hipóteses de saque previstas em lei, como aposentadoria, doença grave e compra da casa própria dentro das regras aplicáveis.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Não existe uma hipótese de "liberar o saldo" criada por quitar um empréstimo, nem por pedir a troca de modalidade. São mecanismos distintos, e confundi-los custa dinheiro.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"anchor":"quitar-antecipacao"} -->
+<h2 class="wp-block-heading" id="quitar-antecipacao">Quitar a antecipação: o que isso destrava</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Quitar com recursos próprios <strong>retira o bloqueio da garantia</strong> depois que a instituição processa a baixa. É isso que a quitação faz — libera o direito anual que estava comprometido.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"spacing":{"padding":{"top":"18px","right":"20px","bottom":"18px","left":"20px"},"margin":{"top":"18px","bottom":"18px"}},"border":{"left":{"color":"#b42318","width":"4px"},"radius":"8px"},"color":{"background":"#fef2f2"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#b42318;border-left-width:4px;border-radius:8px;background-color:#fef2f2;margin-top:18px;margin-bottom:18px;padding:18px 20px 18px 20px"><!-- wp:paragraph --><p><strong>O que a quitação NÃO faz</strong></p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Não cria hipótese legal de saque do saldo principal. Não antecipa a mudança para o Saque-Rescisão. Não devolve o custo já pago da operação.</p><!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+
+<!-- wp:paragraph -->
+<p>Antes de usar dinheiro próprio para quitar, confirme exatamente o que você espera destravar. Se a expectativa for sacar o saldo, ela não se realiza.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"spacing":{"padding":{"top":"18px","right":"20px","bottom":"18px","left":"20px"},"margin":{"top":"18px","bottom":"18px"}},"border":{"left":{"color":"#008353","width":"4px"},"radius":"8px"},"color":{"background":"#f5f7fb"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#008353;border-left-width:4px;border-radius:8px;background-color:#f5f7fb;margin-top:18px;margin-bottom:18px;padding:18px 20px 18px 20px"><!-- wp:paragraph --><p><strong>O que a quitação faz de útil</strong></p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Sem antecipação vigente da próxima competência, você volta a poder contratar uma nova operação — e volta a poder pedir a troca de modalidade.</p><!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+
+<!-- wp:heading {"anchor":"voltar-saque-rescisao"} -->
+<h2 class="wp-block-heading" id="voltar-saque-rescisao">Voltar ao Saque-Rescisão: o prazo do 25º mês</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O pedido pode ser feito quando não há antecipação vigente. Mas só produz efeito no <strong>primeiro dia do 25º mês</strong> seguinte à solicitação — pouco mais de dois anos.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Enquanto o prazo corre, você continua no Saque-Aniversário para todos os efeitos: continua sacando a parcela anual e continua sem direito ao saque integral em caso de demissão.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote -->
+<figure class="wp-block-pullquote"><blockquote><p>Depois de aderir, desfazer é lento. Por isso a conta merece ser feita antes.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/" style="border-radius:10px;background-color:#008353"><strong>Ver onde conferir a modalidade e o saldo &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading {"anchor":"pagamento-automatico"} -->
+<h2 class="wp-block-heading" id="pagamento-automatico">Como o pagamento acontece</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Não há boleto nem parcela mensal descontada da sua renda. Cada direito anual cedido é <strong>debitado automaticamente da sua conta do FGTS</strong> na data prevista para o Saque-Aniversário e vai direto para liquidar o contrato daquele ano.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>É por isso que a antecipação não aparece como dívida no orçamento mensal — e também por isso que ela compromete os seus aniversários seguintes, um por ano cedido.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:separator {"opacity":"css"} -->
+<hr class="wp-block-separator has-css-opacity"/>
+<!-- /wp:separator -->
+
+<!-- wp:heading {"anchor":"duvidas"} -->
+<h2 class="wp-block-heading" id="duvidas">Perguntas que aparecem sempre</h2>
+<!-- /wp:heading -->
+
+<!-- wp:details {"style":{"spacing":{"margin":{"top":"10px","bottom":"10px"},"padding":{"top":"12px","right":"14px","bottom":"12px","left":"14px"}},"border":{"radius":"8px","width":"1px","color":"#e6eaf0"}}} -->
+<details class="wp-block-details has-border-color" style="border-color:#e6eaf0;border-width:1px;border-radius:8px;margin-top:10px;margin-bottom:10px;padding:12px 14px"><summary>Fui demitido e quero o dinheiro todo. Dá para voltar rápido ao Saque-Rescisão?</summary><!-- wp:paragraph --><p>Não. Mesmo pedindo a troca no dia da demissão, o efeito só vem no primeiro dia do 25º mês seguinte. A demissão dá acesso à multa rescisória, não ao saldo principal.</p><!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details {"style":{"spacing":{"margin":{"top":"10px","bottom":"10px"},"padding":{"top":"12px","right":"14px","bottom":"12px","left":"14px"}},"border":{"radius":"8px","width":"1px","color":"#e6eaf0"}}} -->
+<details class="wp-block-details has-border-color" style="border-color:#e6eaf0;border-width:1px;border-radius:8px;margin-top:10px;margin-bottom:10px;padding:12px 14px"><summary>Se eu quitar a antecipação, meu saldo desbloqueia na hora?</summary><!-- wp:paragraph --><p>O bloqueio da garantia é retirado depois que a instituição processa a baixa, e o prazo desse processamento é definido por cada instituição. Isso libera o direito anual — não libera o saldo para saque.</p><!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details {"style":{"spacing":{"margin":{"top":"10px","bottom":"10px"},"padding":{"top":"12px","right":"14px","bottom":"12px","left":"14px"}},"border":{"radius":"8px","width":"1px","color":"#e6eaf0"}}} -->
+<details class="wp-block-details has-border-color" style="border-color:#e6eaf0;border-width:1px;border-radius:8px;margin-top:10px;margin-bottom:10px;padding:12px 14px"><summary>Posso pedir a troca de modalidade com antecipação ativa?</summary><!-- wp:paragraph --><p>Não. A solicitação exige que não haja antecipação vigente. Quitar primeiro é o que destrava o pedido — mas o prazo do 25º mês começa a contar só a partir da solicitação.</p><!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2/" style="border-radius:10px;background-color:#ea580c"><strong>Ver como comparar custo antes de contratar &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"8px"} -->
+<div style="height:8px" aria-hidden="true" class="wp-block-spacer"></div>
+<!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/quem-tem-direito-antecipar-fgts-pr1/" style="border-radius:10px;background-color:#008353"><strong>Voltar e ver qual é o meu caso &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading {"anchor":"fontes"} -->
+<h2 class="wp-block-heading" id="fontes">Fontes e data da verificação</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul class="wp-block-list"><li><a href="https://planalto.gov.br/ccivil_03/leis/l8036consol.htm">Lei nº 8.036/1990 consolidada</a>: multa rescisória para optantes do Saque-Aniversário (art. 20-D, § 7º), efeito da troca de modalidade no 1º dia do 25º mês (art. 20-C, § 1º, I) e cessão dos direitos anuais (art. 20-D, § 3º).</li><li><a href="https://pesquisa.in.gov.br/imprensa/servlet/INPDFViewer?captchafield=firstAccess&amp;data=20%2F10%2F2025&amp;jornal=515&amp;pagina=153">Resolução CCFGTS nº 1.130, de 7 de outubro de 2025</a> (DOU de 20/10/2025): uma contratação por competência, condicionada à quitação da antecipação vigente.</li><li><a href="https://www.fgts.gov.br/Paginas/trabalhador/saque/saque-aniversario.aspx">Página oficial do Saque-Aniversário</a>.</li></ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p><em>Regras verificadas na fonte primária em 11 de agosto de 2026.</em></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p><em>Portal informativo independente. Não temos vínculo com a CAIXA, com o Conselho Curador do FGTS ou com instituições financeiras, não intermediamos contratações e não solicitamos dados pessoais.</em></p>
+<!-- /wp:paragraph -->

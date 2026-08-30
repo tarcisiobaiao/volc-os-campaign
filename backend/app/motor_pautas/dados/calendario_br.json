@@ -1,0 +1,1213 @@
+{
+  "pais": "BR",
+  "gerado_em": "2026-08-05",
+  "janela": {
+    "de": "2026-08-05",
+    "ate": "2027-08-05"
+  },
+  "detector": "D1_calendario",
+  "eventos": [
+    {
+      "entidade": "gas do povo",
+      "descricao": "Disponibilizacao dos novos vales-recarga do Gas do Povo. Familias de 2 ou 3 pessoas recebem 1 vale a cada 3 meses; familias de 4 ou mais, 1 vale a cada 2 meses. O vale substitui o antigo Auxilio Gas.",
+      "data_ref": "2026-08-10",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.gov.br/mds/pt-br/acoes-e-programas/gas-do-povo",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra lida na pagina oficial do programa: 'Os novos vales sao disponibilizados todo dia 10 de cada mes'. Data fixa, independe de dia util.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20586,
+        "temas": "auxilio gas (+18.888), gas do povo (+1.698)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "auxilio gas roda ha 172 dias com ROI 48,8%; gas do povo so 26 dias"
+      }
+    },
+    {
+      "entidade": "propaganda eleitoral",
+      "descricao": "Inicio da propaganda eleitoral nas ruas e na internet para as Eleicoes Gerais 2026.",
+      "data_ref": "2026-08-16",
+      "tipo": "abertura",
+      "orgao": "TSE",
+      "fonte_url": "https://www.tse.jus.br/comunicacao/noticias/2026/Marco/eleicoes-2026-confira-as-principais-datas-do-calendario-eleitoral",
+      "verificado": true,
+      "recorrencia": "unico",
+      "observacao": "Data lida no calendario oficial das Eleicoes 2026 publicado pelo TSE, aprovado pela Resolucao TSE no 23.760, de 2 de marco de 2026. Pagina atualizada em 14/07/2026.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 1372,
+        "roi_pct": 42.9,
+        "temas": "e titulo",
+        "fonte": "data/reverse_temas.json",
+        "nota": "PRD registra 'titulo de eleitor online' com 21.098 cliques historicos"
+      }
+    },
+    {
+      "entidade": "abono salarial pis pasep",
+      "descricao": "Liberacao do abono salarial ano-base 2024 para nascidos em novembro e dezembro — ultimo grupo do calendario 2026. Valor de ate R$ 1.621,00 conforme meses trabalhados no ano-base.",
+      "data_ref": "2026-08-17",
+      "tipo": "pagamento",
+      "orgao": "Ministerio do Trabalho e Emprego / CAIXA / Banco do Brasil",
+      "fonte_url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/abono-salarial",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Data lida na tabela oficial do MTE ('Nascidos em novembro/dezembro — recebem a partir de 17 de agosto'). Atencao: varias fontes secundarias publicam '15 de agosto', que esta errado — a fonte oficial diz 17.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": -245,
+        "roi_pct": -15.4,
+        "temas": "pis pasep",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO: -R$245 em 32 dias. Nao escalar sem novo teste."
+      }
+    },
+    {
+      "entidade": "bolsa familia",
+      "descricao": "Pagamento do Bolsa Familia de agosto/2026, escalonado pelo ultimo digito do NIS: NIS final 1 em 2026-08-18 e NIS final 0 em 2026-08-31.",
+      "data_ref": "2026-08-18",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.caixa.gov.br/programas-sociais/bolsa-familia/Paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Datas lidas na tabela 'Calendario de pagamento Bolsa Familia 2026' publicada pela CAIXA, agente operador do programa. Em municipios com calamidade reconhecida o calendario e unificado no primeiro dia de pagamento.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 17649,
+        "temas": "nis (+17.155), bolsa familia (+494)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "a entidade que monetiza e 'NIS', nao 'bolsa familia'"
+      }
+    },
+    {
+      "entidade": "multivacinacao",
+      "descricao": "Dia D de mobilizacao social da Multivacinacao 2026 — atualizacao da caderneta de criancas e adolescentes menores de 15 anos (ate 14 anos, 11 meses e 29 dias) nas UBS, com cerca de 18 vacinas do Calendario Nacional.",
+      "data_ref": "2026-08-22",
+      "tipo": "fase",
+      "orgao": "Ministerio da Saude",
+      "fonte_url": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes/estrategia-para-a-atualizacao-da-cadernetas-de-vacinacao-das-criancas-e-dos-adolescentes-menores-de-15-anos-2013-multivacinacao-2026.pdf",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Data lida no item 2.4 do documento oficial 'Multivacinacao 2026' do Ministerio da Saude (SVSA/DPNI): 'Dia D de Mobilizacao Social previsto para 22 de agosto de 2026'.",
+      "familia": "saude",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "5a parcela de frequencia do Pe-de-Meia (R$ 200), janela de 2026-08-24 a 2026-08-31. Nesta mesma janela e paga a parcela de aprovacao do 1o semestre do EJA.",
+      "data_ref": "2026-08-24",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Janela lida no calendario oficial do MEC (Portaria MEC no 169/2026). Sao 15 intervalos de pagamento entre marco/2026 e junho/2027. CORRECAO DA AUDITORIA 2026-08-06: o eixo de escalonamento DENTRO da janela e o MES DE NASCIMENTO do estudante (nascidos em janeiro/fevereiro no primeiro dia do cronograma, meses seguintes nos dias subsequentes). A redacao anterior dizia que a parcela caia 'conforme a rede de ensino envia os dados', o que faria a campanha prometer o gatilho errado — o aluno buscaria a data da escola quando o que manda e o proprio aniversario. E a mesma classe de regra que este arquivo ja modela certo no Bolsa Familia (final do NIS) e no INSS (final do beneficio).",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "calendario inss",
+      "descricao": "Pagamento dos beneficios do INSS da competencia agosto/2026. Quem recebe ate 1 salario minimo recebe de 2026-08-25 (final 1) a 2026-09-08 (final 0); quem recebe acima de 1 salario minimo comeca em 2026-09-01. O final considerado e o do cartao do beneficio, sem o digito apos o hifen.",
+      "data_ref": "2026-08-25",
+      "tipo": "pagamento",
+      "orgao": "INSS",
+      "fonte_url": "https://www.gov.br/inss/pt-br/assuntos/calendario-de-pagamentos-do-inss-de-2026-esta-disponivel/copy_of_TabeladePagamentodeBenefcios2026.pdf",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Data lida na Tabela de Pagamento de Beneficios 2026 (PDF oficial do INSS), coluna da competencia, linha final 1. O calendario de 2026 cobre ate a competencia dezembro/2026, cujo pagamento entra em janeiro/2027. CORRECAO DA AUDITORIA 2026-08-06: a descricao dizia que o final 0 recebia em 2026-09-07; o correto e 2026-09-08. 07/09/2026 e segunda-feira e feriado nacional da Independencia, sem expediente bancario. Contando os 10 dias uteis a partir de 25/08 (finais 1 a 0) e pulando o feriado, o final 0 cai em 08/09 — a mesma data em que termina o pagamento de quem recebe acima do minimo. A data_ref (2026-08-25, final 1) permanece correta e nao foi alterada. As competencias setembro (24/09 a 07/10) e outubro (26/10 a 09/11) deste arquivo ja estavam certas — o lapso foi pontual, o compilador tratou Finados mas esqueceu o 7 de setembro.",
+      "familia": "previdencia",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 5434,
+        "temas": "consulta inss (+4.269), extrato inss (+1.165)",
+        "fonte": "data/reverse_temas.json"
+      }
+    },
+    {
+      "entidade": "licenciamento anual sp",
+      "descricao": "Prazo final do licenciamento anual 2026 em Sao Paulo para veiculos de passageiros, onibus, reboque e semirreboque com placa de finais 3 e 4. Taxa de R$ 174,08 mais IPVA e multas quitados. A partir do 1o dia do mes seguinte o veiculo so circula com o CRLV-e atualizado, sob pena de multa.",
+      "data_ref": "2026-08-31",
+      "tipo": "prazo",
+      "orgao": "Detran-SP",
+      "fonte_url": "https://servicos.sp.gov.br/fcarta/1DD2C9F8-815F-49D4-9D47-F09885256ECE",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "CALENDARIO ESTADUAL DE SAO PAULO — nao vale para as demais UFs, cada Detran tem o seu. Prazos lidos na carta de servico oficial do Governo de SP (atualizada em 12/06/2026). Caminhoes seguem calendario proprio: finais 1 e 2 ate setembro, 3/4/5 ate outubro, 6/7/8 ate novembro, 9 e 0 ate dezembro.",
+      "familia": "veiculos",
+      "abrangencia": "estadual_SP",
+      "evidencia_medida": {
+        "lucro_brl": -139,
+        "roi_pct": -28.8,
+        "temas": "licenciamento 2026 sp",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO. Somando todos os estados, licenciamento e IPVA somam prejuizo; nenhuma UF ficou positiva de forma relevante."
+      }
+    },
+    {
+      "entidade": "restituicao imposto de renda",
+      "descricao": "Pagamento do 4o e ultimo lote regular de restituicao do IRPF 2026. Nao ha lote regular em setembro — o cronograma de 2026 termina em agosto.",
+      "data_ref": "2026-08-31",
+      "tipo": "pagamento",
+      "orgao": "Receita Federal",
+      "fonte_url": "https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/restituicao/lotes/2026",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Data lida na tabela 'Lotes de 2026' da Receita Federal (atualizada em 22/06/2026): 1o 29/05, 2o 30/06, 3o 31/07, 4o 31/08. A tabela oficial nao lista nenhum lote posterior a 31/08/2026.",
+      "familia": "tributario",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": -144,
+        "roi_pct": -33.2,
+        "temas": "restituicao irpf 2026",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO em 8 dias de teste; amostra curta, mas nao positiva"
+      }
+    },
+    {
+      "entidade": "multivacinacao",
+      "descricao": "Encerramento da estrategia de Multivacinacao 2026, executada por estados e municipios de 3 de agosto a 1 de setembro de 2026.",
+      "data_ref": "2026-09-01",
+      "tipo": "prazo",
+      "orgao": "Ministerio da Saude",
+      "fonte_url": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes/estrategia-para-a-atualizacao-da-cadernetas-de-vacinacao-das-criancas-e-dos-adolescentes-menores-de-15-anos-2013-multivacinacao-2026.pdf",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Periodo lido no item 2.4 e no Quadro 2 (Fase 3) do documento oficial do Ministerio da Saude. Portaria GM/MS no 10.205, de 5 de fevereiro de 2026.",
+      "familia": "saude",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em setembro. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2026-09-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "gas do povo",
+      "descricao": "Disponibilizacao dos novos vales-recarga do Gas do Povo. Familias de 2 ou 3 pessoas recebem 1 vale a cada 3 meses; familias de 4 ou mais, 1 vale a cada 2 meses. O vale substitui o antigo Auxilio Gas.",
+      "data_ref": "2026-09-10",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.gov.br/mds/pt-br/acoes-e-programas/gas-do-povo",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra lida na pagina oficial do programa: 'Os novos vales sao disponibilizados todo dia 10 de cada mes'. Data fixa, independe de dia util.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20586,
+        "temas": "auxilio gas (+18.888), gas do povo (+1.698)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "auxilio gas roda ha 172 dias com ROI 48,8%; gas do povo so 26 dias"
+      }
+    },
+    {
+      "entidade": "bolsa familia",
+      "descricao": "Pagamento do Bolsa Familia de setembro/2026, escalonado pelo ultimo digito do NIS: NIS final 1 em 2026-09-17 e NIS final 0 em 2026-09-30.",
+      "data_ref": "2026-09-17",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.caixa.gov.br/programas-sociais/bolsa-familia/Paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Datas lidas na tabela 'Calendario de pagamento Bolsa Familia 2026' publicada pela CAIXA, agente operador do programa. Em municipios com calamidade reconhecida o calendario e unificado no primeiro dia de pagamento.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 17649,
+        "temas": "nis (+17.155), bolsa familia (+494)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "a entidade que monetiza e 'NIS', nao 'bolsa familia'"
+      }
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "6a parcela de frequencia do Pe-de-Meia (R$ 200), janela de 2026-09-21 a 2026-09-28.",
+      "data_ref": "2026-09-21",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Janela lida no calendario oficial do MEC (Portaria MEC no 169/2026). Sao 15 intervalos de pagamento entre marco/2026 e junho/2027. CORRECAO DA AUDITORIA 2026-08-06: o eixo de escalonamento DENTRO da janela e o MES DE NASCIMENTO do estudante (nascidos em janeiro/fevereiro no primeiro dia do cronograma, meses seguintes nos dias subsequentes). A redacao anterior dizia que a parcela caia 'conforme a rede de ensino envia os dados', o que faria a campanha prometer o gatilho errado — o aluno buscaria a data da escola quando o que manda e o proprio aniversario. E a mesma classe de regra que este arquivo ja modela certo no Bolsa Familia (final do NIS) e no INSS (final do beneficio).",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "calendario inss",
+      "descricao": "Pagamento dos beneficios do INSS da competencia setembro/2026. Quem recebe ate 1 salario minimo recebe de 2026-09-24 (final 1) a 2026-10-07 (final 0); quem recebe acima de 1 salario minimo comeca em 2026-10-01. O final considerado e o do cartao do beneficio, sem o digito apos o hifen.",
+      "data_ref": "2026-09-24",
+      "tipo": "pagamento",
+      "orgao": "INSS",
+      "fonte_url": "https://www.gov.br/inss/pt-br/assuntos/calendario-de-pagamentos-do-inss-de-2026-esta-disponivel/copy_of_TabeladePagamentodeBenefcios2026.pdf",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Data lida na Tabela de Pagamento de Beneficios 2026 (PDF oficial do INSS), coluna da competencia, linha final 1. O calendario de 2026 cobre ate a competencia dezembro/2026, cujo pagamento entra em janeiro/2027.",
+      "familia": "previdencia",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 5434,
+        "temas": "consulta inss (+4.269), extrato inss (+1.165)",
+        "fonte": "data/reverse_temas.json"
+      }
+    },
+    {
+      "entidade": "licenciamento anual sp",
+      "descricao": "Prazo final do licenciamento anual 2026 em Sao Paulo para veiculos de passageiros, onibus, reboque e semirreboque com placa de finais 5 e 6. Taxa de R$ 174,08 mais IPVA e multas quitados. A partir do 1o dia do mes seguinte o veiculo so circula com o CRLV-e atualizado, sob pena de multa.",
+      "data_ref": "2026-09-30",
+      "tipo": "prazo",
+      "orgao": "Detran-SP",
+      "fonte_url": "https://servicos.sp.gov.br/fcarta/1DD2C9F8-815F-49D4-9D47-F09885256ECE",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "CALENDARIO ESTADUAL DE SAO PAULO — nao vale para as demais UFs, cada Detran tem o seu. Prazos lidos na carta de servico oficial do Governo de SP (atualizada em 12/06/2026). Caminhoes seguem calendario proprio: finais 1 e 2 ate setembro, 3/4/5 ate outubro, 6/7/8 ate novembro, 9 e 0 ate dezembro.",
+      "familia": "veiculos",
+      "abrangencia": "estadual_SP",
+      "evidencia_medida": {
+        "lucro_brl": -139,
+        "roi_pct": -28.8,
+        "temas": "licenciamento 2026 sp",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO. Somando todos os estados, licenciamento e IPVA somam prejuizo; nenhuma UF ficou positiva de forma relevante."
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em outubro. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2026-10-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "eleicoes 2026",
+      "descricao": "Dia das Eleicoes Gerais 2026, 1o turno: presidente, governadores, senadores e deputados federais, estaduais e distritais. Votacao das 8h as 17h no horario de Brasilia, uniformizada em todo o pais. Pico anual de 'onde votar', 'local de votacao' e 'titulo de eleitor'.",
+      "data_ref": "2026-10-04",
+      "tipo": "fase",
+      "orgao": "TSE",
+      "fonte_url": "https://www.tse.jus.br/comunicacao/noticias/2026/Marco/eleicoes-2026-confira-as-principais-datas-do-calendario-eleitoral",
+      "verificado": true,
+      "recorrencia": "unico",
+      "observacao": "Data lida no calendario oficial das Eleicoes 2026 publicado pelo TSE, aprovado pela Resolucao TSE no 23.760, de 2 de marco de 2026. Pagina atualizada em 14/07/2026.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 1372,
+        "roi_pct": 42.9,
+        "temas": "e titulo",
+        "fonte": "data/reverse_temas.json",
+        "nota": "PRD registra 'titulo de eleitor online' com 21.098 cliques historicos"
+      }
+    },
+    {
+      "entidade": "gas do povo",
+      "descricao": "Disponibilizacao dos novos vales-recarga do Gas do Povo. Familias de 2 ou 3 pessoas recebem 1 vale a cada 3 meses; familias de 4 ou mais, 1 vale a cada 2 meses. O vale substitui o antigo Auxilio Gas.",
+      "data_ref": "2026-10-10",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.gov.br/mds/pt-br/acoes-e-programas/gas-do-povo",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra lida na pagina oficial do programa: 'Os novos vales sao disponibilizados todo dia 10 de cada mes'. Data fixa, independe de dia util.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20586,
+        "temas": "auxilio gas (+18.888), gas do povo (+1.698)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "auxilio gas roda ha 172 dias com ROI 48,8%; gas do povo so 26 dias"
+      }
+    },
+    {
+      "entidade": "bolsa familia",
+      "descricao": "Pagamento do Bolsa Familia de outubro/2026, escalonado pelo ultimo digito do NIS: NIS final 1 em 2026-10-19 e NIS final 0 em 2026-10-30.",
+      "data_ref": "2026-10-19",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.caixa.gov.br/programas-sociais/bolsa-familia/Paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Datas lidas na tabela 'Calendario de pagamento Bolsa Familia 2026' publicada pela CAIXA, agente operador do programa. Em municipios com calamidade reconhecida o calendario e unificado no primeiro dia de pagamento.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 17649,
+        "temas": "nis (+17.155), bolsa familia (+494)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "a entidade que monetiza e 'NIS', nao 'bolsa familia'"
+      }
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "7a parcela de frequencia do Pe-de-Meia (R$ 200), janela de 2026-10-19 a 2026-10-26.",
+      "data_ref": "2026-10-19",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Janela lida no calendario oficial do MEC (Portaria MEC no 169/2026). Sao 15 intervalos de pagamento entre marco/2026 e junho/2027. CORRECAO DA AUDITORIA 2026-08-06: o eixo de escalonamento DENTRO da janela e o MES DE NASCIMENTO do estudante (nascidos em janeiro/fevereiro no primeiro dia do cronograma, meses seguintes nos dias subsequentes). A redacao anterior dizia que a parcela caia 'conforme a rede de ensino envia os dados', o que faria a campanha prometer o gatilho errado — o aluno buscaria a data da escola quando o que manda e o proprio aniversario. E a mesma classe de regra que este arquivo ja modela certo no Bolsa Familia (final do NIS) e no INSS (final do beneficio).",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "eleicoes 2026 segundo turno",
+      "descricao": "Dia das Eleicoes Gerais 2026, eventual 2o turno.",
+      "data_ref": "2026-10-25",
+      "tipo": "fase",
+      "orgao": "TSE",
+      "fonte_url": "https://www.tse.jus.br/comunicacao/noticias/2026/Marco/eleicoes-2026-confira-as-principais-datas-do-calendario-eleitoral",
+      "verificado": true,
+      "recorrencia": "unico",
+      "observacao": "Data lida no calendario oficial das Eleicoes 2026 publicado pelo TSE, aprovado pela Resolucao TSE no 23.760, de 2 de marco de 2026. Pagina atualizada em 14/07/2026.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 1372,
+        "roi_pct": 42.9,
+        "temas": "e titulo",
+        "fonte": "data/reverse_temas.json",
+        "nota": "PRD registra 'titulo de eleitor online' com 21.098 cliques historicos"
+      }
+    },
+    {
+      "entidade": "calendario inss",
+      "descricao": "Pagamento dos beneficios do INSS da competencia outubro/2026. Quem recebe ate 1 salario minimo recebe de 2026-10-26 (final 1) a 2026-11-09 (final 0); quem recebe acima de 1 salario minimo comeca em 2026-11-03. O final considerado e o do cartao do beneficio, sem o digito apos o hifen.",
+      "data_ref": "2026-10-26",
+      "tipo": "pagamento",
+      "orgao": "INSS",
+      "fonte_url": "https://www.gov.br/inss/pt-br/assuntos/calendario-de-pagamentos-do-inss-de-2026-esta-disponivel/copy_of_TabeladePagamentodeBenefcios2026.pdf",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Data lida na Tabela de Pagamento de Beneficios 2026 (PDF oficial do INSS), coluna da competencia, linha final 1. O calendario de 2026 cobre ate a competencia dezembro/2026, cujo pagamento entra em janeiro/2027.",
+      "familia": "previdencia",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 5434,
+        "temas": "consulta inss (+4.269), extrato inss (+1.165)",
+        "fonte": "data/reverse_temas.json"
+      }
+    },
+    {
+      "entidade": "licenciamento anual sp",
+      "descricao": "Prazo final do licenciamento anual 2026 em Sao Paulo para veiculos de passageiros, onibus, reboque e semirreboque com placa de finais 7 e 8. Taxa de R$ 174,08 mais IPVA e multas quitados. A partir do 1o dia do mes seguinte o veiculo so circula com o CRLV-e atualizado, sob pena de multa.",
+      "data_ref": "2026-10-31",
+      "tipo": "prazo",
+      "orgao": "Detran-SP",
+      "fonte_url": "https://servicos.sp.gov.br/fcarta/1DD2C9F8-815F-49D4-9D47-F09885256ECE",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "CALENDARIO ESTADUAL DE SAO PAULO — nao vale para as demais UFs, cada Detran tem o seu. Prazos lidos na carta de servico oficial do Governo de SP (atualizada em 12/06/2026). Caminhoes seguem calendario proprio: finais 1 e 2 ate setembro, 3/4/5 ate outubro, 6/7/8 ate novembro, 9 e 0 ate dezembro.",
+      "familia": "veiculos",
+      "abrangencia": "estadual_SP",
+      "evidencia_medida": {
+        "lucro_brl": -139,
+        "roi_pct": -28.8,
+        "temas": "licenciamento 2026 sp",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO. Somando todos os estados, licenciamento e IPVA somam prejuizo; nenhuma UF ficou positiva de forma relevante."
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em novembro. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2026-11-03",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf CORRECAO DA AUDITORIA 2026-08-06: a data_ref era 2026-11-01, que NAO e dia util (01/11/2026 e domingo e 02/11 e Finados, feriado nacional). Pela propria regra citada acima (Termo de Opcao da CAIXA: credito no primeiro dia util do mes de aniversario), a abertura e 2026-11-03. O arquivo gerou as 12 entradas da serie pelo dia 1 de calendario; 4 delas caiam em dia nao util e foram corrigidas (2026-11-01, 2027-01-01, 2027-05-01, 2027-08-01), as outras 8 ja estavam certas. ATENCAO: esta data e DERIVADA da regra mais a tabela de feriados nacionais, nao foi lida em pagina da CAIXA. Se a serie for regerada, gerar por 'primeiro dia util', nunca por dia fixo.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "titulo de eleitor",
+      "descricao": "Reabertura do cadastro eleitoral. Voltam o atendimento presencial nos cartorios, o alistamento e a transferencia pela internet e a emissao de certidoes de quitacao eleitoral. O cadastro esta fechado desde 07/05/2026 — e a primeira janela em quase seis meses.",
+      "data_ref": "2026-11-03",
+      "tipo": "abertura",
+      "orgao": "TSE",
+      "fonte_url": "https://www.tse.jus.br/comunicacao/noticias/2026/Marco/eleicoes-2026-confira-as-principais-datas-do-calendario-eleitoral",
+      "verificado": true,
+      "recorrencia": "unico",
+      "observacao": "Data lida no calendario oficial das Eleicoes 2026 publicado pelo TSE, aprovado pela Resolucao TSE no 23.760, de 2 de marco de 2026. Pagina atualizada em 14/07/2026.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 1372,
+        "roi_pct": 42.9,
+        "temas": "e titulo",
+        "fonte": "data/reverse_temas.json",
+        "nota": "PRD registra 'titulo de eleitor online' com 21.098 cliques historicos"
+      }
+    },
+    {
+      "entidade": "enem",
+      "descricao": "1o dia de provas do Enem 2026: linguagens, redacao e ciencias humanas. Portoes abrem as 12h e fecham as 13h; prova das 13h30 as 19h.",
+      "data_ref": "2026-11-08",
+      "tipo": "fase",
+      "orgao": "Inep / MEC",
+      "fonte_url": "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem/orientacoes/cronograma",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Data lida na tabela de cronograma oficial do Inep (linha 'Aplicacao: 8/11 e 15/11/2026'), pagina atualizada em 17/06/2026.",
+      "familia": "educacao",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "gas do povo",
+      "descricao": "Disponibilizacao dos novos vales-recarga do Gas do Povo. Familias de 2 ou 3 pessoas recebem 1 vale a cada 3 meses; familias de 4 ou mais, 1 vale a cada 2 meses. O vale substitui o antigo Auxilio Gas.",
+      "data_ref": "2026-11-10",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.gov.br/mds/pt-br/acoes-e-programas/gas-do-povo",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra lida na pagina oficial do programa: 'Os novos vales sao disponibilizados todo dia 10 de cada mes'. Data fixa, independe de dia util.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20586,
+        "temas": "auxilio gas (+18.888), gas do povo (+1.698)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "auxilio gas roda ha 172 dias com ROI 48,8%; gas do povo so 26 dias"
+      }
+    },
+    {
+      "entidade": "enem",
+      "descricao": "2o dia de provas do Enem 2026: ciencias da natureza e matematica. Encerramento as 18h30.",
+      "data_ref": "2026-11-15",
+      "tipo": "fase",
+      "orgao": "Inep / MEC",
+      "fonte_url": "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem/orientacoes/cronograma",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Data lida na tabela de cronograma oficial do Inep (linha 'Aplicacao: 8/11 e 15/11/2026').",
+      "familia": "educacao",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "bolsa familia",
+      "descricao": "Pagamento do Bolsa Familia de novembro/2026, escalonado pelo ultimo digito do NIS: NIS final 1 em 2026-11-16 e NIS final 0 em 2026-11-30.",
+      "data_ref": "2026-11-16",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.caixa.gov.br/programas-sociais/bolsa-familia/Paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Datas lidas na tabela 'Calendario de pagamento Bolsa Familia 2026' publicada pela CAIXA, agente operador do programa. Em municipios com calamidade reconhecida o calendario e unificado no primeiro dia de pagamento.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 17649,
+        "temas": "nis (+17.155), bolsa familia (+494)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "a entidade que monetiza e 'NIS', nao 'bolsa familia'"
+      }
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "Parcela de frequencia do Pe-de-Meia (R$ 200), janela de 2026-11-23 a 2026-11-30.",
+      "data_ref": "2026-11-23",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Janela lida no calendario oficial do MEC (Portaria MEC no 169/2026). Sao 15 intervalos de pagamento entre marco/2026 e junho/2027. CORRECAO DA AUDITORIA 2026-08-06: o eixo de escalonamento DENTRO da janela e o MES DE NASCIMENTO do estudante (nascidos em janeiro/fevereiro no primeiro dia do cronograma, meses seguintes nos dias subsequentes). A redacao anterior dizia que a parcela caia 'conforme a rede de ensino envia os dados', o que faria a campanha prometer o gatilho errado — o aluno buscaria a data da escola quando o que manda e o proprio aniversario. E a mesma classe de regra que este arquivo ja modela certo no Bolsa Familia (final do NIS) e no INSS (final do beneficio). NUMERACAO REVISADA NA AUDITORIA 2026-08-06 (confianca media): o MEC confirma NOVE parcelas de frequencia no ano letivo 2026, entao a '10a parcela' que constava aqui nao existe. A janela de 25/01 a 01/02/2027 paga a frequencia de novembro/2026, que e a nona e ultima. Pela mesma contagem a janela de nov/2026 seria a 7a e a de dez/2026 a 8a — mas isso conflita com a contagem confirmada para a janela de agosto/2026 (5a parcela, frequencia de maio/junho), entao o ordinal foi REMOVIDO da descricao em vez de renumerado no chute. A DATA da janela nao esta em duvida e nao foi alterada. Nao usar numero de parcela em criativo ate o MEC confirmar a contagem — anunciar parcela que nao existe e risco de reprovacao e de promessa falsa.",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "calendario inss",
+      "descricao": "Pagamento dos beneficios do INSS da competencia novembro/2026. Quem recebe ate 1 salario minimo recebe de 2026-11-24 (final 1) a 2026-12-07 (final 0); quem recebe acima de 1 salario minimo comeca em 2026-12-01. O final considerado e o do cartao do beneficio, sem o digito apos o hifen.",
+      "data_ref": "2026-11-24",
+      "tipo": "pagamento",
+      "orgao": "INSS",
+      "fonte_url": "https://www.gov.br/inss/pt-br/assuntos/calendario-de-pagamentos-do-inss-de-2026-esta-disponivel/copy_of_TabeladePagamentodeBenefcios2026.pdf",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Data lida na Tabela de Pagamento de Beneficios 2026 (PDF oficial do INSS), coluna da competencia, linha final 1. O calendario de 2026 cobre ate a competencia dezembro/2026, cujo pagamento entra em janeiro/2027.",
+      "familia": "previdencia",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 5434,
+        "temas": "consulta inss (+4.269), extrato inss (+1.165)",
+        "fonte": "data/reverse_temas.json"
+      }
+    },
+    {
+      "entidade": "licenciamento anual sp",
+      "descricao": "Prazo final do licenciamento anual 2026 em Sao Paulo para veiculos de passageiros, onibus, reboque e semirreboque com placa de final 9. Taxa de R$ 174,08 mais IPVA e multas quitados. A partir do 1o dia do mes seguinte o veiculo so circula com o CRLV-e atualizado, sob pena de multa.",
+      "data_ref": "2026-11-30",
+      "tipo": "prazo",
+      "orgao": "Detran-SP",
+      "fonte_url": "https://servicos.sp.gov.br/fcarta/1DD2C9F8-815F-49D4-9D47-F09885256ECE",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "CALENDARIO ESTADUAL DE SAO PAULO — nao vale para as demais UFs, cada Detran tem o seu. Prazos lidos na carta de servico oficial do Governo de SP (atualizada em 12/06/2026). Caminhoes seguem calendario proprio: finais 1 e 2 ate setembro, 3/4/5 ate outubro, 6/7/8 ate novembro, 9 e 0 ate dezembro.",
+      "familia": "veiculos",
+      "abrangencia": "estadual_SP",
+      "evidencia_medida": {
+        "lucro_brl": -139,
+        "roi_pct": -28.8,
+        "temas": "licenciamento 2026 sp",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO. Somando todos os estados, licenciamento e IPVA somam prejuizo; nenhuma UF ficou positiva de forma relevante."
+      }
+    },
+    {
+      "entidade": "calendario inss 2027",
+      "descricao": "Divulgacao da Tabela de Pagamento de Beneficios do INSS para 2027. Momento em que a busca por 'calendario INSS 2027' dispara, antes de qualquer pagamento.",
+      "data_ref": "2026-12-01",
+      "tipo": "abertura",
+      "orgao": "INSS",
+      "fonte_url": "https://www.gov.br/inss/pt-br/assuntos/noticias/calendario-de-pagamentos-do-inss-de-2026-esta-disponivel",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: o calendario de 2027 ainda nao foi publicado (consultado em 2026-08-05). A data_ref 2026-12-01 e uma aproximacao pelo padrao historico — o calendario de 2026 foi divulgado em dezembro de 2025. Excluir do ranking ate que o PDF de 2027 exista. AUDITORIA 2026-08-06 (confianca media): a aproximacao esta cedo demais para o proprio ancoradouro que ela cita. O calendario do INSS de 2026 foi publicado em 17/12/2025 e atualizado em 24/12/2025 — segunda quinzena de dezembro, nao o dia 1o. O arquivo colocou o evento ~16 dias antes do padrao historico e, para um evento cujo valor inteiro e o pico de busca por 'calendario INSS 2027' no dia da divulgacao, 16 dias de antecipacao e erro material. Aproximacao melhor: ~2026-12-17. A data foi MANTIDA (a alternativa tambem e inferencia) e o registro segue verificado=false. RESSALVA DE FONTE: o fonte_url aponta para a noticia do calendario de 2026 e por definicao nao pode documentar o evento de 2027 — trocar quando o PDF de 2027 existir.",
+      "familia": "previdencia",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 5434,
+        "temas": "consulta inss (+4.269), extrato inss (+1.165)",
+        "fonte": "data/reverse_temas.json"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em dezembro. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2026-12-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "justificativa eleitoral",
+      "descricao": "Prazo final para quem faltou ao 1o turno apresentar justificativa de ausencia sem penalidade.",
+      "data_ref": "2026-12-03",
+      "tipo": "prazo",
+      "orgao": "TSE",
+      "fonte_url": "https://www.tse.jus.br/comunicacao/noticias/2026/Marco/eleicoes-2026-confira-as-principais-datas-do-calendario-eleitoral",
+      "verificado": true,
+      "recorrencia": "unico",
+      "observacao": "Data lida no calendario oficial das Eleicoes 2026 publicado pelo TSE, aprovado pela Resolucao TSE no 23.760, de 2 de marco de 2026. Pagina atualizada em 14/07/2026.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 1372,
+        "roi_pct": 42.9,
+        "temas": "e titulo",
+        "fonte": "data/reverse_temas.json",
+        "nota": "PRD registra 'titulo de eleitor online' com 21.098 cliques historicos"
+      }
+    },
+    {
+      "entidade": "bolsa familia",
+      "descricao": "Pagamento do Bolsa Familia de dezembro/2026, escalonado pelo ultimo digito do NIS: NIS final 1 em 2026-12-10 e NIS final 0 em 2026-12-23. Calendario de dezembro e antecipado em relacao aos demais meses.",
+      "data_ref": "2026-12-10",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.caixa.gov.br/programas-sociais/bolsa-familia/Paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Datas lidas na tabela 'Calendario de pagamento Bolsa Familia 2026' publicada pela CAIXA, agente operador do programa. Em municipios com calamidade reconhecida o calendario e unificado no primeiro dia de pagamento.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 17649,
+        "temas": "nis (+17.155), bolsa familia (+494)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "a entidade que monetiza e 'NIS', nao 'bolsa familia'"
+      }
+    },
+    {
+      "entidade": "gas do povo",
+      "descricao": "Disponibilizacao dos novos vales-recarga do Gas do Povo. Familias de 2 ou 3 pessoas recebem 1 vale a cada 3 meses; familias de 4 ou mais, 1 vale a cada 2 meses. O vale substitui o antigo Auxilio Gas.",
+      "data_ref": "2026-12-10",
+      "tipo": "pagamento",
+      "orgao": "MDS / CAIXA",
+      "fonte_url": "https://www.gov.br/mds/pt-br/acoes-e-programas/gas-do-povo",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra lida na pagina oficial do programa: 'Os novos vales sao disponibilizados todo dia 10 de cada mes'. Data fixa, independe de dia util.",
+      "familia": "transferencia_renda",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20586,
+        "temas": "auxilio gas (+18.888), gas do povo (+1.698)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "auxilio gas roda ha 172 dias com ROI 48,8%; gas do povo so 26 dias"
+      }
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "Parcela de frequencia do Pe-de-Meia (R$ 200), janela de 2026-12-21 a 2026-12-28.",
+      "data_ref": "2026-12-21",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Janela lida no calendario oficial do MEC (Portaria MEC no 169/2026). Sao 15 intervalos de pagamento entre marco/2026 e junho/2027. CORRECAO DA AUDITORIA 2026-08-06: o eixo de escalonamento DENTRO da janela e o MES DE NASCIMENTO do estudante (nascidos em janeiro/fevereiro no primeiro dia do cronograma, meses seguintes nos dias subsequentes). A redacao anterior dizia que a parcela caia 'conforme a rede de ensino envia os dados', o que faria a campanha prometer o gatilho errado — o aluno buscaria a data da escola quando o que manda e o proprio aniversario. E a mesma classe de regra que este arquivo ja modela certo no Bolsa Familia (final do NIS) e no INSS (final do beneficio). NUMERACAO REVISADA NA AUDITORIA 2026-08-06 (confianca media): o MEC confirma NOVE parcelas de frequencia no ano letivo 2026, entao a '10a parcela' que constava aqui nao existe. A janela de 25/01 a 01/02/2027 paga a frequencia de novembro/2026, que e a nona e ultima. Pela mesma contagem a janela de nov/2026 seria a 7a e a de dez/2026 a 8a — mas isso conflita com a contagem confirmada para a janela de agosto/2026 (5a parcela, frequencia de maio/junho), entao o ordinal foi REMOVIDO da descricao em vez de renumerado no chute. A DATA da janela nao esta em duvida e nao foi alterada. Nao usar numero de parcela em criativo ate o MEC confirmar a contagem — anunciar parcela que nao existe e risco de reprovacao e de promessa falsa.",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "calendario inss",
+      "descricao": "Pagamento dos beneficios do INSS da competencia dezembro/2026. Quem recebe ate 1 salario minimo recebe de 2026-12-22 (final 1) a 2027-01-08 (final 0); quem recebe acima de 1 salario minimo comeca em 2027-01-04. O final considerado e o do cartao do beneficio, sem o digito apos o hifen.",
+      "data_ref": "2026-12-22",
+      "tipo": "pagamento",
+      "orgao": "INSS",
+      "fonte_url": "https://www.gov.br/inss/pt-br/assuntos/calendario-de-pagamentos-do-inss-de-2026-esta-disponivel/copy_of_TabeladePagamentodeBenefcios2026.pdf",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Data lida na Tabela de Pagamento de Beneficios 2026 (PDF oficial do INSS), coluna da competencia, linha final 1. O calendario de 2026 cobre ate a competencia dezembro/2026, cujo pagamento entra em janeiro/2027.",
+      "familia": "previdencia",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 5434,
+        "temas": "consulta inss (+4.269), extrato inss (+1.165)",
+        "fonte": "data/reverse_temas.json"
+      }
+    },
+    {
+      "entidade": "abono salarial pis pasep",
+      "descricao": "Prazo final para sacar o abono salarial ano-base 2024. Quem nao sacar ate esta data perde o valor do exercicio 2026, que retorna ao Fundo.",
+      "data_ref": "2026-12-30",
+      "tipo": "prazo",
+      "orgao": "Ministerio do Trabalho e Emprego",
+      "fonte_url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/abono-salarial",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Prazo lido na pagina oficial do MTE: 'os valores ficarao disponiveis aos trabalhadores ate o fim do calendario em 30/12/2026'. Vale para todos os meses de nascimento, nao so os ultimos.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": -245,
+        "roi_pct": -15.4,
+        "temas": "pis pasep",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO: -R$245 em 32 dias. Nao escalar sem novo teste."
+      }
+    },
+    {
+      "entidade": "licenciamento anual sp",
+      "descricao": "Prazo final do licenciamento anual 2026 em Sao Paulo para veiculos de passageiros, onibus, reboque e semirreboque com placa de final 0. Taxa de R$ 174,08 mais IPVA e multas quitados. A partir do 1o dia do mes seguinte o veiculo so circula com o CRLV-e atualizado, sob pena de multa.",
+      "data_ref": "2026-12-31",
+      "tipo": "prazo",
+      "orgao": "Detran-SP",
+      "fonte_url": "https://servicos.sp.gov.br/fcarta/1DD2C9F8-815F-49D4-9D47-F09885256ECE",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "CALENDARIO ESTADUAL DE SAO PAULO — nao vale para as demais UFs, cada Detran tem o seu. Prazos lidos na carta de servico oficial do Governo de SP (atualizada em 12/06/2026). Caminhoes seguem calendario proprio: finais 1 e 2 ate setembro, 3/4/5 ate outubro, 6/7/8 ate novembro, 9 e 0 ate dezembro.",
+      "familia": "veiculos",
+      "abrangencia": "estadual_SP",
+      "evidencia_medida": {
+        "lucro_brl": -139,
+        "roi_pct": -28.8,
+        "temas": "licenciamento 2026 sp",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO. Somando todos os estados, licenciamento e IPVA somam prejuizo; nenhuma UF ficou positiva de forma relevante."
+      }
+    },
+    {
+      "entidade": "alistamento militar",
+      "descricao": "Abertura do alistamento militar obrigatorio de 2027, para homens nascidos em 2009 (que completam 18 anos em 2027). Feito em alistamento.eb.mil.br ou na Junta de Servico Militar do municipio.",
+      "data_ref": "2027-01-01",
+      "tipo": "abertura",
+      "orgao": "Ministerio da Defesa / Exercito Brasileiro",
+      "fonte_url": "https://www.gov.br/pt-br/servicos/alistar-se-no-servico-militar-obrigatorio",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Regra legal permanente lida na carta de servico oficial do gov.br: 'O Alistamento e realizado no periodo de 1o de janeiro a 30 de junho, do ano em que o jovem completar 18 anos'. Lei no 4.375/1964 e Decreto no 57.654/1966. Nao depende de publicacao anual — por isso a data de 2027 e verificavel hoje.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 12110,
+        "roi_pct": 66.2,
+        "temas": "certificado de reservista",
+        "fonte": "data/reverse_temas.json",
+        "nota": "8o tema mais lucrativo da base, 172 dias — familia compulsoria (S1 alto)"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em janeiro. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-01-04",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf CORRECAO DA AUDITORIA 2026-08-06: a data_ref era 2027-01-01, que NAO e dia util (01/01/2027 e sexta-feira E feriado nacional da Confraternizacao Universal, com 02 e 03/01 no fim de semana). Pela propria regra citada acima (Termo de Opcao da CAIXA: credito no primeiro dia util do mes de aniversario), a abertura e 2027-01-04. O arquivo gerou as 12 entradas da serie pelo dia 1 de calendario; 4 delas caiam em dia nao util e foram corrigidas (2026-11-01, 2027-01-01, 2027-05-01, 2027-08-01), as outras 8 ja estavam certas. ATENCAO: esta data e DERIVADA da regra mais a tabela de feriados nacionais, nao foi lida em pagina da CAIXA. Se a serie for regerada, gerar por 'primeiro dia util', nunca por dia fixo.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "justificativa eleitoral",
+      "descricao": "Prazo final para entrega da justificativa de ausencia no 2o turno.",
+      "data_ref": "2027-01-08",
+      "tipo": "prazo",
+      "orgao": "TSE",
+      "fonte_url": "https://www.tse.jus.br/comunicacao/noticias/2026/Marco/eleicoes-2026-confira-as-principais-datas-do-calendario-eleitoral",
+      "verificado": true,
+      "recorrencia": "unico",
+      "observacao": "Data lida no calendario oficial das Eleicoes 2026 publicado pelo TSE, aprovado pela Resolucao TSE no 23.760, de 2 de marco de 2026. Pagina atualizada em 14/07/2026.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 1372,
+        "roi_pct": 42.9,
+        "temas": "e titulo",
+        "fonte": "data/reverse_temas.json",
+        "nota": "PRD registra 'titulo de eleitor online' com 21.098 cliques historicos"
+      }
+    },
+    {
+      "entidade": "ipva 2027 sp",
+      "descricao": "Inicio do calendario de pagamento do IPVA 2027 em Sao Paulo, escalonado por final de placa, com desconto para pagamento a vista em janeiro.",
+      "data_ref": "2027-01-11",
+      "tipo": "prazo",
+      "orgao": "Sefaz-SP",
+      "fonte_url": "https://portal.fazenda.sp.gov.br/servicos/ipva",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: a Sefaz-SP ainda nao divulgou o calendario do IPVA 2027 (consultado em 2026-08-05); costuma sair em dezembro. CALENDARIO ESTADUAL. A data_ref e aproximacao pelo padrao historico (segunda semana de janeiro para placa final 1). Excluir do ranking.",
+      "familia": "veiculos",
+      "abrangencia": "estadual_SP",
+      "evidencia_medida": {
+        "lucro_brl": -139,
+        "roi_pct": -28.8,
+        "temas": "licenciamento 2026 sp",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO. Somando todos os estados, licenciamento e IPVA somam prejuizo; nenhuma UF ficou positiva de forma relevante."
+      }
+    },
+    {
+      "entidade": "concurso nacional unificado",
+      "descricao": "Eventual abertura de inscricoes da 3a edicao do Concurso Publico Nacional Unificado (CPNU 3).",
+      "data_ref": "2027-01-15",
+      "tipo": "abertura",
+      "orgao": "Ministerio da Gestao e da Inovacao em Servicos Publicos",
+      "fonte_url": "https://www.gov.br/gestao/pt-br/concursonacional",
+      "verificado": false,
+      "recorrencia": "unico",
+      "observacao": "NAO VERIFICADO E SEM EDITAL. Nao encontrei nenhum concurso federal com edital publicado e data futura dentro da janela. O CPNU 1 e o CPNU 2 ja se encerraram (resultado final do CPNU 2 em 30/01/2026) e nao ha edital do CPNU 3. Alem disso o portal oficial do CNU esta com conteudo removido por causa do periodo eleitoral (vedacoes de 04/07 a 25/10/2026), o que atrasa qualquer anuncio. A data_ref e um marcador arbitrario. Excluir do ranking e retomar a busca depois de 25/10/2026. AUDITORIA 2026-08-06 — EVENTO SEM LASTRO, NAO PROMOVER: a busca nao encontrou edital, cronograma nem data oficial do CPNU 3. Existem apenas declaracoes da ministra Esther Dweck (MGI) de que uma 3a edicao depende da discussao orcamentaria de 2027 e pode escorregar para 2028; o governo ja declarou que nao abriria CNU em 2026 por ser ano eleitoral. A imprensa especializada trabalha com expectativa de EDITAL EM MAIO/2027 e provas no 2o semestre — ou seja, o marcador 2027-01-15 esta ~4 meses adiantado em relacao a unica expectativa publica existente, e essa expectativa tambem nao e oficial. A data foi MANTIDA como marcador (nao ha alternativa confiavel para substitui-la) e o registro segue verificado=false. Este e o registro mais perigoso do arquivo para o D1: nao e uma data errada, e uma data fabricada para um evento que pode nunca ocorrer na janela. Se o D1 algum dia ler data_ref sem checar o flag verificado, este e o registro que produz campanha para evento inexistente.",
+      "familia": "concursos",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 189,
+        "temas": "concurso ibge (+141), concurso inss (+48)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "familia concursos e quase neutra na base; concurso pf/prf/caixa/correios negativos"
+      }
+    },
+    {
+      "entidade": "resultado enem",
+      "descricao": "Divulgacao das notas individuais do Enem 2026 na Pagina do Participante.",
+      "data_ref": "2027-01-15",
+      "tipo": "resultado",
+      "orgao": "Inep / MEC",
+      "fonte_url": "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem/orientacoes/cronograma",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: o cronograma oficial do Inep publica so ate a linha 'Aplicacao'; a data do resultado ainda nao foi divulgada (consultado em 2026-08-05). A data_ref e aproximacao pelo padrao historico — o resultado do Enem 2025 saiu em 16/01/2026. Excluir do ranking.",
+      "familia": "educacao",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "sisu 2027",
+      "descricao": "Abertura das inscricoes do Sisu 2027, que usa as notas do Enem 2026 para vagas em instituicoes publicas.",
+      "data_ref": "2027-01-19",
+      "tipo": "abertura",
+      "orgao": "MEC",
+      "fonte_url": "https://sisu.mec.gov.br/",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: o edital do Sisu 2027 ainda nao foi publicado (consultado em 2026-08-05). A data_ref e aproximacao pelo padrao historico — o Sisu 2026 abriu em 19/01/2026, com resultado da chamada regular em 29/01/2026. Excluir do ranking.",
+      "familia": "educacao",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "Parcela de frequencia do Pe-de-Meia (R$ 200), ultima do ano letivo 2026 (referente a frequencia de novembro/2026), janela de 2027-01-25 a 2027-02-01.",
+      "data_ref": "2027-01-25",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Janela lida no calendario oficial do MEC (Portaria MEC no 169/2026). Sao 15 intervalos de pagamento entre marco/2026 e junho/2027. CORRECAO DA AUDITORIA 2026-08-06: o eixo de escalonamento DENTRO da janela e o MES DE NASCIMENTO do estudante (nascidos em janeiro/fevereiro no primeiro dia do cronograma, meses seguintes nos dias subsequentes). A redacao anterior dizia que a parcela caia 'conforme a rede de ensino envia os dados', o que faria a campanha prometer o gatilho errado — o aluno buscaria a data da escola quando o que manda e o proprio aniversario. E a mesma classe de regra que este arquivo ja modela certo no Bolsa Familia (final do NIS) e no INSS (final do beneficio). NUMERACAO REVISADA NA AUDITORIA 2026-08-06 (confianca media): o MEC confirma NOVE parcelas de frequencia no ano letivo 2026, entao a '10a parcela' que constava aqui nao existe. A janela de 25/01 a 01/02/2027 paga a frequencia de novembro/2026, que e a nona e ultima. Pela mesma contagem a janela de nov/2026 seria a 7a e a de dez/2026 a 8a — mas isso conflita com a contagem confirmada para a janela de agosto/2026 (5a parcela, frequencia de maio/junho), entao o ordinal foi REMOVIDO da descricao em vez de renumerado no chute. A DATA da janela nao esta em duvida e nao foi alterada. Nao usar numero de parcela em criativo ate o MEC confirmar a contagem — anunciar parcela que nao existe e risco de reprovacao e de promessa falsa.",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "prouni 2027",
+      "descricao": "Abertura das inscricoes do ProUni 2027 para bolsas em instituicoes privadas.",
+      "data_ref": "2027-01-26",
+      "tipo": "abertura",
+      "orgao": "MEC",
+      "fonte_url": "https://acessounico.mec.gov.br/prouni",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: edital de 2027 ainda nao publicado (consultado em 2026-08-05). Aproximacao pelo padrao historico — o ProUni 2026 recebeu inscricoes de 26 a 29/01/2026. Excluir do ranking.",
+      "familia": "educacao",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em fevereiro. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-02-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "abono salarial pis pasep 2027",
+      "descricao": "Inicio do calendario do abono salarial ano-base 2025, exercicio 2027.",
+      "data_ref": "2027-02-15",
+      "tipo": "pagamento",
+      "orgao": "Ministerio do Trabalho e Emprego",
+      "fonte_url": "https://www.gov.br/trabalho-e-emprego/pt-br/servicos/trabalhador/abono-salarial",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: o calendario de 2027 depende de nova resolucao do Codefat, ainda nao publicada (consultado em 2026-08-05). A resolucao de 2026 (Codefat/MTE no 1.032) foi aprovada em 16/12/2025. A data_ref e aproximacao pelo padrao historico (o calendario 2026 comecou em 15/02). Excluir do ranking. AUDITORIA 2026-08-06: a data_ref e MAIS BEM FUNDAMENTADA do que 'aproximacao pelo padrao historico' sugeria — a Resolucao Codefat/MTE no 1.032/2025 fixa que os nascidos em janeiro recebem a partir de 15 de fevereiro, ou no primeiro dia util seguinte, e 2027-02-15 cai numa segunda-feira util. A data e defensavel pela regra vigente, nao um chute. Ainda assim permanece verificado=false por falta do ato do Codefat para 2027, que pode alterar a regra. CORRECAO FACTUAL: a observacao anterior dizia que o calendario de 2026 comecou em 16/02; o MTE/Codefat anunciou inicio em 15/02/2026.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": -245,
+        "roi_pct": -15.4,
+        "temas": "pis pasep",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO: -R$245 em 32 dias. Nao escalar sem novo teste."
+      }
+    },
+    {
+      "entidade": "fies 2027",
+      "descricao": "Abertura das inscricoes do Fies para o 1o semestre de 2027.",
+      "data_ref": "2027-02-15",
+      "tipo": "abertura",
+      "orgao": "MEC / FNDE",
+      "fonte_url": "https://acessounico.mec.gov.br/fies",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: edital de 2027 ainda nao publicado (consultado em 2026-08-05). A data_ref e aproximacao grosseira pelo padrao historico (fevereiro). Excluir do ranking — esta e a menos confiavel das aproximacoes deste arquivo. AUDITORIA 2026-08-06 (confianca media): a ancora historica estava mal colocada. O unico analogo disponivel — Fies do 1o semestre de 2026, Edital MEC no 3 de 21/01/2026 — teve inscricoes de 03 a 06/02/2026, com resultado da chamada unica em 19/02. Se 2027 repetir o padrao, 2027-02-15 nao e a abertura: e cerca de 9 dias DEPOIS de a janela ter fechado, e uma campanha de 'inscricoes abertas' nessa data pegaria o publico fora do prazo. Aproximacao melhor: primeira semana de fevereiro (~03/02 a 06/02). A data_ref foi MANTIDA porque a alternativa tambem e inferencia, e o registro segue verificado=false ate o edital de 2027 sair.",
+      "familia": "educacao",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "pe de meia",
+      "descricao": "Janela de pagamento da parcela de R$ 1.000 pela aprovacao no ano letivo somada a parcela de R$ 200 pela participacao nos dois dias do Enem 2026, de 2027-02-22 a 2027-03-01. E a maior parcela do programa.",
+      "data_ref": "2027-02-22",
+      "tipo": "pagamento",
+      "orgao": "MEC / CAIXA",
+      "fonte_url": "https://www.gov.br/mec/pt-br/pe-de-meia/calendario-pagamentos",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Janela lida no calendario oficial do MEC. Primeira oportunidade de pagamento; quem tiver dados enviados depois recebe nas datas seguintes de 2027. Parcelas geradas por correcao de dados correm de marco a junho de 2027.",
+      "familia": "educacao",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 20114,
+        "roi_pct": 47.2,
+        "temas": "pe de meia",
+        "fonte": "data/reverse_temas.json",
+        "nota": "5o tema mais lucrativo da base inteira, 172 dias de vida"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em marco. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-03-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "declaracao imposto de renda 2027",
+      "descricao": "Abertura do prazo de entrega da Declaracao de Ajuste Anual do IRPF 2027 (ano-calendario 2026).",
+      "data_ref": "2027-03-15",
+      "tipo": "abertura",
+      "orgao": "Receita Federal",
+      "fonte_url": "https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: a Instrucao Normativa que fixa o prazo de 2027 ainda nao foi publicada (consultado em 2026-08-05). A data_ref e aproximacao pelo padrao historico (abertura em marco, prazo final no fim de maio). Excluir do ranking ate a IN sair. AUDITORIA 2026-08-06 (confianca baixa): o padrao recente e mais tardio que 15/03 — o IRPF 2026 abriu em 23/03/2026 (IN RFB 2.312/2026, prazo ate 29/05) e o IRPF 2025 abriu em 17/03. 2027-03-15 esta na borda mais precoce da serie e tende a antecipar demais o gatilho; faixa mais provavel: segunda quinzena de marco (~17 a 23/03). Data MANTIDA e registro segue verificado=false ate a IN de 2027 sair.",
+      "familia": "tributario",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": -144,
+        "roi_pct": -33.2,
+        "temas": "restituicao irpf 2026",
+        "fonte": "data/reverse_temas.json",
+        "nota": "MEDIDO NEGATIVO em 8 dias de teste; amostra curta, mas nao positiva"
+      }
+    },
+    {
+      "entidade": "campanha vacinacao gripe 2027",
+      "descricao": "Inicio da Campanha Nacional de Vacinacao contra a Influenza de 2027.",
+      "data_ref": "2027-03-27",
+      "tipo": "abertura",
+      "orgao": "Ministerio da Saude",
+      "fonte_url": "https://www.gov.br/saude/pt-br/composicao/seidigi/demas/campanhas-de-vacinacao",
+      "verificado": false,
+      "recorrencia": "anual",
+      "observacao": "NAO VERIFICADO: o informe tecnico da campanha de 2027 ainda nao existe (consultado em 2026-08-05). A data_ref e aproximacao pelo padrao historico — a campanha de 2026 comecou em 28/03/2026 no Nordeste, Centro-Oeste, Sul e Sudeste e foi ate 30/05; a Regiao Norte vacina no segundo semestre por sazonalidade. Excluir do ranking.",
+      "familia": "saude",
+      "abrangencia": "nacional"
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em abril. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-04-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em maio. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-05-03",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf CORRECAO DA AUDITORIA 2026-08-06: a data_ref era 2027-05-01, que NAO e dia util (01/05/2027 e sabado E feriado nacional do Dia do Trabalho, com 02/05 no domingo). Pela propria regra citada acima (Termo de Opcao da CAIXA: credito no primeiro dia util do mes de aniversario), a abertura e 2027-05-03. O arquivo gerou as 12 entradas da serie pelo dia 1 de calendario; 4 delas caiam em dia nao util e foram corrigidas (2026-11-01, 2027-01-01, 2027-05-01, 2027-08-01), as outras 8 ja estavam certas. ATENCAO: esta data e DERIVADA da regra mais a tabela de feriados nacionais, nao foi lida em pagina da CAIXA. Se a serie for regerada, gerar por 'primeiro dia util', nunca por dia fixo.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em junho. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-06-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "alistamento militar",
+      "descricao": "Prazo final do alistamento militar obrigatorio de 2027. Quem perde o prazo fica em debito com o Servico Militar e nao consegue passaporte, matricula em estabelecimento de ensino, carteira profissional nem contrato com o poder publico.",
+      "data_ref": "2027-06-30",
+      "tipo": "prazo",
+      "orgao": "Ministerio da Defesa / Exercito Brasileiro",
+      "fonte_url": "https://www.gov.br/pt-br/servicos/alistar-se-no-servico-militar-obrigatorio",
+      "verificado": true,
+      "recorrencia": "anual",
+      "observacao": "Regra legal permanente lida na carta de servico oficial do gov.br. As restricoes por estar em debito estao listadas na mesma pagina e sao o gancho de compulsoriedade (S1) mais forte desta familia.",
+      "familia": "documentos_civis",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 12110,
+        "roi_pct": 66.2,
+        "temas": "certificado de reservista",
+        "fonte": "data/reverse_temas.json",
+        "nota": "8o tema mais lucrativo da base, 172 dias — familia compulsoria (S1 alto)"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em julho. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-07-01",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    },
+    {
+      "entidade": "saque aniversario fgts",
+      "descricao": "Abertura da janela anual do saque-aniversario do FGTS para quem faz aniversario em agosto. O trabalhador optante recebe uma aliquota de 5% a 50% sobre a soma dos saldos, mais parcela adicional.",
+      "data_ref": "2027-08-02",
+      "tipo": "pagamento",
+      "orgao": "CAIXA / Conselho Curador do FGTS",
+      "fonte_url": "https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-FGTS/paginas/default.aspx",
+      "verificado": true,
+      "recorrencia": "mensal",
+      "observacao": "Regra legal permanente (Lei 13.932/2019): o optante saca 'anualmente, no mes de seu aniversario'. O Termo de Opcao oficial da CAIXA permite escolher o debito no primeiro dia util do mes ou no dia 10. NAO CONSEGUI CONFIRMAR em fonte oficial o prazo final da janela — fontes secundarias dizem 'ultimo dia util do segundo mes subsequente', mas isso nao aparece na Lei 8.036/90 (arts. 20-A a 20-E) nem nas paginas da CAIXA que abri. Tratar so a abertura como verificada. Fonte complementar: https://internetbanking.caixa.gov.br/statics-core/pdf/termo_sistematica_fgts_aniversario.pdf CORRECAO DA AUDITORIA 2026-08-06: a data_ref era 2027-08-01, que NAO e dia util (01/08/2027 e domingo). Pela propria regra citada acima (Termo de Opcao da CAIXA: credito no primeiro dia util do mes de aniversario), a abertura e 2027-08-02. O arquivo gerou as 12 entradas da serie pelo dia 1 de calendario; 4 delas caiam em dia nao util e foram corrigidas (2026-11-01, 2027-01-01, 2027-05-01, 2027-08-01), as outras 8 ja estavam certas. ATENCAO: esta data e DERIVADA da regra mais a tabela de feriados nacionais, nao foi lida em pagina da CAIXA. Se a serie for regerada, gerar por 'primeiro dia util', nunca por dia fixo.",
+      "familia": "trabalho",
+      "abrangencia": "nacional",
+      "evidencia_medida": {
+        "lucro_brl": 3163,
+        "temas": "consultar fgts (+3.714), fgts (-551)",
+        "fonte": "data/reverse_temas.json",
+        "nota": "'consultar fgts' lucra e 'fgts' generico perde — usar a forma transacional"
+      }
+    }
+  ],
+  "cobertura": {
+    "total": 64,
+    "verificados": 54,
+    "nao_verificados": 10,
+    "auditado_em": "2026-08-06",
+    "auditoria": {
+      "metodo": "WebSearch por entidade + periodo; WebFetch so quando a busca levantou suspeita concreta. As 64 fonte_url NAO foram reabertas uma a uma — troca deliberada de exaustividade por custo, decidida pelo operador.",
+      "eventos_auditados": 64,
+      "divergencias_reportadas": 13,
+      "datas_corrigidas": 4,
+      "descricoes_corrigidas": 4,
+      "observacoes_corrigidas": 16,
+      "promovidos_a_verificado": 0,
+      "rebaixados_a_nao_verificado": 0,
+      "eventos_apagados": 0,
+      "nota": "Os totais verificados/nao_verificados NAO mudaram: as 4 datas erradas de alta confianca foram corrigidas em registros que continuam verificados (o defeito era de derivacao, nao de fonte), e todas as divergencias de confianca media/baixa caiam em registros que ja estavam verificado=false. Nenhum dos 10 nao verificados pode ser promovido hoje: todos dependem de ato do orgao que ainda nao saiu.",
+      "relatorio": "frentes/F03-sentinela-descoberta/AUDITORIA-CALENDARIO.md"
+    }
+  },
+  "nota_metodologica": "verificado=true significa que a data foi lida na pagina ou no PDF apontado por fonte_url, aberto nesta sessao em 2026-08-05. verificado=false significa que o calendario do exercicio ainda nao foi publicado; nesses casos data_ref e uma aproximacao pelo padrao historico, declarada na observacao, e o evento deve ser EXCLUIDO do ranking conforme a disciplina antifabricacao do PRD. O campo evidencia_medida traz lucro real de data/reverse_temas.json (296 temas, campanhas reais) e nao estimativa."
+}

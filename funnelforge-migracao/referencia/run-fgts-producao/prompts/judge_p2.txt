@@ -1,0 +1,407 @@
+[user]
+<identidade>
+Você é o JUIZ DE QUALIDADE E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) de um
+portal editorial de utilidade pública brasileiro. Você NÃO reescreve o conteúdo. Sua única função é
+AUDITAR a página abaixo contra a checklist de aceite do "WINNING LP BLUEPRINT" (engenharia reversa de
+LPs vencedoras de arbitragem) e devolver um veredito estruturado em JSON.
+</identidade>
+
+<principios>
+- Seja um leitor cético e um crítico rigoroso, não um torcedor do texto.
+- Julgue apenas o que está escrito em <!-- wp:paragraph -->
+<p><strong>Toque na opção de acordo com o seu caso e entenda como planejar a liberação do seu saldo do FGTS com total segurança ✅</strong></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1" style="border-radius:10px;background-color:#008353"><strong>🔎 Como consultar o saldo e ativar o Saque-Aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#ea580c"><strong>📱 Quais bancos fazem a antecipação rápida via Pix ou WhatsApp »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#2563eb"><strong>⚠️ O que acontece em caso de demissão ou para quitar o saldo »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>O acesso aos recursos do Fundo de Garantia do Tempo de Serviço (FGTS) passou por atualizações importantes em 2026.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Diante de tantas regras novas estabelecidas pelo CCFGTS (Conselho Curador do Fundo de Garantia do Tempo de Serviço), entender em qual cenário você se encaixa é o primeiro passo para evitar que seu saldo fique bloqueado temporariamente.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para ajudar você a navegar pelas novas regras, a pergunta principal é: <strong>qual é a sua situação hoje?</strong></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é guiar-se na execução prática da consulta e ativação, eliminando a ansiedade de não saber mexer no aplicativo da CEF (Caixa Econômica Federal), toque no caminho de <strong>Como Consultar o FGTS pelo CPF e Ativar o Saque-Aniversário no Aplicativo</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é facilitar a conversão imediata, mostrando opções extremamente acessíveis e de contratação instantânea pelo celular, toque no caminho de <strong>Empréstimo FGTS a partir de R$ 20 a R$ 50 Reais via Pix e WhatsApp: Melhores Bancos</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é sanar as maiores objeções e medos de longo prazo (perda de emprego, saldo travado, recontratação), gerando segurança total para a tomada de decisão, toque no caminho de <strong>Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Requisitos de Elegibilidade: Quem realmente pode antecipar?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para ter acesso à modalidade de antecipação em 2026, o trabalhador precisa cumprir requisitos básicos de elegibilidade. O primeiro critério é ser maior de 18 anos (ou emancipado) e possuir contas ativas ou inativas com saldo disponível.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Além disso, é obrigatório estar com o CPF regularizado perante a RFB (Receita Federal do Brasil) e ter a modalidade Saque-Aniversário devidamente ativada no aplicativo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> A Resolução CCFGTS nº 1.130/2025 determina uma carência obrigatória de 90 dias após a adesão ao Saque-Aniversário para que você possa autorizar os bancos a consultarem seu saldo. Planeje-se para evitar surpresas.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:paragraph -->
+<p>Antes de avançar, certificar-se de que sua conta está ativa e pronta para a liberação evita erros que costumam travar o saldo no sistema.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1" style="border-radius:10px;background-color:#008353"><strong>Ver o passo a passo para consultar o FGTS pelo CPF »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading -->
+<h2>Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Muitos trabalhadores buscam alternativas de microcrédito acreditando ser possível antecipar valores muito baixos, como R$ 20 ou R$ 50 reais. No entanto, as regras vigentes em 2026 proíbem essas operações de baixo valor.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Atualmente, o <u>valor mínimo exigido por parcela antecipada é de R$ 100</u>, com um teto de R$ 500 por parcela, tornando inviável a contratação de valores inferiores.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Período em 2026</th><th>Limite de Parcelas e Teto</th></tr></thead><tbody><tr><td>Até 31 de outubro de 2026</td><td>Até 5 parcelas anuais (teto de R$ 2.500)</td></tr><tr><td>Após 31 de outubro de 2026</td><td>Até 3 parcelas anuais (teto de R$ 1.500)</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Instituições financeiras renomadas como meutudo, Banco Bmg, Banco Mercantil e Digio oferecem plataformas rápidas para simulação e contratação diretamente pelo WhatsApp, com transferência do saldo via Pix em poucos minutos.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Escolher o canal de atendimento correto garante que você passe pela análise de crédito sem burocracia e com total transparência.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#ea580c"><strong>Como encontrar bancos para antecipar o FGTS via Pix »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading -->
+<h2>Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Uma das maiores preocupações de quem contrata a antecipação é o que acontece no caso de uma demissão sem justa causa. Ao optar pela sistemática do Saque-Aniversário, o trabalhador perde o direito de retirar o valor integral da conta (Saque-Rescisão).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Se você for demitido sem justa causa, o saldo integral do FGTS fica retido na conta, mas a multa rescisória de 40% pode ser sacada imediatamente.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Para quem já possui um contrato ativo e deseja realizar novas antecipações, as regras atuais limitam a apenas <strong>uma operação de contratação por ano</strong>, respeitando os limites de parcelas vigentes.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<ul style="list-style:none;padding:0;margin:24px 0">
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Multa rescisória de 40% liberada para saque na demissão.</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Limite de apenas uma nova contratação de antecipação por ano.</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Possibilidade de quitação antecipada do saldo devedor diretamente com o banco.</li>
+</ul>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>Compreender os impactos de longo prazo e as condições para quitar o saldo devedor é fundamental para manter sua saúde financeira sob controle.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#2563eb"><strong>Como quitar ou sacar a rescisão no Saque-Aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:paragraph -->
+<p>Com as constantes atualizações da legislação do FGTS vigentes para este ano, tomar a decisão correta evita que seus recursos fiquem travados no aplicativo. 👉 <a href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1">Como consultar o saldo do FGTS agora mesmo »</a></p>
+<!-- /wp:paragraph -->
+
+<p><small><em>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</em></small></p>. Não invente lacunas nem assuma boa-fé.
+- Cada nota deve ser justificada por evidência textual (cite o trecho problemático em feedback).
+- Se um critério não se aplica ao tipo de página (ex.: FAQ respondida vs. transição), julgue pela
+  variante correta da regra, não penalize por a página não usar a outra variante.
+</principios>
+
+<CONTEUDO_A_AVALIAR>
+<!-- wp:paragraph -->
+<p><strong>Toque na opção de acordo com o seu caso e entenda como planejar a liberação do seu saldo do FGTS com total segurança ✅</strong></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1" style="border-radius:10px;background-color:#008353"><strong>🔎 Como consultar o saldo e ativar o Saque-Aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#ea580c"><strong>📱 Quais bancos fazem a antecipação rápida via Pix ou WhatsApp »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#2563eb"><strong>⚠️ O que acontece em caso de demissão ou para quitar o saldo »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>O acesso aos recursos do Fundo de Garantia do Tempo de Serviço (FGTS) passou por atualizações importantes em 2026.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Diante de tantas regras novas estabelecidas pelo CCFGTS (Conselho Curador do Fundo de Garantia do Tempo de Serviço), entender em qual cenário você se encaixa é o primeiro passo para evitar que seu saldo fique bloqueado temporariamente.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para ajudar você a navegar pelas novas regras, a pergunta principal é: <strong>qual é a sua situação hoje?</strong></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é guiar-se na execução prática da consulta e ativação, eliminando a ansiedade de não saber mexer no aplicativo da CEF (Caixa Econômica Federal), toque no caminho de <strong>Como Consultar o FGTS pelo CPF e Ativar o Saque-Aniversário no Aplicativo</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é facilitar a conversão imediata, mostrando opções extremamente acessíveis e de contratação instantânea pelo celular, toque no caminho de <strong>Empréstimo FGTS a partir de R$ 20 a R$ 50 Reais via Pix e WhatsApp: Melhores Bancos</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é sanar as maiores objeções e medos de longo prazo (perda de emprego, saldo travado, recontratação), gerando segurança total para a tomada de decisão, toque no caminho de <strong>Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading -->
+<h2>Requisitos de Elegibilidade: Quem realmente pode antecipar?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para ter acesso à modalidade de antecipação em 2026, o trabalhador precisa cumprir requisitos básicos de elegibilidade. O primeiro critério é ser maior de 18 anos (ou emancipado) e possuir contas ativas ou inativas com saldo disponível.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Além disso, é obrigatório estar com o CPF regularizado perante a RFB (Receita Federal do Brasil) e ter a modalidade Saque-Aniversário devidamente ativada no aplicativo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> A Resolução CCFGTS nº 1.130/2025 determina uma carência obrigatória de 90 dias após a adesão ao Saque-Aniversário para que você possa autorizar os bancos a consultarem seu saldo. Planeje-se para evitar surpresas.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:paragraph -->
+<p>Antes de avançar, certificar-se de que sua conta está ativa e pronta para a liberação evita erros que costumam travar o saldo no sistema.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1" style="border-radius:10px;background-color:#008353"><strong>Ver o passo a passo para consultar o FGTS pelo CPF »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading -->
+<h2>Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Muitos trabalhadores buscam alternativas de microcrédito acreditando ser possível antecipar valores muito baixos, como R$ 20 ou R$ 50 reais. No entanto, as regras vigentes em 2026 proíbem essas operações de baixo valor.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Atualmente, o <u>valor mínimo exigido por parcela antecipada é de R$ 100</u>, com um teto de R$ 500 por parcela, tornando inviável a contratação de valores inferiores.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Período em 2026</th><th>Limite de Parcelas e Teto</th></tr></thead><tbody><tr><td>Até 31 de outubro de 2026</td><td>Até 5 parcelas anuais (teto de R$ 2.500)</td></tr><tr><td>Após 31 de outubro de 2026</td><td>Até 3 parcelas anuais (teto de R$ 1.500)</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>Instituições financeiras renomadas como meutudo, Banco Bmg, Banco Mercantil e Digio oferecem plataformas rápidas para simulação e contratação diretamente pelo WhatsApp, com transferência do saldo via Pix em poucos minutos.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Escolher o canal de atendimento correto garante que você passe pela análise de crédito sem burocracia e com total transparência.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#ea580c"><strong>Como encontrar bancos para antecipar o FGTS via Pix »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading -->
+<h2>Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Uma das maiores preocupações de quem contrata a antecipação é o que acontece no caso de uma demissão sem justa causa. Ao optar pela sistemática do Saque-Aniversário, o trabalhador perde o direito de retirar o valor integral da conta (Saque-Rescisão).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Se você for demitido sem justa causa, o saldo integral do FGTS fica retido na conta, mas a multa rescisória de 40% pode ser sacada imediatamente.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:paragraph -->
+<p>Para quem já possui um contrato ativo e deseja realizar novas antecipações, as regras atuais limitam a apenas <strong>uma operação de contratação por ano</strong>, respeitando os limites de parcelas vigentes.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<ul style="list-style:none;padding:0;margin:24px 0">
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Multa rescisória de 40% liberada para saque na demissão.</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Limite de apenas uma nova contratação de antecipação por ano.</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Possibilidade de quitação antecipada do saldo devedor diretamente com o banco.</li>
+</ul>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>Compreender os impactos de longo prazo e as condições para quitar o saldo devedor é fundamental para manter sua saúde financeira sob controle.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#2563eb"><strong>Como quitar ou sacar a rescisão no Saque-Aniversário »</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:paragraph -->
+<p>Com as constantes atualizações da legislação do FGTS vigentes para este ano, tomar a decisão correta evita que seus recursos fiquem travados no aplicativo. 👉 <a href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1">Como consultar o saldo do FGTS agora mesmo »</a></p>
+<!-- /wp:paragraph -->
+
+<p><small><em>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</em></small></p>
+</CONTEUDO_A_AVALIAR>
+
+<CONTEXTO_DE_APOIO>
+Domínio/destino único esperado: https://creditoup.com.br/rec
+Keywords-alvo: 
+Base factual da PESQUISA (Gemini + web search) — CONFIE nestes dados. Um número/valor/data coerente com
+esta base é válido mesmo sem estar palavra-por-palavra aqui; penalize apenas o que a CONTRADIZ: {"resumo":"A antecipação do Saque-Aniversário do FGTS em 2026 é regida pelas novas regras da Resolução CCFGTS nº 1.130/2025. Para ser elegível, o trabalhador deve ser maior de 18 anos, ter saldo em contas ativas ou inativas e ativar o Saque-Aniversário no aplicativo oficial do FGTS, respeitando uma carência de 90 dias para a contratação. Para saber como verificar sua situação, veja [como consultar FGTS pelo CPF](/como-consultar-fgts-pelo-cpf-p1). Embora canais práticos via Pix ou WhatsApp facilitem o processo, as regras atuais proíbem antecipações de valores muito baixos como R$ 20, exigindo um valor mínimo de R$ 100 por parcela (com teto de R$ 500). Saiba mais sobre os [bancos para antecipar FGTS via Pix ou WhatsApp](/bancos-antecipar-fgts-pix-whatsapp-p2). Em caso de demissão sem justa causa, o trabalhador saca apenas a multa rescisória de 40%, e novas antecipações são limitadas a uma operação por ano, conforme detalhado em [regras de demissão e quitação de empréstimo FGTS](/regras-demissao-quitar-emprestimo-fgts-p3).","dados_validados":[{"fato":"Para ser elegível à antecipação do FGTS em 2026, o trabalhador deve ser maior de 18 anos (ou emancipado), ter saldo em contas ativas ou inativas do FGTS, possuir o CPF regularizado junto à Receita Federal e ter a modalidade Saque-Aniversário ativada no aplicativo oficial do FGTS.","fonte":"Caixa Econômica Federal (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"A partir de novembro de 2025, com vigência plena em 2026, a Resolução CCFGTS nº 1.130/2025 estabelece uma carência obrigatória de 90 dias após a adesão ao Saque-Aniversário para que o trabalhador possa autorizar instituições financeiras a consultar seu saldo e contratar a antecipação.","fonte":"Caixa Econômica Federal (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"As regras vigentes em 2026 determinam que o valor mínimo por parcela antecipada do FGTS é de R$ 100 e o valor máximo é de R$ 500, inviabilizando empréstimos de valores menores como R$ 20.","fonte":"meutudo (https://meutudo.com.br/saque-aniversario/)"},{"fato":"Até 31 de outubro de 2026, o trabalhador pode antecipar até 5 parcelas anuais do Saque-Aniversário (teto de R$ 2.500). Após essa data, o limite definitivo passa a ser de até 3 parcelas anuais (teto de R$ 1.500), sendo permitida apenas uma operação de contratação por ano.","fonte":"Banco Bmg (https://www.bancobmg.com.br/)"},{"fato":"Trabalhadores que optam pelo Saque-Aniversário e são demitidos sem justa causa perdem o direito de sacar o saldo integral da conta do FGTS (Saque-Rescisão), tendo direito apenas ao saque da multa rescisória de 40%.","fonte":"Caixa Econômica Federal (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"Instituições financeiras como meutudo, Banco Bmg, Banco Mercantil e Digio oferecem canais rápidos de contratação e simulação da antecipação do FGTS diretamente via WhatsApp ou aplicativo, com liberação do dinheiro via Pix em poucos minutos.","fonte":"meutudo (https://meutudo.com.br/saque-aniversario/)"}],"passo_a_passo":["Baixe o aplicativo oficial do FGTS na loja de aplicativos do seu celular (Google Play ou App Store).","Acesse o aplicativo com seu CPF e senha cadastrados (ou realize o cadastro caso seja o primeiro acesso).","Na tela inicial do aplicativo, selecione a opção 'Sistemática de saque do seu FGTS' e opte pela modalidade 'Saque-Aniversário'.","Aguarde o prazo de carência obrigatório de 90 dias após a adesão para poder realizar a antecipação.","Após a carência, acesse novamente o aplicativo do FGTS, vá em 'Autorizar bancos a consultarem seu FGTS' e selecione a opção 'Empréstimo Saque-Aniversário'.","Adicione a instituição financeira de sua preferência (como Caixa, meutudo, Banco Bmg, Banco Mercantil ou Digio) para autorizar a consulta ao seu saldo.","Entre em contato com a instituição escolhida através do site oficial, aplicativo ou WhatsApp oficial para realizar a simulação e concluir a contratação, recebendo o valor via Pix."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx","https://www.caixa.gov.br/voce/credito-financiamento/emprestimo/antecipacao-saque-aniversario-FGTS/Paginas/default.aspx","https://meutudo.com.br/saque-aniversario/","https://www.bancobmg.com.br/","https://bancomercantil.com.br/","https://www.digio.com.br/","https://servicos.receita.fazenda.gov.br/servicos/cpf/consultasituacao/consultapublica.asp"],"sparse":false}
+</CONTEXTO_DE_APOIO>
+
+<CHECKLIST_DE_ACEITE>
+Avalie cada critério de 0 a 10 e registre o motivo em feedback quando a nota for menor que 8.
+
+1. tone_e_e_a_t — Tom de utilidade pública: calmo, editorial, factual. ZERO medo, ZERO escassez,
+   ZERO urgência fabricada. Reprove frases como "muitos perdem", "não perca o prazo", "cuidado, um
+   detalhe bloqueia", "poucos sabem". Nota baixa se o texto usa gatilhos de pânico ou compulsão.
+
+2. cta_discipline —
+
+   Esta é uma página interna do funil (HUB/SOLUTION), doutrina calma: CTAs são DESCRIÇÕES de
+   curiosidade em 3ª pessoa/infinitivo, igual à Landing Page (ex.: "Ver o passo a passo",
+   "Conferir os requisitos"). NÃO exija nem penalize o uso de 1ª pessoa aqui — a proibição
+   exclusiva de 1ª pessoa emocional é regra da LANDING PAGE, não desta página. Penalize somente:
+   (a) gatilho de medo/escassez/urgência no TEXTO do botão, ou (b) spam de verbo de execução de
+   serviço repetido nos botões. Para ONDE cada botão aponta (destino único vs. múltiplos destinos
+   tipados) é avaliado no critério 6, conforme o tipo de página — não avalie roteamento aqui.
+   O registro tátil mobile-first ("Toque abaixo e veja...", "Toque na opção certa...") é uma
+   variação VÁLIDA de descrição de curiosidade/navegação — "tocar" não é verbo de execução de
+   serviço e não deve reduzir a nota.
+
+
+3. proof_and_authority — Critério ADVISÓRIO: dá sinal de qualidade e feedback, mas NÃO reprova a
+   página (não é existencial). Fundamentação é avaliada por PÁGINA, não frase a frase. CONFIE na base
+   factual da pesquisa: um número/valor/data/norma coerente com {"resumo":"A antecipação do Saque-Aniversário do FGTS em 2026 é regida pelas novas regras da Resolução CCFGTS nº 1.130/2025. Para ser elegível, o trabalhador deve ser maior de 18 anos, ter saldo em contas ativas ou inativas e ativar o Saque-Aniversário no aplicativo oficial do FGTS, respeitando uma carência de 90 dias para a contratação. Para saber como verificar sua situação, veja [como consultar FGTS pelo CPF](/como-consultar-fgts-pelo-cpf-p1). Embora canais práticos via Pix ou WhatsApp facilitem o processo, as regras atuais proíbem antecipações de valores muito baixos como R$ 20, exigindo um valor mínimo de R$ 100 por parcela (com teto de R$ 500). Saiba mais sobre os [bancos para antecipar FGTS via Pix ou WhatsApp](/bancos-antecipar-fgts-pix-whatsapp-p2). Em caso de demissão sem justa causa, o trabalhador saca apenas a multa rescisória de 40%, e novas antecipações são limitadas a uma operação por ano, conforme detalhado em [regras de demissão e quitação de empréstimo FGTS](/regras-demissao-quitar-emprestimo-fgts-p3).","dados_validados":[{"fato":"Para ser elegível à antecipação do FGTS em 2026, o trabalhador deve ser maior de 18 anos (ou emancipado), ter saldo em contas ativas ou inativas do FGTS, possuir o CPF regularizado junto à Receita Federal e ter a modalidade Saque-Aniversário ativada no aplicativo oficial do FGTS.","fonte":"Caixa Econômica Federal (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"A partir de novembro de 2025, com vigência plena em 2026, a Resolução CCFGTS nº 1.130/2025 estabelece uma carência obrigatória de 90 dias após a adesão ao Saque-Aniversário para que o trabalhador possa autorizar instituições financeiras a consultar seu saldo e contratar a antecipação.","fonte":"Caixa Econômica Federal (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"As regras vigentes em 2026 determinam que o valor mínimo por parcela antecipada do FGTS é de R$ 100 e o valor máximo é de R$ 500, inviabilizando empréstimos de valores menores como R$ 20.","fonte":"meutudo (https://meutudo.com.br/saque-aniversario/)"},{"fato":"Até 31 de outubro de 2026, o trabalhador pode antecipar até 5 parcelas anuais do Saque-Aniversário (teto de R$ 2.500). Após essa data, o limite definitivo passa a ser de até 3 parcelas anuais (teto de R$ 1.500), sendo permitida apenas uma operação de contratação por ano.","fonte":"Banco Bmg (https://www.bancobmg.com.br/)"},{"fato":"Trabalhadores que optam pelo Saque-Aniversário e são demitidos sem justa causa perdem o direito de sacar o saldo integral da conta do FGTS (Saque-Rescisão), tendo direito apenas ao saque da multa rescisória de 40%.","fonte":"Caixa Econômica Federal (https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx)"},{"fato":"Instituições financeiras como meutudo, Banco Bmg, Banco Mercantil e Digio oferecem canais rápidos de contratação e simulação da antecipação do FGTS diretamente via WhatsApp ou aplicativo, com liberação do dinheiro via Pix em poucos minutos.","fonte":"meutudo (https://meutudo.com.br/saque-aniversario/)"}],"passo_a_passo":["Baixe o aplicativo oficial do FGTS na loja de aplicativos do seu celular (Google Play ou App Store).","Acesse o aplicativo com seu CPF e senha cadastrados (ou realize o cadastro caso seja o primeiro acesso).","Na tela inicial do aplicativo, selecione a opção 'Sistemática de saque do seu FGTS' e opte pela modalidade 'Saque-Aniversário'.","Aguarde o prazo de carência obrigatório de 90 dias após a adesão para poder realizar a antecipação.","Após a carência, acesse novamente o aplicativo do FGTS, vá em 'Autorizar bancos a consultarem seu FGTS' e selecione a opção 'Empréstimo Saque-Aniversário'.","Adicione a instituição financeira de sua preferência (como Caixa, meutudo, Banco Bmg, Banco Mercantil ou Digio) para autorizar a consulta ao seu saldo.","Entre em contato com a instituição escolhida através do site oficial, aplicativo ou WhatsApp oficial para realizar a simulação e concluir a contratação, recebendo o valor via Pix."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx","https://www.caixa.gov.br/voce/credito-financiamento/emprestimo/antecipacao-saque-aniversario-FGTS/Paginas/default.aspx","https://meutudo.com.br/saque-aniversario/","https://www.bancobmg.com.br/","https://bancomercantil.com.br/","https://www.digio.com.br/","https://servicos.receita.fazenda.gov.br/servicos/cpf/consultasituacao/consultapublica.asp"],"sparse":false}
+   é VÁLIDO mesmo sem estar palavra-por-palavra na base — NÃO o trate como alucinação. Idealmente a
+   página traz ao menos 1 dado concreto e de 2 a 5 órgãos/instituições reais (sigla na 1ª menção).
+   Baixe a nota e registre em feedback SOMENTE quando: (a) um número/afirmação CONTRADIZ a base
+   factual da pesquisa; (b) há CONTRADIÇÃO INTERNA de valores na própria página (ex.: "a partir de
+   R$ 20" no título vs. "mínimo de R$ 100" no corpo); ou (c) a página não cita nenhuma instituição
+   real. Prova apenas "fraca" (poucos números) reduz a nota mas NUNCA é motivo de reprovação/bloqueio.
+
+4. faq_resolution —
+
+   Página interna do funil (HUB/SOLUTION): FAQ é OPCIONAL nesta página. NÃO penalize a ausência de
+   FAQ — uma transição calma de "próximo passo" que explicite o que a próxima página entrega é
+   suficiente. Se a página tiver FAQ mesmo assim, exija as mesmas 5 perguntas respondidas acima.
+   Nota baixa somente se houver pergunta sem resposta completa, gancho manipulativo sem entrega, ou
+   nenhuma transição/indicação do que vem a seguir.
+
+
+5. compliance — Exige APENAS a camada de CONTEÚDO: um aviso de utilidade pública visível no corpo,
+   deixando claro que o site é informativo, não tem vínculo com os
+   órgãos citados e não pede dados pessoais nem pagamento. O rodapé institucional "Sobre o Site",
+   CNPJ, navegação e byline de autor são injetados globalmente pelo TEMA do WordPress (footer fixo,
+   igual em todas as páginas) — NÃO os exija no conteúdo da página nem penalize a ausência deles aqui.
+   Nota baixa somente se o aviso de utilidade pública no corpo estiver ausente ou não deixar claros
+   esses pontos.
+
+6. single_destination —
+
+   Esta é uma página PRÉ-SELL (HUB): pelo grafo vencedor, ela CORRETAMENTE faz FAN-OUT — 1 CTA por
+   SOLUÇÃO do funil (p1, p2, p3); cada H2 é o preview de uma solução e leva à solução DELA. MÚLTIPLOS
+   destinos são o padrão CORRETO aqui; NÃO penalize "múltiplos destinos". Dê nota ALTA (>= 8) quando
+   há um botão por solução (destinos distintos), todos no MESMO domínio, nenhum "/rec" nu. Nota baixa
+   SOMENTE se houver destino cross-domínio proibido ou "//" duplicado.
+
+
+7. authorship_signal — A autoria/credencial (byline, nav de portal, rodapé institucional) é fornecida
+   pelo TEMA do WordPress em TODAS as páginas, FORA do conteúdo gerado aqui. NÃO penalize a ausência
+   de byline/rodapé no corpo. Dê nota ALTA por padrão; só reduza se o PRÓPRIO corpo alegar uma
+   autoria/credencial FALSA ou fabricada (ex.: "licenciado pela/pelo [órgão]" que o site não possui).
+
+SINAL ADVISÓRIO DE ESTRUTURA (widget interativo) — NÃO é um critério numerado, NÃO tem nota própria,
+NÃO entra em "scores" e NÃO afeta "blocking"/"approved". É apenas um reforço de qualidade editorial que
+você pode registrar em "feedback":
+- É um SINAL POSITIVO quando a página traz um WIDGET INTERATIVO ÚTIL e adequado ao tema — a variedade é
+  o que vale: roteador de elegibilidade, verificador/detector de golpe, comparador de rotas, quiz de
+  mito ou verdade, glossário/tradutor de termos, planejador/priorizador de próximos passos, termômetro
+  de prontidão, navegador de jornada… Premie a DIVERSIDADE e a ADEQUAÇÃO ao tema; NUNCA privilegie um
+  TIPO ESPECÍFICO de widget acima dos demais.
+- A AUSÊNCIA de widget NÃO penaliza nenhuma nota: o subsistema é OPCIONAL (controlado por flag) e muitas
+  páginas corretamente não trazem widget. Nunca reduza uma nota "porque falta um widget".
+</CHECKLIST_DE_ACEITE>
+
+<REGRA_DE_APROVACAO>
+Confiamos na pesquisa (Gemini + web search): um número/entidade coerente com a base factual NÃO conta
+como alucinação e NÃO afeta "blocking".
+
+"blocking" (EXISTENCIAL — reprova e faz a página ser pulada) é true SOMENTE quando um destes tem
+nota < 7: compliance, cta_discipline
+— OU o texto simula ser um órgão público / usa falsa oficialidade. proof_and_authority e "número fora da base
+factual" NUNCA setam "blocking".
+
+"approved" é true apenas quando todas as notas forem >= 7 e não houver contradição (com a pesquisa ou
+interna de valores). Quando proof_and_authority for baixa ou houver contradição de valores, deixe
+"approved" = false e explique em "feedback" — isso é registrado como AVISO no relatório, NÃO como
+bloqueio (a página segue para build/publish). Se "blocking" é true, "approved" é obrigatoriamente false.
+</REGRA_DE_APROVACAO>
+
+<FORMATO_DE_SAIDA>
+CRÍTICO: responda SOMENTE com um objeto JSON válido (UTF-8), sem texto antes ou depois, sem markdown,
+sem crases, seguindo estritamente este schema:
+
+{
+  "approved": true,
+  "blocking": false,
+  "scores": {
+    "tone_e_e_a_t": 0,
+    "cta_discipline": 0,
+    "proof_and_authority": 0,
+    "faq_resolution": 0,
+    "compliance": 0,
+    "single_destination": 0,
+    "authorship_signal": 0
+  },
+  "feedback": [
+    "descrição objetiva do problema encontrado, com o trecho citado, ou string vazia se não houver"
+  ]
+}
+</FORMATO_DE_SAIDA>

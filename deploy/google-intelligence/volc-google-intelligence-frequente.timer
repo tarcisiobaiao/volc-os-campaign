@@ -1,0 +1,11 @@
+[Unit]
+Description=VOLC Google Ads intelligence — leitura frequente a cada 4 horas
+
+[Timer]
+OnCalendar=*-*-* 00/4:10:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=volc-google-intelligence@frequente.service
+
+[Install]
+WantedBy=timers.target

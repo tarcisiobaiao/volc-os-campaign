@@ -1,0 +1,736 @@
+{
+  "name": "JOIN ADS - REPORT - DAY BEFORE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "ec55c02d-062a-4d8e-885a-91e29ff26448",
+      "name": "Schedule Trigger1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        848,
+        1088
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0b60c2de-f680-4d8e-b869-99a2417a3e43",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        576,
+        1264
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "joinads-day-before",
+        "options": {}
+      },
+      "id": "f3847ffb-391e-40b5-bb67-2e687d693f9f",
+      "name": "Webhook - Atualizar agora1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        848,
+        1440
+      ],
+      "webhookId": "joinads-day-before"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "JOIN_DOMAIN",
+              "type": "string",
+              "value": "={{ $json.body?.domain || 'creditoup.com.br' }}"
+            },
+            {
+              "id": "c2",
+              "name": "DATA_ALVO",
+              "type": "string",
+              "value": "={{ $json.body?.date || $now.setZone('America/Sao_Paulo').minus({ days: 1 }).toISODate() }}"
+            },
+            {
+              "id": "c3",
+              "name": "JOIN_REVSHARE",
+              "type": "string",
+              "value": "0.10"
+            },
+            {
+              "id": "c4",
+              "name": "EARNINGS_IS_NET",
+              "type": "string",
+              "value": "true"
+            },
+            {
+              "id": "c5",
+              "name": "TZ",
+              "type": "string",
+              "value": "America/Sao_Paulo"
+            },
+            {
+              "id": "c6",
+              "name": "BATCH_SIZE",
+              "type": "string",
+              "value": "500"
+            },
+            {
+              "id": "c7",
+              "name": "CUSTOM_KEY",
+              "type": "string",
+              "value": "utm_campaign"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "39bd2c20-e4c0-4a2f-9057-f419815db03f",
+      "name": "Config1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        1264
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://office.joinads.me/api/clients-endpoints/earnings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $('Config1').first().json.DATA_ALVO }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $('Config1').first().json.DATA_ALVO }}"
+            },
+            {
+              "name": "domain",
+              "value": "={{ $('Config1').first().json.JOIN_DOMAIN }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer 102704|1Er7FQ1rnGrzsEPrsvbVHpE3RCCO2VJo88U3iyNx35fc125c"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "a1968f4f-75bc-4d50-b357-3675179134d7",
+      "name": "Join - GET /earnings1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        1136
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://office.joinads.me/api/clients-endpoints/key-value",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $('Config1').first().json.DATA_ALVO }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $('Config1').first().json.DATA_ALVO }}"
+            },
+            {
+              "name": "domain",
+              "value": "={{ $('Config1').first().json.JOIN_DOMAIN }}"
+            },
+            {
+              "name": "report_type",
+              "value": "Synthetic"
+            },
+            {
+              "name": "custom_key",
+              "value": "={{ $('Config1').first().json.CUSTOM_KEY }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer 102704|1Er7FQ1rnGrzsEPrsvbVHpE3RCCO2VJo88U3iyNx35fc125c"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "db1593a4-0182-4117-b512-f2d6fee50391",
+      "name": "Join - GET /key-value1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        1456
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// /earnings  ->  daily_project_metrics   (dia fixo: D-1)\n//\n// O VOLC O.S. grava SEMPRE o bruto: quem aplica o revshare de 10% e o trigger\n// do banco, a partir de projects.revshare.\n//\n// A API devolve OS DOIS valores -- `revenue` (bruto) e `revenue_client`\n// (liquido) -- apesar de a doc so citar o segundo. Confirmado em dado real:\n// ecpm 1.25 vs ecpm_client 1.13 = 0.904, que e o revshare. Usamos `revenue`.\n// O EARNINGS_IS_NET so governa o fallback, caso um dia venha so o liquido.\nconst cfg = $('Config1').first().json;\n\nconst revshare  = Number(cfg.JOIN_REVSHARE) || 0;\nconst ehLiquido = String(cfg.EARNINGS_IS_NET).toLowerCase() === 'true';\nconst batchSize = Math.max(1, Number(cfg.BATCH_SIZE) || 500);\n\n// A data alvo vem do Config1, calculada UMA vez. E exatamente a mesma que os\n// nos de HTTP pediram -- por isso os dois leem dali em vez de recalcular $now\n// cada um por si (duas chamadas a $now podem cair em dias diferentes se a\n// execucao atravessar a meia-noite).\nconst dataAlvo = String(cfg.DATA_ALVO || '').trim();\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dataAlvo)) {\n  throw new Error(`DATA_ALVO invalida no Config1: ${JSON.stringify(cfg.DATA_ALVO)}`);\n}\n\nfunction parseData(bruto) {\n  if (bruto == null) return { date: null, ambigua: false, intervalo: false };\n  const s = String(bruto).trim();\n\n  // CINTO DE SEGURANCA. Se o request cobrir mais de um dia, a Join devolve UMA\n  // linha agregada com o campo date como rotulo de intervalo:\n  //     \"09/08/2026 a 10/08/2026\"\n  // Uma regex ancorada so no inicio casaria o prefixo \"09/08/2026\" e gravaria o\n  // total de dois dias como se fosse do dia 09 -- errado, e calado. Contamos\n  // quantas datas existem na string: mais de uma = agregado, descarta.\n  const tokens = s.match(/\\d{1,4}[\\/\\-]\\d{1,2}[\\/\\-]\\d{1,4}/g) || [];\n  if (tokens.length > 1) return { date: null, ambigua: false, intervalo: true };\n\n  // report_type=Analytical devolve ISO; Synthetic devolve DD/MM/AAAA.\n  const iso = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  if (iso) return { date: `${iso[1]}-${iso[2]}-${iso[3]}`, ambigua: false, intervalo: false };\n\n  const m = s.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})/);\n  if (!m) return { date: null, ambigua: false, intervalo: false };\n\n  const a = m[1].padStart(2, '0');\n  const b = m[2].padStart(2, '0');\n  const ano = m[3];\n  const dmy = `${ano}-${b}-${a}`;   // a = dia,  b = mes\n  const mdy = `${ano}-${a}-${b}`;   // a = mes,  b = dia\n\n  // So existe UM dia possivel: o que pedimos. Isso resolve a ambiguidade de\n  // \"10/08/2026\" sem chute -- so uma das duas leituras bate com DATA_ALVO.\n  const okDmy = dmy === dataAlvo;\n  const okMdy = mdy === dataAlvo;\n\n  if (okDmy && !okMdy) return { date: dmy, ambigua: false, intervalo: false };\n  if (okMdy && !okDmy) return { date: mdy, ambigua: false, intervalo: false };\n  if (okDmy && okMdy)  return { date: dataAlvo, ambigua: false, intervalo: false };\n\n  // Nenhuma leitura bate com o dia pedido: a API devolveu outra data.\n  return { date: null, ambigua: true, intervalo: false };\n}\n\nfunction limpaDominio(v) {\n  return String(v || '')\n    .trim().toLowerCase()\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .replace(/\\/.*$/, '');\n}\n\nfunction emLotes(linhas, tamanho, extras) {\n  if (linhas.length === 0) {\n    return [{ json: { rows: [], totalLinhas: 0, lote: 0, totalLotes: 0, ...extras } }];\n  }\n  const lotes = [];\n  for (let i = 0; i < linhas.length; i += tamanho) lotes.push(linhas.slice(i, i + tamanho));\n  return lotes.map((rows, idx) => ({\n    json: { rows, totalLinhas: linhas.length, lote: idx + 1, totalLotes: lotes.length, ...extras },\n  }));\n}\n\nconst porChave = new Map();\nlet descartadas = 0;\nlet foraDoDia = 0;\nlet intervalos = 0;\nlet reconstruidas = 0;\n\nfor (const item of $input.all()) {\n  const linhas = Array.isArray(item.json?.data) ? item.json.data : [];\n  for (const r of linhas) {\n    const { date, ambigua, intervalo } = parseData(r.date);\n    if (intervalo) { intervalos++; continue; }\n    if (ambigua)   { foraDoDia++; continue; }\n    if (!date)     { descartadas++; continue; }\n\n    const dominio = limpaDominio(r.domain);\n    if (!dominio) { descartadas++; continue; }\n\n    let receita = Number(r.revenue);\n    if (!Number.isFinite(receita)) {\n      const liquido = Number(r.revenue_client);\n      if (!Number.isFinite(liquido)) { descartadas++; continue; }\n      receita = (ehLiquido && revshare > 0 && revshare < 1)\n        ? liquido / (1 - revshare)\n        : liquido;\n      reconstruidas++;\n    }\n    receita = Math.round(receita * 1e6) / 1e6;\n\n    // Deduplica pela MESMA chave do on_conflict. Um POST em lote com a chave\n    // repetida faz o Postgres estourar \"cannot affect row a second time\".\n    porChave.set(`${date}|${dominio}`, { date, url_projeto: dominio, revenue: receita });\n  }\n}\n\nreturn emLotes([...porChave.values()], batchSize, {\n  dataAlvo, descartadas, foraDoDia, intervalos, reconstruidas,\n});\n"
+      },
+      "id": "02df714d-4404-40ad-9b77-8b69da9990be",
+      "name": "Normaliza earnings1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// /key-value  ->  joinads_metrics   (dia fixo: D-1)\n//\n// Usamos `earnings` (BRUTO), nao `earnings_client`: o revshare e aplicado pelo\n// trigger do banco. Gravar liquido aqui descontaria duas vezes.\nconst cfg = $('Config1').first().json;\n\nconst batchSize     = Math.max(1, Number(cfg.BATCH_SIZE) || 500);\nconst dominioCfg    = String(cfg.JOIN_DOMAIN || '').trim().toLowerCase().replace(/^www\\./, '');\nconst chaveEsperada = String(cfg.CUSTOM_KEY || 'utm_campaign').trim();\n\n// A data alvo vem do Config1, calculada UMA vez. E exatamente a mesma que os\n// nos de HTTP pediram -- por isso os dois leem dali em vez de recalcular $now\n// cada um por si (duas chamadas a $now podem cair em dias diferentes se a\n// execucao atravessar a meia-noite).\nconst dataAlvo = String(cfg.DATA_ALVO || '').trim();\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dataAlvo)) {\n  throw new Error(`DATA_ALVO invalida no Config1: ${JSON.stringify(cfg.DATA_ALVO)}`);\n}\n\nfunction parseData(bruto) {\n  if (bruto == null) return { date: null, ambigua: false, intervalo: false };\n  const s = String(bruto).trim();\n\n  // CINTO DE SEGURANCA. Se o request cobrir mais de um dia, a Join devolve UMA\n  // linha agregada com o campo date como rotulo de intervalo:\n  //     \"09/08/2026 a 10/08/2026\"\n  // Uma regex ancorada so no inicio casaria o prefixo \"09/08/2026\" e gravaria o\n  // total de dois dias como se fosse do dia 09 -- errado, e calado. Contamos\n  // quantas datas existem na string: mais de uma = agregado, descarta.\n  const tokens = s.match(/\\d{1,4}[\\/\\-]\\d{1,2}[\\/\\-]\\d{1,4}/g) || [];\n  if (tokens.length > 1) return { date: null, ambigua: false, intervalo: true };\n\n  // report_type=Analytical devolve ISO; Synthetic devolve DD/MM/AAAA.\n  const iso = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  if (iso) return { date: `${iso[1]}-${iso[2]}-${iso[3]}`, ambigua: false, intervalo: false };\n\n  const m = s.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})/);\n  if (!m) return { date: null, ambigua: false, intervalo: false };\n\n  const a = m[1].padStart(2, '0');\n  const b = m[2].padStart(2, '0');\n  const ano = m[3];\n  const dmy = `${ano}-${b}-${a}`;   // a = dia,  b = mes\n  const mdy = `${ano}-${a}-${b}`;   // a = mes,  b = dia\n\n  // So existe UM dia possivel: o que pedimos. Isso resolve a ambiguidade de\n  // \"10/08/2026\" sem chute -- so uma das duas leituras bate com DATA_ALVO.\n  const okDmy = dmy === dataAlvo;\n  const okMdy = mdy === dataAlvo;\n\n  if (okDmy && !okMdy) return { date: dmy, ambigua: false, intervalo: false };\n  if (okMdy && !okDmy) return { date: mdy, ambigua: false, intervalo: false };\n  if (okDmy && okMdy)  return { date: dataAlvo, ambigua: false, intervalo: false };\n\n  // Nenhuma leitura bate com o dia pedido: a API devolveu outra data.\n  return { date: null, ambigua: true, intervalo: false };\n}\n\nfunction limpaDominio(v) {\n  return String(v || '')\n    .trim().toLowerCase()\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .replace(/\\/.*$/, '');\n}\n\nfunction emLotes(linhas, tamanho, extras) {\n  if (linhas.length === 0) {\n    return [{ json: { rows: [], totalLinhas: 0, lote: 0, totalLotes: 0, ...extras } }];\n  }\n  const lotes = [];\n  for (let i = 0; i < linhas.length; i += tamanho) lotes.push(linhas.slice(i, i + tamanho));\n  return lotes.map((rows, idx) => ({\n    json: { rows, totalLinhas: linhas.length, lote: idx + 1, totalLotes: lotes.length, ...extras },\n  }));\n}\n\nfunction num(v) {\n  if (v == null) return 0;\n  const n = Number(String(v).replace(/\\s/g, '').replace(',', '.'));\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst porChave = new Map();\nlet descartadas = 0;\nlet foraDoDia = 0;\nlet intervalos = 0;\nlet chaveTrocada = 0;\nconst chavesVistas = {};\n\nfor (const item of $input.all()) {\n  const linhas = Array.isArray(item.json?.data) ? item.json.data : [];\n  for (const r of linhas) {\n\n    // ══════════════════════════════════════════════════════════════════════\n    // FILTRO: so passa linha cuja custom_key seja EXATAMENTE a pedida.\n    //\n    // Nao da para confiar no parametro custom_key do request: quando nao ha\n    // dado para a chave pedida, a API IGNORA o parametro e devolve outra, sem\n    // avisar. Verificado em dado real -- pedimos utm_campaign e voltou\n    // land_uri, cujo valor \"/\" chegou a entrar em utm_campaign_value como se\n    // fosse id de campanha.\n    //\n    // O filtro tem que ser aqui e nao num no Filter do n8n: a resposta inteira\n    // vem como UM item com um array `data` dentro, e o no Filter atua sobre\n    // itens, nao sobre elementos de array dentro de um item.\n    // ══════════════════════════════════════════════════════════════════════\n    const chaveVinda = String(r.custom_key ?? r.custon_key ?? '').trim();\n    chavesVistas[chaveVinda || '(sem custom_key)'] =\n      (chavesVistas[chaveVinda || '(sem custom_key)'] || 0) + 1;\n    if (chaveVinda !== chaveEsperada) { chaveTrocada++; continue; }\n\n    const { date, ambigua, intervalo } = parseData(r.date);\n    if (intervalo) { intervalos++; continue; }\n    if (ambigua)   { foraDoDia++; continue; }\n    if (!date)     { descartadas++; continue; }\n\n    // A doc escreve \"custon_value\" (typo deles); a API real devolve\n    // \"custom_value\". Aceitamos as duas grafias.\n    const campanha = String(r.custom_value ?? r.custon_value ?? '').trim();\n    if (!campanha || campanha === 'null' || campanha === '{{campaign.id}}') {\n      descartadas++; continue;\n    }\n\n    const dominio = limpaDominio(r.name) || dominioCfg;\n    const chave = `${date}|${campanha}|${dominio}`;\n\n    const acc = porChave.get(chave) || {\n      date, utm_campaign_value: campanha, joinads_domain: dominio,\n      revenue: 0, impressions: 0, clicks: 0, viewableAcc: 0,\n    };\n\n    // report_type=Analytical devolve uma linha por bloco de anuncio. Somando\n    // aqui, Analytical e Synthetic produzem exatamente o mesmo total.\n    acc.revenue     += num(r.earnings);\n    acc.impressions += num(r.impressions);\n    acc.clicks      += num(r.clicks);\n    // a API real devolve `active_view`; a doc chama de `active_view_viewable`\n    acc.viewableAcc += num(r.active_view ?? r.active_view_viewable) * num(r.impressions);\n\n    porChave.set(chave, acc);\n  }\n}\n\nconst linhas = [...porChave.values()].map((a) => {\n  const imp = a.impressions;\n  return {\n    date: a.date,\n    utm_campaign_value: a.utm_campaign_value,\n    joinads_domain: a.joinads_domain,\n    revenue: Math.round(a.revenue * 1e6) / 1e6,\n    impressions: Math.round(imp),\n    clicks: Math.round(a.clicks),\n    // CTR e eCPM recalculados do cru: os valores que a API devolve por linha\n    // nao sobrevivem a soma de linhas. CTR em PERCENTUAL (igual gam_metrics).\n    ctr:  imp > 0 ? Math.round((a.clicks / imp) * 100 * 1e4) / 1e4 : 0,\n    ecpm: imp > 0 ? Math.round((a.revenue / imp) * 1000 * 100) / 100 : 0,\n    viewable_impressions: imp > 0 ? Math.round((a.viewableAcc / imp) * 100) / 100 : 0,\n  };\n});\n\nreturn emLotes(linhas, batchSize, {\n  dataAlvo, descartadas, foraDoDia, intervalos, chaveTrocada, chaveEsperada, chavesVistas,\n});\n"
+      },
+      "id": "baaa43a8-51c5-4dae-99d6-18af43e54dab",
+      "name": "Normaliza key-value1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        1392
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "p1",
+              "leftValue": "={{ $json.rows.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dead1917-6a8d-4c45-849d-bf0f4916811c",
+      "name": "Tem linha? (projeto)1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.rows.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7be1c1a8-c6c0-405a-856e-9d8cc8e0db28",
+      "name": "Tem linha? (campanha)1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/daily_project_metrics",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "date,url_projeto"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.rows) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "35adb345-5c13-485c-98c0-1c70f70dd051",
+      "name": "Upsert daily_project_metrics1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        1120
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/joinads_metrics",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "date,utm_campaign_value,joinads_domain"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.rows) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "ae37452a-8823-4809-9fb5-eab8c326aa7f",
+      "name": "Upsert joinads_metrics1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        1456
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 2,
+        "options": {}
+      },
+      "id": "a0a6f1a0-bdf4-441c-bb53-e1c38a37eb12",
+      "name": "Junta ramos1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2320,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resumo da execucao. Aparece no log do n8n e vira o corpo gravado em\n// system_settings.joinads_last_update.\nconst cfg = $('Config1').first().json;\n\nfunction stats(no) {\n  try {\n    const j = $(no).first().json;\n    return {\n      linhas: j.totalLinhas ?? 0,\n      lotes: j.totalLotes ?? 0,\n      descartadas: j.descartadas ?? 0,\n      fora_do_dia: j.foraDoDia ?? 0,\n      intervalos: j.intervalos ?? 0,\n      chave_trocada: j.chaveTrocada ?? 0,\n      chaves_vistas: j.chavesVistas ?? undefined,\n      reconstruidas: j.reconstruidas ?? undefined,\n    };\n  } catch (e) {\n    return { linhas: 0, lotes: 0, erro: String(e.message || e) };\n  }\n}\n\nconst projeto  = stats('Normaliza earnings1');\nconst campanha = stats('Normaliza key-value1');\n\n// Cada alerta abaixo significa \"o numero que voce esta vendo pode estar errado\".\n// Nenhum derruba a execucao de proposito: gravamos so o que da para confiar e\n// deixamos o rastro do que foi jogado fora.\nconst alertas = [];\n\nif ((projeto.intervalos || 0) + (campanha.intervalos || 0) > 0) {\n  alertas.push(\n    'A Join devolveu linha AGREGADA de intervalo (date como \"dd/mm/aaaa a dd/mm/aaaa\") e ela ' +\n    'foi descartada. Isso so acontece se o request cobriu mais de um dia -- confira se ' +\n    'start_date e end_date nos nos de HTTP estao os dois em DATA_ALVO.'\n  );\n}\n\nif ((campanha.chave_trocada || 0) > 0) {\n  alertas.push(\n    `Filtro de custom_key barrou ${campanha.chave_trocada} linha(s) que nao eram ` +\n    `\"${cfg.CUSTOM_KEY}\". Chaves que a API devolveu: ` +\n    `${JSON.stringify(campanha.chaves_vistas || {})}. Isso e o comportamento dela quando nao ha ` +\n    'dado para a chave pedida: ignora o parametro e manda outra. Enquanto o site nao tiver ' +\n    'trafego com utm_campaign, o eixo de campanha fica vazio -- que e o certo.'\n  );\n}\n\nif ((projeto.fora_do_dia || 0) + (campanha.fora_do_dia || 0) > 0) {\n  alertas.push(\n    `A API devolveu linha com data diferente de DATA_ALVO (${cfg.DATA_ALVO}) e ela foi ` +\n    'descartada. Pode ser diferenca de timezone no fechamento do dia deles.'\n  );\n}\n\nreturn [{\n  json: {\n    ok: true,\n    fonte: 'joinads',\n    dominio: cfg.JOIN_DOMAIN,\n    data: cfg.DATA_ALVO,\n    projeto,\n    campanha,\n    alertas: alertas.length ? alertas : null,\n    executado_em: new Date().toISOString(),\n  },\n}];\n"
+      },
+      "id": "cd7d830a-9d11-48b2-8426-4469247e62f0",
+      "name": "Resumo1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "key"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"key\": \"joinads_last_update\",\n  \"value\": \"{{ $json.executado_em }}\",\n  \"updated_at\": \"{{ $now.toISO() }}\"\n}",
+        "options": {}
+      },
+      "id": "33eefadc-6d19-45f9-97ce-7f6e8d14fe33",
+      "name": "Marca joinads_last_update1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2752,
+        1296
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "key"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"key\": \"joinads_last_error\",\n  \"value\": \"{{ $now.toISO() }} | DAY BEFORE | {{ JSON.stringify($json.error ?? $json).slice(0, 400) }}\",\n  \"updated_at\": \"{{ $now.toISO() }}\"\n}",
+        "options": {}
+      },
+      "id": "cb4a947b-6df6-4922-a3eb-5e1d6d6dbce0",
+      "name": "Registra falha1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1840,
+        1776
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Config1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Config1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Atualizar agora1": {
+      "main": [
+        [
+          {
+            "node": "Config1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config1": {
+      "main": [
+        [
+          {
+            "node": "Join - GET /earnings1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Join - GET /key-value1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join - GET /earnings1": {
+      "main": [
+        [
+          {
+            "node": "Normaliza earnings1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registra falha1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join - GET /key-value1": {
+      "main": [
+        [
+          {
+            "node": "Normaliza key-value1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registra falha1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza earnings1": {
+      "main": [
+        [
+          {
+            "node": "Tem linha? (projeto)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza key-value1": {
+      "main": [
+        [
+          {
+            "node": "Tem linha? (campanha)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem linha? (projeto)1": {
+      "main": [
+        [
+          {
+            "node": "Upsert daily_project_metrics1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Junta ramos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem linha? (campanha)1": {
+      "main": [
+        [
+          {
+            "node": "Upsert joinads_metrics1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Junta ramos1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Upsert daily_project_metrics1": {
+      "main": [
+        [
+          {
+            "node": "Junta ramos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert joinads_metrics1": {
+      "main": [
+        [
+          {
+            "node": "Junta ramos1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Junta ramos1": {
+      "main": [
+        [
+          {
+            "node": "Resumo1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo1": {
+      "main": [
+        [
+          {
+            "node": "Marca joinads_last_update1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "56064576fd4c52e94380d8455de8466e1090116bf11be158a94d8489bb3c9993"
+  }
+}

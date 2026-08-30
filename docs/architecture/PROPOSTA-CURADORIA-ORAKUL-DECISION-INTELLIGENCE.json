@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "gerado_em": "2026-08-28",
+  "missao": "Double check Fable 5 — ORAKUL / Decision Intelligence",
+  "head": "5193575",
+  "grafo_freshness": {
+    "current": true,
+    "built_at_commit": "69f5658",
+    "nota": "esta missao adicionou arquivos novos em docs/architecture/ — o build seguinte do grafo deve incorpora-los; nao reconstruimos o grafo nesta missao por mandato"
+  },
+  "regra": "Este arquivo e um DELTA PROPOSTO. O curador unico aplica em volc-os-workbook/ROADMAP-VIVO.json e docs/volc-os-graph/curadoria-operacional.json. Nada aqui foi editado na fonte compartilhada.",
+  "tarefas_afetadas": [
+    {
+      "task_id": "P09-T08",
+      "titulo": "Extrair o kernel ORAKUL para políticas Python versionadas",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Missao Fable confirmou: BEAST = 1 motor Python de 1.678 linhas com cooldown/redistribuicao mortos por inputs nunca populados e filtro silencioso de estrategia; volc_ads/inteligencia_decisao/politicas.py declara explicitamente NAO portar regua historica — e calibracao sintetica, nao a extracao. A extracao continua a fazer.",
+      "lacunas": ["nenhuma constante do BEAST (ROAS 0.50/0.70/1.30/1.70, steps 30%, histerese, maturidade) foi portada como RegraDeOtimizacao versionada", "shadow comparando BEAST-replica vs kernel sobre a mesma fotografia inexiste"],
+      "referencia": "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md §4"
+    },
+    {
+      "task_id": "P09-T09",
+      "titulo": "Provar ORAKUL em shadow antes do primeiro canário",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Replay sintetico 8/8 reproduzido nesta missao (dataset as_of 2026-08-28T12:00Z). Shadow real inexiste: nenhum GoogleAdsRow real atravessa o normalizador; nenhuma proposta shadow persistida.",
+      "lacunas": ["coleta real read-only", "tabela de fotografia as-of (proposta: trafego_fotografia, v12)", "placar shadow no frontend"],
+      "referencia": "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md §6 e §11.1"
+    },
+    {
+      "task_id": "P09-T02",
+      "titulo": "Criar proposta e autorização como objetos canônicos",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Confirmado por consulta read-only ao banco vivo: v10_01/v10_02 NAO aplicadas; trafego_proposta/aprovacao/aplicacao existem apenas como SQL; nenhum writer Python; na UI, aoSubmeter sem caller de producao (aprovacao e UI morta).",
+      "lacunas": ["aplicar v10_01+v10_02 (autorizacao do dono)", "writer Python testado", "conectar aoSubmeter a endpoint de aprovacao"],
+      "referencia": "ORAKUL-DECISION-INTELLIGENCE-AUDIT.json achados H5"
+    },
+    {
+      "task_id": "P09-T06",
+      "titulo": "Provar um gateway agêntico Google Ads somente leitura",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudanca; a SPEC §8 define o contrato LLM (allowlist PortaCritica, output schema fechado, sem autoridade numerica) que este gateway deve respeitar.",
+      "lacunas": ["gateway backend→Hermes/Bia com escopo filtrado"],
+      "referencia": "SPEC §8"
+    },
+    {
+      "task_id": "P14-T02",
+      "titulo": "Provar replay e shadow antes de qualquer autonomia",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Replay dourado 8/8 e 28 testes do Lab reproduzidos nesta missao; build e tsc conferidos contra baseline herdado. Shadow real segue inexistente — a parte 'replay' esta provada em sintetico, a parte 'shadow' nao comecou.",
+      "lacunas": ["shadow real sem vazamento de futuro (regra lido_em <= as_of em todo coletor)", "medicao de FP/FN impossivel sem trafego_previsao/trafego_realizado (v12 proposta)"],
+      "referencia": "SPEC §5-6"
+    },
+    {
+      "task_id": "P05-T06",
+      "titulo": "Adicionar ações assistidas com proposta e confirmação",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Auditoria frontend: CaixaDePropostas + PortaoDeAprovacao completos e reutilizados (Lab e CampanhaCanonPage), porem aoSubmeter nunca conectado por caller de producao — o circuito proposta→decisao nao fecha.",
+      "lacunas": ["endpoint de aprovacao (depende de v10_02)", "teste de contrato UI→banco"],
+      "referencia": "AUDIT.json achado H5; SPEC §9"
+    },
+    {
+      "task_id": "P05-T07",
+      "titulo": "Explicar por que uma campanha Search não escala",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Fatos de impression share/QS ja modelados no contrato sintetico do Lab (window_metrics sem segments.date; quality por keyword); doc oficial confirmou v25.1 e restricoes; falta a coleta real desses fatos no diagnostico canonico.",
+      "lacunas": ["coleta real v25 de share/QS por conta"],
+      "referencia": "REPORT §1.3"
+    },
+    {
+      "task_id": "P06-T06",
+      "titulo": "Entregar o Ads Health Monitor mínimo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Politica ads_health_eventos (cost_spike, routine_stale) provada em sintetico no Lab; heartbeat real por rotina inexiste (proposta trafego_job na SPEC §5, alinhada a P02-T04).",
+      "lacunas": ["series reais e deduplicacao persistida", "correcao de sazonalidade do cost_spike (mediana simples gera FP de fim de semana)"],
+      "referencia": "SPEC §5-6"
+    },
+    {
+      "task_id": "P10-T08",
+      "titulo": "Retirar configuração e inteligência sensível dos Code nodes",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Missao confirmou developer token em claro nos JSONs locais do inventario e v21 hardcoded; risco reclassificado com dois achados vivos (webhook sem auth ativo; split-brain de banco).",
+      "lacunas": ["desativar/blindar webhook 1cb2069d no n8n vivo (acao do dono)", "cortar escrita orientacao_* no Supabase legado"],
+      "referencia": "AUDIT.json B1, H2, H3"
+    },
+    {
+      "task_id": "P02-T04",
+      "titulo": "Dar recibo, owner, heartbeat e idempotência a cada rotina",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "SPEC §5 propoe trafego_job como implementacao canonica (fila SKIP LOCKED + heartbeat + chave de idempotencia por rotina).",
+      "lacunas": ["migration v12 (nao aplicada nesta missao)"],
+      "referencia": "SPEC §5; ADR-RUNTIME §Fase 1"
+    }
+  ],
+  "novas_tarefas_propostas": [
+    {
+      "id_sugerido": "P09-T10",
+      "titulo": "Neutralizar o executor legado de mutação por webhook",
+      "por_que": "BLOCKER B1: webhook ativo sem autenticacao, sem limite, sem validate_only, com payload de campo fixo (H1) e falha sem recibo (H2). Nenhuma outra tarefa cobre a desativacao do caminho vivo.",
+      "aceite": "webhook removido/bloqueado no n8n vivo; prova de que nenhuma rota de mutacao existe fora do executor com trava; bid_actions congelada como memoria"
+    },
+    {
+      "id_sugerido": "P06-T09",
+      "titulo": "Revogar CRUD de anon/authenticated no legado sem RLS",
+      "por_que": "BLOCKER B2 confirmado ao vivo: anon com DELETE/TRUNCATE em campaigns/daily_campaign_metrics/users/projects/operational_costs/user_campaigns. v8_07 e preventiva, nao corrige tabelas existentes.",
+      "aceite": "REVOKE nominal aplicado (autorizacao do dono); front continua funcionando via grants minimos; teste de fumaca anonimo nao consegue escrever"
+    },
+    {
+      "id_sugerido": "P09-T11",
+      "titulo": "Unificar identidade e idempotência do caminho real com o ledger",
+      "por_que": "H4+H7: executor real grava em campaigns e recibo em arquivo; duas idempotencias (v10_01 vs canario.py) sem plano de convergencia.",
+      "aceite": "campanha criada registrada tambem em trafego_campanha; decisao documentada sobre backfill dos recibos pre-ledger; uma unica doutrina de chave"
+    },
+    {
+      "id_sugerido": "P14-T03",
+      "titulo": "Fundar a memória científica: previsão vs realizado",
+      "por_que": "Nenhuma tabela de previsao/acuracia existe (ausencia confirmada no banco e nas migrations). Sem ela, FP/FN/uplift/drawdown sao imensuraveis e T2/T3 ficam sem criterio objetivo.",
+      "aceite": "migrations v12 (trafego_fotografia/previsao/realizado/critica_llm) revisadas e aplicadas com autorizacao; primeira previsao shadow registrada"
+    }
+  ],
+  "nos_do_grafo": [
+    {
+      "id": "concept:orakul_policy_kernel",
+      "label": "Kernel de políticas ORAKUL",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "extracao ainda nao feita (politicas.py e calibracao sintetica, nao porte); missao entregou a decomposicao completa capacidade→destino",
+      "nota": "anexar evidencia: SPEC §4 e REPORT §1.1"
+    },
+    {
+      "id": "concept:decision_intelligence_lab",
+      "label": "Laboratório de Inteligência de Decisão Search",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "replay 8/8 + 28 testes reproduzidos; fail-closed real; segue sintetico, sem persistencia/aprovacao/recibo",
+      "nota": "manter partial ate shadow-read da fatia §11.1"
+    },
+    {
+      "id": "concept:campaign_onboarding_guard",
+      "label": "Guardião das primeiras 72 horas",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "nexus_guardiao_72h existe no Lab (sintetico); NEXUS legado tem 2 ramos divergentes inativos; guardiao canonico unico segue por fazer"
+    },
+    {
+      "id": "concept:search_intelligence",
+      "label": "VOLC Search Intelligence",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "governanca bidirecional de negativas implementada e testada em sintetico (conflitos_de_negativa); coleta real de termos ausente; PMax fora de search_term_view (doc oficial)"
+    },
+    {
+      "id": "concept:ads_health_monitor",
+      "label": "VOLC Ads Health Monitor",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "cost_spike/routine_stale provados em sintetico; sem heartbeat real; correcao de sazonalidade proposta"
+    },
+    {
+      "id": "concept:decision_timeline",
+      "label": "Timeline auditável de decisão",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "timeline existe no Lab (componente interno, um cenario); timeline por campanha real e central de decisoes especificadas na SPEC §9, nao construidas"
+    }
+  ],
+  "novas_relacoes_propostas": [
+    {"de": "documento: ADR-RUNTIME-ORAKUL-E-WORKERS.md", "para": "concept:orakul_policy_kernel", "tipo": "define_runtime_de"},
+    {"de": "documento: SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md", "para": "concept:decision_intelligence_lab", "tipo": "especifica_evolucao_de"},
+    {"de": "documento: REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md", "para": "concept:orakul_policy_kernel", "tipo": "audita"},
+    {"de": "concept:orakul_policy_kernel", "para": "no legado: ORAKUL V.OS AUTO ADJUST", "tipo": "substitui_sem_reativar"},
+    {"de": "concept:decision_intelligence_lab", "para": "tabela proposta: trafego_fotografia (v12)", "tipo": "persistira_fotografias_em", "nota": "relacao futura; criar apenas quando v12 for aplicada"}
+  ],
+  "achados_para_curadoria_de_risco": [
+    "B1 webhook de mutacao sem autenticacao ativo (snapshot) — exige verificacao no n8n vivo",
+    "B2 anon com CRUD sem RLS em 6 tabelas legadas — confirmado ao vivo",
+    "H3 split-brain: unico produtor ativo de orientacao escreve no Supabase legado condenado",
+    "H4 executor real fora do ledger (campaigns + recibo em arquivo)",
+    "H5 aprovacao existe em SQL e UI mas nada esta ligado"
+  ],
+  "limites_da_missao": {
+    "google_ads_mutations": 0,
+    "supabase_writes": 0,
+    "migrations": 0,
+    "workflow_edits": 0,
+    "deploys": 0,
+    "pushes": 0,
+    "forge_permitir_escrita": "ausente"
+  }
+}

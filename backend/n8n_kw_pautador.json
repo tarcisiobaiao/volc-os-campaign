@@ -1,0 +1,1239 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "cfg-mcc",
+                "name": "mcc_id",
+                "value": "=8696453882",
+                "type": "string"
+              },
+              {
+                "id": "cfg-customer",
+                "name": "customer_id",
+                "value": "=2932743754",
+                "type": "string"
+              },
+              {
+                "id": "cfg-token",
+                "name": "developer_token",
+                "value": "=YZqd52Hwq9XGsMgdo1_6Hw",
+                "type": "string"
+              },
+              {
+                "id": "cfg-nicho",
+                "name": "nicho",
+                "value": "={{ $('Webhook').item.json.body.nicho }}",
+                "type": "string"
+              },
+              {
+                "id": "cfg-geo",
+                "name": "geo_target",
+                "value": "={{ $('Webhook').item.json.body.geo_target }}",
+                "type": "number"
+              },
+              {
+                "id": "cfg-country",
+                "name": "país_geo",
+                "value": "={{ $('Webhook').item.json.body.country }}",
+                "type": "string"
+              },
+              {
+                "id": "cfg-lang-code",
+                "name": "language_code",
+                "value": "={{ $('Webhook').item.json.body.language_code }}",
+                "type": "string"
+              },
+              {
+                "id": "cfg-lang-short",
+                "name": "language_short",
+                "value": "={{ $('Webhook').item.json.body.language_short }}",
+                "type": "string"
+              },
+              {
+                "id": "cfg-lang-constant",
+                "name": "language_constant",
+                "value": "={{ $('Webhook').item.json.body.language_constant }}",
+                "type": "number"
+              },
+              {
+                "id": "cfg-loop",
+                "name": "loop_iteration",
+                "value": 0,
+                "type": "number"
+              },
+              {
+                "id": "cfg-max-loops",
+                "name": "max_loops",
+                "value": 5,
+                "type": "number"
+              },
+              {
+                "id": "cfg-min-vol",
+                "name": "min_volume_gold",
+                "value": 10,
+                "type": "number"
+              },
+              {
+                "id": "cfg-master-bank",
+                "name": "master_bank",
+                "value": "[]",
+                "type": "string"
+              },
+              {
+                "id": "cfg-used-seeds",
+                "name": "used_seeds",
+                "value": "[]",
+                "type": "string"
+              },
+              {
+                "id": "cfg-used-seeds-norm",
+                "name": "used_seeds_norm",
+                "value": "[]",
+                "type": "string"
+              },
+              {
+                "id": "561b9f36-c0b7-4eb9-b5aa-886ddbc9b45c",
+                "name": "objective",
+                "value": "={{ $('Webhook').item.json.body.objective }}",
+                "type": "string"
+              },
+              {
+                "id": "2d93ff9e-3df6-4c62-8cd1-63d18cf8944e",
+                "name": "opportunity_id",
+                "type": "string",
+                "value": "={{ $('Webhook').item.json.body.opportunity_id }}"
+              },
+              {
+                "id": "61b43582-964b-4ac1-9863-a120d45a3b59",
+                "name": "entity_id",
+                "type": "string",
+                "value": "={{ $('Webhook').item.json.body.entity_id }}"
+              },
+              {
+                "id": "6ab3f312-0ce9-4cb0-ac64-f2c2b1ff1ae0",
+                "name": "run_id",
+                "type": "string",
+                "value": "={{ $('Webhook').item.json.body.run_id }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "76610da8-982f-49f7-be31-aae88f0e1e82",
+        "name": "⚙️ Config Global1",
+        "type": "n8n-nodes-base.set",
+        "position": [
+          -1616,
+          288
+        ],
+        "typeVersion": 3.4
+      },
+      {
+        "parameters": {
+          "agent": "conversationalAgent",
+          "promptType": "define",
+          "text": "=OBJETIVO DO USUÁRIO: \n{{ $json.objective }}\n\nKEYWORD INPUTADA PELO USUÁRIO:\n{{ $json.nicho }}\n\nPAÍS-ALVO:\n{{ $json['país_geo'] }}\n\ngeo_target:\n{{ $json.geo_target }}\n\nlanguage_code:\n{{ $json.language_code }}\n\nTAREFA:\n\n1. Inclua obrigatoriamente como PRIMEIRA seed a keyword exatamente como fornecida acima (ipsis litteris).\n2. Gere mais 2 a 4 seeds estratégicas baseadas no objetivo e contexto.\n3. As seeds devem representar diferentes ângulos de busca relevantes.\n\nResponda APENAS com um JSON válido.",
+          "hasOutputParser": true,
+          "options": {
+            "systemMessage": "Você é um especialista em Google Ads e SEO com foco em keyword research local para arbitragem de tráfego.\n\nSua função é receber uma keyword bruta do usuário e transformá-la em um conjunto pequeno, estratégico e culturalmente ajustado de seeds para mineração.\n\nREGRA CRÍTICA E OBRIGATÓRIA:\nA primeira seed keyword DEVE ser exatamente igual à keyword fornecida pelo usuário (ipsis litteris), sem qualquer alteração de escrita, capitalização ou estrutura.\nEssa seed deve sempre ocupar a posição 1 do array e deve ter o ângulo \"institucional\".\n\nREGRAS:\n1. Gere entre 3 e 5 seeds no total (incluindo a keyword original).\n2. A primeira seed é SEMPRE a keyword original do usuário (sem modificação).\n3. As demais seeds devem ser variações estratégicas reais.\n4. Cada seed deve ser um termo realista que um usuário nativo buscaria.\n5. Priorize HEAD TERMS e mid-heads curtos; evite long tails desnecessárias.\n6. Cubra os ângulos:\n   - institucional (já coberto pela seed original)\n   - dor do usuário\n   - termo popular / consulta comum\n   - operacional / transacional (quando fizer sentido)\n   - variação cultural/local (quando existir)\n7. Se o input for muito nichado, suba um nível na hierarquia semântica (apenas nas variações, nunca na seed original).\n8. Não invente termos inexistentes.\n9. Adapte a linguagem ao país-alvo.\n10. Nunca remova ou substitua a keyword original.\n\nFORMATO DE SAÍDA (JSON PURO):\n- seed_keywords: array de objetos\n- keyword: string\n- angle: institucional | dor | alivio_popular | operacional | cultural_local\n- reasoning: justificativa curta\n\nIMPORTANTE:\n- A primeira posição do array DEVE conter exatamente a keyword original do usuário.\n- Não use markdown, não use backticks, não adicione explicações fora do JSON."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -1424,
+          288
+        ],
+        "id": "f76b7bd3-2df3-4ead-adbf-9755d38fe6df",
+        "name": "🧠 AI Seed Optimizer1"
+      },
+      {
+        "parameters": {
+          "modelName": "models/gemini-3.1-pro-preview",
+          "options": {
+            "temperature": 0.1
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "typeVersion": 1,
+        "position": [
+          -1456,
+          480
+        ],
+        "id": "cd6a7b30-9b15-4917-b556-22657835a806",
+        "name": "Gemini 2.5 Flash1",
+        "credentials": {
+          "googlePalmApi": {
+            "id": "17XGPswyoouBnPA6",
+            "name": "Google Gemini(PaLM) Api POSI"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsonSchemaExample": "{\n  \"seed_keywords\": [\n    {\n      \"keyword\": \"icetex\",\n      \"angle\": \"institucional\",\n      \"reasoning\": \"Head term principal da instituição que concentra o universo semântico.\"\n    },\n    {\n      \"keyword\": \"deuda icetex\",\n      \"angle\": \"dor\",\n      \"reasoning\": \"Expressa a dor financeira central do usuário.\"\n    },\n    {\n      \"keyword\": \"alivios icetex\",\n      \"angle\": \"alivio_popular\",\n      \"reasoning\": \"Termo popular e direto usado por usuários em busca de solução.\"\n    }\n  ],\n  \"market_notes\": [\n    \"Usuários alternam entre o nome da instituição e o problema financeiro.\"\n  ]\n}",
+          "autoFix": true
+        },
+        "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "typeVersion": 1.3,
+        "position": [
+          -1232,
+          480
+        ],
+        "id": "efee5ef3-aa48-4460-86d8-a0cb77ff5d17",
+        "name": "Structured Output Parser1"
+      },
+      {
+        "parameters": {
+          "jsCode": "const baseConfig = $('⚙️ Config Global1').first().json;\nlet aiOutput = items[0].json.output;\n\nif (typeof aiOutput === 'string') {\n  const clean = aiOutput.replace(/```json/g, '').replace(/```/g, '').trim();\n  aiOutput = JSON.parse(clean);\n}\n\nconst candidates = Array.isArray(aiOutput?.seed_keywords) ? aiOutput.seed_keywords : [];\nconst deduped = [];\nconst seen = new Set();\n\nfor (const entry of candidates) {\n  const keyword = String(entry?.keyword || entry?.seed_keyword || entry || '').trim().toLowerCase();\n  if (!keyword || seen.has(keyword)) continue;\n  seen.add(keyword);\n  deduped.push({\n    keyword,\n    angle: entry?.angle || null,\n    reasoning: entry?.reasoning || ''\n  });\n}\n\nif (deduped.length < 3) {\n  throw new Error('O AI Seed Optimizer não retornou ao menos 3 seeds válidas.');\n}\n\nreturn deduped.slice(0, 5).map((seed, index) => ({\n  json: {\n    ...baseConfig,\n    output: aiOutput,\n    seed_keyword: seed.keyword,\n    seed_angle: seed.angle,\n    seed_reasoning: seed.reasoning,\n    seed_rank: index + 1,\n    loop_iteration: 0,\n    max_loops: Number(baseConfig.max_loops || 5),\n    min_volume_gold: Number(baseConfig.min_volume_gold || 10),\n    master_bank: '[]',\n    used_seeds: '[]',\n    used_seeds_norm: '[]'\n  }\n}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1120,
+          288
+        ],
+        "id": "6bcec47c-b7dc-432d-a16e-55898155d5dc",
+        "name": "🌱 Seed Queue Builder1"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -912,
+          288
+        ],
+        "id": "24de2f9d-0f30-439a-b64f-f895e6e6c053",
+        "name": "🔁 Loop Seeds1"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://googleads.googleapis.com/v25/customers/{{ $json.customer_id }}:generateKeywordIdeas",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "googleAdsOAuth2Api",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "developer-token",
+                "value": "={{ $json.developer_token }}"
+              },
+              {
+                "name": "login-customer-id",
+                "value": "={{ $json.mcc_id }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={\n  \"customerId\": \"{{ $json.customer_id }}\",\n  \"geoTargetConstants\": [\"geoTargetConstants/{{ $json.geo_target }}\"],\n  \"language\": \"languageConstants/{{ $json.language_constant }}\",\n  \"includeAdultKeywords\": false,\n  \"keywordPlanNetwork\": \"GOOGLE_SEARCH_AND_PARTNERS\",\n  \"pageSize\": 100,\n  \"historicalMetricsOptions\": {\n    \"includeAverageCpc\": true,\n    \"yearMonthRange\": {\n      \"start\": {\n        \"month\": \"{{ $now.minus(12, 'months').format('MMMM').toUpperCase() }}\",\n        \"year\": {{ $now.minus(12, 'months').format('yyyy') }}\n      },\n      \"end\": {\n        \"month\": \"{{ $now.format('MMMM').toUpperCase() }}\",\n        \"year\": {{ $now.format('yyyy') }}\n      }\n    }\n  },\n  \"keywordSeed\": {\n    \"keywords\": [\"{{ $json.seed_keyword }}\"]\n  }\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -752,
+          16
+        ],
+        "id": "a0983186-d4d5-42e0-96de-9974269a45c1",
+        "name": "🔍 Keyword Planner API1",
+        "credentials": {
+          "googleAdsOAuth2Api": {
+            "id": "I0Fnr7NhRbtBKshR",
+            "name": "Google Ads oficial - Webgo"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const MICROS = 1_000_000;\n\nconst normalizeSeed = (s) => {\n  return String(s || '')\n    .toLowerCase()\n    .trim()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .split(/\\s+/)\n    .filter(Boolean)\n    .sort()\n    .join(' ');\n};\n\nconst input = items[0].json;\n\nconst rawResults = Array.isArray(input.results) ? input.results : [];\n\nconst currentLoop = Number(input.loop_iteration) || 0;\nconst maxLoops = Number(input.max_loops) || 5;\nconst minVolumeGold = Number(input.min_volume_gold) || 10;\nconst currentSeed = String(input.seed_keyword || '').toLowerCase().trim();\nconst currentSeedNorm = normalizeSeed(currentSeed);\n\nlet masterBank = [];\nif (typeof input.master_bank === 'string') {\n  try { masterBank = JSON.parse(input.master_bank || '[]'); } catch {}\n} else if (Array.isArray(input.master_bank)) {\n  masterBank = input.master_bank;\n}\nif (!Array.isArray(masterBank)) masterBank = [];\n\nlet usedSeeds = [];\nif (typeof input.used_seeds === 'string') {\n  try { usedSeeds = JSON.parse(input.used_seeds || '[]'); } catch {}\n} else if (Array.isArray(input.used_seeds)) {\n  usedSeeds = input.used_seeds;\n}\nif (!Array.isArray(usedSeeds)) usedSeeds = [];\n\nlet usedSeedsNorm = [];\nif (typeof input.used_seeds_norm === 'string') {\n  try { usedSeedsNorm = JSON.parse(input.used_seeds_norm || '[]'); } catch {}\n} else if (Array.isArray(input.used_seeds_norm)) {\n  usedSeedsNorm = input.used_seeds_norm;\n}\nif (!Array.isArray(usedSeedsNorm)) usedSeedsNorm = [];\n\nif (currentSeed && !usedSeeds.includes(currentSeed)) {\n  usedSeeds.push(currentSeed);\n}\nif (currentSeedNorm && !usedSeedsNorm.includes(currentSeedNorm)) {\n  usedSeedsNorm.push(currentSeedNorm);\n}\n\nconst extracted = rawResults\n  .map(item => {\n    const m = item.keywordIdeaMetrics || {};\n    const kw = String(item.text || '').toLowerCase().trim();\n    if (!kw) return null;\n\n    return {\n      keyword: kw,\n      volume: Number(m.avgMonthlySearches) || 0,\n      cpc: Number(((Number(m.averageCpcMicros) || 0) / MICROS).toFixed(2)),\n      low_bid: Number(((Number(m.lowTopOfPageBidMicros) || 0) / MICROS).toFixed(2)),\n      high_bid: Number(((Number(m.highTopOfPageBidMicros) || 0) / MICROS).toFixed(2)),\n      competition: String(m.competition || 'UNKNOWN').toUpperCase(),\n      competition_index: Number(m.competitionIndex) || 0,\n      found_in_loop: currentLoop,\n      seed_origin: currentSeed\n    };\n  })\n  .filter(Boolean);\n\nconst bankMap = new Map();\n\nfor (const kw of masterBank) {\n  if (kw?.keyword) bankMap.set(kw.keyword, kw);\n}\n\nfor (const kw of extracted) {\n  const existing = bankMap.get(kw.keyword);\n  if (!existing || kw.volume > existing.volume) {\n    bankMap.set(kw.keyword, kw);\n  }\n}\n\nconst updatedBank = Array.from(bankMap.values());\n\nconst golds = updatedBank\n  .filter(k => {\n    if ((k.volume || 0) < minVolumeGold) return false;\n    const kwNorm = normalizeSeed(k.keyword);\n    return !usedSeedsNorm.includes(kwNorm);\n  })\n  .sort((a, b) => (b.volume || 0) - (a.volume || 0));\n\nconst nextSeed = golds.length > 0 ? golds[0].keyword : null;\n\nconst shouldContinue =\n  !!nextSeed &&\n  normalizeSeed(nextSeed) !== currentSeedNorm &&\n  currentLoop < (maxLoops - 1) &&\n  extracted.length > 0;\n\nconst newKeywords = extracted.filter(\n  k => !masterBank.some(m => m.keyword === k.keyword)\n).length;\n\nreturn [{\n  json: {\n    loop: {\n      current: currentLoop,\n      max: maxLoops,\n      should_continue: shouldContinue,\n      next_seed: nextSeed,\n      reason: !shouldContinue\n        ? (currentLoop >= (maxLoops - 1) ? 'MAX_LOOPS_REACHED'\n          : !nextSeed ? 'NO_MORE_GOLDS'\n          : extracted.length === 0 ? 'API_EMPTY'\n          : 'DUPLICATE_SEED_NORM')\n        : 'GOLD_FOUND'\n    },\n\n    master_bank: updatedBank,\n    master_bank_json: JSON.stringify(updatedBank),\n\n    used_seeds: usedSeeds,\n    used_seeds_json: JSON.stringify(usedSeeds),\n\n    used_seeds_norm: usedSeedsNorm,\n    used_seeds_norm_json: JSON.stringify(usedSeedsNorm),\n\n    iteration_stats: {\n      loop_number: currentLoop,\n      seed_used: currentSeed,\n      all_seeds_used: usedSeeds,\n      api_results: rawResults.length,\n      new_keywords: newKeywords,\n      bank_before: masterBank.length,\n      bank_after: updatedBank.length,\n      golds_remaining: golds.length,\n      top_5_golds: golds.slice(0, 5).map(g => `${g.keyword} (${g.volume})`)\n    },\n\n    config: {\n      mcc_id: input.mcc_id,\n      customer_id: input.customer_id,\n      developer_token: input.developer_token,\n      geo_target: input.geo_target,\n      language_constant: input.language_constant,\n      language_code: input.language_code,\n      language_short: input.language_short,\n      nicho: input.nicho,\n      'país_geo': input['país_geo'],\n      max_loops: maxLoops,\n      min_volume_gold: minVolumeGold\n    }\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -544,
+          16
+        ],
+        "id": "961ecc3f-3bc2-47f2-83bb-76c0b899ef27",
+        "name": "⛏️ Gold Extractor1",
+        "executeOnce": false,
+        "alwaysOutputData": false
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "loop-check",
+                "leftValue": "={{ $json.loop.should_continue }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -304,
+          16
+        ],
+        "id": "6ab85912-cde8-4e3d-bc1f-513a3c385b97",
+        "name": "🔄 Mais Ouro?1"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "loop-mcc",
+                "name": "mcc_id",
+                "value": "={{ $json.config.mcc_id }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-customer",
+                "name": "customer_id",
+                "value": "={{ $json.config.customer_id }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-token",
+                "name": "developer_token",
+                "value": "={{ $json.config.developer_token }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-seed",
+                "name": "seed_keyword",
+                "value": "={{ $json.loop.next_seed }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-geo",
+                "name": "geo_target",
+                "value": "={{ $json.config.geo_target }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-lang-constant",
+                "name": "language_constant",
+                "value": "={{ $json.config.language_constant }}",
+                "type": "number"
+              },
+              {
+                "id": "loop-lang-code",
+                "name": "language_code",
+                "value": "={{ $json.config.language_code }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-lang-short",
+                "name": "language_short",
+                "value": "={{ $json.config.language_short }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-nicho",
+                "name": "nicho",
+                "value": "={{ $json.config.nicho }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-country",
+                "name": "país_geo",
+                "value": "={{ $json.config['país_geo'] }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-iter",
+                "name": "loop_iteration",
+                "value": "={{ $json.loop.current + 1 }}",
+                "type": "number"
+              },
+              {
+                "id": "loop-max",
+                "name": "max_loops",
+                "value": "={{ $json.config.max_loops }}",
+                "type": "number"
+              },
+              {
+                "id": "loop-minvol",
+                "name": "min_volume_gold",
+                "value": "={{ $json.config.min_volume_gold }}",
+                "type": "number"
+              },
+              {
+                "id": "loop-bank",
+                "name": "master_bank",
+                "value": "={{ $json.master_bank_json }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-seeds",
+                "name": "used_seeds",
+                "value": "={{ $json.used_seeds_json }}",
+                "type": "string"
+              },
+              {
+                "id": "loop-seeds-norm",
+                "name": "used_seeds_norm",
+                "value": "={{ $json.used_seeds_norm_json }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          0,
+          0
+        ],
+        "id": "5d1d1b9b-d896-4b45-a074-7388f4877ea5",
+        "name": "🔄 Prep Next Loop1"
+      },
+      {
+        "parameters": {
+          "jsCode": "await new Promise(resolve => setTimeout(resolve, 5000));\nreturn items;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          256,
+          0
+        ],
+        "id": "c32aa62f-f341-4643-b62b-80a7812822b3",
+        "name": "⏳ Sleep 15s"
+      },
+      {
+        "parameters": {
+          "jsCode": "// ================================================================\n// 🧠 MASTER CONSOLIDATOR V2 — PRODUCTION READY\n// ================================================================\n\nconst safeParse = (val) => {\n  if (!val) return [];\n  if (Array.isArray(val)) return val;\n  if (typeof val === 'string') {\n    try { return JSON.parse(val); } catch { return []; }\n  }\n  return [];\n};\n\n// 🔥 NORMALIZAÇÃO FORTE (anti-duplicado real)\nconst normalize = (s) =>\n  String(s || '')\n    .toLowerCase()\n    .trim()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '') // remove acento\n    .replace(/[^\\w\\s]/g, '') // remove símbolos\n    .split(/\\s+/)\n    .sort()\n    .join(' ');\n\n// --- INPUT ---\nconst allRuns = items.map(i => i.json);\n\nif (allRuns.length === 0) {\n  throw new Error('Nenhum item recebido do DONE.');\n}\n\n// 🔥 CONFIG SAFE (pega o mais completo)\nconst baseConfig = allRuns.find(r => r.geo_target || r.language_code) || allRuns[0];\n\n// --- MAPS ---\nconst buildMap = new Map();\nconst validationMap = new Map();\nconst reports = [];\n\n// ================================================================\n// 🔄 LOOP\n// ================================================================\nfor (const run of allRuns) {\n  const masterBank = safeParse(run.master_bank);\n\n  reports.push({\n    seed: run.seed_keyword,\n    loop: run.loop_iteration,\n    bank_size: masterBank.length\n  });\n\n  for (const kw of masterBank) {\n    const key = normalize(kw.keyword);\n    if (!key) continue;\n\n    const normalized = {\n      keyword: kw.keyword,\n      volume: kw.volume || 0,\n      cpc: kw.cpc || 0,\n      low_bid: kw.low_bid || 0,\n      high_bid: kw.high_bid || 0,\n      competition: kw.competition || 'UNKNOWN',\n      competition_index: kw.competition_index || 0,\n      seed_origin: kw.seed_origin || run.seed_keyword,\n      found_in_loop: kw.found_in_loop ?? run.loop_iteration,\n      variants: []\n    };\n\n    const existing = buildMap.get(key);\n\n    if (!existing) {\n      buildMap.set(key, normalized);\n      continue;\n    }\n\n    if (normalized.volume > existing.volume) {\n      normalized.variants = [...new Set([\n        ...(existing.variants || []),\n        existing.keyword,\n        normalized.keyword\n      ])];\n\n      buildMap.set(key, normalized);\n    } else {\n      existing.variants = [...new Set([\n        ...(existing.variants || []),\n        normalized.keyword\n      ])];\n    }\n  }\n\n  // VALIDATION\n  for (const kw of masterBank) {\n    const key = normalize(kw.keyword);\n    if (!key) continue;\n\n    const volume = kw.volume || 0;\n    const existing = validationMap.get(key);\n\n    if (!existing || volume > existing.volume) {\n      validationMap.set(key, {\n        keyword: kw.keyword,\n        volume\n      });\n    }\n  }\n}\n\n// ================================================================\n// 📊 FINAL\n// ================================================================\n\nconst build_queue = Array.from(buildMap.values())\n  .sort((a, b) => b.volume - a.volume);\n\nlet validation_keywords = Array.from(validationMap.values())\n  .sort((a, b) => b.volume - a.volume);\n\n// fallback\nif (validation_keywords.length === 0) {\n  validation_keywords = build_queue.map(item => ({\n    keyword: item.keyword,\n    volume: item.volume\n  }));\n}\n\n// ================================================================\n// 🧾 REPORT\n// ================================================================\n\nconst master_report = [\n  `🧠 KEYWORD ENGINE CONSOLIDATION`,\n  `================================`,\n  ``,\n  `Seed base: ${baseConfig.seed_keyword}`,\n  `Loops executados: ${Math.max(...allRuns.map(r => r.loop_iteration || 0)) + 1}`,\n  `Seeds processadas: ${allRuns.length}`,\n  `Keywords únicas: ${build_queue.length}`,\n  ``,\n  `TOP 10:`,\n  ...build_queue.slice(0, 10).map(k =>\n    `- ${k.keyword} (${k.volume})`\n  )\n].join('\\n');\n\n// ================================================================\n// 🚀 OUTPUT\n// ================================================================\n\nreturn [{\n  json: {\n    ...baseConfig,\n\n    build_queue,\n    validation_keywords,\n\n    master_report,\n    loop_runs: reports,\n\n    stats: {\n      seeds_processed: allRuns.length,\n      total_unique_keywords: build_queue.length,\n      validation_keywords: validation_keywords.length\n    }\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -592,
+          304
+        ],
+        "id": "5a3ad544-9ab9-4973-a301-00b6b1051df5",
+        "name": "🏆 Final Classifier1"
+      },
+      {
+        "parameters": {
+          "jsCode": "// ================================================================\n// 🧠 VALIDATION QUEUE BUILDER — SINGLE ITEM OUTPUT\n// ================================================================\n\n// --- INPUT PRINCIPAL ---\nconst data = items[0].json;\n\n// --- CONFIG GLOBAL (fallback seguro) ---\nlet configGlobal = {};\ntry {\n  configGlobal = $('⚙️ Config Global1').first().json;\n} catch (e) {\n  configGlobal = {};\n}\n\n// --- HELPERS ---\nconst get = (field) => {\n  return data[field] ?? configGlobal[field] ?? null;\n};\n\n// --- DEFINE QUEUE ---\nconst queue = Array.isArray(data.validation_keywords) && data.validation_keywords.length > 0\n  ? data.validation_keywords\n  : (data.build_queue || []).map(item => ({\n      keyword: item.keyword,\n      volume: item.metrics?.volume || 0\n    }));\n\n// --- BUILD FINAL LIST ---\nconst validation_queue = queue.map((entry, index) => ({\n  nicho: entry.keyword,\n\n  geo_target: get('geo_target'),\n  language_code: get('language_code'),\n  language_short: get('language_short'),\n  language_constant: get('language_constant'),\n  país_geo: get('país_geo'),\n\n  validation_rank: index + 1,\n  validation_volume: entry.volume || 0\n}));\n\n// --- OUTPUT SINGLE ITEM ---\nreturn [{\n  json: {\n    ...data,\n    validation_queue,\n    validation_total: validation_queue.length\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          16,
+          864
+        ],
+        "id": "7e6a27d1-66aa-48b0-bbfc-0975be475849",
+        "name": "🪄 Prepare Validation Seeds"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.dataforseo.com/v3/serp/google/autocomplete/live/advanced",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Basic bG9naW46cGFzc3dvcmQ="
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "=[\n  {\n    \"keyword\": \"{{ $('⚙️ Config Global1').item.json.nicho }}\",\n    \"location_code\": {{ $('⚙️ Config Global1').item.json.geo_target }},\n    \"language_code\": \"{{ $('⚙️ Config Global1').item.json.language_code }}\"\n  }\n]",
+          "options": {
+            "redirect": {
+              "redirect": {}
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          576,
+          784
+        ],
+        "id": "2a3cf967-b5b8-4bab-b648-b3df4bd40d1c",
+        "name": "🔮 Google Autocomplete2",
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "HGbszfwFldGN2Ci0",
+            "name": "Unnamed credential 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// ========================================\n// 🔧 EXTRATOR: Google Autocomplete (Fix V2)\n// Captura sugestões sem travar em tipos específicos\n// ========================================\n\nconst data = items[0].json;\nconst tasks = data?.tasks || [];\n\nconst keywords = [];\n\nfor (const task of tasks) {\n    // Verificação de segurança se o resultado existe\n    if (!task.result || task.result.length === 0) continue;\n\n    const items_list = task.result[0].items || [];\n\n    for (const item of items_list) {\n        // Tenta pegar o texto em várias propriedades possíveis da API\n        const text = item.keyword || item.suggestion || item.title;\n\n        // Se encontrou texto e ele é válido\n        if (text && typeof text === 'string') {\n            keywords.push({\n                keyword: text.trim(), // Remove espaços extras\n                volume: 0,            // Autocomplete não traz volume, o Merger resolve depois\n                cpc: 0,\n                low_bid: 0,\n                high_bid: 0,\n                competition: 'UNKNOWN',\n                competition_index: 0,\n                monthly_searches: [],\n                source: 'google_autocomplete', // Marca a origem\n                original_type: item.type,      // Guarda o tipo original pra debug\n                needs_enrichment: true         // Avisa o Merger que precisa de dados\n            });\n        }\n    }\n}\n\n// Deduplicação (Remove duplicatas exatas)\nconst unique = [...new Map(keywords.map(k => [k.keyword.toLowerCase(), k])).values()];\n\nreturn [{ \n    json: { \n        keywords: unique, \n        count: unique.length,\n        debug_first_item: keywords[0] // Pra você ver se deu certo\n    } \n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          832,
+          784
+        ],
+        "id": "844f650d-4f0b-457d-bf6f-bdf41e312230",
+        "name": "Extract Autocomplete2",
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.dataforseo.com/v3/dataforseo_labs/google/related_keywords/live",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Basic bG9naW46cGFzc3dvcmQ="
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "=[\n  {\n    \"keyword\": \"{{ $('⚙️ Config Global1').item.json.nicho }}\",\n    \"location_code\": {{ $('⚙️ Config Global1').item.json.geo_target }},\n    \"language_code\": \"{{ $('⚙️ Config Global1').item.json.language_short }}\",\n    \"depth\": 3,\n    \"include_seed_keyword\": false,\n    \"include_serp_info\": false,\n    \"ignore_synonyms\": false,\n    \"include_clickstream_data\": false,\n    \"replace_with_core_keyword\": false,\n    \"limit\": 100\n  }\n]",
+          "options": {
+            "redirect": {
+              "redirect": {}
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.3,
+        "position": [
+          576,
+          976
+        ],
+        "id": "1fd33e96-0acc-4702-ae7a-9b0cf287460f",
+        "name": "🧠 Related Keywords Labs2",
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "HGbszfwFldGN2Ci0",
+            "name": "Unnamed credential 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// ========================================\n// EXTRATOR: Related Keywords Labs\n// ========================================\n\nconst data = items[0].json;\nconst items_list = data?.tasks?.[0]?.result?.[0]?.items || [];\n\nconst keywords = items_list.map(item => {\n  const info = item.keyword_data?.keyword_info || {};\n  return {\n    keyword: item.keyword_data?.keyword || item.keyword,\n    volume: info.search_volume || 0,\n    cpc: info.cpc || 0,\n    low_bid: info.low_top_of_page_bid || 0,\n    high_bid: info.high_top_of_page_bid || 0,\n    competition: info.competition_level || 'UNKNOWN',\n    competition_index: info.competition_index || 0,\n    monthly_searches: info.monthly_searches || [],\n    source: 'related_keywords_labs'\n  };\n});\n\nreturn [{ json: { keywords, count: keywords.length } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          832,
+          976
+        ],
+        "id": "1b0fc91f-3403-406d-8e46-123e2c19f43e",
+        "name": "Extract Related KW2",
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "numberInputs": 3
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          1104,
+          864
+        ],
+        "id": "8b177079-0590-4517-b098-23951b81b4b0",
+        "name": "🔀 Merge All Sources2",
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "jsCode": "// ================================================================\n// 🔀 MEGA MERGE — STATE OF THE ART v2.0\n// ================================================================\n\nconst inputs = $input.all();\n\n// ================================================================\n// 🧠 EXTRAÇÃO INTELIGENTE POR ESTRUTURA\n// ================================================================\nlet autocompleteKeywords = [];\nlet enrichedKeywords = [];\nlet controlState = null;\n\nfor (const item of inputs) {\n  const json = item.json;\n  \n  // Detecta pelo fingerprint da estrutura\n  if (Array.isArray(json.keywords) && json.keywords.length > 0) {\n    \n    const sample = json.keywords[0];\n    \n    // ITEM AUTOCOMPLETE: needs_enrichment = true, sem monthly_searches\n    if (sample.needs_enrichment === true || sample.source === 'google_autocomplete') {\n      autocompleteKeywords.push(...json.keywords);\n    }\n    // ITEM ENRIQUECIDO: tem volume real ou source diferente\n    else {\n      enrichedKeywords.push(...json.keywords);\n    }\n    \n  }\n  // ITEM CONTROLE: tem master_bank ou build_queue ou validation_queue\n  else if (json.master_bank || json.build_queue || json.validation_queue || json.loop_runs) {\n    controlState = json;\n  }\n}\n\n// ================================================================\n// 🔗 MERGE KEYWORDS: enriquecidas ganham, autocomplete preenche gaps\n// ================================================================\nconst enrichedMap = new Map();\nfor (const kw of enrichedKeywords) {\n  enrichedMap.set(kw.keyword.toLowerCase().trim(), kw);\n}\n\n// Adiciona autocomplete que NÃO existe no enriquecido\nfor (const kw of autocompleteKeywords) {\n  const key = kw.keyword.toLowerCase().trim();\n  if (!enrichedMap.has(key)) {\n    enrichedMap.set(key, kw);\n  }\n}\n\nconst mergedKeywords = Array.from(enrichedMap.values());\n\n// Ordena por volume desc\nmergedKeywords.sort((a, b) => (b.volume || 0) - (a.volume || 0));\n\n// ================================================================\n// 🚀 OUTPUT FINAL\n// ================================================================\nreturn [\n  {\n    json: {\n      keywords: mergedKeywords,\n      total: mergedKeywords.length,\n      control_state: controlState,\n      debug: {\n        inputs_received: inputs.length,\n        autocomplete_raw: autocompleteKeywords.length,\n        enriched_raw: enrichedKeywords.length,\n        merged_unique: mergedKeywords.length,\n        has_control_state: controlState !== null\n      }\n    }\n  }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1360,
+          880
+        ],
+        "id": "467054d2-e2c7-4fe9-b32b-398467b38685",
+        "name": "🔥 Mega Merger2",
+        "executeOnce": false,
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "jsCode": "// ================================================================\n// 🏆 GOLD MINER V11 — MULTILINGUAL TIME WARP EDITION\n// ================================================================\n// Compatível com: PT-BR, ES, EN, FR, DE, IT\n// Sincronizado com Mega Merger V6+\n// n8n Code Node v2 (executeOnce: true)\n// ================================================================\n\nconst inputItem = items[0].json;\nconst rawKeywords = inputItem.keywords || [];\n\n// ================================================================\n// 🕐 CONFIGURAÇÃO DINÂMICA DE TEMPO\n// ================================================================\nconst date = new Date();\nconst CURRENT_YEAR = date.getFullYear();\nconst LAST_YEAR = CURRENT_YEAR - 1;\nconst NEXT_YEAR = CURRENT_YEAR + 1;\nconst TWO_YEARS_AGO = CURRENT_YEAR - 2;\n\nconst CY = CURRENT_YEAR.toString();  // \"2026\"\nconst LY = LAST_YEAR.toString();     // \"2025\"\nconst NY = NEXT_YEAR.toString();     // \"2027\"\nconst TY = TWO_YEARS_AGO.toString(); // \"2024\"\n\n// ================================================================\n// 🌍 DICIONÁRIO MULTILÍNGUE — QUESTION WORDS\n// ================================================================\n// Detecta intenção informacional em qualquer idioma\nconst QUESTION_WORDS = [\n  // PT-BR\n  'como', 'porque', 'por que', 'onde', 'qual', 'quais', \n  'quando', 'quanto', 'quem', 'o que é', 'pra que',\n  // ES\n  'cómo', 'porque', 'por qué', 'dónde', 'donde', 'cuál', \n  'cuáles', 'cuándo', 'cuando', 'cuánto', 'quién', 'qué es',\n  // EN\n  'how', 'why', 'where', 'which', 'when', 'what is', \n  'what are', 'who', 'how to', 'how much', 'how many',\n  // FR\n  'comment', 'pourquoi', 'où', 'quel', 'quelle', 'quand', \n  'combien', 'qui', \"qu'est-ce\",\n  // DE\n  'wie', 'warum', 'wo', 'welche', 'welcher', 'wann', \n  'wieviel', 'wer', 'was ist',\n  // IT\n  'come', 'perché', 'dove', 'quale', 'quali', 'quando', \n  'quanto', 'chi', 'cosa è', \"cos'è\"\n];\n\n// ================================================================\n// 🌍 DICIONÁRIO MULTILÍNGUE — DEBT / EXCLUSÃO DE TIME WARP\n// ================================================================\n// Keywords com estes termos NÃO recebem Time Warp (referem-se ao passado real)\nconst DEBT_EXCLUSION_WORDS = [\n  // PT-BR\n  'atrasado', 'atrasada', 'vencido', 'vencida', 'divida', 'dívida',\n  'debito', 'débito', 'anterior', 'passado', 'retroativo', 'retroativa',\n  'resultado', 'resultados', 'histórico', 'encerrado', 'finalizado',\n  // ES\n  'atrasado', 'atrasada', 'vencido', 'vencida', 'deuda', 'débito',\n  'anterior', 'pasado', 'retroactivo', 'resultado', 'resultados',\n  'histórico', 'cerrado', 'finalizado',\n  // EN\n  'overdue', 'expired', 'debt', 'debit', 'previous', 'past',\n  'retroactive', 'result', 'results', 'historical', 'closed',\n  'ended', 'finished', 'final', 'recap', 'review', 'summary',\n  // FR\n  'arriéré', 'expiré', 'dette', 'antérieur', 'passé',\n  'résultat', 'résultats', 'historique', 'terminé', 'clôturé',\n  // DE\n  'überfällig', 'abgelaufen', 'schuld', 'schulden', 'vorherig',\n  'vergangen', 'ergebnis', 'ergebnisse', 'historisch', 'beendet',\n  // IT\n  'scaduto', 'scaduta', 'debito', 'anteriore', 'passato',\n  'risultato', 'risultati', 'storico', 'terminato', 'chiuso'\n];\n\n// ================================================================\n// 🌍 DICIONÁRIO MULTILÍNGUE — MESES (para detecção de sazonalidade)\n// ================================================================\nconst MONTH_WORDS = {\n  // PT-BR\n  'janeiro': 1, 'fevereiro': 2, 'março': 3, 'abril': 4,\n  'maio': 5, 'junho': 6, 'julho': 7, 'agosto': 8,\n  'setembro': 9, 'outubro': 10, 'novembro': 11, 'dezembro': 12,\n  // ES\n  'enero': 1, 'febrero': 2, 'marzo': 3, 'abril_es': 4,\n  'mayo': 5, 'junio': 6, 'julio': 7, 'agosto_es': 8,\n  'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12,\n  // EN\n  'january': 1, 'february': 2, 'march': 3, 'april': 4,\n  'may': 5, 'june': 6, 'july': 7, 'august': 8,\n  'september': 9, 'october': 10, 'november': 11, 'december': 12,\n  // FR\n  'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4,\n  'mai': 5, 'juin': 6, 'juillet': 7, 'août': 8,\n  'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12,\n  // DE\n  'januar': 1, 'februar': 2, 'märz': 3, 'april_de': 4,\n  'mai_de': 5, 'juni': 6, 'juli': 7, 'august_de': 8,\n  'september_de': 9, 'oktober': 10, 'november_de': 11, 'dezember': 12,\n  // IT\n  'gennaio': 1, 'febbraio': 2, 'marzo_it': 3, 'aprile': 4,\n  'maggio': 5, 'giugno': 6, 'luglio': 7, 'agosto_it': 8,\n  'settembre': 9, 'ottobre': 10, 'novembre_it': 11, 'dicembre': 12\n};\n\n// Meses limpos (sem sufixo de idioma) para matching\nconst MONTH_PATTERNS = Object.keys(MONTH_WORDS).map(m => m.replace(/_[a-z]{2}$/, ''));\nconst UNIQUE_MONTHS = [...new Set(MONTH_PATTERNS)];\n\n// ================================================================\n// ⚙️ CONFIG DE MINERAÇÃO\n// ================================================================\nconst CONFIG = {\n  volume_titan: 20000,\n  volume_scale: 5000,\n  max_cpc_scale: 0.60,\n  volume_gem: 1000,\n  years_target: [CY, NY],\n  years_warp: [LY, TY],        // anos que recebem warp\n  max_content_queue: 50,\n  max_ads_queue: 200\n};\n\n// ================================================================\n// 🔧 HELPERS\n// ================================================================\n\n/** Checa se texto contém alguma palavra da lista */\nfunction containsAny(text, words) {\n  for (const w of words) {\n    if (text.includes(w)) return true;\n  }\n  return false;\n}\n\n/** Detecta mês mencionado na keyword */\nfunction detectMonth(text) {\n  for (const month of UNIQUE_MONTHS) {\n    if (text.includes(month)) return month;\n  }\n  return null;\n}\n\n/** Calcula trend score baseado em monthly_searches */\nfunction trendScore(monthlySearches) {\n  if (!Array.isArray(monthlySearches) || monthlySearches.length < 3) return 0;\n  \n  // Ordena cronologicamente\n  const sorted = [...monthlySearches].sort((a, b) => {\n    if (a.year !== b.year) return a.year - b.year;\n    return a.month - b.month;\n  });\n  \n  const len = sorted.length;\n  const recent3 = sorted.slice(-3);\n  const older3 = sorted.slice(0, 3);\n  \n  const avgRecent = recent3.reduce((s, x) => s + (x.search_volume || 0), 0) / recent3.length;\n  const avgOlder = older3.reduce((s, x) => s + (x.search_volume || 0), 0) / older3.length;\n  \n  if (avgOlder === 0) return avgRecent > 0 ? 999 : 0;\n  return Math.round(((avgRecent - avgOlder) / avgOlder) * 100);\n}\n\n/** Detecta pico sazonal */\nfunction detectSeasonalPeak(monthlySearches) {\n  if (!Array.isArray(monthlySearches) || monthlySearches.length < 6) return null;\n  \n  const max = monthlySearches.reduce((best, x) => \n    (x.search_volume || 0) > (best.search_volume || 0) ? x : best\n  , monthlySearches[0]);\n  \n  const avg = monthlySearches.reduce((s, x) => s + (x.search_volume || 0), 0) / monthlySearches.length;\n  \n  if (max.search_volume > avg * 2.5) {\n    return { month: max.month, year: max.year, spike_ratio: Math.round(max.search_volume / avg * 10) / 10 };\n  }\n  return null;\n}\n\n// ================================================================\n// 🧠 MINERAÇÃO PRINCIPAL\n// ================================================================\nconst goldMine = {\n  titans: [],\n  future: [],\n  gems: [],\n  hidden_trends: [],\n  questions: [],\n  seasonal: [],\n  discards: []\n};\n\nfor (const k of rawKeywords) {\n  const vol = parseInt(k.volume) || 0;\n  const cpc = parseFloat(k.cpc) || 0;\n  const comp = (k.competition || '').toUpperCase();\n  const monthly = k.monthly_searches || [];\n\n  let kwText = (k.keyword || '').toLowerCase();\n  let displayKeyword = k.keyword;\n  const tags = [...(k.smart_tags || [])];\n  const reliability = k.data_reliability || 'LOW';\n  let warpReason = '';\n  let warped = false;\n\n  // =============================================================\n  // ⏳ TIME WARP MULTILÍNGUE\n  // Substitui anos passados pelo atual, EXCETO em contextos de\n  // dívida/resultado/histórico\n  // =============================================================\n  for (const oldYear of CONFIG.years_warp) {\n    if (kwText.includes(oldYear)) {\n      const isExcluded = containsAny(kwText, DEBT_EXCLUSION_WORDS);\n\n      if (!isExcluded) {\n        const regex = new RegExp(oldYear, 'g');\n        displayKeyword = displayKeyword.replace(regex, CY);\n        kwText = displayKeyword.toLowerCase();\n        tags.push('TIME_WARP');\n        warpReason = ` [${oldYear}→${CY}]`;\n        warped = true;\n      } else {\n        tags.push('HISTORICAL_REFERENCE');\n      }\n      break; // só faz warp uma vez\n    }\n  }\n\n  // =============================================================\n  // 📈 TREND ANALYSIS\n  // =============================================================\n  const trend = trendScore(monthly);\n  const peak = detectSeasonalPeak(monthly);\n  \n  if (trend > 200) tags.push('EXPLOSIVE_TREND');\n  else if (trend > 100) tags.push('STRONG_TREND');\n  else if (trend > 50) tags.push('RISING');\n  else if (trend < -50) tags.push('DECLINING');\n\n  if (peak) {\n    tags.push('SEASONAL');\n  }\n\n  // =============================================================\n  // 📅 DETECÇÃO DE MÊS\n  // =============================================================\n  const detectedMonth = detectMonth(kwText);\n  if (detectedMonth) tags.push('MONTH_SPECIFIC');\n\n  // =============================================================\n  // OBJETO PROCESSADO\n  // =============================================================\n  const processedKw = {\n    keyword: displayKeyword,\n    volume: vol,\n    cpc: cpc,\n    competition: comp,\n    tags: tags,\n    trend_score: trend,\n    seasonal_peak: peak,\n    reason: ''\n  };\n\n  let approvedForAds = false;\n\n  // =============================================================\n  // 🕵️ R1: QUESTÕES / INTENÇÃO INFORMACIONAL (Multilíngue)\n  // =============================================================\n  if (containsAny(kwText, QUESTION_WORDS)) {\n    processedKw.tags.push('USER_QUESTION');\n    goldMine.questions.push({ ...processedKw });\n  }\n\n  // =============================================================\n  // 🕵️ R2: TENDÊNCIAS OCULTAS (Volume 0 + Autocomplete)\n  // =============================================================\n  if (vol === 0 && k.source === 'google_autocomplete') {\n    processedKw.tags.push('HIDDEN_TREND');\n    processedKw.reason = 'Google Autocomplete suggestion — no historical data yet.';\n    goldMine.hidden_trends.push(processedKw);\n    continue;\n  }\n\n  // =============================================================\n  // 🚨 R3: DEAD KEYWORDS (Volume 0 validado)\n  // =============================================================\n  if (vol === 0 && reliability === 'HIGH') {\n    goldMine.discards.push(displayKeyword + ' (vol=0 confirmed)');\n    continue;\n  }\n\n  // =============================================================\n  // 📅 R4: SEASONAL SPIKES\n  // =============================================================\n  if (peak && peak.spike_ratio > 3) {\n    processedKw.tags.push('SEASONAL_SPIKE');\n    processedKw.reason = `Seasonal spike ${peak.spike_ratio}x avg (M${peak.month})${warpReason}`;\n    goldMine.seasonal.push({ ...processedKw });\n  }\n\n  // =============================================================\n  // 🚀 R5: CLASSIFICAÇÃO PARA ADS\n  // =============================================================\n\n  // A. TITANS (>= 20k)\n  if (vol >= CONFIG.volume_titan) {\n    processedKw.tags.push('VOLUME_TITAN');\n    processedKw.reason = `Massive Volume (${(vol / 1000).toFixed(0)}k)${warpReason}`;\n    goldMine.titans.push(processedKw);\n    approvedForAds = true;\n  }\n\n  // B. FUTURE / TEMPORAL TREND\n  else if (CONFIG.years_target.some(y => kwText.includes(y))) {\n    processedKw.tags.push('FUTURE_TREND');\n    processedKw.reason = `Temporal Trend${warpReason}`;\n    goldMine.future.push(processedKw);\n    approvedForAds = true;\n  }\n\n  // C. SCALE OPPORTUNITY (5k-20k + CPC aceitável)\n  else if (vol >= CONFIG.volume_scale && cpc <= CONFIG.max_cpc_scale) {\n    processedKw.tags.push('SCALE_OPPORTUNITY');\n    processedKw.reason = `Good Volume + Affordable CPC${warpReason}`;\n    goldMine.gems.push(processedKw);\n    approvedForAds = true;\n  }\n\n  // D. HIDDEN GEM (>= 1k + baixa competição)\n  else if (vol >= CONFIG.volume_gem && (comp === 'LOW' || cpc < 0.20)) {\n    processedKw.tags.push('HIDDEN_GEM');\n    processedKw.reason = `Low Competition / Low Cost${warpReason}`;\n    goldMine.gems.push(processedKw);\n    approvedForAds = true;\n  }\n\n  // E. EXPLOSIVE MICRO (volume menor mas trend explosivo)\n  else if (vol >= 100 && trend > 200) {\n    processedKw.tags.push('EXPLOSIVE_MICRO');\n    processedKw.reason = `Low volume but ${trend}% growth${warpReason}`;\n    goldMine.gems.push(processedKw);\n    approvedForAds = true;\n  }\n\n  // Descarte\n  if (!approvedForAds && !processedKw.tags.includes('USER_QUESTION')) {\n    goldMine.discards.push(displayKeyword);\n  }\n}\n\n// ================================================================\n// 📊 ORDENAÇÃO E DEDUP\n// ================================================================\nconst sortByVol = (a, b) => (b.volume - a.volume) || (b.trend_score - a.trend_score);\n\nconst adsQueue = [\n  ...goldMine.titans,\n  ...goldMine.future,\n  ...goldMine.gems\n].sort(sortByVol);\n\nconst contentQueue = [\n  ...goldMine.questions,\n  ...goldMine.hidden_trends,\n  ...goldMine.seasonal\n];\n\n// Dedup por keyword normalizada\nconst dedup = (arr) => {\n  const map = new Map();\n  for (const item of arr) {\n    const key = item.keyword.toLowerCase().trim();\n    if (!map.has(key) || (item.volume > (map.get(key).volume || 0))) {\n      map.set(key, item);\n    }\n  }\n  return Array.from(map.values());\n};\n\nconst uniqueAds = dedup(adsQueue).slice(0, CONFIG.max_ads_queue);\nconst uniqueContent = dedup(contentQueue).slice(0, CONFIG.max_content_queue);\n\n// ================================================================\n// 🚀 OUTPUT\n// ================================================================\nreturn [{\n  json: {\n    summary: {\n      total_analyzed: rawKeywords.length,\n      ads_approved: uniqueAds.length,\n      content_ideas: uniqueContent.length,\n      year_context: {\n        current: CY,\n        last: LY,\n        next: NY,\n        warped_from: CONFIG.years_warp\n      },\n      breakdown: {\n        titans: goldMine.titans.length,\n        gems: goldMine.gems.length,\n        future: goldMine.future.length,\n        seasonal: goldMine.seasonal.length,\n        hidden_trends: goldMine.hidden_trends.length,\n        questions: goldMine.questions.length,\n        discards: goldMine.discards.length\n      },\n      languages_supported: ['pt-br', 'es', 'en', 'fr', 'de', 'it']\n    },\n\n    // 💰 FILA DE ADS (anos corrigidos, ordenada por volume)\n    production_ads_queue: uniqueAds,\n\n    // ✍️ FILA DE CONTEÚDO (questões + trends + sazonais)\n    content_seo_queue: uniqueContent\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1616,
+          880
+        ],
+        "id": "124d1727-db46-4415-80f3-1c1bf2b40c49",
+        "name": "Code in JavaScript6"
+      },
+      {
+        "parameters": {
+          "modelName": "models/gemini-3.1-pro-preview",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "typeVersion": 1,
+        "position": [
+          1808,
+          1072
+        ],
+        "id": "980eada0-76e0-446e-8614-372d58aadcba",
+        "name": "Google Gemini Chat Model3",
+        "credentials": {
+          "googlePalmApi": {
+            "id": "17XGPswyoouBnPA6",
+            "name": "Google Gemini(PaLM) Api POSI"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.toolThink",
+        "typeVersion": 1.1,
+        "position": [
+          2112,
+          1280
+        ],
+        "id": "bbea4a67-2e77-4e39-b96d-26e0b2da00a3",
+        "name": "Think3"
+      },
+      {
+        "parameters": {
+          "model": "sonar-pro",
+          "messages": {
+            "message": [
+              {
+                "content": "ajude na busca para o funil de arbitragem perfeito."
+              }
+            ]
+          },
+          "options": {},
+          "requestOptions": {}
+        },
+        "type": "n8n-nodes-base.perplexityTool",
+        "typeVersion": 1,
+        "position": [
+          2016,
+          1280
+        ],
+        "id": "993ce1d3-b42d-412e-bea5-f9e902b8cd6b",
+        "name": "Message a model in Perplexity",
+        "credentials": {
+          "perplexityApi": {
+            "id": "FXtYY7lGsrnmcug7",
+            "name": "Perplexity Generic"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Hoje é dia {{ \n  new Date().toLocaleDateString('pt-BR', {\n    day: '2-digit',\n    month: '2-digit',\n    year: 'numeric'\n  }) \n}}\n\nPAÍS DE ATUAÇÃO OBRIGATORIO, ignore tudo que não for 100% relacionado a este país: {{ $('⚙️ Config Global1').first().json['país_geo'] }}\n\nCirteria ID: {{ $('⚙️ Config Global1').first().json.geo_target }}\n\nLanguage code: {{ $('⚙️ Config Global1').first().json.language_code }}\n\nKW Principal: {{ $('⚙️ Config Global1').first().json.nicho }}\n\nContexto de ângulo: {{ $('⚙️ Config Global1').first().json.objective }}\n\n\n## KEYWORDS MINERADAS\n\n{{ JSON.stringify({ summary: $json.summary, production_ads_queue: $json.production_ads_queue, content_seo_queue: $json.content_seo_queue }, null, 2) }}\n\n## INSTRUÇÃO\n\nAnalise as keywords acima e identifique oportunidades de funil.\n\nLembre-se: agrupe por UNIVERSO TEMÁTICO do usuário, não por coincidência de palavras. Na dúvida, JUNTE.\n\nResponda APENAS o JSON puro abaixo (sem markdown, sem ```json, sem texto antes ou depois). Sua resposta DEVE começar com { e terminar com }.\n\n{\n  \"resumo\": {\n    \"total_keywords\": 0,\n    \"temas_pai_identificados\": 0,\n    \"funis_sugeridos\": 0,\n    \"keywords_descartadas\": 0\n  },\n  \n  \"funis_sugeridos\": [\n    {\n      \"rank\": 1,\n      \"nome_funil\": \"Nome do Tema-Pai\",\n      \"keyword_ancora\": \"keyword principal de maior volume\",\n      \"volume_ancora\": 0,\n      \n      \"sub_intencoes\": [\n        {\n          \"tipo\": \"TEMPORAL\",\n          \"descricao\": \"Calendário, datas, quando paga\",\n          \"keywords\": [\n            {\"keyword\": \"calendário x\", \"volume\": 0, \"cpc\": 0.00}\n          ],\n          \"volume_sub\": 0,\n          \"qtd_keywords\": 0\n        }\n      ],\n      \n      \"metricas\": {\n        \"volume_agregado\": 0,\n        \"cpc_medio\": 0.00,\n        \"qtd_keywords\": 0,\n        \"qtd_sub_intencoes\": 0\n      },\n      \n      \"justificativa\": \"1-2 frases\",\n      \n      \"tags\": [\"VOLUME_TITAN\", \"MULTI_INTENT\"]\n    }\n  ],\n  \n  \"priorizacao\": {\n    \"fazer_primeiro\": \"nome_funil_1\",\n    \"razao\": \"Explicação curta\"\n  },\n  \n  \"observacoes\": [\n    \"Insight estratégico relevante\"\n  ],\n  \n  \"alertas_anti_canibalizacao\": [\n    \"Keywords X, Y e Z foram MERGEADAS no funil W por pertencerem ao mesmo universo temático\"\n  ]\n}\n\n### REGRAS FINAIS:\n- Volume agregado mínimo do FUNIL: 50k\n- Mínimo 5 keywords por funil\n- NUNCA crie múltiplos funis para o mesmo tema-pai\n- Sub-intenções com < 5 keywords → agrupe em \"OUTROS\"\n- Liste TODAS as keywords dentro de suas respectivas sub-intenções\n- Justificativas CONCISAS (1-2 frases)",
+          "options": {
+            "systemMessage": "=<identity>\nVocê é o VOLC FUNNEL PROSPECTOR — garimpeiro de oportunidades de funil para arbitragem de tráfego.\n\nSeu trabalho é SIMPLES: receber keywords mineradas, agrupar em TEMAS-PAI coesos e entregar clusters prontos para o Arquiteto de Funis.\n\nVocê é GARIMPEIRO, não arquiteto. Você separa pepitas de ouro da areia — e nada mais.\n</identity>\n\n<clustering_logic>\n## LÓGICA DE CLUSTERIZAÇÃO\n\n### PRINCÍPIO CENTRAL: UNIVERSO TEMÁTICO (NÃO KEYWORD LITERAL)\n\nAgrupe por CONTEXTO DO USUÁRIO, não por coincidência de palavras.\n\nPergunte: \"O mesmo usuário, no mesmo momento de vida, buscaria AMBAS essas keywords?\"\n- Se SIM → MESMO cluster.\n- Se NÃO → Clusters separados.\n\nExemplos:\n- \"calendário bolsa família\" + \"consultar bolsa família\" + \"bolsa família pelo cpf\" → MESMO universo (beneficiário do BF resolvendo sua vida)\n- \"inscrição enem 2025\" + \"gabarito enem 2025\" + \"nota de corte sisu\" → MESMO universo (candidato do ENEM na jornada vestibular)\n- \"FGTS saque\" vs \"PIS calendário\" → UNIVERSOS DISTINTOS (benefícios diferentes, jornadas diferentes)\n\n### REGRA ZERO: ANTI-CANIBALIZAÇÃO\n\nANTES de criar múltiplos funis, pergunte: \"Esses clusters orbitam o MESMO programa/benefício/produto/jornada?\"\n\nSe SIM → É 1 ÚNICO FUNIL com múltiplas sub-intenções. Ponto.\n\nExemplo ERRADO:\n- Funil 1: \"Calendário Pé-de-Meia\" (200k)\n- Funil 2: \"Consulta Pé-de-Meia\" (238k)\n- Funil 3: \"Guia Pé-de-Meia\" (974k)\n→ ERRADO! 3 funis competindo pelo mesmo usuário.\n\nExemplo CORRETO:\n- Funil único: \"Pé-de-Meia\" (1.4M agregado) com sub-intenções: temporal, acesso, elegibilidade.\n\n### SENSIBILIDADE DE MERGE (CALIBRAGEM)\n\nQuando estiver em dúvida entre separar ou juntar, SEMPRE JUNTE. O custo de fragmentar é maior que o custo de agrupar demais.\n\nABSORVA no cluster pai quando:\n- Keywords compartilham o mesmo benefício/programa/produto, mesmo com verbos ou modificadores diferentes\n- Sub-tema tem volume < 100k isolado E faz parte do mesmo universo temático\n- O usuário-tipo é o MESMO (mesma persona, mesmo momento de vida)\n- Keywords são variações de intenção (consultar/verificar/checar/ver) sobre o mesmo objeto\n- Contexto semântico é próximo mesmo sem palavras em comum (ex: \"NIS\" e \"Bolsa Família\" — NIS é o identificador DO Bolsa Família)\n\nSEPARE em funis distintos APENAS quando:\n- Os temas-pai são genuinamente DIFERENTES (ex: FGTS vs PIS vs Auxílio Gás)\n- OU o usuário-tipo é claramente OUTRO (ex: empregador vs empregado)\n- OU a jornada é completamente distinta com volume > 500k\n\nNa dúvida: NÃO FAÇA SPLIT.\n\n### PASSO A PASSO\n\n1. IDENTIFICAR TEMAS-PAI: Qual é o programa/benefício/produto central? Agrupe TUDO que orbita o mesmo universo.\n2. MAPEAR SUB-INTENÇÕES: Dentro do tema-pai, classifique as intenções (temporal, acesso, elegibilidade, etc.)\n3. IDENTIFICAR KEYWORD ÂNCORA: A de MAIOR volume que representa o tema-pai de forma ampla.\n4. CALCULAR MÉTRICAS: Volume agregado (soma total), CPC médio (ponderado por volume), contagens.\n5. AVALIAR VIABILIDADE: Volume agregado > 50k, mínimo 5 keywords, pelo menos 2 sub-intenções.\n</clustering_logic>\n\n<sub_intent_types>\n## TIPOS DE SUB-INTENÇÃO\n\n- TEMPORAL: calendário, datas, quando, pagamento [mês/ano]\n- ACESSO: consulta, login, portal, app, como ver, cpf, entrar\n- ELEGIBILIDADE: quem tem direito, requisitos, como se inscrever, cadastro\n- VALOR: quanto, valor, parcelas, quanto recebe\n- TROUBLESHOOTING: não aparece, problema, erro, não recebi, bloqueado\n- INFORMACIONAL: o que é, como funciona, para que serve\n- SAQUE: como sacar, onde sacar, saque, retirar\n- OUTROS: sub-intenções com < 5 keywords que não encaixam nos tipos acima\n</sub_intent_types>\n\n<output_rules>\n## O QUE VOCÊ ENTREGA\n\n- Lista de FUNIS (temas-pai) com keyword âncora, sub-intenções e todas as keywords\n- Métricas agregadas (volume, CPC, contagens)\n- Justificativa estratégica concisa (1-2 frases)\n- Priorização (qual atacar primeiro)\n- Alertas de anti-canibalização (merges que você fez e por quê)\n\n## O QUE VOCÊ NÃO ENTREGA\n\n- Múltiplos funis para o MESMO tema-pai\n- Arquitetura de páginas (P1, P2, P3)\n- Estrutura de H2s ou conteúdo\n- Mapa emocional ou jornada detalhada\n</output_rules>\n\n<tags>\n## TAGS DISPONÍVEIS\n\nVolume: VOLUME_TITAN (>500k), VOLUME_ALTO (100k-500k), VOLUME_MEDIO (50k-100k)\nEstrutura: MULTI_INTENT (3+ sub-intenções), PORTAL_BRIDGE (keywords de acesso a portal)\nContexto: BENEFICIO_GOV, CHRONO_2025, CHRONO_2026, CPC_BAIXO (<0.10 médio)\n</tags>\n\nIMPORTANTE: Sua resposta deve começar com { e terminar com } — JSON puro, nada mais."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3,
+        "position": [
+          1904,
+          864
+        ],
+        "id": "628498f8-57b7-45e1-a9e4-aed77856ca57",
+        "name": "VOLC Funnel Prospector v2"
+      },
+      {
+        "parameters": {
+          "jsCode": "// ================================================================\n// 🏭 FUNNEL FACTORY: PREPARADOR DE LOTES (V7 - OUTPUT UNIFICADO)\n// - 1 item por funil (batch_info embutido)\n// - Pronto para Loop Over Items\n// ================================================================\n\n// 0. Configuração de Data\nconst CURRENT_DATE = new Date();\nconst CURRENT_YEAR = CURRENT_DATE.getFullYear();\nconst CURRENT_MONTH = CURRENT_DATE.getMonth() + 1;\nconst PREVIOUS_YEAR = CURRENT_YEAR - 1;\n\nconst MONTHS_PT = {\n    'janeiro': 1, 'fevereiro': 2, 'março': 3, 'abril': 4,\n    'maio': 5, 'junho': 6, 'julho': 7, 'agosto': 8,\n    'setembro': 9, 'outubro': 10, 'novembro': 11, 'dezembro': 12\n};\n\n// 1. Funções de Tratamento\nfunction processKeywordDate(keyword, volume) {\n    let processed = keyword;\n    \n    if (processed.includes(String(PREVIOUS_YEAR))) {\n        processed = processed.replace(new RegExp(String(PREVIOUS_YEAR), 'g'), String(CURRENT_YEAR));\n    }\n    \n    const hasCurrentYear = processed.includes(String(CURRENT_YEAR));\n    if (hasCurrentYear) {\n        for (const [monthName, monthNum] of Object.entries(MONTHS_PT)) {\n            if (processed.toLowerCase().includes(monthName) && monthNum < CURRENT_MONTH) {\n                return { keyword: null, removed: true, reason: `Mês ${monthName} já passou` };\n            }\n        }\n    }\n    \n    return { keyword: processed, removed: false, reason: null };\n}\n\nfunction deduplicateKeywords(keywords) {\n    const seen = new Map();\n    const result = [];\n    \n    for (const kw of keywords) {\n        const normalized = kw.keyword.toLowerCase().trim();\n        \n        if (!seen.has(normalized)) {\n            seen.set(normalized, kw);\n            result.push(kw);\n        } else {\n            const existing = seen.get(normalized);\n            if (kw.volume > existing.volume) {\n                const idx = result.findIndex(k => k.keyword.toLowerCase().trim() === normalized);\n                if (idx !== -1) {\n                    result[idx] = kw;\n                    seen.set(normalized, kw);\n                }\n            }\n        }\n    }\n    \n    return result;\n}\n\n// 2. Parse do Input\nlet aiOutput;\ntry {\n    const rawContent = items[0].json.output;\n    if (typeof rawContent === 'object') {\n        aiOutput = rawContent;\n    } else {\n        const cleanString = rawContent.replace(/```json/g, \"\").replace(/```/g, \"\").trim();\n        aiOutput = JSON.parse(cleanString);\n    }\n} catch (error) {\n    throw new Error(\"Falha ao ler o JSON do Peneirador. Erro: \" + error.message);\n}\n\nconst funnels = aiOutput.funis_sugeridos || [];\n\n// 3. Metadata do Batch (será embutido em cada funil)\nconst batchInfo = {\n    total_funnels: funnels.length,\n    processed_at: CURRENT_DATE.toISOString(),\n    ano_referencia: CURRENT_YEAR,\n    priorizacao: aiOutput.priorizacao || {},\n    observacoes: aiOutput.observacoes || [],\n    alertas_anti_canibalizacao: aiOutput.alertas_anti_canibalizacao || []\n};\n\n// 4. Processamento Principal - 1 ITEM POR FUNIL\nconst productionQueue = funnels.map(funnel => {\n    \n    const VOLUME_THRESHOLD = 20000;\n    const MIN_ITEMS_PER_INTENT = 3;\n    const MAX_ITEMS_PER_INTENT = 10;\n    \n    const subIntencoes = funnel.sub_intencoes || [];\n    \n    const allKeywordsForCampaign = [];\n    const removedKeywords = [];\n    \n    const processedIntents = subIntencoes.map(intent => {\n        const keywords = intent.keywords || [];\n        \n        const processedKws = [];\n        for (const kw of keywords) {\n            const result = processKeywordDate(kw.keyword, kw.volume);\n            \n            if (result.removed) {\n                removedKeywords.push({\n                    original: kw.keyword,\n                    reason: result.reason,\n                    volume_lost: kw.volume\n                });\n            } else {\n                processedKws.push({\n                    keyword: result.keyword,\n                    volume: kw.volume,\n                    cpc: kw.cpc,\n                    original: kw.keyword !== result.keyword ? kw.keyword : null\n                });\n            }\n        }\n        \n        const dedupedKws = deduplicateKeywords(processedKws);\n        const sorted = [...dedupedKws].sort((a, b) => b.volume - a.volume);\n        \n        let selected = sorted.filter(k => k.volume >= VOLUME_THRESHOLD);\n        if (selected.length < MIN_ITEMS_PER_INTENT) {\n            selected = sorted.slice(0, Math.min(MAX_ITEMS_PER_INTENT, sorted.length));\n        } else {\n            selected = selected.slice(0, MAX_ITEMS_PER_INTENT);\n        }\n        \n        dedupedKws.forEach(kw => {\n            allKeywordsForCampaign.push({\n                keyword: kw.keyword,\n                volume: kw.volume,\n                cpc: kw.cpc,\n                sub_intencao: intent.tipo\n            });\n        });\n        \n        return {\n            tipo: intent.tipo,\n            descricao: intent.descricao || \"\",\n            volume_sub: intent.volume_sub || 0,\n            keywords: selected,\n            keywords_text: selected\n                .map(k => `  - ${k.keyword} (Vol: ${k.volume.toLocaleString('pt-BR')}, CPC: ${k.cpc.toFixed(2)})`)\n                .join('\\n')\n        };\n    });\n    \n    processedIntents.sort((a, b) => b.volume_sub - a.volume_sub);\n    \n    const finalCampaignKeywords = deduplicateKeywords(allKeywordsForCampaign);\n    finalCampaignKeywords.sort((a, b) => b.volume - a.volume);\n    \n    const formattedSubIntents = processedIntents\n        .map(intent => {\n            return `📌 ${intent.tipo} (${intent.volume_sub.toLocaleString('pt-BR')} vol)\\n${intent.descricao ? `   \"${intent.descricao}\"\\n` : ''}${intent.keywords_text}`;\n        })\n        .join('\\n\\n');\n    \n    const keywordsForAds = finalCampaignKeywords\n        .map(k => k.keyword)\n        .join('\\n');\n    \n    const keywordsForClickup = finalCampaignKeywords\n        .map(k => `${k.keyword} | Vol: ${k.volume.toLocaleString('pt-BR')} | CPC: R$${k.cpc.toFixed(2)} | ${k.sub_intencao}`)\n        .join('\\n');\n    \n    const totalValidVolume = finalCampaignKeywords.reduce((sum, k) => sum + k.volume, 0);\n    const totalLostVolume = removedKeywords.reduce((sum, k) => sum + k.volume_lost, 0);\n    \n    return {\n        json: {\n            // ✅ BATCH INFO EMBUTIDO\n            _batch_info: batchInfo,\n            \n            project_name: funnel.nome_funil,\n            execution_rank: funnel.rank,\n            \n            funnel_context: {\n                theme: funnel.keyword_ancora,\n                anchor_volume: funnel.volume_ancora || 0,\n                \n                metrics: {\n                    total_volume: funnel.metricas?.volume_agregado || 0,\n                    valid_volume: totalValidVolume,\n                    lost_volume: totalLostVolume,\n                    avg_cpc: funnel.metricas?.cpc_medio || 0,\n                    total_keywords: funnel.metricas?.qtd_keywords || 0,\n                    valid_keywords: finalCampaignKeywords.length,\n                    removed_keywords: removedKeywords.length,\n                    sub_intents_count: funnel.metricas?.qtd_sub_intencoes || processedIntents.length\n                },\n                \n                strategic_direction: funnel.justificativa,\n                tags: funnel.tags ? funnel.tags.join(\", \") : \"\",\n                \n                sub_intencoes_raw: processedIntents,\n                sub_intencoes_text: formattedSubIntents\n            },\n            \n            keywords_campanha: {\n                lista_google_ads: keywordsForAds,\n                lista_clickup: keywordsForClickup,\n                keywords_array: finalCampaignKeywords,\n                stats: {\n                    total_keywords: finalCampaignKeywords.length,\n                    total_volume: totalValidVolume,\n                    avg_cpc: finalCampaignKeywords.length > 0 \n                        ? (finalCampaignKeywords.reduce((sum, k) => sum + k.cpc, 0) / finalCampaignKeywords.length).toFixed(2)\n                        : 0\n                }\n            },\n            \n            keywords_removidas: {\n                lista: removedKeywords,\n                total_removidas: removedKeywords.length,\n                volume_perdido: totalLostVolume\n            },\n            \n            processamento: {\n                data_processamento: CURRENT_DATE.toISOString(),\n                ano_referencia: CURRENT_YEAR,\n                mes_atual: CURRENT_MONTH,\n                regras_aplicadas: [\n                    `Substituição ${PREVIOUS_YEAR} → ${CURRENT_YEAR}`,\n                    `Remoção de meses passados (< mês ${CURRENT_MONTH})`,\n                    `Deduplicação por keyword normalizada`\n                ]\n            }\n        }\n    };\n});\n\n// 5. Ordenação por Prioridade e Retorno\nproductionQueue.sort((a, b) => a.json.execution_rank - b.json.execution_rank);\n\nreturn productionQueue;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2208,
+          864
+        ],
+        "id": "b971c9ca-6574-4b61-81ee-f6a46f94fb5f",
+        "name": "🏭 FUNNEL FACTORY"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "pautador-kw-mining",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -1904,
+          320
+        ],
+        "id": "bb510426-d7fa-43e2-b624-919d8f32b182",
+        "name": "Webhook",
+        "webhookId": "2acd655d-2381-4059-a843-222c22585b09"
+      },
+      {
+        "parameters": {
+          "jsCode": "// 📦 Monta o payload do Supabase a partir do resultado da mineração.\nconst wh = $('Webhook').first().json.body || {};\nconst gm = $('Code in JavaScript6').first().json || {};\nlet funis = [];\ntry {\n  let o = $('VOLC Funnel Prospector v2').first().json.output;\n  if (typeof o === 'string') o = JSON.parse(o.replace(/```json/g,'').replace(/```/g,'').trim());\n  funis = (o && o.funis_sugeridos) || [];\n} catch (e) {}\nlet factory = [];\ntry { factory = $('🏭 FUNNEL FACTORY').all().map(i => i.json); } catch (e) {}\n\nconst ads = gm.production_ads_queue || [];\nconst seo = gm.content_seo_queue || [];\nconst toQual = (v) => v >= 50000 ? 'very_high' : v >= 10000 ? 'high' : v >= 1000 ? 'medium' : 'low';\n\nconst cluster = {\n  opportunity_id: wh.opportunity_id || null,\n  run_id: wh.run_id || null,\n  cluster_name: 'Cluster: ' + (wh.nicho || ''),\n  main_keyword: wh.nicho || null,\n  intent: 'informational',\n  keywords: ads.slice(0, 25).map(k => ({\n    keyword: k.keyword, volume: toQual(k.volume || 0),\n    cpc_local: String(k.cpc ?? ''), competition: (k.competition || '').toLowerCase() || null,\n    intent: 'informational'\n  })),\n  total_volume: ads.reduce((s, k) => s + (k.volume || 0), 0),\n  raw_keywords: ads,\n  production_ads_queue: ads,\n  content_seo_queue: seo,\n  funis_sugeridos: funis,\n  factory_output: factory,\n  summary: gm.summary || null,\n  services_used: ['n8n:google_ads', 'n8n:dataforseo', 'n8n:gemini'],\n  engine: 'n8n',\n};\n\nconst seed_queries = ads.slice(0, 50).map(k => ({\n  entity_id: wh.entity_id || null,\n  opportunity_id: wh.opportunity_id || null,\n  query: k.keyword, query_type: 'variation', intent: 'informational',\n  source: 'n8n', score: k.volume || null,\n}));\n\nreturn [{ json: { cluster, seed_queries, opportunity_id: wh.opportunity_id, entity_id: wh.entity_id } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2400,
+          864
+        ],
+        "id": "3449292d-48c1-4d4e-8745-4062291dcda5",
+        "name": "📦 Build Supabase Payload"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://database.agenciavolc.com.br/rest/v1/pautador_keyword_clusters",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "supabaseApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.cluster) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2656,
+          896
+        ],
+        "id": "c8953286-81f1-47dd-909f-26402b0b0f3e",
+        "name": "⬆️ Supabase: cluster",
+        "credentials": {
+          "supabaseApi": {
+            "id": "3lSRuywq3fwQ3z3I",
+            "name": "VOLC Oficial"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://database.agenciavolc.com.br/rest/v1/pautador_entity_seed_queries",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "supabaseApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($('📦 Build Supabase Payload').item.json.seed_queries) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2880,
+          896
+        ],
+        "id": "42e8351a-b94e-4791-a400-7949610ce3fd",
+        "name": "⬆️ Supabase: seed queries",
+        "credentials": {
+          "supabaseApi": {
+            "id": "3lSRuywq3fwQ3z3I",
+            "name": "VOLC Oficial"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://database.agenciavolc.com.br/rest/v1/pautador_entity_opportunities?id=eq.{{ $('📦 Build Supabase Payload').item.json.opportunity_id }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "supabaseApi",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ status: \"mining\", kanban_stage: \"mining\" }) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3072,
+          896
+        ],
+        "id": "8871697b-3b1a-473f-8fef-f907c39e8ca6",
+        "name": "✅ Supabase: status mining",
+        "credentials": {
+          "supabaseApi": {
+            "id": "3lSRuywq3fwQ3z3I",
+            "name": "VOLC Oficial"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "⚙️ Config Global1": {
+        "main": [
+          [
+            {
+              "node": "🧠 AI Seed Optimizer1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🧠 AI Seed Optimizer1": {
+        "main": [
+          [
+            {
+              "node": "🌱 Seed Queue Builder1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gemini 2.5 Flash1": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "🧠 AI Seed Optimizer1",
+              "type": "ai_languageModel",
+              "index": 0
+            },
+            {
+              "node": "Structured Output Parser1",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Structured Output Parser1": {
+        "ai_outputParser": [
+          [
+            {
+              "node": "🧠 AI Seed Optimizer1",
+              "type": "ai_outputParser",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🌱 Seed Queue Builder1": {
+        "main": [
+          [
+            {
+              "node": "🔁 Loop Seeds1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🔁 Loop Seeds1": {
+        "main": [
+          [
+            {
+              "node": "🏆 Final Classifier1",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "🔍 Keyword Planner API1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🔍 Keyword Planner API1": {
+        "main": [
+          [
+            {
+              "node": "⛏️ Gold Extractor1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "⛏️ Gold Extractor1": {
+        "main": [
+          [
+            {
+              "node": "🔄 Mais Ouro?1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🔄 Mais Ouro?1": {
+        "main": [
+          [
+            {
+              "node": "🔄 Prep Next Loop1",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "🔁 Loop Seeds1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🔄 Prep Next Loop1": {
+        "main": [
+          [
+            {
+              "node": "⏳ Sleep 15s",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "⏳ Sleep 15s": {
+        "main": [
+          [
+            {
+              "node": "🔁 Loop Seeds1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🏆 Final Classifier1": {
+        "main": [
+          [
+            {
+              "node": "🪄 Prepare Validation Seeds",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🪄 Prepare Validation Seeds": {
+        "main": [
+          [
+            {
+              "node": "🔮 Google Autocomplete2",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "🧠 Related Keywords Labs2",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "🔀 Merge All Sources2",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "🔮 Google Autocomplete2": {
+        "main": [
+          [
+            {
+              "node": "Extract Autocomplete2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Autocomplete2": {
+        "main": [
+          [
+            {
+              "node": "🔀 Merge All Sources2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🧠 Related Keywords Labs2": {
+        "main": [
+          [
+            {
+              "node": "Extract Related KW2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Related KW2": {
+        "main": [
+          [
+            {
+              "node": "🔀 Merge All Sources2",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "🔀 Merge All Sources2": {
+        "main": [
+          [
+            {
+              "node": "🔥 Mega Merger2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🔥 Mega Merger2": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript6",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript6": {
+        "main": [
+          [
+            {
+              "node": "VOLC Funnel Prospector v2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Google Gemini Chat Model3": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "VOLC Funnel Prospector v2",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Think3": {
+        "ai_tool": [
+          [
+            {
+              "node": "VOLC Funnel Prospector v2",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Message a model in Perplexity": {
+        "ai_tool": [
+          [
+            {
+              "node": "VOLC Funnel Prospector v2",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "VOLC Funnel Prospector v2": {
+        "main": [
+          [
+            {
+              "node": "🏭 FUNNEL FACTORY",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🏭 FUNNEL FACTORY": {
+        "main": [
+          [
+            {
+              "node": "📦 Build Supabase Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "⚙️ Config Global1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "📦 Build Supabase Payload": {
+        "main": [
+          [
+            {
+              "node": "⬆️ Supabase: cluster",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "⬆️ Supabase: cluster": {
+        "main": [
+          [
+            {
+              "node": "⬆️ Supabase: seed queries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "⬆️ Supabase: seed queries": {
+        "main": [
+          [
+            {
+              "node": "✅ Supabase: status mining",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {
+      "Webhook": [
+        {
+          "headers": {
+            "host": "fluxos.webgocontent.com.br",
+            "user-agent": "python-httpx/0.28.1",
+            "content-length": "324",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "177.92.107.42",
+            "cf-ipcountry": "BR",
+            "cf-ray": "a1463c9ddc0af307-CWB",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.69.201.154",
+            "x-forwarded-host": "fluxos.webgocontent.com.br",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "cbe26e203398",
+            "x-real-ip": "172.69.201.154"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "entity_id": 24,
+            "opportunity_id": 24,
+            "run_id": 9,
+            "country": "Colômbia",
+            "country_code": "CO",
+            "nicho": "SOAT",
+            "objective": "Seguro de acidentes de trânsito obrigatório por lei para todos os veículos automotores em circulação na Colômbia.",
+            "geo_target": 2170,
+            "language_code": "es",
+            "language_short": "es",
+            "language_constant": 1003
+          },
+          "webhookUrl": "https://fluxos.webgocontent.com.br/webhook/pautador-kw-mining",
+          "executionMode": "production"
+        }
+      ]
+    },
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "56064576fd4c52e94380d8455de8466e1090116bf11be158a94d8489bb3c9993"
+    }
+  }

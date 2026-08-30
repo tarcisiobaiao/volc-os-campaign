@@ -1,0 +1,59 @@
+{
+  "tasks": [
+    {
+      "id": "86ak19ukf",
+      "name": "[P0] FG-QA-001 · Validação integrada, rollout e decisão",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19ukb",
+      "name": "[P0] FG-PERF-002 · Correlacionar CWV com receita e métricas de anúncios",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19uk8",
+      "name": "[P1] FG-ADS-003 · Priorizar ATF sem bloquear conteúdo",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19uk5",
+      "name": "[P0] FG-ADS-004 · Lazy loading de anúncios abaixo da dobra",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19uk3",
+      "name": "[P0] FG-ADS-001 · Loader único, mapa de slots e reserva de CLS",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19uk1",
+      "name": "[P1] FG-PERF-008 · Reduzir JavaScript e proteger INP",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19ujz",
+      "name": "[P0] FG-PERF-007 · Otimizar LCP por template",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19ujx",
+      "name": "[P0] FG-PERF-006 · Consolidar cache, headers e higiene do tema",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19ujw",
+      "name": "[P1] FG-PERF-003 · CrUX como baseline externo",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19uju",
+      "name": "[P0] FG-PERF-001 · Instrumentar Core Web Vitals em campo via GTM e GA4",
+      "status": "to do"
+    },
+    {
+      "id": "86ak19ujt",
+      "name": "[P0] FG-PERF-005 · Contrato mínimo do dataLayer",
+      "status": "to do"
+    }
+  ]
+}

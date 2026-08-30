@@ -1,0 +1,38 @@
+{
+  "mission_id": "closure-w1-08-destino-orfaos",
+  "title": "Decidir o destino dos commits órfãos b1fa53e (paridade ORAKUL L2/L3) e 28d2540 (Search Intelligence vertical)",
+  "base_ref": "HEAD",
+  "mode": "read_only",
+  "briefing": "CONTEXTO (não redescubra): dois trabalhos não alcançáveis pela main não têm caminho de integração mapeado. (a) b1fa53e — 'prova paridade ORAKUL e matriz de referências' (agent/20260829-102917-decision-l2-l3-orakul-references-v1), 1 commit sobre base antiga b69969b; pode ter sido substituído pelo orakul-predictive-core que entra na main via integration/autonomous-closure-20260829 (951fe3f). (b) 28d2540 — Search Intelligence vertical (agent/20260827-230006-search-intelligence-vertical-max/codex-search-writer) contém backend/app/trafego/inteligencia_search.py + testes que NÃO existem na main; a main tem só a semente volc_ads/inteligencia_search/governanca.py (79 linhas). MISSÃO: para cada órfão, responder com evidência: (1) o que exatamente ele adiciona (arquivos, comportamentos, testes — via git show/ls-tree/diff contra o merge-base); (2) quanto disso já existe na main OU na branch integration/autonomous-closure-20260829 por outro caminho; (3) o que se perderia se a ref fosse podada; (4) recomendação: integrar_como_esta | rebasear_e_integrar | extrair_partes(listar quais) | declarar_superado(provar por quê). REGRAS: read-only; sem checkout; diferencie 'código presente' de 'comportamento coberto'; se o diagnóstico Search novo (P05-T07, endpoint sobre v12_01) tornar parte de 28d2540 obsoleta, diga QUAL parte e por quê, sem especular sobre o resto.",
+  "timeout_seconds": 2400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-orfao-b1fa53e",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "Inventariar b1fa53e por inteiro e confrontar com o conteúdo de services/orakul_predictive/ em integration/autonomous-closure-20260829; veredito com prova.",
+      "allowed_paths": ["services", "backend", "volc_ads", "docs/architecture"]
+    },
+    {
+      "id": "codex-orfao-28d2540",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "Inventariar 28d2540 (inteligencia_search e testes) e confrontar com a main e com o plano do diagnóstico sobre v12_01; veredito com prova.",
+      "allowed_paths": ["backend", "volc_ads", "docs/architecture"]
+    },
+    {
+      "id": "claude-orfaos-sintese",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "opus",
+      "effort": "high",
+      "lens": "Ler os artefatos do repo (roadmap P05-T08, SPECs de Search Intelligence, missão search-intelligence-vertical-max.json) e responder: qual órfão o Roadmap ainda PRECISA, e em que ordem, se ambos fossem descartados o que quebraria?",
+      "allowed_paths": ["volc-os-workbook", "docs/architecture", "tools/agent-harness/missions", "volc_ads/inteligencia_search"]
+    }
+  ]
+}

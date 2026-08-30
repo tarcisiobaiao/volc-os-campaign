@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-29",
+  "base_sha": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "warning": "PROPOSTA. Esta missão NÃO alterou volc-os-workbook/ROADMAP-VIVO.json, docs/volc-os-graph/curadoria-operacional.json, volc-os-graph.json nem graphify-out/. A aplicação é do integrador único (M-W1-09), item a item, e SOMENTE quando o critério ausente listado estiver provado.",
+  "roadmap_changes": [
+    {
+      "task_id": "P05-T04",
+      "previous_status": "partial",
+      "proposed_status": "done (condicional)",
+      "evidence": "Mecanismo ponta a ponta provado (22 backend + 13 front); falta só o clique do operador autenticado (H1).",
+      "missing_criterion": "trafego_vinculo > 0 linhas após confirmação humana dos vínculos Maquininha/FGTS.",
+      "reason": "Única tarefa fechável por ação humana de minutos; manter partial até o clique acontecer.",
+      "confidence": "alta"
+    },
+    {
+      "task_id": "P05-T07",
+      "previous_status": "partial",
+      "proposed_status": "done (após M-W2-01 + prova em localhost)",
+      "evidence": "v12_01 aplicada com 10 recibos reais; frontend pronto com degradação explícita; endpoint é a única peça ausente (FACT-MATRIX F007/F008).",
+      "missing_criterion": "GET /api/trafego/campanhas/:id/diagnostico existente, com portão de identidade, projetando FGTS/Maquininha com fonte/janela/lido_em em localhost.",
+      "reason": "O aceite escrito da tarefa fica integralmente coberto pela missão M-W2-01.",
+      "confidence": "alta"
+    },
+    {
+      "task_id": "P04-T07",
+      "previous_status": "todo",
+      "proposed_status": "partial (após M-W1-04, se aprovado na revisão substituta)",
+      "evidence": "Candidato 5eb6b38 (núcleo read-only PMax) existe com writer ok; reviewers crasharam por defeito do harness, não por mérito (F010/F012).",
+      "missing_criterion": "Revisão substituta aprovada + merge + gates; painel VOLC específico continua ausente (mantém partial, não done).",
+      "reason": "Código candidato não revisado não muda status; revisado e integrado, muda para partial com evidência.",
+      "confidence": "média"
+    },
+    {
+      "task_id": "P10-T04",
+      "previous_status": "todo",
+      "proposed_status": "partial (após M-W1-04, se aprovado)",
+      "evidence": "Candidato 656d72d com gates VERDES (41+518 passed) morto por crash de reviewer; cadeia a1→a3 superset.",
+      "missing_criterion": "Revisão substituta + merge; heartbeat/deadman LIGADO a rotinas reais continua pendente (por isso partial).",
+      "reason": "Contrato provado ≠ instrumentação operante.",
+      "confidence": "média"
+    },
+    {
+      "task_id": "P02-T05",
+      "previous_status": "risk",
+      "proposed_status": "risk (evidência nova após M-W2-05)",
+      "evidence": "Pacote executável (REVOKE/RLS, rotação, smoke) provado em descartável.",
+      "missing_criterion": "Janela real D4+D10 executada em produção com smoke anônimo provando zero escrita.",
+      "reason": "Risco só fecha na janela; a evidência do pacote pronto deve constar para o QG.",
+      "confidence": "alta"
+    },
+    {
+      "task_id": "P06-T08",
+      "previous_status": "partial",
+      "proposed_status": "partial (evidência nova após M-W2-02)",
+      "evidence": "Migration v13_01 do fato canônico escrita e provada em descartável (ciclo aplicar→reverter→reaplicar).",
+      "missing_criterion": "Aplicação no oficial (autorização), reconciliação do canário D0/D-1 e decisão D3 de agenda.",
+      "reason": "Escrita ≠ aplicada — a régua do próprio roadmap.",
+      "confidence": "alta"
+    },
+    {
+      "task_id": "P14-T02",
+      "previous_status": "partial",
+      "proposed_status": "partial (evidência nova após M-W2-04)",
+      "evidence": "12 lacunas de contrato L6 fechadas no backend, ainda sintético.",
+      "missing_criterion": "GoogleAdsRow real atravessando a fronteira; shadow por janela declarada; persistência.",
+      "reason": "Contrato completo não é shadow real.",
+      "confidence": "alta"
+    },
+    {
+      "task_id": "P04-T01",
+      "previous_status": "done",
+      "proposed_status": "revisar prova",
+      "evidence": "Prova de 34 caracteres ('U0/H0 e canais canônicos validados') sem artefato citado, apontando para nós ainda partial (F027/F028).",
+      "missing_criterion": "Citar artefato verificável (doc do contrato U0/H0 + testes) ou rebaixar.",
+      "reason": "done com prova fraca é dívida de auditoria; provavelmente é done legítimo mal documentado.",
+      "confidence": "média"
+    },
+    {
+      "task_id": "P08-T01",
+      "previous_status": "done",
+      "proposed_status": "revisar prova",
+      "evidence": "Prova 'eventos e fatos de página existem' sem artefato nem contagem.",
+      "missing_criterion": "Citar tabela/consulta e frescor medido.",
+      "reason": "Mesma dívida de auditoria de prova.",
+      "confidence": "média"
+    },
+    {
+      "task_id": "P13-T01",
+      "previous_status": "done",
+      "proposed_status": "revisar prova",
+      "evidence": "Prova 'endpoint respondeu HTTP 200' (uma vez, sem data).",
+      "missing_criterion": "Data da verificação e o que 200 prova (superfície viva ≠ configuração funcional, como P03-T05 já admite).",
+      "reason": "HTTP 200 único não sustenta done permanente.",
+      "confidence": "média"
+    },
+    {
+      "task_id": "(expansão pós-FF: P04-T09, P14-T10, P17-T09, P01-T10)",
+      "previous_status": "inexistentes na main",
+      "proposed_status": "incorporar via M-W1-03 e reconciliar",
+      "evidence": "Supervisores citam esses IDs; a expansão presume-se dentro de integration/autonomous-closure-20260829 (F015, INFERIDO).",
+      "missing_criterion": "Confirmar no diff do FF que as tarefas entram com aceite; caso contrário, criá-las antes de qualquer promoção ligada às frentes do supervisor.",
+      "reason": "QG não pode perseguir tarefas fantasma.",
+      "confidence": "média"
+    }
+  ],
+  "curation_changes": [
+    {
+      "node_id": "concept:organic_publication_control_plane",
+      "previous_state": "decision",
+      "proposed_state": "implemented (como decisão) ou vocabulário equivalente do schema",
+      "evidence": "ADR-DISTRIBUICAO-ORGANICA-E-QA-VISUAL.md aceito em 28/08 fecha a decisão (Postiz núcleo, MultiPost fallback, AdsPower QA); P12-T07 done cita o ADR.",
+      "missing_criterion": "Nenhum — é reconciliação de defasagem (F028).",
+      "reason": "Contradição done↔decision viola o protocolo de fechamento.",
+      "confidence": "alta"
+    },
+    {
+      "node_id": "concept:secret-reference-boundary",
+      "previous_state": "decision",
+      "proposed_state": "implemented (como decisão)",
+      "evidence": "ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md fecha a fronteira; P03-T08 done cita o ADR.",
+      "missing_criterion": "Nenhum — reconciliação (F028).",
+      "reason": "Mesma contradição.",
+      "confidence": "alta"
+    },
+    {
+      "node_id": "external:supabase-hosted / risk:superficie_privilegiada",
+      "previous_state": "risk",
+      "proposed_state": "risk (evidência enriquecida)",
+      "evidence": "Webhook apply-bidding ativo sem autenticação + produtor de orientação ativo no hosted (F017); inventário executável entregue pela M-W2-05.",
+      "missing_criterion": "Janela D10 executada.",
+      "reason": "O grafo deve apontar o risco com a evidência atual, não a de 19/08.",
+      "confidence": "alta"
+    },
+    {
+      "node_id": "concept:agentic-recovery-runtime / system:google-adk-runtime",
+      "previous_state": "partial",
+      "proposed_state": "partial (evidência nova após M-W1-05)",
+      "evidence": "Harness v2 convergido na main com defeitos de gate e escopo corrigidos e README documentado.",
+      "missing_criterion": "Supervisor reativado sobre a versão corrigida (M-W3-17).",
+      "reason": "Capacidade multiplicadora deve refletir o estado convergido.",
+      "confidence": "média"
+    }
+  ],
+  "memory_notes_outside_repo": [
+    "Memória de sessão volc-os-ingestao-receita.md está SUPERADA (IDs inexistentes); substituir pelo apontador para inventario-n8n/00-MAPA.md preservando os dois contratos ainda válidos (linha crua fina + triggers; disputa de triggers em revenue_converted)."
+  ]
+}

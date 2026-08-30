@@ -1,0 +1,806 @@
+{
+  "name": "JOIN ADS - REPORT - DAY BEFORE",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "Schedule Trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -420,
+        -40
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "Executar manualmente",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "joinads-day-before",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "Webhook - Atualizar agora",
+      "name": "Webhook - Atualizar agora",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        320
+      ],
+      "webhookId": "joinads-day-before"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "JOIN_DOMAIN",
+              "type": "string",
+              "value": "={{ $json.body?.domain || 'SEU-DOMINIO-MI.com.br' }}"
+            },
+            {
+              "id": "c2",
+              "name": "JOIN_REVSHARE",
+              "type": "string",
+              "value": "0.10"
+            },
+            {
+              "id": "c3",
+              "name": "EARNINGS_IS_NET",
+              "type": "string",
+              "value": "true"
+            },
+            {
+              "id": "c4",
+              "name": "OFFSET_DAYS",
+              "type": "string",
+              "value": "1"
+            },
+            {
+              "id": "c5",
+              "name": "LOOKBACK_DAYS",
+              "type": "string",
+              "value": "={{ $json.body?.lookback_days ?? 2 }}"
+            },
+            {
+              "id": "c6",
+              "name": "MAX_DIAS_POR_RUN",
+              "type": "string",
+              "value": "62"
+            },
+            {
+              "id": "c7",
+              "name": "TZ",
+              "type": "string",
+              "value": "America/Sao_Paulo"
+            },
+            {
+              "id": "c8",
+              "name": "DATE_PREFERENCE",
+              "type": "string",
+              "value": "DMY"
+            },
+            {
+              "id": "c9",
+              "name": "BATCH_SIZE",
+              "type": "string",
+              "value": "500"
+            },
+            {
+              "id": "c10",
+              "name": "CUSTOM_KEY",
+              "type": "string",
+              "value": "utm_campaign"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "Config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -180,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Emite UMA JANELA POR DIA (start_date == end_date).\n//\n//   OFFSET_DAYS   de quantos dias atras a janela TERMINA   (0 = hoje, 1 = ontem)\n//   LOOKBACK_DAYS quantos dias antes desse fim ela COMECA  (sobreposicao)\n//\n// POR QUE UM DIA POR REQUEST, e nao um intervalo:\n// a API da Join AGREGA o periodo inteiro numa unica linha quando\n// start_date != end_date, e devolve o campo `date` como rotulo de intervalo.\n// Verificado em dado real (2026-08-11), nos dois endpoints:\n//\n//   start=2026-08-10 end=2026-08-10 -> { \"date\": \"10/08/2026\",              imp: 8 }\n//   start=2026-08-09 end=2026-08-10 -> { \"date\": \"09/08/2026 a 10/08/2026\", imp: 8 }\n//\n// Ou seja: NAO existe quebra por dia dentro de um intervalo. Pedir um range\n// perde a granularidade diaria e devolve um total que, se fosse gravado, seria\n// atribuido a um dia so. Vale para /earnings e /key-value (Synthetic e\n// Analytical). Por isso o teto de 15 dias da doc nao nos serve de nada.\n//\n// A sobreposicao (LOOKBACK_DAYS) existe porque a Join pode revisar numero\n// retroativamente. O upsert e idempotente, entao reprocessar dia nao duplica.\nconst cfg = $('Config').first().json;\n\nconst tz       = cfg.TZ || 'America/Sao_Paulo';\nconst offset   = Math.max(0, Number(cfg.OFFSET_DAYS) || 0);\nconst lookback = Math.max(0, Number(cfg.LOOKBACK_DAYS) || 0);\nconst tetoDias = Math.max(1, Number(cfg.MAX_DIAS_POR_RUN) || 62);\n\nconst fim    = DateTime.now().setZone(tz).startOf('day').minus({ days: offset });\nconst inicio = fim.minus({ days: lookback });\n\nconst janelas = [];\nfor (let d = inicio; d <= fim; d = d.plus({ days: 1 })) {\n  const dia = d.toISODate();\n  janelas.push({ json: { start_date: dia, end_date: dia, domain: cfg.JOIN_DOMAIN } });\n}\n\nif (janelas.length === 0) {\n  throw new Error('Nenhuma janela gerada - confira OFFSET_DAYS/LOOKBACK_DAYS no Config.');\n}\n\n// Freio: como agora e 1 request por dia por endpoint, um LOOKBACK_DAYS gordo\n// por engano viraria centenas de chamadas na API deles.\nif (janelas.length > tetoDias) {\n  throw new Error(\n    `${janelas.length} dias pedidos (${inicio.toISODate()} a ${fim.toISODate()}), ` +\n    `acima do teto de ${tetoDias}. Suba MAX_DIAS_POR_RUN de proposito ou reduza LOOKBACK_DAYS.`\n  );\n}\n\nreturn janelas;\n"
+      },
+      "id": "Monta janelas",
+      "name": "Monta janelas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://office.joinads.me/api/clients-endpoints/earnings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $json.start_date }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $json.end_date }}"
+            },
+            {
+              "name": "domain",
+              "value": "={{ $json.domain }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "Join - GET /earnings",
+      "name": "Join - GET /earnings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        -20
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "JoinAds - Bearer Token"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://office.joinads.me/api/clients-endpoints/key-value",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "start_date",
+              "value": "={{ $json.start_date }}"
+            },
+            {
+              "name": "end_date",
+              "value": "={{ $json.end_date }}"
+            },
+            {
+              "name": "domain",
+              "value": "={{ $json.domain }}"
+            },
+            {
+              "name": "report_type",
+              "value": "Synthetic"
+            },
+            {
+              "name": "custom_key",
+              "value": "={{ $('Config').first().json.CUSTOM_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "Join - GET /key-value",
+      "name": "Join - GET /key-value",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "JoinAds - Bearer Token"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// /earnings  ->  daily_project_metrics\n//\n// O VOLC O.S. grava SEMPRE o bruto: quem aplica o revshare e o trigger do\n// banco, a partir de projects.revshare.\n//\n// A API devolve OS DOIS valores -- `revenue` (bruto) e `revenue_client`\n// (liquido) -- apesar de a doc so citar o segundo. Confirmado em dado real:\n// ecpm 1.25 vs ecpm_client 1.13 = 0.904, que e o revshare de 10%.\n// Entao usamos `revenue` direto. O EARNINGS_IS_NET so governa o fallback,\n// para o caso de um dia vir so o liquido.\nconst cfg = $('Config').first().json;\n\nconst revshare  = Number(cfg.JOIN_REVSHARE) || 0;\nconst ehLiquido = String(cfg.EARNINGS_IS_NET).toLowerCase() === 'true';\nconst pref      = String(cfg.DATE_PREFERENCE || 'DMY').toUpperCase();\nconst batchSize = Math.max(1, Number(cfg.BATCH_SIZE) || 500);\n\n// A janela pedida serve para desambiguar datas como \"08/04/2024\": testamos as\n// duas leituras possiveis e ficamos com a que cai dentro do intervalo pedido.\nconst janelas   = $('Monta janelas').all().map((i) => i.json);\nconst limiteIni = janelas.map((j) => j.start_date).sort()[0];\nconst limiteFim = janelas.map((j) => j.end_date).sort().slice(-1)[0];\n\nfunction parseData(bruto) {\n  if (bruto == null) return { date: null, ambigua: false, intervalo: false };\n  const s = String(bruto).trim();\n\n  // CINTO DE SEGURANCA. Quando o request cobre mais de um dia, a Join devolve\n  // UMA linha agregada com o campo date como rotulo de intervalo:\n  //     \"09/08/2026 a 10/08/2026\"\n  // Uma regex ancorada so no inicio casaria o prefixo \"09/08/2026\" e gravaria o\n  // total de dois dias como se fosse do dia 09 -- errado, e calado. Contamos\n  // quantas datas existem na string: mais de uma = agregado, descarta.\n  // O 'Monta janelas' ja garante 1 dia por request, entao isso nunca deveria\n  // disparar. Se disparar, alguem mexeu na janela e o Resumo vai gritar.\n  const tokens = s.match(/\\d{1,4}[\\/\\-]\\d{1,2}[\\/\\-]\\d{1,4}/g) || [];\n  if (tokens.length > 1) return { date: null, ambigua: false, intervalo: true };\n\n  const iso = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  if (iso) return { date: `${iso[1]}-${iso[2]}-${iso[3]}`, ambigua: false, intervalo: false };\n\n  const m = s.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})/);\n  if (!m) return { date: null, ambigua: false, intervalo: false };\n\n  const a = m[1].padStart(2, '0');\n  const b = m[2].padStart(2, '0');\n  const ano = m[3];\n  const dmy = `${ano}-${b}-${a}`;   // a = dia,  b = mes\n  const mdy = `${ano}-${a}-${b}`;   // a = mes,  b = dia\n\n  const dentro = (d) =>\n    DateTime.fromISO(d).isValid && d >= limiteIni && d <= limiteFim;\n\n  const okDmy = dentro(dmy);\n  const okMdy = dentro(mdy);\n\n  if (okDmy && !okMdy) return { date: dmy, ambigua: false, intervalo: false };\n  if (okMdy && !okDmy) return { date: mdy, ambigua: false, intervalo: false };\n  if (okDmy && okMdy)  return { date: pref === 'MDY' ? mdy : dmy, ambigua: dmy !== mdy, intervalo: false };\n  return { date: null, ambigua: false, intervalo: false };\n}\n\nfunction limpaDominio(v) {\n  return String(v || '')\n    .trim().toLowerCase()\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .replace(/\\/.*$/, '');\n}\n\nfunction emLotes(linhas, tamanho, extras) {\n  if (linhas.length === 0) {\n    return [{ json: { rows: [], totalLinhas: 0, lote: 0, totalLotes: 0, ...extras } }];\n  }\n  const lotes = [];\n  for (let i = 0; i < linhas.length; i += tamanho) lotes.push(linhas.slice(i, i + tamanho));\n  return lotes.map((rows, idx) => ({\n    json: { rows, totalLinhas: linhas.length, lote: idx + 1, totalLotes: lotes.length, ...extras },\n  }));\n}\n\nconst porChave = new Map();\nlet descartadas = 0;\nlet ambiguas = 0;\nlet intervalos = 0;\nlet reconstruidas = 0;\n\nfor (const item of $input.all()) {\n  const linhas = Array.isArray(item.json?.data) ? item.json.data : [];\n  for (const r of linhas) {\n    const { date, ambigua, intervalo } = parseData(r.date);\n    if (intervalo) { intervalos++; continue; }\n    if (!date) { descartadas++; continue; }\n    if (ambigua) ambiguas++;\n\n    const dominio = limpaDominio(r.domain);\n    if (!dominio) { descartadas++; continue; }\n\n    let receita = Number(r.revenue);\n    if (!Number.isFinite(receita)) {\n      // fallback: veio so o liquido -- reconstroi o bruto\n      const liquido = Number(r.revenue_client);\n      if (!Number.isFinite(liquido)) { descartadas++; continue; }\n      receita = (ehLiquido && revshare > 0 && revshare < 1)\n        ? liquido / (1 - revshare)\n        : liquido;\n      reconstruidas++;\n    }\n    receita = Math.round(receita * 1e6) / 1e6;\n\n    // Deduplica pela MESMA chave do on_conflict. Um POST em lote com a chave\n    // repetida faz o Postgres estourar \"cannot affect row a second time\".\n    porChave.set(`${date}|${dominio}`, { date, url_projeto: dominio, revenue: receita });\n  }\n}\n\nreturn emLotes([...porChave.values()], batchSize, {\n  descartadas, datasAmbiguas: ambiguas, intervalos, reconstruidas,\n});\n"
+      },
+      "id": "Normaliza earnings",
+      "name": "Normaliza earnings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// /key-value (custom_key=utm_campaign)  ->  joinads_metrics\n//\n// Usamos `earnings` (BRUTO), nao `earnings_client`: o revshare e aplicado pelo\n// trigger do banco. Gravar liquido aqui descontaria duas vezes.\nconst cfg = $('Config').first().json;\n\nconst pref       = String(cfg.DATE_PREFERENCE || 'DMY').toUpperCase();\nconst batchSize  = Math.max(1, Number(cfg.BATCH_SIZE) || 500);\nconst dominioCfg = String(cfg.JOIN_DOMAIN || '').trim().toLowerCase().replace(/^www\\./, '');\nconst chaveEsperada = String(cfg.CUSTOM_KEY || 'utm_campaign').trim();\n\n// A janela pedida serve para desambiguar datas como \"08/04/2024\": testamos as\n// duas leituras possiveis e ficamos com a que cai dentro do intervalo pedido.\nconst janelas   = $('Monta janelas').all().map((i) => i.json);\nconst limiteIni = janelas.map((j) => j.start_date).sort()[0];\nconst limiteFim = janelas.map((j) => j.end_date).sort().slice(-1)[0];\n\nfunction parseData(bruto) {\n  if (bruto == null) return { date: null, ambigua: false, intervalo: false };\n  const s = String(bruto).trim();\n\n  // CINTO DE SEGURANCA. Quando o request cobre mais de um dia, a Join devolve\n  // UMA linha agregada com o campo date como rotulo de intervalo:\n  //     \"09/08/2026 a 10/08/2026\"\n  // Uma regex ancorada so no inicio casaria o prefixo \"09/08/2026\" e gravaria o\n  // total de dois dias como se fosse do dia 09 -- errado, e calado. Contamos\n  // quantas datas existem na string: mais de uma = agregado, descarta.\n  // O 'Monta janelas' ja garante 1 dia por request, entao isso nunca deveria\n  // disparar. Se disparar, alguem mexeu na janela e o Resumo vai gritar.\n  const tokens = s.match(/\\d{1,4}[\\/\\-]\\d{1,2}[\\/\\-]\\d{1,4}/g) || [];\n  if (tokens.length > 1) return { date: null, ambigua: false, intervalo: true };\n\n  const iso = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);\n  if (iso) return { date: `${iso[1]}-${iso[2]}-${iso[3]}`, ambigua: false, intervalo: false };\n\n  const m = s.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})/);\n  if (!m) return { date: null, ambigua: false, intervalo: false };\n\n  const a = m[1].padStart(2, '0');\n  const b = m[2].padStart(2, '0');\n  const ano = m[3];\n  const dmy = `${ano}-${b}-${a}`;   // a = dia,  b = mes\n  const mdy = `${ano}-${a}-${b}`;   // a = mes,  b = dia\n\n  const dentro = (d) =>\n    DateTime.fromISO(d).isValid && d >= limiteIni && d <= limiteFim;\n\n  const okDmy = dentro(dmy);\n  const okMdy = dentro(mdy);\n\n  if (okDmy && !okMdy) return { date: dmy, ambigua: false, intervalo: false };\n  if (okMdy && !okDmy) return { date: mdy, ambigua: false, intervalo: false };\n  if (okDmy && okMdy)  return { date: pref === 'MDY' ? mdy : dmy, ambigua: dmy !== mdy, intervalo: false };\n  return { date: null, ambigua: false, intervalo: false };\n}\n\nfunction limpaDominio(v) {\n  return String(v || '')\n    .trim().toLowerCase()\n    .replace(/^https?:\\/\\//, '')\n    .replace(/^www\\./, '')\n    .replace(/\\/.*$/, '');\n}\n\nfunction emLotes(linhas, tamanho, extras) {\n  if (linhas.length === 0) {\n    return [{ json: { rows: [], totalLinhas: 0, lote: 0, totalLotes: 0, ...extras } }];\n  }\n  const lotes = [];\n  for (let i = 0; i < linhas.length; i += tamanho) lotes.push(linhas.slice(i, i + tamanho));\n  return lotes.map((rows, idx) => ({\n    json: { rows, totalLinhas: linhas.length, lote: idx + 1, totalLotes: lotes.length, ...extras },\n  }));\n}\n\nfunction num(v) {\n  if (v == null) return 0;\n  const n = Number(String(v).replace(/\\s/g, '').replace(',', '.'));\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst porChave = new Map();\nlet descartadas = 0;\nlet ambiguas = 0;\nlet intervalos = 0;\nlet chaveTrocada = 0;\n\nfor (const item of $input.all()) {\n  const linhas = Array.isArray(item.json?.data) ? item.json.data : [];\n  for (const r of linhas) {\n    const { date, ambigua, intervalo } = parseData(r.date);\n    if (intervalo) { intervalos++; continue; }\n    if (!date) { descartadas++; continue; }\n    if (ambigua) ambiguas++;\n\n    // GUARDA CRITICA. Quando nao ha dado para a chave pedida, a API IGNORA o\n    // parametro e devolve OUTRA chave, sem avisar. Verificado em dado real:\n    // pedimos custom_key=utm_campaign e voltou custom_key=land_uri.\n    // Sem esta guarda, URLs entrariam na coluna utm_campaign_value como se\n    // fossem id de campanha, e o dashboard mostraria lixo com cara de dado.\n    const chaveVinda = String(r.custom_key ?? r.custon_key ?? '').trim();\n    if (chaveVinda && chaveVinda !== chaveEsperada) { chaveTrocada++; continue; }\n\n    // A doc escreve \"custon_value\" (typo deles); a API real devolve\n    // \"custom_value\". Aceitamos as duas grafias.\n    const campanha = String(r.custom_value ?? r.custon_value ?? '').trim();\n    if (!campanha || campanha === 'null' || campanha === '{{campaign.id}}') {\n      descartadas++; continue;\n    }\n\n    const dominio = limpaDominio(r.name) || dominioCfg;\n    const chave = `${date}|${campanha}|${dominio}`;\n\n    const acc = porChave.get(chave) || {\n      date, utm_campaign_value: campanha, joinads_domain: dominio,\n      revenue: 0, impressions: 0, clicks: 0, viewableAcc: 0,\n    };\n\n    // report_type=Analytical devolve uma linha por bloco de anuncio. Somando\n    // aqui, Analytical e Synthetic produzem exatamente o mesmo total.\n    acc.revenue     += num(r.earnings);\n    acc.impressions += num(r.impressions);\n    acc.clicks      += num(r.clicks);\n    // a API real devolve `active_view`; a doc chama de `active_view_viewable`\n    acc.viewableAcc += num(r.active_view ?? r.active_view_viewable) * num(r.impressions);\n\n    porChave.set(chave, acc);\n  }\n}\n\nconst linhas = [...porChave.values()].map((a) => {\n  const imp = a.impressions;\n  return {\n    date: a.date,\n    utm_campaign_value: a.utm_campaign_value,\n    joinads_domain: a.joinads_domain,\n    revenue: Math.round(a.revenue * 1e6) / 1e6,\n    impressions: Math.round(imp),\n    clicks: Math.round(a.clicks),\n    // CTR e eCPM recalculados do cru: os valores que a API devolve por linha\n    // nao sobrevivem a soma de linhas. CTR em PERCENTUAL (igual gam_metrics).\n    ctr:  imp > 0 ? Math.round((a.clicks / imp) * 100 * 1e4) / 1e4 : 0,\n    ecpm: imp > 0 ? Math.round((a.revenue / imp) * 1000 * 100) / 100 : 0,\n    viewable_impressions: imp > 0 ? Math.round((a.viewableAcc / imp) * 100) / 100 : 0,\n  };\n});\n\nreturn emLotes(linhas, batchSize, {\n  descartadas, datasAmbiguas: ambiguas, intervalos, chaveTrocada, chaveEsperada,\n});\n"
+      },
+      "id": "Normaliza key-value",
+      "name": "Normaliza key-value",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "p1",
+              "leftValue": "={{ $json.rows.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "Tem linha? (projeto)",
+      "name": "Tem linha? (projeto)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        780,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.rows.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "Tem linha? (campanha)",
+      "name": "Tem linha? (campanha)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        780,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/daily_project_metrics",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "date,url_projeto"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.rows) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "Upsert daily_project_metrics",
+      "name": "Upsert daily_project_metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1020,
+        -20
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/joinads_metrics",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "date,utm_campaign_value,joinads_domain"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.rows) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "Upsert joinads_metrics",
+      "name": "Upsert joinads_metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1020,
+        320
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "numberInputs": 2,
+        "options": {}
+      },
+      "id": "Junta ramos",
+      "name": "Junta ramos",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1260,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resumo da execucao. Aparece no log do n8n e e o corpo gravado em\n// system_settings.joinads_last_update.\nconst cfg     = $('Config').first().json;\nconst janelas = $('Monta janelas').all().map((i) => i.json);\n\nfunction stats(no) {\n  try {\n    const j = $(no).first().json;\n    return {\n      linhas: j.totalLinhas ?? 0,\n      lotes: j.totalLotes ?? 0,\n      descartadas: j.descartadas ?? 0,\n      datas_ambiguas: j.datasAmbiguas ?? 0,\n      intervalos: j.intervalos ?? 0,\n      chave_trocada: j.chaveTrocada ?? 0,\n      reconstruidas: j.reconstruidas ?? 0,\n    };\n  } catch (e) {\n    return { linhas: 0, lotes: 0, erro: String(e.message || e) };\n  }\n}\n\nconst projeto  = stats('Normaliza earnings');\nconst campanha = stats('Normaliza key-value');\n\n// Cada alerta abaixo significa \"o numero que voce esta vendo pode estar errado\".\n// Nenhum deles derruba a execucao de proposito: preferimos gravar so o que da\n// para confiar e deixar o rastro do que foi jogado fora.\nconst alertas = [];\n\nif (projeto.intervalos + campanha.intervalos > 0) {\n  alertas.push(\n    'A Join devolveu linha AGREGADA de intervalo (campo date como \"dd/mm/aaaa a dd/mm/aaaa\") ' +\n    'e ela foi descartada. Isso so acontece se o request cobriu mais de um dia -- ' +\n    'confira o no \"Monta janelas\", ele deve emitir start_date == end_date.'\n  );\n}\n\nif (campanha.chave_trocada > 0) {\n  alertas.push(\n    `A API devolveu ${campanha.chave_trocada} linha(s) com custom_key diferente de ` +\n    `\"${cfg.CUSTOM_KEY || 'utm_campaign'}\" e elas foram descartadas. Isso e o comportamento ` +\n    'dela quando nao ha dado para a chave pedida: ela ignora o parametro e manda outra. ' +\n    'Enquanto o site nao tiver trafego com utm_campaign, o eixo de campanha fica vazio -- ' +\n    'o que esta certo, melhor vazio do que com land_uri fingindo ser campanha.'\n  );\n}\n\nif (projeto.datas_ambiguas + campanha.datas_ambiguas > 0) {\n  alertas.push(\n    'Houve data ambigua resolvida por DATE_PREFERENCE. Confirmado em dado real que a Join ' +\n    'usa DD/MM/AAAA no report_type=Synthetic e ISO no Analytical, entao isso nao deveria ' +\n    'aparecer -- se apareceu, o formato mudou.'\n  );\n}\n\nreturn [{\n  json: {\n    ok: true,\n    fonte: 'joinads',\n    dominio: cfg.JOIN_DOMAIN,\n    janela: { de: janelas[0].start_date, ate: janelas[janelas.length - 1].end_date, dias: janelas.length },\n    projeto,\n    campanha,\n    alertas: alertas.length ? alertas : null,\n    executado_em: new Date().toISOString(),\n  },\n}];\n"
+      },
+      "id": "Resumo",
+      "name": "Resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "key"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"key\": \"joinads_last_update\",\n  \"value\": \"{{ $json.executado_em }}\",\n  \"updated_at\": \"{{ $json.executado_em }}\"\n}",
+        "options": {}
+      },
+      "id": "Marca joinads_last_update",
+      "name": "Marca joinads_last_update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        150
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "key"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"key\": \"joinads_last_error\",\n  \"value\": \"{{ $now.toISO() }} | JOIN ADS - REPORT - DAY BEFORE | {{ JSON.stringify($json.error ?? $json).slice(0, 400) }}\",\n  \"updated_at\": \"{{ $now.toISO() }}\"\n}",
+        "options": {}
+      },
+      "id": "Registra falha",
+      "name": "Registra falha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        640
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "width": 520,
+        "height": 620,
+        "content": "## Join Ads -> VOLC O.S.\n\n**Antes de rodar:**\n1. Aplicar `src/sql/joinads/01_joinads_metrics.sql` e `02_project_type_joinads.sql`.\n2. Criar a credencial n8n **Header Auth** chamada `JoinAds - Bearer Token`:\n   - Name: `Authorization`\n   - Value: `Bearer SEU_TOKEN`\n3. Trocar `JOIN_DOMAIN` no no **Config** pelo dominio real do MI.\n4. Cadastrar o projeto em `projects` com `revshare = 0.10`.\n\n**Como o dado entra**\n- `/earnings`  -> `daily_project_metrics`  (eixo projeto)\n- `/key-value` -> `joinads_metrics` -> trigger -> `daily_campaign_metrics` (eixo campanha)\n\nGravamos sempre o valor **BRUTO** (`revenue` / `earnings`, nao os `_client`).\nQuem desconta o revshare de 10% e o trigger do banco, via `projects.revshare`.\n\n**UMA REQUISICAO POR DIA.** A Join agrega o periodo inteiro numa linha so\nquando `start_date != end_date` (o campo `date` volta como\n`\"09/08/2026 a 10/08/2026\"`). Nao existe quebra por dia dentro de um intervalo.\n\n**A API troca o `custom_key` calada** quando nao ha dado para a chave pedida\n(pedimos `utm_campaign`, veio `land_uri`). O normalizador descarta essas linhas\ne o Resumo avisa -- eixo de campanha vazio ate o site ter trafego com UTM.\n\n**Webhook (botao \"atualizar agora\")**\n`POST https://fluxos.agenciavolc.com.br/webhook/joinads-day-before`\n```json\n{ \"domain\": \"exemplo.com.br\", \"lookback_days\": 3 }\n```\nOs dois campos sao opcionais; sem corpo, usa o padrao do Config.\n\n**Janela:** D-1 voltando 2 dias (`OFFSET_DAYS=1`, `LOOKBACK_DAYS=2`),\npara reabsorver revisao retroativa da Join. Como o upsert e\nidempotente, reprocessar nao duplica. Se quiser exatamente so o\nD-1 do jeito antigo, ponha `LOOKBACK_DAYS = 0`."
+      },
+      "id": "Sticky Note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1020,
+        -60
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Atualizar agora": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Monta janelas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta janelas": {
+      "main": [
+        [
+          {
+            "node": "Join - GET /earnings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Join - GET /key-value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join - GET /earnings": {
+      "main": [
+        [
+          {
+            "node": "Normaliza earnings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registra falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join - GET /key-value": {
+      "main": [
+        [
+          {
+            "node": "Normaliza key-value",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registra falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza earnings": {
+      "main": [
+        [
+          {
+            "node": "Tem linha? (projeto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza key-value": {
+      "main": [
+        [
+          {
+            "node": "Tem linha? (campanha)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem linha? (projeto)": {
+      "main": [
+        [
+          {
+            "node": "Upsert daily_project_metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Junta ramos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem linha? (campanha)": {
+      "main": [
+        [
+          {
+            "node": "Upsert joinads_metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Junta ramos",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Upsert daily_project_metrics": {
+      "main": [
+        [
+          {
+            "node": "Junta ramos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert joinads_metrics": {
+      "main": [
+        [
+          {
+            "node": "Junta ramos",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Junta ramos": {
+      "main": [
+        [
+          {
+            "node": "Resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo": {
+      "main": [
+        [
+          {
+            "node": "Marca joinads_last_update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

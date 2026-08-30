@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "version": "fable-global-v1",
+  "generated_at": "2026-08-29",
+  "base_sha": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "graph_status": {
+    "check": "current:true",
+    "built_at_commit": "a539dbd7d7cb395ebc14986f0e1944d94f0aad26",
+    "reason": "insumos idênticos",
+    "built_with_dirty_tree": true,
+    "live_sources_refreshed": false,
+    "limitation": "rebuild proibido nesta missão; devido após a primeira integração material (M-W1-09)"
+  },
+  "north": {
+    "horizonte_A": "Campanha Search lançável e diagnosticável com segurança: criação pausada/validate_only, evidência no Supabase oficial, decisão no frontend, confirmação humana antes de mutação sensível, operação observável (localhost + banco oficial; deploy do FastAPI é decisão D12).",
+    "horizonte_B": "VOLC O.S. completo (multicanal, Meta, Estúdio, orgânico, Cofre, ORAKUL Auto Adjust/Predictive, inteligência oficial, Data Manager, n8n, Postiz/ChatPion, Hermes/Bia, microcorreção, QG/grafo) organizado sem entrar no caminho crítico do A."
+  },
+  "clusters": [
+    {"id": "CL-01", "title": "Convergência Git e autoridade operacional", "horizon": "A", "file": "clusters/CL-01-convergencia-git-e-autoridade.md"},
+    {"id": "CL-02", "title": "Campanha Search lançável", "horizon": "A", "file": "clusters/CL-02-search-lancavel.md"},
+    {"id": "CL-03", "title": "Diagnóstico e inteligência Search", "horizon": "A", "file": "clusters/CL-03-diagnostico-search.md"},
+    {"id": "CL-04", "title": "Ingestão Google Ads → Supabase oficial", "horizon": "A", "file": "clusters/CL-04-ingestao-gads-supabase.md"},
+    {"id": "CL-05", "title": "Decisão e ORAKUL", "horizon": "A/B", "file": "clusters/CL-05-decisao-orakul.md"},
+    {"id": "CL-06", "title": "Multicanal Google Ads", "horizon": "A-tardio/B", "file": "clusters/CL-06-multicanal-google.md"},
+    {"id": "CL-07", "title": "Estúdio Criativo à produção", "horizon": "B", "file": "clusters/CL-07-producao-criativos.md"},
+    {"id": "CL-08", "title": "ORAKUL Predictive", "horizon": "B", "file": "clusters/CL-08-orakul-predictive.md"},
+    {"id": "CL-09", "title": "Frontend operacional", "horizon": "A", "file": "clusters/CL-09-frontend-operacional.md"},
+    {"id": "CL-10", "title": "Segurança operacional pré-lançamento", "horizon": "A-gate", "file": "clusters/CL-10-seguranca-operacional.md"},
+    {"id": "CL-11", "title": "Integrações e legado n8n/Supabase hosted", "horizon": "A-tardio/B", "file": "clusters/CL-11-integracao-legado-n8n.md"},
+    {"id": "CL-12", "title": "Ativos, orgânico e Meta", "horizon": "B", "file": "clusters/CL-12-ativos-organico-meta.md"},
+    {"id": "CL-13", "title": "QG, workbook e grafo", "horizon": "transversal", "file": "clusters/CL-13-qg-workbook-grafo.md"},
+    {"id": "CL-14", "title": "Harness e supervisores", "horizon": "transversal", "file": "clusters/CL-14-harness-e-supervisores.md"}
+  ],
+  "waves": [
+    {
+      "id": 1,
+      "title": "Convergência e desbloqueio",
+      "objective": "Uma única verdade na main, com backup remoto, harness funcional e grafo reconciliado.",
+      "missions": ["M-W1-01", "M-W1-02", "M-W1-03", "M-W1-04", "M-W1-05", "M-W1-06", "M-W1-08", "M-W1-09"],
+      "human_gates": ["D9 (recomendada, 10 min)", "aprovação da poda de refs"],
+      "frontend_observable": "QG mostra o roadmap expandido com evidência; grafo current:true no HEAD novo."
+    },
+    {
+      "id": 2,
+      "title": "Horizonte A sem esperar o dono",
+      "objective": "Diagnóstico real visível no cockpit; pacotes prontos-para-janela (migration D0/D-1, segurança executável).",
+      "missions": ["M-W2-01", "M-W2-02", "M-W2-03", "M-W2-04", "M-W2-05", "M-W2-06", "M-W2-07"],
+      "human_gates": ["nenhum para executar; sessão de decisões D1-D13 recomendada ao final"],
+      "frontend_observable": "/trafego/campanhas/:id mostra diagnóstico factual de FGTS/Maquininha com fonte, janela e lido_em."
+    },
+    {
+      "id": 3,
+      "title": "Destravada por decisões",
+      "objective": "Search lançável: v10 aplicada, writer+caller, canário reconciliado, janela de segurança executada; agenda única de coleta ativa.",
+      "missions": ["M-W3-01", "M-W3-02", "M-W3-03", "M-W3-05", "M-W3-06", "M-W3-07", "M-W3-08", "M-W3-09", "M-W3-10", "M-W3-11", "M-W3-12", "M-W3-13", "M-W3-14", "M-W3-15", "M-W3-16", "M-W3-17"],
+      "human_gates": ["D1", "D2", "D3", "D4", "D5", "D10", "H1"],
+      "frontend_observable": "Cockpit mostra recibo de lançamento, ledger e proposta→aprovação fechando ciclo; frescor contínuo."
+    },
+    {
+      "id": 4,
+      "title": "Horizonte B ordenado",
+      "objective": "Criativos à produção, preditivo com ledger, Cofre persistido, orgânico/Postiz, Meta, receita/câmbio.",
+      "missions": ["M-W4-01..M-W4-16 (planejadas nos clusters)"],
+      "human_gates": ["D6", "D11", "D12"],
+      "frontend_observable": "Biblioteca criativa com peça real verificada; simulador read-only de planned_spend; Cofre persistido."
+    }
+  ],
+  "critical_path": {
+    "chain": ["M-W1-03", "M-W1-09", "D1", "M-W3-01", "M-W3-02", "M-W3-03", "M-W3-13", "SEARCH_LANCAVEL"],
+    "human_bottlenecks": ["D1", "D4", "D10"],
+    "highest_value_parallel": "M-W2-01 (diagnóstico real na tela, sem portões)"
+  },
+  "integration_order": ["FF autonomous-closure", "candidatos Gemini (656d72d, 5eb6b38) com revisão substituta", "linha do harness (e92793e + 6fc7923)", "órfãos (b1fa53e, 28d2540) conforme M-W1-08", "poda ~19 refs", "rebuild do grafo", "push final (D9)"],
+  "risks": [
+    {"risk": "Perda do disco — 411 commits sem backup remoto", "severity": "existencial", "mitigation": "M-W1-01 imediata (D9)"},
+    {"risk": "Webhook n8n de mutação ativo sem autenticação", "severity": "alta", "mitigation": "M-W2-05 inventário → janela D10 (M-W3-13)"},
+    {"risk": "service_role exposta em /api/supabase/* sem auth + credenciais no histórico git", "severity": "alta", "mitigation": "M-W2-05 → D4"},
+    {"risk": "Supervisores queimando tentativas em defeito de gate", "severity": "média", "mitigation": "M-W1-05 corrige; D13 conservador (deixar morrer, colher)"},
+    {"risk": "Dupla verdade de dados (13 flows no hosted legado)", "severity": "média", "mitigation": "CL-11 rotina a rotina com sucessor e rollback"},
+    {"risk": "Código pronto tratado como concluído", "severity": "crônica", "mitigation": "DEFINITION-OF-DONE.md binário + curadoria sempre proposta"}
+  ],
+  "human_decisions": ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "H1"],
+  "missions_with_specs": {
+    "harness_runnable": ["M-W1-06", "M-W1-08", "M-W2-01", "M-W2-03", "M-W2-04", "M-W2-05", "M-W2-06", "M-W2-07"],
+    "interactive_prompt_only": ["M-W1-01", "M-W1-02", "M-W1-03", "M-W1-04", "M-W1-05", "M-W1-09", "M-W2-02"],
+    "note": "Missões interativas existem porque o harness (a) não mescla branches, (b) não alcança arquivos untracked e (c) protege supabase/migrations/ e ROADMAP-VIVO.json contra writers. Isso é design, não limitação acidental."
+  },
+  "recommended_order": ["M-W1-01", "M-W1-06 ∥ M-W1-08 ∥ M-W2-01 ∥ M-W2-03 ∥ M-W2-04 ∥ M-W2-05 ∥ M-W2-02", "M-W1-02", "M-W1-03", "M-W1-04", "M-W1-05", "M-W2-06 ∥ M-W2-07", "M-W1-09", "sessão de decisões (D1-D13)", "onda 3"],
+  "progress_projection": {
+    "formula": "soma(status_weights) / tarefas_nao_reserved, conforme ROADMAP-VIVO.json",
+    "current": "(33*1.0 + 36*0.5 + 1*0.25)/141 = 36.3%",
+    "after_waves_1_3_if_all_acceptances_proven": "aprox. 46% — projeção mecânica da mesma fórmula sobre as tarefas listadas no MASTER-CLOSURE-PLAN.md §8; condicionada a prova real de cada aceite",
+    "explicit_refusal": "nenhum percentual sem fórmula e denominador"
+  }
+}

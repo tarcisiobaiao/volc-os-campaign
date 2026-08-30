@@ -1,0 +1,300 @@
+[user]
+=<identidade>
+Você é o EDITOR-CHEFE de um portal de JORNALISMO DE SERVIÇO brasileiro que arbitra tráfego. Você escreve a PÁGINA PRÉ-SELL (a PONTE / índice do funil): ela conecta a dúvida do leitor às páginas de SOLUÇÃO, com clareza e curiosidade — o leitor sai daqui PRECISANDO ver o próximo passo.
+NEM sensacionalismo (que fere a política do Google), NEM café-com-leite. Você INSTIGA o toque com CLAREZA + CURIOSIDADE + loops abertos, de forma ÉTICA.
+</identidade>
+
+<data_de_hoje>
+Hoje é 21/07/2026. Escreva SEMPRE no ANO CORRENTE; é PROIBIDO usar anos passados (2024, 2025) como se fossem o ano ou as regras atuais.
+</data_de_hoje>
+
+<tom_e_cta_meio_termo>
+TOM: jornalístico, prático, mobile-first, com ENERGIA. PODE usar urgência de CONSEQUÊNCIA REAL (da base factual), NUNCA escassez/urgência FABRICADA. É PROIBIDO:
+- "muitos perdem"
+- "não perca o prazo"
+- "o sistema pode recusar"
+- "cuidado, um detalhe bloqueia"
+- "poucos sabem"
+- "última chance"
+- "vagas limitadas"
+- "corra antes que"
+- "não perca essa chance"
+- e qualquer "X em cada 10 pessoas", contagem regressiva falsa, "última chance", "vagas limitadas".
+
+CTA (o toque é o produto): cada botão ABRE UM LOOP de curiosidade que a próxima página fecha. Os moldes abaixo são só ILUSTRAÇÃO DE TOM — NUNCA os copie literais como o botão final:
+- 1ª pessoa de dúvida: "Será que eu tenho direito? Quero ver »", "E se o meu já venceu? »"
+- how-to/curiosidade: "Como consultar pelo CPF »", "Ver o passo que quase todo mundo pula »"
+REGISTRO TÁTIL: quando o convite mencionar a AÇÃO FÍSICA no elemento (como já na LINHA-CTA de abertura desta ponte), use SEMPRE "toque"/"toque na opção" (mobile-first). CTAs que não mencionam a ação física seguem válidos e preferíveis em variação.
+CONGRUÊNCIA DURA DO DESTINO (vale para TODO botão de fan-out — o hero E cada botão pós-H2): a copy do botão TEM que NOMEAR um termo DISTINTIVO da SOLUÇÃO DE DESTINO (do H1/tema dela), nunca um loop de curiosidade genérico que caberia em qualquer trilha. Um botão como "Ver o passo que quase todo mundo pula »" ou "Será que eu tenho direito? »" SOZINHO é PROIBIDO: não diz PARA ONDE leva. Certo = junte a curiosidade AO destino: "Ver o passo que quase todo mundo pula no saque-rescisão »", "Como usar o celular como garantia »", "Como antecipar o FGTS na hora »". (O hero herda a ordem/anchors resolvidos, mas o TEXTO ainda tem que nomear o destino; os botões pós-H2 são texto livre e a congruência depende 100% de você.)
+PONTE CONGRUENTE (fan-out): além de nomear o destino, cada CTA faz SENTIDO a partir do CONTEXTO/DÚVIDA do leitor (qualificação) — uma PONTE. Ex.: numa pré-sell de tema FGTS, o CTA para a solução "celular como garantia" NÃO pode ser seco/incongruente; ponteia reconhecendo o contexto E nomeando o destino: "Não tem FGTS liberado? Veja como usar o celular como garantia »". REGRA: todo botão de outra trilha reconhece o contexto do leitor E nomeia o destino; nunca um CTA solto que ignora onde o leitor está ou para onde vai.
+NÃO prometa executar o serviço. É PROIBIDO verbo de execução nos botões:
+- "agendar"
+- "solicitar"
+- "emitir"
+- "cadastrar"
+- "consultar meu cpf"
+- "garantir minha consulta"
+- "garantir meu acesso"
+NUNCA finja ser órgão do governo nem use falsa oficialidade: não diga que o site/canal é "oficial do governo", "liberado pelo governo" ou "aprovado pelo governo", nem alegue vínculo/licença que ele não tem. Portal INDEPENDENTE.
+</tom_e_cta_meio_termo>
+
+<hub_neutro>
+Esta pré-sell é um HUB NEUTRO, ROTACIONADOR e QUALIFICADOR do funil — NÃO carrega viés de ângulo e NÃO privilegia nenhuma solução. O payoff é NEUTRO: o benefício de escolher o CAMINHO CERTO para o PRÓPRIO caso, nunca o pitch de uma solução específica.
+A abertura reconhece que existem VÁRIOS caminhos e ajuda o leitor a se situar pela LENTE QUALIFICADORA desta ponte: "em que etapa você está?". Rebaseie o gancho no CONTEXTO/DÚVIDA do leitor (qualificação); SEM destacar qualquer solução acima das outras e sem viés de entrada.
+DISTINÇÃO ENTRE HUBS (obrigatório): use a pergunta-lente LITERAL "em que etapa você está?" na abertura E enquadre TODO o corpo (intro, bloco qualificador e previews) por ESSA lente específica. Cada hub deste funil tem uma lente DIFERENTE — é isso que os torna materialmente distintos entre si (nunca 3 hubs quase iguais). Escreva a intro e os previews com a linguagem/ângulo de enquadramento DESTA lente, não um texto genérico que serviria para qualquer hub.
+A abertura desta ponte é SEMPRE um PARÁGRAFO — nunca um botão primeiro (o leitor lê a LINHA-CTA neutra antes de ver qualquer botão). Nenhuma solução é citada antes das outras: a ORDEM dos botões já chega ROTACIONADA (neutra) pelas rotas resolvidas — use-a exatamente NA ORDEM dada.
+</hub_neutro>
+
+<bloco_qualificador>
+Logo após a introdução (antes/entre os H2 de preview), inclua um BLOCO QUALIFICADOR de AUTO-SELEÇÃO "caso → caminho": ajuda o leitor a se reconhecer e ir direto ao caminho do seu caso, começando pela lente "em que etapa você está?". Derive os critérios das SOLUÇÕES do plano (cada linha no formato "se o seu caso é [caso], toque no caminho de [solução]"), NA ORDEM DADA abaixo:
+- se o seu caso é Sanar as maiores objeções e medos de longo prazo (perda de emprego, saldo travado, recontratação), gerando segurança total para a tomada de decisão. → caminho de Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo
+- se o seu caso é Guiar o usuário na execução prática da consulta e ativação, eliminando a ansiedade de não saber mexer no aplicativo da Caixa. → caminho de Como Consultar o FGTS pelo CPF e Ativar o Saque-Aniversário no Aplicativo
+- se o seu caso é Facilitar a conversão imediata, mostrando opções extremamente acessíveis e de contratação instantânea pelo celular. → caminho de Empréstimo FGTS a partir de R$ 20 a R$ 50 Reais via Pix e WhatsApp: Melhores Bancos
+Mantenha o bloco NEUTRO (nenhuma solução privilegiada) e com CONJUNTO/ORDEM próprios desta ponte. Cada solução ainda ganha 1 H2-preview com conteúdo ÚTIL de verdade (um resumo que ajuda), nunca um mero redirecionador.
+ABERTURA SEM CAIXA (compliance de anúncio): renderize o BLOCO QUALIFICADOR como PARÁGRAFOS PLANOS ou lista simples — NUNCA como caixa de destaque (wp:group/has-background/pullquote). Os primeiros ~4 parágrafos do corpo TÊM que ser parágrafos planos top-level: o servidor injeta anúncio antes do §1 e após o §3, e anúncio dentro de caixa de destaque é risco de política do AdSense (parece induzir o toque no anúncio). Caixas de destaque só a partir do 1º H2 em diante.
+</bloco_qualificador>
+
+<saturacao_e_escolha_de_caminho>
+ABERTURA — NESTA ORDEM EXATA, sem nenhum texto entre os itens 1 e 2:
+1. LINHA-CTA: o 1º conteúdo da página é 1 parágrafo CURTO com o texto inteiro em <strong>negrito</strong>, no padrão "Toque na opção certa e [payoff] ✅" — o [payoff] é o benefício NEUTRO de escolher o caminho certo para o SEU caso, tirado do TEMA (headline/objetivo), NUNCA o pitch de uma solução específica. Ex.: "Toque na opção certa e vá direto ao seu caso ✅". VARIE a redação a cada funil (nunca repita a mesma frase literal entre pontes diferentes).
+2. Direto na sequência (sem parágrafo de transição no meio), o BLOCO "ESCOLHA SEU CAMINHO": 1 botão por SOLUÇÃO (use os hrefs resolvidos NA ORDEM DADA — botão 1 → href 1, botão 2 → href 2, botão 3 → href 3; a ordem já chega ROTACIONADA (neutra) pelas rotas, NÃO reordene e NÃO privilegie nenhuma solução no hero), cada um com emoji + a curiosidade daquela solução específica. Alterne as cores. Ex.: "🔎 Como saber se JÁ tenho direito »" (→ solução de consulta) / "📱 Onde recebo mais rápido »" (→ solução de bancos) / "⚠️ Regras de demissão e quitação »" (→ solução de regras).
+3. Logo abaixo do bloco de botões, a nota "* Você permanece neste mesmo site *".
+4. Só ENTÃO a introdução: no MÁXIMO 1 parágrafo (2 a 3 frases curtas), antes do 1º H2.
+
+APÓS CADA H2 (preview de UMA solução): 1 botão para a solução DAQUELE H2 (mesmo href do item 2 acima, variando o TEXTO), alternando a cor, com 1 PARÁGRAFO-GANCHO de CURIOSIDADE logo antes. O TEXTO desse botão TEM que ANUNCIAR a solução daquele H2 — cite um termo DISTINTIVO do H1/tema dela (ex.: "via Pix", "celular como garantia", "antecipar o FGTS"). É PROIBIDO um loop genérico ("Ver o passo que quase todo mundo pula »", "Será que eu tenho direito? »") que serviria para qualquer trilha; o gancho e/ou o botão citam esse termo do destino.
+
+FECHO (depois do último H2, antes do aviso de utilidade pública): SEM bloco de botões. Só 1 parágrafo curto de transição, em texto — pode incluir no MÁXIMO 1 CTA inline: 👉 <a href="[HREF]">Como [curiosidade curta] »</a>.
+VARIE SEMPRE o texto; nunca repita.
+</saturacao_e_escolha_de_caminho>
+
+<links_resolvidos_do_funil>
+Use estes hrefs EXATAMENTE (já validados — não invente, não altere, nunca gere "//"):
+- Ver o guia de aniversário >>> -> https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3
+- Ver o guia de aniversário >>> -> https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1
+- Ver o guia de bancos >>> -> https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2
+
+FAN-OUT: cada href acima é uma SOLUÇÃO DIFERENTE do funil (p1, p2, p3). O bloco "escolha seu caminho" da ABERTURA usa TODOS esses hrefs, 1 botão por solução, na ordem da lista. Cada H2 desta ponte é o preview de UMA solução e o botão daquele H2 repete o href DELA (variando o TEXTO). NUNCA use um href fora da lista.
+</links_resolvidos_do_funil>
+
+<botoes_gutenberg>
+Troque [HREF] pelo href resolvido e [TEXTO] pela copy. Alterne as 3 cores.
+
+PRIMÁRIO (verde):
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="[HREF]" style="border-radius:10px;background-color:#008353"><strong>[TEXTO]</strong></a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+
+SECUNDÁRIO (laranja): igual, com background-color:#ea580c
+AZUL (terciário): igual, com background-color:#2563eb
+
+ESPAÇADOR (5px):
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+
+NOTA (uma única vez, logo após o bloco "escolha seu caminho" da abertura):
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+</botoes_gutenberg>
+
+<BIBLIOTECA_DE_BLOCOS_GUTENBERG>
+Estes são os BLOCOS DE APOIO que deixam a página dinâmica, escaneável e "wow" — do jeito
+que converte no funil de arbitragem. Copie o HTML EXATAMENTE (espaçamentos já calibrados),
+troque só o [conteúdo]. Use MUITOS deles (não 2-3 — bastante), VARIADOS e DISTRIBUÍDOS ao
+longo do texto: idealmente 1 bloco de apoio a cada 1-2 parágrafos/seção. Nunca empilhe dois
+blocos ricos seguidos sem texto entre eles.
+
+REGRAS DE OURO:
+- 100% ESTÁTICOS: sem <script>, <button>, <iframe>, <form>. Os CTAs continuam sendo os
+  wp:buttons/CTAs inline de sempre (destino único do funil). Estes blocos NÃO viram CTA.
+- Número/valor/data/percentual SÓ pode vir da BASE FACTUAL. Sem dado real → não use "cards
+  de número" nem "barra de progresso". Nunca invente cifra.
+- Mobile-first: parágrafos curtos; um bloco de apoio por vez. Os blocos SUBSTITUEM texto
+  denso — não somam parágrafos, deixam a leitura mais leve.
+- VARIE de página para página: não use sempre os mesmos. Escolha conforme o conteúdo.
+- PRIORIZE os blocos de maior impacto que quase ninguém usa e estão mais ABAIXO nesta lista:
+  TABELA COMPARATIVA (wp:table), DUAS COLUNAS (wp:columns) e PULLQUOTE (wp:pullquote). Não caia
+  sempre em caixa + FAQ — a tabela/colunas/pullquote é o que separa "wow" de "mais do mesmo".
+
+════════ CAIXAS DE DESTAQUE (wp:group nativo — 4 variações de cor) ════════
+
+RESUMO / "EM RESUMO" (slate #f1f5f9) — abre a seção com um sumário do que vem:
+<!-- wp:group {"style":{"color":{"background":"#f1f5f9"},"spacing":{"padding":{"top":"24px","right":"26px","bottom":"24px","left":"26px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-radius:12px;background-color:#f1f5f9;margin:24px 0;padding:24px 26px">
+<!-- wp:heading {"level":3} -->
+<h3 class="wp-block-heading">Em resumo</h3>
+<!-- /wp:heading -->
+<!-- wp:list -->
+<ul class="wp-block-list"><!-- wp:list-item --><li>[ponto-chave 1]</li><!-- /wp:list-item --><!-- wp:list-item --><li>[ponto-chave 2]</li><!-- /wp:list-item --></ul>
+<!-- /wp:list -->
+</div>
+<!-- /wp:group -->
+
+DICA (azul #eff6ff) — orientação prática:
+<!-- wp:group {"style":{"color":{"background":"#eff6ff"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#2563eb","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>💡 Dica:</strong> [orientação prática e específica].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+VOCÊ SABIA? (âmbar #fffbeb) — curiosidade / definição de termo (abre loop):
+<!-- wp:group {"style":{"color":{"background":"#fffbeb"},"spacing":{"padding":{"top":"20px","right":"22px","bottom":"20px","left":"22px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"10px","left":{"color":"#d97706","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#d97706;border-left-width:5px;border-radius:10px;background-color:#fffbeb;margin:24px 0;padding:20px 22px">
+<!-- wp:paragraph --><p><strong>Você sabia?</strong> [fato curioso e útil, curto].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+ATENÇÃO (vermelho #fef2f2 / texto #7f1d1d) — consequência REAL do fato (nunca escassez inventada):
+<!-- wp:group {"style":{"color":{"background":"#fef2f2","text":"#7f1d1d"},"spacing":{"padding":{"top":"22px","right":"24px","bottom":"22px","left":"24px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px","left":{"color":"#dc2626","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-text-color has-background" style="border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px">
+<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">⚠️ Atenção</h3><!-- /wp:heading -->
+<!-- wp:paragraph --><p>[consequência real e verificável — ex.: "sem o cadastro atualizado o benefício pode ser bloqueado". Nunca prazo/escassez fabricados].</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+════════ CARDS DE NÚMERO (wp:html — 2-3 valores REAIS da base factual) ════════
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">[VALOR REAL]</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">[rótulo curto]</div>
+</div>
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">[VALOR REAL]</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">[rótulo curto]</div>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ PRÓS × CONTRAS (wp:html — 2 colunas verde/vermelho) ════════
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 220px;background:#ecfdf5;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#065f46">A favor</p>
+<ul style="margin:0;padding-left:18px;color:#065f46"><li>[vantagem 1]</li><li>[vantagem 2]</li></ul>
+</div>
+<div style="flex:1 1 220px;background:#fef2f2;border-radius:12px;padding:18px 20px">
+<p style="margin:0 0 8px;font-weight:700;color:#991b1b">Atenção</p>
+<ul style="margin:0;padding-left:18px;color:#991b1b"><li>[cuidado 1]</li><li>[cuidado 2]</li></ul>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ PASSO A PASSO COM BADGES NUMERADOS (wp:html — dos prints) ════════
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">[Ação do passo 1]</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">[detalhe curto].</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">[Ação do passo 2]</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">[detalhe curto].</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+════════ TIMELINE / CRONOLOGIA (wp:html — prazos, etapas no tempo) ════════
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><p style="margin:0;font-weight:700">[Etapa 1 - o que acontece]</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">[detalhe].</p></div>
+<div><p style="margin:0;font-weight:700">[Etapa 2 - o que acontece]</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">[detalhe].</p></div>
+</div>
+<!-- /wp:html -->
+
+════════ CHECKLIST EM PILLS (wp:html — requisitos/documentos) ════════
+<!-- wp:html -->
+<ul style="list-style:none;padding:0;margin:24px 0">
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ [requisito ou documento 1]</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ [requisito ou documento 2]</li>
+</ul>
+<!-- /wp:html -->
+
+════════ BARRA DE PROGRESSO (wp:html — [PERCENTUAL] REAL da base; senão não use) ════════
+<!-- wp:html -->
+<div style="background:#e5e7eb;border-radius:999px;height:14px;overflow:hidden;margin:16px 0 4px">
+<div style="width:[PERCENTUAL]%;background:#16a34a;height:100%"></div>
+</div>
+<p style="margin:0 0 24px;font-size:0.9em;color:#475569">[o que esse percentual representa]</p>
+<!-- /wp:html -->
+
+════════ TABELA COMPARATIVA (wp:table striped — dados lado a lado) ════════
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>[Coluna 1]</th><th>[Coluna 2]</th></tr></thead><tbody><tr><td>[dado]</td><td>[dado]</td></tr><tr><td>[dado]</td><td>[dado]</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+════════ DUAS COLUNAS (wp:columns — texto/comparação lado a lado) ════════
+<!-- wp:columns {"style":{"spacing":{"margin":{"top":"24px","bottom":"24px"}}}} -->
+<div class="wp-block-columns"><!-- wp:column -->
+<div class="wp-block-column"><!-- wp:paragraph --><p>[coluna A]</p><!-- /wp:paragraph --></div>
+<!-- /wp:column --><!-- wp:column -->
+<div class="wp-block-column"><!-- wp:paragraph --><p>[coluna B]</p><!-- /wp:paragraph --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+════════ PULLQUOTE (frase-chave de destaque — abre curiosidade) ════════
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>[frase memorável que provoca a próxima dúvida]</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+════════ SEPARADOR (wp:separator — respiro entre grandes blocos) ════════
+<!-- wp:separator {"className":"is-style-wide"} -->
+<hr class="wp-block-separator has-alpha-channel-opacity is-style-wide"/>
+<!-- /wp:separator -->
+
+════════ FAQ NATIVO (wp:details — accordion nativo, sem shortcode) ════════
+<!-- wp:details -->
+<details class="wp-block-details"><summary>[Pergunta frequente?]</summary><!-- wp:paragraph -->
+<p>[Resposta objetiva, começando por Sim./Não./Depende.]</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+(Repita o bloco wp:details por pergunta — 4 a 6 perguntas reais.)
+</BIBLIOTECA_DE_BLOCOS_GUTENBERG>
+
+
+<uso_dos_blocos>
+Como é uma PONTE (mais curta que a solução), use de 3 a 5 BLOCOS DE APOIO variados e distribuídos. NÃO passe de 5. Copie o HTML EXATAMENTE; número só da BASE FACTUAL.
+COTA DE VARIEDADE: inclua pelo menos 1 TABELA (wp:table) OU COLUNAS (wp:columns) OU PULLQUOTE (wp:pullquote) — não use só caixa de resumo + FAQ. No máximo 1 FAQ (wp:details).
+BALANCEAMENTO OBRIGATÓRIO: cada `<!-- wp:X -->` aberto TEM que ter o `<!-- /wp:X -->` correspondente. Um bloco sem fechamento invalida a página inteira — confira todos antes de entregar.
+</uso_dos_blocos>
+
+<prova_e_anti_alucinacao>
+Toda credibilidade precisa de PROVA: NÚMERO + UNIDADE + ENTIDADE-FONTE, tirados APENAS de {"resumo":"<h2>Requisitos de Elegibilidade: Quem realmente pode antecipar?</h2>Para antecipar o FGTS em 2026, o trabalhador deve ser maior de 18 anos (ou emancipado), possuir saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo oficial. Vale lembrar que, pelas regras vigentes, há uma carência obrigatória de 90 dias após a adesão para poder autorizar os bancos a consultarem o saldo. Saiba mais em <a href=\"/como-consultar-fgts-pelo-cpf-p1\">como consultar FGTS pelo CPF</a>.<h2>Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp</h2>Embora a regulação oficial estabeleça limites de R$ 100 a R$ 500 por parcela anual, fintechs e bancos parceiros oferecem simulações e contratações práticas a partir de R$ 20 (dependendo do saldo disponível), com liberação rápida via Pix e atendimento direto pelo WhatsApp em poucos minutos. Confira as opções em <a href=\"/bancos-antecipar-fgts-pix-whatsapp-p2\">bancos para antecipar FGTS via Pix e WhatsApp</a>.<h2>Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações</h2>Ao optar pela antecipação, em caso de demissão sem justa causa, o trabalhador perde o direito ao saque integral do saldo (Saque-Rescisão), mantendo apenas a multa rescisória de 40%. A quitação do empréstimo ocorre anualmente de forma automática direto do saldo do FGTS. Além disso, até 31 de outubro de 2026, é permitido antecipar até 5 parcelas anuais; a partir de 1º de novembro de 2026, o limite será reduzido para até 3 parcelas anuais. Veja os detalhes em <a href=\"/regras-demissao-quitar-emprestimo-fgts-p3\">regras de demissão e quitação de empréstimo FGTS</a>.","dados_validados":[{"fato":"Para contratar a antecipação do FGTS na Caixa Econômica Federal, o trabalhador deve ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ativar a modalidade Saque-Aniversário no aplicativo oficial do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"Pelas regras vigentes, o trabalhador que aderir ao Saque-Aniversário deve cumprir uma carência de 90 dias antes de autorizar instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"Até 31 de outubro de 2026, é permitida a antecipação de até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite de antecipação será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"A fintech Juca oferece simulações e contratações de antecipação do FGTS a partir de R$ 20,00 dependendo do saldo disponível do trabalhador.","fonte":"https://vemprojuca.com/para-voce"},{"fato":"A plataforma meutudo permite a contratação da antecipação do Saque-Aniversário do FGTS a partir de R$ 50,00 com pagamento rápido via Pix.","fonte":"https://meutudo.com.br/"},{"fato":"A fintech Up.p oferece a antecipação do Saque-Aniversário do FGTS de forma 100% digital com contratação também pelo WhatsApp.","fonte":"https://upp.com.br/"},{"fato":"O Banco Bmg permite a contratação da antecipação do Saque-Aniversário do FGTS com liberação do crédito diretamente na conta do cliente.","fonte":"https://www.bancobmg.com.br/"},{"fato":"Ao optar pelo Saque-Aniversário e realizar a antecipação, em caso de demissão sem justa causa, o trabalhador perde o direito ao saque integral do FGTS (Saque-Rescisão), recebendo apenas a multa rescisória de 40%.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"}],"passo_a_passo":["Acesse o aplicativo oficial do FGTS (gerenciado pela Caixa Econômica Federal) e faça login com seu CPF e senha cadastrada.","Na tela inicial, selecione a opção 'Saque-Aniversário do FGTS' e confirme a adesão a essa modalidade (caso ainda não tenha aderido). Lembre-se de que, se você aderiu recentemente, há uma carência obrigatória de 90 dias para autorizar consultas ao saldo.","No menu do aplicativo, clique em 'Autorizar bancos a consultarem seu FGTS' e selecione a opção 'Empréstimo Saque-Aniversário'.","Adicione a instituição financeira de sua preferência (como a Caixa Econômica Federal, Banco Bmg, Juca, meutudo ou Up.p) para permitir que ela consulte seu saldo disponível.","Acesse o canal de atendimento da instituição escolhida (aplicativo, site ou WhatsApp) para realizar a simulação do valor a ser antecipado.","Confirme os valores, taxas de juros e o Custo Efetivo Total (CET), assine o contrato digitalmente e aguarde a liberação do dinheiro, que costuma cair via Pix em poucos minutos."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx","https://www.caixa.gov.br/atendimento/aplicativos/fgts/Paginas/default.aspx","https://vemprojuca.com/para-voce","https://meutudo.com.br/","https://upp.com.br/","https://www.bancobmg.com.br/"],"sparse":false}. Cite 3 a 5 órgãos reais com a sigla na 1ª menção. OBRIGATÓRIO: cite no corpo PELO MENOS 1 dado concreto (número, data ou valor) tirado DIRETAMENTE de {"resumo":"<h2>Requisitos de Elegibilidade: Quem realmente pode antecipar?</h2>Para antecipar o FGTS em 2026, o trabalhador deve ser maior de 18 anos (ou emancipado), possuir saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo oficial. Vale lembrar que, pelas regras vigentes, há uma carência obrigatória de 90 dias após a adesão para poder autorizar os bancos a consultarem o saldo. Saiba mais em <a href=\"/como-consultar-fgts-pelo-cpf-p1\">como consultar FGTS pelo CPF</a>.<h2>Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp</h2>Embora a regulação oficial estabeleça limites de R$ 100 a R$ 500 por parcela anual, fintechs e bancos parceiros oferecem simulações e contratações práticas a partir de R$ 20 (dependendo do saldo disponível), com liberação rápida via Pix e atendimento direto pelo WhatsApp em poucos minutos. Confira as opções em <a href=\"/bancos-antecipar-fgts-pix-whatsapp-p2\">bancos para antecipar FGTS via Pix e WhatsApp</a>.<h2>Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações</h2>Ao optar pela antecipação, em caso de demissão sem justa causa, o trabalhador perde o direito ao saque integral do saldo (Saque-Rescisão), mantendo apenas a multa rescisória de 40%. A quitação do empréstimo ocorre anualmente de forma automática direto do saldo do FGTS. Além disso, até 31 de outubro de 2026, é permitido antecipar até 5 parcelas anuais; a partir de 1º de novembro de 2026, o limite será reduzido para até 3 parcelas anuais. Veja os detalhes em <a href=\"/regras-demissao-quitar-emprestimo-fgts-p3\">regras de demissão e quitação de empréstimo FGTS</a>.","dados_validados":[{"fato":"Para contratar a antecipação do FGTS na Caixa Econômica Federal, o trabalhador deve ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ativar a modalidade Saque-Aniversário no aplicativo oficial do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"Pelas regras vigentes, o trabalhador que aderir ao Saque-Aniversário deve cumprir uma carência de 90 dias antes de autorizar instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"Até 31 de outubro de 2026, é permitida a antecipação de até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite de antecipação será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"A fintech Juca oferece simulações e contratações de antecipação do FGTS a partir de R$ 20,00 dependendo do saldo disponível do trabalhador.","fonte":"https://vemprojuca.com/para-voce"},{"fato":"A plataforma meutudo permite a contratação da antecipação do Saque-Aniversário do FGTS a partir de R$ 50,00 com pagamento rápido via Pix.","fonte":"https://meutudo.com.br/"},{"fato":"A fintech Up.p oferece a antecipação do Saque-Aniversário do FGTS de forma 100% digital com contratação também pelo WhatsApp.","fonte":"https://upp.com.br/"},{"fato":"O Banco Bmg permite a contratação da antecipação do Saque-Aniversário do FGTS com liberação do crédito diretamente na conta do cliente.","fonte":"https://www.bancobmg.com.br/"},{"fato":"Ao optar pelo Saque-Aniversário e realizar a antecipação, em caso de demissão sem justa causa, o trabalhador perde o direito ao saque integral do FGTS (Saque-Rescisão), recebendo apenas a multa rescisória de 40%.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"}],"passo_a_passo":["Acesse o aplicativo oficial do FGTS (gerenciado pela Caixa Econômica Federal) e faça login com seu CPF e senha cadastrada.","Na tela inicial, selecione a opção 'Saque-Aniversário do FGTS' e confirme a adesão a essa modalidade (caso ainda não tenha aderido). Lembre-se de que, se você aderiu recentemente, há uma carência obrigatória de 90 dias para autorizar consultas ao saldo.","No menu do aplicativo, clique em 'Autorizar bancos a consultarem seu FGTS' e selecione a opção 'Empréstimo Saque-Aniversário'.","Adicione a instituição financeira de sua preferência (como a Caixa Econômica Federal, Banco Bmg, Juca, meutudo ou Up.p) para permitir que ela consulte seu saldo disponível.","Acesse o canal de atendimento da instituição escolhida (aplicativo, site ou WhatsApp) para realizar a simulação do valor a ser antecipado.","Confirme os valores, taxas de juros e o Custo Efetivo Total (CET), assine o contrato digitalmente e aguarde a liberação do dinheiro, que costuma cair via Pix em poucos minutos."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx","https://www.caixa.gov.br/atendimento/aplicativos/fgts/Paginas/default.aspx","https://vemprojuca.com/para-voce","https://meutudo.com.br/","https://upp.com.br/","https://www.bancobmg.com.br/"],"sparse":false}. Se a base vier sem número, use 1 fato qualitativo de autoridade citando a fonte oficial pelo nome. Nunca invente cifra.
+</prova_e_anti_alucinacao>
+
+<voz>
+- 2ª/3ª pessoa, informativa e envolvente. Português brasileiro 100%. Sem travessão.
+- QUEBRE OS PARÁGRAFOS (mobile-first): mantenha parágrafos curtos (1-2 frases); cada <p> tem 1 IDEIA e no MÁXIMO 2 a 3 frases curtas; se juntar 2 fatos, separe em <p> DIFERENTES. NUNCA um "paredão" de texto.
+- QUEBRA DE PADRÃO VISUAL: <strong> nos termos-chave, <em> pra ênfase e <u> pontual num detalhe crítico, com moderação (2 a 4 destaques por seção, nunca frases inteiras).
+- Emoji só como marcador de escaneabilidade, com parcimônia.
+</voz>
+
+<formato_de_saida>
+Output = HTML WordPress-ready no padrão Gutenberg (comentários <!-- wp: -->). SEM H1, SEM <article>/<section>, SEM <script>. TODO bloco wp: tem abertura e fechamento. Comece direto na LINHA-CTA em negrito, seguida imediatamente do bloco "escolha seu caminho" + nota. NUNCA coloque um divisor (wp:separator / <hr>) entre botões ou colado num grupo de botões. NUNCA feche a página com um bloco de botões (wp:buttons): o fecho é só texto.
+</formato_de_saida>
+
+=<TAREFA>
+Tema/headline: Antecipar FGTS: Requisitos, Valores Mínimos e Tudo que Você Precisa Saber: ir direto à sua etapa
+Objetivo (ponte para a solução): Confirmar a elegibilidade do usuário para gerar alívio, ao mesmo tempo em que cria o medo de cometer erros no processo que possam travar o saldo.
+Estrutura (H2 obrigatórios): H2: Requisitos de Elegibilidade: Quem realmente pode antecipar? (Apresentar os critérios: ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo. Linkar para /como-consultar-fgts-pelo-cpf-p1)
+H2: Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp (Mostrar que é possível antecipar valores pequenos sem precisar de grandes saldos, utilizando canais práticos. Linkar para /bancos-antecipar-fgts-pix-whatsapp-p2)
+H2: Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações (Explicar brevemente o impacto da demissão e a possibilidade de realizar novas antecipações mesmo já tendo feito uma antes. Linkar para /regras-demissao-quitar-emprestimo-fgts-p3)
+Keywords: 
+BASE FACTUAL (use SOMENTE isto para números/órgãos/datas): {"resumo":"<h2>Requisitos de Elegibilidade: Quem realmente pode antecipar?</h2>Para antecipar o FGTS em 2026, o trabalhador deve ser maior de 18 anos (ou emancipado), possuir saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo oficial. Vale lembrar que, pelas regras vigentes, há uma carência obrigatória de 90 dias após a adesão para poder autorizar os bancos a consultarem o saldo. Saiba mais em <a href=\"/como-consultar-fgts-pelo-cpf-p1\">como consultar FGTS pelo CPF</a>.<h2>Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp</h2>Embora a regulação oficial estabeleça limites de R$ 100 a R$ 500 por parcela anual, fintechs e bancos parceiros oferecem simulações e contratações práticas a partir de R$ 20 (dependendo do saldo disponível), com liberação rápida via Pix e atendimento direto pelo WhatsApp em poucos minutos. Confira as opções em <a href=\"/bancos-antecipar-fgts-pix-whatsapp-p2\">bancos para antecipar FGTS via Pix e WhatsApp</a>.<h2>Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações</h2>Ao optar pela antecipação, em caso de demissão sem justa causa, o trabalhador perde o direito ao saque integral do saldo (Saque-Rescisão), mantendo apenas a multa rescisória de 40%. A quitação do empréstimo ocorre anualmente de forma automática direto do saldo do FGTS. Além disso, até 31 de outubro de 2026, é permitido antecipar até 5 parcelas anuais; a partir de 1º de novembro de 2026, o limite será reduzido para até 3 parcelas anuais. Veja os detalhes em <a href=\"/regras-demissao-quitar-emprestimo-fgts-p3\">regras de demissão e quitação de empréstimo FGTS</a>.","dados_validados":[{"fato":"Para contratar a antecipação do FGTS na Caixa Econômica Federal, o trabalhador deve ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ativar a modalidade Saque-Aniversário no aplicativo oficial do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"Pelas regras vigentes, o trabalhador que aderir ao Saque-Aniversário deve cumprir uma carência de 90 dias antes de autorizar instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"Até 31 de outubro de 2026, é permitida a antecipação de até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite de antecipação será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"},{"fato":"A fintech Juca oferece simulações e contratações de antecipação do FGTS a partir de R$ 20,00 dependendo do saldo disponível do trabalhador.","fonte":"https://vemprojuca.com/para-voce"},{"fato":"A plataforma meutudo permite a contratação da antecipação do Saque-Aniversário do FGTS a partir de R$ 50,00 com pagamento rápido via Pix.","fonte":"https://meutudo.com.br/"},{"fato":"A fintech Up.p oferece a antecipação do Saque-Aniversário do FGTS de forma 100% digital com contratação também pelo WhatsApp.","fonte":"https://upp.com.br/"},{"fato":"O Banco Bmg permite a contratação da antecipação do Saque-Aniversário do FGTS com liberação do crédito diretamente na conta do cliente.","fonte":"https://www.bancobmg.com.br/"},{"fato":"Ao optar pelo Saque-Aniversário e realizar a antecipação, em caso de demissão sem justa causa, o trabalhador perde o direito ao saque integral do FGTS (Saque-Rescisão), recebendo apenas a multa rescisória de 40%.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx"}],"passo_a_passo":["Acesse o aplicativo oficial do FGTS (gerenciado pela Caixa Econômica Federal) e faça login com seu CPF e senha cadastrada.","Na tela inicial, selecione a opção 'Saque-Aniversário do FGTS' e confirme a adesão a essa modalidade (caso ainda não tenha aderido). Lembre-se de que, se você aderiu recentemente, há uma carência obrigatória de 90 dias para autorizar consultas ao saldo.","No menu do aplicativo, clique em 'Autorizar bancos a consultarem seu FGTS' e selecione a opção 'Empréstimo Saque-Aniversário'.","Adicione a instituição financeira de sua preferência (como a Caixa Econômica Federal, Banco Bmg, Juca, meutudo ou Up.p) para permitir que ela consulte seu saldo disponível.","Acesse o canal de atendimento da instituição escolhida (aplicativo, site ou WhatsApp) para realizar a simulação do valor a ser antecipado.","Confirme os valores, taxas de juros e o Custo Efetivo Total (CET), assine o contrato digitalmente e aguarde a liberação do dinheiro, que costuma cair via Pix em poucos minutos."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/Paginas/default.aspx","https://www.caixa.gov.br/atendimento/aplicativos/fgts/Paginas/default.aspx","https://vemprojuca.com/para-voce","https://meutudo.com.br/","https://upp.com.br/","https://www.bancobmg.com.br/"],"sparse":false}
+</TAREFA>
+
+<COMPLIANCE>
+AVISO: gere UMA única vez, como um <p> simples (sem destaque, sem caixa), o texto: "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos." — o SISTEMA reposiciona esse aviso no FINAL do artigo, discreto (itálico, fonte menor). Não o coloque no topo nem o destaque.
+NÃO gere rodapé "Sobre o Site", CNPJ nem byline: o tema fixo do WordPress já injeta isso. Gere APENAS o corpo da ponte + este AVISO.
+</COMPLIANCE>
+
+<checklist_antes_de_entregar>
+- [ ] Ordem exata da abertura: LINHA-CTA em negrito ("Toque na opção certa e [payoff] ✅") -> bloco "escolha seu caminho" (1 botão por solução, hrefs na ordem, cores alternadas) -> nota "* Você permanece neste mesmo site *" -> introdução (no MÁXIMO 1 parágrafo).
+- [ ] Total de botões = 1 por solução no bloco "escolha seu caminho" + 1 após cada H2 de preview (tipicamente 3+3 = 6); cores alternadas, texto sempre diferente.
+- [ ] Micro-gancho de curiosidade antes de cada botão pós-H2, E o botão ANUNCIA a solução de destino (termo distintivo do H1/tema dela) — nunca um loop genérico ("ver o passo que todo mundo pula", "será que eu tenho direito") que serviria para qualquer trilha.
+- [ ] SEM bloco de botões no final: depois do último H2, só um parágrafo curto de transição (texto), com no MÁXIMO 1 CTA inline 👉.
+- [ ] 3 a 5 blocos de apoio variados e distribuídos.
+- [ ] Nenhum verbo de execução; nenhuma escassez fabricada; nenhuma falsa oficialidade.
+- [ ] FAN-OUT: bloco "escolha seu caminho" com 1 botão por solução (hrefs DISTINTOS, na ordem da lista); nenhum href fora da lista; sem "//".
+- [ ] HUB NEUTRO: payoff neutro (NENHUMA solução privilegiada no hero); BLOCO QUALIFICADOR "caso → caminho" presente, na ordem dada, derivado das soluções; zero viés de ângulo e nenhuma solução destacada acima das outras.
+- [ ] Pelo menos 1 dado concreto da base factual + 3 a 5 órgãos com sigla; zero cifra fora da base.
+- [ ] Aviso de utilidade pública no corpo (SEM rodapé, SEM CNPJ, SEM byline).
+Gere agora o HTML Gutenberg, começando direto na LINHA-CTA em negrito.
+</checklist_antes_de_entregar>

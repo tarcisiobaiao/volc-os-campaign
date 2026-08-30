@@ -1,0 +1,329 @@
+# Exigências de asset por canal do Google Ads. Número mágico não mora em código
+# — mesma regra de `volc_ads/campanha/limites.yaml`, e pelo mesmo motivo.
+#
+# ── DE ONDE VEM CADA NÚMERO ─────────────────────────────────────────────────
+#
+#   docs/growth-engine/matriz-api/  →  a matriz oficial (Agente A). Autoridade.
+#   volc_ads/campanha/limites.yaml  →  caractere e contagem já com dono (Agente C),
+#                                      lidos do proto do SDK v25 instalado.
+#   este arquivo                    →  só o que as duas acima não cobrem.
+#
+# Onde `limites_chave` ou `quantidade_chave` estão preenchidos, o número vem do
+# dono vizinho. Dois arquivos declarando o mesmo teto é a armadilha dos dois
+# medidores: eles divergem, e a divergência só aparece no dia em que alguém
+# atualiza um e esquece o outro. O valor escrito aqui ao lado da chave é
+# FALLBACK, e a `fonte_dos_numeros` da especificação diz qual dos dois entrou.
+#
+# ── ⚠️ A ARMADILHA QUE ESTE ARQUIVO JÁ CAIU UMA VEZ ─────────────────────────
+#
+# A tabela completa que o Google publica — com mínimos, máximos, proporção,
+# dimensão e **5120 KB de peso máximo** — é a de PERFORMANCE MAX. Ela NÃO vale
+# para Display. Para o RDA o guia oficial remete ao Help Center sem publicar os
+# números, e o proto declara dimensão, proporção e contagem, mas NÃO declara
+# peso máximo nem spec nenhuma de vídeo.
+#
+# Onde a matriz diz `[NÃO CONFIRMADO]`, aqui o campo é `null` — e isso é
+# deliberado: **ausência é a resposta certa, e número emprestado é pior que
+# campo vazio**. Um lote que valida contra o teto errado passa localmente e é
+# recusado pela API depois, com o erro apontando para o asset e não para a
+# regra. `validacao.py` simplesmente não checa o que a especificação não sabe.
+
+# `true` porque nem todo canal está coberto pela matriz: VIDEO ainda não tem
+# página oficial, e Display tem campos `[NÃO CONFIRMADO]`. Cada canal e cada
+# especificação declaram a própria fonte — este é o resumo pessimista.
+provisorio: true
+fonte_oficial: "docs/growth-engine/matriz-api/"
+dono_dos_caracteres: "volc_ads/campanha/limites.yaml"
+
+# Canais cujo criativo é texto puro e já tem dono em outro lugar. Declarados
+# aqui para que a ausência seja resposta, e não silêncio.
+sem_exigencia_de_criativo:
+  SEARCH: "volc_ads/campanha/validacao.py (RSA é texto, não asset binário)"
+
+# ✅ DIVERGÊNCIA RESOLVIDA em 26/08/2026, e o registro fica.
+#
+# `limites.yaml` carregava 40 para a headline de Demand Gen e a matriz da API
+# lia 30 no proto. O condutor arbitrou pelo proto — `DemandGenMultiAssetAdInfo`
+# diz literalmente "Maximum display width is 30. At least 1 and max 5 headlines
+# can be specified." — e `limites.yaml` passou a 30.
+#
+# ⚠️ Por isso o fallback local aqui é `null`, e não 30. Ele existia como 40 e
+# ficou órfão: enquanto a chave autoritativa existir, ele nunca é lido; no dia em
+# que ela sumir, um fallback numérico assume em silêncio e a camada passa a medir
+# com um número que ninguém conferiu. `null` faz a especificação declarar que não
+# sabe, e `validacao.py` não cobra o que a especificação não sabe.
+
+padroes:
+  # Mimes valem para todo ImageAsset da API v25. PESO NÃO tem padrão: ele muda
+  # por canal e num deles é desconhecido, então cada canal declara o seu.
+  imagem:
+    mimes: ["image/png", "image/jpeg", "image/gif"]
+  video:
+    mimes: ["video/mp4"]
+
+canais:
+
+  # Fonte: matriz-api/display.md §3 — docstrings de `ResponsiveDisplayAdInfo`
+  # do SDK 31.3.0. Dimensão, proporção e contagem são `[alta]`. Peso máximo,
+  # dimensão recomendada e TODA spec de vídeo são `[NÃO CONFIRMADO]`.
+  DISPLAY:
+    fonte: "matriz-api/display.md §3 (proto ResponsiveDisplayAdInfo)"
+    provisorio: false
+    assets:
+      imagem_marketing:
+        quantidade: {min: 1, max: 15}
+        quantidade_chave: {min: display_asset.marketing_min, max: display_asset.marketing_total_max}
+        proporcao: [191, 100]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [600, 314]
+        bytes_maximos: null        # [NÃO CONFIRMADO] — não herdar os 5120 KB de PMax
+      imagem_marketing_quadrada:
+        quantidade: {min: 1, max: 15}
+        quantidade_chave: {min: display_asset.marketing_quadrada_min, max: display_asset.marketing_total_max}
+        proporcao: [1, 1]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [300, 300]
+        bytes_maximos: null        # [NÃO CONFIRMADO]
+      logo_quadrado:
+        # min 0 e recomendada 1: o proto escreve "is required" para as imagens
+        # de marketing e NÃO escreve para logo. Barrar por logo ausente
+        # recusaria localmente um payload que a API aceita.
+        quantidade: {min: 0, max: 5, recomendada: 1}
+        quantidade_chave: {min: display_asset.logo_min, max: display_asset.logo_total_max}
+        proporcao: [1, 1]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [128, 128]
+        bytes_maximos: null        # [NÃO CONFIRMADO]
+      logo_paisagem:
+        quantidade: {min: 0, max: 5}
+        quantidade_chave: {min: null, max: display_asset.logo_total_max}
+        proporcao: [4, 1]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [512, 128]
+        bytes_maximos: null        # [NÃO CONFIRMADO]
+      video:
+        # O proto declara SÓ a contagem. Duração, proporção e resolução são
+        # `[NÃO CONFIRMADO]` — PMax exige ≥10s, mas isso é a tabela de PMax.
+        quantidade: {min: 0, max: 5}
+        quantidade_chave: {min: null, max: display_asset.video_max}
+        duracao: {min_s: null, max_s: null}
+        bytes_maximos: null
+        mimes: []
+        fonte: "matriz-api/display.md §3 — contagem [alta], resto [NÃO CONFIRMADO]"
+      headline:
+        quantidade: {min: 1, max: 5}
+        caracteres_maximos: 30
+        limites_chave: headline_display
+      headline_longa:
+        # OBRIGATÓRIO no RDA e SINGULAR — o campo do proto é `long_headline`,
+        # não uma lista. Opcional-com-default aqui derrubaria o construtor.
+        quantidade: {min: 1, max: 1}
+        caracteres_maximos: 90
+        limites_chave: long_headline_display
+      descricao:
+        quantidade: {min: 1, max: 5}
+        caracteres_maximos: 90
+        limites_chave: description_display
+      nome_da_empresa:
+        quantidade: {min: 1, max: 1}
+        caracteres_maximos: 25
+        limites_chave: business_name
+
+  # Fonte: matriz-api/demand-gen.md §3 (proto DemandGenMultiAssetAdInfo) e §4
+  # (Help Center, única fonte oficial para peso e duração).
+  DEMAND_GEN:
+    fonte: "matriz-api/demand-gen.md §3 e §4"
+    provisorio: false
+    assets:
+      # ⚠️ `min: 0` NOS DOIS, e a exigência mora no combinado abaixo.
+      #
+      # A matriz oficial diz "obrigatório SE o outro estiver ausente" — é um par
+      # em que basta um. Com `min: 1` em cada, um lote legítimo que trouxesse só
+      # imagens quadradas era recusado AQUI, antes de a API opinar. Validação
+      # mais estrita que a plataforma não protege: ela barra trabalho válido e
+      # manda o operador procurar um defeito que não existe.
+      imagem_marketing:
+        quantidade: {min: 0, max: 20}
+        quantidade_chave: {min: null, max: demand_gen_asset.marketing_total_max}
+        proporcao: [191, 100]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [600, 314]
+        dimensao_recomendada: [1200, 628]
+        bytes_maximos: 5242880
+      imagem_marketing_quadrada:
+        quantidade: {min: 0, max: 20}
+        quantidade_chave: {min: null, max: demand_gen_asset.marketing_total_max}
+        proporcao: [1, 1]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [300, 300]
+        dimensao_recomendada: [1200, 1200]
+        bytes_maximos: 5242880
+      imagem_marketing_retrato:
+        quantidade: {min: 0, max: 20}
+        quantidade_chave: {min: null, max: demand_gen_asset.marketing_total_max}
+        proporcao: [4, 5]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [480, 600]
+        dimensao_recomendada: [960, 1200]
+        bytes_maximos: 5242880
+      imagem_marketing_retrato_alto:
+        quantidade: {min: 0, max: 20}
+        quantidade_chave: {min: null, max: demand_gen_asset.marketing_total_max}
+        proporcao: [9, 16]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [600, 1067]
+        dimensao_recomendada: [1080, 1920]   # recomendado para Shorts
+        bytes_maximos: 5242880
+      logo_quadrado:
+        # 144×144 é o piso do Help Center e satisfaz também os 128×128 do
+        # proto — as duas fontes oficiais divergem e o maior atende as duas.
+        # E o peso do logo é 150 KB, NÃO os 5 MB das outras imagens.
+        quantidade: {min: 1, max: 5}
+        quantidade_chave: {min: demand_gen_asset.logo_min, max: demand_gen_asset.logo_max}
+        proporcao: [1, 1]
+        tolerancia_proporcao: 0.01
+        dimensao_minima: [144, 144]
+        dimensao_recomendada: [1200, 1200]
+        bytes_maximos: 153600
+        fonte: "matriz-api/demand-gen.md §4 (Help Center; proto diz 128×128)"
+      video:
+        # 5 s é o mínimo de elegibilidade; abaixo de 10 s o vídeo não serve
+        # para YouTube In-stream. O piso duro é 5.
+        quantidade: {min: 0, max: 5}
+        duracao: {min_s: 5.0, max_s: null}
+        bytes_maximos: null
+        mimes: ["video/mp4", "video/mpeg"]
+      headline:
+        quantidade: {min: 1, max: 5}
+        # Sem número aqui de propósito — ver o bloco no topo do arquivo.
+        caracteres_maximos: null
+        limites_chave: headline_demandgen
+      headline_longa:
+        quantidade: {min: 1, max: 5}
+        caracteres_maximos: 90
+        limites_chave: long_headline
+      descricao:
+        quantidade: {min: 1, max: 5}
+        caracteres_maximos: 90
+        limites_chave: description_dgen
+      nome_da_empresa:
+        quantidade: {min: 1, max: 1}
+        caracteres_maximos: 25
+        limites_chave: business_name
+
+  # Fonte: matriz-api/performance-max.md §4 — a tabela oficial completa. É ESTA
+  # que traz os 5120 KB; eles não valem para nenhum outro canal.
+  PERFORMANCE_MAX:
+    fonte: "matriz-api/performance-max.md §4"
+    provisorio: false
+    assets:
+      imagem_marketing:
+        quantidade: {min: 1, max: 20}
+        proporcao: [191, 100]
+        dimensao_minima: [600, 314]
+        dimensao_recomendada: [1200, 628]
+        bytes_maximos: 5242880
+      imagem_marketing_quadrada:
+        quantidade: {min: 1, max: 20}
+        proporcao: [1, 1]
+        dimensao_minima: [300, 300]
+        dimensao_recomendada: [1200, 1200]
+        bytes_maximos: 5242880
+      imagem_marketing_retrato:
+        quantidade: {min: 0, max: 20}
+        proporcao: [4, 5]
+        dimensao_minima: [480, 600]
+        dimensao_recomendada: [960, 1200]
+        bytes_maximos: 5242880
+      logo_quadrado:
+        quantidade: {min: 1, max: 5}
+        proporcao: [1, 1]
+        dimensao_minima: [128, 128]
+        dimensao_recomendada: [1200, 1200]
+        bytes_maximos: 5242880
+      logo_paisagem:
+        quantidade: {min: 0, max: 20}
+        proporcao: [4, 1]
+        dimensao_minima: [512, 128]
+        dimensao_recomendada: [1200, 300]
+        bytes_maximos: 5242880
+      video:
+        quantidade: {min: 0, max: 15}
+        duracao: {min_s: 10.0, max_s: null}
+        bytes_maximos: null
+      headline:
+        quantidade: {min: 3, max: 15}
+        caracteres_maximos: 30
+        limites_chave: null
+      headline_longa:
+        quantidade: {min: 1, max: 5}
+        caracteres_maximos: 90
+        limites_chave: null
+      descricao:
+        # Ao menos UMA descrição precisa ter 60 caracteres ou menos, senão
+        # `AssetGroupError.SHORT_DESCRIPTION_REQUIRED`. É exigência do conjunto:
+        # cinco descrições de 90 são todas válidas e o asset group é recusado.
+        quantidade: {min: 2, max: 5}
+        caracteres_maximos: 90
+        caracteres_de_pelo_menos_um: 60
+        limites_chave: null
+      nome_da_empresa:
+        quantidade: {min: 1, max: 1}
+        caracteres_maximos: 25
+        limites_chave: business_name
+
+  # A matriz oficial ainda NÃO cobre campanhas de vídeo. Além disso, o formato
+  # (in-stream, in-feed, bumper, Shorts) muda duração e textos exigidos, e essa
+  # distinção não está modelada. Declarado só o que vale para qualquer formato,
+  # para que o canal não minta ao operador.
+  VIDEO:
+    fonte: "PROVISÓRIO — matriz-api ainda não cobre campanhas de vídeo"
+    provisorio: true
+    assets:
+      video:
+        quantidade: {min: 1, max: 5}
+        duracao: {min_s: null, max_s: null}
+        bytes_maximos: null
+      logo_quadrado:
+        quantidade: {min: 0, max: 1}
+        proporcao: [1, 1]
+        dimensao_minima: [128, 128]
+        bytes_maximos: null
+      headline:
+        quantidade: {min: 0, max: 5}
+        caracteres_maximos: null
+        limites_chave: null
+      descricao:
+        quantidade: {min: 0, max: 5}
+        caracteres_maximos: null
+        limites_chave: null
+
+# Tetos que valem para VÁRIOS tipos somados. A API tem exatamente isso e uma
+# tabela por tipo não consegue dizê-lo: um validador que conte cada tipo
+# isoladamente aceita 15+15 imagens de Display, e a API recusa o payload
+# inteiro — não o excedente.
+combinados:
+  DISPLAY:
+    - rotulo: "imagens de marketing (paisagem + quadrada)"
+      tipos: [imagem_marketing, imagem_marketing_quadrada]
+      maximo: 15
+      maximo_chave: display_asset.marketing_total_max
+    - rotulo: "logos (quadrado + paisagem)"
+      tipos: [logo_quadrado, logo_paisagem]
+      maximo: 5
+      maximo_chave: display_asset.logo_total_max
+  DEMAND_GEN:
+    - rotulo: "imagens de marketing (todas as orientações)"
+      tipos: [imagem_marketing, imagem_marketing_quadrada,
+              imagem_marketing_retrato, imagem_marketing_retrato_alto]
+      maximo: 20
+      maximo_chave: demand_gen_asset.marketing_total_max
+    # A exigência é do PAR, não das quatro famílias: paisagem é obrigatória se
+    # a quadrada faltar, e vice-versa. Retratos entram no teto acima, mas não
+    # satisfazem este mínimo. Separar os dois combinados evita aprovar um lote
+    # só com retratos antes de o builder recusá-lo.
+    - rotulo: "imagem base (paisagem ou quadrada)"
+      tipos: [imagem_marketing, imagem_marketing_quadrada]
+      maximo: null
+      minimo: 1
+      minimo_chave: demand_gen_asset.marketing_pair_min

@@ -1,0 +1,582 @@
+{
+  "schema_version": 1,
+  "run_id": "GGE-2026-08-26",
+  "missao": "Google Growth Engine do VOLC OS",
+  "condutor": "Claude (arquiteto líder)",
+  "aberto_em": "2026-08-26",
+  "head_de_partida": "688e3f104f8b4236e429d955769c5381b9aabf4e",
+  "branch": "main",
+  "arvore_suja_ao_abrir": 155,
+  "portoes_fechados": [
+    "mutate no Google Ads",
+    "ativar/pausar/alterar campanha real",
+    "aplicar migration em produção",
+    "ativar workflow n8n",
+    "push ou deploy",
+    "expor ou versionar segredo"
+  ],
+  "verdade_de_partida": {
+    "grafo": {
+      "current": true,
+      "built_at_commit": "688e3f10",
+      "nos_hibridos": 11556
+    },
+    "sdk_google_ads": "v25 (google-ads 31.3.0) — backend/.venv",
+    "credencial": "~/google-ads.yaml presente, chmod 600",
+    "mcc_da_casa": "6016739364",
+    "conta_credito_up": "8017851692",
+    "trava_escrita": "fechada (dois fatores: destravar() + FORGE_PERMITIR_ESCRITA=1)",
+    "construtores_registrados": [
+      "SEARCH"
+    ],
+    "roadmap_vivo": "14 iniciativas; P04 'Destravar Google Ads além de Search' é esta missão"
+  },
+  "ondas": [
+    {
+      "onda": 1,
+      "agentes": [
+        "A",
+        "B",
+        "D",
+        "G"
+      ],
+      "estado": "entregue"
+    },
+    {
+      "onda": 2,
+      "agentes": [
+        "C",
+        "E"
+      ],
+      "estado": "entregue"
+    },
+    {
+      "onda": 2,
+      "agentes": [
+        "F"
+      ],
+      "estado": "em voo"
+    },
+    {
+      "onda": 3,
+      "agentes": [
+        "auditoria adversarial (workflow)"
+      ],
+      "estado": "em voo"
+    }
+  ],
+  "ownership": {
+    "A": {
+      "escopo": "documentação oficial e matriz da API",
+      "escreve": [
+        "docs/growth-engine/matriz-api/**"
+      ]
+    },
+    "B": {
+      "escopo": "diagnóstico read-only Maquininha e FGTS",
+      "escreve": [
+        "docs/growth-engine/diagnostico/**"
+      ]
+    },
+    "C": {
+      "escopo": "engine multicanal e fatia Display",
+      "escreve": [
+        "volc_ads/campanha/**",
+        "volc_ads/subir.py",
+        "volc_ads/perfil/**"
+      ]
+    },
+    "D": {
+      "escopo": "creative engine (portas e adaptadores)",
+      "escreve": [
+        "volc_ads/criativo/**"
+      ]
+    },
+    "E": {
+      "escopo": "Supabase, domínio, lote e linhagem",
+      "escreve": [
+        "supabase/migrations/v10_*",
+        "backend/app/trafego/lote*.py",
+        "backend/tests/test_lote*.py"
+      ]
+    },
+    "F": {
+      "escopo": "frontend e UX operacional",
+      "escreve": [
+        "src/**"
+      ]
+    },
+    "G": {
+      "escopo": "legado n8n e autogestão",
+      "escreve": [
+        "docs/growth-engine/legado-n8n/**"
+      ]
+    },
+    "H": {
+      "escopo": "auditoria adversarial",
+      "escreve": []
+    }
+  },
+  "checkpoints": [
+    {
+      "n": 1,
+      "em": "2026-08-26T17:45-03:00",
+      "o_que": "Verdade de partida fixada, baselines medidos, forense dos recibos extraída e roteada ao Agente B. Ondas 1 e 2 abertas (A, B, C, D, E, G).",
+      "portao_de_mutacao": "não alcançado"
+    },
+    {
+      "n": 2,
+      "em": "2026-08-26T18:05-03:00",
+      "o_que": "Diagnóstico Search fechado com evidência real: hipótese do CPC CONFIRMADA e quantificada pelas position_estimates do próprio Google. change_event identifica a cadeia causal manual de 19/08. ADR-21 a ADR-27 escritos. Sete agentes correndo.",
+      "shas": [
+        "278e40d chore(growth-engine): abre o run manifest",
+        "2cefc0c docs(adr): sete decisoes"
+      ],
+      "portao_de_mutacao": "não alcançado"
+    },
+    {
+      "n": 3,
+      "em": "2026-08-26T18:20-03:00",
+      "o_que": "Agente B entregou. Ele me corrigiu em dois pontos, ambos verificados de forma independente: a origem do lance difere entre as duas campanhas, e minha verificação '7 alcançáveis / 4 entregaram' era coincidência de contagem (interseção real = 0).",
+      "portao_de_mutacao": "não alcançado"
+    },
+    {
+      "n": 4,
+      "em": "2026-08-26T18:50-03:00",
+      "o_que": "Agentes A, B e G entregues. Achado de segurança NOVO e verificado: caminho de escrita não autenticado no Google Ads com a URL no bundle publicado. Ledger E-22 a E-30. Plano de Canário escrito com bloqueador de aprovação declarado.",
+      "portao_de_mutacao": "não alcançado"
+    },
+    {
+      "n": 5,
+      "em": "2026-08-26T19:30-03:00",
+      "o_que": "Seis das sete frentes entregues e verificadas pelo condutor. Migrations v10 com ciclo completo provado em cluster descartável. Auditoria adversarial aberta sobre o congelado. Plano de Canário sem pendência técnica.",
+      "shas": [
+        "a3ce5c2 matriz",
+        "646d25e engine+Display",
+        "6eed77f criativo",
+        "ab85b16 canário",
+        "4176670 persistência v10",
+        "0ac1d4e índice de migrations"
+      ],
+      "portao_de_mutacao": "não alcançado"
+    },
+    {
+      "n": 6,
+      "em": "2026-08-26T21:10-03:00",
+      "o_que": "Auditoria adversarial completa: 29 achados julgados por 93 agentes, 15 confirmados por céticos independentes, 15 corrigidos com prova. Sete provas novas guardam as guardas novas.",
+      "portao_de_mutacao": "não alcançado"
+    }
+  ],
+  "baselines": {
+    "frontend_vitest": {
+      "arquivos": 44,
+      "testes": 574,
+      "falhas": 0,
+      "medido_em": "2026-08-26T17:37-03:00"
+    },
+    "tipos_tsc_app": {
+      "erros": 77,
+      "nota": "76 herdados do webgo + 1 de 'formato 2.tsx' (cópia de Drive, não rastreada, zero imports)"
+    },
+    "backend_pytest": {
+      "esperado": "739 passed, 5 skipped, 0 failures",
+      "comando": "./scripts/gates-backend.sh"
+    },
+    "duplicatas_types": 0
+  },
+  "forense_recibos": {
+    "fonte": "volc_ads/dados/recibos/ — 5 recibos ACEITO de 19/08/2026, conta 8017851692",
+    "campanhas": [
+      {
+        "nome": "FORGE BR 20260819_123824 Maquininha de Cartão",
+        "campaign_id": "24155028398",
+        "budget_id": "15805293297",
+        "operacoes": 34
+      },
+      {
+        "nome": "BR - 20260819_131546 / Maquininha de Cartão",
+        "campaign_id": "24155134757",
+        "budget_id": "15800018633",
+        "operacoes": 42
+      },
+      {
+        "nome": "BR - 20260819_200614 / FGTS Saque-Aniversário",
+        "campaign_id": "24156134066",
+        "budget_id": "15811123159",
+        "operacoes": 113
+      },
+      {
+        "nome": "BR BR - 20260819_215205 / FGTS Saque-Aniversário",
+        "campaign_id": "24161105437",
+        "budget_id": "15806123403",
+        "operacoes": 113
+      },
+      {
+        "nome": "BR BR - 20260819_222608 / FGTS Saque-Aniversário",
+        "campaign_id": "24156373085",
+        "budget_id": "15806163240",
+        "operacoes": 113
+      }
+    ],
+    "achados": [
+      "brief FGTS declara MaximizeConversions em 3 comentários mas não define estrategia_lance — herdou MANUAL_CPC, e os R$0,20 escritos como 'teto que a API ignoraria' viraram o lance real",
+      "não existe brief versionado da Maquininha; o default de Brief.cpc_inicial é 0.12, o número que o dono citou",
+      "vertical='informativo' para produto financeiro (FGTS) contorna o portão de serviços financeiros do policy/spec.py",
+      "prefixo de país duplicado ('BR BR - ') no nome de duas campanhas — bug de _nome_da_campanha, sem efeito em entrega"
+    ],
+    "estado": "PISTA — precisa de confirmação contra a conta viva (change_event é o juiz)"
+  },
+  "diagnostico_search": {
+    "veredito_hipotese_cpc": "CONFIRMADA nas duas, por causas distintas",
+    "lido_em_utc": "2026-08-26T20:41:57Z",
+    "janela": "LAST_30_DAYS",
+    "conta": {
+      "id": "8017851692",
+      "nome": "Crédito Up",
+      "moeda": "BRL",
+      "fuso": "America/Sao_Paulo",
+      "status": "ENABLED",
+      "conta_de_teste": false
+    },
+    "cadeia_causal": [
+      "19/08 22:39:13 — humano no painel liga a campanha: PAUSED → ENABLED",
+      "19/08 22:39:21 — humano corta a verba: R$20,00 → R$10,00",
+      "19/08 22:39:45 — humano corta o lance: R$1,00 → R$0,12",
+      "resultado em 30 dias: rank_lost=90,01% · budget_lost=0,0% · 6 impressões somadas"
+    ],
+    "quantificacao": {
+      "maquininha_24155134757": {
+        "keywords": 10,
+        "com_estimativa": 10,
+        "primeira_pagina_mediana": 2.35,
+        "maxima": 15.13,
+        "lance": 0.12,
+        "fator": 19.6,
+        "alcancaveis": 0,
+        "impressoes_30d": 1,
+        "abaixo_da_primeira_pagina": "10 de 10 (100%)",
+        "origem_do_lance": "nasceu R$0,12 pela API; nenhum AD_GROUP UPDATE em 423 eventos"
+      },
+      "fgts_24156373085": {
+        "keywords": 81,
+        "com_estimativa": 49,
+        "primeira_pagina_mediana": 0.92,
+        "maxima": 1.45,
+        "lance": 0.12,
+        "fator": 7.7,
+        "alcancaveis": 7,
+        "impressoes_30d": 5,
+        "keywords_com_impressao": 4,
+        "abaixo_da_primeira_pagina": "42 de 81 (52%)",
+        "origem_do_lance": "nasceu R$1,00 pela API às 22:26:13; humano no painel levou a R$0,12 às 22:39:45",
+        "cobertura_da_primeira_pagina": "88% a R$1,00 → 14% a R$0,12"
+      }
+    },
+    "causas_concorrentes_refutadas": [
+      "política/aprovação — 91/91 keywords APPROVED, campanhas e grupos ELIGIBLE sem primary_status_reasons",
+      "orçamento — search_budget_lost_impression_share = 0,0",
+      "elegibilidade da conta — customer.status ENABLED, não é conta de teste",
+      "geo/idioma/rede — Brasil inteiro (2076), pt (1014), três dispositivos, search + partners",
+      "volume de busca — nenhuma keyword RARELY_SERVED"
+    ],
+    "nao_apurável": "Quality Score é null nas 91 keywords: o Google não o calcula sem histórico. Não pode ser culpado nem inocentado.",
+    "ressalvas_da_recomendacao": [
+      "a verba vira o próximo gargalo: a R$0,92 os R$10/dia compram ~11 cliques; a R$2,35, ~4. As duas alavancas foram cortadas no mesmo minuto e precisam voltar juntas",
+      "negativas PROIBIDAS nesta rodada: termos_de_busca devolveu 2 linhas com 0 clique — sem relatório real não se propõe negativa (ADR-25)",
+      "não trocar a estratégia de lance junto: zero histórico de conversão contraindica Smart Bidding, e duas variáveis ao mesmo tempo não ensinam nada"
+    ],
+    "medicao_existe": "adViewInterstitial (7718441216) ENABLED, primary_for_goal, include_in_conversions_metric — a conta sabe medir o que comprar",
+    "correcoes_do_condutor": [
+      {
+        "minha_afirmacao": "os R$0,12 foram decisão manual nas duas campanhas",
+        "correcao": "vale só para a FGTS. A Maquininha NÃO tem nenhum AD_GROUP UPDATE em 423 eventos — nasceu em R$0,12 pela API e nunca foi revista. Duas causas distintas com o mesmo sintoma.",
+        "consequencia": "a FGTS tem alvo de rollback (R$1,00, o valor de nascimento); a Maquininha não tem — lá é decisão inédita, não reversão"
+      },
+      {
+        "minha_afirmacao": "verificação interna: FGTS tem 7 keywords alcançáveis e 4 entregaram, logo os números batem",
+        "correcao": "coincidência de contagem, não correspondência. Com o join correto por (ad_group, criterion_id) a interseção é ZERO — as 4 que entregaram têm estimativa de R$0,30 a R$1,20, todas acima do lance. Os 91 criterion_id se repetem entre campanhas irmãs, então joinar só por criterion_id mistura campanhas.",
+        "consequencia": "first_page_cpc não é catraca liga/desliga: abaixo dele a entrega é residual e não acumula volume. Modelo corrigido, veredito inalterado."
+      }
+    ],
+    "mutacoes_propostas": [
+      {
+        "id": "FGTS-M1",
+        "alvo": "adGroups/200104492795",
+        "campo": "cpc_bid_micros",
+        "de": 120000,
+        "para": 1000000,
+        "efeito": "cobertura 14% → 88%",
+        "rollback": 120000,
+        "teto": "R$30 em 72h",
+        "estado": "PROPOSTA — não aplicada"
+      },
+      {
+        "id": "FGTS-M2",
+        "alvo": "campaignBudgets/15806163240",
+        "campo": "amount_micros",
+        "de": 10000000,
+        "para": 20000000,
+        "gatilho": "search_budget_lost_impression_share > 0,10",
+        "estado": "PROPOSTA condicional — não aplicada"
+      },
+      {
+        "id": "MAQ-M1",
+        "alvo": "adGroups/199084728163",
+        "campo": "cpc_bid_micros",
+        "de": 120000,
+        "para": 2500000,
+        "efeito": "cobertura 0/10 → 5/10, ~4 cliques/dia",
+        "rollback": 120000,
+        "estado": "PROPOSTA — não aplicada"
+      },
+      {
+        "id": "MAQ-M2",
+        "alvo": "campaignBudgets/15800018633",
+        "campo": "amount_micros",
+        "de": 10000000,
+        "para": 30000000,
+        "gatilho": "mesmo gatilho de budget_lost",
+        "estado": "PROPOSTA condicional — não aplicada"
+      },
+      {
+        "id": "MAQ-M3",
+        "alvo": "3 termos de cabeça (R$10,75–15,13)",
+        "payload": null,
+        "motivo": "sem payload de propósito: exige CPC real medido antes",
+        "estado": "DECISÃO PENDENTE"
+      }
+    ],
+    "sequenciamento": "B refutou minha exigência de 'as duas alavancas juntas' com dado: delivery_method é STANDARD, não ACCELERATED — o modo de falha 'esgota às 10h' não existe aqui. E budget_lost é o campo que avisa no instante em que a verba passar a limitar. Por isso o lance vai primeiro e a verba vai pré-autorizada por gatilho."
+  },
+  "achado_de_seguranca_novo": {
+    "titulo": "Caminho de escrita NÃO AUTENTICADO no Google Ads, chamável do navegador, com a URL no bundle publicado",
+    "descoberto_por": "Agente G (inventário do legado n8n), 26/08/2026",
+    "verificado_pelo_condutor": true,
+    "e_o_incidente_jwt": false,
+    "nota": "Achado NOVO e independente do incidente de credenciais já aberto. Não o reabre; é outra superfície.",
+    "evidencia": {
+      "componente": "src/components/campaign/BiddingActionBox.tsx:123",
+      "rastreado_no_git": true,
+      "renderizado_em": "src/pages/CampaignDetailDashboard.tsx:1302, rota /dashboard/campaign/:campaignId",
+      "segunda_ocorrencia": "src/pages/GeneralDashboard.tsx:578 e :613",
+      "flow": "atuacao-apply-bidding-webhook-v2 — ativo declarado, options:{} (sem autenticação, sem origem permitida, sem rate limit)",
+      "efeito": "POST googleads.googleapis.com/customers/{id}/campaigns:mutate — altera lance na conta de mídia real"
+    },
+    "por_que_importa_nesta_missao": [
+      "o UUID do webhook funciona como credencial de portador e está no JavaScript servido a qualquer visitante do dashboard",
+      "não há validação de faixa: o front valida > 0 no cliente, o webhook aceita 0 e aceita qualquer magnitude",
+      "o front SEMPRE vê sucesso: sem responseMode o n8n responde ao receber, então o toast diz 'aplicado com sucesso' mesmo se os 8 nós seguintes falharem",
+      "defeito de correção: o payload correto é construído e descartado — campanha TARGET_CPA recebe corpo maximizeConversions com máscara divergente, o que LIMPA o tCPA",
+      "bid_actions tem 0 linhas e nada no produto a lê — não há histórico de atuação visível",
+      "BLOQUEADOR DIRETO do motor de autogestão: enquanto este caminho existir, o VOLC OS não pode assumir que é o único a mover lance (ADR-22/23 dependem de dono único)"
+    ],
+    "o_que_NAO_fazer": "desligar o webhook sem desligar o botão que o chama — hoje o botão 'Aplicar Bidding' não tem outro caminho. Desligar sem nomear o dono troca dois donos por zero.",
+    "decisao_do_dono_necessaria": true,
+    "estado": "REGISTRADO — nenhuma alteração feita. Fora do escopo autorizado desta rodada."
+  },
+  "gates_medidos_pelo_condutor": {
+    "backend_pytest": {
+      "antes": "739 passed, 5 skipped",
+      "depois": "856 passed, 6 skipped",
+      "comando": "PYTHONPATH=. backend/.venv/bin/python -m pytest backend/tests -q -p no:randomly"
+    },
+    "volc_ads_pytest": {
+      "antes": 223,
+      "depois": 343,
+      "comando": "PYTHONPATH=. backend/.venv/bin/python -m pytest volc_ads -q -p no:randomly"
+    },
+    "ciclo_v10": {
+      "resultado": "CICLO COMPLETO VERDE — aplicar, reverter, reaplicar (100 provas)",
+      "comando": "./scripts/provar-ciclo-v10.sh"
+    },
+    "frontend_e_tipos": "pendente — o agente do frontend ainda está escrevendo em src/"
+  },
+  "arbitragens_do_condutor": [
+    {
+      "conflito": "headline_demandgen: 40 (limites.yaml, herdado) vs 30 (matriz-api)",
+      "decisao": "30",
+      "fonte": "proto do SDK, DemandGenMultiAssetAdInfo.headlines — 'Maximum display width is 30'",
+      "nota": "é largura de exibição, não contagem de caracteres; o valor estava inativo (Demand Gen não tem construtor), então a correção é preventiva"
+    },
+    {
+      "conflito": "placement positivo em Display: tabela oficial diz que não existe, managed_placement_view e network_settings pressupõem que sim",
+      "decisao": "fora da primeira fatia",
+      "fonte": "a prova exigiria validate_only contra a conta real, que não foi autorizado nesta rodada",
+      "nota": "declarado como indisponibilidade explicada nos dois vocabulários"
+    },
+    {
+      "conflito": "eu havia exigido que lance e verba subissem juntos",
+      "decisao": "sequenciados, verba pré-autorizada por gatilho",
+      "fonte": "delivery_method STANDARD + budget_lost_impression_share avisa",
+      "nota": "reverti minha própria exigência; subir os dois juntos custaria saber qual mudou o resultado"
+    }
+  ],
+  "prova_de_aceite_display": {
+    "executada_por": "condutor, 26/08/2026, sem rede — só construir(), nunca validar()",
+    "trava_de_escrita": "conferida FECHADA no início e no fim",
+    "casos": [
+      {
+        "caso": "MANUAL_CPC (o padrão do Brief)",
+        "ok": false,
+        "operacoes": 0,
+        "motivo": "Display não aceita MANUAL_CPC — mensagem acionável diz qual estratégia usar"
+      },
+      {
+        "caso": "MAXIMIZE_CONVERSIONS sem imagem",
+        "ok": false,
+        "operacoes": 0,
+        "motivo": "o responsive display ad exige imagem por PAPEL"
+      },
+      {
+        "caso": "completo, imagens por papel",
+        "ok": true,
+        "operacoes": 6,
+        "grafo": [
+          "campaign_budget",
+          "campaign",
+          "campaign_criterion (geo)",
+          "campaign_criterion (idioma)",
+          "ad_group",
+          "ad_group_ad"
+        ]
+      },
+      {
+        "caso": "texto fora de tamanho, sem long_headline, sem business_name",
+        "ok": false,
+        "operacoes": 0,
+        "violacoes": 7,
+        "nota": "devolve TODAS as violações de uma vez, não a primeira"
+      },
+      {
+        "caso": "asset de outra conta",
+        "ok": false,
+        "operacoes": 0,
+        "motivo": "nomeia a conta do asset (9999999999) na mensagem"
+      }
+    ],
+    "criterios_de_aceite_cobertos": {
+      "5 — Display pode ser montado completamente": "PROVADO",
+      "6 — o payload passa por validação local": "PROVADO",
+      "7 — caminho de validate_only implementado e testado": "implementado em display.validar() com cliente falso; NÃO provado contra a conta real, que exige autorização"
+    },
+    "erro_meu_registrado": "minha primeira versão da prova reportou 'MANUAL_CPC ACEITO'. Era bug do meu script: construir() devolve (operações, resultado) e a recusa está em resultado.ok, não em exceção. Refeito, a recusa está lá."
+  },
+  "auditoria_adversarial": {
+    "frontend": {
+      "estado": "concluída",
+      "achados": 6,
+      "corrigidos": 6,
+      "graves": [
+        "derivar.ts — a exceção zeroMedido vazou para a linha que NÃO veio: o degrau saía 'bloqueia' com a frase 'a conta respondeu e o número é zero', apoiada em nada, mais cinco evidências fabricadas com origem 'conta'",
+        "lote.ts — 'indeterminado' somado ao balde 'aguardando a vez', que é a crença que autoriza reenviar; com 3 itens os baldes somavam 4"
+      ],
+      "nao_refutadas": [
+        "zero chamada ao Google Ads no render — varredura por import(), new Image, <img, .src=, createElement, Worker, Audio, window.open, location.href: zero ocorrências",
+        "nada privilegiado sai do browser — pautadorApi manda o access token da sessão do próprio usuário, que é o privilégio dele",
+        "indeterminado nunca somado com falhou — baldes, glifos, frases e podeRetomar separados",
+        "proxima_acao consumida do servidor, nunca recalculada",
+        "honestidade da capacidade — três fatos separados, nenhum botão cinza mudo",
+        "acessibilidade e responsividade — foco visível, nenhum estado só por cor, tabela em overflow-x-auto, motion-reduce respeitado"
+      ]
+    },
+    "backend_engine_migrations_e_achados": {
+      "estado": "concluída na reexecução",
+      "agentes": 93,
+      "erros_de_execucao": 0,
+      "achados_julgados": 29,
+      "confirmados": 15,
+      "refutados": 14,
+      "por_gravidade": {
+        "alta": 6,
+        "media": 8,
+        "baixa": 1
+      },
+      "corrigidos": 15,
+      "altos": [
+        "v10_02:947 — a proposta não era amarrada à campanha da evidência: o diagnóstico de uma campanha autorizava mudança em outra, e em outra conta do mesmo MCC",
+        "v10_01:1283 — `sem_resposta` fechava o recibo e reabria o caminho para `falhou`, que é o convite à retomada",
+        "v10_01:1251 — `indeterminado → criando` não exigia verificação nenhuma",
+        "v10_02:1410 — aplicação `sem_resposta` voltava a dizer 'aplicar', mandando reenviar o mesmo diff aprovado",
+        "v10_02:972 — delta ausente passava como 'dentro do limite'",
+        "intencao.py:654 — `avaliar_suficiencia` devolvia 'suficiente' com a janela ausente, e um `datetime.date` sumia calado"
+      ],
+      "primeira_execucao": "MORREU — os 6 agentes caíram no mesmo erro de rede (ENOTFOUND). O retorno foi total_julgado: 0, que é AUSÊNCIA e não zero. Journal conferido: 11 linhas, 0 resultados. Reexecutada do zero.",
+      "convergencia_notavel": "a lente de idempotência achou, por conta própria, o mesmo defeito de harness que eu já tinha achado e corrigido — provar-ciclo-v10.sh ficando verde quando o objeto auditado não existe"
+    }
+  },
+  "correcoes_do_condutor_apos_auditoria": 7,
+  "sondagem_independente_do_condutor": {
+    "1_chave_de_idempotencia": {
+      "alvo": "chave_de_idempotencia — a afirmação de maior consequência do backend",
+      "metodo": "sete sondas escritas por mim contra o código real, sem rede",
+      "resultados": {
+        "determinismo": "duas chamadas idênticas dão a mesma chave ✓",
+        "ordem das chaves do dict": "não muda a chave ✓ — se mudasse, a retomada geraria chave nova e as quatro camadas deixariam de reconhecer o envio",
+        "ordem da lista": "MUDA a chave ✓ — é outro plano, e tem de ser",
+        "colisao": "6 variações (verba, conta, intenção, ordem no lote, canal) → 6 chaves distintas ✓",
+        "ambiguidade de concatenacao": "'ab'+'c' e 'a'+'bc' não colidem ✓",
+        "formato": "31 chars, passa na CHECK trafego_item_chave_valida do banco ✓",
+        "o instante entra?": "NÃO ✓ — chave estável após 1s; se entrasse, a retomada criaria a segunda campanha"
+      },
+      "veredito": "a idempotência sustenta o caso 'timeout mas criou' sob todas as sondas que eu soube fazer"
+    },
+    "2_selo_de_escrita": {
+      "alvo": "volc_ads/subir.py — a prova de que ESTE grafo, nesta conta, passou por validate_only",
+      "sondas": {
+        "determinismo": "duas leituras do mesmo grafo dão a mesma impressão ✓",
+        "1 acento a menos numa headline": "a impressão MUDA ✓ — texto não provado não chega à conta",
+        "verba de R$10 para R$1000": "a impressão MUDA ✓",
+        "mutação IN-PLACE depois de selado": "a impressão muda e _exigir_selo levanta PayloadNaoValidado ✓ — este é o furo clássico e ele está fechado"
+      },
+      "trava": "conferida FECHADA no início e no fim"
+    }
+  },
+  "coordenacao_com_codex": {
+    "verificado_em": "2026-08-26, antes de qualquer alteração minha",
+    "arquivos_do_codex": [
+      "docs/creative-engines/**",
+      "scripts/inventariar_motor_imagem.py",
+      "scripts/tests/test_inventariar_motor_imagem.py",
+      "docs/volc-os-graph/curadoria-operacional.json",
+      "volc-os-workbook/ROADMAP-VIVO.json"
+    ],
+    "estado": "não commitados na árvore; preservados integralmente, nada reescrito",
+    "conflito": "NENHUM — o Codex construiu por cima do meu commit 21f33c5, aditivamente",
+    "prova": {
+      "curadoria": "minhas 4 capabilities (cap_google_multichannel, cap_creative_engines, cap_execution, cap_decision) com evidence e state byte-idênticos; o Codex somou 1 concept, 9 edges e 1 document",
+      "roadmap": "6 das 7 tarefas que editei preservadas; ele refinou apenas a prova de P04-T05, que é domínio dele (PRENSA), e tocou P03-T04 e P11-T04, também dele",
+      "teste_do_codex": "scripts/tests/test_inventariar_motor_imagem.py — 2 passed no venv oficial"
+    },
+    "grafo": "current em df7fc4b, 362 nós operacionais e 618 relações — conferido por mim"
+  },
+  "achado_do_condutor_nas_provas": {
+    "titulo": "O harness de provas de migration aceitava prova quebrada como guarda funcionando",
+    "como_apareci": "sondei o harness em vez do código — injetei provas deliberadamente quebradas numa cópia",
+    "medido": {
+      "tabela inexistente (42P01)": "marcava ✓ RECUSADO",
+      "coluna inexistente (42703)": "marcava ✓ RECUSADO",
+      "erro de sintaxe (42601)": "marcava ✓ RECUSADO",
+      "permissão negada (42501)": "marcava ✓ RECUSADO"
+    },
+    "por_que_importa": "um rename de tabela ou um typo deixaria a prova verde com a guarda AUSENTE — e o mesmo padrão estava no script da série v9, que já está aplicada em produção",
+    "correcao": "separação por CLASSE de SQLSTATE: P0001 e 23xxx são guarda; 42xxx, 3F000 e 22P02 são prova quebrada",
+    "erro_meu_no_caminho": "a primeira lista enumerava códigos e esquecia o 23001 (restrict_violation), que é o que estas guardas usam. O harness passou a acusar 'o DONO passou' nas quatro guardas que funcionavam. Lista por enumeração envelhece a cada guarda nova; a classe inteira é a afirmação que se queria fazer.",
+    "achado_derivado": {
+      "titulo": "a camada de privilégio SOMBREAVA a de gatilho",
+      "detalhe": "quatro proteções estavam verdes por 42501 (ausência de GRANT) com rótulo que sugeria gatilho. Como service_role nem alcança a tabela, os gatilhos trafego_intencao_imutavel, trafego_item_sem_delete e o append-only de trafego_verificacao NUNCA tinham sido executados por prova nenhuma. Existem e funcionam — 23001 confirmado —, mas ninguém os tinha visto disparar.",
+      "correcao": "recusa_em_camadas: camada 1 como service_role (aceita 42501 ou guarda); camada 2 como o DONO, que passa pelo GRANT e só a guarda pode barrar"
+    },
+    "prova_do_proprio_harness": "quatro provas quebradas injetadas numa cópia: antes as quatro passavam como ✓; agora as quatro falham dizendo o SQLSTATE. Os dois ciclos seguem verdes."
+  },
+  "gates_finais": {
+    "backend (gate oficial da casa)": "857 passed, 5 skipped",
+    "volc_ads": "343 passed",
+    "frontend vitest": "56 arquivos, 738 testes, 0 falhas",
+    "tipos (tsc -p tsconfig.app.json)": "76 erros herdados do webgo",
+    "build": "verde",
+    "ciclo v9 aplicar/reverter/reaplicar": "VERDE, com recusa carimbada por SQLSTATE",
+    "ciclo v10 aplicar/reverter/reaplicar": "VERDE, com as duas camadas provadas",
+    "backend + volc_ads": "1205 passed, 6 skipped",
+    "ciclo v10": "111 ✓, 0 ✗, zero semeadura silenciosa"
+  }
+}

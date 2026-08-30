@@ -1,0 +1,2411 @@
+{
+  "gerado_em": "2026-08-06T01:22:43+00:00",
+  "fonte": "data/reverse_temas.json (296 temas medidos)",
+  "fonte_secundaria": "data/kw_psico.json (1103 keywords, 63 temas-pai, R$14.409 de custo) — usado SO para clicks/custo por familia; os campos roi/lucro sao do tema-pai repetidos por keyword e NAO sao somaveis",
+  "base": {
+    "n_temas": 296,
+    "spend_total": 1268162.29,
+    "lucro_total": 547460.93,
+    "roi_agregado_global": 0.4317,
+    "roi_mediano_global": 0.2108,
+    "pct_negativos_global": 43.9,
+    "n_nomes_de_tema_distintos": 237,
+    "aviso_linha_nao_e_tema": "296 linhas cobrem 237 nomes distintos: 48 nomes aparecem em mais de uma linha (mesmo tema em contas/periodos diferentes). Os campos n/spend/lucro por familia sao por LINHA; n_temas_distintos da a contagem por nome."
+  },
+  "metodo_rpm": {
+    "definicao": "rpm_familia = 100 * max(0, roi_encolhido_familia) / max(roi_encolhido de todas as familias)",
+    "roi_encolhido": "(lucro_familia + roi_global * prior_spend) / (spend_familia + prior_spend), com prior_spend = PRIOR_TEMAS * (spend_familia / n_familia), o que faz peso_evidencia = n/(n+PRIOR_TEMAS) exatamente",
+    "prior_temas": 5.0,
+    "por_que_agregado_e_nao_mediano": "A carteira e uma loteria: o prejuizo somado das 131 perdedoras (R$28.377) e 48% do lucro de UMA vencedora (Senai, R$58.643). O ROI mediano descreve o tema tipico; o ROI agregado descreve o retorno de R$1 investido na familia, que e a pergunta do operador. O mediano entra como indicador de CONSISTENCIA (risco de exploracao), nao como multiplicador.",
+    "por_que_encolhido": "Sem encolhimento uma familia com n=1 e ROI de 116% viraria multiplicador 100. O prior vale 5 temas do tamanho tipico da propria familia, entao o peso da evidencia e ~n/(n+5) sem sair do espaco de spend. Prior fixo em R$ nao serve: com R$25k fixos entretenimento_midia (4 temas, 100% negativos) saia com multiplicador 58. Prior por MEDIANA tambem nao: em familia com spend concentrado o encolhimento desaparece e saude_publica (79% do lucro num tema so) saia com 100.",
+    "usar_como_multiplicador": "Familias com evidencia='fraca' (n<5 ou spend<R$5.000) tem rpm_familia calculado mas o campo usar_como_multiplicador vem false: o valor e quase todo prior, nao medicao.",
+    "aviso_pais": "O campo `pais` de reverse_temas.json e o pais da CONTA, nao o do publico: temas nitidamente colombianos (Sisben, Mi Casa Ya, Sena, Colombia Mayor) e peruanos aparecem com pais=BR. O teto de 3 sinais por pais/dia do F03 nao pode se apoiar neste campo sem antes resolver pais-alvo por entidade.",
+    "piso_spend_mediana": 50.0
+  },
+  "familias": {
+    "curso_gratuito_profissionalizante": {
+      "n": 38,
+      "n_temas_distintos": 30,
+      "spend": 243353.8,
+      "lucro": 129318.8,
+      "roi_agregado": 0.5314,
+      "roi_mediano": 0.3321,
+      "n_na_mediana": 34,
+      "pct_negativos": 23.7,
+      "roi_agregado_encolhido": 0.5198,
+      "prior_spend_aplicado": 32020.24,
+      "peso_evidencia": 0.884,
+      "evidencia": "forte",
+      "n_maduros_90d": 37,
+      "spend_maduros": 243263.57,
+      "roi_agregado_maduros": 0.5317,
+      "share_lucro_top1": 0.4535,
+      "share_lucro_top3": 0.7534,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 34,
+        "CL": 1,
+        "CO": 1,
+        "PE": 1
+      },
+      "kw_amostra": {
+        "n_kw": 91,
+        "clicks": 3025.0,
+        "custo": 456.37145599999997
+      },
+      "exemplos": [
+        {
+          "tema": "Senai",
+          "pais": "BR",
+          "spend": 78615.67,
+          "lucro": 58643.17,
+          "roi": 0.746,
+          "dias": 172
+        },
+        {
+          "tema": "Aprenda Mais Avamec Evg",
+          "pais": "BR",
+          "spend": 35158.65,
+          "lucro": 21137.89,
+          "roi": 0.601,
+          "dias": 172
+        },
+        {
+          "tema": "Senac",
+          "pais": "BR",
+          "spend": 23703.47,
+          "lucro": 17648.93,
+          "roi": 0.745,
+          "dias": 172
+        },
+        {
+          "tema": "Senac",
+          "pais": "BR",
+          "spend": 15401.55,
+          "lucro": 8331.59,
+          "roi": 0.541,
+          "dias": 172
+        },
+        {
+          "tema": "Senai",
+          "pais": "BR",
+          "spend": 13661.88,
+          "lucro": 7094.49,
+          "roi": 0.519,
+          "dias": 172
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Sena",
+          "pais": "BR",
+          "spend": 34321.67,
+          "lucro": -2073.64
+        },
+        {
+          "tema": "Mais Professores",
+          "pais": "BR",
+          "spend": 746.26,
+          "lucro": -79.07
+        },
+        {
+          "tema": "Curso Cuidador De Idosos",
+          "pais": "BR",
+          "spend": 677.34,
+          "lucro": -70.38
+        }
+      ],
+      "rpm_familia": 81.2,
+      "usar_como_multiplicador": true
+    },
+    "documento_identidade_civil": {
+      "n": 19,
+      "n_temas_distintos": 17,
+      "spend": 103664.11,
+      "lucro": 62496.93,
+      "roi_agregado": 0.6029,
+      "roi_mediano": 0.4293,
+      "n_na_mediana": 17,
+      "pct_negativos": 36.8,
+      "roi_agregado_encolhido": 0.5672,
+      "prior_spend_aplicado": 27280.03,
+      "peso_evidencia": 0.792,
+      "evidencia": "forte",
+      "n_maduros_90d": 10,
+      "spend_maduros": 99492.29,
+      "roi_agregado_maduros": 0.6163,
+      "share_lucro_top1": 0.3421,
+      "share_lucro_top3": 0.7447,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 11,
+        "CL": 3,
+        "CO": 1,
+        "PE": 3
+      },
+      "kw_amostra": {
+        "n_kw": 112,
+        "clicks": 39802.0,
+        "custo": 7341.499521000001
+      },
+      "exemplos": [
+        {
+          "tema": "Bo Online",
+          "pais": "BR",
+          "spend": 33969.89,
+          "lucro": 21378.98,
+          "roi": 0.629,
+          "dias": 172
+        },
+        {
+          "tema": "Rut",
+          "pais": "BR",
+          "spend": 22396.49,
+          "lucro": 13049.72,
+          "roi": 0.583,
+          "dias": 172
+        },
+        {
+          "tema": "Certificado De Reservista",
+          "pais": "BR",
+          "spend": 18289.19,
+          "lucro": 12109.92,
+          "roi": 0.662,
+          "dias": 172
+        },
+        {
+          "tema": "Ruc Sunat",
+          "pais": "PE",
+          "spend": 8930.18,
+          "lucro": 8611.33,
+          "roi": 0.964,
+          "dias": 172
+        },
+        {
+          "tema": "Renaper",
+          "pais": "AR",
+          "spend": 5912.63,
+          "lucro": 1876.87,
+          "roi": 0.317,
+          "dias": 147
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Bo Online",
+          "pais": "BR",
+          "spend": 444.08,
+          "lucro": -208.75
+        },
+        {
+          "tema": "Rg Digital",
+          "pais": "BR",
+          "spend": 121.26,
+          "lucro": -45.72
+        },
+        {
+          "tema": "Antecedentes Judiciales",
+          "pais": "BR",
+          "spend": 127.79,
+          "lucro": -32.55
+        }
+      ],
+      "rpm_familia": 88.6,
+      "usar_como_multiplicador": true
+    },
+    "transferencia_renda": {
+      "n": 17,
+      "n_temas_distintos": 16,
+      "spend": 115555.47,
+      "lucro": 59062.82,
+      "roi_agregado": 0.5111,
+      "roi_mediano": 0.4578,
+      "n_na_mediana": 13,
+      "pct_negativos": 29.4,
+      "roi_agregado_encolhido": 0.4931,
+      "prior_spend_aplicado": 33986.9,
+      "peso_evidencia": 0.773,
+      "evidencia": "forte",
+      "n_maduros_90d": 11,
+      "spend_maduros": 108848.82,
+      "roi_agregado_maduros": 0.5239,
+      "share_lucro_top1": 0.3433,
+      "share_lucro_top3": 0.8338,
+      "por_pais_conta": {
+        "AR": 2,
+        "BR": 6,
+        "CL": 2,
+        "CO": 6,
+        "PE": 1
+      },
+      "kw_amostra": {
+        "n_kw": 85,
+        "clicks": 18564.0,
+        "custo": 2567.687402
+      },
+      "exemplos": [
+        {
+          "tema": "Pé De Meia",
+          "pais": "BR",
+          "spend": 42021.13,
+          "lucro": 20277.98,
+          "roi": 0.483,
+          "dias": 172
+        },
+        {
+          "tema": "Auxílio Gas",
+          "pais": "BR",
+          "spend": 38686.66,
+          "lucro": 18887.8,
+          "roi": 0.488,
+          "dias": 172
+        },
+        {
+          "tema": "Programa Juntos",
+          "pais": "PE",
+          "spend": 12616.18,
+          "lucro": 10078.3,
+          "roi": 0.799,
+          "dias": 172
+        },
+        {
+          "tema": "Renta Ciudadana",
+          "pais": "CO",
+          "spend": 6326.84,
+          "lucro": 4785.44,
+          "roi": 0.756,
+          "dias": 155
+        },
+        {
+          "tema": "Programa Hogar",
+          "pais": "AR",
+          "spend": 4779.44,
+          "lucro": 2220.22,
+          "roi": 0.465,
+          "dias": 172
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Renta Joven",
+          "pais": "CO",
+          "spend": 580.38,
+          "lucro": -219.73
+        },
+        {
+          "tema": "Pé De Meia",
+          "pais": "BR",
+          "spend": 603.43,
+          "lucro": -164.13
+        },
+        {
+          "tema": "Renta Basica Solidaria",
+          "pais": "CO",
+          "spend": 196.07,
+          "lucro": -99.66
+        }
+      ],
+      "rpm_familia": 77.0,
+      "usar_como_multiplicador": true
+    },
+    "emprego_gig_entrega": {
+      "n": 20,
+      "n_temas_distintos": 17,
+      "spend": 91640.23,
+      "lucro": 52115.47,
+      "roi_agregado": 0.5687,
+      "roi_mediano": 0.2382,
+      "n_na_mediana": 20,
+      "pct_negativos": 35.0,
+      "roi_agregado_encolhido": 0.5413,
+      "prior_spend_aplicado": 22910.06,
+      "peso_evidencia": 0.8,
+      "evidencia": "forte",
+      "n_maduros_90d": 20,
+      "spend_maduros": 91640.23,
+      "roi_agregado_maduros": 0.5687,
+      "share_lucro_top1": 0.4374,
+      "share_lucro_top3": 0.8042,
+      "por_pais_conta": {
+        "BR": 20
+      },
+      "kw_amostra": {
+        "n_kw": 88,
+        "clicks": 9116.0,
+        "custo": 1328.7723450000003
+      },
+      "exemplos": [
+        {
+          "tema": "Entregador Shopee",
+          "pais": "BR",
+          "spend": 35972.64,
+          "lucro": 22796.8,
+          "roi": 0.634,
+          "dias": 172
+        },
+        {
+          "tema": "Entregador Ml",
+          "pais": "BR",
+          "spend": 25638.72,
+          "lucro": 15423.07,
+          "roi": 0.602,
+          "dias": 167
+        },
+        {
+          "tema": "99 Motorista E Entregador",
+          "pais": "BR",
+          "spend": 4674.28,
+          "lucro": 3693.09,
+          "roi": 0.79,
+          "dias": 166
+        },
+        {
+          "tema": "Entregador Amazon",
+          "pais": "BR",
+          "spend": 6205.11,
+          "lucro": 3403.19,
+          "roi": 0.548,
+          "dias": 172
+        },
+        {
+          "tema": "Entregador Lojas Virtuais",
+          "pais": "BR",
+          "spend": 3626.76,
+          "lucro": 2253.84,
+          "roi": 0.621,
+          "dias": 162
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Entregador Uber Flash",
+          "pais": "BR",
+          "spend": 253.84,
+          "lucro": -92.3
+        },
+        {
+          "tema": "Entregador De Aplicativos",
+          "pais": "BR",
+          "spend": 128.66,
+          "lucro": -66.28
+        },
+        {
+          "tema": "Entregador De App Delivery",
+          "pais": "BR",
+          "spend": 346.95,
+          "lucro": -60.87
+        }
+      ],
+      "rpm_familia": 84.6,
+      "usar_como_multiplicador": true
+    },
+    "previdencia_aposentadoria": {
+      "n": 20,
+      "n_temas_distintos": 18,
+      "spend": 125130.4,
+      "lucro": 42455.57,
+      "roi_agregado": 0.3393,
+      "roi_mediano": 0.3186,
+      "n_na_mediana": 20,
+      "pct_negativos": 25.0,
+      "roi_agregado_encolhido": 0.3578,
+      "prior_spend_aplicado": 31282.6,
+      "peso_evidencia": 0.8,
+      "evidencia": "forte",
+      "n_maduros_90d": 16,
+      "spend_maduros": 124303.55,
+      "roi_agregado_maduros": 0.3412,
+      "share_lucro_top1": 0.2454,
+      "share_lucro_top3": 0.5943,
+      "por_pais_conta": {
+        "AR": 7,
+        "BR": 6,
+        "CL": 1,
+        "CO": 4,
+        "PE": 2
+      },
+      "kw_amostra": {
+        "n_kw": 121,
+        "clicks": 5749.0,
+        "custo": 638.9984780000001
+      },
+      "exemplos": [
+        {
+          "tema": "Carteira Do Idoso",
+          "pais": "BR",
+          "spend": 17107.64,
+          "lucro": 10420.09,
+          "roi": 0.609,
+          "dias": 172
+        },
+        {
+          "tema": "Turnos Anses",
+          "pais": "AR",
+          "spend": 18826.98,
+          "lucro": 9431.35,
+          "roi": 0.501,
+          "dias": 172
+        },
+        {
+          "tema": "Recibo De Sueldo Anses",
+          "pais": "AR",
+          "spend": 10719.02,
+          "lucro": 5378.4,
+          "roi": 0.502,
+          "dias": 172
+        },
+        {
+          "tema": "Crédito Anses",
+          "pais": "AR",
+          "spend": 10098.9,
+          "lucro": 4361.98,
+          "roi": 0.432,
+          "dias": 160
+        },
+        {
+          "tema": "Consulta Inss",
+          "pais": "BR",
+          "spend": 5866.35,
+          "lucro": 4269.27,
+          "roi": 0.728,
+          "dias": 172
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Colombia Mayor",
+          "pais": "CO",
+          "spend": 27014.43,
+          "lucro": -2452.49
+        },
+        {
+          "tema": "Anses Fechas De Cobro",
+          "pais": "AR",
+          "spend": 7231.67,
+          "lucro": -135.05
+        },
+        {
+          "tema": "Meu Inss",
+          "pais": "BR",
+          "spend": 160.35,
+          "lucro": -113.71
+        }
+      ],
+      "rpm_familia": 55.9,
+      "usar_como_multiplicador": true
+    },
+    "emprego_jovem_aprendiz": {
+      "n": 20,
+      "n_temas_distintos": 20,
+      "spend": 77010.37,
+      "lucro": 40733.64,
+      "roi_agregado": 0.5289,
+      "roi_mediano": 0.4238,
+      "n_na_mediana": 20,
+      "pct_negativos": 0.0,
+      "roi_agregado_encolhido": 0.5095,
+      "prior_spend_aplicado": 19252.59,
+      "peso_evidencia": 0.8,
+      "evidencia": "forte",
+      "n_maduros_90d": 20,
+      "spend_maduros": 77010.37,
+      "roi_agregado_maduros": 0.5289,
+      "share_lucro_top1": 0.1559,
+      "share_lucro_top3": 0.4244,
+      "por_pais_conta": {
+        "BR": 20
+      },
+      "kw_amostra": {
+        "n_kw": 102,
+        "clicks": 1315.0,
+        "custo": 193.890665
+      },
+      "exemplos": [
+        {
+          "tema": "Jovem Aprendiz",
+          "pais": "BR",
+          "spend": 9121.79,
+          "lucro": 6352.41,
+          "roi": 0.696,
+          "dias": 172
+        },
+        {
+          "tema": "Jovem Aprendiz Bb",
+          "pais": "BR",
+          "spend": 12243.5,
+          "lucro": 5997.5,
+          "roi": 0.49,
+          "dias": 172
+        },
+        {
+          "tema": "Jovem Aprendiz Senac",
+          "pais": "BR",
+          "spend": 7894.28,
+          "lucro": 4939.19,
+          "roi": 0.626,
+          "dias": 172
+        },
+        {
+          "tema": "Ciee Jovem Aprendiz",
+          "pais": "BR",
+          "spend": 7461.77,
+          "lucro": 4497.82,
+          "roi": 0.603,
+          "dias": 172
+        },
+        {
+          "tema": "Jovem Aprendiz Senai",
+          "pais": "BR",
+          "spend": 5475.01,
+          "lucro": 3606.6,
+          "roi": 0.659,
+          "dias": 172
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Ciee",
+          "pais": "BR",
+          "spend": 1302.23,
+          "lucro": 80.4
+        },
+        {
+          "tema": "Jovem Aprendiz Vivo",
+          "pais": "BR",
+          "spend": 367.21,
+          "lucro": 146.19
+        },
+        {
+          "tema": "Espro Jovem Aprendiz",
+          "pais": "BR",
+          "spend": 394.2,
+          "lucro": 149.31
+        }
+      ],
+      "rpm_familia": 79.6,
+      "usar_como_multiplicador": true
+    },
+    "habitacao_popular": {
+      "n": 7,
+      "n_temas_distintos": 4,
+      "spend": 49210.72,
+      "lucro": 38831.57,
+      "roi_agregado": 0.7891,
+      "roi_mediano": 0.4006,
+      "n_na_mediana": 7,
+      "pct_negativos": 28.6,
+      "roi_agregado_encolhido": 0.6402,
+      "prior_spend_aplicado": 35150.51,
+      "peso_evidencia": 0.583,
+      "evidencia": "media",
+      "n_maduros_90d": 5,
+      "spend_maduros": 48665.18,
+      "roi_agregado_maduros": 0.7969,
+      "share_lucro_top1": 0.3965,
+      "share_lucro_top3": 0.8953,
+      "por_pais_conta": {
+        "BR": 5,
+        "CO": 1,
+        "PE": 1
+      },
+      "kw_amostra": {
+        "n_kw": 55,
+        "clicks": 518.0,
+        "custo": 45.84280999999999
+      },
+      "exemplos": [
+        {
+          "tema": "Reforma Casa Brasil",
+          "pais": "BR",
+          "spend": 13247.65,
+          "lucro": 15396.29,
+          "roi": 1.162,
+          "dias": 162
+        },
+        {
+          "tema": "Techo Propio",
+          "pais": "PE",
+          "spend": 16485.42,
+          "lucro": 14877.28,
+          "roi": 0.902,
+          "dias": 172
+        },
+        {
+          "tema": "Minha Casa Minha Vida",
+          "pais": "BR",
+          "spend": 11212.13,
+          "lucro": 4492.08,
+          "roi": 0.401,
+          "dias": 172
+        },
+        {
+          "tema": "Mi Casa Ya",
+          "pais": "BR",
+          "spend": 7522.3,
+          "lucro": 4043.14,
+          "roi": 0.537,
+          "dias": 172
+        },
+        {
+          "tema": "Reforma Casa Brasil",
+          "pais": "BR",
+          "spend": 396.3,
+          "lucro": 99.54,
+          "roi": 0.251,
+          "dias": 28
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Minha Casa Minha Vida",
+          "pais": "BR",
+          "spend": 149.24,
+          "lucro": -47.46
+        },
+        {
+          "tema": "Mi Casa Ya",
+          "pais": "CO",
+          "spend": 197.68,
+          "lucro": -29.31
+        },
+        {
+          "tema": "Reforma Casa Brasil",
+          "pais": "BR",
+          "spend": 396.3,
+          "lucro": 99.54
+        }
+      ],
+      "rpm_familia": 100.0,
+      "usar_como_multiplicador": true
+    },
+    "cadastro_social_unico": {
+      "n": 11,
+      "n_temas_distintos": 7,
+      "spend": 125025.93,
+      "lucro": 37775.12,
+      "roi_agregado": 0.3021,
+      "roi_mediano": -0.0024,
+      "n_na_mediana": 11,
+      "pct_negativos": 54.5,
+      "roi_agregado_encolhido": 0.3426,
+      "prior_spend_aplicado": 56829.97,
+      "peso_evidencia": 0.688,
+      "evidencia": "forte",
+      "n_maduros_90d": 9,
+      "spend_maduros": 124338.81,
+      "roi_agregado_maduros": 0.3051,
+      "share_lucro_top1": 0.4195,
+      "share_lucro_top3": 0.9861,
+      "por_pais_conta": {
+        "BR": 6,
+        "CL": 1,
+        "CO": 3,
+        "PE": 1
+      },
+      "kw_amostra": {
+        "n_kw": 32,
+        "clicks": 582.0,
+        "custo": 32.787518
+      },
+      "exemplos": [
+        {
+          "tema": "Nis",
+          "pais": "BR",
+          "spend": 30437.1,
+          "lucro": 15848.09,
+          "roi": 0.521,
+          "dias": 172
+        },
+        {
+          "tema": "Sisfoh",
+          "pais": "PE",
+          "spend": 21274.8,
+          "lucro": 12859.39,
+          "roi": 0.604,
+          "dias": 172
+        },
+        {
+          "tema": "Ruaf",
+          "pais": "BR",
+          "spend": 16785.69,
+          "lucro": 8542.5,
+          "roi": 0.509,
+          "dias": 172
+        },
+        {
+          "tema": "Nis",
+          "pais": "BR",
+          "spend": 4600.13,
+          "lucro": 1341.71,
+          "roi": 0.292,
+          "dias": 152
+        },
+        {
+          "tema": "Sisbén",
+          "pais": "CO",
+          "spend": 1290.66,
+          "lucro": 418.32,
+          "roi": 0.324,
+          "dias": 156
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Sisbén",
+          "pais": "BR",
+          "spend": 49079.97,
+          "lucro": -946.5
+        },
+        {
+          "tema": "Cadunico",
+          "pais": "BR",
+          "spend": 236.31,
+          "lucro": -127.15
+        },
+        {
+          "tema": "Rut Prosperidad Social",
+          "pais": "CO",
+          "spend": 497.75,
+          "lucro": -76.24
+        }
+      ],
+      "rpm_familia": 53.5,
+      "usar_como_multiplicador": true
+    },
+    "fundo_verba_trabalhista": {
+      "n": 10,
+      "n_temas_distintos": 10,
+      "spend": 50825.35,
+      "lucro": 24445.18,
+      "roi_agregado": 0.481,
+      "roi_mediano": -0.0157,
+      "n_na_mediana": 10,
+      "pct_negativos": 50.0,
+      "roi_agregado_encolhido": 0.4645,
+      "prior_spend_aplicado": 25412.67,
+      "peso_evidencia": 0.667,
+      "evidencia": "forte",
+      "n_maduros_90d": 8,
+      "spend_maduros": 47415.0,
+      "roi_agregado_maduros": 0.5323,
+      "share_lucro_top1": 0.6806,
+      "share_lucro_top3": 1.0269,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 6,
+        "CL": 1,
+        "CO": 1,
+        "PE": 1
+      },
+      "kw_amostra": {
+        "n_kw": 59,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Cesantias",
+          "pais": "BR",
+          "spend": 25473.94,
+          "lucro": 16638.54,
+          "roi": 0.653,
+          "dias": 172
+        },
+        {
+          "tema": "Fonavi",
+          "pais": "PE",
+          "spend": 6860.31,
+          "lucro": 4748.62,
+          "roi": 0.692,
+          "dias": 172
+        },
+        {
+          "tema": "Consultar Fgts",
+          "pais": "BR",
+          "spend": 9593.03,
+          "lucro": 3714.49,
+          "roi": 0.387,
+          "dias": 172
+        },
+        {
+          "tema": "Seguro De Cesantía",
+          "pais": "CL",
+          "spend": 636.91,
+          "lucro": 318.47,
+          "roi": 0.5,
+          "dias": 119
+        },
+        {
+          "tema": "Prestación Por Desempleo",
+          "pais": "AR",
+          "spend": 3299.52,
+          "lucro": 286.55,
+          "roi": 0.087,
+          "dias": 147
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Fgts",
+          "pais": "BR",
+          "spend": 1818.69,
+          "lucro": -551.48
+        },
+        {
+          "tema": "Employment Insurance",
+          "pais": "BR",
+          "spend": 603.72,
+          "lucro": -332.03
+        },
+        {
+          "tema": "Pis Pasep",
+          "pais": "BR",
+          "spend": 1591.66,
+          "lucro": -244.53
+        }
+      ],
+      "rpm_familia": 72.6,
+      "usar_como_multiplicador": true
+    },
+    "saude_publica": {
+      "n": 7,
+      "n_temas_distintos": 6,
+      "spend": 29174.76,
+      "lucro": 19583.5,
+      "roi_agregado": 0.6712,
+      "roi_mediano": 0.5634,
+      "n_na_mediana": 6,
+      "pct_negativos": 28.6,
+      "roi_agregado_encolhido": 0.5714,
+      "prior_spend_aplicado": 20839.11,
+      "peso_evidencia": 0.583,
+      "evidencia": "media",
+      "n_maduros_90d": 5,
+      "spend_maduros": 26979.38,
+      "roi_agregado_maduros": 0.6904,
+      "share_lucro_top1": 0.7942,
+      "share_lucro_top3": 0.9993,
+      "por_pais_conta": {
+        "AR": 2,
+        "BR": 2,
+        "CL": 1,
+        "CO": 1,
+        "PE": 1
+      },
+      "kw_amostra": {
+        "n_kw": 23,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Adres",
+          "pais": "BR",
+          "spend": 22036.86,
+          "lucro": 15553.97,
+          "roi": 0.706,
+          "dias": 172
+        },
+        {
+          "tema": "Sis",
+          "pais": "PE",
+          "spend": 4378.85,
+          "lucro": 3118.21,
+          "roi": 0.712,
+          "dias": 172
+        },
+        {
+          "tema": "Cartão Sus",
+          "pais": "BR",
+          "spend": 2134.45,
+          "lucro": 898.36,
+          "roi": 0.421,
+          "dias": 26
+        },
+        {
+          "tema": "Fonasa",
+          "pais": "CL",
+          "spend": 60.93,
+          "lucro": 58.77,
+          "roi": 0.965,
+          "dias": 62
+        },
+        {
+          "tema": "Adres",
+          "pais": "CO",
+          "spend": 422.17,
+          "lucro": 9.91,
+          "roi": 0.023,
+          "dias": 156
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Turnos Web E Telemedicina",
+          "pais": "AR",
+          "spend": 94.81,
+          "lucro": -42.6
+        },
+        {
+          "tema": "Programa Sumar",
+          "pais": "AR",
+          "spend": 46.69,
+          "lucro": -13.12
+        },
+        {
+          "tema": "Adres",
+          "pais": "CO",
+          "spend": 422.17,
+          "lucro": 9.91
+        }
+      ],
+      "rpm_familia": 89.3,
+      "usar_como_multiplicador": true
+    },
+    "transito_veicular": {
+      "n": 54,
+      "n_temas_distintos": 32,
+      "spend": 160142.49,
+      "lucro": 17543.84,
+      "roi_agregado": 0.1096,
+      "roi_mediano": -0.1376,
+      "n_na_mediana": 39,
+      "pct_negativos": 64.8,
+      "roi_agregado_encolhido": 0.1369,
+      "prior_spend_aplicado": 14828.01,
+      "peso_evidencia": 0.915,
+      "evidencia": "forte",
+      "n_maduros_90d": 45,
+      "spend_maduros": 148890.73,
+      "roi_agregado_maduros": 0.131,
+      "share_lucro_top1": 0.7483,
+      "share_lucro_top3": 1.285,
+      "por_pais_conta": {
+        "AR": 4,
+        "BR": 42,
+        "CL": 2,
+        "CO": 2,
+        "PE": 4
+      },
+      "kw_amostra": {
+        "n_kw": 73,
+        "clicks": 667.0,
+        "custo": 60.94133599999999
+      },
+      "exemplos": [
+        {
+          "tema": "Cnh Do Brasil",
+          "pais": "BR",
+          "spend": 22978.01,
+          "lucro": 13128.41,
+          "roi": 0.571,
+          "dias": 117
+        },
+        {
+          "tema": "Cnh Do Brasil",
+          "pais": "BR",
+          "spend": 10727.96,
+          "lucro": 4964.43,
+          "roi": 0.463,
+          "dias": 117
+        },
+        {
+          "tema": "Crlv Digital",
+          "pais": "BR",
+          "spend": 9783.16,
+          "lucro": 4450.26,
+          "roi": 0.455,
+          "dias": 120
+        },
+        {
+          "tema": "Cnh Social",
+          "pais": "BR",
+          "spend": 6020.37,
+          "lucro": 2968.35,
+          "roi": 0.493,
+          "dias": 172
+        },
+        {
+          "tema": "Licencia De Conducir",
+          "pais": "AR",
+          "spend": 5997.91,
+          "lucro": 2641.43,
+          "roi": 0.44,
+          "dias": 158
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Simit",
+          "pais": "BR",
+          "spend": 62159.51,
+          "lucro": -9145.78
+        },
+        {
+          "tema": "Soat",
+          "pais": "BR",
+          "spend": 1452.1,
+          "lucro": -1452.1
+        },
+        {
+          "tema": "Renovação Cnh",
+          "pais": "BR",
+          "spend": 5043.32,
+          "lucro": -694.03
+        }
+      ],
+      "rpm_familia": 21.4,
+      "usar_como_multiplicador": true
+    },
+    "app_servico_gov": {
+      "n": 7,
+      "n_temas_distintos": 5,
+      "spend": 32630.08,
+      "lucro": 16209.7,
+      "roi_agregado": 0.4968,
+      "roi_mediano": -0.0386,
+      "n_na_mediana": 6,
+      "pct_negativos": 57.1,
+      "roi_agregado_encolhido": 0.4697,
+      "prior_spend_aplicado": 23307.2,
+      "peso_evidencia": 0.583,
+      "evidencia": "media",
+      "n_maduros_90d": 4,
+      "spend_maduros": 30816.75,
+      "roi_agregado_maduros": 0.5201,
+      "share_lucro_top1": 0.5237,
+      "share_lucro_top3": 1.0152,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 5,
+        "CL": 1
+      },
+      "kw_amostra": {
+        "n_kw": 14,
+        "clicks": 43.0,
+        "custo": 5.8855830000000005
+      },
+      "exemplos": [
+        {
+          "tema": "App Jornada Do Estudante",
+          "pais": "BR",
+          "spend": 17523.45,
+          "lucro": 8488.38,
+          "roi": 0.484,
+          "dias": 172
+        },
+        {
+          "tema": "App Jornada Do Estudante",
+          "pais": "BR",
+          "spend": 12949.07,
+          "lucro": 7647.89,
+          "roi": 0.591,
+          "dias": 172
+        },
+        {
+          "tema": "App Jornada Do Estudante",
+          "pais": "BR",
+          "spend": 1520.49,
+          "lucro": 319.43,
+          "roi": 0.21,
+          "dias": 29
+        },
+        {
+          "tema": "Caixa Tem",
+          "pais": "BR",
+          "spend": 20.47,
+          "lucro": -11.31,
+          "roi": -0.552,
+          "dias": 26
+        },
+        {
+          "tema": "Mi Argentina App",
+          "pais": "AR",
+          "spend": 118.12,
+          "lucro": -33.94,
+          "roi": -0.287,
+          "dias": 172
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Conta Gov",
+          "pais": "BR",
+          "spend": 272.37,
+          "lucro": -126.91
+        },
+        {
+          "tema": "Chile Atiende",
+          "pais": "CL",
+          "spend": 226.11,
+          "lucro": -73.84
+        },
+        {
+          "tema": "Mi Argentina App",
+          "pais": "AR",
+          "spend": 118.12,
+          "lucro": -33.94
+        }
+      ],
+      "rpm_familia": 73.4,
+      "usar_como_multiplicador": true
+    },
+    "leilao_bens": {
+      "n": 4,
+      "n_temas_distintos": 3,
+      "spend": 15404.06,
+      "lucro": 4351.02,
+      "roi_agregado": 0.2825,
+      "roi_mediano": 0.2289,
+      "n_na_mediana": 4,
+      "pct_negativos": 25.0,
+      "roi_agregado_encolhido": 0.3654,
+      "prior_spend_aplicado": 19255.07,
+      "peso_evidencia": 0.444,
+      "evidencia": "fraca",
+      "n_maduros_90d": 4,
+      "spend_maduros": 15404.06,
+      "roi_agregado_maduros": 0.2825,
+      "share_lucro_top1": 0.9031,
+      "share_lucro_top3": 1.0047,
+      "por_pais_conta": {
+        "BR": 4
+      },
+      "kw_amostra": {
+        "n_kw": 12,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Leilão De Imóveis Caixa",
+          "pais": "BR",
+          "spend": 12795.42,
+          "lucro": 3929.25,
+          "roi": 0.307,
+          "dias": 172
+        },
+        {
+          "tema": "Leilão Receita Federal",
+          "pais": "BR",
+          "spend": 2098.43,
+          "lucro": 394.84,
+          "roi": 0.188,
+          "dias": 172
+        },
+        {
+          "tema": "Leilão Banco Do Brasil",
+          "pais": "BR",
+          "spend": 176.07,
+          "lucro": 47.49,
+          "roi": 0.27,
+          "dias": 172
+        },
+        {
+          "tema": "Leilão Receita Federal",
+          "pais": "BR",
+          "spend": 334.15,
+          "lucro": -20.55,
+          "roi": -0.062,
+          "dias": 172
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Leilão Receita Federal",
+          "pais": "BR",
+          "spend": 334.15,
+          "lucro": -20.55
+        },
+        {
+          "tema": "Leilão Banco Do Brasil",
+          "pais": "BR",
+          "spend": 176.07,
+          "lucro": 47.49
+        },
+        {
+          "tema": "Leilão Receita Federal",
+          "pais": "BR",
+          "spend": 2098.43,
+          "lucro": 394.84
+        }
+      ],
+      "rpm_familia": 57.1,
+      "usar_como_multiplicador": false
+    },
+    "outros": {
+      "n": 8,
+      "n_temas_distintos": 5,
+      "spend": 17468.69,
+      "lucro": 1609.84,
+      "roi_agregado": 0.0922,
+      "roi_mediano": -0.0039,
+      "n_na_mediana": 7,
+      "pct_negativos": 62.5,
+      "roi_agregado_encolhido": 0.2227,
+      "prior_spend_aplicado": 10917.93,
+      "peso_evidencia": 0.615,
+      "evidencia": "media",
+      "n_maduros_90d": 6,
+      "spend_maduros": 17344.93,
+      "roi_agregado_maduros": 0.0946,
+      "share_lucro_top1": 1.173,
+      "share_lucro_top3": 1.9062,
+      "por_pais_conta": {
+        "BR": 7,
+        "CL": 1
+      },
+      "kw_amostra": {
+        "n_kw": 211,
+        "clicks": 12563.0,
+        "custo": 1734.6978210000007
+      },
+      "exemplos": [
+        {
+          "tema": "Cndb",
+          "pais": "BR",
+          "spend": 6295.12,
+          "lucro": 1888.41,
+          "roi": 0.3,
+          "dias": 172
+        },
+        {
+          "tema": "Cndb",
+          "pais": "BR",
+          "spend": 3947.31,
+          "lucro": 1157.6,
+          "roi": 0.293,
+          "dias": 172
+        },
+        {
+          "tema": "Cndb",
+          "pais": "BR",
+          "spend": 1641.98,
+          "lucro": 22.68,
+          "roi": 0.014,
+          "dias": 172
+        },
+        {
+          "tema": "Btm",
+          "pais": "CL",
+          "spend": 22.44,
+          "lucro": -6.29,
+          "roi": -0.28,
+          "dias": 47
+        },
+        {
+          "tema": "Cpp",
+          "pais": "BR",
+          "spend": 3138.37,
+          "lucro": -12.11,
+          "roi": -0.004,
+          "dias": 133
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Oas",
+          "pais": "BR",
+          "spend": 2102.3,
+          "lucro": -1233.46
+        },
+        {
+          "tema": "Sin",
+          "pais": "BR",
+          "spend": 219.85,
+          "lucro": -181.58
+        },
+        {
+          "tema": "Cndb",
+          "pais": "BR",
+          "spend": 101.31,
+          "lucro": -25.39
+        }
+      ],
+      "rpm_familia": 34.8,
+      "usar_como_multiplicador": true
+    },
+    "educacao_superior_bolsa": {
+      "n": 11,
+      "n_temas_distintos": 11,
+      "spend": 9883.47,
+      "lucro": 1602.99,
+      "roi_agregado": 0.1622,
+      "roi_mediano": -0.0526,
+      "n_na_mediana": 8,
+      "pct_negativos": 72.7,
+      "roi_agregado_encolhido": 0.2464,
+      "prior_spend_aplicado": 4492.49,
+      "peso_evidencia": 0.688,
+      "evidencia": "media",
+      "n_maduros_90d": 8,
+      "spend_maduros": 9831.06,
+      "roi_agregado_maduros": 0.1653,
+      "share_lucro_top1": 1.3528,
+      "share_lucro_top3": 1.4316,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 7,
+        "PE": 3
+      },
+      "kw_amostra": {
+        "n_kw": 12,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Beca 18",
+          "pais": "PE",
+          "spend": 3343.22,
+          "lucro": 2168.55,
+          "roi": 0.649,
+          "dias": 172
+        },
+        {
+          "tema": "Beca Permanencia",
+          "pais": "PE",
+          "spend": 333.48,
+          "lucro": 79.81,
+          "roi": 0.239,
+          "dias": 172
+        },
+        {
+          "tema": "Progresar Superior",
+          "pais": "AR",
+          "spend": 1510.8,
+          "lucro": 46.52,
+          "roi": 0.031,
+          "dias": 154
+        },
+        {
+          "tema": "Divida Icetex",
+          "pais": "BR",
+          "spend": 0.58,
+          "lucro": -0.58,
+          "roi": -1.0,
+          "dias": 15
+        },
+        {
+          "tema": "Consultar Crédito Icetex",
+          "pais": "BR",
+          "spend": 2.31,
+          "lucro": -1.85,
+          "roi": -0.801,
+          "dias": 13
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Becas Disponibles",
+          "pais": "PE",
+          "spend": 460.36,
+          "lucro": -294.84
+        },
+        {
+          "tema": "Sisu",
+          "pais": "BR",
+          "spend": 1310.21,
+          "lucro": -165.96
+        },
+        {
+          "tema": "Fies",
+          "pais": "BR",
+          "spend": 1635.6,
+          "lucro": -128.03
+        }
+      ],
+      "rpm_familia": 38.5,
+      "usar_como_multiplicador": true
+    },
+    "transporte_publico": {
+      "n": 5,
+      "n_temas_distintos": 3,
+      "spend": 3836.53,
+      "lucro": 994.4,
+      "roi_agregado": 0.2592,
+      "roi_mediano": 0.2804,
+      "n_na_mediana": 5,
+      "pct_negativos": 20.0,
+      "roi_agregado_encolhido": 0.3454,
+      "prior_spend_aplicado": 3836.53,
+      "peso_evidencia": 0.5,
+      "evidencia": "fraca",
+      "n_maduros_90d": 5,
+      "spend_maduros": 3836.53,
+      "roi_agregado_maduros": 0.2592,
+      "share_lucro_top1": 0.4325,
+      "share_lucro_top3": 0.9023,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 4
+      },
+      "kw_amostra": null,
+      "exemplos": [
+        {
+          "tema": "Jaé",
+          "pais": "BR",
+          "spend": 1329.26,
+          "lucro": 430.08,
+          "roi": 0.324,
+          "dias": 133
+        },
+        {
+          "tema": "Jaé",
+          "pais": "BR",
+          "spend": 981.48,
+          "lucro": 275.23,
+          "roi": 0.28,
+          "dias": 132
+        },
+        {
+          "tema": "Bilhete Único",
+          "pais": "BR",
+          "spend": 609.48,
+          "lucro": 191.92,
+          "roi": 0.315,
+          "dias": 151
+        },
+        {
+          "tema": "Bilhete Único",
+          "pais": "BR",
+          "spend": 799.67,
+          "lucro": 151.37,
+          "roi": 0.189,
+          "dias": 151
+        },
+        {
+          "tema": "Sube",
+          "pais": "AR",
+          "spend": 116.64,
+          "lucro": -54.19,
+          "roi": -0.465,
+          "dias": 146
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Sube",
+          "pais": "AR",
+          "spend": 116.64,
+          "lucro": -54.19
+        },
+        {
+          "tema": "Bilhete Único",
+          "pais": "BR",
+          "spend": 799.67,
+          "lucro": 151.37
+        },
+        {
+          "tema": "Bilhete Único",
+          "pais": "BR",
+          "spend": 609.48,
+          "lucro": 191.92
+        }
+      ],
+      "rpm_familia": 54.0,
+      "usar_como_multiplicador": false
+    },
+    "emprego_concurso_publico": {
+      "n": 8,
+      "n_temas_distintos": 8,
+      "spend": 5113.08,
+      "lucro": 260.61,
+      "roi_agregado": 0.051,
+      "roi_mediano": 0.0655,
+      "n_na_mediana": 6,
+      "pct_negativos": 37.5,
+      "roi_agregado_encolhido": 0.1974,
+      "prior_spend_aplicado": 3195.67,
+      "peso_evidencia": 0.615,
+      "evidencia": "media",
+      "n_maduros_90d": 8,
+      "spend_maduros": 5113.08,
+      "roi_agregado_maduros": 0.051,
+      "share_lucro_top1": 0.5392,
+      "share_lucro_top3": 0.9744,
+      "por_pais_conta": {
+        "BR": 8
+      },
+      "kw_amostra": {
+        "n_kw": 4,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Concurso Ibge",
+          "pais": "BR",
+          "spend": 966.39,
+          "lucro": 140.51,
+          "roi": 0.145,
+          "dias": 172
+        },
+        {
+          "tema": "Concurso Petrobras",
+          "pais": "BR",
+          "spend": 1373.66,
+          "lucro": 57.14,
+          "roi": 0.042,
+          "dias": 130
+        },
+        {
+          "tema": "Concurso Bb",
+          "pais": "BR",
+          "spend": 629.55,
+          "lucro": 56.27,
+          "roi": 0.089,
+          "dias": 130
+        },
+        {
+          "tema": "Concurso Inss",
+          "pais": "BR",
+          "spend": 444.69,
+          "lucro": 47.55,
+          "roi": 0.107,
+          "dias": 131
+        },
+        {
+          "tema": "Concurso Prf",
+          "pais": "BR",
+          "spend": 1487.27,
+          "lucro": 18.84,
+          "roi": 0.013,
+          "dias": 131
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Concurso Pf",
+          "pais": "BR",
+          "spend": 115.68,
+          "lucro": -31.58
+        },
+        {
+          "tema": "Concurso Caixa",
+          "pais": "BR",
+          "spend": 47.48,
+          "lucro": -23.72
+        },
+        {
+          "tema": "Concurso Correios",
+          "pais": "BR",
+          "spend": 48.36,
+          "lucro": -4.4
+        }
+      ],
+      "rpm_familia": 30.8,
+      "usar_como_multiplicador": true
+    },
+    "tributo_fiscal": {
+      "n": 7,
+      "n_temas_distintos": 3,
+      "spend": 3284.04,
+      "lucro": 109.43,
+      "roi_agregado": 0.0333,
+      "roi_mediano": -0.2642,
+      "n_na_mediana": 7,
+      "pct_negativos": 71.4,
+      "roi_agregado_encolhido": 0.1993,
+      "prior_spend_aplicado": 2345.74,
+      "peso_evidencia": 0.583,
+      "evidencia": "fraca",
+      "n_maduros_90d": 1,
+      "spend_maduros": 85.88,
+      "roi_agregado_maduros": -0.4361,
+      "share_lucro_top1": 3.5076,
+      "share_lucro_top3": 3.5772,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 6
+      },
+      "kw_amostra": {
+        "n_kw": 2,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Declaração Irpf 2026",
+          "pais": "BR",
+          "spend": 1632.76,
+          "lucro": 383.84,
+          "roi": 0.235,
+          "dias": 19
+        },
+        {
+          "tema": "Declaração Irpf 2026",
+          "pais": "BR",
+          "spend": 524.08,
+          "lucro": 45.07,
+          "roi": 0.086,
+          "dias": 15
+        },
+        {
+          "tema": "Arca",
+          "pais": "AR",
+          "spend": 85.88,
+          "lucro": -37.45,
+          "roi": -0.436,
+          "dias": 145
+        },
+        {
+          "tema": "Declaração Irpf 2026",
+          "pais": "BR",
+          "spend": 446.11,
+          "lucro": -45.26,
+          "roi": -0.101,
+          "dias": 18
+        },
+        {
+          "tema": "Restituição Irpf 2026",
+          "pais": "BR",
+          "spend": 214.59,
+          "lucro": -56.7,
+          "roi": -0.264,
+          "dias": 8
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Declaração Irpf 2026",
+          "pais": "BR",
+          "spend": 159.93,
+          "lucro": -92.42
+        },
+        {
+          "tema": "Restituição Irpf 2026",
+          "pais": "BR",
+          "spend": 220.69,
+          "lucro": -87.65
+        },
+        {
+          "tema": "Restituição Irpf 2026",
+          "pais": "BR",
+          "spend": 214.59,
+          "lucro": -56.7
+        }
+      ],
+      "rpm_familia": 31.1,
+      "usar_como_multiplicador": false
+    },
+    "ecommerce_logistica": {
+      "n": 1,
+      "n_temas_distintos": 1,
+      "spend": 4.09,
+      "lucro": -1.86,
+      "roi_agregado": -0.4556,
+      "roi_mediano": null,
+      "n_na_mediana": 0,
+      "pct_negativos": 100.0,
+      "roi_agregado_encolhido": 0.2838,
+      "prior_spend_aplicado": 20.45,
+      "peso_evidencia": 0.167,
+      "evidencia": "fraca",
+      "n_maduros_90d": 0,
+      "spend_maduros": 0,
+      "roi_agregado_maduros": null,
+      "share_lucro_top1": null,
+      "share_lucro_top3": null,
+      "por_pais_conta": {
+        "CL": 1
+      },
+      "kw_amostra": {
+        "n_kw": 2,
+        "clicks": 0.0,
+        "custo": 0.0
+      },
+      "exemplos": [
+        {
+          "tema": "Envios Extra Mercado Libre",
+          "pais": "CL",
+          "spend": 4.09,
+          "lucro": -1.86,
+          "roi": -0.456,
+          "dias": 20
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Envios Extra Mercado Libre",
+          "pais": "CL",
+          "spend": 4.09,
+          "lucro": -1.86
+        }
+      ],
+      "rpm_familia": 44.3,
+      "usar_como_multiplicador": false
+    },
+    "credito_financeiro": {
+      "n": 4,
+      "n_temas_distintos": 4,
+      "spend": 3268.7,
+      "lucro": -22.85,
+      "roi_agregado": -0.007,
+      "roi_mediano": 0.2005,
+      "n_na_mediana": 3,
+      "pct_negativos": 50.0,
+      "roi_agregado_encolhido": 0.2367,
+      "prior_spend_aplicado": 4085.88,
+      "peso_evidencia": 0.444,
+      "evidencia": "fraca",
+      "n_maduros_90d": 3,
+      "spend_maduros": 3256.03,
+      "roi_agregado_maduros": -0.006,
+      "share_lucro_top1": null,
+      "share_lucro_top3": null,
+      "por_pais_conta": {
+        "AR": 2,
+        "BR": 1,
+        "CL": 1
+      },
+      "kw_amostra": null,
+      "exemplos": [
+        {
+          "tema": "Veraz",
+          "pais": "AR",
+          "spend": 1321.39,
+          "lucro": 453.21,
+          "roi": 0.343,
+          "dias": 147
+        },
+        {
+          "tema": "Bcra",
+          "pais": "AR",
+          "spend": 551.18,
+          "lucro": 110.54,
+          "roi": 0.201,
+          "dias": 146
+        },
+        {
+          "tema": "Cuenta Rut",
+          "pais": "CL",
+          "spend": 12.67,
+          "lucro": -3.28,
+          "roi": -0.259,
+          "dias": 64
+        },
+        {
+          "tema": "Ccb",
+          "pais": "BR",
+          "spend": 1383.46,
+          "lucro": -583.31,
+          "roi": -0.422,
+          "dias": 120
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Ccb",
+          "pais": "BR",
+          "spend": 1383.46,
+          "lucro": -583.31
+        },
+        {
+          "tema": "Cuenta Rut",
+          "pais": "CL",
+          "spend": 12.67,
+          "lucro": -3.28
+        },
+        {
+          "tema": "Bcra",
+          "pais": "AR",
+          "spend": 551.18,
+          "lucro": 110.54
+        }
+      ],
+      "rpm_familia": 37.0,
+      "usar_como_multiplicador": false
+    },
+    "entretenimento_midia": {
+      "n": 4,
+      "n_temas_distintos": 4,
+      "spend": 932.29,
+      "lucro": -718.99,
+      "roi_agregado": -0.7712,
+      "roi_mediano": -0.8379,
+      "n_na_mediana": 3,
+      "pct_negativos": 100.0,
+      "roi_agregado_encolhido": -0.1029,
+      "prior_spend_aplicado": 1165.36,
+      "peso_evidencia": 0.444,
+      "evidencia": "fraca",
+      "n_maduros_90d": 0,
+      "spend_maduros": 0,
+      "roi_agregado_maduros": null,
+      "share_lucro_top1": null,
+      "share_lucro_top3": null,
+      "por_pais_conta": {
+        "BR": 4
+      },
+      "kw_amostra": null,
+      "exemplos": [
+        {
+          "tema": "Assistir Futebol Nomes Campeonatos",
+          "pais": "BR",
+          "spend": 47.75,
+          "lucro": -43.23,
+          "roi": -0.905,
+          "dias": 63
+        },
+        {
+          "tema": "Assistir Novela Online",
+          "pais": "BR",
+          "spend": 198.45,
+          "lucro": -166.27,
+          "roi": -0.838,
+          "dias": 63
+        },
+        {
+          "tema": "Assistir Futebol Online",
+          "pais": "BR",
+          "spend": 265.08,
+          "lucro": -224.21,
+          "roi": -0.846,
+          "dias": 63
+        },
+        {
+          "tema": "Assistir Novelas Da Globo",
+          "pais": "BR",
+          "spend": 421.01,
+          "lucro": -285.28,
+          "roi": -0.678,
+          "dias": 36
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Assistir Novelas Da Globo",
+          "pais": "BR",
+          "spend": 421.01,
+          "lucro": -285.28
+        },
+        {
+          "tema": "Assistir Futebol Online",
+          "pais": "BR",
+          "spend": 265.08,
+          "lucro": -224.21
+        },
+        {
+          "tema": "Assistir Novela Online",
+          "pais": "BR",
+          "spend": 198.45,
+          "lucro": -166.27
+        }
+      ],
+      "rpm_familia": 0.0,
+      "usar_como_multiplicador": false
+    },
+    "emprego_vaga_privada": {
+      "n": 14,
+      "n_temas_distintos": 13,
+      "spend": 5603.65,
+      "lucro": -1295.81,
+      "roi_agregado": -0.2312,
+      "roi_mediano": -0.5531,
+      "n_na_mediana": 13,
+      "pct_negativos": 92.9,
+      "roi_agregado_encolhido": -0.0568,
+      "prior_spend_aplicado": 2001.3,
+      "peso_evidencia": 0.737,
+      "evidencia": "media",
+      "n_maduros_90d": 2,
+      "spend_maduros": 2665.15,
+      "roi_agregado_maduros": 0.0398,
+      "share_lucro_top1": null,
+      "share_lucro_top3": null,
+      "por_pais_conta": {
+        "AR": 1,
+        "BR": 13
+      },
+      "kw_amostra": {
+        "n_kw": 5,
+        "clicks": 12.0,
+        "custo": 2.252643
+      },
+      "exemplos": [
+        {
+          "tema": "Volver Al Trabajo",
+          "pais": "AR",
+          "spend": 1757.54,
+          "lucro": 406.34,
+          "roi": 0.231,
+          "dias": 155
+        },
+        {
+          "tema": "Trabalhe Conosco Coca Cola",
+          "pais": "BR",
+          "spend": 3.97,
+          "lucro": -0.75,
+          "roi": -0.188,
+          "dias": 4
+        },
+        {
+          "tema": "Trabalhe Conosco Burger King",
+          "pais": "BR",
+          "spend": 70.59,
+          "lucro": -41.29,
+          "roi": -0.585,
+          "dias": 43
+        },
+        {
+          "tema": "Trabalhe Conosco Senac",
+          "pais": "BR",
+          "spend": 79.24,
+          "lucro": -51.99,
+          "roi": -0.656,
+          "dias": 42
+        },
+        {
+          "tema": "Trabalhe Conosco Riachuelo",
+          "pais": "BR",
+          "spend": 92.58,
+          "lucro": -61.05,
+          "roi": -0.659,
+          "dias": 34
+        }
+      ],
+      "piores": [
+        {
+          "tema": "Trabalhe Conosco Ml",
+          "pais": "BR",
+          "spend": 628.6,
+          "lucro": -369.67
+        },
+        {
+          "tema": "Walmart Careers",
+          "pais": "BR",
+          "spend": 907.61,
+          "lucro": -300.17
+        },
+        {
+          "tema": "Trabalhe Conosco Assai",
+          "pais": "BR",
+          "spend": 355.89,
+          "lucro": -168.79
+        }
+      ],
+      "rpm_familia": 0.0,
+      "usar_como_multiplicador": true
+    }
+  },
+  "regras_classificacao": [
+    {
+      "ordem": 1,
+      "familia": "emprego_jovem_aprendiz",
+      "padroes": [
+        "\\bjovem aprendiz\\b",
+        "\\bmenor aprendiz\\b",
+        "\\baprendiz\\b",
+        "\\bciee\\b",
+        "\\bespro\\b"
+      ]
+    },
+    {
+      "ordem": 2,
+      "familia": "emprego_gig_entrega",
+      "padroes": [
+        "\\bentregador\\b",
+        "\\bmotorista\\b",
+        "\\bmotoboy\\b",
+        "\\bdelivery\\b",
+        "\\brappi\\b",
+        "\\bloggi\\b",
+        "\\blalamove\\b",
+        "\\buber\\b",
+        "\\bifood\\b",
+        "\\b99\\b"
+      ]
+    },
+    {
+      "ordem": 3,
+      "familia": "emprego_concurso_publico",
+      "padroes": [
+        "\\bconcurso\\b",
+        "\\bconcursos\\b"
+      ]
+    },
+    {
+      "ordem": 4,
+      "familia": "emprego_vaga_privada",
+      "padroes": [
+        "\\btrabalhe conosco\\b",
+        "\\bcareers\\b",
+        "\\bvagas?\\b",
+        "\\bempregos?\\b",
+        "\\bbolsa de trabajo\\b",
+        "\\bvolver al trabajo\\b"
+      ]
+    },
+    {
+      "ordem": 5,
+      "familia": "curso_gratuito_profissionalizante",
+      "padroes": [
+        "\\bcursos?\\b",
+        "\\bsenai\\b",
+        "\\bsenac\\b",
+        "\\bsebrae\\b",
+        "\\bsenar\\b",
+        "\\bsena\\b",
+        "\\bsence\\b",
+        "\\bpronatec\\b",
+        "\\bcapacita t?\\b",
+        "\\bqualifica\\b",
+        "\\baprenda mais\\b",
+        "\\bavamec\\b",
+        "\\bevg\\b",
+        "\\bopen academy\\b",
+        "\\bfundacao bradesco\\b",
+        "\\bfgv\\b",
+        "\\bplan fines\\b",
+        "\\bmais professores\\b"
+      ]
+    },
+    {
+      "ordem": 6,
+      "familia": "educacao_superior_bolsa",
+      "padroes": [
+        "\\bprouni\\b",
+        "\\bfies\\b",
+        "\\bsisu\\b",
+        "\\benem\\b",
+        "\\bicetex\\b",
+        "\\bbecas?\\b",
+        "\\bbeca\\b",
+        "\\bprogresar\\b",
+        "\\bbolsa de estudos?\\b"
+      ]
+    },
+    {
+      "ordem": 7,
+      "familia": "habitacao_popular",
+      "padroes": [
+        "\\bcasa\\b",
+        "\\bvivienda\\b",
+        "\\btecho propio\\b",
+        "\\bmoradia\\b",
+        "\\bhabitac\\w*\\b",
+        "\\baluguel social\\b"
+      ]
+    },
+    {
+      "ordem": 8,
+      "familia": "leilao_bens",
+      "padroes": [
+        "\\bleilao\\b",
+        "\\bleiloes\\b",
+        "\\bremate\\b"
+      ]
+    },
+    {
+      "ordem": 9,
+      "familia": "transferencia_renda",
+      "padroes": [
+        "\\bbolsa familia\\b",
+        "\\bauxilio\\b",
+        "\\bgas do povo\\b",
+        "\\bpe de meia\\b",
+        "\\brenta\\b",
+        "\\bingreso minimo\\b",
+        "\\bprograma hogar\\b",
+        "\\btarjeta alimentaria\\b",
+        "\\bbono\\b",
+        "\\bsubsidio\\b",
+        "\\bsuf\\b",
+        "\\bjovenes en paz\\b",
+        "\\bprograma juntos\\b",
+        "\\bdevolucion del iva\\b",
+        "\\bsupergiros\\b"
+      ]
+    },
+    {
+      "ordem": 10,
+      "familia": "previdencia_aposentadoria",
+      "padroes": [
+        "\\binss\\b",
+        "\\banses\\b",
+        "\\bcnis\\b",
+        "\\baposentador\\w*\\b",
+        "\\bjubilacion\\b",
+        "\\bpension\\w*\\b",
+        "\\bpami\\b",
+        "\\bcolpensiones\\b",
+        "\\bpgu\\b",
+        "\\bpilar solidario\\b",
+        "\\bcolombia mayor\\b",
+        "\\bcarteira do idoso\\b",
+        "\\bidoso\\b"
+      ]
+    },
+    {
+      "ordem": 11,
+      "familia": "fundo_verba_trabalhista",
+      "padroes": [
+        "\\bfgts\\b",
+        "\\bpis\\b",
+        "\\bpasep\\b",
+        "\\bcesantias?\\b",
+        "\\bcesantia\\b",
+        "\\bdesempleo\\b",
+        "\\bemployment insurance\\b",
+        "\\bseguro desemprego\\b",
+        "\\bfonavi\\b",
+        "\\brecibo de sueldo\\b"
+      ]
+    },
+    {
+      "ordem": 12,
+      "familia": "cadastro_social_unico",
+      "padroes": [
+        "\\bnis\\b",
+        "\\bcadunico\\b",
+        "\\bcad unico\\b",
+        "\\bcadastro unico\\b",
+        "\\bsisben\\b",
+        "\\bsisfoh\\b",
+        "\\bruaf\\b",
+        "\\bregistro social de hogares\\b",
+        "\\brut prosperidad\\b"
+      ]
+    },
+    {
+      "ordem": 13,
+      "familia": "saude_publica",
+      "padroes": [
+        "\\bsus\\b",
+        "\\bsis\\b",
+        "\\badres\\b",
+        "\\bfonasa\\b",
+        "\\bprograma sumar\\b",
+        "\\btelemedicina\\b",
+        "\\bturnos web\\b",
+        "\\beps\\b",
+        "\\bsalud\\b",
+        "\\bsaude\\b"
+      ]
+    },
+    {
+      "ordem": 14,
+      "familia": "transito_veicular",
+      "padroes": [
+        "\\bcnh\\b",
+        "\\blicencia de conducir\\b",
+        "\\blicenciamento\\b",
+        "\\bipva\\b",
+        "\\bcrlv\\b",
+        "\\bdetran\\b",
+        "\\bsoat\\b",
+        "\\bvtv\\b",
+        "\\brtv\\b",
+        "\\brevision tecnomecanica\\b",
+        "\\bmultas?\\b",
+        "\\bpatentes?\\b",
+        "\\bsimit\\b",
+        "\\brunt\\b",
+        "\\bpermiso de circulacion\\b",
+        "\\bconsulta vehicular\\b",
+        "\\bsunarp\\b",
+        "\\bdriver licensing\\b",
+        "\\bautoescola\\b",
+        "\\bsimulado\\b",
+        "\\bicbc\\b"
+      ]
+    },
+    {
+      "ordem": 15,
+      "familia": "credito_financeiro",
+      "padroes": [
+        "\\bcuenta rut\\b"
+      ]
+    },
+    {
+      "ordem": 16,
+      "familia": "documento_identidade_civil",
+      "padroes": [
+        "\\brg\\b",
+        "\\bcpf\\b",
+        "\\brut\\b",
+        "\\bruc\\b",
+        "\\brun\\b",
+        "\\bdnie\\b",
+        "\\brenaper\\b",
+        "\\bcedula\\b",
+        "\\bclave unica\\b",
+        "\\btitulo\\b",
+        "\\be titulo\\b",
+        "\\breservista\\b",
+        "\\balistamento militar\\b",
+        "\\bantecedentes\\b",
+        "\\bbo online\\b",
+        "\\bboletim de ocorrencia\\b",
+        "\\bpoupatempo\\b",
+        "\\bpassaporte\\b",
+        "\\bcertidao\\b",
+        "\\bcertificado unico laboral\\b"
+      ]
+    },
+    {
+      "ordem": 17,
+      "familia": "tributo_fiscal",
+      "padroes": [
+        "\\birpf\\b",
+        "\\bimposto\\b",
+        "\\breceita federal\\b",
+        "\\bsunat\\b",
+        "\\barca\\b",
+        "\\barba\\b",
+        "\\bdeclaracao\\b",
+        "\\brestituicao\\b",
+        "\\bdivida ativa\\b"
+      ]
+    },
+    {
+      "ordem": 18,
+      "familia": "transporte_publico",
+      "padroes": [
+        "\\bbilhete unico\\b",
+        "\\bjae\\b",
+        "\\bsube\\b",
+        "\\btarjeta de transporte\\b"
+      ]
+    },
+    {
+      "ordem": 19,
+      "familia": "app_servico_gov",
+      "padroes": [
+        "\\bgov br\\b",
+        "\\bconta gov\\b",
+        "\\bmi argentina\\b",
+        "\\bcaixa tem\\b",
+        "\\bchile atiende\\b",
+        "\\bjornada do estudante\\b",
+        "\\bapp\\b"
+      ]
+    },
+    {
+      "ordem": 20,
+      "familia": "credito_financeiro",
+      "padroes": [
+        "\\bveraz\\b",
+        "\\bbcra\\b",
+        "\\bccb\\b",
+        "\\bcuenta rut\\b",
+        "\\bcredito\\b",
+        "\\bdivida\\b",
+        "\\bemprestimo\\b",
+        "\\bscore\\b"
+      ]
+    },
+    {
+      "ordem": 21,
+      "familia": "entretenimento_midia",
+      "padroes": [
+        "\\bassistir\\b",
+        "\\bnovelas?\\b",
+        "\\bfutebol\\b",
+        "\\bbbb\\b",
+        "\\bstreaming\\b",
+        "\\bcampeonatos?\\b"
+      ]
+    },
+    {
+      "ordem": 22,
+      "familia": "ecommerce_logistica",
+      "padroes": [
+        "\\benvios\\b",
+        "\\bencomendas\\b",
+        "\\brastreio\\b",
+        "\\bmercado libre\\b"
+      ]
+    }
+  ],
+  "cobertura": {
+    "classificados": 288,
+    "total": 296,
+    "pct": 97.3,
+    "meta_f04": 80.0,
+    "atingiu_meta": true,
+    "nao_classificados": [
+      {
+        "tema": "Cndb",
+        "pais": "BR",
+        "lucro": 1888.41
+      },
+      {
+        "tema": "Cndb",
+        "pais": "BR",
+        "lucro": 1157.6
+      },
+      {
+        "tema": "Cndb",
+        "pais": "BR",
+        "lucro": 22.68
+      },
+      {
+        "tema": "Btm",
+        "pais": "CL",
+        "lucro": -6.29
+      },
+      {
+        "tema": "Cpp",
+        "pais": "BR",
+        "lucro": -12.11
+      },
+      {
+        "tema": "Cndb",
+        "pais": "BR",
+        "lucro": -25.39
+      },
+      {
+        "tema": "Sin",
+        "pais": "BR",
+        "lucro": -181.58
+      },
+      {
+        "tema": "Oas",
+        "pais": "BR",
+        "lucro": -1233.46
+      }
+    ],
+    "keywords_sem_familia": 211,
+    "keywords_total": 1103
+  },
+  "reconciliacao_f04": {
+    "nota": "o PRD do F04 cita 4 faixas de ROI medido; todas sao reproduzidas a partir de reverse_temas.json consolidando linhas duplicadas",
+    "habitacao_popular_90_114": {
+      "reforma casa brasil": 1.1357,
+      "techo propio": 0.9025
+    },
+    "documento_compulsorio_54_96": {
+      "cnh do brasil": 0.5359,
+      "ruc sunat": 0.9643,
+      "aviso": "o limite inferior (54%) e a CNH. O F04 tratava CNH como 'documento compulsorio'; aqui ela vai para transito_veicular, que agregado da 11% e tem 64,8% de temas negativos. A familia unica do F04 escondia essa diferenca."
+    },
+    "transferencia_renda_47_80": {
+      "pe de meia": 0.4719,
+      "programa juntos": 0.7988
+    },
+    "cursos_gratuitos_66_71": {
+      "senac": 0.6644,
+      "senai": 0.7124
+    },
+    "base_global": {
+      "lucro_prd": 547386,
+      "lucro_calculado": 547460.93,
+      "roi_agregado_prd": 0.432,
+      "roi_agregado_calculado": 0.4317,
+      "pct_negativas_prd": 44.0,
+      "pct_negativas_calculado": 43.9
+    }
+  },
+  "validacao": {
+    "soma_spend_familias_bate": true,
+    "soma_lucro_familias_bate": true,
+    "kw_psico_lucro_nao_somavel": {
+      "soma_ingenua_linha_a_linha": 7985774.73,
+      "lucro_real_dos_temas": 547460.93,
+      "fator_de_inflacao": 14.6,
+      "nota": "prova de que roi/lucro em kw_psico sao do tema-pai repetidos por keyword; so clicks e custo sao agregaveis"
+    }
+  }
+}

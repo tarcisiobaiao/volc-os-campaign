@@ -1,0 +1,45 @@
+{
+  "mission_id": "decision-raw-normalizer-zero-fill-fix-v1",
+  "title": "Decision Intelligence — remover zero-fill e fechar identidade",
+  "base_ref": "a9188a9fe5a40a88cfbb58ed3bfcbc5facac367e",
+  "mode": "implementation",
+  "commit_message": "fix(trafego): remove zero-fill do normalizador Google Ads",
+  "briefing": "Feche somente os findings confirmados sobre a9188a9. Regra soberana: nenhum escalar omitido vira zero ou false dentro do normalizador. selected_fields prova seleção, não medição; campo obrigatório omitido/null recusa, campo opcional permanece null/ausente e bloqueia elegibilidade quando necessário. Remova identidades e métricas da materialização de defaults. IDs precisam ser decimal ProtoJSON canônico, sem zeros à esquerda, dentro de 1..2^63-1; recuse zero, overflow e representação não canônica antes de comparar resource_name ou duplicidade. Faça coverage_receipt carregar query_window explícita e exija igualdade com a janela das linhas; campaign_day completo cobre exatamente todas as datas dessa query_window. Quality Score é int32: aceite número inteiro canônico 1..10 (e, apenas se o adaptador declarar conversão, string canônica), preserve null como ausência; ausência total de quality torna decision_eligible=false. UNKNOWN/UNSPECIFIED continuam inelegíveis. Ajuste o manifesto: entrada é projeção achatada posterior a MessageToDict, zero-fill proibido, presença real ainda não provada; kernel temporal usa o timezone do argumento agora e permanece fail-closed, não chame isso de UTC intrínseco. Documente que ruído de double monetário é recusado fail-closed e que o sufixo base64 continua premissa. Adicione contraprovas de identidade omitida/zero/leading-zero/overflow por família; mesmo criterion numérico positivo/negativo com representação diferente deve ser recusado; janela do recibo truncada/divergente; métrica zero explícita aceita e omitida recusada; quality vazia inelegível. Não altere política, endpoint, UI, banco, n8n, Roadmap, grafo ou curadoria. Zero rede, produção, validate_only ou mutate.",
+  "timeout_seconds": 3600,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {"argv": ["env", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=backend:.", "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-B", "-m", "pytest", "-p", "no:cacheprovider", "backend/tests/test_inteligencia_decisao_lab.py", "backend/tests/test_inteligencia_decisao_normalizador.py", "-q"], "timeout_seconds": 1200}
+  ],
+  "workers": [
+    {
+      "id": "codex-zero-fill-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Único escritor. Remova materialização otimista, torne a identidade canônica e vincule cobertura à janela consultada. Reproduza todos os bypasses antes de corrigir.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao/__init__.py", "volc_ads/inteligencia_decisao/normalizacao_google_ads.py", "volc_ads/inteligencia_decisao/dados/linhas_google_ads_sinteticas.json", "backend/tests/test_inteligencia_decisao_normalizador.py", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"]
+    },
+    {
+      "id": "claude-zero-fill-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Tente reproduzir zero-fill, janela autodeclarada, identidade omitida/zero/leading-zero/overflow, criterion cross-grain, quality ausente e manifesto otimista. Aceite apenas se omitido nunca virar medida.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "backend/tests/test_inteligencia_decisao_normalizador.py", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"]
+    },
+    {
+      "id": "codex-zero-fill-adversary",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Ataque ausência versus zero, canonicidade numérica, cobertura da query_window, elegibilidade sem qualidade, tempo e determinismo. Exija contraprova concreta e zero I/O.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "backend/tests/test_inteligencia_decisao_normalizador.py", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"]
+    }
+  ]
+}

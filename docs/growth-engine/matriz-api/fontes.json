@@ -1,0 +1,1158 @@
+{
+  "gerado_em": "2026-08-26",
+  "escopo": "Matriz canonica de operacao da Google Ads API por canal para o VOLC OS Growth Engine",
+  "api": {
+    "versao_alvo": "v25",
+    "v25_lancada_em": "2026-07-22",
+    "v25_sunset": "2027-08 (agosto/2027)",
+    "ultima_minor_lancada": "v25.1 (2026-08-19)",
+    "sdk_inspecionado": "google-ads 31.3.0 (Python)",
+    "caminho_sdk": "backend/.venv/lib/python3.14/site-packages/google/ads/googleads/v25/",
+    "sdk_cobre_v25_1": false,
+    "evidencia_sdk_nao_cobre_v25_1": [
+      "Campaign.aca_migration_date_time ausente",
+      "Campaign.broad_match_migration_date_time ausente",
+      "AssetFieldType.TEXT_DISCLAIMER ausente",
+      "resource LiftMeasurementConfig ausente"
+    ]
+  },
+  "legenda_confianca": {
+    "alta": "Descriptor/docstring do proto instalado, ou tabela oficial reproduzida literalmente",
+    "media": "Prosa da documentacao oficial, sem tabela normativa",
+    "baixa": "Inferencia a partir de duas fontes oficiais que nao se declaram",
+    "nao_confirmado": "Sem fonte oficial; ver lista nao_confirmado"
+  },
+  "metodo": "Paginas oficiais baixadas via HTTP e extraidas do corpo do artigo (devsite-article-body); protos inspecionados por introspecao de descriptor protobuf e docstring do pacote instalado. Nenhuma chamada a Google Ads API foi feita.",
+  "total_fontes_web": 88,
+  "fontes": [
+    {
+      "ref": "S1",
+      "url": "https://developers.google.com/google-ads/api/docs/sunset-dates",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "search.md",
+        "display.md"
+      ],
+      "nota": "Tabela de release/sunset por versao reproduzida integralmente; a navegacao desta pagina tambem forneceu o indice 'Reporting reference v25'."
+    },
+    {
+      "ref": "S2",
+      "url": "https://developers.google.com/google-ads/api/docs/release-notes",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "search.md",
+        "demand-gen.md"
+      ],
+      "nota": "v25.1 lancada em 19/08/2026; breaking changes da v25.0; base para constatar o descompasso do SDK local."
+    },
+    {
+      "ref": "S3",
+      "url": "https://developers.google.com/google-ads/api/docs/deprecations",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "demand-gen.md",
+        "performance-max.md"
+      ],
+      "nota": "Tabela de depreciacoes nao versionadas com datas efetivas."
+    },
+    {
+      "ref": "S3b",
+      "url": "https://developers.google.com/google-ads/api/docs/concepts/versioning",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Contexto de versionamento; nao contem numeros normativos usados."
+    },
+    {
+      "ref": "S14",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/quotas",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Tabela de quotas e limites por request reproduzida."
+    },
+    {
+      "ref": "S17",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/system-limits",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "search.md",
+        "performance-max.md"
+      ],
+      "nota": "Tabela de limites de sistema reproduzida; declara explicitamente que 'campanhas por conta' NAO esta nela."
+    },
+    {
+      "ref": "S11",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/partial-failures",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Formato do partial_failure_error e localizacao do indice da operacao que falhou."
+    },
+    {
+      "ref": "S10",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/testing",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Unica fonte oficial encontrada que descreve o escopo de validate_only."
+    },
+    {
+      "ref": "S16",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/error-types",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Taxonomia oficial de erros e politica de backoff."
+    },
+    {
+      "ref": "S16b",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/understand-api-errors",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Apoio; nao gerou afirmacao isolada."
+    },
+    {
+      "ref": "S16c",
+      "url": "https://developers.google.com/google-ads/api/docs/best-practices/common-errors",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Apoio; consultado, sem afirmacao isolada."
+    },
+    {
+      "ref": "S15",
+      "url": "https://developers.google.com/google-ads/api/docs/productionize/rate-limits",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Token bucket por CID e por developer token; QPS nao publicado."
+    },
+    {
+      "ref": "S15b",
+      "url": "https://developers.google.com/google-ads/api/docs/productionize/access-levels",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Niveis de acesso; a pagina nao numera a quota de Standard."
+    },
+    {
+      "ref": "S9",
+      "url": "https://developers.google.com/google-ads/api/docs/mutating/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Restricao de mutacao cross-account."
+    },
+    {
+      "ref": "S4",
+      "url": "https://developers.google.com/google-ads/api/docs/mutating/service-mutates",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Operacoes independentes, sem referencia cruzada em services por recurso."
+    },
+    {
+      "ref": "S5",
+      "url": "https://developers.google.com/google-ads/api/docs/mutating/bulk-mutate",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "GoogleAdsService.Mutate suporta partial failure e validate-only."
+    },
+    {
+      "ref": "S8",
+      "url": "https://developers.google.com/google-ads/api/docs/mutating/best-practices",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "IDs temporarios e response_content_type."
+    },
+    {
+      "ref": "S6b",
+      "url": "https://developers.google.com/google-ads/api/docs/batch-processing/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Contexto de BatchJobService."
+    },
+    {
+      "ref": "S6",
+      "url": "https://developers.google.com/google-ads/api/docs/batch-processing/temporary-ids",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Regras completas de IDs temporarios negativos."
+    },
+    {
+      "ref": "S7",
+      "url": "https://developers.google.com/google-ads/api/docs/concepts/changing-objects",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Atomicidade (all-or-nothing), update_mask, oneof de operacao."
+    },
+    {
+      "ref": "S12",
+      "url": "https://developers.google.com/google-ads/api/docs/change-event",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Janela de 30 dias, LIMIT obrigatorio de 10.000, latencia de 3 min."
+    },
+    {
+      "ref": "S13",
+      "url": "https://developers.google.com/google-ads/api/docs/change-status",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Somente a ultima mudanca por recurso; pai pode ser sinalizado no lugar do filho."
+    },
+    {
+      "ref": "S20",
+      "url": "https://developers.google.com/google-ads/api/docs/recommendations",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Tabela de RecommendationType reproduzida parcialmente; optimization score."
+    },
+    {
+      "ref": "S18",
+      "url": "https://developers.google.com/google-ads/api/docs/query/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Search vs SearchStream; GoogleAdsFieldService como catalogo de compatibilidade."
+    },
+    {
+      "ref": "S18b",
+      "url": "https://developers.google.com/google-ads/api/docs/query/structure",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Apoio de gramatica GAQL."
+    },
+    {
+      "ref": "S19b",
+      "url": "https://developers.google.com/google-ads/api/docs/reporting/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Apoio."
+    },
+    {
+      "ref": "S19",
+      "url": "https://developers.google.com/google-ads/api/docs/reporting/segmentation",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Segmentacao implicita e multiplos segmentos por query."
+    },
+    {
+      "ref": "S21b",
+      "url": "https://developers.google.com/google-ads/api/docs/conversions/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Apoio."
+    },
+    {
+      "ref": "S21",
+      "url": "https://developers.google.com/google-ads/api/docs/conversions/goals/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Hierarquia customer/campaign conversion goal e semantica de biddable."
+    },
+    {
+      "ref": "S22",
+      "url": "https://developers.google.com/google-ads/api/docs/policy-exemption/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Existencia do fluxo de isencao de politica."
+    },
+    {
+      "ref": "S23",
+      "url": "https://developers.google.com/google-ads/api/docs/targeting/criteria",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "display.md"
+      ],
+      "nota": "Tabela de polaridade e nivel por tipo de criterio; linha 'Placement' verificada no HTML bruto."
+    },
+    {
+      "ref": "S23b",
+      "url": "https://developers.google.com/google-ads/api/docs/targeting/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "baixa",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Pagina praticamente vazia na extracao."
+    },
+    {
+      "ref": "S24",
+      "url": "https://developers.google.com/google-ads/api/docs/assets/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "display.md",
+        "search.md"
+      ],
+      "nota": "Modelo Asset/AssetFieldType/linkagens e tabelas de mutabilidade."
+    },
+    {
+      "ref": "S24b",
+      "url": "https://developers.google.com/google-ads/api/docs/assets/working-with-assets",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "display.md",
+        "search.md"
+      ],
+      "nota": "Consultada para specs de imagem: NAO publica dimensoes nem peso."
+    },
+    {
+      "ref": "T1",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md",
+        "display.md",
+        "demand-gen.md",
+        "performance-max.md"
+      ],
+      "nota": "Tabela AdvertisingChannelType x SubType e os tres modelos de estrutura."
+    },
+    {
+      "ref": "T4",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/create-campaigns",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "search.md",
+        "display.md"
+      ],
+      "nota": "Exemplos v25 de criacao; base do Display Expansion on Search."
+    },
+    {
+      "ref": "T8",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/create-ad-groups",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Exemplo generico de ad group; sem regras por canal."
+    },
+    {
+      "ref": "T3",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/bidding/strategy-types",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md",
+        "display.md"
+      ],
+      "nota": "Tabela BiddingStrategyType x contexto valido e erros por incompatibilidade."
+    },
+    {
+      "ref": "T3b",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/bidding/assign-strategies",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Portfolio vs standard."
+    },
+    {
+      "ref": "T3c",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/bidding/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "baixa",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Pagina quase vazia na extracao."
+    },
+    {
+      "ref": "T11",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md",
+        "display.md",
+        "demand-gen.md",
+        "performance-max.md"
+      ],
+      "nota": "Lista de canais e estrategias que aceitam orcamento total de campanha; Display NAO consta."
+    },
+    {
+      "ref": "T2",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/search-campaigns/getting-started",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Recursos mandatorios de uma campanha Search valida."
+    },
+    {
+      "ref": "T7",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/ai-max-for-search-campaigns/getting-started",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Campos de AI Max e depreciacao de campaign.keyword_match_type."
+    },
+    {
+      "ref": "T10",
+      "url": "https://developers.google.com/google-ads/api/docs/responsive-search-ads/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Tres headlines e duas descriptions no serve; pinning."
+    },
+    {
+      "ref": "T5",
+      "url": "https://developers.google.com/google-ads/api/docs/responsive-search-ads/create-responsive-search-ads",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "search.md"
+      ],
+      "nota": "Minimo de 3 headlines, 2 descriptions e 1 final URL."
+    },
+    {
+      "ref": "D3",
+      "url": "https://developers.google.com/google-ads/api/docs/responsive-display-ads/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "Nudge oficial para migrar RDA para Performance Max."
+    },
+    {
+      "ref": "D4",
+      "url": "https://developers.google.com/google-ads/api/docs/responsive-display-ads/create-responsive-display-ads",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "Campos obrigatorios do ResponsiveDisplayAdInfo; declara que as specs de imagem estao fora desta pagina."
+    },
+    {
+      "ref": "D4b",
+      "url": "https://developers.google.com/google-ads/api/docs/responsive-display-ads/get-responsive-display-ads",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "Leitura de RDA."
+    },
+    {
+      "ref": "D8b",
+      "url": "https://developers.google.com/google-ads/api/docs/display-upload-ads/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "baixa",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "Pagina minima."
+    },
+    {
+      "ref": "D8",
+      "url": "https://developers.google.com/google-ads/api/docs/display-upload-ads/create-display-upload-ad",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "DisplayUploadAdInfo + MediaBundleAsset + DisplayUploadProductType."
+    },
+    {
+      "ref": "D9",
+      "url": "https://developers.google.com/google-ads/api/docs/display-upload-ads/html5-upload-ads",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "Gate de elegibilidade HTML5: AMPHTML ou USD 9.000 + 90 dias ou allowlist."
+    },
+    {
+      "ref": "D10",
+      "url": "https://developers.google.com/google-ads/api/docs/dynamic-remarketing/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "display.md"
+      ],
+      "nota": "Retail via ShoppingSetting; nao-retail via AssetSet + Asset."
+    },
+    {
+      "ref": "G3",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/overview",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "demand-gen.md"
+      ],
+      "nota": "Superficies do canal."
+    },
+    {
+      "ref": "G1",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/create-campaign",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "demand-gen.md"
+      ],
+      "nota": "Ordem de criacao, orcamento nao compartilhado, estrategias suportadas, ad group sem type."
+    },
+    {
+      "ref": "G4",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/channel-controls",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "demand-gen.md",
+        "display.md"
+      ],
+      "nota": "Tres configuracoes de channel_controls e nomes das flags."
+    },
+    {
+      "ref": "G10",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/audience-targeting",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "demand-gen.md"
+      ],
+      "nota": "Lookalike segments e targeting de audiencia no ad group."
+    },
+    {
+      "ref": "G11",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/product-ads",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "demand-gen.md"
+      ],
+      "nota": "Merchant Center + listing groups em Demand Gen."
+    },
+    {
+      "ref": "G12",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/reporting",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "demand-gen.md",
+        "display.md"
+      ],
+      "nota": "click_type CROSS_NETWORK e ausencia do 'Demand Gen video ad (legacy)' na API."
+    },
+    {
+      "ref": "X0",
+      "url": "https://developers.google.com/google-ads/api/performance-max/getting-started",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Visao geral do fluxo."
+    },
+    {
+      "ref": "X5",
+      "url": "https://developers.google.com/google-ads/api/performance-max/create-budget",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Orcamento nao compartilhado, DAILY ou CUSTOM_PERIOD, recomendacao de 3x CPA."
+    },
+    {
+      "ref": "X2",
+      "url": "https://developers.google.com/google-ads/api/performance-max/create-campaign",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Duas unicas estrategias; portfolio proibido; brand guidelines default desde v21."
+    },
+    {
+      "ref": "X4",
+      "url": "https://developers.google.com/google-ads/api/performance-max/asset-groups",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md",
+        "display.md"
+      ],
+      "nota": "Atomicidade obrigatoria, partial_failure NAO suportado, restricao de BatchJobService."
+    },
+    {
+      "ref": "X7",
+      "url": "https://developers.google.com/google-ads/api/performance-max/assets",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Brand assets no nivel campanha; dependencia entre TEXT_ASSET_AUTOMATION e URL expansion; text guidelines."
+    },
+    {
+      "ref": "X8",
+      "url": "https://developers.google.com/google-ads/api/performance-max/asset-requirements",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Tabela completa de requisitos de asset reproduzida integralmente."
+    },
+    {
+      "ref": "X10",
+      "url": "https://developers.google.com/google-ads/api/performance-max/asset-group-signals",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Sinais so podem ser adicionados ou removidos; Local Services exige ao menos um."
+    },
+    {
+      "ref": "X13",
+      "url": "https://developers.google.com/google-ads/api/performance-max/create-campaign-criteria",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Criterios suportados; brand e keyword so negativos; 10.000 negative keywords."
+    },
+    {
+      "ref": "X3",
+      "url": "https://developers.google.com/google-ads/api/performance-max/reporting",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Tabela de recursos de reporting por objetivo; ad_group/ad_group_ad nao retornam dados."
+    },
+    {
+      "ref": "X16",
+      "url": "https://developers.google.com/google-ads/api/performance-max/campaign-reporting",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Segmentos de canal a partir da v23; campaign.feed_types."
+    },
+    {
+      "ref": "X17",
+      "url": "https://developers.google.com/google-ads/api/performance-max/asset-group-reporting",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "ad_strength, asset_coverage e o aviso de divergencia UI x API."
+    },
+    {
+      "ref": "X12",
+      "url": "https://developers.google.com/google-ads/api/performance-max/conversion-goals",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Default usa todos os customer goals; biddable como chave."
+    },
+    {
+      "ref": "X9",
+      "url": "https://developers.google.com/google-ads/api/performance-max/common-errors",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Tabela de erros comuns reproduzida."
+    },
+    {
+      "ref": "X14",
+      "url": "https://developers.google.com/google-ads/api/performance-max/optimizations",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "performance-max.md"
+      ],
+      "nota": "Final URL expansion, video_aspect_ratio_requirement em action items."
+    },
+    {
+      "ref": "S25",
+      "url": "https://developers.google.com/google-ads/api/reference/rpc/v25/MutateCampaignsRequest",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Referencia RPC; conteudo util confirmado tambem pelo proto local."
+    },
+    {
+      "ref": "G7",
+      "url": "https://support.google.com/google-ads/answer/13704860",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "demand-gen.md"
+      ],
+      "nota": "Help Center oficial. UNICA fonte oficial encontrada para peso de arquivo, duracao de video e dimensao recomendada em Demand Gen. Autoridade menor que o proto para nome de campo. Divergencia registrada: logo minimo 144x144 aqui vs 128x128 no proto."
+    },
+    {
+      "ref": "G13",
+      "url": "https://support.google.com/google-ads/answer/13703192",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "demand-gen.md"
+      ],
+      "nota": "Help Center: requisitos minimos de Demand Gen. Baixado; nao gerou afirmacao numerica citada."
+    },
+    {
+      "ref": "P",
+      "url": null,
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md",
+        "search.md",
+        "display.md",
+        "demand-gen.md",
+        "performance-max.md"
+      ],
+      "nota": "Protos do SDK instalado, inspecionados por introspecao de descriptor e docstring: backend/.venv/lib/python3.14/site-packages/google/ads/googleads/v25/ (pacote google-ads 31.3.0). Verdade estrutural para nome de campo, obrigatoriedade, imutabilidade e valores de enum em v25.0 — NAO cobre as adicoes da v25.1."
+    },
+    {
+      "ref": "S26",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/create-budgets",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Orcamento medio diario e compartilhavel por default; total budget nao pode ser compartilhado e o tipo de orcamento nao muda depois da campanha criada."
+    },
+    {
+      "ref": "S27",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/share-budgets",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "explicitly_shared true/false e a irreversibilidade da transicao para compartilhado."
+    },
+    {
+      "ref": "S28",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/assign-budgets",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Consultada; alerta de overdelivery ao trocar de orcamento em vez de atualizar o existente. Sem afirmacao numerica citada."
+    },
+    {
+      "ref": "S29",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/restrictions-errors",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Tabela de erros comuns de orcamento; experimento exige orcamento nao compartilhado."
+    },
+    {
+      "ref": "S30",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/remove-budgets",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "reference_count > 0 impede remocao; remover campanha remove o orcamento nao compartilhado."
+    },
+    {
+      "ref": "S31",
+      "url": "https://developers.google.com/google-ads/api/docs/campaigns/budgets/track-performance",
+      "consultado_em": "2026-08-26",
+      "confianca": "media",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Consultada; metricas agregadas por orcamento via campaign_budget. Sem afirmacao numerica citada."
+    },
+    {
+      "ref": "S32",
+      "url": "https://support.google.com/google-ads/answer/10486637",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "FONTE PRIMARIA do teto de gasto. Limite diario = 2x o orcamento diario medio; limite mensal = 30,4x. Distincao served cost vs billed cost, com exemplos numericos oficiais. Excecao Pay for conversions (sem limite diario). Nota de rateio para campanha iniciada no meio do mes, SEM formula publicada."
+    },
+    {
+      "ref": "S33",
+      "url": "https://support.google.com/google-ads/answer/6385083",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Confirma 2x diario e 30,4x mensal de forma independente; origem do 30,4 (365/12)."
+    },
+    {
+      "ref": "S34",
+      "url": "https://support.google.com/google-ads/answer/1704443",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Overdelivery: served cost pode exceder o limite, billed cost nunca. Relatorio Billed cost so existe no Report editor da UI."
+    },
+    {
+      "ref": "S35",
+      "url": "https://support.google.com/google-ads/answer/10486536",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Budgets overview; served vs billed cost e exemplo de teto diario/mensal."
+    },
+    {
+      "ref": "S36",
+      "url": "https://support.google.com/google-ads/answer/10487241",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Shared budget = um unico orcamento diario medio; disponivel so em Search, Shopping, Display e Video; incompativel com PMax, App, Hotel com Commission, Smart Shopping, experimentos e total budget. NAO declara se o multiplicador 2x incide sobre o pool ou por campanha."
+    },
+    {
+      "ref": "S37",
+      "url": "https://support.google.com/google-ads/answer/12795729",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "Limite de gasto diario no nivel da CONTA, que sobrepoe os orcamentos de campanha. Comum em contas novas ou pendentes de verificacao de anunciante; nao e possivel solicitar aumento."
+    },
+    {
+      "ref": "S38",
+      "url": "https://ads-developers.googleblog.com/2020/01/complete-sunset-of-accelerated-budget.html",
+      "consultado_em": "2026-08-26",
+      "confianca": "alta",
+      "usado_em": [
+        "comum.md"
+      ],
+      "nota": "FONTE PRIMARIA do sunset de ACCELERATED. Google Ads Developer Blog, 29/01/2020. Out/2019: sunset para Search, Shopping e shared budgets. Fim de abril/2020: todos os demais tipos, incluindo Display, compartilhados e nao compartilhados, em todas as versoes da API. Erros: OperationAccessDenied.ACTION_NOT_PERMITTED em CampaignBudgetService.delivery_method e CampaignService.campaign_budget. Maio/2020: ate editar amount/status de orcamentos ACCELERATED remanescentes passa a falhar."
+    }
+  ],
+  "nao_confirmado": [
+    {
+      "item": "Lista oficial e exaustiva do que validate_only NAO valida",
+      "onde_procurei": [
+        "docs/mutating/overview",
+        "docs/mutating/best-practices",
+        "docs/best-practices/testing",
+        "docs/best-practices/error-types",
+        "docs/best-practices/understand-api-errors",
+        "protos de request do SDK"
+      ],
+      "arquivo": "comum.md"
+    },
+    {
+      "item": "Quota diaria de operacoes do nivel Standard Access",
+      "onde_procurei": [
+        "docs/best-practices/quotas",
+        "docs/productionize/access-levels"
+      ],
+      "arquivo": "comum.md"
+    },
+    {
+      "item": "Maximo de campanhas por conta",
+      "onde_procurei": [
+        "docs/best-practices/system-limits"
+      ],
+      "arquivo": "comum.md",
+      "observacao": "A propria pagina declara que esse limite nao esta la e remete ao Help Center 'About your Google Ads account limits'."
+    },
+    {
+      "item": "Guia oficial de primary_status (rota /docs/reporting/primary-status retorna HTTP 404)",
+      "onde_procurei": [
+        "docs/reporting/primary-status",
+        "busca no dominio developers.google.com"
+      ],
+      "arquivo": "comum.md"
+    },
+    {
+      "item": "Existencia de chave de idempotencia na API",
+      "onde_procurei": [
+        "varredura por 'idempot' nas 71 paginas oficiais baixadas: zero ocorrencias"
+      ],
+      "arquivo": "comum.md",
+      "observacao": "Ausencia comprovada no corpus varrido; nao comprovada para o site inteiro."
+    },
+    {
+      "item": "Teto maximo de headlines e descriptions do ResponsiveSearchAdInfo",
+      "onde_procurei": [
+        "docs/responsive-search-ads/*",
+        "docs/best-practices/system-limits",
+        "proto ResponsiveSearchAdInfo"
+      ],
+      "arquivo": "search.md"
+    },
+    {
+      "item": "Dimensoes, proporcao, peso e formato do asset AD_IMAGE em Search",
+      "onde_procurei": [
+        "docs/assets/overview",
+        "docs/assets/working-with-assets",
+        "docs/campaigns/search-campaigns/getting-started",
+        "proto ImageAsset/AdImageAsset"
+      ],
+      "arquivo": "search.md"
+    },
+    {
+      "item": "Limite de keywords por conta e por campanha",
+      "onde_procurei": [
+        "docs/best-practices/system-limits",
+        "docs/best-practices/quotas"
+      ],
+      "arquivo": "search.md"
+    },
+    {
+      "item": "Peso maximo de arquivo e dimensao recomendada de imagem para Responsive Display Ads",
+      "onde_procurei": [
+        "proto ResponsiveDisplayAdInfo",
+        "docs/responsive-display-ads/create-responsive-display-ads",
+        "docs/assets/overview",
+        "docs/assets/working-with-assets"
+      ],
+      "arquivo": "display.md",
+      "observacao": "Nao reutilizar os 5120 KB da tabela de Performance Max."
+    },
+    {
+      "item": "Duracao minima, proporcao e resolucao de video em Responsive Display Ads",
+      "onde_procurei": [
+        "proto ResponsiveDisplayAdInfo (declara apenas o maximo de 5 videos)",
+        "docs/responsive-display-ads/*"
+      ],
+      "arquivo": "display.md"
+    },
+    {
+      "item": "Tamanho maximo do ZIP e dimensoes suportadas do MediaBundleAsset em Display",
+      "onde_procurei": [
+        "proto MediaBundleAsset",
+        "docs/display-upload-ads/*"
+      ],
+      "arquivo": "display.md"
+    },
+    {
+      "item": "Compatibilidade canal-a-canal declarada para MANUAL_CPC, TARGET_SPEND, TARGET_CPM, PERCENT_CPC, FIXED_CPM, TARGET_CPV e MANUAL_CPV em DISPLAY",
+      "onde_procurei": [
+        "docs/campaigns/bidding/strategy-types",
+        "docs/campaigns/bidding/assign-strategies"
+      ],
+      "arquivo": "display.md"
+    },
+    {
+      "item": "Se o criterio 'placement' aceita targeting POSITIVO (a tabela oficial diz que nao, mas managed_placement_view e network_settings.target_content_network pressupoem que sim)",
+      "onde_procurei": [
+        "docs/targeting/criteria (linha verificada no HTML bruto)",
+        "indice Reporting reference v25",
+        "proto NetworkSettings"
+      ],
+      "arquivo": "display.md",
+      "observacao": "Resolver com um AdGroupCriterionOperation placement + negative=false sob validate_only=true antes de codificar."
+    },
+    {
+      "item": "Suporte de Target CPC em Demand Gen",
+      "onde_procurei": [
+        "docs/demand-gen/create-campaign (lista quatro estrategias, sem Target CPC)",
+        "docs/release-notes (resumo menciona TargetCPC para Demand Gen)",
+        "proto Campaign.target_cpc"
+      ],
+      "arquivo": "demand-gen.md"
+    },
+    {
+      "item": "Suporte de estrategias de portfolio em Demand Gen",
+      "onde_procurei": [
+        "docs/demand-gen/create-campaign",
+        "docs/campaigns/bidding/assign-strategies"
+      ],
+      "arquivo": "demand-gen.md",
+      "observacao": "Nem afirmado nem negado pela doc; em PMax a proibicao e explicita."
+    },
+    {
+      "item": "Minimos exatos de headlines/long_headlines/descriptions do DemandGenVideoResponsiveAdInfo",
+      "onde_procurei": [
+        "proto DemandGenVideoResponsiveAdInfo (nao declara minimos)",
+        "docs/demand-gen/create-campaign (resumo cita 3/1/2)"
+      ],
+      "arquivo": "demand-gen.md"
+    },
+    {
+      "item": "Cobertura de reporting do quarto tipo de anuncio Demand Gen (demand_gen_product_ad)",
+      "onde_procurei": [
+        "docs/demand-gen/reporting (fala em tres tipos)",
+        "proto Ad (expoe quatro)"
+      ],
+      "arquivo": "demand-gen.md"
+    },
+    {
+      "item": "Versao minima do cliente Python que cobre a v25.1",
+      "onde_procurei": [
+        "docs/sunset-dates (remete ao Changelog do Python, nao consultado)"
+      ],
+      "arquivo": "comum.md"
+    },
+    {
+      "item": "Formula exata do rateio do limite mensal (30,4x) para campanha que comeca no meio do mes",
+      "onde_procurei": [
+        "support.google.com/google-ads/answer/10486637",
+        "support.google.com/google-ads/answer/6385083",
+        "support.google.com/google-ads/answer/1704443",
+        "support.google.com/google-ads/answer/10486536",
+        "docs/campaigns/budgets/overview",
+        "docs/campaigns/budgets/create-budgets"
+      ],
+      "arquivo": "comum.md",
+      "observacao": "O texto diz apenas 'we'll only take into account the days the campaign was running'. Poderia baixar o teto de uma janela de 3 dias de R$120 para R$60, mas nenhum plano que autoriza gasto deve se apoiar nisso. Usar N x 2 x diario."
+    },
+    {
+      "item": "Se o multiplicador de 2x do limite diario incide sobre o pool de um orcamento compartilhado ou por campanha que o usa",
+      "onde_procurei": [
+        "support.google.com/google-ads/answer/10486637 (fala em limite 'for a campaign')",
+        "support.google.com/google-ads/answer/10487241 (fala em 'a single average daily budget')",
+        "support.google.com/google-ads/answer/10486536",
+        "support.google.com/google-ads/answer/6385083",
+        "docs/campaigns/budgets/overview",
+        "docs/campaigns/budgets/share-budgets"
+      ],
+      "arquivo": "comum.md",
+      "observacao": "As duas leituras sobrevivem ao texto oficial. Mitigacao: usar explicitly_shared=false no canario, onde o teto e inequivoco. A transicao para compartilhado e irreversivel, entao comecar dedicado preserva a opcao."
+    }
+  ],
+  "teto_de_gasto": {
+    "limite_diario": "2x o orcamento diario medio (average daily budget), para a maioria das campanhas",
+    "limite_mensal": "30,4x o orcamento diario medio",
+    "excecao_sem_limite_diario": "campanhas com Campaign.payment_mode = CONVERSIONS (Pay for conversions)",
+    "teto_de_janela_de_N_dias": "N x (2 x orcamento diario) — unico teto publicado nessa granularidade",
+    "exemplo_canario_3_dias_20_por_dia": {
+      "nominal": 60,
+      "teto_defensavel": 120,
+      "moeda": "BRL",
+      "nota": "O nominal nao e teto: e a media perseguida. Usar 120."
+    },
+    "accelerated_delivery": "sunsetado desde abril/2020 em todos os tipos de campanha e todas as versoes da API; enum ainda presente no proto v25 mas retorna OperationAccessDenied.ACTION_NOT_PERMITTED",
+    "standard_delivery": "pacing ao longo do periodo (mensal); NAO e trava diaria de 1x — o teto diario continua 2x",
+    "served_vs_billed": "metrics.cost_micros e SERVED cost e pode exceder os limites; billed cost nunca excede e o Google cobre a diferenca. Nao existe metrica de billed cost no proto v25 (verificado: nenhum campo com 'bill' em Metrics).",
+    "limite_adicional_de_conta": "existe um limite de gasto diario no nivel da conta que sobrepoe orcamentos de campanha; comum em contas novas ou pendentes de verificacao de anunciante",
+    "fontes": [
+      "S32",
+      "S33",
+      "S34",
+      "S35",
+      "S36",
+      "S37",
+      "S38",
+      "T11",
+      "P"
+    ]
+  }
+}

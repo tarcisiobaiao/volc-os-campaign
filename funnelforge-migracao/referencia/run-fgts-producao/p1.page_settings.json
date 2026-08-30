@@ -1,0 +1,14 @@
+{
+  "hide_title": "yes",
+  "background_image": {
+    "url": "",
+    "id": "",
+    "size": ""
+  },
+  "background_video_fallback": {
+    "url": "",
+    "id": "",
+    "size": ""
+  },
+  "background_slideshow_gallery": []
+}

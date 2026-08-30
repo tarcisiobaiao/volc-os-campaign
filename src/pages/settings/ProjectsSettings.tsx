@@ -1,0 +1,1504 @@
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Modal, useModal } from "@/components/ui/modal";
+import { Layout } from "@/components/layout/Layout";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DateFilter } from "@/components/dashboard/DateFilter";
+import { DataStatus } from "@/components/dashboard/DataStatus";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  FolderOpen,
+  Calendar as CalendarIcon,
+  Settings,
+  BarChart3,
+  Search,
+  CheckCircle,
+  Link,
+  DollarSign,
+  Clock,
+  ArrowLeft,
+  AlertTriangle,
+  X,
+  RefreshCw,
+  TrendingUp,
+  ArrowDown,
+  Info,
+  Eye,
+  EyeOff,
+  Globe,
+  FileText,
+  Lightbulb,
+  MoreVertical,
+  Circle
+} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useNavigate } from "react-router-dom";
+import { supabaseDataService, useSupabaseData, Project } from "@/services/supabaseDataService";
+import { taxHistoryService } from "@/services/taxHistoryService";
+import { supabase } from "@/lib/supabase";
+import { format, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
+import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
+interface ProjectIntegration {
+  googleAds: {
+    connected: boolean;
+    account: string;
+    id: string;
+    status: string;
+  };
+  gam: {
+    connected: boolean;
+    account: string;
+    networkCode?: string;
+    status: string;
+  };
+  adxDiscount: number;
+}
+
+
+export default function ProjectsSettings() {
+
+  const navigate = useNavigate();
+  const { userProfile } = useAuth();
+  const isMobile = useIsMobile();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [userProjectIds, setUserProjectIds] = useState<number[]>([]);
+  const [selectedProjectItem, setSelectedProjectItem] = useState<Project | null>(null);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    gamNetworkCode: "",
+    revenueShare: ""
+  });
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isUpdatingProject, setIsUpdatingProject] = useState(false);
+  const [editForm, setEditForm] = useState({
+    gamNetworkCode: "",
+    revenueShare: ""
+  });
+  const addModal = useModal();
+  const editModal = useModal();
+  const deleteModal = useModal();
+  const visibilityModal = useModal();
+
+  // Visibility management states
+  const [allProjectsForVisibility, setAllProjectsForVisibility] = useState<Project[]>([]);
+  const [visibilityChanges, setVisibilityChanges] = useState<Record<string, boolean>>({});
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
+  
+  // Filter states - mesma lógica de Reports com ONTEM adicionado
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range'>('today');
+  const [selectedDate, setSelectedDate] = useState<string>(""); // Will be set dynamically
+  const [selectedEndDate, setSelectedEndDate] = useState<string>("");
+  const [currentTaxRate, setCurrentTaxRate] = useState<number>(8.1);
+  const [selectedProject, setSelectedProject] = useState<string>("all");
+
+  // Estados para o filtro customizado - mesma lógica de Reports
+  const [isCustomPeriodOpen, setIsCustomPeriodOpen] = useState(false);
+  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [rangeStartDate, setRangeStartDate] = useState<Date | undefined>(undefined);
+  const [rangeEndDate, setRangeEndDate] = useState<Date | undefined>(undefined);
+  const [tempCustomDate, setTempCustomDate] = useState<Date | undefined>(undefined);
+  const [tempRangeStartDate, setTempRangeStartDate] = useState<Date | undefined>(undefined);
+  const [tempRangeEndDate, setTempRangeEndDate] = useState<Date | undefined>(undefined);
+  
+  // Sort state
+  const [sortBy, setSortBy] = useState<'revenue' | 'investment' | 'roi'>('revenue');
+  
+  // Fetch user projects for OPERATOR users
+  useEffect(() => {
+    const fetchUserProjects = async () => {
+      if (userProfile?.role === 'OPERATOR' && userProfile.id) {
+        const { data, error } = await supabase
+          .from('user_projects')
+          .select('project_id')
+          .eq('user_id', userProfile.id);
+
+        if (!error && data) {
+          setUserProjectIds(data.map(up => up.project_id));
+        }
+      }
+    };
+    fetchUserProjects();
+  }, [userProfile]);
+
+  // Initialize with current server date (São Paulo timezone)
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        supabaseDataService.clearServerDateCache();
+        const serverDate = await supabaseDataService.getServerDate();
+        setSelectedDate(serverDate);
+
+        // Load current tax rate
+        const currentMonth = serverDate.substring(0, 7); // YYYY-MM format
+        const taxRate = await taxHistoryService.getCurrentTaxRate(currentMonth);
+        setCurrentTaxRate(taxRate);
+      } catch (error) {
+        console.error('Error during initialization:', error);
+        // Fallback to São Paulo timezone date
+        const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(new Date());
+        setSelectedDate(saoPauloDate);
+      }
+    };
+    
+    initialize();
+  }, []);
+  
+  // Use filtered data based on current selections - mesma lógica do Dashboard Geral
+  // TRATAMENTO ESPECIAL: Yesterday internamente vira 'custom' para usar a mesma lógica
+  // useMemo para evitar re-renders desnecessários
+  const filters = React.useMemo(() => ({
+    date: selectedDate,
+    endDate: selectedEndDate || undefined,
+    projectId: selectedProject === "all" ? undefined : selectedProject,
+    period: selectedPeriod === 'yesterday' ? 'custom' : selectedPeriod
+  }), [selectedDate, selectedEndDate, selectedProject, selectedPeriod]);
+  
+  // Use the same data hook as GeneralDashboard
+  const { projects, campaigns, loading, error, refresh } = useSupabaseData(filters);
+  
+
+  // Filter handlers - mesma lógica de Reports
+  const handlePeriodChange = async (period: 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'range') => {
+    setSelectedPeriod(period);
+    if (period === 'today') {
+      try {
+        supabaseDataService.clearServerDateCache();
+        const serverDate = await supabaseDataService.getServerDate();
+        setSelectedDate(serverDate);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+      } catch (error) {
+        // Fallback to São Paulo timezone date
+        const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(new Date());
+        setSelectedDate(saoPauloDate);
+      }
+    } else if (period === 'yesterday') {
+      try {
+        supabaseDataService.clearServerDateCache();
+        const serverDate = await supabaseDataService.getServerDate();
+        // Calculate yesterday from server date
+        const serverDateObj = new Date(serverDate + 'T00:00:00-03:00'); // São Paulo timezone
+        const yesterdayObj = new Date(serverDateObj);
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+
+        // Manter selectedPeriod como 'yesterday' para visualização front
+        setSelectedDate(yesterdayStr);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = {
+            date: yesterdayStr,
+            endDate: undefined,
+            projectId: selectedProject === "all" ? undefined : selectedProject,
+            period: 'custom' as const
+          };
+          refresh(yesterdayFilters);
+        }, 100);
+      } catch (error) {
+        // Fallback to São Paulo timezone yesterday
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const saoPauloYesterday = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo'
+        }).format(yesterday);
+
+        // Manter selectedPeriod como 'yesterday' para visualização front
+        setSelectedDate(saoPauloYesterday);
+        setSelectedEndDate("");
+        setCustomDate(undefined);
+        setRangeStartDate(undefined);
+        setRangeEndDate(undefined);
+
+        // TRATAMENTO COMO CUSTOM DATE: Force immediate refresh for yesterday data (fallback) usando 'custom' period
+        setTimeout(() => {
+          const yesterdayFilters = {
+            date: saoPauloYesterday,
+            endDate: undefined,
+            projectId: selectedProject === "all" ? undefined : selectedProject,
+            period: 'custom' as const
+          };
+          refresh(yesterdayFilters);
+        }, 100);
+      }
+    } else if (period === 'custom') {
+      // Para período customizado, não fazemos nada aqui
+      // O usuário vai selecionar no calendário
+    }
+  };
+
+  // Função para aplicar mudanças do filtro customizado - mesma lógica de Reports
+  const handleApplyCustomPeriod = () => {
+    if (tempRangeStartDate && tempRangeEndDate) {
+      // Range selecionado
+      setRangeStartDate(tempRangeStartDate);
+      setRangeEndDate(tempRangeEndDate);
+      setCustomDate(undefined);
+      setSelectedPeriod('range');
+
+      const startDate = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(tempRangeStartDate);
+
+      const endDate = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(tempRangeEndDate);
+
+      setSelectedDate(startDate);
+      setSelectedEndDate(endDate);
+      handleDateRangeChange(startDate, endDate);
+    } else if (tempCustomDate) {
+      // Data única selecionada - também usar 'range' com mesma data de início e fim
+      setCustomDate(tempCustomDate);
+      setRangeStartDate(tempCustomDate);
+      setRangeEndDate(tempCustomDate);
+      setSelectedPeriod('range'); // Mudança aqui: usar 'range' em vez de 'custom'
+
+      const saoPauloDate = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(tempCustomDate);
+
+      setSelectedDate(saoPauloDate);
+      setSelectedEndDate(saoPauloDate); // Mudança aqui: usar a mesma data como endDate
+
+      // Usar handleDateRangeChange com a mesma data para início e fim
+      handleDateRangeChange(saoPauloDate, saoPauloDate);
+    }
+
+    setIsCustomPeriodOpen(false);
+  };
+
+  const handleDateRangeChange = (startDate: string, endDate: string) => {
+    setSelectedDate(startDate);
+    setSelectedEndDate(endDate);
+    setSelectedPeriod('range');
+
+    const newFilters = {
+      date: startDate,
+      endDate: endDate,
+      projectId: selectedProject === "all" ? undefined : selectedProject,
+      period: 'range' as const
+    };
+    setTimeout(() => {
+      refresh(newFilters);
+    }, 100);
+  };
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
+  };
+  
+  const handleProjectFilterChange = (projectId: string) => {
+    setSelectedProject(projectId);
+  };
+  
+  const handleSortChange = (sortOption: 'revenue' | 'investment' | 'roi') => {
+    setSortBy(sortOption);
+  };
+
+
+  const filteredProjects = projects.filter(project => {
+    // FRONTEND-ONLY FILTER: Hide projects marked as invisible
+    if (project.visible === false) {
+      return false;
+    }
+
+    // Filter by search term
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.domain.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by user projects for OPERATOR users
+    if (userProfile?.role === 'OPERATOR') {
+      // Converter project.id para number se necessário para comparação
+      const projectId = typeof project.id === 'string' ? parseInt(project.id) : project.id;
+      return matchesSearch && userProjectIds.includes(projectId);
+    }
+
+    return matchesSearch;
+  });
+
+  const handleAddProject = async () => {
+    if (!newProject.name.trim() || !newProject.gamNetworkCode.trim() || !newProject.revenueShare.trim()) {
+      return;
+    }
+
+    setIsCreatingProject(true);
+
+    try {
+      // Remove https:// if present and clean the domain
+      const cleanDomain = newProject.name.replace(/^https?:\/\//, '').trim();
+      
+      // Insert new project into Supabase
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          project_name: cleanDomain,
+          main_url: `https://${cleanDomain}`,
+          domain: cleanDomain,
+          gam_network_code: newProject.gamNetworkCode,
+          revshare: parseFloat(newProject.revenueShare) / 100,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        alert('Erro ao criar projeto: ' + error.message);
+        return;
+      }
+
+      
+      // Reset form
+      setNewProject({
+        name: "",
+        gamNetworkCode: "",
+        revenueShare: ""
+      });
+      
+      addModal.closeModal();
+      refresh(filters);
+      
+    } catch (error) {
+      alert('Erro ao criar projeto. Tente novamente.');
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const handleEditProject = async () => {
+    if (!selectedProjectItem) {
+      return;
+    }
+
+    // At least one field must be filled to save
+    if (!editForm.gamNetworkCode.trim() && !editForm.revenueShare.trim()) {
+      alert('Preencha pelo menos um dos campos para salvar.');
+      return;
+    }
+
+    setIsUpdatingProject(true);
+
+    try {
+      // Build update object with only filled fields
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (editForm.gamNetworkCode.trim()) {
+        updateData.gam_network_code = editForm.gamNetworkCode.trim();
+      }
+
+      if (editForm.revenueShare.trim()) {
+        updateData.revshare = parseFloat(editForm.revenueShare) / 100;
+      }
+
+      // Update project in Supabase
+      const { data, error } = await supabase
+        .from('projects')
+        .update(updateData)
+        .eq('id', selectedProjectItem.id)
+        .select()
+        .single();
+
+      if (error) {
+        alert('Erro ao atualizar projeto: ' + error.message);
+        return;
+      }
+
+      
+      // Reset form and close modal
+      setEditForm({
+        gamNetworkCode: "",
+        revenueShare: ""
+      });
+      setSelectedProjectItem(null);
+      editModal.closeModal();
+      refresh(filters);
+      
+    } catch (error) {
+      alert('Erro ao atualizar projeto. Tente novamente.');
+    } finally {
+      setIsUpdatingProject(false);
+    }
+  };
+
+  const handleDeleteProject = () => {
+    if (selectedProjectItem) {
+      // TODO: Implement delete functionality with Supabase
+      setSelectedProjectItem(null);
+      deleteModal.closeModal();
+      refresh(filters);
+    }
+  };
+
+  // Visibility management functions
+  const handleOpenVisibilityModal = async () => {
+    try {
+      // Fetch ALL projects from database (no filters)
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('project_name', { ascending: true });
+
+
+      if (error) {
+        alert('Erro ao carregar projetos: ' + error.message);
+        return;
+      }
+
+      // Transform to Project format
+      const projectsData = data.map(p => ({
+        id: p.id.toString(),
+        name: p.project_name,
+        domain: p.domain,
+        gamNetworkCode: p.gam_network_code,
+        revshare: p.revshare,
+        visible: p.visible ?? true
+      }));
+
+      setAllProjectsForVisibility(projectsData);
+
+      // Initialize visibility changes with current values
+      const initialChanges: Record<string, boolean> = {};
+      projectsData.forEach(p => {
+        initialChanges[p.id] = p.visible ?? true;
+      });
+      setVisibilityChanges(initialChanges);
+
+      visibilityModal.openModal();
+    } catch (error) {
+      alert('Erro ao abrir configurações de visibilidade: ' + (error as Error).message);
+    }
+  };
+
+  const handleToggleVisibility = (projectId: string) => {
+    setVisibilityChanges(prev => ({
+      ...prev,
+      [projectId]: !prev[projectId]
+    }));
+  };
+
+  const handleSaveVisibility = async () => {
+    setIsSavingVisibility(true);
+    try {
+      // Update each project's visibility in database
+      const updates = Object.entries(visibilityChanges).map(([projectId, visible]) =>
+        supabase
+          .from('projects')
+          .update({ visible })
+          .eq('id', parseInt(projectId))
+      );
+
+      await Promise.all(updates);
+
+      visibilityModal.closeModal();
+
+      // Refresh data to reflect changes
+      refresh(filters);
+    } catch (error) {
+      alert('Erro ao salvar configurações de visibilidade');
+    } finally {
+      setIsSavingVisibility(false);
+    }
+  };
+
+
+  // Função para formatar valores de REVENUE (já convertidos pelo database em revenue_conversao)
+  const formatRevenue = (brlValue: number) => {
+    return formatBrlCurrency(brlValue);
+  };
+  // Função para formatar valores de CUSTOS/GASTOS (já em BRL)
+  const formatCurrency = (brlValue: number) => {
+    return formatCostCurrency(brlValue);
+  };
+  // Using centralized ROAS calculation (excess percentage)
+
+  // Loading state
+  if (loading) {
+    return (
+      <Layout>
+        <div className="p-6 space-y-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center min-h-64">
+            <LoadingSpinner size="lg" text="Carregando projetos..." />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Error state  
+  if (error) {
+    return (
+      <Layout>
+        <div className="p-6 space-y-8 max-w-7xl mx-auto">
+          <div className="flex flex-col items-center justify-center min-h-64">
+            <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Erro ao carregar projetos</h1>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-8 max-w-7xl mx-auto`}>
+        {/* Header */}
+        <div className={`flex ${isMobile ? 'flex-col' : 'items-start justify-between'} reveal gap-4`} style={{ ['--i' as any]: 0 }}>
+          <div className={`flex ${isMobile ? 'flex-col' : 'items-start'} gap-4`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className={`gap-2 ${isMobile ? 'w-fit' : 'mt-1'} touch-target`}
+              aria-label="Voltar para a página anterior"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              {isMobile ? '' : 'Voltar'}
+            </Button>
+            <div>
+              <div className="kicker mb-2 flex items-center gap-2">
+                <Settings className="h-3.5 w-3.5" />
+                Configurações
+              </div>
+              <h1 className={`font-display font-bold tracking-tight leading-[1.05] ${isMobile ? 'text-[1.7rem]' : 'text-4xl'}`}>
+                <span className="text-foreground">Projetos</span>
+              </h1>
+              <div className="mt-3 aurora-rule w-16" />
+              <p className={`text-muted-foreground ${isMobile ? 'text-sm mt-3' : 'mt-3'}`}>
+                Configure e gerencie seus projetos e integrações
+                <span className={`${isMobile ? 'block mt-1' : 'ml-2'} font-medium text-foreground tabular`}>• {filteredProjects.length} projeto{filteredProjects.length !== 1 ? 's' : ''} {userProfile?.role === 'OPERATOR' ? 'atribuído' : 'carregado'}{filteredProjects.length !== 1 ? 's' : ''}</span>
+              </p>
+            </div>
+          </div>
+          {userProfile?.role !== 'OPERATOR' && (
+            <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-2`}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        handleOpenVisibilityModal();
+                      }}
+                      className={`${isMobile ? 'h-10 w-10' : 'h-9 w-9'} touch-target`}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Gerenciar visibilidade dos projetos</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button onClick={addModal.openModal} className={`gap-2 ${isMobile ? 'w-full touch-target' : ''}`}>
+                <Plus className="h-4 w-4" />
+                Novo Projeto
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className={`flex ${isMobile ? 'flex-col' : 'gap-4'} reveal flex-wrap items-center gap-2`} style={{ ['--i' as any]: 1 }}>
+          {/* Filtro de Período Customizado - igual ao Reports */}
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-2`}>
+            <Select value={selectedPeriod === 'today' ? 'today' : selectedPeriod === 'yesterday' ? 'yesterday' : 'custom'} onValueChange={(value) => {
+              if (value === 'today') {
+                handlePeriodChange('today');
+              } else if (value === 'yesterday') {
+                handlePeriodChange('yesterday');
+              } else {
+                setSelectedPeriod('custom');
+              }
+            }}>
+              <SelectTrigger className={`${isMobile ? 'w-full touch-target' : 'w-40'}`}>
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">
+                  <span className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Hoje
+                  </span>
+                </SelectItem>
+                <SelectItem value="yesterday">
+                  <span className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Ontem
+                  </span>
+                </SelectItem>
+                <SelectItem value="custom">
+                  <span className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Selecionar período
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(selectedPeriod === 'custom' || selectedPeriod === 'range') && (
+              <Popover open={isCustomPeriodOpen} onOpenChange={(open) => {
+                setIsCustomPeriodOpen(open);
+                if (open) {
+                  // Reset temporary states to current values when opening
+                  setTempCustomDate(customDate);
+                  setTempRangeStartDate(rangeStartDate);
+                  setTempRangeEndDate(rangeEndDate);
+                }
+              }}>
+                    <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      `${isMobile ? 'w-full' : 'w-[320px]'} justify-start text-left font-normal touch-target`,
+                      (!customDate && !rangeStartDate) && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {rangeStartDate && rangeEndDate ? (
+                      <>
+                        {format(rangeStartDate, "dd/MM/yyyy", { locale: ptBR })}
+                        {" até "}
+                        {format(rangeEndDate, "dd/MM/yyyy", { locale: ptBR })}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({differenceInDays(rangeEndDate, rangeStartDate) + 1} dias)
+                        </span>
+                      </>
+                    ) : customDate ? (
+                      format(customDate, "dd/MM/yyyy", { locale: ptBR })
+                    ) : (
+                      <span>Selecionar período</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-3 border-b">
+                    <h4 className="font-medium text-sm">Selecionar período</h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Clique em uma data para dia específico, ou selecione intervalo
+                    </p>
+                    {(tempCustomDate || (tempRangeStartDate && tempRangeEndDate)) && (
+                      <div className="mt-2 p-2 bg-info/10 rounded border border-info/20">
+                        <p className="text-xs font-medium text-info flex items-center">
+                          {tempRangeStartDate && tempRangeEndDate ? (
+                            <>
+                              <BarChart3 className="h-4 w-4 mr-1" />
+                              {format(tempRangeStartDate, "dd/MM/yyyy", { locale: ptBR })} até {format(tempRangeEndDate, "dd/MM/yyyy", { locale: ptBR })}
+                            </>
+                          ) : tempCustomDate ? (
+                            <>
+                              <CalendarIcon className="h-4 w-4 mr-1" />
+                              {format(tempCustomDate, "dd/MM/yyyy", { locale: ptBR })}
+                            </>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-info/80 mt-1">Clique em "Aplicar" para confirmar</p>
+                      </div>
+                    )}
+                  </div>
+                  <Calendar
+                    mode="range"
+                    selected={{
+                      from: tempRangeStartDate || tempCustomDate,
+                      to: tempRangeEndDate
+                    }}
+                    onSelect={(dates) => {
+                      if (dates?.from && dates?.to) {
+                        // Range selecionado (temporário)
+                        setTempRangeStartDate(dates.from);
+                        setTempRangeEndDate(dates.to);
+                        setTempCustomDate(undefined);
+                      } else if (dates?.from && !dates?.to) {
+                        // Data única selecionada (temporário)
+                        setTempCustomDate(dates.from);
+                        setTempRangeStartDate(undefined);
+                        setTempRangeEndDate(undefined);
+                      }
+                    }}
+                    disabled={(date) =>
+                      date > new Date() || date < new Date("1900-01-01")
+                    }
+                    locale={ptBR}
+                    initialFocus
+                    numberOfMonths={2}
+                  />
+                  <div className="p-3 border-t">
+                    <div className="flex gap-2 mb-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={async () => {
+                          try {
+                            const serverDate = await supabaseDataService.getServerDate();
+                            const today = new Date(serverDate + 'T12:00:00');
+                            setTempCustomDate(today);
+                            setTempRangeStartDate(undefined);
+                            setTempRangeEndDate(undefined);
+                          } catch (error) {
+                            const today = new Date();
+                            setTempCustomDate(today);
+                            setTempRangeStartDate(undefined);
+                            setTempRangeEndDate(undefined);
+                          }
+                        }}
+                      >
+                        Hoje
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={async () => {
+                          try {
+                            const serverDate = await supabaseDataService.getServerDate();
+                            const today = new Date(serverDate + 'T12:00:00');
+                            const lastWeek = new Date(today);
+                            lastWeek.setDate(lastWeek.getDate() - 6);
+                            setTempRangeStartDate(lastWeek);
+                            setTempRangeEndDate(today);
+                            setTempCustomDate(undefined);
+                          } catch (error) {
+                            const today = new Date();
+                            const lastWeek = new Date(today);
+                            lastWeek.setDate(lastWeek.getDate() - 6);
+                            setTempRangeStartDate(lastWeek);
+                            setTempRangeEndDate(today);
+                            setTempCustomDate(undefined);
+                          }
+                        }}
+                      >
+                        Últimos 7 dias
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={handleApplyCustomPeriod}
+                      disabled={!tempCustomDate && !tempRangeStartDate}
+                    >
+                      Aplicar
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+          <Select value={sortBy} onValueChange={handleSortChange}>
+            <SelectTrigger className={`${isMobile ? 'w-full touch-target' : 'w-52'}`}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="revenue">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-success" />
+                  <span>Maior Faturamento</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="investment">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-destructive" />
+                  <span>Maior Investimento</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="roi">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-info" />
+                  <span>Maior ROAS</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <DataStatus
+            loading={loading}
+            error={error}
+          />
+          <div className={`${isMobile ? 'w-full' : 'flex-1 relative min-w-[280px]'}`}>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              id="busca-de-projetos"
+              type="search"
+              aria-label="Buscar projeto por nome ou domínio"
+              placeholder="Buscar projetos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`pl-10 ${isMobile ? 'w-full touch-target' : ''}`}
+            />
+          </div>
+        </div>
+
+        {/* Projects Table */}
+        <Card className="shadow-card hover-glow transition-shadow reveal" style={{ ['--i' as any]: 2 }}>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <div className="kicker mb-2 flex items-center gap-2">
+                <span className="rounded-md bg-primary/10 text-primary p-1.5"><FolderOpen className="h-4 w-4" /></span>
+                Lista de Projetos
+              </div>
+              <CardTitle className="font-display tracking-tight">Todos os projetos</CardTitle>
+              <CardDescription>
+                Gerenciamento completo dos seus projetos
+              </CardDescription>
+            </div>
+            {userProfile?.role !== 'OPERATOR' && (
+              <div className="flex gap-2">
+                <Button onClick={addModal.openModal} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Novo Projeto
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {filteredProjects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <div className="bg-primary/10 text-primary rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <FolderOpen className="h-10 w-10 opacity-70" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">
+                  {searchTerm ? 'Nenhum projeto encontrado' : 'Nenhum projeto cadastrado'}
+                </h3>
+                <p className="text-sm text-center">
+                  {searchTerm 
+                    ? 'Tente alterar os termos de busca para ver mais projetos'
+                    : 'Crie seu primeiro projeto para começar a gerenciar campanhas'
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker`}>Projeto (Domínio)</th>
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker rounded-t-md ${sortBy === 'investment' ? 'text-destructive bg-destructive/10' : ''}`}>
+                        <div className="flex items-center gap-1">
+                          Gasto
+                          {sortBy === 'investment' && <ArrowDown className="h-3 w-3" />}
+                        </div>
+                      </th>
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker rounded-t-md ${sortBy === 'revenue' ? 'text-success bg-success/10' : ''}`}>
+                        <div className="flex items-center gap-1">
+                          Revenue
+                          {sortBy === 'revenue' && <ArrowDown className="h-3 w-3" />}
+                        </div>
+                      </th>
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker rounded-t-md ${sortBy === 'roi' ? 'text-info bg-info/10' : ''}`}>
+                        <div className="flex items-center gap-1">
+                          ROAS
+                          {sortBy === 'roi' && <ArrowDown className="h-3 w-3" />}
+                        </div>
+                      </th>
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker`}>
+                        <div className="flex items-center gap-1">
+                          Lucro Líquido
+                        </div>
+                      </th>
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker`}>Campanhas</th>
+                      <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker`}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProjects
+                      .sort((a, b) => {
+                        if (sortBy === 'revenue') {
+                          return (b.revenue || 0) - (a.revenue || 0);
+                        } else if (sortBy === 'investment') {
+                          return (b.investment || 0) - (a.investment || 0);
+                        } else { // roi
+                          const roasA = calculateROAS(a.revenue || 0, a.investment || 0);
+                          const roasB = calculateROAS(b.revenue || 0, b.investment || 0);
+                          return roasB - roasA;
+                        }
+                      })
+                      .map((project, index) => {
+                        
+                        // Using centralized ROAS color styling
+                        const getROIColor = (roasExcess: number) => {
+                          return getROASColorStyles(roasExcess);
+                        };
+                        
+                        const roas = calculateROAS(project.revenue || 0, project.investment || 0);
+                        
+                        const netProfit = project.netProfit || 0;
+                        const getNetProfitColor = (value: number) => {
+                          if (value > 0) return "text-success";
+                          if (value < 0) return "text-destructive";
+                          return "text-muted-foreground";
+                        };
+
+                        return (
+                          <tr key={index} className="border-b border-border hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate(`/dashboard/project/${project.id}`)}>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-3`}>
+                                <div className={`${isMobile ? 'h-10 w-10' : 'h-12 w-12'} bg-primary/10 text-primary rounded-md flex items-center justify-center`}>
+                                  <FolderOpen className={isMobile ? 'h-5 w-5' : 'h-6 w-6'} />
+                                </div>
+                                <div>
+                                  <p className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>{project.domain}</p>
+                                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>{project.name}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular`}>
+                                {formatCurrency(project.investment || 0)}
+                              </div>
+                              <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Gasto total</div>
+                            </td>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular text-success`}>
+                                {formatRevenue(project.revenue || 0)}
+                              </div>
+                              <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue UTM</div>
+                            </td>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className={`inline-flex ${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
+                                {Math.round(roas)}%
+                              </div>
+                              <div className="flex items-center gap-1 mt-1">
+                                <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>Performance</span>
+                              </div>
+                            </td>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="cursor-help">
+                                      <div className={`text-lg font-display font-bold tabular flex items-center gap-1 ${getNetProfitColor(netProfit)}`}>
+                                        {formatCurrency(netProfit)}
+                                        <Info className="h-3 w-3 opacity-60 hover:opacity-100 transition-opacity" />
+                                      </div>
+                                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                        {project.costs_division ? (
+                                          <>
+                                            <BarChart3 className="h-3 w-3" />
+                                            Div. custos
+                                          </>
+                                        ) : (
+                                          <>
+                                            <X className="h-3 w-3" />
+                                            Sem div.
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs p-4">
+                                    <div className="space-y-2 text-sm">
+                                      <div className="font-medium text-primary mb-2">Cálculo do Lucro Líquido</div>
+                                      {(() => {
+                                        // Simular o mesmo cálculo feito no backend
+                                        const revenue = project.revenue || 0;
+                                        const investment = project.investment || 0;
+                                        const taxRate = currentTaxRate / 100; // Usar taxa vigente
+                                        const taxAmount = revenue * taxRate;
+
+                                        // Estimar custo operacional (será 0 se não participa da divisão)
+                                        const estimatedOperationalCost = project.costs_division ? (netProfit - (revenue - investment - taxAmount)) * -1 : 0;
+
+                                        return (
+                                          <div className="space-y-1">
+                                            <div className="flex justify-between">
+                                              <span className="text-muted-foreground">
+                                                {project.project_type === 'ADSENSE' ? 'Revenue Total:' : 'Revenue (após RevShare):'}
+                                              </span>
+                                              <span className="font-medium text-success tabular">{formatRevenue(revenue)}</span>
+                                            </div>
+                                            {project.project_type === 'ADSENSE' && (
+                                              <div className="text-xs text-muted-foreground italic mb-2">
+                                                * Projeto AdSense: Revenue sem desconto de RevShare
+                                              </div>
+                                            )}
+                                            <div className="flex justify-between">
+                                              <span className="text-muted-foreground">- Investimento:</span>
+                                              <span className="font-medium text-destructive tabular">-{formatCurrency(investment)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span className="text-muted-foreground">- Impostos ({currentTaxRate}%):</span>
+                                              <span className="font-medium text-warning tabular">-{formatCurrency(taxAmount)}</span>
+                                            </div>
+                                            {project.costs_division && estimatedOperationalCost > 0 && (
+                                              <div className="flex justify-between">
+                                                <span className="text-muted-foreground">- Custo Operacional:</span>
+                                                <span className="font-medium text-primary tabular">-{formatCurrency(estimatedOperationalCost)}</span>
+                                              </div>
+                                            )}
+                                            <div className="border-t pt-1 mt-2">
+                                              <div className="flex justify-between font-bold">
+                                                <span>Lucro Líquido:</span>
+                                                <span className={getNetProfitColor(netProfit)}>{formatCurrency(netProfit)}</span>
+                                              </div>
+                                            </div>
+                                            {!project.costs_division && (
+                                              <div className="text-xs text-muted-foreground mt-2 italic">
+                                                * Este projeto não participa da divisão de custos operacionais
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </td>
+                            <td className={isMobile ? 'p-2' : 'p-4'}>
+                              <div className="space-y-1">
+                                <div className={`font-medium tabular ${isMobile ? 'text-sm' : ''}`}>
+                                  {campaigns.filter(c => c.projectId === project.id).length} total
+                                </div>
+                                <div className={`flex items-center gap-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
+                                  {(() => {
+                                    const projectCampaigns = campaigns.filter(c => c.projectId === project.id);
+                                    const colors = {
+                                      green: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "green";
+                                      }).length,
+                                      yellow: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "yellow";
+                                      }).length,
+                                      orange: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "orange";
+                                      }).length,
+                                      red: projectCampaigns.filter(c => {
+                                        const roasExcess = calculateROAS(c.revenue || 0, c.investment || 0);
+                                        return getROASColorCategory(roasExcess) === "red";
+                                      }).length
+                                    };
+
+                                    return (
+                                      <>
+                                        {colors.green > 0 && (
+                                          <span className="text-green-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-green-600" />
+                                            {colors.green}
+                                          </span>
+                                        )}
+                                        {colors.yellow > 0 && (
+                                          <span className="text-yellow-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-yellow-600" />
+                                            {colors.yellow}
+                                          </span>
+                                        )}
+                                        {colors.orange > 0 && (
+                                          <span className="text-orange-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-orange-600" />
+                                            {colors.orange}
+                                          </span>
+                                        )}
+                                        {colors.red > 0 && (
+                                          <span className="text-red-600 flex items-center gap-1">
+                                            <Circle className="h-2 w-2 fill-red-600" />
+                                            {colors.red}
+                                          </span>
+                                        )}
+                                        {projectCampaigns.length === 0 && <span className="text-gray-400">-</span>}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            </td>
+                            <td className={isMobile ? 'p-2' : 'p-4'} onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className={`${isMobile ? 'text-[10px] touch-target' : 'text-xs'} flex items-center gap-1`}>
+                                      <Settings className="h-3 w-3" />
+                                      Menu
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedProjectItem(project);
+                                        // Pre-fill the edit form with current values
+                                        setEditForm({
+                                          gamNetworkCode: project.gamNetworkCode || "",
+                                          revenueShare: project.revshare ? (project.revshare * 100).toString() : ""
+                                        });
+                                        editModal.openModal();
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedProjectItem(project);
+                                        deleteModal.openModal();
+                                      }}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Excluir
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    }
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Add Project Modal */}
+        <Modal
+          isOpen={addModal.isOpen}
+          onClose={addModal.closeModal}
+          title={
+            <span className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Cadastrar Novo Projeto
+            </span>
+          }
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="project-name" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Nome do Projeto (Domínio):
+              </Label>
+              <Input 
+                id="project-name" 
+                placeholder="Ex: meusite.com.br (sem https://)"
+                value={newProject.name}
+                onChange={(e) => setNewProject({...newProject, name: e.target.value})}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Este será usado para project_name, main_url e domain no banco
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="gam-network" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                GAM Network Code:
+              </Label>
+              <Input 
+                id="gam-network" 
+                placeholder="Ex: 12345678"
+                value={newProject.gamNetworkCode}
+                onChange={(e) => setNewProject({...newProject, gamNetworkCode: e.target.value})}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Código do Google Ad Manager para este projeto
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="revenue-share" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Taxa de Revenue Share (%):
+              </Label>
+              <Input 
+                id="revenue-share" 
+                placeholder="Ex: 70"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={newProject.revenueShare}
+                onChange={(e) => setNewProject({...newProject, revenueShare: e.target.value})}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Percentual de divisão de receita para este projeto
+              </p>
+            </div>
+
+            <div className="flex justify-center gap-4 pt-6">
+              <Button variant="outline" onClick={addModal.closeModal}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleAddProject} 
+                className="gap-2"
+                disabled={!newProject.name.trim() || !newProject.gamNetworkCode.trim() || !newProject.revenueShare.trim() || isCreatingProject}
+              >
+                {isCreatingProject ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Salvar Projeto
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Edit Project Modal */}
+        <Modal
+          isOpen={editModal.isOpen}
+          onClose={editModal.closeModal}
+          title={
+            <span className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Editar Projeto
+            </span>
+          }
+          size="md"
+        >
+          {selectedProjectItem && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  {selectedProjectItem.name}
+                </h4>
+                <p className="text-sm text-muted-foreground">{selectedProjectItem.domain}</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-gam-network" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  GAM Network Code: <span className="text-xs text-muted-foreground">(opcional)</span>
+                </Label>
+                <Input 
+                  id="edit-gam-network" 
+                  placeholder="Ex: 12345678 - deixe vazio para manter atual"
+                  value={editForm.gamNetworkCode}
+                  onChange={(e) => setEditForm({...editForm, gamNetworkCode: e.target.value})}
+                  className="mt-2"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-revenue-share" className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Taxa de Revenue Share (%): <span className="text-xs text-muted-foreground">(opcional)</span>
+                </Label>
+                {selectedProjectItem.revshare && (
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Valor atual: <span className="font-medium text-primary">{(selectedProjectItem.revshare * 100).toFixed(1)}%</span>
+                  </div>
+                )}
+                <Input 
+                  id="edit-revenue-share" 
+                  placeholder="Ex: 70 - deixe vazio para manter atual"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={editForm.revenueShare}
+                  onChange={(e) => setEditForm({...editForm, revenueShare: e.target.value})}
+                  className="mt-2"
+                />
+              </div>
+
+              <div className="p-3 bg-info/10 border border-info/20 rounded-lg">
+                <p className="text-xs text-info">
+                  <span className="flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4" />
+                    <strong>Dica:</strong> Você pode editar apenas um dos campos ou ambos. Campos vazios manterão o valor atual.
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex justify-center gap-4 pt-4">
+                <Button variant="outline" onClick={editModal.closeModal}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleEditProject}
+                  disabled={(!editForm.gamNetworkCode.trim() && !editForm.revenueShare.trim()) || isUpdatingProject}
+                >
+                  {isUpdatingProject ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Salvar Alterações
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={deleteModal.isOpen}
+          onClose={deleteModal.closeModal}
+          title={
+            <span className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Excluir Projeto
+            </span>
+          }
+          description="Esta ação não pode ser desfeita"
+          size="sm"
+        >
+          {selectedProjectItem && (
+            <div className="space-y-4">
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm">
+                  Tem certeza que deseja excluir o projeto <strong>{selectedProjectItem.name}</strong>?
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  • Todas as campanhas serão removidas<br/>
+                  • As integrações serão desconectadas<br/>
+                  • Os dados históricos serão perdidos
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={deleteModal.closeModal}>
+                  Cancelar
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteProject}>
+                  Excluir Projeto
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Visibility Management Modal */}
+        <Modal
+          isOpen={visibilityModal.isOpen}
+          onClose={visibilityModal.closeModal}
+          title="Gerenciar Visibilidade dos Projetos"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-info/10 border border-info/20 rounded-lg">
+              <p className="text-sm text-info">
+                <Eye className="h-4 w-4 inline mr-1" />
+                <strong>Controle de Visibilidade:</strong> Escolha quais projetos devem aparecer no sistema. Projetos ocultos não serão exibidos em dashboards, relatórios e filtros.
+              </p>
+            </div>
+
+            <div className="max-h-[500px] overflow-y-auto space-y-2">
+              {allProjectsForVisibility.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-white ${
+                      visibilityChanges[project.id] ? 'bg-primary' : 'bg-muted-foreground/40'
+                    }`}>
+                      {visibilityChanges[project.id] ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{project.domain}</p>
+                      <p className="text-sm text-muted-foreground">{project.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground min-w-[60px]">
+                      {visibilityChanges[project.id] ? 'Visível' : 'Oculto'}
+                    </span>
+                    <Switch
+                      checked={visibilityChanges[project.id]}
+                      onCheckedChange={() => handleToggleVisibility(project.id)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                {Object.values(visibilityChanges).filter(v => v).length} de {allProjectsForVisibility.length} projetos visíveis
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={visibilityModal.closeModal}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveVisibility}
+                  disabled={isSavingVisibility}
+                  className="gap-2"
+                >
+                  {isSavingVisibility ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      Salvar Configurações
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      </div>
+    </Layout>
+  );
+}

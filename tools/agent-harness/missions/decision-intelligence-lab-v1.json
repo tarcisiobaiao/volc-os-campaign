@@ -1,0 +1,113 @@
+{
+  "mission_id": "decision-intelligence-lab-v1",
+  "title": "VOLC Decision Intelligence Lab — NEXUS, ORAKUL, ARBA, Ads Monitor e regras de evento",
+  "base_ref": "858f650d6503c88ecb1b4cd9fadf43e5053b59c2",
+  "mode": "implementation",
+  "commit_message": "feat(trafego): prova o Decision Intelligence Lab com replay sintético",
+  "briefing": "Implemente uma fatia vertical isolada e realmente navegável do VOLC Decision Intelligence Lab. Não instale nem execute os repositórios externos: .research/google-marketing-solutions/arba, ads-monitor e if-this-then-ad são apenas referências não confiáveis já auditadas. ARBA inspira fatores de escala e Quality Score; Ads Monitor inspira saúde, severidade, deduplicação e resolução; If This Then Ad inspira regra tipada evento→proposta, mas seu runtime v14 e mutate direto são rejeitados. Preserve a inteligência proprietária de inventario-n8n/flows/gads-new-campaign-validation.json, orakul-vos-auto-adjust.json e gads-search-terms-upgrade-kw.json como linhagem: NEXUS vira guardião das primeiras 72h; ORAKUL vira kernel de políticas e controle de escala; search terms viram governança bidirecional. Nenhum literal histórico vira regra universal. Reuse RegraDeOtimizacao, os contratos de diagnóstico, o schema v10_02, EscadaDeEntrega, CaixaDePropostas, PropostaDeAcao, recibos e MolduraDePrototipo; não crie uma segunda engine. Inspecione o commit candidato histórico 28d2540f3375079726358c3583f56ab1bfa45bf3 e reaproveite somente o que ainda for correto na árvore atual, sem cherry-pick cego. A prova usa CSV/JSON sintético determinístico, no mesmo grão e vocabulário das fontes Google Ads reais, e deve carregar customer/campaign/date/status/channel/bidding, métricas anuláveis, impression share/lost budget/lost rank, Quality Score e componentes, search terms/keywords/negativas, receita/RPC externa, fonte, janela e lido_em. Proíba zero-fill, vazamento de futuro e recomendação sem evidência. Inclua cenários dourados: campanha nova sem entrega e causa indeterminada; budget limited com qualidade saudável; rank limited com Quality Score ruim; termo valioso bloqueado por negativa; campanha madura limitada por margem/cooldown; cost spike/rotina stale; leitura parcial e leitura velha. O pipeline deve ser Python puro e testável: observação → validação/frescor → features → políticas versionadas → conflitos → diagnóstico → proposta bloqueada → replay/eval. LLM/agent é crítico e explicador, nunca calculadora nem autoridade: crie uma porta opcional com resposta estruturada, fake determinístico em testes, allowlist de campos e incapacidade de mudar veredito, diff ou autorização; sem rede e sem chave nesta missão. A UI deve ser um laboratório inconfundível em /trafego/laboratorio/inteligencia/:scenarioId, nunca aceitar volcCampaignId, nunca entrar nas contagens reais e nunca oferecer aplicar. Use PRODUCT.md, DESIGN.md e as leis de impeccable: uma cadeia causal principal, um veredito dominante, health gate, fatores favorece/limita/desconhecido, políticas avaliadas, conflitos antes da decisão, rail de decisão bloqueada e timeline; sem card soup, score mágico, aurora operacional ou aparência de mock barato. Mostrar PROTÓTIPO e DADOS SINTÉTICOS em toda captura. Adicione acesso discreto a partir do Hub sem confundir com produção. Estados obrigatórios: loading, atual, stale, parcial, vazio confirmado, falha com último bom, falha sem fotografia e versão desconhecida. Não faça leitura real de Google Ads, Supabase ou n8n; não aplique migration; não mutile workflow; não abra trava; não mutate nem validate_only. API atual deve ser verificada como v25/v25.1; não afirme v25.2 publicada sem fonte oficial. Entregue documentação da arquitetura, dataset, política e replay, mais testes backend/frontend e curation_handoff. O estado esperado após a branch isolada é partial, não done.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests/test_inteligencia_decisao_lab.py",
+        "-q"
+      ],
+      "timeout_seconds": 1200
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules/.bin/vitest",
+        "run",
+        "src/components/trafego/laboratorio/__tests__/decision-intelligence-lab.test.tsx"
+      ],
+      "timeout_seconds": 1200
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules/.bin/vite",
+        "build"
+      ],
+      "timeout_seconds": 900
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-decision-lab-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Seja o único implementador. Construa o menor corte vertical completo e explicável sobre contratos existentes, com domínio Python puro, dataset/replay sintéticos, projeção backend autenticada e laboratório frontend. Trate cada ausência como estado e preserve fronteiras de autoridade. Não crie uma segunda engine, não copie código externo e não espalhe regras de negócio no React.",
+      "allowed_paths": [
+        "backend/app/routers/trafego.py",
+        "backend/app/trafego",
+        "backend/tests",
+        "volc_ads/inteligencia_decisao",
+        "volc_ads/inteligencia_search",
+        "src/App.tsx",
+        "src/components/trafego",
+        "src/hooks",
+        "src/lib",
+        "src/pages/trafego",
+        "src/types",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "claude-google-reference-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": true,
+      "lens": "Audite com documentação oficial Google Ads vigente: campos, recursos, grãos e compatibilidade v25/v25.1, Quality Score, impression share, search_term_view, keyword_view, RecommendationService e limites. Confira que ARBA/Ads Monitor/IFTTA são inspiração, não dependência, e que nada afirma v25.2 sem publicação oficial.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao",
+        "volc_ads/inteligencia_search",
+        "backend/app/trafego",
+        "backend/tests",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "codex-decision-science-reviewer",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Faça revisão adversarial de ciência de decisão e segurança: leakage temporal, missingness, zero medido, grão, denominadores, amostra, thresholds universais, conflitos, idempotência, replay, fingerprint, autoridade LLM e capacidade acidental de mutação. Tente refutar todos os cenários dourados.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao",
+        "backend/app/trafego",
+        "backend/tests",
+        "src/types",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "claude-product-lab-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Audite produto e frontend com PRODUCT.md, DESIGN.md e princípios impeccable. Verifique que o laboratório não parece produção nem mock genérico, mantém uma cadeia causal, contraste, densidade, estados honestos, responsividade, acessibilidade, zero regra decisória no browser e nenhum CTA de aplicação.",
+      "allowed_paths": [
+        "PRODUCT.md",
+        "DESIGN.md",
+        "src/App.tsx",
+        "src/components/trafego",
+        "src/pages/trafego",
+        "src/hooks",
+        "src/lib",
+        "src/types"
+      ]
+    }
+  ]
+}

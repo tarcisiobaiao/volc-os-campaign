@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-26",
+  "source": {
+    "organized_root": "/Users/mac/Desktop/Volc Mídia Global/motor-video",
+    "execution_factory": "/Users/mac/volc-factory",
+    "snapshot": "docs/creative-engines/snapshots/motor-video-2026-08-26.json",
+    "authority": "contrato/motor/mapa.json",
+    "secrets_captured": false
+  },
+  "decision": {
+    "target": "runtime separavel com adapter MotorDeCriativo VIDEO",
+    "do_not": [
+      "copiar a fabrica inteira para o backend",
+      "chamar scripts por path absoluto",
+      "expor chaves no browser",
+      "tratar MP4 observado como asset publicitario pronto",
+      "publicar sem confirmacao humana"
+    ]
+  },
+  "extract": [
+    {
+      "id": "video-contract",
+      "source": "contrato/",
+      "target": "services/creative-engine/video/contracts",
+      "includes": ["schema", "mapa", "resolve", "clusters", "locales"],
+      "acceptance": "contrato invalido falha antes de qualquer provider ou custo"
+    },
+    {
+      "id": "video-core",
+      "source": "motor/{core,build_props,buildspace,locales,tighten}",
+      "target": "services/creative-engine/video/core",
+      "acceptance": "workspace e ferramentas sao injetaveis; zero path absoluto"
+    },
+    {
+      "id": "video-assets",
+      "source": "motor/{gen_images,omni,pexels,wikimedia,clips_registry.json}",
+      "target": "services/creative-engine/video/adapters",
+      "acceptance": "provider, custo, licenca, hash e fallback ficam no ledger do job"
+    },
+    {
+      "id": "video-audio",
+      "source": "motor/{make_audio,sound_design,sound_design_terror,gen_captions}",
+      "target": "services/creative-engine/video/pipeline",
+      "acceptance": "voz, trilha, legendas e loudness obedecem thresholds versionados"
+    },
+    {
+      "id": "video-composition",
+      "source": "motor/visual + formatos/*/compositor.tsx",
+      "target": "services/creative-engine/video/remotion",
+      "acceptance": "render reproduzivel em container e props ligadas ao job"
+    },
+    {
+      "id": "video-quality",
+      "source": "motor/{qa,qa_visual,finish,thresholds.json}",
+      "target": "services/creative-engine/video/gates",
+      "acceptance": "FAIL bloqueia; WARN exige motivo; relatorio guarda hash do MP4"
+    },
+    {
+      "id": "video-publication",
+      "source": "motor/{publicar,canais.json}",
+      "target": "services/creative-engine/video/destinations",
+      "acceptance": "freeze, metadata, credits, disclosure, pack e log pertencem ao mesmo job"
+    },
+    {
+      "id": "video-skins",
+      "source": "formatos/",
+      "target": "services/creative-engine/video/skins",
+      "acceptance": "skin e destino sao independentes; formatos incompletos continuam marcados como partial"
+    }
+  ],
+  "first_vertical": {
+    "scope": "video vertical 1080x1920 para preview organico ou Meta",
+    "reason": "e o unico envelope materialmente provado nos 38 renders observados",
+    "gates": [
+      "contrato resolvido",
+      "job idempotente",
+      "MP4 H.264 + AAC",
+      "QA tecnico",
+      "QA visual",
+      "ledger completo",
+      "snapshot congelado",
+      "aprovacao humana"
+    ]
+  },
+  "later_destinations": [
+    "Google Demand Gen",
+    "Google Performance Max",
+    "Google Video/YouTube",
+    "Google Display quando o contrato confirmar video",
+    "Meta Ads",
+    "publicacao organica multicanal"
+  ]
+}

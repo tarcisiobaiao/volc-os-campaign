@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-28T11:00:00+00:00",
+  "purpose": "Fila anterior ao Roadmap Vivo. Capturada não conta no percentual. Conversa não vira tarefa sozinha.",
+  "entries": [
+    {
+      "id": "INB-20260828-001",
+      "title": "Search avulso a partir de URL ou briefing",
+      "original": "Não há tarefa canônica para nascer uma campanha Search a partir de uma URL ou de um briefing avulso, fora do fluxo atual de oportunidade.",
+      "explanation": "O Hub cria Search a partir do inventário e de oportunidades. Falta um contrato explícito para Search avulso.",
+      "origin": "sistema",
+      "origin_ref": "QG Operacional V3 / auditoria de cobertura",
+      "author": "qg-coverage-audit",
+      "captured_at": "2026-08-28T11:00:00+00:00",
+      "suggested_cluster": "aquisição/campanhas",
+      "suggested_urgency": "media",
+      "triage": "capturada",
+      "promoted_task_id": null,
+      "possible_duplicate_of": null,
+      "decision": null,
+      "justification": null,
+      "audit": [
+        {
+          "at": "2026-08-28T11:00:00+00:00",
+          "actor": "qg-coverage-audit",
+          "action": "capturada",
+          "detail": "Lacuna verificável no ROADMAP-VIVO.json."
+        }
+      ]
+    },
+    {
+      "id": "INB-20260828-002",
+      "title": "Google Ads Developer Assistant",
+      "original": "Ferramenta citada no radar de open source. Não existe tarefa no Roadmap Vivo.",
+      "explanation": "Não promover ferramenta citada a integração só porque apareceu num documento.",
+      "origin": "documento",
+      "origin_ref": "docs/architecture/RADAR-GOOGLE-OPEN-SOURCE-VOLC.md",
+      "author": "qg-coverage-audit",
+      "captured_at": "2026-08-28T11:00:00+00:00",
+      "suggested_cluster": "plataforma/integrações",
+      "suggested_urgency": "baixa",
+      "triage": "capturada",
+      "promoted_task_id": null,
+      "possible_duplicate_of": null,
+      "decision": null,
+      "justification": null,
+      "audit": [
+        {
+          "at": "2026-08-28T11:00:00+00:00",
+          "actor": "qg-coverage-audit",
+          "action": "capturada",
+          "detail": "Ausência verificável no ROADMAP-VIVO.json."
+        }
+      ]
+    },
+    {
+      "id": "INB-20260828-003",
+      "title": "Documentar campos enriquecidos das tarefas existentes",
+      "original": "O contrato da tarefa passou a aceitar explanation, checklist, dependencies, links, owner, prompt e manifesto. As tarefas já publicadas não receberam esses campos fabricados.",
+      "explanation": "A ausência deve aparecer na página da tarefa. Esta entrada pede documentação real, não preenchimento automático.",
+      "origin": "sistema",
+      "origin_ref": "P01-T07",
+      "author": "qg-coverage-audit",
+      "captured_at": "2026-08-28T11:00:00+00:00",
+      "suggested_cluster": "governança",
+      "suggested_urgency": "media",
+      "triage": "capturada",
+      "promoted_task_id": null,
+      "possible_duplicate_of": "P01-T07",
+      "decision": null,
+      "justification": null,
+      "audit": [
+        {
+          "at": "2026-08-28T11:00:00+00:00",
+          "actor": "qg-coverage-audit",
+          "action": "capturada",
+          "detail": "Não preencher os 95 itens. Documentar o que falta."
+        }
+      ]
+    }
+  ]
+}

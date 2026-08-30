@@ -1,0 +1,312 @@
+{
+  "run": {
+    "max_retries": 2,
+    "publish": false,
+    "hero_image": true,
+    "featured_image": true,
+    "image_model": "gpt-image-2",
+    "image_quality": "medium",
+    "image_size_lp": "1024x1536",
+    "image_size_post": "1536x1024",
+    "publish_status": "draft",
+    "official_screenshots": true,
+    "screenshots_max_per_page": 2,
+    "widgets_enabled": true
+  },
+  "site": {
+    "domain": "https://creditoup.com.br",
+    "post_type": "rec",
+    "lp_post_type": "r",
+    "author_name": "Equipe Crédito Up",
+    "author_credential": "Redação de jornalismo de serviço.",
+    "cnpj": "00.000.000/0001-00",
+    "authors": [
+      {
+        "name": "Equipe Crédito Up",
+        "credential": "Redação de jornalismo de serviço.",
+        "profile_slug": "equipe"
+      }
+    ],
+    "allowed_external": [
+      "https://gov.br",
+      "https://www.gov.br",
+      "https://www.caixa.gov.br"
+    ],
+    "official_entry_points": {
+      "https://gov.br": "https://meu.inss.gov.br",
+      "https://www.gov.br": "https://servicos.receita.fazenda.gov.br/servicos/cpf/consultasituacao/consultapublica.asp",
+      "https://www.caixa.gov.br": "https://www.caixa.gov.br/beneficios-trabalhador/fgts"
+    },
+    "cross_funnel_lps": [
+      "emprestimo-consignado"
+    ]
+  },
+  "steps": {
+    "extract": {
+      "model": "gpt-4.1",
+      "fallbacks": [
+        "gemini/gemini-3.5-flash"
+      ],
+      "temperature": 0.2,
+      "validators": [
+        "funnel_schema"
+      ],
+      "web_search": false
+    },
+    "research": {
+      "model": "gemini/gemini-3.5-flash",
+      "fallbacks": [],
+      "temperature": 0.2,
+      "validators": [
+        "has_sources"
+      ],
+      "web_search": true
+    },
+    "write_p1": {
+      "model": "gemini/gemini-3.5-flash",
+      "fallbacks": [
+        "gpt-4.1"
+      ],
+      "temperature": 0.7,
+      "validators": [],
+      "web_search": false
+    },
+    "write_page": {
+      "model": "gemini/gemini-3.5-flash",
+      "fallbacks": [
+        "gpt-4.1"
+      ],
+      "temperature": 0.7,
+      "validators": [
+        "gutenberg_blocks",
+        "cta_style",
+        "pagespec",
+        "calm_utility",
+        "compliance",
+        "interior_min_length",
+        "no_trailing_buttons",
+        "no_leading_buttons",
+        "short_intro",
+        "min_headings",
+        "language_pt",
+        "same_domain",
+        "official_link_density",
+        "no_bare_rec",
+        "no_self_loop",
+        "identity",
+        "uniqueness",
+        "opening_line_unique",
+        "forward_only",
+        "cta_destination_congruent",
+        "bridge_before_cta"
+      ],
+      "web_search": false
+    },
+    "judge": {
+      "model": "gpt-4.1",
+      "fallbacks": [
+        "gemini/gemini-3.5-flash"
+      ],
+      "temperature": 0.0,
+      "validators": [],
+      "web_search": false
+    },
+    "seo": {
+      "model": "gpt-4.1",
+      "fallbacks": [],
+      "temperature": 0.4,
+      "validators": [
+        "seo_limits"
+      ],
+      "web_search": false
+    },
+    "image": {
+      "model": "gpt-4.1",
+      "fallbacks": [],
+      "temperature": 1.0,
+      "validators": [],
+      "web_search": false
+    },
+    "widget": {
+      "model": "gemini/gemini-3.5-flash",
+      "fallbacks": [
+        "gpt-4.1"
+      ],
+      "temperature": 0.5,
+      "validators": [],
+      "web_search": false
+    }
+  },
+  "routing": {
+    "LP": {
+      "allowed_targets": [
+        "funnel"
+      ],
+      "required_targets": [
+        "funnel"
+      ],
+      "forbidden_targets": [
+        "self",
+        "bare_rec",
+        "external_official",
+        "cross_funnel"
+      ],
+      "cta_min": 3,
+      "cta_max": 3,
+      "requires_external_official": false,
+      "requires_cross_funnel_exit": false,
+      "distinct_targets": true,
+      "anchor_congruent": true
+    },
+    "PRESELL": {
+      "allowed_targets": [
+        "funnel"
+      ],
+      "required_targets": [
+        "funnel"
+      ],
+      "forbidden_targets": [
+        "self",
+        "bare_rec"
+      ],
+      "cta_min": 2,
+      "cta_max": 8,
+      "requires_external_official": false,
+      "requires_cross_funnel_exit": false,
+      "distinct_targets": true,
+      "anchor_congruent": true
+    },
+    "SOLUTION": {
+      "allowed_targets": [
+        "funnel",
+        "external_official"
+      ],
+      "required_targets": [
+        "funnel",
+        "external_official"
+      ],
+      "forbidden_targets": [
+        "self",
+        "bare_rec",
+        "cross_funnel"
+      ],
+      "cta_min": 1,
+      "cta_max": 5,
+      "requires_external_official": false,
+      "requires_cross_funnel_exit": false,
+      "distinct_targets": true,
+      "anchor_congruent": true
+    },
+    "SOLUTION_TERMINAL": {
+      "allowed_targets": [
+        "cross_funnel"
+      ],
+      "required_targets": [
+        "cross_funnel"
+      ],
+      "forbidden_targets": [
+        "self",
+        "funnel",
+        "external_official",
+        "bare_rec"
+      ],
+      "cta_min": 1,
+      "cta_max": 1,
+      "requires_external_official": false,
+      "requires_cross_funnel_exit": false,
+      "distinct_targets": false,
+      "anchor_congruent": true
+    }
+  },
+  "ads": {
+    "vignette": {
+      "enabled": true,
+      "max_per_window": 1,
+      "window_seconds": 600
+    },
+    "slots": {
+      "LP": [
+        {
+          "slot_id": "lp-hero",
+          "placement": "hero",
+          "sizes": [
+            "fluid",
+            "336x280"
+          ],
+          "min_height_px": 280,
+          "refresh_eligible": false,
+          "source_key": ""
+        },
+        {
+          "slot_id": "lp-footer",
+          "placement": "footer",
+          "sizes": [
+            "fluid"
+          ],
+          "min_height_px": 250,
+          "refresh_eligible": false,
+          "source_key": ""
+        }
+      ],
+      "PRESELL": [
+        {
+          "slot_id": "pr-inline",
+          "placement": "inline",
+          "sizes": [
+            "fluid",
+            "300x250"
+          ],
+          "min_height_px": 250,
+          "refresh_eligible": false,
+          "source_key": ""
+        }
+      ],
+      "SOLUTION": [
+        {
+          "slot_id": "sol-inline-1",
+          "placement": "inline",
+          "sizes": [
+            "fluid",
+            "300x250"
+          ],
+          "min_height_px": 250,
+          "refresh_eligible": true,
+          "source_key": ""
+        },
+        {
+          "slot_id": "sol-footer",
+          "placement": "footer",
+          "sizes": [
+            "fluid"
+          ],
+          "min_height_px": 250,
+          "refresh_eligible": false,
+          "source_key": ""
+        }
+      ]
+    }
+  },
+  "index": {
+    "LP": {
+      "robots": "noindex,follow"
+    },
+    "PRESELL": {
+      "robots": "noindex,follow"
+    },
+    "SOLUTION": {
+      "robots": "noindex,follow"
+    }
+  },
+  "uniqueness": {
+    "jaccard_threshold": 0.35,
+    "opening_line_threshold": 0.6,
+    "hub_distinction_threshold": 0.6
+  },
+  "screenshot": {
+    "mode": "desktop",
+    "crop_profile": "desktop",
+    "blank_frac_max": 0.18,
+    "blank_contig_max": 0.15,
+    "retry_settle_ms": 4000
+  }
+}

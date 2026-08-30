@@ -1,0 +1,5 @@
+# O advisory oficial do ADK exige LiteLLM >=1.84 e proíbe, na prática,
+# reutilizar ambientes que tenham recebido 1.82.7 ou 1.82.8.
+google-adk==2.8.0
+litellm>=1.84,<2
+pydantic>=2.11,<3

@@ -1,0 +1,190 @@
+# funnel-forge/config.yaml
+run:
+  max_retries: 2
+  # RETENTATIVA DA PESQUISA. Era ZERO: um 429 do provedor matava a pagina com o
+  # briefing/extract ja pagos e a redacao nunca tentada. A pesquisa e o insumo
+  # mais barato e o unico que, faltando, condena todo o resto -- por isso ela
+  # tem o maior numero de tentativas do pipeline. Espera exponencial: 4s, 8s.
+  # 4 e não 3: a QUARTA tentativa é a que entra com o feedback acumulado das
+  # três anteriores ("estas URLs não existem, não as repita"). Sem o feedback,
+  # tentativa extra é repetição cara; com ele, é a única que tem informação
+  # nova. Medido no primeiro run real: 3 tentativas idênticas, US$ 0,3945, as
+  # mesmas duas alucinações nas três.
+  research_max_attempts: 4
+  research_backoff_s: 4.0
+  research_backoff_max_s: 60.0
+  publish: false
+  # FORMATO DO GRAFO DE ENTRADA
+  # presell_hubs=1 -> UM hub qualificador, escrito de verdade. A LP abre com ele
+  #   no primeiro botao e manda os `lp_direct_solutions` seguintes DIRETO as
+  #   solucoes. Medido em campo: >80% dos cliques da LP ficam no PRIMEIRO botao,
+  #   entao os outros dois hubs recebiam pouco trafego e custavam tres paginas
+  #   com a MESMA main_content_structure (eram clones, por construcao).
+  # presell_hubs=3 -> desenho antigo: expand_presell_hubs clona a pre-sell em
+  #   -pr1/-pr2/-pr3 com rotacao neutra de fan-out. Caminho intacto e testado.
+  presell_hubs: 1
+  lp_direct_solutions: 2         # solucoes com botao DIRETO na LP, depois do hub -> [hub, p1, p2]. 0 restaura LP -> so hubs.
+  publish_status: draft          # WP status quando publish=true: sobe o funil inteiro como RASCUNHO p/ revisar
+  hero_image: true
+  featured_image: true           # /rec: gera imagem, sobe como featured_media + wp:image no meio (fluxo n8n)
+  image_model: gpt-image-2
+  image_quality: medium
+  official_screenshots: true     # prints reais das paginas oficiais (desktop) via Playwright, ancorados ao passo nas SOLUCOES (requer extra .[screenshots] + playwright install chromium)
+  screenshots_max_per_page: 2    # /rec SOLUTION: cap de prints oficiais por pagina (sobre os official_links)
+  widgets_enabled: true          # CARD-0013: widgets interativos nas SOLUCOES (bloco wp:html gerado + sanitizado + injetado antes do 3o H2). DESLIGADO por padrao: e codigo executavel em pagina publicada, rollout e decisao do humano. Off => pipeline identico ao atual.
+site:
+  domain: https://creditoup.com.br
+  post_type: rec
+  lp_post_type: r                      # LP Elementor entra como post type /r (rascunho), rende em /r/<slug>
+  cnpj: "42.724.548/0001-24"          # identidade exibida no rodapé público do site
+  author: { name: "Equipe Crédito Up", credential: "Redação de jornalismo de serviço." }
+  authors:
+    - { name: "Equipe Crédito Up", credential: "Redação de jornalismo de serviço.", profile_slug: equipe }
+  # NAO EXISTE MAIS ALLOWLIST DE DOMINIO. A autorizacao de link externo e por
+  # PAGINA e vem da PESQUISA daquela pagina (ver steps.build_official_links):
+  # so sai do site a URL que a busca devolveu E que o Chromium confirmou como
+  # pagina viva que nao vive de anuncio display. Uma lista estatica so servia
+  # ao funil de FGTS: num funil de entregador do iFood o canal oficial E o
+  # cadastro do iFood, num de Serasa Limpa Nome e o Serasa.
+  #
+  # official_preference: PREFERENCIA de ordenacao, nunca trava. Aceita dominio
+  # ("caixa.gov.br") ou o NOME do orgao/empresa vindo do campo `official_source`
+  # da entidade no VOLC O.S. ("iFood", "Caixa Economica Federal") -- casa por
+  # token sem acento contra o host. Um canal preferido que a pesquisa nao achou
+  # NAO entra; um canal que a pesquisa achou e nao esta aqui entra do mesmo
+  # jeito, so nao fura fila. VAZIO e um valor legitimo (e o padrao).
+  official_preference: []
+  # blocked_hosts: escotilha do operador, opcional, vazia por padrao. E DENYLIST,
+  # nao allowlist: nao estar aqui nao autoriza nada (quem autoriza e a evidencia
+  # da pesquisa). Serve para matar de vez um portal concorrente especifico que
+  # a sonda anti-anuncio deixou passar.
+  blocked_hosts: []
+  # Nao ha fallback estatico de deep link. Se a pesquisa nao devolver nenhuma URL
+  # externa verificavel, a pagina fica sem canal oficial e o gate falha FECHADO --
+  # por ausencia de prova, nunca por o host estar fora de uma lista.
+  # FALLBACK da saida cross-funnel, e so isso. A fonte primaria e o SITEMAP
+  # real do site (adapters/sitemap_http.py), que descobre sozinho as paginas
+  # vizinhas. Esta lista so entra quando o sitemap nao responde.
+  #
+  # Vazia de proposito: a entrada antiga (`emprestimo-consignado`) era do funil
+  # de FGTS e montava https://<dominio>/r/emprestimo-consignado -- uma URL que
+  # pode nao existir. Fallback que aponta para pagina inexistente e pior que
+  # fallback nenhum: com a lista vazia, `build_funnel_routes` simplesmente nao
+  # emite a aresta e o gate reprova com o motivo certo.
+  cross_funnel_lps: []
+budget:
+  # TETO DE GASTO -- rede de seguranca, nao orcamento apertado.
+  #
+  # MEDICAO ANTIGA (a que calibrou 1,20/6,00): ~US$ 0,45 por pagina e ~US$ 2,10
+  # num funil de 5 paginas.
+  #
+  # ⚠️ MEDICAO NOVA -- run 9 (fgts-saque-aniversario, 19/08/2026), 5 paginas
+  # com widget, imagem e prints oficiais ligados:
+  #     p1 0,3707   p3 0,6693   p4 1,0585   p5 0,8411   run 3,5067
+  # A media por pagina subiu de ~0,45 para ~0,74, e o pico bateu 1,20.
+  #
+  # E ele REPROVOU TRABALHO BOM, que e exatamente o que este bloco jura nao
+  # fazer: a p4 tinha 13.415 bytes de artigo escrito e aprovado, e o widget nao
+  # saiu porque o teto estourou por US$ 0,0022. O gate de conteudo entao barrou
+  # a publicacao inteira por falta do widget.
+  #
+  # Os valores abaixo mantem a MESMA doutrina -- ~2,5x acima do medido -- sobre
+  # a medicao nova. Conferido ANTES de cada chamada paga; ao estourar, a chamada
+  # nao sai e o relatorio diz gasto, teto e passo. 0 desliga o teto.
+  max_usd_per_run: 12.00
+  max_usd_per_page: 2.50
+  # PRECO DECLARADO da geracao de imagem (por qualidade de run.image_quality).
+  # A imagem sai por httpx cru e a API nao devolve custo -- era a unica despesa
+  # invisivel do ledger. Numero declarado: confira a tabela do provedor.
+  image_price_usd: { low: 0.02, medium: 0.06, high: 0.20 }
+  image_price_fallback_usd: 0.06
+screenshot:
+  # Task 9 / B5: wiring dos prints oficiais (atras da flag run.official_screenshots).
+  # DESKTOP e o default: viewport 1366x768 + UA desktop honesto faz os sites .gov.br
+  # responsivos servirem o layout COMPLETO (nao a versao mobile espremida); o
+  # crop_profile desktop so faz downscale p/ ~1200px de largura mantendo a dobra
+  # (sem o crop mobile 800x1200). limiares = guarda de blank/under-render (B3):
+  # rejeita quando a fracao de faixas horizontais quase-planas passa de blank_frac_max
+  # ou ha uma faixa contigua plana >= blank_contig_max; retry_settle_ms e o settle
+  # MAIOR que o unico retry pede (com scroll) p/ acordar lazy-loaders.
+  mode: desktop
+  crop_profile: desktop
+  blank_frac_max: 0.18
+  blank_contig_max: 0.15
+  retry_settle_ms: 4000
+routing:
+  # Grafo honesto (Plano A): LP -> exatamente 3 pre-sells distintas (hubs
+  # neutros rotacionados por -prN, sem solucao privilegiada); cada SOLUTION do
+  # miolo avanca (forward-only, p1->p2->...) + link oficial; so a ULTIMA solucao
+  # do funil (terminal) para de avancar e recircula cross-funnel.
+  # pagespec_for(..., terminal=True) le a chave SOLUTION_TERMINAL abaixo em vez
+  # de SOLUTION.
+  LP:       { allowed_targets: [funnel], required_targets: [funnel],
+              forbidden_targets: [self, bare_rec, external_official, cross_funnel],
+              cta_min: 3, cta_max: 3, distinct_targets: true, anchor_congruent: true }
+  PRESELL:  { allowed_targets: [funnel], required_targets: [funnel],
+              forbidden_targets: [self, bare_rec],
+              cta_min: 2, cta_max: 8, distinct_targets: true, anchor_congruent: true }   # fan-out NEUTRO: 1 CTA por solucao, sem solucao privilegiada; ordem rotacionada por -prN (offset=(N-1)%n); cta_max >= #solucoes
+  SOLUTION: { allowed_targets: [funnel, external_official],
+              required_targets: [funnel, external_official],
+              forbidden_targets: [self, bare_rec, cross_funnel], cta_min: 1, cta_max: 5,
+              distinct_targets: true, anchor_congruent: true }   # miolo: FAN-OUT forward p/ TODAS as solucoes subsequentes (p_i->{p_i+1..p_n}) + 1 link oficial; nunca cross-funnel. cta_max acomoda os (n-ordinal) destinos funnel (ate 4 solucoes -> <=3; folga p/ funis maiores)
+  SOLUTION_TERMINAL: { allowed_targets: [cross_funnel], required_targets: [cross_funnel],
+              forbidden_targets: [self, funnel, external_official, bare_rec],
+              cta_min: 1, cta_max: 1, distinct_targets: false, anchor_congruent: true }   # ultima solucao do funil: para de avancar, so recircula cross-funnel
+ads:
+  # O Ad Inserter ativo usa o começo do artigo e o fechamento do 3º parágrafo.
+  # O gate final recebe estes índices para manter instruções/widgets fora da
+  # zona em que um anúncio pode separar apresentação e interação.
+  paragraph_anchors: [1, 3]
+  vignette: { enabled: true, max_per_window: 1, window_seconds: 600 }
+  slots:
+    LP:
+      - { slot_id: lp-hero, placement: hero, sizes: [fluid, 336x280],
+          min_height_px: 280, refresh_eligible: false, source_key: "" }
+      - { slot_id: lp-footer, placement: footer, sizes: [fluid],
+          min_height_px: 250, refresh_eligible: false, source_key: "" }
+    PRESELL:
+      - { slot_id: pr-inline, placement: inline, sizes: [fluid, 300x250],
+          min_height_px: 250, refresh_eligible: false, source_key: "" }
+    SOLUTION:
+      - { slot_id: sol-inline-1, placement: inline, sizes: [fluid, 300x250],
+          min_height_px: 250, refresh_eligible: true, source_key: "" }
+      - { slot_id: sol-footer, placement: footer, sizes: [fluid],
+          min_height_px: 250, refresh_eligible: false, source_key: "" }
+index:
+  LP:       { robots: "noindex,follow" }
+  PRESELL:  { robots: "noindex,follow" }
+  SOLUTION: { robots: "noindex,follow" }
+uniqueness:
+  jaccard_threshold: 0.35
+  opening_line_threshold: 0.6    # CARD-0007: jaccard minimo p/ reprovar linha-CTA da presell repetida entre funis
+  hub_distinction_threshold: 0.6 # PRESELL-vs-PRESELL: os 3 hubs neutros previewam as MESMAS 3 solucoes, entao compartilham vocabulario por design (funil homogeneo ~0.4). 0.35 briga com isso; 0.6 pega so hub quase-identico (doorway real), passando 3 enquadramentos distintos. Neutralidade do hero e guardada a parte.
+steps:
+  # SMOKE stack = OpenAI (gpt-4.1) + Gemini (gemini-3.5-flash). No Anthropic/Perplexity. opus A/B config in git @097b088.
+  # Redatores/research nos modelos "melhores" (gemini-3.5-flash); meta-info simples no gpt-4.1; judge cross-provider p/ independencia.
+  extract:    { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.2, validators: [funnel_schema] }
+  research:   { model: gemini/gemini-3.5-flash, fallbacks: [], temperature: 0.2, web_search: true, validators: [has_sources, research_facts_contract] }
+  # LP = JSON estruturado (preenche o template Elementor), NAO Gutenberg. Por
+  # isso a bateria da write_page nao serve aqui: cta_style/gutenberg_blocks
+  # procuram blocos wp:buttons e, sobre este JSON, devolvem lista vazia --
+  # seriam portao que sempre passa. `lp_json_contract` parseia o JSON e aplica
+  # o MESMO validate_lp_content do step_write, so que dentro do runner: a
+  # reprovacao vira feedback + nova tentativa em vez de morte no primeiro tiro.
+  # A LP segue SEM judge de proposito: o criterio 6 dele julga hrefs, e o
+  # roteamento da LP e deterministico (lp_template._BUTTON_HREF) -- nao ha href
+  # no que o modelo escreve.
+  write_p1:   { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [lp_json_contract, calm_utility, language_pt, critical_fact_grounding] }
+  write_page: { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [gutenberg_blocks, cta_style, pagespec, calm_utility, compliance, interior_min_length, no_trailing_buttons, no_leading_buttons, short_intro, min_headings, language_pt, same_domain, official_link_density, external_cta_authorized, no_bare_rec, no_self_loop, identity, uniqueness, opening_line_unique, forward_only, cta_destination_congruent, bridge_before_cta, critical_fact_grounding, raw_html_contract, ad_interaction, visual_contract] }
+  judge:      { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.0, validators: [] }
+  seo:        { model: gpt-4.1, fallbacks: [], temperature: 0.4, validators: [seo_limits] }
+  image:      { model: gpt-4.1, fallbacks: [], temperature: 1.0, validators: [] }
+  # CARD-0013: gerador de widget (Product Designer editorial + micro front-end). So roda quando run.widgets_enabled=true.
+  # validators: [] de proposito -- a sanitizacao e o gate real (checks.py sanitize_widget_block, consumido direto pelo step_widget pos-write), NAO um validator do runner.
+  widget:     { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.5, validators: [] }
+  # Classifica a FORMA DA PERGUNTA de cada solucao (condicional|sequencial|
+  # comparativo|diagnostico|dado_unico) -> Page.engajamento, que decide qual
+  # ferramenta interativa a pagina recebe. Temperatura BAIXA: e rotulagem com
+  # vocabulario fechado, nao criacao. Se o classificador falhar, H1/objetivo/
+  # estrutura alimentam um fallback semantico deterministico (nunca sorteio).
+  engajamento: { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.1, validators: [] }

@@ -1,0 +1,75 @@
+{
+  "mission_id": "decision-raw-normalizer-v1",
+  "title": "Decision Intelligence — prova hermética do normalizador Google Ads",
+  "base_ref": "5ab423fd2af6aa2b8e54e11f4f2c6200ca1cf005",
+  "mode": "implementation",
+  "commit_message": "test(trafego): prova normalização Google Ads do laboratório",
+  "briefing": "Implemente somente a fronteira hermética raw→contrato normalizado do Decision Intelligence Lab. Use linhas sintéticas no mesmo grão dos recursos Google Ads; não consulte rede, Google Ads, Supabase, n8n ou produção; não importe nem execute os três repositórios externos. ARBA, Ads Monitor e If This Then Ad são apenas referências não confiáveis. O normalizador deve ser Python puro e separar: campaign_day; campaign_window sem segments.date para impression-share/lost-budget/lost-rank; keyword criterion para Quality Score 1..10 e seus três componentes; search_term_view; negativas de campanha e grupo com IDs/resource_name/level/match_type; receita externa permanece fora do normalizador Google. Preserve customer_id/campaign_id/ad_group_id/criterion_id/resource_name, source_field, raw_grain, janela, lido_em e null distinto de zero. Recuse identidade/grão/janela misturados, datas futuras, duplicatas, enum/range inválidos e percentuais fora de [0,1]. A ordem das linhas não pode mudar fingerprint. A saída deve atravessar o kernel atual e reproduzir diagnóstico/proposta sintéticos sem criar endpoint, UI, persistência, shadow ou mutate. Atualize o manifesto raw mapping apenas para refletir exatamente o contrato provado. Mantenha P14-T02 partial; entregue curation_handoff, não edite Roadmap/grafo/curadoria.",
+  "timeout_seconds": 3600,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONPATH=backend:.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "backend/tests/test_inteligencia_decisao_lab.py",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "-q"
+      ],
+      "timeout_seconds": 1200
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-raw-normalizer-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Único escritor. Implemente a menor fronteira pura raw→normalizado, por grão e com linhagem explícita. Falhe fechado; não altere política, endpoint ou interface.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao/__init__.py",
+        "volc_ads/inteligencia_decisao/normalizacao_google_ads.py",
+        "volc_ads/inteligencia_decisao/dados/linhas_google_ads_sinteticas.json",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"
+      ]
+    },
+    {
+      "id": "claude-google-grain-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Audite offline a fidelidade aos recursos, campos e grãos Google Ads usando somente a documentação v25/v25.1 já versionada no repositório: shares sem segments.date, keyword quality, search_term_view e critérios negativos. Rejeite afirmação não sustentada pelo material local. Não execute nem copie repos externos.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"
+      ]
+    },
+    {
+      "id": "codex-lineage-adversary",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente refutar ausência→não afirmação, identidade, grão, janela/as-of, null versus zero, enums, ranges, determinismo e impossibilidade de IO/mutação. Exija reprodução para cada finding.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"
+      ]
+    }
+  ]
+}

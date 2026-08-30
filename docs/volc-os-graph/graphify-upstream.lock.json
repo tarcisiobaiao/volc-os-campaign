@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/Graphify-Labs/graphify",
+  "package": "graphifyy",
+  "version": "0.9.48",
+  "commit": "b2cd36267456c166788c95be6e68574064a92a42",
+  "license": [
+    "Apache-2.0",
+    "MIT"
+  ],
+  "extras_used": [
+    "sql"
+  ],
+  "extraction_mode": "code-only",
+  "network_during_extraction": false,
+  "llm_calls": 0,
+  "snapshot_date": "2026-08-22"
+}

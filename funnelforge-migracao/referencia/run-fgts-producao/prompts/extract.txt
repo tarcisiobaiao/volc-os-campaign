@@ -1,0 +1,156 @@
+[user]
+=<identidade>
+Você é um EXTRATOR DE BRIEFINGS de funis de arbitragem. Você NÃO é redator nem arquiteto. Sua função é ler um briefing de funil já estruturado e convertê-lo, com fidelidade absoluta, em um objeto JSON no schema pedido.
+
+Você conhece a anatomia do funil (para classificar corretamente cada página), mas NÃO usa esse conhecimento para inventar conteúdo:
+- P1 = LANDING PAGE (pouso): "O que é e por que me importar?"
+- P2 = HUB / Pré-sell: índice navegável; cada H2 é preview de uma página P3+.
+- P3+ = SOLUTION: páginas de solução/tutorial.
+</identidade>
+
+<principios>
+- FIDELIDADE > criatividade. Copie o que está no briefing; não melhore, não resuma, não complete.
+- Se algo faltar no briefing, deixe vazio. NUNCA alucine dados.
+- Saída = SOMENTE o JSON do schema. Zero conversa, zero markdown, zero citações.
+</principios>
+
+---
+
+=<TAREFA>
+Você recebeu, abaixo, um BRIEFING DE FUNIL já pronto (colado na descrição da task do ClickUp). Sua única missão é EXTRAIR fielmente os dados desse briefing e devolvê-los no formato JSON exato do schema. Você NÃO cria, NÃO inventa, NÃO reescreve nada — apenas mapeia o que já existe no briefing para o JSON.
+</TAREFA>
+
+<BRIEFING_DE_ENTRADA>
+WEBGO
+
+Briefing de Funil
+Antecipação Saque-Aniversário
+Empréstimo com Antecipação do Saque-Aniversário FGTS
+Brasil  |  Julho 2026
+
+Funil: Antecipação Saque-Aniversário
+Avatar: Trabalhador CLT ativo ou desempregado recente, entre 22 e 45 anos, com contas atrasadas e nome sujo. Ele precisa de dinheiro rápido (R$ 50 a R$ 500) para cobrir emergências imediatas (mercado, água, luz). Ele sabe que tem saldo no FGTS, mas teme burocracia ou cair em golpes.
+Tom de voz: Urgente, empático, direto, desbancarizado e altamente instrutivo.
+Arquitetura: 5 páginas em jornada de captação → utilidade → conversão.
+Landing Page (Pouso) · Saque-Aniversário FGTS Liberado pelo Governo: Como Liberar e Sacar Seu Dinheiro em 2026
+URL: /antecipacao-saque-aniversario-fgts
+Objetivo da página: Transformar a curiosidade inicial em desejo e criar a dúvida crucial: 'Será que eu cumpro os requisitos para liberar o Pix hoje?'
+Estrutura da página (H2)
+•	H2: O que é a Antecipação do Saque-Aniversário e por que ela é importante agora? (Explicar a liberação do governo, o conceito de antecipar parcelas futuras sem comprometer o salário mensal e o alívio imediato de receber o saldo parado)
+•	H2: 3 coisas sobre o FGTS que você precisa saber antes de solicitar (1. O dinheiro já é seu e está rendendo menos que a inflação; 2. Não há parcelas mensais para pagar por boleto; 3. Negativados também podem contratar sem consulta ao SPC/Serasa)
+•	H2: Quem pode se beneficiar dessa modalidade de crédito? (Trabalhadores com saldo no FGTS ativo ou inativo, que precisam de dinheiro rápido sem comprometer a renda atual)
+•	H2: Principais vantagens de antecipar o seu FGTS (Crédito rápido, sem burocracia, contratação 100% digital e recebimento via Pix em poucos minutos)
+•	H2: Perguntas frequentes sobre o Saque-Aniversário (FAQ Estratégico para abertura de loops)
+Links internos
+•	O dinheiro do seu FGTS está disponível, mas nem todo trabalhador tem a liberação imediata devido a pendências cadastrais simples de resolver. Na próxima página, mostramos o checklist exato de qualificação para você garantir que seu saldo está elegível para o resgate hoje. → /quem-tem-direito-antecipar-fgts-pr
+Ficha de redação
+
+
+Pre-sell · Antecipar FGTS: Requisitos, Valores Mínimos e Tudo que Você Precisa Saber
+URL: /quem-tem-direito-antecipar-fgts-pr
+Objetivo da página: Confirmar a elegibilidade do usuário para gerar alívio, ao mesmo tempo em que cria o medo de cometer erros no processo que possam travar o saldo.
+Estrutura da página (H2)
+•	H2: Requisitos de Elegibilidade: Quem realmente pode antecipar? (Apresentar os critérios: ser maior de 18 anos, ter saldo em contas ativas ou inativas do FGTS e ter a modalidade Saque-Aniversário ativada no aplicativo. Linkar para /como-consultar-fgts-pelo-cpf-p1)
+•	H2: Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp (Mostrar que é possível antecipar valores pequenos sem precisar de grandes saldos, utilizando canais práticos. Linkar para /bancos-antecipar-fgts-pix-whatsapp-p2)
+•	H2: Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações (Explicar brevemente o impacto da demissão e a possibilidade de realizar novas antecipações mesmo já tendo feito uma antes. Linkar para /regras-demissao-quitar-emprestimo-fgts-p3)
+Links internos
+•	Você atende aos requisitos básicos para sacar. No entanto, um erro comum na hora de consultar o saldo pelo CPF ou ao ativar a opção no aplicativo oficial pode travar o seu dinheiro na Caixa por até 2 anos. Na próxima página, veja o passo a passo seguro para consultar e ativar sua liberação sem riscos. → /como-consultar-fgts-pelo-cpf-p1
+Ficha de redação
+
+
+Página Solução 1 · Como Consultar o FGTS pelo CPF e Ativar o Saque-Aniversário no Aplicativo
+URL: /como-consultar-fgts-pelo-cpf-p1
+Objetivo da página: Guiar o usuário na execução prática da consulta e ativação, eliminando a ansiedade de não saber mexer no aplicativo da Caixa.
+Estrutura da página (H2)
+•	H2: Passo 1: Como consultar seu FGTS pelo CPF de forma rápida e segura (Passo a passo para baixar o aplicativo oficial do FGTS e realizar a consulta de saldo atualizado usando o CPF)
+•	H2: Passo 2: Como migrar para a modalidade Saque-Aniversário no aplicativo (Tutorial visual explicando onde clicar dentro do app para alterar a modalidade de Saque-Rescisão para Saque-Aniversário)
+•	H2: Passo 3: Como autorizar as instituições financeiras a consultarem seu saldo (O passo mais importante: como permitir que os bancos vejam seu saldo para poder liberar a antecipação do dinheiro)
+•	H2: Como sacar o FGTS pelo aplicativo mesmo trabalhando (Explicação sobre a possibilidade de retirar o dinheiro do saldo ativo sem precisar pedir demissão)
+Links internos
+•	Com o saldo verificado e o aplicativo autorizado, o próximo passo é escolher onde receber o dinheiro mais rápido. Alguns bancos exigem saldos altos, enquanto outros liberam a partir de R$ 20 reais direto no Pix e com contratação via WhatsApp em 2 minutos. Descubra quais são esses bancos na próxima página. → /bancos-antecipar-fgts-pix-whatsapp-p2
+Ficha de redação
+
+
+Página Solução 2 · Empréstimo FGTS a partir de R$ 20 a R$ 50 Reais via Pix e WhatsApp: Melhores Bancos
+URL: /bancos-antecipar-fgts-pix-whatsapp-p2
+Objetivo da página: Facilitar a conversão imediata, mostrando opções extremamente acessíveis e de contratação instantânea pelo celular.
+Estrutura da página (H2)
+•	H2: Quais bancos fazem o empréstimo do FGTS a partir de R$ 20, R$ 30, R$ 40 ou R$ 50 reais? (Lista atualizada de bancos que aceitam margens mínimas de saque para quem tem pouco saldo na conta do FGTS)
+•	H2: Como antecipar o FGTS pelo WhatsApp (O passo a passo para fazer a simulação e contratação rápida utilizando o WhatsApp de instituições confiáveis como BMG, Mercantil e outras)
+•	H2: Qual banco antecipa 50 reais do FGTS via Pix na hora? (Detalhamento do tempo de depósito do dinheiro na conta do trabalhador após a assinatura digital do contrato)
+Links internos
+•	Agora você já sabe onde conseguir o Pix rápido. Mas atenção: se você já antecipou o FGTS antes, sabe se pode pedir de novo? E o que acontece se você for demitido amanhã? Há uma regra oculta que protege seu bolso nesses casos e que 90% das pessoas ignoram. Veja tudo na próxima página. → /regras-demissao-quitar-emprestimo-fgts-p3
+Ficha de redação
+
+
+Página Solução 3 · Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo
+URL: /regras-demissao-quitar-emprestimo-fgts-p3
+Objetivo da página: Sanar as maiores objeções e medos de longo prazo (perda de emprego, saldo travado, recontratação), gerando segurança total para a tomada de decisão.
+Estrutura da página (H2)
+•	H2: Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%? (Explicar que a multa de 40% é paga normalmente e pode ser sacada, enquanto o saldo principal da rescisão fica retido caso o trabalhador mantenha o saque-aniversário ativo)
+•	H2: Já antecipei o saque-aniversário, posso antecipar de novo? (Explicar que sim, desde que o trabalhador tenha saldo remanescente suficiente para cobrir o valor mínimo exigido pelos bancos parceiros)
+•	H2: Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS (Passo a passo para amortizar ou quitar o saldo devedor junto ao banco credor e voltar à modalidade de Saque-Rescisão mais rápido)
+•	H2: Como funciona o desconto do empréstimo e como sacar no caixa eletrônico (Esclarecer que o desconto é feito anualmente de forma automática, direto do saldo do FGTS, sem boletos. Explicar como sacar os valores liberados nas agências ou lotéricas caso prefira dinheiro em espécie)
+Links internos
+•	Parabéns! Você agora tem o controle total sobre o seu dinheiro. Escolha uma das opções de contratação segura listadas nos nossos guias anteriores e faça sua antecipação com total segurança. → /antecipacao-saque-aniversario-fgts
+Ficha de redação
+
+
+</BRIEFING_DE_ENTRADA>
+
+<COMO_MAPEAR>
+Leia o briefing e extraia:
+
+funnel_strategy:
+- avatar_summary  <- o texto que vem depois de "Avatar:"
+- tone_voice      <- o texto que vem depois de "Tom de voz:"
+- total_pages     <- o número total de páginas do funil (normalmente 5)
+
+pages[] (uma entrada por página, NA ORDEM em que aparecem no briefing):
+- page_number     <- a ordem da página (1, 2, 3, 4, 5...)
+- page_type       <- classifique pelo rótulo da página:
+    • "Landing Page" / "Pouso"              -> "LANDING PAGE"
+    • "Pre-sell" / "Pré-sell" / "Hub"       -> "HUB"
+    • "Página Solução" / "Solução" / demais -> "SOLUTION"
+- h1_title        <- o título da página (o texto após o "·" no cabeçalho da página)
+- slug            <- o valor do campo "Slug" (remova a barra inicial "/"; kebab-case, sem acento)
+- emotional_objective <- o texto após "Objetivo da página:"
+- main_content_structure <- a lista de H2s em "Estrutura da página (H2)". Cada item vira uma string começando com "H2: " seguida do título do H2 exatamente como no briefing.
+- hook_to_next_page <- o texto do CTA / gatilho da página (o campo "CTA" ou o "GATILHO DE ..." em "Links internos"). Copie o texto do gatilho fielmente.
+- next_page_slug  <- o valor de "Link do CTA" (remova a barra inicial "/"). Na ÚLTIMA página, se não houver próximo destino, use "".
+- target_keywords <- o campo "Keywords-alvo", separando por vírgula em um array de strings.
+</COMO_MAPEAR>
+
+<REGRAS>
+- Extraia SOMENTE o que está no briefing. Se um campo não existir para uma página, use "" (string vazia) ou [] (array vazio). NUNCA invente valores.
+- Preserve a ordem das páginas do briefing.
+- Slugs sempre em kebab-case, minúsculos, sem acento e SEM a barra inicial.
+- Mantenha os H2s exatamente como escritos no briefing (não reescreva).
+- page_type da página 2 (pré-sell) é SEMPRE "HUB".
+</REGRAS>
+
+<OUTPUT_RULES>
+IMPORTANTÍSSIMO:
+Responda APENAS com um objeto JSON válido (UTF-8), sem nenhum texto antes ou depois, sem markdown, sem crases, seguindo estritamente este schema:
+
+{
+  "funnel_strategy": {
+    "avatar_summary": "...",
+    "tone_voice": "...",
+    "total_pages": 5
+  },
+  "pages": [
+    {
+      "page_number": 1,
+      "page_type": "LANDING PAGE",
+      "h1_title": "...",
+      "slug": "slug-sem-barra",
+      "emotional_objective": "...",
+      "main_content_structure": ["H2: ...", "H2: ..."],
+      "hook_to_next_page": "texto do gatilho/CTA...",
+      "next_page_slug": "slug-da-proxima-pagina",
+      "target_keywords": ["kw1", "kw2"]
+    }
+  ]
+}
+</OUTPUT_RULES>

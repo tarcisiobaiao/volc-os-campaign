@@ -1,0 +1,978 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================
+   VOLC O.S. — Design System
+   "Exploding Ideas": canvas claro premium, aurora de assinatura com grão,
+   Space Grotesk (display/tech) + Inter (corpo/dados). Arestas técnicas,
+   profundidade por glow — não por sombra preta genérica.
+   Todas as cores em HSL. Os nomes de variável do shadcn são preservados
+   (todo componente existente herda o novo visual); os VALORES são VOLC.
+   ===================================================================== */
+
+@layer base {
+  :root {
+    /* — Canvas & tinta — */
+    --background: 210 20% 96%;          /* #F3F5F7 */          /* off-white frio #F3F4F6 */
+    --foreground: 210 7% 11%;           /* #1A1C1E */          /* tinta grafite #1A1C1E */
+
+    --card: 210 25% 98%;                /* #FAFBFC — DESIGN.md proíbe branco puro no workspace */
+    --card-foreground: 220 14% 11%;
+
+    --popover: 210 25% 98%;
+    --popover-foreground: 220 14% 11%;
+
+    /* — Accent VOLC (deep-blue como workhorse, neon como glow) — */
+    --primary: 216 85% 34%;             /* #0D47A1 — a ÚNICA cor de ação padrão */
+    --primary-hover: 216 85% 27%;       /* #0A397F */
+    --primary-foreground: 210 40% 99%;
+    --primary-glow: 191 100% 50%;       /* neon-blue #00D4FF — só glow/hover */
+
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 220 14% 16%;
+
+    --muted: 210 31% 95%;               /* #EEF2F6 — superfície sutil */
+    /* Era 45% (#68717D). Passava sobre o canvas (4,52:1) e sobre o card (4,73:1)
+       e reprovava justamente sobre `--muted` (4,40:1) — que é o poço da aba
+       segmentada que o contrato torna obrigatório. O rótulo inativo de toda aba
+       do produto ficava abaixo do piso. A 42% dá 4,88:1 no poço.
+
+       Baixou mais um passo, para 40%, depois que o segundo lote migrou as
+       faixas de ROAS para o vocabulário semântico: os cartões passaram a ter
+       fundo TINGIDO (`bg-{token}/10`), e sobre esse leito o texto secundário
+       media 4,33:1. A 40% o pior leito de todo o produto — texto secundário
+       sobre tinte destrutivo no canvas — dá 4,66:1. */
+    --muted-foreground: 214 9% 40%;     /* #5D656F */
+
+    --accent: 214 90% 34%;
+    --accent-foreground: 210 40% 99%;
+
+    /* — Cores semânticas de dado (ROAS/status/deltas) — */
+    /* ⚠️ MEDIDO, não escolhido. O contrato manda o chip combinar glifo + PALAVRA,
+       e a palavra usa o token semântico como TEXTO — papel que exige 4,5:1 (WCAG
+       1.4.3). Contra os três leitos reais de um chip (canvas #F3F5F7, card
+       #FAFBFC, poço #EEF2F6) os valores normativos reprovavam: success 3,70:1 e
+       warning 2,51:1. Escurecer preservando H e S é o mesmo movimento que este
+       arquivo já documenta em `--verified`, e não custa nada ao preenchimento:
+       o par sólido MELHOROU (success 4,05:1 → 5,37:1). Os valores finais foram
+       resolvidos contra os leitos REALMENTE MEDIDOS no navegador — chip tingido
+       (`bg-{token}/10`) sobre linha realçada —, não contra o card ideal.
+       `--warning-foreground` inverteu para tinta clara: sobre o âmbar novo o
+       quase-preto anterior dava 3,11:1; o branco frio dá 5,02:1. */
+    --success: 162 73% 25%;             /* #116E52 — 4,59:1 no pior leito de chip medido */
+    --success-foreground: 210 40% 99%;
+    --warning: 36 90% 28%;              /* #885407 — 4,67:1 no pior leito de chip medido */
+    --warning-foreground: 210 40% 99%;
+    /* `verified` — a fonte foi OBSERVADA ou reconciliada. NÃO significa sucesso.
+       Nasceu aqui porque o produto vinha usando `info` para os dois sentidos, e
+       "observei" e "está saudável" levam a decisões diferentes (DESIGN.md §Colors). */
+    /* ⚠️ Escurecido do #009FC7 normativo (192 100% 39%) para 35%.
+       Medido: a 39% o glifo dá 2,96:1 contra a superfície do cartão — abaixo do
+       piso de 3:1 da WCAG 1.4.11 para elemento não textual. E o glifo NÃO é
+       decoração aqui: o PRODUCT.md o torna portador obrigatório do estado, ao
+       lado da palavra e da descrição. Um token de marca que reprova no piso que
+       o próprio sistema exige tem de ceder no valor renderizado, não na regra.
+       O matiz é o mesmo; a 35% o contraste vai a 3,61:1. */
+    --verified: 192 100% 26%;           /* #006A85 — 4,56:1 no pior leito (era 3,35:1 a 35%) */
+    --verified-foreground: 210 40% 99%;
+
+    --info: 191 92% 26%;                /* #05697F — 4,65:1 no pior leito (era 2,44:1 a 42%) */
+    --info-foreground: 210 40% 99%;
+    --destructive: 0 56% 45%;           /* #B33232 — só erro, bloqueio ou risco real; 4,53:1 */
+    --destructive-foreground: 210 40% 99%;
+
+    /* — Aurora VOLC (os stops da assinatura) — */
+    --aurora-blue: 191 100% 50%;        /* #00D4FF */
+    --aurora-deep: 214 88% 34%;         /* #0D47A1 */
+    --aurora-purple: 271 76% 53%;       /* #8A2BE2 */
+    --aurora-orange: 14 100% 50%;       /* #FF3D00 */
+    --gradient-aurora: linear-gradient(
+      110deg,
+      hsl(var(--aurora-blue)) 0%,
+      hsl(var(--aurora-deep)) 34%,
+      hsl(var(--aurora-purple)) 68%,
+      hsl(var(--aurora-orange)) 100%
+    );
+    --gradient-primary: linear-gradient(135deg, hsl(var(--aurora-deep)), hsl(var(--aurora-blue)));
+    /*
+     * A aurora INTEIRA não pode carregar texto branco.
+     *
+     * Medido, branco sobre cada stop: aurora-blue 1,77:1 e aurora-orange
+     * 3,55:1 reprovam; deep 8,63:1 e purple 5,96:1 passam. O botão "Entrar" do
+     * login e o "Voltar ao início" do 404 usavam a assinatura completa, então a
+     * palavra ficava ilegível justamente onde o gradiente é mais claro — na
+     * ação primária de duas telas em que não existe segunda opção.
+     *
+     * Este gradiente é a METADE PROFUNDA da mesma aurora. Continua sendo a
+     * marca (é o mesmo eixo azul-profundo → roxo), e o pior ponto dele dá
+     * 5,96:1. Identidade preservada, palavra legível.
+     */
+    --gradient-aurora-action: linear-gradient(
+      110deg,
+      hsl(var(--aurora-deep)) 0%,
+      hsl(var(--aurora-purple)) 100%
+    );
+    --gradient-dashboard: var(--gradient-aurora);
+    --gradient-card: linear-gradient(160deg, hsl(0 0% 100%), hsl(220 24% 98%));
+
+    /* — Profundidade: sombras TINGIDAS (frias), nunca preto puro — */
+    --shadow-card:
+      0 1px 2px hsl(214 45% 22% / 0.04),
+      0 10px 30px -12px hsl(214 60% 28% / 0.14);
+    --shadow-elevated:
+      0 2px 4px hsl(214 45% 22% / 0.05),
+      0 24px 48px -16px hsl(214 60% 28% / 0.20);
+    --shadow-dashboard: var(--shadow-card);
+    --shadow-glow: 0 0 44px -6px hsl(var(--primary-glow) / 0.35);
+
+    /* — Bordas / inputs / foco — */
+    --border: 214 22% 87%;              /* #D8DEE6 */
+    /* A borda é o que identifica um campo de formulário, então ela cai sob o
+       piso de 3:1 da WCAG 1.4.11 — e media 1,28:1 contra o card. A 57% dá
+       3,10:1. Continua sendo um fio, não uma moldura: o que mudou é que agora
+       ele existe para quem não enxerga bem. */
+    --input: 220 15% 57%;               /* #818CA2 — 3,10:1 contra card e canvas */
+    /* O trilho do switch desligado. Era `--input`, e um token não pode servir
+       a dois papéis com requisitos opostos: a borda precisa ser escura para se
+       destacar do campo; o trilho desligado precisa ser claro para se
+       distinguir do ligado. Aqui o valor antigo de `--input` continua certo. */
+    --switch-off: 220 15% 86%;          /* #D6DAE1 — 6,08:1 contra o trilho ligado */
+    --ring: 216 85% 44%;
+
+    --radius: 0.5rem;                   /* técnico mas não cortante */
+
+    /* — Sidebar — */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 12% 30%;
+    --sidebar-primary: 214 90% 34%;
+    --sidebar-primary-foreground: 210 40% 99%;
+    --sidebar-accent: 220 16% 95%;
+    --sidebar-accent-foreground: 214 90% 30%;
+    --sidebar-border: 220 15% 90%;
+    --sidebar-ring: 214 90% 44%;
+
+    /* — Séries de gráfico (aurora → semânticas) — */
+    --chart-1: 214 88% 42%;             /* deep-blue */
+    --chart-2: 191 92% 44%;             /* neon-blue */
+    --chart-3: 271 70% 56%;             /* purple */
+    --chart-4: 14 92% 52%;              /* orange */
+    --chart-5: 158 66% 42%;             /* green */
+  }
+
+  .dark {
+    --background: 220 38% 8%;           /* #0C111B */
+    --foreground: 214 41% 97%;          /* #F3F6FA */
+
+    --card: 221 39% 11%;                /* #111827 */
+    --card-foreground: 214 41% 97%;
+
+    --popover: 221 39% 11%;
+    --popover-foreground: 214 41% 97%;
+
+    /* ⚠️ O escuro NÃO troca a ação primária por neon.
+       A versão anterior fazia `--primary` virar aurora-blue no tema escuro, e o
+       DESIGN.md é explícito: a aurora é assinatura de marca e NUNCA uma cor de
+       estado operacional. Um botão de ação pintado de aurora ensina o operador
+       que aurora significa "clique aqui" — e aí ela deixa de poder significar
+       identidade. O azul profundo é clareado só o bastante para o contraste. */
+    --primary: 214 90% 61%;
+    --primary-foreground: 220 38% 8%;
+    --primary-hover: 214 90% 68%;
+    --primary-glow: 191 100% 60%;
+
+    --secondary: 221 38% 15%;           /* #172033 */
+    --secondary-foreground: 210 30% 96%;
+
+    --muted: 220 18% 14%;
+    --muted-foreground: 214 16% 67%;    /* #9CA8B8 */
+
+    --accent: 191 96% 52%;
+    --accent-foreground: 220 40% 8%;
+
+    --success: 158 66% 46%;
+    --success-foreground: 220 40% 8%;
+    --warning: 36 96% 56%;
+    --warning-foreground: 30 40% 10%;
+    --verified: 192 88% 52%;            /* observado — clareado para contraste no escuro */
+    --verified-foreground: 220 38% 8%;
+
+    --info: 191 92% 52%;
+    --info-foreground: 220 40% 8%;
+    /* 56% + branco dava 4,13:1 no botão sólido e 4,18:1 como texto sobre o card:
+       reprovava nos dois papéis ao mesmo tempo. Clarear o preenchimento sozinho
+       conserta o texto e piora o botão, então o par inteiro mudou: âmbar-tinta
+       escura sobre vermelho claro. 4,81:1 sólido, 4,64:1 como texto. */
+    --destructive: 0 74% 60%;           /* #E44E4E */
+    --destructive-foreground: 0 60% 10%;
+
+    --gradient-card: linear-gradient(160deg, hsl(220 22% 10%), hsl(220 24% 7%));
+    /* Sombra preta sobre canvas quase preto não separa nada: o card e o fundo
+       diferiam 1,04:1 e a sombra era invisível. No escuro, quem cria plano é um
+       fio de luz na aresta superior — a mesma leitura física de uma superfície
+       levantada perto de uma fonte de luz. A sombra continua, mas como apoio. */
+    --shadow-card:
+      inset 0 1px 0 0 hsl(214 41% 97% / 0.06),
+      0 1px 2px hsl(0 0% 0% / 0.5),
+      0 12px 32px -12px hsl(220 60% 2% / 0.6);
+    --shadow-elevated:
+      inset 0 1px 0 0 hsl(214 41% 97% / 0.09),
+      0 2px 6px hsl(0 0% 0% / 0.6),
+      0 28px 56px -18px hsl(220 60% 2% / 0.75);
+    --shadow-glow: 0 0 48px -6px hsl(var(--primary-glow) / 0.45);
+
+    --border: 216 28% 21%;              /* #263244 */
+    --input: 216 28% 43%;               /* #4F688C — 3,12:1; era 1,54:1 a 24% */
+    --switch-off: 216 28% 24%;          /* #2C3A4E — o valor antigo, que como trilho estava certo */
+    /* O foco acompanha a ação primária, não a aurora: anel neon sobre tabela
+       é glow decorativo em controle operacional, que o DESIGN.md proíbe. */
+    --ring: 214 90% 66%;
+
+    --sidebar-background: 220 24% 7%;
+    --sidebar-foreground: 210 20% 82%;
+    --sidebar-primary: 191 96% 52%;
+    --sidebar-primary-foreground: 220 40% 8%;
+    --sidebar-accent: 220 18% 13%;
+    --sidebar-accent-foreground: 191 96% 62%;
+    --sidebar-border: 216 20% 16%;
+    --sidebar-ring: 191 96% 56%;
+
+    --chart-1: 191 92% 54%;
+    --chart-2: 214 88% 60%;
+    --chart-3: 271 76% 66%;
+    --chart-4: 14 92% 58%;
+    --chart-5: 158 66% 50%;
+  }
+}
+
+@layer utilities {
+  /**
+   * `touch-target` — a única classe do antigo `src/styles/mobile-responsive.css`
+   * que tinha consumidor: 55 usos em 16 arquivos.
+   *
+   * E ela nunca funcionou. Aquele arquivo NUNCA foi importado — nem em
+   * `main.tsx`, nem em `index.css`, nem no `index.html`. As 55 chamadas eram
+   * no-op, e foi exatamente isso que a sonda mediu no navegador: alvos de
+   * 16×16 em controles que o código achava que estavam protegidos.
+   *
+   * O resto do arquivo não veio junto de propósito, e ele foi removido em vez
+   * de movido. Três motivos, cada um suficiente:
+   *
+   *   1. Redefinia `.grid-cols-3`, `.grid-cols-4` e `.grid-cols-5` — utilidades
+   *      DO PRÓPRIO TAILWIND — e ainda com `!important` numa media query. Todo
+   *      `grid-cols-3` do produto viraria uma coluna no telefone, passando por
+   *      cima do `md:grid-cols-*` que o autor tivesse escrito.
+   *   2. `table { display: block; white-space: nowrap }` abaixo de 768px
+   *      destruía o layout de TODAS as tabelas e garantia rolagem horizontal —
+   *      num produto cujo contrato diz "inventário é tabela".
+   *   3. `[class*="Card"] { padding: 1rem !important }` casa com qualquer
+   *      classe que contenha "Card" em qualquer posição.
+   *
+   * O piso de desktop virou 40px, não 36px: é a altura de controle que o
+   * `design.md` especifica. E `min-width` entrou junto, senão um botão só de
+   * ícone continua estreito por mais alto que fique.
+   */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] md:min-h-[40px] md:min-w-[40px];
+  }
+
+  /* `transitionProperty` no tailwind.config nomeia a PROPRIEDADE, e o Tailwind
+     preenche o resto com o default dele — `cubic-bezier(.4,0,.2,1)`. A tabela
+     de motion do `design.md` manda `cubic-bezier(0.22, 1, 0.36, 1)` na entrada.
+     Achado por revisão adversarial: o utilitário criado para obedecer uma linha
+     da tabela desobedecia a linha de cima. */
+  .transition-volc {
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-duration: 200ms;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* `color-scheme` é o que faz o BROWSER concordar com o tema: sem ele, a
+     scrollbar, o autofill, o caret, o seletor de data e o <select> nativo
+     continuam claros dentro do tema escuro. `next-themes` troca a classe
+     `.dark`, então o valor acompanha a classe, não a media query. */
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    position: relative;
+    min-height: 100dvh;
+  }
+
+  /* ── A ATMOSFERA DE MARCA É OPT-IN, E O WORKSPACE NÃO A PEDE ──────────────
+     ⚠️ Até 27/08/2026 estes dois pseudo-elementos pintavam TODA a aplicação:
+     três gradientes de aurora em `body::before` e grão de filme em `body::after`,
+     por baixo de tabela, formulário, métrica e aviso.
+
+     O DESIGN.md é explícito nas duas pontas: a aurora pertence a marcos de
+     identidade e "never becomes a workspace background"; e a lista de proibições
+     inclui glassmorphism, glow decorativo e gradiente atrás de superfície longa
+     de leitura. Uma tela de conferência de gasto com atmosfera atrás dos números
+     é exatamente o "dashboard decorativo" que o PRODUCT.md declara anti-referência.
+
+     A troca é de PADRÃO, não de existência: quem quer a atmosfera declara
+     `data-atmosfera="marca"` no `<body>` (ver `useAtmosferaDeMarca`). Login, 404
+     e troca de senha continuam com ela; o workspace não. Nenhuma classe
+     utilitária foi removida — `gradient-aurora` segue viva em 27 arquivos. */
+  body[data-atmosfera="marca"]::before {
+    content: "";
+    position: fixed;
+    inset: -20% -10% auto -10%;
+    height: 70vh;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 60% at 18% 0%, hsl(var(--aurora-blue) / 0.14), transparent 70%),
+      radial-gradient(50% 55% at 92% 8%, hsl(var(--aurora-purple) / 0.10), transparent 72%),
+      radial-gradient(45% 45% at 60% 0%, hsl(var(--aurora-orange) / 0.06), transparent 70%);
+    filter: saturate(1.05);
+  }
+  .dark body[data-atmosfera="marca"]::before {
+    background:
+      radial-gradient(60% 60% at 18% 0%, hsl(var(--aurora-blue) / 0.16), transparent 70%),
+      radial-gradient(50% 55% at 92% 8%, hsl(var(--aurora-purple) / 0.14), transparent 72%),
+      radial-gradient(45% 45% at 60% 0%, hsl(var(--aurora-orange) / 0.08), transparent 70%);
+  }
+
+  body[data-atmosfera="marca"]::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  }
+
+  /* Números sempre tabulares — colunas de dados nunca "dançam". */
+  th, td, [data-numeric], .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  /* Foco visível, acessível, na cor do accent — não o outline azul do SO. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring) / 0.7);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* =====================================================================
+   PRIMITIVAS VOLC (camada de componentes reutilizáveis)
+   ===================================================================== */
+@layer components {
+  /* Fonte display para títulos/kickers/números-herói. */
+  .font-display {
+    font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Kicker técnico: rótulo de categoria, caixa alta, tracking largo. */
+  .kicker {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Texto com preenchimento aurora (substitui o gradiente "AI" roxo/branco). */
+  .text-aurora {
+    background: var(--gradient-aurora);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Texto contornado — assinatura VOLC para números/palavras herói. */
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1.25px hsl(var(--foreground) / 0.75);
+  }
+
+  /* Hairline: linha 1px técnica; variante aurora para sublinhar seções. */
+  .hairline { height: 1px; background: hsl(var(--border)); }
+  .hairline-aurora { height: 1px; background: var(--gradient-aurora); opacity: 0.8; }
+
+  /* Cartão VOLC: hairline + sombra tingida; sobe com glow no hover. */
+  .card-volc {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .card-volc:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-elevated);
+    border-color: hsl(var(--primary) / 0.35);
+  }
+
+  /* Glassmorphism refinado (borda interna + refração), não só blur. */
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(14px) saturate(1.2);
+    border: 1px solid hsl(0 0% 100% / 0.35);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.5), var(--shadow-card);
+  }
+  .dark .glass {
+    background: hsl(var(--card) / 0.6);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), var(--shadow-card);
+  }
+
+  /* Faixa aurora fina para topo de painéis-herói. */
+  .aurora-rule {
+    height: 3px;
+    background: var(--gradient-aurora);
+    border-radius: 3px;
+  }
+
+  /* Marca de mira "+" — vibe arquitetônica/técnica. */
+  .crosshair {
+    position: relative;
+  }
+  .crosshair::before,
+  .crosshair::after {
+    content: "";
+    position: absolute;
+    background: hsl(var(--border));
+  }
+  .crosshair::before { top: 50%; left: -5px; width: 10px; height: 1px; transform: translateY(-50%); }
+  .crosshair::after { left: 50%; top: -5px; height: 10px; width: 1px; transform: translateX(-50%); }
+}
+
+/* =====================================================================
+   MOTION — reveals encenados no load, física de mola, GPU-only.
+   ===================================================================== */
+@keyframes volc-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes volc-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes aurora-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes shimmer {
+  0%   { background-position: -800px 0; }
+  100% { background-position: 800px 0; }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 hsl(var(--primary-glow) / 0); }
+  50%      { box-shadow: var(--shadow-glow); }
+}
+
+@layer utilities {
+  /* Reveal encenado: aplique .reveal e um --i (índice) para cascata. */
+  .reveal {
+    opacity: 0;
+    animation: volc-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .animate-fade-in { animation: volc-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+  .animate-scale-in { animation: volc-scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+  .animate-slide-in-right { animation: volc-rise 0.5s ease-out; }
+  .animate-pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
+
+  .aurora-bg {
+    background: var(--gradient-aurora);
+    background-size: 220% 220%;
+    animation: aurora-drift 14s ease infinite;
+  }
+
+  /* Hover lift/glow tingidos (substituem os pretos genéricos). */
+  /* Três desvios do contrato de motion, num utilitário usado em 74 lugares:
+     250ms (a faixa é 150–220), -3px (a tabela diz -2px) e, o pior, HOVER SEM
+     GUARDA. Num aparelho de toque não existe "sair do hover": o primeiro toque
+     levanta o cartão e ele fica levantado até você tocar em outro. O contrato
+     é literal — "only inside @media (hover: hover) and (pointer: fine)". */
+  .hover-lift { transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), box-shadow 0.2s cubic-bezier(0.22,1,0.36,1); }
+  @media (hover: hover) and (pointer: fine) {
+    .hover-lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated); }
+  }
+  .hover-glow { transition: box-shadow 0.2s cubic-bezier(0.22,1,0.36,1); }
+  @media (hover: hover) and (pointer: fine) {
+    .hover-glow:hover { box-shadow: var(--shadow-glow); }
+  }
+
+  /* Compat: nomes antigos ainda usados por páginas não-migradas. */
+  .card-hover { transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), box-shadow 0.2s cubic-bezier(0.22,1,0.36,1); }
+  @media (hover: hover) and (pointer: fine) {
+    .card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated); }
+  }
+  .gradient-text {
+    background: var(--gradient-aurora);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, hsl(var(--primary-glow) / 0.18), transparent);
+    background-size: 800px 100%;
+    animation: shimmer 1.6s infinite;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--secondary)) 50%, hsl(var(--muted)) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.6s infinite;
+    border-radius: var(--radius);
+  }
+
+  /*
+   * Movimento reduzido, de verdade.
+   *
+   * O bloco anterior nomeava SETE classes de uma lista fixa e não desligava
+   * transição nenhuma. Toda animação criada depois dele escapava por
+   * construção — e escapou: hover-lift, pulse dos pontos de frescor, shimmer
+   * de skeleton, o `width` das barras de progresso. Uma lista de permissão
+   * envelhece contra quem depende dela.
+   *
+   * Agora a regra é universal e a exceção é explícita. `[data-motion="essencial"]`
+   * preserva o que É a informação — um spinner parado deixa de comunicar
+   * "estou trabalhando" e vira tela travada, que é pior para todo mundo.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *:not([data-motion="essencial"]):not([data-motion="essencial"] *):not(.animate-spin):not(.animate-progress-indeterminate),
+    *:not([data-motion="essencial"]):not([data-motion="essencial"] *):not(.animate-spin):not(.animate-progress-indeterminate)::before,
+    *:not([data-motion="essencial"]):not([data-motion="essencial"] *):not(.animate-spin):not(.animate-progress-indeterminate)::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-delay: 0ms !important;
+    }
+
+    /* ⚠️ CORRIGIDO APÓS REVISÃO ADVERSARIAL.
+       A regra global acima, na primeira versão, tinha UMA exceção nominal
+       (`data-motion="essencial"`), usada em um único arquivo. Só que
+       `animate-spin` aparece 91 vezes em 60 arquivos, e
+       `animate-progress-indeterminate` é a barra de "descoberta em andamento"
+       do Pautador Pro. Todas congelavam — e a barra indeterminada, sem
+       `fill-mode`, parava no terço esquerdo do trilho.
+
+       O resultado era pior que o problema: quem liga "reduzir movimento"
+       dispara uma descoberta e vê uma barra imóvel, que lê como travada. O
+       comentário acima dizia exatamente isso e a regra fazia o contrário.
+
+       Estas duas classes SÃO a informação. Ficam lentas, não paradas. */
+    .animate-spin { animation-duration: 1.4s !important; }
+    .animate-progress-indeterminate { animation-duration: 2.4s !important; }
+
+    /* O que existia só para aparecer precisa TERMINAR visível, não sumir. */
+    .reveal, .animate-fade-in, .animate-scale-in, .animate-slide-in-right,
+    .aurora-bg, .animate-pulse-glow, .animate-shimmer {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    .hover-lift:hover, .card-hover:hover { transform: none !important; }
+
+    * { scroll-behavior: auto !important; }
+  }
+}
+
+/* =====================================================================
+   LOGIN VOLC — "O Limiar / Horizonte que Amanhece"
+   Vazio near-black + horizonte-aurora vivo; profundidade por glow; grão
+   sempre sobre gradiente. A transição login-escuro -> app-claro É o sucesso.
+   Interação (paralaxe/foco/magnético) via CSS vars setadas por JS.
+   ===================================================================== */
+.login-root { --mx: 0; --my: 0; --focus-x: 50%; }
+
+/* O vazio: cobre o canvas claro do app, côncavo nos cantos superiores. */
+.login-void {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(90% 70% at 18% -12%, hsl(220 32% 11% / 0.9), transparent 60%),
+    radial-gradient(90% 70% at 82% -12%, hsl(224 34% 10% / 0.9), transparent 60%),
+    radial-gradient(120% 100% at 50% 120%, hsl(224 40% 7%), transparent 60%),
+    hsl(222 30% 4%);
+}
+
+/* Horizonte: faixa inferior; 3 camadas empilhadas (paralaxe + drift). */
+.login-horizon { position: fixed; left: 0; right: 0; bottom: 0; height: 60vh; z-index: 1; pointer-events: none; overflow: hidden; }
+/* Wrapper de paralaxe (transform do cursor) — separado do breathe para não
+   disputarem a mesma propriedade transform. */
+.login-hz-par { position: absolute; inset: 0; will-change: transform; transition: transform 250ms ease-out; }
+.login-hz {
+  position: absolute; inset: -14% -14% -34% -14%;
+  border-radius: 50% 50% 0 0 / 60% 60% 0 0;   /* crista curva, como limbo planetário */
+  filter: blur(46px) saturate(1.28);
+  will-change: transform, opacity;
+  animation: horizon-breathe 8s ease-in-out infinite;
+}
+.login-hz-1 { background: radial-gradient(80% 120% at 50% 130%, hsl(var(--aurora-deep) / 0.95), hsl(var(--aurora-purple) / 0.5) 55%, transparent 78%); }
+.login-hz-2 { background: radial-gradient(70% 120% at 38% 128%, hsl(var(--aurora-blue) / 0.8), transparent 70%); mix-blend-mode: screen; }
+.login-hz-3 { background: radial-gradient(60% 120% at 66% 132%, hsl(var(--aurora-purple) / 0.7), transparent 68%); mix-blend-mode: screen; }
+/* Hotspot que segue o campo em foco. */
+.login-halo {
+  position: absolute; inset: 0;
+  background: radial-gradient(38% 60% at var(--focus-x) 122%, hsl(var(--aurora-blue) / 0.9), transparent 60%);
+  mix-blend-mode: screen;
+  transition: background-position 500ms cubic-bezier(0.22, 1, 0.36, 1), opacity 400ms ease;
+  will-change: background;
+}
+/* A ignição de sucesso: laranja, invisível até o amanhecer. */
+.login-ignite {
+  position: absolute; inset: 0; opacity: 0;
+  background: radial-gradient(70% 90% at 50% 128%, hsl(var(--aurora-orange) / 0.95), hsl(28 100% 55% / 0.4) 45%, transparent 72%);
+  mix-blend-mode: screen;
+}
+/* Grão sobre o horizonte (regra da marca). */
+.login-horizon::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.4; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+}
+
+/* Moldura-instrumento: linhas que desenham na entrada. */
+.login-frame-x { transform: scaleX(0); transform-origin: left; animation: frame-draw-x 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards; }
+.login-frame-y { transform: scaleY(0); transform-origin: top;  animation: frame-draw-y 0.7s cubic-bezier(0.22,1,0.36,1) 0.25s forwards; }
+
+/* Logo-herói do login: glow aurora que respira + um sheen de luz que varre a
+   marca uma vez no load (mascarado na forma da logo -> a luz passa POR DENTRO). */
+.login-logo { position: relative; display: inline-block; animation: logo-glow 6s ease-in-out infinite; }
+.login-logo img { display: block; }
+.login-logo-sheen {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply;
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  background: linear-gradient(105deg, transparent 36%, hsl(var(--aurora-blue) / 0.95) 45%, hsl(var(--aurora-purple) / 0.95) 52%, hsl(var(--aurora-blue) / 0.8) 58%, transparent 66%);
+  background-size: 260% 100%;
+  background-position: 175% 0;
+  opacity: 0;
+  animation: logo-sheen 2.4s cubic-bezier(0.5, 0, 0.2, 1) 0.75s;
+}
+@keyframes logo-sheen {
+  0% { background-position: 175% 0; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { background-position: -85% 0; opacity: 0; }
+}
+@keyframes logo-glow {
+  0%, 100% { filter: drop-shadow(0 0 16px hsl(var(--aurora-blue) / 0.28)); }
+  50% { filter: drop-shadow(0 0 30px hsl(var(--aurora-purple) / 0.4)); }
+}
+
+/* Headline contornado que preenche de aurora + ignita sob o cursor. */
+.login-hero-wrap { position: relative; display: inline-block; }
+.login-hero-outline { color: transparent; -webkit-text-stroke: 1.25px hsl(210 30% 96% / 0.7); }
+.login-hero-fill {
+  position: absolute; inset: 0;
+  background: var(--gradient-aurora); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  clip-path: inset(0 100% 0 0);
+  animation: hero-fill 0.75s cubic-bezier(0.22,1,0.36,1) 0.55s forwards;
+}
+/* Ao vivo: só a região sob a luz do cursor fica acesa. */
+.login-hero-ignite {
+  position: absolute; inset: 0;
+  background: var(--gradient-aurora); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  -webkit-mask-image: radial-gradient(170px at calc((var(--mx) + 0.5) * 100%) calc((var(--my) + 0.5) * 100%), #000 0%, transparent 68%);
+          mask-image: radial-gradient(170px at calc((var(--mx) + 0.5) * 100%) calc((var(--my) + 0.5) * 100%), #000 0%, transparent 68%);
+}
+
+@keyframes horizon-breathe { 0%,100% { transform: translateY(0) scaleY(1); opacity: 0.9; } 50% { transform: translateY(-3px) scaleY(1.02); opacity: 1; } }
+@keyframes frame-draw-x { to { transform: scaleX(1); } }
+@keyframes frame-draw-y { to { transform: scaleY(1); } }
+@keyframes hero-fill { to { clip-path: inset(0 0 0 0); } }
+@keyframes login-flood { 0% { transform: translateY(0) scaleY(1); opacity: 1; } 100% { transform: translateY(-58vh) scaleY(2.6); opacity: 1; } }
+@keyframes login-panel-exit { to { transform: translateY(-8px); opacity: 0; } }
+@keyframes login-ignite-in { to { opacity: 1; } }
+@keyframes login-whiteout { to { opacity: 1; } }
+
+/* SUCESSO — o amanhecer (dirigido por data-state). */
+.login-root[data-state="success"] .login-hz { animation: login-flood 0.85s cubic-bezier(0.4,0,0.2,1) forwards; filter: blur(30px) saturate(1.4) brightness(1.25); }
+.login-root[data-state="success"] .login-ignite { animation: login-ignite-in 0.25s ease-out forwards; }
+.login-root[data-state="success"] .login-panel { animation: login-panel-exit 0.5s cubic-bezier(0.4,0,1,1) 0.15s forwards; }
+.login-whiteout { position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0; background: hsl(220 16% 96%); }
+.login-root[data-state="success"] .login-whiteout { animation: login-whiteout 0.35s ease-in 0.62s forwards; }
+
+/* Loading: horizonte respira mais rápido (antecipação). */
+.login-root[data-loading="true"] .login-hz { animation-duration: 3.2s; }
+
+/* Foco: micro-interações do campo. */
+.login-field:focus-within .login-field-icon { color: hsl(var(--primary)); }
+.login-field:focus-within .login-field-glow { opacity: 1; }
+.login-field-glow { position: absolute; inset: 0; border-radius: var(--radius); pointer-events: none; opacity: 0; transition: opacity 0.25s ease; box-shadow: var(--shadow-glow); }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hz, .login-hero-fill, .login-frame-x, .login-frame-y, .login-logo, .login-logo-sheen { animation: none !important; }
+  .login-logo-sheen { display: none !important; }
+  .login-hero-fill { clip-path: inset(0 0 0 0) !important; }
+  .login-frame-x { transform: scaleX(1) !important; }
+  .login-frame-y { transform: scaleY(1) !important; }
+  .login-root[data-state="success"] .login-hz { animation: none !important; }
+  .login-root[data-state="success"] .login-whiteout { animation: login-whiteout 0.3s ease forwards !important; }
+}
+
+/* =====================================================================
+   BOOT VOLC — "Primeira Faísca"
+   O V da marca é pintado ao vivo (varredura 60°), o traço laranja ignita
+   (clímax) e uma detonação radial abre o overlay revelando o app. Timings
+   por animation-delay (deterministas). Só transform/opacity/máscara animados;
+   glows são camadas pré-borradas. @property dá fallback seguro (V inteiro + fade).
+   ===================================================================== */
+@property --draw { syntax: "<percentage>"; inherits: false; initial-value: 100%; }
+@property --hole { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+
+.boot {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 18% -12%, hsl(220 32% 11% / 0.9), transparent 60%),
+    radial-gradient(90% 70% at 82% -12%, hsl(224 34% 10% / 0.9), transparent 60%),
+    radial-gradient(120% 100% at 50% 120%, hsl(224 40% 7%), transparent 60%),
+    hsl(222 30% 4%);
+  animation: boot-in 160ms ease-out both;
+}
+@keyframes boot-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Grão sobre o gradiente (regra da marca). */
+.boot::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.4; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+}
+
+/* Aurora radial central (nasce de um ponto, não do horizonte). Pré-borrada. */
+.boot-bloom {
+  position: absolute; width: 74vmin; height: 74vmin; border-radius: 50%;
+  background: radial-gradient(closest-side,
+    hsl(var(--aurora-blue) / 0.5), hsl(var(--aurora-deep) / 0.34) 44%,
+    hsl(var(--aurora-purple) / 0.24) 70%, transparent 78%);
+  filter: blur(30px); mix-blend-mode: screen; will-change: transform, opacity;
+  opacity: 0; transform: scale(0.7);
+  animation: boot-bloom-in 1.7s cubic-bezier(0.4, 0, 0.2, 1) 140ms both;
+}
+@keyframes boot-bloom-in {
+  0%  { opacity: 0;    transform: scale(0.7); }
+  52% { opacity: 0.28; transform: scale(0.95); }
+  60% { opacity: 1;    transform: scale(1.1); }
+  100%{ opacity: 0.8;  transform: scale(1.04); }
+}
+
+.boot-v {
+  position: relative; width: min(38vw, 240px); aspect-ratio: 429 / 460;
+  will-change: transform;
+  animation: boot-recoil 1.9s linear both;
+}
+@keyframes boot-recoil {
+  0%, 52% { transform: scale(1); }
+  53% { transform: scale(0.985); }
+  56% { transform: scale(1.02); }
+  60%, 100% { transform: scale(1); }
+}
+
+/* Tinta: o PNG revelado por máscara-gradiente ancorada em --draw. */
+.boot-v-art {
+  position: absolute; inset: 0;
+  background: url(/volc-v-light.png) center / contain no-repeat;
+  -webkit-mask-image: linear-gradient(60deg, #000 calc(var(--draw) - 12%), transparent var(--draw));
+          mask-image: linear-gradient(60deg, #000 calc(var(--draw) - 12%), transparent var(--draw));
+  animation: boot-draw 900ms cubic-bezier(0.6, 0, 0.2, 1) 140ms both;
+}
+@keyframes boot-draw { from { --draw: 0%; } to { --draw: 100%; } }
+
+/* Ponta molhada: fatia quente que corre na crista, presa à FORMA do V. */
+.boot-v-edge {
+  position: absolute; inset: 0;
+  -webkit-mask: url(/volc-v-light.png) center / contain no-repeat;
+          mask: url(/volc-v-light.png) center / contain no-repeat;
+  background: linear-gradient(60deg,
+    transparent calc(var(--draw) - 9%),
+    hsl(191 100% 85%) calc(var(--draw) - 2%),
+    #fff var(--draw),
+    hsl(14 100% 60%) calc(var(--draw) + 1.5%),
+    transparent calc(var(--draw) + 6%));
+  mix-blend-mode: screen;
+  animation: boot-draw 900ms cubic-bezier(0.6, 0, 0.2, 1) 140ms both;
+}
+
+/* Brasa: o V nítido que assume após o desenho, com glow laranja aceso. */
+.boot-v-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  opacity: 0;
+  animation: boot-ember 480ms ease-out 1040ms forwards;
+}
+@keyframes boot-ember {
+  from { opacity: 0; filter: drop-shadow(0 0 0 hsl(14 100% 55% / 0)); }
+  to   { opacity: 1; filter: drop-shadow(0 0 18px hsl(14 100% 55% / 0.5)); }
+}
+
+/* Flash branco-quente da ignição (~100ms). */
+.boot-flash {
+  position: absolute; inset: 0; opacity: 0; mix-blend-mode: screen; pointer-events: none;
+  background: radial-gradient(circle at 62% 44%, #fff, hsl(28 100% 70% / 0.6) 8%, transparent 22%);
+  animation: boot-flash 150ms ease-out 1060ms both;
+}
+@keyframes boot-flash { 0% { opacity: 0; } 40% { opacity: 0.9; } 100% { opacity: 0; } }
+
+/* Faísca laranja: cápsula pré-borrada deitada sobre o filete. */
+.boot-spark {
+  position: absolute; top: 44%; left: 62%; width: 34%; height: 12%;
+  transform: translate(-50%, -50%) rotate(-55deg) scale(0.85);
+  background: radial-gradient(closest-side, hsl(14 100% 55% / 0.95), hsl(20 100% 55% / 0.5) 55%, transparent 78%);
+  filter: blur(6px); opacity: 0; mix-blend-mode: screen; will-change: transform, opacity; pointer-events: none;
+  animation: boot-ignite 150ms cubic-bezier(0.4, 0, 0.2, 1) 1040ms forwards,
+             boot-spark-breath 1.4s ease-in-out 1200ms;
+}
+@keyframes boot-ignite {
+  0%   { opacity: 0; transform: translate(-50%, -50%) rotate(-55deg) scale(0.85); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) rotate(-55deg) scale(1.2); }
+  100% { opacity: 1; transform: translate(-50%, -50%) rotate(-55deg) scale(1); }
+}
+@keyframes boot-spark-breath { 0%, 100% { opacity: 0.82; } 50% { opacity: 1; } }
+
+/* Anel morno da detonação. */
+.boot-ring {
+  position: absolute; left: 62%; top: 44%; width: 22vmin; height: 22vmin; border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0.2); opacity: 0; pointer-events: none;
+  border: 2px solid hsl(14 100% 60% / 0.8);
+}
+
+/* SAÍDA — detonação radial que abre do ponto da faísca e revela o app. */
+.boot[data-phase="exit"] {
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle at 62% 44%, transparent var(--hole), #000 calc(var(--hole) + 8%));
+          mask-image: radial-gradient(circle at 62% 44%, transparent var(--hole), #000 calc(var(--hole) + 8%));
+  animation: boot-detonate 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes boot-detonate { 0% { --hole: 0%; opacity: 1; } 55% { opacity: 1; } 100% { --hole: 160%; opacity: 0; } }
+.boot[data-phase="exit"] .boot-ring { animation: boot-ring 400ms ease-out forwards; }
+@keyframes boot-ring {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  40%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3); }
+}
+.boot[data-phase="exit"] .boot-v { animation: boot-v-exit 400ms ease-out forwards; }
+@keyframes boot-v-exit { to { transform: scale(1.06); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .boot { animation: none; transition: opacity 0.25s ease; }
+  .boot-v-art { -webkit-mask-image: none !important; mask-image: none !important; animation: none !important; opacity: 0 !important; }
+  .boot-v-edge, .boot-flash, .boot-spark, .boot-bloom, .boot-ring { display: none !important; }
+  .boot-v-img { opacity: 1 !important; animation: none !important; }
+  .boot-v { animation: none !important; }
+  .boot[data-phase="exit"] { animation: none !important; -webkit-mask-image: none !important; mask-image: none !important; opacity: 0; }
+  .boot[data-phase="exit"] .boot-v { animation: none !important; }
+}
+
+/* Scrollbar VOLC-tingida. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.55); background-clip: content-box; }
+
+/* Rede de segurança responsiva (protege páginas ainda NÃO migradas do rollout).
+   Nas páginas redesenhadas eu uso responsividade própria e não dependo disto. */
+@media (max-width: 767px) {
+  .rollout-guard .grid-cols-3,
+  .rollout-guard .grid-cols-4,
+  .rollout-guard .grid-cols-5,
+  .rollout-guard .grid-cols-6 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* =====================================================================
+   IGNIÇÃO DO LANÇAMENTO — /trafego/nova/:id
+   A marca já tem um momento de ignição: a "Primeira Faísca" do login, onde o
+   traço laranja acende quando alguém ENTRA no produto. Lançar campanha é a
+   segunda ignição — a hora em que o produto GASTA. Mesma anatomia (void +
+   horizonte curvo em camadas + grão + ignite laranja), gatilho diferente:
+   aqui quem acende é o recibo do Google, não o login.
+   Reusar em vez de inventar um segundo dialeto dramático é o que mantém o app
+   parecendo um produto só.
+   ===================================================================== */
+.ignicao {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; grid-template-rows: 1fr auto;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 70% at 18% -12%, hsl(220 32% 11% / 0.92), transparent 60%),
+    radial-gradient(90% 70% at 82% -12%, hsl(224 34% 10% / 0.92), transparent 60%),
+    radial-gradient(120% 100% at 50% 120%, hsl(224 40% 7%), transparent 60%),
+    hsl(222 30% 4%);
+  animation: volc-scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Grão — regra da marca, igual ao login e ao boot. */
+.ignicao::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  opacity: 0.4; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+}
+
+/* Horizonte: a crista curva do login, mesma geometria. */
+.ignicao-horizonte { position: absolute; left: 0; right: 0; bottom: 0; height: 62vh; pointer-events: none; overflow: hidden; }
+.ignicao-hz {
+  position: absolute; inset: -14% -14% -34% -14%;
+  border-radius: 50% 50% 0 0 / 60% 60% 0 0;
+  filter: blur(46px) saturate(1.28);
+  will-change: transform, opacity;
+  /* A intensidade acompanha o PROGRESSO: --avanco vai de 0 a 1 conforme os
+     degraus da escada resolvem. Não é decoração temporizada — é o estado. */
+  opacity: calc(0.35 + var(--avanco, 0) * 0.65);
+  transform: translateY(calc((1 - var(--avanco, 0)) * 12%));
+  transition: opacity 700ms ease, transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ignicao-hz-1 { background: radial-gradient(80% 120% at 50% 130%, hsl(var(--aurora-deep) / 0.95), hsl(var(--aurora-purple) / 0.5) 55%, transparent 78%); }
+.ignicao-hz-2 { background: radial-gradient(70% 120% at 38% 128%, hsl(var(--aurora-blue) / 0.8), transparent 70%); mix-blend-mode: screen; }
+.ignicao-hz-3 { background: radial-gradient(60% 120% at 66% 132%, hsl(var(--aurora-purple) / 0.7), transparent 68%); mix-blend-mode: screen; }
+
+/* O laranja fica invisível até a campanha EXISTIR. É o único elemento da tela
+   que só aparece com recurso persistido — é o que faz o sucesso ser sentido e
+   não apenas lido. */
+.ignicao-fogo {
+  position: absolute; inset: 0; opacity: 0; mix-blend-mode: screen;
+  background: radial-gradient(70% 90% at 50% 128%, hsl(var(--aurora-orange) / 0.95), hsl(28 100% 55% / 0.4) 45%, transparent 72%);
+  transition: opacity 900ms ease;
+}
+.ignicao[data-estado="criada"] .ignicao-fogo { opacity: 1; }
+
+/* Reprovado NÃO ganha o laranja. O vermelho é do sistema, não da marca: um
+   fracasso pintado com a cor do clímax ensinaria a associação errada. */
+.ignicao[data-estado="reprovada"] .ignicao-hz { filter: blur(46px) saturate(0.35); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ignicao { animation: none; }
+  .ignicao-hz, .ignicao-fogo { transition: none; }
+}

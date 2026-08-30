@@ -1,0 +1,86 @@
+{
+  "capturado_em": "2026-08-14T18:46:11+00:00",
+  "versao_api": "v25",
+  "contas_operacionais": 25,
+  "mccs": [
+    "1081900905",
+    "6084143056",
+    "8696453882"
+  ],
+  "linhas": {
+    "anuncios": 5231,
+    "ativos": 14690,
+    "politica": 319,
+    "keywords": 10068
+  },
+  "amostragem": {
+    "anuncios_vistos": 7587,
+    "anuncios_gravados": 5231,
+    "regra": "todos com entrada de política + até 400 limpos por conta, como controle",
+    "keywords_vistas": 30808,
+    "keywords_gravadas": 10068,
+    "regra_keywords": "negativas + positivas não-APPROVED; positivas aprovadas só na contagem",
+    "distribuicoes_sao_censo": true
+  },
+  "distribuicao": {
+    "approval_status": {
+      "APPROVED": 7317,
+      "DISAPPROVED": 192,
+      "APPROVED_LIMITED": 59,
+      "UNKNOWN": 19
+    },
+    "review_status": {
+      "REVIEWED": 7568,
+      "REVIEW_IN_PROGRESS": 19
+    },
+    "topicos": {
+      "MISLEADING_AD_DESIGN·PROHIBITED": 101,
+      "DESTINATION_NOT_WORKING·PROHIBITED": 51,
+      "DESTINATION_EXPERIENCE·PROHIBITED": 38,
+      "GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES·FULLY_LIMITED": 36,
+      "IMAGE_QUALITY·PROHIBITED": 25,
+      "DISCOVERY_AD_REQUIREMENTS_IMPLIED_INTERACTIVITY·PROHIBITED": 12,
+      "HEALTH_IN_PERSONALIZED_ADS·LIMITED": 9,
+      "STALE_DISAPPROVAL·PROHIBITED": 8,
+      "TRADEMARKS_IN_AD_TEXT·LIMITED": 6,
+      "YOUTUBE_AD_REQUIREMENTS_EXAGERRATED_OR_INACCURATE_CLAIMS·LIMITED": 5,
+      "MISLEADING_CONTENT·PROHIBITED": 3,
+      "COMPROMISED_SITE·PROHIBITED": 3,
+      "HEALTH_IN_PERSONALIZED_ADS·DESCRIPTIVE": 2,
+      "ONLINE_GAMBLING·FULLY_LIMITED": 2,
+      "DISCOVERY_AD_REQUIREMENTS_CONFUSING_TEXT·PROHIBITED": 2,
+      "DISCOVERY_AD_REQUIREMENTS_IMPLIED_INTERACTIVITY·LIMITED": 2,
+      "DISCOVERY_AD_REQUIREMENTS_NEGATIVE_EVENTS·PROHIBITED": 2,
+      "UNIDENTIFIED_BUSINESS·PROHIBITED": 2,
+      "GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES·LIMITED": 1,
+      "DESTINATION_NOT_ACCESSIBLE·PROHIBITED": 1,
+      "CLICKBAIT·PROHIBITED": 1,
+      "COPYRIGHTED_CONTENT·FULLY_LIMITED": 1,
+      "MISLEADING_REPRESENTATION·PROHIBITED": 1,
+      "PRESCRIPTION_DRUG_SALE·FULLY_LIMITED": 1,
+      "SOCIAL_CASINO_GAMES·FULLY_LIMITED": 1,
+      "RELIGIOUS_BELIEF_IN_PERSONALIZED_ADS·DESCRIPTIVE": 1,
+      "DEBT_SERVICES·FULLY_LIMITED": 1,
+      "DEBT_SERVICES·LIMITED": 1
+    },
+    "destination_mismatch_url_types": {},
+    "keyword_approval_status": {
+      "APPROVED": 20740,
+      "UNDER_REVIEW": 25,
+      "DISAPPROVED": 10
+    },
+    "keyword_disapproval_reasons": {
+      "Misrepresentation": 10
+    }
+  },
+  "colunas_nulas_por_construcao": [
+    "landing_snapshot_hash",
+    "expanded_final_url",
+    "prompt_version",
+    "spec_version",
+    "is_exemptible"
+  ],
+  "falhas": [],
+  "escopo": "ad_group_ad e ad_group_criterion, status != REMOVED, todas as contas operacionais acessíveis",
+  "somente_leitura": true
+}

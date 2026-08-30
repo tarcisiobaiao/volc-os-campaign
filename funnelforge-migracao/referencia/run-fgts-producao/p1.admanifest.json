@@ -1,0 +1,32 @@
+{
+  "slots": [
+    {
+      "slot_id": "lp-hero",
+      "page_role": "LP",
+      "placement": "hero",
+      "sizes": [
+        "fluid",
+        "336x280"
+      ],
+      "min_height_px": 280,
+      "refresh_eligible": false,
+      "source_key": ""
+    },
+    {
+      "slot_id": "lp-footer",
+      "page_role": "LP",
+      "placement": "footer",
+      "sizes": [
+        "fluid"
+      ],
+      "min_height_px": 250,
+      "refresh_eligible": false,
+      "source_key": ""
+    }
+  ],
+  "vignette": {
+    "enabled": true,
+    "max_per_window": 1,
+    "window_seconds": 600
+  }
+}

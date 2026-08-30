@@ -1,0 +1,74 @@
+[
+  {
+    "id": "00000001",
+    "elType": "container",
+    "settings": {
+      "content_width": "boxed"
+    },
+    "elements": [
+      {
+        "id": "00000002",
+        "elType": "widget",
+        "widgetType": "text-editor",
+        "settings": {
+          "editor": "<p style=\"font-size:13px;color:#c8102e;\">Home | Benefícios | Crédito e FGTS</p>"
+        },
+        "elements": []
+      },
+      {
+        "id": "00000003",
+        "elType": "widget",
+        "widgetType": "heading",
+        "settings": {
+          "title": "Saque-Aniversário do FGTS: entenda como funciona",
+          "header_size": "h1"
+        },
+        "elements": []
+      },
+      {
+        "id": "00000004",
+        "elType": "widget",
+        "widgetType": "button",
+        "settings": {
+          "text": "Ver o passo a passo",
+          "link": {
+            "url": "https://creditoup.com.br/rec/x",
+            "is_external": "",
+            "nofollow": ""
+          },
+          "align": "justify",
+          "background_background": "classic",
+          "background_color": "#008456",
+          "button_text_color": "#ffffff",
+          "border_radius": {
+            "unit": "px",
+            "top": "10",
+            "right": "10",
+            "bottom": "10",
+            "left": "10",
+            "isLinked": true
+          }
+        },
+        "elements": []
+      },
+      {
+        "id": "00000005",
+        "elType": "widget",
+        "widgetType": "text-editor",
+        "settings": {
+          "editor": "<div style=\"background-color:#fff9c4;border:1px solid #333;border-radius:8px;padding:15px;font-size:13px\">Aviso de Utilidade Pública: Somos um portal informativo independente.</div>"
+        },
+        "elements": []
+      },
+      {
+        "id": "00000006",
+        "elType": "widget",
+        "widgetType": "text-editor",
+        "settings": {
+          "editor": "[su_accordion][su_spoiler title=\"Quem tem nome negativado pode antecipar?\" open=\"yes\"]Sim. Usa o saldo do FGTS como garantia.[/su_spoiler][/su_accordion]"
+        },
+        "elements": []
+      }
+    ]
+  }
+]

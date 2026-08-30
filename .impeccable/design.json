@@ -1,0 +1,118 @@
+{
+  "$schema": "https://impeccable.style/design.schema.json",
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-27T13:00:00-03:00",
+  "product": {
+    "name": "VOLC O.S.",
+    "register": "product",
+    "direction": "VOLC Mission Control",
+    "referenceScene": "Operador conferindo mídia às 14h em monitor de 27 polegadas próximo a uma janela, antes de autorizar gasto."
+  },
+  "colors": {
+    "canvas": { "light": "#F3F5F7", "dark": "#0C111B" },
+    "surface": { "light": "#FAFBFC", "dark": "#111827" },
+    "surfaceSubtle": { "light": "#EEF2F6", "dark": "#172033" },
+    "ink": { "light": "#1A1C1E", "dark": "#F3F6FA" },
+    "inkMuted": { "light": "#68717D", "dark": "#9CA8B8" },
+    "border": { "light": "#D8DEE6", "dark": "#263244" },
+    "primary": "#0D47A1",
+    "primaryHover": "#0A397F",
+    "verified": "#009FC7",
+    "success": "#168B68",
+    "warning": "#D9850B",
+    "destructive": "#C83D3D",
+    "aurora": ["#00D4FF", "#8A2BE2", "#FF3D00"]
+  },
+  "colorMeta": {
+    "strategy": "restrained",
+    "workspaceNeutralShare": 0.9,
+    "rules": [
+      "Aurora is a brand signature, never an operational state.",
+      "Verified, healthy and successful are separate meanings.",
+      "Every semantic color requires a glyph and label."
+    ]
+  },
+  "typography": {
+    "display": "Space Grotesk",
+    "body": "Inter",
+    "data": "Inter",
+    "fallback": "system-ui, sans-serif"
+  },
+  "typographyMeta": {
+    "pageTitle": { "size": "clamp(2rem, 2.5vw, 2.5rem)", "weight": 650, "lineHeight": 1.1 },
+    "sectionTitle": { "size": "1.25rem", "weight": 600, "lineHeight": 1.25 },
+    "body": { "size": "0.9375rem", "weight": 400, "lineHeight": 1.5 },
+    "dense": { "size": "0.8125rem", "weight": 400, "lineHeight": 1.4 },
+    "label": { "size": "0.6875rem", "weight": 650, "lineHeight": 1.2, "letterSpacing": "0.08em" },
+    "numeric": { "fontVariantNumeric": "tabular-nums" }
+  },
+  "spacing": { "unit": 4, "scale": [4, 8, 12, 16, 24, 32, 48] },
+  "radii": { "control": 6, "panel": 8, "modal": 12, "pill": 999 },
+  "shadows": {
+    "workSurface": "0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 30px -12px rgba(30, 58, 95, 0.14)",
+    "sticky": "0 4px 14px rgba(15, 23, 42, 0.07)",
+    "popover": "0 12px 32px rgba(15, 23, 42, 0.14)",
+    "modal": "0 24px 64px rgba(15, 23, 42, 0.22)"
+  },
+  "motion": {
+    "fast": "160ms",
+    "standard": "200ms",
+    "slow": "220ms",
+    "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
+    "reducedMotion": "Disable non-essential transforms and transitions."
+  },
+  "breakpoints": { "sm": 640, "md": 768, "lg": 1024, "xl": 1280, "2xl": 1536 },
+  "components": {
+    "primaryButton": {
+      "html": "<button class=\"ds-button ds-button--primary\" type=\"button\">Validar campanha</button>",
+      "css": ".ds-button{min-height:40px;padding:0 16px;border-radius:6px;border:1px solid transparent;font:600 14px/1 Inter,sans-serif;transition:background-color 160ms cubic-bezier(.16,1,.3,1),border-color 160ms cubic-bezier(.16,1,.3,1)}.ds-button--primary{background:#0D47A1;color:#F8FAFC}.ds-button--primary:hover{background:#0A397F}.ds-button:focus-visible{outline:3px solid rgba(0,159,199,.35);outline-offset:2px}"
+    },
+    "secondaryButton": {
+      "html": "<button class=\"ds-button ds-button--secondary\" type=\"button\">Ler esta conta</button>",
+      "css": ".ds-button--secondary{min-height:40px;padding:0 16px;border:1px solid #C8D0DA;border-radius:6px;background:transparent;color:#1A1C1E;font:600 14px/1 Inter,sans-serif}.ds-button--secondary:hover{background:#EEF2F6}"
+    },
+    "searchInput": {
+      "html": "<label class=\"ds-field\"><span class=\"ds-field__label\">Buscar campanha</span><input class=\"ds-input\" type=\"search\" placeholder=\"Nome ou ID\"></label>",
+      "css": ".ds-field{display:grid;gap:6px}.ds-field__label{font:650 11px/1.2 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#68717D}.ds-input{min-height:40px;padding:0 12px;border:1px solid #C8D0DA;border-radius:6px;background:#FAFBFC;color:#1A1C1E;font:400 14px/1.4 Inter,sans-serif}.ds-input:focus{border-color:#0D47A1;outline:3px solid rgba(13,71,161,.14)}"
+    },
+    "taskTabs": {
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Tarefa\"><button class=\"ds-tab ds-tab--active\">Campanhas <span>5</span></button><button class=\"ds-tab\">Preparar</button><button class=\"ds-tab\">Criar</button><button class=\"ds-tab\">Atenção <span>2</span></button></nav>",
+      "css": ".ds-tabs{display:flex;gap:24px;border-bottom:1px solid #D8DEE6}.ds-tab{min-height:44px;padding:0 2px;border:0;border-bottom:2px solid transparent;background:transparent;color:#68717D;font:600 14px/1 Inter,sans-serif}.ds-tab--active{border-bottom-color:#0D47A1;color:#1A1C1E}.ds-tab span{margin-left:4px;color:#68717D;font-weight:500}"
+    },
+    "stateChip": {
+      "html": "<span class=\"ds-chip ds-chip--verified\"><span aria-hidden=\"true\">●</span> Encontrada na conta</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:2px 8px;border:1px solid currentColor;border-radius:999px;font:650 11px/1 Inter,sans-serif;letter-spacing:.04em;text-transform:uppercase}.ds-chip--verified{background:rgba(0,159,199,.08);color:#087E9B}"
+    },
+    "accountHeader": {
+      "html": "<header class=\"ds-account\"><div><strong>Crédito Up</strong><span>••••-•••-1692 · 2 campanhas</span></div><div><span class=\"ds-freshness\">Leitura recente · há 2 min</span><button class=\"ds-link\">Ler esta conta</button></div></header>",
+      "css": ".ds-account{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;padding:8px 12px;border-block:1px solid #D8DEE6;background:#EEF2F6;color:#1A1C1E;font-family:Inter,sans-serif}.ds-account>div{display:flex;align-items:center;gap:10px}.ds-account span{color:#68717D;font-size:12px}.ds-link{border:0;background:transparent;color:#0D47A1;font:600 13px Inter,sans-serif}"
+    },
+    "campaignRow": {
+      "html": "<article class=\"ds-campaign-row\"><div class=\"ds-campaign-state\"><strong>Ativa</strong><span>Entregando</span></div><div class=\"ds-campaign-name\"><strong>FGTS Saque-Aniversário</strong><span>Google Ads · Search · vínculo pendente</span></div><dl><div><dt>Orçamento</dt><dd>R$ 10,00/dia</dd></div><div><dt>Impressões</dt><dd>83</dd></div><div><dt>Cliques</dt><dd>5</dd></div><div><dt>Custo</dt><dd>R$ 0,00</dd></div></dl><button aria-label=\"Abrir FGTS Saque-Aniversário\">›</button></article>",
+      "css": ".ds-campaign-row{display:grid;grid-template-columns:112px minmax(240px,1fr) minmax(360px,.9fr) 32px;align-items:center;gap:16px;min-height:68px;padding:10px 12px;border-bottom:1px solid #D8DEE6;background:#FAFBFC;color:#1A1C1E;font-family:Inter,sans-serif}.ds-campaign-state,.ds-campaign-name{display:grid;gap:3px}.ds-campaign-row strong{font-size:14px}.ds-campaign-row span,.ds-campaign-row dt{color:#68717D;font-size:12px}.ds-campaign-row dl{display:grid;grid-template-columns:repeat(4,minmax(72px,1fr));gap:12px;margin:0}.ds-campaign-row dl div{display:grid;gap:3px}.ds-campaign-row dd{margin:0;font-size:13px;font-variant-numeric:tabular-nums}.ds-campaign-row button{border:0;background:transparent;color:#0D47A1;font-size:24px}"
+    }
+  },
+  "narrative": {
+    "namedRules": [
+      "Truth Before Decoration",
+      "One Dominant Signal",
+      "Identity at the Edge",
+      "Density With Air",
+      "Consequences Before Actions"
+    ],
+    "dos": [
+      "Start from the operator decision.",
+      "Keep first operational rows above the fold.",
+      "Preserve source, freshness, uncertainty and receipts.",
+      "Hide removed history by default.",
+      "Use one dominant state and action per region."
+    ],
+    "donts": [
+      "No nested card grids for routine operational data.",
+      "No aurora gradients, glow or glass in the workspace.",
+      "No badge piles when one evidence sentence is clearer.",
+      "No number without freshness and no absence as zero.",
+      "No trivial spend, publish, pause, budget or bid actions."
+    ]
+  }
+}

@@ -1,0 +1,230 @@
+<div id="wg-termometro-container" style="max-width: 650px; margin: 24px auto; padding: 28px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; box-sizing: border-box;">
+    
+    <!-- Header -->
+    <div style="margin-bottom: 24px; text-align: center;">
+        <span style="background: #eff6ff; color: #2563eb; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 6px 12px; border-radius: 9999px; letter-spacing: 0.05em;">Utilidade Pública • Referência 2026</span>
+        <h3 style="margin: 12px 0 8px 0; font-size: 1.4rem; font-weight: 800; color: #0f172a; line-height: 1.2;">Termômetro de Prontidão do FGTS</h3>
+        <p style="margin: 0; font-size: 0.95rem; color: #64748b; line-height: 1.4;">Descubra se você está pronto para destravar seu saldo, sacar a multa ou mudar de modalidade.</p>
+    </div>
+
+    <!-- Form/Questions -->
+    <div style="display: flex; flex-direction: column; gap: 18px; margin-bottom: 24px;">
+        <!-- Q1 -->
+        <div>
+            <label for="wg-q1" style="display: block; font-size: 0.9rem; font-weight: 600; color: #334155; margin-bottom: 6px;">1. Como está sua situação de empréstimos de antecipação?</label>
+            <select id="wg-q1" style="width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; background-color: #f8fafc; font-size: 0.95rem; color: #1e293b; outline: none; box-sizing: border-box;">
+                <option value="0">Selecione uma opção...</option>
+                <option value="3">Não tenho nenhum empréstimo de antecipação ativo</option>
+                <option value="2">Tenho empréstimo ativo, mas posso quitar com recursos próprios</option>
+                <option value="1">Tenho empréstimo ativo e não posso quitar agora</option>
+            </select>
+        </div>
+
+        <!-- Q2 -->
+        <div>
+            <label for="wg-q2" style="display: block; font-size: 0.9rem; font-weight: 600; color: #334155; margin-bottom: 6px;">2. Qual é a sua modalidade ativa no aplicativo do FGTS?</label>
+            <select id="wg-q2" style="width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; background-color: #f8fafc; font-size: 0.95rem; color: #1e293b; outline: none; box-sizing: border-box;">
+                <option value="0">Selecione uma opção...</option>
+                <option value="3">Saque-Rescisão (ou já cumpri os 25 meses de carência)</option>
+                <option value="2">Saque-Aniversário, mas já solicitei a mudança (está na carência)</option>
+                <option value="1">Saque-Aniversário ativo e ainda não solicitei a mudança</option>
+            </select>
+        </div>
+
+        <!-- Q3 -->
+        <div>
+            <label for="wg-q3" style="display: block; font-size: 0.9rem; font-weight: 600; color: #334155; margin-bottom: 6px;">3. Qual é o seu objetivo principal de resgate hoje?</label>
+            <select id="wg-q3" style="width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; background-color: #f8fafc; font-size: 0.95rem; color: #1e293b; outline: none; box-sizing: border-box;">
+                <option value="0">Selecione uma opção...</option>
+                <option value="3">Sacar apenas a multa rescisória de 40% (fui demitido sem justa causa)</option>
+                <option value="1">Sacar o saldo principal retido no fundo</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="wg-error" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 8px; font-size: 0.9rem; text-align: center; margin-bottom: 20px; font-weight: 500;">
+        Por favor, selecione uma resposta para todas as três perguntas acima.
+    </div>
+
+    <!-- Action Button -->
+    <div style="text-align: center; margin-bottom: 24px;">
+        <button id="wg-btn-submit" type="button" style="width: 100%; min-height: 48px; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; box-sizing: border-box;">
+            Toque para Analisar Prontidão
+        </button>
+    </div>
+
+    <!-- Results Area (Pre-rendered, hidden by default) -->
+    <div id="wg-results" style="display: none; border-top: 2px dashed #e2e8f0; padding-top: 24px;">
+        
+        <!-- RESULT 1: ALTA PRONTIDÃO -->
+        <div id="wg-res-alta" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <span style="background: #dcfce7; color: #166534; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">Prontidão Alta &#x1f7e2;</span>
+                <span style="font-size: 0.85rem; color: #166534; font-weight: 600;">Nível: 90%</span>
+            </div>
+            <!-- Thermometer bar -->
+            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 9999px; margin-bottom: 16px; overflow: hidden;">
+                <div style="width: 90%; height: 100%; background: #22c55e; border-radius: 9999px;"></div>
+            </div>
+            <h4 style="margin: 0 0 10px 0; color: #14532d; font-size: 1.15rem; font-weight: 700;">Caminho Livre para Movimentação</h4>
+            <p style="margin: 0 0 16px 0; font-size: 0.95rem; color: #166534; line-height: 1.5;">
+                Sua situação atual apresenta alta prontidão. Se você foi demitido sem justa causa, seu direito ao saque integral da <strong>multa rescisória de 40%</strong> é garantido por lei e fiscalizado pelo MTE. Como você não possui empréstimos ativos impedindo o fluxo ou focou apenas na multa, o processo é direto.
+            </p>
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px;">
+                <strong style="display: block; font-size: 0.9rem; color: #14532d; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Próximos Passos Recomendados:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="background: #22c55e; color: #ffffff; font-weight: 700; font-size: 0.8rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">1</span>
+                        <p style="margin: 0; font-size: 0.9rem; color: #1e293b; line-height: 1.4;">Acesse o <strong>Aplicativo do FGTS</strong> oficial da Caixa para cadastrar uma conta bancária de sua preferência para recebimento automático e gratuito da multa.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="background: #22c55e; color: #ffffff; font-weight: 700; font-size: 0.8rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">2</span>
+                        <p style="margin: 0; font-size: 0.9rem; color: #1e293b; line-height: 1.4;">A multa de 40% é liberada de forma rápida para movimentação, enquanto o saldo principal (se você continuar no Saque-Aniversário) permanecerá retido para saques anuais.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT 2: MÉDIA PRONTIDÃO -->
+        <div id="wg-res-media" style="display: none; background: #fffbeb; border: 1px solid #fef08a; border-radius: 12px; padding: 20px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <span style="background: #fef9c3; color: #854d0e; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">Prontidão Média &#x1f7e1;</span>
+                <span style="font-size: 0.85rem; color: #854d0e; font-weight: 600;">Nível: 60%</span>
+            </div>
+            <!-- Thermometer bar -->
+            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 9999px; margin-bottom: 16px; overflow: hidden;">
+                <div style="width: 60%; height: 100%; background: #eab308; border-radius: 9999px;"></div>
+            </div>
+            <h4 style="margin: 0 0 10px 0; color: #713f12; font-size: 1.15rem; font-weight: 700;">Ações Necessárias para Desbloqueio</h4>
+            <p style="margin: 0 0 16px 0; font-size: 0.95rem; color: #854d0e; line-height: 1.5;">
+                Você possui prontidão média. Há um caminho claro para destravar seus recursos, mas ele exige uma ação financeira ou o cumprimento de prazos regulamentares. Se você tem empréstimos ativos de antecipação, o saldo principal do seu FGTS continuará bloqueado como garantia até que ocorra a quitação total dos contratos.
+            </p>
+            <div style="background: #ffffff; border: 1px solid #fef08a; border-radius: 8px; padding: 16px;">
+                <strong style="display: block; font-size: 0.9rem; color: #713f12; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Próximos Passos Recomendados:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="background: #eab308; color: #ffffff; font-weight: 700; font-size: 0.8rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">1</span>
+                        <p style="margin: 0; font-size: 0.9rem; color: #1e293b; line-height: 1.4;"><strong>Quite o empréstimo:</strong> Entre em contato com a instituição credora (via aplicativo ou agência) e solicite o saldo devedor atualizado para quitação antecipada com recursos próprios.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="background: #eab308; color: #ffffff; font-weight: 700; font-size: 0.8rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">2</span>
+                        <p style="margin: 0; font-size: 0.9rem; color: #1e293b; line-height: 1.4;"><strong>Aguarde a carência:</strong> Se você já solicitou a alteração de volta para o Saque-Rescisão, lembre-se que a lei exige uma carência de <strong>25 meses</strong> para que a mudança passe a vigorar.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT 3: BAIXA PRONTIDÃO -->
+        <div id="wg-res-baixa" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <span style="background: #fee2e2; color: #991b1b; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">Prontidão Baixa &#x1f534;</span>
+                <span style="font-size: 0.85rem; color: #991b1b; font-weight: 600;">Nível: 30%</span>
+            </div>
+            <!-- Thermometer bar -->
+            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 9999px; margin-bottom: 16px; overflow: hidden;">
+                <div style="width: 30%; height: 100%; background: #ef4444; border-radius: 9999px;"></div>
+            </div>
+            <h4 style="margin: 0 0 10px 0; color: #7f1d1d; font-size: 1.15rem; font-weight: 700;">Saldo Bloqueado ou Restrições Ativas</h4>
+            <p style="margin: 0 0 16px 0; font-size: 0.95rem; color: #991b1b; line-height: 1.5;">
+                Sua prontidão atual é baixa para resgate imediato do saldo principal. Isso ocorre porque você possui contratos de antecipação ativos sem recursos para quitá-los agora, ou busca sacar o saldo principal retido após demissão. Lembre-se: a liberação extraordinária de saldos bloqueados para optantes do Saque-Aniversário foi encerrada definitivamente em <strong>1º de junho de 2026</strong>.
+            </p>
+            <div style="background: #ffffff; border: 1px solid #fecaca; border-radius: 8px; padding: 16px;">
+                <strong style="display: block; font-size: 0.9rem; color: #7f1d1d; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Próximos Passos Recomendados:</strong>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="background: #ef4444; color: #ffffff; font-weight: 700; font-size: 0.8rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">1</span>
+                        <p style="margin: 0; font-size: 0.9rem; color: #1e293b; line-height: 1.4;"><strong>Saque a Multa de 40%:</strong> Mesmo com o saldo principal bloqueado por empréstimos, você ainda tem o direito de sacar integralmente a multa rescisória de 40% paga pelo empregador.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span style="background: #ef4444; color: #ffffff; font-weight: 700; font-size: 0.8rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">2</span>
+                        <p style="margin: 0; font-size: 0.9rem; color: #1e293b; line-height: 1.4;"><strong>Desconto Automático:</strong> Caso opte por não quitar o empréstimo com recursos próprios, as parcelas anuais continuarão sendo debitadas de forma 100% automática diretamente do FGTS no seu mês de aniversário até o fim do contrato.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer / Guardrail -->
+        <p style="margin: 16px 0 0 0; font-size: 0.75rem; color: #64748b; text-align: center; line-height: 1.4; font-style: italic;">
+            Este resultado é uma simulação indicativa baseada nas regras operacionais vigentes em 2026 e não substitui a consulta oficial. Verifique sempre o status exato de suas contas e contratos diretamente nos canais oficiais da Caixa Econômica Federal.
+        </p>
+    </div>
+</div>
+
+<style>
+    #wg-termometro-container select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    #wg-btn-submit:hover {
+        background: #1d4ed8;
+    }
+    @media (max-width: 600px) {
+        #wg-termometro-container {
+            padding: 20px;
+        }
+    }
+</style>
+
+<script>
+(function() {
+    var btn = document.getElementById('wg-btn-submit');
+    if (btn) {
+        btn.addEventListener('click', function() {
+            var q1 = document.getElementById('wg-q1');
+            var q2 = document.getElementById('wg-q2');
+            var q3 = document.getElementById('wg-q3');
+            var errDiv = document.getElementById('wg-error');
+            var resDiv = document.getElementById('wg-results');
+            
+            var rAlta = document.getElementById('wg-res-alta');
+            var rMedia = document.getElementById('wg-res-media');
+            var rBaixa = document.getElementById('wg-res-baixa');
+
+            if (q1) {
+                if (q2) {
+                    if (q3) {
+                        var v1 = parseInt(q1.value, 10);
+                        var v2 = parseInt(q2.value, 10);
+                        var v3 = parseInt(q3.value, 10);
+
+                        var hasError = false;
+                        if (v1 === 0) { hasError = true; }
+                        if (v2 === 0) { hasError = true; }
+                        if (v3 === 0) { hasError = true; }
+
+                        if (hasError) {
+                            if (errDiv) { errDiv.style.display = 'block'; }
+                            if (resDiv) { resDiv.style.display = 'none'; }
+                            return;
+                        }
+
+                        if (errDiv) { errDiv.style.display = 'none'; }
+
+                        // Hide all results first
+                        if (rAlta) { rAlta.style.display = 'none'; }
+                        if (rMedia) { rMedia.style.display = 'none'; }
+                        if (rBaixa) { rBaixa.style.display = 'none'; }
+
+                        // Calculate score to determine readiness
+                        var score = v1 + v2 + v3;
+
+                        if (score >= 8) {
+                            if (rAlta) { rAlta.style.display = 'block'; }
+                        } else if (score >= 5) {
+                            if (rMedia) { rMedia.style.display = 'block'; }
+                        } else {
+                            if (rBaixa) { rBaixa.style.display = 'block'; }
+                        }
+
+                        if (resDiv) {
+                            resDiv.style.display = 'block';
+                            resDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>

@@ -1,0 +1,74 @@
+{
+  "title": "VOLC Isolated Writer Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "summary",
+    "files_changed",
+    "tests",
+    "risks",
+    "limitations",
+    "curation_handoff"
+  ],
+  "properties": {
+    "status": {"enum": ["completed", "blocked"]},
+    "summary": {"type": "string"},
+    "files_changed": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result"],
+        "properties": {
+          "command": {"type": "string"},
+          "result": {"type": "string"}
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "curation_handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_ids",
+        "graph_nodes",
+        "proposed_state",
+        "evidence",
+        "remaining_gaps"
+      ],
+      "properties": {
+        "task_ids": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "graph_nodes": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "proposed_state": {
+          "enum": ["todo", "partial", "risk", "done", "unchanged"]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "remaining_gaps": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

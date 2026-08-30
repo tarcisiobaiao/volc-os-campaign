@@ -1,0 +1,70 @@
+{
+  "mission_id": "google-demand-gen-builder-review-v1",
+  "title": "Google Ads Demand Gen — revisão do builder provável e da fronteira sem mutate",
+  "base_ref": "aebbaef",
+  "mode": "read_only",
+  "briefing": "Revise o candidato Demand Gen commitado em aebbaef. Ele deve tornar DEMAND_GEN montável e provável via contrato local/validate_only, mas não criar remotamente: /subir continua recusando, a flag de prova fica desligada por padrão, campanha/ad group/ad nascem PAUSED e nenhum teste pode chamar Google Ads. Tente refutar atomicidade, IDs temporários, ordem de operações, requisitos criativos, selected channels, audiência, bidding, limites, capacidades backend/frontend, semântica de ausência e regressões Search/Display. Diferencie builder local, prova autorizável e criação real; o estado máximo desta onda é partial. Não escreva arquivos, não acesse segredos/contas/Supabase/n8n, não edite Roadmap/grafo e não faça merge/push/deploy. Entregue achados com prova exata, ratchets e verdict accept, changes_requested ou reject.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "fable-demand-gen-contract-reviewer",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Audite o produto e o contrato ponta a ponta. Rejeite mock vendido como integração, capacidade contraditória entre perfil/backend/frontend, ausência convertida em afirmação, ou porta de prova que possa alcançar mutate. Confira se a UX explica honestamente o estado partial.",
+      "allowed_paths": [
+        "docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md",
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "volc_ads/criativo_ponte.py",
+        "volc_ads/subir.py",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "backend/tests",
+        "src/components/trafego",
+        "src/types/trafego.ts"
+      ]
+    },
+    {
+      "id": "opus-demand-gen-api-factcheck",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "opus",
+      "effort": "max",
+      "network_access": true,
+      "lens": "Faça fact-check adversarial usando somente documentação oficial Google Ads vigente e o SDK local. Valide enums/campos, Campaign, budget, ad group settings/channel controls, audiência, tipo de anúncio, assets, bidding, imutabilidade e validate_only. Rejeite qualquer default, campo ou limite inventado.",
+      "allowed_paths": [
+        "docs/growth-engine/matriz-api/demand-gen.md",
+        "docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md",
+        "volc_ads/google_ads_api",
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "backend/app/trafego",
+        "backend/tests"
+      ]
+    },
+    {
+      "id": "codex-demand-gen-adversary-v2",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Quebre o candidato com mutantes read-only: IDs repetidos, ordem errada, asset sem aprovação/linhagem, default imutável omitido, ENABLED infiltrado, flag fail-open, /subir alargado, chamada externa e regressão Search/Display. Só aceite se as negativas realmente morrem.",
+      "allowed_paths": [
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "volc_ads/criativo_ponte.py",
+        "volc_ads/subir.py",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "backend/tests",
+        "src/components/trafego",
+        "src/types/trafego.ts"
+      ]
+    }
+  ]
+}

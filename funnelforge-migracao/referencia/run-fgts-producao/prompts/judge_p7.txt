@@ -1,0 +1,492 @@
+[user]
+<identidade>
+Você é o JUIZ DE QUALIDADE E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) de um
+portal editorial de utilidade pública brasileiro. Você NÃO reescreve o conteúdo. Sua única função é
+AUDITAR a página abaixo contra a checklist de aceite do "WINNING LP BLUEPRINT" (engenharia reversa de
+LPs vencedoras de arbitragem) e devolver um veredito estruturado em JSON.
+</identidade>
+
+<principios>
+- Seja um leitor cético e um crítico rigoroso, não um torcedor do texto.
+- Julgue apenas o que está escrito em <!-- wp:paragraph -->
+<p>Se você foi demitido sem justa causa e está associado à modalidade de Saque-Aniversário, o receio de ficar com o saldo do Fundo de Garantia do Tempo de Serviço (<strong>FGTS</strong>) travado na Caixa Econômica Federal (<strong>CEF</strong>) é imediato.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Este guia prático mostra exatamente como resgatar a sua multa rescisória, quitar contratos ativos para destravar o seu dinheiro e as regras de antecipação válidas para o ano de 2026.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/" style="border-radius:10px;background-color:#008353"><strong>Guia completo da restituição de descontos »</strong></a></div>
+<!-- /wp:button -->
+</div>
+<!-- /wp:buttons -->
+
+<!-- wp:html -->
+<div style="text-align:center;font-size:0.85em;color:#475569;margin-top:4px;margin-bottom:24px"><em>* Você permanece neste mesmo site *</em></div>
+<!-- /wp:html -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a <strong>multa rescisória de 40%</strong> paga pelo empregador.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Essa regra é garantida por lei e fiscalizada pelo Ministério do Trabalho e Emprego (<strong>MTE</strong>), mas o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato caso você mantenha a opção ativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Essa divisão de valores exige planejamento, pois apenas a multa de 40% é liberada de forma rápida para movimentação em conta, enquanto o restante do fundo fica restrito às retiradas anuais no mês de aniversário.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:columns {"style":{"spacing":{"margin":{"top":"24px","bottom":"24px"}}}} -->
+<div class="wp-block-columns">
+<!-- wp:column -->
+<div class="wp-block-column">
+<!-- wp:paragraph -->
+<p><strong>Multa de 40%</strong><br>Valores liberados de forma integral na conta indicada pelo trabalhador em caso de demissão sem justa causa.</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:column -->
+<!-- wp:column -->
+<div class="wp-block-column">
+<!-- wp:paragraph -->
+<p><strong>Saldo Principal</strong><br>Permanece retido no Fundo de Garantia, sendo liberado apenas nas parcelas anuais ou em situações de quitação total.</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:column -->
+</div>
+<!-- /wp:columns -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Já antecipei o saque-aniversário, posso antecipar de novo?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Sim.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido pelas instituições parceiras.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>A contratação de empréstimo de antecipação exige uma carência de <strong>90 dias</strong> após a adesão à modalidade para que o trabalhador possa autorizar os bancos a consultarem seu saldo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">R$ 100,00</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">Valor mínimo de cada saque antecipado</div>
+</div>
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">R$ 500,00</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">Valor máximo por saque anual</div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>As regras vigentes para o ano corrente de 2026 estabelecem limites de acordo com o calendário anual. Os trabalhadores que desejam planejar novas antecipações devem observar as datas de transição operacional.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><p style="margin:0;font-weight:700">Até o dia 31 de outubro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O trabalhador pode antecipar até 5 saques anuais do FGTS.</p></div>
+<div><p style="margin:0;font-weight:700">A partir de 1º de novembro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.</p></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para acelerar o desbloqueio do saldo principal e possibilitar o retorno à modalidade de Saque-Rescisão, o trabalhador pode realizar a amortização ou quitação do saldo devedor junto ao banco credor utilizando recursos próprios (dinheiro de conta corrente ou poupança).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">Contato com a instituição credora</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Entre em contato por meio do aplicativo, internet banking ou agência física.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">Solicitação do saldo devedor</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Peça o valor atualizado para quitação antecipada, que segue os parâmetros descritos na 👉 <a href="https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/">página oficial de antecipação de crédito da Caixa</a>.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<div><p style="margin:0;font-weight:700">Pagamento do boleto de quitação</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Gere o boleto bancário emitido pelo banco credor e realize o pagamento integral.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+<div><p style="margin:0;font-weight:700">Verificação do desbloqueio</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Após compensar o pagamento, acompanhe se o saldo foi liberado no 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/">portal oficial do Saque-Aniversário da Caixa</a>.</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Com o saldo livre e sem contratos de empréstimo ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão, que possui carência de 25 meses para entrar em vigor.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como funciona o desconto do empréstimo e como sacar no caixa eletrônico</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O desconto das parcelas do empréstimo de antecipação é feito de forma <strong>100% automática e anual</strong>, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para sacar os valores liberados em espécie após o processamento, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#fef2f2","text":"#7f1d1d"},"spacing":{"padding":{"top":"22px","right":"24px","bottom":"22px","left":"24px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px","left":{"color":"#dc2626","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-text-color has-background" style="border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px">
+<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">⚠️ Atenção</h3><!-- /wp:heading -->
+<!-- wp:paragraph --><p>A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>O que acontece com o saldo se eu não quitar o empréstimo?</summary><!-- wp:paragraph -->
+<p>Depende. Se você optar por não quitar o empréstimo com recursos próprios, o saldo continuará bloqueado como garantia e as parcelas anuais serão debitadas automaticamente até o fim do contrato, impedindo a migração imediata para o Saque-Rescisão.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para um tema relacionado, porém diverso, veja como consultar e reaver cobranças que acontecem diretamente na folha de pagamento de forma simples, protegendo o seu orçamento.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/" style="border-radius:10px;background-color:#ea580c"><strong>Ver o passo a passo da restituição »</strong></a></div>
+<!-- /wp:button -->
+</div>
+<!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center"} -->
+<p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A gestão inteligente dos seus recursos garante que você não perca dinheiro com taxas e tarifas desnecessárias aplicadas incorretamente em outros benefícios.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você quer se proteger de cobranças abusivas no seu pagamento mensal, veja 👉 <a href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/">como identificar descontos indevidos do INSS »</a>.</p>
+<!-- /wp:paragraph -->
+
+<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</p>. Não invente lacunas nem assuma boa-fé.
+- Cada nota deve ser justificada por evidência textual (cite o trecho problemático em feedback).
+- Se um critério não se aplica ao tipo de página (ex.: FAQ respondida vs. transição), julgue pela
+  variante correta da regra, não penalize por a página não usar a outra variante.
+</principios>
+
+<CONTEUDO_A_AVALIAR>
+<!-- wp:paragraph -->
+<p>Se você foi demitido sem justa causa e está associado à modalidade de Saque-Aniversário, o receio de ficar com o saldo do Fundo de Garantia do Tempo de Serviço (<strong>FGTS</strong>) travado na Caixa Econômica Federal (<strong>CEF</strong>) é imediato.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Este guia prático mostra exatamente como resgatar a sua multa rescisória, quitar contratos ativos para destravar o seu dinheiro e as regras de antecipação válidas para o ano de 2026.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/" style="border-radius:10px;background-color:#008353"><strong>Guia completo da restituição de descontos »</strong></a></div>
+<!-- /wp:button -->
+</div>
+<!-- /wp:buttons -->
+
+<!-- wp:html -->
+<div style="text-align:center;font-size:0.85em;color:#475569;margin-top:4px;margin-bottom:24px"><em>* Você permanece neste mesmo site *</em></div>
+<!-- /wp:html -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Fui demitido e optei pelo saque-aniversário: Como sacar a multa rescisória de 40%?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a <strong>multa rescisória de 40%</strong> paga pelo empregador.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Essa regra é garantida por lei e fiscalizada pelo Ministério do Trabalho e Emprego (<strong>MTE</strong>), mas o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato caso você mantenha a opção ativa.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Essa divisão de valores exige planejamento, pois apenas a multa de 40% é liberada de forma rápida para movimentação em conta, enquanto o restante do fundo fica restrito às retiradas anuais no mês de aniversário.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:columns {"style":{"spacing":{"margin":{"top":"24px","bottom":"24px"}}}} -->
+<div class="wp-block-columns">
+<!-- wp:column -->
+<div class="wp-block-column">
+<!-- wp:paragraph -->
+<p><strong>Multa de 40%</strong><br>Valores liberados de forma integral na conta indicada pelo trabalhador em caso de demissão sem justa causa.</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:column -->
+<!-- wp:column -->
+<div class="wp-block-column">
+<!-- wp:paragraph -->
+<p><strong>Saldo Principal</strong><br>Permanece retido no Fundo de Garantia, sendo liberado apenas nas parcelas anuais ou em situações de quitação total.</p>
+<!-- /wp:paragraph -->
+</div>
+<!-- /wp:column -->
+</div>
+<!-- /wp:columns -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Já antecipei o saque-aniversário, posso antecipar de novo?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Sim.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido pelas instituições parceiras.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>A contratação de empréstimo de antecipação exige uma carência de <strong>90 dias</strong> após a adesão à modalidade para que o trabalhador possa autorizar os bancos a consultarem seu saldo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:24px 0">
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">R$ 100,00</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">Valor mínimo de cada saque antecipado</div>
+</div>
+<div style="flex:1 1 200px;min-width:0;background:#0f172a;border-radius:12px;padding:22px 20px">
+<div style="color:#fff;font-size:clamp(1.3rem,5vw,1.65rem);font-weight:700;line-height:1.15;word-break:keep-all;overflow-wrap:normal">R$ 500,00</div>
+<div style="color:#cbd5e1;font-size:0.9em;line-height:1.4;margin-top:8px">Valor máximo por saque anual</div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>As regras vigentes para o ano corrente de 2026 estabelecem limites de acordo com o calendário anual. Os trabalhadores que desejam planejar novas antecipações devem observar as datas de transição operacional.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><p style="margin:0;font-weight:700">Até o dia 31 de outubro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O trabalhador pode antecipar até 5 saques anuais do FGTS.</p></div>
+<div><p style="margin:0;font-weight:700">A partir de 1º de novembro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.</p></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como quitar o empréstimo do saque-aniversário para liberar o saldo do FGTS</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Para acelerar o desbloqueio do saldo principal e possibilitar o retorno à modalidade de Saque-Rescisão, o trabalhador pode realizar a amortização ou quitação do saldo devedor junto ao banco credor utilizando recursos próprios (dinheiro de conta corrente ou poupança).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="margin:24px 0">
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+<div><p style="margin:0;font-weight:700">Contato com a instituição credora</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Entre em contato por meio do aplicativo, internet banking ou agência física.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+<div><p style="margin:0;font-weight:700">Solicitação do saldo devedor</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Peça o valor atualizado para quitação antecipada, que segue os parâmetros descritos na 👉 <a href="https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/">página oficial de antecipação de crédito da Caixa</a>.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+<div><p style="margin:0;font-weight:700">Pagamento do boleto de quitação</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Gere o boleto bancário emitido pelo banco credor e realize o pagamento integral.</p></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+<div style="flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+<div><p style="margin:0;font-weight:700">Verificação do desbloqueio</p><p style="margin:3px 0 0;color:#475569;font-size:0.95em">Após compensar o pagamento, acompanhe se o saldo foi liberado no 👉 <a href="https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/">portal oficial do Saque-Aniversário da Caixa</a>.</p></div>
+</div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:pullquote {"style":{"spacing":{"margin":{"top":"28px","bottom":"28px"}}}} -->
+<figure class="wp-block-pullquote" style="margin:28px 0"><blockquote><p>Com o saldo livre e sem contratos de empréstimo ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão, que possui carência de 25 meses para entrar em vigor.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:heading -->
+<h2 class="wp-block-heading">Como funciona o desconto do empréstimo e como sacar no caixa eletrônico</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>O desconto das parcelas do empréstimo de antecipação é feito de forma <strong>100% automática e anual</strong>, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para sacar os valores liberados em espécie após o processamento, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:group {"style":{"color":{"background":"#fef2f2","text":"#7f1d1d"},"spacing":{"padding":{"top":"22px","right":"24px","bottom":"22px","left":"24px"},"margin":{"top":"24px","bottom":"24px"}},"border":{"radius":"12px","left":{"color":"#dc2626","width":"5px"}}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-text-color has-background" style="border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px">
+<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">⚠️ Atenção</h3><!-- /wp:heading -->
+<!-- wp:paragraph --><p>A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.</p><!-- /wp:paragraph -->
+</div>
+<!-- /wp:group -->
+
+<!-- wp:details -->
+<details class="wp-block-details"><summary>O que acontece com o saldo se eu não quitar o empréstimo?</summary><!-- wp:paragraph -->
+<p>Depende. Se você optar por não quitar o empréstimo com recursos próprios, o saldo continuará bloqueado como garantia e as parcelas anuais serão debitadas automaticamente até o fim do contrato, impedindo a migração imediata para o Saque-Rescisão.</p>
+<!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:paragraph -->
+<p>Para um tema relacionado, porém diverso, veja como consultar e reaver cobranças que acontecem diretamente na folha de pagamento de forma simples, protegendo o seu orçamento.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons -->
+<div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/" style="border-radius:10px;background-color:#ea580c"><strong>Ver o passo a passo da restituição »</strong></a></div>
+<!-- /wp:button -->
+</div>
+<!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center"} -->
+<p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>A gestão inteligente dos seus recursos garante que você não perca dinheiro com taxas e tarifas desnecessárias aplicadas incorretamente em outros benefícios.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Se você quer se proteger de cobranças abusivas no seu pagamento mensal, veja 👉 <a href="https://creditoup.com.br/como-consultar-e-pedir-restituicao-de-desconto-indevido-do-inss-sem-sair-de-casa/">como identificar descontos indevidos do INSS »</a>.</p>
+<!-- /wp:paragraph -->
+
+<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</p>
+</CONTEUDO_A_AVALIAR>
+
+<CONTEXTO_DE_APOIO>
+Domínio/destino único esperado: https://creditoup.com.br/rec/antecipacao-saque-aniversario-fgts
+Keywords-alvo: 
+Base factual da PESQUISA (Gemini + web search) — CONFIE nestes dados. Um número/valor/data coerente com
+esta base é válido mesmo sem estar palavra-por-palavra aqui; penalize apenas o que a CONTRADIZ: {"resumo":"Guia completo sobre as regras vigentes em 2026 para trabalhadores demitidos sem justa causa que optaram pelo Saque-Aniversário do FGTS. Explica como funciona o saque da multa rescisória de 40% (que é liberada normalmente, enquanto o saldo principal fica retido), as condições para novas antecipações de empréstimo sob as regras atuais de 2026, o passo a passo detalhado para quitar o empréstimo com recursos próprios e liberar o saldo bloqueado, além do funcionamento do desconto automático anual e as formas de realizar o saque dos valores liberados.","dados_validados":[{"fato":"O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a multa rescisória de 40% paga pelo empregador, porém o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido. Pelas regras vigentes, o valor mínimo de cada saque antecipado é de R$ 100,00 e o máximo é de R$ 500,00 por saque anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"A contratação de empréstimo de antecipação exige uma carência de 90 dias após a adesão à modalidade de Saque-Aniversário para que o trabalhador possa autorizar as instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"O desconto das parcelas do empréstimo de antecipação é feito de forma 100% automática e anual, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.","fonte":"https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml"}],"passo_a_passo":["Entre em contato com a instituição financeira credora onde o empréstimo de antecipação do Saque-Aniversário foi contratado (por meio de aplicativo, internet banking, telefone ou agência física).","Solicite o saldo devedor atualizado para fins de quitação antecipada do contrato. Por lei, a instituição deve aplicar o desconto proporcional dos juros sobre as parcelas futuras.","Gere o boleto bancário de quitação emitido pelo banco credor e realize o pagamento integral utilizando recursos próprios (dinheiro de conta corrente, poupança ou outra reserva financeira).","Acompanhe a compensação do pagamento. Após o processamento bancário, a instituição financeira notificará a Caixa Econômica Federal para realizar o desbloqueio do saldo do FGTS.","Acesse o aplicativo oficial do FGTS para verificar se o saldo foi totalmente desbloqueado. Com o saldo livre e sem contratos ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão (que possui carência de 25 meses para entrar em vigor).","Para sacar os valores liberados em espécie, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/","https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml","https://www.serasa.com.br/credito/blog/quitar-emprestimo-fgts-caixa/"],"sparse":false}
+</CONTEXTO_DE_APOIO>
+
+<CHECKLIST_DE_ACEITE>
+Avalie cada critério de 0 a 10 e registre o motivo em feedback quando a nota for menor que 8.
+
+1. tone_e_e_a_t — Tom de utilidade pública: calmo, editorial, factual. ZERO medo, ZERO escassez,
+   ZERO urgência fabricada. Reprove frases como "muitos perdem", "não perca o prazo", "cuidado, um
+   detalhe bloqueia", "poucos sabem". Nota baixa se o texto usa gatilhos de pânico ou compulsão.
+
+2. cta_discipline —
+
+   Esta é uma página interna do funil (HUB/SOLUTION), doutrina calma: CTAs são DESCRIÇÕES de
+   curiosidade em 3ª pessoa/infinitivo, igual à Landing Page (ex.: "Ver o passo a passo",
+   "Conferir os requisitos"). NÃO exija nem penalize o uso de 1ª pessoa aqui — a proibição
+   exclusiva de 1ª pessoa emocional é regra da LANDING PAGE, não desta página. Penalize somente:
+   (a) gatilho de medo/escassez/urgência no TEXTO do botão, ou (b) spam de verbo de execução de
+   serviço repetido nos botões. Para ONDE cada botão aponta (destino único vs. múltiplos destinos
+   tipados) é avaliado no critério 6, conforme o tipo de página — não avalie roteamento aqui.
+   O registro tátil mobile-first ("Toque abaixo e veja...", "Toque na opção certa...") é uma
+   variação VÁLIDA de descrição de curiosidade/navegação — "tocar" não é verbo de execução de
+   serviço e não deve reduzir a nota.
+
+
+3. proof_and_authority — Critério ADVISÓRIO: dá sinal de qualidade e feedback, mas NÃO reprova a
+   página (não é existencial). Fundamentação é avaliada por PÁGINA, não frase a frase. CONFIE na base
+   factual da pesquisa: um número/valor/data/norma coerente com {"resumo":"Guia completo sobre as regras vigentes em 2026 para trabalhadores demitidos sem justa causa que optaram pelo Saque-Aniversário do FGTS. Explica como funciona o saque da multa rescisória de 40% (que é liberada normalmente, enquanto o saldo principal fica retido), as condições para novas antecipações de empréstimo sob as regras atuais de 2026, o passo a passo detalhado para quitar o empréstimo com recursos próprios e liberar o saldo bloqueado, além do funcionamento do desconto automático anual e as formas de realizar o saque dos valores liberados.","dados_validados":[{"fato":"O trabalhador demitido sem justa causa que está na modalidade de Saque-Aniversário tem o direito de sacar integralmente a multa rescisória de 40% paga pelo empregador, porém o saldo principal da conta do FGTS permanece retido e indisponível para saque imediato.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Em 2026, é permitido realizar novas antecipações do Saque-Aniversário, desde que o trabalhador possua saldo suficiente para cobrir o valor mínimo exigido. Pelas regras vigentes, o valor mínimo de cada saque antecipado é de R$ 100,00 e o máximo é de R$ 500,00 por saque anual.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"Até o dia 31 de outubro de 2026, o trabalhador pode antecipar até 5 saques anuais do FGTS. A partir de 1º de novembro de 2026, o limite máximo de antecipações permitidas será reduzido para até 3 saques anuais.","fonte":"https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/"},{"fato":"A contratação de empréstimo de antecipação exige uma carência de 90 dias após a adesão à modalidade de Saque-Aniversário para que o trabalhador possa autorizar as instituições financeiras a consultarem seu saldo do FGTS.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"O desconto das parcelas do empréstimo de antecipação é feito de forma 100% automática e anual, debitado diretamente do saldo do FGTS no mês de aniversário do trabalhador, sem a necessidade de pagamento de boletos mensais.","fonte":"https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/"},{"fato":"A liberação extraordinária de saldos bloqueados do FGTS para demitidos que haviam aderido ao Saque-Aniversário, que ocorreu de forma excepcional, foi encerrada definitivamente em 1º de junho de 2026.","fonte":"https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml"}],"passo_a_passo":["Entre em contato com a instituição financeira credora onde o empréstimo de antecipação do Saque-Aniversário foi contratado (por meio de aplicativo, internet banking, telefone ou agência física).","Solicite o saldo devedor atualizado para fins de quitação antecipada do contrato. Por lei, a instituição deve aplicar o desconto proporcional dos juros sobre as parcelas futuras.","Gere o boleto bancário de quitação emitido pelo banco credor e realize o pagamento integral utilizando recursos próprios (dinheiro de conta corrente, poupança ou outra reserva financeira).","Acompanhe a compensação do pagamento. Após o processamento bancário, a instituição financeira notificará a Caixa Econômica Federal para realizar o desbloqueio do saldo do FGTS.","Acesse o aplicativo oficial do FGTS para verificar se o saldo foi totalmente desbloqueado. Com o saldo livre e sem contratos ativos, você poderá solicitar a alteração de volta para a modalidade de Saque-Rescisão (que possui carência de 25 meses para entrar em vigor).","Para sacar os valores liberados em espécie, dirija-se a um caixa eletrônico da Caixa, casa lotérica ou correspondente Caixa Aqui utilizando o Cartão Cidadão e senha, ou gere um código de saque diretamente no aplicativo do FGTS."],"fontes":["https://www.caixa.gov.br/beneficios-trabalhador/fgts/saque-aniversario/","https://www.caixa.gov.br/voce/credito/emprestimo/antecipacao-saque-aniversario-fgts/","https://g1.globo.com/economia/noticia/2026/05/14/fgts-governo-libera-r-84-bilhoes-de-trabalhadores-que-optaram-pelo-saque-aniversario-e-autoriza-uso-para-dividas-fim-de-maio.ghtml","https://www.serasa.com.br/credito/blog/quitar-emprestimo-fgts-caixa/"],"sparse":false}
+   é VÁLIDO mesmo sem estar palavra-por-palavra na base — NÃO o trate como alucinação. Idealmente a
+   página traz ao menos 1 dado concreto e de 2 a 5 órgãos/instituições reais (sigla na 1ª menção).
+   Baixe a nota e registre em feedback SOMENTE quando: (a) um número/afirmação CONTRADIZ a base
+   factual da pesquisa; (b) há CONTRADIÇÃO INTERNA de valores na própria página (ex.: "a partir de
+   R$ 20" no título vs. "mínimo de R$ 100" no corpo); ou (c) a página não cita nenhuma instituição
+   real. Prova apenas "fraca" (poucos números) reduz a nota mas NUNCA é motivo de reprovação/bloqueio.
+
+4. faq_resolution —
+
+   Página interna do funil (HUB/SOLUTION): FAQ é OPCIONAL nesta página. NÃO penalize a ausência de
+   FAQ — uma transição calma de "próximo passo" que explicite o que a próxima página entrega é
+   suficiente. Se a página tiver FAQ mesmo assim, exija as mesmas 5 perguntas respondidas acima.
+   Nota baixa somente se houver pergunta sem resposta completa, gancho manipulativo sem entrega, ou
+   nenhuma transição/indicação do que vem a seguir.
+
+
+5. compliance — Exige APENAS a camada de CONTEÚDO: um aviso de utilidade pública visível no corpo,
+   deixando claro que o site é informativo, não tem vínculo com os
+   órgãos citados e não pede dados pessoais nem pagamento. O rodapé institucional "Sobre o Site",
+   CNPJ, navegação e byline de autor são injetados globalmente pelo TEMA do WordPress (footer fixo,
+   igual em todas as páginas) — NÃO os exija no conteúdo da página nem penalize a ausência deles aqui.
+   Nota baixa somente se o aviso de utilidade pública no corpo estiver ausente ou não deixar claros
+   esses pontos.
+
+6. single_destination —
+
+   Esta é uma página SOLUTION: pelo grafo de roteamento vencedor, ela CORRETAMENTE aponta para
+   MÚLTIPLOS destinos tipados — as soluções-irmãs, 1 link externo OFICIAL (ex.: gov.br) e 1 saída
+   cross-funil (LP de outro funil, MESMO domínio). Múltiplos destinos são o padrão CORRETO aqui;
+   NÃO penalize "múltiplos destinos" nesta página. Dê nota ALTA (>= 8) quando os destinos seguem
+   esse padrão (irmãs + oficial + cross-funil, todos no mesmo domínio, nenhum "/rec" nu/sem slug).
+   Nota baixa SOMENTE se houver um link monetizado/comercial fora do domínio permitido (destino
+   cross-domínio proibido) ou "//" duplicado após /rec.
+   BACKSTOP DE CONGRUÊNCIA DE DESTINO (CARD-0011): cada BOTÃO de avanço (destino `funnel`) tem de
+   DIZER A VERDADE sobre para onde leva — o texto do botão e/ou o PARÁGRAFO-PONTE de prosa
+   imediatamente ANTES dele nomeiam a próxima página (um termo distintivo do H1 do destino), e há
+   uma ponte congruente logo antes de cada botão que não seja o hero (o hero é ancorado pela
+   introdução). REDUZA a nota deste critério (não dê >= 8) quando um botão de avanço usa teaser
+   open-loop INCONGRUENTE — curiosidade sobre a página ATUAL que esconde o destino (ex.: "o passo
+   que quase todo mundo pula »") — ou aparece sem a ponte congruente antes; cite o trecho em
+   feedback. Este backstop é de QUALIDADE (afeta só a nota/aprovação-como-aviso deste critério);
+   NÃO altera quais critérios são bloqueantes nem as notas de corte definidas abaixo.
+
+
+7. authorship_signal — A autoria/credencial (byline, nav de portal, rodapé institucional) é fornecida
+   pelo TEMA do WordPress em TODAS as páginas, FORA do conteúdo gerado aqui. NÃO penalize a ausência
+   de byline/rodapé no corpo. Dê nota ALTA por padrão; só reduza se o PRÓPRIO corpo alegar uma
+   autoria/credencial FALSA ou fabricada (ex.: "licenciado pela/pelo [órgão]" que o site não possui).
+
+SINAL ADVISÓRIO DE ESTRUTURA (widget interativo) — NÃO é um critério numerado, NÃO tem nota própria,
+NÃO entra em "scores" e NÃO afeta "blocking"/"approved". É apenas um reforço de qualidade editorial que
+você pode registrar em "feedback":
+- É um SINAL POSITIVO quando a página traz um WIDGET INTERATIVO ÚTIL e adequado ao tema — a variedade é
+  o que vale: roteador de elegibilidade, verificador/detector de golpe, comparador de rotas, quiz de
+  mito ou verdade, glossário/tradutor de termos, planejador/priorizador de próximos passos, termômetro
+  de prontidão, navegador de jornada… Premie a DIVERSIDADE e a ADEQUAÇÃO ao tema; NUNCA privilegie um
+  TIPO ESPECÍFICO de widget acima dos demais.
+- A AUSÊNCIA de widget NÃO penaliza nenhuma nota: o subsistema é OPCIONAL (controlado por flag) e muitas
+  páginas corretamente não trazem widget. Nunca reduza uma nota "porque falta um widget".
+</CHECKLIST_DE_ACEITE>
+
+<REGRA_DE_APROVACAO>
+Confiamos na pesquisa (Gemini + web search): um número/entidade coerente com a base factual NÃO conta
+como alucinação e NÃO afeta "blocking".
+
+"blocking" (EXISTENCIAL — reprova e faz a página ser pulada) é true SOMENTE quando um destes tem
+nota < 7: compliance, cta_discipline
+— OU o texto simula ser um órgão público / usa falsa oficialidade. proof_and_authority e "número fora da base
+factual" NUNCA setam "blocking".
+
+"approved" é true apenas quando todas as notas forem >= 7 e não houver contradição (com a pesquisa ou
+interna de valores). Quando proof_and_authority for baixa ou houver contradição de valores, deixe
+"approved" = false e explique em "feedback" — isso é registrado como AVISO no relatório, NÃO como
+bloqueio (a página segue para build/publish). Se "blocking" é true, "approved" é obrigatoriamente false.
+</REGRA_DE_APROVACAO>
+
+<FORMATO_DE_SAIDA>
+CRÍTICO: responda SOMENTE com um objeto JSON válido (UTF-8), sem texto antes ou depois, sem markdown,
+sem crases, seguindo estritamente este schema:
+
+{
+  "approved": true,
+  "blocking": false,
+  "scores": {
+    "tone_e_e_a_t": 0,
+    "cta_discipline": 0,
+    "proof_and_authority": 0,
+    "faq_resolution": 0,
+    "compliance": 0,
+    "single_destination": 0,
+    "authorship_signal": 0
+  },
+  "feedback": [
+    "descrição objetiva do problema encontrado, com o trecho citado, ou string vazia se não houver"
+  ]
+}
+</FORMATO_DE_SAIDA>

@@ -1,0 +1,56 @@
+{
+  "title": "VOLC Read-only Worker Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "summary",
+    "facts",
+    "risks",
+    "recommendations",
+    "inspected_paths",
+    "limitations"
+  ],
+  "properties": {
+    "status": {"enum": ["completed", "blocked"]},
+    "summary": {"type": "string"},
+    "facts": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "title", "evidence"],
+        "properties": {
+          "severity": {"enum": ["critical", "high", "medium", "low"]},
+          "title": {"type": "string"},
+          "evidence": {"type": "string"}
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "action", "acceptance"],
+        "properties": {
+          "priority": {"type": "integer", "minimum": 1},
+          "action": {"type": "string"},
+          "acceptance": {"type": "string"}
+        }
+      }
+    },
+    "inspected_paths": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "limitations": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

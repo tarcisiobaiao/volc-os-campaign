@@ -1,0 +1,44 @@
+{
+  "mission_id": "closure-w2-03-pytest-ratchet-pautador-ponte",
+  "title": "Ratchet de coleta: as 32 provas legadas 'def teste_' da ponte Pautador viram coletáveis pelo pytest",
+  "base_ref": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "mode": "implementation",
+  "commit_message": "test(volc_ads): as 32 provas da ponte Pautador entram no gate pytest\n\nP01-T10 (expansão): as funções legadas 'def teste_' de\ntestes_pautador_ponte.py eram invisíveis ao pytest (1 de 33 coletada) e só\nrodavam pelo runner manual. Agora coletam e passam no mesmo gate de todo o\nresto, sem perder o runner manual.",
+  "briefing": "FATOS (FACT-MATRIX F026): volc_ads coleta 518 testes; volc_ads/testes_pautador_ponte.py tem 32 funções 'def teste_' que o pytest NÃO coleta (convenção python_functions não cobre 'teste_'), e a docstring do arquivo admite a lacuna. Já houve tentativas de ratchet em branches agent/*pytest-legacy-collection* — NÃO as consulte como autoridade; trabalhe do zero sobre a main. MISSÃO: tornar as 32 provas coletáveis e verdes pelo pytest SEM reescrevê-las semanticamente: a opção preferida é renomear teste_→test_ (ou adicionar aliases) mantendo o comportamento e o runner manual 'python -m volc_ads.testes_pautador_ponte' funcionando (ele é citado por docs). Se alguma das 32 falhar ao ser coletada/executada, NÃO a conserte silenciosamente: marque com xfail(reason=...) citando o defeito e liste no seu result — falha herdada é informação, não lixo. ACEITE BINÁRIO: (a) pytest volc_ads coleta ≥ 549; (b) suite volc_ads verde (exceto xfails declarados); (c) runner manual continua funcionando; (d) zero mudança fora de volc_ads. PROIBIÇÕES: não tocar pytest.ini da raiz (mudança de convenção global é outra decisão); não alterar lógica de produção da ponte; não deletar prova nenhuma.",
+  "gates": [
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "volc_ads", "-q"],
+      "timeout_seconds": 1200
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-c", "import subprocess,sys,re; out=subprocess.run(['/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python','-m','pytest','volc_ads','--collect-only','-q'],capture_output=True,text=True).stdout; m=re.search(r'(\\d+) tests? collected', out); n=int(m.group(1)) if m else 0; print('coletados:', n); sys.exit(0 if n>=549 else 1)"],
+      "timeout_seconds": 300
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "volc_ads.testes_pautador_ponte"],
+      "timeout_seconds": 600
+    }
+  ],
+  "timeout_seconds": 3600,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-ratchet-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "lens": "Tornar as 32 provas coletáveis sem mudança semântica, preservando o runner manual; xfail com motivo para falha herdada.",
+      "allowed_paths": ["volc_ads"]
+    },
+    {
+      "id": "codex-ratchet-reviewer",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "lens": "REFUTAR: procurar prova enfraquecida (assert removido/afrouxado), teste renomeado que mudou de comportamento, xfail escondendo regressão nova, e quebra do runner manual.",
+      "allowed_paths": ["volc_ads"]
+    }
+  ]
+}

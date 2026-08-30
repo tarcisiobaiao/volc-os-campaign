@@ -1,0 +1,53 @@
+{
+  "mission_id": "closure-w2-05-pacote-seguranca-executavel",
+  "title": "Pacote de segurança executável: REVOKE/RLS, fechamento de endpoints e plano de rotação — provado em descartável, NADA aplicado",
+  "base_ref": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "mode": "implementation",
+  "commit_message": "chore(seguranca): pacote executável da janela pré-lançamento (P02-T05)\n\nScripts de REVOKE/RLS das superfícies abertas, fechamento autenticado dos\nendpoints /api/supabase/*, smoke anônimo e runbook da janela D4/D10 — tudo\nprovado em Postgres descartável, nada aplicado em produção.",
+  "briefing": "FATOS (FACT-MATRIX F017/F021; fontes: docs/VOLC-DELTA.md §7, supabase/migrations/README.md:783-789, ROADMAP P02-T05, inventario-n8n/00-MAPA.md): (1) endpoints /api/supabase/* (server/index.js e api/) carregam service_role sem autenticação e com CORS *; (2) seis tabelas operacionais sem REVOKE/RLS fechados; (3) v8_02-07 não aplicadas (public.users sem RLS); (4) webhook n8n de mutação apply-bidding (T2Lr1MD33w4aZFJY) ativo sem autenticação; (5) credenciais no histórico git (904cb0b) e anon key demo. MISSÃO (nada é aplicado em produção; o produto é o PACOTE): (a) inventário executável: script read-only que, dado acesso ao banco, lista grants/policies reais das tabelas citadas e compara com o esperado (para a janela rodar antes/depois); (b) SQL de REVOKE/RLS por tabela com rollback par a par, provado num Postgres descartável local (docker) criando o schema mínimo; grave os SQLs em scripts/seguranca/ (NUNCA em supabase/migrations/ — o ledger de migrações é do integrador); (c) fechamento dos endpoints: patch em server/index.js e api/ exigindo autenticação nos handlers que usam service_role e restringindo CORS, com teste; (d) smoke anônimo: script que prova zero escrita com anon key (aponta para URL via variável de ambiente, NUNCA hardcoded; sem chave no repo); (e) runbook da janela D4/D10 em scripts/seguranca/RUNBOOK.md: ordem exata (desativar webhook → aplicar REVOKE/RLS → rotacionar credenciais → smoke), pré-condições, verificação e rollback de cada passo, referenciando o inventário do webhook SEM valores sensíveis. REGRA DURA: o pacote registra localização e classe de cada achado, nunca o valor; zero segredo em qualquer arquivo; zero conexão a produção nesta missão; o smoke roda contra o descartável no gate. ACEITE: ciclo aplicar→provar→reverter→reaplicar verde no descartável; testes dos endpoints passam; smoke prova zero escrita anônima no descartável.",
+  "gates": [
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "scripts/seguranca/tests", "-q"],
+      "timeout_seconds": 1200
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "scripts/verificar_autoridade_supabase.py"],
+      "timeout_seconds": 120
+    },
+    {
+      "argv": ["node", "--test", "server/tests/"],
+      "timeout_seconds": 600
+    }
+  ],
+  "timeout_seconds": 5400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-seguranca-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Produzir o pacote executável (inventário, REVOKE/RLS+rollback, fechamento de endpoints, smoke anônimo, runbook) provado em descartável, sem tocar produção nem migrations.",
+      "allowed_paths": ["scripts/seguranca", "server", "api", "backend/tests"]
+    },
+    {
+      "id": "codex-seguranca-adversario",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "REFUTAR: segredo vazado em qualquer arquivo novo, script que conecta a produção, REVOKE sem rollback par, smoke que passaria mesmo com escrita aberta, endpoint 'fechado' que continua alcançável sem auth.",
+      "allowed_paths": ["scripts", "server", "api", "docs", "supabase/migrations"]
+    },
+    {
+      "id": "claude-seguranca-runbook",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "high",
+      "lens": "Revisar o RUNBOOK contra P02-T05 e o ADR de autoridade: ordem segura, verificação e rollback por passo, nenhuma dependência não declarada, nenhuma promessa de aplicação automática.",
+      "allowed_paths": ["scripts/seguranca", "docs/architecture", "volc-os-workbook", "inventario-n8n"]
+    }
+  ]
+}

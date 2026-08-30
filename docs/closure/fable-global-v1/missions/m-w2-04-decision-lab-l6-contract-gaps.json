@@ -1,0 +1,53 @@
+{
+  "mission_id": "closure-w2-04-decision-lab-l6-contract-gaps",
+  "title": "Fechar as 12 lacunas de contrato do Decision Lab L6 no backend (ainda sintético)",
+  "base_ref": "e858651a5a0c46087bf10365ebf44f7b0e8c42e3",
+  "mode": "implementation",
+  "commit_message": "feat(inteligencia): contrato L6 completo no payload do laboratório de decisão\n\nAs 12 lacunas declaradas em HANDOFF-DECISION-LAB-L6-CONTRACT-GAPS.md passam\na existir no contrato do backend — ainda sobre dataset sintético, com o modo\nshadow e o selo de dado real reservados por contrato a payload futuro.",
+  "briefing": "FATOS (FACT-MATRIX F022; docs/architecture/HANDOFF-DECISION-LAB-L6-CONTRACT-GAPS.md é a AUTORIDADE desta missão — leia-o primeiro e implemente exatamente os 8 pedidos de contrato/12 lacunas que ele declara, sem inventar campos extras): o frontend do Decision Lab L6 declarou as lacunas em vez de improvisar (sem modo shadow, sem enum estado_da_medida, sem famílias de evidência, sem frase_executiva, sem confiança do veredito, efeito estimado null, etc.); a superfície tem 44 provas e a fixture shadow é IMPEDIDA de afirmar dado real. O pipeline vive em volc_ads/inteligencia_decisao (kernel puro, sem I/O) projetado por backend/app/trafego/inteligencia_lab.py. MISSÃO: estender o contrato do payload (kernel e/ou projeção) para cobrir as lacunas declaradas, mantendo somente_sintetico=true e o selo 'SHADOW READ · DADOS REAIS' inalcançável por fixture. Cada campo novo tem semântica de ausência explícita (null ≠ zero ≠ não aplicável) e prova própria. NÃO altere componentes React; se o contrato exigir atualização de tipos consumidos pelo front, registre no seu result como pedido ao integrador (o front declara os tipos em src/components/trafego/laboratorio — fora do seu ownership). ACEITE: cada uma das 12 lacunas tem (a) campo no contrato, (b) valor no dataset sintético versionado, (c) teste que prova a semântica de ausência, (d) contraprova de que fixture não liga o selo de dado real. PROIBIÇÕES: zero rede, zero Supabase, zero mudança em src/, zero afrouxamento das 134 contraprovas do normalizador.",
+  "gates": [
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "backend/tests/test_inteligencia_decisao_lab.py", "backend/tests/test_inteligencia_decisao_normalizador.py", "-q"],
+      "timeout_seconds": 900
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "backend/tests", "-q"],
+      "timeout_seconds": 3000
+    },
+    {
+      "argv": ["/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python", "-m", "pytest", "volc_ads", "-q"],
+      "timeout_seconds": 1200
+    }
+  ],
+  "timeout_seconds": 5400,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "codex-l6-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "lens": "Implementar as 12 lacunas do contrato L6 no kernel/projeção com semântica de ausência explícita e provas, sem tocar o front.",
+      "allowed_paths": ["volc_ads/inteligencia_decisao", "backend/app/trafego", "backend/tests"]
+    },
+    {
+      "id": "codex-l6-adversario",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "lens": "REFUTAR: campo novo sem prova de ausência, fixture capaz de ligar o selo de dado real, contraprova do normalizador enfraquecida, contrato divergente do que o handoff pediu.",
+      "allowed_paths": ["volc_ads", "backend", "src/components/trafego/laboratorio", "docs/architecture"]
+    },
+    {
+      "id": "claude-l6-contrato",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "high",
+      "lens": "Conferir 1:1 contra HANDOFF-DECISION-LAB-L6-CONTRACT-GAPS.md: cada lacuna citada tem campo, semântica e prova; nada além do pedido foi inventado.",
+      "allowed_paths": ["docs/architecture", "volc_ads/inteligencia_decisao", "backend/app/trafego", "backend/tests"]
+    }
+  ]
+}

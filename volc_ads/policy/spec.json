@@ -1,0 +1,832 @@
+{
+  "versao": "2.0",
+  "corpus_coletado_em": "2026-08-05",
+  "arquitetura": {
+    "estruturais": "Regras de forma — capitalização, pontuação, emoji, espaçamento, repetição. Independem de idioma: um emoji é emoji em qualquer língua. Regexes Unicode-aware.",
+    "semanticas": "Regras de sentido — clickbait, promessas, termos por vertical. Dependem do idioma; uma lista por locale.",
+    "destino": "Regras sobre a landing page. Independem de idioma.",
+    "habilitacao": "Portões por país+vertical: certificação ou verificação exigida ANTES de anunciar. Não é sobre texto — é sobre elegibilidade."
+  },
+  "estruturais": [
+    {
+      "id": "editorial.maiusculas.tudo_caixa_alta",
+      "fonte": "14848295",
+      "titulo": "Letras maiúsculas",
+      "url": "https://support.google.com/adspolicy/answer/14848295",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline",
+        "business_name"
+      ],
+      "deteccao": {
+        "tipo": "caixa_alta_excessiva",
+        "min_palavra": 4
+      },
+      "proibidos": [
+        "FLORES",
+        "ANTECIPE AGORA"
+      ],
+      "permitidos": [
+        "SOS",
+        "FGTS",
+        "CPF",
+        "INSS",
+        "PIS",
+        "CNH",
+        "RG",
+        "IPTU",
+        "IR"
+      ],
+      "nota": "Siglas e marcas registradas são exceção; o resto é uso excessivo."
+    },
+    {
+      "id": "editorial.maiusculas.alternada",
+      "fonte": "14848295",
+      "titulo": "Letras maiúsculas alternadas",
+      "url": "https://support.google.com/adspolicy/answer/14848295",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "caixa_alternada"
+      },
+      "proibidos": [
+        "FlOrEs",
+        "SaQuE aNiVeRsArIo"
+      ]
+    },
+    {
+      "id": "editorial.pontuacao.repetida",
+      "fonte": "14847994",
+      "titulo": "Pontuação repetida em sequência",
+      "url": "https://support.google.com/adspolicy/answer/14847994",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "regex",
+        "padrao": "([!?.,;:])\\1+"
+      },
+      "proibidos": [
+        "flores!!",
+        "Antecipe já!!!",
+        "Veja??"
+      ]
+    },
+    {
+      "id": "editorial.pontuacao.leetspeak",
+      "fonte": "14847994",
+      "titulo": "Números ou símbolos no lugar de letras",
+      "url": "https://support.google.com/adspolicy/answer/14847994",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "regex",
+        "padrao": "(?u)\\b[^\\W\\d_]+[0@$4310]+[^\\W\\d_]+\\b"
+      },
+      "proibidos": [
+        "f1ores",
+        "fl@res",
+        "s@que"
+      ],
+      "permitidos": [
+        "2026",
+        "5 parcelas",
+        "FGTS 2026",
+        "13o",
+        "13º salário"
+      ]
+    },
+    {
+      "id": "editorial.pontuacao.simbolos_decorativos",
+      "fonte": "14847994",
+      "titulo": "Símbolos não padrão usados como decoração",
+      "url": "https://support.google.com/adspolicy/answer/14847994",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "regex",
+        "padrao": "[*•▪●◆■►→«»~^|]"
+      },
+      "proibidos": [
+        "*flores*",
+        "► Antecipe agora"
+      ]
+    },
+    {
+      "id": "editorial.pontuacao.emoji",
+      "fonte": "14847994",
+      "titulo": "Emoji e caracteres incompatíveis",
+      "url": "https://support.google.com/adspolicy/answer/14847994",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline",
+        "business_name"
+      ],
+      "deteccao": {
+        "tipo": "emoji"
+      },
+      "proibidos": [
+        "Antecipe seu FGTS 💰",
+        "Saque já 🚀"
+      ]
+    },
+    {
+      "id": "editorial.pontuacao.letras_separadas",
+      "fonte": "14847994",
+      "titulo": "Pontuação separando letras",
+      "url": "https://support.google.com/adspolicy/answer/14847994",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "regex",
+        "padrao": "(?u)\\b(?:[^\\W\\d_]\\.){3,}"
+      },
+      "proibidos": [
+        "F.L.O.R.E.S.",
+        "F.LO.R.E.S."
+      ]
+    },
+    {
+      "id": "editorial.espacos.faltando",
+      "fonte": "14848500",
+      "titulo": "Espaço omitido após pontuação",
+      "url": "https://support.google.com/adspolicy/answer/14848500",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "regex",
+        "padrao": "(?u)[^\\W\\d_][,;:][^\\W\\d_]"
+      },
+      "proibidos": [
+        "Promoção,compre flores"
+      ]
+    },
+    {
+      "id": "editorial.espacos.excessivos",
+      "fonte": "14848500",
+      "titulo": "Espaçamento excessivo ou letras espaçadas",
+      "url": "https://support.google.com/adspolicy/answer/14848500",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "regex",
+        "padrao": "(?u)(?:\\b[^\\W\\d_]\\s){3,}[^\\W\\d_]\\b|\\s{2,}"
+      },
+      "proibidos": [
+        "f l o r e s",
+        "Antecipe  agora"
+      ]
+    },
+    {
+      "id": "editorial.repeticao.na_lista",
+      "fonte": "14848296",
+      "titulo": "Repetição de palavra entre recursos do mesmo grupo",
+      "url": "https://support.google.com/adspolicy/answer/14848296",
+      "severidade": "aviso",
+      "aplica_a": [
+        "headline",
+        "callout",
+        "snippet"
+      ],
+      "deteccao": {
+        "tipo": "repeticao_entre_itens",
+        "limite_ocorrencias": 4,
+        "min_tamanho_palavra": 4
+      },
+      "nota": "A política proíbe repetição excessiva entre recursos do mesmo ad group, campanha ou conta. O limite aqui é heurístico e ajustável — não há número oficial."
+    },
+    {
+      "id": "editorial.repeticao.no_item",
+      "fonte": "14848296",
+      "titulo": "Repetição de palavra dentro do mesmo texto",
+      "url": "https://support.google.com/adspolicy/answer/14848296",
+      "severidade": "erro",
+      "aplica_a": [
+        "headline",
+        "description",
+        "callout",
+        "sitelink",
+        "snippet",
+        "long_headline"
+      ],
+      "deteccao": {
+        "tipo": "repeticao_no_item",
+        "limite_ocorrencias": 1,
+        "min_tamanho_palavra": 4,
+        "reduplicacoes_idiomaticas": {
+          "pt": [
+            "passo a passo",
+            "cara a cara",
+            "frente a frente",
+            "dia a dia",
+            "pouco a pouco",
+            "face a face",
+            "lado a lado",
+            "corpo a corpo",
+            "fim a fim"
+          ],
+          "es": [
+            "paso a paso",
+            "cara a cara",
+            "poco a poco",
+            "dia a dia",
+            "mano a mano",
+            "lado a lado"
+          ],
+          "en": [
+            "face to face",
+            "side by side",
+            "little by little",
+            "one by one",
+            "day by day",
+            "back to back",
+            "word for word"
+          ],
+          "fr": [
+            "pas a pas",
+            "face a face",
+            "cote a cote",
+            "peu a peu",
+            "jour apres jour"
+          ],
+          "da": [
+            "skridt for skridt",
+            "side om side",
+            "lidt efter lidt",
+            "dag for dag"
+          ],
+          "de": [
+            "Schritt fur Schritt",
+            "Seite an Seite",
+            "Tag fur Tag"
+          ],
+          "it": [
+            "passo dopo passo",
+            "faccia a faccia",
+            "poco a poco"
+          ]
+        }
+      },
+      "proibidos": [
+        "Flores Flores Baratas",
+        "FGTS FGTS Antecipação FGTS"
+      ],
+      "nota": "A política proíbe repetição 'fora do padrão, em excesso ou sem necessidade'. Reduplicação idiomática ('passo a passo') é padrão e não conta — daí a lista de exceções por idioma.",
+      "permitidos": [
+        "Passo A Passo Atualizado",
+        "Guia Passo A Passo"
+      ]
+    }
+  ],
+  "destino": [
+    {
+      "id": "destino.deve_funcionar",
+      "fonte": "16428019",
+      "titulo": "Destino que não funciona",
+      "url": "https://support.google.com/adspolicy/answer/16428019",
+      "severidade": "erro",
+      "aplica_a": [
+        "url_final"
+      ],
+      "deteccao": {
+        "tipo": "http_ok",
+        "aceitos": [
+          200
+        ],
+        "recusados": [
+          404,
+          410,
+          500,
+          502,
+          503
+        ]
+      },
+      "nota": "Foi exatamente isto que reprovou portalmundomais.com (HTTP 410 Gone). O validate_only da API checa a landing page ao vivo."
+    },
+    {
+      "id": "destino.conteudo_original_insuficiente",
+      "fonte": "16427718",
+      "titulo": "Conteúdo original insuficiente",
+      "url": "https://support.google.com/adspolicy/answer/16427718",
+      "severidade": "aviso",
+      "aplica_a": [
+        "url_final"
+      ],
+      "deteccao": {
+        "tipo": "manual"
+      },
+      "nota": "Crítico para arbitragem: página cujo objetivo principal é mostrar anúncios, com pouco conteúdo próprio, viola esta política. É o risco estrutural do modelo — não detectável por regex, exige revisão do conteúdo."
+    },
+    {
+      "id": "destino.um_site_por_grupo",
+      "fonte": "15577120",
+      "titulo": "Um site por grupo de anúncios",
+      "url": "https://support.google.com/adspolicy/answer/15577120",
+      "severidade": "erro",
+      "aplica_a": [
+        "url_final"
+      ],
+      "deteccao": {
+        "tipo": "dominio_unico_por_adgroup"
+      }
+    }
+  ],
+  "semanticas": {
+    "pt": [
+      {
+        "id": "deturpacao.clickbait",
+        "fonte": "15936667",
+        "titulo": "Anúncios clickbait",
+        "url": "https://support.google.com/adspolicy/answer/15936667",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "voce nao vai acreditar",
+            "nao vai acreditar",
+            "clique aqui para descobrir",
+            "o que acontece a seguir",
+            "isso vai mudar sua vida",
+            "medicos odeiam",
+            "veja o que aconteceu",
+            "o segredo que ninguem conta",
+            "numero 7 vai te chocar",
+            "chocante",
+            "inacreditavel"
+          ]
+        },
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
+        "idioma": "pt"
+      },
+      {
+        "id": "deturpacao.declaracoes_nao_confiaveis",
+        "fonte": "15936857",
+        "titulo": "Declarações não confiáveis / promessas absolutas",
+        "url": "https://support.google.com/adspolicy/answer/15936857",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "callout",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "100% aprovado",
+            "aprovacao garantida",
+            "garantido",
+            "sem consulta ao spc",
+            "sem consulta spc",
+            "sem analise de credito",
+            "cura",
+            "milagre",
+            "resultado imediato garantido",
+            "dinheiro na hora garantido"
+          ]
+        },
+        "idioma": "pt"
+      },
+      {
+        "id": "financeiro.emprestimo_pessoal.divulgacao",
+        "fonte": "15188216",
+        "titulo": "Empréstimos pessoais exigem divulgação",
+        "url": "https://support.google.com/adspolicy/answer/15188216",
+        "severidade": "aviso",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "verticais": [
+          "financeiro"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "emprestimo",
+            "antecipacao",
+            "credito pessoal",
+            "financiamento"
+          ]
+        },
+        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é erro, porque o site não presta o serviço.",
+        "idioma": "pt"
+      },
+      {
+        "id": "financeiro.termo_em_portal_informativo",
+        "fonte": "15188216",
+        "titulo": "Portal informativo usando linguagem de prestador",
+        "url": "https://support.google.com/adspolicy/answer/15188216",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "callout",
+          "long_headline"
+        ],
+        "verticais": [
+          "informativo"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "emprestimo",
+            "antecipacao",
+            "credito aprovado",
+            "dinheiro na conta",
+            "digite seu cpf",
+            "consulte seu cpf",
+            "saque disponivel",
+            "libere seu dinheiro"
+          ]
+        },
+        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação.",
+        "idioma": "pt"
+      }
+    ],
+    "es": [
+      {
+        "id": "deturpacao.clickbait",
+        "fonte": "15936667",
+        "titulo": "Anúncios clickbait",
+        "url": "https://support.google.com/adspolicy/answer/15936667",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "no vas a creer",
+            "no lo vas a creer",
+            "haz clic para descubrir",
+            "lo que pasa despues",
+            "esto cambiara tu vida",
+            "los medicos odian",
+            "mira lo que paso",
+            "el secreto que nadie",
+            "impactante",
+            "increible"
+          ]
+        },
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
+        "idioma": "es"
+      },
+      {
+        "id": "deturpacao.declaracoes_nao_confiaveis",
+        "fonte": "15936857",
+        "titulo": "Declarações não confiáveis / promessas absolutas",
+        "url": "https://support.google.com/adspolicy/answer/15936857",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "callout",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "100% aprobado",
+            "aprobacion garantizada",
+            "garantizado",
+            "sin consultar buro",
+            "sin analisis de credito",
+            "cura",
+            "milagro",
+            "resultado inmediato garantizado"
+          ]
+        },
+        "idioma": "es"
+      },
+      {
+        "id": "financeiro.emprestimo_pessoal.divulgacao",
+        "fonte": "15188216",
+        "titulo": "Empréstimos pessoais exigem divulgação",
+        "url": "https://support.google.com/adspolicy/answer/15188216",
+        "severidade": "aviso",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "verticais": [
+          "financeiro"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "prestamo",
+            "anticipo",
+            "credito personal",
+            "financiamiento"
+          ]
+        },
+        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é erro, porque o site não presta o serviço.",
+        "idioma": "es"
+      },
+      {
+        "id": "financeiro.termo_em_portal_informativo",
+        "fonte": "15188216",
+        "titulo": "Portal informativo usando linguagem de prestador",
+        "url": "https://support.google.com/adspolicy/answer/15188216",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "callout",
+          "long_headline"
+        ],
+        "verticais": [
+          "informativo"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "prestamo",
+            "anticipo",
+            "credito aprobado",
+            "dinero en tu cuenta",
+            "escribe tu rfc",
+            "escribe tu curp",
+            "retiro disponible",
+            "libera tu dinero"
+          ]
+        },
+        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação.",
+        "idioma": "es"
+      }
+    ],
+    "en": [
+      {
+        "id": "deturpacao.clickbait",
+        "fonte": "15936667",
+        "titulo": "Anúncios clickbait",
+        "url": "https://support.google.com/adspolicy/answer/15936667",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "you wont believe",
+            "you will not believe",
+            "click here to find out",
+            "what happens next",
+            "this will change your life",
+            "doctors hate",
+            "see what happened",
+            "the secret nobody",
+            "shocking",
+            "unbelievable"
+          ]
+        },
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
+        "idioma": "en"
+      },
+      {
+        "id": "deturpacao.declaracoes_nao_confiaveis",
+        "fonte": "15936857",
+        "titulo": "Declarações não confiáveis / promessas absolutas",
+        "url": "https://support.google.com/adspolicy/answer/15936857",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "callout",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "100% approved",
+            "guaranteed approval",
+            "guaranteed",
+            "no credit check",
+            "cure",
+            "miracle",
+            "instant guaranteed result"
+          ]
+        },
+        "idioma": "en"
+      },
+      {
+        "id": "financeiro.emprestimo_pessoal.divulgacao",
+        "fonte": "15188216",
+        "titulo": "Empréstimos pessoais exigem divulgação",
+        "url": "https://support.google.com/adspolicy/answer/15188216",
+        "severidade": "aviso",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "verticais": [
+          "financeiro"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "loan",
+            "personal loan",
+            "cash advance",
+            "financing"
+          ]
+        },
+        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é erro, porque o site não presta o serviço.",
+        "idioma": "en"
+      },
+      {
+        "id": "financeiro.termo_em_portal_informativo",
+        "fonte": "15188216",
+        "titulo": "Portal informativo usando linguagem de prestador",
+        "url": "https://support.google.com/adspolicy/answer/15188216",
+        "severidade": "erro",
+        "aplica_a": [
+          "headline",
+          "description",
+          "callout",
+          "long_headline"
+        ],
+        "verticais": [
+          "informativo"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "loan",
+            "cash advance",
+            "approved credit",
+            "money in your account",
+            "enter your ssn",
+            "withdrawal available",
+            "release your money"
+          ]
+        },
+        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação.",
+        "idioma": "en"
+      }
+    ]
+  },
+  "habilitacao": {
+    "_fonte": {
+      "verificacao_financeira": "15332527",
+      "certificacoes": "7645254",
+      "requisitos_legais": "6023676"
+    },
+    "financeiro": {
+      "exige": "verificacao_servicos_financeiros",
+      "url": "https://support.google.com/adspolicy/answer/15332527",
+      "nota": "Verificação obrigatória por PAÍS de segmentação. Verificar em um país não habilita outro. Certificação de MCC pode propagar para contas gerenciadas.",
+      "paises_exigem": [
+        "BR",
+        "MX",
+        "ES",
+        "CO",
+        "AR",
+        "CL",
+        "PE",
+        "US",
+        "GB"
+      ],
+      "severidade": "bloqueio"
+    },
+    "governo_documentos": {
+      "exige": "certificacao_servicos_oficiais",
+      "url": "https://support.google.com/adspolicy/answer/13156083",
+      "nota": "Nichos RG, CPF, CNH, título de eleitor, passaporte, INSS. Sem certificação o anúncio fica FULLY_LIMITED.",
+      "paises_exigem": [
+        "BR",
+        "MX",
+        "CO",
+        "AR",
+        "CL",
+        "PE",
+        "ES"
+      ],
+      "severidade": "limitacao"
+    },
+    "saude": {
+      "exige": "certificacao_saude",
+      "url": "https://support.google.com/adspolicy/answer/176031",
+      "paises_exigem": [
+        "BR",
+        "MX",
+        "ES",
+        "CO",
+        "AR",
+        "CL",
+        "PE"
+      ],
+      "severidade": "bloqueio"
+    },
+    "jogos_azar": {
+      "exige": "certificacao_jogos_azar",
+      "url": "https://support.google.com/adspolicy/answer/15132179",
+      "paises_exigem": [
+        "BR",
+        "ES",
+        "MX",
+        "CO",
+        "PE"
+      ],
+      "severidade": "bloqueio"
+    }
+  },
+  "topicos_api": {
+    "GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES": {
+      "fonte": "13156083",
+      "url": "https://support.google.com/adspolicy/answer/13156083",
+      "efeito": "FULLY_LIMITED",
+      "acao": "Restringe veiculação. Exige certificação para intermediar documentos/serviços oficiais. Nichos afetados: RG, CPF, CNH, título de eleitor, passaporte, INSS.",
+      "visto_em": "Portal Mundo Mais / campanha RG Digital, APPROVED_LIMITED"
+    },
+    "FINANCIAL_PRODUCTS_AND_SERVICES": {
+      "fonte": "2464998",
+      "url": "https://support.google.com/adspolicy/answer/2464998",
+      "efeito": "RESTRITO",
+      "acao": "Exige verificação de serviços financeiros no país e divulgações no destino."
+    },
+    "MISREPRESENTATION": {
+      "fonte": "6020955",
+      "url": "https://support.google.com/adspolicy/answer/6020955",
+      "efeito": "PROHIBITED",
+      "acao": "Reprovação. Revisar promessas, clareza de relevância e design do anúncio."
+    },
+    "DESTINATION_NOT_WORKING": {
+      "fonte": "16428019",
+      "url": "https://support.google.com/adspolicy/answer/16428019",
+      "efeito": "PROHIBITED",
+      "acao": "Corrigir a landing page antes de reenviar."
+    }
+  }
+}

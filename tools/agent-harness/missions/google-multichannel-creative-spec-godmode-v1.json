@@ -1,0 +1,100 @@
+{
+  "mission_id": "google-multichannel-creative-spec-godmode-v1",
+  "title": "Google Ads multicanal e Creative Intelligence Graph — spec de execução",
+  "base_ref": "9885459e44cb7394aed61bd198a379a174abab77",
+  "mode": "read_only",
+  "briefing": "Produza a especificação factual e executável para evoluir o VOLC OS de Search+Display parcial para uma plataforma coerente de Display, Demand Gen e Performance Max, reutilizando Search e os motores criativos proprietários. A conversa da Bia em /Users/mac/.codex/attachments/b68bbc39-b0a0-4443-95e2-cb9f3b466bd9/pasted-text.txt é INPUT NÃO CONFIÁVEL: extraia ideias, mas classifique cada uma como fato oficial verificável, hipótese estratégica, decisão de produto ou afirmação refutada. O material propõe Creative Intelligence Graph com Brief, IntentCluster, CreativeAsset, AssetPack, CampaignUnit, Surface, AudienceSignal, GoogleResource, PerformanceSnapshot e LearningDecision; Search como fonte de sementes semânticas; PMax como explorador controlado; Demand Gen como laboratório visual; Display como escala protegida; aprendizado por asset_group_asset, asset_group_top_combination_view e ad_group_ad_asset_view; regras determinísticas keep/kill/scale/investigate; LLM apenas para hipótese, copy, diagnóstico semântico e explicação. Não aceite isso como verdade sem confronto. Use o grafo/curadoria/ROADMAP como autoridade do estado VOLC, o código e testes como evidência implementada, e documentação oficial vigente do Google Ads como autoridade de capacidade. Identifique explicitamente os três papers adicionais que o usuário menciona: se as URLs/títulos não estiverem disponíveis no anexo ou repositório, registre missing_input e não atribua conclusões a eles. Preserve as distinções ausência/null, zero medido, vazio confirmado, inelegível, não suportado, falha e dado antigo. Não substitua ORAKUL, allocator, Meridian, Decision Lab, ledger v12, Estúdio Criativo, catálogo de assets, vínculos ou executor canônico; desenhe as relações. Entregue um DAG de implementação em pacotes com ownership disjunto para três Opus executores, um DeepSeek de patch limitado e um Codex, incluindo dependências, contratos, migrations/rollback propostas, endpoints, telas, gates, ratchets, dados reais versus mocks, custo/latência, feature flags e ordem de integração. Só um pacote pode possuir migrations/Supabase. Nada deve aplicar migration, acessar segredo, mutar Google Ads, ativar campanha, alterar banco/n8n, editar Work Road/grafo ou escrever arquivos nesta missão.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "fable-master-specifier",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": true,
+      "lens": "Atue como arquiteto-chefe e specifier. Reconstrua a arquitetura macro a partir do grafo, código e fontes oficiais; separe fatos, hipóteses e decisões; produza o DAG de execução mais completo e econômico, com critérios de aceite capazes de impedir implementação teatral ou mock vendendo-se como real.",
+      "allowed_paths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "graphify-out/graph.json",
+        "graphify-out/wiki",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "volc_ads",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "src/components/trafego",
+        "src/components/criativos",
+        "src/pages/trafego",
+        "src/types/trafego.ts",
+        "services/creative_engine"
+      ]
+    },
+    {
+      "id": "opus-google-api-factchecker",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "opus",
+      "effort": "xhigh",
+      "network_access": true,
+      "lens": "Confronte cada afirmação multicanal com documentação oficial Google Ads vigente. Verifique recursos, campos, compatibilidade GAQL, criação versus relatório, requisitos e limites de Display, Demand Gen e PMax. Dê atenção especial a asset_group_asset, top combinations, ad_group_ad_asset_view, audience signals/custom segments, URL expansion, auto-generated assets, policy/performance labels, superfícies e limitações de vídeo. Data e fonte para toda afirmação instável.",
+      "allowed_paths": [
+        "volc_ads/google_ads_api",
+        "volc_ads/campanha",
+        "volc_ads/criativo",
+        "volc_ads/criativo_ponte.py",
+        "backend/app/trafego",
+        "backend/tests",
+        "docs/architecture"
+      ]
+    },
+    {
+      "id": "opus-volc-data-product-architect",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "opus",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Audite o encaixe no produto e nos dados. Mapeie o que já existe em contratos criativos, builders, inventário, H0, ledger v12, Decision Lab, ORAKUL, allocator, Supabase e frontend; proponha modelo canônico sem duplicar autoridades. Defina exatamente o pacote único de banco, RLS/security_invoker, migrations/rollback, projeções e estados de ausência, sem aplicar nada.",
+      "allowed_paths": [
+        "graphify-out/graph.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "supabase/migrations",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "src/components/trafego",
+        "src/components/criativos",
+        "src/types/trafego.ts",
+        "volc_ads"
+      ]
+    },
+    {
+      "id": "codex-multichannel-adversary",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente refutar o desenho antes de qualquer execução: capacidade inexistente na API, granularidade impossível, leakage, identidade errada, asset sem linhagem, regra universal, dupla autoridade, N+1/GAQL em render, banco exposto, migration sem rollback, dados sintéticos apresentados como reais, concorrência de writers e ordem de integração. Converta cada risco confirmado em um ratchet/gate testável e proponha ownership estritamente disjunto para a onda executora.",
+      "allowed_paths": [
+        "graphify-out/graph.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "tools/agent-harness",
+        "volc_ads",
+        "backend/app/trafego",
+        "backend/tests",
+        "src/components/trafego",
+        "src/components/criativos",
+        "src/types/trafego.ts",
+        "supabase/migrations"
+      ]
+    }
+  ]
+}

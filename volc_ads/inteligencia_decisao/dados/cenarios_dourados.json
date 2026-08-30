@@ -1,0 +1,275 @@
+{
+  "dataset_version": 1,
+  "as_of": "2026-08-28T12:00:00Z",
+  "description": "Dataset sintético determinístico no vocabulário de Google Ads e receita externa. Nenhuma linha vem de conta real.",
+  "base_observation": {
+    "observation_version": 1,
+    "api_namespace": "v25",
+    "release_baseline": "v25.1",
+    "normalization_manifest": {
+      "conversion_value": {
+        "source_field": "metrics.conversions_value",
+        "source_unit": "currency_unit_decimal",
+        "target_field": "conversion_value_micros",
+        "target_unit": "currency_micros",
+        "currency": "BRL",
+        "conversion": "Decimal(source) * 1000000; fixture stores the normalized result"
+      }
+    },
+    "source": {
+      "nome": "decision_lab_fixture",
+      "tipo": "sintetica_hermetica",
+      "estado": "completa"
+    },
+    "lido_em": "2026-08-28T11:00:00Z",
+    "janela": {
+      "inicio": "2026-08-25",
+      "fim": "2026-08-27"
+    },
+    "policy_profile_id": "lab-calibracao-sintetica-v1",
+    "campaign": {
+      "customer_id": "9990000001",
+      "campaign_id": "88000000001",
+      "name": "LAB Search base",
+      "start_date_time": "2026-08-01",
+      "status": "ENABLED",
+      "account_status": "ENABLED",
+      "channel": "SEARCH",
+      "bidding": "MANUAL_CPC",
+      "currency": "BRL",
+      "budget_micros": 20000000,
+      "checks": {
+        "billing_active": true,
+        "groups_enabled": true,
+        "ads_approved": true,
+        "keywords_enabled": true,
+        "targeting_valid": true,
+        "conversion_tracking": true
+      }
+    },
+    "window_metrics": {
+      "search_impression_share": 0.63,
+      "search_budget_lost_impression_share": 0.0,
+      "search_rank_lost_impression_share": 0.1,
+      "source_grain": "campaign_window_without_segments_date"
+    },
+    "daily_metrics": [
+      {
+        "date": "2026-08-25",
+        "impressions": 800,
+        "clicks": 40,
+        "cost_micros": 8000000,
+        "conversions": 5.0,
+        "conversion_value_micros": 16000000,
+        "search_impression_share": 0.61,
+        "search_budget_lost_impression_share": 0.0,
+        "search_rank_lost_impression_share": 0.12
+      },
+      {
+        "date": "2026-08-26",
+        "impressions": 850,
+        "clicks": 44,
+        "cost_micros": 8400000,
+        "conversions": 6.0,
+        "conversion_value_micros": 17200000,
+        "search_impression_share": 0.63,
+        "search_budget_lost_impression_share": 0.0,
+        "search_rank_lost_impression_share": 0.1
+      },
+      {
+        "date": "2026-08-27",
+        "impressions": 900,
+        "clicks": 48,
+        "cost_micros": 9000000,
+        "conversions": 6.0,
+        "conversion_value_micros": 18000000,
+        "search_impression_share": 0.65,
+        "search_budget_lost_impression_share": 0.0,
+        "search_rank_lost_impression_share": 0.08
+      }
+    ],
+    "quality": [
+      {
+        "customer_id": "9990000001",
+        "campaign_id": "88000000001",
+        "ad_group_id": "770001",
+        "criterion_id": "771001",
+        "resource_name": "customers/9990000001/adGroupCriteria/770001~771001",
+        "keyword_text": "seguro viagem família",
+        "quality_score": 8,
+        "ad_relevance": "ABOVE_AVERAGE",
+        "landing_page_experience": "AVERAGE",
+        "expected_ctr": "ABOVE_AVERAGE"
+      }
+    ],
+    "search_terms": [],
+    "keywords": [
+      {
+        "criterion_id": "771001",
+        "keyword_text": "seguro viagem família",
+        "match_type": "PHRASE",
+        "status": "ENABLED"
+      }
+    ],
+    "negatives": [],
+    "external_revenue": [
+      {"date": "2026-08-25", "revenue_micros": 13000000, "rpc_micros": 325000, "source": "external_rpc_fixture"},
+      {"date": "2026-08-26", "revenue_micros": 14000000, "rpc_micros": 318182, "source": "external_rpc_fixture"},
+      {"date": "2026-08-27", "revenue_micros": 15000000, "rpc_micros": 312500, "source": "external_rpc_fixture"}
+    ],
+    "routine": {
+      "job_id": "synthetic-cost-reader",
+      "status": "success",
+      "last_success_at": "2026-08-28T09:00:00Z"
+    },
+    "last_action": {
+      "action_id": null,
+      "cooldown_until": null
+    }
+  },
+  "scenarios": [
+    {
+      "scenario_id": "new-no-delivery",
+      "label": "Campanha nova sem entrega",
+      "group": "dourado",
+      "override": {
+        "janela": {"inicio": "2026-08-27", "fim": "2026-08-27"},
+        "campaign": {"name": "LAB NEXUS 36h", "start_date_time": "2026-08-27"},
+        "window_metrics": {"search_impression_share": null, "search_budget_lost_impression_share": null, "search_rank_lost_impression_share": null, "source_grain": "campaign_window_without_segments_date"},
+        "daily_metrics": [
+          {"date": "2026-08-27", "impressions": 0, "clicks": 0, "cost_micros": 0, "conversions": 0.0, "conversion_value_micros": 0, "search_impression_share": null, "search_budget_lost_impression_share": null, "search_rank_lost_impression_share": null}
+        ],
+        "quality": [],
+        "external_revenue": [
+          {"date": "2026-08-27", "revenue_micros": 0, "rpc_micros": null, "source": "external_rpc_fixture"}
+        ]
+      },
+      "expected": {"estado_da_leitura": "atual", "veredito": "indeterminado", "health_gate": "liberado", "propostas": 0}
+    },
+    {
+      "scenario_id": "budget-limited-healthy",
+      "label": "Budget limited com qualidade saudável",
+      "group": "dourado",
+      "override": {
+        "campaign": {"name": "LAB ARBA orçamento"},
+        "window_metrics": {"search_impression_share": 0.44, "search_budget_lost_impression_share": 0.29, "search_rank_lost_impression_share": 0.06, "source_grain": "campaign_window_without_segments_date"},
+        "daily_metrics": [
+          {"date": "2026-08-25", "impressions": 700, "clicks": 38, "cost_micros": 7000000, "conversions": 5.0, "conversion_value_micros": 15000000, "search_impression_share": 0.42, "search_budget_lost_impression_share": 0.31, "search_rank_lost_impression_share": 0.07},
+          {"date": "2026-08-26", "impressions": 740, "clicks": 41, "cost_micros": 7500000, "conversions": 5.0, "conversion_value_micros": 15800000, "search_impression_share": 0.44, "search_budget_lost_impression_share": 0.29, "search_rank_lost_impression_share": 0.06},
+          {"date": "2026-08-27", "impressions": 760, "clicks": 43, "cost_micros": 7800000, "conversions": 6.0, "conversion_value_micros": 17000000, "search_impression_share": 0.45, "search_budget_lost_impression_share": 0.28, "search_rank_lost_impression_share": 0.05}
+        ]
+      },
+      "expected": {"estado_da_leitura": "atual", "veredito": "limitado", "health_gate": "liberado", "propostas": 1}
+    },
+    {
+      "scenario_id": "rank-limited-low-quality",
+      "label": "Rank limited com Quality Score ruim",
+      "group": "dourado",
+      "override": {
+        "campaign": {"name": "LAB ARBA qualidade"},
+        "window_metrics": {"search_impression_share": 0.3, "search_budget_lost_impression_share": 0.01, "search_rank_lost_impression_share": 0.54, "source_grain": "campaign_window_without_segments_date"},
+        "daily_metrics": [
+          {"date": "2026-08-25", "impressions": 500, "clicks": 22, "cost_micros": 6000000, "conversions": 2.0, "conversion_value_micros": 7000000, "search_impression_share": 0.31, "search_budget_lost_impression_share": 0.02, "search_rank_lost_impression_share": 0.52},
+          {"date": "2026-08-26", "impressions": 520, "clicks": 23, "cost_micros": 6200000, "conversions": 2.0, "conversion_value_micros": 7200000, "search_impression_share": 0.3, "search_budget_lost_impression_share": 0.01, "search_rank_lost_impression_share": 0.54},
+          {"date": "2026-08-27", "impressions": 540, "clicks": 24, "cost_micros": 6500000, "conversions": 2.0, "conversion_value_micros": 7500000, "search_impression_share": 0.29, "search_budget_lost_impression_share": 0.0, "search_rank_lost_impression_share": 0.56}
+        ],
+        "quality": [
+          {"customer_id": "9990000001", "campaign_id": "88000000001", "ad_group_id": "770002", "criterion_id": "771002", "resource_name": "customers/9990000001/adGroupCriteria/770002~771002", "keyword_text": "cotação seguro agora", "quality_score": 3, "ad_relevance": "BELOW_AVERAGE", "landing_page_experience": "BELOW_AVERAGE", "expected_ctr": "AVERAGE"}
+        ]
+      },
+      "expected": {"estado_da_leitura": "atual", "veredito": "limitado", "health_gate": "liberado", "propostas": 1}
+    },
+    {
+      "scenario_id": "valuable-term-blocked",
+      "label": "Termo valioso bloqueado por negativa",
+      "group": "dourado",
+      "override": {
+        "campaign": {"name": "LAB Search Terms bidirecional"},
+        "search_terms": [
+          {"customer_id": "9990000001", "campaign_id": "88000000001", "ad_group_id": "770001", "search_term": "seguro viagem família internacional", "status": "ADDED", "match_type": "PHRASE", "impressions": 260, "clicks": 20, "cost_micros": 3200000, "conversions": 4.0, "valor_negocio": "valioso", "motivo_valor": "RPC externo positivo e intenção confirmada", "evidencia_ref": "search-term-001"}
+        ],
+        "negatives": [
+          {"customer_id": "9990000001", "campaign_id": "88000000001", "criterion_id": "neg-8801", "resource_name": "customers/9990000001/campaignCriteria/88000000001~8801", "keyword_text": "família internacional", "match_type": "PHRASE", "status": "ENABLED", "level": "CAMPAIGN"}
+        ]
+      },
+      "expected": {"estado_da_leitura": "atual", "veredito": "limitado", "health_gate": "liberado", "propostas": 1}
+    },
+    {
+      "scenario_id": "mature-margin-cooldown",
+      "label": "Campanha madura limitada por margem e cooldown",
+      "group": "dourado",
+      "override": {
+        "campaign": {"name": "LAB ORAKUL guardas", "start_date_time": "2026-06-01"},
+        "window_metrics": {"search_impression_share": 0.41, "search_budget_lost_impression_share": 0.33, "search_rank_lost_impression_share": 0.05, "source_grain": "campaign_window_without_segments_date"},
+        "daily_metrics": [
+          {"date": "2026-08-25", "impressions": 900, "clicks": 50, "cost_micros": 12000000, "conversions": 5.0, "conversion_value_micros": 9000000, "search_impression_share": 0.4, "search_budget_lost_impression_share": 0.34, "search_rank_lost_impression_share": 0.06},
+          {"date": "2026-08-26", "impressions": 920, "clicks": 52, "cost_micros": 12500000, "conversions": 5.0, "conversion_value_micros": 9200000, "search_impression_share": 0.41, "search_budget_lost_impression_share": 0.33, "search_rank_lost_impression_share": 0.05},
+          {"date": "2026-08-27", "impressions": 940, "clicks": 54, "cost_micros": 13000000, "conversions": 5.0, "conversion_value_micros": 9500000, "search_impression_share": 0.42, "search_budget_lost_impression_share": 0.32, "search_rank_lost_impression_share": 0.04}
+        ],
+        "external_revenue": [
+          {"date": "2026-08-25", "revenue_micros": 9000000, "rpc_micros": 180000, "source": "external_rpc_fixture"},
+          {"date": "2026-08-26", "revenue_micros": 9200000, "rpc_micros": 176923, "source": "external_rpc_fixture"},
+          {"date": "2026-08-27", "revenue_micros": 9500000, "rpc_micros": 175926, "source": "external_rpc_fixture"}
+        ],
+        "last_action": {"action_id": "synthetic-action-previous", "cooldown_until": "2026-08-29T12:00:00Z"}
+      },
+      "expected": {"estado_da_leitura": "atual", "veredito": "bloqueado", "health_gate": "liberado", "propostas": 0}
+    },
+    {
+      "scenario_id": "cost-spike-routine-stale",
+      "label": "Cost spike e rotina stale",
+      "group": "dourado",
+      "override": {
+        "campaign": {"name": "LAB Ads Monitor"},
+        "window_metrics": {"search_impression_share": 0.6, "search_budget_lost_impression_share": 0.0, "search_rank_lost_impression_share": 0.1, "source_grain": "campaign_window_without_segments_date"},
+        "daily_metrics": [
+          {"date": "2026-08-25", "impressions": 700, "clicks": 35, "cost_micros": 5000000, "conversions": 4.0, "conversion_value_micros": 9000000, "search_impression_share": 0.6, "search_budget_lost_impression_share": 0.0, "search_rank_lost_impression_share": 0.1},
+          {"date": "2026-08-26", "impressions": 720, "clicks": 36, "cost_micros": 5200000, "conversions": 4.0, "conversion_value_micros": 9200000, "search_impression_share": 0.61, "search_budget_lost_impression_share": 0.0, "search_rank_lost_impression_share": 0.09},
+          {"date": "2026-08-27", "impressions": 730, "clicks": 37, "cost_micros": 14000000, "conversions": 4.0, "conversion_value_micros": 9300000, "search_impression_share": 0.6, "search_budget_lost_impression_share": 0.0, "search_rank_lost_impression_share": 0.1}
+        ],
+        "routine": {"job_id": "synthetic-cost-reader", "status": "unknown", "last_success_at": "2026-08-26T06:00:00Z"}
+      },
+      "expected": {"estado_da_leitura": "atual", "veredito": "bloqueado", "health_gate": "bloqueado", "propostas": 0}
+    },
+    {
+      "scenario_id": "partial-read",
+      "label": "Leitura parcial",
+      "group": "dourado",
+      "override": {
+        "source": {"estado": "parcial"},
+        "daily_metrics": [
+          {"date": "2026-08-25", "impressions": 500, "clicks": null, "cost_micros": null, "conversions": null, "conversion_value_micros": null, "search_impression_share": 0.5, "search_budget_lost_impression_share": null, "search_rank_lost_impression_share": null},
+          {"date": "2026-08-26", "impressions": 520, "clicks": null, "cost_micros": null, "conversions": null, "conversion_value_micros": null, "search_impression_share": 0.51, "search_budget_lost_impression_share": null, "search_rank_lost_impression_share": null},
+          {"date": "2026-08-27", "impressions": 530, "clicks": null, "cost_micros": null, "conversions": null, "conversion_value_micros": null, "search_impression_share": 0.52, "search_budget_lost_impression_share": null, "search_rank_lost_impression_share": null}
+        ],
+        "external_revenue": []
+      },
+      "expected": {"estado_da_leitura": "parcial", "veredito": "nao_apurado", "health_gate": "parcial", "propostas": 0}
+    },
+    {
+      "scenario_id": "stale-read",
+      "label": "Leitura velha",
+      "group": "dourado",
+      "override": {
+        "lido_em": "2026-08-24T10:00:00Z",
+        "janela": {"inicio": "2026-08-21", "fim": "2026-08-23"},
+        "routine": {"job_id": "synthetic-cost-reader", "status": "success", "last_success_at": "2026-08-24T09:00:00Z"},
+        "daily_metrics": [
+          {"date": "2026-08-21", "impressions": 600, "clicks": 30, "cost_micros": 6000000, "conversions": 3.0, "conversion_value_micros": 8000000, "search_impression_share": 0.55, "search_budget_lost_impression_share": 0.1, "search_rank_lost_impression_share": 0.2},
+          {"date": "2026-08-22", "impressions": 620, "clicks": 31, "cost_micros": 6200000, "conversions": 3.0, "conversion_value_micros": 8200000, "search_impression_share": 0.56, "search_budget_lost_impression_share": 0.09, "search_rank_lost_impression_share": 0.19},
+          {"date": "2026-08-23", "impressions": 640, "clicks": 32, "cost_micros": 6400000, "conversions": 3.0, "conversion_value_micros": 8400000, "search_impression_share": 0.57, "search_budget_lost_impression_share": 0.08, "search_rank_lost_impression_share": 0.18}
+        ],
+        "external_revenue": [
+          {"date": "2026-08-21", "revenue_micros": 9000000, "source": "external_rpc_fixture"},
+          {"date": "2026-08-22", "revenue_micros": 9200000, "source": "external_rpc_fixture"},
+          {"date": "2026-08-23", "revenue_micros": 9400000, "source": "external_rpc_fixture"}
+        ]
+      },
+      "expected": {"estado_da_leitura": "stale", "veredito": "nao_apurado", "health_gate": "stale", "propostas": 0}
+    },
+    {"scenario_id": "empty-confirmed", "label": "Vazio confirmado", "group": "estado", "kind": "vazio_confirmado"},
+    {"scenario_id": "failure-last-good", "label": "Falha com último bom", "group": "estado", "kind": "falha_ultimo_bom", "last_good_scenario_id": "budget-limited-healthy"},
+    {"scenario_id": "failure-no-snapshot", "label": "Falha sem fotografia", "group": "estado", "kind": "falha_sem_fotografia"},
+    {"scenario_id": "unknown-version", "label": "Versão desconhecida", "group": "estado", "kind": "versao_desconhecida"}
+  ]
+}

@@ -1,0 +1,3 @@
+# Instalação isolada do harness. O ADK é fixado para evitar que uma mudança de
+# API altere a orquestração sem revisão explícita.
+google-adk==2.8.0

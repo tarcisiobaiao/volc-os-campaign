@@ -1,0 +1,70 @@
+{
+  "mission_id": "orakul-predictive-core-v1-fable-review",
+  "title": "ORAKUL Predictive Core V1 — revisão científica, temporal e de integração shadow",
+  "base_ref": "8e58caecc3fc96d2979f77e67af7f637b10c34e0",
+  "mode": "read_only",
+  "briefing": "Revise adversarialmente o spike offline ORAKUL Predictive Core V1 criado em services/orakul_predictive/**, seus 36 testes e docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md. Ele extrai o legado dos workflows inventario-n8n/flows/orakul-predictive-integrado-v1.json e inventario-n8n/flows/bola-de-cristal-preditivo.json, mas não pode ser tratado como modelo validado nem capacidade de produção. Verifique por leitura e execução local: definição exata dos alvos D+1, as-of civil e intraday, leakage direto/indireto, composição do walk-forward, completude e alinhamento de datas, tratamento distinto de ausente/zero/falha/antigo/não aplicável, unidades/moeda/fuso, idempotência, determinismo, baselines, estabilidade numérica da Ridge stdlib, intervalos, WAPE/MAE, drift e champion/challenger. Tente refutar cada afirmação do relatório do Grok. Compare o core com o comportamento factual dos dois JSONs legados e com os contratos já existentes de ORAKUL/Decision Intelligence sem recomendar substituição do ORAKUL. Desenhe a próxima fatia mínima real: ledger forecast_* no Supabase oficial database.agenciavolc.com.br, RLS/grants/rollback, ingestão as-of, prediction shadow D+1, reconciliação D+2, métricas reais, observabilidade e integração futura no front — sempre zero executor de lance/orçamento. Não escreva arquivos, não aplique migration, não acesse .env/segredos, não consulte nem escreva Supabase/Google Ads/n8n, não edite Roadmap/curadoria/grafo, não faça merge/push/deploy. Entregue resultado estruturado e econômico: verdict; confirmed strengths; confirmed defects com gravidade e prova; refuted claims; missing evidence; exact ratchets; schema/contract gaps; minimal implementation DAG com ownership disjunto; e recomendação explícita accept, changes_requested ou reject para integração do spike.",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "workers": [
+    {
+      "id": "fable-orakul-scientific-reviewer",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "fable",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Atue como revisor científico principal e arquiteto de séries temporais. Reproduza as provas, inspecione matemática e semântica, procure leakage, validação otimista, granularidade inadequada, métricas mal definidas e política champion/challenger que possa promover por evidência insuficiente. Diferencie correção do software de qualidade preditiva. Proponha critérios de aceite mensuráveis para o primeiro shadow real, sem antecipar produção.",
+      "allowed_paths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "graphify-out/graph.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "services/orakul_predictive",
+        "backend/tests/orakul_predictive",
+        "inventario-n8n/flows/orakul-predictive-integrado-v1.json",
+        "inventario-n8n/flows/bola-de-cristal-preditivo.json",
+        "inventario-n8n/flows/orakul-vos-auto-adjust.json"
+      ]
+    },
+    {
+      "id": "opus-orakul-data-contract-reviewer",
+      "provider": "claude",
+      "role": "investigator",
+      "model": "opus",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Revise contratos, persistência futura e encaixe no VOLC OS. Verifique identidade, target_date, as_of, recibos de fonte, estados semânticos, ledger, registry, drift, promoção/rollback humano, multi-tenant e fronteira absoluta com execução de campanha. Entregue um esquema forecast_* e plano de migrations/rollback/RLS apenas como especificação, sem escrever, e um DAG mínimo com um único owner de banco.",
+      "allowed_paths": [
+        "graphify-out/graph.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/architecture",
+        "services/orakul_predictive",
+        "backend/tests/orakul_predictive",
+        "supabase/migrations",
+        "backend/app/trafego",
+        "src/components/trafego/laboratorio"
+      ]
+    },
+    {
+      "id": "codex-orakul-adversarial-reviewer",
+      "provider": "codex",
+      "role": "investigator",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Tente quebrar o core e o relatório. Execute testes/mutantes read-only; procure leakage por datas e por cálculo de features, contagem dupla de targets, intervalos contaminados por resíduos in-sample, degeneração numérica, hash/idempotência incompletos, zero/ausência colapsados, challenger comparado em janelas diferentes e synthetic data infiltrando métricas reais. Toda crítica precisa de reprodução ou linha exata; transforme achados confirmados em ratchets objetivos.",
+      "allowed_paths": [
+        "services/orakul_predictive",
+        "backend/tests/orakul_predictive",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "inventario-n8n/flows/orakul-predictive-integrado-v1.json",
+        "inventario-n8n/flows/bola-de-cristal-preditivo.json",
+        "tools/agent-harness"
+      ]
+    }
+  ]
+}

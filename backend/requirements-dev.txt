@@ -1,0 +1,36 @@
+# Local dev only — NOT installed on Vercel.
+-r requirements.txt
+
+# Toolchain reprodutível do golden OpenAPI. A faixa aceita em runtime está em
+# requirements.txt; checkout de desenvolvimento/CI usa uma versão exata para
+# que um novo release do gerador de schema não mude o contrato por acidente.
+pydantic==2.13.4
+
+# Local ASGI server (Vercel serves the ASGI app directly; uvicorn not needed there).
+uvicorn[standard]==0.34.0
+
+# Test runner (pytest discovers backend/tests/test_*.py).
+pytest>=8.0
+
+# ⚠️ DEPENDÊNCIA DA SUÍTE, e ela faltava aqui.
+#
+# `volc_ads` importa o SDK do Google no topo, e DOIS módulos de teste dependem
+# dele — `test_notificacoes.py` e `test_trafego_canal_de_criacao.py`. Sem ele os
+# dois não COLETAM: somem da contagem sem falhar, e a contagem verde afirma uma
+# cobertura que não existe. Mais três testes (os que provam que a trava de
+# escrita está fechada) falham por importá-lo em tempo de execução.
+#
+# Não está em `requirements.txt` de propósito: o backend na Vercel não fala com
+# o Google Ads — quem fala é o engine, que roda localmente e no worker.
+google-ads>=25.0
+
+# ⚠️ DEPENDÊNCIA DA SUÍTE, e ela faltava aqui — de novo.
+#
+# `tests/test_criativo_execucao.py` prova a orquestração do Estúdio (criação,
+# retry, cancelamento, fechamento), e o executor é assíncrono. Sem este pacote os
+# 18 testes são COLETADOS e PULADOS: somem da contagem sem falhar, e o verde
+# afirma uma cobertura que não existe. É o mesmo modo de falha que custou duas
+# rodadas com o `google-ads`.
+#
+# `asyncio_mode = auto` fica em `backend/pytest.ini`.
+pytest-asyncio>=0.24

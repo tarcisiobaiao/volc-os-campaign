@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "missao": "Double check Fable 5 — ORAKUL / Decision Intelligence",
+  "data": "2026-08-28",
+  "head": "5193575",
+  "grafo": {"current": true, "built_at_commit": "69f5658", "nota": "arquivos desta missao entram no proximo build; nao reconstruimos por mandato"},
+  "metodo": "12 investigadores read-only + 8 lentes adversariais de refutacao + reproducao direta do autor. Achado so entra como CONFIRMADO se o autor reproduziu ou leu diretamente.",
+  "cobertura_das_lentes": {
+    "concluidas_por_agente": ["api_cobertura", "supabase_rls", "n8n_distribuidos", "seguranca_autonomia", "produto_frontend", "legado_orakul_nexus", "refutacao_ausencias"],
+    "lente_ciencia_de_decisao": "A lente 2 (ciencia de decisao) caiu duas vezes: a primeira execucao morreu por erro de conexao e a relancada estagnou sem produzir saida (encerrada pelo autor). Seu mandato foi cumprido por outra via, e isto fica registrado em vez de ser mascarado: C1 (vazamento por colecoes sem data) e C5 (falso positivo sazonal do cost_spike) foram REPRODUZIDOS numericamente pelo proprio autor; C2 (target leakage e validacao in-sample do preditivo) veio da investigacao preditiva com leitura integral dos Code nodes; C3 (o replay compara apenas 4 saidas) e C4 (thresholds do BEAST vs perfil sintetico) vieram da leitura direta de replay.py:101-127 e politicas.py:16-33 pelo autor.",
+    "lente_frontend": "A primeira execucao devolveu um stub degenerado ('teste'); foi relancada isolada e concluida com 33 fatos."
+  },
+  "limites_respeitados": {"google_ads_mutations": 0, "supabase_writes": 0, "migrations": 0, "workflow_edits": 0, "deploys": 0, "pushes": 0, "forge_permitir_escrita": "ausente", "validate_only_conta_real": 0},
+  "sondas_read_only_executadas": [
+    "psql catalogos via ssh (pg_class, pg_policies, role_table_grants, pg_proc, information_schema) — somente SELECT",
+    "comparacao de hash SHA-256 do JWT_SECRET vivo contra o demo publico — nenhum valor impresso",
+    "HTTP sem credencial a googleads.googleapis.com para descobrir prefixos vivos (404/401) — nenhum mutate, nenhum validate_only",
+    "pytest, replay sintetico, tsc, npm run build — locais e hermeticos"
+  ],
+
+  "fatos": [
+    {"id": "F1", "afirmacao": "A versao corrente da Google Ads API em 28/08/2026 e v25.1 (19/08/2026); v25.2 nao existe (aparece como 'Upcoming', prevista set/2026).", "classificacao": "fato", "evidencia": "developers.google.com/google-ads/api/docs/release-notes e /sunset-dates, acesso 2026-08-28"},
+    {"id": "F2", "afirmacao": "A v21 sofreu sunset em 05/08/2026 e o prefixo /v21 responde HTTP 404 HTML ao vivo, enquanto v22-v25 respondem 401 sem credencial.", "classificacao": "fato", "evidencia": "ads-developers.googleblog.com 'v21 sunset on August 5, 2026'; sonda sem credencial 28/08"},
+    {"id": "F3", "afirmacao": "ORAKUL V.OS AUTO ADJUST tem UM motor Python (BEAST GOD MODE, 1.678 linhas), nao dois; os pares 'Motor 1/Motor 2' funcionais vivem em orakul-predictive-integrado-v1 e no flow de atuacao; em orakul-02-analysis-engine sao placeholders.", "classificacao": "fato", "evidencia": "enumeracao dos 21 nodes e leitura dos pythonCode"},
+    {"id": "F4", "afirmacao": "O flow 'Orakul - AI Agent' (ativo) nao usa LLM algum: 61 nodes deterministicos, 21 Code nodes; LLM no repo so aparece em flows de criacao/pauta.", "classificacao": "fato", "evidencia": "contagem de tipos de node por flow"},
+    {"id": "F5", "afirmacao": "O kernel do Lab e Python puro sem rede: imports apenas de stdlib em volc_ads/inteligencia_decisao e inteligencia_search.", "classificacao": "fato", "evidencia": "listagem de imports dos dois pacotes"},
+    {"id": "F6", "afirmacao": "v9_01 esta aplicada e viva (6 tabelas + 2 views, RLS forcada, zero policies, sem DELETE); v10_01 e v10_02 NAO estao aplicadas e nao tem writer Python em nenhuma linguagem do repo.", "classificacao": "fato", "evidencia": "consulta ao banco vivo + varredura --no-ignore do repo"},
+    {"id": "F7", "afirmacao": "Replay dourado 8/8 e 28 testes do Lab passam; build do frontend verde.", "classificacao": "fato", "evidencia": "execucao local reproduzida pelo autor"},
+    {"id": "F8", "afirmacao": "O canario Search de 28/08 criou campanha real PAUSED (24183717006) com validate_only previo, recibo em arquivo e registro na tabela legada campaigns.", "classificacao": "fato", "evidencia": "docs/architecture/evidence/GOOGLE-SEARCH-CANARY-*.json; volc_ads/dados/recibos/20260828_123051_*.json; routers/trafego.py:1828-1882"},
+    {"id": "F9", "afirmacao": "search_term_view nao cobre Performance Max; o substituto correto e campaign_search_term_view (termo + custo), nao campaign_search_term_insight (categorias, sem cost_micros).", "classificacao": "fato", "evidencia": "doc oficial v25 dos tres recursos, acesso 28/08"},
+    {"id": "F10", "afirmacao": "change_event: janela de 30 dias, LIMIT<=10000 obrigatorio, mudancas do Google Ads Editor nao capturadas; change_status cobre 90 dias sem detalhe de valores.", "classificacao": "fato", "evidencia": "doc oficial, acesso 28/08"},
+    {"id": "F11", "afirmacao": "O box Hetzner tem 3 vCPU, 3,8 GB RAM (~1,6 GB livres) e 34 GB de disco livres, com 13 containers Supabase saudaveis ha 3 semanas.", "classificacao": "fato", "evidencia": "free/df/docker ps read-only"},
+    {"id": "F12", "afirmacao": "Nenhuma tabela ou funcao de acuracia, previsao ou snapshot as-of existe nas migrations nem no banco vivo (padrao ampliado: accur|forecast|predict|previs|as_of|backtest).", "classificacao": "fato", "evidencia": "grep nas migrations + consulta pg_class/pg_proc"},
+    {"id": "F13", "afirmacao": "inventario-n8n/ esta no .gitignore (linha 62) — os JSONs com token nao estao versionados; porem backend/n8n_kw_pautador.json E rastreado e carrega credencial em claro.", "classificacao": "fato", "evidencia": "git check-ignore -v; git ls-files"}
+  ],
+
+  "achados_confirmados": {
+    "blocker": [
+      {"id": "B0", "titulo": "JWT_SECRET de producao e o segredo demo publico do Supabase", "descricao": "O hash SHA-256 do JWT_SECRET vivo em /root/supabase/docker/.env e identico ao do valor demo publicado no .env.example do Supabase. Qualquer pessoa na internet pode assinar um JWT com role service_role e obter acesso total ao banco, ignorando RLS, grants e views. Supera B1/B2 em urgencia.", "evidencia": "comparacao de hashes reproduzida pelo autor em 28/08 (nenhum valor impresso); prefixo coincidente 1453cea2dc3799e9", "veredito": "CONFIRMADO", "acao_do_dono": "rotacionar JWT_SECRET, reemitir anon/service_role, reiniciar stack, revisar acessos"},
+      {"id": "B1", "titulo": "Executor de mutacao alcancavel sem autenticacao (hoje falhando em silencio)", "descricao": "atuacao-apply-bidding-webhook-v2 esta active:true no snapshot com webhook POST sem credencial nem verificacao de origem, chamando v21/customers/{id}/campaigns:mutate. Como a v21 sofreu sunset em 05/08/2026, a chamada retorna 404 HTML e o flow decide sobre um corpo que nao e resposta da API — podendo reportar sucesso. Risco imediato: endpoint anonimo + falha silenciosa. Risco latente: corrigir a versao sem notar a ausencia de portao transforma isso em mutacao real irrestrita.", "evidencia": "JSON do flow (Webhook1 sem auth); blog oficial do sunset; sonda 404 em /v21 vs 401 em /v22-/v25", "ressalva": "estado 'ativo' vem do snapshot inventariado; verificar no n8n vivo e acao do dono", "veredito": "CONFIRMADO (severidade ajustada pela refutacao)"},
+      {"id": "B2", "titulo": "anon com CRUD completo sem RLS em 6 tabelas legadas", "descricao": "campaigns, daily_campaign_metrics, users, projects, operational_costs e user_campaigns tem relrowsecurity=false e concedem SELECT/INSERT/UPDATE/DELETE/TRUNCATE a anon e authenticated. A anon key e publica no bundle. Permite falsificar metricas que alimentariam qualquer politica futura (data poisoning) e apagar dados de usuarios.", "evidencia": "consulta a pg_class + information_schema.role_table_grants reproduzida pelo autor; refutacao tentou PostgREST/Kong/views e falhou em derrubar", "veredito": "CONFIRMADO"},
+      {"id": "B3", "titulo": "Caminho de criacao de campanha quebrado no HEAD, mascarado por teste-duble", "descricao": "routers/trafego.py:1452 e :1662 chamam pp.Escolha(carimbo_nome=...) mas volc_ads/pautador_ponte.py:282 nao define esse campo; /api/trafego/provar responde 500. O teste que deveria pegar isso usa um duble com __init__(self, **_kwargs) que aceita qualquer argumento — prova que aceita qualquer erro.", "evidencia": "pytest reproduzido (1 fail), grep de assinatura, tests/test_trafego_canario.py:168-171", "veredito": "CONFIRMADO", "nota": "o autor havia classificado este fail como 'herdado alheio' no meio da missao; a refutacao corrigiu"}
+    ],
+    "high": [
+      {"id": "H1", "titulo": "Payload de bidding com campo fixo", "descricao": "O corpo enviado sempre escreve maximizeConversions.targetCpaMicros, independentemente da estrategia real da campanha, enquanto o updateMask vem do chamador — combinacao que muta o campo errado ou e rejeitada.", "evidencia": "node 'Google Ads - Apply Bidding' do JSON", "veredito": "CONFIRMADO"},
+      {"id": "H2", "titulo": "Falha de mutacao sem recibo", "descricao": "Nenhum flow do inventario tem caminho de codigo capaz de gravar aplicado_com_sucesso=false ou preencher erro_msg; a branch de erro nao esta conectada.", "evidencia": "connections e nodes de PATCH em bid_actions", "veredito": "CONFIRMADO"},
+      {"id": "H3", "titulo": "NEXUS v3.0 grava sucesso antes da confirmacao", "descricao": "O ramo manual registra aplicado_com_sucesso=true antes de qualquer confirmacao do webhook (argumento independente do responseMode).", "evidencia": "ordem dos nodes em gads-new-campaign-validation", "veredito": "CONFIRMADO"},
+      {"id": "H4", "titulo": "Split-brain de autoridade de banco", "descricao": "O unico produtor ativo de orientacao_* escreve no Supabase hospedado txvvzpstquqmbhljudfn.supabase.co, condenado pelo ADR-SUPABASE-AUTORIDADE-OPERACIONAL, enquanto o produto le o self-hosted. A refutacao encontrou split-brain ainda maior que o reportado (mais consumidores do host legado).", "evidencia": "URLs nos flows ativos + contagem no banco", "veredito": "CONFIRMADO"},
+      {"id": "H5", "titulo": "Executor real fora do ledger", "descricao": "/provar->/subir registra a campanha criada na tabela legada campaigns e guarda recibo apenas em arquivo local; a protecao de procedencia da v9_01 nao cobre o caminho que criou campanha real.", "evidencia": "routers/trafego.py:1828-1882; recibo em disco", "veredito": "CONFIRMADO"},
+      {"id": "H6", "titulo": "Aprovacao humana existe em SQL e em UI, mas nada esta ligado", "descricao": "v10_02 nao aplicada, sem writer; no frontend, aoSubmeter nao e passado por nenhum caller de producao — o botao de aprovar nao e clicavel em lugar nenhum.", "evidencia": "README migrations:510-516; rg 'aoSubmeter=' src/", "veredito": "CONFIRMADO"},
+      {"id": "H7", "titulo": "Identidade frouxa no legado", "descricao": "daily_campaign_metrics sem FK; campaigns.campaign_id nullable; reproduzido com dados vivos.", "evidencia": "pg_constraint + \\d+", "veredito": "CONFIRMADO"},
+      {"id": "H8", "titulo": "Duas idempotencias paralelas sem convergencia", "descricao": "idempotency_key da v10_01 (nao aplicada) x marca VOLC-CANARY de canario.py (ativa, sem tabela). A refutacao encontrou um terceiro mecanismo relevante no caminho de lance.", "evidencia": "lote.py:216-261 x canario.py:98-157", "veredito": "AJUSTADO (exaustividade refutada)"},
+      {"id": "H9", "titulo": "Reativar o legado reintroduz defeitos cientificos", "descricao": "Target leakage, validacao in-sample, cooldown e redistribuicao mortos por inputs nunca populados (last_action, all_campaigns_summary), filtro silencioso de estrategia, PAUSE que so manda e-mail.", "evidencia": "Code nodes lidos; connections dos IF", "veredito": "CONFIRMADO"},
+      {"id": "H10", "titulo": "Tres flows ativos com :mutate, todos em v21 morta", "descricao": "atuacao-apply-bidding-webhook-v2, criacao-gads-factory-v3 (6 formularios publicos que criam budget+campanha+ad group) e gads-campaign-search.", "evidencia": "enumeracao dos JSONs reproduzida pelo autor", "veredito": "CONFIRMADO"},
+      {"id": "H11", "titulo": "Gate de segredos verde com segredo presente", "descricao": "scripts/verificar_segredos.py passa enquanto backend/n8n_kw_pautador.json (rastreado no git) carrega credencial em claro; inventario-n8n/backups/ grava workflows sem passar pelo sanitizador.", "evidencia": "git check-ignore/ls-files + leitura (valores nao impressos)", "veredito": "CONFIRMADO — refuta a premissa 'tudo fora do git'"},
+      {"id": "H12", "titulo": "Triggers vivos fabricam numero", "descricao": "calculate_revenue_converted_by_date trata ausencia como zero; get_exchange_rate_for_date usa a taxa de hoje quando o mes nao tem taxa; process_google_ads_campaign engole excecao e responde sucesso; atribuicao de projeto por sorteio quando o nome nao tem dominio.", "evidencia": "funcoes lidas no banco vivo", "veredito": "CONFIRMADO"},
+      {"id": "H13", "titulo": "Ausencia tratada como zero nas metricas de leilao", "descricao": "search_impression_share e search_click_share, por definicao oficial, nunca sao reportadas como 0 (piso 0,0999); ainda assim 96/96 linhas tem search_click_share=0 e 72/96 tem search_impression_share=0, e nenhuma e NULL. Todo esse zero e fabricado por coalescencia no coletor.", "evidencia": "doc oficial + contagem no banco vivo", "veredito": "CONFIRMADO"},
+      {"id": "H14", "titulo": "PMax fora do search_term_view", "descricao": "Pipeline de termos que assumir cobertura de PMax fica silenciosamente incompleto; o substituto e campaign_search_term_view (com custo), nao o insight (categorias sem cost_micros).", "evidencia": "doc oficial v25", "veredito": "CONFIRMADO com correcao de destino"},
+      {"id": "H15", "titulo": "Recibo de lancamento renderiza recusado/indeterminado como sucesso", "descricao": "Superficie de recibo do fluxo de lancamento trata desfecho nao-sucesso como sucesso e conta recursos criados pelo numero de operacoes.", "evidencia": "componentes de recibo do frontend", "veredito": "CONFIRMADO", "nota": "fora do escopo do Lab, dentro do escopo de 'execucao != resultado'"},
+      {"id": "H16", "titulo": "Trava de escrita fail-open sob concorrencia", "descricao": "A trava FORGE_PERMITIR_ESCRITA esta fechada por default, mas o mecanismo de destravar/destravar e sensivel a concorrencia (reproduzido pela lente de seguranca).", "evidencia": "volc_ads (mecanismo de destrave)", "veredito": "CONFIRMADO", "acao": "revisar antes de qualquer T2"}
+    ],
+    "medium": [
+      {"id": "M1", "descricao": "Colecoes sem data no contrato do Lab (quality, search_terms, negatives) nao tem checagem propria de as-of; o anti-futuro cobre as fontes datadas."},
+      {"id": "M2", "descricao": "cost_spike_ratio usa mediana simples sem sazonalidade semanal — falso positivo REPRODUZIDO pelo autor: serie sabado/domingo/segunda = 3.5M/3.5M/7.0M (retorno normal ao patamar de dia util) da ratio 2.0 >= limite 1.75, emite evento cost_spike, fecha o health gate e BLOQUEIA uma proposta legitima de orcamento. Com janela de 3 dias a 'mediana dos anteriores' e a mediana de 2 pontos, o que torna o gatilho ainda mais fragil.", "reproducao": "PYTHONPATH=backend:. python -c pipeline com daily_metrics sazonais; saida: ratio=2.0, eventos=['budget_limited_with_healthy_quality','cost_spike'], health_gate=bloqueado", "correcao_proposta": "baseline por dia-da-semana ou janela minima de 14 dias antes de habilitar o gatilho; enquanto nao houver historico, o evento deve nascer como 'nao apurado', nunca como veto"},
+      {"id": "M2b", "descricao": "Colecoes sem campo de data (quality, search_terms, negatives) nao passam por checagem de as-of: injetar uma observacao de qualidade extra nao altera o estado da leitura (segue 'atual'). Confirmado pelo autor por injecao controlada. O anti-futuro do kernel cobre apenas as fontes datadas — o que e honesto para o dataset sintetico, mas vira porta de vazamento quando a coleta real trouxer essas colecoes com carimbo proprio.", "reproducao": "duplicacao de quality[0] no cenario budget-limited-healthy: estado permanece 'atual', veredito 'limitado'"},
+      {"id": "M3", "descricao": "idempotency_key da proposta inclui a fotografia inteira (com lido_em), logo varia com o relogio da leitura — a tela a chama de 'Identidade idempotente' sem ser estavel entre leituras."},
+      {"id": "M4", "descricao": "Frontend do Lab expoe jargao (v25/v25.1, regra_id, paths crus, codigos LAB-*) sem teste de sanitizacao equivalente ao do inventario; 'atual/stale/parcial' nao sao visualmente distinguidos alem do gate."},
+      {"id": "M5", "descricao": "Rail anuncia '8/8 cenarios passaram' ao lado de um seletor com 12 cenarios — numero que a amostra nao sustenta."},
+      {"id": "M6", "descricao": "MANIFESTO-PROPRIEDADE.json cobre 9 de 33 flows e omite justamente o flow classificado como BLOCKER; dois sucessores declarados nao existem no Mapa Vivo."},
+      {"id": "M7", "descricao": "Cabecalho de v9_01_trafego_inventario.sql diz 'NAO APLICADO' mas a migration esta aplicada — leitor que confie no arquivo conclui errado."},
+      {"id": "M8", "descricao": "Developer tokens em claro no disco local (inventario e backups); sanitizador com buraco estrutural documentado como cobertura total."},
+      {"id": "M9", "descricao": "Cooldown do ramo mutador do NEXUS v3.0 libera a mutacao quando a leitura do banco nao devolve nada (ausencia lida como permissao)."},
+      {"id": "M10", "descricao": "Fallback de import em contratos.py (try app.trafego / except backend.app.trafego) pode carregar dois modulos distintos conforme o entrypoint."},
+      {"id": "M11", "descricao": "change_event nao cobre 100% (30 dias, Editor fora); usar change_status como complemento."},
+      {"id": "M-tsc", "descricao": "O gate de tipos subiu de 76 para 77 erros; o excedente precisa ser atribuido antes de qualquer alegacao de 'baseline inalterado'."}
+    ],
+    "low": [
+      {"id": "L1", "descricao": "Badge fixo do selo PROTOTIPO e aria-hidden — leitor de tela depende do badge do cabecalho e da moldura."},
+      {"id": "L2", "descricao": "Parametro ausente renderizado como afirmacao positiva 'nao se aplica'."},
+      {"id": "L3", "descricao": "Nome 'Orakul - AI Agent' induz auditor a esperar IA generativa e trigger em tempo real; e cron deterministico."},
+      {"id": "L4", "descricao": "Regra sobre v25.2 escrita duas vezes (dado + literal na UI) e comparada nunca."}
+    ]
+  },
+
+  "achados_refutados": [
+    {"id": "R1", "afirmacao_original": "O ORAKUL auto-adjust contem dois motores Python", "veredito": "REFUTADO", "correcao": "Um unico motor (BEAST, 1.678 linhas). Os pares Motor 1/Motor 2 funcionais estao em orakul-predictive-integrado-v1 e no flow de atuacao; em orakul-02-analysis-engine sao placeholders com retorno hardcoded."},
+    {"id": "R2", "afirmacao_original": "O flow de atuacao ORAKUL usa IA generativa (AI Agent)", "veredito": "REFUTADO", "correcao": "Zero nodes LLM na linhagem de decisao; LLM aparece so em flows de criacao/pauta."},
+    {"id": "R3", "afirmacao_original": "v25.2 existe / e a versao corrente", "veredito": "REFUTADO", "correcao": "v25.1 e a ultima lancada; v25.2 e 'Upcoming' (set/2026). A postura do Lab (v25_2 = nao_afirmada) esta correta."},
+    {"id": "R4", "afirmacao_original": "Para PMax use campaign_search_term_insight no lugar de search_term_view", "veredito": "REFUTADO", "correcao": "O substituto e campaign_search_term_view; o insight devolve categorias agregadas e nao expoe cost_micros."},
+    {"id": "R5", "afirmacao_original": "O caminho de mutacao legado 'pode estar quebrado' por sunset da v21", "veredito": "AJUSTADO", "correcao": "Nao e hipotese: sunset foi 05/08/2026 e /v21 devolve 404 ao vivo. A mutacao esta morta; o defeito ativo e a falha silenciosa e o endpoint anonimo."},
+    {"id": "R6", "afirmacao_original": "Os tokens do Google Ads estao todos fora do git", "veredito": "REFUTADO PARCIALMENTE", "correcao": "inventario-n8n/ e gitignored (confirmado), mas backend/n8n_kw_pautador.json e rastreado e contem credencial em claro."},
+    {"id": "R7", "afirmacao_original": "Apenas dois flows ativos tocam Google Ads", "veredito": "REFUTADO", "correcao": "Doze flows ativos chamam a API; tres carregam nodes de :mutate."},
+    {"id": "R8", "afirmacao_original": "Nao existe nenhum snapshot as-of no banco", "veredito": "AJUSTADO", "correcao": "Existe adsense_daily_snapshots (dominio de receita), mas nenhum snapshot as-of do dominio de decisao nem tabela de acuracia."},
+    {"id": "R9", "afirmacao_original": "O Decision Intelligence Lab esta pronto para shadow", "veredito": "REFUTADO", "correcao": "Estado partial correto: sem coleta real, sem persistencia, sem aprovacao, sem recibo."},
+    {"id": "R10", "afirmacao_original": "O manifesto classifica todos os flows historicos com sucessor declarado", "veredito": "REFUTADO", "correcao": "Cobre 9 de 33 flows e omite o flow BLOCKER."}
+  ],
+
+  "componentes": [
+    {"nome": "volc_ads/inteligencia_decisao", "papel": "kernel deterministico do Lab (validacao, features anulaveis, politicas, eventos, conflitos, diagnostico, proposta bloqueada, replay)", "estado": "partial, hermetico, testado", "destino": "biblioteca Python do VOLC — base do worker"},
+    {"nome": "volc_ads/inteligencia_search", "papel": "governanca bidirecional de negativas", "estado": "partial", "destino": "biblioteca"},
+    {"nome": "backend/app/trafego/intencao.py", "papel": "RegraDeOtimizacao + avaliar_suficiencia (autoridade de regra)", "estado": "vivo", "destino": "permanece autoridade"},
+    {"nome": "supabase/migrations/v9_01", "papel": "identidade e espelho de campanha", "estado": "aplicada", "destino": "reutilizar"},
+    {"nome": "supabase/migrations/v10_01 + v10_02", "papel": "ledger de intencao/lote/recibo e de regra/proposta/aprovacao/aplicacao", "estado": "NAO aplicada, sem writer", "destino": "aplicar com autorizacao; e o ledger unico"},
+    {"nome": "inventario-n8n/flows/orakul-vos-auto-adjust", "papel": "BEAST (motor historico de ajuste)", "estado": "inativo", "destino": "memoria; reguas reimplementadas com versao e teste"},
+    {"nome": "inventario-n8n/flows/atuacao-apply-bidding-webhook-v2", "papel": "executor de lance por webhook", "estado": "ativo, sem auth, v21 morta", "destino": "aposentar"},
+    {"nome": "inventario-n8n/flows/atuacao-orakul-ai-agent-webgo", "papel": "produtor ativo de orientacao_* (deterministico)", "estado": "ativo, escreve no Supabase legado", "destino": "substituir por diagnostico canonico e desligar"},
+    {"nome": "src/components/trafego/diagnostico + hub", "papel": "EscadaDeEntrega, CaixaDePropostas, PortaoDeAprovacao", "estado": "UI completa, aprovacao desconectada", "destino": "conectar a endpoint quando v10_02 existir"}
+  ],
+
+  "gaps": [
+    "coleta real read-only (nenhum GoogleAdsRow atravessa o normalizador produtivo)",
+    "persistencia do ciclo de decisao (v10 nao aplicada, sem writer)",
+    "aprovacao humana conectada ponta a ponta",
+    "recibo de decisao em banco (hoje so arquivo, e so para criacao)",
+    "memoria cientifica: previsao vs realizado, acuracia, contrafactual",
+    "heartbeat/recibo por rotina (P02-T04)",
+    "shadow real sem vazamento de futuro",
+    "central de decisoes, timeline por campanha e tela de conflitos",
+    "teste de sanitizacao de jargao no Lab",
+    "correcao de zero-fill nas metricas de leilao ja gravadas (backfill) e nos coletores"
+  ],
+
+  "migrations_propostas_nao_aplicadas": [
+    {"id": "v12_01_fotografia", "objeto": "trafego_fotografia", "finalidade": "snapshot as-of que alimentou cada decisao; base do replay honesto"},
+    {"id": "v12_02_memoria_cientifica", "objeto": "trafego_previsao, trafego_realizado", "finalidade": "medir erro de previsao, uplift, tempo ate efeito, drawdown"},
+    {"id": "v12_03_critica", "objeto": "trafego_critica_llm", "finalidade": "auditoria, custo e telemetria da critica LLM"},
+    {"id": "v12_04_jobs", "objeto": "trafego_job", "finalidade": "fila SKIP LOCKED + heartbeat + idempotencia por rotina"},
+    {"id": "v12_05_revogacao_legado", "objeto": "REVOKE nominal em campaigns/daily_campaign_metrics/users/projects/operational_costs/user_campaigns", "finalidade": "fechar B2 (v8_07 e preventiva, nao corrige tabela existente)"},
+    {"id": "v12_06_identidade", "objeto": "FK daily_campaign_metrics.campaign_id -> campaigns (NOT VALID depois VALIDATE)", "finalidade": "fechar H7"},
+    {"id": "v12_07_view", "objeto": "vw_decisao_central", "finalidade": "projecao read-only da central de decisoes"}
+  ],
+
+  "tasks_propostas": [
+    {"id_sugerido": "SEG-000", "titulo": "Rotacionar JWT_SECRET e reemitir chaves do Supabase", "prioridade": "emergencia", "motivo": "B0"},
+    {"id_sugerido": "P09-T10", "titulo": "Neutralizar o executor legado de mutacao por webhook", "prioridade": "alta", "motivo": "B1, H1, H2, H10"},
+    {"id_sugerido": "P06-T09", "titulo": "Revogar CRUD de anon/authenticated no legado sem RLS", "prioridade": "alta", "motivo": "B2"},
+    {"id_sugerido": "P05-T12", "titulo": "Consertar /provar e /subir e trocar o teste-duble por contrato real", "prioridade": "alta", "motivo": "B3"},
+    {"id_sugerido": "P09-T11", "titulo": "Unificar identidade e idempotencia do caminho real com o ledger", "prioridade": "media", "motivo": "H5, H8"},
+    {"id_sugerido": "P14-T03", "titulo": "Fundar a memoria cientifica (previsao vs realizado)", "prioridade": "media", "motivo": "gap de acuracia"},
+    {"id_sugerido": "P06-T10", "titulo": "Corrigir zero-fill das metricas de leilao e fazer backfill declarado", "prioridade": "media", "motivo": "H13"}
+  ],
+
+  "dependencias": [
+    "B0 antes de qualquer outra acao de seguranca ou de dados",
+    "v10_01 + v10_02 aplicadas antes de qualquer persistencia de decisao",
+    "coleta real antes de shadow; shadow antes de canario de aplicacao; canario antes de T2",
+    "trafego_previsao/realizado antes de qualquer threshold aprendido ou T3",
+    "aprovacao conectada antes de qualquer botao que escreva"
+  ],
+
+  "testes": [
+    {"comando": "cd backend && PYTHONPATH=.. .venv/bin/python -m pytest tests/test_inteligencia_decisao_lab.py -q", "resultado": "28 passed"},
+    {"comando": "PYTHONPATH=backend:. backend/.venv/bin/python -c 'from volc_ads.inteligencia_decisao import executar_replay; print(executar_replay())'", "resultado": "8/8 cenarios dourados passaram, falharam=0"},
+    {"comando": "cd backend && PYTHONPATH=.. .venv/bin/python -m pytest tests/ -q", "resultado": "1109 passed, 1 failed, 5 skipped — a falha e B3 (regressao viva), nao ruido herdado"},
+    {"comando": "npx tsc --noEmit -p tsconfig.app.json", "resultado": "77 erros (baseline documentado 76; excedente pre-existente no HEAD, ver M-tsc)"},
+    {"comando": "npm run build", "resultado": "exit 0, build em 7,3s"},
+    {"comando": "python3 scripts/atualizar_grafo_volc_os.py --check", "resultado": "current: true"}
+  ],
+
+  "fontes_oficiais": [
+    {"url": "https://developers.google.com/google-ads/api/docs/release-notes", "acesso": "2026-08-28", "uso": "v25.1 e a ultima; v25.2 inexistente"},
+    {"url": "https://developers.google.com/google-ads/api/docs/sunset-dates", "acesso": "2026-08-28", "uso": "v25 sunset ago/2027; v25.1/v25.2/v26 em Upcoming"},
+    {"url": "https://ads-developers.googleblog.com/", "acesso": "2026-08-28", "uso": "post oficial: v21 sunset em 05/08/2026"},
+    {"url": "https://developers.google.com/google-ads/api/fields/v25/search_term_view", "acesso": "2026-08-28", "uso": "PMax fora; substituto campaign_search_term_view"},
+    {"url": "https://developers.google.com/google-ads/api/docs/change-event", "acesso": "2026-08-28", "uso": "janela 30 dias, LIMIT<=10000, Editor nao capturado"},
+    {"url": "https://developers.google.com/google-ads/api/docs/concepts/api-structure", "acesso": "2026-08-28", "uso": "validate_only"},
+    {"url": "https://developers.google.com/google-ads/api/docs/recommendations", "acesso": "2026-08-28", "uso": "tipos, apply/dismiss, auto-apply limitado"},
+    {"url": "https://developers.google.com/google-ads/api/docs/best-practices/quotas", "acesso": "2026-08-28", "uso": "quotas por access level"}
+  ],
+
+  "ausencias_de_prova": [
+    "Estado 'ativo' dos flows vem do snapshot inventariado, nao da instancia n8n viva — verificar no n8n e acao do dono.",
+    "A tabela oficial de sunset por versao nao pode ser extraida integralmente por ferramenta automatizada em algumas tentativas; a data da v21 foi confirmada por post oficial e por sonda ao vivo.",
+    "Nao foi confirmado se o nome da campanha do canario carrega a marca VOLC-CANARY esperada — afeta a deduplicacao por marca numa retomada.",
+    "Detalhes campo-a-campo de mutabilidade de varios recursos v25 nao foram extraiveis das paginas de referencia (SPA); usar o proto do SDK como fonte legivel."
+  ]
+}

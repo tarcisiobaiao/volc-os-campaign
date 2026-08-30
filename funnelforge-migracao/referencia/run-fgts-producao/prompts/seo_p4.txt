@@ -1,0 +1,227 @@
+[user]
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 21/07/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: <!-- wp:paragraph -->
+<p><strong>Toque na opção certa e saiba exatamente como agir com seu fundo de garantia hoje ✅</strong></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>⚠️ Regras de demissão e quitação de empréstimo FGTS »</strong></a></div>
+<!-- /wp:button -->
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1" style="border-radius:10px;background-color:#008353"><strong>🔎 Como consultar FGTS pelo CPF e ativar saque »</strong></a></div>
+<!-- /wp:button -->
+<!-- wp:spacer {"height":"5px"} --><div style="height:5px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#2563eb"><strong>📱 Bancos para antecipar FGTS via Pix e WhatsApp »</strong></a></div>
+<!-- /wp:button -->
+</div><!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>O acesso ao Fundo de Garantia do Tempo de Serviço (FGTS) passou por importantes atualizações regulatórias neste ano de 2026, exigindo atenção redobrada do trabalhador para evitar que o saldo fique bloqueado.</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>Para definir o melhor caminho para o seu bolso hoje, <em>em que etapa você está?</em> Entender sua situação atual evita erros graves no aplicativo da Caixa Econômica Federal (CEF).</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Para facilitar sua navegação e garantir que você tome a decisão certa para a sua realidade, identifique seu momento atual:</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é <strong>sanar as maiores objeções e medos de longo prazo</strong> (como perda de emprego, saldo travado ou recontratação), gerando segurança total para a tomada de decisão, toque no caminho de <a href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3">Fui Demitido e Optei pelo Saque-Aniversário? Como Quitar, Sacar a Rescisão ou Antecipar de Novo</a>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é <strong>guiar a execução prática da consulta e ativação</strong>, eliminando a ansiedade de não saber mexer no aplicativo oficial, toque no caminho de <a href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1">Como Consultar o FGTS pelo CPF e Ativar o Saque-Aniversário no Aplicativo</a>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>• Se o seu caso é <strong>facilitar a conversão imediata</strong>, mostrando opções extremamente acessíveis e de contratação instantânea pelo celular, toque no caminho de <a href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2">Empréstimo FGTS a partir de R$ 20 a R$ 50 Reais via Pix e WhatsApp: Melhores Bancos</a>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Requisitos de Elegibilidade: Quem realmente pode antecipar?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>A antecipação do saldo do FGTS é uma modalidade de crédito regulada pelo Conselho Curador do FGTS e operada por diversas instituições financeiras sob as diretrizes do Banco Central do Brasil (BC). No entanto, para ter acesso aos valores em 2026, é preciso cumprir regras claras de elegibilidade.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Muitos trabalhadores acreditam que basta ter trabalhado com carteira assinada para liberar o crédito, mas existem critérios técnicos eliminatórios que podem travar a operação caso não sejam seguidos à risca.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<ul style="list-style:none;padding:0;margin:24px 0">
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Ser maior de 18 anos (ou emancipado legalmente)</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Possuir saldo em contas ativas ou inativas do FGTS</li>
+<li style="padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px">✔️ Ter a modalidade Saque-Aniversário ativa no aplicativo oficial</li>
+</ul>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>Um detalhe crucial que frequentemente gera dúvidas é a <u>carência obrigatória de 90 dias</u> após a adesão ao Saque-Aniversário. Durante esse período, o trabalhador fica impedido de autorizar os bancos a consultarem seu saldo para fins de empréstimo.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Quer evitar erros na ativação e descobrir o passo a passo exato para verificar seu saldo disponível de forma segura?</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1" style="border-radius:10px;background-color:#008353"><strong>Como consultar o FGTS pelo CPF e ativar o saque »</strong></a></div>
+<!-- /wp:button -->
+</div><!-- /wp:buttons -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Valores e Canais Rápidos: Antecipação a partir de R$ 20 via Pix ou WhatsApp</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Diferente do que ocorre nos canais tradicionais, onde as exigências de valores mínimos costumam ser elevadas, o mercado atual de fintechs e correspondentes bancários autorizados pelo BC flexibilizou o acesso ao crédito.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Embora a regulação oficial estabeleça limites de R$ 100 a R$ 500 por parcela anual, hoje é perfeitamente possível realizar simulações e contratações práticas de valores muito menores, facilitando o acesso rápido ao dinheiro em situações de emergência.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:table {"className":"is-style-stripes"} -->
+<figure class="wp-block-table is-style-stripes"><table><thead><tr><th>Instituição Financeira</th><th>Valor Mínimo / Canal de Atendimento</th></tr></thead><tbody><tr><td>Fintech Juca</td><td>A partir de R$ 20,00 (via aplicativo ou site)</td></tr><tr><td>Plataforma meutudo</td><td>A partir de R$ 50,00 (com liberação rápida via Pix)</td></tr><tr><td>Fintech Up.p</td><td>100% digital com contratação direta pelo WhatsApp</td></tr><tr><td>Banco Bmg</td><td>Liberação de crédito direto na conta do cliente</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:paragraph -->
+<p>A grande vantagem dessa modalidade é a agilidade: o processo de contratação ocorre de forma totalmente digital, utilizando ferramentas cotidianas como o WhatsApp, e o depósito do dinheiro é realizado via Pix em poucos minutos na conta informada.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Deseja ver a lista completa de instituições e como simular a liberação do seu saldo usando apenas o celular?</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2" style="border-radius:10px;background-color:#2563eb"><strong>Ver bancos para antecipar FGTS via Pix e WhatsApp »</strong></a></div>
+<!-- /wp:button -->
+</div><!-- /wp:buttons -->
+
+<!-- wp:heading {"level":2} -->
+<h2>Regras Especiais: Demissão, Quitação de Saldo e Novas Antecipações</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>A decisão de antecipar o FGTS exige o conhecimento de regras específicas estabelecidas pelo Ministério do Trabalho e Emprego (MTE).</p>
+<!-- /wp:paragraph -->
+<!-- wp:paragraph -->
+<p>A principal delas diz respeito ao desligamento da empresa: ao optar pelo Saque-Aniversário, o trabalhador perde o direito ao saque integral do saldo (Saque-Rescisão) em caso de demissão sem justa causa, mantendo apenas a multa rescisória de 40%.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Por outro lado, a quitação do empréstimo ocorre de forma totalmente automática, uma vez por ano, diretamente do saldo do fundo, sem gerar boletos ou parcelas mensais que pesem no orçamento.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:html -->
+<div style="border-left:3px solid #cbd5e1;margin:24px 0;padding-left:18px">
+<div style="margin-bottom:16px"><p style="margin:0;font-weight:700">Até 31 de outubro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">É permitida a antecipação de até 5 parcelas anuais do FGTS de forma simultânea.</p></div>
+<div><p style="margin:0;font-weight:700">A partir de 1º de novembro de 2026</p><p style="margin:2px 0 0;color:#475569;font-size:0.95em">O limite máximo de antecipação será reduzido para até 3 parcelas anuais, conforme novas diretrizes vigentes.</p></div>
+</div>
+<!-- /wp:html -->
+
+<!-- wp:paragraph -->
+<p>Se você já realizou uma antecipação anteriormente, ainda é possível contratar novas parcelas, desde que possua saldo residual suficiente e respeite os limites operacionais vigentes.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Quer entender detalhadamente o impacto da demissão e como funciona a quitação automática do saldo?</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons">
+<!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#ea580c"}}} -->
+<div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3" style="border-radius:10px;background-color:#ea580c"><strong>Entender regras de demissão e quitação do FGTS »</strong></a></div>
+<!-- /wp:button -->
+</div><!-- /wp:buttons -->
+
+<!-- wp:paragraph -->
+<p>Aproveite para se planejar antes da mudança de regras que ocorrerá no final do ano. Se você ainda tem dúvidas sobre como gerenciar seu saldo pelo celular, veja 👉 <a href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1">Como consultar o FGTS pelo CPF de forma rápida »</a>.</p>
+<!-- /wp:paragraph -->
+
+<p><small><em>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</em></small></p>
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

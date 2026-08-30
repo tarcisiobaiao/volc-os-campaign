@@ -1,0 +1,375 @@
+<!-- REGRA_MOTOR: SOLUTION comparativa. Oferta comercial NUNCA vira regra geral. -->
+
+<!-- wp:paragraph -->
+<p>Antes de procurar banco, duas coisas resolvem a maior parte das dúvidas: saber se você já pode contratar hoje e entender por que o valor anunciado quase nunca é o valor que cai na conta.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/" style="border-radius:10px;background-color:#008353"><strong>Ainda não conferi meu saldo no App FGTS &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"8px"} -->
+<div style="height:8px" aria-hidden="true" class="wp-block-spacer"></div>
+<!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/" style="border-radius:10px;background-color:#2563eb"><strong>Fui demitido ou já tenho antecipação &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:paragraph {"align":"center","fontSize":"small"} -->
+<p class="has-text-align-center has-small-font-size"><em>* Você permanece neste mesmo site *</em></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"anchor":"piso"} -->
+<h2 class="wp-block-heading" id="piso">O piso de R$ 100 não significa o que a maioria entende</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>A norma em vigor desde o fim de 2025 diz que <strong>cada saque anual cedido</strong> à antecipação precisa ficar entre <strong>R$ 100 e R$ 500</strong>. O piso é do direito anual dado em garantia — não do seu saldo, não do contrato e não do dinheiro que entra na conta.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:pullquote -->
+<figure class="wp-block-pullquote"><blockquote><p>Contrato e direito anual cedido são grandezas diferentes. Uma instituição pode anunciar contrato abaixo de R$ 100 sem contrariar a norma.</p></blockquote></figure>
+<!-- /wp:pullquote -->
+
+<!-- wp:columns -->
+<div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:heading {"level":3} --><h3 class="wp-block-heading">O que a norma fixa</h3><!-- /wp:heading --><!-- wp:paragraph --><p>De <strong>R$ 100 a R$ 500</strong> por saque anual cedido. É um limite regulatório, igual para todas as instituições.</p><!-- /wp:paragraph --></div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column"><!-- wp:heading {"level":3} --><h3 class="wp-block-heading">O que cada banco define</h3><!-- /wp:heading --><!-- wp:paragraph --><p>Valor mínimo de contrato, taxa, CET e prazo de liberação. Varia por instituição e muda sem aviso.</p><!-- /wp:paragraph --></div><!-- /wp:column --></div>
+<!-- /wp:columns -->
+
+<!-- wp:paragraph -->
+<p>E o inverso também vale: ver "a partir de R$ 20 via Pix" em algum anúncio não significa que a regra mudou. Significa que aquele número se refere a outra coisa — normalmente ao contrato, e não ao direito anual cedido.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"anchor":"elegibilidade"} -->
+<h2 class="wp-block-heading" id="elegibilidade">Você já pode contratar hoje?</h2>
+<!-- /wp:heading -->
+
+<!-- wp:html -->
+<!--
+WIDGET: Roteador de elegibilidade básica
+POSICIONAMENTO RECOMENDADO: P2, antes de qualquer comparação comercial.
+FUNÇÃO: impedir que o visitante compare ofertas antes de verificar modalidade, prazo, piso do direito anual e operação existente.
+NÃO COLETA: CPF, nome, telefone, saldo exato ou dado bancário.
+-->
+<section class="cup-widget cup-eligibility" id="cupEligibilityRouter" aria-labelledby="cup-er-title">
+  <div class="cup-widget__intro">
+    <div class="cup-widget__eyebrow">Verificação rápida</div>
+    <h2 id="cup-er-title">Qual é o seu próximo passo?</h2>
+      <div class="cup-widget__chamada">Cinco condições decidem se você já pode contratar. Nenhuma delas depende do banco.</div>
+    <div>Responda apenas o que aparece no App FGTS. Isto não é análise de crédito nem promessa de aprovação.</div>
+  </div>
+
+  <div class="cup-widget__stage">
+    <form class="cup-widget__panel is-active" id="cup-er-form" novalidate aria-hidden="false">
+      <div class="cup-widget__error-summary" id="cup-er-summary" role="alert" tabindex="-1" hidden></div>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="modality" aria-describedby="cup-er-modality-hint cup-er-modality-error">
+        <legend>1. Qual modalidade aparece como ativa?</legend>
+        <div class="cup-field__hint" id="cup-er-modality-hint">Consulte a área de modalidade de saque no App FGTS.</div>
+        <label><input type="radio" name="modality" value="birthday"> Saque-Aniversário</label>
+        <label><input type="radio" name="modality" value="termination"> Saque-Rescisão</label>
+        <label><input type="radio" name="modality" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-er-modality-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="waiting" aria-describedby="cup-er-waiting-hint cup-er-waiting-error">
+        <legend>2. Já se passaram 90 dias desde a adesão ao Saque-Aniversário?</legend>
+        <div class="cup-field__hint" id="cup-er-waiting-hint">O prazo conta da data da opção pela modalidade.</div>
+        <label><input type="radio" name="waiting" value="yes"> Sim</label>
+        <label><input type="radio" name="waiting" value="no"> Não</label>
+        <label><input type="radio" name="waiting" value="unknown"> Não sei a data</label>
+        <div class="cup-field__error" id="cup-er-waiting-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="annual" aria-describedby="cup-er-annual-hint cup-er-annual-error">
+        <legend>3. Seu direito anual disponível para cessão chega a R$ 100?</legend>
+        <div class="cup-field__hint" id="cup-er-annual-hint">Não use o saldo total como resposta. Consulte o saque anual calculado.</div>
+        <label><input type="radio" name="annual" value="at_least_100"> Sim, R$ 100 ou mais</label>
+        <label><input type="radio" name="annual" value="below_100"> Não, fica abaixo de R$ 100</label>
+        <label><input type="radio" name="annual" value="unknown"> Não sei calcular</label>
+        <div class="cup-field__error" id="cup-er-annual-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="operation" aria-describedby="cup-er-operation-hint cup-er-operation-error">
+        <legend>4. Existe antecipação ativa vinculada à próxima competência anual?</legend>
+        <div class="cup-field__hint" id="cup-er-operation-hint">Cada competência anual pode estar ligada a apenas um contrato.</div>
+        <label><input type="radio" name="operation" value="no"> Não</label>
+        <label><input type="radio" name="operation" value="yes"> Sim</label>
+        <label><input type="radio" name="operation" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-er-operation-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset class="cup-field" role="radiogroup" data-question="authorization" aria-describedby="cup-er-authorization-hint cup-er-authorization-error">
+        <legend>5. A instituição que você pretende consultar já está autorizada no App FGTS?</legend>
+        <div class="cup-field__hint" id="cup-er-authorization-hint">Autorizar a consulta permite acesso aos dados necessários, mas não contrata o empréstimo.</div>
+        <label><input type="radio" name="authorization" value="yes"> Sim</label>
+        <label><input type="radio" name="authorization" value="no"> Não</label>
+        <label><input type="radio" name="authorization" value="unknown"> Não sei confirmar</label>
+        <div class="cup-field__error" id="cup-er-authorization-error" aria-live="polite"></div>
+      </fieldset>
+
+      <button class="cup-widget__submit" type="submit">Ver meu próximo passo</button>
+      <div class="cup-widget__privacy">Suas respostas ficam no navegador e não incluem dados pessoais ou valores exatos.</div>
+    </form>
+
+    <div class="cup-widget__panel cup-result" id="cup-er-result" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true" inert>
+      <div class="cup-result__eyebrow" id="cup-er-result-label">Resultado da verificação</div>
+      <h3 id="cup-er-result-title" tabindex="-1"></h3>
+      <div id="cup-er-result-body"></div>
+      <div class="cup-result__reason" id="cup-er-result-reason"></div>
+      <a class="cup-widget__submit cup-result__cta" id="cup-er-result-cta" href="#"></a>
+      <button class="cup-widget__back" id="cup-er-back" type="button">Alterar respostas</button>
+      <div class="cup-widget__privacy">A resposta organiza o próximo passo; somente uma instituição pode avaliar e aprovar uma contratação.</div>
+    </div>
+  </div>
+</section>
+
+<style>
+    [id^="cup"] .cup-widget__chamada{margin:8px 0 20px;color:#526079;font-size:.94rem;line-height:1.55}
+    [id^="cup"] .cup-txt,[id^="cup"] .cup-sub,[id^="cup"] .cup-hint,[id^="cup"] .cup-nota,[id^="cup"] .cup-erro,[id^="cup"] .cup-porque,[id^="cup"] .cup-field__hint,[id^="cup"] .cup-field__error{margin:0 0 8px}
+#cupEligibilityRouter{--cw-ink:#14213d;--cw-muted:#536079;--cw-line:#dce3ed;--cw-soft:#f5f8fc;--cw-accent:#0968c7;--cw-danger:#a32323;box-sizing:border-box;max-width:760px;margin:2rem auto;padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:18px;background:#fff;color:var(--cw-ink);box-shadow:0 16px 40px rgba(20,33,61,.08);font-family:inherit}
+#cupEligibilityRouter *{box-sizing:border-box}
+#cupEligibilityRouter .cup-widget__eyebrow,#cupEligibilityRouter .cup-result__eyebrow{margin:0 0 .35rem;color:var(--cw-accent);font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+#cupEligibilityRouter h2{margin:.2rem 0 .55rem;line-height:1.15}#cupEligibilityRouter h3{margin:.25rem 0 .75rem;line-height:1.2}
+#cupEligibilityRouter .cup-widget__intro>div:last-child{margin-bottom:1.25rem;color:var(--cw-muted);line-height:1.55}
+#cupEligibilityRouter .cup-widget__stage{display:grid;align-items:start}
+#cupEligibilityRouter .cup-widget__panel{grid-area:1/1;min-width:0;visibility:hidden;opacity:0;pointer-events:none}
+#cupEligibilityRouter .cup-widget__panel.is-active{visibility:visible;opacity:1;pointer-events:auto}
+#cupEligibilityRouter .cup-field{min-width:0;margin:0 0 1rem;padding:1rem;border:1px solid var(--cw-line);border-radius:12px;background:var(--cw-soft)}
+#cupEligibilityRouter .cup-field[data-invalid="true"]{border-color:var(--cw-danger)}
+#cupEligibilityRouter legend{padding:0 .25rem;font-weight:750;line-height:1.35}
+#cupEligibilityRouter .cup-field__hint{margin:.25rem 0 .7rem;color:var(--cw-muted);font-size:.9rem;line-height:1.45}
+#cupEligibilityRouter label{display:flex;gap:.55rem;align-items:flex-start;margin:.45rem 0;line-height:1.4;cursor:pointer}
+#cupEligibilityRouter input{width:1.15rem;height:1.15rem;margin-top:.14rem;accent-color:var(--cw-accent);flex:0 0 auto}
+#cupEligibilityRouter input:focus-visible,#cupEligibilityRouter button:focus-visible,#cupEligibilityRouter a:focus-visible,#cupEligibilityRouter h3:focus-visible{outline:3px solid #f4b942;outline-offset:3px}
+#cupEligibilityRouter .cup-field__error{min-height:0;margin:.45rem 0 0;color:var(--cw-danger);font-size:.88rem;font-weight:700}
+#cupEligibilityRouter .cup-widget__error-summary{margin:0 0 1rem;padding:.8rem 1rem;border:1px solid var(--cw-danger);border-radius:10px;color:var(--cw-danger);background:#fff7f7;font-weight:700}
+#cupEligibilityRouter .cup-widget__submit{display:inline-flex;justify-content:center;align-items:center;width:100%;min-height:48px;padding:.75rem 1rem;border:2px solid var(--cw-accent);border-radius:10px;background:var(--cw-accent);color:#fff;font:inherit;font-weight:800;text-align:center;text-decoration:none;cursor:pointer}
+#cupEligibilityRouter .cup-widget__submit:hover{background:#0756a5;border-color:#0756a5}
+#cupEligibilityRouter .cup-widget__privacy{margin:.75rem 0 0;color:var(--cw-muted);font-size:.82rem;line-height:1.45}
+#cupEligibilityRouter .cup-result{padding:clamp(1.1rem,4vw,2rem);border:1px solid var(--cw-line);border-radius:14px;background:linear-gradient(145deg,#f8fbff,#eef5ff)}
+#cupEligibilityRouter .cup-result__reason{margin:1rem 0;padding:1rem;border-left:4px solid var(--cw-accent);border-radius:0 9px 9px 0;background:#fff;line-height:1.5}
+#cupEligibilityRouter .cup-result__cta{margin-top:.25rem}
+#cupEligibilityRouter .cup-widget__back{display:block;margin:.9rem auto 0;padding:.45rem;border:0;background:transparent;color:var(--cw-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){#cupEligibilityRouter .cup-widget__panel{transition:opacity .18s ease}#cupEligibilityRouter button,#cupEligibilityRouter a{transition:background-color .18s ease,border-color .18s ease}}
+@media (max-width:520px){#cupEligibilityRouter{border-radius:13px}#cupEligibilityRouter .cup-field{padding:.85rem}}
+</style>
+
+<script>
+(function(){
+  'use strict';
+  var root=document.getElementById('cupEligibilityRouter');
+  if(!root||root.dataset.ready==='true'){return;}
+  root.dataset.ready='true';
+
+  var form=root.querySelector('#cup-er-form');
+  var result=root.querySelector('#cup-er-result');
+  var title=root.querySelector('#cup-er-result-title');
+  var body=root.querySelector('#cup-er-result-body');
+  var reason=root.querySelector('#cup-er-result-reason');
+  var cta=root.querySelector('#cup-er-result-cta');
+  var back=root.querySelector('#cup-er-back');
+  var summary=root.querySelector('#cup-er-summary');
+  var names=['modality','waiting','annual','operation','authorization'];
+  var emitted={};
+
+  var routes={
+    activate:{title:'Primeiro, confirme ou ative a modalidade',body:'A antecipação depende do Saque-Aniversário ativo. Se o aplicativo mostra Saque-Rescisão, siga o passo a passo antes de comparar ofertas.',reason:'Por quê: a modalidade informada ainda não permite avançar para a autorização da antecipação.',cta:'Ver onde conferir a modalidade',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    confirm_modality:{title:'Confirme a modalidade no App FGTS',body:'Sem saber qual modalidade está ativa, qualquer estimativa pode levar ao caminho errado.',reason:'Por quê: Saque-Aniversário e Saque-Rescisão têm efeitos diferentes sobre antecipação e demissão.',cta:'Ver onde consultar no App FGTS',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    wait_90:{title:'O prazo de 90 dias ainda precisa terminar',body:'A autorização necessária à antecipação só pode ocorrer depois de pelo menos 90 dias da opção pelo Saque-Aniversário.',reason:'Por quê: esse é um prazo regulatório; não depende da velocidade de análise de um banco.',cta:'Revisar o passo a passo e o prazo',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    confirm_date:{title:'Confirme a data da sua adesão',body:'Localize no aplicativo quando o Saque-Aniversário foi ativado e conte os 90 dias antes de seguir.',reason:'Por quê: sem a data, não é possível afirmar que a autorização já está disponível.',cta:'Ver o passo a passo no App FGTS',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    below_floor:{title:'O direito anual informado fica abaixo do piso de cessão',body:'A regra atual exige pelo menos R$ 100 em cada direito anual cedido ao empréstimo.',reason:'Por quê: saldo total, saque anual calculado e valor cedido não são o mesmo número. Refaça o cálculo com a tabela legal.',cta:'Recalcular o saque anual',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/#calculo'},
+    calculate:{title:'Calcule o saque anual antes de comparar',body:'Use a soma dos saldos vinculados, a alíquota da faixa e a parcela adicional. Não responda com o saldo total.',reason:'Por quê: a faixa de R$ 100 a R$ 500 se aplica a cada direito anual cedido, não ao saldo mostrado na tela inicial.',cta:'Usar a tabela oficial explicada',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/#calculo'},
+    active_operation:{title:'Verifique a operação que já está vinculada',body:'A próxima competência anual não pode ficar ligada a dois contratos. Pode ser necessário liquidar a operação relacionada antes de reutilizá-la.',reason:'Por quê: a regra permite um contrato por competência anual.',cta:'Entender quitação e bloqueio',url:'https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/#quitar-antecipacao'},
+    confirm_operation:{title:'Confirme se existe antecipação ativa',body:'Consulte os contratos ou bloqueios antes de iniciar uma nova comparação.',reason:'Por quê: uma operação vinculada à próxima competência altera o que pode ser contratado agora.',cta:'Ver como interpretar esse estado',url:'https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/'},
+    authorize:{title:'Falta autorizar a consulta no App FGTS',body:'Escolha a instituição no menu de autorização do aplicativo. Essa etapa permite a consulta; não cria contrato.',reason:'Por quê: sem a autorização da instituição selecionada, ela não consegue consultar os dados necessários para apresentar a operação.',cta:'Ver o caminho exato no App FGTS',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    confirm_authorization:{title:'Confirme a autorização antes de seguir',body:'Abra a lista de instituições autorizadas no App FGTS e verifique se a instituição desejada aparece.',reason:'Por quê: autorizar consulta e contratar são etapas diferentes, mas a consulta precisa estar autorizada para a instituição escolhida.',cta:'Ver onde conferir a autorização',url:'https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/'},
+    compare:{title:'As condições informadas permitem comparar caminhos',body:'Agora compare taxa, CET, quantidade de competências cedidas e valor líquido. Isso ainda não representa aprovação.',reason:'Por quê: você informou Saque-Aniversário ativo, prazo de 90 dias cumprido, direito anual a partir de R$ 100, nenhuma operação vinculada à próxima competência e consulta autorizada.',cta:'Comparar limites e caminhos para receber',url:'#comparar'}
+  };
+
+  function pushOnce(key,eventName,data){
+    if(emitted[key]){return;}
+    emitted[key]=true;
+    window.dataLayer=window.dataLayer||[];
+    window.dataLayer.push(Object.assign({event:eventName,widget_id:'eligibility_router'},data||{}));
+  }
+
+  function valueOf(name){
+    var selected=form.querySelector('input[name="'+name+'"]:checked');
+    return selected?selected.value:'';
+  }
+
+  function clearErrors(){
+    summary.hidden=true;
+    summary.textContent='';
+    root.querySelectorAll('.cup-field').forEach(function(field){field.removeAttribute('data-invalid');field.removeAttribute('aria-invalid');field.querySelectorAll('input[type="radio"]').forEach(function(input){input.removeAttribute('aria-invalid');});});
+    root.querySelectorAll('.cup-field__error').forEach(function(error){error.textContent='';});
+  }
+
+  function validate(){
+    clearErrors();
+    var missing=names.filter(function(name){return !valueOf(name);});
+    if(!missing.length){return true;}
+    missing.forEach(function(name){
+      var field=form.querySelector('[data-question="'+name+'"]');
+      field.dataset.invalid='true';
+      field.setAttribute('aria-invalid','true');
+      field.querySelectorAll('input[type="radio"]').forEach(function(input){input.setAttribute('aria-invalid','true');});
+      field.querySelector('.cup-field__error').textContent='Escolha uma opção para continuar.';
+    });
+    summary.textContent='Responda às '+missing.length+' pergunta'+(missing.length>1?'s':'')+' marcada'+(missing.length>1?'s':'')+'.';
+    summary.hidden=false;
+    summary.focus();
+    pushOnce('validation','widget_validation_error',{error_type:'missing_answer'});
+    return false;
+  }
+
+  function decide(){
+    var modality=valueOf('modality');
+    var waiting=valueOf('waiting');
+    var annual=valueOf('annual');
+    var operation=valueOf('operation');
+    var authorization=valueOf('authorization');
+    if(modality==='termination'){return 'activate';}
+    if(modality==='unknown'){return 'confirm_modality';}
+    if(waiting==='no'){return 'wait_90';}
+    if(waiting==='unknown'){return 'confirm_date';}
+    if(annual==='below_100'){return 'below_floor';}
+    if(annual==='unknown'){return 'calculate';}
+    if(operation==='yes'){return 'active_operation';}
+    if(operation==='unknown'){return 'confirm_operation';}
+    if(authorization==='no'){return 'authorize';}
+    if(authorization==='unknown'){return 'confirm_authorization';}
+    return 'compare';
+  }
+
+  function setPanel(showResult){
+    form.classList.toggle('is-active',!showResult);
+    form.setAttribute('aria-hidden',String(showResult));
+    form.inert=showResult;
+    result.classList.toggle('is-active',showResult);
+    result.setAttribute('aria-hidden',String(!showResult));
+    result.inert=!showResult;
+  }
+
+  form.addEventListener('change',function(){pushOnce('start','widget_start');});
+  form.addEventListener('submit',function(event){
+    event.preventDefault();
+    pushOnce('start','widget_start');
+    if(!validate()){return;}
+    var type=decide();
+    var route=routes[type];
+    title.textContent=route.title;
+    body.textContent=route.body;
+    reason.textContent=route.reason;
+    cta.textContent=route.cta;
+    cta.href=route.url;
+    cta.dataset.resultType=type;
+    setPanel(true);
+    title.focus({preventScroll:true});
+    root.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+    pushOnce('complete','widget_complete');
+    pushOnce('result:'+type,'widget_result',{result_type:type});
+  });
+
+  back.addEventListener('click',function(){
+    setPanel(false);
+    root.querySelector('input:checked, input').focus();
+  });
+
+  cta.addEventListener('click',function(){
+    pushOnce('cta:'+cta.dataset.resultType,'widget_cta_click',{result_type:cta.dataset.resultType,destination:new URL(cta.href).pathname});
+  });
+})();
+</script>
+<!-- /wp:html -->
+
+<!-- wp:heading {"anchor":"comparar"} -->
+<h2 class="wp-block-heading" id="comparar">Como comparar de verdade: os cinco números</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Comparar antecipação por "quem libera mais rápido" é o caminho mais curto para pagar caro. Estes são os números que mudam o resultado, na ordem em que importam:</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list {"ordered":true} -->
+<ol class="wp-block-list"><li><strong>CET ao mês.</strong> O Custo Efetivo Total junta juros, tarifas e encargos. Duas ofertas com a mesma taxa podem ter CET bem diferente. Se o CET não estiver visível antes de assinar, isso já é uma resposta.</li><li><strong>Quantos anos você está cedendo.</strong> Ceder cinco competências libera mais agora e trava cinco aniversários. Compare sempre o mesmo número de anos, senão não é comparação.</li><li><strong>Valor líquido.</strong> O que efetivamente entra na conta. É esse número que se compara, não o "valor aprovado".</li><li><strong>Quanto do saldo fica bloqueado.</strong> O bloqueio da garantia não é necessariamente igual ao valor emprestado.</li><li><strong>Prazo de liberação.</strong> Cada instituição define o próprio. Prazo curto não compensa CET alto.</li></ol>
+<!-- /wp:list -->
+
+<!-- wp:group {"style":{"spacing":{"padding":{"top":"18px","right":"20px","bottom":"18px","left":"20px"},"margin":{"top":"18px","bottom":"18px"}},"border":{"left":{"color":"#008353","width":"4px"},"radius":"8px"},"color":{"background":"#f5f7fb"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#008353;border-left-width:4px;border-radius:8px;background-color:#f5f7fb;margin-top:18px;margin-bottom:18px;padding:18px 20px 18px 20px"><!-- wp:paragraph --><p><strong>A regra que invalida qualquer comparação</strong></p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Os cinco números precisam ser da <strong>mesma data</strong> e do <strong>mesmo número de anos cedidos</strong>. Uma tabela de "melhores bancos" publicada há seis meses não diz nada sobre hoje.</p><!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+
+<!-- wp:heading {"anchor":"transicao"} -->
+<h2 class="wp-block-heading" id="transicao">O que muda em 1º de novembro de 2026</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Até <strong>31 de outubro de 2026</strong>, é possível ceder os direitos dos próximos <strong>cinco</strong> saques anuais. A partir de <strong>1º de novembro de 2026</strong>, o limite cai para <strong>três</strong>.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p>Na prática, o valor máximo que dá para levantar numa operação diminui depois dessa data. É um fator de calendário — não uma promoção nem prazo de campanha de banco.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:image {"id":2125,"sizeSlug":"large","linkDestination":"none"} -->
+<figure class="wp-block-image size-large"><img src="https://creditoup.com.br/wp-content/uploads/2026/08/fgts-gov-saque-aniversario.webp" alt="Pagina oficial do Saque-Aniversario no site fgts.gov.br" class="wp-image-2125"/><figcaption class="wp-element-caption">As regras vigentes ficam no portal oficial do FGTS. Reprodução: fgts.gov.br</figcaption></figure>
+<!-- /wp:image -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1/" style="border-radius:10px;background-color:#008353"><strong>Ver como conferir saldo, modalidade e autorização &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:separator {"opacity":"css"} -->
+<hr class="wp-block-separator has-css-opacity"/>
+<!-- /wp:separator -->
+
+<!-- wp:heading {"anchor":"cuidados"} -->
+<h2 class="wp-block-heading" id="cuidados">Três cuidados que evitam prejuízo</h2>
+<!-- /wp:heading -->
+
+<!-- wp:group {"style":{"spacing":{"padding":{"top":"18px","right":"20px","bottom":"18px","left":"20px"},"margin":{"top":"18px","bottom":"18px"}},"border":{"left":{"color":"#008353","width":"4px"},"radius":"8px"},"color":{"background":"#f5f7fb"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#008353;border-left-width:4px;border-radius:8px;background-color:#f5f7fb;margin-top:18px;margin-bottom:18px;padding:18px 20px 18px 20px"><!-- wp:paragraph --><p><strong>Autorizar não é contratar</strong></p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Liberar a consulta no aplicativo apenas permite que a instituição veja os dados necessários. O contrato só existe depois da simulação e da confirmação no canal do próprio banco.</p><!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+
+<!-- wp:group {"style":{"spacing":{"padding":{"top":"18px","right":"20px","bottom":"18px","left":"20px"},"margin":{"top":"18px","bottom":"18px"}},"border":{"left":{"color":"#b42318","width":"4px"},"radius":"8px"},"color":{"background":"#fef2f2"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#b42318;border-left-width:4px;border-radius:8px;background-color:#fef2f2;margin-top:18px;margin-bottom:18px;padding:18px 20px 18px 20px"><!-- wp:paragraph --><p><strong>Ninguém pede a sua senha do App FGTS</strong></p><!-- /wp:paragraph --><!-- wp:paragraph --><p>A autorização é feita por você, dentro do aplicativo. Quem pede senha, código ou pagamento antecipado para "liberar" a operação está aplicando um golpe.</p><!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+
+<!-- wp:group {"style":{"spacing":{"padding":{"top":"18px","right":"20px","bottom":"18px","left":"20px"},"margin":{"top":"18px","bottom":"18px"}},"border":{"left":{"color":"#ea580c","width":"4px"},"radius":"8px"},"color":{"background":"#fff7ed"}},"layout":{"type":"constrained"}} -->
+<div class="wp-block-group has-background" style="border-left-color:#ea580c;border-left-width:4px;border-radius:8px;background-color:#fff7ed;margin-top:18px;margin-bottom:18px;padding:18px 20px 18px 20px"><!-- wp:paragraph --><p><strong>Antecipar tem consequência na demissão</strong></p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Estando no Saque-Aniversário, a demissão sem justa causa dá acesso à multa rescisória, não ao saldo principal. Quitar a antecipação depois não muda essa regra.</p><!-- /wp:paragraph --></div>
+<!-- /wp:group -->
+
+<!-- wp:heading {"anchor":"duvidas"} -->
+<h2 class="wp-block-heading" id="duvidas">Perguntas que aparecem sempre</h2>
+<!-- /wp:heading -->
+
+<!-- wp:details {"style":{"spacing":{"margin":{"top":"10px","bottom":"10px"},"padding":{"top":"12px","right":"14px","bottom":"12px","left":"14px"}},"border":{"radius":"8px","width":"1px","color":"#e6eaf0"}}} -->
+<details class="wp-block-details has-border-color" style="border-color:#e6eaf0;border-width:1px;border-radius:8px;margin-top:10px;margin-bottom:10px;padding:12px 14px"><summary>Posso pedir para mais de um banco ao mesmo tempo?</summary><!-- wp:paragraph --><p>Sim. A autorização de consulta é por instituição e não obriga a contratar. Autorizar mais de uma permite comparar propostas com os mesmos parâmetros antes de decidir.</p><!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details {"style":{"spacing":{"margin":{"top":"10px","bottom":"10px"},"padding":{"top":"12px","right":"14px","bottom":"12px","left":"14px"}},"border":{"radius":"8px","width":"1px","color":"#e6eaf0"}}} -->
+<details class="wp-block-details has-border-color" style="border-color:#e6eaf0;border-width:1px;border-radius:8px;margin-top:10px;margin-bottom:10px;padding:12px 14px"><summary>Dá para antecipar duas vezes no mesmo ano?</summary><!-- wp:paragraph --><p>Não. A regra permite uma contratação por competência anual, e uma nova depende da quitação da anterior referente ao próximo saque-aniversário.</p><!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:details {"style":{"spacing":{"margin":{"top":"10px","bottom":"10px"},"padding":{"top":"12px","right":"14px","bottom":"12px","left":"14px"}},"border":{"radius":"8px","width":"1px","color":"#e6eaf0"}}} -->
+<details class="wp-block-details has-border-color" style="border-color:#e6eaf0;border-width:1px;border-radius:8px;margin-top:10px;margin-bottom:10px;padding:12px 14px"><summary>Negativado consegue contratar?</summary><!-- wp:paragraph --><p>A garantia da operação é o seu próprio saldo do FGTS, não a sua renda. Ainda assim, cada instituição mantém a própria política de análise — não existe garantia de aprovação, e quem promete isso está vendendo o que não pode entregar.</p><!-- /wp:paragraph --></details>
+<!-- /wp:details -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#2563eb"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3/" style="border-radius:10px;background-color:#2563eb"><strong>Ver o que acontece na demissão e o que a quitação libera &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:spacer {"height":"8px"} -->
+<div style="height:8px" aria-hidden="true" class="wp-block-spacer"></div>
+<!-- /wp:spacer -->
+
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button {"width":100,"style":{"border":{"radius":"10px"},"color":{"background":"#008353"}}} --><div class="wp-block-button has-custom-width wp-block-button__width-100"><a class="wp-block-button__link has-background wp-element-button" href="https://creditoup.com.br/rec/quem-tem-direito-antecipar-fgts-pr1/" style="border-radius:10px;background-color:#008353"><strong>Voltar e ver qual é o meu caso &raquo;</strong></a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+
+<!-- wp:heading {"anchor":"fontes"} -->
+<h2 class="wp-block-heading" id="fontes">Fontes e data da verificação</h2>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul class="wp-block-list"><li><a href="https://pesquisa.in.gov.br/imprensa/servlet/INPDFViewer?captchafield=firstAccess&amp;data=20%2F10%2F2025&amp;jornal=515&amp;pagina=153">Resolução CCFGTS nº 1.130, de 7 de outubro de 2025</a> (DOU de 20/10/2025): limites de R$ 100 a R$ 500 por saque anual cedido, uma contratação por competência, e a transição de cinco para três direitos anuais.</li><li><a href="https://planalto.gov.br/ccivil_03/leis/l8036consol.htm">Lei nº 8.036/1990 consolidada</a>: cessão dos direitos anuais (art. 20-D) e efeitos da modalidade na demissão.</li></ul>
+<!-- /wp:list -->
+
+<!-- wp:paragraph -->
+<p><em>Regras verificadas na fonte primária em 11 de agosto de 2026. Condições comerciais de instituições financeiras não são regra: variam por instituição e mudam sem aviso.</em></p>
+<!-- /wp:paragraph -->
+
+<!-- wp:paragraph -->
+<p><em>Portal informativo independente. Não temos vínculo com a CAIXA, com o Conselho Curador do FGTS ou com instituições financeiras, não intermediamos contratações e não solicitamos dados pessoais.</em></p>
+<!-- /wp:paragraph -->

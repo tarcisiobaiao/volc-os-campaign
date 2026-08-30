@@ -1,0 +1,17 @@
+# Dependencies and generated outputs
+node_modules/**
+.venv*/**
+.graphify-cache/**
+graphify-out/**
+entregaveis/**
+dist/**
+
+# Historical/reference material is preserved but is not current architecture.
+docs/archive/**
+docs/reference/database/catalogo-functions-postgresql.md
+docs/reference/database/catalogo-triggers.md
+sql/archive/**
+sql/diagnostics/**
+scripts/archive/**
+testsprite_tests/results/**
+testsprite_tests/tmp/**

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpar Cache e Storage</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+        .success {
+            background: #16a34a;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+        .info {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🗑️ Limpar Cache e Storage</h1>
+
+        <div class="info">
+            <strong>⚠️ Atenção:</strong> Esta ação irá limpar todo o cache do navegador para este site, incluindo dados salvos localmente.
+        </div>
+
+        <button onclick="clearAll()">Limpar TUDO (localStorage + sessionStorage + Cache)</button>
+
+        <div id="success" class="success">
+            ✅ Cache limpo com sucesso!<br>
+            <strong>Por favor, feche esta aba e recarregue o sistema (Ctrl+Shift+R ou Cmd+Shift+R)</strong>
+        </div>
+    </div>
+
+    <script>
+        function clearAll() {
+            try {
+                // Limpar localStorage
+                localStorage.clear();
+                console.log('✅ localStorage limpo');
+
+                // Limpar sessionStorage
+                sessionStorage.clear();
+                console.log('✅ sessionStorage limpo');
+
+                // Limpar cache do Service Worker se existir
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        for (let name of names) {
+                            caches.delete(name);
+                        }
+                    });
+                    console.log('✅ Cache API limpo');
+                }
+
+                // Mostrar mensagem de sucesso
+                document.getElementById('success').style.display = 'block';
+
+                console.log('🎉 TUDO LIMPO! Recarregue o sistema com Ctrl+Shift+R');
+            } catch (error) {
+                console.error('Erro ao limpar cache:', error);
+                alert('Erro ao limpar cache: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

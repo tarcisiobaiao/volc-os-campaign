@@ -1,0 +1,75 @@
+{
+  "mission_id": "decision-raw-normalizer-fixes-v1",
+  "title": "Decision Intelligence — corrigir achados do normalizador Google Ads",
+  "base_ref": "836c5d4c488c8f7a358b3671215ffd0f3f4ba383",
+  "mode": "implementation",
+  "commit_message": "fix(trafego): fecha invariantes do normalizador Google Ads",
+  "briefing": "Corrija o candidato 836c5d4 após revisão adversarial, sem ampliar a superfície. Preserve a fronteira hermética e escreva somente nos cinco caminhos autorizados. Achados obrigatórios: (1) introduzir recibo/cobertura tipada por grão distinguindo nao_consultado, falha, parcial e vazio_confirmado; lote incompleto nunca pode ser promovido a fonte completa/atual e o estado de cobertura participa do fingerprint; (2) exigir campaign_criterion.negative/ad_group_criterion.negative=true e type coerente para negativas, rejeitar polaridade falsa e reutilização contraditória do mesmo resource_name/criterion entre grãos; (3) definir as_of_date e timezone/calendário explicitamente, validar janela e segments.date contra lido_em/as-of no mesmo calendário e impedir dados posteriores à leitura; (4) Quality Score e componentes ausentes permanecem null, enquanto zero/range/enum inválidos falham; (5) canonicalizar inteiros/doubles/decimal e zero antes do hash, provando 5==5.0 e -0.0==0.0; (6) alinhar a codificação escalar ao MessageToDict/captura local ou declarar conversão explícita; (7) separar KeywordMatchType do SearchTermMatchType sem inventar domínio Google; (8) preservar status/serving status aplicável ou declarar e bloquear o uso decisório quando ausente; (9) reconciliar o sufixo base64 de search_term_view.resource_name com search_term; (10) ordenar daily_metrics cronologicamente; (11) rebaixar/ajustar o manifesto para dizer somente o que as provas sustentam. Adicione contraprovas para todos os achados. A saída precisa atravessar o kernel apenas quando a fotografia for elegível; não altere política, endpoint, UI, banco, n8n, Roadmap, grafo ou curadoria. Zero rede, SDK, I/O de produção, validate_only ou mutate. Entregue curation_handoff mantendo P14-T02 partial.",
+  "timeout_seconds": 3600,
+  "heartbeat_seconds": 20,
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONPATH=backend:.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "backend/tests/test_inteligencia_decisao_lab.py",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "-q"
+      ],
+      "timeout_seconds": 1200
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-normalizer-fix-writer",
+      "provider": "codex",
+      "role": "writer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Único escritor. Reproduza cada finding antes de corrigir; implemente recibo de cobertura, polaridade, tempo/as-of, null, canonicalização e identidades sem criar segunda política ou aceitar fallback otimista.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao/__init__.py",
+        "volc_ads/inteligencia_decisao/normalizacao_google_ads.py",
+        "volc_ads/inteligencia_decisao/dados/linhas_google_ads_sinteticas.json",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"
+      ]
+    },
+    {
+      "id": "claude-normalizer-contract-reviewer",
+      "provider": "claude",
+      "role": "reviewer",
+      "model": "opus",
+      "effort": "max",
+      "network_access": false,
+      "lens": "Reproduza os achados anteriores usando apenas código e documentação local. Tente refutar cobertura, polaridade, status, tipos escalares, SearchTermMatchType e resource_name. Recuse manifesto mais otimista que a prova.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"
+      ]
+    },
+    {
+      "id": "codex-normalizer-safety-reviewer",
+      "provider": "codex",
+      "role": "reviewer",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "network_access": false,
+      "lens": "Ataque ausência→afirmação, grãos ausentes/parciais/vazios, tempo local/UTC/as-of, null versus zero, números semanticamente iguais, duplicidade cross-grain, determinismo, mutação da entrada e qualquer I/O. Exija reprodução concreta.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_decisao",
+        "backend/tests/test_inteligencia_decisao_normalizador.py",
+        "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json"
+      ]
+    }
+  ]
+}
