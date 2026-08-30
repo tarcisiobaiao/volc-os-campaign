@@ -144,7 +144,7 @@
       "cluster": "decision",
       "state": "inactive",
       "summary": "Projeta comportamento futuro e deveria comparar previsão com ocorrido.",
-      "evidence": "Bola de Cristal está inativa e manual: 46 nós, 1.102 linhas, três rotas A/B/C, campanha/data hardcoded, zero persistência. A ideia planned_spend é útil, mas a implementação tem target leakage, avaliação desalinhada e intervalo não calibrado. Registry, predictions, evaluations, drift e schema v12 continuam somente propostas; nenhuma previsão shadow foi persistida no Supabase oficial."
+      "evidence": "Bola de Cristal está inativa e manual: 46 nós, 1.102 linhas, três rotas A/B/C, campanha/data hardcoded, zero persistência. A ideia planned_spend é útil, mas a implementação tem target leakage, avaliação desalinhada e intervalo não calibrado. Registry, predictions, evaluations, drift e schema v12 continuam somente propostas; nenhuma previsão shadow foi persistida no Supabase oficial. 2026-08-30: permanece inactive. O candidato 7ee202e fechou D1, D3, D4 e a normalizacao idempotente, mas foi rejeitado para integracao por procedencia forjavel; nada disso esta na fonte."
     },
     {
       "id": "cap_display",
@@ -434,7 +434,7 @@
       "cluster": "acquisition",
       "state": "todo",
       "summary": "Audiências, assets, formatos, feed e vídeo/imagem.",
-      "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado."
+      "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado. 2026-08-30 eec859e: fronteira fail-closed em /provar e /subir; Demand Gen relabelado como Search recusado antes de escopo, ponte, cliente e trava; rota produtiva segue recusada (403). Estado permanece todo: o aceite de P04-T09 declara partial como maximo e tres de cinco criterios seguem sem prova."
     },
     {
       "id": "channel:PERFORMANCE_MAX",
@@ -1282,7 +1282,7 @@
       "cluster": "decision",
       "state": "todo",
       "summary": "Versiona modelos e previsões, mede erro futuro, calibra intervalos, detecta drift e promove challengers somente após vencer baseline com aprovação.",
-      "evidence": "Não existem model registry, prediction ledger, evaluator ou drift events no banco oficial; schema v12, fotografia, previsão e realizado continuam proposta não aplicada. Bola de Cristal não persiste previsões e possui vazamento de futuro."
+      "evidence": "Não existem model registry, prediction ledger, evaluator ou drift events no banco oficial; schema v12, fotografia, previsão e realizado continuam proposta não aplicada. Bola de Cristal não persiste previsões e possui vazamento de futuro. 2026-08-30: P14-T10 BLOQUEADO. Nada entrou na linha oficial; services/orakul_predictive em eec859e e byte-identico a 51b4e2e. Nao existe ponte confiavel coleta->Core: ObservacaoDiaria so nasce de fixture e de teste, nada converte DocumentoColeta, e o coletor nao modela receita diaria. SPEC v5 rejeitada na revisao adversarial. Proibido promover fixture, replay ou shadow a dado real."
     },
     {
       "id": "concept:search_terms_workbench",

@@ -1,0 +1,136 @@
+{
+  "mission_id": "p14-t10-fronteira-atestada-v5-rejeitada",
+  "title": "[REJEITADA NA REVISAO] P14-T10 v5 — nao executar",
+  "base_ref": "7ee202ec63f12f1c1fadfef266058a4e4ee77df8",
+  "lineage_root_sha": "eec859e10b37d46c3ceacefbcc8241de4ef6ec43",
+  "mode": "implementation",
+  "task_ids": [
+    "P14-T10"
+  ],
+  "authorized_external_providers": [
+    "google_gemini"
+  ],
+  "commit_message": "feat(orakul): procedencia atestada pela ingestao com envelope opaco",
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "ratchet": {
+    "enabled": true,
+    "max_writer_attempts": 3,
+    "max_review_rounds": 2,
+    "max_wall_seconds": 21600,
+    "no_progress_limit": 2
+  },
+  "briefing": "*** ESTA MISSAO FOI REJEITADA NA REVISAO ADVERSARIAL E NAO DEVE SER EXECUTADA. ***\n\nMotivo: exige assinar um DocumentoColeta ja construido enquanto coletor.py fica read-only. DocumentoColeta e um dataclass publico (modelo.py:101) exportado em __init__.py:3-12, entao qualquer caller constroi um e pede o selo — a fabrica forjavel da v4 apenas mudou de arquivo. Alem disso a emissao nao nasce na coleta (coletor.py:91-106 cria, persiste e descarta sem envelope) e nao existe ponte semantica: o coletor nao modela receita diaria, que ObservacaoDiaria exige.\n\nVer docs/architecture/SPEC-P14-T10-V5.md para o redesenho exigido antes de uma v6.\n\n--- briefing original preservado como registro ---\n\nParta de 7ee202e, que foi REJEITADO para integracao mas e a melhor base material: D1 (cutoff), D3 (hash completo), D4 (semantica de alvos) e o quinto caminho (representacao canonica) estao FECHADOS e confirmados por contraprova executavel. NAO os reescreva.\n\nO que foi rejeitado e SO a camada de procedencia. Duas tentativas anteriores falharam pelo mesmo motivo estrutural:\n- v3 tentou denylist de fixtures: alterar lido_em em 1 microssegundo passava;\n- v4 tentou contrato positivo, mas expos a fabrica publica recibo_real_autorizado (contratos.py:847-867, exportada em __init__.py:29,86) aceitando recibo_id, origem e hash_fonte livres. O Sol forjou um recibo real e anexou a fixtures reconstruidas: walk_forward devolveu dataset_kind='real', entra_em_contagens_reais=True, n_total=5.\n\nA INVESTIGACAO READ-ONLY EXPLICA POR QUE: a ponte entre coleta real e Core NAO EXISTE. ObservacaoDiaria e construida em dois lugares apenas — fixtures_sinteticas.py:40 e test_mutantes.py:93. Nada fora do Core importa orakul_predictive. Nada converte DocumentoColeta em ObservacaoDiaria. O Core e offline puro por contrato (isolamento.py:10-26 bane rede, Supabase e dotenv por AST).\n\nEntao qualquer barreira DENTRO do Core e o Core autorizando a propria entrada. Esta missao cria a PRIMEIRA fronteira real.\n\nO primeiro dono confiavel da origem e ColetorGoogleInteligencia (volc_ads/inteligencia_google/coletor.py:59, entrada em :527 executar_coleta), que produz DocumentoColeta (modelo.py:101). Ele e o unico que sabe, por construcao, que o dado e real.\n\nZERO rede, Supabase, Google Ads, n8n, migration, deploy ou acao externa. Nao altere coletor.py nem persistencia.py — a v5 nao muda a coleta, so adiciona a emissao ao lado dela.",
+  "gates": [
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests/orakul_predictive",
+        "-q",
+        "-p",
+        "no:randomly",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "timeout_seconds": 1800
+    },
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=.",
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "pytest",
+        "backend/tests/test_google_inteligencia_atestacao.py",
+        "backend/tests/test_google_inteligencia_persistente.py",
+        "backend/tests/test_google_inteligencia_saude.py",
+        "-q",
+        "-p",
+        "no:randomly",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "timeout_seconds": 1200
+    },
+    {
+      "argv": [
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+        "-m",
+        "compileall",
+        "-q",
+        "services/orakul_predictive",
+        "volc_ads/inteligencia_google"
+      ],
+      "timeout_seconds": 600
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-atestacao-v5-writer",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "effort": "xhigh",
+      "role": "writer",
+      "network_access": false,
+      "lens": "Crie volc_ads/inteligencia_google/atestacao.py: dado um DocumentoColeta ja coletado, derive hash_fonte INTERNAMENTE dos bytes canonicos do documento e emita um EnvelopeAtestado OPACO. Nenhum campo de autorizacao pode vir livremente do caller. Use HMAC de processo sobre bytes canonicos, com a chave nascendo e morrendo no processo de ingestao — sem servico externo, sem rede, compativel com isolamento.py.\n\nNo Core: remova a fabrica publica recibo_real_autorizado e qualquer construtor que permita mintar SourceReceipt com campos livres. SourceReceipt passa a nascer SOMENTE de um EnvelopeAtestado valido. Ausencia de envelope e 'indeterminada', NUNCA 'real'.\n\nO selo vincula-se ao CONTEUDO da observacao, nao a identidade do objeto: dataclasses.replace, copy.copy e copy.deepcopy que alterem conteudo devem invalidar; lido_em entra no conteudo selado, entao +1 microssegundo quebra o HMAC. Corrija proveniencia.py:61-80 para comparar identidade completa do envelope, nao so hash_fonte.\n\nOITO PROVAS NEGATIVAS obrigatorias: (1) fixture reconstruida como classe base inelegivel; (2) +1us invalida o selo; (3) replace alterando valor/conta/campanha invalida; (4) copy e deepcopy do envelope nao promovem fixture; (5) dois envelopes com mesmo hash_fonte e identidades diferentes recusam a serie; (6) construir SourceReceipt diretamente e impossivel pela API publica; (7) envelope do documento A anexado a observacoes do documento B e recusado; (8) ausencia de envelope da 'indeterminada'.\n\nRATCHET: escreva cada prova vermelha primeiro. NAO regrida D1, D3, D4 nem o quinto caminho. Na documentacao, afirme exatamente a garantia real — 'nenhum caller pode declarar dado real sem passar pela ingestao' — e NAO 'impossivel forjar': o HMAC de processo nao protege contra execucao arbitraria dentro do proprio processo de ingestao.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_google",
+        "services/orakul_predictive",
+        "backend/tests/orakul_predictive",
+        "backend/tests/test_google_inteligencia_atestacao.py",
+        "backend/tests/test_google_inteligencia_persistente.py",
+        "backend/tests/test_google_inteligencia_saude.py",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "volc-os-workbook/ROADMAP-VIVO.json"
+      ],
+      "writable_paths": [
+        "volc_ads/inteligencia_google/atestacao.py",
+        "services/orakul_predictive/contratos.py",
+        "services/orakul_predictive/features.py",
+        "services/orakul_predictive/proveniencia.py",
+        "services/orakul_predictive/__init__.py",
+        "backend/tests/orakul_predictive",
+        "backend/tests/test_google_inteligencia_atestacao.py",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md"
+      ]
+    },
+    {
+      "id": "sol-atestacao-v5-adversary",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "role": "reviewer",
+      "network_access": false,
+      "lens": "Tente FORJAR procedencia real por todos os caminhos que ja funcionaram e mais alguns: fabrica publica remanescente; construtor alternativo de SourceReceipt; dataclasses.replace; copy e deepcopy; +1 microssegundo em lido_em; troca de identidade de objeto; classe base e subclasse; envelope de outro documento; dois envelopes com mesmo hash_fonte; reconstrucao de EnvelopeAtestado a partir de seus campos publicos. Para cada um reporte FORJOU ou RECUSADO com o valor observado de dataset_kind, entra_em_contagens_reais e n_total.\n\nVerifique se a chave HMAC realmente nao vaza: ela aparece em repr, str, log, excecao ou serializacao? Verifique se o Core ainda consegue autorizar a propria entrada por algum caminho.\n\nConfirme que D1, D3, D4 e o quinto caminho nao regrediram, reproduzindo as contraprovas ja conhecidas. Verifique se a documentacao afirma mais do que o codigo garante — especificamente se ela promete 'impossivel forjar' em vez da garantia real e mais modesta.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_google",
+        "services/orakul_predictive",
+        "backend/tests",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "volc-os-workbook/ROADMAP-VIVO.json"
+      ],
+      "writable_paths": []
+    },
+    {
+      "id": "gemini-atestacao-v5-contract",
+      "provider": "gemini",
+      "model": "gemini-3.7-flash",
+      "effort": "high",
+      "role": "reviewer",
+      "network_access": false,
+      "lens": "Confronte com os seis criterios binarios do Roadmap e com o contrato em docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md. Verifique que a nova fronteira nao quebrou o isolamento: services/orakul_predictive nao pode ganhar import de rede, Supabase ou dotenv — confira contra isolamento.py:10-26. Verifique que coletor.py e persistencia.py NAO foram alterados. Verifique que a documentacao descreve a garantia real e nao promete mais. Cite arquivo e linha para cada afirmacao.",
+      "allowed_paths": [
+        "volc_ads/inteligencia_google",
+        "services/orakul_predictive",
+        "backend/tests",
+        "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
+        "volc-os-workbook/ROADMAP-VIVO.json"
+      ],
+      "writable_paths": []
+    }
+  ]
+}

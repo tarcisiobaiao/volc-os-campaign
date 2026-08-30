@@ -122,7 +122,9 @@
               "value": "/settings/qg-agentico?visao=agora"
             }
           ],
-          "graph_nodes": ["cap_work_road"],
+          "graph_nodes": [
+            "cap_work_road"
+          ],
           "updated_at": "2026-08-29"
         },
         {
@@ -142,11 +144,25 @@
             "Nenhuma mudança de disparo, exclusão, publicação ou releitura do WordPress"
           ],
           "links": [
-            {"kind": "route", "label": "Quadro do Redator", "value": "/redator"},
-            {"kind": "route", "label": "Funil", "value": "/redator/funil/9"},
-            {"kind": "route", "label": "Config", "value": "/redator/config"}
+            {
+              "kind": "route",
+              "label": "Quadro do Redator",
+              "value": "/redator"
+            },
+            {
+              "kind": "route",
+              "label": "Funil",
+              "value": "/redator/funil/9"
+            },
+            {
+              "kind": "route",
+              "label": "Config",
+              "value": "/redator/config"
+            }
           ],
-          "graph_nodes": ["cap_funnel"],
+          "graph_nodes": [
+            "cap_funnel"
+          ],
           "updated_at": "2026-08-29"
         },
         {
@@ -203,7 +219,9 @@
               "value": "docs/architecture/ADR-DAISYUI-E-A-CAMADA-CANONICA-VOLC.md"
             }
           ],
-          "graph_nodes": ["cap_portfolio"],
+          "graph_nodes": [
+            "cap_portfolio"
+          ],
           "updated_at": "2026-08-29"
         },
         {
@@ -227,7 +245,9 @@
               "value": "tools/agent-harness/runs/20260830-123300-310129-supervisor-p01-t10-pytest-collection-v2-2c538c/mission-result.json"
             }
           ],
-          "graph_nodes": ["risk:gates_nao_versionados"],
+          "graph_nodes": [
+            "risk:gates_nao_versionados"
+          ],
           "updated_at": "2026-08-30"
         }
       ]
@@ -268,14 +288,20 @@
           "title": "Dar recibo, owner, heartbeat e idempotência a cada rotina",
           "status": "partial",
           "proof": "A bancada criativa integrada em 4da6a26 prova, no domínio criativo local, job idempotente, claim, owner, lease, heartbeat, retomada, cancelamento, recibo e 234 provas direcionadas; a v11_03 prova SKIP LOCKED e papéis em cluster descartável com 129/129. Continua parcial porque o caminho ativo usa SQLite local, a v11_03 ainda não foi aplicada nem possui writer Postgres e o contrato comum não governa ORAKUL, n8n e os demais jobs.",
-          "links": ["docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "links": [
+            "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
         {
           "id": "P02-T05",
           "title": "Fechar grants e superfícies privilegiadas antes do lançamento",
           "status": "risk",
           "proof": "Risco aceito temporariamente; a auditoria Fable mantém como bloqueadores pré-lançamento a rotação/reemissão das credenciais e o fechamento de REVOKE/RLS das seis tabelas operacionais, com smoke anônimo provando zero escrita. Nenhum valor sensível é registrado no Roadmap.",
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"]
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
+          ]
         }
       ]
     },
@@ -366,7 +392,9 @@
           "proof": "MCP oficial foi verificado na documentação; não foi instalado, autorizado nem chamado no ambiente VOLC.",
           "explanation": "Confirmar que um agente local encontra o ambiente e os nomes necessários e recebe um mount efêmero, sem ver o valor do segredo nem gravá-lo no repositório.",
           "acceptance": "Smoke lista somente nomes, exige aprovação do ambiente, injeta uma variável numa aplicação de teste, não imprime valor e deixa trilha de auditoria; lock do 1Password revoga o acesso.",
-          "dependencies": ["P03-T08"],
+          "dependencies": [
+            "P03-T08"
+          ],
           "links": [
             "docs/architecture/ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md",
             "https://www.1password.dev/environments/mcp-server"
@@ -379,8 +407,14 @@
           "proof": "Contrato público recusa campos sensíveis; schema privado, RLS, API e cadastro persistido ainda não existem.",
           "explanation": "Guardar no Supabase oficial apenas provider, referência, nome lógico, owner, finalidade, validade e última verificação, ligando isso ao ativo certo.",
           "acceptance": "Schema privado e API administrativa possuem RLS forçada, zero grant anon/authenticated, auditam mudança e rejeitam payload com valor bruto de senha, token, cookie ou chave.",
-          "dependencies": ["P03-T06", "P03-T08", "P02-T03"],
-          "links": ["docs/architecture/ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md"]
+          "dependencies": [
+            "P03-T06",
+            "P03-T08",
+            "P02-T03"
+          ],
+          "links": [
+            "docs/architecture/ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md"
+          ]
         },
         {
           "id": "P03-T11",
@@ -389,7 +423,11 @@
           "proof": "Local API e MCP do AdsPower foram confirmados; nenhum broker, secret injection, allowlist ou recibo VOLC foi implementado.",
           "explanation": "Executar o navegador no host isolado por uma porta local autenticada, sem expor a API key, sessão ou cookies ao browser do VOLC, grafo ou Supabase.",
           "acceptance": "Sidecar em loopback usa Bearer ativo, segredo injetado em runtime, allowlist de perfil/ação, timeout, idempotência e recibo sanitizado; porta externa e modo sem verificação falham no preflight.",
-          "dependencies": ["P03-T07", "P03-T09", "P03-T10"],
+          "dependencies": [
+            "P03-T07",
+            "P03-T09",
+            "P03-T10"
+          ],
           "links": [
             "docs/architecture/ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md",
             "https://help.adspower.com/docs/MCP",
@@ -475,6 +513,9 @@
             "Asset remoto sem recibo tipado e campos não operados falham fechado",
             "Objetos v25 são instanciados e serializados offline sem rede",
             "A rota produtiva de Demand Gen permanece recusada e o estado máximo é partial"
+          ],
+          "evidencia": [
+            "2026-08-30 · eec859e (commit e0f05a1): fronteira Demand Gen fail-closed em /provar E /subir. Aceite 1 PROVADO: Demand Gen relabelado como Search e recusado na validacao, antes de escopo, ponte, cliente e trava; Demand Gen valido recebe 403 em /subir antes de qualquer efeito lateral. Aceite 5 PROVADO: a rota produtiva permanece recusada e o estado maximo continua partial, conforme o proprio aceite exige. PedidoDeProva virou uniao discriminada real no backend e no espelho TypeScript, com prova de tipos sem cast. Gates: pytest 50 passed; tsc exit 0; vitest focal 16 arquivos/152 passed; vite build exit 0. Revisores: Codex gpt-5.6-sol accept, Gemini 3.7 Flash aprovado. PENDENTE: aceites 2 (selo invalidado por troca de canal/login_customer_id/hash/tipo de operacao), 3 (asset remoto sem recibo tipado falha fechado) e 4 (objetos v25 instanciados e serializados offline) nao foram exercitados nesta entrega."
           ]
         }
       ]
@@ -533,7 +574,10 @@
           "title": "Adicionar ações assistidas com proposta e confirmação",
           "status": "partial",
           "proof": "Caixa de propostas, diff antes/depois e portão de aprovação existem. A auditoria confirmou que aoSubmeter não possui caller de produção e que v10_02/writer não estão ligados; portanto a superfície ainda não fecha proposta → confirmação → recibo. FALTA também a rota GET /api/trafego/campanhas/{id}/diagnostico.",
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
         {
           "id": "P05-T07",
@@ -542,8 +586,14 @@
           "priority": 2,
           "proof": "A v12_01 foi aplicada no Supabase oficial e a coleta Google Ads v3 gravou 10 recibos reais da conta Crédito Up sem falha: diagnósticos com 12 e 83 itens para Maquininha e FGTS, forecasts com 4 e 3 cenários, recomendações armazenadas/geradas e simulações como vazio_confirmado=0, nunca como falha ou null. Continua parcial porque o endpoint/cockpit de diagnóstico ainda não projeta essa evidência e a rotina contínua aguarda autorização explícita para instalar a credencial OAuth e ativar os timers no servidor.",
           "acceptance": "GET /api/trafego/campanhas/:id/diagnostico devolve status, aprovação, estratégia, IS, lost budget, lost rank, Quality Score/componentes e termos com fonte, janela e lido_em; ausência é null; render não consulta Google; FGTS e Maquininha recebem explicação factual, não remédio fixo.",
-          "dependencies": ["P05-T02", "P02-T02"],
-          "links": ["docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "dependencies": [
+            "P05-T02",
+            "P02-T02"
+          ],
+          "links": [
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
         {
           "id": "P05-T08",
@@ -551,8 +601,15 @@
           "status": "partial",
           "proof": "Engine Search possui critérios e negativas tipados; o workflow histórico foi congelado. Faltam coleta real, margem e detecção inversa. PMax não pode ser inferido de search_term_view: quando entrar, exige campaign_search_term_view e contrato próprio, sem tratar o agregado como insight equivalente.",
           "acceptance": "Coleta paginada e idempotente; propostas de promover, negativar, preservar e despromover; margem/RPC no lugar de CPA fixo; conflito reverso visível; SearchTermView separado de CampaignSearchTermView para PMax; nenhum mutate sem aprovação e recibo reversível.",
-          "dependencies": ["P05-T07", "P09-T01", "P09-T02"],
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"]
+          "dependencies": [
+            "P05-T07",
+            "P09-T01",
+            "P09-T02"
+          ],
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
+          ]
         },
         {
           "id": "P05-T09",
@@ -561,8 +618,14 @@
           "proof": "O legado gads-new-campaign-validation contém NEXUS v3.0 e v4.9 incompatíveis e está inativo. nexus_guardiao_72h existe somente no Lab sintético; nenhum guardião produtivo canônico substitui hoje as duas versões.",
           "explanation": "Transformar a inteligência útil do validador inicial em um diagnóstico seguro de maturidade, entrega, aprovação, conversão, orçamento, lance, anúncio, termos e leilão.",
           "acceptance": "Uma política versionada substitui v3/v4.9; data inválida vira indeterminado; toda constatação cita evidência e frescor; somente diagnóstico/proposta; nenhuma constante histórica entra sem owner, justificativa e replay.",
-          "dependencies": ["P05-T07", "P09-T01"],
-          "links": ["docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "dependencies": [
+            "P05-T07",
+            "P09-T01"
+          ],
+          "links": [
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
         {
           "id": "P05-T10",
@@ -571,7 +634,12 @@
           "proof": "Copy engine e Caixa de Propostas existem; o RSA Darwin legado está inativo e agregava no nível errado antes de mutar sem governança.",
           "explanation": "Preservar a ideia de evolução criativa sem confundir share de impressões com causalidade nem perder a identidade de cada asset.",
           "acceptance": "Ingestão tipada campaign/ad group/ad/asset/resource_name com lido_em, performance_label, ad_strength e action_items; suficiência; diff; aprovação; validate_only; um eixo por experimento; recibo e rollback pelo executor canônico.",
-          "dependencies": ["P05-T08", "P09-T01", "P09-T02", "P09-T03"]
+          "dependencies": [
+            "P05-T08",
+            "P09-T01",
+            "P09-T02",
+            "P09-T03"
+          ]
         },
         {
           "id": "P05-T11",
@@ -581,8 +649,14 @@
           "proof": "Canário real criado em 28/08/2026 na conta Portal Mundo Mais 547-809-6539: validate_only aceitou 72 operações; a mutação atômica foi ACEITA e criou a campanha Google Ads 24183717006; a releitura oficial confirmou SEARCH, orçamento de R$ 10/dia e campanha-mãe PAUSED, ainda em REVIEW_IN_PROGRESS. Crédito Up não foi tocada e nenhum gasto ou ativação foi autorizado. O recibo é volc_ads/dados/recibos/20260828_123051_5478096539_9af79721.json. Em ce7f1d9/f12ed5e, o contrato carimbo_nome passou a atravessar Escolha→Brief→Search e /provar→/subir foi provado com a classe real: 33/33 no runner, 86 testes do recorte e 1.581 na suíte backend+volc_ads. Faltam ledger v10_01 ligado, persistência da intenção, vínculo e reconciliação do ID no inventário/H0 e veredito final de política.",
           "explanation": "Criar uma campanha de engenharia que não gaste nem contamine a conta financeira: ela nasce pausada numa conta-laboratório, com plano revisado, idempotência, recibo anterior à rede e verificação posterior.",
           "acceptance": "Pauta publicada e vinculada à Portal Mundo Mais; plano efetivo mostra URL, grupos, keywords positivas e negativas, RSA, orçamento e CPC; v10_01 registra intenção, lote, item, validações, aprovação e recibo em_voo antes do Google; a API cria exatamente uma campanha PAUSED; timeout nunca oferece reenvio; inventário e H0 reconciliam o ID externo; ativação permanece impossível neste ato.",
-          "dependencies": ["P09-T01", "P09-T02", "P09-T03"],
-          "links": ["docs/architecture/evidence/GOOGLE-SEARCH-CANARY-PORTAL-MUNDO-MAIS-2026-08-28.json"]
+          "dependencies": [
+            "P09-T01",
+            "P09-T02",
+            "P09-T03"
+          ],
+          "links": [
+            "docs/architecture/evidence/GOOGLE-SEARCH-CANARY-PORTAL-MUNDO-MAIS-2026-08-28.json"
+          ]
         }
       ]
     },
@@ -608,11 +682,11 @@
           "status": "done",
           "proof": "carimbo atravessa banco, API e front"
         },
-    {
-      "id": "P06-T02",
-      "title": "Consolidar ingestão de custo por data e conta",
-      "status": "partial",
-      "proof": "Em 28/08/2026, os coletores VOLC D0 e D-1 foram alinhados à Google Ads API v25 e ao Supabase oficial: customer_id deixou de ser vazio, cost_per_conversion passou a vir da API, a deduplicação interna virou conta+campanha e as duas escritas passaram a aguardar uma à outra. Ambos seguem inativos. daily_campaign_metrics ainda não tem conta, execução, moeda nem carimbo de coleta, portanto não é o ledger canônico."
+        {
+          "id": "P06-T02",
+          "title": "Consolidar ingestão de custo por data e conta",
+          "status": "partial",
+          "proof": "Em 28/08/2026, os coletores VOLC D0 e D-1 foram alinhados à Google Ads API v25 e ao Supabase oficial: customer_id deixou de ser vazio, cost_per_conversion passou a vir da API, a deduplicação interna virou conta+campanha e as duas escritas passaram a aguardar uma à outra. Ambos seguem inativos. daily_campaign_metrics ainda não tem conta, execução, moeda nem carimbo de coleta, portanto não é o ledger canônico."
         },
         {
           "id": "P06-T03",
@@ -637,29 +711,32 @@
           "title": "Entregar o Ads Health Monitor mínimo",
           "status": "partial",
           "proof": "Inventário, frescor e fila de atenção existem. O Lab prova cost_spike e routine_stale somente em cenários sintéticos. A auditoria Fable confirmou que baseline de três dias pode gerar falso positivo sazonal; cost_spike não pode virar veto antes de baseline por dia da semana e janela mínima declarada. Faltam heartbeat real, persistência, deduplicação e resolução.",
-          "links": ["docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "links": [
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
-    {
-      "id": "P06-T07",
-      "title": "Criar o Tracking Control Plane em modo leitura",
-      "status": "todo",
-      "proof": "GA4/GTM utilities e Analytics utilities foram aceitos como referências; nenhum inventário canônico de propriedades, streams, tags, eventos, UTMs, conversões, vínculos ou drift existe no VOLC O.S."
-    },
-    {
-      "id": "P06-T08",
-      "title": "Criar ledger canônico de coleta Google Ads por conta e data",
-      "status": "partial",
-      "proof": "A v12_01 está aplicada no Supabase oficial e persiste coleta, itens e métricas de inteligência Google Ads com conta, campanha, fonte, janela, lido_em, idempotência e estados semânticos separados: medido zero, ausente, não aplicável, vazio confirmado e falha. A coleta v3 real fechou 10 recibos sem falha e prova que uma falha anterior não ocupa a chave do retry bem-sucedido. Continua parcial porque este ledger cobre inteligência/recomendações/simulações/forecast; o fato diário D0/D-1 ainda precisa substituir a daily_campaign_metrics legada e falta decidir e ligar uma única autoridade de agenda — preferencialmente os workflows n8n já operacionais, sem duplicar com systemd.",
-      "explanation": "Separar execução, fato campanha-dia e projeção legada para que custo, conversão e leilão tenham identidade, janela e recibo sem misturar keyword, search term, asset ou policy na mesma linha.",
-      "acceptance": "Migration e rollback provados; RLS forçada; ledger append-only; fato com chave conta+campanha+data+segmento; métricas anuláveis, inclusive impression share e click share ausentes como null, nunca zero; backfill declara origem e regra; dinheiro em micros com moeda; RPC atômico e idempotente; canário D0/D-1 reconciliado; projeção mantém consumidores de daily_campaign_metrics.",
-      "dependencies": [
-        "P02-T02",
-        "P10-T06"
-      ],
-      "links": [
-        "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md"
-      ]
-    }
+        {
+          "id": "P06-T07",
+          "title": "Criar o Tracking Control Plane em modo leitura",
+          "status": "todo",
+          "proof": "GA4/GTM utilities e Analytics utilities foram aceitos como referências; nenhum inventário canônico de propriedades, streams, tags, eventos, UTMs, conversões, vínculos ou drift existe no VOLC O.S."
+        },
+        {
+          "id": "P06-T08",
+          "title": "Criar ledger canônico de coleta Google Ads por conta e data",
+          "status": "partial",
+          "proof": "A v12_01 está aplicada no Supabase oficial e persiste coleta, itens e métricas de inteligência Google Ads com conta, campanha, fonte, janela, lido_em, idempotência e estados semânticos separados: medido zero, ausente, não aplicável, vazio confirmado e falha. A coleta v3 real fechou 10 recibos sem falha e prova que uma falha anterior não ocupa a chave do retry bem-sucedido. Continua parcial porque este ledger cobre inteligência/recomendações/simulações/forecast; o fato diário D0/D-1 ainda precisa substituir a daily_campaign_metrics legada e falta decidir e ligar uma única autoridade de agenda — preferencialmente os workflows n8n já operacionais, sem duplicar com systemd.",
+          "explanation": "Separar execução, fato campanha-dia e projeção legada para que custo, conversão e leilão tenham identidade, janela e recibo sem misturar keyword, search term, asset ou policy na mesma linha.",
+          "acceptance": "Migration e rollback provados; RLS forçada; ledger append-only; fato com chave conta+campanha+data+segmento; métricas anuláveis, inclusive impression share e click share ausentes como null, nunca zero; backfill declara origem e regra; dinheiro em micros com moeda; RPC atômico e idempotente; canário D0/D-1 reconciliado; projeção mantém consumidores de daily_campaign_metrics.",
+          "dependencies": [
+            "P02-T02",
+            "P10-T06"
+          ],
+          "links": [
+            "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md"
+          ]
+        }
       ]
     },
     {
@@ -769,7 +846,11 @@
           "proof": "Sensor, fatos e parte das RPCs existem; o flow GHMVIgFAv6oytKuj está inativo, duplica orquestração e ainda contém datas fixas.",
           "explanation": "Manter o que mede scroll, engagement, viewability, CTA e dead/rage click, mas transformar suas heurísticas em políticas auditáveis.",
           "acceptance": "Schema de evento, host/path e agregações reproduzíveis no Supabase oficial; zero data fixa; owner, heartbeat, watermark, replay e run datado com contagens; cada alerta cita política, amostra, janela, fonte e lido_em.",
-          "dependencies": ["P08-T01", "P08-T03", "P10-T06"]
+          "dependencies": [
+            "P08-T01",
+            "P08-T03",
+            "P10-T06"
+          ]
         },
         {
           "id": "P08-T08",
@@ -777,7 +858,13 @@
           "status": "todo",
           "proof": "O flow awNXK3BdPTplsmKy está inativo e gera alternativas/ClickUp, mas usa identidade frágil e não mede controle contra variante.",
           "acceptance": "Hipótese referencia page, funnel e campaign; guarda before, janela, N e evidências; aprovação humana; controle/variante; métrica primária e guardrails; outcome persistido; o analisador nunca faz POST WordPress.",
-          "dependencies": ["P08-T02", "P08-T03", "P09-T01", "P09-T02", "P09-T03"]
+          "dependencies": [
+            "P08-T02",
+            "P08-T03",
+            "P09-T01",
+            "P09-T02",
+            "P09-T03"
+          ]
         },
         {
           "id": "P08-T09",
@@ -785,7 +872,11 @@
           "status": "partial",
           "proof": "O subflow NlDpiKPIqHCDblto está ativo declarado, porém quebrado no caminho de match e duplica capacidades mais maduras do Redator/FunnelForge.",
           "acceptance": "Sitemap real same-domain; exclui self e redundância; rota e LazyBlock determinísticos; preview e aprovação; publicação e clique medidos; nenhum domínio ou índice de array hardcoded; segundo recomendador aposentado com recibo.",
-          "dependencies": ["P08-T02", "P12-T04", "P12-T05"]
+          "dependencies": [
+            "P08-T02",
+            "P12-T04",
+            "P12-T05"
+          ]
         }
       ]
     },
@@ -817,14 +908,20 @@
           "title": "Criar proposta e autorização como objetos canônicos",
           "status": "partial",
           "proof": "Proposta, aprovação, aplicação e rollback existem como tabelas com guardas no banco. v10_01/v10_02 não foram aplicadas, não existe writer Python produtivo e a aprovação da UI não possui caller; portanto o ciclo ainda não fecha fora do laboratório.",
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
         {
           "id": "P09-T03",
           "title": "Executar somente por porta única e reversível",
           "status": "partial",
           "proof": "O caminho privilegiado de BiddingActionBox foi removido e a criação Search passa pelo backend autenticado. Snapshots registram três famílias de executores com mutate (Webhook, Form Triggers e ClickUp), mas o estado vivo ainda exige conferência. v10_01 não foi aplicada nem ligada às rotas; superfícies n8n precisam ser autenticadas ou aposentadas e provar zero mutate fora da porta.",
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"]
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
+          ]
         },
         {
           "id": "P09-T04",
@@ -843,7 +940,9 @@
           "title": "Provar um gateway agêntico Google Ads somente leitura",
           "status": "todo",
           "proof": "Google Ads MCP e google/skills foram aceitos apenas como referência; falta gateway backend → Hermes/Bia com escopo, contexto filtrado, logs e zero segredo ou mutate no navegador.",
-          "links": ["docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"]
+          "links": [
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
+          ]
         },
         {
           "id": "P09-T07",
@@ -852,8 +951,15 @@
           "proof": "O front lê orientacao_* no self-hosted; o workflow ativo dbpKlrxR6B2pqiAs grava v2.1 no hosted legado. Não há prova de function local geradora; RPCs de highlights apenas rotacionam destaques.",
           "explanation": "Recuperar o contrato e a linhagem sem trocar URLs cegamente nem misturar opinião com tabela factual.",
           "acceptance": "Dump read-only sanitizado de schema/functions/triggers/policies do projeto legado; diff objeto por objeto; sucessor decidido; escrita nova somente no ledger oficial; cockpit mostra timeline canônica e não orientacao_* órfã.",
-          "dependencies": ["P02-T03", "P09-T01", "P09-T02"],
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"]
+          "dependencies": [
+            "P02-T03",
+            "P09-T01",
+            "P09-T02"
+          ],
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
+          ]
         },
         {
           "id": "P09-T08",
@@ -861,8 +967,17 @@
           "status": "todo",
           "proof": "A auditoria Fable confirmou que ORAKUL/BEAST preserva maturidade, histerese, pisos/tetos, eventos e redistribuição em 1.678 linhas Python ainda misturadas a I/O, inputs mortos e execução paralela. O pacote atual de políticas é calibração sintética, não a extração do kernel histórico; nenhuma constante herdada está publicável.",
           "acceptance": "Pacote puro fatos→features→políticas→árbitro→proposta, sem I/O ou mutate; cada saída cita rule_id/version/inputs/freshness; golden replay reproduz ou explica divergências; literais históricos permanecem despublicados até calibração.",
-          "dependencies": ["P09-T01", "P09-T02", "P02-T03"],
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md", "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md"]
+          "dependencies": [
+            "P09-T01",
+            "P09-T02",
+            "P02-T03"
+          ],
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md",
+            "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md"
+          ]
         },
         {
           "id": "P09-T09",
@@ -870,8 +985,19 @@
           "status": "todo",
           "proof": "O replay sintético do Decision Intelligence Lab foi reproduzido em 8/8 cenários. A fronteira raw sintética → contrato VOLC agora possui normalizador hermético, recibo de cobertura, linhagem, fingerprint e 134 contraprovas próprias; junto do kernel são 162 provas, além de 1.195 testes backend e 518 do motor verdes no candidato integrado. Nenhum GoogleAdsRow real atravessou essa fronteira e nenhum shadow compara legado e kernel novo sobre a mesma fotografia; a etapa real ainda não começou.",
           "acceptance": "Replay as-of sem vazamento; divergências explicadas; shadow por janela aprovada; métricas de falso positivo, valor esperado e drawdown; só depois proposta humana e canário pequeno, reversível e com recibo.",
-          "dependencies": ["P09-T03", "P09-T08", "P14-T02"],
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md", "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md", "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json", "volc_ads/inteligencia_decisao/normalizacao_google_ads.py", "backend/tests/test_inteligencia_decisao_normalizador.py"]
+          "dependencies": [
+            "P09-T03",
+            "P09-T08",
+            "P14-T02"
+          ],
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md",
+            "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md",
+            "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json",
+            "volc_ads/inteligencia_decisao/normalizacao_google_ads.py",
+            "backend/tests/test_inteligencia_decisao_normalizador.py"
+          ]
         },
         {
           "id": "P09-T10",
@@ -881,8 +1007,15 @@
           "proof": "O paper arXiv:2302.01523 foi confrontado com ORAKUL, Decision Lab, Meridian e a leitura da Bia. A SPEC declara as lacunas: ainda não existe snapshot canônico de portfólio, ROI econômico oficial, moeda/janela fechadas ou restrições globais.",
           "explanation": "Definir o que é unidade de alocação, valor, gasto, orçamento, horizonte, atraso, risco e elegibilidade antes de escolher um algoritmo.",
           "acceptance": "Snapshot imutável por período e unidade; uma métrica econômica compatível com o gasto; moeda, janela e atraso declarados; budget autorizado e gasto separados; null diferente de zero; underdelivery e violações de premissa explícitos; fingerprint e linhagem.",
-          "dependencies": ["P06-T03", "P06-T04", "P06-T08"],
-          "links": ["docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md", "https://arxiv.org/abs/2302.01523"]
+          "dependencies": [
+            "P06-T03",
+            "P06-T04",
+            "P06-T08"
+          ],
+          "links": [
+            "docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md",
+            "https://arxiv.org/abs/2302.01523"
+          ]
         },
         {
           "id": "P09-T11",
@@ -892,8 +1025,15 @@
           "proof": "Existe desenho do spike, mas nenhum allocator foi implementado. As campanhas atuais que não consomem orçamento violam uma premissa central do paper e são inelegíveis.",
           "explanation": "Comparar o algoritmo inspirado no paper com baselines simples, sem confundir essa camada com Smart Bidding, previsão, diagnóstico ou execução.",
           "acceptance": "Reprodução determinística do SGD-UCB; orçamento atual, igual/proporcional, greedy conservador e heurística Bia v0 normalizada lado a lado; replay as-of sem futuro; restrições verificadas fora do modelo; intervalos e amostra visíveis; zero LLM no cálculo e zero mutate.",
-          "dependencies": ["P09-T08", "P09-T10", "P14-T02"],
-          "links": ["docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md", "https://arxiv.org/abs/2302.01523"]
+          "dependencies": [
+            "P09-T08",
+            "P09-T10",
+            "P14-T02"
+          ],
+          "links": [
+            "docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md",
+            "https://arxiv.org/abs/2302.01523"
+          ]
         },
         {
           "id": "P09-T12",
@@ -902,8 +1042,15 @@
           "priority": 4,
           "proof": "O ledger v10 modela propostas individuais, mas ainda não existe plano de portfólio que preserve atomicamente orçamento e ROI globais nem estado reproduzível do allocator.",
           "acceptance": "Run, snapshot, braços, contagens, variáveis duais, seed e versão reproduzíveis; plano-pai preserva totais e restrições; propostas filhas citam o plano; ORAKUL aplica vetos/pisos/tetos sem reescrever evidência; nenhuma aplicação parcial viola o orçamento global.",
-          "dependencies": ["P09-T01", "P09-T02", "P09-T03", "P09-T11"],
-          "links": ["docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md"]
+          "dependencies": [
+            "P09-T01",
+            "P09-T02",
+            "P09-T03",
+            "P09-T11"
+          ],
+          "links": [
+            "docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md"
+          ]
         },
         {
           "id": "P09-T13",
@@ -912,8 +1059,14 @@
           "priority": 4,
           "proof": "Reservado após contrato, replay e plano-pai; ainda não existe proposta real do allocator nem dataset econômico fechado.",
           "acceptance": "Janela e atribuição fechadas; gate de elegibilidade por unidade; atual vs baselines vs paper-inspired na Bancada/QG; proposta tipada na timeline; ORAKUL pode bloquear; Bia apenas explica; humano confirma; exploração e Google mutate permanecem desativados.",
-          "dependencies": ["P09-T05", "P09-T09", "P09-T12"],
-          "links": ["docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md"]
+          "dependencies": [
+            "P09-T05",
+            "P09-T09",
+            "P09-T12"
+          ],
+          "links": [
+            "docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md"
+          ]
         },
         {
           "id": "P09-T14",
@@ -923,8 +1076,16 @@
           "proof": "Migration v12_01 aplicada no Supabase oficial; coletor Python read-only e idempotente provado; execução completa v3 registrou 10 recibos reais da Crédito Up sem falhas, preservou vazio_confirmado=0 distinto de falhou/null e não deixa uma falha antiga esconder o retry bem-sucedido. O pacote systemd é somente alternativa versionada e não foi instalado. Como a ingestão operacional já vive no n8n, falta confrontar e adaptar os workflows D0/D-1 e escolher uma única autoridade de agenda, sem executar dois coletores concorrentes.",
           "explanation": "Coletar continuamente diagnóstico, recomendações armazenadas e geradas, simulações, forecasts e experimentos sem transformar ausência em zero nem falha em ausência.",
           "acceptance": "Autoridade de agenda decidida e única (n8n ou worker); frequência e coleta completa ativas; credencial referenciada sem segredo em node; heartbeat e recibo por execução; alerta por atraso/falha; primeira janela automática reconciliada; zero mutate; dashboard mostra com_dados, vazio_confirmado, parcial, inelegível, não suportado e falhou sem colapsar estados.",
-          "dependencies": ["P02-T02", "P05-T07", "P06-T08"],
-          "links": ["docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md", "supabase/migrations/v12_01_google_inteligencia_coletas.sql", "deploy/google-intelligence/README.md"]
+          "dependencies": [
+            "P02-T02",
+            "P05-T07",
+            "P06-T08"
+          ],
+          "links": [
+            "docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md",
+            "supabase/migrations/v12_01_google_inteligencia_coletas.sql",
+            "deploy/google-intelligence/README.md"
+          ]
         }
       ]
     },
@@ -956,11 +1117,11 @@
           "status": "partial",
           "proof": "parte do inventário ainda usa estado declarado"
         },
-    {
-      "id": "P10-T03",
-      "title": "Eliminar duplicidade por fonte e data",
-      "status": "partial",
-      "proof": "Os dois coletores VOLC oficiais foram distinguidos como D0 e D-1, alinhados à API v25 e serializados internamente em 28/08/2026. As gerações Webgo permanecem referência de outra operação. Falta o ledger por execução e a chave canônica conta+campanha+data; daily_campaign_metrics ainda permite ambiguidade entre contas."
+        {
+          "id": "P10-T03",
+          "title": "Eliminar duplicidade por fonte e data",
+          "status": "partial",
+          "proof": "Os dois coletores VOLC oficiais foram distinguidos como D0 e D-1, alinhados à API v25 e serializados internamente em 28/08/2026. As gerações Webgo permanecem referência de outra operação. Falta o ledger por execução e a chave canônica conta+campanha+data; daily_campaign_metrics ainda permite ambiguidade entre contas."
         },
         {
           "id": "P10-T04",
@@ -993,8 +1154,15 @@
           "status": "todo",
           "proof": "Os legados ainda carregam API v21, contas, domínios, thresholds e fórmulas em JSON executável. A auditoria confirmou que scanner e sanitizador não cobrem todos os artefatos; o registro deve guardar somente localização e classe do achado, nunca o valor.",
           "acceptance": "n8n recebe somente job_id, credencial de referência e DTO mínimo; contas/domínios/config ficam server-side; fórmulas, thresholds e prompts proprietários vivem em módulos privados ou políticas versionadas; scanner não encontra segredo literal.",
-          "dependencies": ["P10-T07", "P10-T06", "P02-T03"],
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"]
+          "dependencies": [
+            "P10-T07",
+            "P10-T06",
+            "P02-T03"
+          ],
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
+          ]
         },
         {
           "id": "P10-T09",
@@ -1008,22 +1176,25 @@
             "docs/architecture/contracts/agentic-recovery-smoke-v1.json"
           ]
         },
-      {
-        "id": "P10-T10",
-        "title": "Provar ADK + DeepSeek numa falha sintética do Redator",
-        "status": "partial",
-        "proof": "DeepSeek oficial foi chamado em 8 microreparos reais e sanitizados: 7/8 passaram schema e guarda; variável Python fez 4/4 com allowlist, AST e prova funcional; copy fez 3/4 estruturalmente, mas 0/4 recebeu aceite semântico humano. O adapter LiteLLM do ADK 2.8.0 perdeu message.content ao converter reasoning_content; a prova válida usou o cliente OpenAI-compatible oficial e registrou somente a resposta final.",
+        {
+          "id": "P10-T10",
+          "title": "Provar ADK + DeepSeek numa falha sintética do Redator",
+          "status": "partial",
+          "proof": "DeepSeek oficial foi chamado em 8 microreparos reais e sanitizados: 7/8 passaram schema e guarda; variável Python fez 4/4 com allowlist, AST e prova funcional; copy fez 3/4 estruturalmente, mas 0/4 recebeu aceite semântico humano. O adapter LiteLLM do ADK 2.8.0 perdeu message.content ao converter reasoning_content; a prova válida usou o cliente OpenAI-compatible oficial e registrou somente a resposta final.",
           "explanation": "Medir se um agente barato consegue compreender um erro sanitizado, corrigir somente um artefato sandbox e parar corretamente quando a correção não fecha.",
           "acceptance": "Dez repetições: 100% de saída no schema, zero segredo e escrita externa, limite de loop respeitado, artefato revalidado, latência/tokens/custo registrados e pelo menos 9 decisões aceitas por revisão humana.",
-          "dependencies": ["P10-T09", "P10-T06"],
-        "links": [
-          "docs/architecture/contracts/agentic-recovery-smoke-v1.json",
-          "docs/architecture/evidence/DEEPSEEK-AUTOREPAIR-SNIPER-SMOKE-2026-08-28.json",
-          "tools/agentic-recovery-smoke/sniper.py",
-          "https://adk.dev/agents/models/litellm/",
-          "https://api-docs.deepseek.com/guides/thinking_mode/",
-          "https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk"
-        ]
+          "dependencies": [
+            "P10-T09",
+            "P10-T06"
+          ],
+          "links": [
+            "docs/architecture/contracts/agentic-recovery-smoke-v1.json",
+            "docs/architecture/evidence/DEEPSEEK-AUTOREPAIR-SNIPER-SMOKE-2026-08-28.json",
+            "tools/agentic-recovery-smoke/sniper.py",
+            "https://adk.dev/agents/models/litellm/",
+            "https://api-docs.deepseek.com/guides/thinking_mode/",
+            "https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk"
+          ]
         },
         {
           "id": "P10-T11",
@@ -1032,7 +1203,10 @@
           "proof": "Redator possui loops e validadores determinísticos; nenhum runtime ADK participa das runs de produto.",
           "explanation": "Acionar o agente somente em erros elegíveis, fornecer contexto mínimo e permitir no máximo correção sandbox seguida pelo validador determinístico.",
           "acceptance": "Dispatcher por error_code, recipes versionados, três tentativas no máximo, heartbeat/deadman, idempotência, ledger privado e escalada humana; publicação e infraestrutura permanecem fora da allowlist.",
-          "dependencies": ["P10-T10", "P10-T04"]
+          "dependencies": [
+            "P10-T10",
+            "P10-T04"
+          ]
         },
         {
           "id": "P10-T12",
@@ -1041,8 +1215,13 @@
           "proof": "As duas campanhas reais têm pouca entrega e o Search Intelligence possui lacunas de Quality Score, impression share e termos; nenhum agente consulta esse conjunto ainda.",
           "explanation": "Usar o mesmo runtime para organizar fatos, hipóteses e consultas faltantes, sem reduzir a causa a lance baixo nem transformar recomendação em ação.",
           "acceptance": "Diagnóstico usa snapshot fresco e grafo, cita evidências, distingue ausência, produz plano de investigação e zero mutate/validate_only; avaliação humana compara resultado com o motor determinístico.",
-          "dependencies": ["P10-T10", "P05-T07"],
-          "links": ["docs/architecture/contracts/agentic-recovery-smoke-v1.json"]
+          "dependencies": [
+            "P10-T10",
+            "P05-T07"
+          ],
+          "links": [
+            "docs/architecture/contracts/agentic-recovery-smoke-v1.json"
+          ]
         },
         {
           "id": "P10-T13",
@@ -1051,7 +1230,10 @@
           "proof": "O contrato exige run, versões, ferramentas, custo e veredito, mas não existe schema ou painel no Supabase oficial.",
           "explanation": "Saber quando o agente acertou, errou, entrou em loop, ficou caro ou foi substituído por uma regra determinística melhor.",
           "acceptance": "Schema privado append-only registra input hash, versões, tool calls, limites, artefatos, veredito, revisão humana e custo; avaliação promove candidate→shadow→enabled e permite rollback.",
-          "dependencies": ["P10-T10", "P02-T02"]
+          "dependencies": [
+            "P10-T10",
+            "P02-T02"
+          ]
         },
         {
           "id": "P10-T14",
@@ -1060,7 +1242,10 @@
           "proof": "O sniper DeepSeek provou reparo mínimo de identificadores Python em 4/4 casos, mas as quatro correções de copy foram rejeitadas semanticamente por revisão humana. Ainda não existe separação formal entre triagem, proposta, crítica especializada, gate determinístico e escalada humana.",
           "explanation": "Criar agentes pequenos e acionáveis por função — copy, política, código e diagnóstico — com contexto mínimo do grafo e autoridade menor que o processo determinístico. O objetivo é corrigir um trecho elegível e seguir, não entregar autonomia irrestrita a um chatbot.",
           "acceptance": "Registro versionado de agentes e recipes; triagem por error_code; contexto mínimo do grafo; ferramentas allowlisted; no máximo três tentativas; revisor semântico independente para copy; AST, testes e typecheck para código; sandbox antes de aplicação; ledger completo; escalada humana; zero autoaplicação em publicação, campanha, banco, credencial ou infraestrutura.",
-          "dependencies": ["P10-T10", "P10-T13"],
+          "dependencies": [
+            "P10-T10",
+            "P10-T13"
+          ],
           "links": [
             "docs/architecture/evidence/DEEPSEEK-AUTOREPAIR-SNIPER-SMOKE-2026-08-28.json",
             "tools/agentic-recovery-smoke/sniper.py",
@@ -1074,7 +1259,11 @@
           "proof": "AGENTS.md, CLAUDE.md e PROTOCOLO-FECHAMENTO-AGENTES.md agora exigem identificação da tarefa, evidência, lacunas, atualização da fonte humana e rebuild do grafo; o schema do writer ADK também exige curation_handoff. Falta o curador único consumir esse handoff automaticamente depois do merge e publicar recibo visível no QG.",
           "explanation": "Impedir que Codex, Claude, Grok ou qualquer worker concluam trabalho material sem reconciliar Roadmap Vivo, curadoria humana e grafo híbrido. Workers paralelos não disputam a fonte: entregam proposta; um curador atualiza depois da integração.",
           "acceptance": "Toda integração material produz um recibo com task_ids, graph_nodes, estado honesto, evidência, lacunas e frescor; o curador único reconcilia a fonte humana, roda o pipeline oficial e o QG expõe o recibo sem depender do chat que executou a tarefa.",
-          "dependencies": ["P01-T05", "P01-T06", "P10-T06"],
+          "dependencies": [
+            "P01-T05",
+            "P01-T06",
+            "P10-T06"
+          ],
           "links": [
             "docs/architecture/PROTOCOLO-FECHAMENTO-AGENTES.md",
             "tools/agent-harness/src/volc_agent_harness/schemas/writer-result.schema.json"
@@ -1088,8 +1277,16 @@
           "proof": "O coletor Python v3 e o ledger v12 estão provados no Supabase oficial, mas nenhuma rotina contínua está ativa. A operação vigente usa n8n para ingestão Google Ads; os workflows D0/D-1 ainda escrevem no contrato legado e o pacote systemd permanece apenas como alternativa não instalada.",
           "explanation": "Preservar o n8n como plano de orquestração se ele continuar sendo a escolha operacional, fazendo-o chamar o coletor/RPC canônico em vez de manter uma segunda verdade de dados ou concorrer com timers systemd.",
           "acceptance": "Inventariar IDs e versões dos workflows VOLC D0/D-1; decidir n8n versus worker e registrar ADR; adaptar em cópia inativa; usar credencial n8n, paginação/lotes, retry com backoff, idempotência v12 e estados semânticos; validar workflow e nodes; canário manual; reconciliar recibos; ativar uma única agenda; heartbeat/deadman; rollback; provar que systemd e agenda duplicada estão inativos.",
-          "dependencies": ["P06-T08", "P09-T14", "P10-T06"],
-          "links": ["docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md", "docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md", "deploy/google-intelligence/README.md"]
+          "dependencies": [
+            "P06-T08",
+            "P09-T14",
+            "P10-T06"
+          ],
+          "links": [
+            "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md",
+            "docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md",
+            "deploy/google-intelligence/README.md"
+          ]
         }
       ]
     },
@@ -1380,7 +1577,14 @@
           "proof": "O laboratório sintético foi integrado em c846b56 e blindado em 6ff6fa7: oito cenários dourados, 28 contraprovas fail-closed e 10 provas de interface. A fronteira raw sintética → contrato VOLC foi integrada em 51437f3..7f0b768 após quatro recusas adversariais: normalizador hermético, recibo de cobertura, linhagem por campo, fingerprint determinístico, ausência diferente de zero e 134 contraprovas próprias. A convergência global integrou a bancada L6 em 3f9e22a/9c1c907/9f10d39: 44 provas, estados explícitos e fixture shadow impedida de afirmar dado real. Continua partial: nenhum GoogleAdsRow real atravessou a fronteira; faltam persistência/ledger, replay futuro-real, shadow verdadeiro do backend, aprovação e recibo produtivo.",
           "explanation": "Unir ARBA, Ads Monitor e If This Then Ad ao NEXUS, ORAKUL e Mesa de Termos como referências de sinal e política — sem instalar runtimes paralelos nem criar um segundo ledger. O laboratório deve provar diagnóstico causal, recomendação tipada, conflito entre regras, crítica opcional de LLM e recibo antes de qualquer autonomia.",
           "acceptance": "Replay sintético determinístico e fail-closed está provado. Para concluir: o motor só enxerga dados disponíveis na data simulada; normaliza GoogleAdsRow real com linhagem; compara proposta/previsão com ocorrido posterior; mede erro, falsos positivos, valor esperado e drawdown; persiste ledger/recibos; roda shadow por janela declarada; nenhum T2 antes de ADR explícita.",
-          "dependencies": ["P05-T07", "P05-T09", "P06-T06", "P09-T01", "P09-T08", "P06-T03"],
+          "dependencies": [
+            "P05-T07",
+            "P05-T09",
+            "P06-T06",
+            "P09-T01",
+            "P09-T08",
+            "P06-T03"
+          ],
           "priority": 1,
           "links": [
             "tools/agent-harness/missions/decision-intelligence-lab-v1.json",
@@ -1424,8 +1628,16 @@
           "status": "todo",
           "proof": "Não existem tabelas canônicas de versão de modelo, previsão, avaliação ou drift no Supabase oficial. A fotografia, previsão, realizado e schema v12 descritos pela SPEC/AUDIT continuam proposta não aplicada; nenhuma primeira previsão shadow foi persistida.",
           "acceptance": "Model versions candidate/challenger/champion/retired com artifact/code/feature hash; predictions append-only por campanha, alvo, target_date e cenário; evaluations e drift events auditáveis; actual só entra após fechamento da data.",
-          "dependencies": ["P02-T02", "P06-T03", "P14-T02"],
-          "links": ["docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json", "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md", "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md"]
+          "dependencies": [
+            "P02-T02",
+            "P06-T03",
+            "P14-T02"
+          ],
+          "links": [
+            "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
+            "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md",
+            "docs/architecture/ADR-RUNTIME-ORAKUL-E-WORKERS.md"
+          ]
         },
         {
           "id": "P14-T07",
@@ -1433,7 +1645,9 @@
           "status": "todo",
           "proof": "O Bola de Cristal usa features derivadas do alvo, validação desalinhada e não persiste previsão futura.",
           "acceptance": "Features lagged/as-of, time split, baseline amanhã=hoje lado a lado, null diferente de zero, outputs não negativos e previsão imutável antes do actual.",
-          "dependencies": ["P14-T06"]
+          "dependencies": [
+            "P14-T06"
+          ]
         },
         {
           "id": "P14-T08",
@@ -1441,7 +1655,9 @@
           "status": "todo",
           "proof": "O intervalo histórico não é calibrado e a alegação de 90% não corresponde à cobertura medida.",
           "acceptance": "MAE/WAPE/RMSE/bias, cobertura e largura/Winkler por horizonte e segmento; amostra mínima; challenger sempre shadow; promoção explícita só ao vencer baseline; drift suspende influência e usa baseline/indisponível, nunca zero.",
-          "dependencies": ["P14-T07"]
+          "dependencies": [
+            "P14-T07"
+          ]
         },
         {
           "id": "P14-T09",
@@ -1449,7 +1665,10 @@
           "status": "todo",
           "proof": "A ideia existe no Bola de Cristal, mas o resultado morre na execução manual do n8n.",
           "acceptance": "Cockpit consulta grid gasto→receita/ROAS com intervalo, modelo, baseline, data e premissas; zero proposta automática e zero ação externa.",
-          "dependencies": ["P14-T08", "P05-T02"]
+          "dependencies": [
+            "P14-T08",
+            "P05-T02"
+          ]
         },
         {
           "id": "P14-T10",
@@ -1465,6 +1684,9 @@
             "Champion e challenger exigem mesma identidade, população, janela e pair_ids",
             "Idempotência conflita quando a mesma chave recebe payload diferente",
             "Fixtures sintéticas nunca entram em métricas ou afirmações reais"
+          ],
+          "evidencia": [
+            "2026-08-30 · BLOQUEADO. Nada desta tarefa entrou na linha oficial: services/orakul_predictive em eec859e permanece byte-identico a 51b4e2e. O candidato 7ee202e foi REJEITADO para integracao e existe somente como evidencia. Fechados NO CANDIDATO REJEITADO, nao na fonte: aceite 1 (observacao posterior ao cutoff nao altera snapshot, previsao nem hash), aceite 2 (ausente, zero medido, falha, antigo e nao aplicavel distintos), aceite 3 (D+2 rotulado D+1 recusado antes de metricas), aceite 4 (champion e challenger exigem mesma identidade, populacao, janela e pair_ids) e aceite 5 (idempotencia conflita com payload diferente, apos normalizacao canonica que eliminou falso conflito entre subconjuntos equivalentes de alvos). ABERTO: aceite 6 — fixtures sinteticas nunca entram em metricas ou afirmacoes reais. Duas correcoes falharam: denylist de fixtures (alterar lido_em em 1 microssegundo passava) e contrato positivo com fabrica publica recibo_real_autorizado, que aceita recibo_id, origem e hash_fonte livres. MOTIVO ESTRUTURAL: nao existe hoje ponte confiavel entre coleta e Core. ObservacaoDiaria e construida somente em fixtures_sinteticas.py:40 e test_mutantes.py:93; nada fora do Core importa orakul_predictive; nada converte DocumentoColeta em ObservacaoDiaria; e o coletor nao modela receita diaria, que ObservacaoDiaria exige. Qualquer barreira dentro do Core e o Core autorizando a propria entrada. A SPEC v5 (docs/architecture/SPEC-P14-T10-V5.md) foi REJEITADA na revisao adversarial por reproduzir o mesmo defeito noutro arquivo, e registra o redesenho exigido. PROIBIDO ate a fronteira existir: promover fixture, replay, shadow ou objeto reconstruido a dado real."
           ]
         }
       ]
@@ -1632,7 +1854,10 @@
           "priority": 3,
           "proof": "Migration e rollback existem e passaram 129/129 no ciclo aplicar→operar→reverter→reaplicar; produção possui zero tabela/função criativo_render_*.",
           "acceptance": "Backup conferido, preflight nominal, cinco tabelas e nove funções publicadas, RLS/grants/guardas provados e rollback executável; nenhuma aplicação sem autorização explícita.",
-          "dependencies": ["P17-T02", "P02-T05"]
+          "dependencies": [
+            "P17-T02",
+            "P02-T05"
+          ]
         },
         {
           "id": "P17-T04",
@@ -1641,7 +1866,9 @@
           "priority": 3,
           "proof": "O runtime ativo persiste em fila.db; a v11_03 ainda não possui writer. Segurança do SQLite e segurança do Postgres foram provadas separadamente.",
           "acceptance": "Uma única porta escolhe o depósito por ambiente; o mesmo contrato de claim, lease, heartbeat, idempotência, transição e recibo passa nos dois adapters sem dupla verdade.",
-          "dependencies": ["P17-T03"]
+          "dependencies": [
+            "P17-T03"
+          ]
         },
         {
           "id": "P17-T05",
@@ -1650,7 +1877,9 @@
           "priority": 3,
           "proof": "Ambiente local funciona; Vercel/Lambda/Cloudflare falham fechado e nenhum worker remoto foi implantado.",
           "acceptance": "Worker isolado reivindica jobs, renova lease, mede artefato no disco/storage, registra custo e recibo e pode ser interrompido sem perder ou duplicar trabalho.",
-          "dependencies": ["P17-T04"]
+          "dependencies": [
+            "P17-T04"
+          ]
         },
         {
           "id": "P17-T06",
@@ -1659,7 +1888,10 @@
           "priority": 4,
           "proof": "A máquina LOCAL→UPLOADED_UNVERIFIED→VERIFIED_* está provada; bucket, uploader e reconciliação remotos não existem.",
           "acceptance": "Objeto usa chave canônica por tenant/job/slot, bytes e sha256 são reconferidos, divergência é terminal e nenhum artefato é apresentado como verificado antes da leitura de volta.",
-          "dependencies": ["P17-T03", "P17-T05"]
+          "dependencies": [
+            "P17-T03",
+            "P17-T05"
+          ]
         },
         {
           "id": "P17-T07",
@@ -1668,7 +1900,9 @@
           "priority": 5,
           "proof": "Medição encontrou downloads de 11 famílias e até 15 composições; offline falha duro. Fontes locais são viáveis, mas não foram incorporadas e o custo/licença não foi decidido.",
           "acceptance": "Render offline reproduz hash aprovado, não abre conexão externa, carrega somente fontes necessárias e possui decisão de licença registrada antes de faturar vídeo.",
-          "dependencies": ["P17-T05"]
+          "dependencies": [
+            "P17-T05"
+          ]
         },
         {
           "id": "P17-T08",
@@ -1677,7 +1911,10 @@
           "priority": 4,
           "proof": "Laboratório e fixtures estão integrados; nenhuma peça real atravessou produção, aprovação, biblioteca e destino pelo contrato novo.",
           "acceptance": "Uma peça aprovada para Google/Meta ou orgânico possui briefing, versão do motor, seed, hashes, validações, custo, recibo, armazenamento verificado e vínculo ao destino, sem publicação automática.",
-          "dependencies": ["P17-T05", "P17-T06"]
+          "dependencies": [
+            "P17-T05",
+            "P17-T06"
+          ]
         },
         {
           "id": "P17-T09",
@@ -1693,7 +1930,12 @@
             "Golden OpenAPI é reproduzível em checkout limpo com diagnóstico útil",
             "Regressão de autenticação não escreve fora de diretório temporário"
           ],
-          "dependencies": ["P17-T02"]
+          "dependencies": [
+            "P17-T02"
+          ],
+          "evidencia": [
+            "2026-08-30 · eec859e (commit eec859e): oito mutacoes observaveis das respostas da bancada morrem por propriedade externa. Aceite 1 PROVADO: mudar chave, tipo, forma ou conteudo observavel quebra o teste; os oraculos passaram a ser goldens _GoldenHTTP congelados, com bytes serializados e headers fixos, capturados do baseline e independentes de qualquer helper que replique a rota; a mutacao e aplicada no handler de producao ANTES da requisicao. Aceite 2 PROVADO: retomada inicial e replay idempotente com status e header X-Criativo-Idempotente comprovados. O contrato de headers virou allowlist fechada, que matou a ultima mutacao sobrevivente — adicionar Cache-Control: public, max-age=3600 a uma leitura autenticada. Gates: focal 255 passed; backend completo 1619 passed, 53 skipped. Revisores: Codex gpt-5.6-sol accept, Gemini 3.7 Flash accept. PENDENTE: aceites 3 (um owner por caminho por instante), 4 (golden OpenAPI reproduzivel em checkout limpo) e 5 (regressao de autenticacao nao escreve fora de diretorio temporario) nao foram exercitados."
+          ]
         }
       ]
     }
