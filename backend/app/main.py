@@ -17,6 +17,7 @@ from app.routers import (
     entities,
     pautador,
     trafego,
+    trafego_diagnostico,
     trafego_inventario,
     work_road,
 )
@@ -173,6 +174,8 @@ else:
 # propósito: o pacote puxa o SDK google-ads, e importá-lo aqui faria o backend
 # inteiro deixar de subir num ambiente sem o SDK — inclusive Pautador e Redator.
 app.include_router(trafego.router)
+# Diagnóstico persistido de Search pelo ledger v12 (P05-T07).
+app.include_router(trafego_diagnostico.router)
 # Inventário operacional (Fase 1B). `registrar()` inclui DOIS routers com o
 # mesmo prefixo: o de sessão (`exigir_usuario`) e o de serviço
 # (`exigir_servico`), que o agendador usa. Separados porque a origem da
