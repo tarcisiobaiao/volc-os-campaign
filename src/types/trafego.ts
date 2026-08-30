@@ -651,21 +651,16 @@ export interface CriterioDeKeyword {
 // nenhum — `.get("texto", "")` devolve `""` e o Brief aceita string vazia.
 // Um tipo só, com o vocabulário de quem produz: ver `CopyGerada`.
 
-export interface PedidoDeProva {
+interface PedidoDeProvaBase {
   opportunity_id: number;
   customer_id: string;
   login_customer_id: string;
   run_id?: number | null;
-  grupos: GrupoEscolhido[];
   keywords_fora?: string[];
   /** O que o estágio 3 escreveu, no vocabulário do engine. O backend aceita os
    *  dois nomes por compatibilidade, mas a tela manda um só. */
   copy?: CopyGerada | null;
   budget_diario: number;
-  cpc_inicial: number;
-  /** O match type PADRÃO do pedido. Quem manda `criterios` escolhe um por
-   *  keyword; este campo só preenche a lacuna de quem ainda manda `string[]`. */
-  match_type: string;
   negativas_campanha?: string[];
   negativas_adgroup?: string[];
   /** O contrato TIPADO. Vazio = a tela ainda fala o contrato antigo, e o
@@ -682,14 +677,16 @@ export interface PedidoDeProva {
    *  quebrar chamada antiga. */
   conversao?: string;
   ai_max?: boolean;
-  /** Contrato exclusivo de Demand Gen. `null`/ausente preserva ausência; cada
-   *  lista vazia dentro dele é uma confirmação explícita de que a superfície
-   *  não carrega itens nesta prova. */
-  demand_gen?: ConfiguracaoDemandGen | null;
-  /** Arquivos aprováveis pelo Estúdio. Os bytes chegam ao backend, que mede e
-   *  valida pela ponte canônica; o frontend não recalcula geometria. */
-  assets_demand_gen?: AssetDemandGen[] | null;
+}
 
+export type CanalLegadoDeProva = Exclude<CanalComManifesto, 'DEMAND_GEN'>;
+
+export interface PedidoDeProvaSearch extends PedidoDeProvaBase {
+  grupos: GrupoEscolhido[];
+  cpc_inicial: number;
+  /** O match type PADRÃO do pedido. Quem manda `criterios` escolhe um por
+   *  keyword; este campo só preenche a lacuna de quem ainda manda `string[]`. */
+  match_type: string;
   // ── como a campanha nasce (ver docs/SPEC-FRONT-CAMPANHAS.md) ──────────────
   /**
    * ⚠️ `CanalComManifesto`, e não `Canal`. O inventário pode DEVOLVER Vídeo e
@@ -699,13 +696,33 @@ export interface PedidoDeProva {
    * Nem todo canal com manifesto sabe criar: a autoridade em runtime é
    * `ManifestoDeCanal.sabe_criar`, e o backend recusa com a lista do que existe.
    */
-  canal?: CanalComManifesto;
+  canal?: CanalLegadoDeProva;
   estrategia_lance?: EstrategiaDeLance;
   /** Em quantas conversões trocar de estratégia. `0` desliga. O lançamento
    *  REGISTRA a regra; quem executa é o motor de gestão. */
   graduacao_em_conversoes?: number;
   meta_conversao_id?: string | null;
+  demand_gen?: never;
+  assets_demand_gen?: never;
 }
+
+export interface PedidoDeProvaDemandGen extends PedidoDeProvaBase {
+  /** Demand Gen não herda a fronteira Search nem seus defaults. */
+  canal: 'DEMAND_GEN';
+  estrategia_lance: 'MAXIMIZE_CONVERSIONS';
+  /** Contrato exclusivo de Demand Gen. Cada lista vazia interna é uma
+   *  confirmação explícita de que a superfície não carrega itens nesta prova. */
+  demand_gen: ConfiguracaoDemandGen;
+  /** Arquivos aprováveis pelo Estúdio. Os bytes chegam ao backend, que mede e
+   *  valida pela ponte canônica; o frontend não recalcula geometria. */
+  assets_demand_gen: AssetDemandGen[];
+  cpc_inicial?: never;
+  match_type?: never;
+  grupos?: never;
+  graduacao_em_conversoes?: never;
+}
+
+export type PedidoDeProva = PedidoDeProvaSearch | PedidoDeProvaDemandGen;
 
 /** Onde a mídia é comprada. Uma terceira entra quando houver conta,
  *  credencial e leitura — não quando alguém a mencionar. */

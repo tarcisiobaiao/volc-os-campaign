@@ -1333,39 +1333,96 @@ class ProvarEntrada(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _demand_gen_tem_fronteira_estrita(cls, dados: Any) -> Any:
-        """Recusa campos desconhecidos em TODO o envelope Demand Gen.
+        """Discrimina Search/legado e Demand Gen antes da projeção.
 
-        Os modelos compartilhados são permissivos por compatibilidade com os
-        clientes Search legados. Essa tolerância não pode vazar para um canal
-        novo: um typo como `upgraded_targetting` seria descartado e o pedido
-        pareceria ter escolhido ausência. Validamos o JSON bruto com uma
-        projeção `extra='forbid'` antes de o modelo compartilhado normalizá-lo.
+        Os modelos compartilhados são permissivos por compatibilidade com
+        clientes Search legados. Essa tolerância não pode vazar para o contrato
+        vertical: `assets_demand_gen=[]` é uma escolha explícita de Demand Gen,
+        mesmo vazio, e não pode ser apagada por um `canal=SEARCH` relabelado.
 
-        A guarda `cls is ProvarEntrada` evita recursão quando a própria
-        projeção estrita, definida logo abaixo, é validada.
+        A projeção `extra='forbid'` roda no envelope de `/provar` e também no
+        de `/subir`; campos exclusivos da aprovação são removidos antes dessa
+        projeção para que a herança não reabra a fronteira vertical.
         """
-        if cls is not ProvarEntrada or not isinstance(dados, dict):
+        if cls.__name__ == "ProvarEntradaDemandGenEstrita" or not isinstance(dados, dict):
             return dados
+        classe = cls.__name__
         canal = str(dados.get("canal") or "SEARCH").strip().upper()
-        if canal == "DEMAND_GEN":
-            def _cru(valor: Any) -> Any:
-                # Chamadas internas podem montar os submodelos antes do
-                # envelope. A fronteira HTTP recebe dict; esta conversão
-                # preserva compatibilidade sem afrouxar o JSON bruto.
-                if isinstance(valor, BaseModel):
-                    return {
-                        chave: _cru(item)
-                        for chave, item in valor.model_dump(
-                            mode="python", by_alias=True
-                        ).items()
-                    }
-                if isinstance(valor, dict):
-                    return {chave: _cru(item) for chave, item in valor.items()}
-                if isinstance(valor, (list, tuple)):
-                    return [_cru(item) for item in valor]
-                return valor
+        campos_demand_gen = [
+            campo for campo in ("demand_gen", "assets_demand_gen")
+            if campo in dados and dados[campo] is not None
+        ]
+        if campos_demand_gen and canal != "DEMAND_GEN":
+            raise ValueError(
+                "Campos Demand Gen pertencem ao contrato vertical e exigem "
+                "`canal=DEMAND_GEN`; recebido canal "
+                f"{canal!r} com {', '.join(campos_demand_gen)}. "
+                "Nada foi projetado para Search."
+            )
+        if canal != "DEMAND_GEN" or classe not in {"ProvarEntrada", "SubirEntrada"}:
+            return dados
 
-            ProvarEntradaDemandGenEstrita.model_validate(_cru(dados))
+        estrategia = str(dados.get("estrategia_lance") or "").strip().upper()
+        if estrategia != "MAXIMIZE_CONVERSIONS":
+            raise ValueError(
+                "canal DEMAND_GEN exige `estrategia_lance="
+                "MAXIMIZE_CONVERSIONS`; ausência ou outro valor não herda o "
+                "contrato Search."
+            )
+        ausentes = [
+            campo for campo in ("demand_gen", "assets_demand_gen")
+            if campo not in dados or dados[campo] is None
+        ]
+        if ausentes:
+            raise ValueError(
+                "canal DEMAND_GEN exige campos explícitos do contrato "
+                f"vertical: {', '.join(ausentes)}. `null` é ausência."
+            )
+        campos_search = [
+            campo for campo in ("cpc_inicial", "match_type")
+            if campo in dados
+        ]
+        if campos_search:
+            raise ValueError(
+                "canal DEMAND_GEN proíbe campos Search no envelope: "
+                + ", ".join(campos_search)
+            )
+        if (
+            classe == "SubirEntrada"
+            and isinstance(dados.get("assets_demand_gen"), (list, tuple))
+            and len(dados["assets_demand_gen"]) == 0
+        ):
+            raise ValueError(
+                "canal DEMAND_GEN em /subir exige `assets_demand_gen` com ao "
+                "menos um item; lista vazia é ausência explícita."
+            )
+
+        def _cru(valor: Any) -> Any:
+            # Chamadas internas podem montar os submodelos antes do envelope. A
+            # fronteira HTTP recebe dict; esta conversão preserva
+            # compatibilidade sem afrouxar o JSON bruto.
+            if isinstance(valor, BaseModel):
+                return {
+                    chave: _cru(item)
+                    for chave, item in valor.model_dump(
+                        mode="python", by_alias=True
+                    ).items()
+                }
+            if isinstance(valor, dict):
+                return {chave: _cru(item) for chave, item in valor.items()}
+            if isinstance(valor, (list, tuple)):
+                return [_cru(item) for item in valor]
+            return valor
+
+        projetado = _cru(dados)
+        if classe == "SubirEntrada":
+            for campo in (
+                "motivo",
+                "plano_impressao",
+                "confirmar_criacao_pausada",
+            ):
+                projetado.pop(campo, None)
+        ProvarEntradaDemandGenEstrita.model_validate(projetado)
         return dados
 
 
@@ -2111,7 +2168,13 @@ async def subir(
     custa uma chamada de leitura e fecha a janela entre provar e subir — em que
     o operador poderia ter trocado a copy sem reprovar.
 
-    ## O portão da casa vem ANTES da trava
+    ## Demand Gen morre antes de qualquer efeito
+
+    Enquanto Demand Gen é só prova validate_only, `/subir` recusa esse canal
+    antes de escopo, canário, ponte, cliente, trava ou mutate. Um payload
+    inválido nem chega aqui: morre na validação do envelope.
+
+    ## O portão da casa vem ANTES da trava para canais autorizáveis
 
     É o único caminho de escrita do módulo, e o `customer_id` chega no corpo.
     Conferir o escopo antes de qualquer outra coisa é o que garante que nem uma
@@ -2125,7 +2188,6 @@ async def subir(
     o comportamento medido hoje seja o de amanhã — e 1,6 s numa ação deliberada
     e rara não é preço.
     """
-    cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     if str(body.canal or "SEARCH").strip().upper() == "DEMAND_GEN":
         raise HTTPException(
             status_code=403,
@@ -2135,6 +2197,7 @@ async def subir(
                 "nada foi enviado."
             ),
         )
+    cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     chave_intencao = _impressao_aprovavel(body, cid=cid, mid=mid)
     try:
         marca = canario.exigir(

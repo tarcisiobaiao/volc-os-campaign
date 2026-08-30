@@ -26,7 +26,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
-import type { EstadoDaTrava, PedidoDeProva } from '@/types/trafego';
+import type { EstadoDaTrava, PedidoDeProvaSearch } from '@/types/trafego';
 
 const { provarCampanha, subirCampanha, ErroFalso } = vi.hoisted(() => ({
   provarCampanha: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('@/lib/pautadorApi', () => ({
 
 import { Lancamento } from '../Lancamento';
 
-const PEDIDO: PedidoDeProva = {
+const PEDIDO: PedidoDeProvaSearch = {
   opportunity_id: 65, run_id: 9, customer_id: '5478096539',
   login_customer_id: '6016739364',
   grupos: [{ tipo: 'SAQUE', keywords: ['consultar fgts'] }],

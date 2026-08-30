@@ -103,7 +103,7 @@ import type {
   RevisaoDeCorrespondencia, VocabularioDoInventario,
   Cockpit, EscopoDeContas, EscritaDaCopy, EstadoDaTrava, PedidoDeCopy,
   CopyGerada, CopyPersistida, VereditoDePolitica, VerticalDePolitica,
-  PedidoDeProva, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
+  PedidoDeProva, PedidoDeProvaSearch, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
   RespostaDaCopy, RespostaDaProva,
 } from '@/types/trafego';
 import type { RespostaDoDiagnostico } from '@/types/diagnostico';
@@ -860,7 +860,7 @@ export const pautadorApi = {
 
   // O caminho de escrita. Exige `motivo` (vai para o recibo) e só funciona com
   // a trava de dois fatores aberta — ver `estadoDaTrava`.
-  subirCampanha(pedido: PedidoDeProva & {
+  subirCampanha(pedido: PedidoDeProvaSearch & {
     motivo: string;
     plano_impressao: string;
     confirmar_criacao_pausada: boolean;

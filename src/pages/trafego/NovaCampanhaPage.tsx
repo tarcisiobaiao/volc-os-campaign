@@ -53,7 +53,7 @@ import { DECORRE_DA_ESTRATEGIA } from '@/types/trafego';
 import type {
   AvisoDoCockpit, Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword,
   EstadoDaTrava, EstrategiaDeLance, GrupoCandidato, MatchType,
-  VerticalDePolitica,
+  PedidoDeProvaSearch, VerticalDePolitica,
 } from '@/types/trafego';
 
 const chaveDe = (grupo: string, texto: string) => `${grupo}:${texto}`;
@@ -330,7 +330,7 @@ const NovaCampanhaPage: React.FC = () => {
     return [...positivas, ...negativas];
   }, [gruposEscolhidos, matchPorKeyword, estrategia, negativas]);
 
-  const pedido = cockpit && {
+  const pedido: PedidoDeProvaSearch | null = cockpit ? {
     opportunity_id: oid,
     run_id: runId ?? null,
     customer_id: conta?.customer_id ?? '',
@@ -355,7 +355,7 @@ const NovaCampanhaPage: React.FC = () => {
     vertical: vertical || cockpit.origem.vertical,
     certificacoes,
     url_final: cockpit.origem.url_final,
-  };
+  } : null;
 
   const titulo = cockpit?.origem.nicho || `card #${oid}`;
 

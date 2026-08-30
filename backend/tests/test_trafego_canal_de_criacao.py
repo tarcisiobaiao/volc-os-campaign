@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.routers import trafego
-from app.seguranca.identidade import Identidade, exigir_usuario
+from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario
 from app.trafego import plataforma as plat
 from volc_ads import pautador_ponte
 from volc_ads import subir as motor
@@ -75,6 +75,20 @@ def _isolar(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+def _payload_demand_gen_minimo(**troca: object) -> dict:
+    base = {
+        "opportunity_id": 1,
+        "customer_id": "8017851692",
+        "login_customer_id": "6016739364",
+        "canal": "DEMAND_GEN",
+        "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+        "demand_gen": {},
+        "assets_demand_gen": [],
+    }
+    base.update(troca)
+    return base
+
+
 @pytest.mark.parametrize("canal", ["PMAX"])
 def test_provar_recusa_canal_sem_builder_com_422(
     monkeypatch: pytest.MonkeyPatch,
@@ -112,12 +126,7 @@ def test_provar_demand_gen_flag_off_recusa_antes_de_ponte_ou_api(
         lambda: pytest.fail("flag fechada carregou engine/credencial"),
     )
 
-    body = trafego.ProvarEntrada(
-        opportunity_id=1,
-        customer_id="8017851692",
-        login_customer_id="6016739364",
-        canal="DEMAND_GEN",
-    )
+    body = trafego.ProvarEntrada(**_payload_demand_gen_minimo())
     with pytest.raises(HTTPException) as erro:
         asyncio.run(trafego.provar(body))
     assert erro.value.status_code == 403
@@ -134,12 +143,7 @@ def test_provar_demand_gen_flag_on_ainda_exige_capacidade_do_operador(
         "_no_escopo",
         lambda *_: pytest.fail("operador sem capacidade chegou ao escopo"),
     )
-    body = trafego.ProvarEntrada(
-        opportunity_id=1,
-        customer_id="8017851692",
-        login_customer_id="6016739364",
-        canal="DEMAND_GEN",
-    )
+    body = trafego.ProvarEntrada(**_payload_demand_gen_minimo())
     identidade = SimpleNamespace(papel="OPERATOR")
     with pytest.raises(HTTPException) as erro:
         asyncio.run(trafego.provar(body, identidade=identidade))
@@ -180,20 +184,17 @@ def test_provar_demand_gen_recusa_campo_nao_operado_antes_de_escopo_e_engine(
         "_ponte",
         lambda: pytest.fail(f"{campo} chegou ao engine/cliente"),
     )
-    body = trafego.ProvarEntrada(
-        opportunity_id=1,
-        customer_id="8017851692",
-        login_customer_id="6016739364",
-        canal="DEMAND_GEN",
-        **troca,
+    payload = _payload_demand_gen_minimo(**troca)
+
+    with _cliente_da_fronteira() as cliente:
+        resposta = cliente.post("/api/trafego/provar", json=payload)
+
+    assert resposta.status_code == 422, resposta.text
+    assert campo in resposta.text
+    assert (
+        "não os descarta em silêncio" in resposta.text
+        or "campos Search" in resposta.text
     )
-
-    with pytest.raises(HTTPException) as erro:
-        asyncio.run(trafego.provar(body))
-
-    assert erro.value.status_code == 422
-    assert campo in str(erro.value.detail)
-    assert "não os descarta em silêncio" in str(erro.value.detail)
 
 
 def test_plano_demand_gen_recusa_campos_search_em_vez_de_apaga_los() -> None:
@@ -202,6 +203,7 @@ def test_plano_demand_gen_recusa_campos_search_em_vez_de_apaga_los() -> None:
         customer_id="8017851692",
         login_customer_id="6016739364",
         canal="DEMAND_GEN",
+        estrategia_lance="MAXIMIZE_CONVERSIONS",
         grupos=[trafego.GrupoEscolhido(tipo="busca", keywords=["não converter"])],
         demand_gen=trafego.ConfiguracaoDemandGenEntrada(),
         assets_demand_gen=[],
@@ -218,6 +220,80 @@ def test_plano_demand_gen_recusa_campos_search_em_vez_de_apaga_los() -> None:
 
     assert "não os descarta em silêncio" in str(erro.value)
     assert "grupos" in str(erro.value)
+
+
+@pytest.mark.parametrize("campo", ["demand_gen", "assets_demand_gen"])
+def test_search_relabelado_com_campo_demand_gen_recusa_antes_de_escopo(
+    monkeypatch: pytest.MonkeyPatch,
+    campo: str,
+) -> None:
+    payload = {
+        "opportunity_id": 1,
+        "customer_id": "8017851692",
+        "login_customer_id": "6016739364",
+        "canal": "SEARCH",
+        "budget_diario": 10,
+        "cpc_inicial": 0.12,
+        "match_type": "PHRASE",
+        campo: [] if campo == "assets_demand_gen" else {},
+    }
+    monkeypatch.setattr(
+        trafego,
+        "_no_escopo",
+        lambda *_: pytest.fail(f"{campo} chegou ao escopo"),
+    )
+    monkeypatch.setattr(
+        trafego,
+        "_ponte",
+        lambda: pytest.fail(f"{campo} chegou ao engine Search"),
+    )
+
+    with _cliente_da_fronteira() as cliente:
+        resposta = cliente.post("/api/trafego/provar", json=payload)
+
+    assert resposta.status_code == 422, resposta.text
+    assert "canal=DEMAND_GEN" in resposta.text
+    assert "Nada foi projetado para Search" in resposta.text
+
+
+def test_search_com_null_demand_gen_preserva_ausencia() -> None:
+    body = trafego.ProvarEntrada.model_validate({
+        "opportunity_id": 1,
+        "customer_id": "8017851692",
+        "login_customer_id": "6016739364",
+        "canal": "SEARCH",
+        "budget_diario": 10,
+        "cpc_inicial": 0.12,
+        "match_type": "PHRASE",
+        "demand_gen": None,
+        "assets_demand_gen": None,
+    })
+
+    assert body.canal == "SEARCH"
+    assert body.demand_gen is None
+    assert body.assets_demand_gen is None
+
+
+@pytest.mark.parametrize(
+    ("troca", "mensagem"),
+    [
+        ({"estrategia_lance": "MANUAL_CPC"}, "MAXIMIZE_CONVERSIONS"),
+        ({"demand_gen": None}, "demand_gen"),
+        ({"assets_demand_gen": None}, "assets_demand_gen"),
+        ({"cpc_inicial": 0.12}, "proíbe campos Search"),
+        ({"match_type": "PHRASE"}, "proíbe campos Search"),
+    ],
+)
+def test_modelo_demand_gen_discrimina_o_contrato_antes_da_rota(
+    troca: dict,
+    mensagem: str,
+) -> None:
+    payload = _payload_demand_gen_minimo(**troca)
+
+    with pytest.raises(ValidationError) as erro:
+        trafego.ProvarEntrada.model_validate(payload)
+
+    assert mensagem in str(erro.value)
 
 
 def _payload_http_demand_gen() -> dict:
@@ -262,9 +338,11 @@ def _payload_http_demand_gen() -> dict:
 def _cliente_da_fronteira() -> TestClient:
     app = FastAPI()
     app.include_router(trafego.router)
-    app.dependency_overrides[exigir_usuario] = lambda: Identidade(
+    identidade = Identidade(
         sub="u1", email="op@volc", papel="ADMIN", origem="sessao"
     )
+    app.dependency_overrides[exigir_usuario] = lambda: identidade
+    app.dependency_overrides[exigir_admin] = lambda: identidade
     return TestClient(app)
 
 
@@ -557,6 +635,96 @@ def test_plano_http_demand_gen_nao_depende_de_keyword_e_preserva_superficies() -
     assert len(plano.brief.imagens_demand_gen.todas) == 2
 
 
+def _payload_http_subir_demand_gen() -> dict:
+    payload = copy.deepcopy(_payload_http_demand_gen())
+    payload.update({
+        "motivo": "prova hermetica de recusa operacional demand gen",
+        "plano_impressao": "impressao-aprovada-fixture",
+        "confirmar_criacao_pausada": True,
+    })
+    return payload
+
+
+def _blindar_subir_demand_gen(monkeypatch: pytest.MonkeyPatch, caso: str) -> None:
+    def falhar(destino: str):
+        return lambda *_args, **_kwargs: pytest.fail(
+            f"{caso} alcancou {destino} antes da recusa"
+        )
+
+    monkeypatch.setattr(
+        trafego,
+        "_no_escopo",
+        falhar("_no_escopo"),
+    )
+    monkeypatch.setattr(
+        trafego,
+        "_ponte",
+        falhar("a ponte"),
+    )
+    monkeypatch.setattr(
+        trafego.escopo,
+        "conta_da_casa",
+        falhar("consulta de conta"),
+    )
+    for nome in (
+        "impressao_do_plano",
+        "exigir",
+        "elegivel",
+        "campanhas_com_marca",
+        "campanhas_com_destino",
+    ):
+        monkeypatch.setattr(trafego.canario, nome, falhar(f"canario.{nome}"))
+    for nome in ("resolver_construtor", "preparar", "subir"):
+        monkeypatch.setattr(motor, nome, falhar(f"motor.{nome}"))
+
+
+@pytest.mark.parametrize(
+    ("troca", "remover", "esperado"),
+    [
+        ({"cpc_inicial": 0.12}, (), "cpc_inicial"),
+        ({"match_type": "PHRASE"}, (), "match_type"),
+        ({}, ("demand_gen",), "demand_gen"),
+        ({}, ("assets_demand_gen",), "assets_demand_gen"),
+        ({"demand_gen": None}, (), "demand_gen"),
+        ({"assets_demand_gen": None}, (), "assets_demand_gen"),
+        ({"assets_demand_gen": []}, (), "lista vazia"),
+    ],
+)
+def test_http_subir_demand_gen_invalido_morre_na_validacao_antes_de_efeitos(
+    monkeypatch: pytest.MonkeyPatch,
+    troca: dict,
+    remover: tuple[str, ...],
+    esperado: str,
+) -> None:
+    payload = _payload_http_subir_demand_gen()
+    payload.update(troca)
+    for campo in remover:
+        payload.pop(campo)
+    _blindar_subir_demand_gen(monkeypatch, esperado)
+
+    with _cliente_da_fronteira() as cliente:
+        resposta = cliente.post("/api/trafego/subir", json=payload)
+
+    assert resposta.status_code == 422, resposta.text
+    assert esperado in resposta.text
+
+
+def test_http_subir_demand_gen_valido_recusa_operacional_antes_de_efeitos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _blindar_subir_demand_gen(monkeypatch, "demand gen valido")
+
+    with _cliente_da_fronteira() as cliente:
+        resposta = cliente.post(
+            "/api/trafego/subir",
+            json=_payload_http_subir_demand_gen(),
+        )
+
+    assert resposta.status_code == 403, resposta.text
+    assert "somente prova validate_only" in resposta.text
+    assert "/subir" in resposta.text
+
+
 @pytest.mark.parametrize("canal", ["DEMAND_GEN", "PERFORMANCE_MAX"])
 def test_subir_recusa_canal_fora_do_canario_antes_da_escrita(
     monkeypatch: pytest.MonkeyPatch,
@@ -575,15 +743,18 @@ def test_subir_recusa_canal_fora_do_canario_antes_da_escrita(
             lambda **_kwargs: pytest.fail("Demand Gen alcançou o canário real"),
         )
 
-    body = trafego.SubirEntrada(
-        opportunity_id=1,
-        customer_id="5478096539",
-        login_customer_id="6016739364",
-        canal=canal,
-        motivo="prova hermética do canal recusado",
-        confirmar_criacao_pausada=True,
-        carimbo_nome="20260828_120000",
-    )
+    if canal == "DEMAND_GEN":
+        body = trafego.SubirEntrada(**_payload_http_subir_demand_gen())
+    else:
+        body = trafego.SubirEntrada(
+            opportunity_id=1,
+            customer_id="5478096539",
+            login_customer_id="6016739364",
+            canal=canal,
+            motivo="prova hermética do canal recusado",
+            confirmar_criacao_pausada=True,
+            carimbo_nome="20260828_120000",
+        )
 
     with pytest.raises(HTTPException) as erro:
         asyncio.run(trafego.subir(body))

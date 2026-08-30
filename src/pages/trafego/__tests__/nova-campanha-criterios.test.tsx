@@ -15,11 +15,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import type { Cockpit, PedidoDeProva } from '@/types/trafego';
+import type { Cockpit, PedidoDeProvaSearch } from '@/types/trafego';
 
 const { cockpitDeTrafego, pedidoEspiado, KW } = vi.hoisted(() => ({
   cockpitDeTrafego: vi.fn(),
-  pedidoEspiado: { atual: null as PedidoDeProva | null },
+  pedidoEspiado: { atual: null as PedidoDeProvaSearch | null },
   KW: ['saque anual fgts', 'valor do saque anual'],
 }));
 
@@ -29,7 +29,7 @@ vi.mock('@/components/layout/Layout', () => ({
 
 // O espião do pedido. Não renderiza diálogo nenhum — só guarda o que recebeu.
 vi.mock('@/components/trafego/Lancamento', () => ({
-  Lancamento: ({ pedido }: { pedido: PedidoDeProva }) => {
+  Lancamento: ({ pedido }: { pedido: PedidoDeProvaSearch }) => {
     pedidoEspiado.atual = pedido;
     return <div data-testid="lancamento-aberto" />;
   },

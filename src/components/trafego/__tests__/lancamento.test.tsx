@@ -13,7 +13,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import type { EstadoDaTrava, PedidoDeProva } from '@/types/trafego';
+import type { EstadoDaTrava, PedidoDeProvaSearch } from '@/types/trafego';
 
 // Tudo que a fábrica de `vi.mock` usa precisa nascer aqui: a chamada sobe para
 // o topo do arquivo, e um `const`/`class` comum ainda não existe quando ela roda.
@@ -38,7 +38,7 @@ vi.mock('@/lib/pautadorApi', () => ({
 
 import { Lancamento } from '../Lancamento';
 
-const PEDIDO: PedidoDeProva = {
+const PEDIDO: PedidoDeProvaSearch = {
   opportunity_id: 73, run_id: 6, customer_id: '5478096539',
   login_customer_id: '6016739364', grupos: [{ tipo: 'ACESSO', keywords: ['banco pan telefone'] }],
   budget_diario: 10, cpc_inicial: 0.12, match_type: 'PHRASE',

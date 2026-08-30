@@ -33,14 +33,14 @@ import { Input } from '@/components/ui/input';
 import { PautadorApiError, pautadorApi } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
 import type {
-  EstadoDaTrava, PedidoDeProva, Preparo, RespostaDaProva,
+  EstadoDaTrava, PedidoDeProvaSearch, Preparo, RespostaDaProva,
 } from '@/types/trafego';
 
 type Estado = 'provando' | 'reprovada' | 'aguardando_escrita' | 'escrevendo'
   | 'criada' | 'travada' | 'fora_do_canario' | 'indeterminado' | 'erro';
 
 interface Props {
-  pedido: PedidoDeProva;
+  pedido: PedidoDeProvaSearch;
   trava: EstadoDaTrava | null;
   titulo: string;
   /** Resumo do estágio 3, já feito. A escada não escreve copy — ela mostra o
