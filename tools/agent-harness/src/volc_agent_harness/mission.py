@@ -214,6 +214,11 @@ def _worker_node(
             network_access=worker.network_access,
             allowed_paths=tuple(worker.allowed_paths),
             writable_paths=tuple(worker.effective_writable_paths),
+            microrepair=(
+                worker.microrepair.model_dump(mode="json")
+                if worker.microrepair is not None
+                else None
+            ),
         )
         try:
             result = await adapter_for(worker.provider).run(request)
@@ -238,7 +243,7 @@ def _worker_node(
                 "ok": False,
                 "started_at": started_at,
                 "finished_at": _utc_now(),
-                "error": f"{type(error).__name__}: {error}",
+                "error": redact(f"{type(error).__name__}: {error}"),
             }
 
     # IDs de tarefa usam hífen para legibilidade, mas o ADK exige que nomes de
@@ -413,6 +418,11 @@ async def _run_implementation_mission(
         network_access=False,
         allowed_paths=tuple(writer.allowed_paths),
         writable_paths=tuple(writer.effective_writable_paths),
+        microrepair=(
+            writer.microrepair.model_dump(mode="json")
+            if writer.microrepair is not None
+            else None
+        ),
     )
     writer_started = _utc_now()
     try:
@@ -493,7 +503,7 @@ async def _run_implementation_mission(
             "ok": False,
             "started_at": writer_started,
             "finished_at": _utc_now(),
-            "error": f"{type(error).__name__}: {error}",
+            "error": redact(f"{type(error).__name__}: {error}"),
         }
         result = {
             **metadata,

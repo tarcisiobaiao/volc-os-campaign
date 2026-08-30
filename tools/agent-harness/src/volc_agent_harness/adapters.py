@@ -9,7 +9,7 @@ import signal
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import jsonschema
 
@@ -35,6 +35,7 @@ class AdapterRequest:
     network_access: bool = False
     allowed_paths: tuple[str, ...] = ()
     writable_paths: tuple[str, ...] = ()
+    microrepair: dict[str, Any] | None = None
 
 
 class AdapterError(RuntimeError):
@@ -130,12 +131,17 @@ async def _pump(
     return overflow
 
 
-async def _execute(argv: list[str], request: AdapterRequest) -> int:
+async def _execute(
+    argv: list[str],
+    request: AdapterRequest,
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> int:
     request.run_dir.mkdir(parents=True, exist_ok=True)
     process = await asyncio.create_subprocess_exec(
         *argv,
         cwd=request.worktree,
-        env=sanitized_environment(),
+        env=dict(environment) if environment is not None else sanitized_environment(),
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
@@ -248,6 +254,11 @@ def _validate(payload: Any, schema_path: Path) -> dict[str, Any]:
 
 class ClaudeAdapter:
     async def run(self, request: AdapterRequest) -> dict[str, Any]:
+        from .claude_worker import (
+            ExplicitClaudeAuthentication,
+            isolated_claude_runtime,
+        )
+
         schema = json.loads(request.schema_path.read_text(encoding="utf-8"))
         tools = ["Read", "Grep", "Glob"]
         if request.network_access:
@@ -280,7 +291,9 @@ class ClaudeAdapter:
         ]
         if request.model:
             argv[2:2] = ["--model", request.model]
-        await _execute(argv, request)
+        auth = ExplicitClaudeAuthentication.from_mapping(os.environ)
+        with isolated_claude_runtime(auth) as runtime:
+            await _execute(argv, request, environment=runtime.environment)
         events = []
         for line in (request.run_dir / "stdout.jsonl").read_text(
             encoding="utf-8"
@@ -347,11 +360,81 @@ class GeminiAdapter:
         return _validate(payload, request.schema_path)
 
 
-def adapter_for(provider: str) -> ClaudeAdapter | CodexAdapter | GeminiAdapter:
+class DeepSeekAdapter:
+    """Executa microcorreção allowlisted; o modelo nunca recebe filesystem."""
+
+    async def run(self, request: AdapterRequest) -> dict[str, Any]:
+        import hashlib
+        import subprocess
+
+        from .deepseek_worker import DeepSeekProposalWorker, ProposalRequest
+
+        spec = request.microrepair
+        if request.mode != "workspace_write" or not isinstance(spec, dict):
+            raise AdapterError("DeepSeek exige workspace_write com microrepair")
+        target_path = str(spec.get("target_path") or "")
+        if target_path not in request.writable_paths:
+            raise AdapterError("microrepair exige ownership exato do arquivo")
+        target = (request.worktree / target_path).resolve()
+        try:
+            target.relative_to(request.worktree.resolve())
+        except ValueError as error:
+            raise AdapterError("target DeepSeek saiu da worktree") from error
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", target_path],
+            cwd=request.worktree,
+            check=False,
+            capture_output=True,
+            timeout=20,
+        )
+        if tracked.returncode != 0 or not target.is_file():
+            raise AdapterError("target DeepSeek precisa ser arquivo rastreado")
+        source = target.read_text(encoding="utf-8")
+        proposal = await asyncio.to_thread(
+            DeepSeekProposalWorker().propose,
+            ProposalRequest(
+                task_id=request.worker_id,
+                target_path=target_path,
+                source_text=source,
+                span=str(spec.get("observed_span") or ""),
+                allowed_replacements=tuple(spec.get("allowed_replacements") or ()),
+                writable_paths=request.writable_paths,
+                instruction=str(spec.get("instruction") or ""),
+            ),
+        )
+        if hashlib.sha256(target.read_bytes()).hexdigest() != proposal.source_sha256:
+            raise AdapterError("target DeepSeek mudou depois da proposta")
+        if source.count(proposal.observed_span) != 1:
+            raise AdapterError("precondição DeepSeek deixou de ser única")
+        target.write_text(
+            source.replace(proposal.observed_span, proposal.replacement, 1),
+            encoding="utf-8",
+        )
+        return {
+            "status": "completed",
+            "summary": "Microcorreção DeepSeek aplicada pelo controlador local.",
+            "facts": [
+                f"replacement allowlisted aplicado em {target_path}",
+                f"source_sha256={proposal.source_sha256}",
+            ],
+            "risks": [],
+            "recommendations": [],
+            "inspected_paths": [target_path],
+            "limitations": [
+                "O modelo não recebeu filesystem, shell, path ou arquivo completo."
+            ],
+        }
+
+
+def adapter_for(
+    provider: str,
+) -> ClaudeAdapter | CodexAdapter | GeminiAdapter | DeepSeekAdapter:
     if provider == "claude":
         return ClaudeAdapter()
     if provider == "codex":
         return CodexAdapter()
     if provider == "gemini":
         return GeminiAdapter()
+    if provider == "deepseek":
+        return DeepSeekAdapter()
     raise ValueError(f"provider desconhecido: {provider}")

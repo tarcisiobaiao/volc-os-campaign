@@ -17,6 +17,19 @@ from volc_agent_harness.worktrees import WorktreeManager
 
 
 class HarnessContractsTest(unittest.TestCase):
+    def _commit_all(self, root: Path) -> None:
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(["git", "add", "."], cwd=root, check=True)
+        subprocess.run(
+            [
+                "git", "-c", "user.name=VOLC Test",
+                "-c", "user.email=volc@example.invalid",
+                "commit", "-qm", "fixture",
+            ],
+            cwd=root,
+            check=True,
+        )
+
     def test_mission_requires_two_unique_workers(self) -> None:
         mission = MissionSpec.model_validate(
             {
@@ -24,6 +37,7 @@ class HarnessContractsTest(unittest.TestCase):
                 "title": "Pilot",
                 "base_ref": "HEAD",
                 "briefing": "Inspect",
+                "authorized_external_providers": ["anthropic"],
                 "workers": [
                     {
                         "id": "claude-a",
@@ -73,6 +87,7 @@ class HarnessContractsTest(unittest.TestCase):
                 "title": "Pilot",
                 "base_ref": "HEAD",
                 "briefing": "Inspect",
+                "authorized_external_providers": ["anthropic"],
                 "workers": [
                     {
                         "id": "claude-architecture",
@@ -118,6 +133,7 @@ class HarnessContractsTest(unittest.TestCase):
                 "title": "Pilot",
                 "base_ref": "HEAD",
                 "briefing": "Inspect",
+                "authorized_external_providers": ["anthropic"],
                 "workers": [
                     {
                         "id": "claude-a",
@@ -148,6 +164,7 @@ class HarnessContractsTest(unittest.TestCase):
                 "base_ref": "a" * 40,
                 "briefing": "Implement one vertical slice",
                 "mode": "implementation",
+                "authorized_external_providers": ["anthropic"],
                 "commit_message": "feat(test): pilot",
                 "gates": [{"argv": ["python3", "-m", "unittest"]}],
                 "workers": [
@@ -197,6 +214,7 @@ class HarnessContractsTest(unittest.TestCase):
             "base_ref": "a" * 40,
             "briefing": "Implement one slice",
             "mode": "implementation",
+            "authorized_external_providers": ["google_gemini"],
             "commit_message": "feat(test): gemini",
             "gates": [{"argv": ["true"]}],
             "workers": [
@@ -249,6 +267,7 @@ class HarnessContractsTest(unittest.TestCase):
             (root / "src" / "owned").mkdir(parents=True)
             (root / "src" / "context.txt").write_text("context\n", encoding="utf-8")
             (root / "private.txt").write_text("private\n", encoding="utf-8")
+            self._commit_all(root)
             request = AdapterRequest(
                 worker_id="gemini-writer", worktree=root, prompt="x",
                 schema_path=root / "schema.json", run_dir=root / "run",
@@ -259,6 +278,21 @@ class HarnessContractsTest(unittest.TestCase):
             tools = WorkspaceTools(request)
             self.assertTrue(tools.write_file("src/owned/new.py", "ok\n")["ok"])
             self.assertEqual(tools.read_file("src/context.txt")["text"], "context")
+            (root / "src" / "owned" / "untracked.txt").write_text(
+                "must not leave this machine\n", encoding="utf-8"
+            )
+            self.assertIn(
+                "não rastreado",
+                tools.read_file("src/owned/untracked.txt")["error"],
+            )
+            self.assertNotIn(
+                "src/owned/untracked.txt",
+                tools.list_files("src/owned/*")["files"],
+            )
+            self.assertEqual(
+                tools.search_text("must not leave", "src/owned")["matches"],
+                [],
+            )
             with self.assertRaises(PermissionError):
                 tools.write_file("src/context.txt", "no\n")
             with self.assertRaises(PermissionError):
@@ -287,6 +321,7 @@ class HarnessContractsTest(unittest.TestCase):
             (root / "src" / "owned" / "escape").symlink_to(
                 root / "src" / "private", target_is_directory=True
             )
+            self._commit_all(root)
             request = AdapterRequest(
                 worker_id="gemini-reader", worktree=root, prompt="x",
                 schema_path=root / "schema.json", run_dir=root / "run",
@@ -305,6 +340,7 @@ class HarnessContractsTest(unittest.TestCase):
             "base_ref": "HEAD",
             "briefing": "Implement",
             "mode": "implementation",
+            "authorized_external_providers": ["anthropic"],
             "commit_message": "feat(test): pilot",
             "gates": [{"argv": ["true"]}],
             "workers": [

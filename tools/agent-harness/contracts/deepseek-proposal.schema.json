@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://volc.local/schemas/deepseek-proposal.schema.json",
+  "title": "VOLC DeepSeek Proposal-Only Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "observed_span",
+    "replacement",
+    "reason",
+    "confidence",
+    "external_writes"
+  ],
+  "properties": {
+    "observed_span": {"type": "string", "minLength": 1, "maxLength": 240},
+    "replacement": {"type": "string", "minLength": 1, "maxLength": 240},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "external_writes": {"const": 0}
+  }
+}

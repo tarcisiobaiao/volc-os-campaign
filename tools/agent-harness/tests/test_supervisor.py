@@ -2,6 +2,7 @@ import json
 import sqlite3
 import subprocess
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -246,11 +247,12 @@ class SupervisorStoreTest(unittest.TestCase):
 
 
 class SupervisorEligibilityTest(unittest.TestCase):
-    def test_v0_rejects_non_codex_worker(self) -> None:
+    def test_v1_requires_explicit_claude_authentication(self) -> None:
         payload = mission_payload("a" * 40)
         payload["workers"][1].update({
             "provider": "claude", "model": "opus", "effort": "high"
         })
+        payload["authorized_external_providers"] = ["anthropic"]
         mission = MissionSpec.model_validate(payload)
         job = SupervisorJobSpec(
             job_id="supervisor-pilot",
@@ -262,14 +264,24 @@ class SupervisorEligibilityTest(unittest.TestCase):
                 "id": "P01-T09", "status": "todo", "acceptance": ["x"]
             }
         }
-        self.assertEqual(
-            eligibility_reason(
-                repo=Path("."), job=job, tasks=tasks,
-                mission=mission, base_sha="a" * 40,
-            ),
-            "supervisor V0 permite somente Codex até Claude e Gemini "
-            "receberem isolamento físico de leitura e smoke real",
-        )
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(
+                eligibility_reason(
+                    repo=Path("."), job=job, tasks=tasks,
+                    mission=mission, base_sha="a" * 40,
+                ),
+                "credencial explícita ausente para provider: "
+                "VOLC_CLAUDE_CODE_OAUTH_TOKEN",
+            )
+        with patch.dict(
+            "os.environ", {"VOLC_CLAUDE_CODE_OAUTH_TOKEN": "dedicated"}, clear=True
+        ):
+            self.assertIsNone(
+                eligibility_reason(
+                    repo=Path("."), job=job, tasks=tasks,
+                    mission=mission, base_sha="a" * 40,
+                )
+            )
 
     def test_supervisor_claim_uses_writer_write_scope_not_read_context(self) -> None:
         from volc_agent_harness.models import MissionSpec
@@ -425,6 +437,172 @@ class SupervisorRunTest(unittest.TestCase):
             ).stdout.strip())
         subprocess.run(["git", "switch", "-q", original_branch], cwd=root, check=True)
         return commits[0], commits[1]
+
+    def _add_roadmap_tasks(self, root: Path, *task_ids: str) -> str:
+        path = root / "volc-os-workbook" / "ROADMAP-VIVO.json"
+        roadmap = json.loads(path.read_text(encoding="utf-8"))
+        tasks = roadmap["initiatives"][0]["tasks"]
+        known = {task["id"] for task in tasks}
+        tasks.extend(
+            {
+                "id": task_id,
+                "status": "todo",
+                "acceptance": [f"{task_id} reviewed"],
+            }
+            for task_id in task_ids
+            if task_id not in known
+        )
+        path.write_text(json.dumps(roadmap), encoding="utf-8")
+        subprocess.run(["git", "add", str(path)], cwd=root, check=True)
+        subprocess.run(
+            [
+                "git", "-c", "user.name=VOLC Test",
+                "-c", "user.email=volc-test@example.invalid",
+                "commit", "-qm", "add concurrent roadmap fixtures",
+            ],
+            cwd=root,
+            check=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=root, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+
+    def test_v1_runs_disjoint_jobs_in_the_same_wave(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._repository(root)
+            head = self._add_roadmap_tasks(root, "P01-T10")
+            for name, task_id, ownership in (
+                ("one", "P01-T09", "src/one"),
+                ("two", "P01-T10", "src/two"),
+            ):
+                payload = mission_payload(head, task_id=task_id)
+                payload["mission_id"] = f"mission-{name}"
+                payload["workers"][0]["allowed_paths"] = [ownership]
+                payload["workers"][0]["writable_paths"] = [ownership]
+                payload["workers"][1]["allowed_paths"] = [ownership]
+                (root / f"{name}.json").write_text(
+                    json.dumps(payload), encoding="utf-8"
+                )
+            queue = SupervisorQueueSpec(
+                supervisor_id="volc-v1",
+                max_writer_concurrency=2,
+                jobs=[
+                    {
+                        "job_id": "one", "task_id": "P01-T09",
+                        "mission_path": "one.json", "priority": 1,
+                    },
+                    {
+                        "job_id": "two", "task_id": "P01-T10",
+                        "mission_path": "two.json", "priority": 2,
+                    },
+                ],
+            )
+            barrier = threading.Barrier(2)
+            active: set[str] = set()
+            active_lock = threading.Lock()
+
+            def fake_runner(_repo: Path, mission: MissionSpec):
+                with active_lock:
+                    active.add(mission.mission_id)
+                barrier.wait(timeout=2)
+                run_dir = root / "runs" / mission.mission_id
+                run_dir.mkdir(parents=True)
+                return run_dir, {
+                    "ok": True,
+                    "writer_commit": head,
+                    "candidate_status": "ready_for_human",
+                }
+
+            result = run_once(
+                root,
+                queue,
+                store=SupervisorStore(root / "runs" / "supervisor.sqlite"),
+                runner=fake_runner,
+            )
+
+            self.assertEqual(result["status"], "batch")
+            self.assertEqual(active, {"mission-one", "mission-two"})
+            self.assertEqual(
+                [item["job_id"] for item in result["results"]],
+                ["one", "two"],
+            )
+            self.assertTrue(
+                all(item["status"] == "ready_for_human" for item in result["results"])
+            )
+
+    def test_v1_keeps_overlapping_job_for_a_later_wave(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._repository(root)
+            head = self._add_roadmap_tasks(root, "P01-T10")
+            for name, task_id in (("one", "P01-T09"), ("two", "P01-T10")):
+                payload = mission_payload(head, task_id=task_id)
+                payload["mission_id"] = f"mission-{name}"
+                payload["workers"][0]["allowed_paths"] = ["src/shared"]
+                payload["workers"][0]["writable_paths"] = ["src/shared"]
+                payload["workers"][1]["allowed_paths"] = ["src/shared"]
+                (root / f"{name}.json").write_text(
+                    json.dumps(payload), encoding="utf-8"
+                )
+            queue = SupervisorQueueSpec(
+                supervisor_id="volc-v1",
+                max_writer_concurrency=2,
+                jobs=[
+                    {"job_id": "one", "task_id": "P01-T09", "mission_path": "one.json"},
+                    {"job_id": "two", "task_id": "P01-T10", "mission_path": "two.json"},
+                ],
+            )
+            calls: list[str] = []
+
+            def fake_runner(_repo: Path, mission: MissionSpec):
+                calls.append(mission.mission_id)
+                run_dir = root / "runs" / mission.mission_id
+                run_dir.mkdir(parents=True)
+                return run_dir, {
+                    "ok": True,
+                    "writer_commit": head,
+                    "candidate_status": "ready_for_human",
+                }
+
+            result = run_once(
+                root,
+                queue,
+                store=SupervisorStore(root / "runs" / "supervisor.sqlite"),
+                runner=fake_runner,
+            )
+
+            self.assertEqual(calls, ["mission-one"])
+            self.assertEqual(result["status"], "batch")
+            self.assertEqual(result["blockers"], [{
+                "job_id": "two",
+                "reason": "ownership sobreposto com one",
+            }])
+
+    def test_writer_concurrency_accepts_one_through_four(self) -> None:
+        for value in range(1, 5):
+            queue = SupervisorQueueSpec(
+                supervisor_id="volc-v1",
+                max_writer_concurrency=value,
+                jobs=[{
+                    "job_id": "one", "task_id": "P01-T09",
+                    "mission_path": "one.json",
+                }],
+            )
+            self.assertEqual(queue.max_writer_concurrency, value)
+
+    def test_writer_concurrency_rejects_zero_and_five(self) -> None:
+        for value in (0, 5):
+            with self.assertRaises(ValueError):
+                SupervisorQueueSpec(
+                    supervisor_id="volc-v1",
+                    max_writer_concurrency=value,
+                    jobs=[{
+                        "job_id": "one", "task_id": "P01-T09",
+                        "mission_path": "one.json",
+                    }],
+                )
 
     def test_ready_candidate_is_recorded_and_never_dispatched_twice(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

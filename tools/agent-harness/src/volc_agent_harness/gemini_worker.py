@@ -47,6 +47,18 @@ class WorkspaceTools:
         self.allowed_roots = tuple(
             (self.root / path).resolve() for path in self.allowed
         )
+        tracked = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+            timeout=20,
+        ).stdout
+        self.tracked_files = frozenset(
+            item.decode("utf-8", errors="surrogateescape")
+            for item in tracked.split(b"\0")
+            if item
+        )
 
     def _is_allowed(self, normalized: str) -> bool:
         return any(
@@ -59,6 +71,9 @@ class WorkspaceTools:
             normalized == prefix or normalized.startswith(prefix + "/")
             for prefix in self.writable
         )
+
+    def _is_tracked(self, normalized: str) -> bool:
+        return normalized in self.tracked_files
 
     def _resolved_is_allowed(self, resolved: Path) -> bool:
         return any(
@@ -130,6 +145,8 @@ class WorkspaceTools:
     def read_file(self, path: str, start_line: int = 1, end_line: int = 250) -> dict[str, Any]:
         """Read at most 250 lines from one UTF-8 file inside the worktree."""
         target = self._resolve(path)
+        if not self._is_tracked(Path(path).as_posix()):
+            return {"error": "arquivo não rastreado; leitura recusada"}
         if not target.is_file() or target.stat().st_size > _FILE_LIMIT:
             return {"error": "arquivo ausente ou grande demais"}
         start = max(1, start_line)
@@ -166,6 +183,8 @@ class WorkspaceTools:
             normalized = relative.as_posix()
             if not self._is_allowed(normalized):
                 continue
+            if not self._is_tracked(normalized):
+                continue
             if not self._resolved_is_allowed(item.resolve()):
                 continue
             found.append(normalized)
@@ -189,6 +208,9 @@ class WorkspaceTools:
                 continue
             parts = item.relative_to(self.root).parts
             if any(part in _SKIP_PARTS or part.startswith(".env") for part in parts):
+                continue
+            normalized = item.relative_to(self.root).as_posix()
+            if not self._is_tracked(normalized):
                 continue
             try:
                 if item.stat().st_size > _FILE_LIMIT:

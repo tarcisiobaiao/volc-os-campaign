@@ -1,48 +1,46 @@
 {
-  "schema_version": 1,
-  "default_writer": {
+  "schema_version": 2,
+  "coordinator": {
     "provider": "codex",
     "model": "gpt-5.6-sol",
     "effort": "high",
-    "supervisor_v0_enabled": true
+    "role": "delegate_monitor_verify",
+    "writes_product_code": false
   },
-  "deep_adversarial_reviewer": {
+  "executor_codex": {
     "provider": "codex",
     "model": "gpt-5.5",
     "effort": "xhigh",
-    "supervisor_v0_enabled": true
+    "enabled": true
   },
-  "critical_contract_reviewer": {
+  "executor_claude_and_adversarial_checker": {
     "provider": "claude",
     "model": "opus",
-    "effort": "high",
-    "supervisor_v0_enabled": false
-  },
-  "exceptional_spec_planner": {
-    "provider": "claude",
-    "model": "fable",
     "effort": "xhigh",
-    "supervisor_v0_enabled": false
+    "enabled_when_isolated_and_authorized": true
   },
-  "bounded_repeatable_executor": {
+  "executor_gemini": {
     "provider": "gemini",
     "model": "gemini-3.7-flash",
     "effort": "high",
-    "supervisor_v0_enabled": false
+    "enabled_when_authorized": true
   },
-  "micro_repair_sniper": {
+  "executor_deepseek_microrepair": {
     "provider": "deepseek",
     "model": "deepseek-v4-flash",
     "effort": "low",
-    "generic_writer": false,
-    "supervisor_v0_enabled": false
+    "proposal_only_to_local_guard": true,
+    "enabled_when_authorized": true
   },
   "rules": [
-    "Nao usar gpt-5.6-sol xhigh como padrao.",
-    "Usar gpt-5.5 xhigh para refutacao profunda, nao para escrita rotineira.",
-    "Usar Fable somente quando o contrato ou plano ainda exigir sintese excepcional.",
+    "Fable nao participa do runtime; os specs produzidos por ele sao entrada imutavel.",
+    "GPT-5.6 Sol high coordena, delega, monitora e checa; nao e writer rotineiro.",
+    "GPT-5.5 xhigh, Gemini 3.7 Flash, Claude Opus xhigh e DeepSeek executam lanes disjuntas.",
+    "Claude Opus xhigh e GPT-5.6 Sol high fazem double-check critico.",
     "Gemini nao recebe shell, rede nem caminhos fora do manifesto.",
-    "DeepSeek propoe somente substituicao minima validada por guarda deterministica.",
+    "Claude usa HOME e config efemeros e somente autenticacao explicitamente injetada.",
+    "DeepSeek recebe somente span/contexto sanitizado e uma allowlist fechada; o controlador local aplica.",
+    "Cada manifesto declara provedores externos autorizados e allowed_paths rastreados.",
     "Nenhum provedor faz merge, push, deploy, migration ou mutacao externa.",
     "Ready_for_human e o estado terminal maximo do supervisor."
   ]

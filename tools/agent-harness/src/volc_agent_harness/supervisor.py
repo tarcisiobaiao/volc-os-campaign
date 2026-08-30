@@ -1,8 +1,8 @@
-"""Supervisor contínuo conservador para missões explicitamente enfileiradas.
+"""Supervisor V1 multimodelo para missões explicitamente enfileiradas.
 
-V0 seleciona, reivindica e despacha uma missão por vez. Ele termina em um
-commit candidato revisado e nunca faz merge, push, deploy, migration, curadoria
-ou promoção editorial.
+Seleciona por DAG/ownership, executa até quatro writers isolados e termina em
+commits candidatos revisados. Nunca faz merge, push, deploy, migration,
+curadoria ou promoção editorial.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import os
 import re
 import signal
 import subprocess
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -22,11 +23,16 @@ from typing import Any, Callable, Sequence
 from .mission import run as run_mission
 from .models import MissionSpec
 from .supervisor_models import SupervisorJobSpec, SupervisorQueueSpec
-from .supervisor_store import SupervisorStore
+from .supervisor_store import SupervisorStore, ownership_overlaps
 
 
 TERMINAL_SUCCESS = {"done", "completed", "concluida", "concluída"}
 OPEN_STATES = {"todo", "partial", "a_fazer", "parcial"}
+PROVIDER_CREDENTIALS = {
+    "gemini": "GEMINI_API_KEY",
+    "claude": "VOLC_CLAUDE_CODE_OAUTH_TOKEN",
+    "deepseek": "DEEPSEEK_API_KEY",
+}
 
 
 def _sha256(path: Path) -> str:
@@ -91,11 +97,14 @@ def eligibility_reason(
         return "critérios de aceite ausentes"
     if mission.mode != "implementation":
         return "supervisor V0 despacha somente implementação"
-    if any(worker.provider != "codex" for worker in mission.workers):
-        return (
-            "supervisor V0 permite somente Codex até Claude e Gemini receberem "
-            "isolamento físico de leitura e smoke real"
-        )
+    missing = sorted({
+        variable
+        for worker in mission.workers
+        if (variable := PROVIDER_CREDENTIALS.get(worker.provider))
+        and not os.environ.get(variable)
+    })
+    if missing:
+        return "credencial explícita ausente para provider: " + ", ".join(missing)
     if mission.base_ref != base_sha:
         return "base_ref da missão não é o HEAD imutável atual"
     if job.task_id not in mission.task_ids:
@@ -114,7 +123,9 @@ def eligibility_reason(
 
 def _atomic_snapshot(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(f".tmp-{os.getpid()}")
+    temporary = path.with_suffix(
+        f".tmp-{os.getpid()}-{threading.get_ident()}"
+    )
     temporary.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -312,7 +323,7 @@ def _corrective_mission(
     )
 
 
-def run_once(
+def _run_serial_once(
     repo: Path,
     queue: SupervisorQueueSpec,
     *,
@@ -642,6 +653,154 @@ def run_once(
 
     _write_snapshot(repo, queue, store, blockers)
     return {"status": "idle", "blockers": blockers}
+
+
+def _select_concurrent_jobs(
+    *,
+    repo: Path,
+    queue: SupervisorQueueSpec,
+    store: SupervisorStore,
+) -> tuple[list[SupervisorJobSpec], list[dict[str, str]]]:
+    """Seleciona uma onda determinística sem transformar ordem em dependência.
+
+    O ledger continua sendo a autoridade final do claim. Esta seleção evita
+    iniciar threads que já sabemos disputar o mesmo ownership e limita cada
+    chamada de ``run_once`` a uma única onda de até quatro writers.
+    """
+
+    tasks, _roadmap_sha = _load_roadmap(repo / queue.roadmap_path)
+    base_sha = _head(repo)
+    selected: list[SupervisorJobSpec] = []
+    ownership_by_job: dict[str, list[str]] = {}
+    blockers: list[dict[str, str]] = []
+
+    for job in sorted(queue.jobs, key=lambda item: (item.priority, item.job_id)):
+        if not job.enabled:
+            blockers.append({"job_id": job.job_id, "reason": "job desabilitado"})
+            continue
+        declared = Path(job.mission_path)
+        mission_path = declared if declared.is_absolute() else repo / declared
+        if not mission_path.is_file():
+            blockers.append({
+                "job_id": job.job_id,
+                "reason": "manifesto da missão ausente",
+            })
+            continue
+        try:
+            mission = MissionSpec.model_validate_json(
+                mission_path.read_text(encoding="utf-8")
+            )
+        except Exception as error:
+            blockers.append({
+                "job_id": job.job_id,
+                "reason": f"manifesto inválido: {type(error).__name__}",
+            })
+            continue
+
+        task = tasks.get(job.task_id)
+        contract_digest = (
+            _contract_digest(mission, task, job)
+            if isinstance(task, dict)
+            else "missing-task"
+        )
+        prior = store.latest(job.task_id, contract_digest)
+        expected_base = mission.base_ref if prior is not None else base_sha
+        reason = eligibility_reason(
+            repo=repo,
+            job=job,
+            tasks=tasks,
+            mission=mission,
+            base_sha=expected_base,
+        )
+        if reason:
+            blockers.append({"job_id": job.job_id, "reason": reason})
+            continue
+
+        ownership = _writer_ownership(mission)
+        conflicting_job = next(
+            (
+                selected_job.job_id
+                for selected_job in selected
+                if ownership_overlaps(
+                    ownership, ownership_by_job[selected_job.job_id]
+                )
+            ),
+            None,
+        )
+        if conflicting_job is not None:
+            blockers.append({
+                "job_id": job.job_id,
+                "reason": f"ownership sobreposto com {conflicting_job}",
+            })
+            continue
+        if len(selected) >= queue.max_writer_concurrency:
+            blockers.append({
+                "job_id": job.job_id,
+                "reason": "aguardando próxima onda por limite de concorrência",
+            })
+            continue
+        selected.append(job)
+        ownership_by_job[job.job_id] = ownership
+
+    return selected, blockers
+
+
+def run_once(
+    repo: Path,
+    queue: SupervisorQueueSpec,
+    *,
+    store: SupervisorStore,
+    runner: Runner = run_mission,
+) -> dict[str, Any]:
+    """Executa uma onda concorrente, sem integrar candidatos automaticamente."""
+
+    repo = repo.resolve()
+    if queue.max_writer_concurrency == 1:
+        return _run_serial_once(repo, queue, store=store, runner=runner)
+
+    selected, scheduling_blockers = _select_concurrent_jobs(
+        repo=repo,
+        queue=queue,
+        store=store,
+    )
+    if not selected:
+        _write_snapshot(repo, queue, store, scheduling_blockers)
+        return {"status": "idle", "blockers": scheduling_blockers}
+
+    results_by_job: dict[str, dict[str, Any]] = {}
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=len(selected),
+        thread_name_prefix="volc-supervisor-writer",
+    ) as executor:
+        futures = {
+            executor.submit(
+                _run_serial_once,
+                repo,
+                queue.model_copy(update={"jobs": [job]}),
+                store=store,
+                runner=runner,
+            ): job
+            for job in selected
+        }
+        for future in concurrent.futures.as_completed(futures):
+            job = futures[future]
+            try:
+                results_by_job[job.job_id] = future.result()
+            except Exception as error:
+                results_by_job[job.job_id] = {
+                    "status": "failed",
+                    "job_id": job.job_id,
+                    "error": f"{type(error).__name__}: {error}",
+                }
+
+    results = [results_by_job[job.job_id] for job in selected]
+    failed = any(result.get("status") == "failed" for result in results)
+    _write_snapshot(repo, queue, store, scheduling_blockers)
+    return {
+        "status": "failed" if failed else "batch",
+        "results": results,
+        "blockers": scheduling_blockers,
+    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:

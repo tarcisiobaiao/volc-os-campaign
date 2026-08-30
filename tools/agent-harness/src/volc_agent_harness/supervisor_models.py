@@ -49,7 +49,7 @@ class SupervisorQueueSpec(BaseModel):
     jobs: list[SupervisorJobSpec] = Field(min_length=1)
     poll_seconds: int = Field(default=30, ge=5, le=3600)
     lease_seconds: int = Field(default=14_400, ge=60, le=86_400)
-    max_writer_concurrency: Literal[1] = 1
+    max_writer_concurrency: int = Field(default=1, ge=1, le=4)
 
     @model_validator(mode="after")
     def jobs_are_unique(self) -> "SupervisorQueueSpec":

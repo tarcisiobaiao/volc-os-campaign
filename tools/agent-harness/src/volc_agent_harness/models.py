@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import PurePosixPath
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -23,9 +24,39 @@ class GateSpec(BaseModel):
         return argv
 
 
+class MicroRepairSpec(BaseModel):
+    target_path: str = Field(min_length=1)
+    observed_span: str = Field(min_length=1, max_length=240)
+    allowed_replacements: list[str] = Field(min_length=1, max_length=8)
+    instruction: str = Field(
+        default="Escolha a menor substituição semanticamente correta.",
+        min_length=1,
+        max_length=500,
+    )
+
+    @field_validator("target_path")
+    @classmethod
+    def target_is_safe(cls, value: str) -> str:
+        path = PurePosixPath(value)
+        if path.is_absolute() or ".." in path.parts or value in {"", "."}:
+            raise ValueError("target_path precisa ser relativo e seguro")
+        if any(part.startswith(".env") or part == ".git" for part in path.parts):
+            raise ValueError("target_path aponta para caminho protegido")
+        return path.as_posix()
+
+    @field_validator("allowed_replacements")
+    @classmethod
+    def replacements_are_closed(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("allowed_replacements não aceita duplicatas")
+        if any(not value or len(value) > 240 for value in values):
+            raise ValueError("replacement precisa ter entre 1 e 240 caracteres")
+        return values
+
+
 class WorkerSpec(BaseModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_-]+$")
-    provider: Literal["claude", "codex", "gemini"]
+    provider: Literal["claude", "codex", "gemini", "deepseek"]
     role: Literal["investigator", "writer", "reviewer"] = "investigator"
     model: str | None = Field(default=None, min_length=1)
     effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"
@@ -33,6 +64,7 @@ class WorkerSpec(BaseModel):
     lens: str = Field(min_length=1)
     allowed_paths: list[str] = Field(min_length=1)
     writable_paths: list[str] = Field(default_factory=list)
+    microrepair: MicroRepairSpec | None = None
 
     @field_validator("allowed_paths", "writable_paths")
     @classmethod
@@ -69,6 +101,17 @@ class WorkerSpec(BaseModel):
                 raise ValueError("Gemini aceita effort low, medium ou high")
             if self.network_access:
                 raise ValueError("Gemini não recebe navegação externa")
+        elif self.provider == "deepseek":
+            if self.model != "deepseek-v4-flash":
+                raise ValueError("DeepSeek exige model='deepseek-v4-flash'")
+            if self.effort != "low":
+                raise ValueError("DeepSeek microrepair exige effort low")
+            if self.role != "writer" or self.microrepair is None:
+                raise ValueError("DeepSeek exige writer com microrepair explícito")
+            if self.network_access:
+                raise ValueError("DeepSeek não recebe ferramentas ou navegação")
+        if self.provider != "deepseek" and self.microrepair is not None:
+            raise ValueError("microrepair é exclusivo do executor DeepSeek")
         return self
 
     @model_validator(mode="after")
@@ -84,6 +127,14 @@ class WorkerSpec(BaseModel):
                 raise ValueError(
                     "writable_paths precisa ser subconjunto de allowed_paths"
                 )
+        if self.microrepair is not None:
+            target = self.microrepair.target_path
+            if not any(
+                target == writable
+                or target.startswith(f"{writable.rstrip('/')}/")
+                for writable in self.writable_paths
+            ):
+                raise ValueError("target_path do microrepair precisa estar no ownership")
         return self
 
     @property
@@ -121,6 +172,9 @@ class MissionSpec(BaseModel):
     attempt: int = Field(default=1, ge=1)
     lineage_root_sha: str | None = None
     ratchet: RatchetSpec = Field(default_factory=RatchetSpec)
+    authorized_external_providers: list[
+        Literal["google_gemini", "anthropic", "deepseek"]
+    ] = Field(default_factory=list)
 
     @field_validator("lineage_root_sha")
     @classmethod
@@ -143,6 +197,22 @@ class MissionSpec(BaseModel):
         ids = [worker.id for worker in self.workers]
         if len(ids) != len(set(ids)):
             raise ValueError("workers precisam ter ids únicos")
+        destination_for = {
+            "gemini": "google_gemini",
+            "claude": "anthropic",
+            "deepseek": "deepseek",
+        }
+        missing_authorizations = sorted({
+            destination
+            for worker in self.workers
+            if (destination := destination_for.get(worker.provider))
+            and destination not in self.authorized_external_providers
+        })
+        if missing_authorizations:
+            raise ValueError(
+                "missão não declara autorização externa para: "
+                + ", ".join(missing_authorizations)
+            )
         writers = [worker for worker in self.workers if worker.role == "writer"]
         if self.mode == "read_only" and writers:
             raise ValueError("missão read_only não aceita writer")
@@ -157,9 +227,9 @@ class MissionSpec(BaseModel):
                 raise ValueError(
                     "missão implementation exige writable_paths explícito no writer"
                 )
-            if writers[0].provider not in {"codex", "gemini"}:
+            if writers[0].provider not in {"codex", "gemini", "claude", "deepseek"}:
                 raise ValueError(
-                    "o writer automatizado precisa ser Codex ou Gemini confinado"
+                    "writer exige Codex, Gemini, Claude isolado ou DeepSeek microrepair"
                 )
             reviewers = [
                 worker for worker in self.workers if worker.role == "reviewer"
