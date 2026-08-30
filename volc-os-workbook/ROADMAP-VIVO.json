@@ -209,17 +209,26 @@
         {
           "id": "P01-T10",
           "title": "Fechar a coleta real do gate Pytest",
-          "status": "todo",
+          "status": "done",
           "priority": 1,
           "owner": "quality-ratchet",
           "explanation": "O gate oficial ignora funções legadas nomeadas teste_*. Antes de usar números de suíte como prova, a coleta precisa incluir esse vocabulário e demonstrar que uma falha deliberada é realmente capturada.",
-          "proof": "O planner Fable mediu pytest.ini com python_functions = test_* prova_* e encontrou pelo menos 32 funções teste_* em volc_ads/testes_pautador_ponte.py fora da coleta oficial.",
+          "proof": "Fechado em 30/08/2026 pelo piloto supervisionado P01-T10. O vocabulário anterior coletava 1 prova em volc_ads/testes_pautador_ponte.py e 549 em volc_ads; o novo python_functions = test_* teste_* prova_* coleta 33 e 581, respectivamente. A suíte terminou 581 passed, o runner manual 33/33 e uma função teste_* deliberadamente vermelha produziu 1 failed antes de o arquivo temporário ser removido. Writer gpt-5.6-sol/high, revisão independente gpt-5.5/xhigh aceita, commit integrado 7eba666.",
           "acceptance": [
             "pytest.ini coleta test_*, teste_* e prova_*",
             "A contagem coletada cresce pelo delta verificável das funções teste_*",
             "Uma contraprova deliberada com nome teste_* derruba o gate e é removida depois",
             "Nenhum teste anteriormente verde muda de semântica ou é omitido"
-          ]
+          ],
+          "links": [
+            {
+              "kind": "path",
+              "label": "Recibo do piloto supervisionado",
+              "value": "tools/agent-harness/runs/20260830-123300-310129-supervisor-p01-t10-pytest-collection-v2-2c538c/mission-result.json"
+            }
+          ],
+          "graph_nodes": ["risk:gates_nao_versionados"],
+          "updated_at": "2026-08-30"
         }
       ]
     },

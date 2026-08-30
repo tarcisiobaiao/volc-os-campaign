@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-08-29T18:15:01-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-08-30T12:54:45-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 392 arquivos: 242 Markdown e 150 SQL;
-- 388 versionados e 4 ainda não versionados;
+- 438 arquivos: 288 Markdown e 150 SQL;
+- 438 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 92 SQL com palavras de mutação de alto risco.
 
@@ -17,13 +17,13 @@ Gerado em `2026-08-29T18:15:01-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 19 |
-| `documentation` | 125 |
+| `documentation` | 154 |
 | `generated` | 2 |
-| `module-guide` | 28 |
+| `module-guide` | 30 |
 | `product-document` | 19 |
 | `project-control` | 4 |
 | `reference` | 12 |
-| `runtime-contract` | 5 |
+| `runtime-contract` | 20 |
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
@@ -58,7 +58,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/add_gam_metrics_columns.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/add_revenue_converted_column.sql` | `sql-needs-lineage` | 10 | 27 |
 | `src/sql/add_revshare_automation.sql` | `sql-needs-lineage` | 10 | 33 |
-| `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 22 |
+| `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 18 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
 | `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 2 |
@@ -114,11 +114,11 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
 | `supabase/migrations/v10_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
-| `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | 18 | 73 |
+| `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | 18 | 71 |
 | `supabase/migrations/v11_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v11_02_parque_criativo.sql` | `sql-needs-review` | 17 | 48 |
 | `supabase/migrations/v11_02_rollback.sql` | `sql-needs-review` | 2 | 3 |
-| `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | 18 | 57 |
+| `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | 18 | 55 |
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
@@ -173,7 +173,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/add_needs_password_change_column.sql` | `sql-needs-lineage` | medium | 1 | 0 |
 | `src/sql/add_revenue_converted_column.sql` | `sql-needs-lineage` | high | 10 | 27 |
 | `src/sql/add_revshare_automation.sql` | `sql-needs-lineage` | high | 10 | 33 |
-| `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | high | 6 | 22 |
+| `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | high | 6 | 18 |
 | `src/sql/analysis_campaign_pool.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | high | 4 | 8 |
 | `src/sql/check_existing_triggers.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
@@ -221,11 +221,11 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | high | 33 | 126 |
 | `supabase/migrations/v10_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | high | 18 | 73 |
+| `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | high | 18 | 71 |
 | `supabase/migrations/v11_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_02_parque_criativo.sql` | `sql-needs-review` | high | 17 | 48 |
 | `supabase/migrations/v11_02_rollback.sql` | `sql-needs-review` | high | 2 | 3 |
-| `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | high | 18 | 57 |
+| `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | high | 18 | 55 |
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | high | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
