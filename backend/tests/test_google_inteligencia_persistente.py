@@ -78,6 +78,12 @@ def test_idempotencia_e_por_escopo_tipo_bucket_e_versao():
     assert a != c
 
 
+def test_serializacao_preserva_bucket_para_identidade_da_rodada():
+    assert documento(bucket="4h:2026-08-29T20:00Z").serializar()["bucket"] == (
+        "4h:2026-08-29T20:00Z"
+    )
+
+
 def test_falha_nao_memoriza_fracasso_e_esconde_retry_bem_sucedido():
     falha = documento(
         estado=EstadoColeta.FALHOU, quantidade=None,

@@ -8,12 +8,18 @@ persiste a projecao e nao envia alertas.
 
 A unidade de isolamento e a tupla:
 
-`(login_customer_id, customer_id, coletor_id, tipo_coletor)`
+`(login_customer_id, customer_id, coletor_id, tipo_coletor,
+volc_campaign_id?, campaign_id?)`
 
-Os IDs Google sao normalizados para digitos. O ID do job e normalizado como
-slug minusculo e o tipo de sinal como rotulo maiusculo. Schedules so podem
-conflitar quando toda a tupla coincide; o mesmo job em outra conta ou MCC e
-outro tenant operacional.
+Os IDs Google sao normalizados para digitos ASCII. O ID do job e normalizado
+como slug minusculo e o tipo de sinal como rotulo maiusculo. Identidades de
+campanha interna e Google viajam juntas. Schedules so podem conflitar quando
+toda a tupla coincide; o mesmo job em outra conta, MCC ou campanha e outro
+escopo operacional.
+
+O adaptador preserva ainda o `bucket` da ultima tentativa. Campanhas distintas
+nunca podem ser agregadas no mesmo recibo. Assim uma falha de uma campanha na
+rodada nao e promovida a sucesso por um documento posterior de outra campanha.
 
 ## Tabela-verdade
 
@@ -23,6 +29,7 @@ outro tenant operacional.
 | tentativa sem sucesso/falha, ainda na janela | schedule presente | `INDETERMINADO` |
 | tentativa sem sucesso/falha, apos a janela | schedule presente | `ATRASADO` |
 | tentativa mais recente com falha estruturada | qualquer | `FALHOU` |
+| tentativa mais recente parcial | qualquer | `FALHOU` |
 | sucesso confirmado, mas schedule ausente | ausente | `INDETERMINADO` |
 | sucesso confirmado dentro da janela | heartbeat nao exigido | `SAUDAVEL` |
 | sucesso confirmado dentro da janela | heartbeat exigido e ausente | `INDETERMINADO` |
@@ -38,19 +45,22 @@ no instante de avaliacao.
 
 ## Falhas e dados sensiveis
 
-Uma falha publica possui apenas `codigo` e `classe`, ambos rotulos curtos. O
-adaptador aceita `DocumentoColeta` ou seu registro serializado, mas nunca le
-`erro_detalhe`. Rotulos inseguros viram os codigos genericos `FALHA_COLETA` e
-`ErroColeta`; detalhes brutos, tokens e identificadores nao entram na mensagem
-da projecao.
+Uma falha publica possui `codigo` e `classe` de enums fechados. Rotulos brutos
+sao classificados para a taxonomia fixa; valores desconhecidos viram
+`FALHA_COLETA/DESCONHECIDA`. A projecao expoe os dois campos separadamente e a
+mensagem nunca interpola o valor bruto nem o valor publico. O adaptador aceita
+`DocumentoColeta` ou seu registro serializado, mas nunca le `erro_detalhe`.
+Detalhes, tokens, nomes de excecao e identificadores nao entram na mensagem.
 
 ## Adaptacao do contrato persistido
 
 `recibo_de_documentos` agrega um historico de `DocumentoColeta`/mappings do
-mesmo MCC, conta e tipo. A maior `coletada_em` e a ultima tentativa; o maior
-timestamp nao falho e o ultimo sucesso. Se qualquer recibo falho existir no
-instante mais recente, a tentativa e falha, mesmo quando outra familia teve
-sucesso no mesmo instante. Isso evita que sucesso parcial esconda falha.
+mesmo MCC, conta, campanha e tipo. A maior `coletada_em` e a ultima tentativa;
+seu `bucket` fica explicito no recibo e na projecao. O maior timestamp com
+desfecho confirmado (`com_dados`, `vazio_confirmado`, `inelegivel` ou
+`nao_suportado`) e o ultimo sucesso. `parcial` nunca e sucesso: na tentativa
+mais recente ele produz falha publica `COLETA_PARCIAL/PARCIAL`. Se qualquer
+recibo falho existir no instante mais recente, a tentativa e falha.
 
 O adaptador nao busca o historico nem o schedule. O chamador continua
 responsavel por fornecer ambos e por passar heartbeat real quando aplicavel.

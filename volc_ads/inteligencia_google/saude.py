@@ -27,7 +27,7 @@ from .modelo import DocumentoColeta, EstadoColeta
 
 _ID_INTERNO = re.compile(r"^[a-z0-9][a-z0-9_.:-]{0,119}$")
 _TIPO_COLETOR = re.compile(r"^[A-Z0-9][A-Z0-9_.:-]{0,119}$")
-_ROTULO_ERRO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$")
+_BUCKET = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:+-]{0,159}$")
 
 
 class EstadoSaudeColetor(str, Enum):
@@ -56,12 +56,43 @@ class MotivoDiagnostico(str, Enum):
     INCONSISTENCIA_TEMPORAL = "INCONSISTENCIA_TEMPORAL"
 
 
+class CodigoFalhaPublica(str, Enum):
+    """Codigos seguros e estaveis expostos pela projecao de saude."""
+
+    TIMEOUT = "TIMEOUT"
+    LIMITE_DE_TAXA = "LIMITE_DE_TAXA"
+    AUTENTICACAO = "AUTENTICACAO"
+    AUTORIZACAO = "AUTORIZACAO"
+    ENTRADA_INVALIDA = "ENTRADA_INVALIDA"
+    INDISPONIVEL = "INDISPONIVEL"
+    COLETA_PARCIAL = "COLETA_PARCIAL"
+    MULTIPLAS_FALHAS = "MULTIPLAS_FALHAS"
+    FALHA_COLETA = "FALHA_COLETA"
+
+
+class ClasseFalhaPublica(str, Enum):
+    """Classes publicas fixas; nomes de excecao brutos nunca atravessam."""
+
+    TRANSIENTE = "TRANSIENTE"
+    LIMITE = "LIMITE"
+    CREDENCIAL = "CREDENCIAL"
+    PERMISSAO = "PERMISSAO"
+    VALIDACAO = "VALIDACAO"
+    PARCIAL = "PARCIAL"
+    MULTIPLA = "MULTIPLA"
+    DESCONHECIDA = "DESCONHECIDA"
+
+
 def _normalizar_google_id(valor: str, campo: str) -> str:
     if not isinstance(valor, str):
         raise TypeError(f"{campo} deve ser string")
     normalizado = "".join(ch for ch in valor if not ch.isspace() and ch != "-")
-    if not (normalizado.isdigit() and 6 <= len(normalizado) <= 12):
-        raise ValueError(f"{campo} deve conter entre 6 e 12 digitos")
+    if not (
+        normalizado.isascii()
+        and normalizado.isdigit()
+        and 6 <= len(normalizado) <= 12
+    ):
+        raise ValueError(f"{campo} deve conter entre 6 e 12 digitos ASCII")
     return normalizado
 
 
@@ -83,16 +114,29 @@ def _normalizar_tipo(valor: str) -> str:
     return normalizado
 
 
-def _normalizar_rotulo_erro(valor: str, campo: str) -> str:
+def _normalizar_bucket(valor: str) -> str:
     if not isinstance(valor, str):
-        raise TypeError(f"{campo} deve ser string")
+        raise TypeError("bucket deve ser string")
     normalizado = valor.strip()
-    if not _ROTULO_ERRO.fullmatch(normalizado):
-        raise ValueError(f"{campo} deve ser um rotulo publico nao-vazio")
+    if not _BUCKET.fullmatch(normalizado):
+        raise ValueError("bucket possui formato invalido")
     return normalizado
 
 
-@dataclass(frozen=True, order=True)
+def _normalizar_campaign_id(valor: str, campo: str) -> str:
+    if not isinstance(valor, str):
+        raise TypeError(f"{campo} deve ser string")
+    normalizado = valor.strip()
+    if not (
+        normalizado.isascii()
+        and normalizado.isdigit()
+        and len(normalizado) <= 20
+    ):
+        raise ValueError(f"{campo} deve conter entre 1 e 20 digitos ASCII")
+    return normalizado
+
+
+@dataclass(frozen=True)
 class IdentidadeColetor:
     """Escopo canonico de um job dentro da hierarquia Google Ads."""
 
@@ -100,6 +144,8 @@ class IdentidadeColetor:
     customer_id: str
     coletor_id: str
     tipo_coletor: str
+    volc_campaign_id: str | None = None
+    campaign_id: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -118,18 +164,37 @@ class IdentidadeColetor:
             _normalizar_id_interno(self.coletor_id, "coletor_id"),
         )
         object.__setattr__(self, "tipo_coletor", _normalizar_tipo(self.tipo_coletor))
+        if (self.volc_campaign_id is None) != (self.campaign_id is None):
+            raise ValueError("identidade interna e externa da campanha viajam juntas")
+        if self.volc_campaign_id is not None:
+            object.__setattr__(
+                self,
+                "volc_campaign_id",
+                _normalizar_id_interno(self.volc_campaign_id, "volc_campaign_id"),
+            )
+            object.__setattr__(
+                self,
+                "campaign_id",
+                _normalizar_campaign_id(self.campaign_id, "campaign_id"),
+            )
 
 
 @dataclass(frozen=True)
 class FalhaColetor:
     """Falha publica estruturada; detalhe bruto e deliberadamente proibido."""
 
-    codigo: str
-    classe: str
+    codigo: CodigoFalhaPublica
+    classe: ClasseFalhaPublica
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "codigo", _normalizar_rotulo_erro(self.codigo, "codigo"))
-        object.__setattr__(self, "classe", _normalizar_rotulo_erro(self.classe, "classe"))
+        try:
+            object.__setattr__(self, "codigo", CodigoFalhaPublica(self.codigo))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("codigo fora da taxonomia publica") from exc
+        try:
+            object.__setattr__(self, "classe", ClasseFalhaPublica(self.classe))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("classe fora da taxonomia publica") from exc
 
 
 @dataclass(frozen=True)
@@ -175,6 +240,7 @@ class ReciboColetor:
     ultimo_sucesso_em: datetime | None = None
     ultimo_heartbeat_em: datetime | None = None
     falha_ultima_tentativa: FalhaColetor | None = None
+    ultima_tentativa_bucket: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.identidade, IdentidadeColetor):
@@ -194,6 +260,14 @@ class ReciboColetor:
                 raise TypeError("falha_ultima_tentativa deve ser FalhaColetor ou None")
             if self.ultima_tentativa_em is None:
                 raise ValueError("falha estruturada exige ultima_tentativa_em")
+        if self.ultima_tentativa_bucket is not None:
+            if self.ultima_tentativa_em is None:
+                raise ValueError("bucket da tentativa exige ultima_tentativa_em")
+            object.__setattr__(
+                self,
+                "ultima_tentativa_bucket",
+                _normalizar_bucket(self.ultima_tentativa_bucket),
+            )
 
     @property
     def login_customer_id(self) -> str:
@@ -210,6 +284,14 @@ class ReciboColetor:
     @property
     def tipo_coletor(self) -> str:
         return self.identidade.tipo_coletor
+
+    @property
+    def volc_campaign_id(self) -> str | None:
+        return self.identidade.volc_campaign_id
+
+    @property
+    def campaign_id(self) -> str | None:
+        return self.identidade.campaign_id
 
 
 @dataclass(frozen=True)
@@ -224,6 +306,9 @@ class ProjecaoSaudeColetor:
     tempo_desde_ultimo_heartbeat: timedelta | None = None
     atraso_estimado: timedelta | None = None
     conflitos_detectados: tuple[str, ...] = ()
+    falha_codigo: CodigoFalhaPublica | None = None
+    falha_classe: ClasseFalhaPublica | None = None
+    ultima_tentativa_bucket: str | None = None
 
     @property
     def login_customer_id(self) -> str:
@@ -240,6 +325,14 @@ class ProjecaoSaudeColetor:
     @property
     def tipo_coletor(self) -> str:
         return self.identidade.tipo_coletor
+
+    @property
+    def volc_campaign_id(self) -> str | None:
+        return self.identidade.volc_campaign_id
+
+    @property
+    def campaign_id(self) -> str | None:
+        return self.identidade.campaign_id
 
 
 def _obter_agora(
@@ -330,11 +423,12 @@ def projetar_saude_coletor(
     for campo, instante in timestamps:
         if not _timezone_aware(instante):
             return ProjecaoSaudeColetor(
-                recibo.identidade,
-                EstadoSaudeColetor.INDETERMINADO,
-                MotivoDiagnostico.TIMEZONE_NAIVE,
-                f"{campo} precisa ser timezone-aware.",
-                agora,
+                identidade=recibo.identidade,
+                estado=EstadoSaudeColetor.INDETERMINADO,
+                motivo=MotivoDiagnostico.TIMEZONE_NAIVE,
+                mensagem=f"{campo} precisa ser timezone-aware.",
+                calculado_em=agora,
+                ultima_tentativa_bucket=recibo.ultima_tentativa_bucket,
             )
 
     tentativa = _utc(recibo.ultima_tentativa_em)
@@ -351,6 +445,7 @@ def projetar_saude_coletor(
         *,
         atraso: timedelta | None = None,
         conflitos: Sequence[str] = (),
+        falha: FalhaColetor | None = None,
     ) -> ProjecaoSaudeColetor:
         return ProjecaoSaudeColetor(
             identidade=recibo.identidade,
@@ -363,6 +458,9 @@ def projetar_saude_coletor(
             tempo_desde_ultimo_heartbeat=desde_heartbeat,
             atraso_estimado=atraso,
             conflitos_detectados=tuple(conflitos),
+            falha_codigo=falha.codigo if falha is not None else None,
+            falha_classe=falha.classe if falha is not None else None,
+            ultima_tentativa_bucket=recibo.ultima_tentativa_bucket,
         )
 
     if conflitos_conhecidos:
@@ -411,7 +509,8 @@ def projetar_saude_coletor(
         return resultado(
             EstadoSaudeColetor.FALHOU,
             MotivoDiagnostico.FALHA_NA_ULTIMA_TENTATIVA,
-            f"Ultima tentativa falhou ({falha.codigo}/{falha.classe}).",
+            "Ultima tentativa falhou; consulte os campos publicos estruturados.",
+            falha=falha,
         )
 
     if recibo.schedule is None:
@@ -515,11 +614,20 @@ def avaliar_saude_coletores(
 
 @dataclass(frozen=True)
 class _RegistroColeta:
-    identidade_base: tuple[str, str, str]
+    identidade_base: tuple[str, str, str, str | None, str | None]
+    bucket: str
     coletada_em: datetime
     estado: EstadoColeta
     erro_codigo: str | None
     erro_classe: str | None
+
+
+_ESTADOS_SUCESSO_CONFIRMADO = frozenset({
+    EstadoColeta.COM_DADOS,
+    EstadoColeta.VAZIO_CONFIRMADO,
+    EstadoColeta.INELEGIVEL,
+    EstadoColeta.NAO_SUPORTADO,
+})
 
 
 def _datetime_de_registro(valor: Any) -> datetime:
@@ -548,6 +656,9 @@ def _registro_de_documento(
         estado_bruto: EstadoColeta | str = documento.estado
         erro_codigo = documento.erro_codigo
         erro_classe = documento.erro_classe
+        bucket = documento.bucket
+        volc_campaign_id = documento.volc_campaign_id
+        campaign_id = documento.campaign_id
     elif isinstance(documento, Mapping):
         login_customer_id = documento.get("login_customer_id")
         customer_id = documento.get("customer_id")
@@ -556,6 +667,9 @@ def _registro_de_documento(
         estado_bruto = documento.get("estado")
         erro_codigo = documento.get("erro_codigo")
         erro_classe = documento.get("erro_classe")
+        bucket = documento.get("bucket")
+        volc_campaign_id = documento.get("volc_campaign_id")
+        campaign_id = documento.get("campaign_id")
     else:
         raise TypeError("documento deve ser DocumentoColeta ou Mapping")
 
@@ -564,6 +678,8 @@ def _registro_de_documento(
         customer_id=customer_id,
         coletor_id="adaptador",
         tipo_coletor=tipo,
+        volc_campaign_id=volc_campaign_id,
+        campaign_id=campaign_id,
     )
     try:
         estado = (
@@ -586,7 +702,10 @@ def _registro_de_documento(
             identidade.login_customer_id,
             identidade.customer_id,
             identidade.tipo_coletor,
+            identidade.volc_campaign_id,
+            identidade.campaign_id,
         ),
+        bucket=_normalizar_bucket(bucket),
         coletada_em=instante,
         estado=estado,
         erro_codigo=str(erro_codigo) if erro_codigo is not None else None,
@@ -597,12 +716,35 @@ def _registro_de_documento(
 def _falha_publica(registros: Sequence[_RegistroColeta]) -> FalhaColetor:
     pares = {(r.erro_codigo or "", r.erro_classe or "") for r in registros}
     if len(pares) != 1:
-        return FalhaColetor("MULTIPLAS_FALHAS", "FalhaColeta")
+        return FalhaColetor(
+            CodigoFalhaPublica.MULTIPLAS_FALHAS,
+            ClasseFalhaPublica.MULTIPLA,
+        )
     codigo, classe = next(iter(pares))
-    try:
-        return FalhaColetor(codigo, classe)
-    except (TypeError, ValueError):
-        return FalhaColetor("FALHA_COLETA", "ErroColeta")
+    rotulo = f"{codigo} {classe}".upper()
+    if any(token in rotulo for token in ("TIMEOUT", "DEADLINE")):
+        publico = CodigoFalhaPublica.TIMEOUT, ClasseFalhaPublica.TRANSIENTE
+    elif any(token in rotulo for token in (
+        "RESOURCE_EXHAUSTED", "RATE_LIMIT", "QUOTA", "THROTTL",
+    )):
+        publico = CodigoFalhaPublica.LIMITE_DE_TAXA, ClasseFalhaPublica.LIMITE
+    elif any(token in rotulo for token in (
+        "UNAUTHENTICATED", "AUTHENTICATION", "CREDENTIAL",
+    )):
+        publico = CodigoFalhaPublica.AUTENTICACAO, ClasseFalhaPublica.CREDENCIAL
+    elif any(token in rotulo for token in (
+        "PERMISSION", "FORBIDDEN", "AUTHORIZATION",
+    )):
+        publico = CodigoFalhaPublica.AUTORIZACAO, ClasseFalhaPublica.PERMISSAO
+    elif any(token in rotulo for token in ("INVALID", "VALIDATION", "BAD_REQUEST")):
+        publico = CodigoFalhaPublica.ENTRADA_INVALIDA, ClasseFalhaPublica.VALIDACAO
+    elif any(token in rotulo for token in (
+        "UNAVAILABLE", "CONNECTION", "NETWORK", "TRANSPORT",
+    )):
+        publico = CodigoFalhaPublica.INDISPONIVEL, ClasseFalhaPublica.TRANSIENTE
+    else:
+        publico = CodigoFalhaPublica.FALHA_COLETA, ClasseFalhaPublica.DESCONHECIDA
+    return FalhaColetor(*publico)
 
 
 def recibo_de_documentos(
@@ -614,9 +756,10 @@ def recibo_de_documentos(
 ) -> ReciboColetor:
     """Adapta historico real/serializado sem consultar a persistencia.
 
-    Todo o historico precisa pertencer ao mesmo MCC, conta e tipo de sinal. O
-    estado mais recente define a ultima tentativa; qualquer falha no instante
-    mais recente vence de forma fail-closed. ``erro_detalhe`` nunca e lido.
+    Todo o historico precisa pertencer ao mesmo MCC, conta, campanha e tipo de
+    sinal. O estado mais recente define a ultima tentativa e seu bucket; falha
+    ou parcial no instante mais recente vence de forma fail-closed.
+    ``erro_detalhe`` nunca e lido.
     """
 
     if not documentos:
@@ -624,33 +767,62 @@ def recibo_de_documentos(
     registros = [_registro_de_documento(documento) for documento in documentos]
     bases = {registro.identidade_base for registro in registros}
     if len(bases) != 1:
-        raise ValueError("documentos misturam tenant, conta ou tipo de coletor")
-    login_customer_id, customer_id, tipo_coletor = next(iter(bases))
+        raise ValueError(
+            "documentos misturam tenant, conta, campanha ou tipo de coletor"
+        )
+    (
+        login_customer_id,
+        customer_id,
+        tipo_coletor,
+        volc_campaign_id,
+        campaign_id,
+    ) = next(iter(bases))
     identidade = IdentidadeColetor(
         login_customer_id=login_customer_id,
         customer_id=customer_id,
         coletor_id=coletor_id,
         tipo_coletor=tipo_coletor,
+        volc_campaign_id=volc_campaign_id,
+        campaign_id=campaign_id,
     )
     ultima_tentativa = max(registro.coletada_em for registro in registros)
+    registros_recentes = [
+        registro for registro in registros
+        if registro.coletada_em == ultima_tentativa
+    ]
+    buckets_recentes = {registro.bucket for registro in registros_recentes}
+    if len(buckets_recentes) != 1:
+        raise ValueError("ultima tentativa possui buckets conflitantes")
+    ultima_tentativa_bucket = next(iter(buckets_recentes))
     sucessos = [
         registro.coletada_em
         for registro in registros
-        if registro.estado is not EstadoColeta.FALHOU
+        if registro.estado in _ESTADOS_SUCESSO_CONFIRMADO
     ]
     falhas_recentes = [
         registro
-        for registro in registros
-        if registro.coletada_em == ultima_tentativa
-        and registro.estado is EstadoColeta.FALHOU
+        for registro in registros_recentes
+        if registro.estado is EstadoColeta.FALHOU
     ]
+    parciais_recentes = [
+        registro
+        for registro in registros_recentes
+        if registro.estado is EstadoColeta.PARCIAL
+    ]
+    falha_ultima_tentativa: FalhaColetor | None = None
+    if falhas_recentes:
+        falha_ultima_tentativa = _falha_publica(falhas_recentes)
+    elif parciais_recentes:
+        falha_ultima_tentativa = FalhaColetor(
+            CodigoFalhaPublica.COLETA_PARCIAL,
+            ClasseFalhaPublica.PARCIAL,
+        )
     return ReciboColetor(
         identidade=identidade,
         schedule=schedule,
         ultima_tentativa_em=ultima_tentativa,
         ultimo_sucesso_em=max(sucessos) if sucessos else None,
         ultimo_heartbeat_em=ultimo_heartbeat_em,
-        falha_ultima_tentativa=(
-            _falha_publica(falhas_recentes) if falhas_recentes else None
-        ),
+        falha_ultima_tentativa=falha_ultima_tentativa,
+        ultima_tentativa_bucket=ultima_tentativa_bucket,
     )

@@ -6,6 +6,8 @@ import pytest
 
 from volc_ads.inteligencia_google.modelo import DocumentoColeta, EstadoColeta
 from volc_ads.inteligencia_google.saude import (
+    ClasseFalhaPublica,
+    CodigoFalhaPublica,
     EstadoSaudeColetor,
     FalhaColetor,
     IdentidadeColetor,
@@ -66,6 +68,9 @@ def documento(
     erro_codigo: str | None = None,
     erro_classe: str | None = None,
     erro_detalhe: str | None = None,
+    bucket: str = "daily:2026-08-29",
+    volc_campaign_id: str | None = None,
+    campaign_id: str | None = None,
 ) -> DocumentoColeta:
     if estado in {
         EstadoColeta.INELEGIVEL,
@@ -84,8 +89,10 @@ def documento(
         login_customer_id=login_customer_id,
         competencia=date(2026, 8, 29),
         coletada_em=instante,
-        bucket="daily:2026-08-29",
+        bucket=bucket,
         quantidade=quantidade,
+        volc_campaign_id=volc_campaign_id,
+        campaign_id=campaign_id,
         erro_codigo=erro_codigo,
         erro_classe=erro_classe,
         erro_detalhe=erro_detalhe,
@@ -127,10 +134,13 @@ class TestContrato:
             schedule(intervalo_esperado=timedelta(0))
 
     def test_falha_e_estruturada_e_nao_aceita_detalhe_livre(self):
-        falha = FalhaColetor("RESOURCE_EXHAUSTED", "GoogleAdsException")
-        assert falha.codigo == "RESOURCE_EXHAUSTED"
+        falha = FalhaColetor(
+            CodigoFalhaPublica.LIMITE_DE_TAXA,
+            ClasseFalhaPublica.LIMITE,
+        )
+        assert falha.codigo is CodigoFalhaPublica.LIMITE_DE_TAXA
         assert not hasattr(falha, "detalhe")
-        with pytest.raises(ValueError, match="rotulo publico"):
+        with pytest.raises(ValueError, match="taxonomia publica"):
             FalhaColetor("Bearer SECRET-TOKEN", "Runtime Error")
 
     def test_falha_exige_tentativa(self):
@@ -138,7 +148,10 @@ class TestContrato:
             ReciboColetor(
                 identidade=identidade(),
                 schedule=schedule(),
-                falha_ultima_tentativa=FalhaColetor("TIMEOUT", "TimeoutError"),
+                falha_ultima_tentativa=FalhaColetor(
+                    CodigoFalhaPublica.TIMEOUT,
+                    ClasseFalhaPublica.TRANSIENTE,
+                ),
             )
 
     def test_relogio_e_obrigatoriamente_injetado(self, agora):
@@ -274,14 +287,19 @@ class TestTabelaVerdade:
                 agora,
                 ultima_tentativa_em=agora - timedelta(minutes=5),
                 ultimo_sucesso_em=agora - timedelta(hours=2),
-                falha_ultima_tentativa=FalhaColetor("TIMEOUT", "TimeoutError"),
+                falha_ultima_tentativa=FalhaColetor(
+                    CodigoFalhaPublica.TIMEOUT,
+                    ClasseFalhaPublica.TRANSIENTE,
+                ),
             ),
             now=agora,
         )
         assert projecao.estado is EstadoSaudeColetor.FALHOU
         assert projecao.tempo_desde_ultimo_sucesso == timedelta(hours=2)
         assert projecao.tempo_desde_ultima_tentativa == timedelta(minutes=5)
-        assert "TIMEOUT/TimeoutError" in projecao.mensagem
+        assert projecao.falha_codigo is CodigoFalhaPublica.TIMEOUT
+        assert projecao.falha_classe is ClasseFalhaPublica.TRANSIENTE
+        assert "TIMEOUT" not in projecao.mensagem
 
     def test_desabilitado_tem_estado_proprio(self, agora):
         projecao = projetar_saude_coletor(
@@ -397,6 +415,7 @@ class TestAdaptadorContratoReal:
                 "customer_id": "801-785-1692",
                 "tipo_sinal": "experimentos",
                 "coletada_em": "2026-08-29T17:55:00Z",
+                "bucket": "daily:2026-08-29",
                 "estado": "vazio_confirmado",
                 "erro_codigo": None,
                 "erro_classe": None,
@@ -424,6 +443,8 @@ class TestAdaptadorContratoReal:
         projecao = projetar_saude_coletor(entrada, now=agora)
         assert projecao.estado is EstadoSaudeColetor.FALHOU
         assert projecao.tempo_desde_ultimo_sucesso == timedelta(hours=2)
+        assert projecao.falha_codigo is CodigoFalhaPublica.TIMEOUT
+        assert projecao.falha_classe is ClasseFalhaPublica.TRANSIENTE
         assert "SECRET-TOKEN" not in projecao.mensagem
         assert "8017851692" not in projecao.mensagem
 
@@ -434,6 +455,7 @@ class TestAdaptadorContratoReal:
                 "customer_id": "8017851692",
                 "tipo_sinal": "EXPERIMENTOS",
                 "coletada_em": agora - timedelta(minutes=5),
+                "bucket": "daily:2026-08-29",
                 "estado": "falhou",
                 "erro_codigo": "Bearer SECRET-TOKEN",
                 "erro_classe": "Runtime Error",
@@ -443,8 +465,109 @@ class TestAdaptadorContratoReal:
             schedule=schedule(),
         )
         assert entrada.falha_ultima_tentativa == FalhaColetor(
-            "FALHA_COLETA", "ErroColeta"
+            CodigoFalhaPublica.FALHA_COLETA,
+            ClasseFalhaPublica.DESCONHECIDA,
         )
+
+    def test_token_com_formato_de_rotulo_nunca_atravessa_taxonomia(self, agora):
+        token = "sk_live_ABC123SECRET"
+        entrada = recibo_de_documentos(
+            [{
+                "login_customer_id": "6016739364",
+                "customer_id": "8017851692",
+                "tipo_sinal": "EXPERIMENTOS",
+                "coletada_em": agora - timedelta(minutes=5),
+                "bucket": "daily:2026-08-29",
+                "estado": "falhou",
+                "erro_codigo": token,
+                "erro_classe": "RuntimeError",
+                "erro_detalhe": "tambem secreto",
+            }],
+            coletor_id="job",
+            schedule=schedule(),
+        )
+        projecao = projetar_saude_coletor(entrada, now=agora)
+        assert projecao.falha_codigo is CodigoFalhaPublica.FALHA_COLETA
+        assert projecao.falha_classe is ClasseFalhaPublica.DESCONHECIDA
+        assert token not in projecao.mensagem
+        assert "RuntimeError" not in projecao.mensagem
+
+    def test_parcial_nunca_e_sucesso_confirmado(self, agora):
+        entrada = recibo_de_documentos(
+            [documento(
+                agora - timedelta(minutes=5),
+                estado=EstadoColeta.PARCIAL,
+            )],
+            coletor_id="job",
+            schedule=schedule(),
+        )
+        projecao = projetar_saude_coletor(entrada, now=agora)
+        assert entrada.ultimo_sucesso_em is None
+        assert projecao.estado is EstadoSaudeColetor.FALHOU
+        assert projecao.falha_codigo is CodigoFalhaPublica.COLETA_PARCIAL
+        assert projecao.falha_classe is ClasseFalhaPublica.PARCIAL
+
+    def test_campanhas_distintas_nao_podem_mascarar_falha(self, agora):
+        falha = documento(
+            agora - timedelta(minutes=5, seconds=1),
+            estado=EstadoColeta.FALHOU,
+            erro_codigo="TIMEOUT",
+            erro_classe="TimeoutError",
+            volc_campaign_id="volc-a",
+            campaign_id="111",
+        )
+        sucesso = documento(
+            agora - timedelta(minutes=5),
+            estado=EstadoColeta.COM_DADOS,
+            volc_campaign_id="volc-b",
+            campaign_id="222",
+        )
+        with pytest.raises(ValueError, match="misturam.*campanha"):
+            recibo_de_documentos(
+                [falha, sucesso], coletor_id="job", schedule=schedule()
+            )
+
+    def test_identidade_preserva_campanha_e_bucket_da_ultima_rodada(self, agora):
+        entrada = recibo_de_documentos(
+            [
+                documento(
+                    agora - timedelta(hours=2),
+                    bucket="daily:2026-08-28",
+                    volc_campaign_id="volc-a",
+                    campaign_id="111",
+                ),
+                documento(
+                    agora - timedelta(minutes=5),
+                    estado=EstadoColeta.FALHOU,
+                    erro_codigo="TIMEOUT",
+                    erro_classe="TimeoutError",
+                    bucket="daily:2026-08-29",
+                    volc_campaign_id="volc-a",
+                    campaign_id="111",
+                ),
+            ],
+            coletor_id="job",
+            schedule=schedule(),
+        )
+        projecao = projetar_saude_coletor(entrada, now=agora)
+        assert entrada.identidade.volc_campaign_id == "volc-a"
+        assert entrada.identidade.campaign_id == "111"
+        assert entrada.ultima_tentativa_bucket == "daily:2026-08-29"
+        assert projecao.ultima_tentativa_bucket == "daily:2026-08-29"
+        assert projecao.estado is EstadoSaudeColetor.FALHOU
+        assert projecao.tempo_desde_ultimo_sucesso == timedelta(hours=2)
+
+    def test_mesmo_instante_com_buckets_distintos_falha_fechado(self, agora):
+        instante = agora - timedelta(minutes=5)
+        with pytest.raises(ValueError, match="buckets conflitantes"):
+            recibo_de_documentos(
+                [
+                    documento(instante, bucket="daily:2026-08-28"),
+                    documento(instante, bucket="daily:2026-08-29"),
+                ],
+                coletor_id="job",
+                schedule=schedule(),
+            )
 
     def test_falha_e_sucesso_no_mesmo_instante_falham_fechado(self, agora):
         entrada = recibo_de_documentos(
@@ -496,6 +619,7 @@ class TestAdaptadorContratoReal:
             "customer_id": "8017851692",
             "tipo_sinal": "EXPERIMENTOS",
             "coletada_em": agora,
+            "bucket": "daily:2026-08-29",
             "estado": "falhou",
             "erro_codigo": "",
             "erro_classe": "TimeoutError",
@@ -509,6 +633,7 @@ class TestAdaptadorContratoReal:
             "customer_id": "8017851692",
             "tipo_sinal": "EXPERIMENTOS",
             "coletada_em": agora,
+            "bucket": "daily:2026-08-29",
             "estado": "vazio_confirmado",
             "erro_codigo": "TIMEOUT",
             "erro_classe": "TimeoutError",

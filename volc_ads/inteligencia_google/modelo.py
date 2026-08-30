@@ -167,6 +167,7 @@ class DocumentoColeta:
             "janela_fim": self.janela_fim.isoformat() if self.janela_fim else None,
             "competencia": self.competencia.isoformat(),
             "coletada_em": self.coletada_em.isoformat(),
+            "bucket": self.bucket,
             "api_versao": API_VERSAO,
             "coletor_versao": COLETOR_VERSAO,
             "quantidade": self.quantidade,
