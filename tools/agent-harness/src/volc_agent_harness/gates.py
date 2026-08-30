@@ -9,6 +9,7 @@ silenciosamente no Python do harness.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 from contextlib import contextmanager
@@ -139,6 +140,140 @@ def project_venv_overlay(*, repo: Path, worktree: Path) -> Iterator[Path | None]
             target.unlink()
             if parent_created:
                 target.parent.rmdir()
+
+
+# ---------------------------------------------------------------------------
+# Overlay de node_modules
+#
+# Mesma doença do venv, outro ecossistema: um gate chama
+# ``<primaria>/node_modules/.bin/vitest`` por caminho absoluto e o binário existe,
+# mas ``vitest.config.ts`` faz ``import ... from "vitest"`` — resolvido por Node
+# a partir da worktree, onde ``node_modules`` não existe porque é ignorado pelo
+# Git. O resultado é ``ERR_MODULE_NOT_FOUND`` num gate que parecia configurado.
+#
+# A raiz nunca é descoberta no disco: ela é declarada pelo controlador via
+# ``VOLC_HARNESS_NODE_MODULES``. Sem declaração não há overlay — fail-closed,
+# não fallback silencioso.
+# ---------------------------------------------------------------------------
+
+NODE_MODULES_ENV = "VOLC_HARNESS_NODE_MODULES"
+
+# Ordem de precedência: o primeiro lockfile encontrado governa a comparação.
+LOCKFILE_NAMES = ("package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb")
+
+# Sentinela mínima de "isto é mesmo uma árvore de dependências instalada".
+_NODE_SENTINEL = ".bin"
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65_536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sanitized(path: Path) -> str:
+    """Proveniência sem caminho pessoal: só o sufixo que importa auditar."""
+
+    parts = path.absolute().parts
+    return os.path.join("…", *parts[-3:]) if len(parts) > 3 else str(path)
+
+
+def declared_node_modules() -> Path | None:
+    """Raiz de ``node_modules`` declarada pelo controlador, ou ``None``."""
+
+    raw = os.environ.get(NODE_MODULES_ENV)
+    if not raw:
+        return None
+    root = Path(raw).absolute()
+    if not root.is_dir():
+        raise GateConfigurationError(
+            f"{NODE_MODULES_ENV} aponta para raiz inexistente: {_sanitized(root)}"
+        )
+    if root.name != "node_modules":
+        raise GateConfigurationError(
+            f"{NODE_MODULES_ENV} precisa apontar para um diretório node_modules: "
+            f"{_sanitized(root)}"
+        )
+    if not (root / _NODE_SENTINEL).is_dir():
+        raise GateConfigurationError(
+            f"raiz de node_modules sem {_NODE_SENTINEL}/ — dependências não instaladas: "
+            f"{_sanitized(root)}"
+        )
+    return root
+
+
+def _assert_lockfiles_agree(worktree: Path, node_root: Path) -> tuple[str, str]:
+    """Falha fechado se o lockfile da worktree divergir do lockfile das deps.
+
+    O ``node_modules`` declarado pertence ao projeto que o contém. Se a worktree
+    está numa revisão com outro lockfile, emprestar aquelas dependências é
+    mentir sobre o ambiente do gate.
+    """
+
+    project = node_root.parent
+    for name in LOCKFILE_NAMES:
+        mine = worktree / name
+        theirs = project / name
+        if not mine.is_file() and not theirs.is_file():
+            continue
+        if mine.is_file() != theirs.is_file():
+            faltante = "worktree" if not mine.is_file() else "raiz de node_modules"
+            raise GateConfigurationError(
+                f"lockfile {name} existe de um lado e falta na {faltante}; "
+                "overlay de node_modules recusado"
+            )
+        mine_hash = _sha256(mine)
+        if mine_hash != _sha256(theirs):
+            raise GateConfigurationError(
+                f"lockfile {name} diverge entre worktree e raiz de node_modules; "
+                "overlay recusado para não rodar gate com dependências de outra revisão"
+            )
+        return name, mine_hash
+    raise GateConfigurationError(
+        "nenhum lockfile comum entre a worktree e a raiz de node_modules; "
+        "overlay recusado"
+    )
+
+
+@contextmanager
+def project_node_modules_overlay(*, worktree: Path) -> Iterator[dict[str, object] | None]:
+    """Vincula ``node_modules`` na worktree apenas enquanto os gates rodam.
+
+    Nunca sobrescreve um ``node_modules`` preexistente, nunca copia conteúdo e
+    nunca expõe as dependências ao modelo: o link vive fora do índice do Git e é
+    removido no ``finally``, inclusive em timeout, gate vermelho ou exceção.
+    """
+
+    target = (worktree.resolve() / "node_modules").absolute()
+    if target.exists() or target.is_symlink():
+        # Guarda 4: worktree já tem o seu. Não sobrescrever, não repontar.
+        yield {"overlay": "preexistente", "criado": False}
+        return
+
+    source = declared_node_modules()
+    if source is None:
+        yield None
+        return
+
+    lockfile, lock_hash = _assert_lockfiles_agree(worktree.resolve(), source)
+    target.symlink_to(source, target_is_directory=True)
+    proveniencia: dict[str, object] = {
+        "overlay": "criado",
+        "criado": True,
+        "raiz": _sanitized(source),
+        "lockfile": lockfile,
+        "lockfile_sha256": lock_hash,
+    }
+    try:
+        yield proveniencia
+    finally:
+        if not target.is_symlink() or target.readlink() != source:
+            raise GateConfigurationError(
+                f"overlay de node_modules foi alterado durante o gate: {_sanitized(target)}"
+            )
+        target.unlink()
 
 
 def resolve_gate_argv(argv: Sequence[str], *, repo: Path, worktree: Path) -> ResolvedGate:

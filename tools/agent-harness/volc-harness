@@ -1,0 +1,71 @@
+#!/bin/zsh
+# Launcher oficial do VOLC Agent Harness.
+#
+# Existe porque o editable install do .venv-adk aponta para a árvore primária
+# (Desktop) e não para a worktree oficial. Em vez de reinstalar dependências e
+# acoplar o venv a uma worktree temporária, este launcher reaproveita SOMENTE o
+# interpretador do .venv-adk e força o código a vir da árvore que contém este
+# arquivo. Se o módulo carregado vier de outra árvore, a execução é recusada.
+#
+# uso: ./tools/agent-harness/volc-harness <preflight|run|supervise|python|check> [args...]
+
+set -eu
+
+SCRIPT_PATH="${0:A}"
+HARNESS_DIR="${SCRIPT_PATH:h}"
+HARNESS_SRC="$HARNESS_DIR/src"
+REPO_ROOT="${HARNESS_DIR:h:h}"
+
+# O interpretador é reaproveitado; o código NUNCA vem do venv.
+PYTHON="${VOLC_HARNESS_PYTHON:-/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/.venv-adk/bin/python}"
+
+if [[ ! -x "$PYTHON" ]]; then
+  print -u2 "volc-harness: interpretador ausente: $PYTHON"
+  exit 78
+fi
+if [[ ! -d "$HARNESS_SRC/volc_agent_harness" ]]; then
+  print -u2 "volc-harness: fonte ausente: $HARNESS_SRC/volc_agent_harness"
+  exit 78
+fi
+
+export PYTHONPATH="$HARNESS_SRC${PYTHONPATH:+:$PYTHONPATH}"
+
+# Raiz de node_modules DECLARADA, nunca descoberta no disco. Os gates de
+# frontend rodam em worktrees que nao a possuem; o overlay a vincula de forma
+# efemera e so quando os lockfiles conferem. Sem esta variavel nao ha overlay.
+: ${VOLC_HARNESS_NODE_MODULES:="/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/node_modules"}
+export VOLC_HARNESS_NODE_MODULES
+export PYTHONDONTWRITEBYTECODE=1
+
+# Guarda de procedência: falha ANTES de qualquer efeito se o import resolver
+# para outra árvore (por exemplo o editable install do harness antigo).
+export VOLC_HARNESS_EXPECTED_SRC="$HARNESS_SRC"
+"$PYTHON" - <<'GUARD' || exit $?
+import os, sys, pathlib
+expected = pathlib.Path(os.environ["VOLC_HARNESS_EXPECTED_SRC"]).resolve()
+import volc_agent_harness as pkg
+loaded = pathlib.Path(pkg.__file__).resolve().parent.parent
+if loaded != expected:
+    sys.stderr.write(
+        "volc-harness: RECUSADO — procedencia divergente\n"
+        f"  esperado: {expected}\n"
+        f"  carregado: {loaded}\n"
+    )
+    raise SystemExit(70)
+GUARD
+
+COMMAND="${1:-check}"
+[[ $# -gt 0 ]] && shift
+
+case "$COMMAND" in
+  check)      exec "$PYTHON" -m volc_agent_harness.preflight --repo "$REPO_ROOT" --json "$@" ;;
+  preflight)  exec "$PYTHON" -m volc_agent_harness.preflight "$@" ;;
+  run)        exec "$PYTHON" -m volc_agent_harness.cli "$@" ;;
+  supervise)  exec "$PYTHON" -m volc_agent_harness.supervisor "$@" ;;
+  python)     exec "$PYTHON" "$@" ;;
+  *)
+    print -u2 "volc-harness: comando desconhecido: $COMMAND"
+    print -u2 "  use: preflight | run | supervise | python | check"
+    exit 64
+    ;;
+esac

@@ -16,7 +16,11 @@ from google.adk.workflow import FunctionNode, JoinNode, START, Workflow
 from google.genai import types
 
 from .adapters import AdapterRequest, adapter_for
-from .gates import project_venv_overlay, resolve_gate_argv
+from .gates import (
+    project_node_modules_overlay,
+    project_venv_overlay,
+    resolve_gate_argv,
+)
 from .locking import writer_lock
 from .models import MissionSpec, WorkerSpec
 from .security import redact, sanitized_environment
@@ -432,7 +436,11 @@ async def _run_implementation_mission(
             writer_worktree.path, writer.effective_writable_paths
         )
         gate_results = []
-        with project_venv_overlay(repo=repo, worktree=writer_worktree.path):
+        gate_overlay_provenance: dict[str, object] | None = None
+        with project_venv_overlay(repo=repo, worktree=writer_worktree.path), \
+                project_node_modules_overlay(worktree=writer_worktree.path) as node_overlay:
+            if node_overlay is not None:
+                gate_overlay_provenance = node_overlay
             for index, gate in enumerate(mission.gates, start=1):
                 resolved_gate = resolve_gate_argv(
                     gate.argv,
