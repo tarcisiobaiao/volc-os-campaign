@@ -201,6 +201,11 @@ def classify_exception(exc: BaseException) -> FailureClass:
         # Falha de boot ou de upgrade de banco local é infraestrutura: nenhum
         # writer conserta "no such column".
         return FailureClass.INFRASTRUCTURE_ERROR
+    if isinstance(exc, OSError):
+        # Disco cheio, permissão, fd esgotado, binário sumido. Cair no default
+        # `MERIT_FAILURE` era pior que impreciso: MERIT permite retry, então o
+        # harness relançaria um writer inteiro por cima de um disco cheio.
+        return FailureClass.INFRASTRUCTURE_ERROR
     if "no such column" in texto or "no such table" in texto:
         return FailureClass.INFRASTRUCTURE_ERROR
     if "overlay de node_modules recusado" in texto or "overlay de venv" in texto:

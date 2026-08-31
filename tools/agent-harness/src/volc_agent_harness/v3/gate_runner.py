@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from .failures import FailureClass, classify_gate_exit
+from .failures import FailureClass, HarnessFailure, classify_gate_exit
 from .ledger import ClaimOutcome, GateIdentity, canonical_cwd
 
 
@@ -128,6 +128,13 @@ class GateRunner(ABC):
     ) -> tuple[int, str, str]:
         ...
 
+    def cancel(self) -> None:
+        """Encerra a execução em curso. Backend que não sabe cancelar não faz nada.
+
+        Sinalizar "perdi o lease" sem encerrar o processo deixa dois gates rodando
+        ao mesmo tempo — o contrário do que o claim promete.
+        """
+
 
 class LocalRunner(GateRunner):
     """Subprocesso local em worktree descartável.
@@ -140,34 +147,80 @@ class LocalRunner(GateRunner):
     contains_filesystem = False
     name = "local"
 
+    def __init__(self) -> None:
+        self._proc: subprocess.Popen | None = None
+        self._trava = threading.Lock()
+
     def execute(self, *, argv, cwd, env, timeout):
-        r = subprocess.run(
-            list(argv), cwd=cwd, env=dict(env), capture_output=True,
-            text=True, timeout=timeout, check=False,
-        )
-        return r.returncode, r.stdout, r.stderr
+        # `Popen` em vez de `run`: sem a referência ao processo não há como
+        # cancelá-lo quando o lease é perdido.
+        with self._trava:
+            self._proc = subprocess.Popen(
+                list(argv), cwd=cwd, env=dict(env), text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                start_new_session=True,
+            )
+        proc = self._proc
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            self.cancel()
+            proc.communicate()
+            raise
+        finally:
+            with self._trava:
+                self._proc = None
+        return proc.returncode, out, err
+
+    def cancel(self) -> None:
+        """Mata o grupo do processo. `start_new_session` garante que filhos vão junto."""
+
+        import os
+        import signal
+
+        with self._trava:
+            proc = self._proc
+        if proc is None or proc.poll() is not None:
+            return
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (OSError, ProcessLookupError):     # pragma: no cover
+            proc.kill()
 
 
 class _Heartbeat:
-    """Renova o lease enquanto o runner executa.
+    """Renova o lease enquanto o runner executa, e ENCERRA quem perde autoridade.
 
-    Sem isto, um lease menor que a execução vencia com o processo VIVO: o
-    segundo consumidor retomava, e havia duas execuções físicas simultâneas do
-    mesmo digest — a refutação de G5 na segunda rodada. Aumentar o lease só
-    empurra o problema; o que resolve é o dono dizer que continua vivo.
+    A primeira versão tratava qualquer exceção como lease perdido e morria:
+    uma indisponibilidade momentânea do SQLite bastava para outro consumidor
+    retomar com o primeiro ainda executando — duas execuções físicas.
 
-    O intervalo é menor que ``lease/3`` para tolerar duas renovações perdidas
-    antes de o lease de fato vencer.
+    Duas correções, combinadas (estratégias A + C do contrato):
+
+    * o lease já nasce cobrindo ``timeout + margem`` (:func:`lease_efetivo`), e
+      a renovação só precisa cobrir o resto;
+    * a tolerância a falha é limitada pelo TEMPO RESTANTE do lease, não por um
+      N arbitrário. Enquanto sobrar folga, insiste; quando a folga entra na
+      margem de segurança, desiste — e desistir significa MATAR o subprocesso,
+      não apenas sinalizar. Um processo que perdeu autoridade e continua
+      rodando é exatamente a corrida que o claim existe para impedir.
     """
 
-    def __init__(self, ledger: Any, claim: Any, lease_seconds: int):
+    #: Fração do lease abaixo da qual não dá mais para garantir renovação.
+    MARGEM_DE_SEGURANCA = 0.25
+
+    def __init__(self, ledger: Any, claim: Any, lease_seconds: int,
+                 runner: "GateRunner | None" = None):
         self.ledger = ledger
         self.claim = claim
+        self.runner = runner
         self.lease_seconds = max(1, int(lease_seconds))
         self.intervalo = max(0.05, self.lease_seconds / 4.0)
         self.perdeu = threading.Event()
+        self.cancelou = threading.Event()
         self._parar = threading.Event()
         self._fio: threading.Thread | None = None
+        self._ultimo_ok = time.monotonic()
 
     def __enter__(self) -> "_Heartbeat":
         if self.claim.owner_token is None:
@@ -177,23 +230,113 @@ class _Heartbeat:
         self._fio.start()
         return self
 
+    @property
+    def _folga(self) -> float:
+        """Segundos restantes do lease desde a última renovação bem-sucedida."""
+
+        return self.lease_seconds - (time.monotonic() - self._ultimo_ok)
+
     def _laco(self) -> None:
         while not self._parar.wait(self.intervalo):
             try:
                 vivo = self.ledger.heartbeat(
                     self.claim, lease_seconds=self.lease_seconds)
             except Exception:
-                vivo = False          # banco indisponível é lease perdido
-            if not vivo:
-                self.perdeu.set()
+                # Falha TRANSITÓRIA: enquanto houver folga no lease, insiste.
+                # Matar a renovação na primeira exceção entregava o claim a
+                # outro consumidor sem necessidade nenhuma.
+                if self._folga > self.lease_seconds * self.MARGEM_DE_SEGURANCA:
+                    continue
+                self._desistir()
                 return
+            if vivo:
+                self._ultimo_ok = time.monotonic()
+                continue
+            self._desistir()          # o claim é de outro: não há o que insistir
+            return
+
+    def _desistir(self) -> None:
+        """Perdeu autoridade: sinaliza E encerra o processo."""
+
+        self.perdeu.set()
+        if self.runner is not None:
+            try:
+                self.runner.cancel()
+                self.cancelou.set()
+            except Exception:         # pragma: no cover - cancelar é best-effort
+                pass
 
     def __exit__(self, *_excecao) -> None:
         self._parar.set()
         if self._fio is not None:
             # AGUARDA de verdade: um fio que continua renovando depois do
-            # resultado manteria vivo um lease que já não tem dono ativo.
-            self._fio.join(timeout=self.intervalo * 4 + 1.0)
+            # resultado manteria vivo um lease sem dono ativo.
+            prazo = self.intervalo * 4 + 1.0
+            self._fio.join(timeout=prazo)
+            if self._fio.is_alive():   # pragma: no cover - só sob banco travado
+                self._fio.join(timeout=prazo)
+
+
+#: Margem entre o timeout do gate e o lease. Com ela, o lease só vence se o
+#: processo já deveria ter sido morto pelo timeout — o heartbeat vira defesa em
+#: profundidade, não a única barreira contra retomada indevida.
+MARGEM_DE_LEASE_S = 120
+
+
+def lease_efetivo(*, lease_seconds: int, timeout: int) -> int:
+    """Estratégia A: o lease cobre o timeout máximo do gate mais a margem.
+
+    Confiar só no heartbeat era frágil: uma indisponibilidade momentânea do
+    SQLite matava a renovação e outro consumidor retomava com o primeiro ainda
+    executando. Com o lease dimensionado assim, a expiração durante execução
+    normal deixa de ser possível, e o heartbeat cobre o resto.
+    """
+
+    return max(int(lease_seconds), int(timeout) + MARGEM_DE_LEASE_S)
+
+
+def _cwd_efetivo(worktree: Path, cwd_rel: str) -> Path:
+    """`worktree / cwd_rel`, contido e existente — conferido ANTES de executar.
+
+    `cwd_rel` entrava na identidade e a execução usava sempre a raiz: a evidência
+    afirmava um diretório e o processo rodava em outro. Evidência que mente é
+    pior que evidência ausente.
+    """
+
+    alvo = (worktree / cwd_rel).resolve() if cwd_rel != "." else worktree.resolve()
+    raiz = worktree.resolve()
+    if alvo != raiz and raiz not in alvo.parents:
+        raise HarnessFailure(
+            FailureClass.AUTHORIZATION_BLOCK,
+            "cwd do gate escapa da worktree",
+            detalhe=f"{cwd_rel} -> {alvo}")
+    if not alvo.is_dir():
+        raise HarnessFailure(
+            FailureClass.SPEC_ERROR,
+            "cwd do gate não existe na worktree",
+            detalhe=cwd_rel, reproducao=f"ls {alvo}")
+    return alvo
+
+
+def _revalidador(gate: Any, worktree: Path):
+    """Fecha a revalidação sobre o gate. Sem gate, não há o que revalidar."""
+
+    # Sem vínculo ou sem tipo não há o que revalidar. Explodir aqui trocaria
+    # uma guarda ausente por um AttributeError, que é pior: some a informação.
+    if gate is None or getattr(gate, "binding", None) is None \
+            or getattr(gate, "typed", None) is None:
+        return lambda _momento: None
+
+    from .gate_resolution import assert_bindings_fresh
+
+    def revalidar(momento: str) -> None:
+        try:
+            assert_bindings_fresh([gate], tree=worktree)
+        except HarnessFailure as falha:
+            falha.detalhe = f"{falha.detalhe} [{momento}]".strip()
+            raise
+
+    return revalidar
 
 
 def redact_texto(erro: BaseException) -> str:
@@ -251,10 +394,26 @@ def run_gate_with_ledger(
     kind_prefix: str = "gate",
     cwd_rel: str = ".",
     enrich_counts: Any = None,
+    gate: Any = None,
 ) -> GateOutcome:
-    """identidade → claim → (reuso | execução) → conclusão fenced. Nunca o inverso."""
+    """revalida → claim → revalida → (reuso | execução) → conclusão fenced.
+
+    ``gate`` é o ``ResolvedGate`` VERIFICÁVEL, não um digest solto. A assinatura
+    anterior recebia só ``binding_digest`` como string, sem origem: revalidar
+    depois da espera não era uma chamada esquecida, era impossível.
+    """
 
     runner = runner or LocalRunner()
+    revalidar = _revalidador(gate, worktree)
+    if getattr(gate, "binding", None) is not None and not binding_digest:
+        # O gate verificável É a origem do digest. Aceitar os dois e deixar o
+        # chamador sincronizá-los à mão criaria identidades divergentes entre
+        # quem passa a string e quem passa o objeto — dois consumidores do mesmo
+        # experimento deixariam de se reconhecer.
+        binding_digest = gate.binding.digest()
+
+    # 1. ANTES do acquire. O mundo pode ter mudado desde a compilação.
+    revalidar("antes do claim")
     comando = " ".join(argv)
     identidade = GateIdentity.for_gate(
         acceptance_id=acceptance_id, gate_index=gate_index, argv=argv,
@@ -265,11 +424,23 @@ def run_gate_with_ledger(
     )
 
     # 1. CLAIM ANTES. `lookup` responde uma pergunta; só o claim reserva.
+    lease = lease_efetivo(lease_seconds=lease_seconds, timeout=timeout)
     claim = ledger.acquire(
         identidade, run_id=run_id, worker_id=worker_id,
-        lease_seconds=lease_seconds, wait_seconds=wait_seconds,
+        lease_seconds=lease, wait_seconds=wait_seconds,
         allow_reuse=allow_reuse,
     )
+
+    # 2. DEPOIS de qualquer espera. `acquire` bloqueia até `wait_seconds`; se a
+    #    árvore mudou nessa janela, nem o reuso nem a execução valem sob a
+    #    identidade antiga. O claim já adquirido é abandonado, não deixado vivo.
+    if claim.aguardou or claim.waited_seconds > 0.05:
+        try:
+            revalidar("depois da espera pelo claim")
+        except BaseException:
+            if claim.owner_token is not None:
+                ledger.abandon(claim)
+            raise
     inicio = _agora()
     comum = dict(
         gate_index=gate_index, argv=list(argv), claim_outcome=claim.outcome.value,
@@ -278,8 +449,8 @@ def run_gate_with_ledger(
     )
 
     if claim.outcome is ClaimOutcome.REUSED_GREEN:
-        # 2a. Reuso real: nenhum subprocesso é criado. `waited` quando houve
-        #     espera de verdade — a evidência precisa distinguir os dois.
+        # 3a. IMEDIATAMENTE antes de reutilizar.
+        revalidar("antes de reutilizar")
         anterior = claim.evidence or {}
         return GateOutcome(
             exit_code=0, stdout="", stderr="", duration_s=0.0,
@@ -323,15 +494,22 @@ def run_gate_with_ledger(
             **comum,
         )
 
-    # 3. Execução, com heartbeat vivo e snapshot antes e depois. Só quem segura
-    #    o token chega aqui.
+    # 3b. IMEDIATAMENTE antes de executar.
+    try:
+        revalidar("antes de executar")
+    except BaseException:
+        if claim.owner_token is not None:
+            ledger.abandon(claim)
+        raise
+
+    cwd_efetivo = _cwd_efetivo(worktree, identidade.cwd_rel)
     antes = _snapshot(worktree)
     t0 = time.monotonic()
     exit_code, out, err, status = 1, "", "", None
-    with _Heartbeat(ledger, claim, lease_seconds) as batida:
+    with _Heartbeat(ledger, claim, lease, runner=runner) as batida:
         try:
             exit_code, out, err = runner.execute(
-                argv=argv, cwd=worktree, env=env, timeout=timeout)
+                argv=argv, cwd=cwd_efetivo, env=env, timeout=timeout)
             status = "green" if exit_code == 0 else None
         except subprocess.TimeoutExpired:
             exit_code, out, err, status = 124, "", "timeout", "timeout"
@@ -371,6 +549,8 @@ def run_gate_with_ledger(
         "runner": runner.name,
         "contains_filesystem": runner.contains_filesystem,
         "lease_perdido": batida.perdeu.is_set(),
+        "cwd_rel": identidade.cwd_rel,
+        "cwd_efetivo": str(cwd_efetivo),
     }
     if enrich_counts is not None:
         contagens.update(enrich_counts(exit_code, out, err) or {})
