@@ -101,8 +101,27 @@ def estrutura(conn: sqlite3.Connection, tabela: str) -> dict[str, Coluna]:
             f"PRAGMA table_info({tabela})"):
         achadas[nome] = Coluna(
             nome=nome, affinity=_affinity(tipo or ""), notnull=bool(notnull),
-            default=default, pk=int(pk))
+            default=normalizar_default(default), pk=int(pk))
     return achadas
+
+
+def normalizar_default(valor: str | None) -> str | None:
+    """Default sem ruído de sintaxe.
+
+    O SQLite guarda o texto como foi escrito: `''`, `('')` e `(( '' ))` são o
+    MESMO default, e recusar variação de escrita recusaria banco legítimo.
+    """
+
+    if valor is None:
+        return None
+    limpo = valor.strip()
+    while limpo.startswith("(") and limpo.endswith(")"):
+        limpo = limpo[1:-1].strip()
+    if len(limpo) >= 2 and limpo[0] == limpo[-1] and limpo[0] in "\"'":
+        limpo = limpo[1:-1]
+    if limpo.upper() == "NULL":
+        return None
+    return limpo
 
 
 def _affinity(tipo: str) -> str:
@@ -174,9 +193,11 @@ class ColunaEsperada:
             return "declarada NOT NULL sem default, mas o harness grava NULL nela"
         if self.notnull and not real.notnull:
             return "aceita NULL onde o contrato exige valor"
-        if self.notnull and not self.tem_default and real.default is None \
-                and real.pk == 0:
-            return None                  # exigida e sempre preenchida por nós
+        # `tem_default` era declarado, lido e NUNCA reprovava nada: os dois
+        # ramos devolviam None. Agora ele decide — quando o contrato diz que o
+        # default é material, a ausência dele é divergência.
+        if self.tem_default and real.default is None:
+            return "default material ausente"
         return None
 
 
@@ -193,17 +214,63 @@ class IndiceEsperado:
     nome: str
     colunas: tuple[str, ...]
     unico: bool
+    #: Predicado do `WHERE`, quando o índice é PARCIAL. Vazio = índice total.
+    predicado: str = ""
+
+
+def triggers(conn: sqlite3.Connection, tabela: str) -> list[str]:
+    """Triggers associados a uma tabela.
+
+    O schema oficial não usa nenhum, então não há o que interpretar: um trigger
+    presente é incompatibilidade. E é um vetor real — um `AFTER INSERT` que
+    apaga a linha recém-gravada produz `evidence_id` que não resolve nada, com
+    `ok=True` e baseline verde.
+    """
+
+    return [linha[0] for linha in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name=?",
+        (tabela,))]
+
+
+def _normalizar_predicado(sql: str | None) -> str:
+    """Predicado do índice, sem ruído de escrita.
+
+    O `WHERE` só existe no `sqlite_master.sql`; nenhum PRAGMA o devolve. Como é
+    texto livre, comparar cru recusaria banco legítimo por espaçamento ou caixa.
+    """
+
+    if not sql:
+        return ""
+    marcador = sql.upper().rfind(" WHERE ")
+    if marcador < 0:
+        return ""
+    bruto = sql[marcador + 7:].strip().rstrip(";")
+    return " ".join(bruto.replace("(", " ( ").replace(")", " ) ").split()).upper()
 
 
 def indices_detalhados(conn: sqlite3.Connection, tabela: str) -> dict[str, tuple]:
-    """``(colunas em ordem, é único)`` por nome de índice."""
+    """``(colunas em ordem, é único, é parcial, predicado)`` por nome de índice.
 
+    Conferir só nome, colunas e unicidade deixava passar um índice TOTAL onde o
+    contrato espera PARCIAL — e a diferença é material: a unicidade parcial de
+    `(claim_key, fencing_token)` é o que torna `complete()` idempotente sem
+    proibir múltiplas linhas sem claim.
+    """
+
+    sql_por_nome = {
+        l[0]: l[1] for l in conn.execute(
+            "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name=?",
+            (tabela,))
+    }
     saida: dict[str, tuple] = {}
     for linha in conn.execute(f"PRAGMA index_list({tabela})"):
         nome, unico = linha[1], bool(linha[2])
+        # O 5º campo do PRAGMA é `partial` — ele EXISTE; faltava consultá-lo.
+        parcial = bool(linha[4]) if len(linha) > 4 else False
         cols = tuple(l[2] for l in conn.execute(f"PRAGMA index_info({nome})")
                      if l[2] is not None)
-        saida[nome] = (cols, unico)
+        saida[nome] = (cols, unico, parcial,
+                       _normalizar_predicado(sql_por_nome.get(nome)))
     return saida
 
 
@@ -293,6 +360,14 @@ def migrar(
                 _recusar(conn, tabela, "coluna NOT NULL sem default que o harness "
                          "não preenche", {"colunas": intrusas})
 
+        for tabela in sorted({t for t, _ in obrigatorias} | existentes):
+            if tabela not in existentes:
+                continue
+            achados = triggers(conn, tabela)
+            if achados:
+                _recusar(conn, tabela, "trigger presente; o schema oficial não usa "
+                         "nenhum", {"triggers": achados})
+
         for tabela, esperadas in estrutura_esperada:
             if tabela not in existentes:
                 continue
@@ -313,13 +388,21 @@ def migrar(
             for indice in esperados:
                 if indice.nome not in reais:
                     continue          # ainda vai ser criado pelo laço de índices
-                cols, unico = reais[indice.nome]
-                if cols != indice.colunas or unico != indice.unico:
+                cols, unico, parcial, predicado = reais[indice.nome]
+                esperado_predicado = _normalizar_predicado(
+                    f"x WHERE {indice.predicado}" if indice.predicado else None)
+                if (cols != indice.colunas or unico != indice.unico
+                        or parcial != bool(indice.predicado)
+                        or predicado != esperado_predicado):
                     _recusar(conn, tabela,
                              f"índice {indice.nome} com definição divergente",
                              {"esperado": {"colunas": list(indice.colunas),
-                                           "unico": indice.unico},
-                              "encontrado": {"colunas": list(cols), "unico": unico}})
+                                           "unico": indice.unico,
+                                           "parcial": bool(indice.predicado),
+                                           "predicado": esperado_predicado},
+                              "encontrado": {"colunas": list(cols), "unico": unico,
+                                             "parcial": parcial,
+                                             "predicado": predicado}})
 
         for tabela, pk_esperada in chaves_primarias:
             if tabela not in existentes:
