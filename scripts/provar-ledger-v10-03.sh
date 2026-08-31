@@ -342,20 +342,74 @@ echo "════ P · concorrência REAL: duas sessões despacham o mesmo item
 #
 # Sobre PostgREST, "conferir se há recibo aberto" e "abrir o recibo" seriam duas
 # requisições HTTP — duas transações, sem cadeado entre elas. A janela não está no
-# chamador; está ENTRE as transações. Aqui as duas sessões entram ao mesmo tempo
-# na mesma função: o `FOR UPDATE` serializa, a segunda enxerga o recibo da
-# primeira e é recusada. Uma sai, uma para, e existe UM recibo em voo.
+# chamador; está ENTRE as transações. Aqui as duas sessões entram na mesma função:
+# o `FOR UPDATE` serializa, a segunda enxerga o recibo da primeira e é recusada.
+#
+# ⚠️ E POR QUE A BARREIRA, DESDE 31/08/2026.
+#
+# A versão anterior disparava os dois `psql` com `&` e `wait`, e afirmava
+# "exatamente uma despachou". A afirmação é verdadeira — e vazia: se as duas
+# sessões rodassem EM SEQUÊNCIA, a segunda também seria recusada, pelo recibo que
+# a primeira já tinha fechado. O teste passava sem que houvesse concorrência
+# alguma, ou seja, era satisfazível sem o fenômeno que dizia medir. Um teste
+# assim não falha quando a guarda quebra: ele falha quando o SO coopera.
+#
+# A barreira aqui não é um `sleep` torcendo por sobreposição. A sessão A abre uma
+# transação, despacha e SEGURA o cadeado da linha do item sem commitar. A sessão B
+# entra depois e BLOQUEIA no `FOR UPDATE` — e um terceiro observador vê B parada
+# em `wait_event_type='Lock'`. Esse bloqueio observado é a prova de sobreposição:
+# B só pode estar esperando se A ainda está dentro da seção crítica.
 ITEM_C=$(abrir_com 'volc-corrida-00000001' "$IMPRESSAO" '5478096539')
-DESPACHO="SET ROLE service_role; SELECT public.trafego_ledger_despachar(
+DESPACHO="SELECT public.trafego_ledger_despachar(
   'volc-corrida-00000001','GOOGLE_ADS','5478096539','SEARCH','$IMPRESSAO','dono@volc','sub-1');"
-( psql -h "$D/s" -U postgres -X -A -t -c "$DESPACHO" > "$D/corrida1" 2>&1 ) &
-( psql -h "$D/s" -U postgres -X -A -t -c "$DESPACHO" > "$D/corrida2" 2>&1 ) &
-wait
+
+# A: despacha e segura o cadeado por até 5s dentro da transação aberta.
+( psql -h "$D/s" -U postgres -X -A -t > "$D/corrida1" 2>&1 <<SQL_A
+SET ROLE service_role;
+BEGIN;
+$DESPACHO
+SELECT pg_sleep(5);
+COMMIT;
+SQL_A
+) &
+PID_A=$!
+
+# Espera A ENTRAR de fato (o recibo dela já existe na transação não commitada —
+# invisível de fora — então o sinal observável é o cadeado na linha do item).
+ESPERA=0
+while [ "$(P -c "SELECT count(*)::text FROM pg_locks l JOIN pg_class c ON c.oid=l.relation
+                  WHERE c.relname='trafego_lote_item' AND l.mode='RowExclusiveLock';")" = "0" ]; do
+    ESPERA=$((ESPERA + 1)); [ "$ESPERA" -gt 100 ] && break; sleep 0.05
+done
+
+# B: entra com A ainda dentro da seção crítica.
+( psql -h "$D/s" -U postgres -X -A -t > "$D/corrida2" 2>&1 <<SQL_B
+SET ROLE service_role;
+$DESPACHO
+SQL_B
+) &
+PID_B=$!
+
+# O observador: B precisa aparecer BLOQUEADA esperando um cadeado. É isto que
+# transforma "rodaram juntas" de esperança em fato medido.
+BLOQUEADA=0; ESPERA=0
+while [ "$ESPERA" -lt 100 ]; do
+    if [ "$(P -c "SELECT count(*)::text FROM pg_stat_activity
+                   WHERE query LIKE '%trafego_ledger_despachar%'
+                     AND wait_event_type='Lock' AND pid <> pg_backend_pid();")" != "0" ]; then
+        BLOQUEADA=1; break
+    fi
+    ESPERA=$((ESPERA + 1)); sleep 0.05
+done
+wait "$PID_A" "$PID_B" 2>/dev/null || true
+
+cmp_ "$BLOQUEADA" "1" \
+     "houve SOBREPOSIÇÃO real: a segunda sessão ficou bloqueada no cadeado da primeira"
 # `grep -l` (lista arquivos que casam), nunca `-lc`: as duas flags juntas mudam a
 # saída e a contagem deixa de significar "quantas sessões".
 ACEITOS=$(grep -l 'recibo_id' "$D/corrida1" "$D/corrida2" 2>/dev/null | wc -l | tr -d ' ')
 RECUSADOS=$(grep -l 'recibo(s) sem desfecho' "$D/corrida1" "$D/corrida2" 2>/dev/null | wc -l | tr -d ' ')
-cmp_ "$ACEITOS" "1" "das duas sessões simultâneas, exatamente uma despachou"
+cmp_ "$ACEITOS" "1" "das duas sessões sobrepostas, exatamente uma despachou"
 cmp_ "$RECUSADOS" "1" "e exatamente uma foi recusada pela guarda, não por acaso"
 cmp_ "$(P -c "SELECT count(*)::text FROM trafego_recibo WHERE item_id='$ITEM_C' AND desfecho='em_voo';")" \
      "1" "existe UM recibo em voo — a janela TOCTOU entre transações não existe aqui"
