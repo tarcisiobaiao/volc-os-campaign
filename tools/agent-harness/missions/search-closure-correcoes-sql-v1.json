@@ -1,0 +1,111 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "search-closure-correcoes-sql-v1",
+  "title": "Camada 4 estrutural, ordem única de locks e a prova de concorrência que exerce concorrência",
+  "base_ref": "45c7ccfc4e63af7a23ca4a20d076a86c441e8461",
+  "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
+  "mode": "implementation",
+  "commit_message": "fix(v10_03): a camada 4 vira estrutural e a ordem de locks passa a ser uma so",
+  "acceptance_ids": [
+    "P05-T11-A3",
+    "P05-T11-A5"
+  ],
+  "ownership_envelope": [
+    "supabase/migrations",
+    "scripts"
+  ],
+  "task_ids": [
+    "P05-T11",
+    "P09-T01"
+  ],
+  "authorized_external_providers": [
+    "anthropic",
+    "google_gemini"
+  ],
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "ratchet": {
+    "enabled": true,
+    "max_writer_attempts": 3,
+    "max_review_rounds": 2,
+    "max_wall_seconds": 18000,
+    "no_progress_limit": 2
+  },
+  "briefing": "MISSÃO CORRETIVA DE SQL. Três achados, todos REPRODUZIDOS ou confirmados por leitura direta pelo diretor. Conserte estes três e nada além.\n\n=== S1 · A CAMADA 4 É SEQUENCIAL, NÃO ESTRUTURAL · REPRODUZIDO ===\nO gatilho `trafego_recibo_um_voo_por_item` faz SELECT count(*) num BEFORE INSERT. Duas transações concorrentes não enxergam a linha não-commitada uma da outra, então as duas contam zero e as duas inserem.\nReprodução do diretor, em cluster descartável com a v10_03 aplicada: dois INSERT diretos em trafego_recibo, com sobreposição forçada por pg_sleep dentro da transação, terminaram com ZERO erro e DOIS recibos abertos no mesmo item.\nO gatilho só protege o caminho da RPC, onde o FOR UPDATE no item serializa. Qualquer INSERT direto — e service_role tem INSERT concedido — passa.\nCONSERTO: torne a invariante ESTRUTURAL com um índice único parcial sobre (item_id, operacao) WHERE desfecho IN ('em_voo','sem_resposta'). Mantenha o gatilho: ele dá a mensagem acionável; o índice dá a garantia. Duas camadas independentes, como a v10_01 já faz em outros pontos.\n⚠️ CONFIRA A SEMÂNTICA ANTES DE ESCREVER: com esse predicado, um recibo fechado como `erro` SAI do índice e a reentrada legítima continua possível; um `sem_resposta` PERMANECE e bloqueia para sempre, que é exatamente o que as camadas 2 e 3 já impõem. Se a sua leitura discordar disso, diga — não ajuste o predicado para 'passar'.\n\n=== S2 · INVERSÃO DE ORDEM DE LOCKS · confirmado por leitura ===\n`trafego_ledger_fechar` trava o RECIBO (v10_03:680) e depois o ITEM (692).\n`trafego_ledger_reconciliar` trava o ITEM (805) e depois o RECIBO (813).\nOrdens opostas sobre os mesmos dois objetos: um fechamento e uma reconciliação simultâneos podem deadlockar. Três das quatro lanes da certificação apontaram isso.\nCONSERTO: uma ordem única e declarada para as duas funções — trave sempre o ITEM primeiro, depois o RECIBO. O item é a identidade estável; o recibo pertence a ele.\n\n=== S3 · O GATE DE CONCORRÊNCIA PODE PASSAR SEM CONCORRÊNCIA · confirmado ===\nA seção P de scripts/provar-ledger-v10-03.sh dispara duas sessões psql em background e conclui que a guarda serializou. Mas nada garante que elas se SOBREPONHAM: a segunda pode começar depois de a primeira ter commitado, e aí a recusa vem da checagem sequencial, não da contenção de lock. O gate ficaria verde sem exercer o que anuncia — o mesmo defeito que esta certificação encontrou no produto.\nCONSERTO: force a sobreposição de forma determinística (pg_sleep dentro da transação, advisory lock, ou barreira equivalente) e faça a prova FALHAR se a sobreposição não tiver acontecido. Acrescente também uma prova nova para S1: dois INSERT DIRETOS concorrentes, fora da RPC, precisam terminar com exatamente um recibo aberto.\n\n=== ONDE ESCREVER ===\nA v10_03 NÃO foi aplicada em banco nenhum — nem oficial, nem de prova permanente. Então corrija DENTRO dela, não empilhe uma v10_04 sobre uma migration que nunca existiu em lugar nenhum. Atualize o rollback correspondente e o sha256 registrado em supabase/migrations/README.md.\n\n=== PROIBIDO ===\nTocar backend/, src/, volc_ads/. Aplicar migration em banco algum. Afrouxar qualquer guarda existente para fazer prova passar. Remover o gatilho da camada 4 alegando que o índice basta — a mensagem acionável é metade do valor.\n\n=== ACEITE ===\nO ciclo `./scripts/provar-ledger-v10-03.sh` continua verde, com as provas novas, e a prova de S1 falha se o índice for removido.",
+  "gates": [
+    {
+      "kind": "git_diff_check"
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "ledger-v10-03",
+      "timeout_seconds": 2400
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "backend-unit",
+      "timeout_seconds": 2400
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "verificar-segredos",
+      "timeout_seconds": 600
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-writer-sql",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "role": "writer",
+      "effort": "xhigh",
+      "lens": "Tres consertos fechados, spec pronta. O indice e a garantia; o gatilho e a mensagem. Nao remova nenhum dos dois.",
+      "allowed_paths": [
+        "supabase/migrations",
+        "scripts"
+      ],
+      "writable_paths": [
+        "supabase/migrations/v10_03_recibo_atomico.sql",
+        "supabase/migrations/v10_03_rollback.sql",
+        "supabase/migrations/README.md",
+        "scripts/provar-ledger-v10-03.sh"
+      ]
+    },
+    {
+      "id": "gemini-revisor-sql",
+      "provider": "gemini",
+      "model": "gemini-3.7-flash",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Completude SQL: o indice parcial cobre exatamente o predicado certo? O rollback derruba o indice novo? O sha256 do README bate com o arquivo? A ordem de locks ficou igual nas duas funcoes?",
+      "allowed_paths": [
+        "supabase/migrations",
+        "scripts"
+      ]
+    },
+    {
+      "id": "codex-sol-revisor-sql",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Refute. A prova de concorrencia agora EXERCE concorrencia, ou so parece? Ela falharia se o indice fosse removido? O predicado do indice quebra alguma reentrada legitima apos erro respondido?",
+      "allowed_paths": [
+        "supabase/migrations",
+        "scripts"
+      ]
+    },
+    {
+      "id": "claude-opus-revisor-sql",
+      "provider": "claude",
+      "model": "opus",
+      "role": "reviewer",
+      "effort": "xhigh",
+      "lens": "Semantica dos estados: o indice parcial preserva a distincao entre erro respondido (reentravel) e sem_resposta (permanente)? A ordem unica de locks nao introduziu outra inversao com trafego_lote?",
+      "allowed_paths": [
+        "supabase/migrations",
+        "scripts"
+      ]
+    }
+  ]
+}
