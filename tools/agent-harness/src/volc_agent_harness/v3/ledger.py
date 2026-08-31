@@ -160,11 +160,31 @@ INDICES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
      ("state", "lease_until")),
 )
 
+#: Chave primária esperada de cada tabela. PK divergente não é "versão antiga
+#: do nosso schema": é schema de outro sistema no arquivo que dizemos ser nosso.
+CHAVES_PRIMARIAS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("evidence", ("id",)),
+    ("execution_claim", ("logical_key",)),
+)
+
+#: Unicidade MATERIAL: é ela que faz `complete()` ser idempotente no banco, e
+#: não só no código.
+UNICIDADES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("evidence", ("claim_key", "fencing_token")),
+)
+
 #: TODAS as colunas que INSERT/SELECT/UPDATE tocam, nas duas tabelas. Conferir
 #: 4 de 21 deixava a migração aceitar um schema que quebrava no primeiro uso —
 #: falha adiada é pior que falha na inicialização, porque acontece longe da
 #: causa. A checagem roda DEPOIS dos ALTERs, então o que a migração conseguiu
 #: acrescentar já conta como presente.
+#:
+#: Esta lista também define o que o harness PREENCHE: qualquer coluna NOT NULL
+#: sem default fora dela é recusada no boot, porque nossos INSERTs a omitiriam.
+#: `id`, `acceptance_id`, `kind`, `input_digest`, `run_id` e `logical_key` não
+#: aparecem em COLUNAS_EVOLUTIVAS de propósito — são IDENTIDADE. Acrescentá-las
+#: com DEFAULT '' daria a toda linha legada um aceite vazio, tornando-as
+#: indistinguíveis entre si; recusar é o comportamento correto.
 OBRIGATORIAS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("evidence", (
         "id", "acceptance_id", "kind", "base_sha", "candidate_sha", "input_digest",
@@ -476,6 +496,8 @@ class EvidenceLedger:
                 colunas_novas=COLUNAS_EVOLUTIVAS,
                 indices_novos=INDICES,
                 obrigatorias=OBRIGATORIAS,
+                chaves_primarias=CHAVES_PRIMARIAS,
+                unicidades=UNICIDADES,
             )
         finally:
             c.close()
