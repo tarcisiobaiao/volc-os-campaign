@@ -513,6 +513,7 @@ a executar, porque o ramo anterior já cobria o caso.
 |---|---|---|---|---|
 | `v10_01_intencao_e_lote.sql` | `827e8caae24b088f…` | 1950 | **não aplicada** | `v10_01_rollback.sql` (`b75eb90b09447493…`) |
 | `v10_02_autogestao.sql` | `124eac489c9d3bb8…` | 1722 | **não aplicada** | `v10_02_rollback.sql` (`37a0f0e560a940c1…`) |
+| `v10_03_recibo_atomico.sql` | `bdb26eed7da08b64…` | 992 | **não aplicada** | `v10_03_rollback.sql` (`b1c9d6598bd0bf52…`) |
 
 ⚠️ **Os hashes mudaram em 26/08/2026**, depois da auditoria adversarial. Quinze
 achados foram confirmados por céticos independentes e corrigidos; cinco deles são
@@ -530,10 +531,72 @@ v10_02 precisa da v10_01. **As duas são independentes entre si no rollback:**
 reverter a v10_02 deixa a v10_01 intacta, e reverter a v10_01 deixa a série v9
 intacta — as duas coisas são provadas, não afirmadas.
 
+### v10_03 — a fronteira atômica, e o furo que ela fecha (31/08/2026)
+
+A v10_01 escreveu três camadas de defesa contra "timeout mas criou". **Todas as
+três vivem dentro de `IF NEW.estado IS DISTINCT FROM OLD.estado`**, no gatilho
+`trafego_item_estado_valido`: elas guardam `-> falhou` e `indeterminado ->
+criando`. Abrir um recibo não passava por gatilho nenhum — e abrir o recibo é o
+ato que precede a chamada à plataforma.
+
+Reproduzido em cluster descartável, com v9_01..v9_04 + v10_01 + v10_02:
+
+```text
+item em `criando`, recibo tentativa=1 `em_voo` (a chamada 1 não respondeu)
+INSERT trafego_recibo tentativa=2 'em_voo'  → ACEITO
+recibos em voo simultâneos para o mesmo item: 2
+```
+
+Duas chamadas de criação em voo para o mesmo plano, na mesma conta. Como
+`trafego_recibo_sucesso_unico_ux` só impede registrar **dois sucessos**, se as
+duas criarem a segunda campanha existe na conta e fica **invisível** para o
+sistema, disputando o mesmo leilão. O dano não é duplicar; é duplicar e perder
+o rastro da duplicata.
+
+A v10_03 traz:
+
+1. **Camada 4** — gatilho `BEFORE INSERT` em `trafego_recibo`: não se abre
+   recibo para item que já tem recibo sem desfecho na mesma operação. Vale mesmo
+   quando nenhuma transição de estado acontece, que era exatamente o caso que
+   passava.
+2. **A aprovação com identidade e vínculo** — `plano_impressao`,
+   `aprovado_por`, `aprovado_por_sub`, `aprovado_em` e `aprovacao_impressao` no
+   item, com uma **constraint** (não uma convenção) exigindo
+   `aprovacao_impressao = plano_impressao`: autorização não atravessa de payload
+   para payload.
+3. **Quatro funções transacionais** — `trafego_ledger_abrir_lancamento`,
+   `_despachar`, `_fechar` e `_reconciliar`. `SECURITY INVOKER`, `EXECUTE` só
+   para `service_role`, `search_path` fixado.
+
+**Por que função, e não disciplina de chamador.** Sobre PostgREST cada
+requisição HTTP é uma transação própria; "conferir se há recibo aberto" e "abrir
+o recibo novo" ficam em transações diferentes, e a janela não está no chamador —
+está *entre* as transações. `FOR UPDATE` dentro de uma função a fecha; nenhuma
+disciplina de aplicação fecha.
+
+**O que a v10_03 deliberadamente NÃO faz:** não substitui nenhuma função da
+v10_01 (os gatilhos são novos — um rollback que precisa redigitar o corpo de uma
+regra apaga tanto quanto a migration que ele desfaz, que é o defeito registrado
+acima sobre a v9_03); e **não reabre reenvio depois de `sem_resposta`**. Um
+recibo `sem_resposta` é permanente e a camada 3 conta esses recibos, então o item
+não volta para `criando`. Isso é *fail-closed* e continua assim: **reconciliar é
+o caminho, reenviar não é**. Afrouxar essa regra é decisão do dono.
+
+**Reentrada legítima:** `erro` é resposta (a plataforma disse que não criou), o
+item vira `falhou`, e `falhou -> criando` é permitido — a intenção não é
+queimada por uma recusa. `sem_resposta` é ignorância, e dali só se sai
+verificando na conta.
+
+⚠️ **Convenção de nome.** Este diretório usa `vNN_MM_nome.sql` + `vNN_MM_rollback.sql`,
+não o `<timestamp>_nome.sql` da CLI do Supabase — e não há `supabase/config.toml`
+aqui. A v10_03 segue a convenção do repositório, não a da CLI; mudar de convenção
+no meio de uma série quebraria a ordem topológica documentada acima.
+
 ### A prova, e como reproduzi-la
 
 ```bash
-./scripts/provar-ciclo-v10.sh        # exige initdb, pg_ctl e psql no PATH
+./scripts/provar-ciclo-v10.sh        # v10_01 + v10_02: aplicar → reverter → reaplicar
+./scripts/provar-ledger-v10-03.sh    # a fronteira atômica: 52 provas
 ```
 
 Ele sobe um cluster efêmero em `/tmp`, recria os papéis do Supabase **incluindo o

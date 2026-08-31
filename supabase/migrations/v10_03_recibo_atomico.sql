@@ -292,7 +292,8 @@ CREATE OR REPLACE FUNCTION public.trafego_ledger_abrir_lancamento(
   p_blueprint_versao      integer     DEFAULT 1,
   p_linhagem_rotulo       text        DEFAULT NULL,
   p_campaign_lineage_id   uuid        DEFAULT NULL,
-  p_validacoes            jsonb       DEFAULT '[]'::jsonb
+  p_validacoes            jsonb       DEFAULT '[]'::jsonb,
+  p_intencao_id           uuid        DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -355,14 +356,48 @@ BEGIN
     RETURNING campaign_lineage_id INTO v_linhagem;
   END IF;
 
-  INSERT INTO public.trafego_intencao (
-    campaign_lineage_id, plataforma, conta_externa, objetivo, rotulo, destino_url,
-    verba_diaria_teto_micros, moeda, declarada_por, declarada_com_base_em, evidencia)
-  VALUES (
-    v_linhagem, p_plataforma, p_conta_externa, p_objetivo, p_rotulo, p_destino_url,
-    p_verba_diaria_teto_micros, p_moeda, p_declarada_por, p_declarada_com_base_em,
-    coalesce(p_evidencia, '{}'::jsonb))
-  RETURNING intencao_id INTO v_intencao;
+  -- ⚠️ O ID DA INTENCAO PODE VIR DE FORA, E ISSO NAO E DETALHE.
+  --
+  -- A chave de idempotencia do item e derivada de `intencao_id` (lote.py). Se a
+  -- intencao nascesse com `gen_random_uuid()` a cada chamada, a retomada de uma
+  -- tentativa perdida produziria uma chave NOVA — e as quatro camadas de defesa
+  -- deixariam de reconhecer o que ja foi enviado, que e exatamente o modo de
+  -- falha que elas existem para impedir. O chamador deriva o id do conteudo da
+  -- intencao (uuid5) e o repassa; duas chamadas iguais recaem na mesma linha.
+  IF p_intencao_id IS NOT NULL THEN
+    INSERT INTO public.trafego_intencao (
+      intencao_id, campaign_lineage_id, plataforma, conta_externa, objetivo, rotulo,
+      destino_url, verba_diaria_teto_micros, moeda, declarada_por,
+      declarada_com_base_em, evidencia)
+    VALUES (
+      p_intencao_id, v_linhagem, p_plataforma, p_conta_externa, p_objetivo, p_rotulo,
+      p_destino_url, p_verba_diaria_teto_micros, p_moeda, p_declarada_por,
+      p_declarada_com_base_em, coalesce(p_evidencia, '{}'::jsonb))
+    ON CONFLICT (intencao_id) DO NOTHING;
+    v_intencao := p_intencao_id;
+
+    -- Reaproveitar uma intencao exige que ela seja a MESMA intencao. Id igual
+    -- com conta ou canal diferentes seria duas autorizacoes de gasto na mesma
+    -- linha, e a intencao e imutavel — ninguem corrigiria depois.
+    IF NOT EXISTS (
+      SELECT 1 FROM public.trafego_intencao i
+       WHERE i.intencao_id = p_intencao_id
+         AND i.plataforma = p_plataforma AND i.conta_externa = p_conta_externa
+    ) THEN
+      RAISE EXCEPTION
+        'trafego_ledger_abrir_lancamento: a intencao % ja existe declarando outra plataforma/conta. Um id de intencao nao atravessa de conta.',
+        p_intencao_id USING ERRCODE = 'restrict_violation';
+    END IF;
+  ELSE
+    INSERT INTO public.trafego_intencao (
+      campaign_lineage_id, plataforma, conta_externa, objetivo, rotulo, destino_url,
+      verba_diaria_teto_micros, moeda, declarada_por, declarada_com_base_em, evidencia)
+    VALUES (
+      v_linhagem, p_plataforma, p_conta_externa, p_objetivo, p_rotulo, p_destino_url,
+      p_verba_diaria_teto_micros, p_moeda, p_declarada_por, p_declarada_com_base_em,
+      coalesce(p_evidencia, '{}'::jsonb))
+    RETURNING intencao_id INTO v_intencao;
+  END IF;
 
   SELECT b.blueprint_id INTO v_blueprint FROM public.trafego_blueprint b
    WHERE b.chave = p_blueprint_chave AND b.versao = p_blueprint_versao;
@@ -529,7 +564,10 @@ BEGIN
      WHERE lote_id = v_lote.lote_id;
     v_lote.estado := 'aprovado';
   END IF;
-  IF v_lote.estado = 'aprovado' THEN
+  -- Um lote que terminou com falha CONFIRMADA volta a executar. A v10_01 declara
+  -- `concluido_com_falhas->executando` justamente porque um erro respondido pela
+  -- plataforma e informacao, e informacao nao queima a intencao.
+  IF v_lote.estado IN ('aprovado', 'concluido_com_falhas', 'interrompido') THEN
     UPDATE public.trafego_lote SET estado = 'executando' WHERE lote_id = v_lote.lote_id;
     v_lote.estado := 'executando';
   END IF;
@@ -551,9 +589,28 @@ BEGIN
     UPDATE public.trafego_lote_item SET estado = 'aprovado'
      WHERE item_id = v_item.item_id; v_item.estado := 'aprovado';
   END IF;
+  -- ⚠️ `falhou` E REENTRAVEL, `indeterminado` NAO E — e a diferenca e o inteiro
+  -- assunto deste arquivo. `falhou` significa que a plataforma RESPONDEU que nao
+  -- criou; a camada 2 da v10_01 so deixa um item chegar a `falhou` quando nenhum
+  -- recibo esta em aberto, entao sabemos que nada ficou em transito. Ja
+  -- `indeterminado` significa que ninguem respondeu, e dali a saida e verificar
+  -- na conta (`trafego_ledger_reconciliar`), nunca despachar de novo — a
+  -- camada 3 da v10_01 recusa, e esta funcao nem tenta.
+  IF v_item.estado = 'falhou' THEN
+    UPDATE public.trafego_lote_item SET estado = 'criando', tentativas = v_item.tentativas + 1
+     WHERE item_id = v_item.item_id;
+    INSERT INTO public.trafego_recibo
+      (item_id, idempotency_key, tentativa, operacao, enviado_em, request_id)
+    VALUES (v_item.item_id, v_item.idempotency_key, v_item.tentativas + 1, p_operacao, now(), p_request_id)
+    RETURNING recibo_id INTO v_recibo;
+    RETURN jsonb_build_object(
+      'item_id', v_item.item_id, 'lote_id', v_lote.lote_id, 'recibo_id', v_recibo,
+      'tentativa', v_item.tentativas + 1, 'desfecho', 'em_voo', 'reentrada_apos', 'falhou');
+  END IF;
+
   IF v_item.estado <> 'aprovado' THEN
     RAISE EXCEPTION
-      'trafego_ledger_despachar: o item esta em `%`; so um item `aprovado` entra em `criando`. Nada foi despachado.',
+      'trafego_ledger_despachar: o item esta em `%`; so `aprovado` ou `falhou` (erro respondido) entram em `criando`. `indeterminado` sai por verificacao na conta, nao por reenvio. Nada foi despachado.',
       v_item.estado USING ERRCODE = 'restrict_violation';
   END IF;
 
@@ -836,7 +893,7 @@ DECLARE
   f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY[
-    'public.trafego_ledger_abrir_lancamento(text,text,text,text,text,text,jsonb,text,text,text,text,text,jsonb,text,bigint,text,jsonb,integer,text,uuid,jsonb)',
+    'public.trafego_ledger_abrir_lancamento(text,text,text,text,text,text,jsonb,text,text,text,text,text,jsonb,text,bigint,text,jsonb,integer,text,uuid,jsonb,uuid)',
     'public.trafego_ledger_despachar(text,text,text,text,text,text,text,text,text,text)',
     'public.trafego_ledger_fechar(uuid,text,text,text,text,text,text,jsonb,integer,text)',
     'public.trafego_ledger_reconciliar(uuid,text,boolean,text,text,text,text,integer,text,text,jsonb)'

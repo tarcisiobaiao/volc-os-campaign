@@ -36,7 +36,7 @@ DROP FUNCTION IF EXISTS public.trafego_recibo_um_voo_por_item();
 DROP FUNCTION IF EXISTS public.trafego_item_aprovacao_vinculada();
 
 DROP FUNCTION IF EXISTS public.trafego_ledger_abrir_lancamento(
-  text,text,text,text,text,text,jsonb,text,text,text,text,text,jsonb,text,bigint,text,jsonb,integer,text,uuid,jsonb);
+  text,text,text,text,text,text,jsonb,text,text,text,text,text,jsonb,text,bigint,text,jsonb,integer,text,uuid,jsonb,uuid);
 DROP FUNCTION IF EXISTS public.trafego_ledger_despachar(text,text,text,text,text,text,text,text,text,text);
 DROP FUNCTION IF EXISTS public.trafego_ledger_fechar(uuid,text,text,text,text,text,text,jsonb,integer,text);
 DROP FUNCTION IF EXISTS public.trafego_ledger_reconciliar(uuid,text,boolean,text,text,text,text,integer,text,text,jsonb);

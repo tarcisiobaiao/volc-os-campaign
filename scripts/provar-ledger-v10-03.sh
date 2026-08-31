@@ -303,6 +303,25 @@ cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM';")" "in
      "não ler não move nada — ausência de leitura não é um fato sobre a conta"
 
 echo
+echo "════ N · erro RESPONDIDO é reentrável; ignorância não é ════"
+ITEM3=$(abrir_com 'volc-canary-erro00000001' "$IMPRESSAO" '5478096539')
+REC3=$(P -c "SET ROLE service_role; SELECT public.trafego_ledger_despachar(
+        'volc-canary-erro00000001','GOOGLE_ADS','5478096539','SEARCH','$IMPRESSAO','dono@volc','sub-1') ->> 'recibo_id';")
+aceita "fechar como \`erro\` (a plataforma respondeu que não criou)" \
+  "SELECT public.trafego_ledger_fechar('$REC3'::uuid, 'erro', p_erro_codigo := 'INVALID_ARGUMENT',
+     p_erro_mensagem := 'headline excede 30 caracteres');"
+cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM3';")" "falhou" \
+     "o item ficou \`falhou\` — houve resposta, e resposta não é ignorância"
+aceita "despachar de novo depois de erro respondido" \
+  "SELECT public.trafego_ledger_despachar('volc-canary-erro00000001','GOOGLE_ADS','5478096539','SEARCH','$IMPRESSAO','dono@volc','sub-1');"
+cmp_ "$(P -c "SELECT tentativas::text FROM trafego_lote_item WHERE item_id='$ITEM3';")" "2" \
+     "a segunda tentativa foi contada, e a intenção não foi queimada"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_recibo WHERE item_id='$ITEM3';")" "2" \
+     "dois recibos, um fechado e um em voo — nunca dois em voo"
+recusa "despachar um item \`indeterminado\` (ignorância não é reentrável)" \
+  "SELECT public.trafego_ledger_despachar('volc-canary-cadeia0001','GOOGLE_ADS','5478096539','SEARCH','$IMPRESSAO','dono@volc','sub-1');"
+
+echo
 echo "════ L · anon e authenticated não chamam o ledger ════"
 cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
               WHERE n.nspname='public' AND p.proname LIKE 'trafego\_ledger\_%'
@@ -319,6 +338,9 @@ cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=
 
 echo
 echo "════ M · o rollback devolve o banco, e a v10_01 fica inteira ════"
+# Contado, nunca fixado: um número cravado aqui vira falha toda vez que uma prova
+# nova semeia um item, e a mensagem culparia o rollback.
+ITENS_ANTES=$(P -c "SELECT count(*)::text FROM trafego_lote_item;")
 aplicar "v10_03_rollback"
 cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
               WHERE n.nspname='public' AND p.proname LIKE 'trafego\_ledger\_%';")" "0" \
@@ -329,8 +351,8 @@ cmp_ "$(P -c "SELECT count(*)::text FROM information_schema.columns
      "0" "as colunas de aprovação sumiram"
 cmp_ "$(P -c "SELECT count(*)::text FROM pg_trigger WHERE tgname='trafego_item_estado_valido';")" "1" \
      "o gatilho da v10_01 continua lá — o rollback não reescreveu regra alheia"
-cmp_ "$(P -c "SELECT count(*)::text FROM trafego_lote_item;")" "3" \
-     "e os itens já registrados continuam de pé"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_lote_item;")" "$ITENS_ANTES" \
+     "e os $ITENS_ANTES itens já registrados continuam de pé"
 aplicar "v10_03_recibo_atomico"
 cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
               WHERE n.nspname='public' AND p.proname LIKE 'trafego\_ledger\_%';")" "4" \

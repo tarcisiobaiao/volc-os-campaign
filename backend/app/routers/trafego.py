@@ -46,7 +46,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.services.supabase_service import SupabaseService
 from app.config import get_settings
-from app.trafego import canario, capacidades as cap, escopo, inteligencia_lab, projecao
+from app.trafego import (canario, capacidades as cap, escopo, inteligencia_lab,
+                         ledger as led, projecao)
 
 log = logging.getLogger("volc.trafego")
 
@@ -146,6 +147,16 @@ def _supa() -> SupabaseService:
 # daqui. É o espelho exato do que `volc_ads/ponte.py` faz na direção contrária —
 # e, como lá, o ajuste fica num lugar só, greppável.
 _RAIZ = pathlib.Path(__file__).resolve().parents[3]
+
+
+def _ledger() -> "led.Ledger":
+    """O ledger de lançamento, sobre o MESMO SupabaseService do resto do router.
+
+    Um cliente novo aqui seria o terceiro deste backend, e três clientes com três
+    tratamentos de erro diferentes é como uma falha de escrita vira aviso numa
+    rota e exceção noutra.
+    """
+    return led.Ledger(_supa())
 
 
 def _ponte():
@@ -2340,19 +2351,141 @@ async def subir(
             ),
         )
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # O LEDGER, ANTES DA ÚNICA CHAMADA QUE MUTA
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ A ordem aqui é o assunto inteiro desta rota, e ela não é arbitrária.
+    #
+    # A pré-checagem remota acima é LEITURA: ela não cria nada na conta, e é
+    # justamente ela que decide se vale a pena chamar. Abrir o recibo antes dela
+    # teria um custo assimétrico — uma falha transitória de leitura deixaria um
+    # `em_voo` órfão, e a camada 4 da v10_03 passaria a bloquear este item até
+    # alguém reconciliar uma chamada que nunca saiu. O recibo cobre o MUTATE.
+    #
+    # `despachar` grava a aprovação vinculada ao plano e o recibo `em_voo` na
+    # MESMA transação, e commita. Se ele levantar, `sb.subir` não é alcançado:
+    # erro de persistência bloqueia o mutate, e nunca o contrário.
+    ledger = _ledger()
+    despacho = None
+    if ledger.disponivel:
+        plano_do_ledger = _plano_aprovavel(body, cid=cid, mid=mid)
+        try:
+            registro = await ledger.abrir(
+                plataforma="GOOGLE_ADS",
+                conta_externa=cid,
+                canal=preparo.canal,
+                objetivo="leads",
+                rotulo=str(getattr(plano.brief, "titulo", "")
+                           or body.vertical or "campanha"),
+                plano=plano_do_ledger,
+                plano_impressao=preparo.selo.impressao,
+                declarada_por=identidade.email or identidade.sub,
+                declarada_com_base_em=f"oportunidade:{body.opportunity_id}",
+                blueprint_chave=f"{preparo.canal.lower()}-canario",
+                blueprint_titulo=f"{preparo.canal} — canário pausado",
+                blueprint_corpo={"canal": preparo.canal, "cria_pausada": True},
+                destino_url=plano.brief.url_final,
+                evidencia={"chave_intencao": chave_intencao,
+                           "marca_remota": marca,
+                           "run_id": body.run_id},
+                # As provas que de fato aconteceram, cada uma na sua camada. A
+                # leitura remota entra como prova porque foi ela que autorizou a
+                # chamada — e uma prova que não fica registrada não é prova.
+                validacoes=[
+                    {"camada": "local", "regra": "brief_montado",
+                     "resultado": "passou",
+                     "validado_por": identidade.email or identidade.sub},
+                    {"camada": "validate_only", "regra": "selo_do_preparo",
+                     "resultado": "passou",
+                     "detalhe": {"impressao": preparo.selo.impressao}},
+                    {"camada": "local", "regra": "idempotencia_remota",
+                     "resultado": "passou",
+                     "mensagem": None,
+                     "detalhe": {"marca": marca,
+                                 "encontradas": 0,
+                                 "url_final": plano.brief.url_final}},
+                ],
+            )
+            despacho = await ledger.despachar(
+                idempotency_key=registro["idempotency_key"],
+                plataforma="GOOGLE_ADS",
+                conta_externa=cid,
+                canal=preparo.canal,
+                aprovacao_impressao=preparo.selo.impressao,
+                aprovado_por=identidade.email or identidade.sub,
+                aprovado_por_sub=identidade.sub,
+                aprovacao_observacao=body.motivo,
+            )
+        except led.LedgerRecusou as exc:
+            # Uma guarda do banco disparou. Nada foi enviado ao Google, e a
+            # mensagem da guarda é acionável — repassá-la inteira vale mais que
+            # traduzi-la para "não foi possível".
+            raise HTTPException(
+                status_code=409,
+                detail=(f"O ledger de lançamento recusou: {exc}. "
+                        "Nada foi enviado ao Google."),
+            ) from exc
+        except led.LedgerIndisponivel as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=("Não consegui registrar a intenção e o recibo antes de "
+                        f"criar a campanha ({exc}). Por segurança, NADA foi "
+                        "enviado ao Google: uma campanha que nasce sem recibo é "
+                        "uma campanha que ninguém consegue reconciliar depois."),
+            ) from exc
+    else:
+        log.warning(
+            "ledger indisponível neste processo; /subir seguiu sem recibo prévio "
+            "para a oportunidade %s", body.opportunity_id)
+
     try:
         recibo = await asyncio.to_thread(sb.subir, preparo, motivo=body.motivo)
-    except sb.TravaAberta as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except sb.PayloadNaoValidado as exc:
+    except (sb.TravaAberta, sb.PayloadNaoValidado) as exc:
+        # Guardas locais do executor: elas disparam ANTES de qualquer byte sair.
+        # Nada foi criado, e o item continua reentrável.
+        await _fechar_recibo_com_erro(ledger, despacho, exc,
+                                      codigo=type(exc).__name__)
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         from volc_ads.gads.modo import EscritaBloqueada
 
         if isinstance(exc, EscritaBloqueada):
+            await _fechar_recibo_com_erro(ledger, despacho, exc,
+                                          codigo="EscritaBloqueada")
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        log.exception("subida do card %s explodiu", body.opportunity_id)
-        raise HTTPException(status_code=500, detail=str(exc)[:400]) from exc
+
+        # ⚠️ A BIFURCAÇÃO QUE DECIDE SE UMA SEGUNDA CAMPANHA NASCE.
+        #
+        # `failure` preenchido significa que o servidor do Google PROCESSOU e
+        # RECUSOU: há resposta, nada foi criado, e o item pode ser reenviado.
+        # `failure` ausente é transporte — timeout, conexão caída, processo
+        # morto — e aí NÃO SABEMOS se criou. O recibo fecha como `sem_resposta`,
+        # o item vira `indeterminado`, e a saída de lá é verificar na conta.
+        # Chamar isto de "falhou" seria o convite a reenviar que cria a segunda
+        # campanha no mesmo leilão.
+        respondeu = getattr(exc, "failure", None) is not None
+        if respondeu:
+            await _fechar_recibo_com_erro(ledger, despacho, exc, codigo="GoogleAdsException")
+            log.exception("subida do card %s recusada pelo Google", body.opportunity_id)
+            raise HTTPException(status_code=502, detail=str(exc)[:400]) from exc
+
+        await _fechar_recibo_sem_resposta(ledger, despacho, exc)
+        log.exception("subida do card %s ficou indeterminada", body.opportunity_id)
+        raise HTTPException(
+            status_code=504,
+            detail={
+                "estado": "indeterminado",
+                "mensagem": (
+                    "A chamada de criação não teve resposta. NÃO reenvie: pode "
+                    "haver uma campanha criada na conta. O recibo ficou "
+                    "registrado e a próxima ação é verificar na conta e "
+                    "reconciliar."),
+                "recibo_id": getattr(despacho, "recibo_id", None),
+                "item_id": getattr(despacho, "item_id", None),
+                "reenvio_permitido": False,
+            },
+        ) from exc
 
     # ⚠️ A CAMPANHA PASSA A EXISTIR NO NOSSO BANCO, e não só na conta do Google.
     #
@@ -2377,12 +2510,110 @@ async def subir(
         "ativacao_incluida": False,
         "marca_remota": marca,
     }
+
+    # ⚠️ O ID EXTERNO É A ÚNICA COISA QUE SÓ EXISTE DEPOIS DO MUTATE.
+    #
+    # Fechar o recibo grava, numa transação só, o desfecho, o id externo com a
+    # hora da leitura e a identidade da instância. Se ESTA escrita falhar, o
+    # recibo fica `em_voo` — e isso é a verdade, não um bug: alguém precisa ir
+    # à conta reconciliar. É estritamente melhor que o comportamento anterior,
+    # em que a falha do registro virava um aviso e o rastro se perdia.
+    campaign_id = _campaign_id_do_recibo(recibo)
+    projetado["ledger"] = await _fechar_recibo_com_sucesso(
+        ledger, despacho, campaign_id=campaign_id, cid=cid,
+        recibo=recibo, preparo=preparo,
+    )
+
     aviso_registro = await _registrar_campanha(
         body, recibo, cid, mid, canal=preparo.canal,
     )
     if aviso_registro:
         projetado["aviso_registro"] = aviso_registro
     return {"recibo": projetado}
+
+
+# ---------------------------------------------------------------------------
+# Fechamento do recibo — os três desfechos, e o que cada um significa
+# ---------------------------------------------------------------------------
+#
+# Nenhuma destas funções derruba a resposta ao operador. A campanha já existe (ou
+# já não existe) na conta quando elas rodam; falhar aqui e transformar isso num
+# 500 trocaria um problema de registro por um de veiculação. O que elas NÃO fazem
+# é sumir em silêncio: o desfecho do fechamento vai no corpo da resposta, e um
+# recibo que continuou `em_voo` é dito com todas as letras.
+
+def _campaign_id_do_recibo(recibo: Any) -> str:
+    """O id que a API atribuiu, extraído do `resource_name`. Única fonte dele."""
+    rn = next(
+        (c.resource_name for c in (getattr(recibo, "criados", ()) or ())
+         if "campaign_result" in getattr(c, "tipo", "") or "/campaigns/" in c.resource_name),
+        "")
+    return rn.rsplit("/", 1)[-1] if rn and "/campaigns/" in rn else ""
+
+
+async def _fechar_recibo_com_sucesso(
+    ledger: Any, despacho: Any, *, campaign_id: str, cid: str,
+    recibo: Any, preparo: Any,
+) -> Dict[str, Any]:
+    if despacho is None:
+        return {"registrado": False,
+                "motivo": "o ledger não estava disponível quando a campanha foi criada"}
+    if not campaign_id:
+        # Criou, mas não sabemos o quê. `sucesso` exige id externo justamente
+        # para que este caso não vire um sucesso sem rastro.
+        await _fechar_recibo_sem_resposta(
+            ledger, despacho,
+            "a API não devolveu resource_name de campanha")
+        return {"registrado": True, "desfecho": "sem_resposta",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "motivo": "a API não devolveu o id da campanha; reconcilie na conta"}
+    try:
+        fechado = await ledger.fechar_sucesso(
+            recibo_id=despacho.recibo_id,
+            id_externo=campaign_id,
+            plataforma="GOOGLE_ADS",
+            conta_externa=cid,
+            operacoes_consumidas=len(getattr(recibo, "criados", ()) or ()),
+            resposta_bruta={"canal": preparo.canal,
+                            "nome_campanha": getattr(recibo, "nome_campanha", "")},
+        )
+        return {"registrado": True, "desfecho": "sucesso",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "id_externo": fechado.get("id_externo") or campaign_id,
+                "item_estado": fechado.get("item_estado")}
+    except Exception as exc:  # noqa: BLE001
+        log.exception("fechamento do recibo %s falhou", despacho.recibo_id)
+        return {"registrado": False, "desfecho": "em_voo",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "id_externo": campaign_id,
+                "motivo": (f"a campanha {campaign_id} existe na conta, mas o recibo "
+                           f"continuou em voo: {str(exc)[:180]}. Reconcilie.")}
+
+
+async def _fechar_recibo_com_erro(
+    ledger: Any, despacho: Any, exc: Any, *, codigo: str,
+) -> None:
+    """A plataforma respondeu que não criou. O item volta a ser reenviável."""
+    if despacho is None:
+        return
+    try:
+        await ledger.fechar_erro(
+            recibo_id=despacho.recibo_id, mensagem=str(exc), codigo=codigo)
+    except Exception:  # noqa: BLE001
+        log.exception("não consegui fechar como erro o recibo %s", despacho.recibo_id)
+
+
+async def _fechar_recibo_sem_resposta(ledger: Any, despacho: Any, motivo: Any) -> None:
+    """⚠️ Ninguém respondeu. O item vira `indeterminado`, e reenviar fica fechado."""
+    if despacho is None:
+        return
+    try:
+        await ledger.fechar_sem_resposta(
+            recibo_id=despacho.recibo_id, motivo=str(motivo))
+    except Exception:  # noqa: BLE001
+        log.exception(
+            "não consegui carimbar `sem_resposta` no recibo %s — ele continua "
+            "`em_voo`, que também impede reenvio", despacho.recibo_id)
 
 
 def _hoje_iso() -> str:

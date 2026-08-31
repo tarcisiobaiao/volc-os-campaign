@@ -101,6 +101,24 @@ class SupabaseService:
             offset += self.PAGE_SIZE
         return out
 
+    async def rpc(self, funcao: str, argumentos: Dict[str, Any]) -> Any:
+        """Chama uma função do Postgres via `POST /rest/v1/rpc/<funcao>`.
+
+        É a única forma de fazer várias escritas numa transação só daqui: cada
+        requisição PostgREST é uma transação independente, então uma sequência de
+        `insert`/`patch` pode parar no meio e deixar metade do fato gravado. Uma
+        função é uma requisição, logo um `BEGIN/COMMIT`.
+
+        ⚠️ O erro NÃO é engolido. O corpo de um 4xx do PostgREST carrega o
+        SQLSTATE, e é ele que separa "uma guarda do banco recusou" de "o banco
+        está fora do ar" — duas situações que exigem reações opostas de quem
+        chama. `raise_for_status()` em `_request` preserva a resposta dentro da
+        `HTTPStatusError`.
+        """
+        return await self._request(
+            "POST", f"rpc/{funcao}", headers=self._headers(), json=argumentos
+        )
+
     async def patch(self, table: str, match: Dict[str, str], values: Dict[str, Any]) -> List[Dict[str, Any]]:
         data = await self._request(
             "PATCH", table, headers=self._headers("return=representation"),
