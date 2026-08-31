@@ -40,13 +40,18 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from .failures import FailureClass, HarnessFailure
+from .sqlite_support import colunas, conectar, migrar, tabelas
+
 #: Versão do contrato de identidade lógica. Entra no digest de propósito:
 #: mudar a forma de identificar uma prova invalida as antigas em vez de
 #: compará-las com régua diferente.
 LEDGER_CONTRACT_VERSION = 2
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS evidence (
+#: DDL das tabelas. Usado só para CRIAR o que não existe — evolução de banco
+#: existente é feita por :func:`sqlite_support.migrar`, com inspeção explícita.
+DDL_EVIDENCE = """
+CREATE TABLE evidence (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     acceptance_id     TEXT NOT NULL,
     kind              TEXT NOT NULL,
@@ -66,13 +71,15 @@ CREATE TABLE IF NOT EXISTS evidence (
     counterproof      TEXT,
     valid             INTEGER NOT NULL DEFAULT 1,
     invalidated_reason TEXT,
+    claim_key         TEXT,
+    fencing_token     INTEGER,
     run_id            TEXT NOT NULL,
     created_at        TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_evidence_lookup
-    ON evidence(acceptance_id, kind, input_digest, valid);
+"""
 
-CREATE TABLE IF NOT EXISTS execution_claim (
+DDL_CLAIM = """
+CREATE TABLE execution_claim (
     logical_key      TEXT PRIMARY KEY,
     contract_version INTEGER NOT NULL,
     acceptance_id    TEXT NOT NULL,
@@ -90,8 +97,48 @@ CREATE TABLE IF NOT EXISTS execution_claim (
     evidence_id      INTEGER,
     owner_pid        INTEGER
 );
-CREATE INDEX IF NOT EXISTS idx_claim_estado ON execution_claim(state, lease_until);
 """
+
+#: Colunas acrescentadas depois da primeira versão. `CREATE TABLE IF NOT EXISTS`
+#: não evolui banco que já existe — ele simplesmente não faz nada, inclusive
+#: quando a tabela existe com o schema errado.
+COLUNAS_EVOLUTIVAS: tuple[tuple[str, str, str], ...] = (
+    ("evidence", "cwd", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "env_fingerprint", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "context_digest", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "reviewer", "TEXT"),
+    ("evidence", "finding", "TEXT"),
+    ("evidence", "counterproof", "TEXT"),
+    ("evidence", "invalidated_reason", "TEXT"),
+    # Identidade da EXECUÇÃO na evidência: é ela que o índice único usa para
+    # impedir duas conclusões do mesmo claim/fencing token.
+    ("evidence", "claim_key", "TEXT"),
+    ("evidence", "fencing_token", "INTEGER"),
+)
+
+#: Índices nascem DEPOIS das colunas. Criar antes derruba a inicialização
+#: inteira num banco legado, e foi assim que a migração do ledger não existia.
+INDICES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
+    ("idx_evidence_lookup", "evidence",
+     "CREATE INDEX idx_evidence_lookup "
+     "ON evidence(acceptance_id, kind, input_digest, valid)",
+     ("acceptance_id", "kind", "input_digest", "valid")),
+    # UNIQUE parcial: um claim/fence conclui no máximo uma vez. É a restrição
+    # que torna `complete()` idempotente no banco, não só no código.
+    ("idx_evidence_claim_unico", "evidence",
+     "CREATE UNIQUE INDEX idx_evidence_claim_unico "
+     "ON evidence(claim_key, fencing_token) WHERE claim_key IS NOT NULL",
+     ("claim_key", "fencing_token")),
+    ("idx_claim_estado", "execution_claim",
+     "CREATE INDEX idx_claim_estado ON execution_claim(state, lease_until)",
+     ("state", "lease_until")),
+)
+
+#: Sem estas, o banco não é o nosso e não vamos adivinhar. Falha tipada, e
+#: nunca apagamos nada para "consertar".
+OBRIGATORIAS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("evidence", ("acceptance_id", "kind", "input_digest", "run_id")),
+)
 
 #: Provas que atestam o estado do mundo, não uma propriedade do código.
 NUNCA_REUTILIZAVEIS = frozenset({
@@ -176,6 +223,30 @@ def env_fingerprint(env: Mapping[str, str] | None = None) -> str:
     return _sha("|".join(partes))
 
 
+def canonical_cwd(valor: str | None) -> str:
+    """Normaliza o cwd de um gate para a raiz da worktree.
+
+    ``.`` é a raiz. Absoluto, travessia e escape viram ``AUTHORIZATION_BLOCK``:
+    um gate que declara rodar fora da worktree não é um gate desta missão.
+    """
+
+    from pathlib import PurePosixPath
+
+    bruto = (valor or ".").strip()
+    if not bruto or bruto == ".":
+        return "."
+    caminho = PurePosixPath(bruto)
+    if caminho.is_absolute() or ".." in caminho.parts:
+        raise HarnessFailure(
+            FailureClass.AUTHORIZATION_BLOCK,
+            "cwd de gate precisa ser relativo à worktree",
+            detalhe=bruto,
+            reproducao="declare o cwd relativo à raiz da worktree, ou '.'",
+        )
+    partes = [p for p in caminho.parts if p not in {".", ""}]
+    return "/".join(partes) if partes else "."
+
+
 def _input_digest(
     *,
     kind: str,
@@ -184,20 +255,27 @@ def _input_digest(
     command_digest: str,
     env_fingerprint: str,
     context_digest: str,
+    cwd_rel: str = ".",
     contract_version: int = LEDGER_CONTRACT_VERSION,
 ) -> str:
     """Digest do conjunto de inputs materiais de uma prova.
 
-    ``cwd`` NÃO entra, de propósito. A versão anterior o incluía, e como cada
-    run nasce numa worktree nova o digest nunca repetia: o ledger jamais
-    reutilizou uma prova em produção, só em teste. O caminho absoluto do
-    diretório não é insumo material — o conteúdo dos arquivos, o contexto e o
-    ambiente são. ``cwd`` continua gravado na coluna, para auditoria.
+    O ``cwd`` entra **relativo e canônico**, nunca absoluto. As duas pontas
+    erradas já foram exercidas:
+
+    * absoluto — cada run nasce numa worktree nova, o digest nunca repetia, e o
+      ledger jamais reutilizou uma prova em produção, só em teste;
+    * omitido — dois subdiretórios diferentes observam arquivos diferentes e
+      colidiam na mesma identidade, o que é grave justamente porque G1b está
+      aberta: um script alcança ``../config``, socket local e recurso relativo.
+
+    O relativo é o que resta: mesma raiz lógica em worktrees diferentes reutiliza,
+    raízes diferentes não colidem.
     """
 
     return _sha("|".join([
         str(contract_version), kind, production_digest, test_digest,
-        command_digest, env_fingerprint, context_digest,
+        command_digest, env_fingerprint, context_digest, f"cwd={cwd_rel}",
     ]))
 
 
@@ -245,6 +323,8 @@ class GateIdentity:
     test_digest: str
     command_digest: str
     env_fingerprint: str
+    #: Relativo à raiz da worktree; "." é a raiz. Ver :func:`canonical_cwd`.
+    cwd_rel: str = "."
     contract_version: int = LEDGER_CONTRACT_VERSION
 
     @staticmethod
@@ -259,9 +339,8 @@ class GateIdentity:
         test_digest: str,
         env_fingerprint: str,
         binding_digest: str = "",
-        cwd: str = "",
+        cwd_rel: str = ".",
     ) -> "GateIdentity":
-        del cwd    # gravado como metadado, nunca como identidade — ver _input_digest
         return GateIdentity(
             acceptance_id=acceptance_id,
             kind=f"{kind_prefix}_{gate_index}",
@@ -270,6 +349,7 @@ class GateIdentity:
             test_digest=test_digest,
             command_digest=_sha(" ".join(argv) + "|" + binding_digest),
             env_fingerprint=env_fingerprint,
+            cwd_rel=canonical_cwd(cwd_rel),
         )
 
     @property
@@ -281,6 +361,7 @@ class GateIdentity:
             command_digest=self.command_digest,
             env_fingerprint=self.env_fingerprint,
             context_digest=self.context_digest,
+            cwd_rel=self.cwd_rel,
             contract_version=self.contract_version,
         )
 
@@ -325,49 +406,29 @@ class Claim:
         }
 
 
-def _conectar(path: Path) -> sqlite3.Connection:
-    """Conexão com WAL negociado, não imposto.
-
-    ``PRAGMA journal_mode=WAL`` pede lock exclusivo e o busy handler do SQLite
-    não é chamado em todos os caminhos dessa troca. Impor o pragma a cada
-    conexão fazia duas inicializações simultâneas colidirem com
-    ``OperationalError: database is locked`` — o defeito que ainda deixa
-    ``test_E_duas_inicializacoes_concorrentes`` intermitente no registry.
-    Aqui o modo é CONSULTADO primeiro e só trocado quando difere, com repetição
-    limitada.
-    """
-
-    c = sqlite3.connect(path, timeout=30.0, isolation_level=None)
-    c.row_factory = sqlite3.Row
-    c.execute("PRAGMA busy_timeout=30000")
-    atual = (c.execute("PRAGMA journal_mode").fetchone()[0] or "").lower()
-    if atual != "wal":
-        for tentativa in range(12):
-            try:
-                c.execute("PRAGMA journal_mode=WAL")
-                break
-            except sqlite3.OperationalError:
-                time.sleep(0.05 * (tentativa + 1))
-        else:                                   # WAL indisponível não é fatal
-            pass
-    c.execute("PRAGMA synchronous=FULL")
-    return c
-
-
 @dataclass
 class EvidenceLedger:
     path: Path
 
     def __post_init__(self) -> None:
+        """Cria OU migra. Nunca supõe que o banco no disco é o do código atual."""
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
         c = self._conn()
         try:
-            c.executescript(SCHEMA)
+            self.migracoes = migrar(
+                c,
+                tabelas_novas=(("evidence", DDL_EVIDENCE),
+                               ("execution_claim", DDL_CLAIM)),
+                colunas_novas=COLUNAS_EVOLUTIVAS,
+                indices_novos=INDICES,
+                obrigatorias=OBRIGATORIAS,
+            )
         finally:
             c.close()
 
     def _conn(self) -> sqlite3.Connection:
-        return _conectar(self.path)
+        return conectar(self.path)
 
     # -- evidência ---------------------------------------------------------
 
@@ -412,6 +473,7 @@ class EvidenceLedger:
         ctx_digest: str | None, exit_code: int | None,
         counts: Mapping[str, Any] | None, reviewer: str | None, finding: str | None,
         counterproof: str | None, identity: GateIdentity | None,
+        claim_key: str | None = None, fencing_token: int | None = None,
     ) -> int:
         fingerprint = env_fp if env_fp is not None else env_fingerprint()
         ctx = ctx_digest or ""
@@ -423,13 +485,15 @@ class EvidenceLedger:
         cur = c.execute(
             "INSERT INTO evidence(acceptance_id,kind,base_sha,candidate_sha,input_digest,"
             "production_digest,test_digest,command,cwd,env_fingerprint,context_digest,"
-            "exit_code,counts_json,reviewer,finding,counterproof,valid,run_id,created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)",
+            "exit_code,counts_json,reviewer,finding,counterproof,valid,claim_key,"
+            "fencing_token,run_id,created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,?)",
             (
                 acceptance_id, kind, base_sha, candidate_sha, digest,
                 production_digest, test_digest, command, cwd, fingerprint, ctx,
                 exit_code, json.dumps(dict(counts or {}), ensure_ascii=False),
-                reviewer, finding, counterproof, run_id, _agora(),
+                reviewer, finding, counterproof, claim_key, fencing_token,
+                run_id, _agora(),
             ),
         )
         return int(cur.lastrowid)
@@ -549,13 +613,20 @@ class EvidenceLedger:
         finally:
             c.close()
 
-    def claims_ativos(self) -> list[dict[str, Any]]:
+    def claims_ativos(self, *, apenas_vivos: bool = False) -> list[dict[str, Any]]:
+        """Claims em ``running``. ``apenas_vivos`` filtra os de lease vencido."""
+
         c = self._conn()
         try:
-            return [dict(r) for r in c.execute(
-                "SELECT * FROM execution_claim WHERE state='running' ORDER BY claimed_at")]
+            linhas = [dict(r) for r in c.execute(
+                "SELECT * FROM execution_claim WHERE state='running' "
+                "ORDER BY claimed_at")]
         finally:
             c.close()
+        if not apenas_vivos:
+            return linhas
+        agora = time.time()
+        return [l for l in linhas if float(l["lease_until"]) > agora]
 
     def acquire(
         self,
@@ -754,18 +825,41 @@ class EvidenceLedger:
             return None
         if state not in ESTADOS_TERMINAIS:
             raise ValueError(f"estado terminal desconhecido: {state}")
+        chave = claim.identity.logical_key
         c = self._conn()
         try:
             c.execute("BEGIN IMMEDIATE")
             linha = c.execute(
-                "SELECT * FROM execution_claim WHERE logical_key=?",
-                (claim.identity.logical_key,),
+                "SELECT * FROM execution_claim WHERE logical_key=?", (chave,),
             ).fetchone()
             if (linha is None
                     or linha["owner_token"] != claim.owner_token
                     or int(linha["fencing_token"]) != claim.fencing_token):
                 c.execute("COMMIT")
                 return None                      # perdeu o lease: não escreve
+
+            if linha["state"] != "running":
+                # Já concluído. Repetição do MESMO dono é idempotente: devolve a
+                # evidência que existe, em vez de criar uma segunda.
+                ja = c.execute(
+                    "SELECT id FROM evidence WHERE claim_key=? AND fencing_token=? "
+                    "ORDER BY id LIMIT 1", (chave, claim.fencing_token),
+                ).fetchone()
+                c.execute("COMMIT")
+                return int(ja["id"]) if ja is not None else None
+
+            if float(linha["lease_until"]) <= time.time():
+                # Lease vencido, ainda que ninguém tenha retomado. Concluir aqui
+                # seria gravar sobre uma autoridade que já caducou — e o próximo
+                # consumidor não teria como saber disso.
+                c.execute(
+                    "UPDATE execution_claim SET state='abandoned', completed_at=?, "
+                    "heartbeat_at=? WHERE logical_key=? AND fencing_token=?",
+                    (_agora(), _agora(), chave, claim.fencing_token),
+                )
+                c.execute("COMMIT")
+                return None
+
             evidence_id = self._inserir_evidencia(
                 c, acceptance_id=claim.identity.acceptance_id,
                 kind=claim.identity.kind, base_sha=base_sha, run_id=run_id,
@@ -774,16 +868,25 @@ class EvidenceLedger:
                 env_fp=claim.identity.env_fingerprint,
                 ctx_digest=claim.identity.context_digest, exit_code=exit_code,
                 counts=counts, reviewer=None, finding=None, counterproof=None,
-                identity=claim.identity,
+                identity=claim.identity, claim_key=chave,
+                fencing_token=claim.fencing_token,
             )
             c.execute(
                 "UPDATE execution_claim SET state=?,completed_at=?,heartbeat_at=?,"
                 "evidence_id=? WHERE logical_key=? AND fencing_token=?",
-                (state, _agora(), _agora(), evidence_id,
-                 claim.identity.logical_key, claim.fencing_token),
+                (state, _agora(), _agora(), evidence_id, chave, claim.fencing_token),
             )
             c.execute("COMMIT")
             return evidence_id
+        except sqlite3.IntegrityError:
+            # O índice único pegou uma conclusão concorrente do mesmo
+            # claim/fence. O banco é a autoridade, não a checagem em Python.
+            c.execute("ROLLBACK")
+            ja = c.execute(
+                "SELECT id FROM evidence WHERE claim_key=? AND fencing_token=? "
+                "ORDER BY id LIMIT 1", (chave, claim.fencing_token),
+            ).fetchone()
+            return int(ja["id"]) if ja is not None else None
         except BaseException:
             c.execute("ROLLBACK")
             raise
