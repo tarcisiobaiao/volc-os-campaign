@@ -1,0 +1,137 @@
+{
+  "verdict": "READY_FOR_FINAL_FIX",
+  "target_mode": "supervised_local",
+  "non_goal_mode": "autonomous_contained",
+  "facts": [
+    "HEAD=da3cfe1, árvore limpa, 19 commits desde 3698c2f, 308 testes OK 3x",
+    "F1: mission.py:709 constrói BaselineRecord manualmente e descarta ok/status/evidence_id; from_outcome existe e recusa, mas não tem call site produtivo — reproduzido: manual ACEITA, from_outcome RECUSA",
+    "F2: gate_runner.py:505 chama _cwd_efetivo APÓS acquire e fora dos blocos que chamam ledger.abandon (442, 502); reproduzido: SPEC_ERROR escapa com claims_running=1; mesmo risco para _snapshot, entrada do heartbeat, enrich_counts e falha do ledger pré-complete",
+    "F3: sqlite_support.migrar:78 valida só nomes; reproduzido: coluna extra NOT NULL sem default passa no boot e primeiro INSERT falha com IntegrityError",
+    "F4: test_v3_rodada_final.py:388 usa timeout=6 → lease_efetivo=126s → intervalo 31.5s; runner termina em ~4s; heartbeat injetado nunca é chamado — prova passa sem exercitar a função sob teste",
+    "L1..L3 permanecem: sem contenção de filesystem, setsid escapa de killpg (reproduzido: filho destacado escreveu após cancel), revalidações são pontos condicionais e não snapshot atômico"
+  ],
+  "fixes": [
+    {
+      "id": "F1",
+      "files": ["src/volc_agent_harness/mission.py", "src/volc_agent_harness/v3/baseline.py"],
+      "symbols": ["_run_implementation_mission (linha ~709)", "BaselineRecord.from_outcome", "assert_baseline_is_green"],
+      "minimal_change": "Substituir a construção manual em mission.py:709 por BaselineRecord.from_outcome(medida). Em baseline.py, tornar os campos de autoridade obrigatórios no aceite: assert_baseline_is_green falha fechado quando ok is not True ou status!='green' ou evidence_id is None — remover o filtro condicional 'if r.ok is not None' que hoje deixa registro sem autoridade passar. Adicionar prova estrutural (AST) de que nenhum módulo produtivo instancia BaselineRecord(...) diretamente fora de from_outcome e dos testes.",
+      "red_counterproof": "GateOutcome(exit_code=0, status='infrastructure', execution_mode='abandoned', evidence_id=None) → construir baseline pelo caminho produtivo real (mission) → assert_baseline_is_green ACEITA. Deve falhar antes; verde depois com INFRASTRUCTURE_ERROR/BASELINE_ERROR.",
+      "acceptance": [
+        "grep/AST: zero instanciações diretas de BaselineRecord em src/ fora de from_outcome",
+        "E2E oficial: baseline verde continua produzindo baseline_gate_N com evidence no ledger",
+        "gate abandonado (evidence_id=None, exit 0) recusado no caminho produtivo, não só via helper"
+      ],
+      "regression_risks": [
+        "testes antigos que criam BaselineRecord manualmente com campos None passam a exigir autoridade — migrar os testes, não afrouxar a régua",
+        "compare()/assert_no_regression consomem campos novos como None — manter default só para dataclass, nunca para aceite"
+      ],
+      "hard_stop": "Se exigir autoridade quebrar o caminho read_only/compile (que não executa gate), NÃO relaxar o aceite: parar e reportar, pois indica baseline sendo aceito sem execução em outro ponto."
+    },
+    {
+      "id": "F2",
+      "files": ["src/volc_agent_harness/v3/gate_runner.py"],
+      "symbols": ["run_gate_with_ledger", "_cwd_efetivo", "_snapshot", "_Heartbeat.__enter__", "ledger.abandon", "ledger.complete"],
+      "minimal_change": "Envolver TODO o trecho pós-acquire (da revalidação pós-espera até o complete, inclusive _cwd_efetivo, _snapshot, criação do heartbeat e enrich_counts) num try/except BaseException único: se claim.executa e nenhum complete válido ocorreu, chamar ledger.abandon(claim) antes de re-levantar. Guardar flag 'concluido' setada apenas quando complete devolve evidence_id; o bloco de abandono roda em except (não em finally) e NUNCA quando concluido=True — finally não pode sobrescrever resultado terminal válido. Falha do próprio abandon não pode mascarar a exceção original.",
+      "red_counterproof": "cwd_rel='nao/existe' com ledger real → HarnessFailure(SPEC_ERROR) e led.claims_ativos()==[{state:'running'}]. Já reproduzido. Acrescentar variantes: exceção em _snapshot e em enrich_counts. Todas devem falhar antes; verdes depois com claims_ativos()==[].",
+      "acceptance": [
+        "para cada ponto de injeção (cwd, snapshot, heartbeat-enter, enrich_counts, complete que levanta): claim termina em abandoned/terminal, nunca running",
+        "test_cwd_rel_inexistente_falha_antes_de_executar passa a consultar claims_ativos()",
+        "caminho feliz inalterado: E2E run1 executed/acquired/green, run2 reused/reused_green"
+      ],
+      "regression_risks": [
+        "abandonar claim de execução CONCLUÍDA se a exceção ocorrer depois do complete — a flag 'concluido' é o corte",
+        "except largo demais engolindo KeyboardInterrupt: re-levantar sempre, abandono é efeito colateral e não tratamento"
+      ],
+      "hard_stop": "Se o abandono exigir segunda conexão durante transação ativa e deadlockar no SQLite, parar: não trocar por 'deixa expirar', reportar como limitação de conexão única."
+    },
+    {
+      "id": "F3",
+      "files": ["src/volc_agent_harness/v3/sqlite_support.py", "src/volc_agent_harness/v3/ledger.py"],
+      "symbols": ["migrar", "colunas (expandir para table_info completo)", "OBRIGATORIAS", "COLUNAS_EVOLUTIVAS"],
+      "minimal_change": "Expandir a inspeção de PRAGMA table_info para capturar (name, type, notnull, dflt_value, pk) e PRAGMA index_list/index_info para unicidade material. Nova validação em migrar(): (a) coluna NOT NULL sem default que NÃO esteja no conjunto declarado/reparável → INFRASTRUCTURE_ERROR no boot; (b) PK divergente da declarada → INFRASTRUCTURE_ERROR; (c) UNIQUE material exigido (idx_evidence_claim_unico) ausente e incriável → INFRASTRUCTURE_ERROR. Declarar em ledger.py o schema estrutural esperado (não só nomes). Manter: nenhuma recriação, nenhum DROP, dados preservados, idempotência, checagem após ALTERs.",
+      "red_counterproof": "DDL_EVIDENCE + 'must_fill TEXT NOT NULL' → migrar ACEITA e primeiro INSERT dá IntegrityError. Já reproduzido. Deve falhar antes; depois o boot recusa com INFRASTRUCTURE_ERROR e o banco fica intacto.",
+      "acceptance": [
+        "boot verde ⇒ record/acquire/complete funcionam (prova de primeiro uso em todos os cenários de teste de migração)",
+        "schema legado feliz continua migrando com linhas preservadas, reabertura no-op, duas inits concorrentes OK",
+        "schema hostil (NOT NULL extra, PK errada, UNIQUE conflitante) recusado no boot com banco preservado byte a byte"
+      ],
+      "regression_risks": [
+        "SQLite normaliza tipos (affinity) — comparar por affinity/notnull/pk, não por string exata do tipo, senão bancos legítimos passam a ser recusados",
+        "excesso de rigidez transformando bancos válidos antigos em INFRA — cada recusa nova precisa de contraprova de que o primeiro uso falharia"
+      ],
+      "hard_stop": "Se a validação estrutural recusar o evidence-ledger.sqlite real do repositório principal, parar e reportar o diff estrutural — não 'consertar' o banco de produção nesta rodada."
+    },
+    {
+      "id": "F4",
+      "files": ["tests/test_v3_rodada_final.py", "src/volc_agent_harness/v3/gate_runner.py"],
+      "symbols": ["B5_HeartbeatRobusto.test_uma_execucao_fisica_sob_falhas_transitorias_injetadas (linha 388)", "_Heartbeat", "MARGEM_DE_LEASE_S (injetável)"],
+      "minimal_change": "Tornar o teste determinístico: fixar MARGEM_DE_LEASE_S=0 (padrão já usado em test_v3_ledger_concorrente._Base) e/ou injetar intervalo pequeno no _Heartbeat, com runner cuja duração ultrapasse vários intervalos; ASSERT obrigatório de que o heartbeat injetado foi chamado N≥2 vezes (contador no fake), de que ≥1 falha transitória ocorreu DURANTE runner ativo, e max_execucoes_concorrentes==1. Se necessário, aceitar intervalo injetável no construtor de _Heartbeat (parâmetro de teste, default atual preservado).",
+      "red_counterproof": "Instrumentar o teste atual com contador: chamadas_heartbeat==0 apesar de o teste passar — a prova não exercita a função sob teste. Deve falhar (assert chamadas>=2) antes; verde depois.",
+      "acceptance": [
+        "contador prova heartbeat invocado ≥2x com runner ativo",
+        "falha transitória injetada durante execução, max_execucoes_concorrentes==1, nenhum ok=True com evidence_id=None",
+        "suíte completa 3x verde; nenhum sleep frágil novo (margens determinísticas, barreiras/eventos)"
+      ],
+      "regression_risks": [
+        "intervalo injetável vazar para produção — default imutável, parâmetro só nomeado e documentado como teste",
+        "teste flake por timing no CI — usar eventos e contadores, não igualdade de tempo"
+      ],
+      "hard_stop": "Se com o heartbeat de fato exercitado surgir segunda execução física, NÃO ajustar o teste: é reabertura de G5, parar e reportar."
+    }
+  ],
+  "runner_capability_contract": {
+    "campos": {
+      "contains_filesystem": "bool — escrita fora da worktree é impedida (LocalRunner: False)",
+      "contains_process_tree": "bool — descendentes não escapam de cancel/kill, incl. setsid (LocalRunner: False, provado por contraprova do filho destacado)",
+      "immutable_inputs": "bool — insumos congelados por snapshot/CoW durante a execução (LocalRunner: False)",
+      "mode_supported": "'supervised_local' | 'autonomous_contained' — derivado: autonomous_contained ⇔ contains_filesystem ∧ contains_process_tree ∧ immutable_inputs"
+    },
+    "entrypoint": "MissionSpec ganha execution_mode (default 'supervised_local'). cli.main: supervised_local roda com aviso impresso do risco residual G1b e integração humana obrigatória (já é o comportamento: human_merge_only). autonomous_contained → verificar as três capacidades do runner ANTES de qualquer adapter; qualquer False ⇒ HarnessFailure(AUTHORIZATION_BLOCK, 'runner não contido'), exit tipado, ZERO fallback ou degradação silenciosa para supervised. As capacidades entram nos counts da evidência (já ocorre para contains_filesystem; acrescentar as demais).",
+    "prova": "teste: missão com execution_mode='autonomous_contained' + LocalRunner ⇒ AUTHORIZATION_BLOCK antes de modelo/subprocesso; missão supervised_local inalterada"
+  },
+  "final_gate_matrix": [
+    {"gate": "contraprovas F1–F4 vermelhas→verdes", "criterio": "cada red_counterproof falha no SHA base e passa após o fix"},
+    {"gate": "suíte completa 3x", "criterio": "OK estável, sem novos sleeps frágeis"},
+    {"gate": "E2E oficial 2x", "criterio": "executed/acquired/green → reused/reused_green; vermelho sem harvest"},
+    {"gate": "revisão adversarial (Sol) no SHA final", "criterio": "sem falso GREEN, sem 2 execuções concorrentes com heartbeat exercitado, sem claim running após exceção capturável, sem boot verde/primeiro uso vermelho"},
+    {"gate": "revisão schema (Gemini) no SHA final", "criterio": "migração estrutural completa nas duas tabelas; docs=código"},
+    {"gate": "varredura de segredos + árvore limpa + zero runtime versionado", "criterio": "como nas rodadas anteriores"}
+  ],
+  "deferred": [
+    "Sol#4/L2: filho setsid sobrevive a cancel — exige cgroup/subreaper/sandbox; pré-requisito de autonomous_contained, não de supervised_local",
+    "Sol#1/L3: TOCTOU residual entre última revalidação e execve/retorno de reuso — G1b, coberto pela evidência honesta (atomic_snapshot=false, residual_risk=G1b)",
+    "Sol#2: rebind pode legitimar terceiro pré-rebind (inferência, sem contraprova executável) — mitigável futuramente vinculando rebind à fotografia aprovada de changed_paths; backlog salvo contraprova",
+    "Sol#3: lacunas de cobertura do fingerprint (untracked não declarado, .sqlite rastreado, submódulo, deps externas) — documentar exclusões como contrato; backlog",
+    "Sol#7: _resolver_conflito compara só state/exit_code — endurecer comparando digests/run/command; backlog (não gera segunda evidência)",
+    "Sol#10/BL-10: fronteira de artefatos no workflow ADK/reviewers/agregação — dívida declarada do supervisor",
+    "Gemini G-1/G-2: doc de OBRIGATORIAS e colunas de identidade irreparáveis — absorvido por F3",
+    "Gemini G-3: registry duplica migração local — unificar em sqlite_support; backlog",
+    "EvidenceLedger.lookup sem call site produtivo — candidato de inventário",
+    "18 missões V2 — missão separada de adoção"
+  ],
+  "execution_routing": {
+    "implementacao": "Claude Opus 5 — F1–F4 + contrato de capacidades, nesta ordem: F2 (fecha claims), F1 (fecha falso verde), F3 (fecha boot mentiroso), F4 (prova real), contrato por último",
+    "contraprovas_e_falso_verde": "Codex Sol gpt-5.6-sol/high read-only no SHA final — critérios do hard stop, com $TMPDIR gravável garantido pelo lançador",
+    "schema_migracao": "Gemini 3.7 Flash read-only — validação estrutural F3 e docs, com aviso de que veredito sem shell é estático",
+    "planejamento": "nenhum novo planejador — esta SPEC é o plano"
+  },
+  "definition_of_done": [
+    "4 contraprovas vermelhas registradas em commit próprio antes das correções, com contagem",
+    "F1–F4 verdes + suíte 3x + E2E 2x no mesmo SHA",
+    "revisões Sol e Gemini no SHA final sem: falso GREEN, duas execuções físicas com heartbeat exercitado, claim running após exceção capturável, boot verde com primeiro uso vermelho",
+    "evidência de binding honesta nos counts: input_fingerprint, revalidated_at, revalidation_points, atomic_snapshot=false, residual_risk=G1b",
+    "autonomous_contained recusado fail-closed com LocalRunner; supervised_local funcional com aviso",
+    "supervised_local declarado ACEITO; novos achados fora dos 4 critérios → backlog, salvo contraprova executável de corrupção, falso verde ou ação não autorizada",
+    "git status limpo, zero runtime versionado, varredura de segredos limpa, proposta de curadoria não aplicada"
+  ],
+  "explicit_non_goals": [
+    "supervisor e sua fronteira de artefatos (BL-10)",
+    "sandbox/container/cgroup/subreaper (L1, L2)",
+    "snapshot atômico de insumos (L3)",
+    "migração das 18 missões V2",
+    "Google Ads/Supabase/n8n/rede",
+    "Roadmap/grafo/merge/push/deploy",
+    "refatorações cosméticas e findings médios sem falso verde, duplicação ou perda de evidência"
+  ]
+}
