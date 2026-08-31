@@ -18,6 +18,8 @@ conclusão fenced**, e não existe caminho que pule o claim.
 from __future__ import annotations
 
 import hashlib
+import os
+import signal
 import subprocess
 import threading
 import time
@@ -175,6 +177,12 @@ class LocalRunner(GateRunner):
     ambiente e DETECTAR alteração inesperada pelo diff posterior.
     """
 
+    #: Prazos do encerramento. Curtos de propósito: aguardar demais por um
+    #: processo sem autoridade é manter viva exatamente a corrida que o claim
+    #: existe para impedir.
+    PRAZO_TERM_S = 2.0
+    PRAZO_KILL_S = 3.0
+
     contains_filesystem = False
     #: Provado por contraprova: um filho que chama `setsid()` sai do grupo criado
     #: por `start_new_session` e sobrevive ao `killpg` — ele escreveu depois do
@@ -200,29 +208,53 @@ class LocalRunner(GateRunner):
         proc = self._proc
         try:
             out, err = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            self.cancel()
-            proc.communicate()
+        except BaseException:
+            # TODA exceção, não só `TimeoutExpired`. A versão anterior limpava
+            # `self._proc` no `finally` com o processo AINDA VIVO: o claim era
+            # abandonado, o próximo consumidor entrava, e havia duas execuções
+            # físicas do mesmo gate. Um `finally` que apaga a referência de um
+            # processo vivo não encerra nada — só perde o cabo.
+            self._encerrar(proc)
             raise
         finally:
             with self._trava:
                 self._proc = None
         return proc.returncode, out, err
 
-    def cancel(self) -> None:
-        """Mata o grupo do processo. `start_new_session` garante que filhos vão junto."""
+    def _encerrar(self, proc: subprocess.Popen) -> None:
+        """TERM → aguarda → KILL → aguarda. Só volta com o processo terminado."""
 
-        import os
-        import signal
+        if proc.poll() is not None:
+            return
+        for sinal, prazo in ((signal.SIGTERM, self.PRAZO_TERM_S),
+                             (signal.SIGKILL, self.PRAZO_KILL_S)):
+            try:
+                os.killpg(os.getpgid(proc.pid), sinal)
+            except (OSError, ProcessLookupError):      # pragma: no cover
+                try:
+                    proc.send_signal(sinal)
+                except (OSError, ProcessLookupError):
+                    return
+            try:
+                proc.wait(timeout=prazo)
+                return
+            except subprocess.TimeoutExpired:
+                continue
+        # Não terminou nem com KILL: o processo é do grupo, mas não responde.
+        # Declarar isso é melhor que fingir terminação.
+
+    def cancel(self) -> None:
+        """Encerra o grupo autorizado do processo em curso.
+
+        ⚠️ Um filho que chama `setsid()` sai deste grupo e NÃO é alcançado. Isso
+        é G1b — `contains_process_tree=False` — e não se resolve por heurística
+        de caça a PID.
+        """
 
         with self._trava:
             proc = self._proc
-        if proc is None or proc.poll() is not None:
-            return
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except (OSError, ProcessLookupError):     # pragma: no cover
-            proc.kill()
+        if proc is not None:
+            self._encerrar(proc)
 
 
 class _Heartbeat:
@@ -328,6 +360,24 @@ MARGEM_DE_LEASE_S = 120
 
 
 MODOS = ("supervised_local", "autonomous_contained")
+
+
+def runner_efetivo() -> "GateRunner":
+    """O runner que o runtime vai usar de fato.
+
+    A checagem de capacidade precisa acontecer no TOPO do fluxo, e para isso
+    alguém tem de saber, antes de tudo, qual backend vai executar. Enquanto essa
+    escolha só existisse dentro de `run_gate_with_ledger`, a guarda só podia
+    morar lá — e missão sem gate executável antes do writer nunca a atravessava.
+    """
+
+    return LocalRunner()
+
+
+def assert_modo_suportado(runner: "GateRunner", modo: str) -> None:
+    """Guarda ÚNICA. Chamada no topo do fluxo e reusada pelo runner."""
+
+    return _assert_modo_suportado(runner, modo)
 
 
 def _assert_modo_suportado(runner: "GateRunner", modo: str) -> None:
@@ -595,7 +645,13 @@ def run_gate_with_ledger(
             exit_code=None,
             counts={"execution_mode": "lease_timeout", "status": "infrastructure",
                     "claim_outcome": claim.outcome.value, "worker_id": worker_id,
-                    "waited_seconds": round(claim.waited_seconds, 3)},
+                    "waited_seconds": round(claim.waited_seconds, 3),
+                    # A evidência de espera esgotada precisa dizer as mesmas
+                    # coisas que a de execução: sobre qual impressão de insumos,
+                    # com que capacidades e sob qual risco residual. Um ramo
+                    # calado é um ramo que ninguém consegue auditar depois.
+                    **_evidencia_honesta(gate, runner, runner_safety_mode,
+                                         revalidacoes)},
             identity=identidade,
         )
         return GateOutcome(
