@@ -178,6 +178,13 @@ class HS1_EstruturaRealSuportaOperacaoReal(unittest.TestCase):
 # ===========================================================================
 class HS2_ProcessoSemAutoridadeNaoContinua(unittest.TestCase):
     def test_excecao_nao_timeout_encerra_o_processo(self):
+        """Injeção determinística no `communicate`, não interrupção assíncrona.
+
+        `PyThreadState_SetAsyncExc` só dispara em fronteira de bytecode e não
+        acorda um fio bloqueado em I/O — a prova ficava dependente de sorte.
+        Aqui a exceção nasce exatamente onde ela nasceria de verdade.
+        """
+
         raiz = Path(mkdtemp())
         marca = raiz / "ESCREVEU_DEPOIS"
         script = raiz / "lento.py"
@@ -185,26 +192,22 @@ class HS2_ProcessoSemAutoridadeNaoContinua(unittest.TestCase):
             f"import time, pathlib\ntime.sleep(3)\n"
             f"pathlib.Path(r'{marca}').write_text('vivo')\n")
 
-        runner = LocalRunner()
-        erro: list = []
+        original = subprocess.Popen.communicate
 
-        def go():
-            try:
+        def explode(self, *a, **kw):
+            if kw.get("timeout") is not None:
+                raise KeyboardInterrupt("interrupção durante a espera")
+            return original(self, *a, **kw)
+
+        runner = LocalRunner()
+        subprocess.Popen.communicate = explode
+        try:
+            with self.assertRaises(KeyboardInterrupt):
                 runner.execute(argv=[sys.executable, str(script)], cwd=raiz,
                                env=dict(os.environ), timeout=30)
-            except BaseException as e:
-                erro.append(type(e).__name__)
+        finally:
+            subprocess.Popen.communicate = original
 
-        fio = threading.Thread(target=go)
-        fio.start()
-        time.sleep(0.8)
-        # Interrupção capturável durante o `communicate()` — não é Timeout.
-        import ctypes
-        for t in threading.enumerate():
-            if t is fio:
-                ctypes.pythonapi.PyThreadState_SetAsyncExc(
-                    ctypes.c_ulong(t.ident), ctypes.py_object(KeyboardInterrupt))
-        fio.join(timeout=20)
         time.sleep(3.5)
         self.assertFalse(marca.exists(),
                          "processo comum escreveu DEPOIS da exceção")
@@ -214,7 +217,11 @@ class HS2_ProcessoSemAutoridadeNaoContinua(unittest.TestCase):
         fonte = inspect.getsource(LocalRunner.execute)
         self.assertIn("BaseException", fonte,
                       "só TimeoutExpired era tratado; o resto vazava vivo")
-        self.assertIn("wait(", fonte, "cancelar sem aguardar não prova terminação")
+        self.assertIn("_encerrar(", fonte, "o finally não pode só soltar a referência")
+        # A espera mora em `_encerrar`: TERM → aguarda → KILL → aguarda.
+        encerrar = inspect.getsource(LocalRunner._encerrar)
+        self.assertIn("wait(", encerrar, "cancelar sem aguardar não prova terminação")
+        self.assertIn("SIGKILL", encerrar, "sem escalada, TERM ignorado deixa vivo")
 
     def test_uma_execucao_fisica_apos_interrupcao(self):
         raiz = Path(mkdtemp())
@@ -406,9 +413,18 @@ class HS5_CapabilityCheckGlobal(unittest.TestCase):
         import inspect
         import volc_agent_harness.mission as mm
 
-        fonte = inspect.getsource(mm.run_mission)
-        self.assertIn("_assert_modo_suportado", fonte,
+        # A guarda é ÚNICA e mora na pré-condição que `run_mission` chama antes
+        # de qualquer despacho — replicá-la em cada modo seria convidar a
+        # próxima divergência.
+        topo = inspect.getsource(mm.run_mission)
+        self.assertIn("_exigir_missao_compilavel", topo)
+        self.assertLess(topo.index("_exigir_missao_compilavel"),
+                        topo.index("_run_implementation_mission"))
+        precondicao = inspect.getsource(mm._exigir_missao_compilavel)
+        self.assertIn("assert_modo_suportado", precondicao,
                       "a guarda precisa estar no topo do fluxo, não só no runner")
+        self.assertIn("runner_efetivo()", precondicao,
+                      "sem saber o runner efetivo não há o que verificar")
 
     def test_nenhuma_worktree_mutavel_antes_do_bloqueio(self):
         repo_dir = mkdtemp()

@@ -30,7 +30,9 @@ from .v3.gate_resolution import (
     rebind,
     resolve_mission_gates,
 )
-from .v3.gate_runner import run_gate_with_ledger
+from .v3.gate_runner import (
+    assert_modo_suportado, run_gate_with_ledger, runner_efetivo,
+)
 from .v3.run_artifacts import RunArtifacts, fronteira_de_erro
 from .v3.two_phase import postwriter_compile
 from .v3.workspace import (
@@ -742,6 +744,7 @@ async def _run_implementation_mission(
             production_digest=f"baseline:{digest_files(writer_worktree.path, ['.'])}",
             test_digest=f"baseline:{digest_files(writer_worktree.path, ['.'])}",
             run_id=run_id, worker_id=f"collect/{writer.id}",
+            runner_safety_mode=mission.runner_safety_mode,
         )
         for gate in resolvidos:
             if gate.kind == "pytest" and gate.runnable_before_writer:
@@ -792,6 +795,7 @@ async def _run_implementation_mission(
                 production_digest=digest_files(writer_worktree.path, changed_paths),
                 test_digest=digest_files(writer_worktree.path, changed_paths),
                 run_id=run_id, worker_id=f"collect/{writer.id}",
+                runner_safety_mode=mission.runner_safety_mode,
             ),
             env=_ambiente_de_gate(),
             collect=True,
@@ -1162,6 +1166,16 @@ def _exigir_missao_compilavel(mission: MissionSpec) -> None:
     from .v3.schema_version import assert_compilable
 
     assert_compilable(mission.model_dump(mode="json"))
+
+    # Capacidade ANTES de tudo. A guarda vivia só dentro de
+    # `run_gate_with_ledger`, e por isso não era atravessada por missão cujo
+    # único gate depende de `produced_paths` — nenhum gate roda antes do writer,
+    # o runner nunca é acionado, e o writer era chamado sob um modo que o
+    # backend não sustenta. O caminho read_only nem sequer aciona o runner.
+    #
+    # Aqui ela roda antes de worktree mutável, writer, reviewer, workflow ADK,
+    # subprocesso e claim. Guarda única, não replicada.
+    assert_modo_suportado(runner_efetivo(), mission.runner_safety_mode)
 
 
 async def run_mission(repo: Path, mission: MissionSpec) -> tuple[Path, dict[str, Any]]:
