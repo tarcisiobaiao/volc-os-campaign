@@ -15,7 +15,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Sequence
@@ -79,45 +78,23 @@ def _contagens(saida: str) -> tuple[int | None, int | None]:
     return passou, falhou
 
 
-def measure(
-    *,
-    gate_index: int,
-    argv: Sequence[str],
-    tree: Path,
-    timeout: int = 1800,
-    env: dict[str, str] | None = None,
-    tracked_files: Sequence[str] = (),
-    observable: dict[str, Any] | None = None,
-) -> BaselineRecord:
-    """Mede um gate no ``base_ref``, antes do writer."""
+def measure(*_args: Any, **_kwargs: Any) -> "BaselineRecord":
+    """DESLIGADA. Medir o base é executar, e execução passa pelo ledger.
 
-    import time
+    Esta função criava o subprocesso direto. Enquanto ela existisse executável,
+    o harness teria duas implementações de "rodar um gate" — e a segunda não
+    reivindica, não mede digest e não deixa evidência. Manter as duas é como não
+    ter migrado.
 
-    inicio = time.monotonic()
-    completed = subprocess.run(
-        list(argv),
-        cwd=tree,
-        env=env if env is not None else os.environ.copy(),
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=False,
-    )
-    duracao = time.monotonic() - inicio
-    saida = f"{completed.stdout}\n{completed.stderr}"
-    passou, falhou = _contagens(saida)
-    digests = {
-        f: digest_of(tree / f) for f in tracked_files if (tree / f).is_file()
-    }
-    return BaselineRecord(
-        gate_index=gate_index,
-        argv=list(argv),
-        exit_code=completed.returncode,
-        passed=passou,
-        failed=falhou,
-        duration_s=duracao,
-        file_digests=digests,
-        observable=dict(observable or {}),
+    O caminho vivo é ``run_gate_with_ledger`` com ``kind_prefix="baseline_gate"``,
+    consumido por ``mission._run_implementation_mission``.
+    """
+
+    raise HarnessFailure(
+        FailureClass.LEGACY_PATH_DISABLED,
+        "baseline.measure foi desligada: baseline executa pelo ledger",
+        detalhe="use run_gate_with_ledger(kind_prefix='baseline_gate')",
+        reproducao="veja mission._run_implementation_mission",
     )
 
 

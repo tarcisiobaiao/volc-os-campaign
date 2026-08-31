@@ -11,23 +11,20 @@ classificando cada falha.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
-from .baseline import BaselineRecord, assert_baseline_is_green, assert_no_regression, compare, measure
+from .baseline import BaselineRecord
 from .compiler import CompiledMission, compile_mission
-from .failures import FailureClass, HarnessFailure, classify_exception, classify_gate_exit
-from .gate_compiler import ProducedPath, assert_pytest_collects
-from .harvest import Harvest, requires_writer, resume_base
+from .failures import FailureClass, HarnessFailure
 from .heartbeat import HeartbeatEvent, HeartbeatSink
-from .ledger import EvidenceLedger, digest_files, env_fingerprint
+from .ledger import EvidenceLedger
 from .registry import WorktreeRegistry
 from .schema_version import assert_compilable
-from .two_phase import postwriter_compile
-from .workspace import assert_no_destructive_intent, prepare
+from .workspace import (
+    assert_gate_executable_is_allowed, assert_no_destructive_intent,
+)
 
 
 @dataclass
@@ -91,9 +88,6 @@ def prewriter_phase(
 
     assert_compilable(mission_dict)
 
-    for gate in mission_dict.get("gates", []):
-        assert_no_destructive_intent(gate.get("argv", []))
-
     compilada = compile_mission(
         mission=mission_obj,
         tree=tree,
@@ -105,93 +99,50 @@ def prewriter_phase(
         produced_paths=mission_dict.get("produced_paths", []),
         proven_acceptances=proven_acceptances,
     )
+    # A guarda roda sobre o argv REALMENTE CONSTRUÍDO, depois da compilação.
+    #
+    # Antes ela lia `gate.get("argv", [])` da missão — e com gate tipado isso
+    # devolve `[]`. Uma guarda que recebe lista vazia é uma guarda que sempre
+    # passa: proteção escrita que o caminho produtivo não atravessa, exatamente
+    # o defeito que o Harness V3 existe para eliminar, reintroduzido no
+    # entrypoint `volc-harness compile`.
+    for compilado in compilada.gate_plan["gates"]:
+        assert_gate_executable_is_allowed(compilado["argv"])
+        assert_no_destructive_intent(compilado["argv"])
+
     art.compiled_mission = compilada.as_dict()
     art.gate_plan = compilada.gate_plan
     art.write()
     return compilada, art
 
 
-def run_baseline(
-    *,
-    compilada: CompiledMission,
-    tree: Path,
-    art: PipelineArtifacts,
-    ledger: EvidenceLedger | None = None,
-    env: dict[str, str] | None = None,
-    runner: Callable[..., BaselineRecord] = measure,
-) -> list[BaselineRecord]:
-    """Mede os gates executáveis no base_ref. Baseline vermelho impede o início."""
-
-    registros: list[BaselineRecord] = []
-    for gate in art.gate_plan["gates"]:
-        if gate["index"] not in compilada.gates_runnable_before_writer:
-            continue
-        registros.append(
-            runner(gate_index=gate["index"], argv=gate["argv"], tree=tree, env=env)
-        )
-    art.baseline = [r.as_dict() for r in registros]
-    art.write()
-    assert_baseline_is_green(registros)
-    if ledger is not None:
-        for r in registros:
-            ledger.record(
-                acceptance_id=compilada.acceptance_ids[0],
-                kind="baseline_gate",
-                base_sha=compilada.base_sha,
-                run_id=art.run_dir.name,
-                command=" ".join(r.argv),
-                cwd=str(tree),
-                production_digest="baseline",
-                test_digest="baseline",
-                exit_code=r.exit_code,
-                counts={"passed": r.passed, "failed": r.failed},
-            )
-    return registros
-
-
-def postwriter_phase(
-    *,
-    compilada: CompiledMission,
-    tree: Path,
-    changed_paths: Sequence[str],
-    art: PipelineArtifacts,
-    gates: Sequence[Any],
-    env: dict[str, str] | None = None,
-    collect: bool = True,
-) -> dict[str, Any]:
-    """Fase 2. Nenhum gate caro roda antes desta função retornar."""
-
-    relatorio = postwriter_compile(
-        tree=tree,
-        produced=[ProducedPath(p["path"], p.get("required", True))
-                  for p in compilada.produced_paths],
-        changed_paths=changed_paths,
-        writable_paths=compilada.writable_paths,
-        gates=gates,
-        env=env,
-        collect=collect,
+def _desligada(nome: str, substituto: str) -> None:
+    raise HarnessFailure(
+        FailureClass.LEGACY_PATH_DISABLED,
+        f"{nome} foi desligada",
+        detalhe=f"o caminho vivo é {substituto}",
+        reproducao="nenhum entrypoint alcançava esta função; não a reative sem decisão",
     )
-    art.postwriter = relatorio.as_dict()
-    art.write()
-    return art.postwriter
 
 
-def classify_and_record(
-    *, exc: BaseException, art: PipelineArtifacts, sink: HeartbeatSink | None = None
-) -> dict[str, Any]:
-    """Toda saída de erro do pipeline passa pela taxonomia."""
+def run_baseline(*_args: Any, **_kwargs: Any) -> list[BaselineRecord]:
+    """DESLIGADA. Chamava ``baseline.measure`` — subprocesso sem claim."""
 
-    if isinstance(exc, HarnessFailure):
-        registro = exc.as_dict()
-    else:
-        classe = classify_exception(exc)
-        registro = HarnessFailure(classe, str(exc)[:300]).as_dict()
-    art.failure = registro
-    art.write()
-    if sink:
-        sink.emit(HeartbeatEvent(
-            "pipeline", "failed", "failed", 0, 0,
-            last_material_event=f"{registro['classe']}: {registro['resumo'][:60]}",
-            next=registro["destino"] or "decisão humana",
-        ))
-    return registro
+    _desligada("pipeline.run_baseline",
+               "mission._run_implementation_mission, via run_gate_with_ledger")
+    raise AssertionError("inalcançável")          # pragma: no cover
+
+
+def postwriter_phase(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+    """DESLIGADA. Chamava ``postwriter_compile`` sem gates resolvidos."""
+
+    _desligada("pipeline.postwriter_phase",
+               "mission._run_implementation_mission, com resolved=")
+    raise AssertionError("inalcançável")          # pragma: no cover
+
+
+def classify_and_record(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+    """DESLIGADA. Duplicava a fronteira de erro que agora é única."""
+
+    _desligada("pipeline.classify_and_record", "mission._falha_com_artefato")
+    raise AssertionError("inalcançável")          # pragma: no cover

@@ -48,6 +48,7 @@ def postwriter_compile(
     writable_paths: Sequence[str],
     gates: Sequence[Any],
     resolved: Sequence[Any] | None = None,
+    collect_ctx: Any = None,
     env: dict[str, str] | None = None,
     collect: bool = True,
 ) -> PostWriterReport:
@@ -98,9 +99,18 @@ def postwriter_compile(
     ]
     contagens: dict[int, int] = {}
     if collect:
+        if collect_ctx is None:
+            # Coleta é execução de código: sem contexto de ledger não há como
+            # reivindicá-la, e rodar sem reivindicar é o caminho que G1a fechou.
+            raise HarnessFailure(
+                FailureClass.SPEC_ERROR,
+                "coleta pedida sem contexto de ledger",
+                detalhe="passe collect_ctx=ColetaContexto(...) ou collect=False",
+            )
         for gate in recompilados:
             if gate.kind == "pytest":
-                contagens[gate.index] = assert_pytest_collects(gate, tree=tree, env=env)
+                contagens[gate.index] = assert_pytest_collects(
+                    gate, tree=tree, ctx=collect_ctx, env=env)
 
     return PostWriterReport(
         produced_present=presentes,

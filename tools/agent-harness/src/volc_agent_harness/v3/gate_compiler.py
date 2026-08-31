@@ -195,50 +195,119 @@ def compile_gate(
     )
 
 
+@dataclass(frozen=True)
+class ColetaContexto:
+    """Contexto material da coleta. Ela é execução, e execução se reivindica."""
+
+    ledger: Any
+    acceptance_id: str
+    base_sha: str
+    context_digest: str
+    env_fingerprint: str
+    production_digest: str
+    test_digest: str
+    run_id: str
+    worker_id: str
+    candidate_sha: str | None = None
+    runner: Any = None
+    lease_seconds: int = 600
+    wait_seconds: float = 60.0
+    cwd_rel: str = "."
+
+
+def _coletados(saida: str) -> int:
+    for linha in saida.splitlines():
+        if "test" in linha and "collected" in linha:
+            for palavra in linha.split():
+                if palavra.isdigit():
+                    return int(palavra)
+    return 0
+
+
 def assert_pytest_collects(
-    gate: CompiledGate, *, tree: Path, env: dict[str, str] | None = None
+    gate: Any, *, tree: Path, ctx: ColetaContexto, env: dict[str, str] | None = None
 ) -> int:
-    """Roda ``--collect-only``. Zero testes coletados é falha de especificação.
+    """Roda ``--collect-only`` PELO LEDGER. Zero testes coletados é falha de spec.
 
     Um gate que coleta zero testes é um gate que sempre passa — o pior tipo de
     gate, porque parece verde sem provar nada.
+
+    E a coleta passou a ser reivindicada. O argumento anterior — "ela não emite
+    veredito de mérito, então pode ficar fora do ledger" — respondia à pergunta
+    errada. Coleta de pytest IMPORTA ``conftest.py``, plugins e todos os módulos
+    de teste: é código do repositório executando. Não contabilizar isso deixava
+    um caminho produtivo transitivo
+    (``mission → postwriter_compile → assert_pytest_collects → subprocess.run``)
+    criando processo sem claim, sem digest e sem evidência.
+
+    ⚠️ Isto NÃO contém a coleta. Ela continua rodando com os privilégios do
+    harness e alcançando o filesystem inteiro. G1b segue aberta; o que muda é
+    que agora existe registro de que rodou, com que identidade e com que
+    resultado.
     """
 
-    if gate.kind != "pytest" or gate.collect_only_argv is None:
+    from .gate_runner import run_gate_with_ledger
+
+    if getattr(gate, "kind", "") != "pytest" or not getattr(
+            gate, "collect_only_argv", None):
         return -1
-    completed = subprocess.run(
-        gate.collect_only_argv,
-        cwd=tree,
-        env=env if env is not None else os.environ.copy(),
-        capture_output=True,
-        text=True,
+
+    vinculo = getattr(gate, "binding", None)
+    resultado = run_gate_with_ledger(
+        gate_index=gate.index,
+        argv=gate.collect_only_argv,
+        worktree=tree,
+        env=env if env is not None else {},
         timeout=180,
-        check=False,
+        ledger=ctx.ledger,
+        acceptance_id=ctx.acceptance_id,
+        base_sha=ctx.base_sha,
+        candidate_sha=ctx.candidate_sha,
+        context_digest=ctx.context_digest,
+        env_fingerprint=ctx.env_fingerprint,
+        production_digest=ctx.production_digest,
+        test_digest=ctx.test_digest,
+        run_id=ctx.run_id,
+        worker_id=ctx.worker_id,
+        runner=ctx.runner,
+        binding_digest=vinculo.digest() if vinculo is not None else "",
+        lease_seconds=ctx.lease_seconds,
+        wait_seconds=ctx.wait_seconds,
+        kind_prefix="collect_gate",
+        cwd_rel=ctx.cwd_rel,
+        enrich_counts=lambda code, out, err: {"collected": _coletados(out)},
     )
-    saida = f"{completed.stdout}\n{completed.stderr}"
-    if completed.returncode in {4, 5} or "no tests ran" in saida.lower():
+
+    if resultado.evidence_id is None:
+        # Sem evidência não há prova de que a coleta aconteceu sob esta
+        # identidade — e uma coleta que não se pode provar não autoriza seguir.
+        raise HarnessFailure(
+            FailureClass.INFRASTRUCTURE_ERROR,
+            f"gate {gate.index}: coleta sem evidência no ledger",
+            detalhe=f"claim_outcome={resultado.claim_outcome}",
+            reproducao=" ".join(gate.collect_only_argv),
+            evidencia={"gate_index": gate.index,
+                       "claim_outcome": resultado.claim_outcome},
+        )
+
+    saida = f"{resultado.stdout}\n{resultado.stderr}"
+    if resultado.exit_code in {4, 5} or "no tests ran" in saida.lower():
         raise HarnessFailure(
             FailureClass.SPEC_ERROR,
             f"gate {gate.index}: pytest não coletou nenhum teste",
             detalhe=saida.strip().splitlines()[-1] if saida.strip() else "",
             reproducao=" ".join(gate.collect_only_argv),
-            evidencia={"gate_index": gate.index, "exit": completed.returncode},
+            evidencia={"gate_index": gate.index, "exit": resultado.exit_code},
         )
-    if completed.returncode != 0:
+    if resultado.exit_code != 0:
         raise HarnessFailure(
             FailureClass.SPEC_ERROR,
-            f"gate {gate.index}: --collect-only falhou com exit={completed.returncode}",
+            f"gate {gate.index}: --collect-only falhou com exit={resultado.exit_code}",
             detalhe=saida.strip()[-400:],
             reproducao=" ".join(gate.collect_only_argv),
         )
-    coletados = 0
-    for linha in completed.stdout.splitlines():
-        if "test" in linha and "collected" in linha:
-            for palavra in linha.split():
-                if palavra.isdigit():
-                    coletados = int(palavra)
-                    break
-    return coletados
+    # No REUSO o stdout é vazio de propósito: a contagem vem do registro.
+    return int(resultado.counts.get("collected", _coletados(resultado.stdout)))
 
 
 def compile_gate_plan(
