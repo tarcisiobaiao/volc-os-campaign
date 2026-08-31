@@ -2367,77 +2367,95 @@ async def subir(
     # MESMA transação, e commita. Se ele levantar, `sb.subir` não é alcançado:
     # erro de persistência bloqueia o mutate, e nunca o contrário.
     ledger = _ledger()
+
+    # ⚠️ LEDGER AUSENTE É RECUSA, NÃO PERMISSÃO.
+    #
+    # A primeira versão desta costura seguia para o mutate quando o Supabase não
+    # estava configurado, "para não quebrar o modo dry". Mas `/subir` não tem
+    # modo dry: ele cria campanha de verdade. Criar sem recibo produz exatamente
+    # o objeto que esta sprint existe para eliminar — uma campanha que existe na
+    # conta, não existe aqui, e que ninguém consegue reconciliar depois porque
+    # não há chave, item nem recibo para procurar.
+    #
+    # Um processo sem ledger pode provar à vontade (`/provar` não escreve nada);
+    # o que ele não pode é escrever.
+    if not ledger.disponivel:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "O ledger de lançamento não está configurado neste processo, "
+                "então não há onde registrar a intenção e o recibo. NADA foi "
+                "enviado ao Google: uma campanha criada sem recibo é uma "
+                "campanha que ninguém consegue reconciliar depois."
+            ),
+        )
+
     despacho = None
-    if ledger.disponivel:
-        plano_do_ledger = _plano_aprovavel(body, cid=cid, mid=mid)
-        try:
-            registro = await ledger.abrir(
-                plataforma="GOOGLE_ADS",
-                conta_externa=cid,
-                canal=preparo.canal,
-                objetivo="leads",
-                rotulo=str(getattr(plano.brief, "titulo", "")
-                           or body.vertical or "campanha"),
-                plano=plano_do_ledger,
-                plano_impressao=preparo.selo.impressao,
-                declarada_por=identidade.email or identidade.sub,
-                declarada_com_base_em=f"oportunidade:{body.opportunity_id}",
-                blueprint_chave=f"{preparo.canal.lower()}-canario",
-                blueprint_titulo=f"{preparo.canal} — canário pausado",
-                blueprint_corpo={"canal": preparo.canal, "cria_pausada": True},
-                destino_url=plano.brief.url_final,
-                evidencia={"chave_intencao": chave_intencao,
-                           "marca_remota": marca,
-                           "run_id": body.run_id},
-                # As provas que de fato aconteceram, cada uma na sua camada. A
-                # leitura remota entra como prova porque foi ela que autorizou a
-                # chamada — e uma prova que não fica registrada não é prova.
-                validacoes=[
-                    {"camada": "local", "regra": "brief_montado",
-                     "resultado": "passou",
-                     "validado_por": identidade.email or identidade.sub},
-                    {"camada": "validate_only", "regra": "selo_do_preparo",
-                     "resultado": "passou",
-                     "detalhe": {"impressao": preparo.selo.impressao}},
-                    {"camada": "local", "regra": "idempotencia_remota",
-                     "resultado": "passou",
-                     "mensagem": None,
-                     "detalhe": {"marca": marca,
-                                 "encontradas": 0,
-                                 "url_final": plano.brief.url_final}},
-                ],
-            )
-            despacho = await ledger.despachar(
-                idempotency_key=registro["idempotency_key"],
-                plataforma="GOOGLE_ADS",
-                conta_externa=cid,
-                canal=preparo.canal,
-                aprovacao_impressao=preparo.selo.impressao,
-                aprovado_por=identidade.email or identidade.sub,
-                aprovado_por_sub=identidade.sub,
-                aprovacao_observacao=body.motivo,
-            )
-        except led.LedgerRecusou as exc:
-            # Uma guarda do banco disparou. Nada foi enviado ao Google, e a
-            # mensagem da guarda é acionável — repassá-la inteira vale mais que
-            # traduzi-la para "não foi possível".
-            raise HTTPException(
-                status_code=409,
-                detail=(f"O ledger de lançamento recusou: {exc}. "
-                        "Nada foi enviado ao Google."),
-            ) from exc
-        except led.LedgerIndisponivel as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=("Não consegui registrar a intenção e o recibo antes de "
-                        f"criar a campanha ({exc}). Por segurança, NADA foi "
-                        "enviado ao Google: uma campanha que nasce sem recibo é "
-                        "uma campanha que ninguém consegue reconciliar depois."),
-            ) from exc
-    else:
-        log.warning(
-            "ledger indisponível neste processo; /subir seguiu sem recibo prévio "
-            "para a oportunidade %s", body.opportunity_id)
+    plano_do_ledger = _plano_aprovavel(body, cid=cid, mid=mid)
+    try:
+        registro = await ledger.abrir(
+            plataforma="GOOGLE_ADS",
+            conta_externa=cid,
+            canal=preparo.canal,
+            objetivo="leads",
+            rotulo=str(getattr(plano.brief, "titulo", "")
+                       or body.vertical or "campanha"),
+            plano=plano_do_ledger,
+            plano_impressao=preparo.selo.impressao,
+            declarada_por=identidade.email or identidade.sub,
+            declarada_com_base_em=f"oportunidade:{body.opportunity_id}",
+            blueprint_chave=f"{preparo.canal.lower()}-canario",
+            blueprint_titulo=f"{preparo.canal} — canário pausado",
+            blueprint_corpo={"canal": preparo.canal, "cria_pausada": True},
+            destino_url=plano.brief.url_final,
+            evidencia={"chave_intencao": chave_intencao,
+                       "marca_remota": marca,
+                       "run_id": body.run_id},
+            # As provas que de fato aconteceram, cada uma na sua camada. A
+            # leitura remota entra como prova porque foi ela que autorizou a
+            # chamada — e uma prova que não fica registrada não é prova.
+            validacoes=[
+                {"camada": "local", "regra": "brief_montado",
+                 "resultado": "passou",
+                 "validado_por": identidade.email or identidade.sub},
+                {"camada": "validate_only", "regra": "selo_do_preparo",
+                 "resultado": "passou",
+                 "detalhe": {"impressao": preparo.selo.impressao}},
+                {"camada": "local", "regra": "idempotencia_remota",
+                 "resultado": "passou",
+                 "mensagem": None,
+                 "detalhe": {"marca": marca,
+                             "encontradas": 0,
+                             "url_final": plano.brief.url_final}},
+            ],
+        )
+        despacho = await ledger.despachar(
+            idempotency_key=registro["idempotency_key"],
+            plataforma="GOOGLE_ADS",
+            conta_externa=cid,
+            canal=preparo.canal,
+            aprovacao_impressao=preparo.selo.impressao,
+            aprovado_por=identidade.email or identidade.sub,
+            aprovado_por_sub=identidade.sub,
+            aprovacao_observacao=body.motivo,
+        )
+    except led.LedgerRecusou as exc:
+        # Uma guarda do banco disparou. Nada foi enviado ao Google, e a
+        # mensagem da guarda é acionável — repassá-la inteira vale mais que
+        # traduzi-la para "não foi possível".
+        raise HTTPException(
+            status_code=409,
+            detail=(f"O ledger de lançamento recusou: {exc}. "
+                    "Nada foi enviado ao Google."),
+        ) from exc
+    except led.LedgerIndisponivel as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=("Não consegui registrar a intenção e o recibo antes de "
+                    f"criar a campanha ({exc}). Por segurança, NADA foi "
+                    "enviado ao Google: uma campanha que nasce sem recibo é "
+                    "uma campanha que ninguém consegue reconciliar depois."),
+        ) from exc
 
     try:
         recibo = await asyncio.to_thread(sb.subir, preparo, motivo=body.motivo)

@@ -177,6 +177,33 @@ def test_recusa_do_ledger_impede_qualquer_chamada_que_muta(monkeypatch):
     assert [ato for ato, _ in diario] == ["abrir", "despachar"]
 
 
+def test_ledger_nao_configurado_recusa_a_escrita_em_vez_de_seguir_sem_recibo(monkeypatch):
+    """⚠️ Ausência de ledger é RECUSA, não permissão.
+
+    `/subir` não tem modo dry: ele cria campanha de verdade. Seguir sem ledger
+    produziria exatamente o objeto que este trabalho existe para eliminar — uma
+    campanha que existe na conta, não existe aqui, e que ninguém consegue
+    reconciliar depois porque não há chave, item nem recibo para procurar.
+    """
+    impressao = _impressao_aprovada(monkeypatch)
+    diario: list = []
+
+    def subir_proibido(*_a, **_k):
+        pytest.fail("o mutate saiu com o ledger sequer configurado")
+
+    _montar(monkeypatch,
+            ledger=LedgerDeTeste(diario=diario, disponivel=False),
+            subir=subir_proibido)
+
+    with pytest.raises(HTTPException) as erro:
+        asyncio.run(trafego.subir(_corpo(impressao), identidade=IDENTIDADE))
+
+    assert erro.value.status_code == 503
+    assert "não está configurado" in str(erro.value.detail)
+    assert "NADA foi enviado ao Google" in str(erro.value.detail)
+    assert diario == [], "o ledger indisponível não deveria ter sido chamado"
+
+
 def test_ledger_fora_do_ar_tambem_impede_o_mutate(monkeypatch):
     """Indisponível não é permissão. Uma campanha sem recibo é irreconciliável."""
     impressao = _impressao_aprovada(monkeypatch)
