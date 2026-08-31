@@ -1,0 +1,151 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "search-production-closure-dossie-v1",
+  "title": "Dossiê de certificação com evidência formal — candidato 8c3dfdc",
+  "base_ref": "164463a6250fcfe37f9009e97707a27daeac4f99",
+  "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
+  "mode": "implementation",
+  "commit_message": "docs(evidence): dossie de certificacao da fronteira atomica, com numeros medidos pelo proprio run",
+  "acceptance_ids": [
+    "P05-T11-A3",
+    "P05-T11-A4",
+    "P05-T11-A5"
+  ],
+  "ownership_envelope": [
+    "docs/evidence"
+  ],
+  "task_ids": [
+    "P05-T11",
+    "P09-T01",
+    "P09-T02"
+  ],
+  "authorized_external_providers": [
+    "anthropic",
+    "google_gemini"
+  ],
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "ratchet": {
+    "enabled": true,
+    "max_writer_attempts": 2,
+    "max_review_rounds": 2,
+    "max_wall_seconds": 14400,
+    "no_progress_limit": 2
+  },
+  "produced_paths": [
+    {
+      "path": "docs/evidence/search-production-closure/DOSSIE-DE-CERTIFICACAO.md",
+      "required": true
+    }
+  ],
+  "briefing": "MISSÃO DE EVIDÊNCIA FORMAL. O produto desta missão é UM DOCUMENTO. Você NÃO altera backend, frontend, SQL nem o motor Google Ads — seu writable_paths é somente docs/evidence/search-production-closure/.\n\nO candidato sob certificação é o commit 8c3dfdcebd57a3190c0036b1860c810ff3fe6cf4 (branch sprint/search-production-closure-v1, partindo de f45e810). Ele entregou a fronteira transacional do lançamento Search: migration v10_03 (camada 4 contra segundo recibo em voo, aprovação vinculada ao plano por constraint, quatro funções SECURITY INVOKER), o writer Python backend/app/trafego/ledger.py, a costura em subir() que abre o recibo em_voo antes do mutate, e o frontend lendo o desfecho gravado.\n\n⚠️ A REGRA QUE DEFINE ESTE DOSSIÊ: ele cita SOMENTE números medidos por ESTE run. Copiar autorrelato anterior — inclusive o que está em docs/closure/search-production-closure-v1/RELATORIO-DE-ENTREGA.md — reprova a missão. Os gates deste run produzem baseline e resultado do candidato; é de lá que saem as contagens. Se um número que você quer citar não foi medido aqui, diga que não foi medido aqui.\n\nOS GATES QUE ESTE RUN EXECUTA, e o que cada um significa:\n1. git_diff_check — diff sem marcador de conflito nem espaço quebrado;\n2. backend-unit — pytest backend/tests, inclui os testes do ledger e de /subir;\n3. volc-ads-unit — pytest volc_ads, o motor Google Ads;\n4. ledger-v10-03 — a prova SQL num Postgres descartável: reproduz o defeito ANTES da migration, prova a recusa DEPOIS, corrida real de duas sessões, rollback e contrato Python-SQL;\n5. verificar-segredos — scanner do repositório;\n6. build-vite — build de produção;\n7. tipos-frontend-ratchet — tsc como RATCHET contra 76 erros herdados; vermelho só se PIORAR. Diga isso com todas as letras: não é 'tipos limpos', é 'não sujou mais';\n8. testes-frontend-lancamento — vitest sobre src/lib/trafego. RECORTE DECLARADO: a suíte inteira tem falhas e arquivos sem coleta, herdados. O dossiê precisa dizer que este gate cobre a superfície de lançamento e NÃO a suíte inteira;\n9. sem-mutacao-google — contraprova da pré-condição: trava de escrita fechada durante os gates. Não é inspeção de rede, e o dossiê não pode alegar que é.\n\nESTRUTURA MÍNIMA DO DOSSIÊ (DOSSIE-DE-CERTIFICACAO.md):\n· identificação: run_id deste run, base_sha, candidato, lineage root;\n· tabela de gates: nome, comando efetivo, resultado no BASELINE e no CANDIDATO, com as contagens exatas que este run produziu;\n· o que cada gate NÃO cobre — a seção mais importante, e a que separa um dossiê de um folheto;\n· a alegação central (nenhuma mutação sem recibo em_voo commitado antes) e onde exatamente cada metade dela é provada por gate deste run;\n· estados que o contrato mantém distintos (ausência, zero medido, falha confirmada, indeterminado, reconciliado) e o gate que sustenta cada distinção;\n· limitações honestas conhecidas, incluindo: a migration NÃO foi aplicada em banco oficial, nenhum canário novo foi criado, nenhuma chamada real ao Google Ads saiu, e o CLI 'python -m volc_ads.subir --subir' ainda contorna o ledger (tem missão própria);\n· veredito: APROVADO / APROVADO COM RESSALVA / REPROVADO, com a razão em uma frase.\n\nPROIBIDO: escrever fora de docs/evidence/; tocar banco, Google Ads, n8n ou rede; inventar número; citar contagem de outro run como se fosse deste.",
+  "gates": [
+    {
+      "kind": "git_diff_check"
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "backend-unit",
+      "timeout_seconds": 2400
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "volc-ads-unit",
+      "timeout_seconds": 1800
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "ledger-v10-03",
+      "timeout_seconds": 2400
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "verificar-segredos",
+      "timeout_seconds": 600
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "build-vite",
+      "timeout_seconds": 1800
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "tipos-frontend-ratchet",
+      "timeout_seconds": 1800
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "testes-frontend-lancamento",
+      "timeout_seconds": 1200
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "sem-mutacao-google",
+      "timeout_seconds": 600
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-writer-dossie",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "role": "writer",
+      "effort": "xhigh",
+      "lens": "Escreva o dossie citando SOMENTE o que este run mediu. A secao 'o que cada gate nao cobre' e a que vale.",
+      "allowed_paths": [
+        "docs/evidence",
+        "docs/closure/search-production-closure-v1",
+        "supabase/migrations",
+        "backend/app/trafego",
+        "backend/app/routers/trafego.py",
+        "scripts",
+        "src/lib/trafego"
+      ],
+      "writable_paths": [
+        "docs/evidence"
+      ]
+    },
+    {
+      "id": "codex-sol-revisor-dossie",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Refute o dossie. Algum numero dele NAO saiu deste run? Alguma alegacao e mais forte que o gate que a sustenta? Alguma limitacao conhecida foi omitida?",
+      "allowed_paths": [
+        "docs/evidence",
+        "docs/closure/search-production-closure-v1",
+        "backend/app/routers/trafego.py",
+        "backend/app/trafego/ledger.py"
+      ]
+    },
+    {
+      "id": "claude-opus-revisor-dossie",
+      "provider": "claude",
+      "model": "opus",
+      "role": "reviewer",
+      "effort": "xhigh",
+      "lens": "Arquitetura e coerencia: o dossie descreve o sistema que existe? Os estados ausencia/zero/falha/indeterminado aparecem distintos, ou o texto os colapsa? O veredito e sustentado pelo corpo do documento?",
+      "allowed_paths": [
+        "docs/evidence",
+        "supabase/migrations/v10_03_recibo_atomico.sql",
+        "backend/app/trafego/ledger.py",
+        "src/lib/trafego/lancamento.ts",
+        "src/types/trafego.ts"
+      ]
+    },
+    {
+      "id": "gemini-revisor-dossie",
+      "provider": "gemini",
+      "model": "gemini-3.7-flash",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Completude factual contra SQL e migrations: toda funcao e coluna citada existe com o nome citado? O rollback descrito corresponde ao arquivo? Algum SHA, contagem de tabela ou nome de gatilho esta errado?",
+      "allowed_paths": [
+        "docs/evidence",
+        "supabase/migrations",
+        "tools/agent-harness/gate-catalog.json"
+      ]
+    }
+  ]
+}
