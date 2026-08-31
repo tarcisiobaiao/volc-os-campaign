@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-08-30T18:32:16-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-08-31T18:24:18-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 439 arquivos: 289 Markdown e 150 SQL;
-- 439 versionados e 0 ainda não versionados;
+- 447 arquivos: 295 Markdown e 152 SQL;
+- 447 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 92 SQL com palavras de mutação de alto risco.
+- 93 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,17 +17,17 @@ Gerado em `2026-08-30T18:32:16-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 19 |
-| `documentation` | 154 |
+| `documentation` | 159 |
 | `generated` | 2 |
 | `module-guide` | 30 |
-| `product-document` | 20 |
+| `product-document` | 21 |
 | `project-control` | 4 |
 | `reference` | 12 |
 | `runtime-contract` | 20 |
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 37 |
+| `sql-needs-review` | 39 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -114,6 +114,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
 | `supabase/migrations/v10_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v10_03_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | 18 | 71 |
 | `supabase/migrations/v11_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v11_02_parque_criativo.sql` | `sql-needs-review` | 17 | 48 |
@@ -221,6 +222,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | high | 33 | 126 |
 | `supabase/migrations/v10_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v10_03_recibo_atomico.sql` | `sql-needs-review` | medium | 9 | 28 |
+| `supabase/migrations/v10_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | high | 18 | 71 |
 | `supabase/migrations/v11_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_02_parque_criativo.sql` | `sql-needs-review` | high | 17 | 48 |

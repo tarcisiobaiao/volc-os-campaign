@@ -136,7 +136,7 @@
       "cluster": "decision",
       "state": "partial",
       "summary": "Aplica mudança no Google Ads e registra o resultado.",
-      "evidence": "A esteira existe desenhada e provada em cluster descartável (19 tabelas), com idempotência para \"timeout mas criou\" e T2 ausente. O canário Search restringe conta, MCC, canal, status PAUSED, tetos e duplicidade remota. A auditoria registra exatamente três famílias de snapshots com mutate (Webhook, Form Triggers e ClickUp); active:true é estado do snapshot, não prova de execução viva. Continua parcial porque v10_01 não foi aplicada nem ligada às rotas e as superfícies legadas ainda precisam ser autenticadas ou aposentadas."
+      "evidence": "A esteira existe desenhada e provada em cluster descartável (19 tabelas), com idempotência para \"timeout mas criou\" e T2 ausente. O canário Search restringe conta, MCC, canal, status PAUSED, tetos e duplicidade remota. A auditoria registra exatamente três famílias de snapshots com mutate (Webhook, Form Triggers e ClickUp); active:true é estado do snapshot, não prova de execução viva. Continua parcial porque v10_01 não foi aplicada. A ligação às rotas deixou de faltar em código: em 31/08/2026 a sprint search-production-closure-v1 entregou o writer produtivo (backend/app/trafego/ledger.py) e a v10_03, com recibo em_voo anterior ao mutate e recusa da escrita quando o ledger está ausente — mas isso vive numa branch não integrada e não alcança banco nenhum. As superfícies legadas ainda precisam ser autenticadas ou aposentadas."
     },
     {
       "id": "cap_forecast",
@@ -1010,7 +1010,7 @@
       "cluster": "acquisition",
       "state": "partial",
       "summary": "Primeiro lançamento real de engenharia, limitado à Portal Mundo Mais, com plano efetivo aprovado, criação pausada, idempotência e reconciliação.",
-      "evidence": "Canário real executado em 28/08/2026 na Portal Mundo Mais 547-809-6539. validate_only aceitou 72 operações; a mutação atômica criou a campanha 24183717006 e a releitura confirmou SEARCH, R$ 10/dia e campanha-mãe PAUSED, em REVIEW_IN_PROGRESS. Crédito Up não foi tocada. Faltam ledger v10_01 ligado, persistência da intenção, vínculo e reconciliação no inventário/H0 e decisão final de política antes de qualquer ativação."
+      "evidence": "Canário real executado em 28/08/2026 na Portal Mundo Mais 547-809-6539. validate_only aceitou 72 operações; a mutação atômica criou a campanha 24183717006 e a releitura confirmou SEARCH, R$ 10/dia e campanha-mãe PAUSED, em REVIEW_IN_PROGRESS. Crédito Up não foi tocada. Faltam ledger v10_01 ligado, persistência da intenção, vínculo e reconciliação no inventário/H0 e decisão final de política antes de qualquer ativação. Em 31/08/2026, na sprint search-production-closure-v1 (não integrada à main, nada aplicado em banco), o contrato do ledger passou a existir em código: a v10_03 fecha um defeito reproduzido — abrir recibo não passava por gatilho nenhum, e dois recibos em_voo simultâneos no mesmo item eram aceitos — e /subir passou a gravar aprovação vinculada ao plano e recibo em_voo antes do mutate, recusando a escrita quando o ledger está ausente. 53 provas SQL e 23 testes de rota. Continua parcial: sem migration aplicada e sem canário novo, os cinco gates de governança seguem sem prova em produção."
     },
     {
       "id": "concept:tracking_control_plane",
