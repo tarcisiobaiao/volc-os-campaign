@@ -175,6 +175,10 @@ class GateBinding:
     catalog_digest: str
     definition_digest: str
     input_digests: dict[str, str]
+    #: Fingerprint canônico da árvore relevante. É ele que cobre o que
+    #: `input_digests` não alcança: conftest, pytest.ini, tsconfig, módulos
+    #: importados pelos testes — tudo que um gate observa sem declarar.
+    tree_digest: str = ""
 
     def digest(self) -> str:
         return _sha256_texto("|".join([
@@ -182,6 +186,7 @@ class GateBinding:
             self.catalog_digest,
             self.definition_digest,
             _canonico(dict(sorted(self.input_digests.items()))),
+            self.tree_digest,
         ]))
 
     def as_dict(self) -> dict[str, Any]:
@@ -190,6 +195,7 @@ class GateBinding:
             "catalog_digest": self.catalog_digest,
             "definition_digest": self.definition_digest,
             "input_digests": dict(sorted(self.input_digests.items())),
+            "tree_digest": self.tree_digest,
             "binding_digest": self.digest(),
         }
 

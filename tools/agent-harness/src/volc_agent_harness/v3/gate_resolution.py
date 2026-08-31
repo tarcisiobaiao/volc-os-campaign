@@ -31,6 +31,7 @@ from .failures import FailureClass, HarnessFailure
 from .gate_catalog import (
     CONTRACT_VERSION, Catalog, GateBinding, load_catalog, resolve, sem_catalogo,
 )
+from .fingerprint import tree_fingerprint
 from .gate_types import PytestGate, TypedGate, from_spec
 
 #: `kind` reservado: não é um tipo de gate, é a indireção para o catálogo.
@@ -48,6 +49,8 @@ class ResolvedGate:
     binding: GateBinding
     typed: TypedGate
     gate_id: str | None = None
+    #: Produced autorizados: untracked que o gate pode observar legitimamente.
+    produced_paths: list[str] = field(default_factory=list)
     referenced_paths: list[str] = field(default_factory=list)
     missing_paths: list[str] = field(default_factory=list)
     depends_on_produced: list[str] = field(default_factory=list)
@@ -104,13 +107,18 @@ def build_toolchain(*, repo: Path, worktree: Path) -> dict[str, str]:
 
 
 def _binding(
-    typed: TypedGate, *, tree: Path, catalog: Catalog | None, definition_digest: str
+    typed: TypedGate, *, tree: Path, catalog: Catalog | None, definition_digest: str,
+    extra_paths: Sequence[str] = (),
 ) -> GateBinding:
     return GateBinding(
         contract_version=CONTRACT_VERSION,
         catalog_digest=catalog.file_digest if catalog is not None else "",
         definition_digest=definition_digest,
         input_digests=typed.evidence_inputs(worktree=tree),
+        # A árvore inteira, sempre. `evidence_inputs` cobre o que o TIPO sabe
+        # declarar; o fingerprint cobre o que o gate OBSERVA sem declarar —
+        # conftest, pytest.ini, tsconfig, módulos importados pelos testes.
+        tree_digest=tree_fingerprint(tree, extra_paths=extra_paths),
     )
 
 
@@ -160,13 +168,15 @@ def resolve_mission_gates(
             entrada = resolve(catalogo_lido, gate_id)
             typed = from_spec(indice, dict(entrada.spec), from_catalog=True)
             vinculo = _binding(typed, tree=tree, catalog=catalogo_lido,
-                               definition_digest=entrada.definition_digest)
+                               definition_digest=entrada.definition_digest,
+                               extra_paths=sorted(prometidos))
             kind = entrada.kind
         else:
             typed = from_spec(indice, dict(spec), from_catalog=False)
             kind = typed.kind
             vinculo = _binding(typed, tree=tree, catalog=None,
-                               definition_digest=sem_catalogo(kind=kind).definition_digest)
+                               definition_digest=sem_catalogo(kind=kind).definition_digest,
+                               extra_paths=sorted(prometidos))
 
         typed.timeout_seconds = timeout
         argv = typed.build(worktree=tree, toolchain=ferramentas)
@@ -198,10 +208,49 @@ def resolve_mission_gates(
         resolvidos.append(ResolvedGate(
             index=indice, kind=kind, argv=argv, timeout_seconds=timeout,
             binding=vinculo, typed=typed, gate_id=gate_id,
+            produced_paths=sorted(prometidos),
             referenced_paths=referenciados, depends_on_produced=dependem,
             collect_only_argv=collect,
         ))
     return resolvidos
+
+
+def rebind(
+    resolvidos: Sequence[ResolvedGate], *, tree: Path
+) -> list[ResolvedGate]:
+    """Reancora o vínculo depois das mudanças AUTORIZADAS do writer.
+
+    O fingerprint da árvore é medido na compilação, ANTES do writer — e o writer
+    muda a árvore, que é o trabalho dele. Sem reancorar, todo gate sairia
+    STALE_INPUT e a guarda viraria um bloqueio universal, o que é tão inútil
+    quanto não ter guarda.
+
+    A janela que interessa não é "compilação → execução": é "última mudança
+    AUTORIZADA → execução". O ownership já foi conferido quando esta função é
+    chamada; daqui em diante qualquer alteração é de terceiro, e é essa que a
+    revalidação nos quatro pontos precisa pegar.
+    """
+
+    novos: list[ResolvedGate] = []
+    for gate in resolvidos:
+        vinculo = GateBinding(
+            contract_version=gate.binding.contract_version,
+            catalog_digest=gate.binding.catalog_digest,
+            definition_digest=gate.binding.definition_digest,
+            input_digests=gate.typed.evidence_inputs(worktree=tree),
+            tree_digest=tree_fingerprint(tree, extra_paths=gate.produced_paths),
+        )
+        novos.append(ResolvedGate(
+            index=gate.index, kind=gate.kind, argv=gate.argv,
+            timeout_seconds=gate.timeout_seconds, binding=vinculo,
+            typed=gate.typed, gate_id=gate.gate_id,
+            produced_paths=gate.produced_paths,
+            referenced_paths=gate.referenced_paths,
+            missing_paths=gate.missing_paths,
+            depends_on_produced=gate.depends_on_produced,
+            collect_only_argv=gate.collect_only_argv,
+        ))
+    return novos
 
 
 def assert_bindings_fresh(
@@ -239,6 +288,18 @@ def assert_bindings_fresh(
                     detalhe=f"gate {gate.index} ({gate.gate_id})",
                     evidencia={"gate_index": gate.index, "gate_id": gate.gate_id},
                 )
+
+        agora_arvore = tree_fingerprint(tree, extra_paths=gate.produced_paths)
+        if agora_arvore != gate.binding.tree_digest:
+            raise HarnessFailure(
+                FailureClass.STALE_INPUT,
+                "a árvore relevante mudou entre a compilação e a execução",
+                detalhe=f"gate {gate.index} ({gate.kind})",
+                reproducao="git status --porcelain",
+                evidencia={"gate_index": gate.index,
+                           "compilado": gate.binding.tree_digest[:16],
+                           "agora": agora_arvore[:16]},
+            )
 
         agora = gate.typed.evidence_inputs(worktree=tree)
         if agora != gate.binding.input_digests:
