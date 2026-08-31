@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -27,7 +28,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from .failures import FailureClass, classify_gate_exit
-from .ledger import ClaimOutcome, GateIdentity
+from .ledger import ClaimOutcome, GateIdentity, canonical_cwd
 
 
 def _agora() -> str:
@@ -75,10 +76,21 @@ class GateOutcome:
     started_at: str = ""
     completed_at: str = ""
     tree_delta: list[str] = field(default_factory=list)
+    #: Contagens do registro — inclusive quando a prova foi REUTILIZADA, para
+    #: que quem depende de um número (testes coletados) não precise reexecutar.
+    counts: dict[str, Any] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
-        return self.status == "green"
+        """Verde SEM evidência não é verde.
+
+        O dono que perdia o lease durante a execução devolvia
+        ``status="green"`` e ``ok=True`` com ``evidence_id=None``, e o runtime
+        decidia por ``ok``. Um gate sem linha no ledger virava commit de
+        candidato: prova que não existe autorizando colheita.
+        """
+
+        return self.status == "green" and self.evidence_id is not None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -91,6 +103,8 @@ class GateOutcome:
             "claim_outcome": self.claim_outcome,
             "fencing_token": self.fencing_token,
             "waited_seconds": round(self.waited_seconds, 3),
+            "ok": self.ok,
+            "counts": self.counts,
             "evidence_id": self.evidence_id,
             "source_evidence_id": self.source_evidence_id,
             "started_at": self.started_at,
@@ -134,6 +148,76 @@ class LocalRunner(GateRunner):
         return r.returncode, r.stdout, r.stderr
 
 
+class _Heartbeat:
+    """Renova o lease enquanto o runner executa.
+
+    Sem isto, um lease menor que a execução vencia com o processo VIVO: o
+    segundo consumidor retomava, e havia duas execuções físicas simultâneas do
+    mesmo digest — a refutação de G5 na segunda rodada. Aumentar o lease só
+    empurra o problema; o que resolve é o dono dizer que continua vivo.
+
+    O intervalo é menor que ``lease/3`` para tolerar duas renovações perdidas
+    antes de o lease de fato vencer.
+    """
+
+    def __init__(self, ledger: Any, claim: Any, lease_seconds: int):
+        self.ledger = ledger
+        self.claim = claim
+        self.lease_seconds = max(1, int(lease_seconds))
+        self.intervalo = max(0.05, self.lease_seconds / 4.0)
+        self.perdeu = threading.Event()
+        self._parar = threading.Event()
+        self._fio: threading.Thread | None = None
+
+    def __enter__(self) -> "_Heartbeat":
+        if self.claim.owner_token is None:
+            return self
+        self._fio = threading.Thread(target=self._laco, daemon=True,
+                                     name="volc-heartbeat")
+        self._fio.start()
+        return self
+
+    def _laco(self) -> None:
+        while not self._parar.wait(self.intervalo):
+            try:
+                vivo = self.ledger.heartbeat(
+                    self.claim, lease_seconds=self.lease_seconds)
+            except Exception:
+                vivo = False          # banco indisponível é lease perdido
+            if not vivo:
+                self.perdeu.set()
+                return
+
+    def __exit__(self, *_excecao) -> None:
+        self._parar.set()
+        if self._fio is not None:
+            # AGUARDA de verdade: um fio que continua renovando depois do
+            # resultado manteria vivo um lease que já não tem dono ativo.
+            self._fio.join(timeout=self.intervalo * 4 + 1.0)
+
+
+def redact_texto(erro: BaseException) -> str:
+    """Mensagem de exceção sanitizada. Traceback carrega variável de ambiente."""
+
+    from ..security import redact
+
+    return redact(f"{type(erro).__name__}: {erro}")[:2000]
+
+
+def _counts_de(evidencia: Mapping[str, Any]) -> dict[str, Any]:
+    """Contagens gravadas, para que o reuso não perca o número medido."""
+
+    import json
+
+    bruto = evidencia.get("counts_json") if evidencia else None
+    if not bruto:
+        return {}
+    try:
+        return dict(json.loads(bruto))
+    except (TypeError, ValueError):
+        return {}
+
+
 def _snapshot(worktree: Path) -> set[str]:
     r = subprocess.run(
         ["git", "-C", str(worktree), "status", "--porcelain"],
@@ -165,6 +249,8 @@ def run_gate_with_ledger(
     lease_seconds: int = 900,
     wait_seconds: float = 30.0,
     kind_prefix: str = "gate",
+    cwd_rel: str = ".",
+    enrich_counts: Any = None,
 ) -> GateOutcome:
     """identidade → claim → (reuso | execução) → conclusão fenced. Nunca o inverso."""
 
@@ -175,6 +261,7 @@ def run_gate_with_ledger(
         context_digest=context_digest, production_digest=production_digest,
         test_digest=test_digest, env_fingerprint=env_fingerprint,
         binding_digest=binding_digest, kind_prefix=kind_prefix,
+        cwd_rel=canonical_cwd(cwd_rel),
     )
 
     # 1. CLAIM ANTES. `lookup` responde uma pergunta; só o claim reserva.
@@ -198,7 +285,8 @@ def run_gate_with_ledger(
             exit_code=0, stdout="", stderr="", duration_s=0.0,
             execution_mode="waited" if claim.aguardou else "reused",
             status="green", source_evidence_id=anterior.get("id"),
-            evidence_id=anterior.get("id"), completed_at=_agora(), **comum,
+            evidence_id=anterior.get("id"), completed_at=_agora(),
+            counts=_counts_de(anterior), **comum,
         )
 
     if claim.outcome is ClaimOutcome.OBSERVED_NON_GREEN:
@@ -210,7 +298,8 @@ def run_gate_with_ledger(
             duration_s=0.0, execution_mode="waited",
             status=_STATUS_DO_ESTADO.get(claim.previous_state or "red", "red"),
             source_evidence_id=anterior.get("id"),
-            evidence_id=anterior.get("id"), completed_at=_agora(), **comum,
+            evidence_id=anterior.get("id"), completed_at=_agora(),
+            counts=_counts_de(anterior), **comum,
         )
 
     if claim.outcome is ClaimOutcome.LEASE_TIMEOUT:
@@ -234,55 +323,79 @@ def run_gate_with_ledger(
             **comum,
         )
 
-    # 3. Execução, com snapshot antes e depois. Só quem segura o token chega aqui.
+    # 3. Execução, com heartbeat vivo e snapshot antes e depois. Só quem segura
+    #    o token chega aqui.
     antes = _snapshot(worktree)
     t0 = time.monotonic()
-    try:
-        exit_code, out, err = runner.execute(
-            argv=argv, cwd=worktree, env=env, timeout=timeout)
-        status = "green" if exit_code == 0 else None
-    except subprocess.TimeoutExpired:
-        exit_code, out, err, status = 124, "", "timeout", "timeout"
+    exit_code, out, err, status = 1, "", "", None
+    with _Heartbeat(ledger, claim, lease_seconds) as batida:
+        try:
+            exit_code, out, err = runner.execute(
+                argv=argv, cwd=worktree, env=env, timeout=timeout)
+            status = "green" if exit_code == 0 else None
+        except subprocess.TimeoutExpired:
+            exit_code, out, err, status = 124, "", "timeout", "timeout"
+        except OSError as erro:
+            # Falha de spawn — binário some, fd esgotado, permissão. Só
+            # `TimeoutExpired` era capturado, e um OSError escapava ANTES de
+            # `complete`: o claim ficava `running` até o lease vencer e INFRA
+            # nunca era registrada, apesar de o contrato dizer "sempre".
+            exit_code, out, err, status = 71, "", redact_texto(erro), "infrastructure"
+        except Exception as erro:                      # noqa: BLE001
+            exit_code, out, err, status = 70, "", redact_texto(erro), "infrastructure"
     dur = time.monotonic() - t0
+
     if status is None:
         classe = classify_gate_exit(
             exit_code=exit_code, argv=list(argv), stdout=out, stderr=err)
         status = ("infrastructure"
                   if classe is FailureClass.INFRASTRUCTURE_ERROR else "red")
+    if batida.perdeu.is_set() and status == "green":
+        # O lease caiu no meio da execução. O resultado existe, mas não é
+        # autoridade: quem retomou o claim responde por esta identidade.
+        status = "infrastructure"
+        err = (err + "\nlease perdido durante a execução").strip()
     depois = _snapshot(worktree)
 
     modo = ("reclaimed" if claim.outcome is ClaimOutcome.RECLAIMED_AFTER_EXPIRY
             else "executed")
+    contagens: dict[str, Any] = {
+        "execution_mode": modo,
+        "status": status,
+        "claim_outcome": claim.outcome.value,
+        "fencing_token": claim.fencing_token,
+        "worker_id": worker_id,
+        "stdout_digest": _digest(out),
+        "stderr_digest": _digest(err),
+        "started_at": inicio,
+        "runner": runner.name,
+        "contains_filesystem": runner.contains_filesystem,
+        "lease_perdido": batida.perdeu.is_set(),
+    }
+    if enrich_counts is not None:
+        contagens.update(enrich_counts(exit_code, out, err) or {})
+
     resultado = GateOutcome(
         exit_code=exit_code, stdout=out, stderr=err, duration_s=dur,
         execution_mode=modo, status=status, completed_at=_agora(),
-        tree_delta=sorted(depois - antes), **comum,
+        tree_delta=sorted(depois - antes), counts=contagens, **comum,
     )
 
     # 4. CONCLUSÃO FENCED, sempre — verde, vermelho, timeout e infraestrutura —
     #    ANTES de qualquer raise do chamador. Gravar evidência e fechar o claim
-    #    acontecem na mesma transação: quem perdeu o lease não escreve.
+    #    acontecem na mesma transação: quem perdeu o lease não escreve, e um
+    #    claim/fence conclui no máximo uma vez (índice único no banco).
+    contagens["completed_at"] = resultado.completed_at
     resultado.evidence_id = ledger.complete(
         claim, state=_ESTADO_DO_CLAIM[status], base_sha=base_sha,
         candidate_sha=candidate_sha, run_id=run_id, command=comando,
-        cwd=str(worktree), production_digest=production_digest,
+        cwd=identidade.cwd_rel, production_digest=production_digest,
         test_digest=test_digest, exit_code=resultado.exit_code,
-        counts={
-            "execution_mode": resultado.execution_mode,
-            "status": resultado.status,
-            "claim_outcome": claim.outcome.value,
-            "fencing_token": claim.fencing_token,
-            "worker_id": worker_id,
-            "stdout_digest": _digest(resultado.stdout),
-            "stderr_digest": _digest(resultado.stderr),
-            "started_at": resultado.started_at,
-            "completed_at": resultado.completed_at,
-            "runner": runner.name,
-            "contains_filesystem": runner.contains_filesystem,
-        },
+        counts=contagens,
     )
     if resultado.evidence_id is None:
-        # Perdemos o lease durante a execução. O resultado existe, mas não é
-        # autoridade: quem retomou o claim é que responde por esta identidade.
+        # Sem evidência não há autoridade — e `ok` já sabe disso.
         resultado.execution_mode = "abandoned"
+        if resultado.status == "green":
+            resultado.status = "infrastructure"
     return resultado
