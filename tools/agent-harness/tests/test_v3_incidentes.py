@@ -26,8 +26,20 @@ from volc_agent_harness.v3.failures import (  # noqa: E402
     FailureClass, HarnessFailure, classify_gate_exit, relanca_writer,
 )
 from volc_agent_harness.v3.gate_compiler import (  # noqa: E402
-    ProducedPath, assert_pytest_collects, compile_gate,
+    ColetaContexto, ProducedPath, assert_pytest_collects, compile_gate,
 )
+from volc_agent_harness.v3.ledger import EvidenceLedger  # noqa: E402
+
+
+def _coleta_ctx(arvore) -> ColetaContexto:
+    """Coleta é execução: sem ledger ela não roda mais, nem em teste."""
+
+    return ColetaContexto(
+        ledger=EvidenceLedger(arvore / ".coleta.sqlite"),
+        acceptance_id="P04-T09-A1", base_sha="s", context_digest="c",
+        env_fingerprint="e", production_digest="p", test_digest="t",
+        run_id="r", worker_id="w",
+    )
 from volc_agent_harness.v3.harvest import Harvest, requires_writer, resume_base  # noqa: E402
 from volc_agent_harness.v3.ledger import EvidenceLedger, Status, digest_files  # noqa: E402
 from volc_agent_harness.v3.registry import WorktreeRegistry  # noqa: E402
@@ -120,7 +132,7 @@ class CasoExit4(unittest.TestCase):
                 timeout_seconds=120, tree=arvore,
             )
             with self.assertRaises(HarnessFailure) as erro:
-                assert_pytest_collects(gate, tree=arvore)
+                assert_pytest_collects(gate, tree=arvore, ctx=_coleta_ctx(arvore))
             self.assertEqual(erro.exception.classe, FailureClass.SPEC_ERROR)
 
 

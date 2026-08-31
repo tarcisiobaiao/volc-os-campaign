@@ -177,7 +177,7 @@ class ProvaB_LeaseVivoNaoEhRoubado(_Base):
         ident = GateIdentity.for_gate(
             acceptance_id="P10-T17-A1", gate_index=1, argv=argv,
             context_digest=self.ctx, production_digest="p1", test_digest="t1",
-            env_fingerprint=self.fp, cwd=str(self.wt),
+            env_fingerprint=self.fp, cwd_rel=".",
         )
         led.acquire(ident, run_id="r1", worker_id="w1",
                     lease_seconds=120, wait_seconds=0.0)

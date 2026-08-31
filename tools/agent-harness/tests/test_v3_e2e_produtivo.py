@@ -316,25 +316,32 @@ class SemCaminhoParalelo(unittest.TestCase):
         self.assertIn('production_digest=f"baseline:', antes_do_writer,
                       "baseline e candidato não podem colidir na mesma identidade")
 
-    def test_sonda_de_coleta_e_o_unico_subprocess_tolerado(self):
-        """`--collect-only` não emite veredito sobre o candidato.
+    def test_sonda_de_coleta_tambem_passa_pelo_ledger(self):
+        """A exceção que este teste protegia deixou de existir.
 
-        Ele responde "este gate coleta algum teste?" — uma pergunta sobre a
-        ESPECIFICAÇÃO, não sobre o mérito do código. Por isso continua fora do
-        ledger, e por isso a exceção é nomeada aqui em vez de ficar implícita.
+        A versão anterior afirmava que `--collect-only` podia ficar fora do
+        ledger porque "não emite veredito sobre o candidato". O argumento
+        respondia a pergunta errada: coleta de pytest IMPORTA `conftest.py`,
+        plugins e todos os módulos de teste — é código do repositório
+        executando. Não emitir veredito não é não executar.
+
+        Agora não há subprocesso tolerado em `gate_compiler`: a coleta entra por
+        `run_gate_with_ledger` com `kind_prefix="collect_gate"`.
         """
 
         achados = self._subprocess_runs("v3/gate_compiler.py")
-        self.assertEqual(len(achados), 1, f"subprocess inesperado: {achados}")
+        self.assertEqual(achados, [],
+                         f"a coleta ainda cria subprocesso por fora: {achados}")
 
         import inspect
 
         from volc_agent_harness.v3 import gate_compiler
 
         fonte = inspect.getsource(gate_compiler.assert_pytest_collects)
-        self.assertIn("subprocess.run(", fonte)
-        self.assertIn("--collect-only", " ".join(
-            gate_compiler.assert_pytest_collects.__doc__.split()))
+        self.assertIn("run_gate_with_ledger(", fonte)
+        self.assertIn('kind_prefix="collect_gate"', fonte)
+        self.assertIn("resultado.evidence_id is None", fonte,
+                      "coleta sem evidência não pode autorizar continuação")
 
 
 if __name__ == "__main__":

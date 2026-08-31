@@ -40,6 +40,30 @@ from volc_agent_harness.v3.ledger import (  # noqa: E402
 FONTE = Path(__file__).resolve().parents[1] / "src" / "volc_agent_harness"
 
 
+def _le_argv_de_dicionario(arquivo: Path) -> list[int]:
+    """Linhas que leem ``argv`` de um dicionário — o padrão da missão crua.
+
+    ``gate_plan["gates"][i]["argv"]`` é o argv CONSTRUÍDO pelo compilador e é
+    legítimo. ``BaselineRecord.argv`` também: é atributo de um registro, não
+    leitura da missão. O padrão que não pode existir é ``.get("argv", ...)`` —
+    ele só faz sentido sobre o dicionário BRUTO da missão, onde o campo pode
+    faltar, e é exatamente por poder faltar que a guarda virava no-op.
+
+    A outra metade do invariante (``mission.gates`` só como entrada do
+    resolvedor) já é provada em `test_v3_g1a_contraprovas`.
+    """
+
+    import ast
+
+    arvore = ast.parse(arquivo.read_text(encoding="utf-8"))
+    return [
+        no.lineno for no in ast.walk(arvore)
+        if isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)
+        and no.func.attr == "get" and no.args
+        and isinstance(no.args[0], ast.Constant) and no.args[0].value == "argv"
+    ]
+
+
 def _identidade(**over) -> GateIdentity:
     campos = dict(acceptance_id="P-A1", kind="gate_1", context_digest="c",
                   production_digest="p", test_digest="t", command_digest="cmd",
@@ -59,11 +83,17 @@ class B1_CompileNaoNeutralizaAGuarda(unittest.TestCase):
     """
 
     def test_prewriter_nao_le_argv_da_missao(self):
-        fonte = (FONTE / "v3" / "pipeline.py").read_text(encoding="utf-8")
-        for padrao in ('gate.get("argv"', "gate.get('argv'", 'gate["argv"]',
-                       "gate['argv']"):
-            self.assertNotIn(padrao, fonte,
-                             f"{padrao} lê a missão em vez do gate resolvido")
+        """Por AST, não por busca de texto.
+
+        O comentário que EXPLICA o defeito antigo cita `gate.get("argv", [])`
+        literalmente, e deve continuar citando. Uma prova que casa string não
+        distingue a explicação do defeito — e obrigar o código a não falar sobre
+        o próprio erro seria a régua errada.
+        """
+
+        ofensores = _le_argv_de_dicionario(FONTE / "v3" / "pipeline.py")
+        self.assertEqual(ofensores, [],
+                         "o prewriter ainda lê argv de dicionário de missão")
 
     def test_guarda_do_compile_recebe_argv_resolvido_e_nao_vazio(self):
         import ast
@@ -157,11 +187,68 @@ class B2_ColetaPassaPeloLedger(unittest.TestCase):
         self.assertEqual(diretos, [],
                          "a coleta ainda cria subprocesso fora do ledger")
 
-    def test_coleta_gera_evidencia_propria_no_ledger(self):
-        from volc_agent_harness.v3.gate_compiler import assert_pytest_collects
+    def test_coleta_exige_contexto_de_ledger(self):
+        from volc_agent_harness.v3.gate_compiler import (
+            ColetaContexto, assert_pytest_collects,
+        )
 
-        self.assertIn("ledger", assert_pytest_collects.__code__.co_varnames,
-                      "a coleta precisa receber o ledger")
+        self.assertIn("ctx", assert_pytest_collects.__code__.co_varnames)
+        self.assertIn("ledger", ColetaContexto.__dataclass_fields__)
+
+    def test_coleta_grava_evidencia_com_kind_proprio(self):
+        """Comportamental: a coleta roda, e deixa rastro com identidade própria."""
+
+        from volc_agent_harness.v3.gate_compiler import (
+            ColetaContexto, assert_pytest_collects,
+        )
+
+        class _GateFalso:
+            index = 1
+            kind = "pytest"
+            binding = None
+            collect_only_argv = [sys.executable, "-c",
+                                 "print('3 tests collected in 0.01s')"]
+
+        with TemporaryDirectory() as tmp:
+            led = EvidenceLedger(Path(tmp) / "l.sqlite")
+            ctx = ColetaContexto(
+                ledger=led, acceptance_id="P-A1", base_sha="s",
+                context_digest="c", env_fingerprint="e", production_digest="p",
+                test_digest="t", run_id="r", worker_id="w")
+            contados = assert_pytest_collects(
+                _GateFalso(), tree=Path(tmp), ctx=ctx, env={})
+            self.assertEqual(contados, 3)
+            linhas = led.evidencias()
+            self.assertEqual(len(linhas), 1)
+            self.assertEqual(linhas[0]["kind"], "collect_gate_1")
+
+    def test_coleta_reutilizada_preserva_a_contagem(self):
+        """No reuso o stdout é vazio; a contagem tem de vir do registro."""
+
+        from volc_agent_harness.v3.gate_compiler import (
+            ColetaContexto, assert_pytest_collects,
+        )
+
+        class _GateFalso:
+            index = 1
+            kind = "pytest"
+            binding = None
+            collect_only_argv = [sys.executable, "-c",
+                                 "print('7 tests collected in 0.02s')"]
+
+        with TemporaryDirectory() as tmp:
+            led = EvidenceLedger(Path(tmp) / "l.sqlite")
+            ctx = ColetaContexto(
+                ledger=led, acceptance_id="P-A1", base_sha="s",
+                context_digest="c", env_fingerprint="e", production_digest="p",
+                test_digest="t", run_id="r", worker_id="w")
+            primeiro = assert_pytest_collects(_GateFalso(), tree=Path(tmp),
+                                              ctx=ctx, env={})
+            segundo = assert_pytest_collects(_GateFalso(), tree=Path(tmp),
+                                             ctx=ctx, env={})
+            self.assertEqual((primeiro, segundo), (7, 7))
+            self.assertEqual(len(led.evidencias()), 1,
+                             "a segunda coleta não podia rodar de novo")
 
 
 # ===========================================================================
@@ -406,13 +493,22 @@ class B7_MigracaoRetrocompativelDoLedger(unittest.TestCase):
             self.assertEqual(erros, [], f"migração concorrente falhou: {erros}")
 
     def test_migracao_nao_usa_excecao_como_inspecao(self):
+        """A inspeção mora em `sqlite_support`; o ledger declara e delega."""
+
         import inspect
 
-        from volc_agent_harness.v3 import ledger
+        from volc_agent_harness.v3 import ledger, sqlite_support
+
+        suporte = inspect.getsource(sqlite_support)
+        self.assertIn("PRAGMA table_info", suporte)
+        self.assertNotIn("except sqlite3.OperationalError", suporte.split(
+            "def conectar")[1].split("def tabelas")[0].replace(
+            "except sqlite3.OperationalError:\n                time.sleep", ""))
 
         fonte = inspect.getsource(ledger)
-        self.assertIn("PRAGMA table_info", fonte)
-        self.assertNotIn("except sqlite3.OperationalError:\n            pass", fonte)
+        self.assertIn("migrar(", fonte, "o ledger precisa chamar a migração")
+        self.assertNotIn("executescript(", fonte,
+                         "executescript não evolui banco existente")
 
     def test_registry_nao_importa_simbolo_privado_do_ledger(self):
         fonte = (FONTE / "v3" / "registry.py").read_text(encoding="utf-8")
@@ -431,27 +527,33 @@ class B8_FronteiraDeErroCobreOsArtefatos(unittest.TestCase):
 
         with TemporaryDirectory() as tmp:
             repo = repo_sintetico(Path(tmp))
+            from volc_agent_harness.v3.run_artifacts import RunArtifacts
+
             contador = ContadorDeModelos()
             original_adapter = mm.adapter_for
-            original_write = Path.write_text
+            original_escrever = RunArtifacts.escrever
             estado = {"explodiu": False}
 
-            def _write(self, *a, **kw):
-                if self.name == "metadata.json" and not estado["explodiu"]:
+            def _escrever(self, nome, conteudo):
+                # A escrita passou a ser atômica via os.replace; interceptar
+                # `Path.write_text` não pega mais nada. A prova acompanha o
+                # ponto real de gravação.
+                if nome == "metadata.json" and not estado["explodiu"]:
                     estado["explodiu"] = True
                     raise OSError("disk full")
-                return original_write(self, *a, **kw)
+                return original_escrever(self, nome, conteudo)
 
             mm.adapter_for = contador.adapter_for
-            Path.write_text = _write
+            RunArtifacts.escrever = _escrever
             try:
-                alvo = missao(repo)
+                alvo = missao(repo, gates=[{"kind": "catalog",
+                                            "gate_id": "diff-limpo"}])
                 saida = StringIO()
                 with redirect_stdout(saida):
                     from volc_agent_harness.cli import main as cli_main
                     codigo = cli_main(["--mission", str(alvo), "--repo", str(repo)])
             finally:
-                Path.write_text = original_write
+                RunArtifacts.escrever = original_escrever
                 mm.adapter_for = original_adapter
 
             runs = sorted((repo / "tools" / "agent-harness" / "runs").iterdir())
@@ -524,10 +626,8 @@ class B10_LegadoFailClosed(unittest.TestCase):
             if rel.startswith("v3/gate_runner"):
                 continue                         # fronteira autorizada de execução
             texto = arquivo.read_text(encoding="utf-8")
-            for padrao in ('gate["argv"]', "gate['argv']", 'gate.get("argv"',
-                           "gate.get('argv'"):
-                if padrao in texto:
-                    ofensores.append(f"{rel}: {padrao}")
+            ofensores.extend(f"{rel}:{linha}" for linha in
+                             _le_argv_de_dicionario(arquivo))
             arvore = ast.parse(texto)
             for no in ast.walk(arvore):
                 if (isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)
