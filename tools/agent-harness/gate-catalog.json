@@ -15,17 +15,23 @@
   "gates": {
     "harness-unit": {
       "kind": "pytest",
-      "targets": ["tools/agent-harness/tests"],
+      "targets": [
+        "tools/agent-harness/tests"
+      ],
       "description": "suíte do próprio harness"
     },
     "backend-unit": {
       "kind": "pytest",
-      "targets": ["backend/tests"],
+      "targets": [
+        "backend/tests"
+      ],
       "description": "suíte unitária do backend"
     },
     "volc-ads-unit": {
       "kind": "pytest",
-      "targets": ["volc_ads"],
+      "targets": [
+        "volc_ads"
+      ],
       "description": "motor de pautas e Google Ads"
     },
     "diff-limpo": {
@@ -53,6 +59,12 @@
       "script_path": "scripts/verificar_autoridade_supabase.py",
       "args": [],
       "description": "prova que só database.agenciavolc.com.br é autoridade operacional"
+    },
+    "ledger-v10-03": {
+      "kind": "tracked_script",
+      "script_path": "scripts/gate_provar_ledger_v10_03.py",
+      "args": [],
+      "description": "fronteira atômica do ledger v10_03 num Postgres descartável: reproduz o defeito antes da migration, prova a recusa depois, corrida real de duas sessões, rollback e contrato Python↔SQL"
     }
   }
 }
