@@ -32,6 +32,31 @@ class BaselineRecord:
     duration_s: float
     file_digests: dict[str, str] = field(default_factory=dict)
     observable: dict[str, Any] = field(default_factory=dict)
+    #: Autoridade do resultado, propagada do `GateOutcome`. `exit_code` sozinho
+    #: não distingue "o processo saiu 0" de "esta medição vale": um gate
+    #: abandonado por perda de lease sai 0 e NÃO é prova de nada.
+    status: str | None = None
+    evidence_id: int | None = None
+    execution_mode: str | None = None
+    ok: bool | None = None
+
+    @staticmethod
+    def from_outcome(outcome: Any, **extra: Any) -> "BaselineRecord":
+        """Constrói a partir do `GateOutcome`, sem perder nada pelo caminho."""
+
+        return BaselineRecord(
+            gate_index=outcome.gate_index,
+            argv=list(outcome.argv),
+            exit_code=outcome.exit_code,
+            passed=extra.pop("passed", None),
+            failed=extra.pop("failed", None),
+            duration_s=outcome.duration_s,
+            status=outcome.status,
+            evidence_id=outcome.evidence_id,
+            execution_mode=outcome.execution_mode,
+            ok=outcome.ok,
+            **extra,
+        )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -43,6 +68,10 @@ class BaselineRecord:
             "duration_s": round(self.duration_s, 3),
             "file_digests": self.file_digests,
             "observable": self.observable,
+            "status": self.status,
+            "evidence_id": self.evidence_id,
+            "execution_mode": self.execution_mode,
+            "ok": self.ok,
         }
 
 
@@ -115,6 +144,25 @@ def assert_baseline_is_green(registros: Sequence[BaselineRecord]) -> None:
             ),
             reproducao=" ".join(vermelhos[0].argv),
             evidencia={"gates_vermelhos": [r.gate_index for r in vermelhos]},
+        )
+
+    # `exit_code == 0` não basta. Um gate abandonado por perda de lease sai 0,
+    # não tem evidência e não é autoridade sobre nada — aceitá-lo como baseline
+    # verde era transformar ausência de prova em prova.
+    sem_autoridade = [
+        r for r in registros
+        if r.ok is not None or r.status is not None or r.evidence_id is not None
+        if not (r.ok and r.status == "green" and r.evidence_id is not None)
+    ]
+    if sem_autoridade:
+        raise HarnessFailure(
+            FailureClass.INFRASTRUCTURE_ERROR,
+            "baseline sem autoridade: exit 0 não é prova sem evidência",
+            detalhe=", ".join(
+                f"gate {r.gate_index} status={r.status} mode={r.execution_mode} "
+                f"evidence_id={r.evidence_id}" for r in sem_autoridade),
+            reproducao="o gate saiu 0 mas o ledger não registrou conclusão válida",
+            evidencia={"gates": [r.gate_index for r in sem_autoridade]},
         )
 
 

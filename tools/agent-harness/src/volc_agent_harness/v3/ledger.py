@@ -103,21 +103,47 @@ CREATE TABLE execution_claim (
 #: não evolui banco que já existe — ele simplesmente não faz nada, inclusive
 #: quando a tabela existe com o schema errado.
 COLUNAS_EVOLUTIVAS: tuple[tuple[str, str, str], ...] = (
+    # evidence
+    ("evidence", "base_sha", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "candidate_sha", "TEXT"),
+    ("evidence", "production_digest", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "test_digest", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "command", "TEXT NOT NULL DEFAULT ''"),
     ("evidence", "cwd", "TEXT NOT NULL DEFAULT ''"),
     ("evidence", "env_fingerprint", "TEXT NOT NULL DEFAULT ''"),
     ("evidence", "context_digest", "TEXT NOT NULL DEFAULT ''"),
+    ("evidence", "exit_code", "INTEGER"),
+    ("evidence", "counts_json", "TEXT"),
     ("evidence", "reviewer", "TEXT"),
     ("evidence", "finding", "TEXT"),
     ("evidence", "counterproof", "TEXT"),
+    ("evidence", "valid", "INTEGER NOT NULL DEFAULT 1"),
     ("evidence", "invalidated_reason", "TEXT"),
-    # Identidade da EXECUÇÃO na evidência: é ela que o índice único usa para
-    # impedir duas conclusões do mesmo claim/fencing token.
     ("evidence", "claim_key", "TEXT"),
     ("evidence", "fencing_token", "INTEGER"),
+    ("evidence", "created_at", "TEXT NOT NULL DEFAULT ''"),
+    # execution_claim — a tabela também evolui. Declarar só as colunas de
+    # `evidence` deixava um claim legado passar pelo boot e estourar no primeiro
+    # `acquire` com `no such column: logical_key`.
+    ("execution_claim", "contract_version", "INTEGER NOT NULL DEFAULT 0"),
+    ("execution_claim", "acceptance_id", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "kind", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "input_digest", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "owner_token", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "fencing_token", "INTEGER NOT NULL DEFAULT 0"),
+    ("execution_claim", "state", "TEXT NOT NULL DEFAULT 'abandoned'"),
+    ("execution_claim", "claimed_at", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "heartbeat_at", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "lease_until", "REAL NOT NULL DEFAULT 0"),
+    ("execution_claim", "completed_at", "TEXT"),
+    ("execution_claim", "run_id", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "worker_id", "TEXT NOT NULL DEFAULT ''"),
+    ("execution_claim", "evidence_id", "INTEGER"),
+    ("execution_claim", "owner_pid", "INTEGER"),
 )
 
 #: Índices nascem DEPOIS das colunas. Criar antes derruba a inicialização
-#: inteira num banco legado, e foi assim que a migração do ledger não existia.
+#: inteira num banco legado.
 INDICES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     ("idx_evidence_lookup", "evidence",
      "CREATE INDEX idx_evidence_lookup "
@@ -134,13 +160,27 @@ INDICES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
      ("state", "lease_until")),
 )
 
-#: Sem estas, o banco não é o nosso e não vamos adivinhar. Falha tipada, e
-#: nunca apagamos nada para "consertar".
+#: TODAS as colunas que INSERT/SELECT/UPDATE tocam, nas duas tabelas. Conferir
+#: 4 de 21 deixava a migração aceitar um schema que quebrava no primeiro uso —
+#: falha adiada é pior que falha na inicialização, porque acontece longe da
+#: causa. A checagem roda DEPOIS dos ALTERs, então o que a migração conseguiu
+#: acrescentar já conta como presente.
 OBRIGATORIAS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("evidence", ("acceptance_id", "kind", "input_digest", "run_id")),
+    ("evidence", (
+        "id", "acceptance_id", "kind", "base_sha", "candidate_sha", "input_digest",
+        "production_digest", "test_digest", "command", "cwd", "env_fingerprint",
+        "context_digest", "exit_code", "counts_json", "valid", "claim_key",
+        "fencing_token", "run_id", "created_at",
+    )),
+    ("execution_claim", (
+        "logical_key", "contract_version", "acceptance_id", "kind", "input_digest",
+        "owner_token", "fencing_token", "state", "claimed_at", "heartbeat_at",
+        "lease_until", "completed_at", "run_id", "worker_id", "evidence_id",
+        "owner_pid",
+    )),
 )
 
-#: Provas que atestam o estado do mundo, não uma propriedade do código.
+
 NUNCA_REUTILIZAVEIS = frozenset({
     "integration_gate",
     "secret_scan",
@@ -187,6 +227,19 @@ def digest_files(tree: Path, paths: Iterable[str]) -> str:
 
 def _agora() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _rollback_se_ativo(conn: sqlite3.Connection) -> None:
+    """ROLLBACK cego mascara o erro real.
+
+    Quando o corpo já deu COMMIT e levantou depois — o caso de
+    `_resolver_conflito` — não há transação para desfazer, e o
+    `cannot rollback - no transaction is active` substituía a falha tipada por
+    um erro de SQLite que não diz nada sobre o que aconteceu.
+    """
+
+    if conn.in_transaction:
+        conn.execute("ROLLBACK")
 
 
 def _sha(texto: str) -> str:
@@ -770,7 +823,83 @@ class EvidenceLedger:
                 previous_state=linha["state"] if linha is not None else None,
             )
         except BaseException:
-            c.execute("ROLLBACK")
+            _rollback_se_ativo(c)
+            raise
+        finally:
+            c.close()
+
+    def _resolver_conflito(
+        self, chave: str, claim: Claim, *, state: str, exit_code: int | None
+    ) -> int:
+        """Conflito de integridade: idempotência só se o resultado bater.
+
+        Repetição legítima do mesmo dono com o mesmo veredito devolve a mesma
+        ``evidence_id``. Qualquer divergência é ledger inconsistente: falha
+        fechado, e o claim NUNCA fica `running`.
+        """
+
+        c = self._conn()
+        try:
+            linha = c.execute(
+                "SELECT * FROM evidence WHERE claim_key=? AND fencing_token=? "
+                "ORDER BY id LIMIT 1", (chave, claim.fencing_token),
+            ).fetchone()
+            claim_linha = c.execute(
+                "SELECT * FROM execution_claim WHERE logical_key=?", (chave,)
+            ).fetchone()
+            estado_atual = claim_linha["state"] if claim_linha is not None else None
+            divergente = (
+                linha is None
+                or int(linha["exit_code"] or 0) != int(exit_code or 0)
+                or (estado_atual is not None and estado_atual != state)
+            )
+            if divergente:
+                c.execute("BEGIN IMMEDIATE")
+                c.execute(
+                    "UPDATE execution_claim SET state='abandoned', completed_at=?, "
+                    "heartbeat_at=? WHERE logical_key=? AND state='running'",
+                    (_agora(), _agora(), chave),
+                )
+                c.execute("COMMIT")
+                raise HarnessFailure(
+                    FailureClass.INFRASTRUCTURE_ERROR,
+                    "conclusão conflitante no ledger",
+                    detalhe=(
+                        f"pedido state={state} exit={exit_code}; "
+                        f"gravado exit={linha['exit_code'] if linha else '—'} "
+                        f"claim_state={estado_atual}"),
+                    reproducao=f"inspecione evidence e execution_claim de {chave[:16]}",
+                    evidencia={"logical_key": chave,
+                               "fencing_token": claim.fencing_token},
+                )
+            return int(linha["id"])
+        finally:
+            c.close()
+
+    def abandon(self, claim: Claim, *, motivo: str = "vínculo expirado") -> bool:
+        """Fecha um claim adquirido que não vai produzir resultado.
+
+        Quando a revalidação falha DEPOIS do claim, o consumidor não executa e
+        não conclui. Deixar a linha em `running` prenderia a identidade até o
+        lease vencer, por um motivo que já é conhecido agora.
+        """
+
+        if claim.owner_token is None:
+            return False
+        c = self._conn()
+        try:
+            c.execute("BEGIN IMMEDIATE")
+            alteradas = c.execute(
+                "UPDATE execution_claim SET state='abandoned', completed_at=?, "
+                "heartbeat_at=? WHERE logical_key=? AND owner_token=? "
+                "AND fencing_token=? AND state='running'",
+                (_agora(), _agora(), claim.identity.logical_key,
+                 claim.owner_token, claim.fencing_token),
+            ).rowcount
+            c.execute("COMMIT")
+            return alteradas == 1
+        except BaseException:
+            _rollback_se_ativo(c)
             raise
         finally:
             c.close()
@@ -793,7 +922,7 @@ class EvidenceLedger:
             c.execute("COMMIT")
             return alteradas == 1
         except BaseException:
-            c.execute("ROLLBACK")
+            _rollback_se_ativo(c)
             raise
         finally:
             c.close()
@@ -839,14 +968,11 @@ class EvidenceLedger:
                 return None                      # perdeu o lease: não escreve
 
             if linha["state"] != "running":
-                # Já concluído. Repetição do MESMO dono é idempotente: devolve a
-                # evidência que existe, em vez de criar uma segunda.
-                ja = c.execute(
-                    "SELECT id FROM evidence WHERE claim_key=? AND fencing_token=? "
-                    "ORDER BY id LIMIT 1", (chave, claim.fencing_token),
-                ).fetchone()
+                # Já concluído. Idempotente SÓ se o veredito for o mesmo — senão
+                # é o dono tentando reescrever a história.
                 c.execute("COMMIT")
-                return int(ja["id"]) if ja is not None else None
+                return self._resolver_conflito(
+                    chave, claim, state=state, exit_code=exit_code)
 
             if float(linha["lease_until"]) <= time.time():
                 # Lease vencido, ainda que ninguém tenha retomado. Concluir aqui
@@ -879,16 +1005,15 @@ class EvidenceLedger:
             c.execute("COMMIT")
             return evidence_id
         except sqlite3.IntegrityError:
-            # O índice único pegou uma conclusão concorrente do mesmo
-            # claim/fence. O banco é a autoridade, não a checagem em Python.
+            # O índice único pegou uma conclusão do mesmo claim/fence. Devolver
+            # "alguma evidência" aqui era o furo: uma linha VERMELHA satisfazia
+            # uma conclusão verde, e o claim ficava `running`. Conflito só é
+            # idempotência quando o resultado é o MESMO.
             c.execute("ROLLBACK")
-            ja = c.execute(
-                "SELECT id FROM evidence WHERE claim_key=? AND fencing_token=? "
-                "ORDER BY id LIMIT 1", (chave, claim.fencing_token),
-            ).fetchone()
-            return int(ja["id"]) if ja is not None else None
+            return self._resolver_conflito(
+                chave, claim, state=state, exit_code=exit_code)
         except BaseException:
-            c.execute("ROLLBACK")
+            _rollback_se_ativo(c)
             raise
         finally:
             c.close()
