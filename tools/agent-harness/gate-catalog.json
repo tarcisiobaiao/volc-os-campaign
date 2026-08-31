@@ -76,13 +76,13 @@
       "kind": "tracked_script",
       "script_path": "scripts/gate_vitest_lancamento.py",
       "args": [],
-      "description": "vitest sobre src/lib/trafego — a superfície de lançamento. Recorte declarado: a suíte inteira tem 3 falhas e 8 arquivos sem coleta, todos herdados e medidos com a árvore limpa."
+      "description": "vitest sobre os 7 arquivos que a análise de imports mostrou exercitarem a entrega (inclui o componente Lancamento e o único teste que o importa). Zero coletado é FALHA; coletar menos arquivos que os alvos declarados também, porque o filtro do vitest casa por substring e um renome sumiria em silêncio."
     },
     "sem-mutacao-google": {
       "kind": "tracked_script",
       "script_path": "scripts/gate_sem_mutacao_google.py",
       "args": [],
-      "description": "contraprova de que a trava de escrita está fechada durante os gates: FORGE_PERMITIR_ESCRITA ausente e escrita_permitida() False. Não conseguir importar o módulo é 78, nunca verde."
+      "description": "na rota produtiva testada, nenhuma mutação sai sem recibo em_voo antes: trava local fechada MAIS as 5 contraprovas focais da rota, que usam sentinela no executor e conferem ordem. NÃO é inspeção de rede, NÃO contém processos e NÃO fala de caminhos fora da rota (o CLI de volc_ads, por exemplo)."
     }
   }
 }
