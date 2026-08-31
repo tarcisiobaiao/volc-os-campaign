@@ -141,6 +141,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"  reproduza: {falha.reproducao}")
         return 3
 
+    # O aviso é parte do contrato, não decoração: quem opera precisa ver, em
+    # cada execução, que o modo local NÃO contém o filesystem e que a integração
+    # continua humana. Um risco declarado só protege se for lido.
+    if mission.runner_safety_mode == "supervised_local":
+        print("[supervised_local] worktree isolada, gates tipados, ledger com "
+              "claim/lease/fencing e revisão humana obrigatória.")
+        print("  risco residual G1b: o runner local NÃO contém o filesystem "
+              "nem a árvore de processos; não há snapshot atômico de insumos.")
+        print("  nenhuma ação externa, merge, push ou deploy é executada.")
+
     try:
         run_dir, result = run(args.repo, mission)
     except HarnessFailure as falha:

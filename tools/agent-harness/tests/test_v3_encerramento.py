@@ -335,8 +335,8 @@ class F4_HeartbeatRealmenteExercitado(unittest.TestCase):
             if chamadas["n"] >= 3:
                 break
             time.sleep(0.01)
-        saidas.append(run_gate_with_ledger(**comum, run_id="r2", worker_id="w2",
-                                           wait_seconds=0.4))
+        segundo = dict(comum, wait_seconds=0.4)
+        saidas.append(run_gate_with_ledger(**segundo, run_id="r2", worker_id="w2"))
         liberar.set()
         fio.join(timeout=30)
 

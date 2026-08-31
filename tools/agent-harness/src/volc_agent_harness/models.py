@@ -315,6 +315,18 @@ class MissionSpec(BaseModel):
     # que não declara segue pelo comando legado, explicitamente depreciado.
     # Não existe fallback silencioso.
     # ------------------------------------------------------------------
+    #: Modo de segurança do RUNNER, não do fluxo da missão — `mode` já carrega
+    #: a semântica operacional (read_only/implementation) e confundir os dois
+    #: faria uma missão read_only parecer "contida".
+    #:
+    #: `supervised_local` é o único modo que o `LocalRunner` sustenta: worktree
+    #: isolada, gates tipados, ledger com claim/lease/fencing e revisão humana
+    #: obrigatória — com o risco residual G1b VISÍVEL na evidência.
+    #: `autonomous_contained` exige contenção de filesystem, de árvore de
+    #: processos e de insumos; sem as três, é recusado antes de qualquer modelo.
+    runner_safety_mode: Literal["supervised_local", "autonomous_contained"] = (
+        "supervised_local")
+
     mission_schema_version: int = Field(default=2, ge=2, le=3)
     acceptance_ids: list[str] = Field(default_factory=list)
     ownership_envelope: list[str] = Field(default_factory=list)

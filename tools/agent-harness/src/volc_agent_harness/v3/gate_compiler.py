@@ -213,6 +213,7 @@ class ColetaContexto:
     lease_seconds: int = 600
     wait_seconds: float = 60.0
     cwd_rel: str = "."
+    runner_safety_mode: str = "supervised_local"
 
 
 def _coletados(saida: str) -> int:
@@ -276,6 +277,7 @@ def assert_pytest_collects(
         wait_seconds=ctx.wait_seconds,
         kind_prefix="collect_gate",
         cwd_rel=ctx.cwd_rel,
+        runner_safety_mode=ctx.runner_safety_mode,
         enrich_counts=lambda code, out, err: {"collected": _coletados(out)},
     )
 
