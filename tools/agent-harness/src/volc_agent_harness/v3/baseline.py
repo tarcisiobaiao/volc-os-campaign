@@ -1,0 +1,214 @@
+"""Baseline e ratchet de regressão.
+
+A lane A3 mudou o comportamento de ``/subir`` para um canal fora do canário: o
+baseline devolvia **403** e o candidato passou a devolver **409**, porque a
+validação do selo passou a preemptar a recusa de canal. Isso regrediu o aceite 1
+de P04-T09, que já estava provado e integrado.
+
+Aceite previamente verde tem precedência sobre comportamento novo. Um aceite só
+pode mudar de comportamento se a missão declarar explicitamente que o está
+regredindo — e aí a mudança é o produto, não um efeito colateral.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Sequence
+
+from .failures import FailureClass, HarnessFailure, classify_gate_exit
+
+
+@dataclass
+class BaselineRecord:
+    gate_index: int
+    argv: list[str]
+    exit_code: int
+    passed: int | None
+    failed: int | None
+    duration_s: float
+    file_digests: dict[str, str] = field(default_factory=dict)
+    observable: dict[str, Any] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "gate_index": self.gate_index,
+            "argv": self.argv,
+            "exit_code": self.exit_code,
+            "passed": self.passed,
+            "failed": self.failed,
+            "duration_s": round(self.duration_s, 3),
+            "file_digests": self.file_digests,
+            "observable": self.observable,
+        }
+
+
+#: Mudanças que são regressão até prova em contrário. A chave é o que o aceite
+#: observa; o valor é a explicação que vai no relatório.
+DIMENSOES_OBSERVAVEIS = {
+    "http_status": "código HTTP mudou",
+    "typed_error": "erro tipado mudou",
+    "validation_order": "ordem de validação mudou",
+    "absence_semantics": "ausência virou zero (ou o inverso)",
+    "header": "header observável mudou",
+    "authentication": "exigência de autenticação mudou",
+    "side_effect": "efeito lateral passou a ocorrer antes da recusa",
+}
+
+
+def digest_of(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+def _contagens(saida: str) -> tuple[int | None, int | None]:
+    passou = falhou = None
+    for linha in saida.splitlines():
+        if " passed" in linha or " failed" in linha:
+            tokens = linha.replace(",", " ").split()
+            for i, t in enumerate(tokens):
+                if t.startswith("passed") and i and tokens[i - 1].isdigit():
+                    passou = int(tokens[i - 1])
+                if t.startswith("failed") and i and tokens[i - 1].isdigit():
+                    falhou = int(tokens[i - 1])
+    return passou, falhou
+
+
+def measure(
+    *,
+    gate_index: int,
+    argv: Sequence[str],
+    tree: Path,
+    timeout: int = 1800,
+    env: dict[str, str] | None = None,
+    tracked_files: Sequence[str] = (),
+    observable: dict[str, Any] | None = None,
+) -> BaselineRecord:
+    """Mede um gate no ``base_ref``, antes do writer."""
+
+    import time
+
+    inicio = time.monotonic()
+    completed = subprocess.run(
+        list(argv),
+        cwd=tree,
+        env=env if env is not None else os.environ.copy(),
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    duracao = time.monotonic() - inicio
+    saida = f"{completed.stdout}\n{completed.stderr}"
+    passou, falhou = _contagens(saida)
+    digests = {
+        f: digest_of(tree / f) for f in tracked_files if (tree / f).is_file()
+    }
+    return BaselineRecord(
+        gate_index=gate_index,
+        argv=list(argv),
+        exit_code=completed.returncode,
+        passed=passou,
+        failed=falhou,
+        duration_s=duracao,
+        file_digests=digests,
+        observable=dict(observable or {}),
+    )
+
+
+def assert_baseline_is_green(registros: Sequence[BaselineRecord]) -> None:
+    """Uma tarefa não começa sobre baseline vermelho.
+
+    Se o gate já falha antes do writer, qualquer veredito posterior é ruído: não
+    dá para separar o que o candidato quebrou do que já estava quebrado.
+    """
+
+    vermelhos = [r for r in registros if r.exit_code != 0]
+    if vermelhos:
+        raise HarnessFailure(
+            FailureClass.BASELINE_ERROR,
+            "baseline vermelho antes do writer",
+            detalhe=", ".join(
+                f"gate {r.gate_index} exit={r.exit_code}" for r in vermelhos
+            ),
+            reproducao=" ".join(vermelhos[0].argv),
+            evidencia={"gates_vermelhos": [r.gate_index for r in vermelhos]},
+        )
+
+
+def compare(
+    *,
+    baseline: BaselineRecord,
+    candidato: BaselineRecord,
+    aceites_autorizados_a_regredir: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Compara baseline e candidato e nomeia a regressão."""
+
+    regressoes: list[dict[str, Any]] = []
+
+    if baseline.exit_code == 0 and candidato.exit_code != 0:
+        regressoes.append({
+            "dimensao": "gate_exit",
+            "antes": baseline.exit_code,
+            "depois": candidato.exit_code,
+            "explicacao": "gate era verde no baseline e ficou vermelho",
+        })
+
+    if (
+        baseline.passed is not None
+        and candidato.passed is not None
+        and candidato.passed < baseline.passed
+    ):
+        regressoes.append({
+            "dimensao": "test_count",
+            "antes": baseline.passed,
+            "depois": candidato.passed,
+            "explicacao": "menos testes passando que no baseline",
+        })
+
+    for chave, explicacao in DIMENSOES_OBSERVAVEIS.items():
+        antes = baseline.observable.get(chave)
+        depois = candidato.observable.get(chave)
+        if antes is None and depois is None:
+            continue
+        if antes != depois:
+            regressoes.append({
+                "dimensao": chave,
+                "antes": antes,
+                "depois": depois,
+                "explicacao": explicacao,
+            })
+
+    autorizadas = set(aceites_autorizados_a_regredir)
+    nao_autorizadas = [r for r in regressoes if r["dimensao"] not in autorizadas]
+
+    return {
+        "gate_index": baseline.gate_index,
+        "regressoes": regressoes,
+        "regressoes_nao_autorizadas": nao_autorizadas,
+        "regrediu": bool(nao_autorizadas),
+    }
+
+
+def assert_no_regression(comparacoes: Sequence[dict[str, Any]]) -> None:
+    """Regressão de aceite já provado não vai a reviewer — para antes."""
+
+    quebrados = [c for c in comparacoes if c["regrediu"]]
+    if not quebrados:
+        return
+    primeira = quebrados[0]["regressoes_nao_autorizadas"][0]
+    raise HarnessFailure(
+        FailureClass.BASELINE_ERROR,
+        "candidato regrediu comportamento de aceite já provado",
+        detalhe=(
+            f"gate {quebrados[0]['gate_index']}: {primeira['dimensao']} "
+            f"{primeira['antes']} -> {primeira['depois']} ({primeira['explicacao']})"
+        ),
+        reproducao="compare baseline e candidato no mesmo gate",
+        evidencia={"comparacoes": quebrados},
+    )
