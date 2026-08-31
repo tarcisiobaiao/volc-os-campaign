@@ -184,6 +184,10 @@ def classify_exception(exc: BaseException) -> FailureClass:
     texto = str(exc).lower()
     if isinstance(exc, TimeoutError) or "excedeu" in texto or "timeout" in texto:
         return FailureClass.TIMEOUT
+    if type(exc).__name__ == "GateConfigurationError":
+        return FailureClass.INFRASTRUCTURE_ERROR
+    if "overlay de node_modules recusado" in texto or "overlay de venv" in texto:
+        return FailureClass.INFRASTRUCTURE_ERROR
     if "permissionerror" in texto or "fora do escopo autorizado" in texto:
         return FailureClass.OWNERSHIP_ERROR
     if "saiu do ownership" in texto:

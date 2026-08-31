@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 import asyncio
 import json
 import secrets
@@ -29,6 +31,19 @@ from .v3.gate_compiler import ProducedPath, assert_pytest_collects, compile_gate
 from .v3.two_phase import postwriter_compile
 from .v3.workspace import assert_no_destructive_intent
 from .worktrees import WorktreeInfo, WorktreeManager
+
+
+def _ambiente_de_gate() -> dict[str, str]:
+    """Ambiente dos gates, sem bytecode.
+
+    Sem isto, o pytest deixa ``__pycache__`` na worktree e a guarda que impede
+    artefato de teste de entrar no commit dispara — corretamente, mas por um
+    motivo que não é do candidato. Toda missão batia nisso.
+    """
+
+    env = sanitized_environment()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
 
 
 def _utc_now() -> str:
@@ -264,6 +279,103 @@ def _worker_node(
     )
 
 
+def _compilar_missao(
+    *,
+    mission: MissionSpec,
+    tree: Path,
+    base_sha: str,
+    run_dir: Path,
+    writable_paths: list[str] | None = None,
+) -> dict[str, Any]:
+    """Compilação obrigatória, comum a read_only e implementation.
+
+    Nenhum adapter — investigador, reviewer ou writer — roda antes disto. Antes,
+    só o caminho de implementação compilava, e "o writer está protegido" virava
+    autoridade única do runtime.
+    """
+
+    for gate in mission.gates:
+        assert_no_destructive_intent(gate.argv)
+
+    produced = [ProducedPath(p.path, p.required) for p in mission.produced_paths]
+    gate_plan = compile_gate_plan(gates=mission.gates, tree=tree, produced=produced)
+    (run_dir / "gate-plan.json").write_text(
+        json.dumps(gate_plan, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    proposta: dict[str, Any] | None = None
+    if mission.mission_schema_version >= 3:
+        from .v3.ownership import build_proposal
+
+        proposta = build_proposal(
+            tree=tree,
+            acceptance_ids=mission.acceptance_ids,
+            symbols=mission.ownership_symbols,
+            search_roots=mission.ownership_search_roots or mission.ownership_envelope,
+            envelope=mission.ownership_envelope,
+            declared_writable=writable_paths or [],
+            produced_paths=[p.model_dump() for p in mission.produced_paths],
+        )
+        (run_dir / "ownership-proposal.json").write_text(
+            json.dumps(proposta, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        if writable_paths is not None and proposta["requires_new_authorization"]:
+            raise HarnessFailure(
+                FailureClass.OWNERSHIP_ERROR,
+                "call site material fora do envelope autorizado",
+                detalhe=", ".join(proposta["outside_envelope"][:6]),
+                reproducao="revise ownership_envelope ou reduza o escopo do aceite",
+            )
+
+    # `allowed_paths` efetivos: read_only precisa saber o que cada worker lê.
+    leitura_efetiva = sorted({
+        caminho for worker in mission.workers for caminho in worker.allowed_paths
+    })
+    compilada = {
+        "mission_id": mission.mission_id,
+        "mission_schema_version": mission.mission_schema_version,
+        "mode": mission.mode,
+        "base_sha": base_sha,
+        "lineage_root": mission.lineage_root_sha,
+        "acceptance_ids": mission.acceptance_ids,
+        "ownership_envelope": mission.ownership_envelope,
+        "read_paths": leitura_efetiva,
+        "writable_paths": writable_paths or [],
+        "suggested_writable_paths": (proposta or {}).get("suggested_writable_paths", []),
+        "produced_paths": [p.model_dump() for p in mission.produced_paths],
+        "gate_plan": gate_plan,
+        "gates_runnable_before_writer": gate_plan["runnable_before_writer"],
+        "gates_depending_on_produced": gate_plan["depends_on_produced"],
+        "routed_models": {w.id: f"{w.provider}/{w.model}" for w in mission.workers},
+        "privacy_class": "local_code_only",
+        "write_authority": "single_writer" if writable_paths else "read_only",
+        "integration_policy": "human_merge_only",
+    }
+    (run_dir / "compiled-mission.json").write_text(
+        json.dumps(compilada, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return compilada
+
+
+def _registrar_evidencia(run_dir: Path, entradas: list[dict[str, Any]]) -> None:
+    (run_dir / "evidence.json").write_text(
+        json.dumps(entradas, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def _registrar_falha(run_dir: Path, exc: BaseException) -> dict[str, Any]:
+    from .v3.failures import classify_exception
+
+    if isinstance(exc, HarnessFailure):
+        registro = exc.as_dict()
+    else:
+        registro = HarnessFailure(classify_exception(exc), str(exc)[:300]).as_dict()
+    (run_dir / "failure.json").write_text(
+        json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return registro
+
+
 async def _run_read_only_mission(
     repo: Path, mission: MissionSpec
 ) -> tuple[Path, dict[str, Any]]:
@@ -295,6 +407,16 @@ async def _run_read_only_mission(
     (run_dir / "metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+    # Compilação obrigatória também no read_only. Investigadores e reviewers
+    # gastam modelo igual; não há razão para eles escaparem do compilador.
+    try:
+        _compilar_missao(
+            mission=mission, tree=repo, base_sha=base_sha, run_dir=run_dir,
+        )
+    except BaseException as exc:
+        _registrar_falha(run_dir, exc)
+        raise
 
     worktrees = {
         worker.id: manager.create(run_id, worker.id, base_sha)
@@ -439,75 +561,71 @@ async def _run_implementation_mission(
     # rodavam, virando RuntimeError genérico. Um gate que cita arquivo
     # inexistente agora recusa a missão em milissegundos, com classe tipada.
     # ------------------------------------------------------------------
-    produced = [
-        ProducedPath(p.path, p.required) for p in mission.produced_paths
-    ]
-    for gate in mission.gates:
-        assert_no_destructive_intent(gate.argv)
-    gate_plan = compile_gate_plan(
-        gates=mission.gates, tree=writer_worktree.path, produced=produced
-    )
-    (run_dir / "gate-plan.json").write_text(
-        json.dumps(gate_plan, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    if mission.mission_schema_version >= 3:
-        from .v3.ownership import build_proposal
-
-        proposta = build_proposal(
+    # Toda falha da fase pré-writer também vira failure.json. Antes, um baseline
+    # vermelho ou um gate inválido escapava sem artefato, e o operador ficava com
+    # traceback em vez de classe tipada.
+    try:
+        compilada = _compilar_missao(
+            mission=mission,
             tree=writer_worktree.path,
-            acceptance_ids=mission.acceptance_ids,
-            symbols=mission.ownership_symbols,
-            search_roots=mission.ownership_search_roots or mission.ownership_envelope,
-            envelope=mission.ownership_envelope,
-            declared_writable=writer.effective_writable_paths,
-            produced_paths=[p.model_dump() for p in mission.produced_paths],
+            base_sha=base_sha,
+            run_dir=run_dir,
+            writable_paths=list(writer.effective_writable_paths),
         )
-        (run_dir / "ownership-proposal.json").write_text(
-            json.dumps(proposta, ensure_ascii=False, indent=2), encoding="utf-8"
+        produced = [ProducedPath(p.path, p.required) for p in mission.produced_paths]
+
+        # BASELINE antes do writer: gate que já era vermelho no base não pode ser
+        # cobrado do candidato, e comportamento já provado tem precedência.
+        from .v3.baseline import assert_baseline_is_green, measure
+
+        baseline_records = []
+        # O overlay de node só entra se algum gate for de frontend. Exigir lockfile
+        # numa missão puramente Python transformava infraestrutura ausente em erro
+        # de missão.
+        precisa_node = any(
+            g["kind"] in {"vitest", "tsc", "vite"}
+            for g in compilada["gate_plan"]["gates"]
         )
-        if proposta["requires_new_authorization"]:
-            raise HarnessFailure(
-                FailureClass.OWNERSHIP_ERROR,
-                "call site material fora do envelope autorizado",
-                detalhe=", ".join(proposta["outside_envelope"][:6]),
-                reproducao="revise ownership_envelope ou reduza o escopo do aceite",
-                evidencia={"proposal_path": str(run_dir / "ownership-proposal.json")},
-            )
-        (run_dir / "compiled-mission.json").write_text(
-            json.dumps({
-                "mission_id": mission.mission_id,
-                "mission_schema_version": mission.mission_schema_version,
-                "base_sha": base_sha,
-                "lineage_root": mission.lineage_root_sha,
-                "acceptance_ids": mission.acceptance_ids,
-                "ownership_envelope": mission.ownership_envelope,
-                "writable_paths": writer.effective_writable_paths,
-                "suggested_writable_paths": proposta["suggested_writable_paths"],
-                "produced_paths": [p.model_dump() for p in mission.produced_paths],
-                "gate_plan": gate_plan,
-                "gates_runnable_before_writer": gate_plan["runnable_before_writer"],
-                "gates_depending_on_produced": gate_plan["depends_on_produced"],
-                "routed_models": {
-                    w.id: f"{w.provider}/{w.model}" for w in mission.workers
-                },
-                "privacy_class": "local_code_only",
-                "write_authority": "single_writer",
-                "integration_policy": "human_merge_only",
-            }, ensure_ascii=False, indent=2),
+        node_ctx = (
+            project_node_modules_overlay(worktree=writer_worktree.path)
+            if precisa_node else contextlib.nullcontext()
+        )
+        with project_venv_overlay(repo=repo, worktree=writer_worktree.path), node_ctx:
+            for compilado in compilada["gate_plan"]["gates"]:
+                if compilado["index"] not in compilada["gates_runnable_before_writer"]:
+                    continue
+                resolvido = resolve_gate_argv(
+                    compilado["argv"], repo=repo, worktree=writer_worktree.path
+                )
+                baseline_records.append(measure(
+                    gate_index=compilado["index"],
+                    argv=resolvido.argv,
+                    tree=writer_worktree.path,
+                    timeout=compilado["timeout_seconds"],
+                    env=_ambiente_de_gate(),
+                ))
+        (run_dir / "baseline.json").write_text(
+            json.dumps([r.as_dict() for r in baseline_records], ensure_ascii=False,
+                       indent=2),
             encoding="utf-8",
         )
-    for compilado in gate_plan["gates"]:
-        if compilado["kind"] == "pytest" and compilado["runnable_before_writer"]:
-            from .v3.gate_compiler import CompiledGate
+        assert_baseline_is_green(baseline_records)
 
-            assert_pytest_collects(
-                CompiledGate(**{
-                    k: v for k, v in compilado.items()
-                    if k in CompiledGate.__dataclass_fields__
-                }),
-                tree=writer_worktree.path,
-                env=sanitized_environment(),
-            )
+        for compilado in compilada["gate_plan"]["gates"]:
+            if compilado["kind"] == "pytest" and compilado["runnable_before_writer"]:
+                from .v3.gate_compiler import CompiledGate
+
+                assert_pytest_collects(
+                    CompiledGate(**{
+                        k: v for k, v in compilado.items()
+                        if k in CompiledGate.__dataclass_fields__
+                    }),
+                    tree=writer_worktree.path,
+                    env=_ambiente_de_gate(),
+                )
+    except BaseException as exc:
+        _registrar_falha(run_dir, exc)
+        raise
 
     writer_started = _utc_now()
     try:
@@ -530,7 +648,7 @@ async def _run_implementation_mission(
             changed_paths=changed_paths,
             writable_paths=writer.effective_writable_paths,
             gates=mission.gates,
-            env=sanitized_environment(),
+            env=_ambiente_de_gate(),
             collect=True,
         )
         (run_dir / "postwriter-report.json").write_text(
@@ -540,8 +658,16 @@ async def _run_implementation_mission(
 
         gate_results = []
         gate_overlay_provenance: dict[str, object] | None = None
+        gates_node = any(
+            g["kind"] in {"vitest", "tsc", "vite"}
+            for g in compilada["gate_plan"]["gates"]
+        )
+        node_ctx_gates = (
+            project_node_modules_overlay(worktree=writer_worktree.path)
+            if gates_node else contextlib.nullcontext()
+        )
         with project_venv_overlay(repo=repo, worktree=writer_worktree.path), \
-                project_node_modules_overlay(worktree=writer_worktree.path) as node_overlay:
+                node_ctx_gates as node_overlay:
             if node_overlay is not None:
                 gate_overlay_provenance = node_overlay
             for index, gate in enumerate(mission.gates, start=1):
@@ -553,7 +679,7 @@ async def _run_implementation_mission(
                 completed = subprocess.run(
                     resolved_gate.argv,
                     cwd=writer_worktree.path,
-                    env=sanitized_environment(),
+                    env=_ambiente_de_gate(),
                     check=False,
                     capture_output=True,
                     text=True,
@@ -591,15 +717,47 @@ async def _run_implementation_mission(
             writer_worktree.path, writer.effective_writable_paths
         )
         if changed_paths_after_gates != changed_paths:
-            raise RuntimeError(
-                "os gates alteraram a árvore; artefatos de teste não podem entrar no commit"
+            novos = sorted(set(changed_paths_after_gates) - set(changed_paths))
+            sumidos = sorted(set(changed_paths) - set(changed_paths_after_gates))
+            raise HarnessFailure(
+                FailureClass.INFRASTRUCTURE_ERROR,
+                "os gates alteraram a árvore; artefatos de teste não podem entrar no commit",
+                detalhe=f"surgiram: {novos or '—'} | sumiram: {sumidos or '—'}",
+                reproducao="acrescente -p no:cacheprovider e PYTHONDONTWRITEBYTECODE=1 ao gate",
             )
+        _registrar_evidencia(run_dir, [
+            {
+                "acceptance_ids": mission.acceptance_ids,
+                "kind": f"gate_{g['index']}",
+                "command": " ".join(g["argv"]),
+                "exit_code": g["returncode"],
+                "base_sha": base_sha,
+                "status": "NEW_EVIDENCE",
+            }
+            for g in gate_results
+        ])
         writer_sha = manager.commit_writer(
             writer_worktree.path,
             mission.commit_message or mission.title,
             changed_paths,
         )
         manager.assert_clean(writer_worktree.path)
+        (run_dir / "harvest.json").write_text(
+            json.dumps({
+                "sha": writer_sha,
+                "branch": writer_worktree.branch,
+                "files": changed_paths,
+                "ownership_respected": True,
+                "green_gates": [g["index"] for g in gate_results
+                                if g["returncode"] == 0],
+                "red_gate": None,
+                "failure_class": "",
+                "findings": [],
+                "next_minimal_step": "revisão adversarial",
+                "supersedes": [],
+            }, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
         writer_record: dict[str, Any] = {
             "worker_id": writer.id,
             "provider": writer.provider,
@@ -615,6 +773,9 @@ async def _run_implementation_mission(
             "result": writer_result,
         }
     except Exception as error:
+        # failure.json tipado, e NENHUM harvest falso: colheita só nasce de
+        # trabalho realmente commitado.
+        _registrar_falha(run_dir, error)
         writer_record = {
             "worker_id": writer.id,
             "provider": writer.provider,
@@ -682,6 +843,44 @@ async def _run_implementation_mission(
             for finding in record.get("result", {}).get("confirmed_findings", [])
             if finding.get("severity") in {"critical", "high"}
         ]
+        # Adjudicação V3: contraprova executável vence checklist. A força vem
+        # da presença de reprodução e de findings confirmados, não do provider.
+        from .v3.adjudication import Forca, Parecer, adjudicar
+
+        pareceres = []
+        for record in review_records:
+            resultado = record.get("result", {}) or {}
+            veredito = resultado.get("verdict") or (
+                "accept" if record.get("ok") else "blocked"
+            )
+            achados = resultado.get("confirmed_findings", []) or []
+            tem_reproducao = any(
+                f.get("evidence") or f.get("reproduction") for f in achados
+            )
+            if tem_reproducao:
+                forca = Forca.CONTRAPROVA_EXECUTAVEL
+            elif achados:
+                forca = Forca.EVIDENCIA_FILE_LINE
+            elif record.get("ok"):
+                forca = Forca.REVISAO_SEM_EXECUCAO
+            else:
+                forca = Forca.CHECKLIST
+            pareceres.append(Parecer(
+                reviewer=record.get("worker_id", "?"),
+                provider=record.get("provider", "?"),
+                veredito=veredito if veredito in {"accept", "changes_requested", "blocked"}
+                else "changes_requested",
+                forca=forca,
+                resumo=str(resultado.get("summary", ""))[:200],
+                reproducao=str((achados[0].get("evidence") if achados else "") or "")[:200],
+            ))
+        adjudicacao = adjudicar(pareceres) if pareceres else {
+            "veredito": "BLOQUEADO", "motivo": "nenhum parecer", "pareceres": []
+        }
+        (run_dir / "adjudication.json").write_text(
+            json.dumps(adjudicacao, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
         if any(not record.get("ok") for record in review_records) or "blocked" in verdicts:
             candidate_status = "blocked"
         elif "changes_requested" in verdicts or severe_findings:
@@ -696,6 +895,7 @@ async def _run_implementation_mission(
             "candidate_status": candidate_status,
             "changed_paths": changed_paths,
             "governance_status": "pending_single_curator",
+            "adjudication": adjudicacao,
             "curation_handoff": writer_result.get("curation_handoff"),
             "workers": all_records,
             "worktrees": {
