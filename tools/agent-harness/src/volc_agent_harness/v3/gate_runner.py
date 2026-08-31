@@ -164,6 +164,7 @@ def run_gate_with_ledger(
     binding_digest: str = "",
     lease_seconds: int = 900,
     wait_seconds: float = 30.0,
+    kind_prefix: str = "gate",
 ) -> GateOutcome:
     """identidade → claim → (reuso | execução) → conclusão fenced. Nunca o inverso."""
 
@@ -173,7 +174,7 @@ def run_gate_with_ledger(
         acceptance_id=acceptance_id, gate_index=gate_index, argv=argv,
         context_digest=context_digest, production_digest=production_digest,
         test_digest=test_digest, env_fingerprint=env_fingerprint,
-        binding_digest=binding_digest,
+        binding_digest=binding_digest, kind_prefix=kind_prefix,
     )
 
     # 1. CLAIM ANTES. `lookup` responde uma pergunta; só o claim reserva.

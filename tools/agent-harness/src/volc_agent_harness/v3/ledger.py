@@ -253,6 +253,7 @@ class GateIdentity:
         acceptance_id: str,
         gate_index: int,
         argv: Sequence[str],
+        kind_prefix: str = "gate",
         context_digest: str,
         production_digest: str,
         test_digest: str,
@@ -263,7 +264,7 @@ class GateIdentity:
         del cwd    # gravado como metadado, nunca como identidade — ver _input_digest
         return GateIdentity(
             acceptance_id=acceptance_id,
-            kind=f"gate_{gate_index}",
+            kind=f"{kind_prefix}_{gate_index}",
             context_digest=context_digest,
             production_digest=production_digest,
             test_digest=test_digest,

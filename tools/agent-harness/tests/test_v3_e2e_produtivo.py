@@ -58,13 +58,16 @@ def _runs(repo: Path) -> list[Path]:
                   key=lambda p: p.name) if raiz.is_dir() else []
 
 
-def _evidencias(repo: Path) -> list[dict]:
+def _evidencias(repo: Path, *, prefixo: str = "gate_") -> list[dict]:
+    """Evidências do ledger. O baseline tem `kind` próprio e não se mistura."""
+
     banco = repo / "tools" / "agent-harness" / "evidence-ledger.sqlite"
     if not banco.is_file():
         return []
     with sqlite3.connect(banco) as c:
         c.row_factory = sqlite3.Row
-        return [dict(r) for r in c.execute("SELECT * FROM evidence ORDER BY id")]
+        return [dict(r) for r in c.execute(
+            "SELECT * FROM evidence WHERE kind LIKE ? ORDER BY id", (prefixo + "%",))]
 
 
 class _E2E(unittest.TestCase):
@@ -128,6 +131,10 @@ class CadeiaCompleta(_E2E):
         linhas = _evidencias(self.repo)
         self.assertEqual(len(linhas), 1)
         self.assertEqual(linhas[0]["exit_code"], 0)
+        base = _evidencias(self.repo, prefixo="baseline_gate_")
+        self.assertEqual(len(base), 1, "o baseline também é reivindicado e gravado")
+        self.assertNotEqual(base[0]["input_digest"], linhas[0]["input_digest"],
+                            "baseline e candidato não podem colidir na identidade")
 
     def test_writer_e_reviewer_chamados_uma_vez_e_na_ordem(self):
         codigo, saida = self._rodar()
@@ -246,23 +253,88 @@ class CadeiaCompleta(_E2E):
 class SemCaminhoParalelo(unittest.TestCase):
     """O runtime não pode ter dois jeitos de executar gate."""
 
-    def test_nenhum_modulo_produtivo_executa_gate_fora_do_ledger(self):
+    #: Módulos do caminho produtivo que NÃO podem executar nada por conta
+    #: própria. `mission.py` é o runtime; `pipeline.py` é o entrypoint de
+    #: `volc-harness compile`.
+    #:
+    #: `baseline.measure` continua tendo `subprocess.run` — mas o runtime não o
+    #: chama mais (ver `test_runtime_nao_mede_baseline_fora_do_ledger`). Ele
+    #: sobrou como primitiva de biblioteca consumida por `pipeline.run_baseline`,
+    #: que hoje nenhum entrypoint alcança. É candidato de inventário, não lixo
+    #: comprovado: some numa limpeza com evidência, não no meio desta entrega.
+    SEM_SUBPROCESS = ("mission.py", "v3/pipeline.py")
+
+    def _subprocess_runs(self, modulo: str) -> list[tuple[str, int]]:
         import ast
 
         fonte_dir = Path(__file__).resolve().parents[1] / "src" / "volc_agent_harness"
-        ofensores: list[str] = []
-        for modulo in ("mission.py", "v3/pipeline.py"):
-            arvore = ast.parse((fonte_dir / modulo).read_text(encoding="utf-8"))
-            for no in ast.walk(arvore):
-                if not isinstance(no, ast.Call):
-                    continue
-                alvo = no.func
-                if (isinstance(alvo, ast.Attribute) and alvo.attr == "run"
-                        and isinstance(alvo.value, ast.Name)
-                        and alvo.value.id == "subprocess"):
-                    ofensores.append(f"{modulo}:{no.lineno}")
+        arvore = ast.parse((fonte_dir / modulo).read_text(encoding="utf-8"))
+        achados = []
+        for no in ast.walk(arvore):
+            if not isinstance(no, ast.Call):
+                continue
+            alvo = no.func
+            if (isinstance(alvo, ast.Attribute) and alvo.attr == "run"
+                    and isinstance(alvo.value, ast.Name)
+                    and alvo.value.id == "subprocess"):
+                achados.append((modulo, no.lineno))
+        return achados
+
+    def test_nenhum_modulo_produtivo_executa_gate_fora_do_ledger(self):
+        ofensores = [x for m in self.SEM_SUBPROCESS for x in self._subprocess_runs(m)]
         self.assertEqual(ofensores, [],
                          "execução de gate fora do ledger ainda existe")
+
+    def test_runtime_nao_mede_baseline_fora_do_ledger(self):
+        """`measure` sumiu do runtime; o que sobrou é biblioteca sem chamador."""
+
+        fonte_dir = Path(__file__).resolve().parents[1] / "src" / "volc_agent_harness"
+        runtime = (fonte_dir / "mission.py").read_text(encoding="utf-8")
+        self.assertNotIn("measure(", runtime)
+        self.assertNotIn("import measure", runtime)
+
+        alcancado = [
+            arquivo.name
+            for arquivo in fonte_dir.rglob("*.py")
+            if arquivo.name not in {"pipeline.py", "baseline.py"}
+            and "run_baseline(" in arquivo.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(alcancado, [],
+                         f"pipeline.run_baseline ganhou chamador: {alcancado}")
+
+    def test_baseline_do_runtime_passa_pelo_claim(self):
+        """Medir o base é executar. Dois runs simultâneos mediriam duas vezes."""
+
+        import inspect
+
+        import volc_agent_harness.mission as mission_mod
+
+        fonte = inspect.getsource(mission_mod._run_implementation_mission)
+        antes_do_writer = fonte.split("await adapter_for(writer.provider).run")[0]
+        self.assertIn("run_gate_with_ledger(", antes_do_writer,
+                      "o baseline precisa reivindicar antes de medir")
+        self.assertIn('production_digest=f"baseline:', antes_do_writer,
+                      "baseline e candidato não podem colidir na mesma identidade")
+
+    def test_sonda_de_coleta_e_o_unico_subprocess_tolerado(self):
+        """`--collect-only` não emite veredito sobre o candidato.
+
+        Ele responde "este gate coleta algum teste?" — uma pergunta sobre a
+        ESPECIFICAÇÃO, não sobre o mérito do código. Por isso continua fora do
+        ledger, e por isso a exceção é nomeada aqui em vez de ficar implícita.
+        """
+
+        achados = self._subprocess_runs("v3/gate_compiler.py")
+        self.assertEqual(len(achados), 1, f"subprocess inesperado: {achados}")
+
+        import inspect
+
+        from volc_agent_harness.v3 import gate_compiler
+
+        fonte = inspect.getsource(gate_compiler.assert_pytest_collects)
+        self.assertIn("subprocess.run(", fonte)
+        self.assertIn("--collect-only", " ".join(
+            gate_compiler.assert_pytest_collects.__doc__.split()))
 
 
 if __name__ == "__main__":

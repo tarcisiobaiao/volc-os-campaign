@@ -673,8 +673,33 @@ async def _run_implementation_mission(
 
         # BASELINE antes do writer: gate que já era vermelho no base não pode ser
         # cobrado do candidato, e comportamento já provado tem precedência.
-        from .v3.baseline import assert_baseline_is_green, measure
+        #
+        # E o baseline TAMBÉM passa pelo ledger. `baseline.measure` executa o
+        # gate com subprocess direto; usá-lo aqui deixava um segundo caminho
+        # produtivo de execução de gate fora do claim — duas missões
+        # simultâneas sobre o mesmo base mediriam o mesmo baseline duas vezes,
+        # fisicamente. A identidade é própria (`kind="baseline_gate_N"`) e o
+        # digest de produção é o da ÁRVORE BASE, não o do candidato: baseline e
+        # gate do candidato são experimentos diferentes e não podem colidir.
+        from .v3.baseline import BaselineRecord, assert_baseline_is_green
+        from .v3.ledger import (
+            EvidenceLedger, context_digest, digest_files, env_fingerprint,
+        )
 
+        ledger = EvidenceLedger(
+            repo / "tools" / "agent-harness" / "evidence-ledger.sqlite"
+        )
+        aceite = (mission.acceptance_ids or ["sem-aceite"])[0]
+        ambiente = _ambiente_de_gate()
+        fp = env_fingerprint(ambiente)
+        ctx = context_digest(
+            acceptance_text="|".join(mission.acceptance_ids),
+            base_sha=base_sha,
+            candidate_sha=None,
+            lineage_root=mission.lineage_root_sha,
+            toolchain=toolchain,
+            manifests={},
+        )
         baseline_records = []
         # O overlay de node só entra se algum gate for de frontend. Exigir lockfile
         # numa missão puramente Python transformava infraestrutura ausente em erro
@@ -688,12 +713,36 @@ async def _run_implementation_mission(
             for gate in resolvidos:
                 if not gate.runnable_before_writer:
                     continue
-                baseline_records.append(measure(
+                base_digest = digest_files(
+                    writer_worktree.path, gate.referenced_paths or ["."])
+                medida = run_gate_with_ledger(
                     gate_index=gate.index,
                     argv=gate.argv,
-                    tree=writer_worktree.path,
+                    worktree=writer_worktree.path,
+                    env=ambiente,
                     timeout=gate.timeout_seconds,
-                    env=_ambiente_de_gate(),
+                    ledger=ledger,
+                    acceptance_id=aceite,
+                    base_sha=base_sha,
+                    candidate_sha=None,
+                    context_digest=ctx,
+                    env_fingerprint=fp,
+                    production_digest=f"baseline:{base_digest}",
+                    test_digest=f"baseline:{base_digest}",
+                    run_id=run_id,
+                    worker_id=f"baseline/{writer.id}",
+                    binding_digest=gate.binding.digest(),
+                    kind_prefix="baseline_gate",
+                    lease_seconds=gate.timeout_seconds + 120,
+                    wait_seconds=float(min(120, gate.timeout_seconds)),
+                )
+                baseline_records.append(BaselineRecord(
+                    gate_index=gate.index,
+                    argv=list(gate.argv),
+                    exit_code=medida.exit_code,
+                    passed=None,
+                    failed=None,
+                    duration_s=medida.duration_s,
                 ))
         (run_dir / "baseline.json").write_text(
             json.dumps([r.as_dict() for r in baseline_records], ensure_ascii=False,
@@ -763,25 +812,9 @@ async def _run_implementation_mission(
         # ledger é a única porta de execução — `run_gate_with_ledger` reivindica,
         # executa e conclui sob fencing, e só então o chamador decide levantar.
         # ------------------------------------------------------------------
-        from .v3.ledger import (
-            EvidenceLedger, context_digest, digest_files, env_fingerprint,
-        )
-
-        ledger = EvidenceLedger(
-            repo / "tools" / "agent-harness" / "evidence-ledger.sqlite"
-        )
-        aceite = (mission.acceptance_ids or ["sem-aceite"])[0]
+        # `ledger`, `aceite`, `ambiente`, `fp` e `ctx` já nasceram na fase do
+        # baseline — o mesmo contexto material vale para os dois momentos.
         prod_digest = digest_files(writer_worktree.path, changed_paths)
-        ambiente = _ambiente_de_gate()
-        fp = env_fingerprint(ambiente)
-        ctx = context_digest(
-            acceptance_text="|".join(mission.acceptance_ids),
-            base_sha=base_sha,
-            candidate_sha=None,
-            lineage_root=mission.lineage_root_sha,
-            toolchain=toolchain,
-            manifests={},
-        )
 
         gate_results: list[dict[str, Any]] = []
         entradas_evidencia: list[dict[str, Any]] = []
