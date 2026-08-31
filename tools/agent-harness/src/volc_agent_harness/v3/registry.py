@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .failures import FailureClass, HarnessFailure
+from .ledger import _conectar
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS worktrees (
@@ -54,10 +55,15 @@ class WorktreeRegistry:
         # implícito do sqlite3 só dispara no primeiro DML — e o SELECT de
         # verificação viria ANTES dele, deixando uma janela real entre checar e
         # inserir. Aqui o BEGIN IMMEDIATE é explícito e vem primeiro.
-        c = sqlite3.connect(self.path, timeout=30.0, isolation_level=None)
-        c.row_factory = sqlite3.Row
-        c.execute("PRAGMA journal_mode=WAL")
-        return c
+        #
+        # O WAL é NEGOCIADO, não imposto: `PRAGMA journal_mode=WAL` pede lock
+        # exclusivo e o busy handler do SQLite não é acionado em todos os
+        # caminhos dessa troca. Impor a cada conexão fazia duas inicializações
+        # simultâneas colidirem com `OperationalError: database is locked` —
+        # era isso que deixava `test_E_duas_inicializacoes_concorrentes`
+        # intermitente, e "inicialização concorrente provada" era uma prova que
+        # falhava em ~40% das execuções.
+        return _conectar(self.path)
 
     def claim(
         self, *, worktree: str, mission_id: str, branch: str, base_sha: str,
