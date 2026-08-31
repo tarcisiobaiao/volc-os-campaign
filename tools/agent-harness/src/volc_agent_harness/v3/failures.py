@@ -17,7 +17,7 @@ from typing import Any, Mapping
 
 
 class FailureClass(str, Enum):
-    """Dez classes. O destino e a política de retry derivam da classe."""
+    """Onze classes. O destino e a política de retry derivam da classe."""
 
     SPEC_ERROR = "SPEC_ERROR"
     OWNERSHIP_ERROR = "OWNERSHIP_ERROR"
@@ -29,6 +29,7 @@ class FailureClass(str, Enum):
     AUTHORIZATION_BLOCK = "AUTHORIZATION_BLOCK"
     TRANSIENT_PROVIDER_ERROR = "TRANSIENT_PROVIDER_ERROR"
     STALE_INPUT = "STALE_INPUT"
+    LEGACY_PATH_DISABLED = "LEGACY_PATH_DISABLED"
 
 
 #: Para onde a falha volta. ``None`` significa decisão humana.
@@ -46,6 +47,10 @@ DESTINO: Mapping[FailureClass, str | None] = {
     # "conserta" isso com writer: ou recompila contra o mundo de agora, ou
     # alguém alterou um insumo auditado no meio do caminho.
     FailureClass.STALE_INPUT: "mission_compiler",
+    # Segunda implementação executável de um caminho já migrado. Não é
+    # falha do candidato nem do ambiente: é alguém chamando a porta que
+    # foi desligada, e a decisão de reabrir é humana.
+    FailureClass.LEGACY_PATH_DISABLED: None,
 }
 
 #: Quantas vezes o harness pode relançar um writer para esta classe.
@@ -60,6 +65,7 @@ MAX_RETRIES: Mapping[FailureClass, int] = {
     FailureClass.AUTHORIZATION_BLOCK: 0,
     FailureClass.TRANSIENT_PROVIDER_ERROR: 1,
     FailureClass.STALE_INPUT: 0,
+    FailureClass.LEGACY_PATH_DISABLED: 0,
 }
 
 

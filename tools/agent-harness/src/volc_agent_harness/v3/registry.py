@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .failures import FailureClass, HarnessFailure
-from .ledger import _conectar
+from .sqlite_support import conectar
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS worktrees (
@@ -63,7 +63,11 @@ class WorktreeRegistry:
         # era isso que deixava `test_E_duas_inicializacoes_concorrentes`
         # intermitente, e "inicialização concorrente provada" era uma prova que
         # falhava em ~40% das execuções.
-        return _conectar(self.path)
+        #
+        # A conexão mora em `sqlite_support`, API interna pública: importar
+        # `_conectar` privado do ledger era acoplamento que ninguém vê até
+        # alguém renomear o símbolo.
+        return conectar(self.path)
 
     def claim(
         self, *, worktree: str, mission_id: str, branch: str, base_sha: str,
