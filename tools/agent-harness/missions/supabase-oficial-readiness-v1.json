@@ -1,0 +1,131 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "supabase-oficial-readiness-v1",
+  "title": "Readiness do Supabase oficial: verificador read-only, dois planos e pacote de aplicação",
+  "base_ref": "PLACEHOLDER",
+  "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
+  "mode": "implementation",
+  "commit_message": "feat(readiness): verificador read-only do Supabase oficial, com os cinco estados distintos",
+  "acceptance_ids": [
+    "P09-T01-A1",
+    "P09-T01-A2",
+    "P09-T01-A3"
+  ],
+  "ownership_envelope": [
+    "scripts",
+    "docs/evidence"
+  ],
+  "task_ids": [
+    "P09-T01",
+    "P05-T11"
+  ],
+  "authorized_external_providers": [
+    "anthropic",
+    "google_gemini"
+  ],
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "ratchet": {
+    "enabled": true,
+    "max_writer_attempts": 2,
+    "max_review_rounds": 2,
+    "max_wall_seconds": 14400,
+    "no_progress_limit": 2
+  },
+  "produced_paths": [
+    {
+      "path": "scripts/verificar_readiness_supabase.py",
+      "required": true
+    },
+    {
+      "path": "docs/evidence/supabase-readiness/PACOTE-DE-APLICACAO.md",
+      "required": true
+    }
+  ],
+  "briefing": "READINESS DO SUPABASE OFICIAL. Você escreve CÓDIGO E DOCUMENTAÇÃO LOCAIS. Você NÃO fala com banco nenhum: seu sandbox não tem rede, e a consulta ao Supabase oficial é executada depois, por um gate local controlado, fora do seu alcance. Você também NÃO recebe credencial — nenhuma variável de Supabase entra no seu ambiente, e nenhum valor de segredo pode aparecer no que você escrever.\n\nAUTORIDADE ÚNICA do produto: https://database.agenciavolc.com.br/ . Qualquer *.supabase.co é consumidor legado, nunca fallback.\n\nO QUE EXISTE HOJE, e o que está errado nele:\n· supabase/migrations/v10_01_intencao_e_lote.sql e v10_02_autogestao.sql — não aplicadas;\n· supabase/migrations/v10_03_recibo_atomico.sql e v10_03_rollback.sql — não aplicadas; fecham o defeito de segundo recibo em voo;\n· docs/closure/search-production-closure-v1/PREFLIGHT-SUPABASE-OFICIAL.md — escrito à mão e com DEFEITOS que esta missão corrige.\n\nDEFEITOS A CORRIGIR NO PREFLIGHT (cada um é um aceite):\n1. o SHA-256 da v10_03 aparece como placeholder '(ver README.md da pasta)' — calcule e escreva o valor real, e escreva também o do rollback;\n2. ele trata a série como um bloco só. Separe DOIS planos: SEARCH MÍNIMO = v10_01 + v10_03; COMPLETO = v10_01 + v10_02 + v10_03. A v10_02 é autogestão T1 e não participa do caminho /subir;\n3. a contraprova pós-aplicação espera 19 tabelas — número do plano COMPLETO. No plano mínimo são só as da v10_01. Dê a contagem correta de cada plano, derivada dos arquivos, não chutada;\n4. ele fixa o IP 178.156.196.149 e um caminho de chave SSH pessoal como autoridade. Troque por referência configurável e sanitizada; o IP e o caminho pessoal não podem ser a autoridade escrita no documento.\n\nO QUE VOCÊ IMPLEMENTA — um verificador read-only, em Python, em scripts/verificar_readiness_supabase.py:\n· lê SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY do ambiente do PRÓPRIO PROCESSO (quem injeta é o gate, não você). Se faltarem, o estado é AUTH_OR_NETWORK_FAILURE — NUNCA NOT_APPLIED;\n· antes de qualquer consulta, prova que o hostname normalizado de SUPABASE_URL é exatamente database.agenciavolc.com.br, e ABORTA se não for. Nunca imprime a URL completa, a chave, nem parte delas;\n· executa SOMENTE leitura: catálogo de tabelas, colunas, funções e assinaturas, triggers, índices, constraints, grants, RLS/FORCE RLS, policies, views e security_invoker. Nenhum INSERT, UPDATE, DELETE, DDL ou RPC mutável — e o próprio script deve recusar qualquer statement que não comece por SELECT/WITH;\n· classifica o estado em EXATAMENTE um destes, e a distinção é o produto: NOT_APPLIED, PARTIAL, APPLIED_INTEGRAL, INCOMPATIBLE_DRIFT, AUTH_OR_NETWORK_FAILURE;\n· ⚠️ REGRA DURA: falha de leitura, timeout, 401, 403 ou DNS NUNCA viram NOT_APPLIED. Não conseguir olhar não é um fato sobre o banco; é um fato sobre nós. Colapsar os dois é o defeito que este projeto inteiro existe para não repetir;\n· distingue, no relatório: zero medido, ausente, não aplicável, vazio confirmado e falha — cinco estados, nunca quatro;\n· compara o observado com o esperado derivado dos ARQUIVOS de migration (não de uma lista digitada à mão) e emite o diff esperado × observado;\n· prova, por consulta, que anon e authenticated não executam as funções do ledger, e registra o resultado;\n· grava um recibo local sanitizado em docs/evidence/supabase-readiness/ — sem URL completa, sem chave, sem host, sem token. Se você não conseguir garantir que um campo é seguro, ele não entra no recibo.\n\nVOCÊ TAMBÉM ESCREVE, em docs/evidence/supabase-readiness/:\n· o pacote exato de BACKUP, APPLY, VERIFY e ROLLBACK para cada um dos dois planos, com comandos idempotentes;\n· a prova de que service_role nunca alcança o frontend — cite onde no código isso é garantido, e o que aconteceria se deixasse de ser.\n\nPROIBIDO: qualquer escrita no banco; aplicar migration; imprimir ou persistir segredo; hardcodar IP ou caminho pessoal como autoridade; escrever fora de scripts/verificar_readiness_supabase.py e docs/evidence/supabase-readiness/; transformar falha de leitura em ausência.",
+  "gates": [
+    {
+      "kind": "git_diff_check"
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "verificar-segredos",
+      "timeout_seconds": 600
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "autoridade-supabase",
+      "timeout_seconds": 600
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "ledger-v10-03",
+      "timeout_seconds": 2400
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "sem-mutacao-google",
+      "timeout_seconds": 600
+    }
+  ],
+  "workers": [
+    {
+      "id": "gemini-writer-readiness",
+      "provider": "gemini",
+      "model": "gemini-3.7-flash",
+      "role": "writer",
+      "effort": "high",
+      "lens": "Complete o que falta e conserte o que esta errado. A distincao entre 'nao aplicado' e 'nao consegui ler' e o produto desta missao.",
+      "allowed_paths": [
+        "scripts",
+        "docs/evidence",
+        "docs/closure/search-production-closure-v1",
+        "supabase/migrations"
+      ],
+      "writable_paths": [
+        "scripts/verificar_readiness_supabase.py",
+        "docs/evidence"
+      ]
+    },
+    {
+      "id": "codex-sol-revisor-readiness",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Refute. Existe caminho em que falha de leitura vira NOT_APPLIED? Algum statement escapa do SELECT/WITH? Algum campo do recibo pode conter segredo? A guarda de hostname pode ser burlada por URL com credencial embutida, porta ou maiuscula?",
+      "allowed_paths": [
+        "scripts",
+        "docs/evidence",
+        "supabase/migrations"
+      ]
+    },
+    {
+      "id": "codex-55-revisor-readiness",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "role": "reviewer",
+      "effort": "xhigh",
+      "lens": "Contraprovas e numeros. As contagens de cada plano batem com o que as migrations de fato criam? O SHA-256 escrito e o do arquivo? O rollback do pacote corresponde ao arquivo de rollback?",
+      "allowed_paths": [
+        "scripts",
+        "docs/evidence",
+        "supabase/migrations"
+      ]
+    },
+    {
+      "id": "claude-opus-revisor-readiness",
+      "provider": "claude",
+      "model": "opus",
+      "role": "reviewer",
+      "effort": "xhigh",
+      "lens": "Arquitetura e estados: os cinco estados sao mutuamente exclusivos e exaustivos? O documento distingue zero medido, ausente, nao aplicavel, vazio confirmado e falha? O pacote de apply/verify/rollback e executavel por um humano as tres da manha?",
+      "allowed_paths": [
+        "scripts",
+        "docs/evidence",
+        "supabase/migrations",
+        "docs/closure/search-production-closure-v1"
+      ]
+    }
+  ]
+}
