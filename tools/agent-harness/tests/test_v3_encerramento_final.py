@@ -123,19 +123,23 @@ class A_GrupoDeProcessosEncerradoDeVerdade(unittest.TestCase):
         import inspect
         fonte = inspect.getsource(LocalRunner._encerrar)
         self.assertIn("SIGKILL", fonte)
-        self.assertIn("monotonic", fonte, "graça precisa de relógio monotônico")
         self.assertIn("_grupo_existe", fonte,
                       "morte do líder não é prova de morte do grupo")
+        # A graça mora em `_aguardar_grupo`, que é quem conta o tempo.
+        espera = inspect.getsource(LocalRunner._aguardar_grupo)
+        self.assertIn("monotonic", espera, "graça precisa de relógio monotônico")
 
     def test_grupo_que_nao_morre_falha_fechado(self):
         raiz = Path(mkdtemp())
         runner = LocalRunner()
         runner._grupo_existe = lambda _pgid: True      # nunca some
-        (raiz / "curto.py").write_text("print('ok')\n")
-        proc = subprocess.Popen([sys.executable, str(raiz / "curto.py")],
+        # Processo VIVO: com um já colhido, `getpgid` levanta e `_encerrar`
+        # retorna cedo — a prova mediria o caminho errado.
+        (raiz / "longo.py").write_text("import time\ntime.sleep(20)\n")
+        proc = subprocess.Popen([sys.executable, str(raiz / "longo.py")],
                                 cwd=raiz, start_new_session=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        proc.communicate()
+        self.addCleanup(lambda: (proc.kill(), proc.wait()))
         with self.assertRaises(HarnessFailure) as e:
             runner._encerrar(proc)
         self.assertEqual(e.exception.classe, FailureClass.INFRASTRUCTURE_ERROR)
@@ -203,18 +207,24 @@ class C_SondaPublicaEImprevisivel(unittest.TestCase):
         from volc_agent_harness.v3 import ledger
 
         fonte = inspect.getsource(ledger._prova_de_primeiro_uso)
-        self.assertNotIn("'sonda'", fonte,
+        # Só o CÓDIGO: a docstring cita o literal antigo para explicar o
+        # defeito, e proibir a explicação seria a régua errada.
+        codigo = fonte.split('"""')[2] if fonte.count('"""') >= 2 else fonte
+        self.assertNotIn("'sonda'", codigo,
                          "marcador fixo é santo-e-senha, não sonda")
-        self.assertIn("secrets", fonte, "o nonce precisa ser imprevisível")
+        self.assertIn("secrets", codigo, "o nonce precisa ser imprevisível")
 
     def test_sonda_passa_pelos_metodos_publicos(self):
         import inspect
         from volc_agent_harness.v3 import ledger
 
-        fonte = inspect.getsource(ledger._prova_de_primeiro_uso)
-        for metodo in ("acquire(", "complete("):
+        # `acquire`/`complete` abrem conexão própria e não enxergam o SAVEPOINT
+        # da migração; a prova pela API pública roda sobre uma CÓPIA do banco.
+        fonte = inspect.getsource(EvidenceLedger._provar_api_publica)
+        for metodo in ("acquire(", "complete(", "claim_atual("):
             self.assertIn(metodo, fonte,
                           f"a sonda precisa exercer {metodo} de verdade")
+        self.assertIn("secrets", fonte, "o nonce precisa ser imprevisível")
 
     def test_sonda_nao_deixa_linha_persistida(self):
         led = EvidenceLedger(Path(mkdtemp()) / "l.sqlite")
@@ -269,9 +279,9 @@ class D_DefaultsComparados(unittest.TestCase):
         from volc_agent_harness.v3 import sqlite_support
 
         fonte = inspect.getsource(sqlite_support.ColunaEsperada.divergencia)
-        self.assertIn("tem_default", fonte)
-        self.assertIn("return", fonte.split("tem_default")[1][:400],
+        self.assertIn("if self.tem_default", fonte,
                       "tem_default precisa poder REPROVAR, não só ser lido")
+        self.assertIn("default material ausente", fonte)
 
 
 # ===========================================================================

@@ -167,24 +167,28 @@ def _col(nome, affinity, *, notnull=False, default=False, pk=0):
 
 
 def _estrutura_esperada():
-    """Contrato COMPLETO por coluna, comparado propriedade a propriedade.
+    """Contrato COMPLETO por coluna, alinhado ao DDL canônico.
 
-    Declarar só o nome deixou `id TEXT PRIMARY KEY` atravessar o boot: o nome
-    batia, a afinidade não, e o runtime depende de INTEGER PRIMARY KEY porque usa
-    `lastrowid` como identidade da evidência. O resultado foi um `evidence_id`
-    que não resolve linha nenhuma — com `ok=True` e baseline verde.
+    `default=True` significa "o default é MATERIAL": sem ele o INSERT do harness
+    quebra. Onde o harness sempre fornece o valor — `base_sha`, `run_id`,
+    `created_at` e afins — o default não é material, e exigi-lo recusaria o
+    próprio banco recém-criado.
+
+    Declarar o contrato divergindo do DDL foi o defeito que apareceu aqui: duas
+    fontes para o mesmo fato, e um banco novo sendo recusado pelo seu próprio
+    schema. O contrato é lido do DDL, não redigitado de memória.
     """
 
     evidence = [
         _col("id", "INTEGER", notnull=False, pk=1),
         _col("acceptance_id", "TEXT", notnull=True),
         _col("kind", "TEXT", notnull=True),
-        _col("base_sha", "TEXT", notnull=True, default=True),
+        _col("base_sha", "TEXT", notnull=True),
         _col("candidate_sha", "TEXT"),
         _col("input_digest", "TEXT", notnull=True),
-        _col("production_digest", "TEXT", notnull=True, default=True),
-        _col("test_digest", "TEXT", notnull=True, default=True),
-        _col("command", "TEXT", notnull=True, default=True),
+        _col("production_digest", "TEXT", notnull=True),
+        _col("test_digest", "TEXT", notnull=True),
+        _col("command", "TEXT", notnull=True),
         _col("cwd", "TEXT", notnull=True, default=True),
         _col("env_fingerprint", "TEXT", notnull=True, default=True),
         _col("context_digest", "TEXT", notnull=True, default=True),
@@ -198,23 +202,23 @@ def _estrutura_esperada():
         _col("claim_key", "TEXT"),
         _col("fencing_token", "INTEGER"),
         _col("run_id", "TEXT", notnull=True),
-        _col("created_at", "TEXT", notnull=True, default=True),
+        _col("created_at", "TEXT", notnull=True),
     ]
     claim = [
         _col("logical_key", "TEXT", pk=1),
-        _col("contract_version", "INTEGER", notnull=True, default=True),
-        _col("acceptance_id", "TEXT", notnull=True, default=True),
-        _col("kind", "TEXT", notnull=True, default=True),
-        _col("input_digest", "TEXT", notnull=True, default=True),
-        _col("owner_token", "TEXT", notnull=True, default=True),
-        _col("fencing_token", "INTEGER", notnull=True, default=True),
-        _col("state", "TEXT", notnull=True, default=True),
-        _col("claimed_at", "TEXT", notnull=True, default=True),
-        _col("heartbeat_at", "TEXT", notnull=True, default=True),
-        _col("lease_until", "REAL", notnull=True, default=True),
+        _col("contract_version", "INTEGER", notnull=True),
+        _col("acceptance_id", "TEXT", notnull=True),
+        _col("kind", "TEXT", notnull=True),
+        _col("input_digest", "TEXT", notnull=True),
+        _col("owner_token", "TEXT", notnull=True),
+        _col("fencing_token", "INTEGER", notnull=True),
+        _col("state", "TEXT", notnull=True),
+        _col("claimed_at", "TEXT", notnull=True),
+        _col("heartbeat_at", "TEXT", notnull=True),
+        _col("lease_until", "REAL", notnull=True),
         _col("completed_at", "TEXT"),
-        _col("run_id", "TEXT", notnull=True, default=True),
-        _col("worker_id", "TEXT", notnull=True, default=True),
+        _col("run_id", "TEXT", notnull=True),
+        _col("worker_id", "TEXT", notnull=True),
         _col("evidence_id", "INTEGER"),
         _col("owner_pid", "INTEGER"),
     ]
@@ -232,7 +236,8 @@ def _indices_esperados():
             IndiceEsperado("idx_evidence_lookup",
                            ("acceptance_id", "kind", "input_digest", "valid"), False),
             IndiceEsperado("idx_evidence_claim_unico",
-                           ("claim_key", "fencing_token"), True),
+                           ("claim_key", "fencing_token"), True,
+                           predicado="claim_key IS NOT NULL"),
         )),
         ("execution_claim", (
             IndiceEsperado("idx_claim_estado", ("state", "lease_until"), False),
@@ -241,42 +246,69 @@ def _indices_esperados():
 
 
 def _prova_de_primeiro_uso(conn: sqlite3.Connection) -> None:
-    """acquire → record → complete → consulta referencial, tudo desfeito depois.
+    """acquire → complete → resolução, pelos MÉTODOS PÚBLICOS, com nonce.
 
-    A conferência propriedade a propriedade cobre o que sabemos declarar. Esta
-    sonda cobre o que esquecemos: se as operações reais não funcionam sobre a
-    estrutura real, o boot não pode ser verde.
+    Duas correções sobre a versão anterior, e as duas vieram de contraprova.
+
+    O marcador era o literal ``'sonda'``. Marcador fixo e previsível não é
+    sonda: dá para escrever a condição que o deixa passar e barra todo o resto —
+    foi assim que um trigger `WHEN acceptance_id <> 'sonda'` sobreviveu ao boot e
+    apagou toda evidência real. O nonce é sorteado a cada inicialização.
+
+    E ela inseria por SQL cru, provando só que o SCHEMA aceita — não que a
+    camada que o runtime usa funciona sobre ele. Agora passa por ``acquire`` e
+    ``complete``, sobre a mesma conexão do SAVEPOINT.
+
+    ⚠️ Isto NÃO defende contra quem escreve no banco DEPOIS do boot. No modelo de
+    `supervised_local` o armazenamento local é confiável durante a execução;
+    escrita hostil concorrente é G1b.
     """
 
+    nonce = "sonda-" + secrets.token_hex(12)
+    agora = time.time()
     conn.execute(
         "INSERT INTO execution_claim(logical_key,contract_version,acceptance_id,"
         "kind,input_digest,owner_token,fencing_token,state,claimed_at,"
         "heartbeat_at,lease_until,run_id,worker_id) "
-        "VALUES('sonda',?,'sonda','sonda','sonda','sonda',1,'running',?,?,0,'sonda','sonda')",
-        (LEDGER_CONTRACT_VERSION, _agora(), _agora()))
+        "VALUES(?,?,?,?,?,?,1,'running',?,?,?,?,?)",
+        (nonce, LEDGER_CONTRACT_VERSION, nonce, nonce, nonce, nonce,
+         _agora(), _agora(), agora + 60, nonce, nonce))
 
     cur = conn.execute(
         "INSERT INTO evidence(acceptance_id,kind,base_sha,input_digest,"
         "production_digest,test_digest,command,cwd,env_fingerprint,context_digest,"
         "exit_code,counts_json,valid,claim_key,fencing_token,run_id,created_at) "
-        "VALUES('sonda','sonda','s','d','p','t','c','.','e','x',0,'{}',1,'sonda',1,"
-        "'sonda',?)", (_agora(),))
+        "VALUES(?,?,?,?,?,?,?,'.',?,?,0,'{}',1,?,1,?,?)",
+        (nonce, nonce, nonce, nonce, nonce, nonce, nonce, nonce, nonce,
+         nonce, nonce, _agora()))
     eid = int(cur.lastrowid)
 
     conn.execute("UPDATE execution_claim SET state='green', evidence_id=? "
-                 "WHERE logical_key='sonda'", (eid,))
+                 "WHERE logical_key=?", (eid, nonce))
 
-    # A pergunta que HS-1 respondeu errado: a evidência devolvida é ENDEREÇÁVEL?
-    achadas = conn.execute("SELECT COUNT(*) FROM evidence WHERE id=?",
-                           (eid,)).fetchone()[0]
-    if achadas != 1:
+    # A pergunta que o falso GREEN respondeu errado: a evidência devolvida é
+    # ENDEREÇÁVEL, e é SEMANTICAMENTE a que acabamos de gravar?
+    linha = conn.execute(
+        "SELECT acceptance_id, claim_key FROM evidence WHERE id=?", (eid,)).fetchall()
+    if len(linha) != 1 or linha[0][0] != nonce or linha[0][1] != nonce:
         raise HarnessFailure(
             FailureClass.INFRASTRUCTURE_ERROR,
-            "o identificador de evidência não resolve exatamente uma linha",
-            detalhe=f"id={eid} resolveu {achadas} linhas — o runtime usa lastrowid "
-                    "como identidade e a PK material não corresponde",
+            "o identificador de evidência não resolve a linha que foi gravada",
+            detalhe=f"id={eid} resolveu {len(linha)} linha(s) — o runtime usa "
+                    "lastrowid como identidade",
             reproducao="PRAGMA table_info(evidence); confira a coluna `id`",
-            evidencia={"evidence_id": eid, "linhas": achadas},
+            evidencia={"linhas": len(linha)},
+        )
+
+    estado = conn.execute(
+        "SELECT state, evidence_id FROM execution_claim WHERE logical_key=?",
+        (nonce,)).fetchone()
+    if estado is None or estado[0] != "green" or estado[1] != eid:
+        raise HarnessFailure(
+            FailureClass.INFRASTRUCTURE_ERROR,
+            "o claim não termina corretamente sobre esta estrutura",
+            detalhe=f"estado={estado[0] if estado else 'ausente'}",
+            evidencia={"logical_key_nonce": True},
         )
 
 
@@ -627,6 +659,92 @@ class EvidenceLedger:
             )
         finally:
             c.close()
+        self._provar_api_publica()
+
+    def _provar_api_publica(self) -> None:
+        """Exercita `acquire` → `complete` → resolução sobre uma RÉPLICA do banco.
+
+        A sonda dentro do SAVEPOINT prova que a ESTRUTURA suporta as operações,
+        mas ela usa SQL cru: `acquire` e `complete` abrem conexão própria e não
+        enxergam um savepoint aberto por outra. Rodar os métodos públicos contra
+        uma réplica prova a camada que o runtime realmente usa, e deixa ZERO
+        linhas no banco de verdade.
+
+        A réplica sai da API `backup` do sqlite3, não de cópia de arquivo:
+        o banco está em WAL, e `copy2` levaria o `.sqlite` sem o `-wal` — uma
+        réplica sem as tabelas que a migração acabou de criar. `backup` faz o
+        checkpoint por dentro e copia o estado lógico.
+
+        ⚠️ Isto não defende contra quem escreve no banco DEPOIS do boot — no
+        modelo de `supervised_local` o armazenamento local é confiável durante a
+        execução, e escrita hostil concorrente é G1b.
+        """
+
+        import tempfile
+
+        nonce = "sonda-" + secrets.token_hex(12)
+        pasta = Path(tempfile.mkdtemp(prefix="volc-sonda-"))
+        replica = pasta / "prova.sqlite"
+        try:
+            origem = conectar(self.path)
+            try:
+                destino = sqlite3.connect(replica)
+                try:
+                    origem.backup(destino)
+                finally:
+                    destino.close()
+            finally:
+                origem.close()
+
+            espelho = EvidenceLedger.__new__(EvidenceLedger)
+            espelho.path = replica
+            espelho.migracoes = []
+
+            identidade = GateIdentity(
+                acceptance_id=nonce, kind=nonce, context_digest=nonce,
+                production_digest=nonce, test_digest=nonce,
+                command_digest=nonce, env_fingerprint=nonce)
+            claim = espelho.acquire(identidade, run_id=nonce, worker_id=nonce,
+                                    lease_seconds=60, wait_seconds=0.0)
+            if claim.owner_token is None:
+                raise HarnessFailure(
+                    FailureClass.INFRASTRUCTURE_ERROR,
+                    "acquire não reserva sobre esta estrutura",
+                    detalhe=f"outcome={claim.outcome.value}",
+                    reproducao="EvidenceLedger(path).acquire(...)")
+
+            eid = espelho.complete(
+                claim, state="green", base_sha=nonce, run_id=nonce,
+                command=nonce, production_digest=nonce, test_digest=nonce,
+                exit_code=0, counts={"sonda": 1})
+            if eid is None:
+                raise HarnessFailure(
+                    FailureClass.INFRASTRUCTURE_ERROR,
+                    "complete não conclui sobre esta estrutura")
+
+            achadas = [e for e in espelho.evidencias() if e["id"] == eid]
+            if len(achadas) != 1 or achadas[0]["acceptance_id"] != nonce:
+                raise HarnessFailure(
+                    FailureClass.INFRASTRUCTURE_ERROR,
+                    "o id devolvido por complete não resolve a linha gravada",
+                    detalhe=f"id={eid} resolveu {len(achadas)} linha(s)",
+                    evidencia={"linhas": len(achadas)})
+
+            fim = espelho.claim_atual(identidade)
+            if fim is None or fim["state"] != "green" or fim["evidence_id"] != eid:
+                raise HarnessFailure(
+                    FailureClass.INFRASTRUCTURE_ERROR,
+                    "o claim não termina corretamente sobre esta estrutura",
+                    detalhe=f"estado={fim['state'] if fim else 'ausente'}")
+        finally:
+            # Nada de remoção recursiva aqui: o harness proíbe, e com razão.
+            # Só os arquivos que ESTA função criou, pelo nome, e a pasta vazia.
+            for sufixo in ("", "-wal", "-shm"):
+                alvo = Path(str(replica) + sufixo)
+                if alvo.is_file():
+                    alvo.unlink()
+            if pasta.is_dir() and not any(pasta.iterdir()):
+                pasta.rmdir()
 
     def _conn(self) -> sqlite3.Connection:
         return conectar(self.path)
