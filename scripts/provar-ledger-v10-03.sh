@@ -284,6 +284,68 @@ cmp_ "$(P -c "SELECT estado||'|'||coalesce(id_externo,'-')||'|'||(id_externo_lid
      "criada_pausada|24183717006|true" "o item carimbou o id externo com a hora da leitura"
 
 echo
+echo "════ J2 · o caminho NORMAL: reconciliar um recibo já \`sem_resposta\` ════"
+# ⚠️ O BLOCO J SOZINHO MEDIA O CASO FÁCIL, E ESCONDIA O CASO REAL.
+#
+# Ele reconcilia um item cujo recibo ainda está `em_voo`. Mas em produção a
+# rota /subir FECHA o recibo como `sem_resposta` no mesmo instante em que
+# descobre a indeterminação — é o bloco I acima, com $ITEM/$REC. Quando o
+# operador reconcilia depois, `trafego_ledger_reconciliar` procura recibo
+# `em_voo` e NÃO ENCONTRA nenhum.
+#
+# Este bloco mede o que de fato acontece nesse caminho, em vez de supor.
+RECONCILIA_NORMAL="SET ROLE service_role; SELECT public.trafego_ledger_reconciliar(
+  '$ITEM'::uuid, 'busca_por_marca', true, 'operador',
+  p_id_externo := '24183717099', p_volc_campaign_id := 'volc_cmp_normal',
+  p_customer_id := '5478096539', p_quantidade := 1);"
+
+# O defeito, medido antes da correção: o lote está `interrompido` (foi o
+# `sem_resposta` que o pôs lá) e a reconciliação tenta `interrompido->concluido`,
+# transição que `trafego_lote_estado_valido` da v10_01 não tem na lista. A
+# exceção aborta a transação INTEIRA — nem a verificação fica gravada.
+cmp_ "$(P -c "SELECT estado FROM trafego_lote WHERE lote_id=(
+                SELECT lote_id FROM trafego_lote_item WHERE item_id='$ITEM');")" \
+     "interrompido" "o lote ficou \`interrompido\` — é o estado real depois de uma indeterminação"
+recusa "SEM a v10_04, reconciliar o caminho NORMAL aborta (é o defeito)" \
+  "$RECONCILIA_NORMAL"
+cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM';")" \
+     "indeterminado" "e o item continua preso em \`indeterminado\`, sem saída nenhuma"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_verificacao WHERE item_id='$ITEM';")" \
+     "0" "a verificação nem chegou a ser gravada — a transação inteira voltou"
+
+echo
+echo "════ J3 · a v10_04 entra e a saída do indeterminado passa a existir ════"
+aplicar "v10_04_saida_do_indeterminado" || exit 1
+RECON=$(P -c "$RECONCILIA_NORMAL")
+cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM';")" \
+     "criada_pausada" \
+     "o ITEM converge para \`criada_pausada\` mesmo com o recibo já fechado"
+cmp_ "$(P -c "SELECT estado FROM trafego_lote WHERE lote_id=(
+                SELECT lote_id FROM trafego_lote_item WHERE item_id='$ITEM');")" \
+     "concluido" "e o lote sai de \`interrompido\` — o beco deixou de ser sem saída"
+cmp_ "$(P -c "SELECT desfecho FROM trafego_recibo WHERE recibo_id='$REC';")" \
+     "sem_resposta" \
+     "o recibo permanece \`sem_resposta\` — ele diz o que era verdade na hora"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_recibo WHERE item_id='$ITEM';")" "1" \
+     "nenhum recibo novo foi aberto pela reconciliação"
+# A verificação é o registro que liga a leitura tardia ao item. Sem apontar para
+# o recibo, a auditoria perde o fio entre "não respondeu" e "conferi e estava lá".
+cmp_ "$(P -c "SELECT (recibo_id IS NOT NULL)::text FROM trafego_verificacao
+              WHERE item_id='$ITEM' ORDER BY verificado_em DESC LIMIT 1;")" \
+     "true" "a verificação aponta para o recibo do item — o fio da auditoria não se perde"
+cmp_ "$(P -c "SELECT coalesce((\$\$$RECON\$\$::jsonb ->> 'recibo_fechado_como'),'-');")" "-" \
+     "e a RPC não afirma ter fechado recibo nenhum: ele já estava fechado"
+
+echo
+echo "════ J4 · a posse do item é conferida antes de casar identidade ════"
+recusa "reconciliar o item de uma conta com a campanha de OUTRA" \
+  "SELECT public.trafego_ledger_reconciliar('$ITEM2'::uuid, 'busca_por_id', true, 'operador',
+     p_id_externo := '99999999999', p_volc_campaign_id := 'volc_cmp_outra',
+     p_customer_id := '6016739364', p_quantidade := 1);"
+cmp_ "$(P -c "SELECT coalesce(id_externo,'-') FROM trafego_lote_item WHERE item_id='$ITEM2';")" \
+     "24183717006" "o item manteve a identidade externa que era dele"
+
+echo
 echo "════ K · o id externo resolve para exatamente um item ════"
 cmp_ "$(P -c "SELECT count(*)::text FROM trafego_lote_item WHERE id_externo='24183717006';")" "1" \
      "um id externo, um item"
@@ -296,11 +358,21 @@ cmp_ "$(P -c "SELECT procedencia FROM trafego_campanha WHERE volc_campaign_id='v
 recusa "verificação que diz \`achou\` sem trazer o id externo" \
   "SELECT public.trafego_ledger_reconciliar('$ITEM'::uuid, 'busca_por_marca', true, 'operador',
      p_quantidade := 1);"
+# ⚠️ O estado é capturado ANTES e comparado depois, em vez de fixado num
+# literal. A versão anterior afirmava `indeterminado` — verdadeiro só porque
+# nenhum bloco antes dela mexia neste item. Isso amarrava a prova de "NULL não
+# move nada" à ORDEM dos blocos: bastou J3 reconciliar o mesmo item para a
+# asserção passar a medir a ordem do arquivo em vez da regra. Comparar com o
+# estado anterior prova a invariante seja qual for o estado.
+ANTES_DO_NULL=$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM';")
+VERIF_ANTES=$(P -c "SELECT count(*)::text FROM trafego_verificacao WHERE item_id='$ITEM';")
 aceita "verificação que não conseguiu ler (achou NULL) fica registrada" \
   "SELECT public.trafego_ledger_reconciliar('$ITEM'::uuid, 'listagem_da_conta', NULL, 'operador',
      p_motivo := 'a conta nao respondeu a listagem');"
-cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM';")" "indeterminado" \
+cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM';")" "$ANTES_DO_NULL" \
      "não ler não move nada — ausência de leitura não é um fato sobre a conta"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_verificacao WHERE item_id='$ITEM';")" \
+     "$((VERIF_ANTES + 1))" "mas a tentativa de leitura FICA registrada, e é o que ela é"
 
 echo
 echo "════ N · erro RESPONDIDO é reentrável; ignorância não é ════"
@@ -455,6 +527,33 @@ aplicar "v10_03_recibo_atomico"
 cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
               WHERE n.nspname='public' AND p.proname LIKE 'trafego\_ledger\_%';")" "4" \
      "reaplicada sobre banco com dado: as quatro voltaram"
+
+echo
+echo "════ M2 · o rollback da v10_04 devolve exatamente o que ela mudou ════"
+# ⚠️ Uma migration sem rollback provado não está pronta para ser aplicada. O que
+# se prova aqui é o par: o rollback tira as duas transições novas e a checagem
+# de posse, e a reaplicação as devolve — sobre um banco que já tem dado.
+#
+# Note que `aplicar "v10_03_recibo_atomico"` acima acabou de sobrescrever a
+# reconciliação da v10_04 pela da v10_03: é o cenário real de quem reaplica uma
+# migration antiga por engano, e ele precisa ser reversível.
+VERIF_ANTES_ROLLBACK=$(P -c "SELECT count(*)::text FROM trafego_verificacao;")
+aplicar "v10_04_rollback"
+cmp_ "$(P -c "SELECT (pg_get_functiondef(p.oid) LIKE '%interrompido->concluido%')::text
+              FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+              WHERE n.nspname='public' AND p.proname='trafego_lote_estado_valido';")" \
+     "false" "o rollback tirou as duas transições que a v10_04 acrescentou"
+cmp_ "$(P -c "SELECT (pg_get_functiondef(p.oid) LIKE '%pertence a conta%')::text
+              FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+              WHERE n.nspname='public' AND p.proname='trafego_ledger_reconciliar';")" \
+     "false" "e tirou a checagem de posse junto"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_verificacao;")" "$VERIF_ANTES_ROLLBACK" \
+     "nenhuma verificação gravada foi apagada — o rollback restaura função, não dado"
+aplicar "v10_04_saida_do_indeterminado"
+cmp_ "$(P -c "SELECT (pg_get_functiondef(p.oid) LIKE '%interrompido->concluido%')::text
+              FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+              WHERE n.nspname='public' AND p.proname='trafego_lote_estado_valido';")" \
+     "true" "reaplicada sobre banco com dado: a saída do indeterminado voltou"
 
 echo
 echo "════════════════════════════════════════════════"
