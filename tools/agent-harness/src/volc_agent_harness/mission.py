@@ -399,6 +399,7 @@ def _compilar_missao(
         "routed_models": {w.id: f"{w.provider}/{w.model}" for w in mission.workers},
         "privacy_class": "local_code_only",
         "write_authority": "single_writer" if writable_paths else "read_only",
+        "runner_safety_mode": mission.runner_safety_mode,
         "integration_policy": "human_merge_only",
     }
     escrever("compiled-mission.json", compilada)
@@ -702,18 +703,17 @@ async def _run_implementation_mission(
                     run_id=run_id,
                     worker_id=f"baseline/{writer.id}",
                     gate=gate,          # revalida o vínculo dentro do runner
+                    runner_safety_mode=mission.runner_safety_mode,
                     kind_prefix="baseline_gate",
                     lease_seconds=gate.timeout_seconds + 120,
                     wait_seconds=float(min(120, gate.timeout_seconds)),
                 )
-                baseline_records.append(BaselineRecord(
-                    gate_index=gate.index,
-                    argv=list(gate.argv),
-                    exit_code=medida.exit_code,
-                    passed=None,
-                    failed=None,
-                    duration_s=medida.duration_s,
-                ))
+                # `from_outcome`, nunca construção manual: a versão anterior
+                # copiava só `exit_code` e descartava ok/status/evidence_id, e
+                # um gate ABANDONADO por perda de lease sai 0 — virava baseline
+                # verde. Helper corrigido e não chamado é guarda que o caminho
+                # produtivo não atravessa.
+                baseline_records.append(BaselineRecord.from_outcome(medida))
         (run_dir / "baseline.json").write_text(
             json.dumps([r.as_dict() for r in baseline_records], ensure_ascii=False,
                        indent=2),
@@ -848,6 +848,7 @@ async def _run_implementation_mission(
                     run_id=run_id,
                     worker_id=writer.id,
                     gate=gate,          # revalida o vínculo dentro do runner
+                    runner_safety_mode=mission.runner_safety_mode,
                     lease_seconds=gate.timeout_seconds + 120,
                     wait_seconds=float(min(120, gate.timeout_seconds)),
                 )

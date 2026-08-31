@@ -149,18 +149,23 @@ def assert_baseline_is_green(registros: Sequence[BaselineRecord]) -> None:
     # `exit_code == 0` não basta. Um gate abandonado por perda de lease sai 0,
     # não tem evidência e não é autoridade sobre nada — aceitá-lo como baseline
     # verde era transformar ausência de prova em prova.
+    #
+    # O filtro condicional que existia aqui (`if r.ok is not None or ...`) tinha
+    # o defeito inverso e mais sutil: um registro que não AFIRMA nada — os três
+    # campos em None — escapava da checagem inteira. Silêncio virava aprovação.
+    # Agora GREEN exige afirmação positiva: ok=True, status green e evidência.
     sem_autoridade = [
         r for r in registros
-        if r.ok is not None or r.status is not None or r.evidence_id is not None
-        if not (r.ok and r.status == "green" and r.evidence_id is not None)
+        if not (r.ok is True and r.status == "green" and r.evidence_id is not None)
     ]
     if sem_autoridade:
         raise HarnessFailure(
             FailureClass.INFRASTRUCTURE_ERROR,
             "baseline sem autoridade: exit 0 não é prova sem evidência",
             detalhe=", ".join(
-                f"gate {r.gate_index} status={r.status} mode={r.execution_mode} "
-                f"evidence_id={r.evidence_id}" for r in sem_autoridade),
+                f"gate {r.gate_index} ok={r.ok} status={r.status} "
+                f"mode={r.execution_mode} evidence_id={r.evidence_id}"
+                for r in sem_autoridade),
             reproducao="o gate saiu 0 mas o ledger não registrou conclusão válida",
             evidencia={"gates": [r.gate_index for r in sem_autoridade]},
         )
