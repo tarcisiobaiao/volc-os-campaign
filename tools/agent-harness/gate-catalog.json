@@ -65,6 +65,24 @@
       "script_path": "scripts/gate_provar_ledger_v10_03.py",
       "args": [],
       "description": "fronteira atômica do ledger v10_03 num Postgres descartável: reproduz o defeito antes da migration, prova a recusa depois, corrida real de duas sessões, rollback e contrato Python↔SQL"
+    },
+    "tipos-frontend-ratchet": {
+      "kind": "tracked_script",
+      "script_path": "scripts/gate_tsc_ratchet.py",
+      "args": [],
+      "description": "tsc --noEmit -p tsconfig.app.json como RATCHET contra o baseline herdado de 76; vermelho só quando PIORA. Recusa contagem se TS2688 estiver presente, porque aí a fase semântica nem rodou."
+    },
+    "testes-frontend-lancamento": {
+      "kind": "tracked_script",
+      "script_path": "scripts/gate_vitest_lancamento.py",
+      "args": [],
+      "description": "vitest sobre src/lib/trafego — a superfície de lançamento. Recorte declarado: a suíte inteira tem 3 falhas e 8 arquivos sem coleta, todos herdados e medidos com a árvore limpa."
+    },
+    "sem-mutacao-google": {
+      "kind": "tracked_script",
+      "script_path": "scripts/gate_sem_mutacao_google.py",
+      "args": [],
+      "description": "contraprova de que a trava de escrita está fechada durante os gates: FORGE_PERMITIR_ESCRITA ausente e escrita_permitida() False. Não conseguir importar o módulo é 78, nunca verde."
     }
   }
 }
