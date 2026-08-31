@@ -7,7 +7,6 @@ import contextlib
 import asyncio
 import json
 import secrets
-import subprocess
 from contextlib import aclosing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,16 +17,19 @@ from google.adk.workflow import FunctionNode, JoinNode, START, Workflow
 from google.genai import types
 
 from .adapters import AdapterRequest, adapter_for
-from .gates import (
-    project_node_modules_overlay,
-    project_venv_overlay,
-    resolve_gate_argv,
-)
+from .gates import project_node_modules_overlay, project_venv_overlay
 from .locking import writer_lock
 from .models import MissionSpec, WorkerSpec
 from .security import redact, sanitized_environment
 from .v3.failures import FailureClass, HarnessFailure, classify_gate_exit
-from .v3.gate_compiler import ProducedPath, assert_pytest_collects, compile_gate_plan
+from .v3.gate_compiler import ProducedPath, assert_pytest_collects
+from .v3.gate_resolution import (
+    ResolvedGate,
+    assert_bindings_fresh,
+    build_toolchain,
+    resolve_mission_gates,
+)
+from .v3.gate_runner import run_gate_with_ledger
 from .v3.two_phase import postwriter_compile
 from .v3.workspace import (
     assert_gate_executable_is_allowed,
@@ -57,6 +59,10 @@ def _ambiente_de_gate() -> dict[str, str]:
     env = sanitized_environment()
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return env
+
+
+#: Kinds cujo gate precisa do overlay de node_modules.
+_KINDS_DE_NODE = frozenset({"vitest", "tsc", "vite", "typescript", "build", "npm_script"})
 
 
 def _utc_now() -> str:
@@ -296,23 +302,48 @@ def _compilar_missao(
     *,
     mission: MissionSpec,
     tree: Path,
+    repo: Path,
     base_sha: str,
     run_dir: Path,
     writable_paths: list[str] | None = None,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], list[ResolvedGate], dict[str, str]]:
     """Compilação obrigatória, comum a read_only e implementation.
 
     Nenhum adapter — investigador, reviewer ou writer — roda antes disto. Antes,
     só o caminho de implementação compilava, e "o writer está protegido" virava
     autoridade única do runtime.
+
+    E a resolução é TIPADA, não por ``argv``. O compilador tipado existia,
+    estava verde e ninguém o chamava: o runtime resolvia gate por linha de
+    comando livre. Guarda escrita e não chamada é pior que guarda ausente,
+    porque dá autoridade a uma proteção que o caminho produtivo nunca atravessa.
     """
 
-    for gate in mission.gates:
+    toolchain = build_toolchain(repo=repo, worktree=tree)
+    resolvidos = resolve_mission_gates(
+        gates=mission.gates,
+        tree=tree,
+        toolchain=toolchain,
+        produced_paths=[p.model_dump() for p in mission.produced_paths],
+    )
+
+    # Defesa em profundidade sobre o argv REALMENTE construído, não sobre a
+    # declaração. O tipo já impede shell e comando destrutivo por construção;
+    # esta segunda leitura é independente e barata.
+    for gate in resolvidos:
         assert_gate_executable_is_allowed(gate.argv)
         assert_no_destructive_intent(gate.argv)
 
-    produced = [ProducedPath(p.path, p.required) for p in mission.produced_paths]
-    gate_plan = compile_gate_plan(gates=mission.gates, tree=tree, produced=produced)
+    gate_plan = {
+        "total": len(resolvidos),
+        "runnable_before_writer": [g.index for g in resolvidos
+                                   if g.runnable_before_writer],
+        "depends_on_produced": [g.index for g in resolvidos
+                                if not g.runnable_before_writer],
+        "produced_paths": [p.model_dump() for p in mission.produced_paths],
+        "toolchain": dict(sorted(toolchain.items())),
+        "gates": [g.as_dict() for g in resolvidos],
+    }
     (run_dir / "gate-plan.json").write_text(
         json.dumps(gate_plan, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -368,7 +399,7 @@ def _compilar_missao(
     (run_dir / "compiled-mission.json").write_text(
         json.dumps(compilada, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    return compilada
+    return compilada, resolvidos, toolchain
 
 
 def _registrar_evidencia(run_dir: Path, entradas: list[dict[str, Any]]) -> None:
@@ -378,15 +409,48 @@ def _registrar_evidencia(run_dir: Path, entradas: list[dict[str, Any]]) -> None:
 
 
 def _registrar_falha(run_dir: Path, exc: BaseException) -> dict[str, Any]:
+    """Artefato tipado e SANITIZADO da falha.
+
+    Um traceback de boot pode carregar variável de ambiente, header de
+    autenticação ou string de conexão. ``failure.json`` é lido por humano e
+    entra em relatório: tudo o que é texto livre passa por ``redact``.
+    """
+
     from .v3.failures import classify_exception
 
     if isinstance(exc, HarnessFailure):
         registro = exc.as_dict()
     else:
         registro = HarnessFailure(classify_exception(exc), str(exc)[:300]).as_dict()
+    for campo in ("resumo", "detalhe", "reproducao"):
+        registro[campo] = redact(str(registro.get(campo) or ""))
+    registro["evidencia"] = json.loads(
+        redact(json.dumps(registro.get("evidencia") or {}, ensure_ascii=False))
+    )
+    run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "failure.json").write_text(
         json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    return registro
+
+
+def _falha_com_artefato(run_dir: Path, exc: BaseException) -> dict[str, Any]:
+    """Grava a falha e diz à exceção ONDE o artefato ficou.
+
+    O ratchet de boot fechava só metade: ``OperationalError`` já virava
+    ``INFRASTRUCTURE_ERROR`` com exit 4, mas quando o ``run_dir`` já existia
+    ninguém escrevia nada nele, e o operador ficava com uma linha no terminal e
+    um diretório vazio. O caminho do artefato viaja na exceção justamente para
+    que o CLI possa CONFERIR que ele existe antes de citá-lo — nunca inventar.
+    """
+
+    registro = _registrar_falha(run_dir, exc)
+    artefato = run_dir / "failure.json"
+    try:
+        exc.run_dir = str(run_dir)                      # type: ignore[attr-defined]
+        exc.failure_artifact = str(artefato)            # type: ignore[attr-defined]
+    except AttributeError:                              # exceção com __slots__
+        pass
     return registro
 
 
@@ -424,18 +488,27 @@ async def _run_read_only_mission(
 
     # Compilação obrigatória também no read_only. Investigadores e reviewers
     # gastam modelo igual; não há razão para eles escaparem do compilador.
+    #
+    # E a criação das worktrees entrou no MESMO `try`: um registry ilegível
+    # levantava depois do `mkdir` do run_dir e fora de qualquer proteção, então
+    # a falha de boot não deixava artefato nenhum onde o operador procura.
     try:
         _compilar_missao(
-            mission=mission, tree=repo, base_sha=base_sha, run_dir=run_dir,
+            mission=mission, tree=repo, repo=repo, base_sha=base_sha,
+            run_dir=run_dir,
         )
+        worktrees = {
+            worker.id: manager.create(
+                run_id, worker.id, base_sha,
+                registry=_registry_do_repo(repo),
+                mission_id=mission.mission_id,
+                role="reader",
+            )
+            for worker in mission.workers
+        }
     except BaseException as exc:
-        _registrar_falha(run_dir, exc)
+        _falha_com_artefato(run_dir, exc)
         raise
-
-    worktrees = {
-        worker.id: manager.create(run_id, worker.id, base_sha, registry=_registry_do_repo(repo), mission_id=mission.mission_id)
-        for worker in mission.workers
-    }
     schema_path = Path(__file__).parent / "schemas" / "worker-result.schema.json"
     worker_nodes = tuple(
         _worker_node(
@@ -544,7 +617,16 @@ async def _run_implementation_mission(
         json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    writer_worktree = manager.create(run_id, writer.id, base_sha, registry=_registry_do_repo(repo), mission_id=mission.mission_id)
+    try:
+        writer_worktree = manager.create(
+            run_id, writer.id, base_sha, registry=_registry_do_repo(repo),
+            mission_id=mission.mission_id,
+        )
+    except BaseException as exc:
+        # Boot: registry ilegível, branch colidindo, worktree ocupada. O
+        # run_dir já existe, então o artefato nasce nele.
+        _falha_com_artefato(run_dir, exc)
+        raise
     writer_schema = (
         Path(__file__).parent / "schemas" / "writer-result.schema.json"
     )
@@ -579,9 +661,10 @@ async def _run_implementation_mission(
     # vermelho ou um gate inválido escapava sem artefato, e o operador ficava com
     # traceback em vez de classe tipada.
     try:
-        compilada = _compilar_missao(
+        compilada, resolvidos, toolchain = _compilar_missao(
             mission=mission,
             tree=writer_worktree.path,
+            repo=repo,
             base_sha=base_sha,
             run_dir=run_dir,
             writable_paths=list(writer.effective_writable_paths),
@@ -596,26 +679,20 @@ async def _run_implementation_mission(
         # O overlay de node só entra se algum gate for de frontend. Exigir lockfile
         # numa missão puramente Python transformava infraestrutura ausente em erro
         # de missão.
-        precisa_node = any(
-            g["kind"] in {"vitest", "tsc", "vite"}
-            for g in compilada["gate_plan"]["gates"]
-        )
+        precisa_node = any(g.kind in _KINDS_DE_NODE for g in resolvidos)
         node_ctx = (
             project_node_modules_overlay(worktree=writer_worktree.path)
             if precisa_node else contextlib.nullcontext()
         )
         with project_venv_overlay(repo=repo, worktree=writer_worktree.path), node_ctx:
-            for compilado in compilada["gate_plan"]["gates"]:
-                if compilado["index"] not in compilada["gates_runnable_before_writer"]:
+            for gate in resolvidos:
+                if not gate.runnable_before_writer:
                     continue
-                resolvido = resolve_gate_argv(
-                    compilado["argv"], repo=repo, worktree=writer_worktree.path
-                )
                 baseline_records.append(measure(
-                    gate_index=compilado["index"],
-                    argv=resolvido.argv,
+                    gate_index=gate.index,
+                    argv=gate.argv,
                     tree=writer_worktree.path,
-                    timeout=compilado["timeout_seconds"],
+                    timeout=gate.timeout_seconds,
                     env=_ambiente_de_gate(),
                 ))
         (run_dir / "baseline.json").write_text(
@@ -625,20 +702,29 @@ async def _run_implementation_mission(
         )
         assert_baseline_is_green(baseline_records)
 
-        for compilado in compilada["gate_plan"]["gates"]:
-            if compilado["kind"] == "pytest" and compilado["runnable_before_writer"]:
-                from .v3.gate_compiler import CompiledGate
+        # O baseline EXECUTA código, e código altera arquivo. Sem esta conferência,
+        # uma mudança feita pelo baseline chegava à guarda de ownership pós-writer
+        # e saía como "writer saiu do ownership permitido" — acusando o writer por
+        # algo que aconteceu antes de ele existir. Atribuição errada de culpa é
+        # defeito de honestidade, não detalhe de mensagem.
+        sujeira = manager.changed_paths(writer_worktree.path)
+        if sujeira:
+            raise HarnessFailure(
+                FailureClass.INFRASTRUCTURE_ERROR,
+                "a medição de baseline alterou a worktree",
+                detalhe=", ".join(sujeira[:6]),
+                reproducao="um gate do baseline escreve na árvore; torne-o read-only",
+                evidencia={"tree_delta": sujeira},
+            )
 
+        for gate in resolvidos:
+            if gate.kind == "pytest" and gate.runnable_before_writer:
+                # `ResolvedGate` já expõe index, kind e collect_only_argv: é o
+                # contrato que `assert_pytest_collects` consome.
                 assert_pytest_collects(
-                    CompiledGate(**{
-                        k: v for k, v in compilado.items()
-                        if k in CompiledGate.__dataclass_fields__
-                    }),
-                    tree=writer_worktree.path,
-                    env=_ambiente_de_gate(),
-                )
+                    gate, tree=writer_worktree.path, env=_ambiente_de_gate())
     except BaseException as exc:
-        _registrar_falha(run_dir, exc)
+        _falha_com_artefato(run_dir, exc)
         raise
 
     writer_started = _utc_now()
@@ -662,6 +748,7 @@ async def _run_implementation_mission(
             changed_paths=changed_paths,
             writable_paths=writer.effective_writable_paths,
             gates=mission.gates,
+            resolved=resolvidos,
             env=_ambiente_de_gate(),
             collect=True,
         )
@@ -670,12 +757,36 @@ async def _run_implementation_mission(
             encoding="utf-8",
         )
 
-        gate_results = []
-        gate_overlay_provenance: dict[str, object] | None = None
-        gates_node = any(
-            g["kind"] in {"vitest", "tsc", "vite"}
-            for g in compilada["gate_plan"]["gates"]
+        # ------------------------------------------------------------------
+        # LEDGER ANTES DOS GATES. Ele nascia depois do laço, e um gate vermelho
+        # levantava antes de chegar nele: falha NUNCA era registrada. Agora o
+        # ledger é a única porta de execução — `run_gate_with_ledger` reivindica,
+        # executa e conclui sob fencing, e só então o chamador decide levantar.
+        # ------------------------------------------------------------------
+        from .v3.ledger import (
+            EvidenceLedger, context_digest, digest_files, env_fingerprint,
         )
+
+        ledger = EvidenceLedger(
+            repo / "tools" / "agent-harness" / "evidence-ledger.sqlite"
+        )
+        aceite = (mission.acceptance_ids or ["sem-aceite"])[0]
+        prod_digest = digest_files(writer_worktree.path, changed_paths)
+        ambiente = _ambiente_de_gate()
+        fp = env_fingerprint(ambiente)
+        ctx = context_digest(
+            acceptance_text="|".join(mission.acceptance_ids),
+            base_sha=base_sha,
+            candidate_sha=None,
+            lineage_root=mission.lineage_root_sha,
+            toolchain=toolchain,
+            manifests={},
+        )
+
+        gate_results: list[dict[str, Any]] = []
+        entradas_evidencia: list[dict[str, Any]] = []
+        gate_overlay_provenance: dict[str, object] | None = None
+        gates_node = any(g.kind in _KINDS_DE_NODE for g in resolvidos)
         node_ctx_gates = (
             project_node_modules_overlay(worktree=writer_worktree.path)
             if gates_node else contextlib.nullcontext()
@@ -684,47 +795,88 @@ async def _run_implementation_mission(
                 node_ctx_gates as node_overlay:
             if node_overlay is not None:
                 gate_overlay_provenance = node_overlay
-            for index, gate in enumerate(mission.gates, start=1):
-                resolved_gate = resolve_gate_argv(
-                    gate.argv,
-                    repo=repo,
+            for gate in resolvidos:
+                # Revalidação do vínculo IMEDIATAMENTE antes de executar ESTE
+                # gate — não uma vez antes do laço. Entre um gate e o próximo a
+                # janela continua aberta: o gate anterior roda código, e código
+                # pode alterar um insumo auditado. Se mudou, isto é STALE_INPUT:
+                # não é gate vermelho e não é mérito do candidato.
+                assert_bindings_fresh([gate], tree=writer_worktree.path)
+                resultado = run_gate_with_ledger(
+                    gate_index=gate.index,
+                    argv=gate.argv,
                     worktree=writer_worktree.path,
-                )
-                completed = subprocess.run(
-                    resolved_gate.argv,
-                    cwd=writer_worktree.path,
-                    env=_ambiente_de_gate(),
-                    check=False,
-                    capture_output=True,
-                    text=True,
+                    env=ambiente,
                     timeout=gate.timeout_seconds,
+                    ledger=ledger,
+                    acceptance_id=aceite,
+                    base_sha=base_sha,
+                    candidate_sha=None,
+                    context_digest=ctx,
+                    env_fingerprint=fp,
+                    production_digest=prod_digest,
+                    test_digest=prod_digest,
+                    run_id=run_id,
+                    worker_id=writer.id,
+                    binding_digest=gate.binding.digest(),
+                    lease_seconds=gate.timeout_seconds + 120,
+                    wait_seconds=float(min(120, gate.timeout_seconds)),
                 )
                 gate_record = {
-                    "index": index,
+                    "index": gate.index,
+                    "kind": gate.kind,
+                    "gate_id": gate.gate_id,
                     "argv": gate.argv,
-                    "resolved_executable": resolved_gate.resolved_executable,
-                    "returncode": completed.returncode,
-                    "stdout": redact(completed.stdout[-20_000:]),
-                    "stderr": redact(completed.stderr[-20_000:]),
+                    "resolved_executable": gate.argv[0] if gate.argv else "",
+                    "returncode": resultado.exit_code,
+                    "stdout": redact(resultado.stdout[-20_000:]),
+                    "stderr": redact(resultado.stderr[-20_000:]),
+                    **resultado.as_dict(),
                 }
                 gate_results.append(gate_record)
-                (run_dir / f"gate-{index}.json").write_text(
+                entradas_evidencia.append({
+                    "acceptance_ids": mission.acceptance_ids,
+                    "kind": f"gate_{gate.index}",
+                    "gate_id": gate.gate_id,
+                    "command": " ".join(gate.argv),
+                    "exit_code": resultado.exit_code,
+                    "base_sha": base_sha,
+                    "context_digest": ctx,
+                    "env_fingerprint": fp,
+                    "binding_digest": gate.binding.digest(),
+                    "execution_mode": resultado.execution_mode,
+                    "claim_outcome": resultado.claim_outcome,
+                    "status": resultado.status,
+                    "evidence_id": resultado.evidence_id,
+                    "source_evidence_id": resultado.source_evidence_id,
+                    "waited_seconds": round(resultado.waited_seconds, 3),
+                })
+                (run_dir / f"gate-{gate.index}.json").write_text(
                     json.dumps(gate_record, ensure_ascii=False, indent=2),
                     encoding="utf-8",
                 )
-                if completed.returncode != 0:
+                # evidence.json é escrito a cada gate: se o próximo levantar, o
+                # que já foi medido continua auditável.
+                _registrar_evidencia(run_dir, entradas_evidencia)
+                if not resultado.ok:
                     classe = classify_gate_exit(
-                        exit_code=completed.returncode,
-                        argv=resolved_gate.argv,
-                        stdout=completed.stdout,
-                        stderr=completed.stderr,
+                        exit_code=resultado.exit_code or 1,
+                        argv=gate.argv,
+                        stdout=resultado.stdout,
+                        stderr=resultado.stderr,
                     )
                     raise HarnessFailure(
                         classe,
-                        f"gate {index} falhou com exit={completed.returncode}",
-                        detalhe=(completed.stderr or completed.stdout).strip()[-300:],
-                        reproducao=" ".join(resolved_gate.argv),
-                        evidencia={"gate_index": index, "exit": completed.returncode},
+                        f"gate {gate.index} falhou com exit={resultado.exit_code}",
+                        detalhe=(resultado.stderr or resultado.stdout).strip()[-300:],
+                        reproducao=" ".join(gate.argv),
+                        evidencia={
+                            "gate_index": gate.index,
+                            "exit": resultado.exit_code,
+                            "execution_mode": resultado.execution_mode,
+                            "claim_outcome": resultado.claim_outcome,
+                            "evidence_id": resultado.evidence_id,
+                        },
                     )
         manager.assert_head_unchanged(writer_worktree.path, base_sha)
         changed_paths_after_gates = manager.assert_only_allowed(
@@ -739,53 +891,6 @@ async def _run_implementation_mission(
                 detalhe=f"surgiram: {novos or '—'} | sumiram: {sumidos or '—'}",
                 reproducao="acrescente -p no:cacheprovider e PYTHONDONTWRITEBYTECODE=1 ao gate",
             )
-        # Ledger REAL: grava e consulta pelo caminho de produção, com o
-        # contexto material completo. Antes, ledger.record só existia em
-        # pipeline.py sem ctx_digest, e lookup só em teste.
-        from .v3.ledger import EvidenceLedger, context_digest, digest_files, env_fingerprint
-
-        ledger = EvidenceLedger(
-            repo / "tools" / "agent-harness" / "evidence-ledger.sqlite"
-        )
-        prod_digest = digest_files(writer_worktree.path, changed_paths)
-        ctx = context_digest(
-            acceptance_text="|".join(mission.acceptance_ids),
-            base_sha=base_sha,
-            candidate_sha=None,
-            lineage_root=mission.lineage_root_sha,
-            toolchain={"harness": "v3"},
-            manifests={},
-        )
-        fp = env_fingerprint(_ambiente_de_gate())
-        entradas_evidencia = []
-        for g in gate_results:
-            comando = " ".join(g["argv"])
-            consulta = ledger.lookup(
-                acceptance_id=(mission.acceptance_ids or ["sem-aceite"])[0],
-                kind=f"gate_{g['index']}", command=comando,
-                production_digest=prod_digest, test_digest=prod_digest,
-                cwd=str(writer_worktree.path), env_fp=fp, ctx_digest=ctx,
-            )
-            ledger.record(
-                acceptance_id=(mission.acceptance_ids or ["sem-aceite"])[0],
-                kind=f"gate_{g['index']}", base_sha=base_sha,
-                run_id=run_id, command=comando, cwd=str(writer_worktree.path),
-                env_fp=fp, ctx_digest=ctx, production_digest=prod_digest,
-                test_digest=prod_digest, exit_code=g["returncode"],
-                counts={"returncode": g["returncode"]},
-            )
-            entradas_evidencia.append({
-                "acceptance_ids": mission.acceptance_ids,
-                "kind": f"gate_{g['index']}",
-                "command": comando,
-                "exit_code": g["returncode"],
-                "base_sha": base_sha,
-                "context_digest": ctx,
-                "env_fingerprint": fp,
-                "status": consulta["status"],
-                "status_reason": consulta["reason"],
-            })
-        _registrar_evidencia(run_dir, entradas_evidencia)
         writer_sha = manager.commit_writer(
             writer_worktree.path,
             mission.commit_message or mission.title,
@@ -799,7 +904,9 @@ async def _run_implementation_mission(
                 "files": changed_paths,
                 "ownership_respected": True,
                 "green_gates": [g["index"] for g in gate_results
-                                if g["returncode"] == 0],
+                                if g["status"] == "green"],
+                "gate_execution_modes": {str(g["index"]): g["execution_mode"]
+                                         for g in gate_results},
                 "red_gate": None,
                 "failure_class": "",
                 "findings": [],
@@ -825,7 +932,7 @@ async def _run_implementation_mission(
     except Exception as error:
         # failure.json tipado, e NENHUM harvest falso: colheita só nasce de
         # trabalho realmente commitado.
-        _registrar_falha(run_dir, error)
+        _falha_com_artefato(run_dir, error)
         writer_record = {
             "worker_id": writer.id,
             "provider": writer.provider,

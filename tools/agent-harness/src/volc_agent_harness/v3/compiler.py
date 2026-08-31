@@ -19,6 +19,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from .failures import FailureClass, HarnessFailure
 from .gate_compiler import ProducedPath, compile_gate_plan
+from .gate_resolution import build_toolchain, resolve_mission_gates
 from .ownership import build_proposal
 
 
@@ -208,9 +209,24 @@ def compile_mission(
 
     produzidos = [ProducedPath(path=p["path"], required=bool(p.get("required", True)))
                   for p in produced_paths]
-    plano = compile_gate_plan(
-        gates=getattr(mission, "gates", []), tree=tree, produced=produzidos
+    # `volc-harness compile` é entrypoint produtivo: ele resolve pelo compilador
+    # TIPADO, igual ao runtime. Manter aqui a compilação por argv livre daria ao
+    # operador um "compila" que não prova o que o `run` vai fazer.
+    resolvidos = resolve_mission_gates(
+        gates=getattr(mission, "gates", []),
+        tree=tree,
+        toolchain=build_toolchain(repo=tree, worktree=tree),
+        produced_paths=list(produced_paths),
     )
+    plano = {
+        "total": len(resolvidos),
+        "runnable_before_writer": [g.index for g in resolvidos
+                                   if g.runnable_before_writer],
+        "depends_on_produced": [g.index for g in resolvidos
+                                if not g.runnable_before_writer],
+        "produced_paths": [{"path": p.path, "required": p.required} for p in produzidos],
+        "gates": [g.as_dict() for g in resolvidos],
+    }
 
     # Aceites já provados desta tarefa viram regressões obrigatórias.
     tarefas = {a.task_id for a in aceites}

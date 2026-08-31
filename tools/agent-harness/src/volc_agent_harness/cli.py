@@ -9,6 +9,22 @@ from typing import Sequence
 
 from .mission import run
 from .models import MissionSpec
+from .security import redact
+
+
+def _citar_artefato(erro: BaseException) -> None:
+    """Aponta o failure.json — e só quando ele EXISTE.
+
+    Metade do ratchet de boot já estava fechada: classe tipada, exit 4, saída
+    sanitizada. Faltava a outra metade em duas pontas. Quando o ``run_dir`` já
+    existia, o artefato precisava nascer nele (feito em ``mission.py``); e
+    quando ele NÃO existe, o CLI não pode inventar um caminho. Por isso a
+    conferência é por ``is_file()``, não por "provavelmente está lá".
+    """
+
+    caminho = getattr(erro, "failure_artifact", "")
+    if caminho and Path(caminho).is_file():
+        print(f"  artefato: {caminho}")
 
 
 def compile_only(argv: Sequence[str] | None = None) -> int:
@@ -137,6 +153,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"  reproduza: {falha.reproducao}")
         print(f"  destino: {falha.destino or 'decisão humana'} | "
               f"writer relançado: {falha.permite_retry}")
+        _citar_artefato(falha)
         return 3
     except Exception as erro:
         # Falha de boot ou upgrade — registry, ledger, overlay — nunca sai como
@@ -145,8 +162,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         classe = classify_exception(erro)
         print(f"[{classe.value}] falha de inicialização do harness")
-        print(f"  detalhe: {type(erro).__name__}: {str(erro)[:200]}")
+        print(f"  detalhe: {redact(f'{type(erro).__name__}: {str(erro)[:200]}')}")
         print("  destino: gatekeeper | writer relançado: False")
+        _citar_artefato(erro)
         return 4
 
     print(f"run: {result['run_id']}")

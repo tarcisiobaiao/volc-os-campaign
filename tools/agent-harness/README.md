@@ -67,6 +67,42 @@ total, tempo desde o último evento e volume de saída. Silêncio prolongado vir
 raciocinando; somente `timeout_seconds` encerra a execução. Os mesmos pings
 ficam em `workers/<worker-id>/heartbeat.jsonl` para auditoria posterior.
 
+## Catálogo de gates (schema 3)
+
+Uma missão **não escreve linha de comando**. Ela declara o tipo do gate:
+
+```json
+"gates": [
+  {"kind": "pytest", "targets": ["backend/tests"]},
+  {"kind": "git_diff_check"}
+]
+```
+
+`argv` livre não existe mais no schema 3. Era por ali que `python -c`,
+`node -e`, `sh -c`, `git reset` e `git checkout` entravam: quem escrevia o
+comando era o autor da missão, e nenhuma allowlist de executável segura um
+interpretador.
+
+Três tipos selecionam conteúdo que o harness não escreveu — `npm_script`,
+`tracked_script` e `build`. Eles **só existem por ID** do catálogo versionado
+em `tools/agent-harness/gate-catalog.json`:
+
+```json
+"gates": [{"kind": "catalog", "gate_id": "verificar-segredos"}]
+```
+
+O compilador resolve o ID contra o arquivo rastreado pelo Git, calcula o digest
+da definição e dos insumos materiais (corpo do script, `package.json`,
+lockfiles) e **reconfere esse digest imediatamente antes de cada gate rodar**.
+Mudou entre compilar e executar? `STALE_INPUT`, zero retry de writer, sem
+colheita. A revalidação é por gate e não uma vez antes do laço, porque o gate
+anterior roda código e código altera arquivo.
+
+⚠️ Isto fecha política de **declaração** e a janela de troca de insumo. Não é
+contenção de processo: um gate auditado roda com os privilégios do harness e
+pode tocar o filesystem inteiro. `LocalRunner.contains_filesystem` continua
+`False`, e é honesto.
+
 ## Invariantes
 
 1. Uma frente de escrita = uma branch + uma worktree exclusiva.

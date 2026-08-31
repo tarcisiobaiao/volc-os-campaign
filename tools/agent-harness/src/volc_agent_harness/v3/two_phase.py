@@ -47,10 +47,17 @@ def postwriter_compile(
     changed_paths: Sequence[str],
     writable_paths: Sequence[str],
     gates: Sequence[Any],
+    resolved: Sequence[Any] | None = None,
     env: dict[str, str] | None = None,
     collect: bool = True,
 ) -> PostWriterReport:
-    """Segunda fase. Roda depois do writer e ANTES de qualquer gate caro."""
+    """Segunda fase. Roda depois do writer e ANTES de qualquer gate caro.
+
+    ``resolved`` é o caminho tipado: quando o chamador já resolveu os gates pelo
+    compilador (o caso do runtime), recompilar por ``argv`` seria reintroduzir
+    exatamente a resolução livre que G1a refutou. O parâmetro ``gates`` continua
+    servindo o caminho legado de schema 2.
+    """
 
     presentes, faltando = [], []
     for p in produced:
@@ -79,7 +86,7 @@ def postwriter_compile(
             evidencia={"outside": fora},
         )
 
-    recompilados = [
+    recompilados = list(resolved) if resolved is not None else [
         compile_gate(
             index=i,
             argv=g.argv if hasattr(g, "argv") else g["argv"],
