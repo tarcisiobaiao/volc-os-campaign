@@ -24,6 +24,13 @@ def consumidor(caso: dict, barreira=None) -> dict:
     from volc_agent_harness.v3.gate_runner import run_gate_with_ledger
     from volc_agent_harness.v3.ledger import EvidenceLedger
 
+    if "margem" in caso:
+        # O lease efetivo cobre `timeout + MARGEM_DE_LEASE_S`. Uma prova de
+        # RETOMADA precisa de um lease que realmente expire; encolher a margem
+        # aqui é declarar qual propriedade está sob teste, em vez de torcer para
+        # um lease curto que o runtime já não aceita.
+        import volc_agent_harness.v3.gate_runner as gr
+        gr.MARGEM_DE_LEASE_S = int(caso["margem"])
     ledger = EvidenceLedger(Path(caso["ledger"]))
     if barreira is not None:
         barreira.wait(timeout=30)

@@ -687,8 +687,11 @@ class B10_LegadoFailClosed(unittest.TestCase):
                         and isinstance(no.func.value, ast.Name)
                         and no.func.value.id == "subprocess"
                         and rel.startswith("v3/")
+                        # Sondas de Git, não execução de gate: elas perguntam
+                        # ao repositório o que ele rastreia, e nunca produzem
+                        # veredito sobre o candidato.
                         and rel not in {"v3/harvest.py", "v3/gate_catalog.py",
-                                        "v3/gate_types.py"}):
+                                        "v3/gate_types.py", "v3/fingerprint.py"}):
                     ofensores.append(f"{rel}:{no.lineno}: subprocess.run")
         self.assertEqual(ofensores, [],
                          "caminho produtivo ainda executa ou lê argv por fora")

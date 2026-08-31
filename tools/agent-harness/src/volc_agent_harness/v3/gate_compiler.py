@@ -270,6 +270,7 @@ def assert_pytest_collects(
         run_id=ctx.run_id,
         worker_id=ctx.worker_id,
         runner=ctx.runner,
+        gate=gate,          # o gate verificável revalida dentro do runner
         binding_digest=vinculo.digest() if vinculo is not None else "",
         lease_seconds=ctx.lease_seconds,
         wait_seconds=ctx.wait_seconds,

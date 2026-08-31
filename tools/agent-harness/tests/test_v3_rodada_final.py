@@ -296,9 +296,11 @@ class A4_BaselineEColetaAtravessamAMesmaFronteira(unittest.TestCase):
 
         fonte = inspect.getsource(m._run_implementation_mission)
         i_base = fonte.index('kind_prefix="baseline_gate"')
-        antes = fonte[:i_base]
-        self.assertIn("assert_bindings_fresh", antes,
-                      "baseline entra no ledger sem revalidar")
+        # A revalidação mora DENTRO de `run_gate_with_ledger` e é disparada por
+        # receber o gate verificável. Exigir a chamada literal aqui mediria o
+        # lugar errado: o que importa é que o baseline não entre sem o gate.
+        self.assertIn("gate=gate", fonte[:i_base],
+                      "baseline entra no ledger sem o gate verificável")
 
     def test_coleta_revalida_antes_de_entrar_no_ledger(self):
         import inspect
@@ -327,31 +329,61 @@ class B5_HeartbeatRobusto(unittest.TestCase):
         self.assertTrue(hasattr(LocalRunner, "cancel"))
 
     def test_falha_transitoria_isolada_nao_mata_o_heartbeat(self):
-        raiz = Path(mkdtemp())
-        led = EvidenceLedger(raiz / "l.sqlite")
-        falhas = {"n": 0}
-        original = led.heartbeat
+        """A tolerância é medida em TEMPO DE LEASE, não em N tentativas.
 
-        def instavel(claim, **kw):
-            falhas["n"] += 1
-            if falhas["n"] in (1, 3):
-                raise sqlite3.OperationalError("database is locked")
-            return original(claim, **kw)
+        Testado em isolamento de propósito: com `lease_efetivo` cobrindo
+        `timeout + margem`, um teste ponta a ponta teria intervalo de dezenas de
+        segundos e não exerceria a lógica de tolerância nenhuma vez.
+        """
 
-        led.heartbeat = instavel
+        from volc_agent_harness.v3.gate_runner import _Heartbeat
+        from volc_agent_harness.v3.ledger import Claim, ClaimOutcome, GateIdentity
 
-        class Lento(GateRunner):
-            name = "lento"
-            def execute(self, **kw): time.sleep(2.5); return 0, "ok", ""
+        tentativas = {"n": 0}
 
-        saida = run_gate_with_ledger(
-            gate_index=1, argv=["x"], worktree=raiz, env={}, timeout=30,
-            ledger=led, acceptance_id="P-A1", base_sha="s", candidate_sha=None,
-            context_digest="c", env_fingerprint="e", production_digest="p",
-            test_digest="t", run_id="r", worker_id="w", runner=Lento(),
-            lease_seconds=2, wait_seconds=0.0)
-        self.assertTrue(saida.ok, "falha transitória isolada derrubou o gate")
-        self.assertGreater(falhas["n"], 2, "o heartbeat parou de tentar")
+        class LedgerInstavel:
+            def heartbeat(self, claim, **kw):
+                tentativas["n"] += 1
+                if tentativas["n"] in (1, 3):
+                    raise sqlite3.OperationalError("database is locked")
+                return True
+
+        ident = GateIdentity(acceptance_id="A", kind="gate_1", context_digest="c",
+                             production_digest="p", test_digest="t",
+                             command_digest="cmd", env_fingerprint="e")
+        claim = Claim(ident, ClaimOutcome.ACQUIRED, "owner", 1)
+        with _Heartbeat(LedgerInstavel(), claim, lease_seconds=4) as batida:
+            time.sleep(3.2)
+            perdeu = batida.perdeu.is_set()
+        self.assertGreaterEqual(tentativas["n"], 3, "o heartbeat parou de tentar")
+        self.assertFalse(perdeu, "falha transitória isolada matou a renovação")
+
+    def test_falha_persistente_desiste_e_cancela_o_processo(self):
+        from volc_agent_harness.v3.gate_runner import GateRunner, _Heartbeat
+        from volc_agent_harness.v3.ledger import Claim, ClaimOutcome, GateIdentity
+
+        class SempreQuebrado:
+            def heartbeat(self, claim, **kw):
+                raise sqlite3.OperationalError("locked")
+
+        class Cancelavel(GateRunner):
+            name = "cancelavel"
+            def __init__(self): self.cancelado = False
+            def execute(self, **kw): return 0, "", ""
+            def cancel(self): self.cancelado = True
+
+        ident = GateIdentity(acceptance_id="A", kind="gate_1", context_digest="c",
+                             production_digest="p", test_digest="t",
+                             command_digest="cmd", env_fingerprint="e")
+        claim = Claim(ident, ClaimOutcome.ACQUIRED, "owner", 1)
+        runner = Cancelavel()
+        with _Heartbeat(SempreQuebrado(), claim, lease_seconds=2,
+                        runner=runner) as batida:
+            time.sleep(3.0)
+            perdeu = batida.perdeu.is_set()
+        self.assertTrue(perdeu, "falha persistente precisa sinalizar lease perdido")
+        self.assertTrue(runner.cancelado,
+                        "perder o lease precisa ENCERRAR o processo")
 
     def test_uma_execucao_fisica_sob_falhas_transitorias_injetadas(self):
         raiz = Path(mkdtemp())
@@ -442,7 +474,9 @@ class B7_CwdHonrado(unittest.TestCase):
             context_digest="c", env_fingerprint="e", production_digest="p",
             test_digest="t", run_id="r", worker_id="w", runner=Captura(),
             cwd_rel="sub", lease_seconds=60, wait_seconds=0.0)
-        self.assertEqual(visto[0], raiz / "sub")
+        # `.resolve()` dos dois lados: o runtime canonicaliza para poder conferir
+        # contenção, e no macOS /var é symlink de /private/var.
+        self.assertEqual(visto[0].resolve(), (raiz / "sub").resolve())
         self.assertTrue(saida.ok)
 
     def test_cwd_rel_inexistente_falha_antes_de_executar(self):
@@ -479,7 +513,8 @@ class B7_CwdHonrado(unittest.TestCase):
         linha = led.evidencias()[0]
         self.assertEqual(linha["cwd"], "sub")
         contagens = json.loads(linha["counts_json"])
-        self.assertEqual(contagens["cwd_efetivo"], str(raiz / "sub"))
+        self.assertEqual(Path(contagens["cwd_efetivo"]).resolve(),
+                         (raiz / "sub").resolve())
 
 
 class B8_CompleteSemFallbackPermissivo(unittest.TestCase):
@@ -651,8 +686,10 @@ class BL11_DiskFullPersistente(unittest.TestCase):
         import volc_agent_harness.mission as mm
         from volc_agent_harness.cli import main as cli_main
 
+        from _e2e_fixture import escreve_teste_novo
+
         repo = repo_sintetico(Path(mkdtemp()))
-        contador = ContadorDeModelos()
+        contador = ContadorDeModelos(escrita=escreve_teste_novo)
         original_adapter, original_escrever = mm.adapter_for, RunArtifacts.escrever
 
         def _escrever(self, nome, conteudo):

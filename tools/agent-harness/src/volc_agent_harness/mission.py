@@ -27,6 +27,7 @@ from .v3.gate_resolution import (
     ResolvedGate,
     assert_bindings_fresh,
     build_toolchain,
+    rebind,
     resolve_mission_gates,
 )
 from .v3.gate_runner import run_gate_with_ledger
@@ -306,6 +307,7 @@ def _compilar_missao(
     repo: Path,
     base_sha: str,
     run_dir: Path,
+    artefatos: Any = None,
     writable_paths: list[str] | None = None,
 ) -> tuple[dict[str, Any], list[ResolvedGate], dict[str, str]]:
     """Compilação obrigatória, comum a read_only e implementation.
@@ -345,9 +347,13 @@ def _compilar_missao(
         "toolchain": dict(sorted(toolchain.items())),
         "gates": [g.as_dict() for g in resolvidos],
     }
-    (run_dir / "gate-plan.json").write_text(
-        json.dumps(gate_plan, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    # Pela fronteira, como todo artefato: `gate-plan.json` e
+    # `ownership-proposal.json` escreviam direto e escapavam da garantia de
+    # `failure.json` — o mesmo defeito do `metadata.json`, uma camada abaixo.
+    escrever = artefatos.escrever if artefatos is not None else (
+        lambda nome, dados: (run_dir / nome).write_text(
+            json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8"))
+    escrever("gate-plan.json", gate_plan)
 
     proposta: dict[str, Any] | None = None
     if mission.mission_schema_version >= 3:
@@ -362,9 +368,7 @@ def _compilar_missao(
             declared_writable=writable_paths or [],
             produced_paths=[p.model_dump() for p in mission.produced_paths],
         )
-        (run_dir / "ownership-proposal.json").write_text(
-            json.dumps(proposta, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        escrever("ownership-proposal.json", proposta)
         if writable_paths is not None and proposta["requires_new_authorization"]:
             raise HarnessFailure(
                 FailureClass.OWNERSHIP_ERROR,
@@ -397,9 +401,7 @@ def _compilar_missao(
         "write_authority": "single_writer" if writable_paths else "read_only",
         "integration_policy": "human_merge_only",
     }
-    (run_dir / "compiled-mission.json").write_text(
-        json.dumps(compilada, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    escrever("compiled-mission.json", compilada)
     return compilada, resolvidos, toolchain
 
 
@@ -468,7 +470,7 @@ async def _run_read_only_mission(
         artefatos.marcar("compile")
         _compilar_missao(
             mission=mission, tree=repo, repo=repo, base_sha=base_sha,
-            run_dir=run_dir,
+            run_dir=run_dir, artefatos=artefatos,
         )
         artefatos.marcar("worktree")
         worktrees = {
@@ -634,6 +636,7 @@ async def _run_implementation_mission(
             repo=repo,
             base_sha=base_sha,
             run_dir=run_dir,
+            artefatos=artefatos,
             writable_paths=list(writer.effective_writable_paths),
         )
         produced = [ProducedPath(p.path, p.required) for p in mission.produced_paths]
@@ -698,7 +701,7 @@ async def _run_implementation_mission(
                     test_digest=f"baseline:{base_digest}",
                     run_id=run_id,
                     worker_id=f"baseline/{writer.id}",
-                    binding_digest=gate.binding.digest(),
+                    gate=gate,          # revalida o vínculo dentro do runner
                     kind_prefix="baseline_gate",
                     lease_seconds=gate.timeout_seconds + 120,
                     wait_seconds=float(min(120, gate.timeout_seconds)),
@@ -764,6 +767,17 @@ async def _run_implementation_mission(
         # ownership, isso é SPEC_ERROR/OWNERSHIP_ERROR agora — não um gate caro
         # falhando de um jeito difícil de ler dez minutos depois.
         # --------------------------------------------------------------
+        # Reancora o vínculo LOGO DEPOIS de o ownership do writer ser conferido,
+        # e ANTES do postwriter — que já executa a coleta, e portanto já precisa
+        # do vínculo novo. O fingerprint é medido antes do writer, e o writer
+        # muda a árvore: sem reancorar, todo gate sairia STALE_INPUT e a guarda
+        # viraria bloqueio universal, tão inútil quanto guarda nenhuma.
+        #
+        # A janela que interessa não é "compilação → execução", é "última
+        # mudança AUTORIZADA → execução". Daqui em diante toda alteração é de
+        # terceiro, e é essa que a revalidação nos quatro pontos pega.
+        resolvidos = rebind(resolvidos, tree=writer_worktree.path)
+
         artefatos.marcar("postwriter")
         postwriter = postwriter_compile(
             tree=writer_worktree.path,
@@ -833,7 +847,7 @@ async def _run_implementation_mission(
                     test_digest=prod_digest,
                     run_id=run_id,
                     worker_id=writer.id,
-                    binding_digest=gate.binding.digest(),
+                    gate=gate,          # revalida o vínculo dentro do runner
                     lease_seconds=gate.timeout_seconds + 120,
                     wait_seconds=float(min(120, gate.timeout_seconds)),
                 )
