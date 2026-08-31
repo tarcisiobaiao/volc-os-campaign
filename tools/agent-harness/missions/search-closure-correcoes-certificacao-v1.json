@@ -2,7 +2,7 @@
   "mission_schema_version": 3,
   "mission_id": "search-closure-correcoes-certificacao-v1",
   "title": "Correções dos achados confirmados da certificação de quatro lanes",
-  "base_ref": "4a610e4025984e136f194cd1610802094f224660",
+  "base_ref": "29dce33df8543643f8d5e2adf2a46ef4d048f746",
   "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
   "mode": "implementation",
   "commit_message": "fix(subir): o contrato do executor, a chave em micros e a porta de reconciliacao",
