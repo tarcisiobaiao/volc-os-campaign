@@ -22,7 +22,7 @@ from .locking import writer_lock
 from .models import MissionSpec, WorkerSpec
 from .security import redact, sanitized_environment
 from .v3.failures import FailureClass, HarnessFailure, classify_gate_exit
-from .v3.gate_compiler import ProducedPath, assert_pytest_collects
+from .v3.gate_compiler import ColetaContexto, ProducedPath, assert_pytest_collects
 from .v3.gate_resolution import (
     ResolvedGate,
     assert_bindings_fresh,
@@ -30,6 +30,7 @@ from .v3.gate_resolution import (
     resolve_mission_gates,
 )
 from .v3.gate_runner import run_gate_with_ledger
+from .v3.run_artifacts import RunArtifacts, fronteira_de_erro
 from .v3.two_phase import postwriter_compile
 from .v3.workspace import (
     assert_gate_executable_is_allowed,
@@ -409,47 +410,21 @@ def _registrar_evidencia(run_dir: Path, entradas: list[dict[str, Any]]) -> None:
 
 
 def _registrar_falha(run_dir: Path, exc: BaseException) -> dict[str, Any]:
-    """Artefato tipado e SANITIZADO da falha.
+    """Compatibilidade: a fronteira real é :class:`RunArtifacts`."""
 
-    Um traceback de boot pode carregar variável de ambiente, header de
-    autenticação ou string de conexão. ``failure.json`` é lido por humano e
-    entra em relatório: tudo o que é texto livre passa por ``redact``.
-    """
-
-    from .v3.failures import classify_exception
-
-    if isinstance(exc, HarnessFailure):
-        registro = exc.as_dict()
-    else:
-        registro = HarnessFailure(classify_exception(exc), str(exc)[:300]).as_dict()
-    for campo in ("resumo", "detalhe", "reproducao"):
-        registro[campo] = redact(str(registro.get(campo) or ""))
-    registro["evidencia"] = json.loads(
-        redact(json.dumps(registro.get("evidencia") or {}, ensure_ascii=False))
-    )
-    run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / "failure.json").write_text(
-        json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    return registro
+    return RunArtifacts(run_dir).registrar_falha(exc)
 
 
 def _falha_com_artefato(run_dir: Path, exc: BaseException) -> dict[str, Any]:
-    """Grava a falha e diz à exceção ONDE o artefato ficou.
+    """Grava a falha e diz à exceção ONDE o artefato ficou."""
 
-    O ratchet de boot fechava só metade: ``OperationalError`` já virava
-    ``INFRASTRUCTURE_ERROR`` com exit 4, mas quando o ``run_dir`` já existia
-    ninguém escrevia nada nele, e o operador ficava com uma linha no terminal e
-    um diretório vazio. O caminho do artefato viaja na exceção justamente para
-    que o CLI possa CONFERIR que ele existe antes de citá-lo — nunca inventar.
-    """
-
-    registro = _registrar_falha(run_dir, exc)
-    artefato = run_dir / "failure.json"
+    artefatos = RunArtifacts(run_dir)
+    registro = artefatos.registrar_falha(exc)
     try:
-        exc.run_dir = str(run_dir)                      # type: ignore[attr-defined]
-        exc.failure_artifact = str(artefato)            # type: ignore[attr-defined]
-    except AttributeError:                              # exceção com __slots__
+        exc.run_dir = str(run_dir)                          # type: ignore[attr-defined]
+        exc.failure_artifact = (
+            str(artefatos.failure_path) if artefatos.failure_path.is_file() else "")
+    except AttributeError:                                  # exceção com __slots__
         pass
     return registro
 
@@ -482,21 +457,20 @@ async def _run_read_only_mission(
             for worker in mission.workers
         ],
     }
-    (run_dir / "metadata.json").write_text(
-        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
-    # Compilação obrigatória também no read_only. Investigadores e reviewers
-    # gastam modelo igual; não há razão para eles escaparem do compilador.
-    #
-    # E a criação das worktrees entrou no MESMO `try`: um registry ilegível
-    # levantava depois do `mkdir` do run_dir e fora de qualquer proteção, então
-    # a falha de boot não deixava artefato nenhum onde o operador procura.
-    try:
+    # TUDO que escreve artefato entra na fronteira — inclusive o `metadata.json`.
+    # Ele era gravado logo depois do `mkdir` e ANTES do `try`: uma falha de
+    # disco ali deixava run_dir criado, nenhum failure.json e o operador sem
+    # nada. Corrigir ponto a ponto não resolve a classe do defeito; por isso a
+    # fronteira virou objeto.
+    artefatos = RunArtifacts(run_dir)
+    with fronteira_de_erro(artefatos, "boot"):
+        artefatos.escrever("metadata.json", metadata)
+        artefatos.marcar("compile")
         _compilar_missao(
             mission=mission, tree=repo, repo=repo, base_sha=base_sha,
             run_dir=run_dir,
         )
+        artefatos.marcar("worktree")
         worktrees = {
             worker.id: manager.create(
                 run_id, worker.id, base_sha,
@@ -506,9 +480,6 @@ async def _run_read_only_mission(
             )
             for worker in mission.workers
         }
-    except BaseException as exc:
-        _falha_com_artefato(run_dir, exc)
-        raise
     schema_path = Path(__file__).parent / "schemas" / "worker-result.schema.json"
     worker_nodes = tuple(
         _worker_node(
@@ -613,20 +584,16 @@ async def _run_implementation_mission(
             for worker in mission.workers
         ],
     }
-    (run_dir / "metadata.json").write_text(
-        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
-    try:
+    artefatos = RunArtifacts(run_dir)
+    with fronteira_de_erro(artefatos, "boot"):
+        # `metadata.json` entrou na fronteira: ele era escrito antes do `try`,
+        # e uma falha de disco ali não produzia artefato nenhum.
+        artefatos.escrever("metadata.json", metadata)
+        artefatos.marcar("worktree")
         writer_worktree = manager.create(
             run_id, writer.id, base_sha, registry=_registry_do_repo(repo),
             mission_id=mission.mission_id,
         )
-    except BaseException as exc:
-        # Boot: registry ilegível, branch colidindo, worktree ocupada. O
-        # run_dir já existe, então o artefato nasce nele.
-        _falha_com_artefato(run_dir, exc)
-        raise
     writer_schema = (
         Path(__file__).parent / "schemas" / "writer-result.schema.json"
     )
@@ -660,7 +627,7 @@ async def _run_implementation_mission(
     # Toda falha da fase pré-writer também vira failure.json. Antes, um baseline
     # vermelho ou um gate inválido escapava sem artefato, e o operador ficava com
     # traceback em vez de classe tipada.
-    try:
+    with fronteira_de_erro(artefatos, "compile"):
         compilada, resolvidos, toolchain = _compilar_missao(
             mission=mission,
             tree=writer_worktree.path,
@@ -766,17 +733,23 @@ async def _run_implementation_mission(
                 evidencia={"tree_delta": sujeira},
             )
 
+        coleta_ctx = ColetaContexto(
+            ledger=ledger, acceptance_id=aceite, base_sha=base_sha,
+            context_digest=ctx, env_fingerprint=fp,
+            production_digest=f"baseline:{digest_files(writer_worktree.path, ['.'])}",
+            test_digest=f"baseline:{digest_files(writer_worktree.path, ['.'])}",
+            run_id=run_id, worker_id=f"collect/{writer.id}",
+        )
         for gate in resolvidos:
             if gate.kind == "pytest" and gate.runnable_before_writer:
-                # `ResolvedGate` já expõe index, kind e collect_only_argv: é o
-                # contrato que `assert_pytest_collects` consome.
+                # Coleta importa `conftest.py` e módulos de teste: é execução, e
+                # execução passa pelo ledger com identidade própria.
                 assert_pytest_collects(
-                    gate, tree=writer_worktree.path, env=_ambiente_de_gate())
-    except BaseException as exc:
-        _falha_com_artefato(run_dir, exc)
-        raise
+                    gate, tree=writer_worktree.path, ctx=coleta_ctx,
+                    env=_ambiente_de_gate())
 
     writer_started = _utc_now()
+    artefatos.marcar("writer")
     try:
         writer_result = await adapter_for(writer.provider).run(writer_request)
         manager.assert_head_unchanged(writer_worktree.path, base_sha)
@@ -798,6 +771,13 @@ async def _run_implementation_mission(
             writable_paths=writer.effective_writable_paths,
             gates=mission.gates,
             resolved=resolvidos,
+            collect_ctx=ColetaContexto(
+                ledger=ledger, acceptance_id=aceite, base_sha=base_sha,
+                context_digest=ctx, env_fingerprint=fp,
+                production_digest=digest_files(writer_worktree.path, changed_paths),
+                test_digest=digest_files(writer_worktree.path, changed_paths),
+                run_id=run_id, worker_id=f"collect/{writer.id}",
+            ),
             env=_ambiente_de_gate(),
             collect=True,
         )
