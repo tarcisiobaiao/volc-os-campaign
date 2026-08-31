@@ -2,7 +2,7 @@
   "mission_schema_version": 3,
   "mission_id": "search-production-closure-certification-v1",
   "title": "Certificação adversarial do candidato 8c3dfdc — fronteira atômica do lançamento Search",
-  "base_ref": "b1fe80d7c9227d6a0b8ad8954b2e8eabd7585da4",
+  "base_ref": "2a02f07567c587a8ac06de462f7a466b96e8fbf0",
   "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
   "mode": "read_only",
   "acceptance_ids": [
