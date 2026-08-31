@@ -93,9 +93,8 @@ class _E2E(unittest.TestCase):
             (worktree / "backend" / "tests" / "SINALIZA_VERMELHO").write_text("x")
 
     def _rodar(self, **over) -> tuple[int, str]:
-        alvo = missao(self.repo,
-                      gates=[{"kind": "catalog", "gate_id": "prova-sintetica"}],
-                      **over)
+        over.setdefault("gates", [{"kind": "catalog", "gate_id": "prova-sintetica"}])
+        alvo = missao(self.repo, **over)
         buffer = StringIO()
         with redirect_stdout(buffer):
             codigo = cli_main(["--mission", str(alvo), "--repo", str(self.repo)])
@@ -182,29 +181,66 @@ class CadeiaCompleta(_E2E):
         self.assertEqual(codigo, 3, saida)
         self.assertEqual(self.contador.chamadas, [])
 
-    def test_script_alterado_entre_compilacao_e_execucao_e_recusado(self):
-        """O writer não escreve no script do gate, mas o mundo pode mudar."""
+    def test_gate_que_altera_insumo_de_outro_gate_e_recusado(self):
+        """A janela entre compilar e executar não fecha no primeiro gate.
 
-        alvo = self.repo / "tools" / "agent-harness" / "gate_sintetico.py"
-        original = mission_mod.run_gate_with_ledger
-        estado = {"mexeu": False}
+        O writer não consegue tocar o script de um gate — o ownership barra
+        antes. Mas o gate ANTERIOR roda código, e código altera arquivo. Este é
+        o caso que obriga a revalidação a ficar dentro do laço, e não uma vez
+        antes dele: o gate 1 reescreve o script auditado do gate 2.
+        """
 
-        def _sabotar(*args, **kwargs):
-            if not estado["mexeu"]:
-                estado["mexeu"] = True
-                alvo.write_text("raise SystemExit(0)\n", encoding="utf-8")
-            return original(*args, **kwargs)
+        alvo = self.repo / "tools" / "agent-harness" / "alvo.py"
+        alvo.write_text("raise SystemExit(0)\n", encoding="utf-8")
+        # O sabotador recebe o artefato PRODUZIDO pelo writer como argumento.
+        # Isso o tira do baseline: gate que depende de produced_path não é
+        # executável antes do writer, e é justamente na janela pós-writer que a
+        # prova precisa acontecer.
+        (self.repo / "tools" / "agent-harness" / "sabota.py").write_text(
+            "import sys\n"
+            "from pathlib import Path\n"
+            "assert Path(sys.argv[1]).is_file(), sys.argv[1]\n"
+            "raiz = Path(__file__).resolve().parents[2]\n"
+            "(raiz / 'tools' / 'agent-harness' / 'alvo.py').write_text("
+            "'raise SystemExit(0)  # trocado em tempo de execucao\\n')\n",
+            encoding="utf-8")
+        catalogo = json.loads(json.dumps(CATALOGO))
+        catalogo["gates"]["sabotador"] = {
+            "kind": "tracked_script",
+            "script_path": "tools/agent-harness/sabota.py",
+            "args": ["backend/tests/test_novo.py"],
+            "description": "gate que altera o insumo do gate seguinte",
+        }
+        catalogo["gates"]["alvo"] = {
+            "kind": "tracked_script",
+            "script_path": "tools/agent-harness/alvo.py",
+            "args": [],
+            "description": "gate cujo script é alterado durante a execução",
+        }
+        (self.repo / "tools" / "agent-harness" / "gate-catalog.json").write_text(
+            json.dumps(catalogo, indent=2), encoding="utf-8")
+        git(self.repo, "add", "-A")
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t",
+                        "-c", "user.email=t@t", "commit", "-q", "-m", "sabotador"],
+                       check=True, capture_output=True)
 
-        mission_mod.run_gate_with_ledger = _sabotar
-        try:
-            codigo, saida = self._rodar()
-        finally:
-            mission_mod.run_gate_with_ledger = original
+        codigo, saida = self._rodar(
+            produced_paths=[{"path": "backend/tests/test_novo.py"}],
+            gates=[
+                {"kind": "catalog", "gate_id": "sabotador"},
+                {"kind": "catalog", "gate_id": "alvo"},
+            ],
+        )
         self.assertNotEqual(codigo, 0, saida)
         run = _runs(self.repo)[-1]
         falha = json.loads((run / "failure.json").read_text())
-        self.assertIn(falha["classe"], {"STALE_INPUT", "AUTHORIZATION_BLOCK"})
+        self.assertEqual(falha["classe"], "STALE_INPUT")
+        self.assertFalse(falha["permite_retry"],
+                         "insumo trocado não se conserta relançando writer")
         self.assertFalse((run / "harvest.json").exists())
+        evidencia = json.loads((run / "evidence.json").read_text())
+        self.assertEqual(len(evidencia), 1,
+                         "o gate 1 mediu; o gate 2 nem chegou a rodar")
 
 
 class SemCaminhoParalelo(unittest.TestCase):

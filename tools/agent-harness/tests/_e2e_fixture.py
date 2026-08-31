@@ -66,6 +66,42 @@ class ContadorDeModelos:
         return [c for c in self.chamadas if c["mode"] != "workspace_write"]
 
 
+#: `commit_writer` roda este script antes de qualquer commit candidato. O repo
+#: sintético precisa oferecê-lo, senão a prova E2E morre por infraestrutura de
+#: fixture e não por comportamento do harness.
+VERIFICADOR_DE_SEGREDOS = """\
+import re
+import subprocess
+import sys
+
+PADROES = (
+    re.compile(r"eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\."),
+    re.compile(r"(?i)(service_role|api[_-]?key|secret)\\s*[:=]\\s*\\S{12,}"),
+)
+
+alterados = subprocess.run(
+    ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
+).stdout.splitlines()
+
+achados = []
+for linha in alterados:
+    caminho = linha[3:].strip()
+    try:
+        with open(caminho, "r", encoding="utf-8", errors="ignore") as arquivo:
+            conteudo = arquivo.read()
+    except (IsADirectoryError, FileNotFoundError):
+        continue
+    for padrao in PADROES:
+        if padrao.search(conteudo):
+            achados.append(caminho)
+            break
+
+if achados:
+    print("segredo aparente em: " + ", ".join(sorted(set(achados))))
+    raise SystemExit(1)
+"""
+
+
 CATALOGO_PADRAO = {
     "catalog_version": 1,
     "gates": {
@@ -93,8 +129,13 @@ def repo_sintetico(raiz: Path, *, catalogo: dict[str, Any] | None = None) -> Pat
     (raiz / "tools" / "agent-harness" / "gate-catalog.json").write_text(
         json.dumps(catalogo if catalogo is not None else CATALOGO_PADRAO, indent=2),
         encoding="utf-8")
-    (raiz / ".gitignore").write_text("tools/agent-harness/runs/\n.agent-worktrees/\n",
-                                     encoding="utf-8")
+    (raiz / "scripts").mkdir()
+    (raiz / "scripts" / "verificar_segredos.py").write_text(
+        VERIFICADOR_DE_SEGREDOS, encoding="utf-8")
+    (raiz / ".gitignore").write_text(
+        "tools/agent-harness/runs/\n.agent-worktrees/\n"
+        "tools/agent-harness/*.sqlite*\nbackend/.venv/\n",
+        encoding="utf-8")
     subprocess.run(["git", "init", "-q", str(raiz)], check=True)
     git(raiz, "add", "-A")
     subprocess.run(["git", "-C", str(raiz), *GIT_ID, "commit", "-q", "-m", "base"],

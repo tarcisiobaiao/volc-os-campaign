@@ -180,7 +180,19 @@ class Guarda5LedgerDuravel(unittest.TestCase):
             self.assertEqual(outro["status"], Status.REEXECUTED)
             self.assertIn("ambiente", outro["reason"])
 
-    def test_cwd_diferente_invalida_a_prova(self):
+    def test_cwd_e_metadado_de_auditoria__nao_identidade(self):
+        """Decisão revista, com o motivo à vista.
+
+        A versão anterior punha ``cwd`` no digest da identidade. Como cada run
+        nasce numa worktree nova, o digest NUNCA repetia: o ledger só reutilizou
+        prova em teste, jamais em produção — a economia que ele existe para
+        entregar não acontecia uma vez sequer.
+
+        O caminho absoluto de um diretório não é insumo material. O que é
+        material já está no digest: conteúdo de produção, de teste, comando,
+        contexto e ambiente. ``cwd`` continua GRAVADO, para auditoria.
+        """
+
         with TemporaryDirectory() as tmp:
             led = EvidenceLedger(Path(tmp) / "l.sqlite")
             fp = env_fingerprint({"PATH": "/a"})
@@ -189,8 +201,32 @@ class Guarda5LedgerDuravel(unittest.TestCase):
                        production_digest="d", test_digest="t")
             r = led.lookup(acceptance_id="A-A1", kind="focal_gate", command="pytest",
                            production_digest="d", test_digest="t", cwd="/w2", env_fp=fp)
-            self.assertEqual(r["status"], Status.REEXECUTED)
-            self.assertIn("diretório de trabalho", r["reason"])
+            self.assertEqual(r["status"], Status.REUSED,
+                             "outra worktree, mesmo material: a prova vale")
+            self.assertEqual(r["evidence"]["cwd"], "/w1",
+                             "o cwd medido continua auditável na evidência")
+
+    def test_dimensao_material_de_verdade_continua_invalidando(self):
+        """O relaxamento do cwd não pode ter afrouxado o resto."""
+
+        with TemporaryDirectory() as tmp:
+            led = EvidenceLedger(Path(tmp) / "l.sqlite")
+            fp = env_fingerprint({"PATH": "/a"})
+            led.record(acceptance_id="A-A1", kind="focal_gate", base_sha="s", run_id="r",
+                       command="pytest", cwd="/w1", env_fp=fp,
+                       production_digest="d", test_digest="t")
+            for nome, mudanca in (
+                ("produção", {"production_digest": "d2"}),
+                ("testes", {"test_digest": "t2"}),
+                ("comando", {"command": "pytest -x"}),
+                ("ambiente", {"env_fp": env_fingerprint({"PATH": "/b"})}),
+            ):
+                with self.subTest(dimensao=nome):
+                    base = dict(acceptance_id="A-A1", kind="focal_gate",
+                                command="pytest", production_digest="d",
+                                test_digest="t", cwd="/w1", env_fp=fp)
+                    base.update(mudanca)
+                    self.assertEqual(led.lookup(**base)["status"], Status.REEXECUTED)
 
     def test_fingerprint_nao_carrega_valor_de_segredo(self):
         a = env_fingerprint({"PATH": "/a", "GEMINI_API_KEY": "AIzaSEGREDOREAL"})

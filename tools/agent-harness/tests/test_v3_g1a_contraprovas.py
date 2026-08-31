@@ -103,9 +103,9 @@ class SchemaTresRecusaArgvLivre(unittest.TestCase):
             acceptance_ids=[], ownership_envelope=[],
             gates=[{"argv": ["python3", "-m", "pytest", "backend", "-q"]}],
             workers=[
-                {"id": "a", "provider": "codex", "model": "gpt-5.5", "lens": "x",
+                {"id": "inv-a", "provider": "codex", "model": "gpt-5.5", "lens": "x",
                  "allowed_paths": ["backend"]},
-                {"id": "b", "provider": "codex", "model": "gpt-5.5", "lens": "y",
+                {"id": "inv-b", "provider": "codex", "model": "gpt-5.5", "lens": "y",
                  "allowed_paths": ["backend"]},
             ],
         )
@@ -353,10 +353,31 @@ class MissionResolveGatesPeloCompiladorTipado(unittest.TestCase):
                          "mission.py não precisa de subprocess: gates passam pelo runner")
 
     def test_nao_existe_fallback_generico_de_argv(self):
+        """O runtime nunca LÊ argv da missão.
+
+        Depois da migração, ``gate.argv`` no fonte é o argv CONSTRUÍDO pelo
+        tipo — legítimo. O que não pode existir é ler a linha de comando que a
+        missão escreveu: nem ``resolve_gate_argv``, nem iterar ``mission.gates``
+        para pegar o argv de lá.
+        """
+
         fonte = (FONTE / "mission.py").read_text(encoding="utf-8")
         self.assertNotIn("resolve_gate_argv", fonte,
                          "resolução por argv livre é o fallback genérico refutado")
-        self.assertNotIn("gate.argv", fonte)
+        for padrao in ("for gate in mission.gates",
+                       "enumerate(mission.gates",
+                       "mission.gates[",
+                       "for gate in self.gates"):
+            self.assertNotIn(padrao, fonte,
+                             f"{padrao!r} lê o gate da missão em vez do resolvido")
+
+        # `mission.gates` só pode aparecer como ENTRADA do resolvedor tipado.
+        usos = [linha.strip() for linha in fonte.splitlines()
+                if "mission.gates" in linha]
+        self.assertTrue(usos, "mission.gates precisa continuar sendo a entrada")
+        for uso in usos:
+            self.assertTrue(uso.startswith("gates=mission.gates"),
+                            f"uso não declarativo de mission.gates: {uso}")
 
 
 if __name__ == "__main__":

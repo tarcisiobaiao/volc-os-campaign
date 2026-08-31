@@ -46,7 +46,9 @@ class IntegracaoReal(unittest.TestCase):
         """A ordem no código-fonte do caminho real, não numa cópia paralela."""
 
         fonte = inspect.getsource(mission_mod)
-        i_compile = fonte.index("compile_gate_plan(")
+        # O símbolo mudou junto com a autoridade: quem compila gate agora é o
+        # resolvedor TIPADO, não a compilação por argv livre.
+        i_compile = fonte.index("resolve_mission_gates(")
         i_adapter = fonte.index("await adapter_for(writer.provider).run")
         self.assertLess(i_compile, i_adapter,
                         "o compilador precisa rodar ANTES do adapter no caminho real")
@@ -96,8 +98,8 @@ class IntegracaoReal(unittest.TestCase):
                 "acceptance_ids": ["P04-T09-A2"],
                 "ownership_envelope": ["backend"],
                 "authorized_external_providers": [],
-                "gates": [{"argv": [sys.executable, "-m", "pytest",
-                                    "backend/tests/nao_existe.py", "-q"]}],
+                "gates": [{"kind": "pytest",
+                           "targets": ["backend/tests/nao_existe.py"]}],
                 "workers": [
                     {"id": "wr", "provider": "codex", "role": "writer", "model": "gpt-5.5",
                      "lens": "x", "allowed_paths": ["backend"], "writable_paths": ["backend"]},
@@ -131,8 +133,8 @@ class IntegracaoReal(unittest.TestCase):
                 "acceptance_ids": ["P04-T09-A2"],
                 "ownership_envelope": ["backend"],
                 "authorized_external_providers": [],
-                "gates": [{"argv": [sys.executable, "-m", "pytest",
-                                    "backend/tests/test_ok.py", "-q"]}],
+                "gates": [{"kind": "pytest",
+                           "targets": ["backend/tests/test_ok.py"]}],
                 "workers": [
                     {"id": "wr", "provider": "codex", "role": "writer", "model": "gpt-5.5",
                      "lens": "x", "allowed_paths": ["backend"], "writable_paths": ["backend"]},

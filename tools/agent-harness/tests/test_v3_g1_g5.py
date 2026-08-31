@@ -20,8 +20,9 @@ from volc_agent_harness.v3.ledger import (  # noqa: E402
     EvidenceLedger, context_digest, env_fingerprint,
 )
 
-PY_PROJ = "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python"
-TOOLCHAIN = {"python": PY_PROJ, "git": "/usr/bin/git"}
+#: O gate tipado exige um interpretador que EXISTA. Qual ele é não importa
+#: para estas provas — importa que a missão não escolha a linha de comando.
+TOOLCHAIN = {"python": sys.executable, "git": "/usr/bin/git"}
 
 
 class G1GatesTipados(unittest.TestCase):
@@ -49,18 +50,26 @@ class G1GatesTipados(unittest.TestCase):
 
         g = from_spec(1, {"kind": "pytest", "targets": ["backend/tests"]})
         argv = g.build(worktree=self.wt, toolchain=TOOLCHAIN)
-        self.assertEqual(argv[:3], [PY_PROJ, "-m", "pytest"])
+        self.assertEqual(argv[:3], [TOOLCHAIN["python"], "-m", "pytest"])
         self.assertNotIn("-c", argv)
         self.assertNotIn("-e", argv)
 
-    def test_flag_fora_da_allowlist_recusada(self):
-        for flag in ("-c", "--command", "-e", "--eval", "--exec"):
-            with self.subTest(flag=flag):
-                g = from_spec(1, {"kind": "pytest", "targets": ["backend/tests"],
-                                  "flags": [flag]})
+    def test_campo_de_flag_livre_nao_existe_mais(self):
+        """A allowlist de flags virou ausência de campo.
+
+        A versão anterior aceitava ``flags`` e comparava com uma lista plana
+        onde ``-p`` convivia com os valores ``no:randomly`` e
+        ``no:cacheprovider``. Uma allowlist que mistura flag e valor é uma
+        allowlist que ninguém consegue auditar de relance. Agora o harness
+        constrói as flags e a missão não tem por onde passar nenhuma.
+        """
+
+        for campo in ("flags", "addopts", "plugins", "args"):
+            with self.subTest(campo=campo):
                 with self.assertRaises(HarnessFailure) as e:
-                    g.build(worktree=self.wt, toolchain=TOOLCHAIN)
-                self.assertEqual(e.exception.classe, FailureClass.AUTHORIZATION_BLOCK)
+                    from_spec(1, {"kind": "pytest", "targets": ["backend/tests"],
+                                  campo: ["-c"]})
+                self.assertEqual(e.exception.classe, FailureClass.SPEC_ERROR)
 
     def test_caminho_absoluto_e_travessia_recusados(self):
         for alvo in ("/etc/passwd", "../fora", "backend/../../fora"):
@@ -79,18 +88,32 @@ class G1GatesTipados(unittest.TestCase):
 
     def test_npm_script_exige_script_declarado(self):
         (self.wt / "package.json").write_text(json.dumps({"scripts": {"build": "vite build"}}))
-        ok = from_spec(1, {"kind": "npm_script", "script": "build"})
+        ok = from_spec(1, {"kind": "npm_script", "script": "build"}, from_catalog=True)
         self.assertEqual(ok.build(worktree=self.wt, toolchain={"npm": "/usr/bin/env"})[-2:],
                          ["run", "build"])
-        ruim = from_spec(1, {"kind": "npm_script", "script": "inexistente"})
+        ruim = from_spec(1, {"kind": "npm_script", "script": "inexistente"},
+                         from_catalog=True)
         with self.assertRaises(HarnessFailure) as e:
             ruim.build(worktree=self.wt, toolchain={"npm": "/usr/bin/env"})
         self.assertEqual(e.exception.classe, FailureClass.SPEC_ERROR)
 
+    def test_conteudo_indireto_so_existe_por_catalogo(self):
+        """"Rastreado pelo Git" prova origem, não prova revisão."""
+
+        for kind, spec in (
+            ("npm_script", {"kind": "npm_script", "script": "build"}),
+            ("tracked_script", {"kind": "tracked_script", "script_path": "x.py"}),
+            ("build", {"kind": "build", "script": "build"}),
+        ):
+            with self.subTest(kind=kind):
+                with self.assertRaises(HarnessFailure) as e:
+                    from_spec(1, spec)
+                self.assertEqual(e.exception.classe, FailureClass.AUTHORIZATION_BLOCK)
+
     def test_npm_script_leva_digest_do_lockfile_para_a_evidencia(self):
         (self.wt / "package.json").write_text(json.dumps({"scripts": {"build": "x"}}))
         (self.wt / "package-lock.json").write_text('{"lockfileVersion":3}')
-        g = from_spec(1, {"kind": "npm_script", "script": "build"})
+        g = from_spec(1, {"kind": "npm_script", "script": "build"}, from_catalog=True)
         inputs = g.evidence_inputs(worktree=self.wt)
         self.assertIn("package.json", inputs)
         self.assertIn("package-lock.json", inputs)
@@ -98,7 +121,8 @@ class G1GatesTipados(unittest.TestCase):
     def test_tracked_script_exige_rastreado(self):
         (self.wt / "scripts").mkdir()
         (self.wt / "scripts" / "solto.py").write_text("print(1)\n")
-        g = from_spec(1, {"kind": "tracked_script", "script_path": "scripts/solto.py"})
+        g = from_spec(1, {"kind": "tracked_script", "script_path": "scripts/solto.py"},
+                      from_catalog=True)
         with self.assertRaises(HarnessFailure) as e:
             g.build(worktree=self.wt, toolchain=TOOLCHAIN)
         self.assertEqual(e.exception.classe, FailureClass.AUTHORIZATION_BLOCK)
@@ -185,15 +209,23 @@ class G5LedgerHonesto(unittest.TestCase):
                          "prova vermelha não pode virar reuso verde")
         self.assertEqual(len(verde.execucoes), 1)
 
-    def test_ordem_e_lookup_antes_de_executar(self):
-        """Prova estrutural: no código, lookup vem antes de runner.execute."""
+    def test_ordem_e_claim_antes_de_executar(self):
+        """Prova estrutural, agora sobre a ordem CERTA.
+
+        A primeira correção de G5 pôs ``lookup`` antes de ``execute`` e parou
+        aí. ``lookup`` responde uma pergunta; ele não reserva nada, e dois
+        consumidores simultâneos recebiam ambos "pode executar". A ordem que
+        vale é claim → execute → complete.
+        """
 
         import inspect
         from volc_agent_harness.v3 import gate_runner
 
         fonte = inspect.getsource(gate_runner.run_gate_with_ledger)
-        self.assertLess(fonte.index("ledger.lookup("), fonte.index("runner.execute("))
-        self.assertLess(fonte.index("runner.execute("), fonte.index("ledger.record("))
+        self.assertLess(fonte.index("ledger.acquire("), fonte.index("runner.execute("))
+        self.assertLess(fonte.index("runner.execute("), fonte.index("ledger.complete("))
+        self.assertNotIn("ledger.lookup(", fonte,
+                         "lookup não reserva; não pode governar execução")
 
     def test_timeout_vira_status_proprio_e_e_registrado(self):
         class _Timeout(GateRunner):

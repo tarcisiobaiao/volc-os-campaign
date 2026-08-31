@@ -29,7 +29,9 @@ def mission_payload(
         "mode": "implementation",
         "task_ids": [task_id],
         "commit_message": "feat(test): supervisor pilot",
-        "gates": [{"argv": ["true"]}],
+        # `{"argv": ["true"]}` era exatamente o argv livre que G1a fechou.
+        # O equivalente tipado e read-only é o diff-check.
+        "gates": [{"kind": "git_diff_check"}],
         "workers": [
             {
                 "id": "codex-writer",
@@ -302,7 +304,9 @@ class SupervisorEligibilityTest(unittest.TestCase):
             "briefing": "Implement",
             "mode": "implementation",
             "commit_message": "test: scope",
-            "gates": [{"argv": ["true"]}],
+            # `{"argv": ["true"]}` era exatamente o argv livre que G1a fechou.
+        # O equivalente tipado e read-only é o diff-check.
+        "gates": [{"kind": "git_diff_check"}],
             "workers": [
                 {
                     "id": "writer", "provider": "codex", "role": "writer",

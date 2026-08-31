@@ -20,10 +20,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 CHAMADAS: list[str] = []
 
-#: Missão real aponta o gate para o interpretador do projeto, que tem pytest.
-#: `sys.executable` aqui é o Python do harness, que não tem — usar ele faria o
-#: teste medir a ausência de pytest em vez do pipeline.
-PYTEST_PY = "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python"
+#: A missão NÃO escolhe mais o interpretador — quem escolhe é `build_toolchain`,
+#: que prefere o venv do projeto e cai no interpretador do harness quando ele não
+#: existe. O repo sintético publica um `backend/.venv/bin/python` apontando para
+#: um Python que tenha pytest; sem isso a prova mediria a ausência de pytest em
+#: vez de medir o pipeline.
+def _python_com_pytest() -> str | None:
+    candidatos = [
+        sys.executable,
+        "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python",
+    ]
+    for candidato in candidatos:
+        if not Path(candidato).is_file():
+            continue
+        achou = subprocess.run([candidato, "-c", "import pytest"],
+                               capture_output=True)
+        if achou.returncode == 0:
+            return candidato
+    return None
+
+
+PYTEST_PY = _python_com_pytest()
 
 
 class _FakeAdapter:
@@ -63,12 +80,27 @@ def _repo(tmp: str) -> tuple[Path, str]:
     (r / "scripts").mkdir()
     (r / "scripts" / "verificar_segredos.py").write_text(
         "import sys\nsys.exit(0)\n")
+    # O venv do projeto é ignorado pelo Git, como no repo real; o overlay do
+    # harness é que o torna visível ao gate.
+    (r / ".gitignore").write_text("backend/.venv\ntools/agent-harness/*.sqlite*\n")
     subprocess.run(["git", "init", "-q", str(r)], check=True)
     subprocess.run(["git", "-C", str(r), "add", "-A"], check=True, capture_output=True)
     subprocess.run(["git", "-C", str(r), "-c", "user.name=t", "-c", "user.email=t@t",
                     "commit", "-q", "-m", "base"], check=True, capture_output=True)
     base = subprocess.run(["git", "-C", str(r), "rev-parse", "HEAD"],
                           capture_output=True, text=True, check=True).stdout.strip()
+    if PYTEST_PY is not None:
+        # DEPOIS do commit, e ignorado: o venv do projeto não é rastreado, como
+        # no repo real. Se ele entrasse no commit, a worktree do agente já
+        # nasceria com `backend/.venv` e o overlay recusaria o destino
+        # preexistente — que é justamente a guarda funcionando.
+        #
+        # E o venv INTEIRO, não só `bin/python`: o CPython descobre o prefixo
+        # pelo `pyvenv.cfg` ao lado de `bin/`, então ligar só o binário faz o
+        # interpretador cair no site-packages do sistema e o gate mediria a
+        # ausência de pytest em vez de medir o pipeline.
+        (r / "backend" / ".venv").symlink_to(
+            Path(PYTEST_PY).parent.parent, target_is_directory=True)
     return r, base
 
 
@@ -111,6 +143,8 @@ def _adapter_para(provider):
 
 class CadeiaPositiva(unittest.TestCase):
     def setUp(self) -> None:
+        if PYTEST_PY is None:
+            self.skipTest("nenhum interpretador com pytest disponível nesta máquina")
         CHAMADAS.clear()
         _adapter_para.proximo = "writer"
 
@@ -120,9 +154,7 @@ class CadeiaPositiva(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             repo, base = _repo(tmp)
             missao = _missao(repo, base, [
-                {"argv": [PYTEST_PY, "-m", "pytest",
-                          "backend/tests/test_novo.py", "-q",
-                          "-p", "no:cacheprovider"]},
+                {"kind": "pytest", "targets": ["backend/tests/test_novo.py"]},
             ])
             with mock.patch("volc_agent_harness.mission.adapter_for", _adapter_para):
                 codigo = cli_main(["--mission", str(missao), "--repo", str(repo)])
@@ -163,6 +195,8 @@ class CadeiaPositiva(unittest.TestCase):
 
 class CadeiaDeFalha(unittest.TestCase):
     def setUp(self) -> None:
+        if PYTEST_PY is None:
+            self.skipTest("nenhum interpretador com pytest disponível nesta máquina")
         CHAMADAS.clear()
         _adapter_para.proximo = "writer"
 
@@ -181,12 +215,8 @@ class CadeiaDeFalha(unittest.TestCase):
             base = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
                                   capture_output=True, text=True, check=True).stdout.strip()
             missao = _missao(repo, base, [
-                {"argv": [PYTEST_PY, "-m", "pytest",
-                          "backend/tests/test_novo.py", "-q",
-                          "-p", "no:cacheprovider"]},
-                {"argv": [PYTEST_PY, "-m", "pytest",
-                          "backend/tests/test_vermelho.py", "-q",
-                          "-p", "no:cacheprovider"]},
+                {"kind": "pytest", "targets": ["backend/tests/test_novo.py"]},
+                {"kind": "pytest", "targets": ["backend/tests/test_vermelho.py"]},
             ])
             with mock.patch("volc_agent_harness.mission.adapter_for", _adapter_para):
                 codigo = cli_main(["--mission", str(missao), "--repo", str(repo)])

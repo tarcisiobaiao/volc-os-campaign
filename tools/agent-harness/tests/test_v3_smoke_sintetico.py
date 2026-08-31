@@ -43,8 +43,20 @@ class _Worker:
 
 
 class _Gate:
-    def __init__(self, argv, timeout_seconds=600):
-        self.argv, self.timeout_seconds = list(argv), timeout_seconds
+    """Gate tipado como a missão o declara: kind + campos, nunca argv.
+
+    O stub antigo carregava ``argv`` porque era assim que o compilador lia o
+    gate. Depois de G1a, ler ``argv`` da missão é justamente o que não existe
+    mais — um stub com argv testaria um caminho que o runtime não tem.
+    """
+
+    def __init__(self, kind="pytest", timeout_seconds=600, **campos):
+        self.kind, self.timeout_seconds = kind, timeout_seconds
+        self.campos = campos
+
+    def model_dump(self, mode="json"):
+        return {"kind": self.kind, "timeout_seconds": self.timeout_seconds,
+                **self.campos}
 
 
 class _Mission:
@@ -75,7 +87,7 @@ class SmokeSintetico(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             arvore = _arvore(tmp)
             missao = _Mission(
-                gates=[_Gate([sys.executable, "-m", "pytest", "backend/tests/nao_existe.py"])],
+                gates=[_Gate(targets=["backend/tests/nao_existe.py"])],
                 workers=[_Worker("w", "codex", "writer", "gpt-5.5", ["volc_ads"])],
             )
             with self.assertRaises(HarnessFailure) as erro:
@@ -95,7 +107,7 @@ class SmokeSintetico(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             arvore = _arvore(tmp)
             missao = _Mission(
-                gates=[_Gate([sys.executable, "-m", "pytest", "backend/tests/test_existe.py", "-q"])],
+                gates=[_Gate(targets=["backend/tests/test_existe.py"])],
                 workers=[
                     _Worker("w", "codex", "writer", "gpt-5.5", ["volc_ads/subir.py"]),
                     _Worker("r", "codex", "reviewer", "gpt-5.6-sol"),
@@ -150,7 +162,7 @@ class SmokeSintetico(unittest.TestCase):
             arvore = _arvore(tmp)
             (arvore / ".env").write_text("SECRET_KEY=abcdefghijklmnop\n")
             missao = _Mission(
-                gates=[_Gate([sys.executable, "-m", "pytest", "backend/tests/test_existe.py", "-q"])],
+                gates=[_Gate(targets=["backend/tests/test_existe.py"])],
                 workers=[
                     _Worker("w", "codex", "writer", "gpt-5.5", ["volc_ads/subir.py"]),
                     _Worker("r", "codex", "reviewer", "gpt-5.6-sol"),

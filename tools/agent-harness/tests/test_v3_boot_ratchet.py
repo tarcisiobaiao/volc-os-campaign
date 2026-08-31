@@ -80,9 +80,9 @@ class BootComRunDirExistente(unittest.TestCase):
         codigo, saida = self._rodar(
             mode="read_only", commit_message=None, gates=[],
             workers=[
-                {"id": "a", "provider": "codex", "model": "gpt-5.5", "lens": "x",
+                {"id": "inv-a", "provider": "codex", "model": "gpt-5.5", "lens": "x",
                  "allowed_paths": ["backend"]},
-                {"id": "b", "provider": "codex", "model": "gpt-5.5", "lens": "y",
+                {"id": "inv-b", "provider": "codex", "model": "gpt-5.5", "lens": "y",
                  "allowed_paths": ["backend"]},
             ],
         )
@@ -122,15 +122,24 @@ class BootAntesDoRunDir(unittest.TestCase):
         self.assertEqual(self.contador.chamadas, [])
 
     def test_cli_nunca_cita_artefato_ausente(self):
-        """Prova estrutural: a linha de artefato é condicionada à existência."""
+        """Estrutural E comportamental: conferir a existência, não supor."""
 
         import inspect
 
         from volc_agent_harness import cli
 
-        fonte = inspect.getsource(cli.main)
+        fonte = inspect.getsource(cli._citar_artefato)
         self.assertIn("is_file()", fonte,
                       "o CLI precisa conferir o artefato antes de citá-lo")
+
+        # Comportamento: uma exceção que aponta para caminho inexistente não
+        # imprime linha alguma.
+        buffer = StringIO()
+        erro = RuntimeError("boom")
+        erro.failure_artifact = str(Path(self.tmp.name) / "nao" / "existe.json")
+        with redirect_stdout(buffer):
+            cli._citar_artefato(erro)
+        self.assertEqual(buffer.getvalue(), "")
 
 
 class FalhaSanitizada(unittest.TestCase):

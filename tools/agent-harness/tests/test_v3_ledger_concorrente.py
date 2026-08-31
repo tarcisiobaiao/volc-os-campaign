@@ -237,30 +237,47 @@ class ProvaC_LeaseVencidoERetomado(_Base):
 
 
 class ProvaD_CrashDepoisDoClaim(_Base):
+    """Morrer segurando o claim não pode aposentar o digest.
+
+    A trava é um arquivo, não um argumento: o argv entra na identidade lógica, e
+    segurar o primeiro processo por argumento faria os dois consumidores
+    reivindicarem identidades DIFERENTES — a prova compararia duas coisas
+    distintas e passaria por engano.
+    """
+
     def test_digest_nao_fica_bloqueado_para_sempre(self):
-        caso = self.caso(lease_seconds=1, atraso=30.0, wait_seconds=0.5)
+        trava = self.raiz / "TRAVA"
+        trava.write_text("segura o gate")
+        caso = self.caso(lease_seconds=1, wait_seconds=0.5)
         caso["saida"] = str(self.raiz / "morto.json")
         proc = subprocess.Popen(
             [sys.executable, WORKER, json.dumps(caso)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
-        for _ in range(200):                       # espera o claim aparecer
-            if self.ledger_path.exists():
-                led = EvidenceLedger(self.ledger_path)
-                if led.claims_ativos():
+        try:
+            for _ in range(400):                   # espera o claim aparecer
+                if self.ledger_path.exists() and EvidenceLedger(
+                        self.ledger_path).claims_ativos():
                     break
-            time.sleep(0.05)
-        proc.kill()
-        proc.wait(timeout=30)
+                time.sleep(0.05)
+            led = EvidenceLedger(self.ledger_path)
+            ativos = led.claims_ativos()
+            self.assertTrue(ativos, "o primeiro consumidor não chegou a reivindicar")
+            proc.kill()
+            proc.wait(timeout=30)
+        finally:
+            trava.unlink(missing_ok=True)
 
-        led = EvidenceLedger(self.ledger_path)
-        self.assertTrue(led.claims_ativos(), "o claim do processo morto sumiu")
-        time.sleep(1.2)                            # o lease vence
+        self.assertTrue(EvidenceLedger(self.ledger_path).claims_ativos(),
+                        "o claim do processo morto sumiu")
+        time.sleep(1.3)                            # o lease vence
         saida = consumidor(self.caso(worker_id="w2", wait_seconds=3.0, run_id="r2"))
-        self.assertIn(saida["execution_mode"], {"reclaimed", "executed"})
-        self.assertEqual(saida["status"], "green")
         self.assertEqual(saida["claim_outcome"],
                          ClaimOutcome.RECLAIMED_AFTER_EXPIRY.value)
+        self.assertEqual(saida["execution_mode"], "reclaimed")
+        self.assertEqual(saida["status"], "green")
+        self.assertGreater(saida["fencing_token"], ativos[0]["fencing_token"],
+                           "retomada exige fencing token novo")
 
 
 class ProvaE_VermelhoTimeoutEInfra(_Base):
