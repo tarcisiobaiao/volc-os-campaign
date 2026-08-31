@@ -28,7 +28,7 @@ import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Sequence
 
 from .failures import FailureClass, HarnessFailure
 
@@ -150,6 +150,63 @@ def indices(conn: sqlite3.Connection) -> set[str]:
         "SELECT name FROM sqlite_master WHERE type='index'")}
 
 
+@dataclass(frozen=True)
+class ColunaEsperada:
+    """Contrato de UMA coluna. Nome sozinho não diz se ela serve.
+
+    `id TEXT PRIMARY KEY` tem o nome certo e destrói o runtime: `lastrowid`
+    devolve o rowid, a PK material fica NULL, e a evidência deixa de ser
+    endereçável — com `ok=True` e baseline verde.
+    """
+
+    nome: str
+    affinity: str
+    notnull: bool
+    tem_default: bool
+    pk: int = 0
+
+    def divergencia(self, real: "Coluna") -> str | None:
+        if real.affinity != self.affinity:
+            return f"affinity {real.affinity} ≠ {self.affinity}"
+        if real.pk != self.pk:
+            return f"posição de PK {real.pk} ≠ {self.pk}"
+        if real.notnull and not self.notnull and real.default is None:
+            return "declarada NOT NULL sem default, mas o harness grava NULL nela"
+        if self.notnull and not real.notnull:
+            return "aceita NULL onde o contrato exige valor"
+        if self.notnull and not self.tem_default and real.default is None \
+                and real.pk == 0:
+            return None                  # exigida e sempre preenchida por nós
+        return None
+
+
+@dataclass(frozen=True)
+class IndiceEsperado:
+    """Índice conferido por DEFINIÇÃO, nunca por nome.
+
+    Um índice não-único chamado `idx_evidence_claim_unico` sobre a coluna errada
+    passava: o nome existia, a criação do índice correto era pulada, e a
+    unicidade material — que é o que torna `complete()` idempotente no banco —
+    simplesmente não existia.
+    """
+
+    nome: str
+    colunas: tuple[str, ...]
+    unico: bool
+
+
+def indices_detalhados(conn: sqlite3.Connection, tabela: str) -> dict[str, tuple]:
+    """``(colunas em ordem, é único)`` por nome de índice."""
+
+    saida: dict[str, tuple] = {}
+    for linha in conn.execute(f"PRAGMA index_list({tabela})"):
+        nome, unico = linha[1], bool(linha[2])
+        cols = tuple(l[2] for l in conn.execute(f"PRAGMA index_info({nome})")
+                     if l[2] is not None)
+        saida[nome] = (cols, unico)
+    return saida
+
+
 def _recusar(conn: sqlite3.Connection, tabela: str, motivo: str,
              evidencia: dict) -> None:
     """Recusa tipada, com o banco INTACTO. Nunca DROP, nunca recreate."""
@@ -175,6 +232,9 @@ def migrar(
     obrigatorias: Sequence[tuple[str, Iterable[str]]] = (),
     chaves_primarias: Sequence[tuple[str, Sequence[str]]] = (),
     unicidades: Sequence[tuple[str, Sequence[str]]] = (),
+    estrutura_esperada: Sequence[tuple[str, Sequence["ColunaEsperada"]]] = (),
+    indices_esperados: Sequence[tuple[str, Sequence["IndiceEsperado"]]] = (),
+    prova_de_uso: Any = None,
 ) -> list[str]:
     """Evolui o banco de forma idempotente, preservando linhas.
 
@@ -233,6 +293,34 @@ def migrar(
                 _recusar(conn, tabela, "coluna NOT NULL sem default que o harness "
                          "não preenche", {"colunas": intrusas})
 
+        for tabela, esperadas in estrutura_esperada:
+            if tabela not in existentes:
+                continue
+            real = estrutura(conn, tabela)
+            for coluna in esperadas:
+                atual_col = real.get(coluna.nome)
+                if atual_col is None:
+                    continue          # ausência já é tratada por `obrigatorias`
+                divergencia = coluna.divergencia(atual_col)
+                if divergencia:
+                    _recusar(conn, tabela, f"coluna {coluna.nome}: {divergencia}",
+                             {"coluna": coluna.nome, "divergencia": divergencia})
+
+        for tabela, esperados in indices_esperados:
+            if tabela not in existentes:
+                continue
+            reais = indices_detalhados(conn, tabela)
+            for indice in esperados:
+                if indice.nome not in reais:
+                    continue          # ainda vai ser criado pelo laço de índices
+                cols, unico = reais[indice.nome]
+                if cols != indice.colunas or unico != indice.unico:
+                    _recusar(conn, tabela,
+                             f"índice {indice.nome} com definição divergente",
+                             {"esperado": {"colunas": list(indice.colunas),
+                                           "unico": indice.unico},
+                              "encontrado": {"colunas": list(cols), "unico": unico}})
+
         for tabela, pk_esperada in chaves_primarias:
             if tabela not in existentes:
                 continue
@@ -261,6 +349,31 @@ def migrar(
             aplicadas.append(f"indice:{nome}")
 
         conn.execute("COMMIT")
+
+        # Prova de PRIMEIRO USO, dentro de SAVEPOINT: o boot só é verde se as
+        # operações reais funcionarem sobre a estrutura real. Comparar
+        # propriedade a propriedade cobre o que sabemos declarar; a sonda cobre
+        # o que esquecemos. Nada dela sobrevive ao rollback.
+        if prova_de_uso is not None:
+            conn.execute("SAVEPOINT prova_de_uso")
+            try:
+                prova_de_uso(conn)
+            except HarnessFailure:
+                conn.execute("ROLLBACK TO prova_de_uso")
+                conn.execute("RELEASE prova_de_uso")
+                raise
+            except Exception as erro:
+                conn.execute("ROLLBACK TO prova_de_uso")
+                conn.execute("RELEASE prova_de_uso")
+                raise HarnessFailure(
+                    FailureClass.INFRASTRUCTURE_ERROR,
+                    "boot verde não sobrevive ao primeiro uso",
+                    detalhe=f"{type(erro).__name__}: {str(erro)[:160]}",
+                    reproducao="a estrutura passou na conferência e falhou ao ser usada",
+                ) from erro
+            conn.execute("ROLLBACK TO prova_de_uso")
+            conn.execute("RELEASE prova_de_uso")
+
         return aplicadas
     except HarnessFailure:
         raise

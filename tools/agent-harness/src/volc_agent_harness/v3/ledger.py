@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, ClassVar, Iterable, Mapping, Sequence
 
 from .failures import FailureClass, HarnessFailure
 from .sqlite_support import colunas, conectar, migrar, tabelas
@@ -159,6 +159,126 @@ INDICES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
      "CREATE INDEX idx_claim_estado ON execution_claim(state, lease_until)",
      ("state", "lease_until")),
 )
+
+def _col(nome, affinity, *, notnull=False, default=False, pk=0):
+    from .sqlite_support import ColunaEsperada
+    return ColunaEsperada(nome=nome, affinity=affinity, notnull=notnull,
+                          tem_default=default, pk=pk)
+
+
+def _estrutura_esperada():
+    """Contrato COMPLETO por coluna, comparado propriedade a propriedade.
+
+    Declarar só o nome deixou `id TEXT PRIMARY KEY` atravessar o boot: o nome
+    batia, a afinidade não, e o runtime depende de INTEGER PRIMARY KEY porque usa
+    `lastrowid` como identidade da evidência. O resultado foi um `evidence_id`
+    que não resolve linha nenhuma — com `ok=True` e baseline verde.
+    """
+
+    evidence = [
+        _col("id", "INTEGER", notnull=False, pk=1),
+        _col("acceptance_id", "TEXT", notnull=True),
+        _col("kind", "TEXT", notnull=True),
+        _col("base_sha", "TEXT", notnull=True, default=True),
+        _col("candidate_sha", "TEXT"),
+        _col("input_digest", "TEXT", notnull=True),
+        _col("production_digest", "TEXT", notnull=True, default=True),
+        _col("test_digest", "TEXT", notnull=True, default=True),
+        _col("command", "TEXT", notnull=True, default=True),
+        _col("cwd", "TEXT", notnull=True, default=True),
+        _col("env_fingerprint", "TEXT", notnull=True, default=True),
+        _col("context_digest", "TEXT", notnull=True, default=True),
+        _col("exit_code", "INTEGER"),
+        _col("counts_json", "TEXT"),
+        _col("reviewer", "TEXT"),
+        _col("finding", "TEXT"),
+        _col("counterproof", "TEXT"),
+        _col("valid", "INTEGER", notnull=True, default=True),
+        _col("invalidated_reason", "TEXT"),
+        _col("claim_key", "TEXT"),
+        _col("fencing_token", "INTEGER"),
+        _col("run_id", "TEXT", notnull=True),
+        _col("created_at", "TEXT", notnull=True, default=True),
+    ]
+    claim = [
+        _col("logical_key", "TEXT", pk=1),
+        _col("contract_version", "INTEGER", notnull=True, default=True),
+        _col("acceptance_id", "TEXT", notnull=True, default=True),
+        _col("kind", "TEXT", notnull=True, default=True),
+        _col("input_digest", "TEXT", notnull=True, default=True),
+        _col("owner_token", "TEXT", notnull=True, default=True),
+        _col("fencing_token", "INTEGER", notnull=True, default=True),
+        _col("state", "TEXT", notnull=True, default=True),
+        _col("claimed_at", "TEXT", notnull=True, default=True),
+        _col("heartbeat_at", "TEXT", notnull=True, default=True),
+        _col("lease_until", "REAL", notnull=True, default=True),
+        _col("completed_at", "TEXT"),
+        _col("run_id", "TEXT", notnull=True, default=True),
+        _col("worker_id", "TEXT", notnull=True, default=True),
+        _col("evidence_id", "INTEGER"),
+        _col("owner_pid", "INTEGER"),
+    ]
+    return (("evidence", evidence), ("execution_claim", claim))
+
+
+def _indices_esperados():
+    """Índices por DEFINIÇÃO. Nome igual com colunas diferentes é pior que ausente:
+    o nome existe, a criação do correto é pulada, e a unicidade some em silêncio.
+    """
+
+    from .sqlite_support import IndiceEsperado
+    return (
+        ("evidence", (
+            IndiceEsperado("idx_evidence_lookup",
+                           ("acceptance_id", "kind", "input_digest", "valid"), False),
+            IndiceEsperado("idx_evidence_claim_unico",
+                           ("claim_key", "fencing_token"), True),
+        )),
+        ("execution_claim", (
+            IndiceEsperado("idx_claim_estado", ("state", "lease_until"), False),
+        )),
+    )
+
+
+def _prova_de_primeiro_uso(conn: sqlite3.Connection) -> None:
+    """acquire → record → complete → consulta referencial, tudo desfeito depois.
+
+    A conferência propriedade a propriedade cobre o que sabemos declarar. Esta
+    sonda cobre o que esquecemos: se as operações reais não funcionam sobre a
+    estrutura real, o boot não pode ser verde.
+    """
+
+    conn.execute(
+        "INSERT INTO execution_claim(logical_key,contract_version,acceptance_id,"
+        "kind,input_digest,owner_token,fencing_token,state,claimed_at,"
+        "heartbeat_at,lease_until,run_id,worker_id) "
+        "VALUES('sonda',?,'sonda','sonda','sonda','sonda',1,'running',?,?,0,'sonda','sonda')",
+        (LEDGER_CONTRACT_VERSION, _agora(), _agora()))
+
+    cur = conn.execute(
+        "INSERT INTO evidence(acceptance_id,kind,base_sha,input_digest,"
+        "production_digest,test_digest,command,cwd,env_fingerprint,context_digest,"
+        "exit_code,counts_json,valid,claim_key,fencing_token,run_id,created_at) "
+        "VALUES('sonda','sonda','s','d','p','t','c','.','e','x',0,'{}',1,'sonda',1,"
+        "'sonda',?)", (_agora(),))
+    eid = int(cur.lastrowid)
+
+    conn.execute("UPDATE execution_claim SET state='green', evidence_id=? "
+                 "WHERE logical_key='sonda'", (eid,))
+
+    # A pergunta que HS-1 respondeu errado: a evidência devolvida é ENDEREÇÁVEL?
+    achadas = conn.execute("SELECT COUNT(*) FROM evidence WHERE id=?",
+                           (eid,)).fetchone()[0]
+    if achadas != 1:
+        raise HarnessFailure(
+            FailureClass.INFRASTRUCTURE_ERROR,
+            "o identificador de evidência não resolve exatamente uma linha",
+            detalhe=f"id={eid} resolveu {achadas} linhas — o runtime usa lastrowid "
+                    "como identidade e a PK material não corresponde",
+            reproducao="PRAGMA table_info(evidence); confira a coluna `id`",
+            evidencia={"evidence_id": eid, "linhas": achadas},
+        )
+
 
 #: Chave primária esperada de cada tabela. PK divergente não é "versão antiga
 #: do nosso schema": é schema de outro sistema no arquivo que dizemos ser nosso.
@@ -483,6 +603,9 @@ class Claim:
 class EvidenceLedger:
     path: Path
 
+    #: Tentativas de gravar o estado terminal de um claim antes de desistir.
+    TENTATIVAS_DE_ABANDONO: ClassVar[int] = 3
+
     def __post_init__(self) -> None:
         """Cria OU migra. Nunca supõe que o banco no disco é o do código atual."""
 
@@ -498,6 +621,9 @@ class EvidenceLedger:
                 obrigatorias=OBRIGATORIAS,
                 chaves_primarias=CHAVES_PRIMARIAS,
                 unicidades=UNICIDADES,
+                estrutura_esperada=_estrutura_esperada(),
+                indices_esperados=_indices_esperados(),
+                prova_de_uso=_prova_de_primeiro_uso,
             )
         finally:
             c.close()
@@ -908,23 +1034,55 @@ class EvidenceLedger:
 
         if claim.owner_token is None:
             return False
-        c = self._conn()
-        try:
-            c.execute("BEGIN IMMEDIATE")
-            alteradas = c.execute(
-                "UPDATE execution_claim SET state='abandoned', completed_at=?, "
-                "heartbeat_at=? WHERE logical_key=? AND owner_token=? "
-                "AND fencing_token=? AND state='running'",
-                (_agora(), _agora(), claim.identity.logical_key,
-                 claim.owner_token, claim.fencing_token),
-            ).rowcount
-            c.execute("COMMIT")
-            return alteradas == 1
-        except BaseException:
-            _rollback_se_ativo(c)
-            raise
-        finally:
-            c.close()
+
+        # Retry LIMITADO. Falha transitória do SQLite — lock momentâneo — não
+        # pode custar o estado terminal do claim: desistir na primeira deixa a
+        # linha `running` por um motivo que já é conhecido. E o limite é
+        # limitado de propósito: insistir para sempre seria trocar um claim
+        # preso por um processo preso.
+        ultimo: BaseException | None = None
+        for tentativa in range(self.TENTATIVAS_DE_ABANDONO):
+            c = None
+            try:
+                # A conexão entra DENTRO do try: abrir o banco é justamente uma
+                # das coisas que falha transitoriamente, e deixá-la fora fazia o
+                # retry não cobrir o caso mais comum.
+                c = self._conn()
+                c.execute("BEGIN IMMEDIATE")
+                alteradas = c.execute(
+                    "UPDATE execution_claim SET state='abandoned', completed_at=?, "
+                    "heartbeat_at=? WHERE logical_key=? AND owner_token=? "
+                    "AND fencing_token=? AND state='running'",
+                    (_agora(), _agora(), claim.identity.logical_key,
+                     claim.owner_token, claim.fencing_token),
+                ).rowcount
+                c.execute("COMMIT")
+                return alteradas == 1
+            except sqlite3.Error as erro:
+                if c is not None:
+                    _rollback_se_ativo(c)
+                ultimo = erro
+                time.sleep(0.05 * (tentativa + 1))
+            except BaseException:
+                if c is not None:
+                    _rollback_se_ativo(c)
+                raise
+            finally:
+                if c is not None:
+                    c.close()
+
+        # Não foi possível escrever estado terminal. O claim continua `running`,
+        # MAS com lease finito — e lease finito é retomável. "running expirado e
+        # retomável" não é claim eterno; o próximo consumidor reivindica sem
+        # intervenção humana. A falha vira contexto, nunca substitui a causa.
+        raise HarnessFailure(
+            FailureClass.INFRASTRUCTURE_ERROR,
+            "não foi possível marcar o claim como abandonado",
+            detalhe=f"{type(ultimo).__name__}: {str(ultimo)[:120]}",
+            reproducao="o lease é finito; o claim será retomável na expiração",
+            evidencia={"logical_key": claim.identity.logical_key,
+                       "tentativas": self.TENTATIVAS_DE_ABANDONO},
+        ) from ultimo
 
     def heartbeat(self, claim: Claim, *, lease_seconds: int = 900) -> bool:
         """Renova o lease. ``False`` significa que o claim já não é nosso."""
