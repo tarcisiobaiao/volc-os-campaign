@@ -88,6 +88,39 @@ Nenhum dos 76 erros de tipo está na superfície de lançamento ou diagnóstico.
    mexer numa guarda de segurança; ver `ROLLBACK-…md` §3.
 3. **D4 e D10** continuam sendo pré-condição de qualquer lançamento real.
 
+## 6b. Revisão adversarial — o que ela cobriu, e o que ela não pôde cobrir
+
+Lane usada: **Codex GPT-5.6 Sol / high**, modelo diferente do que escreveu (Claude Opus 5),
+como o roteamento exige. Escopo: refutar, não confirmar.
+
+**Declaração de disponibilidade parcial, sem fallback silencioso:**
+
+- **DeepSeek: lane INDISPONÍVEL** nesta máquina (binário ausente). Não foi substituída
+  por outro provedor — e não fazia falta, porque o roteamento a restringe a microcorreção
+  determinística, que esta sprint não teve.
+- **Codex: lane disponível, sandbox limitado.** Ela registrou por escrito que (a) os três
+  sub-revisores que tentou abrir falharam com `EPERM` ao criar o lock de credenciais e
+  (b) **não conseguiu subir o cluster Postgres** por bloqueio de escrita em `/tmp`. Logo,
+  todo achado dela sobre SQL sairia como `[NÃO REPRODUZIDO]`. A suíte Python ela rodou, e
+  passou.
+- A execução foi **encerrada por mim** depois de ~40 min, com a cobertura de SQL
+  reconhecidamente impossível naquele sandbox.
+
+**O que a revisão produziu de real:** um achado confirmado — o caminho de escrita do CLI
+em `volc_ads/subir.py`. Eu o reproduzi por leitura direta, aceitei, e ele está na §7 e
+como pré-condição P7 do preflight.
+
+**Como as categorias que a lane não pôde executar ficaram cobertas:** por prova
+executável minha, no cluster descartável — em particular a categoria de concorrência
+(prova P: duas sessões simultâneas, uma despacha, uma é recusada, um recibo em voo) e a
+de "prova que passa pelo motivo errado", que corrigi duas vezes durante o trabalho (uma
+CHECK de quantidade mascarando a guarda anunciada; e a classe 22 tratada em bloco quando
+`22023` e `22P02` significam o oposto).
+
+**O que isso deixa em aberto, honestamente:** uma segunda leitura adversarial por modelo
+diferente, com permissão de executar os scripts de prova, ainda não aconteceu. Ela não é
+substituível pelo que fiz sozinho.
+
 ## 7. Limitação confirmada da invariante — a porta que continua aberta
 
 **A garantia "nenhuma mutação sem recibo" vale para a rota HTTP, não para o processo.**
