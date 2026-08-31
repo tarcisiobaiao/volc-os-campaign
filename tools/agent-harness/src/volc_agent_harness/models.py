@@ -4,17 +4,35 @@ from __future__ import annotations
 
 import re
 from pathlib import PurePosixPath
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator,
+)
 
 
 _FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
-class GateSpec(BaseModel):
+class LegacyArgvGateSpec(BaseModel):
+    """Gate do schema 2. PROIBIDO no schema 3.
+
+    ``argv`` livre foi a refutação de G1a: ``python -c``, ``node -e``, ``sh -c``,
+    ``git reset`` e ``git checkout`` atravessavam a validação da missão porque
+    quem escrevia a linha de comando era o autor da missão, não o harness. O
+    campo continua existindo só para que uma missão legada receba a orientação
+    de migração em vez de um traceback — e o CLI recusa schema 2 antes de
+    chamar qualquer modelo.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     argv: list[str] = Field(min_length=1)
     timeout_seconds: int = Field(default=600, ge=10, le=3600)
+
+    @property
+    def kind(self) -> str:
+        return "legacy_argv"
 
     @field_validator("argv")
     @classmethod
@@ -22,6 +40,103 @@ class GateSpec(BaseModel):
         if any(not item for item in argv):
             raise ValueError("gate argv não aceita item vazio")
         return argv
+
+
+#: Alias mantido para os consumidores legados do harness (preflight, supervisor).
+GateSpec = LegacyArgvGateSpec
+
+
+class _TypedGateBase(BaseModel):
+    """Base dos gates tipados. Campo desconhecido é erro, não é ignorado."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    timeout_seconds: int = Field(default=600, ge=10, le=3600)
+
+
+class PytestGateSpec(_TypedGateBase):
+    """A missão declara O QUE testar. O harness constrói COMO.
+
+    Não existe campo ``flags``, ``plugins``, ``addopts`` nem ``args``: era por
+    ali que uma flag de carregamento de código entraria.
+    """
+
+    kind: Literal["pytest"]
+    targets: list[str] = Field(min_length=1)
+    traceback: Literal["short", "long", "no", "line"] = "short"
+    maxfail: int | None = Field(default=None, ge=1, le=100)
+    quiet: bool = True
+    k_expression: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @field_validator("targets")
+    @classmethod
+    def targets_are_safe(cls, targets: list[str]) -> list[str]:
+        for alvo in targets:
+            p = PurePosixPath(alvo)
+            if p.is_absolute() or ".." in p.parts or alvo in {"", "."} or alvo.startswith("-"):
+                raise ValueError("target de pytest precisa ser relativo e seguro")
+        return targets
+
+    @field_validator("k_expression")
+    @classmethod
+    def k_is_a_test_expression(cls, valor: str | None) -> str | None:
+        if valor is not None and not re.fullmatch(r"[A-Za-z0-9_ ()\[\]\.\-]+", valor):
+            raise ValueError(
+                "k_expression aceita apenas expressão de seleção de teste"
+            )
+        return valor
+
+
+class UnittestGateSpec(_TypedGateBase):
+    kind: Literal["unittest"]
+    start_dir: str = "."
+    pattern: str = Field(default="test_*.py", pattern=r"^[A-Za-z0-9_*?.\-]+$")
+
+    @field_validator("start_dir")
+    @classmethod
+    def start_dir_is_safe(cls, valor: str) -> str:
+        p = PurePosixPath(valor)
+        if p.is_absolute() or ".." in p.parts or valor.startswith("-"):
+            raise ValueError("start_dir precisa ser relativo e seguro")
+        return valor
+
+
+class TypeScriptGateSpec(_TypedGateBase):
+    kind: Literal["typescript"]
+    project_targets: list[str] = Field(default_factory=list)
+
+    @field_validator("project_targets")
+    @classmethod
+    def targets_are_safe(cls, targets: list[str]) -> list[str]:
+        for alvo in targets:
+            p = PurePosixPath(alvo)
+            if p.is_absolute() or ".." in p.parts or alvo.startswith("-"):
+                raise ValueError("project_target precisa ser relativo e seguro")
+        return targets
+
+
+class GitDiffCheckGateSpec(_TypedGateBase):
+    kind: Literal["git_diff_check"]
+
+
+class CatalogGateSpec(_TypedGateBase):
+    """Indireção auditada: a missão escolhe o ID, nunca o conteúdo.
+
+    ``npm_script``, ``tracked_script`` e ``build`` só existem por aqui. Eles
+    selecionam conteúdo que o harness não escreveu — o corpo de um script ou uma
+    linha de ``package.json`` — e "está rastreado pelo Git" prova origem, não
+    prova revisão nem estabilidade no instante da execução.
+    """
+
+    kind: Literal["catalog"]
+    gate_id: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9][a-z0-9._-]*$")
+
+
+TypedGateSpec = Annotated[
+    PytestGateSpec | UnittestGateSpec | TypeScriptGateSpec
+    | GitDiffCheckGateSpec | CatalogGateSpec,
+    Field(discriminator="kind"),
+]
 
 
 class MicroRepairSpec(BaseModel):
@@ -178,7 +293,7 @@ class MissionSpec(BaseModel):
     briefing: str = Field(min_length=1)
     mode: Literal["read_only", "implementation"] = "read_only"
     commit_message: str | None = Field(default=None, min_length=1)
-    gates: list[GateSpec] = Field(default_factory=list)
+    gates: list[TypedGateSpec | LegacyArgvGateSpec] = Field(default_factory=list)
     workers: list[WorkerSpec] = Field(min_length=2, max_length=4)
     timeout_seconds: int = Field(default=1200, ge=60, le=7200)
     heartbeat_seconds: int = Field(default=20, ge=5, le=300)
@@ -261,6 +376,32 @@ class MissionSpec(BaseModel):
                     "missão declara mission_schema_version 3 mas não traz: "
                     + ", ".join(faltando)
                 )
+        return self
+
+    @model_validator(mode="after")
+    def v3_nao_aceita_argv_livre(self) -> "MissionSpec":
+        """A refutação de G1a, fechada no schema.
+
+        Enquanto ``argv`` fosse declarável, ``python -c``, ``node -e``, ``sh -c``,
+        ``git reset`` e ``git checkout`` continuavam entrando — porque quem
+        escrevia a linha de comando era o autor da missão. No schema 3 o campo
+        simplesmente não existe: a missão declara o TIPO, ou um ``gate_id`` do
+        catálogo, e o harness constrói o argv.
+        """
+
+        if self.mission_schema_version < 3:
+            return self
+        legados = [
+            i for i, gate in enumerate(self.gates, start=1)
+            if isinstance(gate, LegacyArgvGateSpec)
+        ]
+        if legados:
+            raise ValueError(
+                "schema 3 não aceita gate com argv livre (gates "
+                + ", ".join(str(i) for i in legados)
+                + '); declare o tipo, ex.: {"kind": "pytest", "targets": [...]} '
+                'ou {"kind": "catalog", "gate_id": "..."}'
+            )
         return self
 
     @model_validator(mode="after")

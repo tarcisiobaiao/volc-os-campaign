@@ -1,0 +1,58 @@
+{
+  "catalog_version": 1,
+  "_leia_me": [
+    "Catálogo versionado de gates do VOLC O.S.",
+    "Uma missão referencia um gate por ID, nunca por conteúdo:",
+    "  {\"kind\": \"catalog\", \"gate_id\": \"harness-unit\"}",
+    "Os tipos npm_script, tracked_script e build SÓ existem aqui, porque",
+    "selecionam conteúdo que o harness não escreveu — o corpo de um script ou",
+    "uma linha de package.json. Estar rastreado pelo Git prova origem, não prova",
+    "revisão. Alterar este arquivo altera o digest de todos os gates que ele",
+    "define, e provas anteriores deixam de ser reutilizadas.",
+    "Gates diretos (pytest, unittest, typescript, git_diff_check) NÃO precisam",
+    "entrar aqui: eles não selecionam conteúdo indireto."
+  ],
+  "gates": {
+    "harness-unit": {
+      "kind": "pytest",
+      "targets": ["tools/agent-harness/tests"],
+      "description": "suíte do próprio harness"
+    },
+    "backend-unit": {
+      "kind": "pytest",
+      "targets": ["backend/tests"],
+      "description": "suíte unitária do backend"
+    },
+    "volc-ads-unit": {
+      "kind": "pytest",
+      "targets": ["volc_ads"],
+      "description": "motor de pautas e Google Ads"
+    },
+    "diff-limpo": {
+      "kind": "git_diff_check",
+      "description": "diff sem marcador de conflito nem espaço em branco quebrado"
+    },
+    "tipos-frontend": {
+      "kind": "typescript",
+      "project_targets": [],
+      "description": "tsc --noEmit sobre o app (ver CLAUDE.md: use -p tsconfig.app.json)"
+    },
+    "build-vite": {
+      "kind": "npm_script",
+      "script": "build",
+      "description": "build de produção; digest preso a package.json e ao lockfile"
+    },
+    "verificar-segredos": {
+      "kind": "tracked_script",
+      "script_path": "scripts/verificar_segredos.py",
+      "args": [],
+      "description": "scanner de segredo do repositório, rastreado e com digest"
+    },
+    "autoridade-supabase": {
+      "kind": "tracked_script",
+      "script_path": "scripts/verificar_autoridade_supabase.py",
+      "args": [],
+      "description": "prova que só database.agenciavolc.com.br é autoridade operacional"
+    }
+  }
+}

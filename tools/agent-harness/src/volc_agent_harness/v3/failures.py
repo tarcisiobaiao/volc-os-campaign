@@ -17,7 +17,7 @@ from typing import Any, Mapping
 
 
 class FailureClass(str, Enum):
-    """Nove classes. O destino e a política de retry derivam da classe."""
+    """Dez classes. O destino e a política de retry derivam da classe."""
 
     SPEC_ERROR = "SPEC_ERROR"
     OWNERSHIP_ERROR = "OWNERSHIP_ERROR"
@@ -28,6 +28,7 @@ class FailureClass(str, Enum):
     TIMEOUT = "TIMEOUT"
     AUTHORIZATION_BLOCK = "AUTHORIZATION_BLOCK"
     TRANSIENT_PROVIDER_ERROR = "TRANSIENT_PROVIDER_ERROR"
+    STALE_INPUT = "STALE_INPUT"
 
 
 #: Para onde a falha volta. ``None`` significa decisão humana.
@@ -41,6 +42,10 @@ DESTINO: Mapping[FailureClass, str | None] = {
     FailureClass.TIMEOUT: "process_inspection",
     FailureClass.AUTHORIZATION_BLOCK: None,
     FailureClass.TRANSIENT_PROVIDER_ERROR: "retry_once",
+    # O insumo material do gate mudou entre compilar e executar. Ninguém
+    # "conserta" isso com writer: ou recompila contra o mundo de agora, ou
+    # alguém alterou um insumo auditado no meio do caminho.
+    FailureClass.STALE_INPUT: "mission_compiler",
 }
 
 #: Quantas vezes o harness pode relançar um writer para esta classe.
@@ -54,6 +59,7 @@ MAX_RETRIES: Mapping[FailureClass, int] = {
     FailureClass.TIMEOUT: 1,
     FailureClass.AUTHORIZATION_BLOCK: 0,
     FailureClass.TRANSIENT_PROVIDER_ERROR: 1,
+    FailureClass.STALE_INPUT: 0,
 }
 
 
