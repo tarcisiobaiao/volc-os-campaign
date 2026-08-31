@@ -43,7 +43,8 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (BaseModel, ConfigDict, Field, field_validator,
+                      model_validator)
 
 from app.services.supabase_service import SupabaseService
 from app.config import get_settings
@@ -1598,7 +1599,27 @@ def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, An
     e destino — está aqui e entra na impressão.
     """
     bruto = body.model_dump(mode="json", by_alias=True, exclude_none=False)
-    for campo in ("motivo", "plano_impressao", "confirmar_criacao_pausada"):
+    # ⚠️ `carimbo_nome` SAI DAQUI, e a ausência dele é a regra — não um detalhe.
+    #
+    # O docstring acima sempre disse que o instante do carimbo não é decisão
+    # humana, e `canario.impressao_do_plano` diz o mesmo com todas as letras
+    # ("não usa o nome temporizado"). As duas afirmações eram falsas: o campo
+    # ficava no dicionário e entrava tanto no hash da impressão quanto, por
+    # `plano_do_ledger`, na chave de idempotência.
+    #
+    # O custo disso é a segunda campanha. Uma tentativa indeterminada cria a
+    # campanha com a marca `VOLC-CANARY-<impressao[:12]>`; o operador roda
+    # `/provar` de novo, `carimbo_do_nome` gera outro instante, e o MESMO plano
+    # passa a ter outra impressão, outra marca e outra chave. A pré-checagem
+    # remota procura a marca nova, não encontra nada, e o ledger não reconhece
+    # a chave anterior. As duas defesas contra duplicidade olham para o lado
+    # errado ao mesmo tempo, e o leilão recebe duas campanhas.
+    #
+    # O carimbo continua no NOME da campanha, que é onde ele serve para alguma
+    # coisa: distinguir duas execuções no relatório. Ele só não participa mais
+    # da identidade.
+    for campo in ("motivo", "plano_impressao", "confirmar_criacao_pausada",
+                  "carimbo_nome"):
         bruto.pop(campo, None)
     bruto["customer_id"] = cid
     bruto["login_customer_id"] = mid
@@ -1636,15 +1657,23 @@ def _micros(valor: Any, campo: str) -> int:
     if not numero.is_finite() or numero <= 0:
         raise PlanoIrrepresentavel(
             f"{campo}={valor!r} precisa ser um valor finito e maior que zero.")
-    exato = numero * UM_MILHAO
-    arredondado = exato.to_integral_value(rounding=ROUND_HALF_UP)
-    if exato != arredondado:
-        # Abaixo de um micro não existe para o Google Ads, e arredondar em
-        # silêncio faria dois planos diferentes derivarem a MESMA chave.
-        raise PlanoIrrepresentavel(
-            f"{campo}={valor!r} tem precisão abaixo de um micro; o ledger "
-            "não pode arredondar sem tornar dois planos indistinguíveis.")
-    return int(arredondado)
+    # ⚠️ ARREDONDA, e não recusa. A primeira versão recusava qualquer resíduo
+    # abaixo de um micro, com o argumento de que arredondar faria dois planos
+    # diferentes derivarem a mesma chave. O argumento se inverte quando se olha
+    # para o executor: `brief.micros` é `int(round(valor * 1_000_000))`
+    # (volc_ads/campanha/brief.py:1283), então dois valores que arredondam para
+    # o mesmo micro produzem exatamente o MESMO payload no Google — eles já são
+    # o mesmo plano, e dar chaves diferentes a eles é que seria o defeito.
+    #
+    # Na prática a recusa quebrava um caso banal: `0.1 + 0.2` vale
+    # `0.30000000000000004`, o executor manda 300000 micros sem reclamar, e o
+    # ledger devolvia 409 para um pedido perfeitamente válido.
+    #
+    # A canonicalização tem de ser a MESMA dos dois lados, e é o executor que
+    # decide o que sai da máquina. `ROUND_HALF_UP` sobre `Decimal(str(v))`
+    # concorda com `round()` do executor em todo valor monetário plausível, e
+    # não herda o float binário no caminho.
+    return int((numero * UM_MILHAO).to_integral_value(rounding=ROUND_HALF_UP))
 
 
 def plano_do_ledger(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
@@ -2218,13 +2247,29 @@ class SubirEntrada(ProvarEntrada):
     # caracteres. Não é burocracia: o motivo vai para o recibo, e recibo sem
     # motivo é um gasto que ninguém sabe explicar depois.
     #
-    # ⚠️ O `min_length` repete a regra do executor DE PROPÓSITO, e a repetição
-    # se paga: sem ele, um motivo curto passava por aqui, abria recibo, e só
-    # então `_exigir_motivo` levantava um `ValueError` cru lá dentro — que esta
-    # rota não consegue distinguir de uma falha posterior ao mutate. O item
-    # ficava `indeterminado` por um erro de digitação. Recusar na fronteira HTTP
+    # ⚠️ A regra repete a do executor DE PROPÓSITO, e a repetição se paga: sem
+    # ela, um motivo curto passava por aqui, abria recibo, e só então
+    # `_exigir_motivo` levantava um `ValueError` cru lá dentro — que esta rota
+    # não consegue distinguir de uma falha posterior ao mutate. O item ficava
+    # `indeterminado` por um erro de digitação. Recusar na fronteira HTTP
     # devolve 422 antes de existir recibo, que é onde este erro pertence.
-    motivo: str = Field(min_length=10)
+    #
+    # E a repetição precisa ser FIEL: `min_length=10` mede a string crua, e o
+    # executor mede `len(motivo.strip())` (volc_ads/subir.py:934). Dez espaços
+    # passavam no Pydantic e morriam lá dentro — reabrindo exatamente o buraco
+    # que esta guarda existe para fechar. Uma guarda que discorda da guarda que
+    # ela replica é pior que nenhuma: ela dá confiança sem dar proteção.
+    motivo: str
+
+    @field_validator("motivo")
+    @classmethod
+    def _motivo_descritivo(cls, v: str) -> str:
+        if len(str(v or "").strip()) < 10:
+            raise ValueError(
+                "o motivo precisa ter ao menos 10 caracteres além de espaços. "
+                "Ele vai para o recibo e é a única explicação que sobra quando "
+                "alguém pergunta, semanas depois, por que essa campanha existe.")
+        return v
     # Impressão devolvida pela prova. A rota recalcula sobre o pedido recebido;
     # trocar uma keyword, headline, verba ou destino depois de revisar invalida
     # a autorização antes de qualquer consulta de escrita.
@@ -2625,9 +2670,15 @@ async def subir(
                 "request_id": str(getattr(recibo, "request_id", "") or ""),
                 "recibo_id": getattr(despacho, "recibo_id", None),
                 "item_id": getattr(despacho, "item_id", None),
-                # A plataforma RESPONDEU que não criou, e o mutate é atômico.
-                # Reenviar depois de ajustar o plano é seguro, e é a saída.
-                "reenvio_permitido": True,
+                # ⚠️ A permissão é a EFETIVA, não a teórica.
+                #
+                # A plataforma respondeu que não criou e o mutate é atômico, então
+                # do lado do Google reenviar é seguro. Mas se o `fechar_erro`
+                # falhou, o recibo local continua `em_voo` — e a camada 4 vai
+                # recusar a próxima tentativa. Dizer "pode reenviar" aí seria
+                # mandar o operador bater numa porta que já sabemos estar
+                # trancada; a saída real passa a ser reconciliar.
+                "reenvio_permitido": fechamento.get("desfecho") == "erro",
                 "ledger": fechamento,
             },
         )
@@ -2709,27 +2760,63 @@ async def subir(
 
 
 class ReconciliarEntrada(BaseModel):
-    """O pedido de leitura tardia sobre um item que ficou em voo."""
+    """O pedido de leitura tardia sobre um item que ficou indeterminado.
+
+    ⚠️ `campaign_id` é OPCIONAL, e essa é a diferença entre uma saída e uma
+    saída que funciona. O item que mais precisa de reconciliação é justamente
+    o que NÃO tem id externo: a chamada não respondeu, e por isso nunca houve
+    `resource_name` para guardar. Exigir o id transformaria a rota numa porta
+    que só abre para quem já não precisa dela.
+
+    Sem id, a busca é pela MARCA — `VOLC-CANARY-<impressao[:12]>`, derivada do
+    plano aprovado e agora estável entre tentativas. É o mesmo método que a
+    pré-checagem de idempotência usa antes do mutate, e o banco o reconhece:
+    `trafego_verificacao.metodo` aceita `busca_por_marca`.
+    """
 
     item_id: str
     customer_id: str
-    campaign_id: str
+    campaign_id: Optional[str] = None
+    marca: Optional[str] = None
     login_customer_id: Optional[str] = None
     motivo: Optional[str] = None
 
+    @model_validator(mode="after")
+    def _exige_um_criterio(self):
+        if not str(self.campaign_id or "").strip() and not str(self.marca or "").strip():
+            raise ValueError(
+                "reconciliar exige `campaign_id` OU `marca`. Sem critério de "
+                "busca não há leitura, e sem leitura não há o que reconciliar.")
+        return self
+
 
 def _ler_campanha_na_conta(*, customer_id: str, login_customer_id: str,
-                           campaign_id: str) -> tuple[Dict[str, str], ...]:
-    """Lê a conta procurando UMA campanha por id. Somente leitura.
+                           campaign_id: Optional[str] = None,
+                           marca: Optional[str] = None,
+                           ) -> tuple[Dict[str, str], ...]:
+    """Lê a conta por id OU por marca. Somente leitura.
 
     ⚠️ `search` não muta nada — é a mesma leitura que a pré-checagem de
     idempotência já fazia antes do recibo. A recusa a qualquer coisa que mute
     mora no fato de que esta função não constrói operação nenhuma.
     """
     kid = str(campaign_id or "").strip()
-    if not re.fullmatch(r"[0-9]{1,20}", kid):
-        raise ValueError(
-            f"campaign_id={campaign_id!r} precisa conter somente dígitos.")
+    marca_limpa = str(marca or "").strip()
+    if kid:
+        if not re.fullmatch(r"[0-9]{1,20}", kid):
+            raise ValueError(
+                f"campaign_id={campaign_id!r} precisa conter somente dígitos.")
+        onde = f"campaign.id = {int(kid)}"
+    elif marca_limpa:
+        # A marca vira um LIKE por prefixo. O literal é escapado e a forma é
+        # restrita para que ela não possa carregar GAQL junto.
+        if not re.fullmatch(r"[A-Za-z0-9_-]{4,64}", marca_limpa):
+            raise ValueError(
+                f"marca={marca!r} tem formato inesperado; ela é derivada da "
+                "impressão do plano e só contém letras, dígitos, '-' e '_'.")
+        onde = f"campaign.name LIKE '{marca_limpa}%'"
+    else:
+        raise ValueError("reconciliar exige `campaign_id` ou `marca`.")
     _ponte()
     from volc_ads.gads.client import cliente
 
@@ -2738,7 +2825,7 @@ def _ler_campanha_na_conta(*, customer_id: str, login_customer_id: str,
         linhas = servico.search(
             customer_id=escopo.so_digitos(customer_id),
             query=("SELECT campaign.id, campaign.name, campaign.status "
-                   f"FROM campaign WHERE campaign.id = {int(kid)}"))
+                   f"FROM campaign WHERE {onde}"))
         encontradas: Dict[str, Dict[str, str]] = {}
         for linha in linhas:
             c = linha.campaign
@@ -2775,11 +2862,38 @@ async def reconciliar_lancamento(
     # Os três resultados possíveis da leitura, e eles são TRÊS — não dois.
     # `achou=None` é um fato sobre nós, não sobre a conta, e o banco registra a
     # verificação sem mover o item.
+    # ⚠️ O ITEM PRECISA SER DESTA CONTA, e nada abaixo confere isso por nós.
+    #
+    # A entrada traz `item_id`, `customer_id` e o critério de busca como três
+    # campos independentes, e `trafego_ledger_reconciliar` procura o item só
+    # pelo id — ela não confere o lote. Sem a checagem aqui, um admin que
+    # trocasse um id por engano reconciliaria o item da conta A com a campanha
+    # da conta B, carimbando no item uma identidade externa que não é dele.
+    # Isso não cria campanha nenhuma, mas corrompe a procedência de duas.
+    try:
+        conta_do_item = await ledger.conta_externa_do_item(body.item_id)
+    except led.LedgerIndisponivel as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Não consegui ler o item para conferir a conta: {exc}.",
+        ) from exc
+    if conta_do_item is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"O item {body.item_id} não existe. Nada foi reconciliado.")
+    if escopo.so_digitos(conta_do_item) != escopo.so_digitos(cid):
+        raise HTTPException(
+            status_code=409,
+            detail=(f"O item {body.item_id} pertence à conta {conta_do_item}, "
+                    f"e não à {cid}. Reconciliar um item com a campanha de "
+                    "outra conta trocaria a procedência das duas. Nada mudou."),
+        )
+
     achou: Optional[bool]
     try:
         encontradas = await asyncio.to_thread(
             _ler_campanha_na_conta, customer_id=cid, login_customer_id=mid,
-            campaign_id=body.campaign_id)
+            campaign_id=body.campaign_id, marca=body.marca)
         achou = len(encontradas) >= 1
         indisponivel = ""
     except ValueError as exc:
@@ -2802,7 +2916,11 @@ async def reconciliar_lancamento(
     try:
         reconciliado = await ledger.reconciliar(
             item_id=body.item_id,
-            metodo="busca_por_id",
+            # O método vai ao banco como foi de fato: a CHECK de
+            # `trafego_verificacao` só aceita os três nomes conhecidos, e
+            # registrar "por id" uma busca por marca mentiria na auditoria.
+            metodo=("busca_por_id" if str(body.campaign_id or "").strip()
+                    else "busca_por_marca"),
             achou=achou,
             verificado_por=identidade.email or identidade.sub,
             plataforma="GOOGLE_ADS",
@@ -2811,7 +2929,8 @@ async def reconciliar_lancamento(
             quantidade=None if achou is None else len(encontradas),
             motivo=motivo,
             estado_externo=primeira.get("status"),
-            divergencia={"campaign_id_solicitado": str(body.campaign_id),
+            divergencia={"campaign_id_solicitado": str(body.campaign_id or "") or None,
+                         "marca_solicitada": str(body.marca or "") or None,
                          "campanhas_encontradas": list(encontradas)},
         )
     except led.LedgerRecusou as exc:
@@ -2829,7 +2948,8 @@ async def reconciliar_lancamento(
         "reconciliacao": reconciliado,
         "leitura": {
             "customer_id": cid,
-            "campaign_id": str(body.campaign_id),
+            "campaign_id": str(body.campaign_id or "") or None,
+            "marca": str(body.marca or "") or None,
             "achou": achou,
             "quantidade": None if achou is None else len(encontradas),
             "campanhas": list(encontradas),

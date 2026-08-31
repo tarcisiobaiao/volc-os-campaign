@@ -406,6 +406,38 @@ class Ledger:
         corpo = {k: v for k, v in argumentos.items() if v is not None or k == "p_achou"}
         return dict(await self._rpc_cru("trafego_ledger_reconciliar", corpo) or {})
 
+    async def conta_externa_do_item(self, item_id: str) -> Optional[str]:
+        """A conta a que o item pertence, ou `None` se o item não existe.
+
+        ⚠️ `None` aqui é "não existe", e é diferente de "não consegui ler" —
+        que sai como `LedgerIndisponivel`. Quem chama usa a distinção para
+        separar 404 de 503, e colapsá-la faria um banco fora do ar parecer um
+        item inexistente, que é o convite a criar outro.
+
+        Existe porque `trafego_ledger_reconciliar` acha o item só pelo id e não
+        confere o lote: sem esta leitura, reconciliar aceitaria casar um item
+        com a campanha de outra conta.
+        """
+        if not self.disponivel:
+            raise LedgerIndisponivel(
+                "O ledger de lançamento não está configurado neste processo.")
+        try:
+            itens = await self._supa.select(
+                "trafego_lote_item",
+                {"item_id": f"eq.{item_id}", "select": "item_id,lote_id", "limit": "1"})
+            if not itens:
+                return None
+            lotes = await self._supa.select(
+                "trafego_lote",
+                {"lote_id": f"eq.{itens[0].get('lote_id')}",
+                 "select": "lote_id,conta_externa", "limit": "1"})
+            if not lotes:
+                return None
+            return str(lotes[0].get("conta_externa") or "") or None
+        except httpx.HTTPError as exc:
+            raise LedgerIndisponivel(
+                f"não consegui ler o item {item_id}: {exc}") from exc
+
     async def _rpc_cru(self, funcao: str, corpo: Mapping[str, Any]) -> Any:
         """Como `_rpc`, mas sem podar `None` — para os campos tri-estado."""
         if not self.disponivel:
