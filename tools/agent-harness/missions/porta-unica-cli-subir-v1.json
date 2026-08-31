@@ -1,0 +1,44 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "porta-unica-cli-subir-v1",
+  "title": "Fechar a porta paralela: o CLI de volc_ads não cria campanha sem ledger",
+  "base_ref": "PLACEHOLDER",
+  "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
+  "mode": "implementation",
+  "commit_message": "fix(subir): o CLI perde o caminho de escrita, e a porta volta a ser única",
+  "acceptance_ids": ["P09-T03-A1", "P09-T03-A2", "P09-T03-A4", "P09-T03-A5", "P09-T03-A6"],
+  "ownership_envelope": ["volc_ads", "backend/tests"],
+  "task_ids": ["P09-T03"],
+  "authorized_external_providers": [],
+  "timeout_seconds": 5400,
+  "heartbeat_seconds": 20,
+  "ratchet": { "enabled": true, "max_writer_attempts": 2, "max_review_rounds": 2, "max_wall_seconds": 10800, "no_progress_limit": 2 },
+  "briefing": "ACHADO CONFIRMADO, com reprodução por leitura direta:\n\n`volc_ads/subir.py:1310-1352` expõe um CLI que cria campanha real:\n\n    python -m volc_ads.subir --subir --conta <id> --mcc <id> --motivo \"...\"\n\nEsse caminho chama `subir(preparo, motivo=...)` DIRETO. Ele não passa por:\n· `backend/app/trafego/ledger.py` (nenhum recibo `em_voo` é aberto antes da chamada);\n· `backend/app/trafego/canario.py` (nenhuma política de conta/canal/teto/PAUSED);\n· `backend/app/trafego/escopo.py` (nenhum portão de conta-da-casa);\n· nenhuma autenticação de operador.\n\nA única barreira é a trava de dois fatores (`destravar()` no código E `FORGE_PERMITIR_ESCRITA=1` no ambiente). Isso contradiz a alegação de porta única de P09-T03 e o contrato que a sprint search-production-closure-v1 acabou de construir: com a trava aberta, esse caminho cria uma campanha SEM RASTRO LOCAL — exatamente o objeto que o ledger existe para tornar impossível.\n\nO QUE JÁ PROTEGE, e não deve ser desfeito: `--subir` exige `--conta` explícita, então o default `CONTA_PROVA = 8017851692` (Crédito Up, a conta FINANCEIRA) só vale para `--dry`.\n\nSUA TAREFA: fechar essa porta com a MENOR mudança que a fecha de verdade.\n\nPREFERÊNCIA EXPLÍCITA, e ela é uma ordem, não uma sugestão: aposentar o caminho de escrita do CLI. Remover a flag `--subir` e tudo que só existe para ela é mais simples e mais auditável do que fazer o CLI atravessar a rota HTTP autenticada — que exigiria token de operador, cliente HTTP e um segundo caminho de autorização para manter. Só escolha a alternativa se você provar que a remoção quebra um consumidor real e citar esse consumidor por arquivo:linha.\n\nNÃO faça uma reescrita ampla de `subir.py`. A função `subir()` continua existindo e continua sendo chamada por `backend/app/routers/trafego.py`; ela NÃO é o alvo. O alvo é só o `main()` do CLI e o que pende dele.\n\nACEITES (cada um precisa de prova):\n1. nenhuma campanha pode ser criada por caminho que contorne o ledger, incluindo este CLI;\n2. o modo `--dry` continua funcionando e não regride — ele é read-only e é útil;\n4. `FORGE_PERMITIR_ESCRITA=1` sozinho deixa de ser autorização suficiente para criar campanha por este caminho;\n5. existe PROVA NEGATIVA EXECUTÁVEL de que o caminho fechado não muta nada — um teste que invoca o CLI pedindo escrita e demonstra que zero chamada de mutate acontece. Prova que aceita qualquer erro não vale: ela precisa distinguir 'recusou porque a porta fechou' de 'quebrou por outro motivo';\n6. nenhum comportamento da rota HTTP `/api/trafego/subir` é quebrado — os 1642 testes de `backend/tests` continuam verdes.\n\nONDE ESCREVER A PROVA: `volc_ads/testes_subir.py` roda pelos 24 casos do próprio `main()`, e sob o `pytest.ini` do projeto (`python_functions = test_* prova_*`) o pytest coleta dali só os `test_*`. Se você escrever a prova como `test_*` nesse arquivo, ela entra no gate `volc-ads-unit`. Leia o cabeçalho do arquivo antes: ele explica por que rodar por caminho quebra e por que os dois universos de contagem não se somam.\n\nDOCUMENTAÇÃO: atualize `volc_ads/COMECE-AQUI.md` somente se ele documentar o `--subir` (ele documenta: veja a linha com `--subir --conta 8017851692`). Não escreva documentação nova além do necessário.\n\nPROIBIDO: tocar `backend/app/`, `supabase/`, `src/`, qualquer migration, banco, Google Ads, n8n, rede, merge, push ou deploy.",
+  "gates": [
+    { "kind": "git_diff_check" },
+    { "kind": "catalog", "gate_id": "volc-ads-unit", "timeout_seconds": 1800 },
+    { "kind": "catalog", "gate_id": "backend-unit", "timeout_seconds": 2400 },
+    { "kind": "catalog", "gate_id": "verificar-segredos", "timeout_seconds": 600 }
+  ],
+  "workers": [
+    {
+      "id": "codex-writer-porta-unica",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "role": "writer",
+      "effort": "xhigh",
+      "lens": "Feche a porta com a menor mudança que a fecha. Aposentar o caminho de escrita do CLI é a preferência declarada. A prova negativa precisa distinguir 'a porta fechou' de 'quebrou por outro motivo'.",
+      "allowed_paths": ["volc_ads"],
+      "writable_paths": ["volc_ads/subir.py", "volc_ads/testes_subir.py", "volc_ads/COMECE-AQUI.md"]
+    },
+    {
+      "id": "codex-sol-revisor-porta-unica",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Refute o fechamento. Sobrou algum caminho de escrita no módulo? A prova negativa aceitaria qualquer erro? O `--dry` regrediu? A mudança foi mais ampla do que fechar a porta? Alguma chamada de `subir()` a partir do backend foi afetada?",
+      "allowed_paths": ["volc_ads", "backend/app/routers/trafego.py", "backend/tests"]
+    }
+  ]
+}

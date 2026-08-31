@@ -27,7 +27,10 @@
     "P09-T02",
     "P09-T03"
   ],
-  "authorized_external_providers": [],
+  "authorized_external_providers": [
+    "anthropic",
+    "google_gemini"
+  ],
   "timeout_seconds": 5400,
   "heartbeat_seconds": 20,
   "briefing": "CERTIFICAÇÃO ADVERSARIAL, READ-ONLY. O candidato é o commit 8c3dfdcebd57a3190c0036b1860c810ff3fe6cf4 na branch sprint/search-production-closure-v1, partindo de f45e810. O base_ref desta missão (b1fe80d) é o candidato MAIS a ponte de gate (scripts/gate_provar_ledger_v10_03.py + entrada no gate-catalog.json); nenhuma linha de produto muda entre 8c3dfdc e b1fe80d.\n\nSEU TRABALHO É REFUTAR, NÃO CONFIRMAR. Não valide por cortesia. Um achado sem reprodução deve ser marcado [NÃO REPRODUZIDO] e não autoriza alteração.\n\nA ALEGAÇÃO CENTRAL sob teste: 'nenhuma chamada que MUTA o Google Ads sai de POST /api/trafego/subir sem que um recibo em_voo esteja commitado antes, e uma resposta ausente nunca vira falhou/tente-de-novo'.\n\nO QUE MUDOU (git diff f45e810..8c3dfdc):\n- supabase/migrations/v10_03_recibo_atomico.sql (992 linhas, novo): camada 4 (gatilho BEFORE INSERT em trafego_recibo que recusa segundo recibo sem desfecho no mesmo item+operação); colunas de aprovação no item com constraint exigindo aprovacao_impressao = plano_impressao; quatro funções SECURITY INVOKER (trafego_ledger_abrir_lancamento, _despachar, _fechar, _reconciliar) com EXECUTE só para service_role e search_path fixado.\n- supabase/migrations/v10_03_rollback.sql (novo).\n- scripts/provar-ledger-v10-03.sh (novo): 56 provas.\n- backend/app/trafego/ledger.py (novo): fachada assíncrona sobre as RPCs, com recusa do banco tipada por SQLSTATE.\n- backend/app/services/supabase_service.py: método rpc() novo.\n- backend/app/routers/trafego.py: só subir() e helpers _fechar_recibo_*.\n- backend/tests/test_trafego_ledger.py (novo, 23 testes).\n- src/lib/trafego/lancamento.ts (novo) + teste (17); Lancamento.tsx, pautadorApi.ts, types/trafego.ts.\n\nO DEFEITO QUE A v10_03 ALEGA FECHAR, e que foi reproduzido: as três camadas de defesa da v10_01 contra 'timeout mas criou' vivem TODAS dentro de `IF NEW.estado IS DISTINCT FROM OLD.estado` no gatilho trafego_item_estado_valido. Abrir um recibo não passava por gatilho nenhum, e dois recibos em_voo simultâneos no mesmo item eram ACEITOS.\n\nLIMITAÇÃO JÁ CONHECIDA E ADMITIDA, não a reporte como achado novo: volc_ads/subir.py:1310 expõe um CLI (`python -m volc_ads.subir --subir`) que chama o executor direto, sem ledger, sem política do canário e sem recibo. Está fora do ownership desta missão e tem missão corretiva própria.\n\nATAQUE ESPECIFICAMENTE:\n1. um caminho em que sb.subir seja alcançado sem recibo em_voo commitado;\n2. um caminho em que timeout/sem-resposta acabe permitindo reenvio;\n3. corrida que o FOR UPDATE não cubra (ordem de locks, deadlock, item travado e lote não);\n4. prova em scripts/provar-ledger-v10-03.sh que passe pelo MOTIVO ERRADO — SQLSTATE de outra guarda, CHECK anterior mascarando a guarda anunciada, asserção que aceitaria qualquer erro, fixture que não exercita o caminho;\n5. dublê em test_trafego_ledger.py sem a forma do objeto real, fazendo o teste provar outra coisa;\n6. semântica SQL que só quebra com dado real (SELECT ... INTO sem linha, ON CONFLICT ausente, FK, CHECK);\n7. privilégio: função chamável por anon/authenticated, SECURITY DEFINER, search_path manipulável;\n8. rollback que não devolve o banco ou danifica a v10_01;\n9. estado colapsado: ausência tratada como zero, NULL como false, indisponível como falha;\n10. segredo em arquivo novo.\n\nO QUE VOCÊ NÃO PODE FAZER: editar qualquer arquivo; commitar; tocar banco remoto, Google Ads, n8n ou rede. Esta missão é read_only e seu sandbox não escreve.\n\nQUEM EXECUTA AS PROVAS: os GATES desta missão, no processo do harness — não você. Seu sandbox é read-only e não sobe cluster Postgres. Leia os gates como evidência e ataque o que eles NÃO cobrem.\n\nLANES INDISPONÍVEIS, DECLARADAS E NÃO SUBSTITUÍDAS:\n· Gemini 3.7 Flash/high — NO-GO: referência GEMINI_API_KEY ausente nesta máquina. O escopo dela (completude SQL/PostgREST, tipos frontend/backend, migrations, rollback e preflight) fica SEM cobertura independente nesta rodada e NÃO foi redistribuído.\n· Claude Opus 5/xhigh — NO-GO: referência VOLC_CLAUDE_CODE_OAUTH_TOKEN ausente. O claude_worker recusa por projeto qualquer fallback para CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_API_KEY ou credencial sob HOME; furar essa guarda seria desfazer um isolamento deliberado. O escopo de arquitetura/contrato completo fica SEM cobertura independente nesta rodada.\n· DeepSeek — disponível (proposal-only), sem falha focal apropriada nesta missão read_only.",
@@ -85,6 +88,38 @@
         "backend/tests/test_trafego_ledger.py",
         "src/lib/trafego/__tests__/lancamento.test.ts",
         "src/lib/trafego/lancamento.ts"
+      ]
+    },
+    {
+      "id": "claude-opus-arquitetura",
+      "provider": "claude",
+      "model": "opus",
+      "role": "reviewer",
+      "effort": "xhigh",
+      "lens": "Arquitetura, estados e contrato ponta a ponta, com julgamento independente. A fronteira transacional garante o que alega? Ausência, zero, falha e indeterminado seguem distintos do SQL ao TypeScript? O rollback devolve o banco? Onde o contrato diverge de si mesmo entre camadas?",
+      "allowed_paths": [
+        "supabase/migrations/v10_03_recibo_atomico.sql",
+        "supabase/migrations/v10_03_rollback.sql",
+        "backend/app/trafego/ledger.py",
+        "backend/app/routers/trafego.py",
+        "src/lib/trafego/lancamento.ts",
+        "src/types/trafego.ts",
+        "docs/closure/search-production-closure-v1"
+      ]
+    },
+    {
+      "id": "gemini-sql-completude",
+      "provider": "gemini",
+      "model": "gemini-3.7-flash",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Completude de SQL/PostgREST, migrations, rollback e tipos. Confira campo a campo: toda coluna que a migration cria é usada? Toda função tem rollback? O rollback derruba exatamente o que a migration criou, nada a mais nem a menos? Os tipos TypeScript cobrem todos os campos que o backend devolve? Falta algum estado no enum?",
+      "allowed_paths": [
+        "supabase/migrations/v10_03_recibo_atomico.sql",
+        "supabase/migrations/v10_03_rollback.sql",
+        "supabase/migrations/README.md",
+        "src/types/trafego.ts",
+        "backend/app/trafego/ledger.py"
       ]
     }
   ]

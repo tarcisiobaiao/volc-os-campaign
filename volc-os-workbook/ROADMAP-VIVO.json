@@ -929,6 +929,14 @@
           "links": [
             "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
             "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
+          ],
+          "acceptance": [
+            "Nenhuma campanha pode ser criada por caminho que contorne o ledger, incluindo o CLI de volc_ads",
+            "O modo dry/read-only permanece disponível e não regride",
+            "A escrita direta é aposentada ou atravessa a mesma porta autenticada e persistida",
+            "FORGE_PERMITIR_ESCRITA=1 sozinho não é autorização suficiente para criar campanha",
+            "Existe prova negativa executável demonstrando zero mutate pelo caminho fechado",
+            "Nenhum comportamento da rota HTTP /api/trafego/subir é quebrado"
           ]
         },
         {

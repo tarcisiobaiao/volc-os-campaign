@@ -1,0 +1,45 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "smoke-claude-lane-v1",
+  "title": "Smoke da lane Claude Opus — leitura de um arquivo rastreado pequeno",
+  "base_ref": "HEAD",
+  "mode": "read_only",
+  "acceptance_ids": [
+    "P05-T11-A5"
+  ],
+  "ownership_envelope": [
+    "scripts"
+  ],
+  "task_ids": [],
+  "authorized_external_providers": [
+    "anthropic"
+  ],
+  "timeout_seconds": 900,
+  "heartbeat_seconds": 20,
+  "briefing": "SMOKE DE LANE — ele NÃO fecha o aceite citado; acceptance_ids é campo obrigatório do schema 3 e aqui serve só de âncora editorial.\n\nSMOKE DE LANE. Objetivo único: provar que a lane responde com saída estruturada, sem escrever nada e sem gate externo.\n\nLeia `scripts/gate_provar_ledger_v10_03.py` — são ~50 linhas. Responda, de forma curta e verificável:\n1. qual comando externo esse arquivo executa, literalmente;\n2. qual código de saída ele devolve quando o script alvo não existe;\n3. por que ele NÃO interpreta a saída do script que executa (a resposta está no próprio docstring);\n4. uma frase dizendo se a ponte é fina o bastante para não virar uma segunda opinião sobre um resultado binário.\n\nNão proponha mudanças. Não leia outros arquivos. Não escreva nada.",
+  "gates": [],
+  "workers": [
+    {
+      "id": "claude-opus-smoke",
+      "provider": "claude",
+      "model": "opus",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Leitura literal e resposta curta. Nenhuma proposta de mudança.",
+      "allowed_paths": [
+        "scripts/gate_provar_ledger_v10_03.py"
+      ]
+    },
+    {
+      "id": "codex-sol-contraste",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Mesmo arquivo, mesma pergunta. Serve de contraste: divergência no ponto 1 ou 2 é o achado.",
+      "allowed_paths": [
+        "scripts/gate_provar_ledger_v10_03.py"
+      ]
+    }
+  ]
+}
