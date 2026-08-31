@@ -1,0 +1,124 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "search-closure-correcoes-certificacao-v1",
+  "title": "Correções dos achados confirmados da certificação de quatro lanes",
+  "base_ref": "4a610e4025984e136f194cd1610802094f224660",
+  "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
+  "mode": "implementation",
+  "commit_message": "fix(subir): o contrato do executor, a chave em micros e a porta de reconciliacao",
+  "acceptance_ids": [
+    "P05-T11-A3",
+    "P05-T11-A4",
+    "P05-T11-A5"
+  ],
+  "ownership_envelope": [
+    "backend/app",
+    "backend/tests"
+  ],
+  "task_ids": [
+    "P05-T11",
+    "P09-T02",
+    "P09-T03"
+  ],
+  "authorized_external_providers": [
+    "anthropic",
+    "google_gemini"
+  ],
+  "timeout_seconds": 7200,
+  "heartbeat_seconds": 20,
+  "ratchet": {
+    "enabled": true,
+    "max_writer_attempts": 3,
+    "max_review_rounds": 2,
+    "max_wall_seconds": 18000,
+    "no_progress_limit": 2
+  },
+  "briefing": "MISSÃO CORRETIVA. Quatro lanes adversariais reprovaram o candidato 8c3dfdc. Dois achados foram REPRODUZIDOS pelo diretor e são a razão desta missão. Você conserta o que está listado, e NADA além disso.\n\n=== C1 · CRÍTICO, REPRODUZIDO · a rota de lançamento está inoperante ===\nPOST /api/trafego/subir responde 500 antes de abrir qualquer recibo.\nbackend/app/routers/trafego.py passa `_plano_aprovavel(body, cid, mid)` — que é `body.model_dump(mode='json')` — como `plano` para `ledger.abrir`. Nesse dump, `budget_diario` e `cpc_inicial` continuam float (ProvarEntrada os declara float). `Ledger.abrir` deriva a chave por `lote.chave_de_idempotencia`, que chama `_sem_float` e levanta `ErroDeLote` — um ValueError. O try da rota captura apenas LedgerRecusou e LedgerIndisponivel, então vira 500 sem detalhe.\nReprodução do diretor: chamando Ledger.abrir com {'budget_diario': 10.0, 'cpc_inicial': 0.12} levanta ErroDeLote e NÃO é LedgerRecusou nem LedgerIndisponivel.\nA recusa a float NÃO é um defeito de lote.py e não deve ser afrouxada: dinheiro em float faria a mesma campanha produzir chaves diferentes em máquinas diferentes, que é o oposto de idempotência. CONSERTE NA ORIGEM: construa o plano canônico que vai ao ledger com dinheiro em MICROS (int), e não com o dump cru do corpo. Além disso, ErroDeLote precisa virar recusa TIPADA e nunca um 500 nu.\nOs 23 testes existentes não pegam isso porque dublam o Ledger inteiro. A prova nova precisa exercitar a derivação REAL da chave.\n\n=== C2 · ALTO, CONFIRMADO · o router lê o contrato errado do executor ===\nvolc_ads/subir.py:894-919 NÃO levanta em falha do Google: captura ErroTerminal e ErroEsgotado e RETORNA um Recibo com estado RECUSADO (mutate atômico, nada criado) ou INDETERMINADO (não respondeu). Confirmado por leitura; e `grep 'recibo.estado' backend/app/routers/trafego.py` não retorna nada — a rota nunca lê o estado.\nConsequência: toda a bifurcação por `getattr(exc, 'failure', None)` que existe hoje na rota é CÓDIGO MORTO contra o executor real. Uma recusa RESPONDIDA é gravada como `sem_resposta`, o item vai para `indeterminado`, a resposta HTTP é 200 e a tela diz 'A campanha existe, e está pausada'.\nO executor já tem o vocabulário certo, e ele mapeia um-a-um no ledger:\n  ACEITO        -> fechar_sucesso (com id externo)\n  RECUSADO      -> fechar_erro    (houve resposta; nada criado; item reentrável)\n  INDETERMINADO -> fechar_sem_resposta (ignorância; item indeterminado; sem reenvio)\nLeia `recibo.estado` e use esse mapeamento. Preserve `falha`/`erro_codigo`/`request_id` do Recibo no fechamento em vez de descartá-los. Remova a bifurcação morta por exceção, mantendo o tratamento das exceções que de fato ocorrem ANTES da rede (TravaAberta, PayloadNaoValidado, EscritaBloqueada) — essas continuam sendo falha confirmada e reentrável.\n⚠️ E o inverso importa tanto quanto: uma exceção que nasce FORA do mutate (motivo curto, construção de cliente) NÃO pode ser carimbada como 'pode haver campanha criada'. Hoje ela vira 504/sem_resposta e trava o item para sempre.\n\n=== C3 · ALTO · duas derivações incompatíveis da identidade da instância ===\nbackend/app/trafego/ledger.py cria `volc_cmp_<sigla>_<sha256[:16]>`, enquanto backend/app/trafego/sincronizador.py já derivava a mesma identidade por uuid5 para o mesmo par (customer_id, campaign_id). O índice único `trafego_campanha_identidade_externa_ux (customer_id, campaign_id)` da v9_01 não é coberto pelo `ON CONFLICT (volc_campaign_id)` das RPCs — então se a varredura já declarou a identidade uuid5, o INSERT do ledger falha com 23505 e a transação inteira de `fechar` aborta, deixando o recibo em voo com a campanha já criada na conta.\nUse UMA derivação só: a que já existe no sincronizador. Não invente uma terceira.\n\n=== C4 · ALTO · a única saída de `indeterminado` não existe como porta ===\n`Ledger.reconciliar` não tem chamador de produção — só teste. Nenhuma rota HTTP a expõe. Como toda recusa respondida hoje cai em `indeterminado` (C2), o desfecho normal de uma falha de política vira um item que só um humano com psql destrava.\nExponha a reconciliação como rota autenticada (mesma exigência de admin de /subir), read-then-write: ela lê a conta e fecha o MESMO recibo. Ela NUNCA reenvia.\nCodifique também, na fachada, que `achou=true` exige `quantidade >= 1` — a CHECK do banco já recusa, e a fachada deve falhar antes com mensagem clara.\n\n=== O QUE VOCÊ NÃO PODE FAZER ===\nNão altere supabase/migrations (a camada 4 estrutural e a ordem de locks têm missão SQL própria). Não altere volc_ads (a porta única do CLI tem missão própria). Não toque frontend. Não toque banco, Google Ads, rede, n8n. Não afrouxe `_sem_float` nem nenhuma guarda de lote.py ou intencao.py.\n\n=== PROVAS EXIGIDAS ===\nCada correção precisa de teste que FALHARIA antes dela. Em particular:\n· um teste que chama a derivação REAL da chave a partir do corpo real da rota (sem dublar o Ledger) e prova que ela não levanta;\n· um teste por estado do executor (ACEITO/RECUSADO/INDETERMINADO) provando o desfecho correto no ledger, com dublê que devolve Recibo — nunca um que levanta exceção que o executor real não lança;\n· um teste provando que uma exceção anterior ao mutate não vira `sem_resposta`;\n· um teste provando que as duas derivações de identidade coincidem.\nOs 1642 testes de backend/tests precisam continuar verdes.",
+  "gates": [
+    {
+      "kind": "git_diff_check"
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "backend-unit",
+      "timeout_seconds": 2400
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "volc-ads-unit",
+      "timeout_seconds": 1800
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "sem-mutacao-google",
+      "timeout_seconds": 1200
+    },
+    {
+      "kind": "catalog",
+      "gate_id": "verificar-segredos",
+      "timeout_seconds": 600
+    }
+  ],
+  "workers": [
+    {
+      "id": "codex-writer-correcoes",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "role": "writer",
+      "effort": "xhigh",
+      "lens": "Conserte C1..C4 e nada alem. Cada correcao precisa de um teste que falharia antes dela. Nao dubla o Ledger inteiro nos testes novos: o defeito critico existe justamente porque o dublê escondia a derivacao real.",
+      "allowed_paths": [
+        "backend/app",
+        "backend/tests",
+        "volc_ads/subir.py",
+        "supabase/migrations/v10_03_recibo_atomico.sql"
+      ],
+      "writable_paths": [
+        "backend/app/trafego/ledger.py",
+        "backend/app/routers/trafego.py",
+        "backend/tests/test_trafego_ledger.py"
+      ]
+    },
+    {
+      "id": "codex-sol-revisor-correcoes",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Refute os consertos. C1 foi corrigido na origem ou apenas mascarado por um except mais largo? O mapeamento de recibo.estado cobre os tres estados? Sobrou algum caminho em que excecao anterior ao mutate vira sem_resposta? Algum teste novo dubla demais e voltaria a esconder o defeito?",
+      "allowed_paths": [
+        "backend/app",
+        "backend/tests",
+        "volc_ads/subir.py"
+      ]
+    },
+    {
+      "id": "claude-opus-revisor-correcoes",
+      "provider": "claude",
+      "model": "opus",
+      "role": "reviewer",
+      "effort": "xhigh",
+      "lens": "Voce achou C1 e C2. Confira se foram fechados de verdade e se o conserto nao abriu outro colapso de estado. A identidade da instancia ficou unica? A porta de reconciliacao fecha o MESMO recibo e nunca reenvia?",
+      "allowed_paths": [
+        "backend/app",
+        "backend/tests",
+        "volc_ads/subir.py",
+        "supabase/migrations/v10_03_recibo_atomico.sql"
+      ]
+    },
+    {
+      "id": "gemini-revisor-correcoes",
+      "provider": "gemini",
+      "model": "gemini-3.7-flash",
+      "role": "reviewer",
+      "effort": "high",
+      "lens": "Completude: todo campo do Recibo do executor que carrega informacao (falha, erro_codigo, request_id, resource names) chega ao ledger, ou algum foi descartado? A fachada codifica a exigencia de quantidade quando achou=true?",
+      "allowed_paths": [
+        "backend/app/trafego/ledger.py",
+        "backend/app/routers/trafego.py",
+        "volc_ads/subir.py",
+        "supabase/migrations/v10_03_recibo_atomico.sql"
+      ]
+    }
+  ]
+}
