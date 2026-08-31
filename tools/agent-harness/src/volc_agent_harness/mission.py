@@ -856,7 +856,9 @@ async def _run_implementation_mission(
         return run_dir, result
 
     reviewer_worktrees = {
-        reviewer.id: manager.create(run_id, reviewer.id, writer_sha)
+        reviewer.id: manager.create(run_id, reviewer.id, writer_sha,
+                           registry=_registry_do_repo(repo),
+                           mission_id=mission.mission_id)
         for reviewer in reviewers
     }
     review_schema = Path(__file__).parent / "schemas" / "review-result.schema.json"

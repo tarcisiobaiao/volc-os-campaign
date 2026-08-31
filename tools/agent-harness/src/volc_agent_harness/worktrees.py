@@ -101,6 +101,7 @@ class WorktreeManager:
         *,
         registry: Any | None = None,
         mission_id: str = "",
+        role: str = "writer",
     ) -> WorktreeInfo:
         """Cria a worktree sem jamais apagar nada.
 
@@ -146,6 +147,8 @@ class WorktreeManager:
                 branch=branch,
                 base_sha=base_sha,
                 writer_pid=os.getpid(),
+                worker_id=worker_id,
+                role=role,
             )
         return WorktreeInfo(worker_slug, path, branch, base_sha)
 

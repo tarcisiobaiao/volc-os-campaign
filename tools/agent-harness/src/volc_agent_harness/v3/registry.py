@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS worktrees (
     status          TEXT NOT NULL,
     last_heartbeat  TEXT,
     owner           TEXT,
+    worker_id       TEXT,
+    role            TEXT,
     files_json      TEXT,
     cleanup_eligible INTEGER NOT NULL DEFAULT 0,
     created_at      TEXT NOT NULL
@@ -59,6 +61,7 @@ class WorktreeRegistry:
     def claim(
         self, *, worktree: str, mission_id: str, branch: str, base_sha: str,
         writer_pid: int | None = None, owner: str | None = None,
+        worker_id: str | None = None, role: str | None = None,
     ) -> None:
         """Reivindica a worktree. Dois writers no mesmo caminho é impossível."""
 
@@ -84,7 +87,8 @@ class WorktreeRegistry:
                     "INSERT INTO worktrees(path,mission_id,branch,writer_pid,base_sha,status,"
                     "last_heartbeat,owner,files_json,cleanup_eligible,created_at) "
                     "VALUES(?,?,?,?,?,?,?,?,?,0,?)",
-                    (worktree, mission_id, branch, writer_pid, base_sha, "writer_active",
+                    (worktree, mission_id, branch, writer_pid, base_sha,
+                     "writer_active" if (role or "writer") == "writer" else "reader_active",
                      _agora(), owner, "[]", _agora()),
                 )
             else:
@@ -93,7 +97,9 @@ class WorktreeRegistry:
                 alteradas = c.execute(
                     "UPDATE worktrees SET mission_id=?,branch=?,writer_pid=?,status=?,"
                     "last_heartbeat=?,owner=? WHERE path=? AND status<>'writer_active'",
-                    (mission_id, branch, writer_pid, "writer_active", _agora(), owner, worktree),
+                    (mission_id, branch, writer_pid,
+                     "writer_active" if (role or "writer") == "writer" else "reader_active",
+                     _agora(), owner, worktree),
                 ).rowcount
                 if alteradas == 0:
                     raise HarnessFailure(
@@ -101,6 +107,10 @@ class WorktreeRegistry:
                         "perdeu a corrida pela worktree",
                         detalhe=worktree,
                     )
+            c.execute(
+                "UPDATE worktrees SET worker_id=?, role=? WHERE path=?",
+                (worker_id, role, worktree),
+            )
             c.execute("COMMIT")
         except BaseException:
             c.execute("ROLLBACK")
