@@ -39,6 +39,7 @@ import logging
 import pathlib
 import re
 import sys
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -1605,6 +1606,81 @@ def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, An
     return bruto
 
 
+class PlanoIrrepresentavel(ValueError):
+    """O plano aprovado não tem representação canônica para o ledger."""
+
+
+class LeituraDaContaIndisponivel(RuntimeError):
+    """Não deu para ler a conta. NÃO significa que a campanha não existe."""
+
+
+# Dinheiro viaja em micros — a unidade que a própria API do Google usa, e a
+# única que o `plano` pode carregar sem virar float na travessia.
+UM_MILHAO = Decimal("1000000")
+
+
+def _micros(valor: Any, campo: str) -> int:
+    """Reais → micros, por `Decimal`, sem jamais passar por `float` binário.
+
+    ⚠️ `Decimal(str(valor))` e não `Decimal(valor)`: o segundo leria o float
+    binário inteiro (`Decimal(0.1)` é `0.1000000000000000055511151231257827`) e
+    devolveria micros diferentes conforme a plataforma. `str()` de um float em
+    CPython é o repr mais curto que reconstrói o valor — determinístico — e é
+    dele que sai a mesma chave em qualquer máquina.
+    """
+    try:
+        numero = Decimal(str(valor))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise PlanoIrrepresentavel(
+            f"{campo}={valor!r} não é um valor monetário representável.") from exc
+    if not numero.is_finite() or numero <= 0:
+        raise PlanoIrrepresentavel(
+            f"{campo}={valor!r} precisa ser um valor finito e maior que zero.")
+    exato = numero * UM_MILHAO
+    arredondado = exato.to_integral_value(rounding=ROUND_HALF_UP)
+    if exato != arredondado:
+        # Abaixo de um micro não existe para o Google Ads, e arredondar em
+        # silêncio faria dois planos diferentes derivarem a MESMA chave.
+        raise PlanoIrrepresentavel(
+            f"{campo}={valor!r} tem precisão abaixo de um micro; o ledger "
+            "não pode arredondar sem tornar dois planos indistinguíveis.")
+    return int(arredondado)
+
+
+def plano_do_ledger(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
+    """O plano aprovado na forma que a chave de idempotência aceita.
+
+    ⚠️ Este é o conserto do defeito que deixou `/subir` inoperante. O plano que
+    ia ao ledger era o `model_dump(mode="json")` cru, e `ProvarEntrada` declara
+    `budget_diario: float` e `cpc_inicial: float`. `lote._sem_float` recusa float
+    na travessia — com razão, e a guarda NÃO foi afrouxada: `repr(0.1 + 0.2)` não
+    é `'0.3'`, e dinheiro em float faria a mesma campanha produzir duas chaves em
+    máquinas diferentes, que é o oposto de idempotência.
+
+    A correção é na origem: o dinheiro atravessa em micros inteiros. Note que a
+    IMPRESSÃO que o humano aprova continua saindo de `_plano_aprovavel` — ela
+    mostra reais, porque é o que o operador leu na tela. São dois consumidores
+    do mesmo plano com necessidades diferentes: a tela precisa ser legível, a
+    chave precisa ser determinística.
+    """
+    plano = _plano_aprovavel(body, cid=cid, mid=mid)
+    for campo in ("budget_diario", "cpc_inicial"):
+        if campo in plano:
+            plano[f"{campo}_micros"] = _micros(plano.pop(campo), campo)
+    grupos = []
+    for i, grupo in enumerate(plano.get("grupos") or []):
+        canonico = dict(grupo)
+        if canonico.get("cpc_inicial") is not None:
+            canonico["cpc_inicial_micros"] = _micros(
+                canonico.pop("cpc_inicial"), f"grupos[{i}].cpc_inicial")
+        else:
+            canonico.pop("cpc_inicial", None)
+        grupos.append(canonico)
+    if grupos:
+        plano["grupos"] = grupos
+    return plano
+
+
 def _impressao_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> str:
     return canario.impressao_do_plano(_plano_aprovavel(body, cid=cid, mid=mid))
 
@@ -2141,7 +2217,14 @@ class SubirEntrada(ProvarEntrada):
     # `subir()` exige motivo descritivo — `destravar()` recusa menos de 10
     # caracteres. Não é burocracia: o motivo vai para o recibo, e recibo sem
     # motivo é um gasto que ninguém sabe explicar depois.
-    motivo: str
+    #
+    # ⚠️ O `min_length` repete a regra do executor DE PROPÓSITO, e a repetição
+    # se paga: sem ele, um motivo curto passava por aqui, abria recibo, e só
+    # então `_exigir_motivo` levantava um `ValueError` cru lá dentro — que esta
+    # rota não consegue distinguir de uma falha posterior ao mutate. O item
+    # ficava `indeterminado` por um erro de digitação. Recusar na fronteira HTTP
+    # devolve 422 antes de existir recibo, que é onde este erro pertence.
+    motivo: str = Field(min_length=10)
     # Impressão devolvida pela prova. A rota recalcula sobre o pedido recebido;
     # trocar uma keyword, headline, verba ou destino depois de revisar invalida
     # a autorização antes de qualquer consulta de escrita.
@@ -2391,7 +2474,20 @@ async def subir(
         )
 
     despacho = None
-    plano_do_ledger = _plano_aprovavel(body, cid=cid, mid=mid)
+    # ⚠️ DENTRO do try, e não antes dele. A derivação do plano canônico pode
+    # recusar (valor não representável em micros), e uma recusa que nasce fora
+    # do try escapa como 500 nu — que foi exatamente o defeito original, só que
+    # com outro nome. Recusa de derivação é 409 com motivo, sem recibo aberto.
+    try:
+        plano_canonico = plano_do_ledger(body, cid=cid, mid=mid)
+    except PlanoIrrepresentavel as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(f"O plano aprovado não tem representação canônica para o "
+                    f"ledger: {exc}. Nada foi registrado e nada foi enviado "
+                    "ao Google."),
+        ) from exc
+
     try:
         registro = await ledger.abrir(
             plataforma="GOOGLE_ADS",
@@ -2400,7 +2496,7 @@ async def subir(
             objetivo="leads",
             rotulo=str(getattr(plano.brief, "titulo", "")
                        or body.vertical or "campanha"),
-            plano=plano_do_ledger,
+            plano=plano_canonico,
             plano_impressao=preparo.selo.impressao,
             declarada_por=identidade.email or identidade.sub,
             declarada_com_base_em=f"oportunidade:{body.opportunity_id}",
@@ -2459,9 +2555,12 @@ async def subir(
 
     try:
         recibo = await asyncio.to_thread(sb.subir, preparo, motivo=body.motivo)
-    except (sb.TravaAberta, sb.PayloadNaoValidado) as exc:
-        # Guardas locais do executor: elas disparam ANTES de qualquer byte sair.
-        # Nada foi criado, e o item continua reentrável.
+    except (sb.TravaAberta, sb.PayloadNaoValidado, sb.CanalSemMutacaoReal) as exc:
+        # Guardas locais do executor: as três são levantadas por funções nomeadas
+        # no TOPO de `subir()`, antes do `with modo.destravar()` — ou seja, antes
+        # de o pré-recibo existir e antes de qualquer byte sair. Nada foi criado,
+        # e o item continua reentrável. É a prova de origem que autoriza chamar
+        # isto de falha em vez de ignorância.
         await _fechar_recibo_com_erro(ledger, despacho, exc,
                                       codigo=type(exc).__name__)
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -2473,37 +2572,83 @@ async def subir(
                                           codigo="EscritaBloqueada")
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-        # ⚠️ A BIFURCAÇÃO QUE DECIDE SE UMA SEGUNDA CAMPANHA NASCE.
+        # ⚠️ A EXCEÇÃO DESCONHECIDA É IGNORÂNCIA, NÃO FALHA.
         #
-        # `failure` preenchido significa que o servidor do Google PROCESSOU e
-        # RECUSOU: há resposta, nada foi criado, e o item pode ser reenviado.
-        # `failure` ausente é transporte — timeout, conexão caída, processo
-        # morto — e aí NÃO SABEMOS se criou. O recibo fecha como `sem_resposta`,
-        # o item vira `indeterminado`, e a saída de lá é verificar na conta.
-        # Chamar isto de "falhou" seria o convite a reenviar que cria a segunda
-        # campanha no mesmo leilão.
-        respondeu = getattr(exc, "failure", None) is not None
-        if respondeu:
-            await _fechar_recibo_com_erro(ledger, despacho, exc, codigo="GoogleAdsException")
-            log.exception("subida do card %s recusada pelo Google", body.opportunity_id)
-            raise HTTPException(status_code=502, detail=str(exc)[:400]) from exc
-
+        # A tentação aqui é carimbar tudo o que sobrou como `erro` — "não voltou
+        # recibo, logo não criou". É falso, e o contra-exemplo é curto:
+        # `volc_ads.subir` grava o recibo em disco DEPOIS do mutate
+        # (`_gravar(recibo, pasta)`, subir.py:917). Um `OSError` ali chega aqui
+        # com a campanha JÁ CRIADA na conta. `erro` deixaria o item reentrável,
+        # e o reenvio criaria a segunda campanha no mesmo leilão.
+        #
+        # As exceções que provam ter nascido ANTES da rede — `TravaAberta`,
+        # `PayloadNaoValidado`, `EscritaBloqueada` — já saíram acima, como falha
+        # confirmada e reentrável. O que chega até aqui não tem essa prova, e
+        # sem prova o único desfecho honesto é `sem_resposta`.
         await _fechar_recibo_sem_resposta(ledger, despacho, exc)
         log.exception("subida do card %s ficou indeterminada", body.opportunity_id)
         raise HTTPException(
             status_code=504,
+            detail=_detalhe_indeterminado(
+                despacho,
+                "A chamada de criação não chegou ao fim de forma verificável. "
+                "NÃO reenvie: pode haver uma campanha criada na conta. O recibo "
+                "ficou registrado e a próxima ação é verificar na conta e "
+                "reconciliar."),
+        ) from exc
+
+    # ⚠️ O ESTADO QUE O EXECUTOR DEVOLVE — e que a rota ignorava por completo.
+    #
+    # `volc_ads.subir` NÃO levanta em falha do Google: ele captura `ErroTerminal`
+    # e `ErroEsgotado` dentro do `with` e DEVOLVE um `Recibo` com estado
+    # `RECUSADO` (a API respondeu; o mutate é atômico, então nada foi criado) ou
+    # `INDETERMINADO` (não respondeu). Até 31/08/2026 esta rota só olhava
+    # exceção — `grep recibo.estado` não achava nada — e por isso uma recusa
+    # RESPONDIDA virava 200 com "a campanha existe, e está pausada".
+    #
+    # Os três estados mapeiam um-a-um nos três desfechos do ledger, e o mapa é
+    # a coisa toda: recusado ≠ sem resposta, e nenhum dos dois é sucesso.
+    estado = str(getattr(recibo, "estado", "") or "").strip().upper()
+
+    if estado == sb.RECUSADO:
+        fechamento = await _fechar_recibo_com_erro(
+            ledger, despacho, _mensagem_do_recibo(recibo),
+            codigo=_erro_codigo_do_recibo(recibo),
+            resposta_bruta=_resposta_bruta_do_recibo(recibo))
+        log.warning("subida do card %s recusada pelo Google", body.opportunity_id)
+        raise HTTPException(
+            status_code=502,
             detail={
-                "estado": "indeterminado",
-                "mensagem": (
-                    "A chamada de criação não teve resposta. NÃO reenvie: pode "
-                    "haver uma campanha criada na conta. O recibo ficou "
-                    "registrado e a próxima ação é verificar na conta e "
-                    "reconciliar."),
+                "estado": "recusado",
+                "mensagem": _mensagem_do_recibo(recibo),
+                "erro_codigo": _erro_codigo_do_recibo(recibo),
+                "request_id": str(getattr(recibo, "request_id", "") or ""),
                 "recibo_id": getattr(despacho, "recibo_id", None),
                 "item_id": getattr(despacho, "item_id", None),
-                "reenvio_permitido": False,
+                # A plataforma RESPONDEU que não criou, e o mutate é atômico.
+                # Reenviar depois de ajustar o plano é seguro, e é a saída.
+                "reenvio_permitido": True,
+                "ledger": fechamento,
             },
-        ) from exc
+        )
+
+    if estado != sb.ACEITO:
+        # `INDETERMINADO` e qualquer estado que não reconhecemos caem juntos, de
+        # propósito: um vocabulário novo do executor que chegasse aqui como
+        # "sucesso por omissão" seria a pior falha silenciosa deste fluxo.
+        motivo = (_mensagem_do_recibo(recibo) if estado == sb.INDETERMINADO
+                  else f"o executor devolveu o estado {estado or '(vazio)'}, "
+                       "que esta rota não sabe interpretar")
+        fechamento = await _fechar_recibo_sem_resposta(
+            ledger, despacho, motivo,
+            codigo=_erro_codigo_do_recibo(recibo))
+        log.warning("subida do card %s ficou indeterminada (estado=%s)",
+                    body.opportunity_id, estado or "(vazio)")
+        raise HTTPException(
+            status_code=504,
+            detail=_detalhe_indeterminado(despacho, motivo, ledger=fechamento,
+                                          recibo=recibo),
+        )
 
     # ⚠️ A CAMPANHA PASSA A EXISTIR NO NOSSO BANCO, e não só na conta do Google.
     #
@@ -2551,6 +2696,152 @@ async def subir(
 
 
 # ---------------------------------------------------------------------------
+# A saída de `indeterminado` — a leitura tardia, como porta e não como função
+# ---------------------------------------------------------------------------
+#
+# `Ledger.reconciliar` existia desde a v10_03 e não tinha chamador de produção:
+# só um teste. Isso é pior do que parece, porque `indeterminado` é o desfecho
+# NORMAL de qualquer chamada que não respondeu — e a única saída documentada
+# dele era "alguém com psql". Um estado terminal na prática.
+#
+# ⚠️ Esta rota LÊ e FECHA. Ela nunca reenvia o mutate. É a diferença entre
+# descobrir o que aconteceu e apostar que não aconteceu nada.
+
+
+class ReconciliarEntrada(BaseModel):
+    """O pedido de leitura tardia sobre um item que ficou em voo."""
+
+    item_id: str
+    customer_id: str
+    campaign_id: str
+    login_customer_id: Optional[str] = None
+    motivo: Optional[str] = None
+
+
+def _ler_campanha_na_conta(*, customer_id: str, login_customer_id: str,
+                           campaign_id: str) -> tuple[Dict[str, str], ...]:
+    """Lê a conta procurando UMA campanha por id. Somente leitura.
+
+    ⚠️ `search` não muta nada — é a mesma leitura que a pré-checagem de
+    idempotência já fazia antes do recibo. A recusa a qualquer coisa que mute
+    mora no fato de que esta função não constrói operação nenhuma.
+    """
+    kid = str(campaign_id or "").strip()
+    if not re.fullmatch(r"[0-9]{1,20}", kid):
+        raise ValueError(
+            f"campaign_id={campaign_id!r} precisa conter somente dígitos.")
+    _ponte()
+    from volc_ads.gads.client import cliente
+
+    try:
+        servico = cliente(login_customer_id).get_service("GoogleAdsService")
+        linhas = servico.search(
+            customer_id=escopo.so_digitos(customer_id),
+            query=("SELECT campaign.id, campaign.name, campaign.status "
+                   f"FROM campaign WHERE campaign.id = {int(kid)}"))
+        encontradas: Dict[str, Dict[str, str]] = {}
+        for linha in linhas:
+            c = linha.campaign
+            encontradas[str(c.id)] = {
+                "campaign_id": str(c.id),
+                "campaign_name": str(getattr(c, "name", "") or ""),
+                "status": str(getattr(getattr(c, "status", ""), "name",
+                                      getattr(c, "status", "")) or ""),
+            }
+    except Exception as exc:  # noqa: BLE001
+        # ⚠️ Falhar a leitura NÃO é "a campanha não existe". Confundir os dois
+        # aqui fecharia o recibo como `sem_resposta` com base em ignorância
+        # nossa, apagando a diferença entre "conferi e não está" e "não conferi".
+        raise LeituraDaContaIndisponivel(str(exc)[:400]) from exc
+    return tuple(encontradas[k] for k in sorted(encontradas))
+
+
+@router.post("/reconciliar")
+async def reconciliar_lancamento(
+    body: ReconciliarEntrada = Body(...),
+    identidade: Identidade = Depends(exigir_admin),
+) -> Any:
+    """Lê a conta e fecha o MESMO recibo. Nunca reenvia o mutate."""
+    cid, mid = _no_escopo(body.customer_id,
+                          body.login_customer_id or escopo.MCC_DA_CASA)
+    ledger = _ledger()
+    if not ledger.disponivel:
+        raise HTTPException(
+            status_code=503,
+            detail=("O ledger de lançamento não está configurado neste "
+                    "processo, então não há recibo para fechar. Nada mudou."),
+        )
+
+    # Os três resultados possíveis da leitura, e eles são TRÊS — não dois.
+    # `achou=None` é um fato sobre nós, não sobre a conta, e o banco registra a
+    # verificação sem mover o item.
+    achou: Optional[bool]
+    try:
+        encontradas = await asyncio.to_thread(
+            _ler_campanha_na_conta, customer_id=cid, login_customer_id=mid,
+            campaign_id=body.campaign_id)
+        achou = len(encontradas) >= 1
+        indisponivel = ""
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except LeituraDaContaIndisponivel as exc:
+        encontradas = ()
+        achou = None
+        indisponivel = str(exc)
+        log.warning("leitura da conta para reconciliar o item %s falhou: %s",
+                    body.item_id, exc)
+
+    primeira = encontradas[0] if encontradas else {}
+    if achou is None:
+        motivo = body.motivo or f"não consegui ler a conta: {indisponivel}"
+    elif achou:
+        motivo = body.motivo or "campanha encontrada na leitura da conta"
+    else:
+        motivo = body.motivo or "conferi a conta e a campanha não está lá"
+
+    try:
+        reconciliado = await ledger.reconciliar(
+            item_id=body.item_id,
+            metodo="busca_por_id",
+            achou=achou,
+            verificado_por=identidade.email or identidade.sub,
+            plataforma="GOOGLE_ADS",
+            conta_externa=cid,
+            id_externo=str(primeira.get("campaign_id") or "") or None,
+            quantidade=None if achou is None else len(encontradas),
+            motivo=motivo,
+            estado_externo=primeira.get("status"),
+            divergencia={"campaign_id_solicitado": str(body.campaign_id),
+                         "campanhas_encontradas": list(encontradas)},
+        )
+    except led.LedgerRecusou as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"O ledger recusou a reconciliação: {exc}. Nada mudou.",
+        ) from exc
+    except led.LedgerIndisponivel as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Não consegui fechar o recibo no ledger: {exc}.",
+        ) from exc
+
+    return {
+        "reconciliacao": reconciliado,
+        "leitura": {
+            "customer_id": cid,
+            "campaign_id": str(body.campaign_id),
+            "achou": achou,
+            "quantidade": None if achou is None else len(encontradas),
+            "campanhas": list(encontradas),
+            "indisponivel": indisponivel or None,
+        },
+        # Dito com todas as letras porque é a propriedade que esta rota existe
+        # para preservar, e a que uma mudança futura poderia quebrar sem notar.
+        "reenvio_executado": False,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Fechamento do recibo — os três desfechos, e o que cada um significa
 # ---------------------------------------------------------------------------
 #
@@ -2559,6 +2850,78 @@ async def subir(
 # 500 trocaria um problema de registro por um de veiculação. O que elas NÃO fazem
 # é sumir em silêncio: o desfecho do fechamento vai no corpo da resposta, e um
 # recibo que continuou `em_voo` é dito com todas as letras.
+
+def _falha_do_recibo(recibo: Any) -> Optional[Dict[str, Any]]:
+    """A falha do executor na projeção canônica — a mesma que a tela já lê."""
+    falha = getattr(recibo, "falha", None)
+    if falha is None:
+        return None
+    try:
+        return projecao._falha(falha)  # noqa: SLF001
+    except Exception:  # noqa: BLE001
+        # Uma falha que não projeta ainda é uma falha: perder o texto dela aqui
+        # apagaria a única explicação que sobra no recibo.
+        return {"resumo": str(falha)[:2000], "erros": []}
+
+
+def _erro_codigo_do_recibo(recibo: Any) -> str:
+    falha = _falha_do_recibo(recibo) or {}
+    erros = falha.get("erros") or []
+    if erros:
+        primeiro = erros[0] or {}
+        codigo = ".".join(
+            p for p in (str(primeiro.get("familia") or ""),
+                        str(primeiro.get("codigo") or "")) if p)
+        if codigo:
+            return codigo
+    estado = str(getattr(recibo, "estado", "") or "").strip().lower()
+    return f"executor.{estado or 'sem_estado'}"
+
+
+def _mensagem_do_recibo(recibo: Any) -> str:
+    falha = _falha_do_recibo(recibo) or {}
+    if falha.get("resumo"):
+        return str(falha["resumo"])[:2000]
+    explicacao = str(getattr(recibo, "explicacao", "") or "").strip()
+    estado = str(getattr(recibo, "estado", "") or "").strip() or "estado vazio"
+    return (explicacao or f"o executor devolveu {estado} sem explicação")[:2000]
+
+
+def _resposta_bruta_do_recibo(recibo: Any) -> Dict[str, Any]:
+    """A evidência crua do que o executor disse, para o `resposta_bruta`.
+
+    ⚠️ Só o desfecho `erro` a persiste: o ramo `sem_resposta` de
+    `trafego_ledger_fechar` grava `erro_codigo` e `erro_mensagem` e ignora
+    `p_resposta_bruta`. Mandá-la ali seria acreditar num registro que não
+    acontece — por isso o chamador de `sem_resposta` não a passa.
+    """
+    return {
+        "estado": str(getattr(recibo, "estado", "") or ""),
+        "request_id": str(getattr(recibo, "request_id", "") or ""),
+        "explicacao": str(getattr(recibo, "explicacao", "") or ""),
+        "falha": _falha_do_recibo(recibo),
+    }
+
+
+def _detalhe_indeterminado(despacho: Any, mensagem: str, *,
+                           ledger: Optional[Dict[str, Any]] = None,
+                           recibo: Any = None) -> Dict[str, Any]:
+    """O corpo do 504. `reenvio_permitido` é False e não tem exceção."""
+    detalhe: Dict[str, Any] = {
+        "estado": "indeterminado",
+        "mensagem": mensagem,
+        "recibo_id": getattr(despacho, "recibo_id", None),
+        "item_id": getattr(despacho, "item_id", None),
+        "reenvio_permitido": False,
+        "proxima_acao": "reconciliar_na_conta",
+    }
+    if recibo is not None:
+        detalhe["erro_codigo"] = _erro_codigo_do_recibo(recibo)
+        detalhe["request_id"] = str(getattr(recibo, "request_id", "") or "")
+    if ledger is not None:
+        detalhe["ledger"] = ledger
+    return detalhe
+
 
 def _campaign_id_do_recibo(recibo: Any) -> str:
     """O id que a API atribuiu, extraído do `resource_name`. Única fonte dele."""
@@ -2610,28 +2973,48 @@ async def _fechar_recibo_com_sucesso(
 
 async def _fechar_recibo_com_erro(
     ledger: Any, despacho: Any, exc: Any, *, codigo: str,
-) -> None:
+    resposta_bruta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """A plataforma respondeu que não criou. O item volta a ser reenviável."""
     if despacho is None:
-        return
+        return {"registrado": False,
+                "motivo": "o ledger não estava disponível quando a resposta chegou"}
     try:
-        await ledger.fechar_erro(
-            recibo_id=despacho.recibo_id, mensagem=str(exc), codigo=codigo)
+        fechado = await ledger.fechar_erro(
+            recibo_id=despacho.recibo_id, mensagem=str(exc), codigo=codigo,
+            resposta_bruta=resposta_bruta)
+        return {"registrado": True, "desfecho": "erro",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "item_estado": (fechado or {}).get("item_estado")}
     except Exception:  # noqa: BLE001
         log.exception("não consegui fechar como erro o recibo %s", despacho.recibo_id)
+        # O recibo continua `em_voo`, e isso é a verdade — não um detalhe a
+        # esconder de quem vai decidir o próximo passo.
+        return {"registrado": False, "desfecho": "em_voo",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "motivo": "o fechamento como erro falhou; reconcilie o recibo"}
 
 
-async def _fechar_recibo_sem_resposta(ledger: Any, despacho: Any, motivo: Any) -> None:
+async def _fechar_recibo_sem_resposta(
+    ledger: Any, despacho: Any, motivo: Any, *, codigo: Optional[str] = None,
+) -> Dict[str, Any]:
     """⚠️ Ninguém respondeu. O item vira `indeterminado`, e reenviar fica fechado."""
     if despacho is None:
-        return
+        return {"registrado": False,
+                "motivo": "o ledger não estava disponível quando a chamada saiu"}
     try:
-        await ledger.fechar_sem_resposta(
-            recibo_id=despacho.recibo_id, motivo=str(motivo))
+        fechado = await ledger.fechar_sem_resposta(
+            recibo_id=despacho.recibo_id, motivo=str(motivo), codigo=codigo)
+        return {"registrado": True, "desfecho": "sem_resposta",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "item_estado": (fechado or {}).get("item_estado")}
     except Exception:  # noqa: BLE001
         log.exception(
             "não consegui carimbar `sem_resposta` no recibo %s — ele continua "
             "`em_voo`, que também impede reenvio", despacho.recibo_id)
+        return {"registrado": False, "desfecho": "em_voo",
+                "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
+                "motivo": "o carimbo de `sem_resposta` falhou; reconcilie o recibo"}
 
 
 def _hoje_iso() -> str:

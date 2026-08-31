@@ -141,7 +141,13 @@ def _recibo_criado(campaign_id: str = "24183717006", *, com_id: bool = True):
             posicao=0, tipo="campaign_result",
             resource_name=f"customers/5478096539/campaigns/{campaign_id}"),)
     return SimpleNamespace(
-        estado="CRIADA", carimbo="20260831_120000",
+        # ⚠️ `ACEITO`, e não `"CRIADA"`. Até 31/08/2026 este dublê usava um
+        # estado que NÃO EXISTE no vocabulário do executor (`TENTANDO`,
+        # `ACEITO`, `RECUSADO`, `INDETERMINADO`, em volc_ads/subir.py:78-81).
+        # Enquanto a rota ignorava `recibo.estado` isso não aparecia; assim que
+        # ela passou a ler, o dublê infiel virou o único teste vermelho — que é
+        # exatamente o serviço que um dublê fiel presta.
+        estado="ACEITO", carimbo="20260831_120000",
         customer_id=canario.CONTA, login_customer_id=canario.MCC,
         nome_campanha="VOLC-CANARY-teste", n_operacoes=72,
         impressao="a" * 64, motivo="canário pausado com aprovação humana",
@@ -292,16 +298,35 @@ def test_sem_resposta_vira_indeterminado_e_recusa_reenvio(monkeypatch):
 
 
 def test_erro_respondido_pelo_google_e_falha_confirmada_e_nao_ignorancia(monkeypatch):
-    """`failure` preenchido significa que o servidor processou e recusou."""
+    """Uma recusa RESPONDIDA é falha confirmada, e o item segue reentrável.
+
+    ⚠️ Este teste provava a intenção certa pelo caminho errado. Ele levantava uma
+    exceção com atributo `failure`, e a rota bifurcava por `getattr(exc,
+    "failure", None)`. Dois fatos medidos em 31/08/2026 mostraram que esse
+    caminho não existe contra o executor real:
+
+    1. `volc_ads.subir` captura `ErroTerminal`/`ErroEsgotado` DENTRO do `with` e
+       DEVOLVE `Recibo(estado=RECUSADO|INDETERMINADO)` — não relança;
+    2. mesmo se relançasse, essas exceções carregam `.falha` (português), não
+       `.failure` — `volc_ads/gads/client.py:63,71`. O `getattr` sempre devolvia
+       `None`.
+
+    Um teste que passa contra um contrato inexistente é pior que nenhum teste:
+    ele dá cobertura à bifurcação morta. Agora ele usa o contrato real.
+    """
+    from volc_ads import subir as sb
+
     impressao = _impressao_aprovada(monkeypatch)
     diario: list = []
 
-    class RecusaDoGoogle(Exception):
-        failure = SimpleNamespace(errors=())
-        request_id = "req-1"
-
     def subir_recusado(*_a, **_k):
-        raise RecusaDoGoogle("headline excede 30 caracteres")
+        return SimpleNamespace(
+            estado=sb.RECUSADO, carimbo="20260831_120000",
+            customer_id=canario.CONTA, login_customer_id=canario.MCC,
+            nome_campanha="VOLC-CANARY-teste", n_operacoes=72,
+            impressao="a" * 64, motivo="canário pausado com aprovação humana",
+            criados=(), request_id="req-1", linhagem=(), falha=None,
+            explicacao="headline excede 30 caracteres")
 
     _montar(monkeypatch, ledger=LedgerDeTeste(diario=diario), subir=subir_recusado)
 

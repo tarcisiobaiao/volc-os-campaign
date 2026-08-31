@@ -38,7 +38,6 @@ transforma um timeout em "falhou, tente de novo" cria a segunda campanha.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import uuid
@@ -48,6 +47,7 @@ from typing import Any, Mapping, Optional, Sequence
 import httpx
 
 from app.trafego import lote as dom
+from app.trafego import sincronizador
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +62,14 @@ OPERACAO_CRIAR = "criar_campanha"
 
 class LedgerIndisponivel(RuntimeError):
     """Não deu para falar com o ledger. NÃO significa que algo falhou lá."""
+
+
+class ErroDeIdentidade(ValueError):
+    """A identidade da instância não pode ser derivada do que veio.
+
+    Ela é interna à fachada: nenhum chamador a vê, porque todo caminho que
+    deriva identidade a traduz para `LedgerRecusou` antes de sair daqui.
+    """
 
 
 class LedgerRecusou(RuntimeError):
@@ -112,12 +120,52 @@ def volc_campaign_id_de(*, plataforma: str, conta_externa: str, id_externo: str)
 
     Duas leituras do mesmo recurso remoto têm de produzir o mesmo id local, ou a
     reconciliação criaria uma segunda identidade para a mesma campanha.
+
+    ## Por que esta função DELEGA em vez de derivar
+
+    Até 31/08/2026 ela derivava aqui — `volc_cmp_<sigla>_<sha256[:16]>` — enquanto
+    `sincronizador.volc_campaign_id` já derivava `uuid5(gads:<conta>:<campanha>)`
+    para o MESMO par externo. Duas derivações são duas identidades, e o banco
+    tem um índice montado exatamente para descobrir isso da pior forma:
+
+        trafego_campanha_identidade_externa_ux (customer_id, campaign_id)
+
+    Esse índice NÃO é o alvo do `ON CONFLICT (volc_campaign_id) DO NOTHING` que
+    `trafego_ledger_fechar` usa. Então, se a varredura já tinha declarado a
+    identidade `uuid5` para o par, o INSERT do ledger com a forma `volc_cmp_`
+    passava batido pelo `ON CONFLICT`, batia no índice do par externo com 23505
+    e abortava a transação inteira de `fechar` — deixando o recibo `em_voo` com
+    a campanha **já criada** na conta. O pior desfecho possível: existe lá,
+    não existe aqui, e o rastro diz que ninguém sabe.
+
+    A derivação vencedora é a do sincronizador porque é a que tem linhas
+    gravadas. A do ledger nunca gravou nada em produção: `ProvarEntrada` declara
+    `budget_diario: float`, e o `float` fazia `abrir()` levantar antes de existir
+    recibo — o caminho inteiro estava morto. Não há registro anterior na forma
+    `volc_cmp_` para migrar, e é por isso que esta convergência não precisa de
+    adaptador de compatibilidade.
     """
-    sigla = dom.SIGLA_DA_PLATAFORMA.get(plataforma, "xx")
-    digest = hashlib.sha256(
-        f"{plataforma}|{conta_externa}|{id_externo}".encode("utf-8")
-    ).hexdigest()[:16]
-    return f"volc_cmp_{sigla}_{digest}"
+    if plataforma != "GOOGLE_ADS":
+        raise ErroDeIdentidade(
+            f"a identidade de instância só tem derivação canônica para "
+            f"GOOGLE_ADS; recebido {plataforma!r}. Inventar uma segunda forma "
+            "aqui recriaria o defeito que esta delegação existe para fechar."
+        )
+    try:
+        return sincronizador.volc_campaign_id(conta_externa, id_externo)
+    except ValueError as exc:
+        raise ErroDeIdentidade(str(exc)) from exc
+
+
+def _identidade_ou_recusa(*, plataforma: str, conta_externa: str,
+                          id_externo: str) -> str:
+    """`volc_campaign_id_de`, com a recusa já na forma que a rota entende."""
+    try:
+        return volc_campaign_id_de(
+            plataforma=plataforma, conta_externa=conta_externa,
+            id_externo=id_externo)
+    except ErroDeIdentidade as exc:
+        raise LedgerRecusou(str(exc), codigo="22023") from exc
 
 
 @dataclass(frozen=True)
@@ -184,10 +232,20 @@ class Ledger:
         # A chave sai do domínio já testado (`lote.py`), não de uma segunda
         # derivação escrita aqui — duas derivações divergem, e a divergência
         # aparece justamente na retomada.
-        chave = dom.chave_de_idempotencia(
-            intencao_id=intencao_id, plataforma=plataforma,
-            conta_externa=conta_externa, canal=canal, ordem=ordem, plano=plano,
-        )
+        #
+        # ⚠️ `ErroDeLote` é `ValueError`, e um `ValueError` que atravessa esta
+        # fachada vira 500 nu na rota — que captura só as duas exceções tipadas
+        # daqui. Foi exatamente isso que deixou `/subir` inoperante: o plano
+        # chegava com `budget_diario` float, `_sem_float` recusava (com razão),
+        # e a recusa saía sem forma, sem status e sem recibo. A guarda não está
+        # errada; o que faltava era ela chegar tipada a quem decide o HTTP.
+        try:
+            chave = dom.chave_de_idempotencia(
+                intencao_id=intencao_id, plataforma=plataforma,
+                conta_externa=conta_externa, canal=canal, ordem=ordem, plano=plano,
+            )
+        except dom.ErroDeLote as exc:
+            raise LedgerRecusou(str(exc), codigo="22023") from exc
         resposta = await self._rpc("trafego_ledger_abrir_lancamento", {
             "p_idempotency_key": chave,
             "p_intencao_id": intencao_id,
@@ -252,7 +310,7 @@ class Ledger:
             "p_recibo_id": recibo_id,
             "p_desfecho": "sucesso",
             "p_id_externo": id_externo,
-            "p_volc_campaign_id": volc_campaign_id_de(
+            "p_volc_campaign_id": _identidade_ou_recusa(
                 plataforma=plataforma, conta_externa=conta_externa,
                 id_externo=id_externo),
             "p_customer_id": conta_externa,
@@ -277,12 +335,20 @@ class Ledger:
         }) or {})
 
     async def fechar_sem_resposta(
-        self, *, recibo_id: str, motivo: str, fechado_por: str = "volc_os",
+        self, *, recibo_id: str, motivo: str, codigo: Optional[str] = None,
+        fechado_por: str = "volc_os",
     ) -> dict:
-        """⚠️ Ninguém respondeu. Isto NÃO é falha e NÃO autoriza reenvio."""
+        """⚠️ Ninguém respondeu. Isto NÃO é falha e NÃO autoriza reenvio.
+
+        Note que aqui NÃO existe `resposta_bruta`: o ramo `sem_resposta` de
+        `trafego_ledger_fechar` grava `erro_codigo` e `erro_mensagem` e ignora
+        `p_resposta_bruta`. Aceitar o parâmetro daria a impressão de que a
+        evidência ficou registrada quando ela seria descartada em silêncio.
+        """
         return dict(await self._rpc("trafego_ledger_fechar", {
             "p_recibo_id": recibo_id,
             "p_desfecho": "sem_resposta",
+            "p_erro_codigo": codigo,
             "p_erro_mensagem": (motivo or "sem resposta")[:2000],
             "p_fechado_por": fechado_por,
         }) or {})
@@ -294,7 +360,28 @@ class Ledger:
         motivo: Optional[str] = None, estado_externo: Optional[str] = None,
         divergencia: Optional[Mapping[str, Any]] = None,
     ) -> dict:
-        """A leitura tardia. `achou=None` registra e não move nada."""
+        """A leitura tardia. `achou=None` registra e não move nada.
+
+        As duas guardas abaixo repetem CHECKs que o banco já impõe
+        (`trafego_verificacao_achou_conta`, e a exigência de id externo dentro
+        de `trafego_ledger_reconciliar`). Elas não existem por desconfiança do
+        banco: existem porque a recusa do banco chega como `LedgerRecusou`
+        genérico com SQLSTATE, e quem opera precisa saber que faltou a
+        QUANTIDADE — não que "uma guarda disparou".
+        """
+        if achou is True:
+            if (not isinstance(quantidade, int) or isinstance(quantidade, bool)
+                    or quantidade < 1):
+                raise LedgerRecusou(
+                    "reconciliar: `achou=true` exige quantidade >= 1. Ausência "
+                    f"de quantidade não vira zero, e {quantidade!r} não conta "
+                    "uma campanha encontrada.",
+                    codigo="22023")
+            if not str(id_externo or "").strip():
+                raise LedgerRecusou(
+                    "reconciliar: `achou=true` exige o id externo da campanha "
+                    "encontrada. \"Está lá\" sem saber qual não fecha recibo.",
+                    codigo="22023")
         argumentos: dict[str, Any] = {
             "p_item_id": item_id,
             "p_metodo": metodo,
@@ -311,7 +398,7 @@ class Ledger:
         if achou is not None:
             argumentos["p_achou"] = achou
             if achou:
-                argumentos["p_volc_campaign_id"] = volc_campaign_id_de(
+                argumentos["p_volc_campaign_id"] = _identidade_ou_recusa(
                     plataforma=plataforma, conta_externa=conta_externa,
                     id_externo=str(id_externo or ""))
         else:
