@@ -33,11 +33,11 @@ import { Input } from '@/components/ui/input';
 import { PautadorApiError, pautadorApi } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
 import {
-  idExternoDaCampanha, indeterminacaoDeclarada, proximoAtoSeguro,
+  idExternoDaCampanha, indeterminacaoDeclarada, proximoAtoSeguro, recusaDeclarada,
 } from '@/lib/trafego/lancamento';
 import type {
   EstadoDaTrava, PedidoDeProvaSearch, Preparo,
-  ReciboDeLancamento, RespostaDaProva, SubidaIndeterminada,
+  ReciboDeLancamento, RecusaDeclarada, RespostaDaProva, SubidaIndeterminada,
 } from '@/types/trafego';
 
 type Estado = 'provando' | 'reprovada' | 'aguardando_escrita' | 'escrevendo'
@@ -67,6 +67,7 @@ export const Lancamento: React.FC<Props> = ({
   /** O que o SERVIDOR disse sobre a tentativa perdida. Vem do ledger, não de
    *  uma inferência do navegador sobre um fetch que demorou. */
   const [indeterminacao, setIndeterminacao] = useState<SubidaIndeterminada | null>(null);
+  const [recusa, setRecusa] = useState<RecusaDeclarada | null>(null);
   const [erro, setErro] = useState<string>('');
   const [motivo, setMotivo] = useState(`lançamento de "${titulo}"`);
   const [confirmouPausada, setConfirmouPausada] = useState(false);
@@ -188,6 +189,22 @@ export const Lancamento: React.FC<Props> = ({
         setIndeterminacao(declarada);
         setErro(declarada.mensagem);
         setEstado('indeterminado');
+        return;
+      }
+      // ⚠️ E O SERVIDOR TAMBÉM DECLARA RECUSA — que NÃO é indeterminação.
+      //
+      // Desde 31/08/2026 `/subir` lê `recibo.estado` e devolve 502 com
+      // `{estado: 'recusado', erro_codigo, request_id, recibo_id, item_id}`
+      // quando o Google RESPONDEU recusando. Sem este ramo o corpo caía em
+      // `erro` genérico e a tela mostrava "Não deu para concluir" — jogando
+      // fora o código do erro, o request id e o recibo que o ledger acabou de
+      // gravar como `erro`. O operador ficava sem saber O QUE corrigir, num
+      // caso em que corrigir e reenviar é justamente o ato seguro.
+      const recusadaPeloGoogle = recusaDeclarada(e);
+      if (recusadaPeloGoogle) {
+        setRecusa(recusadaPeloGoogle);
+        setErro(recusadaPeloGoogle.mensagem);
+        setEstado('erro');
         return;
       }
       // Status zero significa que o navegador não recebeu uma resposta. A
@@ -413,8 +430,40 @@ export const Lancamento: React.FC<Props> = ({
 
           {estado === 'erro' && (
             <Aviso icone={<AlertTriangle className="h-4 w-4" aria-hidden />}
-                   titulo="Não deu para concluir">
+                   titulo={recusa ? 'O Google recusou. Nada foi criado.'
+                                  : 'Não deu para concluir'}>
               {erro}
+              {recusa && (
+                // A recusa RESPONDIDA vem com identidade. Sem ela o operador
+                // não sabe o que corrigir nem qual recibo é este — e corrigir
+                // e reenviar é exatamente o ato seguro aqui, porque o mutate é
+                // atômico e a resposta chegou.
+                <span className="mt-2 block">
+                  {recusa.erro_codigo && (
+                    <>
+                      <span className="kicker text-white/40">código</span>{' '}
+                      <span className="tabular text-white/70">{recusa.erro_codigo}</span>
+                      {' · '}
+                    </>
+                  )}
+                  <span className="kicker text-white/40">recibo</span>{' '}
+                  <span className="tabular text-white/70">{recusa.recibo_id ?? '—'}</span>
+                  {' · '}
+                  <span className="kicker text-white/40">item</span>{' '}
+                  <span className="tabular text-white/70">{recusa.item_id ?? '—'}</span>
+                  {recusa.request_id && (
+                    <>
+                      {' · '}
+                      <span className="kicker text-white/40">request id</span>{' '}
+                      <span className="tabular text-white/70">{recusa.request_id}</span>
+                    </>
+                  )}
+                  <span className="mt-1 block text-white/55">
+                    A API respondeu, e a escrita é atômica: nada ficou em
+                    trânsito. Corrigir o plano e provar de novo é seguro.
+                  </span>
+                </span>
+              )}
             </Aviso>
           )}
 
@@ -592,6 +641,11 @@ const Recibo: React.FC<{ r: ReciboDeLancamento }> = ({ r }) => {
       <dl className="mt-3 space-y-1 text-[11px]">
         <Linha rotulo="campanha" valor={r.nome_campanha || '—'} />
         <Linha rotulo="conta" valor={r.customer_id || '—'} />
+        {/* ⚠️ O carimbo chegava na resposta desde sempre e nunca era exibido: a
+            única hora visível na tela estava embutida no NOME da campanha, o
+            que é implícito e some se a taxonomia mudar. Um recibo sem quando
+            é meio recibo. */}
+        <Linha rotulo="quando" valor={r.carimbo || '—'} />
         <Linha rotulo="recursos criados" valor={String(criados.length || r.n_operacoes || '—')} />
         <Linha rotulo="request id" valor={r.request_id ?? '—'} />
         {r.aprovacao && (

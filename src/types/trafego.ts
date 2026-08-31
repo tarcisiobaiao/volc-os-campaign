@@ -648,6 +648,25 @@ export interface SubidaIndeterminada {
   reenvio_permitido: false;
 }
 
+/** O corpo que `/subir` devolve num 502 quando o Google RESPONDEU recusando.
+ *
+ *  ⚠️ É o oposto de `SubidaIndeterminada`, e a diferença é a coisa toda. Houve
+ *  resposta, e o mutate é atômico: nada foi criado na conta. Por isso
+ *  `reenvio_permitido` é `true` aqui — corrigir o plano e provar de novo é
+ *  seguro, e o item continua reentrável no ledger.
+ *
+ *  Até 31/08/2026 este corpo não existia: a rota não lia `recibo.estado`, e uma
+ *  recusa respondida chegava à tela como 200 dizendo que a campanha existia. */
+export interface RecusaDeclarada {
+  estado: 'recusado';
+  mensagem: string;
+  erro_codigo: string | null;
+  request_id: string | null;
+  recibo_id: string | null;
+  item_id: string | null;
+  reenvio_permitido: boolean;
+}
+
 export interface EstadoDaTrava {
   escrita_permitida: boolean;
   destravado_no_codigo: boolean;

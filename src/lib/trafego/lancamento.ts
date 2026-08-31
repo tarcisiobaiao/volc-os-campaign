@@ -21,7 +21,7 @@
  * as que não existem.
  */
 import type {
-  ReciboDeLancamento, RecursoCriado, SubidaIndeterminada,
+  ReciboDeLancamento, RecursoCriado, RecusaDeclarada, SubidaIndeterminada,
 } from '@/types/trafego';
 
 /** Um erro do cliente HTTP que possa carregar o corpo estruturado da recusa. */
@@ -52,6 +52,38 @@ export function indeterminacaoDeclarada(erro: unknown): SubidaIndeterminada | nu
     recibo_id: corpo.recibo_id ?? null,
     item_id: corpo.item_id ?? null,
     reenvio_permitido: false,
+  };
+}
+
+/**
+ * A recusa RESPONDIDA declarada pelo servidor, ou `null` quando não houve uma.
+ *
+ * ⚠️ Esta função e `indeterminacaoDeclarada` respondem perguntas OPOSTAS, e
+ * confundi-las é o defeito caro deste fluxo. Recusa é resposta: o Google
+ * processou, disse não, e o mutate é atômico — nada foi criado, e corrigir o
+ * plano e reenviar é seguro. Indeterminação é ignorância: ninguém disse nada,
+ * pode haver campanha na conta, e reenviar cria a segunda.
+ *
+ * Por isso o reconhecimento aqui é ESTRITO — exige o rótulo `recusado`. O
+ * inverso (`indeterminacaoDeclarada`) pode ser frouxo e aceitar qualquer corpo
+ * que PROÍBA reenvio, porque errar para o lado de "não reenvie" é barato. Errar
+ * para o lado de "pode reenviar" custa uma campanha duplicada, e é por isso que
+ * esta função não deduz nada.
+ */
+export function recusaDeclarada(erro: unknown): RecusaDeclarada | null {
+  const corpo = (erro as ErroComCorpo | undefined)?.corpo as
+    Partial<RecusaDeclarada> | undefined;
+  if (!corpo || typeof corpo !== 'object') return null;
+  if (corpo.estado !== 'recusado') return null;
+  return {
+    estado: 'recusado',
+    mensagem: typeof corpo.mensagem === 'string' ? corpo.mensagem : '',
+    erro_codigo: corpo.erro_codigo ?? null,
+    request_id: corpo.request_id ?? null,
+    recibo_id: corpo.recibo_id ?? null,
+    item_id: corpo.item_id ?? null,
+    // Ausência não vira permissão: só `true` explícito do servidor libera.
+    reenvio_permitido: corpo.reenvio_permitido === true,
   };
 }
 

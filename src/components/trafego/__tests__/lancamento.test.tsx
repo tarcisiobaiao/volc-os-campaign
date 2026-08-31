@@ -191,6 +191,75 @@ describe('Lancamento', () => {
     expect(screen.queryByRole('button', { name: 'Voltar e ajustar' })).toBeNull();
   });
 
+  it('uma recusa RESPONDIDA mostra o que corrigir, e não some com o recibo', async () => {
+    // ⚠️ Este caminho não existia antes de 31/08/2026: a rota não lia
+    // `recibo.estado`, e uma recusa do Google chegava como 200 dizendo "a
+    // campanha existe, e está pausada". Agora chega 502 estruturado, e a tela
+    // precisa mostrar o código do erro e o recibo — sem eles, "corrija e
+    // reenvie" é um conselho que ninguém consegue seguir.
+    provarCampanha.mockResolvedValue(APROVADO);
+    subirCampanha.mockRejectedValue(new ErroFalso('recusado', 502, {
+      estado: 'recusado',
+      mensagem: 'headline excede 30 caracteres',
+      erro_codigo: 'AdError.HEADLINE_TOO_LONG',
+      request_id: 'req-9', recibo_id: 'recibo-1', item_id: 'item-1',
+      reenvio_permitido: true,
+    }));
+    renderizar(ABERTA);
+    const campo = await screen.findByDisplayValue(/lançamento de/);
+    fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('O Google recusou. Nada foi criado.')).toBeTruthy());
+    expect(screen.getByText('AdError.HEADLINE_TOO_LONG')).toBeTruthy();
+    expect(screen.getByText('recibo-1')).toBeTruthy();
+    expect(screen.getByText('item-1')).toBeTruthy();
+    // Recusa É reentrável — houve resposta e nada ficou em trânsito. A volta ao
+    // formulário tem de existir, ao contrário do caminho indeterminado.
+    expect(screen.queryByRole('button', { name: 'Voltar e ajustar' })).not.toBeNull();
+  });
+
+  it('não confunde recusa com indeterminação: a saída de cada uma é oposta', async () => {
+    provarCampanha.mockResolvedValue(APROVADO);
+    subirCampanha.mockRejectedValue(new ErroFalso('sem resposta', 504, {
+      estado: 'indeterminado', mensagem: 'a chamada não teve resposta',
+      recibo_id: 'recibo-2', item_id: 'item-2', reenvio_permitido: false,
+    }));
+    renderizar(ABERTA);
+    const campo = await screen.findByDisplayValue(/lançamento de/);
+    fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('A resposta se perdeu. Não reenvie.')).toBeTruthy());
+    expect(screen.queryByText('O Google recusou. Nada foi criado.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Voltar e ajustar' })).toBeNull();
+  });
+
+  it('o recibo diz QUANDO a campanha foi criada, e não só o nome', async () => {
+    provarCampanha.mockResolvedValue(APROVADO);
+    subirCampanha.mockResolvedValue({
+      recibo: {
+        nome_campanha: 'FORGE · Cartão', customer_id: '8017851692',
+        n_operacoes: 72, request_id: 'req-1', criados: [],
+        carimbo: '20260831_180000',
+      },
+    });
+    renderizar(ABERTA);
+    const campo = await screen.findByDisplayValue(/lançamento de/);
+    fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
+
+    await waitFor(() =>
+      expect(screen.getByText('A campanha existe, e está pausada.')).toBeTruthy());
+    expect(screen.getByText('quando')).toBeTruthy();
+    expect(screen.getByText('20260831_180000')).toBeTruthy();
+  });
+
   it('o laranja da marca só acende com recurso persistido', async () => {
     provarCampanha.mockResolvedValue(APROVADO);
     const { container } = renderizar(FECHADA);
