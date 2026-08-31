@@ -18,6 +18,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import textwrap
 import time
 import unittest
 from pathlib import Path
@@ -119,6 +120,133 @@ class A_GrupoDeProcessosEncerradoDeVerdade(unittest.TestCase):
         self.assertFalse(vivo, "o filho do mesmo grupo sobreviveu ao encerramento")
         self.assertFalse(marca.exists(), "marcador tardio foi escrito")
 
+    # -- as duas regressões do Sol, cada uma travando um caminho ------------
+
+    def _neto_e_lider(self, raiz: Path) -> tuple[Path, Path, Path]:
+        """Líder que abre um neto e SAI. O neto redireciona a saída.
+
+        É esse redirecionamento que faz o caminho normal existir: o pipe do
+        harness fecha quando o líder sai, `communicate()` recebe EOF e retorna
+        sem exceção nenhuma. O neto fica.
+        """
+
+        pid_file, tardio = raiz / "PID", raiz / "TARDIO"
+        (raiz / "neto.py").write_text(
+            "import os, pathlib, time\n"
+            f"pathlib.Path(r'{pid_file}').write_text(str(os.getpid()))\n"
+            "time.sleep(4)\n"
+            f"pathlib.Path(r'{tardio}').write_text('escrevi depois do verde')\n")
+        (raiz / "lider.py").write_text(
+            "import subprocess, sys, time, pathlib\n"
+            f"subprocess.Popen([sys.executable, r'{raiz}/neto.py'],\n"
+            "                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            f"p = pathlib.Path(r'{pid_file}')\n"
+            "for _ in range(400):\n"
+            "    if p.exists() and p.read_text().strip():\n"
+            "        break\n"
+            "    time.sleep(0.01)\n"
+            "print('gate verde')\n")
+        return pid_file, tardio, raiz / "lider.py"
+
+    def test_A_caminho_normal_nao_devolve_verde_com_neto_vivo(self):
+        """Regressão do Sol-1: `_encerrar` só existia no `except`.
+
+        Medido antes da correção: `execute()` voltou `exit=0` em 0,34s e o neto
+        seguia vivo 7s depois — além do timeout de 5s do próprio gate.
+        """
+
+        raiz = Path(mkdtemp())
+        pid_file, tardio, lider = self._neto_e_lider(raiz)
+        runner = LocalRunner()
+        code, out, _ = runner.execute(argv=[sys.executable, str(lider)],
+                                      cwd=raiz, env=dict(os.environ), timeout=30)
+        self.assertEqual(code, 0, "o cenário precisa terminar VERDE")
+        self.assertIn("gate verde", out)
+        self.assertTrue(pid_file.exists(), "o cenário não chegou a criar o neto")
+
+        pid = int(pid_file.read_text())
+        vivo = True
+        try:
+            os.kill(pid, 0)
+        except (OSError, ProcessLookupError):
+            vivo = False
+        if vivo:                                   # pragma: no cover
+            os.kill(pid, 9)
+        self.assertFalse(vivo, "gate voltou VERDE com neto vivo no grupo")
+
+        time.sleep(5)
+        self.assertFalse(tardio.exists(),
+                         "o neto escreveu DEPOIS de o gate ter sido aceito")
+
+    def test_B_pgid_do_spawn_encerra_apos_o_lider_ser_colhido(self):
+        """Regressão do Sol-2: `getpgid` na hora do kill é corrida perdida.
+
+        Aqui o líder já foi colhido. `os.getpgid(proc.pid)` — o que a versão
+        anterior fazia dentro de `_encerrar` — levanta ProcessLookupError e a
+        função desistia. O pgid capturado no spawn ainda alcança o grupo.
+        """
+
+        raiz = Path(mkdtemp())
+        pid_file, tardio, lider = self._neto_e_lider(raiz)
+        proc = subprocess.Popen([sys.executable, str(lider)], cwd=raiz,
+                                env=dict(os.environ), text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                start_new_session=True)
+        pgid = proc.pid          # é o que o `execute` corrigido guarda
+        self.assertEqual(os.getpgid(proc.pid), pgid,
+                         "start_new_session precisa fazer do filho líder de grupo")
+        proc.communicate(timeout=30)                   # colhe o líder
+
+        for _ in range(400):
+            if pid_file.exists() and pid_file.read_text().strip():
+                break
+            time.sleep(0.01)
+        pid = int(pid_file.read_text())
+
+        with self.assertRaises(ProcessLookupError,
+                               msg="sem o líder colhido a prova mede outra coisa"):
+            os.getpgid(proc.pid)
+        self.assertTrue(LocalRunner._grupo_existe(pgid),
+                        "o grupo precisa ainda ter o neto para a prova valer")
+
+        LocalRunner()._encerrar(proc, pgid)
+
+        vivo = True
+        try:
+            os.kill(pid, 0)
+        except (OSError, ProcessLookupError):
+            vivo = False
+        if vivo:                                   # pragma: no cover
+            os.kill(pid, 9)
+        self.assertFalse(vivo, "o pgid preservado no spawn não encerrou o neto")
+
+        time.sleep(5)
+        self.assertFalse(tardio.exists(), "o neto escreveu depois do encerramento")
+
+    def test_encerrar_nao_deduz_o_grupo_na_hora_de_matar(self):
+        """Por AST, não por texto: a docstring EXPLICA `os.getpgid` de propósito.
+
+        A primeira versão desta prova casava contra o fonte inteiro e reprovava
+        a própria explicação do defeito. Régua errada — o que não pode existir é
+        a CHAMADA.
+        """
+
+        import ast
+        import inspect
+
+        arvore = ast.parse(textwrap.dedent(inspect.getsource(LocalRunner)))
+        chamadas = [
+            n for n in ast.walk(arvore)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+            and n.func.attr == "getpgid"
+        ]
+        self.assertEqual(chamadas, [],
+                         "deduzir o pgid no kill é a corrida do Sol-2")
+
+        assinatura = inspect.signature(LocalRunner._encerrar)
+        self.assertIn("pgid", assinatura.parameters,
+                      "_encerrar precisa RECEBER o grupo, não descobri-lo")
+
     def test_encerrar_escala_para_kill_e_confere_o_grupo(self):
         import inspect
         fonte = inspect.getsource(LocalRunner._encerrar)
@@ -141,7 +269,7 @@ class A_GrupoDeProcessosEncerradoDeVerdade(unittest.TestCase):
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.addCleanup(lambda: (proc.kill(), proc.wait()))
         with self.assertRaises(HarnessFailure) as e:
-            runner._encerrar(proc)
+            runner._encerrar(proc, proc.pid)
         self.assertEqual(e.exception.classe, FailureClass.INFRASTRUCTURE_ERROR)
 
     def test_setsid_continua_fora_do_contrato(self):

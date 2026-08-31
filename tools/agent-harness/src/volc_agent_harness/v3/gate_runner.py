@@ -193,7 +193,11 @@ class LocalRunner(GateRunner):
     name = "local"
 
     def __init__(self) -> None:
+        #: Processo E grupo andam juntos. Guardar só o processo obrigava a
+        #: redescobrir o pgid na hora de matar — e nessa hora o líder pode já
+        #: ter sido colhido, com descendentes ainda no grupo.
         self._proc: subprocess.Popen | None = None
+        self._pgid: int | None = None
         self._trava = threading.Lock()
 
     def execute(self, *, argv, cwd, env, timeout):
@@ -205,7 +209,13 @@ class LocalRunner(GateRunner):
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 start_new_session=True,
             )
-        proc = self._proc
+            # `start_new_session=True` faz do filho líder de sessão E de grupo:
+            # o pgid É o pid, por construção, AGORA. Descobri-lo depois, com
+            # `os.getpgid(proc.pid)`, é uma corrida perdida — quando o líder já
+            # foi colhido a chamada levanta ProcessLookupError e o encerramento
+            # desiste, enquanto os netos seguem vivos no grupo.
+            self._pgid = self._proc.pid
+            proc, pgid = self._proc, self._pgid
         try:
             out, err = proc.communicate(timeout=timeout)
         except BaseException:
@@ -214,11 +224,19 @@ class LocalRunner(GateRunner):
             # abandonado, o próximo consumidor entrava, e havia duas execuções
             # físicas do mesmo gate. Um `finally` que apaga a referência de um
             # processo vivo não encerra nada — só perde o cabo.
-            self._encerrar(proc)
+            self._encerrar(proc, pgid)
             raise
+        else:
+            # O caminho VERDE também encerra. O líder sair com exit 0 não diz
+            # nada sobre os netos: basta ele ter redirecionado stdout/stderr do
+            # filho para o pipe fechar, `communicate()` receber EOF e o gate
+            # voltar verde com descendente vivo — além do próprio timeout.
+            # Um gate só termina quando o GRUPO daquela execução termina.
+            self._encerrar(proc, pgid)
         finally:
             with self._trava:
                 self._proc = None
+                self._pgid = None
         return proc.returncode, out, err
 
     @staticmethod
@@ -250,29 +268,32 @@ class LocalRunner(GateRunner):
             time.sleep(0.02)
         return not self._grupo_existe(pgid)
 
-    def _encerrar(self, proc: subprocess.Popen) -> None:
-        """TERM no grupo → espera o GRUPO → KILL no grupo → espera o GRUPO.
+    def _encerrar(self, proc: subprocess.Popen, pgid: int) -> None:
+        """Encerra o GRUPO `pgid`, e confere. Nunca deduz o grupo na hora.
 
-        A versão anterior tratava `proc.wait()` do líder como prova de morte do
-        grupo e saía do laço quando o líder morria. Um filho no mesmo grupo que
-        instala handler de SIGTERM — coisa banal, é assim que um programa
-        desliga com calma — sobrevivia e continuava escrevendo. Não era ataque:
-        era o caso comum, e por isso bloqueava sem depender de modelo de ameaça.
+        Duas correções vivem aqui, ambas provadas por contraprova.
 
-        A pergunta certa é sobre o GRUPO, e quem responde é `killpg(pgid, 0)`.
+        A primeira: matar `proc.pid` encerrava só o líder. Um gate que abre um
+        filho e instala handler de SIGTERM — coisa banal, é assim que um
+        programa desliga com calma — sobrevivia e continuava escrevendo. A
+        pergunta certa é sobre o grupo, e quem responde é `killpg(pgid, 0)`.
+
+        A segunda: o grupo chegava por `os.getpgid(proc.pid)`, dentro desta
+        função. Se `communicate()` já tinha colhido o líder, a chamada levantava
+        ProcessLookupError e o encerramento RETORNAVA — com o neto vivo no
+        grupo. Por isso o `pgid` agora é parâmetro: ele foi capturado no spawn,
+        quando `start_new_session=True` garante `pgid == pid`, e não depende de
+        o líder ainda existir.
         """
-
-        try:
-            pgid = os.getpgid(proc.pid)
-        except (OSError, ProcessLookupError):
-            return                        # já colhido; não há grupo a encerrar
 
         for sinal, graca in ((signal.SIGTERM, self.PRAZO_TERM_S),
                              (signal.SIGKILL, self.PRAZO_KILL_S)):
+            if not self._grupo_existe(pgid):
+                break
             try:
                 os.killpg(pgid, sinal)
             except ProcessLookupError:
-                break                     # grupo já vazio
+                break                     # grupo esvaziou entre a sonda e o sinal
             except OSError:               # pragma: no cover
                 break
             if self._aguardar_grupo(pgid, graca):
@@ -287,13 +308,15 @@ class LocalRunner(GateRunner):
         if self._grupo_existe(pgid):
             # Nem o KILL resolveu. Declarar é melhor que seguir como se o gate
             # tivesse terminado: processo sem autoridade ainda rodando é
-            # exatamente a corrida que o claim existe para impedir.
+            # exatamente a corrida que o claim existe para impedir. Acontece com
+            # descendente em espera não-interrompível (estado `D`), onde o
+            # SIGKILL fica pendente — limitação de contenção local, G1b.
             raise HarnessFailure(
                 FailureClass.INFRASTRUCTURE_ERROR,
                 "grupo de processos do gate não encerrou nem com SIGKILL",
                 detalhe=f"pgid {pgid} ainda observável",
                 reproducao=f"ps -o pid,pgid,stat -g {pgid}",
-                evidencia={"pgid": pgid},
+                evidencia={"pgid": pgid, "risco_residual": "G1b"},
             )
 
     def cancel(self) -> None:
@@ -304,10 +327,13 @@ class LocalRunner(GateRunner):
         de caça a PID.
         """
 
+        # Processo e grupo saem do lock JUNTOS. Ler só o processo e deduzir o
+        # grupo depois reabre a corrida: entre uma coisa e outra o líder pode
+        # ser colhido e a dedução falha com os netos ainda vivos.
         with self._trava:
-            proc = self._proc
-        if proc is not None:
-            self._encerrar(proc)
+            proc, pgid = self._proc, self._pgid
+        if proc is not None and pgid is not None:
+            self._encerrar(proc, pgid)
 
 
 class _Heartbeat:
