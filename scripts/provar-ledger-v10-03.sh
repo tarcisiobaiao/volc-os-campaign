@@ -337,6 +337,26 @@ cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=
      "4" "as quatro são executáveis por service_role"
 
 echo
+echo "════ O · o contrato Python↔SQL: os nomes dos parâmetros batem ════"
+# ⚠️ ESTE É O DEFEITO QUE SÓ APARECERIA EM PRODUÇÃO.
+#
+# `ledger.py` monta o corpo do POST com chaves nomeadas (`p_conta_externa`, …).
+# Um nome trocado de um lado só não dá erro de compilação em lugar nenhum: o
+# PostgREST responde 404 "function not found" na primeira chamada real, que é o
+# instante do primeiro lançamento. Comparar as duas listas custa uma consulta.
+LEDGER_PY="$RAIZ/backend/app/trafego/ledger.py"
+if [ -r "$LEDGER_PY" ]; then
+    PY_PARAMS=$(grep -oE '"p_[a-z_]+"' "$LEDGER_PY" | tr -d '"' | sort -u)
+    SQL_PARAMS=$(P -c "SELECT DISTINCT unnest(p.proargnames)
+                         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                        WHERE n.nspname='public' AND p.proname LIKE 'trafego\_ledger\_%';" | sort -u)
+    ORFAOS=$(comm -23 <(printf '%s\n' "$PY_PARAMS") <(printf '%s\n' "$SQL_PARAMS") | tr '\n' ' ' | sed 's/ *$//')
+    cmp_ "$ORFAOS" "" "todo parâmetro que o Python envia existe na assinatura SQL"
+else
+    nao "não achei backend/app/trafego/ledger.py para conferir o contrato"
+fi
+
+echo
 echo "════ M · o rollback devolve o banco, e a v10_01 fica inteira ════"
 # Contado, nunca fixado: um número cravado aqui vira falha toda vez que uma prova
 # nova semeia um item, e a mensagem culparia o rollback.
