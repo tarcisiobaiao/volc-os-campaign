@@ -104,7 +104,7 @@ import type {
   Cockpit, EscopoDeContas, EscritaDaCopy, EstadoDaTrava, PedidoDeCopy,
   CopyGerada, CopyPersistida, VereditoDePolitica, VerticalDePolitica,
   PedidoDeProva, PedidoDeProvaSearch, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
-  RespostaDaCopy, RespostaDaProva,
+  RespostaDaCopy, RespostaDaProva, ReciboDeLancamento,
 } from '@/types/trafego';
 import type { RespostaDoDiagnostico } from '@/types/diagnostico';
 import type { RespostaDoDecisionLab } from '@/types/inteligenciaDecisao';
@@ -864,7 +864,7 @@ export const pautadorApi = {
     motivo: string;
     plano_impressao: string;
     confirmar_criacao_pausada: boolean;
-  }): Promise<{ recibo: Record<string, unknown> }> {
+  }): Promise<{ recibo: ReciboDeLancamento }> {
     return request('/api/trafego/subir', { method: 'POST', body: JSON.stringify(pedido) });
   },
 

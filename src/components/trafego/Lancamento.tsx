@@ -32,8 +32,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PautadorApiError, pautadorApi } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
+import {
+  idExternoDaCampanha, indeterminacaoDeclarada, proximoAtoSeguro,
+} from '@/lib/trafego/lancamento';
 import type {
-  EstadoDaTrava, PedidoDeProvaSearch, Preparo, RespostaDaProva,
+  EstadoDaTrava, PedidoDeProvaSearch, Preparo,
+  ReciboDeLancamento, RespostaDaProva, SubidaIndeterminada,
 } from '@/types/trafego';
 
 type Estado = 'provando' | 'reprovada' | 'aguardando_escrita' | 'escrevendo'
@@ -59,7 +63,10 @@ export const Lancamento: React.FC<Props> = ({
   const [estado, setEstado] = useState<Estado>('provando');
   const [prova, setProva] = useState<RespostaDaProva | null>(null);
   const [preparoDaRecusa, setPreparoDaRecusa] = useState<Preparo | null>(null);
-  const [recibo, setRecibo] = useState<Record<string, unknown> | null>(null);
+  const [recibo, setRecibo] = useState<ReciboDeLancamento | null>(null);
+  /** O que o SERVIDOR disse sobre a tentativa perdida. Vem do ledger, não de
+   *  uma inferência do navegador sobre um fetch que demorou. */
+  const [indeterminacao, setIndeterminacao] = useState<SubidaIndeterminada | null>(null);
   const [erro, setErro] = useState<string>('');
   const [motivo, setMotivo] = useState(`lançamento de "${titulo}"`);
   const [confirmouPausada, setConfirmouPausada] = useState(false);
@@ -142,11 +149,20 @@ export const Lancamento: React.FC<Props> = ({
         confirmar_criacao_pausada: true,
       });
       setRecibo(r.recibo);
-      // O recibo carrega o id devolvido pela API. Sem isto, o veredito exigiria
-      // o operador copiar o id do JSON à mão.
-      const id = (r.recibo as Record<string, unknown>)?.campaign_id
-              ?? (r.recibo as Record<string, unknown>)?.campanha_id;
-      if (id) onCriada?.(String(id));
+      // ⚠️ ESTA LEITURA ESTAVA QUEBRADA, E EM SILÊNCIO.
+      //
+      // Ela buscava `recibo.campaign_id` / `recibo.campanha_id` — duas chaves
+      // que a projeção do recibo NUNCA produziu (ela devolve `criados[]` com
+      // `resource_name`). O `onCriada` portanto jamais disparava, e o veredito
+      // de política ficava dependendo de alguém copiar o id do JSON à mão. Só
+      // apareceu quando o recibo deixou de ser `Record<string, unknown>`: o
+      // tipo largo aceitava qualquer chave, inclusive as que não existem.
+      //
+      // A fonte certa é o ledger, que carimba o id externo no fechamento; o
+      // `resource_name` fica como segunda leitura para o caso de o ledger não
+      // estar disponível neste processo.
+      const id = idExternoDaCampanha(r.recibo);
+      if (id) onCriada?.(id);
       setEstado('criada');
     } catch (e) {
       // O 409 de `/subir` carrega `{mensagem, preparo}` — é o que permite dizer
@@ -158,6 +174,21 @@ export const Lancamento: React.FC<Props> = ({
           setEstado('reprovada');
           return;
         }
+      }
+      // ⚠️ O SERVIDOR TAMBÉM DECLARA INDETERMINAÇÃO, e essa é a fonte melhor.
+      //
+      // Quando a chamada ao Google não responde, `/subir` devolve 504 com
+      // `{estado: 'indeterminado', reenvio_permitido: false, recibo_id, item_id}`.
+      // Sem este ramo, esse corpo caía em `erro` — e `erro` é justamente o
+      // estado que oferece "Voltar e ajustar", ou seja, um caminho de volta ao
+      // formulário para tentar de novo. O servidor sabe que há um recibo em
+      // aberto; o navegador só sabe que uma requisição demorou.
+      const declarada = indeterminacaoDeclarada(e);
+      if (declarada) {
+        setIndeterminacao(declarada);
+        setErro(declarada.mensagem);
+        setEstado('indeterminado');
+        return;
       }
       // Status zero significa que o navegador não recebeu uma resposta. A
       // chamada pode ter chegado ao Google: oferecer reenvio aqui seria a
@@ -393,6 +424,22 @@ export const Lancamento: React.FC<Props> = ({
               A campanha pode ter sido criada. Atualize o inventário da conta
               Portal Mundo Mais e procure a marca VOLC-CANARY antes de decidir
               qualquer nova tentativa. {erro}
+              {indeterminacao && (
+                // Os identificadores do recibo aberto. Sem eles, "reconcilie"
+                // é um conselho; com eles, é uma instrução que alguém consegue
+                // seguir sem abrir o banco procurando qual linha é esta.
+                <span className="mt-2 block">
+                  <span className="kicker text-white/40">recibo em aberto</span>{' '}
+                  <span className="tabular text-white/70">
+                    {indeterminacao.recibo_id ?? '—'}
+                  </span>
+                  {' · '}
+                  <span className="kicker text-white/40">item</span>{' '}
+                  <span className="tabular text-white/70">
+                    {indeterminacao.item_id ?? '—'}
+                  </span>
+                </span>
+              )}
             </Aviso>
           )}
         </div>
@@ -522,8 +569,16 @@ const Recusa: React.FC<{ p: Preparo }> = ({ p }) => (
   </div>
 );
 
-const Recibo: React.FC<{ r: Record<string, unknown> }> = ({ r }) => {
-  const criados = (r.criados as { tipo: string; resource_name: string }[]) ?? [];
+/** O recibo, e — abaixo dele — o que o ledger registrou.
+ *
+ *  ⚠️ A tela NÃO decide nada aqui. Ela lê `ledger.desfecho`, que o servidor
+ *  gravou numa transação, e mostra a próxima ação segura que corresponde a esse
+ *  desfecho. Recalcular "deu certo?" no navegador — a partir de campos soltos do
+ *  recibo — é como o mesmo lançamento acaba com duas histórias. */
+const Recibo: React.FC<{ r: ReciboDeLancamento }> = ({ r }) => {
+  const criados = r.criados ?? [];
+  const ledger = r.ledger;
+  const proximo = proximoAtoSeguro(r);
   return (
     <div className="rounded-lg border border-white/20 bg-white/[0.06] p-4">
       <p className="font-display text-lg font-bold text-white">
@@ -535,13 +590,66 @@ const Recibo: React.FC<{ r: Record<string, unknown> }> = ({ r }) => {
         a única coisa que o <span className="font-mono">validate_only</span> não dá.
       </p>
       <dl className="mt-3 space-y-1 text-[11px]">
-        <Linha rotulo="campanha" valor={String(r.nome_campanha ?? '—')} />
-        <Linha rotulo="conta" valor={String(r.customer_id ?? '—')} />
+        <Linha rotulo="campanha" valor={r.nome_campanha || '—'} />
+        <Linha rotulo="conta" valor={r.customer_id || '—'} />
         <Linha rotulo="recursos criados" valor={String(criados.length || r.n_operacoes || '—')} />
-        <Linha rotulo="request id" valor={String(r.request_id ?? '—')} />
+        <Linha rotulo="request id" valor={r.request_id ?? '—'} />
+        {r.aprovacao && (
+          <Linha rotulo="aprovado por" valor={r.aprovacao.aprovado_por_email || '—'} />
+        )}
       </dl>
+
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="kicker mb-2 text-white/45">ledger de lançamento</div>
+        {!ledger?.registrado ? (
+          // Ausência de registro NÃO é sucesso silencioso, e não pode parecer.
+          <p className="text-[11px] leading-relaxed text-amber-200/90">
+            {ledger?.motivo
+              ?? 'Esta campanha não tem recibo no ledger. Ela existe na conta e não '
+                 + 'existe aqui: reconcilie pelo inventário antes de qualquer outro ato.'}
+          </p>
+        ) : (
+          <>
+            <dl className="space-y-1 text-[11px]">
+              <Linha rotulo="desfecho" valor={ledger.desfecho ?? '—'} />
+              <Linha rotulo="id na conta" valor={ledger.id_externo || '— não carimbado'} />
+              <Linha rotulo="estado do item" valor={ledger.item_estado ?? '—'} />
+              <Linha rotulo="recibo" valor={ledger.recibo_id ?? '—'} />
+            </dl>
+            <p className="mt-2 text-[11px] leading-relaxed text-white/55">
+              {PROXIMO_ATO[proximo]}
+            </p>
+            {ledger.motivo && (
+              <p className="mt-1 text-[11px] leading-relaxed text-amber-200/80">
+                {ledger.motivo}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {r.aviso_registro && (
+        <p className="mt-2 text-[11px] leading-relaxed text-amber-200/80">
+          {r.aviso_registro}
+        </p>
+      )}
     </div>
   );
+};
+
+/** A frase de cada próximo ato. Nenhuma delas oferece reenvio a partir de
+ *  ignorância — é a mesma regra que o ledger impõe no banco, dita em português. */
+const PROXIMO_ATO: Record<ReturnType<typeof proximoAtoSeguro>, string> = {
+  conferir_politica:
+    'O id da campanha está carimbado com a hora em que foi lido. Próximo ato '
+    + 'seguro: conferir o veredito de política. Ativar continua sendo outra '
+    + 'decisão, e não existe nesta tela.',
+  corrigir_e_reenviar:
+    'O Google respondeu que não criou. Como houve resposta, sabemos que nada '
+    + 'ficou em trânsito: corrigir o plano e provar de novo é seguro.',
+  reconciliar_na_conta:
+    'O recibo não fechou como sucesso. NÃO reenvie: pode haver uma campanha '
+    + 'criada na conta. Verifique pelo inventário e reconcilie o recibo aberto.',
 };
 
 const Linha: React.FC<{ rotulo: string; valor: string }> = ({ rotulo, valor }) => (

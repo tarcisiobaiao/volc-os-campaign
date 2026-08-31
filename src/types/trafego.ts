@@ -576,6 +576,78 @@ export interface AutorizacaoDoCanario {
   ativacao_incluida: false;
 }
 
+/** O que o ledger v10 registrou sobre ESTA tentativa de lançamento.
+ *
+ *  ⚠️ Os quatro desfechos NÃO se colapsam, e a tela não pode colapsá-los:
+ *
+ *  · `sucesso`      — a plataforma respondeu e o id externo está carimbado;
+ *  · `erro`         — a plataforma respondeu que NÃO criou; reenviar é legítimo;
+ *  · `sem_resposta` — ninguém respondeu; NÃO se sabe se criou; reenviar é
+ *                     exatamente o que cria a segunda campanha no mesmo leilão;
+ *  · `em_voo`       — o recibo ficou aberto (o fechamento não gravou). Também é
+ *                     ignorância, e a saída é reconciliar na conta.
+ *
+ *  `registrado: false` é um quinto estado: o ledger não estava disponível, então
+ *  não há recibo nenhum. Ausência de registro nunca deve ser lida como sucesso. */
+export interface LedgerDoLancamento {
+  registrado: boolean;
+  desfecho?: 'sucesso' | 'erro' | 'sem_resposta' | 'em_voo';
+  recibo_id?: string | null;
+  item_id?: string | null;
+  /** O id da campanha na conta. Só existe depois do mutate — é a única fonte. */
+  id_externo?: string | null;
+  item_estado?: string | null;
+  /** Por que não fechou, quando não fechou. Ausente no caminho feliz. */
+  motivo?: string;
+}
+
+/** Uma operação que a API confirmou ter criado. */
+export interface RecursoCriado {
+  posicao: number;
+  tipo: string;
+  resource_name: string;
+}
+
+export interface ReciboDeLancamento {
+  estado: string;
+  carimbo: string;
+  customer_id: string;
+  login_customer_id: string;
+  nome_campanha: string;
+  n_operacoes: number;
+  impressao: string;
+  motivo: string;
+  criados: RecursoCriado[];
+  request_id: string | null;
+  falha: unknown;
+  explicacao: string;
+  aprovacao?: {
+    plano_impressao: string;
+    chave_intencao: string;
+    aprovado_por_sub: string;
+    aprovado_por_email: string;
+    confirmou_criacao_pausada: boolean;
+    ativacao_incluida: false;
+    marca_remota: string;
+  };
+  ledger?: LedgerDoLancamento;
+  /** Preservado por compatibilidade: a gravação legada em `campaigns`. */
+  aviso_registro?: string;
+}
+
+/** O corpo que `/subir` devolve num 504 quando a resposta do Google se perdeu.
+ *
+ *  ⚠️ `reenvio_permitido` é `false` e vem do SERVIDOR de propósito: quem decide
+ *  se uma nova tentativa é segura é o ledger, que sabe se há recibo em aberto —
+ *  não o navegador, que só sabe que uma requisição demorou. */
+export interface SubidaIndeterminada {
+  estado: 'indeterminado';
+  mensagem: string;
+  recibo_id: string | null;
+  item_id: string | null;
+  reenvio_permitido: false;
+}
+
 export interface EstadoDaTrava {
   escrita_permitida: boolean;
   destravado_no_codigo: boolean;
