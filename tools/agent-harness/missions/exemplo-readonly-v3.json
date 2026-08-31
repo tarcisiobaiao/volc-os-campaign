@@ -1,0 +1,36 @@
+{
+  "mission_schema_version": 3,
+  "mission_id": "exemplo-readonly-v3",
+  "title": "Exemplo mínimo de missão read-only no schema 3",
+  "base_ref": "HEAD",
+  "briefing": "Missão de referência: mostra a forma que o CLI aceita hoje. Dois investigadores read-only, gates TIPADOS, e a ligação editorial explícita. Não existe campo argv no schema 3 — a missão declara o tipo do gate, ou um gate_id do catálogo versionado, e o harness constrói a linha de comando.",
+  "mode": "read_only",
+  "acceptance_ids": ["P10-T17-A1"],
+  "ownership_envelope": ["tools/agent-harness"],
+  "task_ids": ["P10-T17"],
+  "authorized_external_providers": [],
+  "gates": [
+    { "kind": "git_diff_check" },
+    { "kind": "catalog", "gate_id": "harness-unit", "timeout_seconds": 1200 }
+  ],
+  "workers": [
+    {
+      "id": "sol-leitura",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "role": "investigator",
+      "effort": "high",
+      "lens": "Levantar o que já existe antes de propor código novo.",
+      "allowed_paths": ["tools/agent-harness"]
+    },
+    {
+      "id": "sol-contraste",
+      "provider": "codex",
+      "model": "gpt-5.5",
+      "role": "investigator",
+      "effort": "high",
+      "lens": "Procurar a leitura alternativa da mesma evidência.",
+      "allowed_paths": ["tools/agent-harness"]
+    }
+  ]
+}

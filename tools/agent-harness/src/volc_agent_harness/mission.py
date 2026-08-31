@@ -764,6 +764,7 @@ async def _run_implementation_mission(
         # ownership, isso é SPEC_ERROR/OWNERSHIP_ERROR agora — não um gate caro
         # falhando de um jeito difícil de ler dez minutos depois.
         # --------------------------------------------------------------
+        artefatos.marcar("postwriter")
         postwriter = postwriter_compile(
             tree=writer_worktree.path,
             produced=produced,
@@ -796,6 +797,7 @@ async def _run_implementation_mission(
         # baseline — o mesmo contexto material vale para os dois momentos.
         prod_digest = digest_files(writer_worktree.path, changed_paths)
 
+        artefatos.marcar("gates")
         gate_results: list[dict[str, Any]] = []
         entradas_evidencia: list[dict[str, Any]] = []
         gate_overlay_provenance: dict[str, object] | None = None
@@ -904,6 +906,7 @@ async def _run_implementation_mission(
                 detalhe=f"surgiram: {novos or '—'} | sumiram: {sumidos or '—'}",
                 reproducao="acrescente -p no:cacheprovider e PYTHONDONTWRITEBYTECODE=1 ao gate",
             )
+        artefatos.marcar("harvest")
         writer_sha = manager.commit_writer(
             writer_worktree.path,
             mission.commit_message or mission.title,
@@ -945,7 +948,19 @@ async def _run_implementation_mission(
     except Exception as error:
         # failure.json tipado, e NENHUM harvest falso: colheita só nasce de
         # trabalho realmente commitado.
-        _falha_com_artefato(run_dir, error)
+        #
+        # Usa o MESMO objeto de artefatos, não um novo: um `RunArtifacts`
+        # recém-criado nasce em `fase="boot"` e etiquetava como falha de boot um
+        # gate vermelho que aconteceu depois do writer. Fase errada no artefato
+        # manda o operador procurar no lugar errado.
+        artefatos.registrar_falha(error)
+        try:
+            error.run_dir = str(run_dir)                     # type: ignore[attr-defined]
+            error.failure_artifact = (
+                str(artefatos.failure_path)
+                if artefatos.failure_path.is_file() else "")
+        except AttributeError:                               # pragma: no cover
+            pass
         writer_record = {
             "worker_id": writer.id,
             "provider": writer.provider,

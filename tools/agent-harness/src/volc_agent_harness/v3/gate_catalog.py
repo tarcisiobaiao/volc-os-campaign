@@ -40,8 +40,20 @@ CATALOGO_RELATIVO = "tools/agent-harness/gate-catalog.json"
 #: invalida provas antigas em vez de compará-las com régua diferente.
 CONTRACT_VERSION = 1
 
-#: Tipos que SÓ existem via catálogo, porque selecionam conteúdo indireto.
-EXIGEM_CATALOGO = frozenset({"npm_script", "tracked_script"})
+#: A autoridade sobre "este tipo exige catálogo" é UMA: o atributo de classe
+#: `TypedGate.exige_catalogo`, em `gate_types`, que é quem `from_spec` consulta.
+#: Existia aqui uma constante paralela — sem consumidor e já defasada, porque
+#: não listava `build`. Duas fontes para o mesmo fato é como não ter fonte: a
+#: que ninguém lê envelhece em silêncio e depois é citada como se valesse.
+
+
+def tipos_que_exigem_catalogo() -> frozenset[str]:
+    """Derivado da única autoridade, nunca redigitado."""
+
+    from .gate_types import TIPOS
+
+    return frozenset(nome for nome, classe in TIPOS.items()
+                     if classe.exige_catalogo)
 
 
 def _sha256_texto(texto: str) -> str:

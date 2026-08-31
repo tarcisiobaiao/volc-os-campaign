@@ -30,7 +30,9 @@ from tempfile import TemporaryDirectory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _ledger_concorrente_worker import argv_do_caso, consumidor  # noqa: E402
+from _ledger_concorrente_worker import (  # noqa: E402
+    argv_do_caso, consumidor, consumidor_sem_heartbeat,
+)
 
 from volc_agent_harness.v3.gate_runner import (  # noqa: E402
     GateRunner, run_gate_with_ledger,
@@ -194,6 +196,138 @@ class ProvaB_LeaseVivoNaoEhRoubado(_Base):
         self.assertEqual(_executados(self.marcador), 0,
                          "nada pode ter rodado com o lease alheio vivo")
         self.assertIsNotNone(saida.evidence_id, "lease_timeout precisa ser auditável")
+
+
+class ProvaB2_ExecucaoMaiorQueOLeaseNominal(_Base):
+    """B — o heartbeat segura o lease enquanto o runner trabalha.
+
+    A trava é um ARQUIVO, não um argumento: argv entra na identidade lógica, e
+    segurar o processo por argumento faria os dois consumidores reivindicarem
+    identidades diferentes — a prova compararia duas coisas distintas e passaria
+    por engano.
+    """
+
+    def _trava(self) -> Path:
+        alvo = self.raiz / "TRAVA"
+        alvo.write_text("segura")
+        return alvo
+
+    def test_threads_uma_execucao_com_lease_curto_e_heartbeat(self):
+        trava = self._trava()
+        saidas: list[dict] = []
+        fio = threading.Thread(target=lambda: saidas.append(consumidor(
+            self.caso(worker_id="w1", lease_seconds=1, wait_seconds=0.0))))
+        fio.start()
+        for _ in range(400):                       # espera a execução começar
+            if _executados(self.marcador):
+                break
+            time.sleep(0.01)
+        time.sleep(1.5)                            # muito além do lease nominal
+        segundo = consumidor(self.caso(worker_id="w2", run_id="r2",
+                                       lease_seconds=1, wait_seconds=0.5))
+        trava.unlink(missing_ok=True)
+        fio.join(timeout=60)
+
+        self.assertEqual(_executados(self.marcador), 1,
+                         "lease renovado não pode abrir segunda execução")
+        self.assertEqual(segundo["claim_outcome"], ClaimOutcome.LEASE_TIMEOUT.value)
+        self.assertFalse(segundo["ok"])
+
+    def test_multiprocesso_uma_execucao_com_lease_curto(self):
+        trava = self._trava()
+        ctx = mp.get_context("spawn")
+        fila = ctx.Queue()
+        caso = self.caso(worker_id="w1", lease_seconds=1, wait_seconds=0.0)
+        proc = ctx.Process(target=_alvo_mp, args=(caso, None, fila))
+        proc.start()
+        for _ in range(600):
+            if _executados(self.marcador):
+                break
+            time.sleep(0.01)
+        time.sleep(1.5)
+        segundo = consumidor(self.caso(worker_id="w2", run_id="r2",
+                                       lease_seconds=1, wait_seconds=0.5))
+        trava.unlink(missing_ok=True)
+        proc.join(timeout=90)
+        primeiro = fila.get(timeout=15)
+
+        self.assertNotIn("erro", primeiro, f"consumidor falhou: {primeiro}")
+        self.assertEqual(_executados(self.marcador), 1)
+        self.assertEqual(segundo["claim_outcome"], ClaimOutcome.LEASE_TIMEOUT.value)
+
+
+class ProvaC2_HeartbeatInterrompido(_Base):
+    """C — sem renovação o lease vence, o novo dono retoma, o antigo não conclui.
+
+    Os DOIS consumidores ficam presos na mesma trava de arquivo, e a trava só sai
+    quando ambos já reivindicaram. Sequenciar de outro jeito — soltar a trava
+    antes do segundo chegar — faria o primeiro terminar e marcar o claim como
+    `abandoned`, e o segundo receberia `acquired` em vez de
+    `reclaimed_after_expiry`: a prova mediria outro caminho e passaria por
+    engano.
+
+    ⚠️ Aqui HÁ duas execuções físicas, e isso é o contrato, não um defeito. Com o
+    heartbeat morto o lease vence de verdade; o que o harness garante é que só o
+    dono corrente conclui. Exactly-once absoluto não é prometido.
+    """
+
+    def test_sem_heartbeat_o_novo_dono_retoma_e_o_antigo_nao_conclui(self):
+        trava = self.raiz / "TRAVA"
+        trava.write_text("segura os dois")
+        antigo: list[dict] = []
+        novo: list[dict] = []
+
+        fio_antigo = threading.Thread(target=lambda: antigo.append(
+            consumidor_sem_heartbeat(
+                self.caso(worker_id="w1", lease_seconds=1, wait_seconds=0.0))))
+        fio_antigo.start()
+        for _ in range(600):                       # espera a execução começar
+            if _executados(self.marcador):
+                break
+            time.sleep(0.01)
+        time.sleep(1.4)                            # o lease vence de verdade
+
+        fio_novo = threading.Thread(target=lambda: novo.append(consumidor(
+            self.caso(worker_id="w2", run_id="r2", lease_seconds=60,
+                      wait_seconds=3.0))))
+        fio_novo.start()
+        for _ in range(600):                       # espera o segundo reivindicar
+            if _executados(self.marcador) >= 2:
+                break
+            time.sleep(0.01)
+        trava.unlink(missing_ok=True)
+        fio_antigo.join(timeout=90)
+        fio_novo.join(timeout=90)
+
+        self.assertTrue(antigo and novo, "algum consumidor não retornou")
+        self.assertEqual(novo[0]["claim_outcome"],
+                         ClaimOutcome.RECLAIMED_AFTER_EXPIRY.value)
+        self.assertTrue(novo[0]["ok"])
+
+        self.assertFalse(antigo[0]["ok"], "dono que perdeu o lease devolveu sucesso")
+        self.assertIsNone(antigo[0]["evidence_id"], "dono obsoleto gravou evidência")
+        self.assertEqual(antigo[0]["execution_mode"], "abandoned")
+
+        led = EvidenceLedger(self.ledger_path)
+        verdes = [e for e in led.evidencias() if e["exit_code"] == 0]
+        self.assertEqual(len(verdes), 1,
+                         "só o dono corrente pode deixar prova verde")
+        self.assertEqual(_executados(self.marcador), 2,
+                         "com heartbeat morto, reexecução é o contrato")
+
+
+class ProvaD2_CompleteDuplicado(_Base):
+    """D — um claim/fence conclui no máximo uma vez, garantido pelo banco."""
+
+    def test_indice_unico_impede_segunda_evidencia(self):
+        led = EvidenceLedger(self.ledger_path)
+        claim = led.acquire(self.identidade(), run_id="r1", worker_id="w1",
+                            lease_seconds=120, wait_seconds=0.0)
+        args = dict(state="green", base_sha="s", run_id="r1", command="c",
+                    production_digest="p1", test_digest="t1", exit_code=0)
+        ids = [led.complete(claim, **args) for _ in range(5)]
+        self.assertEqual(len(led.evidencias()), 1)
+        self.assertEqual({i for i in ids if i is not None}, {ids[0]})
 
 
 class ProvaC_LeaseVencidoERetomado(_Base):

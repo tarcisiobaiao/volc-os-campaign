@@ -186,9 +186,14 @@ def resolve_mission_gates(
                 evidencia={"gate_index": indice, "missing": ausentes, "argv": argv},
             )
 
-        collect = None
-        if isinstance(typed, PytestGate) and not dependem:
-            collect = typed.collect_argv(worktree=tree, toolchain=ferramentas)
+        # O argv de coleta é CONSTRUÍDO sempre, inclusive para gate que depende de
+        # `produced_paths`. Construir não é executar, e condicionar a construção
+        # deixava justamente os gates NOVOS — os mais propensos a coletar zero
+        # testes — sem a conferência da lição B3: eles nasciam com
+        # `collect_only_argv=None` e a sonda do postwriter devolvia -1 em
+        # silêncio, mesmo depois de o writer ter criado o arquivo.
+        collect = (typed.collect_argv(worktree=tree, toolchain=ferramentas)
+                   if isinstance(typed, PytestGate) else None)
 
         resolvidos.append(ResolvedGate(
             index=indice, kind=kind, argv=argv, timeout_seconds=timeout,

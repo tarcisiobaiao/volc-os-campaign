@@ -49,6 +49,24 @@ def consumidor(caso: dict, barreira=None) -> dict:
     return saida.as_dict()
 
 
+def consumidor_sem_heartbeat(caso: dict, barreira=None) -> dict:
+    """Mesmo caminho, com o heartbeat DESLIGADO.
+
+    Serve para provar C: sem renovação o lease vence, o novo dono retoma, e o
+    dono antigo não conclui nem devolve sucesso. É a contraprova de que o
+    heartbeat é o que segura o lease — não o acaso.
+    """
+
+    import volc_agent_harness.v3.gate_runner as gr
+
+    original = gr._Heartbeat.__enter__
+    try:
+        gr._Heartbeat.__enter__ = lambda self: self
+        return consumidor(caso, barreira)
+    finally:
+        gr._Heartbeat.__enter__ = original
+
+
 def main() -> int:
     caso = json.loads(sys.argv[1])
     resultado = consumidor(caso)

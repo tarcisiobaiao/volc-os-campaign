@@ -566,6 +566,58 @@ class B8_FronteiraDeErroCobreOsArtefatos(unittest.TestCase):
             self.assertEqual(contador.chamadas, [])
 
 
+class B8b_FaseRealNoArtefato(unittest.TestCase):
+    """A fase no `failure.json` precisa ser onde quebrou, não onde começou."""
+
+    def test_gate_vermelho_nao_e_etiquetado_como_falha_de_boot(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import test_v3_e2e_produtivo as E
+
+        caso = E.CadeiaCompleta("test_gate_vermelho_nao_gera_harvest_falso")
+        caso.setUp()
+        try:
+            caso.vermelho = True
+            codigo, saida = caso._rodar()
+            self.assertNotEqual(codigo, 0, saida)
+            run = sorted((caso.repo / "tools" / "agent-harness"
+                          / "runs").iterdir())[-1]
+            falha = json.loads((run / "failure.json").read_text())
+        finally:
+            caso.tearDown()
+        self.assertEqual(falha["fase"], "gates",
+                         "um novo RunArtifacts nasce em 'boot' e mente sobre "
+                         "onde a missão quebrou")
+        self.assertFalse((run / "harvest.json").exists())
+
+
+class B11_ColetaDeGateNovoTambemEConferida(unittest.TestCase):
+    """A lição B3 vale principalmente para o gate que ainda não existe.
+
+    `collect_only_argv` só era construído quando o gate NÃO dependia de
+    `produced_paths` — ou seja, justamente os gates novos, os mais propensos a
+    coletar zero testes, nasciam com `None` e a sonda devolvia -1 em silêncio.
+    """
+
+    def test_gate_que_depende_de_produced_tem_argv_de_coleta(self):
+        from volc_agent_harness.v3.gate_resolution import resolve_mission_gates
+
+        with TemporaryDirectory() as tmp:
+            repo = repo_sintetico(Path(tmp))
+            resolvidos = resolve_mission_gates(
+                gates=[{"kind": "pytest",
+                        "targets": ["backend/tests/test_ainda_nao_existe.py"]}],
+                tree=repo,
+                toolchain={"python": sys.executable},
+                produced_paths=[{"path": "backend/tests/test_ainda_nao_existe.py",
+                                 "required": True}],
+            )
+        gate = resolvidos[0]
+        self.assertFalse(gate.runnable_before_writer)
+        self.assertIsNotNone(gate.collect_only_argv,
+                             "gate novo precisa ter coleta conferível depois do writer")
+        self.assertIn("--collect-only", gate.collect_only_argv)
+
+
 # ===========================================================================
 # 9 — colisão lógica entre dois subdiretórios quando cwd é omitido
 # ===========================================================================

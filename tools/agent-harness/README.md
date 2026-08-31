@@ -52,8 +52,12 @@ não copia mudanças não commitadas. Nenhum escritor deve iniciar sem um
 ```bash
 .venv-adk/bin/volc-agent-run \
   --repo . \
-  --mission tools/agent-harness/missions/pilot-search-zero-readonly.json
+  --mission tools/agent-harness/missions/exemplo-readonly-v3.json
 ```
+
+⚠️ As 18 missões em `missions/` estão no schema 2 e o CLI as recusa antes de
+chamar modelo — por desenho, não por defeito. Migrá-las é uma missão de adoção
+separada; `exemplo-readonly-v3.json` é o modelo mínimo que o CLI aceita hoje.
 
 O comando cria uma worktree por worker, executa Claude e Codex em paralelo,
 espera os dois no `JoinNode` do ADK e grava o resultado em
@@ -124,9 +128,11 @@ pode tocar o filesystem inteiro. `LocalRunner.contains_filesystem` continua
 Uma missão com `mode: implementation` exige:
 
 - `base_ref` como SHA completo e ancestral da `main` local;
-- um único worker `role: writer`, obrigatoriamente Codex;
+- um único worker `role: writer` — Codex, Claude, Gemini ou DeepSeek
+  (microrepair); veja `WorkerSpec.provider_contract_is_exact` em `models.py`
+  para o contrato exato de cada um;
 - ao menos um reviewer read-only;
-- ownership de caminhos e gates como `argv`, sem shell;
+- ownership de caminhos e gates TIPADOS — `argv` não existe no schema 3;
 - modelos e effort explícitos (por exemplo, Codex `gpt-5.6-sol` em `xhigh`
   e Claude `opus` em `max`).
 
