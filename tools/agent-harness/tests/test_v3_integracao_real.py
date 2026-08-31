@@ -111,7 +111,7 @@ class IntegracaoReal(unittest.TestCase):
             from volc_agent_harness.cli import compile_only
 
             codigo = compile_only(["--mission", str(arquivo), "--repo", str(repo),
-                                   "--out", str(repo / "run")])
+                                   "--out", str(repo / "tools" / "agent-harness" / "runs" / "check")])
             self.assertEqual(codigo, 3, "missão com gate inexistente não compila")
         self.assertEqual(contador.chamadas, [], "nenhum modelo pode ter sido chamado")
 
@@ -146,10 +146,10 @@ class IntegracaoReal(unittest.TestCase):
 
             self.assertEqual(
                 compile_only(["--mission", str(arquivo), "--repo", str(repo),
-                              "--out", str(repo / "run")]),
+                              "--out", str(repo / "tools" / "agent-harness" / "runs" / "check")]),
                 0,
             )
-            artefato = json.loads((repo / "run" / "compiled-mission.json").read_text())
+            artefato = json.loads((repo / "tools" / "agent-harness" / "runs" / "check" / "compiled-mission.json").read_text())
             self.assertEqual(artefato["acceptance_ids"], ["P04-T09-A2"])
             self.assertEqual(artefato["gates_runnable_before_writer"], [1])
 
@@ -175,7 +175,7 @@ class IntegracaoReal(unittest.TestCase):
 
             self.assertEqual(
                 compile_only(["--mission", str(arquivo), "--repo", str(repo),
-                              "--out", str(repo / "run")]),
+                              "--out", str(repo / "tools" / "agent-harness" / "runs" / "check")]),
                 3,
                 "missão V2 precisa falhar com código claro, não passar em silêncio",
             )

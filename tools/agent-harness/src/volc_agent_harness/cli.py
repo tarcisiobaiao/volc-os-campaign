@@ -32,7 +32,14 @@ def compile_only(argv: Sequence[str] | None = None) -> int:
     bruto = json.loads(args.mission.read_text(encoding="utf-8"))
     roadmap_path = args.roadmap or (args.repo / "volc-os-workbook" / "ROADMAP-VIVO.json")
     roadmap = json.loads(roadmap_path.read_text(encoding="utf-8")) if roadmap_path.exists() else {}
-    run_dir = args.out or (args.repo / "tools" / "agent-harness" / "runs" / "compile-check")
+    runs = (args.repo / "tools" / "agent-harness" / "runs").resolve()
+    run_dir = (args.out.resolve() if args.out else runs / "compile-check")
+    if runs not in run_dir.parents and run_dir != runs:
+        # Artefato de runtime fora de runs/ escapa do .gitignore e acaba
+        # versionado. O destino é restrito, não sugerido.
+        print("[SPEC_ERROR] --out precisa ficar sob tools/agent-harness/runs")
+        print(f"  detalhe: {run_dir}")
+        return 3
 
     from pydantic import ValidationError
 
@@ -87,29 +94,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mission", type=Path, required=True)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
-    parser.add_argument(
-        "--legacy-v2",
-        action="store_true",
-        help="DEPRECIADO: executa missão schema 2 sem as guardas do V3",
-    )
     args = parser.parse_args(argv)
 
     bruto = json.loads(args.mission.read_text(encoding="utf-8"))
     versao = int(bruto.get("mission_schema_version", 2))
 
-    if versao < 3 and not args.legacy_v2:
+    if versao < 3:
         # Nunca fallback silencioso: ou migra, ou pede o comando depreciado.
         print("[SPEC_ERROR] missão no schema 2 não passa pelo compilador V3")
         print(f"  detalhe: {bruto.get('mission_id', '?')} precisa declarar "
               "mission_schema_version=3, acceptance_ids e ownership_envelope")
         print('  reproduza: adicione "mission_schema_version": 3 e os campos exigidos')
-        print("  alternativa depreciada: --legacy-v2 (sem as guardas do V3)")
         print("  destino: mission_compiler | writer relançado: False")
         return 3
 
     try:
-        if versao >= 3:
-            assert_compilable(bruto)
+        assert_compilable(bruto)
         mission = MissionSpec.model_validate(bruto)
     except ValidationError as erro:
         primeira = erro.errors()[0] if erro.errors() else {}
@@ -124,9 +124,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         if falha.reproducao:
             print(f"  reproduza: {falha.reproducao}")
         return 3
-
-    if args.legacy_v2:
-        print("AVISO: caminho legado depreciado; as guardas do V3 não se aplicam.")
 
     try:
         run_dir, result = run(args.repo, mission)

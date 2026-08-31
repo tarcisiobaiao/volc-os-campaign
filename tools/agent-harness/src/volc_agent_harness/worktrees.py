@@ -137,6 +137,16 @@ class WorktreeManager:
         path.parent.mkdir(parents=True, exist_ok=True)
         _git(self.repo, "worktree", "add", "-b", branch, str(path), base_sha)
         self.assert_clean(path)
+        if registry is not None:
+            # Claim transacional: a worktree ganha dono registrado antes de
+            # qualquer writer tocá-la, e dois writers nunca dividem o caminho.
+            registry.claim(
+                worktree=str(path),
+                mission_id=mission_id or run_id,
+                branch=branch,
+                base_sha=base_sha,
+                writer_pid=os.getpid(),
+            )
         return WorktreeInfo(worker_slug, path, branch, base_sha)
 
     @staticmethod

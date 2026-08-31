@@ -82,6 +82,50 @@ def prepare(
     )
 
 
+#: Executáveis que um gate pode invocar. Allowlist, não blacklist: o Sol provou
+#: que `find alvo -delete` e `sh -c` com tabulação atravessavam a lista negra.
+_EXECUTAVEIS_DE_GATE = frozenset({
+    "python", "python3", "python3.14", "pytest", "tsc", "vitest", "vite",
+    "node", "npm", "npx", "env", "true", "false", "git", "compileall",
+})
+
+#: Shells nunca entram: dentro deles cabe qualquer coisa.
+_SHELLS = frozenset({"sh", "bash", "zsh", "fish", "dash", "ksh"})
+
+
+def assert_gate_executable_is_allowed(argv: Sequence[str]) -> None:
+    """Recusa shell e executável fora da allowlist.
+
+    Blacklist de comandos destrutivos é um jogo perdido: sempre falta uma
+    variante. Aqui o gate declara o que roda, e o que não está previsto não roda.
+    """
+
+    if not argv:
+        raise HarnessFailure(FailureClass.SPEC_ERROR, "gate sem argv")
+    i = 0
+    if Path(argv[0]).name == "env":
+        i = 1
+        while i < len(argv) and "=" in argv[i] and not argv[i].startswith("="):
+            i += 1
+    if i >= len(argv):
+        raise HarnessFailure(FailureClass.SPEC_ERROR, "gate com env, mas sem comando")
+    nome = Path(argv[i]).name
+    if nome in _SHELLS:
+        raise HarnessFailure(
+            FailureClass.AUTHORIZATION_BLOCK,
+            "gate não pode invocar shell",
+            detalhe=nome,
+            reproducao=" ".join(argv)[:200],
+        )
+    if nome not in _EXECUTAVEIS_DE_GATE:
+        raise HarnessFailure(
+            FailureClass.AUTHORIZATION_BLOCK,
+            "executável de gate fora da allowlist",
+            detalhe=f"{nome} não está entre {sorted(_EXECUTAVEIS_DE_GATE)}",
+            reproducao=" ".join(argv)[:200],
+        )
+
+
 def _normalizar(argv: Sequence[str]) -> list[list[str]]:
     """Quebra em comandos e expande flags agrupadas.
 
@@ -96,7 +140,8 @@ def _normalizar(argv: Sequence[str]) -> list[list[str]]:
             comandos.append([])
             continue
         # `sh -c "rm -rf x"` esconde o comando dentro de um argumento
-        if " " in token and any(p in token for p in ("rm ", "git clean", "find ")):
+        # Qualquer whitespace, não só espaço: o Sol passou tabulação.
+        if any(c.isspace() for c in token):
             comandos.append(token.split())
             continue
         comandos[-1].append(token)
@@ -123,6 +168,8 @@ _ASSINATURAS_DESTRUTIVAS = (
     ("rm", {"--recursive", "-f"}),
     ("clean", {"-f"}),          # git clean -fdx e variantes
     ("clean", {"--force"}),
+    ("find", {"-delete"}),      # find alvo -delete apaga sem rm
+    ("find", {"-exec"}),        # find ... -exec rm {} +
 )
 
 

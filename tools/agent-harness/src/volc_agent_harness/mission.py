@@ -29,8 +29,21 @@ from .security import redact, sanitized_environment
 from .v3.failures import FailureClass, HarnessFailure, classify_gate_exit
 from .v3.gate_compiler import ProducedPath, assert_pytest_collects, compile_gate_plan
 from .v3.two_phase import postwriter_compile
-from .v3.workspace import assert_no_destructive_intent
+from .v3.workspace import (
+    assert_gate_executable_is_allowed,
+    assert_no_destructive_intent,
+)
 from .worktrees import WorktreeInfo, WorktreeManager
+
+
+def _registry_do_repo(repo: Path):
+    """Registry compartilhado. Toda worktree nasce com claim transacional."""
+
+    from .v3.registry import WorktreeRegistry
+
+    return WorktreeRegistry(
+        repo / "tools" / "agent-harness" / "worktree-registry.sqlite"
+    )
 
 
 def _ambiente_de_gate() -> dict[str, str]:
@@ -295,6 +308,7 @@ def _compilar_missao(
     """
 
     for gate in mission.gates:
+        assert_gate_executable_is_allowed(gate.argv)
         assert_no_destructive_intent(gate.argv)
 
     produced = [ProducedPath(p.path, p.required) for p in mission.produced_paths]
@@ -419,7 +433,7 @@ async def _run_read_only_mission(
         raise
 
     worktrees = {
-        worker.id: manager.create(run_id, worker.id, base_sha)
+        worker.id: manager.create(run_id, worker.id, base_sha, registry=_registry_do_repo(repo), mission_id=mission.mission_id)
         for worker in mission.workers
     }
     schema_path = Path(__file__).parent / "schemas" / "worker-result.schema.json"
@@ -530,7 +544,7 @@ async def _run_implementation_mission(
         json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    writer_worktree = manager.create(run_id, writer.id, base_sha)
+    writer_worktree = manager.create(run_id, writer.id, base_sha, registry=_registry_do_repo(repo), mission_id=mission.mission_id)
     writer_schema = (
         Path(__file__).parent / "schemas" / "writer-result.schema.json"
     )
@@ -725,17 +739,53 @@ async def _run_implementation_mission(
                 detalhe=f"surgiram: {novos or '—'} | sumiram: {sumidos or '—'}",
                 reproducao="acrescente -p no:cacheprovider e PYTHONDONTWRITEBYTECODE=1 ao gate",
             )
-        _registrar_evidencia(run_dir, [
-            {
+        # Ledger REAL: grava e consulta pelo caminho de produção, com o
+        # contexto material completo. Antes, ledger.record só existia em
+        # pipeline.py sem ctx_digest, e lookup só em teste.
+        from .v3.ledger import EvidenceLedger, context_digest, digest_files, env_fingerprint
+
+        ledger = EvidenceLedger(
+            repo / "tools" / "agent-harness" / "evidence-ledger.sqlite"
+        )
+        prod_digest = digest_files(writer_worktree.path, changed_paths)
+        ctx = context_digest(
+            acceptance_text="|".join(mission.acceptance_ids),
+            base_sha=base_sha,
+            candidate_sha=None,
+            lineage_root=mission.lineage_root_sha,
+            toolchain={"harness": "v3"},
+            manifests={},
+        )
+        fp = env_fingerprint(_ambiente_de_gate())
+        entradas_evidencia = []
+        for g in gate_results:
+            comando = " ".join(g["argv"])
+            consulta = ledger.lookup(
+                acceptance_id=(mission.acceptance_ids or ["sem-aceite"])[0],
+                kind=f"gate_{g['index']}", command=comando,
+                production_digest=prod_digest, test_digest=prod_digest,
+                cwd=str(writer_worktree.path), env_fp=fp, ctx_digest=ctx,
+            )
+            ledger.record(
+                acceptance_id=(mission.acceptance_ids or ["sem-aceite"])[0],
+                kind=f"gate_{g['index']}", base_sha=base_sha,
+                run_id=run_id, command=comando, cwd=str(writer_worktree.path),
+                env_fp=fp, ctx_digest=ctx, production_digest=prod_digest,
+                test_digest=prod_digest, exit_code=g["returncode"],
+                counts={"returncode": g["returncode"]},
+            )
+            entradas_evidencia.append({
                 "acceptance_ids": mission.acceptance_ids,
                 "kind": f"gate_{g['index']}",
-                "command": " ".join(g["argv"]),
+                "command": comando,
                 "exit_code": g["returncode"],
                 "base_sha": base_sha,
-                "status": "NEW_EVIDENCE",
-            }
-            for g in gate_results
-        ])
+                "context_digest": ctx,
+                "env_fingerprint": fp,
+                "status": consulta["status"],
+                "status_reason": consulta["reason"],
+            })
+        _registrar_evidencia(run_dir, entradas_evidencia)
         writer_sha = manager.commit_writer(
             writer_worktree.path,
             mission.commit_message or mission.title,
@@ -949,7 +999,21 @@ async def _run_implementation_mission(
     return run_dir, aggregate_result
 
 
+def _exigir_missao_compilavel(mission: MissionSpec) -> None:
+    """Pré-condição única. Nenhum adapter é alcançável sem isto.
+
+    O revisor provou que `run_mission` despachava direto: read_only nunca
+    compilava, e o writer só tinha o preflight local de gates. Agora a guarda
+    está no ponto por onde TODOS os modos passam.
+    """
+
+    from .v3.schema_version import assert_compilable
+
+    assert_compilable(mission.model_dump(mode="json"))
+
+
 async def run_mission(repo: Path, mission: MissionSpec) -> tuple[Path, dict[str, Any]]:
+    _exigir_missao_compilavel(mission)
     if mission.mode == "implementation":
         return await _run_implementation_mission(repo, mission)
     return await _run_read_only_mission(repo, mission)
