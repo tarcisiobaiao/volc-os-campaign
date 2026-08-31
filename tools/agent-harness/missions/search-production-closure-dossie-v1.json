@@ -2,7 +2,7 @@
   "mission_schema_version": 3,
   "mission_id": "search-production-closure-dossie-v1",
   "title": "Dossiê de certificação com evidência formal — candidato 8c3dfdc",
-  "base_ref": "936413ff223e9e4966da2de4380fe2d0f30a1e2c",
+  "base_ref": "e08fb51f41fd844d31b6dc0fff079d120e41d859",
   "lineage_root_sha": "f45e810cebb8939475008acd179cf487394c80eb",
   "mode": "implementation",
   "commit_message": "docs(evidence): dossie de certificacao da fronteira atomica, com numeros medidos pelo proprio run",
