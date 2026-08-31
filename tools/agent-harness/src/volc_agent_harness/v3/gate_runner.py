@@ -221,27 +221,80 @@ class LocalRunner(GateRunner):
                 self._proc = None
         return proc.returncode, out, err
 
-    def _encerrar(self, proc: subprocess.Popen) -> None:
-        """TERM → aguarda → KILL → aguarda. Só volta com o processo terminado."""
+    @staticmethod
+    def _grupo_existe(pgid: int) -> bool:
+        """O grupo ainda tem algum membro?
 
-        if proc.poll() is not None:
-            return
-        for sinal, prazo in ((signal.SIGTERM, self.PRAZO_TERM_S),
+        `killpg(pgid, 0)` não sinaliza; só pergunta. `ProcessLookupError`
+        significa grupo vazio — e essa é a única prova de morte que vale, porque
+        a morte do LÍDER não diz nada sobre os outros membros.
+        """
+
+        try:
+            os.killpg(pgid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:          # pragma: no cover - existe, mas é de outro
+            return True
+        except OSError:                  # pragma: no cover
+            return False
+        return True
+
+    def _aguardar_grupo(self, pgid: int, graca: float) -> bool:
+        """Espera o grupo INTEIRO sumir, com relógio monotônico."""
+
+        limite = time.monotonic() + graca
+        while time.monotonic() < limite:
+            if not self._grupo_existe(pgid):
+                return True
+            time.sleep(0.02)
+        return not self._grupo_existe(pgid)
+
+    def _encerrar(self, proc: subprocess.Popen) -> None:
+        """TERM no grupo → espera o GRUPO → KILL no grupo → espera o GRUPO.
+
+        A versão anterior tratava `proc.wait()` do líder como prova de morte do
+        grupo e saía do laço quando o líder morria. Um filho no mesmo grupo que
+        instala handler de SIGTERM — coisa banal, é assim que um programa
+        desliga com calma — sobrevivia e continuava escrevendo. Não era ataque:
+        era o caso comum, e por isso bloqueava sem depender de modelo de ameaça.
+
+        A pergunta certa é sobre o GRUPO, e quem responde é `killpg(pgid, 0)`.
+        """
+
+        try:
+            pgid = os.getpgid(proc.pid)
+        except (OSError, ProcessLookupError):
+            return                        # já colhido; não há grupo a encerrar
+
+        for sinal, graca in ((signal.SIGTERM, self.PRAZO_TERM_S),
                              (signal.SIGKILL, self.PRAZO_KILL_S)):
             try:
-                os.killpg(os.getpgid(proc.pid), sinal)
-            except (OSError, ProcessLookupError):      # pragma: no cover
-                try:
-                    proc.send_signal(sinal)
-                except (OSError, ProcessLookupError):
-                    return
-            try:
-                proc.wait(timeout=prazo)
-                return
-            except subprocess.TimeoutExpired:
-                continue
-        # Não terminou nem com KILL: o processo é do grupo, mas não responde.
-        # Declarar isso é melhor que fingir terminação.
+                os.killpg(pgid, sinal)
+            except ProcessLookupError:
+                break                     # grupo já vazio
+            except OSError:               # pragma: no cover
+                break
+            if self._aguardar_grupo(pgid, graca):
+                break
+
+        # Colhe o líder para não deixar zumbi; o veredito, porém, é do grupo.
+        try:
+            proc.wait(timeout=0.5)
+        except (subprocess.TimeoutExpired, OSError):   # pragma: no cover
+            pass
+
+        if self._grupo_existe(pgid):
+            # Nem o KILL resolveu. Declarar é melhor que seguir como se o gate
+            # tivesse terminado: processo sem autoridade ainda rodando é
+            # exatamente a corrida que o claim existe para impedir.
+            raise HarnessFailure(
+                FailureClass.INFRASTRUCTURE_ERROR,
+                "grupo de processos do gate não encerrou nem com SIGKILL",
+                detalhe=f"pgid {pgid} ainda observável",
+                reproducao=f"ps -o pid,pgid,stat -g {pgid}",
+                evidencia={"pgid": pgid},
+            )
 
     def cancel(self) -> None:
         """Encerra o grupo autorizado do processo em curso.
