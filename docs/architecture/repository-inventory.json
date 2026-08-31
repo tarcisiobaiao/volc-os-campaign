@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-31T18:29:46-03:00",
+  "generated_at": "2026-08-31T20:45:39-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 447,
+    "files": 449,
     "markdown": 295,
-    "sql": 152,
-    "tracked": 447,
+    "sql": 154,
+    "tracked": 449,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
@@ -22,12 +22,12 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 39,
+      "sql-needs-review": 41,
       "sql-validation": 12
     },
     "sql_risk": {
       "high": 93,
-      "medium": 43,
+      "medium": 45,
       "read-only-or-ddl-free": 16
     }
   },
@@ -1017,7 +1017,7 @@
       "tracked": true,
       "bytes": 17941,
       "lines": 253,
-      "sha256": "f4d5539e1e655305d7aca182ce413c525d3fa913920e0d205ef296e5b6c15f5e",
+      "sha256": "6671ae421a169dfbb31cd6ba46abe6063cd8778e54e6265501fa65fe21988696",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2059,9 +2059,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 7436,
-      "lines": 131,
-      "sha256": "8026e881d32f37fc4681c90273060d955d97958f8f96059cda5633031e1365b4",
+      "bytes": 9396,
+      "lines": 164,
+      "sha256": "a2262ba5b8e362ae1d76aabf9a1526c5500637cd34d9b04f908f28f5ab718f67",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4837,6 +4837,30 @@
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v10_04_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 7371,
+      "lines": 184,
+      "sha256": "ea0e7aa8fe0c01f179c34e73a5ed23e48d5d75e1c35117395cb1a7c32697eaa6",
+      "graph_nodes": 3,
+      "graph_degree": 5,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "supabase/migrations/v10_04_saida_do_indeterminado.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 13901,
+      "lines": 294,
+      "sha256": "104aac3daff7f51d4d134f039967e32ee09d51ae6f7915a8bd32963649018868",
+      "graph_nodes": 3,
+      "graph_degree": 6,
+      "sql_risk": "medium"
     },
     {
       "path": "supabase/migrations/v11_01_estudio_criativo.sql",

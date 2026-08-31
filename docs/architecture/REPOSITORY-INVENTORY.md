@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-08-31T18:29:46-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-08-31T20:45:39-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 447 arquivos: 295 Markdown e 152 SQL;
-- 447 versionados e 0 ainda não versionados;
+- 449 arquivos: 295 Markdown e 154 SQL;
+- 449 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 93 SQL com palavras de mutação de alto risco.
 
@@ -27,7 +27,7 @@ Gerado em `2026-08-31T18:29:46-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 39 |
+| `sql-needs-review` | 41 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -224,6 +224,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v10_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_03_recibo_atomico.sql` | `sql-needs-review` | medium | 9 | 28 |
 | `supabase/migrations/v10_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v10_04_rollback.sql` | `sql-needs-review` | medium | 3 | 5 |
+| `supabase/migrations/v10_04_saida_do_indeterminado.sql` | `sql-needs-review` | medium | 3 | 6 |
 | `supabase/migrations/v11_01_estudio_criativo.sql` | `sql-needs-review` | high | 18 | 71 |
 | `supabase/migrations/v11_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_02_parque_criativo.sql` | `sql-needs-review` | high | 17 | 48 |
