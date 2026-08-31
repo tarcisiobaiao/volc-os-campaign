@@ -122,41 +122,41 @@ def classify_gate_exit(
 
     if exit_code == 0:
         raise ValueError("exit 0 não é falha")
-    texto = f"{stdout}\n{stderr}"
+    texto = f"{stdout}\n{stderr}".lower()
     argv_texto = " ".join(argv)
-    e_pytest = "pytest" in argv_texto or "no tests ran" in texto.lower()
+    e_pytest = "pytest" in argv_texto
 
-    # Mensagens que denunciam especificação, independentemente do exit.
-    marcadores_spec = (
-        "file or directory not found",
-        "no tests ran",
-        "error: unrecognized arguments",
-        "unrecognized option",
-        "usage:",
-    )
-    if any(marcador in texto.lower() for marcador in marcadores_spec):
-        return FailureClass.SPEC_ERROR
-
-    marcadores_infra = (
-        "err_module_not_found",
-        "modulenotfounderror",
-        "no module named",
-        "cannot find package",
-        "command not found",
-        "no such file or directory: '/",
-    )
-    if any(marcador in texto.lower() for marcador in marcadores_infra):
-        return FailureClass.INFRASTRUCTURE_ERROR
-
+    # A SEMÂNTICA DO RUNNER VEM PRIMEIRO. Marcadores de texto só refinam o que o
+    # exit code deixou ambíguo.
+    #
+    # Um teste que falha imprimindo "expected usage: volc [...]" no diff é um
+    # teste vermelho legítimo — MERIT_FAILURE. Deixar o texto decidir antes do
+    # exit transformava a saída do candidato em veredito sobre a missão.
     if e_pytest:
         if exit_code in _PYTEST_SPEC_EXITS:
             return FailureClass.SPEC_ERROR
         if exit_code in _PYTEST_INFRA_EXITS:
             return FailureClass.INFRASTRUCTURE_ERROR
         if exit_code in _PYTEST_MERIT_EXITS:
+            # Exit 1 é teste vermelho. Só um erro de coleta — que o pytest
+            # reporta como ERROR, não FAILED — muda isso.
+            if "error collecting" in texto or "errors during collection" in texto:
+                return FailureClass.SPEC_ERROR
             return FailureClass.MERIT_FAILURE
-    # Sem sinal melhor, um gate vermelho é mérito — é o caso que o writer
-    # realmente pode consertar.
+
+    # Runner sem semântica conhecida: aí sim o texto ajuda.
+    marcadores_infra = (
+        "err_module_not_found", "cannot find package", "command not found",
+        "no such file or directory: '/",
+    )
+    if any(m in texto for m in marcadores_infra):
+        return FailureClass.INFRASTRUCTURE_ERROR
+    marcadores_spec = (
+        "file or directory not found", "no tests ran",
+        "error: unrecognized arguments", "unrecognized option",
+    )
+    if any(m in texto for m in marcadores_spec):
+        return FailureClass.SPEC_ERROR
     return FailureClass.MERIT_FAILURE
 
 

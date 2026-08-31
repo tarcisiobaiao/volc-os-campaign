@@ -103,13 +103,53 @@ def preserve(
     )
 
 
+def validate(harvest: Harvest | None, *, repo: Path, lineage_root: str | None = None) -> Harvest | None:
+    """Uma colheita só serve se o SHA existir e a linhagem fechar.
+
+    Sem isto, ``requires_writer`` podia devolver ``False`` apontando para um SHA
+    que não existe, deixando a lane sem writer E sem base — travada.
+    """
+
+    if harvest is None:
+        return None
+    try:
+        _git(repo, "cat-file", "-e", f"{harvest.sha}^{{commit}}")
+    except subprocess.CalledProcessError as exc:
+        raise HarnessFailure(
+            FailureClass.SPEC_ERROR,
+            "colheita aponta para SHA inexistente",
+            detalhe=harvest.sha,
+            reproducao=f"git cat-file -e {harvest.sha}",
+        ) from exc
+    if lineage_root:
+        ancestral = subprocess.run(
+            ["git", "-C", str(repo), "merge-base", "--is-ancestor", lineage_root, harvest.sha],
+            capture_output=True, check=False,
+        ).returncode == 0
+        if not ancestral:
+            raise HarnessFailure(
+                FailureClass.SPEC_ERROR,
+                "colheita escapou da linhagem autorizada",
+                detalhe=f"{lineage_root} não é ancestral de {harvest.sha}",
+            )
+    if not harvest.ownership_respected:
+        raise HarnessFailure(
+            FailureClass.OWNERSHIP_ERROR,
+            "colheita contém alteração fora do ownership; não serve de base",
+            detalhe=harvest.sha,
+        )
+    return harvest
+
+
 def resume_base(harvest: Harvest | None, base_sha: str) -> str:
     """A próxima tentativa parte da colheita, nunca do zero."""
 
     return harvest.sha if harvest is not None else base_sha
 
 
-def requires_writer(failure_class: str, *, harvest: Harvest | None) -> bool:
+def requires_writer(
+    failure_class: str, *, harvest: Harvest | None, validated: bool = False
+) -> bool:
     """Uma validação read-only, como a B4, não abre writer.
 
     Se a colheita existe e a falha foi de especificação ou infraestrutura, o que
@@ -119,6 +159,10 @@ def requires_writer(failure_class: str, *, harvest: Harvest | None) -> bool:
     from .failures import FailureClass as F
 
     if harvest is None:
+        return True
+    if not validated:
+        # Colheita não validada não autoriza pular o writer: pode apontar para
+        # um SHA inexistente e travar a lane sem saída.
         return True
     return failure_class not in {
         F.SPEC_ERROR.value,

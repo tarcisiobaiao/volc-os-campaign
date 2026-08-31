@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS evidence (
     production_digest TEXT NOT NULL,
     test_digest       TEXT NOT NULL,
     command           TEXT NOT NULL,
+    cwd               TEXT NOT NULL DEFAULT '',
+    env_fingerprint   TEXT NOT NULL DEFAULT '',
+    context_digest    TEXT NOT NULL DEFAULT '',
     exit_code         INTEGER,
     counts_json       TEXT,
     reviewer          TEXT,
@@ -81,6 +84,71 @@ def _agora() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+#: Variáveis que mudam materialmente o resultado de um gate. Valores de segredo
+#: NUNCA entram: só a PRESENÇA da chave, e o hash do conjunto.
+_ENV_MATERIAL = (
+    "PATH", "PYTHONPATH", "VIRTUAL_ENV", "VOLC_HARNESS_NODE_MODULES",
+    "PYTHONDONTWRITEBYTECODE", "NODE_ENV", "TZ", "LANG",
+)
+
+
+def env_fingerprint(env: Mapping[str, str] | None = None) -> str:
+    """Impressão do ambiente, sem valor de segredo.
+
+    Uma prova medida com outro PATH, outro venv ou outro overlay de node não é a
+    mesma prova. Mas o valor de nenhuma credencial entra aqui — só o nome das
+    chaves presentes e o conteúdo das variáveis materiais e não sensíveis.
+    """
+
+    import os as _os
+
+    fonte = dict(env if env is not None else _os.environ)
+    partes = []
+    for chave in _ENV_MATERIAL:
+        partes.append(f"{chave}={fonte.get(chave, '')}")
+    sensiveis = sorted(
+        k for k in fonte
+        if any(m in k.upper() for m in ("KEY", "TOKEN", "SECRET", "PASSWORD", "OAUTH"))
+    )
+    partes.append("presentes=" + ",".join(sensiveis))  # nomes, nunca valores
+    return hashlib.sha256("|".join(partes).encode()).hexdigest()
+
+
+def _input_digest(*partes: str) -> str:
+    """Digest do conjunto de inputs materiais de uma prova."""
+
+    return hashlib.sha256("|".join(partes).encode()).hexdigest()
+
+
+def context_digest(
+    *,
+    acceptance_text: str,
+    base_sha: str,
+    candidate_sha: str | None,
+    lineage_root: str | None,
+    toolchain: Mapping[str, str] | None = None,
+    manifests: Mapping[str, str] | None = None,
+) -> str:
+    """Contexto material de uma prova, além do código e dos testes.
+
+    O texto canônico do aceite entra: se o critério mudou, a prova antiga não
+    responde mais à mesma pergunta. Toolchain e lockfiles entram porque o mesmo
+    comando sobre outra versão de dependência é outro experimento.
+    """
+
+    partes = [
+        f"acceptance={acceptance_text}",
+        f"base={base_sha}",
+        f"candidate={candidate_sha or ''}",
+        f"lineage={lineage_root or ''}",
+    ]
+    for nome, valor in sorted((toolchain or {}).items()):
+        partes.append(f"tool:{nome}={valor}")
+    for nome, valor in sorted((manifests or {}).items()):
+        partes.append(f"manifest:{nome}={valor}")
+    return hashlib.sha256("|".join(partes).encode()).hexdigest()
+
+
 @dataclass
 class EvidenceLedger:
     path: Path
@@ -91,9 +159,13 @@ class EvidenceLedger:
             c.executescript(SCHEMA)
 
     def _conn(self) -> sqlite3.Connection:
-        c = sqlite3.connect(self.path)
+        # IMMEDIATE + WAL: o ledger é escrito por lanes concorrentes.
+        c = sqlite3.connect(self.path, timeout=30.0, isolation_level="IMMEDIATE")
         c.row_factory = sqlite3.Row
+        c.execute("PRAGMA journal_mode=WAL")
+        c.execute("PRAGMA synchronous=FULL")
         return c
+
 
     def record(
         self,
@@ -106,23 +178,29 @@ class EvidenceLedger:
         production_digest: str,
         test_digest: str,
         candidate_sha: str | None = None,
+        cwd: str = "",
+        env_fp: str | None = None,
+        ctx_digest: str | None = None,
         exit_code: int | None = None,
         counts: Mapping[str, Any] | None = None,
         reviewer: str | None = None,
         finding: str | None = None,
         counterproof: str | None = None,
     ) -> int:
-        input_digest = hashlib.sha256(
-            f"{kind}|{production_digest}|{test_digest}|{command}".encode()
-        ).hexdigest()
+        fingerprint = env_fp if env_fp is not None else env_fingerprint()
+        ctx = ctx_digest or ""
+        input_digest = _input_digest(
+            kind, production_digest, test_digest, command, cwd, fingerprint, ctx
+        )
         with self._conn() as c:
             cur = c.execute(
                 "INSERT INTO evidence(acceptance_id,kind,base_sha,candidate_sha,input_digest,"
-                "production_digest,test_digest,command,exit_code,counts_json,reviewer,finding,"
-                "counterproof,valid,run_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)",
+                "production_digest,test_digest,command,cwd,env_fingerprint,context_digest,"
+                "exit_code,counts_json,reviewer,finding,counterproof,valid,run_id,created_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)",
                 (
                     acceptance_id, kind, base_sha, candidate_sha, input_digest,
-                    production_digest, test_digest, command, exit_code,
+                    production_digest, test_digest, command, cwd, fingerprint, ctx, exit_code,
                     json.dumps(dict(counts or {}), ensure_ascii=False),
                     reviewer, finding, counterproof, run_id, _agora(),
                 ),
@@ -137,6 +215,9 @@ class EvidenceLedger:
         command: str,
         production_digest: str,
         test_digest: str,
+        cwd: str = "",
+        env_fp: str | None = None,
+        ctx_digest: str | None = None,
     ) -> dict[str, Any]:
         """Decide entre reutilizar e reexecutar."""
 
@@ -146,9 +227,11 @@ class EvidenceLedger:
                 "reason": f"'{kind}' atesta o estado do mundo e nunca é reutilizada",
                 "evidence": None,
             }
-        input_digest = hashlib.sha256(
-            f"{kind}|{production_digest}|{test_digest}|{command}".encode()
-        ).hexdigest()
+        fingerprint = env_fp if env_fp is not None else env_fingerprint()
+        ctx = ctx_digest or ""
+        input_digest = _input_digest(
+            kind, production_digest, test_digest, command, cwd, fingerprint, ctx
+        )
         with self._conn() as c:
             linha = c.execute(
                 "SELECT * FROM evidence WHERE acceptance_id=? AND kind=? AND input_digest=? "
@@ -175,6 +258,12 @@ class EvidenceLedger:
             mudou.append("testes")
         if anterior["command"] != command:
             mudou.append("comando")
+        if anterior["cwd"] != cwd:
+            mudou.append("diretório de trabalho")
+        if anterior["env_fingerprint"] != fingerprint:
+            mudou.append("ambiente")
+        if anterior["context_digest"] != ctx:
+            mudou.append("contexto (aceite, base, candidato, toolchain ou manifests)")
         return {
             "status": Status.REEXECUTED,
             "reason": "mudou: " + ", ".join(mudou or ["input material"]),

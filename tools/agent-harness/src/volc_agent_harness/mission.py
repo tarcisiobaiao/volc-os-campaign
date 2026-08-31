@@ -24,6 +24,9 @@ from .gates import (
 from .locking import writer_lock
 from .models import MissionSpec, WorkerSpec
 from .security import redact, sanitized_environment
+from .v3.failures import FailureClass, HarnessFailure, classify_gate_exit
+from .v3.gate_compiler import ProducedPath, assert_pytest_collects, compile_gate_plan
+from .v3.workspace import assert_no_destructive_intent
 from .worktrees import WorktreeInfo, WorktreeManager
 
 
@@ -428,6 +431,38 @@ async def _run_implementation_mission(
             else None
         ),
     )
+    # ------------------------------------------------------------------
+    # FASE 1 DO PIPELINE V3 — antes de qualquer chamada de modelo.
+    #
+    # Foi aqui que faltou a proteção: o writer era chamado e só depois os gates
+    # rodavam, virando RuntimeError genérico. Um gate que cita arquivo
+    # inexistente agora recusa a missão em milissegundos, com classe tipada.
+    # ------------------------------------------------------------------
+    produced = [
+        ProducedPath(p["path"], bool(p.get("required", True)))
+        for p in (getattr(mission, "produced_paths", None) or [])
+    ]
+    for gate in mission.gates:
+        assert_no_destructive_intent(gate.argv)
+    gate_plan = compile_gate_plan(
+        gates=mission.gates, tree=writer_worktree.path, produced=produced
+    )
+    (run_dir / "gate-plan.json").write_text(
+        json.dumps(gate_plan, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    for compilado in gate_plan["gates"]:
+        if compilado["kind"] == "pytest" and compilado["runnable_before_writer"]:
+            from .v3.gate_compiler import CompiledGate
+
+            assert_pytest_collects(
+                CompiledGate(**{
+                    k: v for k, v in compilado.items()
+                    if k in CompiledGate.__dataclass_fields__
+                }),
+                tree=writer_worktree.path,
+                env=sanitized_environment(),
+            )
+
     writer_started = _utc_now()
     try:
         writer_result = await adapter_for(writer.provider).run(writer_request)
@@ -470,8 +505,18 @@ async def _run_implementation_mission(
                     encoding="utf-8",
                 )
                 if completed.returncode != 0:
-                    raise RuntimeError(
-                        f"gate {index} falhou com exit={completed.returncode}"
+                    classe = classify_gate_exit(
+                        exit_code=completed.returncode,
+                        argv=resolved_gate.argv,
+                        stdout=completed.stdout,
+                        stderr=completed.stderr,
+                    )
+                    raise HarnessFailure(
+                        classe,
+                        f"gate {index} falhou com exit={completed.returncode}",
+                        detalhe=(completed.stderr or completed.stdout).strip()[-300:],
+                        reproducao=" ".join(resolved_gate.argv),
+                        evidencia={"gate_index": index, "exit": completed.returncode},
                     )
         manager.assert_head_unchanged(writer_worktree.path, base_sha)
         changed_paths_after_gates = manager.assert_only_allowed(

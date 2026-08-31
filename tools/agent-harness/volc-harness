@@ -61,11 +61,12 @@ case "$COMMAND" in
   check)      exec "$PYTHON" -m volc_agent_harness.preflight --repo "$REPO_ROOT" --json "$@" ;;
   preflight)  exec "$PYTHON" -m volc_agent_harness.preflight "$@" ;;
   run)        exec "$PYTHON" -m volc_agent_harness.cli "$@" ;;
+  compile)    exec "$PYTHON" -c "import sys;from volc_agent_harness.cli import compile_only;sys.exit(compile_only())" "$@" ;;
   supervise)  exec "$PYTHON" -m volc_agent_harness.supervisor "$@" ;;
   python)     exec "$PYTHON" "$@" ;;
   *)
     print -u2 "volc-harness: comando desconhecido: $COMMAND"
-    print -u2 "  use: preflight | run | supervise | python | check"
+    print -u2 "  use: preflight | compile | run | supervise | python | check"
     exit 64
     ;;
 esac

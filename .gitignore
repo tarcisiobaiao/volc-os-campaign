@@ -128,3 +128,14 @@ tools/agent-harness/runs/
 # operacionais do banco vivo; mantenha apenas local e gere documentação
 # sanitizada em docs/reference/database/.
 docs/reference/database/catalogo-functions-postgresql.md
+
+# Harness V3 — artefatos de runtime, nunca versionados
+tools/agent-harness/*.sqlite
+tools/agent-harness/*.sqlite-wal
+tools/agent-harness/*.sqlite-shm
+tools/agent-harness/evidence-ledger.sqlite*
+tools/agent-harness/worktree-registry.sqlite*
+tools/agent-harness/**/heartbeat.jsonl
+tools/agent-harness/**/compiled-mission.json
+tools/agent-harness/**/gate-plan.json
+tools/agent-harness/**/ownership-proposal.json

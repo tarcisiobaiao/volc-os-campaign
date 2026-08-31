@@ -116,14 +116,15 @@ class SmokeSintetico(unittest.TestCase):
             ):
                 self.assertIn(chave, d, f"compiled-mission.json sem {chave}")
             # A1 reconciliada: o call site em campanha/ entrou sem confirmação humana.
-            self.assertIn("volc_ads/campanha/demand_gen.py", d["writable_paths"])
             self.assertEqual(d["gates_runnable_before_writer"], [1])
 
     def test_4_harvest_retomado(self):
         h = Harvest("b7111fa", "candidate/p17", ["a.py"], True, [1, 2], 3, "MERIT_FAILURE")
         self.assertEqual(resume_base(h, "297757a"), "b7111fa")
-        self.assertTrue(requires_writer("MERIT_FAILURE", harvest=h))
-        self.assertFalse(requires_writer("SPEC_ERROR", harvest=h))
+        self.assertTrue(requires_writer("MERIT_FAILURE", harvest=h, validated=True))
+        self.assertFalse(requires_writer("SPEC_ERROR", harvest=h, validated=True))
+        self.assertTrue(requires_writer("SPEC_ERROR", harvest=h),
+                        "colheita não validada não pula o writer")
 
     def test_5_evidencia_reutilizada(self):
         with TemporaryDirectory() as tmp:

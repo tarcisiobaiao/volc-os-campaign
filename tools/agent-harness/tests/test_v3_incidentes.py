@@ -175,8 +175,13 @@ class CasoA1A2Ownership(unittest.TestCase):
                 search_roots=["volc_ads"], envelope=["volc_ads"],
                 declared_writable=["volc_ads/subir.py"],
             )
-            self.assertIn("volc_ads/campanha/demand_gen.py", p["writable_paths"])
+            # GUARDA 4: a descoberta SUGERE, não concede. `writable_paths`
+            # continua sendo o declarado; o achado vai para sugestão.
+            self.assertEqual(p["writable_paths"], ["volc_ads/subir.py"])
+            self.assertIn("volc_ads/campanha/demand_gen.py", p["suggested_writable_paths"])
             self.assertIn("volc_ads/campanha/demand_gen.py", p["missing_from_declaration"])
+            self.assertFalse(p["requires_new_authorization"],
+                             "dentro do envelope não exige nova autorização")
             self.assertFalse(p["blocks_writer"], "dentro do envelope não bloqueia")
 
     def test_call_site_fora_do_envelope_bloqueia_antes_do_writer(self):
@@ -198,12 +203,15 @@ class CasoB4ValidacaoSemWriter(unittest.TestCase):
 
     def test_colheita_com_spec_error_nao_abre_writer(self):
         h = Harvest("b7111fa", "candidate/p17", ["a.py"], True, [1, 2], 3, "SPEC_ERROR")
-        self.assertFalse(requires_writer("SPEC_ERROR", harvest=h))
-        self.assertFalse(requires_writer("INFRASTRUCTURE_ERROR", harvest=h))
+        # GUARDA: só colheita VALIDADA autoriza pular o writer. Sem validar, o
+        # harness prefere gastar um writer a travar a lane com um SHA morto.
+        self.assertTrue(requires_writer("SPEC_ERROR", harvest=h))
+        self.assertFalse(requires_writer("SPEC_ERROR", harvest=h, validated=True))
+        self.assertFalse(requires_writer("INFRASTRUCTURE_ERROR", harvest=h, validated=True))
 
     def test_merit_failure_com_colheita_retoma_da_colheita(self):
         h = Harvest("b7111fa", "candidate/p17", ["a.py"], True, [1], 2, "MERIT_FAILURE")
-        self.assertTrue(requires_writer("MERIT_FAILURE", harvest=h))
+        self.assertTrue(requires_writer("MERIT_FAILURE", harvest=h, validated=True))
         self.assertEqual(resume_base(h, "297757a"), "b7111fa")
 
     def test_sem_colheita_parte_do_base(self):

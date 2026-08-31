@@ -147,20 +147,35 @@ def build_proposal(
     declarados = sorted(set(declared_writable))
     faltantes = [p for p in descobertos_writable if p not in declarados]
 
+    # GUARDA: descoberta SUGERE, nunca concede escrita.
+    #
+    # `writable_paths` continua sendo exatamente o que a missão declarou. O que a
+    # varredura encontrou dentro do envelope vai para `suggested_writable_paths`,
+    # e só entra em `effective_writable_paths` quando o compilador recebe
+    # `auto_accept_envelope=True` — decisão explícita, registrada no artefato.
+    # Call site material fora do declarado bloqueia com código próprio.
+    material_fora_do_declarado = [
+        p for p in (descobertos_writable + fora_do_envelope)
+        if p not in declarados and _e_material(entradas, p)
+    ]
+    fora_do_envelope_material = [
+        p for p in fora_do_envelope if p not in declarados and _e_material(entradas, p)
+    ]
     return {
         "acceptance_ids": list(acceptance_ids),
         "symbols": list(symbols),
         "ownership_envelope": list(envelope),
         "read_paths": fora_do_envelope,
-        "writable_paths": sorted(set(declarados) | set(descobertos_writable)),
+        "declared_writable_paths": declarados,
+        "writable_paths": declarados,
+        "suggested_writable_paths": faltantes,
         "optional_writable_paths": faltantes,
         "produced_paths": list(produced_paths),
-        "declared_writable_paths": declarados,
         "missing_from_declaration": faltantes,
         "outside_envelope": fora_do_envelope,
-        "blocks_writer": bool(
-            [p for p in fora_do_envelope if p not in declarados and _e_material(entradas, p)]
-        ),
+        "material_outside_declared": sorted(set(material_fora_do_declarado)),
+        "requires_new_authorization": bool(fora_do_envelope_material),
+        "blocks_writer": bool(fora_do_envelope_material),
         "collisions": sorted({c for e in entradas for c in e.collides_with}),
         "entries": [e.as_dict() for e in entradas],
     }

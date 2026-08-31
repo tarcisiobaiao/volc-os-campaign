@@ -11,6 +11,66 @@ from .mission import run
 from .models import MissionSpec
 
 
+def compile_only(argv: Sequence[str] | None = None) -> int:
+    """`volc-harness compile` — a fase 1 do pipeline V3, sem chamar modelo.
+
+    Existe para que o operador (e o CI) possam provar que a missão compila antes
+    de gastar um writer. Uma missão que não compila sai com o código da classe de
+    falha, não com um traceback genérico.
+    """
+
+    from .v3.failures import HarnessFailure
+    from .v3.pipeline import PipelineArtifacts, prewriter_phase
+
+    parser = argparse.ArgumentParser(description=compile_only.__doc__)
+    parser.add_argument("--mission", type=Path, required=True)
+    parser.add_argument("--repo", type=Path, default=Path.cwd())
+    parser.add_argument("--roadmap", type=Path, default=None)
+    parser.add_argument("--out", type=Path, default=None)
+    args = parser.parse_args(argv)
+
+    bruto = json.loads(args.mission.read_text(encoding="utf-8"))
+    roadmap_path = args.roadmap or (args.repo / "volc-os-workbook" / "ROADMAP-VIVO.json")
+    roadmap = json.loads(roadmap_path.read_text(encoding="utf-8")) if roadmap_path.exists() else {}
+    run_dir = args.out or (args.repo / "tools" / "agent-harness" / "runs" / "compile-check")
+
+    from pydantic import ValidationError
+
+    from .v3.schema_version import assert_compilable
+
+    try:
+        # O schema vem ANTES da validação do MissionSpec: uma missão V2 precisa
+        # receber a orientação de migração, não um traceback de pydantic.
+        assert_compilable(bruto)
+        mission = MissionSpec.model_validate(bruto)
+        compilada, art = prewriter_phase(
+            mission_dict=bruto, mission_obj=mission, tree=args.repo,
+            roadmap=roadmap, run_dir=run_dir,
+        )
+    except ValidationError as erro:
+        primeira = erro.errors()[0] if erro.errors() else {}
+        print("[SPEC_ERROR] missão não valida contra o MissionSpec")
+        print(f"  detalhe: {'.'.join(str(x) for x in primeira.get('loc', ()))}: "
+              f"{primeira.get('msg', '')}")
+        print("  destino: mission_compiler | writer relançado: False")
+        return 3
+    except HarnessFailure as falha:
+        print(f"[{falha.classe.value}] {falha.resumo}")
+        if falha.detalhe:
+            print(f"  detalhe: {falha.detalhe}")
+        if falha.reproducao:
+            print(f"  reproduza: {falha.reproducao}")
+        print(f"  destino: {falha.destino or 'decisão humana'} | writer relançado: {falha.permite_retry}")
+        return 3
+    print(f"missão compila: {compilada.mission_id}")
+    print(f"  aceites: {', '.join(compilada.acceptance_ids)}")
+    print(f"  regressões obrigatórias: {', '.join(compilada.regression_acceptance_ids) or '—'}")
+    print(f"  gates antes do writer: {compilada.gates_runnable_before_writer}")
+    print(f"  gates que dependem de produced: {compilada.gates_depending_on_produced}")
+    print(f"  artefatos: {art.run_dir}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mission", type=Path, required=True)

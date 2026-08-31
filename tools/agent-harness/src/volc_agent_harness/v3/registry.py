@@ -40,12 +40,20 @@ class WorktreeRegistry:
 
     def __post_init__(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._conn() as c:
+        c = self._conn()
+        try:
             c.executescript(SCHEMA)
+        finally:
+            c.close()
 
     def _conn(self) -> sqlite3.Connection:
-        c = sqlite3.connect(self.path, isolation_level="IMMEDIATE")
+        # isolation_level=None: controlamos a transação à mão, porque o BEGIN
+        # implícito do sqlite3 só dispara no primeiro DML — e o SELECT de
+        # verificação viria ANTES dele, deixando uma janela real entre checar e
+        # inserir. Aqui o BEGIN IMMEDIATE é explícito e vem primeiro.
+        c = sqlite3.connect(self.path, timeout=30.0, isolation_level=None)
         c.row_factory = sqlite3.Row
+        c.execute("PRAGMA journal_mode=WAL")
         return c
 
     def claim(
@@ -54,13 +62,14 @@ class WorktreeRegistry:
     ) -> None:
         """Reivindica a worktree. Dois writers no mesmo caminho é impossível."""
 
-        with self._conn() as c:
+        c = self._conn()
+        try:
+            c.execute("BEGIN IMMEDIATE")   # o lock nasce ANTES do SELECT
             atual = c.execute(
                 "SELECT * FROM worktrees WHERE path=?", (worktree,)
             ).fetchone()
             if atual is not None and atual["status"] == "writer_active":
-                vivo = _pid_vivo(atual["writer_pid"])
-                if vivo:
+                if _pid_vivo(atual["writer_pid"]):
                     raise HarnessFailure(
                         FailureClass.OWNERSHIP_ERROR,
                         "worktree já tem um writer ativo",
@@ -70,29 +79,52 @@ class WorktreeRegistry:
                         ),
                         evidencia={"worktree": worktree, "pid": atual["writer_pid"]},
                     )
-            c.execute(
-                "INSERT INTO worktrees(path,mission_id,branch,writer_pid,base_sha,status,"
-                "last_heartbeat,owner,files_json,cleanup_eligible,created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,0,?) "
-                "ON CONFLICT(path) DO UPDATE SET mission_id=excluded.mission_id,"
-                "branch=excluded.branch,writer_pid=excluded.writer_pid,"
-                "status=excluded.status,last_heartbeat=excluded.last_heartbeat,"
-                "owner=excluded.owner",
-                (worktree, mission_id, branch, writer_pid, base_sha, "writer_active",
-                 _agora(), owner, "[]", _agora()),
-            )
+            if atual is None:
+                c.execute(
+                    "INSERT INTO worktrees(path,mission_id,branch,writer_pid,base_sha,status,"
+                    "last_heartbeat,owner,files_json,cleanup_eligible,created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,0,?)",
+                    (worktree, mission_id, branch, writer_pid, base_sha, "writer_active",
+                     _agora(), owner, "[]", _agora()),
+                )
+            else:
+                # Atualização CONDICIONAL: nunca rouba um claim ativo cujo dono
+                # ainda vive. O UPSERT incondicional anterior permitia isso.
+                alteradas = c.execute(
+                    "UPDATE worktrees SET mission_id=?,branch=?,writer_pid=?,status=?,"
+                    "last_heartbeat=?,owner=? WHERE path=? AND status<>'writer_active'",
+                    (mission_id, branch, writer_pid, "writer_active", _agora(), owner, worktree),
+                ).rowcount
+                if alteradas == 0:
+                    raise HarnessFailure(
+                        FailureClass.OWNERSHIP_ERROR,
+                        "perdeu a corrida pela worktree",
+                        detalhe=worktree,
+                    )
+            c.execute("COMMIT")
+        except BaseException:
+            c.execute("ROLLBACK")
+            raise
+        finally:
+            c.close()
 
     def release(self, *, worktree: str, status: str, harvest_sha: str | None = None) -> None:
-        with self._conn() as c:
+        c = self._conn()
+        try:
             c.execute(
                 "UPDATE worktrees SET status=?, writer_pid=NULL, harvest_sha=COALESCE(?,harvest_sha),"
                 " last_heartbeat=? WHERE path=?",
                 (status, harvest_sha, _agora(), worktree),
             )
+        finally:
+            c.close()
 
     def snapshot(self) -> list[dict[str, Any]]:
-        with self._conn() as c:
+        c = self._conn()
+        try:
             return [dict(r) for r in c.execute("SELECT * FROM worktrees ORDER BY created_at")]
+        finally:
+            c.close()
 
     def gc_plan(self) -> list[dict[str, Any]]:
         """Plano de limpeza. Candidato não integrado NUNCA é elegível."""
