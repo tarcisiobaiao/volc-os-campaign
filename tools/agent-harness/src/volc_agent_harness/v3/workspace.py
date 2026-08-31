@@ -13,7 +13,7 @@ import os
 import secrets
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from .failures import FailureClass, HarnessFailure
 
@@ -82,16 +82,74 @@ def prepare(
     )
 
 
-def assert_no_destructive_intent(argv: list[str] | tuple[str, ...]) -> None:
-    """Recusa qualquer gate ou comando que tente remover árvore."""
+def _normalizar(argv: Sequence[str]) -> list[list[str]]:
+    """Quebra em comandos e expande flags agrupadas.
 
-    texto = " ".join(argv)
-    proibidos = ("rm -rf", "rm -fr", "rm -r ", "shutil.rmtree", "git clean -", "--force-remove")
-    achado = [p for p in proibidos if p in texto]
-    if achado:
-        raise HarnessFailure(
-            FailureClass.AUTHORIZATION_BLOCK,
-            "comando destrutivo recusado pelo harness",
-            detalhe=", ".join(achado),
-            reproducao=texto[:200],
-        )
+    ``rm -rf``, ``rm -r -f``, ``rm --recursive --force`` e ``rm -f -r`` são o
+    mesmo comando escrito de quatro jeitos. Comparar string crua deixava três
+    deles passarem.
+    """
+
+    comandos: list[list[str]] = [[]]
+    for token in argv:
+        if token in {"&&", "||", ";", "|"}:
+            comandos.append([])
+            continue
+        # `sh -c "rm -rf x"` esconde o comando dentro de um argumento
+        if " " in token and any(p in token for p in ("rm ", "git clean", "find ")):
+            comandos.append(token.split())
+            continue
+        comandos[-1].append(token)
+
+    expandidos: list[list[str]] = []
+    for cmd in comandos:
+        saida: list[str] = []
+        for token in cmd:
+            if token.startswith("--"):
+                saida.append(token.lower())
+            elif token.startswith("-") and len(token) > 1:
+                saida.extend(f"-{letra.lower()}" for letra in token[1:])
+            else:
+                saida.append(token)
+        expandidos.append(saida)
+    return expandidos
+
+
+#: (executável, flags que juntas tornam o comando destrutivo)
+_ASSINATURAS_DESTRUTIVAS = (
+    ("rm", {"-r", "-f"}),
+    ("rm", {"--recursive", "--force"}),
+    ("rm", {"-r", "--force"}),
+    ("rm", {"--recursive", "-f"}),
+    ("clean", {"-f"}),          # git clean -fdx e variantes
+    ("clean", {"--force"}),
+)
+
+
+def assert_no_destructive_intent(argv: Sequence[str]) -> None:
+    """Recusa qualquer gate ou comando que remova árvore.
+
+    A comparação é por argv normalizado, não por substring: flags agrupadas,
+    separadas, longas e escondidas em ``sh -c`` chegam todas ao mesmo ponto.
+    """
+
+    for cmd in _normalizar(argv):
+        if not cmd:
+            continue
+        nomes = {Path(t).name for t in cmd if not t.startswith("-")}
+        flags = {t for t in cmd if t.startswith("-")}
+        for executavel, exigidas in _ASSINATURAS_DESTRUTIVAS:
+            if executavel in nomes and exigidas <= flags:
+                raise HarnessFailure(
+                    FailureClass.AUTHORIZATION_BLOCK,
+                    "comando destrutivo recusado pelo harness",
+                    detalhe=f"{executavel} com {sorted(exigidas)}",
+                    reproducao=" ".join(argv)[:200],
+                )
+        if "rmtree" in " ".join(cmd):
+            raise HarnessFailure(
+                FailureClass.AUTHORIZATION_BLOCK,
+                "comando destrutivo recusado pelo harness",
+                detalhe="shutil.rmtree",
+                reproducao=" ".join(argv)[:200],
+            )

@@ -152,6 +152,25 @@ class RatchetSpec(BaseModel):
     no_progress_limit: int = Field(default=2, ge=1, le=3)
 
 
+class ProducedPathSpec(BaseModel):
+    """Artefato que a missão promete criar.
+
+    É o que autoriza um gate a citar um caminho que ainda não existe. Sem isto,
+    gate sobre arquivo ausente é erro de especificação — foi o incidente B3.
+    """
+
+    path: str = Field(min_length=1)
+    required: bool = True
+
+    @field_validator("path")
+    @classmethod
+    def path_is_safe(cls, value: str) -> str:
+        p = PurePosixPath(value)
+        if p.is_absolute() or ".." in p.parts or value in {"", "."}:
+            raise ValueError("produced_paths aceita apenas caminhos relativos seguros")
+        return p.as_posix()
+
+
 class MissionSpec(BaseModel):
     mission_id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]+$")
     title: str = Field(min_length=1)
@@ -176,6 +195,39 @@ class MissionSpec(BaseModel):
         Literal["google_gemini", "anthropic", "deepseek"]
     ] = Field(default_factory=list)
 
+    # ------------------------------------------------------------------
+    # Contrato V3. Uma missão que declara schema 3 passa pelo compilador; uma
+    # que não declara segue pelo comando legado, explicitamente depreciado.
+    # Não existe fallback silencioso.
+    # ------------------------------------------------------------------
+    mission_schema_version: int = Field(default=2, ge=2, le=3)
+    acceptance_ids: list[str] = Field(default_factory=list)
+    ownership_envelope: list[str] = Field(default_factory=list)
+    ownership_symbols: list[str] = Field(default_factory=list)
+    ownership_search_roots: list[str] = Field(default_factory=list)
+    produced_paths: list[ProducedPathSpec] = Field(default_factory=list)
+
+    @field_validator("acceptance_ids")
+    @classmethod
+    def acceptance_ids_are_atomic(cls, ids: list[str]) -> list[str]:
+        for aid in ids:
+            if "-A" not in aid or not aid.rpartition("-A")[2].isdigit():
+                raise ValueError(
+                    f"acceptance_id fora do formato <TAREFA>-A<n>: {aid!r}"
+                )
+        if len(ids) != len(set(ids)):
+            raise ValueError("acceptance_ids não aceita duplicatas")
+        return ids
+
+    @field_validator("ownership_envelope", "ownership_search_roots")
+    @classmethod
+    def envelope_paths_are_safe(cls, paths: list[str]) -> list[str]:
+        for value in paths:
+            p = PurePosixPath(value)
+            if p.is_absolute() or ".." in p.parts or value in {"", "."}:
+                raise ValueError("envelope aceita apenas caminhos relativos seguros")
+        return paths
+
     @field_validator("lineage_root_sha")
     @classmethod
     def lineage_root_is_full_sha(cls, value: str | None) -> str | None:
@@ -191,6 +243,25 @@ class MissionSpec(BaseModel):
         if len(ids) != len(set(ids)):
             raise ValueError("identificadores de origem não aceitam duplicatas")
         return ids
+
+    @model_validator(mode="after")
+    def v3_declara_o_que_o_compilador_exige(self) -> "MissionSpec":
+        """Schema 3 sem os campos do schema 3 é pior que schema 2: mente."""
+
+        if self.mission_schema_version >= 3:
+            faltando = [
+                nome for nome, valor in (
+                    ("acceptance_ids", self.acceptance_ids),
+                    ("ownership_envelope", self.ownership_envelope),
+                )
+                if not valor
+            ]
+            if faltando:
+                raise ValueError(
+                    "missão declara mission_schema_version 3 mas não traz: "
+                    + ", ".join(faltando)
+                )
+        return self
 
     @model_validator(mode="after")
     def worker_ids_are_unique(self) -> "MissionSpec":

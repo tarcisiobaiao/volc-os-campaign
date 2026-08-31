@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from .mission import run as run_mission
+from .v3.failures import FailureClass, HarnessFailure
+from .v3.schema_version import assert_compilable
 from .models import MissionSpec
 from .supervisor_models import SupervisorJobSpec, SupervisorQueueSpec
 from .supervisor_store import SupervisorStore, ownership_overlaps
@@ -352,9 +354,19 @@ def _run_serial_once(
             )
             continue
         try:
-            mission = MissionSpec.model_validate_json(
-                mission_path.read_text(encoding="utf-8")
-            )
+            bruto = json.loads(mission_path.read_text(encoding="utf-8"))
+            # O supervisor despacha SOMENTE missão compilada. Antes ele tinha um
+            # caminho próprio que ignorava o compilador V3 inteiro.
+            assert_compilable(bruto)
+            mission = MissionSpec.model_validate(bruto)
+        except HarnessFailure as falha:
+            blockers.append({
+                "job_id": job.job_id,
+                "reason": f"[{falha.classe.value}] {falha.resumo}",
+                "detalhe": falha.detalhe,
+                "como_migrar": falha.reproducao,
+            })
+            continue
         except Exception as error:
             blockers.append(
                 {
@@ -687,9 +699,19 @@ def _select_concurrent_jobs(
             })
             continue
         try:
-            mission = MissionSpec.model_validate_json(
-                mission_path.read_text(encoding="utf-8")
-            )
+            bruto = json.loads(mission_path.read_text(encoding="utf-8"))
+            # O supervisor despacha SOMENTE missão compilada. Antes ele tinha um
+            # caminho próprio que ignorava o compilador V3 inteiro.
+            assert_compilable(bruto)
+            mission = MissionSpec.model_validate(bruto)
+        except HarnessFailure as falha:
+            blockers.append({
+                "job_id": job.job_id,
+                "reason": f"[{falha.classe.value}] {falha.resumo}",
+                "detalhe": falha.detalhe,
+                "como_migrar": falha.reproducao,
+            })
+            continue
         except Exception as error:
             blockers.append({
                 "job_id": job.job_id,

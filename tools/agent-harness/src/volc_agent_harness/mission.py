@@ -26,6 +26,7 @@ from .models import MissionSpec, WorkerSpec
 from .security import redact, sanitized_environment
 from .v3.failures import FailureClass, HarnessFailure, classify_gate_exit
 from .v3.gate_compiler import ProducedPath, assert_pytest_collects, compile_gate_plan
+from .v3.two_phase import postwriter_compile
 from .v3.workspace import assert_no_destructive_intent
 from .worktrees import WorktreeInfo, WorktreeManager
 
@@ -439,8 +440,7 @@ async def _run_implementation_mission(
     # inexistente agora recusa a missão em milissegundos, com classe tipada.
     # ------------------------------------------------------------------
     produced = [
-        ProducedPath(p["path"], bool(p.get("required", True)))
-        for p in (getattr(mission, "produced_paths", None) or [])
+        ProducedPath(p.path, p.required) for p in mission.produced_paths
     ]
     for gate in mission.gates:
         assert_no_destructive_intent(gate.argv)
@@ -450,6 +450,52 @@ async def _run_implementation_mission(
     (run_dir / "gate-plan.json").write_text(
         json.dumps(gate_plan, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    if mission.mission_schema_version >= 3:
+        from .v3.ownership import build_proposal
+
+        proposta = build_proposal(
+            tree=writer_worktree.path,
+            acceptance_ids=mission.acceptance_ids,
+            symbols=mission.ownership_symbols,
+            search_roots=mission.ownership_search_roots or mission.ownership_envelope,
+            envelope=mission.ownership_envelope,
+            declared_writable=writer.effective_writable_paths,
+            produced_paths=[p.model_dump() for p in mission.produced_paths],
+        )
+        (run_dir / "ownership-proposal.json").write_text(
+            json.dumps(proposta, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        if proposta["requires_new_authorization"]:
+            raise HarnessFailure(
+                FailureClass.OWNERSHIP_ERROR,
+                "call site material fora do envelope autorizado",
+                detalhe=", ".join(proposta["outside_envelope"][:6]),
+                reproducao="revise ownership_envelope ou reduza o escopo do aceite",
+                evidencia={"proposal_path": str(run_dir / "ownership-proposal.json")},
+            )
+        (run_dir / "compiled-mission.json").write_text(
+            json.dumps({
+                "mission_id": mission.mission_id,
+                "mission_schema_version": mission.mission_schema_version,
+                "base_sha": base_sha,
+                "lineage_root": mission.lineage_root_sha,
+                "acceptance_ids": mission.acceptance_ids,
+                "ownership_envelope": mission.ownership_envelope,
+                "writable_paths": writer.effective_writable_paths,
+                "suggested_writable_paths": proposta["suggested_writable_paths"],
+                "produced_paths": [p.model_dump() for p in mission.produced_paths],
+                "gate_plan": gate_plan,
+                "gates_runnable_before_writer": gate_plan["runnable_before_writer"],
+                "gates_depending_on_produced": gate_plan["depends_on_produced"],
+                "routed_models": {
+                    w.id: f"{w.provider}/{w.model}" for w in mission.workers
+                },
+                "privacy_class": "local_code_only",
+                "write_authority": "single_writer",
+                "integration_policy": "human_merge_only",
+            }, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     for compilado in gate_plan["gates"]:
         if compilado["kind"] == "pytest" and compilado["runnable_before_writer"]:
             from .v3.gate_compiler import CompiledGate
@@ -470,6 +516,28 @@ async def _run_implementation_mission(
         changed_paths = manager.assert_only_allowed(
             writer_worktree.path, writer.effective_writable_paths
         )
+        # --------------------------------------------------------------
+        # FASE 2 DO PIPELINE V3 — depois do writer, ANTES de qualquer gate.
+        #
+        # `changed_paths` vem do diff real da worktree, não de declaração. Se um
+        # produced obrigatório não nasceu, ou se o writer escreveu fora do
+        # ownership, isso é SPEC_ERROR/OWNERSHIP_ERROR agora — não um gate caro
+        # falhando de um jeito difícil de ler dez minutos depois.
+        # --------------------------------------------------------------
+        postwriter = postwriter_compile(
+            tree=writer_worktree.path,
+            produced=produced,
+            changed_paths=changed_paths,
+            writable_paths=writer.effective_writable_paths,
+            gates=mission.gates,
+            env=sanitized_environment(),
+            collect=True,
+        )
+        (run_dir / "postwriter-report.json").write_text(
+            json.dumps(postwriter.as_dict(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
         gate_results = []
         gate_overlay_provenance: dict[str, object] | None = None
         with project_venv_overlay(repo=repo, worktree=writer_worktree.path), \

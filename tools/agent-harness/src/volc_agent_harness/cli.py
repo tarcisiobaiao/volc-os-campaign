@@ -72,15 +72,73 @@ def compile_only(argv: Sequence[str] | None = None) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Entrypoint único. Uma missão V3 não chega ao writer sem compilar.
+
+    Antes existiam dois caminhos: `run` ia direto para `mission.run`, e o
+    compilador V3 vivia numa biblioteca que ninguém consumia. O revisor resumiu
+    assim: "o runtime não chama o compilador V3 antes do writer".
+    """
+
+    from pydantic import ValidationError
+
+    from .v3.failures import HarnessFailure
+    from .v3.schema_version import assert_compilable
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mission", type=Path, required=True)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
+    parser.add_argument(
+        "--legacy-v2",
+        action="store_true",
+        help="DEPRECIADO: executa missão schema 2 sem as guardas do V3",
+    )
     args = parser.parse_args(argv)
 
-    mission = MissionSpec.model_validate_json(
-        args.mission.read_text(encoding="utf-8")
-    )
-    run_dir, result = run(args.repo, mission)
+    bruto = json.loads(args.mission.read_text(encoding="utf-8"))
+    versao = int(bruto.get("mission_schema_version", 2))
+
+    if versao < 3 and not args.legacy_v2:
+        # Nunca fallback silencioso: ou migra, ou pede o comando depreciado.
+        print("[SPEC_ERROR] missão no schema 2 não passa pelo compilador V3")
+        print(f"  detalhe: {bruto.get('mission_id', '?')} precisa declarar "
+              "mission_schema_version=3, acceptance_ids e ownership_envelope")
+        print('  reproduza: adicione "mission_schema_version": 3 e os campos exigidos')
+        print("  alternativa depreciada: --legacy-v2 (sem as guardas do V3)")
+        print("  destino: mission_compiler | writer relançado: False")
+        return 3
+
+    try:
+        if versao >= 3:
+            assert_compilable(bruto)
+        mission = MissionSpec.model_validate(bruto)
+    except ValidationError as erro:
+        primeira = erro.errors()[0] if erro.errors() else {}
+        print("[SPEC_ERROR] missão não valida contra o MissionSpec")
+        print(f"  detalhe: {'.'.join(str(x) for x in primeira.get('loc', ()))}: "
+              f"{primeira.get('msg', '')}")
+        return 3
+    except HarnessFailure as falha:
+        print(f"[{falha.classe.value}] {falha.resumo}")
+        if falha.detalhe:
+            print(f"  detalhe: {falha.detalhe}")
+        if falha.reproducao:
+            print(f"  reproduza: {falha.reproducao}")
+        return 3
+
+    if args.legacy_v2:
+        print("AVISO: caminho legado depreciado; as guardas do V3 não se aplicam.")
+
+    try:
+        run_dir, result = run(args.repo, mission)
+    except HarnessFailure as falha:
+        print(f"[{falha.classe.value}] {falha.resumo}")
+        if falha.detalhe:
+            print(f"  detalhe: {falha.detalhe}")
+        if falha.reproducao:
+            print(f"  reproduza: {falha.reproducao}")
+        print(f"  destino: {falha.destino or 'decisão humana'} | "
+              f"writer relançado: {falha.permite_retry}")
+        return 3
     print(f"run: {result['run_id']}")
     print(f"base: {result['base_sha']}")
     print(f"resultado: {'ok' if result['ok'] else 'com falhas'}")

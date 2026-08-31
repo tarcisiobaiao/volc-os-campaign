@@ -17,6 +17,11 @@ def mission_payload(
     base_sha: str, task_id: str = "P01-T09", ratchet: bool = False
 ) -> dict:
     payload = {
+        # O supervisor V3 despacha SOMENTE missão compilada: schema 3 com aceite
+        # atômico e envelope de ownership declarados.
+        "mission_schema_version": 3,
+        "acceptance_ids": [f"{task_id}-A1"],
+        "ownership_envelope": ["src/qg"],
         "mission_id": "supervisor-pilot",
         "title": "Supervisor pilot",
         "base_ref": base_sha,
@@ -288,6 +293,9 @@ class SupervisorEligibilityTest(unittest.TestCase):
         from volc_agent_harness.supervisor import _writer_ownership
 
         mission = MissionSpec.model_validate({
+            "mission_schema_version": 3,
+            "acceptance_ids": ["P01-T09-A1"],
+            "ownership_envelope": ["src/qg"],
             "mission_id": "owned-write-scope",
             "title": "Owned write scope",
             "base_ref": "a" * 40,

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from typing import Any
+
 import re
 import subprocess
 from dataclasses import dataclass
@@ -90,14 +93,36 @@ class WorktreeManager:
             raise ValueError("base_ref inicial inválido")
         return base_sha
 
-    def create(self, run_id: str, worker_id: str, base_sha: str) -> WorktreeInfo:
+    def create(
+        self,
+        run_id: str,
+        worker_id: str,
+        base_sha: str,
+        *,
+        registry: Any | None = None,
+        mission_id: str = "",
+    ) -> WorktreeInfo:
+        """Cria a worktree sem jamais apagar nada.
+
+        Antes: ``FileExistsError`` cru quando o caminho existia. Agora a decisão
+        passa por ``workspace.prepare``, que confere colisão, respeita colheita
+        preservada e escolhe caminho único em vez de destruir.
+        """
+
+        from .v3.workspace import prepare
+
         run_slug = safe_slug(run_id)
         worker_slug = safe_slug(worker_id)
-        path = (self.root / run_slug / worker_slug).resolve()
-        if self.root.resolve() not in path.parents:
+        desejado = (self.root / run_slug / worker_slug).resolve()
+        if self.root.resolve() not in desejado.parents:
             raise ValueError("worktree escapou do diretório permitido")
-        if path.exists():
-            raise FileExistsError(f"worktree já existe: {path}")
+
+        plano = prepare(
+            desired=desejado, registry=registry, mission_id=mission_id or run_id
+        )
+        path = plano.path
+        if self.root.resolve() not in path.parents:
+            raise ValueError("fallback de worktree escapou do diretório permitido")
 
         branch = f"agent/{run_slug}/{worker_slug}"
         _git(self.repo, "check-ref-format", "--branch", branch)

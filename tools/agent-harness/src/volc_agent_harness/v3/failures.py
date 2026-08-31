@@ -63,9 +63,14 @@ def relanca_writer(classe: FailureClass) -> bool:
     return MAX_RETRIES[classe] > 0
 
 
-@dataclass(frozen=True)
+@dataclass
 class HarnessFailure(Exception):
-    """Falha com classe, destino e reprodução."""
+    """Falha com classe, destino e reprodução.
+
+    NÃO é frozen: uma exceção precisa aceitar ``__traceback__``, e o unittest
+    (entre outros) escreve nesse atributo ao coletar o erro. Congelar a classe
+    fazia `raise` funcionar e `assertRaises` explodir com FrozenInstanceError.
+    """
 
     classe: FailureClass
     resumo: str
