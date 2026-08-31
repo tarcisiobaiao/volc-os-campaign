@@ -337,6 +337,30 @@ cmp_ "$(P -c "SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=
      "4" "as quatro são executáveis por service_role"
 
 echo
+echo "════ P · concorrência REAL: duas sessões despacham o mesmo item juntas ════"
+# ⚠️ ESTA É A PROVA QUE DECIDE A ESCOLHA DE ARQUITETURA.
+#
+# Sobre PostgREST, "conferir se há recibo aberto" e "abrir o recibo" seriam duas
+# requisições HTTP — duas transações, sem cadeado entre elas. A janela não está no
+# chamador; está ENTRE as transações. Aqui as duas sessões entram ao mesmo tempo
+# na mesma função: o `FOR UPDATE` serializa, a segunda enxerga o recibo da
+# primeira e é recusada. Uma sai, uma para, e existe UM recibo em voo.
+ITEM_C=$(abrir_com 'volc-corrida-00000001' "$IMPRESSAO" '5478096539')
+DESPACHO="SET ROLE service_role; SELECT public.trafego_ledger_despachar(
+  'volc-corrida-00000001','GOOGLE_ADS','5478096539','SEARCH','$IMPRESSAO','dono@volc','sub-1');"
+( psql -h "$D/s" -U postgres -X -A -t -c "$DESPACHO" > "$D/corrida1" 2>&1 ) &
+( psql -h "$D/s" -U postgres -X -A -t -c "$DESPACHO" > "$D/corrida2" 2>&1 ) &
+wait
+# `grep -l` (lista arquivos que casam), nunca `-lc`: as duas flags juntas mudam a
+# saída e a contagem deixa de significar "quantas sessões".
+ACEITOS=$(grep -l 'recibo_id' "$D/corrida1" "$D/corrida2" 2>/dev/null | wc -l | tr -d ' ')
+RECUSADOS=$(grep -l 'recibo(s) sem desfecho' "$D/corrida1" "$D/corrida2" 2>/dev/null | wc -l | tr -d ' ')
+cmp_ "$ACEITOS" "1" "das duas sessões simultâneas, exatamente uma despachou"
+cmp_ "$RECUSADOS" "1" "e exatamente uma foi recusada pela guarda, não por acaso"
+cmp_ "$(P -c "SELECT count(*)::text FROM trafego_recibo WHERE item_id='$ITEM_C' AND desfecho='em_voo';")" \
+     "1" "existe UM recibo em voo — a janela TOCTOU entre transações não existe aqui"
+
+echo
 echo "════ O · o contrato Python↔SQL: os nomes dos parâmetros batem ════"
 # ⚠️ ESTE É O DEFEITO QUE SÓ APARECERIA EM PRODUÇÃO.
 #

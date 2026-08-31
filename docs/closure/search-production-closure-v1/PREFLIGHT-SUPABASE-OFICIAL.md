@@ -28,7 +28,7 @@ para outra ocasião — a v10_03 não depende dela.
 ```bash
 # 2.1 · o ciclo completo num cluster descartável (não toca produção)
 ./scripts/provar-ciclo-v10.sh          # v10_01 + v10_02: aplicar → reverter → reaplicar
-./scripts/provar-ledger-v10-03.sh      # a fronteira atômica: 53 provas
+./scripts/provar-ledger-v10-03.sh      # a fronteira atômica: 56 provas
 
 # 2.2 · o banco é o oficial?
 python3 scripts/verificar_autoridade_supabase.py

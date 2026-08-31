@@ -37,7 +37,7 @@
 | Tipos | `npx tsc --noEmit -p tsconfig.app.json` | 76 erros | **76 erros** |
 | Build | `npm run build` | verde | **verde** |
 | SQL v10 | `./scripts/provar-ciclo-v10.sh` | ciclo verde | ciclo verde |
-| SQL v10_03 | `./scripts/provar-ledger-v10-03.sh` | *(não existia)* | **53 provas verdes** |
+| SQL v10_03 | `./scripts/provar-ledger-v10-03.sh` | *(não existia)* | **56 provas verdes** |
 | Higiene | `git diff --check` | limpo | limpo |
 
 As 3 falhas e os 8 arquivos com erro de coleta do vitest foram medidos **na árvore limpa,
@@ -65,6 +65,7 @@ Nenhum dos 76 erros de tipo está na superfície de lançamento ou diagnóstico.
 | nenhuma credencial no bundle | zero strings com forma de JWT; `SUPABASE_SERVICE_ROLE_KEY` só como nome, 3×, igual ao baseline |
 | contrato Python↔SQL | O — e a prova falha quando um nome é trocado (verificado por mutação) |
 | rollback local provado | M |
+| corrida real: duas sessões, um recibo | P — duas sessões simultâneas na mesma função; uma despacha, uma é recusada pela guarda, e existe **um** recibo em voo |
 
 ## 5. Fronteiras externas — o que continua fechado
 
