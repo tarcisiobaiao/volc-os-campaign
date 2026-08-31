@@ -30,6 +30,7 @@ saiu nesta sessão. Toda prova rodou contra dublês herméticos e um Postgres de
 | P4 | Trava de escrita de dois fatores | `destravar()` no código **e** `FORGE_PERMITIR_ESCRITA=1` no ambiente |
 | P5 | Backend com `SUPABASE_URL`/`SERVICE_ROLE_KEY` | senão `/subir` responde 503 e nada sai |
 | P6 | Operador presente na tela | a confirmação de criação pausada é um clique humano |
+| P7 | **Ninguém usa o CLI de escrita** | `python -m volc_ads.subir --subir` (`volc_ads/subir.py:1310`) chama o executor direto, **sem ledger, sem política do canário e sem recibo**. A trava de dois fatores continua valendo, mas com ela aberta esse caminho cria campanha sem rastro local. Ver `RELATORIO-DE-ENTREGA.md` §7 |
 
 ## 3. A sequência autorizável, ato por ato
 

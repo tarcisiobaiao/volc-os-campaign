@@ -87,7 +87,33 @@ Nenhum dos 76 erros de tipo está na superfície de lançamento ou diagnóstico.
    mexer numa guarda de segurança; ver `ROLLBACK-…md` §3.
 3. **D4 e D10** continuam sendo pré-condição de qualquer lançamento real.
 
-## 7. Divergências registradas, não resolvidas em silêncio
+## 7. Limitação confirmada da invariante — a porta que continua aberta
+
+**A garantia "nenhuma mutação sem recibo" vale para a rota HTTP, não para o processo.**
+
+`volc_ads/subir.py:1310-1352` expõe um CLI que chama `subir()` diretamente:
+
+```bash
+python -m volc_ads.subir --subir --conta <id> --mcc <id> --motivo "..."
+```
+
+Esse caminho **não passa** pelo ledger, pela política do canário, pelo portão de
+escopo nem por qualquer recibo. Ele exige a trava de dois fatores (`destravar()` no
+código **e** `FORGE_PERMITIR_ESCRITA=1` no ambiente), que é uma barreira real e
+deliberada — mas quem tiver shell e a trava aberta cria campanha sem rastro local,
+exatamente o objeto que esta sprint existe para eliminar.
+
+O que **já** protege: `--subir` exige `--conta` explícita, então o default
+`CONTA_PROVA = 8017851692` (Crédito Up) só vale para `--dry`, que não escreve.
+
+**Não foi corrigido aqui, de propósito.** `volc_ads/` está fora do ownership
+declarado em S1 §6, e a correção é uma decisão de produto entre duas opções:
+aposentar o caminho de escrita do CLI, ou fazê-lo atravessar o ledger. Expandir
+`allowed_paths` no meio da execução era proibido pelo enquadramento da missão.
+
+Consta como pré-condição operacional em `PREFLIGHT-GOOGLE-ADS-CANARIO.md` §2.
+
+## 8. Divergências registradas, não resolvidas em silêncio
 
 - **Convenção de migration.** O `supabase/` deste repo não tem `config.toml`, e a
   convenção viva é `vNN_MM_nome.sql` + `_rollback.sql`, não o `<timestamp>_nome.sql` da
