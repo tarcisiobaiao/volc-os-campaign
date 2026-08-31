@@ -45,6 +45,7 @@ class WorktreeRegistry:
         c = self._conn()
         try:
             c.executescript(SCHEMA)
+            _migrar(c)
         finally:
             c.close()
 
@@ -158,6 +159,51 @@ class WorktreeRegistry:
                 ),
             })
         return plano
+
+
+#: Colunas acrescentadas depois da primeira versão do registry. `CREATE TABLE
+#: IF NOT EXISTS` não evolui um banco que já existe — ele simplesmente não faz
+#: nada. Um registry criado antes destas colunas quebrava o boot inteiro com
+#: `sqlite3.OperationalError: no such column: worker_id`, e o harness morria
+#: antes de despachar qualquer revisor.
+COLUNAS_EVOLUTIVAS: tuple[tuple[str, str], ...] = (
+    ("worker_id", "TEXT"),
+    ("role", "TEXT"),
+)
+
+
+def _colunas(conn: sqlite3.Connection, tabela: str) -> set[str]:
+    return {linha[1] for linha in conn.execute(f"PRAGMA table_info({tabela})")}
+
+
+def _migrar(conn: sqlite3.Connection) -> list[str]:
+    """Acrescenta só o que falta, sob transação, preservando os registros.
+
+    Inspeção explícita do schema, não `try/except OperationalError`: uma exceção
+    capturada esconde a diferença entre "coluna já existe" e "o banco está
+    corrompido".
+    """
+
+    existentes = _colunas(conn, "worktrees")
+    faltando = [(nome, tipo) for nome, tipo in COLUNAS_EVOLUTIVAS
+                if nome not in existentes]
+    if not faltando:
+        return []                      # inicialização repetida é no-op
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        # Reconsulta dentro da transação: outra instância pode ter migrado
+        # entre a leitura acima e o lock.
+        existentes = _colunas(conn, "worktrees")
+        aplicadas = []
+        for nome, tipo in COLUNAS_EVOLUTIVAS:
+            if nome not in existentes:
+                conn.execute(f"ALTER TABLE worktrees ADD COLUMN {nome} {tipo}")
+                aplicadas.append(nome)
+        conn.execute("COMMIT")
+        return aplicadas
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
 
 
 def _pid_vivo(pid: int | None) -> bool:

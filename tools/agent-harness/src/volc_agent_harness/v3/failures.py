@@ -184,7 +184,12 @@ def classify_exception(exc: BaseException) -> FailureClass:
     texto = str(exc).lower()
     if isinstance(exc, TimeoutError) or "excedeu" in texto or "timeout" in texto:
         return FailureClass.TIMEOUT
-    if type(exc).__name__ == "GateConfigurationError":
+    if type(exc).__name__ in {"GateConfigurationError", "OperationalError",
+                              "DatabaseError", "IntegrityError"}:
+        # Falha de boot ou de upgrade de banco local é infraestrutura: nenhum
+        # writer conserta "no such column".
+        return FailureClass.INFRASTRUCTURE_ERROR
+    if "no such column" in texto or "no such table" in texto:
         return FailureClass.INFRASTRUCTURE_ERROR
     if "overlay de node_modules recusado" in texto or "overlay de venv" in texto:
         return FailureClass.INFRASTRUCTURE_ERROR

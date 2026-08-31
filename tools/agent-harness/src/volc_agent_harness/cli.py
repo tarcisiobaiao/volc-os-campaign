@@ -128,6 +128,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         run_dir, result = run(args.repo, mission)
     except HarnessFailure as falha:
+        # HarnessFailure PRIMEIRO: ela é uma Exception, e um `except Exception`
+        # antes dela engoliria toda falha tipada do pipeline.
         print(f"[{falha.classe.value}] {falha.resumo}")
         if falha.detalhe:
             print(f"  detalhe: {falha.detalhe}")
@@ -136,6 +138,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"  destino: {falha.destino or 'decisão humana'} | "
               f"writer relançado: {falha.permite_retry}")
         return 3
+    except Exception as erro:
+        # Falha de boot ou upgrade — registry, ledger, overlay — nunca sai como
+        # traceback nu nem como "missão executada sem resultado".
+        from .v3.failures import classify_exception
+
+        classe = classify_exception(erro)
+        print(f"[{classe.value}] falha de inicialização do harness")
+        print(f"  detalhe: {type(erro).__name__}: {str(erro)[:200]}")
+        print("  destino: gatekeeper | writer relançado: False")
+        return 4
+
     print(f"run: {result['run_id']}")
     print(f"base: {result['base_sha']}")
     print(f"resultado: {'ok' if result['ok'] else 'com falhas'}")
