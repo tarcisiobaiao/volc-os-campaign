@@ -145,6 +145,26 @@ describe('Lancamento', () => {
       }));
   });
 
+  it('dinheiro ausente NÃO vira R$ 0,00 no cartão que o humano autoriza', async () => {
+    // ⚠️ O DEFEITO: `Number(prova?.autorizacao.budget_diario ?? 0).toFixed(2)`.
+    //
+    // Este retângulo fica imediatamente acima do checkbox de confirmação — é o
+    // último texto que a pessoa lê antes de autorizar gasto. Com o campo
+    // ausente, o `?? 0` escrevia "orçamento R$ 0.00 / dia", e um orçamento zero
+    // é uma afirmação: ela diz que a campanha não vai gastar. O que houve foi o
+    // servidor não ter mandado o número.
+    const semDinheiro = {
+      ...APROVADO,
+      autorizacao: { ...AUTORIZACAO, budget_diario: null, cpc_inicial: null },
+    };
+    provarCampanha.mockResolvedValue(semDinheiro);
+    renderizar(ABERTA);
+
+    await screen.findByRole('checkbox');
+    expect(screen.queryByText(/R\$ 0\.00/)).toBeNull();
+    expect(screen.getByText(/orçamento R\$ —/)).toBeTruthy();
+  });
+
   it('lê o preparo que vem DENTRO do 409 de /subir, sem repetir a prova', async () => {
     provarCampanha.mockResolvedValue(APROVADO);
     subirCampanha.mockRejectedValue(new ErroFalso(

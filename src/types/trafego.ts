@@ -580,6 +580,64 @@ export interface ProntidaoDoLancamento {
   notas: Record<string, unknown>;
   /** ⚠️ `null` é "ninguém leu", e NÃO "não há plano". */
   plano_de_mensuracao: PlanoDeMensuracao | null;
+  /**
+   * O plano CALCULADO sobreviveu à requisição?
+   *
+   * ⚠️ Campo próprio, e não um booleano dentro do plano. "Calculado" e
+   * "persistido" respondem perguntas diferentes: o primeiro diz o que se sabe
+   * sobre a medição, o segundo diz se existe registro disso. `/provar` produz
+   * só o primeiro e diz isso — a gravação acontece em `/subir`, depois da
+   * confirmação humana e antes de qualquer chamada ao Google.
+   *
+   * Opcional porque um servidor mais antigo não o emite, e a ausência da chave
+   * é "este servidor não responde isto", nunca "está gravado".
+   */
+  plano_persistido?: PlanoPersistido;
+}
+
+/** Se o plano de mensuração foi gravado, e por que não quando não foi. */
+export interface PlanoPersistido {
+  persistido: boolean;
+  /** O `plano_id` da linha em `trafego_campanha_plano_de_mensuracao`. */
+  plano_id: string | null;
+  porque: string;
+}
+
+/**
+ * O vínculo entre o plano gravado e a campanha que nasceu dele.
+ *
+ * ⚠️ `vinculado: false` NÃO é "não há plano". É "o plano existe, foi gravado
+ * ANTES da criação, e a ligação com o `campaign_id` ainda não foi feita" — e a
+ * diferença importa porque as duas pedem coisas opostas: a primeira pediria uma
+ * leitura da conta, a segunda pede reconciliação.
+ */
+export interface VinculoDoPlano {
+  vinculado: boolean;
+  porque?: string;
+  proxima_acao?: string;
+  ja_estava?: boolean;
+  plano_id?: string | null;
+  campaign_id?: string;
+  volc_campaign_id?: string;
+  impressao?: string;
+  versao?: number;
+  /**
+   * ⚠️ A ressalva que impede a linha de mentir. Os estados de leitura do plano
+   * descrevem uma observação feita ANTES de a campanha existir:
+   * `metas_da_campanha_estado` é `inelegivel` porque a pergunta não cabia
+   * naquele instante, e não porque a campanha tenha metas inelegíveis.
+   */
+  observado_antes_do_nascimento?: boolean;
+  por?: string;
+}
+
+/** O que a resposta de `/subir` e de `/reconciliar` diz sobre o plano gravado. */
+export interface PlanoDeMensuracaoNoRecibo {
+  plano_id?: string | null;
+  impressao?: string;
+  chave_intencao?: string | null;
+  lido_em?: string;
+  vinculo: VinculoDoPlano;
 }
 
 /** Os cinco estados de `prontidao.py`, sem colapso. */
@@ -689,6 +747,14 @@ export interface ReciboDeLancamento {
     marca_remota: string;
   };
   ledger?: LedgerDoLancamento;
+  /**
+   * O plano de mensuração GRAVADO antes do mutate, e o vínculo com a campanha
+   * que nasceu dele.
+   *
+   * ⚠️ Opcional porque um servidor mais antigo não o emite. A ausência da chave
+   * é "este servidor não responde isto" — nunca "não há plano gravado".
+   */
+  plano_de_mensuracao?: PlanoDeMensuracaoNoRecibo;
   /** Preservado por compatibilidade: a gravação legada em `campaigns`. */
   aviso_registro?: string;
 }

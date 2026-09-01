@@ -599,6 +599,26 @@ export const ROTULO_DA_MENSURACAO: Record<EstadoDeMensuracao, string> = {
  * é "ninguém pediu". Escrever "sem dados" para os dois seria apagar a diferença
  * entre consertar a conta e fazer uma leitura.
  */
+/**
+ * Os estados em que a leitura NÃO chegou a uma conclusão sobre a conta.
+ *
+ * ⚠️ É o mesmo conjunto de `plano_mensuracao.ESTADOS_SEM_CONCLUSAO` no
+ * servidor, e a repetição é deliberada: a tela precisa saber, sem uma ida ao
+ * backend, que uma lista vazia produzida por um destes estados NÃO é uma
+ * medição. `vazio_confirmado` e `parcial` ficam de fora — os dois são
+ * conclusões, e a primeira é a mais cara desta tela.
+ */
+export const LEITURAS_SEM_CONCLUSAO: readonly EstadoDeLeitura[] = [
+  'nao_coletado',
+  'inelegivel',
+  'nao_suportado',
+  'falhou',
+];
+
+export function leituraConcluiu(estado: EstadoDeLeitura): boolean {
+  return !LEITURAS_SEM_CONCLUSAO.includes(estado);
+}
+
 export const ROTULO_DA_LEITURA: Record<EstadoDeLeitura, string> = {
   nao_coletado: 'ninguém consultou',
   com_dados: 'consultado',
@@ -628,6 +648,24 @@ export function textoDaMetaEfetiva(meta: MetaEfetiva): string {
     return 'as metas do nível que manda não foram lidas';
   }
   if (biddable.length === 0) {
+    // ⚠️ LISTA VAZIA NÃO É CONCLUSÃO, e este ramo emitia um veredito sem nunca
+    // olhar o estado da leitura que a produziu.
+    //
+    // O caso real: a consulta das metas da conta FALHA, `metas_biddable` chega
+    // `[]`, e a tela escrevia "nenhuma meta é perseguível pelo lance
+    // automático". O operador lê isso como um fato sobre a conta e vai
+    // configurar uma meta que talvez já exista — enquanto o que aconteceu foi
+    // uma consulta que não respondeu.
+    //
+    // `vazio_confirmado` continua dizendo a frase inteira, porque aí ela é
+    // verdade: alguém consultou e não há nenhuma.
+    const estado =
+      meta.nivel === 'CAMPAIGN'
+        ? meta.metas_da_campanha_estado
+        : meta.metas_da_conta_estado;
+    if (!leituraConcluiu(estado)) {
+      return `as metas do nível que manda não concluíram: ${ROTULO_DA_LEITURA[estado]}`;
+    }
     return 'nenhuma meta é perseguível pelo lance automático';
   }
   const onde = meta.nivel === 'CAMPAIGN' ? 'da campanha' : 'da conta';
@@ -672,7 +710,17 @@ export function textoDoFrescor(f: FrescorDoSinal): string {
  */
 export function textoDaFonteDoSinal(plano: PlanoDeMensuracao): string {
   const a = plano.acao_alvo;
-  if (a === null) return plano.acao_alvo_causa ?? 'nenhuma ação foi eleita';
+  if (a === null) {
+    // ⚠️ O fallback `?? 'nenhuma ação foi eleita'` afirmava uma ELEIÇÃO que não
+    // aconteceu. Sem causa e com a leitura das ações sem concluir, o que se
+    // sabe é que ninguém olhou — e dizer "nenhuma ação foi eleita" manda o
+    // operador procurar uma ação que pode estar lá.
+    if (plano.acao_alvo_causa) return plano.acao_alvo_causa;
+    if (!leituraConcluiu(plano.acoes_estado)) {
+      return `as ações de conversão da conta: ${ROTULO_DA_LEITURA[plano.acoes_estado]}`;
+    }
+    return 'nenhuma ação foi eleita';
+  }
   const dono = a.owner_customer_id ?? 'conta não lida';
   return `${a.nome || a.semantica} · ação #${a.id} · conta ${dono}`;
 }

@@ -390,9 +390,18 @@ export const Lancamento: React.FC<Props> = ({
                   {prova?.autorizacao.politica.customer_label} ·{' '}
                   {prova?.autorizacao.politica.customer_id_formatado}
                 </p>
+                {/* ⚠️ `—`, NUNCA `0.00`, e este é o pior lugar do sistema para
+                    a diferença sumir: o retângulo fica imediatamente acima do
+                    checkbox de confirmação, e é o último texto que a pessoa lê
+                    antes de autorizar gasto.
+
+                    O `Number(x ?? 0).toFixed(2)` que estava aqui escrevia
+                    "orçamento R$ 0.00 / dia" quando o campo não vinha. Zero é
+                    uma AFIRMAÇÃO — ela diz que a campanha não vai gastar — e o
+                    que houve foi o servidor não ter mandado o número. */}
                 <p className="mt-1">
-                  Search · orçamento R$ {Number(prova?.autorizacao.budget_diario ?? 0).toFixed(2)} / dia
-                  {' '}· CPC R$ {Number(prova?.autorizacao.cpc_inicial ?? 0).toFixed(2)}
+                  Search · orçamento R$ {dinheiro(prova?.autorizacao.budget_diario)} / dia
+                  {' '}· CPC R$ {dinheiro(prova?.autorizacao.cpc_inicial)}
                 </p>
                 <p className="mt-1 font-medium text-white">
                   Cria PAUSADA. Esta autorização não ativa nem começa a gastar.
@@ -408,6 +417,12 @@ export const Lancamento: React.FC<Props> = ({
                 <div className="mb-4 rounded-md border border-white/10 bg-black/20 p-3">
                   <CartaoDoPlanoDeMensuracao
                     plano={prova.prontidao.plano_de_mensuracao}
+                    // ⚠️ Antes do clique o plano é CALCULADO, e a tela diz isso.
+                    // `/provar` não escreve: quem grava é `/subir`, depois desta
+                    // confirmação e antes de qualquer chamada ao Google. Deixar
+                    // a tela calar faria o operador supor que existe registro do
+                    // que ele está lendo — e não existe ainda.
+                    persistencia={prova.prontidao.plano_persistido}
                   />
                 </div>
               )}
@@ -535,6 +550,22 @@ export const Lancamento: React.FC<Props> = ({
 
 /** Quanto o horizonte já subiu. Estado, não tempo: um degrau resolvido acende
  *  mais que um degrau demorando. */
+/**
+ * Dinheiro na tela — e `—` quando o número não veio.
+ *
+ * ⚠️ `0.00` é uma AFIRMAÇÃO: ela diz que a campanha não vai gastar. Ausência é
+ * outra coisa, e as duas pedem reações opostas — a primeira é uma configuração
+ * a conferir, a segunda é um servidor que não respondeu.
+ *
+ * É a mesma regra de `numeroOuTraco` em `lib/trafego/canais.ts`; aqui ela é
+ * local porque o formato é de moeda, com duas casas.
+ */
+function dinheiro(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return '—';
+  const n = Number(valor);
+  return Number.isFinite(n) ? n.toFixed(2) : '—';
+}
+
 const AVANCO: Record<Estado, number> = {
   provando: 0.15,
   reprovada: 0.1,
@@ -675,6 +706,42 @@ const Recibo: React.FC<{ r: ReciboDeLancamento }> = ({ r }) => {
           <Linha rotulo="aprovado por" valor={r.aprovacao.aprovado_por_email || '—'} />
         )}
       </dl>
+
+      {/* ⚠️ O PLANO DE MENSURAÇÃO SOBREVIVEU À CRIAÇÃO — e o recibo diz isso.
+          Antes, depois do sucesso o plano sumia da tela: o recibo mostrava
+          campanha, conta, recursos e ledger, e nada sobre a medição. O operador
+          acabava de autorizar gasto olhando um plano que, um segundo depois,
+          deixava de existir na interface.
+
+          `vinculado: false` NÃO é "não há plano". É "o plano existe, foi
+          gravado ANTES da criação, e a ligação com o id ainda não foi feita" —
+          e as duas pedem coisas opostas. */}
+      {r.plano_de_mensuracao && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <div className="kicker mb-2 text-white/45">plano de mensuração</div>
+          <dl className="space-y-1 text-[11px]">
+            <Linha
+              rotulo="gravado"
+              valor={r.plano_de_mensuracao.plano_id ?? '— não gravado'}
+            />
+            <Linha
+              rotulo="vínculo"
+              valor={
+                r.plano_de_mensuracao.vinculo.vinculado
+                  ? `campanha ${r.plano_de_mensuracao.vinculo.campaign_id ?? '—'}`
+                  : `não vinculado — ${r.plano_de_mensuracao.vinculo.porque ?? 'sem causa declarada'}`
+              }
+            />
+          </dl>
+          {!r.plano_de_mensuracao.vinculo.vinculado && (
+            <p className="mt-2 text-[11px] leading-relaxed text-amber-200/90">
+              O plano foi gravado antes da criação e continua lá. O que falta é
+              ligá-lo ao id da campanha:{' '}
+              {r.plano_de_mensuracao.vinculo.proxima_acao ?? 'reconcilie'}.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 border-t border-white/10 pt-3">
         <div className="kicker mb-2 text-white/45">ledger de lançamento</div>
