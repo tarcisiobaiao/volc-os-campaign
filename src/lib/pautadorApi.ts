@@ -95,6 +95,7 @@ import type {
   DisparoDoRedator, ProvaVisual, ReleituraDoWordPress, RunDoRedator,
   PublicacaoDePagina,
 } from '@/types/publicacao';
+import type { RespostaDosCanais } from '@/lib/trafego/canais';
 import type { MatrizDoRun, RespostaDaMatriz } from '@/types/redator';
 import type { FunilEscrito } from '@/types/redatorPaginas';
 import type { ConfiguracaoDoRedator, QuadroDoRedator } from '@/types/redatorQuadro';
@@ -735,6 +736,23 @@ export const pautadorApi = {
    */
   capacidades(): Promise<CapacidadesDoOperador> {
     return request('/api/trafego/capacidades');
+  },
+
+  /**
+   * Os quatro canais do Google, com veredito e motivo por portão.
+   *
+   * ⚠️ A resposta é o veredito PRONTO. A tela não recalcula nada: um
+   * `capacidades.google_mutate && manifesto.sabe_criar` escrito aqui pareceria
+   * correto e estaria errado — a janela do canário recusa Display mesmo com as
+   * duas verdadeiras, e a tela ofereceria um botão que o servidor nega no
+   * clique, depois de o operador montar o pedido inteiro.
+   *
+   * Esta rota NÃO consulta o Google: ela desenha um cockpit, e uma leitura viva
+   * a cada navegação gastaria quota da conta do cliente. O que ninguém leu
+   * chega `INDETERMINADO` com a razão dita, nunca zero.
+   */
+  contratoDosCanais(): Promise<RespostaDosCanais> {
+    return request('/api/trafego/canais');
   },
 
   /**
