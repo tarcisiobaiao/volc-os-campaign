@@ -97,7 +97,7 @@ errada:
 |---|---|
 | `maximize_conversions` fixo no engine | **CPC manual** escolhido no nascimento |
 | sem graduação | **regra de graduação declarada** no lançamento |
-| campo `conversao` morto (ninguém lê) | **meta de conversão real** (`selective_optimization`) |
+| campo `conversao` morto (ninguém lê) | ~~**meta de conversão real** (`selective_optimization`)~~ ⚠️ **REFUTADO (01/09/2026): é de APP. Em Search a campanha herda os goals da conta; override é `CampaignConversionGoal`, ato separado** |
 | `match_type: 'PHRASE'` cravado no front | decorre do papel, e muda na graduação |
 
 O painel também precisa parar de mentir. Hoje [PainelDoLancamento.tsx:126](../src/components/trafego/PainelDoLancamento.tsx#L126)
@@ -147,11 +147,13 @@ Três regras de tela:
 canal: str = "SEARCH"                    # SEARCH | PMAX | DISPLAY | DEMAND_GEN
 estrategia_lance: str = "MANUAL_CPC"     # MANUAL_CPC | MAXIMIZE_CONVERSIONS
 graduacao_em_conversoes: int = 30        # 0 desliga
-meta_conversao_id: Optional[str] = None  # -> selective_optimization
+meta_conversao_id: Optional[str] = None  # ⚠️ NÃO vai para selective_optimization
+                                         # (refutado 01/09/2026: campo de APP).
+                                         # Search herda os goals da CONTA.
 ```
 
 `conversao: str` fica, **marcado como morto**, até virar
-`campaign.selective_optimization.conversion_actions`. O payload exato está
+~~`campaign.selective_optimization.conversion_actions`~~ ⚠️ **REFUTADO (01/09/2026): esse campo só existe para campanha de APP. Em Search, a campanha herda os `CustomerConversionGoal` da conta e o override é `CampaignConversionGoal`, que a API só atualiza — nunca cria nem remove.** O payload histórico está
 medido no flow `Google Ads Search - Clickup`:
 
 ```

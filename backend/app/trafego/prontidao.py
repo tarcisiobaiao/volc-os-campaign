@@ -47,8 +47,24 @@ class Prontidao:
     deixaria alguém "melhorar" um veredito depois que ele foi apresentado.
     """
 
+    #: ⚠️ O PLANO está pronto para criar — a campanha ainda NÃO nasceu.
+    #:
+    #: Estes dois campos foram um só, e o nome era `campaign_birth`. Ele saía
+    #: PRONTO no `/provar`, que não cria nada: o relatório chegou a dizer
+    #: "CAMPAIGN_BIRTH_READY ✅" sem existir campanha, recibo ou id externo.
+    #: "Nascer" é um fato sobre o mundo, não sobre o plano.
+    creation_plan_ready: str = INDETERMINADO
+    #: Só vira PRONTO depois de mutate + recibo fechado + releitura na conta.
     campaign_birth: str = INDETERMINADO
     conversion_goal_status: str = INDETERMINADO
+    #: ⚠️ SEPARADO do Data Manager de propósito. Data Manager é UMA fonte de
+    #: sinal, não a única: tag do Google, importação GA4 e upload offline são
+    #: caminhos legítimos. Exigir Data Manager para uma conta que converte por
+    #: tag declararia despreparo onde não há.
+    conversion_signal_status: str = INDETERMINADO
+    #: As fontes de sinal efetivamente OBSERVADAS. Lista vazia = nenhuma foi
+    #: comprovada, e isso é diferente de "não existe nenhuma".
+    signal_sources: List[str] = field(default_factory=list)
     measurement_readiness: str = INDETERMINADO
     data_manager_status: str = INDETERMINADO
     observability_status: str = INDETERMINADO
@@ -59,8 +75,11 @@ class Prontidao:
 
     def para_json(self) -> Dict[str, Any]:
         return {
+            "creation_plan_ready": self.creation_plan_ready,
             "campaign_birth": self.campaign_birth,
             "conversion_goal_status": self.conversion_goal_status,
+            "conversion_signal_status": self.conversion_signal_status,
+            "signal_sources": list(self.signal_sources),
             "measurement_readiness": self.measurement_readiness,
             "data_manager_status": self.data_manager_status,
             "observability_status": self.observability_status,
@@ -72,8 +91,10 @@ class Prontidao:
 
 def avaliar(
     *,
+    plano_valido: bool = False,
     recibo_registrado: bool,
     metas_da_conta: Optional[Dict[str, Any]],
+    fontes_de_sinal_observadas: Optional[List[str]] = None,
     data_manager_operante: bool = False,
     coleta_pos_criacao_provada: bool = False,
     estrategia_lance: str = "MANUAL_CPC",
@@ -88,11 +109,14 @@ def avaliar(
     bloqueios: List[str] = []
     notas: Dict[str, Any] = {}
 
+    # ⚠️ DUAS PERGUNTAS DIFERENTES, e confundi-las produziu um relatório que
+    # dizia "pronto para nascer ✅" sem existir campanha nenhuma.
+    plano_pronto = PRONTO if plano_valido else INDETERMINADO
     nascimento = PRONTO if recibo_registrado else NAO_PRONTO
     if not recibo_registrado:
-        bloqueios.append(
-            "não há recibo registrado: uma campanha sem recibo não é "
-            "reconciliável depois")
+        notas["campaign_birth"] = (
+            "a campanha ainda NÃO nasceu. Este campo só vira PRONTO depois de "
+            "mutate + recibo fechado + releitura do id externo na conta")
 
     # ── G1: meta de conversão ────────────────────────────────────────────────
     if metas_da_conta is None:
@@ -140,6 +164,25 @@ def avaliar(
         bloqueios.append("conta sem ação de conversão primária")
 
     # ── G1: sinal chegando ───────────────────────────────────────────────────
+    #
+    # ⚠️ SINAL ≠ DATA MANAGER. A primeira versão tratava os dois como a mesma
+    # coisa e exigia Data Manager operante para declarar medição. Isso está
+    # errado em conta que converte por tag do Google ou importação GA4: ela tem
+    # sinal chegando e seria declarada despreparada por não usar uma via que
+    # não precisa. Data Manager é UMA fonte, e a que ainda não existe aqui.
+    fontes = list(fontes_de_sinal_observadas or ())
+    if fontes:
+        sinal = PRONTO
+        notas["conversion_signal"] = (
+            "fontes de sinal observadas: " + ", ".join(fontes))
+    else:
+        sinal = NAO_PRONTO
+        notas["conversion_signal"] = (
+            "nenhuma fonte de sinal foi COMPROVADA nesta leitura (tag do "
+            "Google, importação GA4, upload offline ou Data Manager). Lista "
+            "vazia significa 'não comprovado', e não 'não existe'")
+        bloqueios.append("nenhuma fonte de sinal de conversão comprovada")
+
     if data_manager_operante:
         dm_status = PRONTO
     else:
@@ -147,14 +190,15 @@ def avaliar(
         notas["data_manager"] = (
             "a ingestão de conversão offline pela Data Manager API não está "
             "operante: fila, lote, envio e diagnóstico existem como contrato, "
-            "não como execução")
-        bloqueios.append("Data Manager não operante")
+            "não como execução. Isso NÃO bloqueia por si só uma conta cuja "
+            "conversão venha de tag ou GA4")
 
-    # Medir exige meta E sinal. Ter uma sem a outra não é meia medição — é
-    # nenhuma, porque o lance aprende do que chega, não do que foi declarado.
-    if meta_status == PRONTO and dm_status == PRONTO:
+    # Medir exige meta efetiva E ao menos um caminho de sinal comprovado. Ter
+    # uma sem a outra não é meia medição — é nenhuma, porque o lance aprende do
+    # que chega, não do que foi declarado.
+    if meta_status == PRONTO and sinal == PRONTO:
         medicao = PRONTO
-    elif meta_status == INDETERMINADO:
+    elif meta_status == INDETERMINADO or sinal == INDETERMINADO:
         medicao = INDETERMINADO
     else:
         medicao = NAO_PRONTO
@@ -194,8 +238,11 @@ def avaliar(
         "autoriza ativação nem implica prontidão de ROI")
 
     return Prontidao(
+        creation_plan_ready=plano_pronto,
         campaign_birth=nascimento,
         conversion_goal_status=meta_status,
+        conversion_signal_status=sinal,
+        signal_sources=fontes,
         measurement_readiness=medicao,
         data_manager_status=dm_status,
         observability_status=observacao,

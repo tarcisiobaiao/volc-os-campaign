@@ -124,3 +124,53 @@ def test_json_carrega_os_cinco_vereditos():
                   "observability_status", "smart_bidding_eligible",
                   "activation_blockers"):
         assert campo in j
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Microfechamento de 01/09/2026 — o que a revisão focal exigiu separar
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_plano_pronto_nao_e_campanha_nascida():
+    """⚠️ Os dois já foram um campo só, e o relatório disse 'nasceu' sem campanha.
+
+    `/provar` não cria nada. Um campo chamado `campaign_birth` saindo PRONTO ali
+    afirma um fato sobre o mundo — que existe campanha e recibo — a partir de um
+    fato sobre o plano.
+    """
+    r = pr.avaliar(plano_valido=True, recibo_registrado=False,
+                   metas_da_conta={"primaria": {"id": "1"}})
+    assert r.creation_plan_ready == pr.PRONTO
+    assert r.campaign_birth == pr.NAO_PRONTO
+    assert "ainda NÃO nasceu" in r.notas["campaign_birth"]
+
+
+def test_sinal_de_conversao_nao_e_data_manager():
+    """Conta que converte por tag tem sinal, e não usa Data Manager.
+
+    Exigir Data Manager para declarar medição diria despreparo onde não há.
+    """
+    por_tag = pr.avaliar(recibo_registrado=True,
+                         metas_da_conta={"primaria": {"id": "1"}},
+                         fontes_de_sinal_observadas=["google_tag"],
+                         data_manager_operante=False)
+    assert por_tag.conversion_signal_status == pr.PRONTO
+    assert por_tag.data_manager_status == pr.NAO_PRONTO
+    assert por_tag.signal_sources == ["google_tag"]
+    # Data Manager ausente não entra em activation_blockers por si só.
+    assert not any("Data Manager" in b for b in por_tag.activation_blockers)
+
+
+def test_lista_de_fontes_vazia_e_nao_comprovado_e_nao_inexistente():
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta={"primaria": {"id": "1"}})
+    assert r.conversion_signal_status == pr.NAO_PRONTO
+    assert r.signal_sources == []
+    assert "não comprovado" in r.notas["conversion_signal"]
+
+
+def test_estado_real_de_hoje_continua_fail_closed():
+    """Sem fonte comprovada e com meta apenas PARCIAL, nada libera."""
+    r = pr.avaliar(plano_valido=True, recibo_registrado=False,
+                   metas_da_conta={"primaria": {"id": "1"},
+                                   "acoes": [{"id": "1", "primaria": True}]})
+    assert r.measurement_readiness == pr.NAO_PRONTO
+    assert r.smart_bidding_eligible is False

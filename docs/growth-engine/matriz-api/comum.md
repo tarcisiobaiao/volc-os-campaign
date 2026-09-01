@@ -316,7 +316,7 @@ Cadeia oficial `[alta]` `[S21]`:
    para esse goal"; `false` significa "só reportar".
 4. `CampaignConversionGoal` **sobrepõe** o nível cliente para aquela campanha.
 5. Se `CampaignConversionGoal` não bastar, use `CustomConversionGoal` + o campo
-   `campaign.selective_optimization` para escolher `ConversionAction` específicas.
+   ~~`campaign.selective_optimization` para escolher `ConversionAction` específicas.~~ ⚠️ **REFUTADO (01/09/2026):** esse campo é exclusivo de campanha de **APP** — callout "Important" em `conversions/goals/overview`. Em Search a campanha **herda** os `CustomerConversionGoal` da conta; o override por campanha é `CampaignConversionGoal`, e a API só **atualiza** goals, nunca cria nem remove.
 6. Ao mutar `CampaignConversionGoal`, o Google fixa `ConversionGoalCampaignConfig.goal_config_level`
    em `CAMPAIGN` e **para** de propagar mudanças de conta para aquela campanha.
 

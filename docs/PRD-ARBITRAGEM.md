@@ -273,7 +273,7 @@ não tem nem gravação.
    como cópia, deixa de ser o único registro.
 2. Porte da infraestrutura de conversão do flow ClickUp morto para
    `volc_ads`: `conversionAction` por nicho (`UPLOAD_CLICKS`, `PURCHASE`,
-   `MANY_PER_CLICK`, lookback 1 dia), `selective_optimization` no payload da
+   `MANY_PER_CLICK`, lookback 1 dia), ~~`selective_optimization`~~ ⚠️ **REFUTADO (01/09/2026): é de campanha de APP; em Search use `CampaignConversionGoal`, que a API só atualiza. Não implemente** no payload da
    campanha (o campo `conversao` deixa de viajar e morrer), GAQL **com
    `tag_snippets`** → `niche_conversion_mappings` com `AW-id/label`
    preenchidos. Isenção preventiva de policy entra como opção do brief,

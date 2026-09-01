@@ -406,7 +406,7 @@ FUNIL→CAMPANHA se fecha aqui, na transação de criação:
    registrou defesa), e o recibo em `execucoes`.
 3. A infraestrutura de conversão sintética — hoje só no flow ClickUp morto —
    é portada para o `volc_ads`: `conversionAction` `UPLOAD_CLICKS`/`PURCHASE`/
-   `MANY_PER_CLICK`/lookback 1 dia por nicho, `selective_optimization` (o
+   `MANY_PER_CLICK`/lookback 1 dia por nicho, ~~`selective_optimization`~~ ⚠️ **REFUTADO (01/09/2026): campo de campanha de APP; em Search a meta é herdada da conta e o override é `CampaignConversionGoal`. Não implemente** (o
    campo `conversao` deixa de viajar e morrer), e a GAQL de leitura **pede
    `conversion_action.tag_snippets`** para persistir `AW-id/label` em
    `niche_conversion_mappings` — o defeito de duas pontas que deixou a tabela

@@ -2264,6 +2264,8 @@ async def provar(
         carimbo_nome=body.carimbo_nome,
         rede=_rede_do_corpo(body),
     )
+    prontidao_do_lancamento = await _prontidao_do_lancamento(
+        cid, mid, body, plano_valido=bool(preparo.selo) and elegivel)
     return {
         "preparo": projecao.preparo(preparo),
         "avisos": [projecao.aviso(a) for a in (plano.avisos or ())],
@@ -2296,26 +2298,45 @@ async def provar(
         # sobre medir (G1), observar (G2) ou poder ativar (G3). Uma campanha em
         # lance automático sem sinal chegando otimiza para nada e gasta o
         # orçamento inteiro aprendendo o que ninguém mediu.
-        "prontidao": _prontidao_do_lancamento(cid, mid, body).para_json(),
+        "prontidao": prontidao_do_lancamento.para_json(),
     }
 
 
-def _prontidao_do_lancamento(cid: str, mid: str, body: Any):
+#: Teto da leitura de metas dentro de `/provar`. Pequeno de propósito: ela é
+#: informativa, e uma resposta que não chega é pior que um `INDETERMINADO`.
+TIMEOUT_METAS_S = 15.0
+
+
+async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
+                                   plano_valido: bool = False):
     """Avalia G0–G3 com o que foi REALMENTE observado, e nada além.
 
     ⚠️ A leitura de metas pode falhar, e falhar NÃO é "a conta não tem meta".
     `metas=None` viaja como INDETERMINADO até o dossiê, porque colapsar os dois
     faria uma falha de rede parecer uma conta despreparada — e o operador
     tomaria a decisão oposta à correta.
+
+    ⚠️ E ela roda em THREAD, com teto próprio. `meta_de_conversao` é síncrona e
+    chama o Google; o `buscar` por baixo faz até cinco tentativas com
+    `time.sleep` e não declara timeout de RPC. Chamada direta aqui, ela
+    bloquearia o event loop e ficaria FORA do teto de `_preparar` — a prova
+    inteira poderia pendurar depois de já ter passado pela fronteira protegida.
     """
     from app.trafego import contas as ct, prontidao as pr
 
     try:
-        metas = ct.meta_de_conversao(cid, login_customer_id=mid)
+        metas = await asyncio.wait_for(
+            asyncio.to_thread(ct.meta_de_conversao, cid, login_customer_id=mid),
+            timeout=TIMEOUT_METAS_S)
+    except asyncio.TimeoutError:
+        log.warning("leitura de metas da conta %s passou de %.0fs", cid,
+                    TIMEOUT_METAS_S)
+        metas = None
     except Exception:  # noqa: BLE001
         log.warning("não consegui ler as metas de conversão da conta %s", cid)
         metas = None
     return pr.avaliar(
+        plano_valido=plano_valido,
         recibo_registrado=False,   # /provar não abre recibo, e não finge que abre
         metas_da_conta=metas,
         # Nenhum dos dois foi provado em operação real. Declarar `True` aqui

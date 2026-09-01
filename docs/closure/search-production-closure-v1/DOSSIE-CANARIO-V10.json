@@ -1,0 +1,386 @@
+{
+  "versao_do_dossie": "canario-v10.2",
+  "gerado_por": "scripts/dossie_canario_v10.py",
+  "sha_do_codigo": "3e8318ccb0167d421e9dab00248be27bf21b2017",
+  "qualificacao_historica": "Este é o primeiro canário COM O LEDGER v10 COMPLETO. O primeiro canário Google da casa foi em 28/08/2026, campanha 24183717006, sem ledger. Chamar este de 'primeiro canário Search' seria falso.",
+  "conta": {
+    "customer_id": "5478096539",
+    "formatado": "547-809-6539",
+    "label": "Portal Mundo Mais",
+    "login_customer_id": "6016739364",
+    "mcc_formatado": "601-673-9364"
+  },
+  "payload_humano": {
+    "opportunity_id": 74,
+    "run_id": 7,
+    "customer_id": "5478096539",
+    "login_customer_id": "6016739364",
+    "canal": "SEARCH",
+    "vertical": "financas",
+    "estrategia_lance": "MANUAL_CPC",
+    "match_type": "PHRASE",
+    "budget_diario": 10.0,
+    "cpc_inicial": 1.0,
+    "rede": {
+      "google_search": true,
+      "search_partners": false,
+      "display_expansion": false
+    },
+    "grupos": [
+      {
+        "tipo": "SEM_SUB_INTENCAO",
+        "usar_todas": false,
+        "keywords": [
+          "maquininha de cartão",
+          "maquininha de cartão no celular pessoa física"
+        ]
+      }
+    ],
+    "negativas_campanha": [],
+    "negativas_adgroup": [],
+    "copy": {
+      "headlines": [
+        "{KeyWord:Maquininha de Cartão}",
+        "Compare Taxas em 2026",
+        "Guia de Taxas e Modelos",
+        "Débito, Crédito e Pix",
+        "Aceite Pix por QR Code",
+        "Sem Aluguel do Aparelho",
+        "Para MEI e Autônomo",
+        "Cadastro com CPF ou CNPJ",
+        "Venda Sem Ter CNPJ",
+        "Entenda o Prazo de Recebimento",
+        "Receba em Até 1 Dia Útil",
+        "Como Calcular o Custo Real",
+        "Compare Antes de Escolher",
+        "Passo a Passo Para Escolher",
+        "Guia Prático de 2026"
+      ],
+      "descriptions": [
+        "Compare taxas de débito, crédito e Pix e veja como escolher a maquininha do seu negócio.",
+        "As taxas variam conforme o faturamento e o modelo. Entenda o que muda em cada plano.",
+        "Autônomos e MEIs podem se cadastrar com CPF. Veja as opções sem aluguel do aparelho.",
+        "O prazo de recebimento muda o custo da venda. Compare os planos antes de contratar."
+      ],
+      "sitelinks": [
+        {
+          "title": "Como Escolher",
+          "description1": "Passo a passo para comparar",
+          "description2": "Veja o guia completo de 2026"
+        },
+        {
+          "title": "Taxas e Custos",
+          "description1": "Entenda o que muda o custo",
+          "description2": "Débito, crédito e parcelado"
+        },
+        {
+          "title": "Opções Para MEI",
+          "description1": "Planos com taxas reduzidas",
+          "description2": "Cadastro por CPF ou CNPJ"
+        },
+        {
+          "title": "Sem Aluguel",
+          "description1": "Modelos de compra única",
+          "description2": "Sem mensalidade pelo uso"
+        },
+        {
+          "title": "Receber por Pix",
+          "description1": "Pix por QR Code na máquina",
+          "description2": "Integrado nos modelos atuais"
+        },
+        {
+          "title": "Prazo de Recebimento",
+          "description1": "Antecipado ou conforme vence",
+          "description2": "Veja o impacto no custo"
+        }
+      ],
+      "callouts": [
+        "Guia Comparativo 2026",
+        "Débito, Crédito e Pix",
+        "Opções Sem Aluguel",
+        "Cadastro com CPF",
+        "Planos Para MEI",
+        "Pix por QR Code"
+      ],
+      "snippet": {
+        "header": "Tipos",
+        "values": [
+          "Débito",
+          "Crédito à vista",
+          "Crédito parcelado",
+          "Pix por QR Code",
+          "Aproximação (NFC)"
+        ]
+      }
+    }
+  },
+  "keywords": [
+    {
+      "texto": "maquininha de cartão",
+      "match_type": "PHRASE"
+    },
+    {
+      "texto": "maquininha de cartão no celular pessoa física",
+      "match_type": "PHRASE"
+    }
+  ],
+  "negative_keywords": [],
+  "negatives_assessed": false,
+  "negatives_nota": "Nenhuma negativa foi inventada. Elas dependem de search terms reais e de avaliação de sobrebloqueio, que só existem depois de veicular.",
+  "rede": {
+    "google_search": true,
+    "search_partners": false,
+    "display_expansion": false
+  },
+  "orcamento": {
+    "diario_brl": "10.00",
+    "micros": 10000000,
+    "teto_politica_brl": "20.00"
+  },
+  "cpc": {
+    "brl": "1.00",
+    "micros": 1000000,
+    "teto_politica_brl": "1.00"
+  },
+  "estrategia_lance": "MANUAL_CPC",
+  "status_inicial": "PAUSED",
+  "nome_campanha": "VOLC-CANARY-e0ccfc66d8e4 BR - 20260901_053239 / Maquininha de Cartão / https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+  "url_final": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+  "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
+  "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
+  "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
+  "selo_do_executor_por_execucao": [
+    "e315b3cd4b24339834f531f279dd995f045ef58191f4b0554453d392d05c1b5b",
+    "2bbe056be57f6641e60c37c5759a972e72de6a4a41943bba14468a798cbc04ad",
+    "47ab62cf197cc14c77c49fd6905f0eb2be3cf236308a3b652d333f2d802878e2"
+  ],
+  "operacoes": {
+    "total": 34,
+    "por_tipo": {
+      "campaign_budget_operation": 1,
+      "campaign_operation": 1,
+      "campaign_criterion_operation": 2,
+      "ad_group_operation": 1,
+      "ad_group_criterion_operation": 2,
+      "ad_group_ad_operation": 1,
+      "asset_operation": 13,
+      "campaign_asset_operation": 13
+    }
+  },
+  "validate_only": {
+    "execucoes": 3,
+    "aprovado_em_todas": true,
+    "chave_estavel": true,
+    "marca_estavel": true,
+    "carimbos_distintos": true,
+    "n_operacoes_estavel": true,
+    "blueprint_estavel": true,
+    "selo_varia_por_carimbo": true,
+    "detalhe": [
+      {
+        "carimbo_nome": "20260901_053239",
+        "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
+        "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
+        "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
+        "selo_do_executor": "e315b3cd4b24339834f531f279dd995f045ef58191f4b0554453d392d05c1b5b",
+        "n_operacoes": 34,
+        "aprovado": true,
+        "recusa_local": null,
+        "falha_validacao": null,
+        "avisos": []
+      },
+      {
+        "carimbo_nome": "20260901_053248",
+        "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
+        "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
+        "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
+        "selo_do_executor": "2bbe056be57f6641e60c37c5759a972e72de6a4a41943bba14468a798cbc04ad",
+        "n_operacoes": 34,
+        "aprovado": true,
+        "recusa_local": null,
+        "falha_validacao": null,
+        "avisos": []
+      },
+      {
+        "carimbo_nome": "20260901_053255",
+        "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
+        "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
+        "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
+        "selo_do_executor": "47ab62cf197cc14c77c49fd6905f0eb2be3cf236308a3b652d333f2d802878e2",
+        "n_operacoes": 34,
+        "aprovado": true,
+        "recusa_local": null,
+        "falha_validacao": null,
+        "avisos": []
+      }
+    ]
+  },
+  "duplicidade": {
+    "por_marca": 0,
+    "por_destino": 0,
+    "veredito": "LIVRE"
+  },
+  "conversion_goals_observados": {
+    "acoes": [
+      {
+        "id": "7466919994",
+        "nome": "AdClick",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7466930854",
+        "nome": "adViewInterstitial",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7466949251",
+        "nome": "adView",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7467141090",
+        "nome": "Compra",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7467141321",
+        "nome": "adViewRewarded",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7495780528",
+        "nome": "adviewinterstitial - Programa Pé de Meia",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7495808852",
+        "nome": "adviewinterstitial - RG Digital",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7495947978",
+        "nome": "adviewinterstitial - Cursos Senai",
+        "categoria": "PURCHASE",
+        "tipo": "WEBPAGE",
+        "primaria": true
+      },
+      {
+        "id": "7498530235",
+        "nome": "Android installs (all other apps)",
+        "categoria": "DOWNLOAD",
+        "tipo": "ANDROID_INSTALLS_ALL_OTHER_APPS",
+        "primaria": false
+      }
+    ],
+    "primaria": {
+      "id": "7466919994",
+      "nome": "AdClick",
+      "categoria": "PURCHASE",
+      "tipo": "WEBPAGE",
+      "primaria": true
+    },
+    "por_que": "A campanha nasce em `maximize_conversions` e persegue a ação PRIMÁRIA da conta. O cockpit não escolhe meta — o campo que prometia isso não é lido por ninguém."
+  },
+  "conversion_goals_aplicados": null,
+  "conversion_goals_nota": "NENHUMA meta foi aplicada nem alterada. A campanha HERDA os CustomerConversionGoal da conta. Sobrescrever exige CampaignConversionGoal, que é ato separado — e a API só ATUALIZA goals, nunca cria nem remove. Ver evidence/GOOGLE-ADS-DOCS-2026-09-01.md",
+  "prontidao": {
+    "creation_plan_ready": "PRONTO",
+    "campaign_birth": "NAO_PRONTO",
+    "conversion_goal_status": "PARCIAL",
+    "conversion_signal_status": "NAO_PRONTO",
+    "signal_sources": [],
+    "measurement_readiness": "NAO_PRONTO",
+    "data_manager_status": "NAO_PRONTO",
+    "observability_status": "INDETERMINADO",
+    "smart_bidding_eligible": false,
+    "activation_blockers": [
+      "meta de conversão efetiva não lida (faltam customer_conversion_goal e conversion_goal_campaign_config)",
+      "nenhuma fonte de sinal de conversão comprovada",
+      "observabilidade pós-criação não provada: sem releitura, um desvio de entrega ou de política não seria notado"
+    ],
+    "notas": {
+      "campaign_birth": "a campanha ainda NÃO nasceu. Este campo só vira PRONTO depois de mutate + recibo fechado + releitura do id externo na conta",
+      "conversion_goal": "leitura PARCIAL: 8 ação(ões) com primary_for_goal=true em `conversion_action`. Isso não é a meta EFETIVA: ela exige customer_conversion_goal, campaign_conversion_goal e conversion_goal_campaign_config.goal_config_level, que ainda não são consultados. A campanha herda as metas da conta, e sobrescrever exigiria CampaignConversionGoal — ato separado, e a API só ATUALIZA goals, nunca cria nem remove",
+      "conversion_actions_primarias": [
+        {
+          "id": "7466919994",
+          "nome": "AdClick",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7466930854",
+          "nome": "adViewInterstitial",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7466949251",
+          "nome": "adView",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7467141090",
+          "nome": "Compra",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7467141321",
+          "nome": "adViewRewarded",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7495780528",
+          "nome": "adviewinterstitial - Programa Pé de Meia",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7495808852",
+          "nome": "adviewinterstitial - RG Digital",
+          "categoria": "PURCHASE"
+        },
+        {
+          "id": "7495947978",
+          "nome": "adviewinterstitial - Cursos Senai",
+          "categoria": "PURCHASE"
+        }
+      ],
+      "conversion_signal": "nenhuma fonte de sinal foi COMPROVADA nesta leitura (tag do Google, importação GA4, upload offline ou Data Manager). Lista vazia significa 'não comprovado', e não 'não existe'",
+      "data_manager": "a ingestão de conversão offline pela Data Manager API não está operante: fila, lote, envio e diagnóstico existem como contrato, não como execução. Isso NÃO bloqueia por si só uma conta cuja conversão venha de tag ou GA4",
+      "observabilidade": "a releitura pós-criação ainda não foi exercida contra uma campanha real; o coletor contínuo lê apenas campanhas ENABLED",
+      "manual_cpc": "Manual CPC pode existir no canário pausado sem Data Manager. Isso não autoriza ativação nem implica prontidão de ROI"
+    }
+  },
+  "rollback": "A campanha nasce PAUSED e não gasta. Reversão: definir REMOVED na conta, ou reconciliar o recibo por POST /api/trafego/reconciliar. Migrations: v10_04_rollback -> v10_03_rollback -> v10_01_rollback.",
+  "plano_de_readback": [
+    "1. ler campaign.id/status/serving_status/advertising_channel_type",
+    "2. ler campaign.network_settings (os três campos)",
+    "3. ler campaign_budget.amount_micros e ad_group.cpc_bid_micros",
+    "4. ler ad_group_criterion (as duas keywords e o match type)",
+    "5. ler ad_group_ad.policy_summary (o veredito que o canário existe para colher)",
+    "6. ler campaign_conversion_goal + conversion_goal_campaign_config.goal_config_level",
+    "7. fechar o recibo por trafego_ledger_fechar e conferir volc_campaign_id",
+    "8. reconciliar por POST /api/trafego/reconciliar se o recibo ficar em voo"
+  ],
+  "ativacao_impossivel": "inclui_ativacao=false na política do canário, cria_pausada=true, e nenhuma das operações altera status de campanha.",
+  "diferencas_do_canario_de_28_08": [
+    "ledger v10 completo aplicado (v10_01, v10_03, v10_04) — antes não havia",
+    "rede declarada: Search Partners OFF (antes ligado por literal invisível)",
+    "seleção de keywords é autoridade (antes o grupo inteiro entrava)",
+    "assets sem marca de terceiro (antes 10 marcas em headlines e snippet)",
+    "recibo atômico antes da rede e reconciliação com saída provada"
+  ],
+  "dossie_id": "53423888355c34d4aea9af542b2952cc561079500d08814d25d1ef848fc5f4aa"
+}

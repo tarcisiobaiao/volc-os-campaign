@@ -948,3 +948,61 @@ def test_o_canario_recusa_rede_ausente_e_recusa_parceiros():
                 chave_intencao="a" * 64, carimbo_nome="20260901_000000",
                 confirmar_criacao_pausada=True,
                 rede=trafego._rede_do_corpo(corpo))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# J. A leitura de metas não pendura a prova (01/09/2026)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_leitura_de_metas_lenta_vira_indeterminado_e_nao_pendura(monkeypatch):
+    """⚠️ Ela roda DEPOIS do teto de `_preparar`, então precisa do teto dela.
+
+    `meta_de_conversao` é síncrona e chama o Google; o `buscar` por baixo faz
+    até cinco tentativas com `time.sleep` e não declara timeout de RPC.
+    Chamada direta no event loop, ela bloquearia o servidor inteiro e ficaria
+    FORA da fronteira protegida — a prova penduraria depois de já ter passado
+    pelo timeout que existe para impedir exatamente isso.
+    """
+    import time
+    from app.trafego import contas as ct
+
+    def leitura_que_pendura(*_a, **_k):
+        time.sleep(8)           # muito além do teto encurtado abaixo
+        return {"primaria": {"id": "nunca chega"}}
+
+    monkeypatch.setattr(ct, "meta_de_conversao", leitura_que_pendura)
+    monkeypatch.setattr(trafego, "TIMEOUT_METAS_S", 0.4)
+
+    # ⚠️ O relógio é medido DENTRO do loop, e não em volta de `asyncio.run`.
+    # A thread do executor continua dormindo depois do timeout — ela não é
+    # cancelável — e `asyncio.run` espera por ela no shutdown. Isso NÃO afeta a
+    # resposta HTTP, que já saiu; medir por fora mediria o desligamento do
+    # loop, não a latência que o operador sente.
+    async def medir():
+        inicio = time.monotonic()
+        r = await trafego._prontidao_do_lancamento(
+            canario.CONTA, canario.MCC,
+            trafego.ProvarEntrada(**_payload_da_rota()), plano_valido=True)
+        return r, time.monotonic() - inicio
+
+    r, decorrido = asyncio.run(medir())
+
+    assert decorrido < 3, f"a resposta pendurou por {decorrido:.1f}s"
+    # Timeout é IGNORÂNCIA, e não "a conta não tem meta" nem erro 500.
+    assert r.conversion_goal_status == "INDETERMINADO"
+    assert r.measurement_readiness == "INDETERMINADO"
+    assert r.smart_bidding_eligible is False
+
+
+def test_leitura_de_metas_que_explode_nao_derruba_a_prontidao(monkeypatch):
+    from app.trafego import contas as ct
+
+    def leitura_que_explode(*_a, **_k):
+        raise RuntimeError("a API do Google recusou a credencial")
+
+    monkeypatch.setattr(ct, "meta_de_conversao", leitura_que_explode)
+    r = asyncio.run(trafego._prontidao_do_lancamento(
+        canario.CONTA, canario.MCC,
+        trafego.ProvarEntrada(**_payload_da_rota()), plano_valido=True))
+    assert r.conversion_goal_status == "INDETERMINADO"
+    assert r.creation_plan_ready == "PRONTO"

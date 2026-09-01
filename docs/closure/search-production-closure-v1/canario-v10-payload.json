@@ -1,0 +1,123 @@
+{
+  "_leia_isto": [
+    "Este é o CORPO HTTP EXATO do futuro POST /api/trafego/subir do canário v10.",
+    "Ele é versionado porque o payload não pode viver só num script de /tmp: o",
+    "que autoriza uma escrita real precisa ser lido, revisado e diferenciado.",
+    "",
+    "TODA a copy foi reescrita em 01/09/2026 para remover marca de terceiro.",
+    "A copy anterior (gerada pela cascata e gravada em pautador_trafego_copy)",
+    "citava Ton, Stone, PagSeguro, PagBank, Mercado Pago, Point Pro, Minizinha,",
+    "Moderninha, InfinitePay e T3 Smart em headlines, descriptions, sitelinks,",
+    "callouts e no structured snippet inteiro. O canário existe para testar",
+    "criação, ledger, idempotência, política e reconciliação — não marca nem",
+    "comparação comercial. Com DKI na primeira headline, keyword de concorrente",
+    "vira texto de anúncio, e o teste de infraestrutura viraria teste de marca.",
+    "",
+    "Cada afirmação abaixo é sustentada pela landing page aprovada. As taxas",
+    "numéricas da página (0,57% / 0,58% / 0,75% / 1,25% / 1,39%) foram TODAS",
+    "descartadas: na página elas aparecem sempre atreladas a uma marca, e citar",
+    "número sem a fonte seria uma alegação flutuante que ninguém pode conferir."
+  ],
+  "opportunity_id": 74,
+  "run_id": 7,
+  "customer_id": "5478096539",
+  "login_customer_id": "6016739364",
+  "canal": "SEARCH",
+  "vertical": "financas",
+  "estrategia_lance": "MANUAL_CPC",
+  "match_type": "PHRASE",
+  "budget_diario": 10.0,
+  "cpc_inicial": 1.0,
+  "rede": {
+    "google_search": true,
+    "search_partners": false,
+    "display_expansion": false
+  },
+  "grupos": [
+    {
+      "tipo": "SEM_SUB_INTENCAO",
+      "usar_todas": false,
+      "keywords": [
+        "maquininha de cartão",
+        "maquininha de cartão no celular pessoa física"
+      ]
+    }
+  ],
+  "negativas_campanha": [],
+  "negativas_adgroup": [],
+  "copy": {
+    "headlines": [
+      "{KeyWord:Maquininha de Cartão}",
+      "Compare Taxas em 2026",
+      "Guia de Taxas e Modelos",
+      "Débito, Crédito e Pix",
+      "Aceite Pix por QR Code",
+      "Sem Aluguel do Aparelho",
+      "Para MEI e Autônomo",
+      "Cadastro com CPF ou CNPJ",
+      "Venda Sem Ter CNPJ",
+      "Entenda o Prazo de Recebimento",
+      "Receba em Até 1 Dia Útil",
+      "Como Calcular o Custo Real",
+      "Compare Antes de Escolher",
+      "Passo a Passo Para Escolher",
+      "Guia Prático de 2026"
+    ],
+    "descriptions": [
+      "Compare taxas de débito, crédito e Pix e veja como escolher a maquininha do seu negócio.",
+      "As taxas variam conforme o faturamento e o modelo. Entenda o que muda em cada plano.",
+      "Autônomos e MEIs podem se cadastrar com CPF. Veja as opções sem aluguel do aparelho.",
+      "O prazo de recebimento muda o custo da venda. Compare os planos antes de contratar."
+    ],
+    "sitelinks": [
+      {
+        "title": "Como Escolher",
+        "description1": "Passo a passo para comparar",
+        "description2": "Veja o guia completo de 2026"
+      },
+      {
+        "title": "Taxas e Custos",
+        "description1": "Entenda o que muda o custo",
+        "description2": "Débito, crédito e parcelado"
+      },
+      {
+        "title": "Opções Para MEI",
+        "description1": "Planos com taxas reduzidas",
+        "description2": "Cadastro por CPF ou CNPJ"
+      },
+      {
+        "title": "Sem Aluguel",
+        "description1": "Modelos de compra única",
+        "description2": "Sem mensalidade pelo uso"
+      },
+      {
+        "title": "Receber por Pix",
+        "description1": "Pix por QR Code na máquina",
+        "description2": "Integrado nos modelos atuais"
+      },
+      {
+        "title": "Prazo de Recebimento",
+        "description1": "Antecipado ou conforme vence",
+        "description2": "Veja o impacto no custo"
+      }
+    ],
+    "callouts": [
+      "Guia Comparativo 2026",
+      "Débito, Crédito e Pix",
+      "Opções Sem Aluguel",
+      "Cadastro com CPF",
+      "Planos Para MEI",
+      "Pix por QR Code"
+    ],
+    "snippet": {
+      "header": "Tipos",
+      "values": [
+        "Débito",
+        "Crédito à vista",
+        "Crédito parcelado",
+        "Pix por QR Code",
+        "Aproximação (NFC)"
+      ]
+    }
+  }
+}
