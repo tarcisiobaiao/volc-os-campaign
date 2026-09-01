@@ -50,7 +50,8 @@ from app.services.supabase_service import SupabaseService
 from app.config import get_settings
 from app.trafego import (canario, capacidades as cap,
                          contrato_canais as ccan, escopo,
-                         inteligencia_lab, ledger as led, projecao)
+                         inteligencia_lab, ledger as led,
+                         pmax_cockpit, projecao)
 
 log = logging.getLogger("volc.trafego")
 
@@ -2330,6 +2331,50 @@ def _montar_plano_demand_gen(
     return pp.Plano(brief=brief, grupos=(), avisos=avisos)
 
 
+def _recusa_de_canal(canal: Any, exc: Exception) -> Dict[str, Any]:
+    """O 422 de canal sem porta de prova — com código, e não só com uma frase.
+
+    ⚠️ DUAS LEITURAS OPOSTAS DO MESMO 422, E ELAS PRECISAM SER DISTINGUÍVEIS.
+
+    "esse canal não existe aqui" convida o operador a desistir. "esse canal
+    planeja e a porta ainda não abriu" convida a pedir a porta. Performance Max
+    é o segundo caso desde 01/09/2026 — `pmax.planejar()` monta o grafo inteiro
+    e serializa protos v25 offline — e o executor continua sem ele por decisão
+    registrada, porque promovê-lo derrubaria a criação dos outros três canais.
+
+    ⚠️ A frase crua do executor viaja em `detalhe_do_executor`, e não é
+    descartada: ela é a procedência da recusa, e quem depura precisa dela. O
+    que muda é quem lê primeiro — o operador lê `mensagem`, não o `ValueError`.
+    """
+    from volc_ads.campanha import plano
+
+    alvo = str(canal or "").strip().upper()
+    if alvo in ("PMAX", "PERFORMANCE_MAX"):
+        return {
+            "codigo": plano.PMAX_FORA_DO_EXECUTOR,
+            # ⚠️ Nem `erro`, nem `indisponivel`. "Não habilitado nesta versão"
+            # não é falha, não é ausência e não é zero — é um estado próprio, e
+            # a tela precisa dizê-lo com essas palavras: nem vermelho, nem verde.
+            "estado": "indisponivel_por_decisao",
+            "canal": "PERFORMANCE_MAX",
+            "mensagem": (
+                "Performance Max monta o plano inteiro sem falar com o Google, "
+                "e não está habilitado nesta versão para ser conferido nem "
+                "criado. O canal existe e o construtor existe; o que não foi "
+                "aberto é a porta do executor, e abri-la é uma decisão "
+                "declarada."
+            ),
+            "detalhe_do_executor": str(exc),
+        }
+    return {
+        "codigo": plano.CANAL_SEM_BUILDER,
+        "estado": "sem_porta_de_prova",
+        "canal": alvo,
+        "mensagem": str(exc),
+        "detalhe_do_executor": str(exc),
+    }
+
+
 @router.post("/provar")
 async def provar(
     body: ProvarEntrada = Body(...),
@@ -2393,7 +2438,8 @@ async def provar(
     try:
         canal_resolvido, _ = sb.resolver_provador(body.canal)
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=422, detail=_recusa_de_canal(body.canal, exc)) from exc
 
     def _preparar():
         cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
@@ -3772,7 +3818,17 @@ async def _operacional_por_canal(supa: SupabaseService) -> Dict[str, Any]:
     return {
         canario.CANAL: {
             "canario": await ccan.canario_operacional(supa),
-        }
+        },
+        # ⚠️ A observabilidade de Performance Max entra aqui SEM coleta viva. O
+        # cockpit abre a cada navegação, e uma leitura da conta a cada abertura
+        # gastaria quota do cliente para pintar uma tela. O que atravessa é o
+        # CONTRATO — os papéis de asset obrigatórios, com mínimo e máximo — e o
+        # estado da coleta, que sai `NOT_COLLECTED` com a razão dita em vez de
+        # um vazio mudo.
+        "PERFORMANCE_MAX": {
+            "observabilidade": pmax_cockpit.observabilidade_de_pmax(),
+            "assets_exigidos": pmax_cockpit.papeis_obrigatorios(),
+        },
     }
 
 

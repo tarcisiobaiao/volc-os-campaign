@@ -509,6 +509,74 @@ BLOQUEIO_ATIVACAO_FORA_DE_ESCOPO = Bloqueador(
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+#: O módulo do engine que planeja cada canal. Os nomes vêm do contrato dos
+#: canais (`CONTRATO-CANAIS-PARA-API.md` §2), e não de uma convenção que eu
+#: adivinhei — `PERFORMANCE_MAX` mora em `pmax.py`, e derivar o nome do canal
+#: acharia `performance_max.py`, que não existe.
+_MODULO_DO_CANAL: Dict[str, str] = {
+    "SEARCH": "search",
+    "DISPLAY": "display",
+    "DEMAND_GEN": "demand_gen",
+    "PERFORMANCE_MAX": "pmax",
+}
+
+
+def planeja_offline(canal: str) -> Optional[bool]:
+    """Este canal sabe montar um plano SEM falar com o Google?
+
+    ⚠️ Pergunta diferente de "sabe provar" e de "sabe criar", e é a diferença
+    que faz Performance Max deixar de ser "indisponível". Ele planeja offline —
+    `pmax.planejar()` existe, monta o grafo e serializa protos v25 — e mesmo
+    assim não está no registro do executor. Um booleano só não tem como dizer
+    isso, e a tela precisa dizer.
+
+    `None` quando o engine não pôde ser consultado. Ele NÃO vira `False`:
+    "não consegui perguntar" e "não planeja" levam a ações opostas.
+    """
+    alvo = str(canal or "").strip().upper()
+    modulo = _MODULO_DO_CANAL.get(alvo)
+    if modulo is None:
+        return False
+    try:
+        import importlib
+        import pathlib as _pathlib
+        import sys
+
+        raiz = _pathlib.Path(__file__).resolve().parents[3]
+        if str(raiz) not in sys.path:
+            sys.path.insert(0, str(raiz))
+        mod = importlib.import_module(f"volc_ads.campanha.{modulo}")
+    except Exception:  # noqa: BLE001 — SDK ou pacote ausente é ignorância
+        return None
+    return callable(getattr(mod, "planejar", None))
+
+
+#: A decisão registrada em `DECISAO-PMAX-FORA-DO-EXECUTOR.md` (01/09/2026).
+#:
+#: ⚠️ Código PRÓPRIO, e não `CANAL_SEM_BUILDER`, porque as duas leituras são
+#: OPOSTAS para quem opera: "o canal não existe aqui" convida a desistir; "o
+#: canal planeja e a porta ainda não abriu" convida a pedir a porta. O código é
+#: o mesmo que `volc_ads.campanha.plano.PMAX_FORA_DO_EXECUTOR` declara, para o
+#: 422 da rota e este contrato dizerem a mesma coisa com a mesma palavra.
+CODIGO_PMAX_FORA_DO_EXECUTOR = "PMAX_FORA_DO_EXECUTOR"
+
+_CAUSA_PMAX_FORA_DO_EXECUTOR = (
+    "Performance Max monta o plano inteiro aqui, sem falar com o Google — e "
+    "não está habilitado nesta versão para ser conferido nem criado. Isso não "
+    "é falha, não é ausência e não é zero: é uma decisão registrada, e ela "
+    "existe porque habilitar o canal no executor derrubaria a criação dos "
+    "outros três.")
+
+
+def bloqueio_pmax_fora_do_executor() -> Bloqueador:
+    return Bloqueador(
+        codigo=CODIGO_PMAX_FORA_DO_EXECUTOR,
+        causa=_CAUSA_PMAX_FORA_DO_EXECUTOR,
+        origem=ORIGEM_PRODUTO,
+        observado_em="2026-09-01",
+    )
+
+
 def assets_do_canal(canal: str) -> Assets:
     """Que recursos criativos o ENGINE declara para este canal.
 
@@ -521,15 +589,16 @@ def assets_do_canal(canal: str) -> Assets:
     """
     alvo = str(canal or "").strip().upper()
     if alvo == "PERFORMANCE_MAX":
-        # Não é ignorância: é ausência de contrato. Sem construtor não há
-        # pedido, e sem pedido não há assets a montar. Dizer "0 de uma lista"
-        # sugeriria que a lista existe e ele monta zero dela.
-        return Assets(
-            estado=NAO_APLICAVEL,
-            fonte="app/trafego/plataforma.py",
-            causa=("Performance Max não tem construtor de campanha, então não "
-                   "há pedido para carregar assets."),
-        )
+        # ⚠️ ESTE RAMO DIZIA "não tem construtor", E ISSO DEIXOU DE SER VERDADE.
+        #
+        # `pmax.planejar()` existe, monta o grafo e serializa protos v25. Os
+        # papéis de asset dele são o CONTRATO do canal — em PMax o papel é o
+        # `AssetFieldType` —, e continuar respondendo `NAO_APLICAVEL` esconderia
+        # a exigência mais dura do canal atrás de uma frase sobre ausência.
+        #
+        # O registro de `perfil.PERFORMANCE_MAX.recursos_criativos` continua
+        # vazio, e por isso a lista vem de onde ela de fato está declarada.
+        return _assets_de_pmax()
     try:
         import sys
         import pathlib
@@ -561,6 +630,45 @@ def assets_do_canal(canal: str) -> Assets:
         )
     return Assets(estado=PERMITIDO, recursos=recursos,
                   fonte="volc_ads/campanha/perfil.py")
+
+
+def _assets_de_pmax() -> Assets:
+    """Os papéis de asset de Performance Max, lidos de onde eles são o contrato.
+
+    ⚠️ `perfil.PERFORMANCE_MAX.recursos_criativos` é `()` e está DESATUALIZADO
+    em relação a `pmax.py` — o registro não acompanhou o construtor. Ler dele
+    devolveria "este canal não declara recursos criativos próprios", que é
+    falso, e falso com a autoridade de um registro.
+    """
+    if planeja_offline("PERFORMANCE_MAX") is False:
+        return Assets(
+            estado=NAO_APLICAVEL,
+            fonte="app/trafego/plataforma.py",
+            causa=("Performance Max não monta plano neste servidor, então não "
+                   "há pedido para carregar assets."),
+        )
+    try:
+        import pathlib as _pathlib
+        import sys
+
+        raiz = _pathlib.Path(__file__).resolve().parents[3]
+        if str(raiz) not in sys.path:
+            sys.path.insert(0, str(raiz))
+        from volc_ads.campanha.brief import PAPEIS_DE_ASSET_PMAX
+    except Exception as exc:  # noqa: BLE001
+        return Assets(
+            estado=INDETERMINADO,
+            causa=("não foi possível ler os papéis de asset de Performance Max "
+                   f"({type(exc).__name__})."),
+        )
+    recursos = tuple(papel for papel, _campo in PAPEIS_DE_ASSET_PMAX)
+    if not recursos:
+        return Assets(
+            estado=INDETERMINADO,
+            causa="a lista de papéis de asset de Performance Max veio vazia.",
+        )
+    return Assets(estado=PERMITIDO, recursos=recursos,
+                  fonte="volc_ads/campanha/brief.py")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -624,8 +732,8 @@ _PISTAS_CRIACAO: Tuple[str, ...] = ("construtor", "criação real", "criar:",
                                     "subir")
 
 
-def _portao_planejavel(m: plat.ManifestoDeCanal,
-                       c: cap.Capacidades) -> Portao:
+def _portao_planejavel(m: plat.ManifestoDeCanal, c: cap.Capacidades,
+                       planeja: Optional[bool]) -> Portao:
     """Existe o que montar, e esta pessoa pode montar?
 
     ⚠️ Este portão é sobre o PEDIDO, não sobre a campanha. Ele abre quando há
@@ -634,8 +742,59 @@ def _portao_planejavel(m: plat.ManifestoDeCanal,
     que fez uma tela oferecer "criar campanha" por simetria visual: quatro
     canais na lista, quatro botões, e a ausência descoberta depois do trabalho.
     """
+    # ⚠️ O PLANEJADOR DO ENGINE VEM PRIMEIRO, E O MANIFESTO É O RECUO.
+    #
+    # `plataforma.PERFORMANCE_MAX.campos_do_pedido` continua vazio, e o
+    # manifesto por si só responderia "não há o que montar". `pmax.planejar()`
+    # existe e monta o plano inteiro offline — o manifesto é que envelheceu.
+    # Trocá-lo aqui seria mexer no registro que a tela antiga já consome para
+    # decidir se desenha formulário; perguntar ao engine responde a verdade sem
+    # mudar o comportamento de quem lê o registro.
+    #
+    # `planeja is None` — engine não consultável — cai no manifesto, que é a
+    # única resposta disponível, e não em `False`.
+    declara = bool(m.campos_do_pedido)
     bloqueios = []
-    if not m.campos_do_pedido:
+
+    # ⚠️ OS DOIS REGISTROS PODEM DISCORDAR, E A DISCORDÂNCIA NÃO É UM "NÃO".
+    #
+    # Eu vi isto acontecer: numa execução, `demand_gen` importou no meio de uma
+    # escrita e respondeu sem `planejar`. O portão fechou — anunciando ausência
+    # de capacidade num canal que monta plano desde sempre. Um "não" derivado de
+    # um registro que falhou é pior que um "não sei", porque parece medido.
+    #
+    # Discordância só é conclusiva numa direção: o manifesto NÃO declarar campos
+    # e o engine planejar é o caso conhecido de Performance Max — o manifesto
+    # envelheceu, e o engine é quem tem o construtor. O contrário — manifesto
+    # declara, engine nega — não tem explicação boa, e vira ignorância declarada.
+    #   engine   manifesto   resposta
+    #   ------   ---------   --------
+    #   sim      qualquer    monta          — o construtor existe, e ele manda
+    #   não sei  declara     monta          — o manifesto é a única resposta que há
+    #   não sei  cala        não sei        — ninguém pôde responder
+    #   não      declara     não sei        — contradição, e "não" seria inventado
+    #   não      cala        não monta      — os dois concordam
+    if planeja is True:
+        estado_do_plano: Optional[bool] = True
+    elif planeja is None:
+        estado_do_plano = True if declara else None
+    else:
+        estado_do_plano = None if declara else False
+
+    if estado_do_plano is None:
+        bloqueios.append(Bloqueador(
+            codigo="montagem_indeterminada",
+            causa=(
+                "não deu para confirmar se este canal monta um pedido: o "
+                "registro da tela e o construtor de campanhas responderam "
+                "coisas diferentes, ou o construtor não pôde ser consultado. "
+                "Isso não é o mesmo que o canal não montar."),
+            origem=ORIGEM_CONSTRUTOR,
+        ))
+        return Portao(nome=PLANEJAVEL, estado=INDETERMINADO,
+                      bloqueadores=tuple(bloqueios))
+
+    if not estado_do_plano:
         bloqueios.append(Bloqueador(
             codigo="sem_campos_de_pedido",
             causa=_causa_do_canal(
@@ -668,13 +827,20 @@ def _portao_validavel(m: plat.ManifestoDeCanal,
     """
     bloqueios = []
     if not m.sabe_provar:
-        bloqueios.append(Bloqueador(
-            codigo="sem_porta_de_prova",
-            causa=_causa_do_canal(
-                m, "não há como conferir um pedido de campanha em",
-                _PISTAS_PROVA),
-            origem=ORIGEM_CONSTRUTOR,
-        ))
+        # ⚠️ PMax não é recusado por AUSÊNCIA, e dizer que é seria a leitura
+        # oposta da verdadeira. O manifesto ainda explica a recusa dele com
+        # "não há construtor — o engine levanta exceção", frase que era certa
+        # até `pmax.py` existir. Hoje o motivo é uma decisão registrada.
+        if m.canal == "PERFORMANCE_MAX" and planeja_offline(m.canal) is not False:
+            bloqueios.append(bloqueio_pmax_fora_do_executor())
+        else:
+            bloqueios.append(Bloqueador(
+                codigo="sem_porta_de_prova",
+                causa=_causa_do_canal(
+                    m, "não há como conferir um pedido de campanha em",
+                    _PISTAS_PROVA),
+                origem=ORIGEM_CONSTRUTOR,
+            ))
     else:
         if not c.google_validate_only:
             bloqueios.append(Bloqueador(
@@ -727,12 +893,15 @@ def _portao_criavel_pausada(m: plat.ManifestoDeCanal, c: cap.Capacidades,
     # a mutação real do canal. Um único código `sem_construtor` para os dois
     # faria o operador concluir que Demand Gen ainda não foi escrito.
     if not m.sabe_provar:
-        bloqueios.append(Bloqueador(
-            codigo="sem_construtor",
-            causa=_causa_do_canal(m, "não há como criar campanha em",
-                                  _PISTAS_CRIACAO),
-            origem=ORIGEM_CONSTRUTOR,
-        ))
+        if m.canal == "PERFORMANCE_MAX" and planeja_offline(m.canal) is not False:
+            bloqueios.append(bloqueio_pmax_fora_do_executor())
+        else:
+            bloqueios.append(Bloqueador(
+                codigo="sem_construtor",
+                causa=_causa_do_canal(m, "não há como criar campanha em",
+                                      _PISTAS_CRIACAO),
+                origem=ORIGEM_CONSTRUTOR,
+            ))
     elif not m.permite_mutacao_real:
         bloqueios.append(Bloqueador(
             codigo="mutacao_real_recusada",
@@ -967,6 +1136,92 @@ def observabilidade_do_canal(
 CANARIO_CAMPANHA_ID = "24195821946"
 
 
+# ── a leitura de campo do canário, em 01/09/2026 ────────────────────────────
+#
+# ⚠️ ESTE BLOCO É UMA LEITURA REGISTRADA, COM DATA — não uma suposição, e não
+# um cache. Ele veio de um GAQL v25 contra a conta 5478096539 pelo MCC
+# 6016739364, e viaja com `observado_em` para poder ser desconfiado.
+#
+# Ele existe porque a alternativa é pior: sem ele, o cockpit mostraria campos
+# vazios para uma campanha que o sistema criou e leu de volta no mesmo dia — e
+# um campo vazio ao lado de "criada com sucesso" é a tela contradizendo a si
+# mesma.
+
+#: ⚠️ `MANUAL_CPC` NÃO É AUSÊNCIA DE DADO. É uma escolha registrada, e é ela
+#: que explica por que o bloqueio de Smart Bidding não afeta o lance hoje: a
+#: campanha não usa lance automático. Mostrar este campo em branco faria o
+#: operador procurar a estratégia que "faltou configurar".
+CANARIO_ESTRATEGIA_DE_LANCE = "MANUAL_CPC"
+
+#: O estado que o Google chama de primário, e as razões dele.
+#:
+#: ⚠️ RAZÕES, no plural, e o contrato carrega LISTA. São duas simultâneas, e
+#: elas dizem coisas diferentes: uma é consequência do que nós fizemos (a
+#: campanha nasce pausada, por desenho), a outra é o veredito que ainda não
+#: chegou. Reduzir a uma só apagaria justamente a que ainda pode mudar.
+CANARIO_PRIMARY_STATUS = "PAUSED"
+
+#: ⚠️ `em_revisao` NÃO É VERDE E NÃO É VERMELHO.
+#:
+#: `MOST_ADS_UNDER_REVIEW` é o estado que o canário existe para colher: o
+#: Google ainda não decidiu. Pintá-lo de verde afirmaria uma aprovação que não
+#: houve; pintá-lo de vermelho afirmaria uma reprovação que também não houve. É
+#: o terceiro estado, e ele precisa aparecer com esse nome.
+CANARIO_RAZOES_DO_ESTADO: Tuple[Dict[str, str], ...] = (
+    {
+        "codigo": "CAMPAIGN_PAUSED",
+        "natureza": "por_desenho",
+        "texto": ("a campanha está pausada porque foi criada assim. A janela "
+                  "autorizada cria pausada e nada além — pausada ela não entra "
+                  "em leilão, não veicula e não gasta."),
+    },
+    {
+        "codigo": "MOST_ADS_UNDER_REVIEW",
+        "natureza": "em_revisao",
+        "texto": ("a maior parte dos anúncios ainda está em revisão pelo "
+                  "Google. Isto não é aprovação nem reprovação: é o veredito "
+                  "que o canário existe para colher, e ele ainda não chegou."),
+    },
+)
+
+#: A leitura acima foi feita neste dia. Ela envelhece, e a tela precisa poder
+#: dizer isso em vez de apresentá-la como o estado de agora.
+CANARIO_OBSERVADO_EM = "2026-09-01"
+
+#: O bloqueio de ativação que sai da leitura de campo, e não de uma regra.
+BLOQUEIO_ANUNCIOS_EM_REVISAO = Bloqueador(
+    codigo="anuncios_em_revisao",
+    causa=(
+        "a maior parte dos anúncios desta campanha ainda está em revisão pelo "
+        "Google. Ligar a campanha antes do veredito é começar a gastar sobre "
+        "uma decisão que ainda pode ser 'reprovado'."),
+    origem=ORIGEM_OBSERVABILIDADE,
+    observado_em=CANARIO_OBSERVADO_EM,
+    revalidacao="o veredito por anúncio é lido pela consulta de política",
+)
+
+
+def leitura_de_campo_do_canario() -> Dict[str, Any]:
+    """O que a conta respondeu sobre a campanha 24195821946, com data."""
+    return {
+        "observado_em": CANARIO_OBSERVADO_EM,
+        "estrategia_de_lance": {
+            "valor": CANARIO_ESTRATEGIA_DE_LANCE,
+            # ⚠️ `escolhido`, e não `ausente`: o campo tem valor, e o valor é
+            # uma decisão. É por isso que o bloqueio de Smart Bidding existe e
+            # não afeta o lance de hoje.
+            "estado": "escolhido",
+            "por_que_importa": (
+                "lance manual não aprende com conversão, então a meta efetiva "
+                "divergente não afeta o gasto hoje. Ela afetaria no dia em que "
+                "alguém trocasse a estratégia."),
+        },
+        "primary_status": CANARIO_PRIMARY_STATUS,
+        "primary_status_reasons": [dict(r) for r in CANARIO_RAZOES_DO_ESTADO],
+    }
+
+
+
 def _superficie(nome: str, *, visivel: Optional[bool], descricao: str,
                 causa: Optional[str] = None,
                 detalhe: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
@@ -1016,6 +1271,11 @@ async def canario_operacional(supa: Any) -> Dict[str, Any]:
             "conta_label": can.NOME_DA_CONTA,
             "canal": can.CANAL,
             "estado_declarado": "PAUSED",
+            # ⚠️ A leitura de campo continua valendo mesmo com o registro
+            # operacional fora do ar: ela é sobre a CONTA, e não sobre o nosso
+            # banco. Omiti-la aqui esconderia o que se sabe por causa do que
+            # não se conseguiu conferir.
+            "leitura_de_campo": leitura_de_campo_do_canario(),
             "superficies": superficies,
             "resumo": indisponivel,
         }
@@ -1134,6 +1394,7 @@ async def canario_operacional(supa: Any) -> Dict[str, Any]:
         "conta_label": can.NOME_DA_CONTA,
         "canal": can.CANAL,
         "estado_declarado": "PAUSED",
+        "leitura_de_campo": leitura_de_campo_do_canario(),
         "superficies": superficies,
         "resumo": resumo,
     }
@@ -1178,10 +1439,15 @@ def _bloqueios_medidos(canal: str, medicao: Mensuracao) -> Tuple[Bloqueador, ...
     # lei — e mantê-lo depois de a leitura discordar seria justamente o
     # bloqueio que envelhece em silêncio.
     if medicao.lida and medicao.conversion_goal_status == pr.PRONTO:
-        return ()
+        # ⚠️ A revisão dos anúncios NÃO sai junto com a meta. São bloqueios
+        # independentes, e fechar um não abre o portão — foi por isso que eles
+        # nasceram nomeados em vez de a primeira razão encerrar a lista.
+        return (BLOQUEIO_ANUNCIOS_EM_REVISAO,)
     if medicao.lida and medicao.conversion_goal_status == pr.PARCIAL:
-        return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA)
-    return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA)
+        return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA,
+                BLOQUEIO_ANUNCIOS_EM_REVISAO)
+    return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA,
+            BLOQUEIO_ANUNCIOS_EM_REVISAO)
 
 
 def contrato(canal: str, *, capacidades: cap.Capacidades,
@@ -1208,7 +1474,7 @@ def contrato(canal: str, *, capacidades: cap.Capacidades,
         campanhas_no_espelho=espelho.total if espelho else None,
         contagem_truncada=bool(espelho and espelho.truncada))
 
-    planejavel = _portao_planejavel(m, capacidades)
+    planejavel = _portao_planejavel(m, capacidades, planeja_offline(m.canal))
     validavel = _portao_validavel(m, capacidades)
     criavel = _portao_criavel_pausada(m, capacidades, pol, validavel)
     ativavel = _com_extras(

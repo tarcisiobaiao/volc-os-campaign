@@ -21,6 +21,7 @@ from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario
 from app.trafego import canario as can
 from app.trafego import capacidades as cap
 from app.trafego import contrato_canais as cc
+from app.trafego import plataforma as plat
 from app.trafego import prontidao as pr
 
 
@@ -124,12 +125,63 @@ def test_a_causa_do_portao_fala_daquele_portao():
     assert "nasce desligada" not in bloq.causa
 
 
-def test_pmax_fecha_os_tres_primeiros_portoes_por_ausencia_de_construtor():
+def test_pmax_planeja_e_nao_prova_nem_cria():
+    """A tabela da decisão de 01/09/2026, ponto a ponto.
+
+    ⚠️ PMax é a razão de existirem quatro portões em vez de um booleano. Ele
+    monta o plano inteiro offline — `pmax.planejar()` serializa protos v25 sem
+    rede — e não está no registro do executor. "Indisponível" apagaria a
+    primeira metade; "pronto" apagaria a segunda.
+    """
     pmax = _por_canal(ADMIN_COM_ESCRITA)["PERFORMANCE_MAX"].por_nome
-    for nome in (cc.PLANEJAVEL, cc.VALIDAVEL, cc.CRIAVEL_PAUSADA):
-        assert pmax[nome].estado == cc.BLOQUEADO, nome
-        assert any(b.origem == cc.ORIGEM_CONSTRUTOR
-                   for b in pmax[nome].bloqueadores), nome
+    assert pmax[cc.PLANEJAVEL].estado == cc.PERMITIDO
+    assert pmax[cc.VALIDAVEL].estado == cc.BLOQUEADO
+    assert pmax[cc.CRIAVEL_PAUSADA].estado == cc.BLOQUEADO
+    assert pmax[cc.ATIVAVEL].estado == cc.BLOQUEADO
+
+
+def test_pmax_recusa_por_decisao_registrada_e_nao_por_ausencia():
+    """As duas leituras são OPOSTAS para quem opera: "o canal não existe aqui"
+    convida a desistir; "o canal planeja e a porta ainda não abriu" convida a
+    pedir a porta."""
+    pmax = _por_canal(ADMIN_COM_ESCRITA)["PERFORMANCE_MAX"].por_nome
+    for nome in (cc.VALIDAVEL, cc.CRIAVEL_PAUSADA):
+        codigos = {b.codigo for b in pmax[nome].bloqueadores}
+        assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR in codigos, nome
+        assert "sem_construtor" not in codigos, nome
+        (bloq,) = [b for b in pmax[nome].bloqueadores
+                   if b.codigo == cc.CODIGO_PMAX_FORA_DO_EXECUTOR]
+        # `produto` e não `construtor`: quem abre esta porta é o dono, não quem
+        # escreve o engine. Errar a origem manda a pessoa para a porta errada.
+        assert bloq.origem == cc.ORIGEM_PRODUTO, nome
+        assert "não é falha" in bloq.causa
+
+
+def test_o_codigo_de_pmax_e_o_mesmo_do_engine():
+    """Uma palavra só para o mesmo fato: o 422 da rota e este contrato precisam
+    dizer a mesma coisa, e `plano.CODIGOS` é a lista fechada."""
+    from volc_ads.campanha import plano
+
+    assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR == plano.PMAX_FORA_DO_EXECUTOR
+    assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR in plano.CODIGOS
+
+
+def test_registros_que_discordam_produzem_ignorancia_e_nao_recusa():
+    """Eu vi isto acontecer: `demand_gen` importou no meio de uma escrita e
+    respondeu sem `planejar`. O portão fechou, anunciando ausência de capacidade
+    num canal que monta plano desde sempre. Um "não" derivado de um registro que
+    falhou é pior que um "não sei", porque parece medido."""
+    m = plat.DEMAND_GEN  # o manifesto declara campos de pedido
+    portao = cc._portao_planejavel(m, ADMIN_COM_ESCRITA, False)
+    assert portao.estado == cc.INDETERMINADO
+    assert portao.estado != cc.BLOQUEADO
+    (bloq,) = portao.bloqueadores
+    assert bloq.codigo == "montagem_indeterminada"
+
+
+def test_engine_nao_consultavel_cai_no_manifesto_e_nao_em_recusa():
+    portao = cc._portao_planejavel(plat.SEARCH, ADMIN_COM_ESCRITA, None)
+    assert portao.estado == cc.PERMITIDO
 
 
 # ── a porta experimental não é herdada ──────────────────────────────────────
@@ -281,12 +333,22 @@ def test_contagem_truncada_e_declarada():
     assert o.json()["contagem_truncada"] is True
 
 
-def test_assets_de_pmax_e_nao_aplicavel_e_nao_zero():
-    """`0 assets` sugeriria que a lista existe e ele monta zero dela."""
+def test_assets_de_pmax_vem_de_onde_eles_sao_o_contrato():
+    """Em PMax o papel É o contrato (`AssetFieldType`), e
+    `perfil.PERFORMANCE_MAX.recursos_criativos` continua vazio — o registro não
+    acompanhou o construtor. Ler dele devolveria "este canal não declara
+    recursos criativos próprios", que é falso com autoridade de registro."""
     a = _por_canal()["PERFORMANCE_MAX"].assets
-    assert a.estado == cc.NAO_APLICAVEL
+    assert a.estado == cc.PERMITIDO
+    assert "marketing" in a.recursos
+    assert "marketing_quadrada" in a.recursos
+    assert a.fonte and "brief" in a.fonte
+
+
+def test_assets_nao_aplicavel_nao_reporta_quantidade_zero():
+    """`0 de uma lista` sugeriria que a lista existe e o canal monta zero dela."""
+    a = cc.Assets(estado=cc.NAO_APLICAVEL, causa="não há pedido")
     assert a.json()["quantidade"] is None
-    assert a.causa
 
 
 def test_assets_dos_canais_com_construtor_vem_do_engine():
@@ -445,3 +507,114 @@ def test_a_rota_traz_o_canario_em_search(cliente):
     assert canario["campaign_id"] == cc.CANARIO_CAMPANHA_ID
     assert canario["estado_declarado"] == "PAUSED"
     assert canario["superficies"]
+
+
+# ── o 422 de Performance Max ────────────────────────────────────────────────
+
+
+def test_o_422_de_pmax_carrega_codigo_e_estado_proprios():
+    """Sem isto, o operador lê o mesmo 422 de um canal inexistente. As duas
+    leituras são opostas: uma convida a desistir, a outra a pedir a porta."""
+    from volc_ads.campanha import plano
+
+    detalhe = trafego._recusa_de_canal("PMAX", ValueError("seja lá o que for"))
+    assert detalhe["codigo"] == plano.PMAX_FORA_DO_EXECUTOR
+    assert detalhe["estado"] == "indisponivel_por_decisao"
+    assert detalhe["canal"] == "PERFORMANCE_MAX"
+    assert "não está habilitado nesta versão" in detalhe["mensagem"]
+
+
+def test_o_422_de_pmax_nao_reusa_o_codigo_de_canal_inexistente():
+    from volc_ads.campanha import plano
+
+    detalhe = trafego._recusa_de_canal("pmax", ValueError("x"))
+    assert detalhe["codigo"] != plano.CANAL_SEM_BUILDER
+
+
+def test_o_422_preserva_a_frase_crua_do_executor():
+    """Ela é a procedência da recusa, e quem depura precisa dela. O que muda é
+    quem lê primeiro — o operador lê `mensagem`, não o `ValueError`."""
+    detalhe = trafego._recusa_de_canal("PMAX", ValueError("frase do executor"))
+    assert detalhe["detalhe_do_executor"] == "frase do executor"
+
+
+def test_canal_desconhecido_continua_com_o_codigo_de_ausencia():
+    from volc_ads.campanha import plano
+
+    detalhe = trafego._recusa_de_canal("TIKTOK", ValueError("não existe"))
+    assert detalhe["codigo"] == plano.CANAL_SEM_BUILDER
+    assert detalhe["estado"] == "sem_porta_de_prova"
+
+
+# ── a leitura de campo do canário ───────────────────────────────────────────
+
+
+def test_a_estrategia_de_lance_do_canario_e_escolha_e_nao_ausencia():
+    """`MANUAL_CPC` não é campo em branco. Mostrá-lo vazio faria o operador
+    procurar a estratégia que 'faltou configurar'."""
+    leitura = cc.leitura_de_campo_do_canario()
+    assert leitura["estrategia_de_lance"]["valor"] == "MANUAL_CPC"
+    assert leitura["estrategia_de_lance"]["estado"] == "escolhido"
+    assert leitura["estrategia_de_lance"]["por_que_importa"]
+
+
+def test_as_razoes_do_estado_sao_lista_e_nao_uma_so():
+    """São duas simultâneas e dizem coisas diferentes: uma é consequência do
+    desenho, a outra é o veredito que ainda não chegou."""
+    razoes = cc.leitura_de_campo_do_canario()["primary_status_reasons"]
+    assert isinstance(razoes, list)
+    assert len(razoes) == 2
+    assert {r["codigo"] for r in razoes} == {
+        "CAMPAIGN_PAUSED", "MOST_ADS_UNDER_REVIEW"}
+
+
+def test_em_revisao_nao_e_verde_nem_vermelho():
+    """`MOST_ADS_UNDER_REVIEW` é o veredito que o canário existe para colher.
+    Pintá-lo de verde afirmaria uma aprovação que não houve."""
+    razoes = cc.leitura_de_campo_do_canario()["primary_status_reasons"]
+    (revisao,) = [r for r in razoes if r["codigo"] == "MOST_ADS_UNDER_REVIEW"]
+    assert revisao["natureza"] == "em_revisao"
+    assert revisao["natureza"] not in ("ok", "falha", "por_desenho")
+    assert "não é aprovação nem reprovação" in revisao["texto"]
+
+
+def test_a_pausa_e_declarada_como_desenho_e_nao_como_problema():
+    razoes = cc.leitura_de_campo_do_canario()["primary_status_reasons"]
+    (pausa,) = [r for r in razoes if r["codigo"] == "CAMPAIGN_PAUSED"]
+    assert pausa["natureza"] == "por_desenho"
+
+
+def test_a_leitura_de_campo_carrega_a_data_em_que_foi_feita():
+    """Ela envelhece, e a tela precisa poder dizer isso em vez de apresentá-la
+    como o estado de agora."""
+    assert cc.leitura_de_campo_do_canario()["observado_em"] == "2026-09-01"
+
+
+def test_anuncios_em_revisao_bloqueiam_a_ativacao_de_search():
+    search = _por_canal(ADMIN_COM_ESCRITA)["SEARCH"].por_nome
+    codigos = {b.codigo for b in search[cc.ATIVAVEL].bloqueadores}
+    assert "anuncios_em_revisao" in codigos
+
+
+def test_a_revisao_nao_sai_quando_a_meta_e_resolvida():
+    """Bloqueios independentes: fechar um não abre o portão. Foi por isso que
+    eles nasceram nomeados em vez de a primeira razão encerrar a lista."""
+    pronto = pr.Prontidao(
+        conversion_goal_status=pr.PRONTO,
+        conversion_signal_status=pr.PRONTO,
+        measurement_readiness=pr.PRONTO,
+        observability_status=pr.PRONTO,
+        smart_bidding_eligible=True,
+    )
+    search = cc.contrato("SEARCH", capacidades=ADMIN_COM_ESCRITA,
+                         prontidao=pronto).por_nome
+    codigos = {b.codigo for b in search[cc.ATIVAVEL].bloqueadores}
+    assert "meta_efetiva_divergente" not in codigos
+    assert "anuncios_em_revisao" in codigos
+
+
+def test_a_leitura_de_campo_sobrevive_ao_registro_operacional_fora_do_ar():
+    """Ela é sobre a CONTA, não sobre o nosso banco. Omiti-la esconderia o que
+    se sabe por causa do que não se conseguiu conferir."""
+    r = asyncio.run(cc.canario_operacional(_SupaDesligado()))
+    assert r["leitura_de_campo"]["primary_status"] == "PAUSED"
