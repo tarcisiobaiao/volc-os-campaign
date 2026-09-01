@@ -1375,7 +1375,7 @@ def test_o_OPERARIO_que_perdeu_o_lease_nao_conclui(bancada, tmp_path):
 
     deposito, _ = bancada
     op_a = Operario(deposito, {"lentissimo": MotorLentissimo()}, tmp_path / "la",
-                    nome="op-A", lease_s=-1)
+                    nome="op-A", lease_s=60)
     t, _ = deposito.enfileirar(encomenda(motor_slug="lentissimo"))
 
     resultado: list[Any] = []
@@ -1383,7 +1383,11 @@ def test_o_OPERARIO_que_perdeu_o_lease_nao_conclui(bancada, tmp_path):
     fio.start()
     assert comecou.wait(timeout=5)
 
-    # o lease de A já nasceu vencido: B reivindica o mesmo trabalho
+    # A está produzindo com lease válido; o prazo vence e B reivindica o mesmo
+    # trabalho. (`lease_s=-1` não serve mais: o depósito recusa `claimed ->
+    # running` com lease vencido, como o Postgres sempre fez, e o motor nem
+    # chegaria a produzir.)
+    _vencer_o_lease(deposito, t.id)
     deposito.devolver_vencidos()
     b = deposito.reivindicar("op-B")
     assert b is not None and b.id == t.id
@@ -1576,11 +1580,12 @@ def test_render_que_perde_a_posse_nao_deixa_arquivo_no_disco(bancada, tmp_path):
 
     deposito, _ = bancada
     op = Operario(deposito, {"lento2": MotorLento()}, tmp_path / "l2",
-                  nome="op-A", lease_s=-1)
+                  nome="op-A", lease_s=60)
     t, _ = deposito.enfileirar(encomenda(motor_slug="lento2"))
     fio = threading.Thread(target=op.trabalhar_uma_vez)
     fio.start()
     assert comecou.wait(timeout=5)
+    _vencer_o_lease(deposito, t.id)
     deposito.devolver_vencidos()
     deposito.reivindicar("op-B")
     segue.set()
@@ -1777,16 +1782,45 @@ class MotorQueTrava:
         )
 
 
+def _vencer_o_lease(deposito: Any, trabalho_id: str) -> None:
+    """Faz o lease deste trabalho vencer, sem esperar o relógio.
+
+    ⚠️ Escreve direto no arquivo da fila DE PROPÓSITO. O que se simula aqui é a
+    PASSAGEM DO TEMPO, e não existe — nem deve existir — API de produção para
+    vencer o lease de outro operário.
+
+    `lease_s=-1` fazia esse papel antes e deixou de servir quando o depósito
+    passou a recusar `claimed -> running` com lease vencido, que é o que o
+    gatilho `criativo_render_transicao_valida` da v11_03 sempre fez. Com o lease
+    já vencido no claim, o motor nem chega a produzir: a prova passaria sem
+    exercitar um só dos checkpoints de posse do operário, virando tautologia.
+    Agora A reivindica com lease VÁLIDO, começa a produzir de verdade, e só então
+    o prazo vence — que é o cenário real.
+    """
+    import sqlite3 as _sqlite3
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    con = _sqlite3.connect(deposito.caminho)
+    try:
+        con.execute(
+            "update trabalho set lease_ate=? where id=?",
+            ((_dt.now(_tz.utc) - _td(seconds=5)).isoformat(), trabalho_id),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+
 def _cenario_de_perda(tmp_path: Path):
-    """A reivindica com lease vencido, B assume, e A ainda está produzindo."""
+    """A reivindica com lease VÁLIDO, começa a produzir, o lease vence e B assume."""
     import threading
 
     deposito = DepositoDeTrabalhos(tmp_path / "fila.db")
     motor = MotorQueTrava()
     raiz = tmp_path / "trabalhos"  # A e B compartilham a raiz, como em produção
-    a = Operario(deposito, {"trava": motor}, raiz, nome="op-A", lease_s=-1)
+    a = Operario(deposito, {"trava": motor}, raiz, nome="op-A", lease_s=60)
     deposito.enfileirar(encomenda(motor_slug="trava"))
-    pego = deposito.reivindicar("op-A", lease_s=-1)
+    pego = deposito.reivindicar("op-A", lease_s=60)
     assert pego is not None
 
     saida: dict[str, Any] = {}
@@ -1795,6 +1829,7 @@ def _cenario_de_perda(tmp_path: Path):
     assert motor.entrou.wait(timeout=10), "o motor nem começou"
 
     # Enquanto A produz, o lease vence e B assume.
+    _vencer_o_lease(deposito, pego.id)
     deposito.devolver_vencidos()
     b = deposito.reivindicar("op-B")
     assert b is not None and b.id == pego.id
