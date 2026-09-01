@@ -101,6 +101,45 @@ class Origem(Enum):
     DERIVADO = "derivado"    # recorte, redimensionamento ou variação de outro asset
 
 
+class NaturezaDaProcedencia(Enum):
+    """O arquivo pode ser APRESENTADO como produção? É outra pergunta que `Origem`.
+
+    `Origem` responde "de que classe é este arquivo" — saiu de um motor, veio de
+    um humano, é recorte de outro. Nenhuma das quatro responde a pergunta que
+    custa dinheiro e credibilidade: **este arquivo pode subir para uma conta
+    real?** Um PNG sintético de motor local é `Origem.GERADO` exatamente como o
+    banner que a agência pagou, e é essa colisão que permite um asset de ensaio
+    atravessar o sistema com cara de produção.
+
+    ## Por que o padrão é `NAO_DECLARADA`, e não `PRODUCAO`
+
+    Porque o padrão é a resposta que o sistema dá a quem não perguntou, e
+    "produção" é a resposta cara. Todo `Asset` construído por código que nunca
+    ouviu falar deste campo — e há bastante — nasceria publicável por omissão, o
+    que é a definição do defeito que este enum existe para fechar.
+
+    `NAO_DECLARADA` não é sinônimo de `FIXTURE`: é ausência de declaração, e a
+    ponte a trata como ausência (aviso nomeado), não como fixture (recusa). As
+    duas coisas precisam de remédios diferentes: uma pede que alguém declare, a
+    outra pede que alguém não publique.
+    """
+
+    NAO_DECLARADA = "nao_declarada"   # ninguém disse. NÃO é permissão.
+    PRODUCAO = "producao"             # motor/fornecedor de produção; pode subir
+    LOCAL = "local"                   # produzido nesta máquina, offline, para ensaio
+    FIXTURE = "fixture"               # bytes versionados no repo, para teste e demo
+
+    @property
+    def publicavel(self) -> bool:
+        """Só `PRODUCAO` é publicável. Derivado, nunca gravado.
+
+        Um booleano `publicavel=True` guardado ao lado sobrevive à edição do
+        resto e passa a mentir — é o mesmo motivo pelo qual `Linhagem.confirmada`
+        é propriedade e não campo.
+        """
+        return self is NaturezaDaProcedencia.PRODUCAO
+
+
 @dataclass(frozen=True)
 class Procedencia:
     """Quem gerou, de quê, quando e com qual versão do motor.
@@ -122,6 +161,9 @@ class Procedencia:
     pedido: str = ""           # id do pedido que originou este arquivo
     custo_usd: float | None = None
     nota: str = ""
+    #: Este arquivo pode ser apresentado como produção? Ver `NaturezaDaProcedencia`.
+    #: O padrão é `NAO_DECLARADA` de propósito: quem não declarou não autorizou.
+    natureza: NaturezaDaProcedencia = NaturezaDaProcedencia.NAO_DECLARADA
 
     def __post_init__(self) -> None:
         # A invariante 2 do cabeçalho mora aqui, e é a única checagem que este
@@ -135,6 +177,11 @@ class Procedencia:
     @property
     def insumo_hash(self) -> str:
         return hashlib.sha256(self.insumo.encode("utf-8")).hexdigest()[:16]
+
+    @property
+    def publicavel(self) -> bool:
+        """Atalho de leitura. A regra mora no enum; aqui é só a projeção."""
+        return self.natureza.publicavel
 
 
 # ── o asset ─────────────────────────────────────────────────────────────────

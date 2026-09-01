@@ -47,6 +47,7 @@ from .contrato import (
     Asset,
     Falha,
     LoteDeAssets,
+    NaturezaDaProcedencia,
     Origem,
     Procedencia,
     TipoDeAsset,
@@ -75,6 +76,7 @@ def assets_da_resposta(
     versao: str,
     quando: datetime,
     origem: Origem = Origem.GERADO,
+    natureza: NaturezaDaProcedencia = NaturezaDaProcedencia.NAO_DECLARADA,
 ) -> tuple[tuple[Asset, ...], tuple[Falha, ...]]:
     """Converte o cru do motor em assets medidos e com procedência.
 
@@ -82,6 +84,10 @@ def assets_da_resposta(
     medida, texto vazio) vira `Falha` e os outros seguem. É a fronteira onde a
     regra "falha não corrompe o lote" precisa ser cumprida de verdade: aqui é o
     único lugar que sabe que existiam cinco arquivos quando só quatro deram.
+
+    ⚠️ `natureza` NÃO tem `PRODUCAO` como padrão. Quem chama sem dizer não
+    autorizou publicação — só não respondeu. O default honesto de uma pergunta
+    não feita é `NAO_DECLARADA`, e a ponte sabe o que fazer com isso.
     """
     assets: list[Asset] = []
     falhas: list[Falha] = list(resposta.falhas)
@@ -99,6 +105,7 @@ def assets_da_resposta(
                     quando=quando,
                     pedido=resposta.pedido,
                     custo_usd=arquivo.custo_usd,
+                    natureza=natureza,
                 ),
                 conteudo_hash=hash_de_conteudo(conteudo),
                 origem=origem,

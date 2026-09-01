@@ -58,8 +58,9 @@ recusa sobre o payload em vez da recusa verdadeira — "faltam os bytes".
 from __future__ import annotations
 
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import Mapping
 
 from .campanha import validacao as _validacao_de_campanha
@@ -79,6 +80,7 @@ from .criativo.contrato import (
     ExigenciaDeCanal,
     Falha,
     LoteDeAssets,
+    NaturezaDaProcedencia,
     Origem,
     Procedencia,
     TipoDeAsset,
@@ -117,6 +119,55 @@ PAPEL_POR_TIPO_DEMAND_GEN: dict[TipoDeAsset, str] = {
     TipoDeAsset.IMAGEM_MARKETING_RETRATO: "marketing_retrato",
     TipoDeAsset.IMAGEM_MARKETING_RETRATO_ALTO: "marketing_retrato_alto",
     TipoDeAsset.LOGO_QUADRADO: "logo_quadrado",
+}
+
+
+class Destino(Enum):
+    """Para onde este payload vai — e é isso que decide quem pode entrar nele.
+
+    ## Por que a fronteira é AQUI, e não no validador
+
+    `validacao.py` responde "este arquivo serve para o canal?" — geometria, peso,
+    formato, contagem. A natureza da procedência não é uma propriedade do
+    arquivo: um PNG de ensaio 1200×628 é geometricamente idêntico ao banner que a
+    agência pagou. A pergunta "pode subir para uma conta real?" só existe no
+    instante em que o payload é montado, e este módulo é esse instante.
+
+    ## Por que `PRODUCAO` é o padrão
+
+    Porque o padrão é o que acontece com quem não pensou no assunto, e o erro
+    caro tem uma direção só: subir ensaio achando que é produção. O contrário —
+    recusar um asset de produção porque alguém esqueceu de declarar o destino —
+    custa uma mensagem de recusa nomeada, que é barato e visível.
+
+    `ENSAIO` não é "modo relaxado": ele não afrouxa geometria, peso nem contagem.
+    Ele afrouxa exatamente uma coisa, a natureza, e carimba isso na `Entrega`
+    para que ninguém leia o payload sem ver o rótulo.
+    """
+
+    PRODUCAO = "producao"
+    ENSAIO = "ensaio"
+
+
+#: As naturezas que cada destino aceita. Tabela, e não `if`, porque um destino
+#: novo (homologação, conta de sandbox) precisa declarar sua política em vez de
+#: herdá-la de um `else`.
+NATUREZAS_ACEITAS: dict[Destino, frozenset[NaturezaDaProcedencia]] = {
+    Destino.PRODUCAO: frozenset({
+        NaturezaDaProcedencia.PRODUCAO,
+        # ⚠️ `NAO_DECLARADA` entra, e isso é uma DÍVIDA declarada, não um
+        # descuido. Todo `Asset` construído antes deste campo existir — o
+        # caminho de pasta do operador, as fixtures dos testes de campanha, os
+        # adaptadores de motor pago — nasce sem natureza. Recusá-los aqui
+        # quebraria o único caminho que hoje monta payload de verdade, para
+        # ganhar uma garantia que a ausência não dá de qualquer modo.
+        #
+        # O que ELA ganha em troca é visibilidade: cada asset sem natureza sai
+        # nomeado em `Entrega.avisos`. Quando os produtores declararem, esta
+        # linha sai e o aviso vira recusa.
+        NaturezaDaProcedencia.NAO_DECLARADA,
+    }),
+    Destino.ENSAIO: frozenset(NaturezaDaProcedencia),
 }
 
 
@@ -159,8 +210,19 @@ class Entrega:
     imagens: ImagensDisplay | ImagensDemandGen | None = None
     linhagem: tuple[Linhagem, ...] = ()
     #: O que a ponte descartou e por quê — bytes ausentes, hash divergente,
-    #: asset já na conta, tipo sem papel neste canal. Uma linha por descarte.
+    #: asset já na conta, tipo sem papel neste canal, natureza não publicável.
+    #: Uma linha por descarte.
     recusas: tuple[str, ...] = ()
+    #: Para onde este payload ia quando foi montado. Viaja junto porque um
+    #: `ImagensDisplay` no meio de um log não diz sozinho se nasceu de um ensaio.
+    destino: Destino = Destino.PRODUCAO
+    #: `Asset.identidade` -> valor de `NaturezaDaProcedencia`, para **cada**
+    #: asset do lote — inclusive os que a ponte depois recusou. Quem lê a
+    #: entrega precisa saber o que havia no lote, não só o que sobrou.
+    naturezas: dict[str, str] = field(default_factory=dict)
+    #: O que passou mas merece ser dito. Hoje: asset sem natureza declarada num
+    #: destino de produção. Aviso e não recusa — ver `NATUREZAS_ACEITAS`.
+    avisos: tuple[str, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -174,6 +236,19 @@ class Entrega:
 
     def resumo(self) -> str:
         linhas = [self.veredito.resumo()]
+        linhas.append(f"  destino: {self.destino.value}")
+        nao_publicaveis = sorted(
+            i for i, n in self.naturezas.items()
+            if n != NaturezaDaProcedencia.PRODUCAO.value
+        )
+        if nao_publicaveis:
+            linhas.append(
+                f"  ⚠️ {len(nao_publicaveis)} asset(s) de natureza não "
+                f"publicável no lote: "
+                + ", ".join(f"{i}={self.naturezas[i]}" for i in nao_publicaveis)
+            )
+        if self.avisos:
+            linhas.extend(f"  ⚠️ {m}" for m in self.avisos)
         if self.recusas:
             linhas.append(f"  descartados pela ponte: {len(self.recusas)}")
             linhas.extend(f"    {m}" for m in self.recusas)
@@ -290,6 +365,7 @@ def imagens_de_display(
     conteudo_por_identidade: Mapping[str, bytes],
     *,
     exigencia: ExigenciaDeCanal | None = None,
+    destino: Destino = Destino.PRODUCAO,
 ) -> Entrega:
     """Valida o lote e, se ele servir, monta o `ImagensDisplay` com linhagem.
 
@@ -304,6 +380,7 @@ def imagens_de_display(
         exigencia=exigencia,
         classe_imagens=ImagensDisplay,
         papel_por_tipo=PAPEL_POR_TIPO,
+        destino=destino,
     )
 
 
@@ -312,6 +389,7 @@ def imagens_de_demand_gen(
     conteudo_por_identidade: Mapping[str, bytes],
     *,
     exigencia: ExigenciaDeCanal | None = None,
+    destino: Destino = Destino.PRODUCAO,
 ) -> Entrega:
     """Valida pelo contrato do Estúdio e monta ``ImagensDemandGen``.
 
@@ -330,6 +408,7 @@ def imagens_de_demand_gen(
         exigencia=exigencia,
         classe_imagens=ImagensDemandGen,
         papel_por_tipo=PAPEL_POR_TIPO_DEMAND_GEN,
+        destino=destino,
     )
     # Demand Gen não aceita uma entrega que descartou parte do pedido. O caller
     # não tem como distinguir "a primeira duplicata venceu" de "tudo entrou"
@@ -340,6 +419,9 @@ def imagens_de_demand_gen(
             imagens=None,
             linhagem=(),
             recusas=entrega.recusas,
+            destino=entrega.destino,
+            naturezas=entrega.naturezas,
+            avisos=entrega.avisos,
         )
     return entrega
 
@@ -351,18 +433,30 @@ def _imagens_de(
     exigencia: ExigenciaDeCanal | None,
     classe_imagens,
     papel_por_tipo: Mapping[TipoDeAsset, str],
+    destino: Destino = Destino.PRODUCAO,
 ) -> Entrega:
     """Implementação única da fronteira Asset → imagens por papel."""
     exigencia = exigencia or requisitos.exigencia_binaria_de(lote.canal)
     veredito = validacao.validar_lote(lote, exigencia)
     recusas: list[str] = []
+    avisos: list[str] = []
+    aceitas = NATUREZAS_ACEITAS[destino]
+    # ⚠️ Registrado sobre o lote INTEIRO, não só sobre os aprovados.
+    # Quem lê a entrega para decidir se pode publicar precisa saber que havia um
+    # asset de ensaio ali dentro mesmo quando ele foi reprovado por outro motivo
+    # — senão a mesma peça, com a geometria corrigida, entra na rodada seguinte
+    # sem que ninguém lembre de onde ela veio.
+    naturezas = {a.identidade: a.procedencia.natureza.value for a in lote.assets}
 
     if not veredito.ok:
         # Nada é montado. Não é uma escolha de estilo: um payload parcial
         # construído a partir de um lote reprovado é exatamente o objeto que
         # atravessaria o resto do sistema sem que ninguém soubesse que ele
         # nasceu de um veredito negativo.
-        return Entrega(veredito=veredito, imagens=None, recusas=tuple(recusas))
+        return Entrega(
+            veredito=veredito, imagens=None, recusas=tuple(recusas),
+            destino=destino, naturezas=naturezas, avisos=tuple(avisos),
+        )
 
     imagens = classe_imagens()
     # Deduplicação POR PAPEL, não global: o catálogo já declara que o mesmo
@@ -374,6 +468,32 @@ def _imagens_de(
     }
 
     for asset in veredito.aprovados:
+        # ── a guarda de natureza, e por que ela vem ANTES do papel ──────────
+        #
+        # Se ela viesse depois, um asset de ensaio sem papel neste canal sairia
+        # com a recusa errada ("não tem papel de imagem em DISPLAY"), e quem
+        # lesse o relatório concluiria que o problema era de tipo. A recusa mais
+        # grave é a que precisa aparecer, e esta é a que impede dinheiro de ser
+        # gasto sobre uma peça que ninguém aprovou para publicar.
+        natureza = asset.procedencia.natureza
+        if natureza not in aceitas:
+            recusas.append(
+                f"{asset.identidade}: procedência de natureza "
+                f"{natureza.value!r} não pode ser apresentada como "
+                f"{destino.value} — este payload vai para uma conta real e "
+                f"peça de ensaio/fixture não sobe. Se a intenção era provar o "
+                f"caminho, peça `destino=Destino.ENSAIO`")
+            continue
+        if (
+            destino is Destino.PRODUCAO
+            and natureza is NaturezaDaProcedencia.NAO_DECLARADA
+        ):
+            avisos.append(
+                f"{asset.identidade}: natureza da procedência não declarada. "
+                f"Passou porque ausência de declaração ainda não é recusa "
+                f"(ver NATUREZAS_ACEITAS), mas ninguém afirmou que este "
+                f"arquivo é de produção")
+
         papel = papel_por_tipo.get(asset.tipo)
         if papel is None:
             # VIDEO cai aqui: o responsive display ad referencia vídeo por
@@ -501,13 +621,19 @@ def _imagens_de(
             f"papéis obrigatórios sem nenhuma imagem utilizável após os "
             f"descartes acima: {', '.join(faltando)}. O lote foi APROVADO na "
             f"validação — o que faltou foi o conteúdo, não a qualidade")
-        return Entrega(veredito=veredito, imagens=None, recusas=tuple(recusas))
+        return Entrega(
+            veredito=veredito, imagens=None, recusas=tuple(recusas),
+            destino=destino, naturezas=naturezas, avisos=tuple(avisos),
+        )
     if faltando_combinado:
         recusas.append(
             "mínimos combinados sem conteúdo utilizável após os descartes: "
             + ", ".join(faltando_combinado)
         )
-        return Entrega(veredito=veredito, imagens=None, recusas=tuple(recusas))
+        return Entrega(
+            veredito=veredito, imagens=None, recusas=tuple(recusas),
+            destino=destino, naturezas=naturezas, avisos=tuple(avisos),
+        )
 
     return Entrega(
         veredito=veredito,
@@ -521,6 +647,9 @@ def _imagens_de(
         # lista, e não sincronizá-la.
         linhagem=imagens.linhagens(),
         recusas=tuple(recusas),
+        destino=destino,
+        naturezas=naturezas,
+        avisos=tuple(avisos),
     )
 
 
