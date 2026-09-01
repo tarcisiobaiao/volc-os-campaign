@@ -1,0 +1,100 @@
+{
+ "schema_version": 1,
+ "missao": "creative-factory-production-spine-v1",
+ "branch": "sprint/creative-factory-production-spine-v1",
+ "base_sha": "b6e226ab2f6d339d2c7c899b83b05ff4a95ebcac",
+ "natureza": "PROPOSTA. Nada aqui foi escrito no ROADMAP-VIVO.json nem na curadoria humana. O integrador oficial aplica uma vez, depois do merge, conforme o protocolo do AGENTS.md.",
+
+ "frescor_do_mapa_vivo": {
+  "estado_factual": "unavailable_on_machine",
+  "o_que_foi_medido": "graphify-out/ e gitignored (.gitignore:79) e nao existe nesta worktree; scripts/atualizar_grafo_volc_os.py --check devolve current:false por UPDATE_STATUS.json ausente.",
+  "achado_decisivo": "O unico UPDATE_STATUS.json da maquina vive no repositorio principal e declara built_at_commit a539dbd, com working_tree_dirty_at_build=true. E `git merge-base a539dbd b6e226ab` devolve VAZIO: verificado por conta propria, `main` tem raiz d767bac e `volc-os-v2` tem raiz 48a3ad5. NAO e um grafo 213 commits atrasado — e o grafo de OUTRA ARVORE.",
+  "consequencia": "Qualquer afirmacao de frescor herdada do pacote Fable (que declara current:true em a539dbd) e inaplicavel a esta missao. As camadas 3, 4 e 5 do Mapa Vivo nao sao autoridade aqui; Roadmap, codigo e curadoria foram usados como autoridade, nesta ordem.",
+  "acao_do_integrador": "Reconstruir o Mapa Vivo pelo pipeline VOLC uma unica vez, APOS o merge em volc-os-v2, e rodar --check. Antes disso nao ha grafo a atualizar para esta linhagem."
+ },
+
+ "contradicoes_encontradas": [
+  {
+   "id": "C1",
+   "onde": "ROADMAP-VIVO.json P17-T09 (campo evidencia) versus docs/architecture/ORDEM-INTEGRACAO-P17.md:91",
+   "o_que": "O roadmap diz que os aceites 3, 4 e 5 'nao foram exercitados'. O documento de arquitetura diz que 'os cinco criterios binarios ficam provados por testes externos' e descreve os tres como provados, com SHA-256 do golden.",
+   "quem_esta_certo": "O roadmap. O documento descreve o que a rodada PRETENDIA provar; as tres colheitas (candidate/p17-aceites-colheita-a1/a2/a3) mostram que nenhuma foi integrada — a1 e a2 pararam por ownership, a3 por erro de uso do pytest (exit=4) num gate que apontava para um arquivo de nome inventado.",
+   "acao": "corrigir ORDEM-INTEGRACAO-P17.md, que e o que um proximo agente le primeiro."
+  },
+  {
+   "id": "C2",
+   "onde": "supabase/migrations/README.md:1030-1031 versus ROADMAP P17-T03 e curadoria",
+   "o_que": "O ledger de migracoes registra '42 provas de comportamento' e '53 provas, 0 falhas'; roadmap e curadoria registram 129/129.",
+   "quem_esta_certo": "129. Medido nesta missao: `bash scripts/provar-ciclo-v11_03.sh` devolveu 'passaram 129 - falharam 0', exit 0, em cluster descartavel.",
+   "acao": "atualizar o ledger, que e a autoridade declarada das migracoes e hoje contradiz o roadmap."
+  },
+  {
+   "id": "C3",
+   "onde": "curadoria-operacional.json, no doc:template-lab-handoff",
+   "o_que": "O no aponta evidencia em 'docs/architecture/HANDOFF-CURADORIA-ESTUDIO-CRIATIVO.md', arquivo que nao existe no disco nem em nenhum branch. O que existe e HANDOFF-CURADORIA-BANCADA-10-13-15-16.md.",
+   "causa": "o validador do gerador confere schema, clusters, estados, IDs duplicados e referencias ENTRE NOS — nao confere caminho de arquivo. O build passa apontando para o nada.",
+   "acao": "corrigir a referencia e considerar validar caminhos de evidencia no gerador."
+  },
+  {
+   "id": "C4",
+   "onde": "ROADMAP P17-T02 ('done') versus HANDOFF-CURADORIA-BANCADA-10-13-15-16.md",
+   "o_que": "A task esta 'done'; o handoff que a sustenta recusa promover ('Mantenho todas como partial') e lista L1..L4 abertas, nenhuma citada pelo proof do roadmap.",
+   "acao_desta_missao": "L1 (sanitizacao de caminho so Unix) foi FECHADA: o deposito agora recusa os cinco padroes do CHECK, incluindo C:\\ e UNC, com prova parametrizada nos dois adapters."
+  },
+  {
+   "id": "C5",
+   "onde": "curadoria-operacional.json",
+   "o_que": "concept:creative_channel_boundary e concept:asset_lineage nao aparecem como source nem target em nenhuma das 379 arestas — sao nos orfaos, e justamente os dois que descrevem fronteira de canal e linhagem de asset.",
+   "acao": "ligar ou aposentar, com decisao registrada."
+  }
+ ],
+
+ "tarefas_p17": [
+  {
+   "id": "P17-T04",
+   "titulo": "Unificar a fila local e o writer Postgres",
+   "estado_anterior": "todo",
+   "estado_honesto_recomendado": "done",
+   "prova_nova": "Commits 0efa1f7 e e8ee4b0. `backend/app/criativo/bancada/porta.py` define o Protocol `Deposito` e `escolher_deposito()`; `deposito_postgres.py` implementa o adapter contra as tabelas da v11_03 com `for update skip locked`; `backend/tests/test_criativo_deposito_contrato.py` roda 36 assercoes IDENTICAS parametrizadas nos dois adapters — 71 provas verdes (36 sqlite + 35 postgres). O cluster Postgres nasce e morre na sessao, com a v11_03 aplicada; `VOLC_EXIGIR_POSTGRES=1` transforma 'nao subiu' em FALHA, nao em skip.",
+   "sete_divergencias_fechadas": [
+    "lease vencido avancava claimed->running->validating no SQLite; o gatilho da v11_03 sempre recusou (ACHADO #8)",
+    "`rendered` era aceito com recibo de ZERO artefatos; o banco exige recibo COM artefato",
+    "mensagem de falha carregava caminho de disco; a migration barra os cinco padroes, a fila nao barrava nenhum (lacuna L1)",
+    "nao havia trilha append-only nem carimbo `terminado_em` na fila local",
+    "a trilha do Postgres registra o CLAIM (gatilho no UPDATE); a do SQLite so via `transicionar` — claim e devolucao por lease vencido sumiam",
+    "`queued -> failed` nao existe no mapa de transicoes, e `reivindicar` escrevia isso por SQL cru: o deposito desobedecendo o mapa que ele mesmo publica",
+    "o CHECK `falha_coerente` proibe motivo de falha em trabalho `queued`; a fila local gravava ali, e um campo unico apagava o motivo da devolucao anterior"
+   ],
+   "lacuna_restante": "P17-T03 (aplicar a v11_03 no Supabase oficial) continua blocked_by_external_authorization. A porta funciona; o banco de producao nao tem as tabelas.",
+   "nos_do_grafo": ["cap_bancada_criativa", "concept:creative-job-contract", "doc:v11-03", "system:volc-creative-port"]
+  },
+  {
+   "id": "P17-T05",
+   "titulo": "Executar imagem e video fora do processo web",
+   "estado_anterior": "todo",
+   "estado_honesto_recomendado": "partial",
+   "por_que_nao_done": "O aceite esta cumprido para IMAGEM, com worker real e nove provas. VIDEO nao: o motor de video vive no parque externo, o Remotion nao e hermetico e a decisao de licenca nao foi tomada. Promover a `done` afirmaria video que ninguem produziu por aqui.",
+   "prova_nova": "Commit f849091. `python -m app.criativo.bancada.worker` e processo proprio (nao importa app.main, nao abre porta). Nove provas em `backend/tests/test_criativo_worker.py`, e as centrais sobem `subprocess`: um worker separado produziu a peca e o teste reconferiu bytes e sha256 no disco contra o recibo; tres workers e seis trabalhos deram um claim por trabalho na trilha e tentativa==1 em todos; SIGTERM deixou o trabalho atual terminar; SIGKILL no meio devolveu para a fila SEM marcar falha, com `lease_vencido` na trilha, e um worker novo refez com tentativa==2.",
+   "defeitos_criticos_fechados": [
+    "POST /api/criativos/jobs estourava anyio.NoEventLoopError e deixava o job preso em `queued` para sempre — a rota async chamava `anyio.from_thread.run` da thread do event loop",
+    "o proprio fail-closed explodia com `RuntimeError: Already running asyncio in this thread`, entao o job nem virava `failed`: sem motivo, sem carimbo terminal, e 503 sobre um job orfao",
+    "as rotas /bancada/* contornavam inteiramente `escolher_despachante()` — a porta fail-closed nao aparecia em uma linha de backend/app/routers/",
+    "o render sincrono rodava na thread do event loop: durante todo ele, nenhuma outra requisicao do processo era atendida",
+    "`iniciar_reaper` tinha ZERO chamadores em todo o repositorio; a promessa 'o trabalho volta para a fila' era verdadeira no deposito e falsa na operacao"
+   ],
+   "lacuna_restante": "Onde o worker roda em producao e Decisao 5 do ADR-REMOTION-RUNTIME-STORAGE, ainda do dono. Video depende de P17-T07.",
+   "nos_do_grafo": ["cap_bancada_criativa", "concept:creative-job-contract", "defeito:executor-serverless-fire-and-forget"]
+  }
+ ],
+
+ "arquivos_e_shas": {
+  "0efa1f7": ["backend/app/criativo/bancada/deposito.py", "backend/tests/test_criativo_bancada.py"],
+  "e8ee4b0": ["backend/app/criativo/bancada/porta.py", "backend/app/criativo/bancada/deposito_postgres.py", "backend/tests/test_criativo_deposito_contrato.py", "backend/tests/conftest_postgres.py", "backend/app/criativo/bancada/deposito.py"],
+  "f849091": ["backend/app/criativo/bancada/worker.py", "backend/app/criativo/bancada/despacho.py", "backend/app/criativo/execucao.py", "backend/app/routers/criativos_execucao.py", "backend/tests/test_criativo_worker.py"],
+  "f2d9533": ["docs/closure/creative-factory-production-spine-v1/CAPABILITY-MATRIX.json"]
+ },
+
+ "autorizacoes_externas_restantes": "docs/closure/creative-factory-production-spine-v1/AUTORIZACAO-EXTERNA.md — oito itens, na ordem, comecando por aplicar a v11_03 (decisao D6) e terminando em publicacao, sempre separada.",
+
+ "regra_de_ouro": "Nenhuma tarefa vai a `done` porque existe codigo. P17-T04 e recomendada a `done` porque as 36 assercoes passam nos DOIS depositos; P17-T05 fica em `partial` porque video nao foi provado, e dizer o contrario seria afirmar producao que nao aconteceu."
+}
