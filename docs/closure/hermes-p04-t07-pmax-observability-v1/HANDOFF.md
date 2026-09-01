@@ -190,6 +190,33 @@ Ambiente: `backend/.venv` (Python 3.11), `pytest` com `-p no:randomly`, `google-
 Nenhuma falha de ambiente foi convertida em falha de produto; nenhuma dependência nova
 foi necessária.
 
+### 7.1 Revisão final independente
+
+`codex` e `gemini` não estavam disponíveis no `PATH` deste ambiente no fechamento,
+portanto a revisão cross-provider foi registrada como
+`CROSS_PROVIDER_REVIEW_NOT_AVAILABLE`. Conforme regra da missão, foi executada uma única
+revisão focal de contexto fresco com Claude Opus, somente read-only, sem rede, sem Google
+Ads e sem Supabase.
+
+**Veredito:** `APROVAR`, sem achados bloqueantes.
+
+**Achados não bloqueantes registrados para handoff futuro:**
+
+1. `asset_coverage_action_items` vazio confirmado pode ficar conservadoramente indistinto
+   de campo omitido pelo proto, porque repeated vazio é omitido na projeção usada hoje;
+2. falha de RPC/persistência em `registrar(documento)` pode escapar da família persistível
+   herdando comportamento de `_persistir_familia`; não é regressão desta lane, mas tensiona
+   quedas parciais quando a família é gravável;
+3. a prontidão desta execução é explicitamente `execucao_local`/`autoatestada` e não deve
+   ser interpretada como releitura direta do ledger sem adaptador;
+4. se futura segmentação entrar no `SELECT` de desempenho, a agregação por grupo precisará
+   somar linhas em vez de manter a última;
+5. leitores futuros de `RECOMENDACOES_ARMAZENADAS` devem filtrar `campaign_id` e
+   `payload.familia`, não apenas `tipo_sinal` + `customer_id`.
+
+Nenhum item acima abriu falso verde, mutate, colisão de identidade ou invasão de ownership
+nesta entrega; todos falham fechado ou foram nomeados como contrato para integrador futuro.
+
 ## 8. Leitura real: `REAL_READ_NOT_PROVEN`
 
 **Nenhuma leitura real de conta Google Ads foi executada nesta lane**, por decisão
