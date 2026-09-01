@@ -1,8 +1,8 @@
 # Gates da lane v12_03 — execução verificada
 
-**Data:** 2026-09-01  
-**Branch:** `sprint/hermes-p04-t07-pmax-ledger-v12-03-v1`  
-**Base:** `36bec04ee1cc9f85c2db6d0d082be6a39350a421`  
+**Data:** 2026-09-01
+**Branch:** `sprint/hermes-p04-t07-pmax-ledger-v12-03-v1`
+**Base:** `36bec04ee1cc9f85c2db6d0d082be6a39350a421`
 **Executor canônico:** Claude Code Opus, `session_id=06934060-2248-40bd-ab03-15ac039e1297`
 
 ## Resultado curto
