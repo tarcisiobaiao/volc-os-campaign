@@ -373,7 +373,25 @@ def imagens_de_display(
     obrigatório porque o `Asset` não carrega conteúdo (ver o cabeçalho). Uma
     identidade ausente do mapa **não** vira imagem: o asset é descartado com
     recusa nomeada. "Asset não persistido" não é "asset disponível".
+
+    ## A ordem das duas recusas de canal, que não é arbitrária
+
+    Primeiro a régua, depois a porta. Um lote `SEARCH` ou `TIKTOK` morre no
+    `exigencia_binaria_de`, com a mensagem que nomeia o dono daquele canal — é a
+    informação que o operador precisa, e ela se perderia atrás de um "esta ponte
+    é de Display". Um lote `DEMAND_GEN` passa da régua (ele TEM régua de arquivo)
+    e é aí que a porta o barra: sem esta guarda ele seria validado contra a régua
+    do Demand Gen e mapeado com a tabela de papéis do DISPLAY — `logo` é 4:1 num
+    lado e nem existe no outro —, montando um payload que a API recusaria por
+    proporção, com o erro apontando para o anúncio.
     """
+    if exigencia is None:
+        exigencia = requisitos.exigencia_binaria_de(lote.canal)
+    if lote.canal != CANAL_DISPLAY:
+        raise PonteIncompleta(
+            f"imagens_de_display recebeu lote {lote.canal!r}; esperado "
+            f"{CANAL_DISPLAY!r}"
+        )
     return _imagens_de(
         lote,
         conteudo_por_identidade,
@@ -551,18 +569,36 @@ def _imagens_de(
 
         nome = asset.rotulo.strip() or asset.identidade
         linhagem = linhagem_de(asset, papel, exigencia, nome=nome)
-        if classe_imagens is ImagensDemandGen:
-            try:
-                recibo = _recibo_de(
-                    asset, papel, exigencia, nome=nome, linhagem=linhagem
-                )
-            except (TypeError, ValueError) as exc:
-                recusas.append(
-                    f"{asset.identidade}: não foi possível emitir recibo "
-                    f"tipado: {exc}"
-                )
-                continue
 
+        # ── o recibo, agora nos DOIS canais ────────────────────────────────
+        #
+        # ⚠️ Até 01/09/2026 o recibo tipado saía só no Demand Gen, e o
+        # comentário dizia "Display preserva o contrato anterior". O contrato
+        # anterior era só o que já existia — não uma razão. E a diferença ficou
+        # cara no dia em que a rota HTTP de Display passou a chamar esta ponte:
+        # o mesmo asset atravessava com recibo por uma porta e sem recibo pela
+        # outra, e quem lesse os dois payloads não teria como afirmar a mesma
+        # coisa sobre eles.
+        #
+        # O recibo é reconferência dos bytes contra a linhagem. Emiti-lo é a
+        # parte barata; descobrir depois que o payload do Display não tinha como
+        # provar de onde veio é a parte cara.
+        try:
+            recibo = _recibo_de(
+                asset, papel, exigencia, nome=nome, linhagem=linhagem
+            )
+        except (TypeError, ValueError) as exc:
+            # ⚠️ Recusa, e não recibo `None`. Um asset que não consegue provar
+            # a própria procedência não é um asset com um campo a menos: é um
+            # asset que não deveria subir. Silenciar aqui devolveria ao payload
+            # exatamente a peça sem prova que o recibo existe para barrar.
+            recusas.append(
+                f"{asset.identidade}: não foi possível emitir recibo "
+                f"tipado: {exc}"
+            )
+            continue
+
+        if classe_imagens is ImagensDemandGen:
             if asset.id_externo:
                 item = AssetRemotoDemandGen(
                     resource_name=asset.id_externo,
@@ -580,8 +616,6 @@ def _imagens_de(
                     recibo_aprovacao=recibo,
                 )
         else:
-            # Display preserva o contrato anterior: linhagem confirmada, sem o
-            # recibo efêmero exclusivo da prova Demand Gen.
             item = ImagemParaSubir(
                 nome=nome,
                 dados=dados,
@@ -589,6 +623,7 @@ def _imagens_de(
                 mime=asset.mime,
                 largura=asset.largura,
                 altura=asset.altura,
+                recibo_aprovacao=recibo,
             )
         getattr(imagens, papel).append(item)
 
