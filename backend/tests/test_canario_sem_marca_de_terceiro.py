@@ -23,9 +23,14 @@ import re
 
 import pytest
 
-PAYLOAD = (pathlib.Path(__file__).resolve().parents[2]
-           / "docs" / "closure" / "search-production-closure-v1"
-           / "canario-v10-payload.json")
+_D = (pathlib.Path(__file__).resolve().parents[2]
+      / "docs" / "closure" / "search-production-closure-v1")
+#: ⚠️ OS DOIS arquivos são verificados, e o segundo é o que importa mais: é ele
+#: que vira o corpo do POST. Checar só a base deixaria passar uma marca
+#: introduzida no pedido aprovado — que é exatamente o arquivo que ninguém
+#: reescreve à mão e por isso ninguém relê.
+PAYLOADS = (_D / "canario-v10-provar-base.json",
+            _D / "canario-v10-approved-request.json")
 
 #: As marcas que a copy anterior citava, mais as que aparecem na landing page.
 #: Lista fechada e explícita: um regex genérico de "nome próprio" produziria
@@ -38,8 +43,13 @@ MARCAS_DE_TERCEIRO = (
 )
 
 
-def _payload() -> dict:
-    return json.loads(PAYLOAD.read_text(encoding="utf-8"))
+def _payload(qual: int = 0) -> dict:
+    return json.loads(PAYLOADS[qual].read_text(encoding="utf-8"))
+
+
+def _ambos():
+    return [(p.name, json.loads(p.read_text(encoding="utf-8"))) for p in PAYLOADS
+            if p.exists()]
 
 
 def _todos_os_textos(copy: dict) -> list[tuple[str, str]]:
@@ -63,16 +73,18 @@ def _todos_os_textos(copy: dict) -> list[tuple[str, str]]:
 
 
 def test_nenhum_asset_cita_marca_de_terceiro():
-    copy = _payload()["copy"]
     achados = []
-    for campo, texto in _todos_os_textos(copy):
-        baixo = texto.lower()
-        for marca in MARCAS_DE_TERCEIRO:
-            # ⚠️ `rede` é palavra comum em português ("rede de pesquisa") e
-            # nome de adquirente. A fronteira de palavra evita o falso positivo
-            # sem abrir mão da marca.
-            if re.search(rf"\b{re.escape(marca)}\b", baixo):
-                achados.append(f"{campo}: {texto!r} contém {marca!r}")
+    arquivos = _ambos()
+    assert len(arquivos) == 2, [n for n, _ in arquivos]
+    for nome, d in arquivos:
+        for campo, texto in _todos_os_textos(d["copy"]):
+            baixo = texto.lower()
+            for marca in MARCAS_DE_TERCEIRO:
+                # ⚠️ `rede` é palavra comum em português ("rede de pesquisa") e
+                # nome de adquirente. A fronteira de palavra evita o falso
+                # positivo sem abrir mão da marca.
+                if re.search(rf"\b{re.escape(marca)}\b", baixo):
+                    achados.append(f"{nome} · {campo}: {texto!r} contém {marca!r}")
     assert not achados, "marca de terceiro nos assets:\n" + "\n".join(achados)
 
 

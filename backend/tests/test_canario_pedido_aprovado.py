@@ -138,12 +138,39 @@ def test_5_confirmacao_ausente_ou_falsa_falha_fechado(valor):
 
 # ── 6. carimbo ausente, divergente ou reaproveitado ─────────────────────────
 
-def test_6a_carimbo_invalido_e_recusado_pelo_canario():
+def test_6a_carimbo_malformado_e_recusado_pelo_canario():
     from app.trafego import canario
 
-    for ruim in ("", "ontem", "2026-09-01", "20260901"):
+    for ruim in ("ontem", "2026-09-01", "20260901", "20260901_9999"):
         with pytest.raises(canario.CanarioRecusado):
             canario.carimbo_do_nome(ruim)
+
+
+def test_6a2_carimbo_ausente_e_CUNHADO_e_por_isso_invalida_o_selo():
+    """⚠️ Ausência aqui NÃO é recusa — é minting, e isso é pior de perceber.
+
+    `carimbo_do_nome("")` gera um carimbo NOVO: é assim que `/provar` cunha o
+    primeiro. Num pedido de mutate isso significa que um `carimbo_nome` vazio
+    não estoura — ele produz um nome diferente, logo outro protobuf, logo outro
+    selo. A recusa vem depois, na comparação de selo de `/subir`, e é ela que
+    impede o pedido sem carimbo de virar campanha.
+
+    O teste existe para que ninguém "conserte" o vazio achando que ele é
+    recusado na entrada.
+    """
+    from app.trafego import canario
+
+    cunhado = canario.carimbo_do_nome("")
+    assert cunhado and cunhado != _json(APROVADO)["carimbo_nome"]
+
+    d = _json(APROVADO)
+    d["carimbo_nome"] = ""
+    from app.routers import trafego
+    corpo = trafego.SubirEntrada(**d)
+    # O corpo é aceito pelo contrato, e o selo enviado continua sendo o da
+    # execução aprovada — que já não descreve o payload que seria montado.
+    assert corpo.plano_impressao == _json(DOSSIE)["execucao_escolhida"]["selo_do_executor"]
+    assert not corpo.carimbo_nome
 
 
 def test_6b_carimbo_de_outra_execucao_invalida_o_selo():
