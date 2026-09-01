@@ -959,6 +959,19 @@ class PlanoDeMensuracao:
     #: o plano depois — não para escolher meta.
     chave_intencao: Optional[str] = None
     proposta_de_acao: Optional[PropostaDeAcaoNova] = None
+    #: O perfil de mensuração desta campanha — o que ela DECIDIU medir.
+    #:
+    #: ⚠️ `None` é o caso normal e legítimo: o plano descreve o que a CONTA
+    #: oferece, e o perfil descreve o que ESTA campanha escolheu dentro disso.
+    #: Um lançamento que não declara os eixos de negócio produz plano sem
+    #: perfil, e é honesto — inventar `evento="conversao"` faria dois nichos
+    #: voltarem a colidir com a aparência de estarem separados.
+    #:
+    #: Tipado como `Any` para não importar `perfil_de_mensuracao` aqui: o perfil
+    #: DEPENDE deste módulo (deriva de um plano lido), e o import de volta
+    #: fecharia o ciclo. A validação de coerência mora em `__post_init__`, que
+    #: só usa atributos.
+    perfil: Optional[Any] = None
     versao: int = VERSAO_DO_PLANO
 
     def __post_init__(self) -> None:
@@ -977,6 +990,28 @@ class PlanoDeMensuracao:
             raise ValueError(
                 "plano sem ação eleita e sem dizer por quê. Ignorância anônima "
                 "é indistinguível de silêncio.")
+        # ── o perfil não pode contradizer o plano que o carrega ─────────────
+        #
+        # ⚠️ As duas guardas abaixo existem porque o perfil é a coisa que a
+        # tela mostra como "o que esta campanha mede" e o plano é a coisa que o
+        # portão lê. Um perfil de outra conta endereça o lugar errado; um perfil
+        # apontando para outra ação afirma "medido por #X" enquanto o portão
+        # persegue #Y. Nos dois casos as duas metades da mesma resposta
+        # discordariam, e ninguém teria como saber qual das duas é verdade.
+        if self.perfil is not None:
+            do_perfil = str(getattr(self.perfil, "customer_id", "") or "")
+            if do_perfil != self.customer_id:
+                raise ValueError(
+                    f"o perfil de mensuração é da conta {do_perfil!r} e o plano "
+                    f"é da conta {self.customer_id!r}: um perfil de outra conta "
+                    "endereça a medição para o lugar errado")
+            acao_do_perfil = getattr(self.perfil, "acao_id", None)
+            acao_do_plano = None if self.acao_alvo is None else self.acao_alvo.id
+            if acao_do_perfil is not None and acao_do_perfil != acao_do_plano:
+                raise ValueError(
+                    f"o perfil diz que a ação que mede é #{acao_do_perfil} e o "
+                    f"plano elegeu {('#' + acao_do_plano) if acao_do_plano else 'nenhuma'}"
+                    ": uma das duas afirmações é falsa")
 
     # ── o veredito ──────────────────────────────────────────────────────────
 
@@ -1077,6 +1112,16 @@ class PlanoDeMensuracao:
 
     # ── identidade ──────────────────────────────────────────────────────────
 
+    def corpo_da_impressao(self) -> Dict[str, Any]:
+        """O conteúdo que DECIDE, antes de virar hash.
+
+        Público porque é ele que os testes de compatibilidade inspecionam: a
+        pergunta "o perfil entrou no corpo?" tem de ser respondível sem
+        recalcular o sha256 e sem copiar a construção do dicionário para o
+        teste — uma cópia que divergiria no primeiro campo novo.
+        """
+        return self._corpo_da_impressao()
+
     def impressao(self) -> str:
         """A impressão do plano — estável, e sobre o que DECIDE.
 
@@ -1098,6 +1143,12 @@ class PlanoDeMensuracao:
         `comprovado` é um booleano: ele não muda de hora em hora, muda quando o
         sinal aparece ou morre. É exatamente a parte do frescor que decide.
         """
+        return hashlib.sha256(
+            json.dumps(self._corpo_da_impressao(), ensure_ascii=False,
+                       sort_keys=True, separators=(",", ":")
+                       ).encode("utf-8")).hexdigest()
+
+    def _corpo_da_impressao(self) -> Dict[str, Any]:
         mandam = self.meta_efetiva.metas_que_mandam
         corpo = {
             "versao": self.versao,
@@ -1140,9 +1191,22 @@ class PlanoDeMensuracao:
             # produzir dois vereditos com a mesma chave sem ninguém notar.
             "completo": self.completo,
         }
-        canonico = json.dumps(corpo, ensure_ascii=False, sort_keys=True,
-                              separators=(",", ":"))
-        return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
+        # ⚠️ A CHAVE SÓ EXISTE QUANDO O PERFIL EXISTE, e não é `"perfil": None`.
+        #
+        # `{"perfil": null}` e `{}` produzem hashes diferentes. Foi exatamente
+        # assim que `assets_display` mudou a impressão de TODO plano Search em
+        # 01/09/2026 sem uma linha do pedido ter mudado: o campo entrou como
+        # `null` e o simples ato de declará-lo trocou a identidade. Aqui o custo
+        # seria maior — a tabela é append-only e idempotente por impressão, e
+        # toda linha já gravada deixaria de ser reencontrável de uma vez.
+        #
+        # ⚠️ E entra a CHAVE do perfil, não o perfil inteiro: a chave já exclui
+        # fonte do sinal e consentimento, que são observação. Serializar o
+        # objeto todo traria a observação para dentro da identidade do plano
+        # por uma porta lateral.
+        if self.perfil is not None:
+            corpo["perfil"] = getattr(self.perfil, "chave", None)
+        return corpo
 
     def para_json(self) -> Dict[str, Any]:
         return {
@@ -1161,6 +1225,7 @@ class PlanoDeMensuracao:
             "marcacao": self.marcacao.json(),
             "proposta_de_acao": (None if self.proposta_de_acao is None
                                  else self.proposta_de_acao.json()),
+            "perfil": (None if self.perfil is None else self.perfil.json()),
             "completo": self.completo,
             "bloqueadores": list(self.bloqueadores),
             "impressao": self.impressao(),
@@ -1178,6 +1243,7 @@ def montar(
     marcacao: Optional[InventarioDeMarcacao] = None,
     campaign_id: Optional[str] = None,
     chave_intencao: Optional[str] = None,
+    perfil: Optional[Any] = None,
 ) -> PlanoDeMensuracao:
     """O plano, montado do que foi REALMENTE observado — e nada além.
 
@@ -1215,7 +1281,17 @@ def montar(
         marcacao=marcacao or inventario_nao_lido(),
         campaign_id=(str(campaign_id).strip() if campaign_id else None),
         chave_intencao=chave_intencao,
+        perfil=perfil,
     )
+
+
+def _perfil_do_json(dados: Optional[Mapping[str, Any]]) -> Optional[Any]:
+    """`None` continua `None`; um dicionário vira perfil conferido."""
+    if not dados:
+        return None
+    from app.trafego import perfil_de_mensuracao as pdm  # noqa: PLC0415
+
+    return pdm.de_json(dados)
 
 
 def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
@@ -1329,6 +1405,15 @@ def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
         frescor=frescor, marcacao=marcacao,
         campaign_id=dados.get("campaign_id"),
         chave_intencao=dados.get("chave_intencao"),
+        # ⚠️ O perfil é RECONSTRUÍDO e CONFERIDO, e não copiado: `pdm.de_json`
+        # recalcula a chave e recusa um documento cuja chave gravada não bate.
+        # Copiar o dicionário devolveria um perfil que parece válido e descreve
+        # outra medição — e ninguém notaria, porque os dois pareceriam perfis.
+        #
+        # ⚠️ Import LOCAL, e é aqui que o ciclo se fecha do lado certo: o perfil
+        # deriva de um plano, então `perfil_de_mensuracao` importa este módulo.
+        # Um import no topo daqui fecharia o laço.
+        perfil=_perfil_do_json(dados.get("perfil")),
     )
     versao = dados.get("versao")
     if isinstance(versao, int) and versao != plano.versao:
