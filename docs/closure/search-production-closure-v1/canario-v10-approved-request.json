@@ -1,0 +1,108 @@
+{
+  "budget_diario": 10.0,
+  "canal": "SEARCH",
+  "carimbo_nome": "20260901_061334",
+  "confirmar_criacao_pausada": true,
+  "copy": {
+    "callouts": [
+      "Guia Comparativo 2026",
+      "Débito, Crédito e Pix",
+      "Opções Sem Aluguel",
+      "Cadastro com CPF",
+      "Planos Para MEI",
+      "Pix por QR Code"
+    ],
+    "descriptions": [
+      "Compare taxas de débito, crédito e Pix e veja como escolher a maquininha do seu negócio.",
+      "As taxas variam conforme o faturamento e o modelo. Entenda o que muda em cada plano.",
+      "Autônomos e MEIs podem se cadastrar com CPF. Veja as opções sem aluguel do aparelho.",
+      "O prazo de recebimento muda o custo da venda. Compare os planos antes de contratar."
+    ],
+    "headlines": [
+      "{KeyWord:Maquininha de Cartão}",
+      "Compare Taxas em 2026",
+      "Guia de Taxas e Modelos",
+      "Débito, Crédito e Pix",
+      "Aceite Pix por QR Code",
+      "Sem Aluguel do Aparelho",
+      "Para MEI e Autônomo",
+      "Cadastro com CPF ou CNPJ",
+      "Venda Sem Ter CNPJ",
+      "Entenda o Prazo de Recebimento",
+      "Receba em Até 1 Dia Útil",
+      "Como Calcular o Custo Real",
+      "Compare Antes de Escolher",
+      "Passo a Passo Para Escolher",
+      "Guia Prático de 2026"
+    ],
+    "sitelinks": [
+      {
+        "description1": "Passo a passo para comparar",
+        "description2": "Veja o guia completo de 2026",
+        "title": "Como Escolher"
+      },
+      {
+        "description1": "Entenda o que muda o custo",
+        "description2": "Débito, crédito e parcelado",
+        "title": "Taxas e Custos"
+      },
+      {
+        "description1": "Planos com taxas reduzidas",
+        "description2": "Cadastro por CPF ou CNPJ",
+        "title": "Opções Para MEI"
+      },
+      {
+        "description1": "Modelos de compra única",
+        "description2": "Sem mensalidade pelo uso",
+        "title": "Sem Aluguel"
+      },
+      {
+        "description1": "Pix por QR Code na máquina",
+        "description2": "Integrado nos modelos atuais",
+        "title": "Receber por Pix"
+      },
+      {
+        "description1": "Antecipado ou conforme vence",
+        "description2": "Veja o impacto no custo",
+        "title": "Prazo de Recebimento"
+      }
+    ],
+    "snippet": {
+      "header": "Tipos",
+      "values": [
+        "Débito",
+        "Crédito à vista",
+        "Crédito parcelado",
+        "Pix por QR Code",
+        "Aproximação (NFC)"
+      ]
+    }
+  },
+  "cpc_inicial": 1.0,
+  "customer_id": "5478096539",
+  "estrategia_lance": "MANUAL_CPC",
+  "grupos": [
+    {
+      "keywords": [
+        "maquininha de cartão",
+        "maquininha de cartão no celular pessoa física"
+      ],
+      "tipo": "SEM_SUB_INTENCAO",
+      "usar_todas": false
+    }
+  ],
+  "login_customer_id": "6016739364",
+  "match_type": "PHRASE",
+  "motivo": "canario v10 pausado: prova de criacao, ledger, idempotencia, politica e reconciliacao",
+  "negativas_adgroup": [],
+  "negativas_campanha": [],
+  "opportunity_id": 74,
+  "plano_impressao": "8a21a469950218ed1d50df7a2269e52045a5565688c894c71e8760a1cd805382",
+  "rede": {
+    "display_expansion": false,
+    "google_search": true,
+    "search_partners": false
+  },
+  "run_id": 7,
+  "vertical": "financas"
+}

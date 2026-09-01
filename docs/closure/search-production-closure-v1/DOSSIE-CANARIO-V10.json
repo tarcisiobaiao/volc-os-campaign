@@ -1,9 +1,11 @@
 {
   "versao_do_dossie": "canario-v10.2",
   "gerado_por": "scripts/dossie_canario_v10.py",
-  "sha_do_codigo": "186170885f095661c65abc881710be243ea8e81e",
-  "arvore_suja": true,
-  "sha_nota": "sha_do_codigo é o HEAD no momento da geração. O commit que versiona este arquivo é o seguinte. Se arvore_suja=true, havia mudança local não commitada quando o validate_only rodou.",
+  "code_sha": "709f114b96e89c769f2f959796ac065569dbc0ab",
+  "arvore_suja": false,
+  "arvore_suja_detalhe": null,
+  "artifacts_commit": null,
+  "sha_nota": "code_sha é o HEAD que rodou o validate_only, e só o identifica se arvore_suja=false. artifacts_commit é null por construção: um arquivo não carrega o hash do commit que o versiona — ele é informado no handoff.",
   "qualificacao_historica": "Este é o primeiro canário COM O LEDGER v10 COMPLETO. O primeiro canário Google da casa foi em 28/08/2026, campanha 24183717006, sem ledger. Chamar este de 'primeiro canário Search' seria falso.",
   "conta": {
     "customer_id": "5478096539",
@@ -12,7 +14,10 @@
     "login_customer_id": "6016739364",
     "mcc_formatado": "601-673-9364"
   },
-  "payload_humano": {
+  "provar_base": "docs/closure/search-production-closure-v1/canario-v10-provar-base.json",
+  "approved_request": "docs/closure/search-production-closure-v1/canario-v10-approved-request.json",
+  "approved_request_sha256": "7c987adb26b7bef5818e0858031a39c4412619b36bd02cd5af7d61a51fc53429",
+  "approved_request_corpo": {
     "opportunity_id": 74,
     "run_id": 7,
     "customer_id": "5478096539",
@@ -114,8 +119,21 @@
           "Aproximação (NFC)"
         ]
       }
-    }
+    },
+    "carimbo_nome": "20260901_061334",
+    "plano_impressao": "8a21a469950218ed1d50df7a2269e52045a5565688c894c71e8760a1cd805382",
+    "confirmar_criacao_pausada": true,
+    "motivo": "canario v10 pausado: prova de criacao, ledger, idempotencia, politica e reconciliacao"
   },
+  "execucao_escolhida": {
+    "carimbo_nome": "20260901_061334",
+    "selo_do_executor": "8a21a469950218ed1d50df7a2269e52045a5565688c894c71e8760a1cd805382",
+    "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
+    "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
+    "n_operacoes": 34
+  },
+  "evidencia_landing_page": "docs/closure/search-production-closure-v1/EVIDENCIA-LANDING-PAGE.json",
+  "landing_page_situacao": "verified",
   "keywords": [
     {
       "texto": "maquininha de cartão",
@@ -146,15 +164,15 @@
   },
   "estrategia_lance": "MANUAL_CPC",
   "status_inicial": "PAUSED",
-  "nome_campanha": "VOLC-CANARY-e0ccfc66d8e4 BR - 20260901_055217 / Maquininha de Cartão / https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+  "nome_campanha": "VOLC-CANARY-e0ccfc66d8e4 BR - 20260901_061334 / Maquininha de Cartão / https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
   "url_final": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
   "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
   "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
   "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
   "selo_do_executor_por_execucao": [
-    "6b9bddab59be1954b5bddb30067b702c9a6e0b5e4cfd382150fbc1674e912cb1",
-    "3865b6a0c59912302ec6952db1f5658240dbe66ce23d1dbfe546848180e06aa5",
-    "f2794af28180a260470e66c89383491b14e36f18448d758dcbe2732ab6dd99ae"
+    "8a21a469950218ed1d50df7a2269e52045a5565688c894c71e8760a1cd805382",
+    "1882349714b6f710dd62dc28799e7c76036b88a464fb9d9b7dff116da427e88a",
+    "85431847ba0294e80d67562f92411786273433703e86d4951d99654ffda2b0c1"
   ],
   "operacoes": {
     "total": 34,
@@ -180,11 +198,11 @@
     "selo_varia_por_carimbo": true,
     "detalhe": [
       {
-        "carimbo_nome": "20260901_055217",
+        "carimbo_nome": "20260901_061334",
         "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
         "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
         "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
-        "selo_do_executor": "6b9bddab59be1954b5bddb30067b702c9a6e0b5e4cfd382150fbc1674e912cb1",
+        "selo_do_executor": "8a21a469950218ed1d50df7a2269e52045a5565688c894c71e8760a1cd805382",
         "n_operacoes": 34,
         "aprovado": true,
         "recusa_local": null,
@@ -192,11 +210,11 @@
         "avisos": []
       },
       {
-        "carimbo_nome": "20260901_055225",
+        "carimbo_nome": "20260901_061342",
         "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
         "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
         "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
-        "selo_do_executor": "3865b6a0c59912302ec6952db1f5658240dbe66ce23d1dbfe546848180e06aa5",
+        "selo_do_executor": "1882349714b6f710dd62dc28799e7c76036b88a464fb9d9b7dff116da427e88a",
         "n_operacoes": 34,
         "aprovado": true,
         "recusa_local": null,
@@ -204,11 +222,11 @@
         "avisos": []
       },
       {
-        "carimbo_nome": "20260901_055233",
+        "carimbo_nome": "20260901_061349",
         "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
         "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
         "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
-        "selo_do_executor": "f2794af28180a260470e66c89383491b14e36f18448d758dcbe2732ab6dd99ae",
+        "selo_do_executor": "85431847ba0294e80d67562f92411786273433703e86d4951d99654ffda2b0c1",
         "n_operacoes": 34,
         "aprovado": true,
         "recusa_local": null,
@@ -396,8 +414,13 @@
     "nasce_pausada": true,
     "parceiros_desligados": true,
     "display_desligado": true,
-    "sem_negativas_inventadas": true
+    "sem_negativas_inventadas": true,
+    "arvore_limpa": true,
+    "landing_page_verificada": true,
+    "confirmacao_pausada_no_pedido": true,
+    "carimbo_no_pedido": true,
+    "selo_do_pedido_bate_com_a_execucao": true
   },
   "gates_reprovados": [],
-  "dossie_id": "80de185ecebfea26d9a8e5ad07622710b84ed2b9e8145aa02404782782e7b88e"
+  "dossie_id": "d9949f8c27f3f0dbe70a0b28bfc02229a1be79c8f0ec2e265705c90a4c4d733f"
 }
