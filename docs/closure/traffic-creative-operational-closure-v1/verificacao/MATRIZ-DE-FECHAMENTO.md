@@ -1,7 +1,7 @@
 # Matriz de fechamento — item a item, com evidência ou sem ela
 
 *Worker 4 · verification · read-only sobre código*
-*Medida em `HEAD 5efd756`, com trabalho ainda não commitado na árvore.*
+*Primeira medição em `HEAD 5efd756`; **revista e fechada em `HEAD 044e7c3`**, depois de os workers agirem sobre três achados meus.*
 *Base da missão: `3462b14` · baselines do lead: pytest **2319 passed / 53 skipped / 0 failed**, tsc **76 erros**.*
 
 ---
@@ -15,11 +15,14 @@
 | **NÃO** | Sem prova, ou medido como zero, ou o caminho não existe |
 | **N/A declarado** | Não se aplica, **com motivo** — nunca por omissão |
 
-⚠️ **Esta matriz não é o gate final.** A árvore estava suja quando a medi
-(8 arquivos modificados, 4 não rastreados, incluindo `volc_ads/campanha/pmax.py`
-recém-criado). Números de suíte medidos sobre árvore suja não são baseline: o
-integrador precisa remedi-los sobre árvore limpa na convergência. O que **não**
-muda com isso são os achados estruturais, que são leitura de código.
+⚠️ **Esta matriz foi medida duas vezes, e a segunda mudou o veredito.** Na
+primeira passada (`5efd756`) eu levantei cinco bloqueadores. Os workers agiram
+sobre três deles, e eu **reverifiquei cada um em `044e7c3`** em vez de repetir o
+achado antigo — dois fecharam, um continua aberto. O rastro das duas medições
+está preservado de propósito: um achado que foi corrigido é evidência de que o
+ciclo funcionou, não texto para apagar.
+
+O gate final continua sendo do integrador, sobre árvore limpa.
 
 ---
 
@@ -114,7 +117,7 @@ como reprovação de gate, sem cláusula de colapso benigno. **Dívida real, bar
 |---|---|---|---|
 | Brief de Display | **PROVADO** | `volc_ads/campanha/display.py`, construtor completo | herdado |
 | Plano com budget / segmentação / anúncios / assets | **PROVADO** | `display.py:203-204` emite `comum.op_geo` e `comum.op_idioma`; cadeia budget → campanha → geo → idioma → ad group → RDA (`display.py:6,18`) | herdado |
-| **Imagens chegam ao builder pelo HTTP** | **NÃO** | `backend/app/routers/trafego.py:2086` passa `imagens_display=None` **literal**, e `ProvarEntrada` (`:1311-1400`) **não tem campo de imagem**. É o F031 do `fable-global-v1`, ainda verdadeiro **para Display** | em curso (Workers 1/2/3) |
+| **Imagens chegam ao builder pelo HTTP** | **PROVADO — fechado durante a missão** | Era o meu bloqueador nº 2, levantado em `5efd756` e **corrigido em `96fea91`** ("fix(display): as imagens voltam a atravessar o HTTP — e a identidade não muda"). Reverificado em `044e7c3`: `ProvarEntrada` ganhou a fronteira HTTP de imagens (`trafego.py:1334`) e `:2496` faz `plano.brief.imagens_display = _imagens_de_display(...)`. E a distinção fina foi feita: `None` é "não declarei imagem" e `[]` é "declarei que não há nenhuma" — **as duas recusam Display, com frases diferentes** (`:1447-1448`). O F031 do `fable-global-v1` está agora superado também para Display | Workers 1/2/3 |
 | v25 serializável offline | **PARCIAL** | Verificado por mim nos protos instalados: `Campaign.contains_eu_political_advertising`, `ai_max_setting`, `demand_gen_campaign_settings` **existem**. Não há para Display o equivalente ao `sondar_proto_v25()` que Demand Gen tem | herdado |
 | `validate_only` real | **NÃO** | Nunca executado contra a conta. É a **única** lacuna que o Roadmap reconhece separar P04-T04 de `done`: *"FALTA a prova contra a conta real, que exige autorização"* | ninguém — exige autorização |
 | Zero mutate | **PROVADO** | Ver §7.1: as três superfícies de mutação estão todas atrás de trava de dois fatores | — |
@@ -158,45 +161,73 @@ como reprovação de gate, sem cláusula de colapso benigno. **Dívida real, bar
 | Contrato próprio de PMax | **EM CURSO** | `volc_ads/campanha/pmax.py` apareceu não rastreado em `5efd756`; não avaliado aqui | Worker canais |
 | Decisão registrada de manter PMax fora do executor | **PROVADO** | `5bc9e82` + `DECISAO-PMAX-FORA-DO-EXECUTOR.md`: habilitar o construtor derrubaria a rota HTTP dos quatro canais, porque `subir.py` levanta no import quando a vista discorda do perfil | lead |
 | Zero mutate | **PROVADO** | PMax não está em `CONSTRUTORES_POR_CANAL` nem em `PROVADORES_POR_CANAL`; `permite_mutacao_real` default `False` |
-| **Mensuração inadequada bloqueia criação** | **NÃO** | **Ver §5.1 — é o achado que o lead pediu que eu fiscalizasse, e ele se confirma** |
+| **Mensuração inadequada bloqueia criação** | **PROVADO — fechado durante a missão** | Era o meu bloqueador nº 1. **Ver §5.1**, reescrito com a reverificação |
 
-### 5.1 Achado — PMax está bloqueado por motivo empilhado, e o motivo que a tarefa pede não está no portão certo
+### 5.1 Achado levantado, e fechado dentro da missão
 
-Rodei `contrato_canais.contrato_dos_canais()` com `papel="dono"` e
-`escrita_permitida=True` (privilégio máximo, para isolar o que resta):
+**O que eu levantei em `5efd756`.** Rodando `contrato_dos_canais()` com
+`papel="dono"` e `escrita_permitida=True` (privilégio máximo, para isolar o que
+resta), PMax devolvia:
 
 ```
-PERFORMANCE_MAX
-  planejavel         BLOQUEADO  ['sem_campos_de_pedido']
-  validavel          BLOQUEADO  ['sem_porta_de_prova']
-  criavel_pausada    BLOQUEADO  ['sem_construtor']
-  ativavel           BLOQUEADO  ['ativacao_fora_de_escopo', 'politica_nao_inclui_ativacao',
-                                 'mensuracao_nao_lida', 'observabilidade_nao_provada']
+planejavel       BLOQUEADO  ['sem_campos_de_pedido']
+validavel        BLOQUEADO  ['sem_porta_de_prova']
+criavel_pausada  BLOQUEADO  ['sem_construtor']
 ```
 
-Os três primeiros portões têm **a mesma causa literal** ("não há construtor de
-campanha para Performance Max"), com `origem='construtor'`.
+Os três portões tinham **a mesma causa literal**, `origem='construtor'`. Como
+P04-T07 exige observabilidade **antes de autorizar criação**, o portão que a
+tarefa governa é `criavel_pausada` — e o único bloqueador ali era
+`sem_construtor`. Ou seja: no dia em que alguém escrevesse o builder, o bloqueio
+**sumiria junto**, e a suíte continuaria verde. PMax nem recebia
+`fora_da_janela_do_canario`, o bloqueador de política que Display recebe, porque
+a avaliação já parava antes.
 
-O título de **P04-T07 é "Definir observabilidade PMax ANTES de autorizar
-criação"** — logo o portão que a tarefa governa é **`criavel_pausada`**. E o
-único bloqueador de `criavel_pausada` é `sem_construtor`.
+**O que existe agora, reverificado em `044e7c3`:**
 
-Mensuração e observabilidade só aparecem em **`ativavel`** — e não só para PMax:
-`SEARCH`, `DISPLAY` e `DEMAND_GEN` também têm `criavel_pausada` **sem** nenhum
-bloqueador de mensuração. Isso é decisão de produto coerente e defensável
-(o canário pausado atravessa G0 sozinho; `prontidao.py:18-21` diz exatamente
-isso), **mas para PMax ela não satisfaz o critério literal da tarefa.**
+```
+planejavel       PERMITIDO  []
+validavel        BLOQUEADO  ['PMAX_FORA_DO_EXECUTOR']
+criavel_pausada  BLOQUEADO  ['PMAX_FORA_DO_EXECUTOR']
+```
 
-**Consequência concreta:** no dia em que `volc_ads/campanha/pmax.py` virar um
-construtor registrado, `sem_construtor` desaparece dos três portões e
-`criavel_pausada` fica **sem nenhum bloqueador de observabilidade**. Pior: PMax
-hoje nem recebe `fora_da_janela_do_canario`, o bloqueador de política que Display
-recebe — porque a avaliação já parou em `sem_construtor`.
+PMax **passou a planejar** (`volc_ads/campanha/pmax.py` existe e
+`planejavel=PERMITIDO`), e o bloqueio de criação virou um código de política
+explícito, `PMAX_FORA_DO_EXECUTOR` (`contrato_canais.py:561-574`), que **não
+depende da ausência de construtor** — era exatamente essa a minha objeção.
 
-**Correção pedida:** um bloqueador próprio no `criavel_pausada` de PMax, derivado
-de observabilidade, que **se sustente sozinho** quando `sem_construtor` sair.
-Enquanto não existir, P04-T07 **não pode passar de `todo`** para além de
-`partial`, e nunca para `done`.
+**E o portão de mensuração passou a ser provado por si.** A prova está em
+`volc_ads/campanha/testes_pmax.py:420`,
+`test_mensuracao_inadequada_bloqueia_mesmo_com_canal_habilitado`: ela faz
+`monkeypatch` de `pmax._prontidao` para devolver `monta=True, pode_provar=True,
+pode_criar=True` — o canal **fingido habilitado** — e então exige que
+`MENSURACAO_INADEQUADA` continue de pé.
+
+O detalhe que a torna uma prova de verdade, e não uma asserção decorativa, é a
+linha anterior:
+
+```python
+assert p.prontidao.pode_criar is True, "o teste não forçou a prontidão"
+```
+
+Isso impede o teste de **passar por vacuidade** — se o monkeypatch falhasse, o
+teste falharia em vez de "passar" por o canal seguir desabilitado. É a resposta
+direta ao anti-padrão que descrevo em §2.1, e ela foi aplicada aqui e não lá.
+
+`testes_pmax.py:404` complementa exercitando as três condições uma a uma
+(`status=PAUSED`, `primaria_para_meta=False`, `inclui_em_conversoes=False`), cada
+uma devendo bloquear sozinha.
+
+**Veredito: fechado.** O bloqueio de mensuração vive em `pmax.planejar()`, a
+montante da criação, e é independente do canal estar no executor.
+
+**Ressalva que permanece, e não é bloqueador:** `criavel_pausada` continua sem
+bloqueador de mensuração no `contrato_canais` — nem para PMax, nem para SEARCH,
+DISPLAY ou DEMAND_GEN. A arquitetura põe mensuração em `ativavel`, o que é
+coerente com `prontidao.py:18-21` ("G0 não implica G1": o canário pausado
+atravessa G0 sozinho, não gasta e não entra em leilão). Para PMax a exigência da
+tarefa está satisfeita pela camada de plano; registro a assimetria para que ela
+seja decisão consciente, e não descoberta futura.
 
 ### 5.2 Verificado por mim contra os protos v25 (para quem escrever o builder)
 
@@ -272,8 +303,8 @@ e a causa de cada portão deixou de ser `indisponibilidades[0]`.
 | Sem credencial no diff | **PROVADO** | `git diff 3462b14..HEAD` grep por `SUPABASE_SERVICE_ROLE|api key|secret|BEGIN RSA/OPENSSH|eyJ…|FORGE_PERMITIR_ESCRITA=1` → **2 ocorrências, ambas benignas**: uma é um teste que asserta que esses nomes são **proibidos**; a outra é a string da mensagem de erro da trava |
 | `git diff --check` limpo | **PROVADO** | exit 0 |
 | Árvore limpa | **NÃO (durante a missão)** | Medições feitas com trabalho em curso na árvore. Não é defeito; **mas o gate final é do integrador, sobre árvore limpa** |
-| TS sem erro novo | **PROVADO** | `npx tsc --noEmit -p tsconfig.app.json` em `96fea91` → **76 erros**, exatamente o baseline. Zero erro novo |
-| Suíte Python | **PROVADO** | `backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly` em `96fea91` → **2445 passed, 45 skipped, 0 failed** (75,08s). Baseline: 2319/53/0. **+126 testes, zero falhas** |
+| TS sem erro novo | **PROVADO** | `npx tsc --noEmit -p tsconfig.app.json` em `044e7c3` → **76 erros**, exatamente o baseline. Zero erro novo |
+| Suíte Python | **PROVADO** | `backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly` em `044e7c3` → **2550 passed, 45 skipped, 0 failed** (88,44s). Baseline: 2319/53/0. **+231 testes, zero falhas** |
 | Build verde | **NÃO VERIFICADO POR MIM** | gate do integrador |
 | Mapa Vivo `--check` | **N/A declarado** | `UPDATE_STATUS.json` não existe nesta worktree (arquivo gerado, não versionado). `current:false, reason:"UPDATE_STATUS.json ausente"` é **estado inicial esperado**, não regressão — o lead reconstrói na convergência |
 

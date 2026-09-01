@@ -29,6 +29,7 @@ Quatro grupos:
 from __future__ import annotations
 
 import enum
+import itertools
 import pathlib
 import sys
 from importlib import import_module
@@ -720,8 +721,23 @@ def _brief_display(cid="8017851692", **imagens):
         imagens_display=ImagensDisplay(**imagens))
 
 
+#: Contador de fixture. ⚠️ CADA CHAMADA DEVOLVE BYTES DIFERENTES, e isso não é
+#: capricho: até 01/09/2026 `_png()` devolvia o MESMO conteúdo sempre, e os
+#: briefs de teste montavam dois `ImagemParaSubir` com a mesma imagem em papéis
+#: diferentes. Um `validate_only` real na conta 547-809-6539 recusou esse
+#: payload inteiro com `asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE`
+#: — o Google identifica asset pelo CONTEÚDO, e dois `asset_operation.create`
+#: com a mesma imagem e nomes distintos são o mesmo asset pedindo dois nomes.
+#:
+#: Ou seja: a suíte estava verde sobre um payload que a API recusa. O tamanho é
+#: preservado (8 + n) para não mexer em nenhuma contagem; só o primeiro byte do
+#: corpo muda.
+_SERIE_PNG = itertools.count()
+
+
 def _png(n=64):
-    return b"\x89PNG\r\n\x1a\n" + b"\x00" * n
+    marca = bytes([next(_SERIE_PNG) % 256])
+    return b"\x89PNG\r\n\x1a\n" + marca + b"\x00" * (n - 1)
 
 
 def test_imagem_nova_vira_asset_operation_no_mesmo_mutate():
@@ -1148,3 +1164,76 @@ def test_a_ordem_canonica_dos_papeis_tem_um_dono_so():
     assert [c for _, c in display.PAPEIS_DE_IMAGEM] == [
         "marketing_images", "square_marketing_images",
         "logo_images", "square_logo_images"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# O QUE O `validate_only` REAL ENSINOU EM 01/09/2026
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_asset_repetido_por_conteudo_e_recusado_como_a_api_recusa():
+    """Regra MEDIDA, não deduzida — e a suíte estava verde sobre o oposto.
+
+    Um `validate_only` real na conta 547-809-6539 (MCC 601-673-9364) recusou o
+    mutate inteiro com
+
+        asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE
+        @mutate_operations[7].asset_operation.create.name
+        "Duplicate assets across mutates cannot have different asset level fields."
+
+    e, em cascata, três `mutate_error.RESOURCE_NOT_FOUND` no anúncio, porque os
+    ids temporários dos assets recusados deixaram de resolver. A causa era dois
+    `ImagemParaSubir` com os MESMOS BYTES em papéis diferentes.
+
+    Demand Gen já tinha guarda de duplicidade por conteúdo; Display não tinha.
+    A assimetria era invisível offline — este teste é o que a torna visível.
+    """
+    from volc_ads.campanha import display
+    from volc_ads.campanha.brief import ImagemParaSubir
+
+    CID = "8017851692"
+    mesmos = _png()
+    b = _brief_display(
+        marketing=[ImagemParaSubir(nome="banner", dados=mesmos, mime="image/png")],
+        marketing_quadrada=[ImagemParaSubir(nome="quadrado", dados=mesmos,
+                                            mime="image/png")])
+    ops, r = display.construir(CID, b, login_customer_id="6016739364")
+
+    assert ops == [], "payload que a API recusa inteiro não pode ser emitido"
+    assert not r.ok
+    achado = next(a for a in r.erros if a.campo.startswith("imagens_display."))
+    assert "DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE" in achado.motivo, (
+        "a recusa local não cita o erro da API que ela antecipa — sem isso, "
+        "quem lê o achado não tem como conferir a regra na fonte")
+
+
+def test_resource_name_repetido_tambem_e_recusado():
+    """A mesma regra vale para asset JÁ CRIADO referenciado duas vezes."""
+    from volc_ads.campanha import display
+
+    CID = "8017851692"
+    rn = f"customers/{CID}/assets/4242"
+    b = _brief_display(marketing=[rn], marketing_quadrada=[rn])
+    ops, r = display.construir(CID, b, login_customer_id="6016739364")
+    assert ops == [] and not r.ok
+    assert any("asset repetido no mesmo mutate" in a.motivo for a in r.erros)
+
+
+def test_artes_diferentes_por_papel_continuam_passando():
+    """⚠️ A guarda não pode virar um portão que recusa o caso normal.
+
+    Uma recusa que dispara no payload legítimo é uma recusa que alguém desliga.
+    """
+    from volc_ads.campanha import display
+    from volc_ads.campanha.brief import ImagemParaSubir
+
+    CID = "8017851692"
+    b = _brief_display(
+        marketing=[ImagemParaSubir(nome="banner", dados=_png(), mime="image/png")],
+        marketing_quadrada=[ImagemParaSubir(nome="quadrado", dados=_png(),
+                                            mime="image/png")],
+        logo_quadrado=[ImagemParaSubir(nome="logo", dados=_png(),
+                                       mime="image/png")])
+    ops, r = display.construir(CID, b, login_customer_id="6016739364")
+    assert r.ok, [str(a) for a in r.erros]
+    assert len(ops) == 9
