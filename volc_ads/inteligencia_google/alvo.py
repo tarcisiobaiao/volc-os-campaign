@@ -12,9 +12,15 @@ canario recem-criado e — nunca aparece na observabilidade, e a ausencia nao se
 distingue de "coletamos e nao havia nada".
 
 Abrir o filtro do scan continuo resolveria pelo lado errado: ampliaria a agenda
-que hoje o n8n comanda, e a conta pagaria por campanhas que ninguem pediu. O
-caminho certo e nomear o alvo. Uma execucao, um alvo, por identidade canonica
-interna E ID externo E conta — os tres, explicitos.
+continua e a conta pagaria por campanhas que ninguem pediu. O caminho certo e
+nomear o alvo. Uma execucao, um alvo, por identidade canonica interna E ID
+externo E conta — os tres, explicitos.
+
+⚠️ Este modulo NAO decide autoridade de agenda. Hoje ha duas candidatas — os
+workflows n8n, onde a ingestao operacional ja vive, e o pacote systemd
+versionado em ``deploy/google-intelligence/``, que nunca foi instalado — e
+escolher UMA e justamente o que falta em P09-T14. O caminho por alvo nao entra
+nessa disputa: ele nao tem relogio, nao tem loop e nao se agenda.
 
 ## Fail-closed e a regra
 
@@ -43,6 +49,12 @@ CANAL_COM_PLANO_DE_PALAVRAS = "SEARCH"
 # nao existe a pergunta, e "nao existe a pergunta" e NAO_SUPORTADO, nao vazio.
 FAMILIAS_QUE_EXIGEM_PLANO_DE_PALAVRAS = ("RECOMENDACOES_GERADAS", "FORECAST_KEYWORDS")
 
+# O vocabulario canonico de canal (ADR-18, `trafego_espelho_canal_canonico`)
+# admite estes dois, e os dois significam "a conta nao disse qual e" — nunca
+# "nao e SEARCH". Concluir NAO_SUPORTADO a partir deles seria ignorancia virando
+# conclusao de dominio, com quantidade nula, sem erro e sem ninguem reprocessar.
+CANAIS_SEM_INFORMACAO = ("UNSPECIFIED", "UNKNOWN")
+
 MOTIVO_SIMULACAO_SEM_HISTORICO = (
     "simulacao de lance exige desempenho passado; a campanha nasceu dentro da "
     "janela observada e nao veiculou nela"
@@ -50,7 +62,11 @@ MOTIVO_SIMULACAO_SEM_HISTORICO = (
 
 _CONTA = re.compile(r"^[0-9]{6,12}$")
 _ID_EXTERNO = re.compile(r"^[0-9]{1,20}$")
-_ID_INTERNO = re.compile(r"^[a-z0-9][a-z0-9_.:-]{0,119}$")
+# Identico a CHECK de `trafego_campanha.volc_campaign_id` (v9_01), inclusive na
+# caixa. Rebaixar para minusculo aqui produziria um filtro PostgREST que nao
+# casa com uma PK case-sensitive: a campanha existe e a resposta seria "nenhuma
+# campanha no inventario" — afirmacao de ausencia sobre algo que esta la.
+_ID_INTERNO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$")
 
 
 class ErroAlvoInvalido(ValueError):
@@ -80,9 +96,11 @@ def normalizar_id_externo(valor: Any, campo: str = "campaign_id") -> str:
 
 
 def normalizar_id_interno(valor: Any, campo: str = "volc_campaign_id") -> str:
+    """Preserva a caixa: a coluna e PK textual case-sensitive no Postgres."""
+
     if not isinstance(valor, str):
         raise ErroAlvoInvalido(f"{campo} deve ser string")
-    normalizado = valor.strip().lower()
+    normalizado = valor.strip()
     if not _ID_INTERNO.fullmatch(normalizado):
         raise ErroAlvoInvalido(f"{campo} possui formato invalido")
     return normalizado
@@ -146,13 +164,27 @@ def conferir_identidade_devolvida(alvo: AlvoColeta, registro: Any) -> str:
     canal = ler("canal")
     if not isinstance(canal, str) or not canal.strip():
         raise ErroAlvoDivergente("inventario devolveu canal ausente para o alvo")
-    return canal.strip().upper()
+    normalizado = canal.strip().upper()
+    if normalizado in CANAIS_SEM_INFORMACAO:
+        # Fail-closed de proposito. Sem canal nao da para dizer quais familias
+        # se aplicam, e o vocabulario de estados nao tem "nao sei": inventar
+        # NAO_SUPORTADO ou INELEGIVEL aqui seria afirmar mais do que se sabe.
+        raise ErroAlvoDivergente(
+            f"inventario devolveu canal {normalizado}: nao se sabe o canal da "
+            f"campanha, entao nao se sabe quais familias se aplicam"
+        )
+    return normalizado
 
 
 def familias_nao_suportadas(canal: str) -> tuple[str, ...]:
     """Familias que nao existem fora de SEARCH — nao suportadas, nao vazias."""
 
-    if canal.strip().upper() == CANAL_COM_PLANO_DE_PALAVRAS:
+    normalizado = canal.strip().upper()
+    if normalizado in CANAIS_SEM_INFORMACAO or not normalizado:
+        raise ErroAlvoDivergente(
+            f"canal {normalizado or 'ausente'} nao autoriza conclusao de suporte"
+        )
+    if normalizado == CANAL_COM_PLANO_DE_PALAVRAS:
         return ()
     return FAMILIAS_QUE_EXIGEM_PLANO_DE_PALAVRAS
 
