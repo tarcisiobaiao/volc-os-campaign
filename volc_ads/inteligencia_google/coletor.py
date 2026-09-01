@@ -276,14 +276,18 @@ class ColetorGoogleInteligencia:
 
     def _simulacoes(
         self, campanha: CampanhaAtiva, bucket: str, *,
-        elegivel: bool | None = None,
+        elegivel: bool | None = None, sonda: dict[str, Any] | None = None,
     ) -> DocumentoColeta:
-        """``elegivel=None`` preserva o comportamento da coleta continua.
+        """``elegivel=None`` e ``sonda=None`` preservam a coleta continua.
 
         So o caminho one-shot investiga o historico da campanha, e so ele pode
-        rebaixar ausencia a INELEGIVEL — com prova, nunca por suposicao.
+        rebaixar ausencia a INELEGIVEL — com prova, nunca por suposicao. Quando
+        ha sonda, o retrato dela entra no payload mesmo que ela nao tenha
+        enxergado nada: e o que impede uma sonda cega de virar um vazio
+        indistinguivel de um vazio observado.
         """
 
+        extra = {} if sonda is None else {"sonda": sonda}
         linhas = self._query(campanha.customer_id, f"""
           SELECT campaign_simulation.resource_name,
                  campaign_simulation.campaign_id,
@@ -308,7 +312,7 @@ class ColetorGoogleInteligencia:
                 campaign_id=campanha.campaign_id,
                 payload={
                     "motivo": MOTIVO_SIMULACAO_SEM_HISTORICO,
-                    "somente_leitura": True,
+                    "somente_leitura": True, **extra,
                 },
             )
         return DocumentoColeta.agora(
@@ -318,7 +322,7 @@ class ColetorGoogleInteligencia:
             login_customer_id=self.login_customer_id, bucket=bucket,
             quantidade=len(linhas), volc_campaign_id=campanha.volc_campaign_id,
             campaign_id=campanha.campaign_id,
-            payload={"somente_leitura": True},
+            payload={"somente_leitura": True, **extra},
             itens=[
                 Item("campaign_simulation", linha,
                      linha.get("campaign_simulation", {}).get("resource_name"))
@@ -577,33 +581,49 @@ class ColetorGoogleInteligencia:
             },
         )
 
-    def _veiculacao_na_janela(
+    def _sondar_veiculacao(
         self, campanha: CampanhaAtiva, inicio: date, fim: date,
-    ) -> tuple[bool | None, date | None]:
+    ) -> tuple[dict[str, Any], bool | None, date | None]:
         """Sonda read-only: a campanha veiculou na janela, e quando ela comecou?
 
         Serve so para decidir entre ``vazio_confirmado`` e ``inelegivel`` na
-        simulacao. Se a sonda nao puder rodar devolve ``(None, None)`` e nada e
-        rebaixado — quem falha alto e a propria consulta da familia, que corre
-        em seguida e vira FALHOU pelo caminho normal.
+        simulacao — nunca rebaixa por suposicao.
+
+        ⚠️ A sonda le ``campaign``; a familia le ``campaign_simulation``. Sao
+        recursos diferentes, entao a sonda PODE falhar sozinha, e a consulta da
+        familia terminar bem. Por isso o retrato dela viaja para dentro do
+        recibo: uma sonda cega produzindo ``vazio_confirmado`` tem de ser
+        distinguivel de um vazio observado com a sonda enxergando. Sem isso os
+        dois recibos sairiam byte a byte iguais, ate no ``payload_sha256``, e a
+        degradacao seria invisivel no banco.
         """
 
         cid = campanha.customer_id
+
+        def cega(motivo: str, **extra: Any) -> tuple[dict[str, Any], None, None]:
+            return {"estado": motivo, "veiculou_na_janela": None, **extra}, None, None
+
         try:
             base = self._query(cid, f"""
               SELECT campaign.id, campaign.start_date_time
               FROM campaign WHERE campaign.id = {campanha.campaign_id}
             """)
-            if not base:
-                return None, None
+        except Exception as exc:
+            codigo, classe, _, _ = _erro(exc)
+            return cega("falhou", erro_codigo=codigo, erro_classe=classe)
+        if not base:
+            return cega("indeterminado", motivo="campanha ausente na resposta")
+
+        try:
             desempenho = self._query(cid, f"""
               SELECT campaign.id, metrics.impressions
               FROM campaign
               WHERE campaign.id = {campanha.campaign_id}
                 AND segments.date BETWEEN '{inicio.isoformat()}' AND '{fim.isoformat()}'
             """)
-        except Exception:
-            return None, None
+        except Exception as exc:
+            codigo, classe, _, _ = _erro(exc)
+            return cega("falhou", erro_codigo=codigo, erro_classe=classe)
 
         # Relatorio segmentado por data omite dias sem atividade: nenhuma linha
         # na janela inteira e ausencia de veiculacao, nao ausencia de leitura.
@@ -616,17 +636,30 @@ class ColetorGoogleInteligencia:
             if int(valor) > 0:
                 veiculou = True
                 break
-        return veiculou, _data_de_inicio(base[0])
+        comeco = _data_de_inicio(base[0])
+        sonda = {
+            "estado": "medido" if veiculou is not None else "indeterminado",
+            "veiculou_na_janela": veiculou,
+            "inicio_da_campanha": comeco.isoformat() if comeco else None,
+            "janela": [inicio.isoformat(), fim.isoformat()],
+        }
+        return sonda, veiculou, comeco
 
     def executar_alvo(
         self, alvo: AlvoColeta, *, modo: str = "completa",
     ) -> dict[str, Any]:
         """Coleta uma unica campanha nomeada, em qualquer estado externo.
 
-        Uma execucao, um alvo, sem agenda propria: a autoridade de frequencia
-        continua sendo o n8n. Reutiliza as mesmas familias, o mesmo bucket e a
-        mesma persistencia da coleta continua, entao repetir o comando devolve
-        o mesmo recibo em vez de criar outro.
+        Uma execucao, um alvo, sem agenda propria — a escolha da autoridade de
+        frequencia continua em aberto em P09-T14 e nao passa por aqui. Reutiliza
+        as mesmas familias, o mesmo bucket e a mesma persistencia da coleta
+        continua, entao repetir o comando devolve o mesmo recibo.
+
+        ⚠️ Idempotencia por bucket tem um custo declarado: se a campanha MUDAR
+        entre duas execucoes do mesmo bucket, a segunda leitura e deduplicada e
+        o recibo antigo prevalece (a RPC devolve o id existente sem regravar).
+        E o comportamento pedido — nao duplicar observacao — mas quem precisa da
+        leitura nova precisa de outro bucket, nao de outra chamada.
         """
 
         if not isinstance(alvo, AlvoColeta):
@@ -643,7 +676,7 @@ class ColetorGoogleInteligencia:
         bucket = self._bucket(modo, agora)
         inicio = agora.date() - timedelta(days=13)
         fim = agora.date()
-        veiculou, comeco = self._veiculacao_na_janela(campanha, inicio, fim)
+        sonda, veiculou, comeco = self._sondar_veiculacao(campanha, inicio, fim)
         elegivel = simulacao_elegivel(
             veiculou_na_janela=veiculou, inicio_da_campanha=comeco,
             janela_inicio=inicio,
@@ -651,7 +684,9 @@ class ColetorGoogleInteligencia:
 
         familias: list[tuple[str, Callable[[], DocumentoColeta]]] = [
             ("DIAGNOSTICO_ENTREGA", lambda: self._diagnostico(campanha, bucket, inicio, fim)),
-            ("SIMULACOES_CAMPANHA", lambda: self._simulacoes(campanha, bucket, elegivel=elegivel)),
+            ("SIMULACOES_CAMPANHA", lambda: self._simulacoes(
+                campanha, bucket, elegivel=elegivel, sonda=sonda,
+            )),
         ]
         if modo == "completa":
             familias.extend((
@@ -666,7 +701,7 @@ class ColetorGoogleInteligencia:
             "volc_campaign_id": campanha.volc_campaign_id,
             "campaign_id": campanha.campaign_id,
             "canal": campanha.canal, "estado_externo": campanha.estado_externo,
-            "veiculou_na_janela": veiculou, "simulacao_elegivel": elegivel,
+            "sonda": sonda, "simulacao_elegivel": elegivel,
             "coletas": [],
         }
         for tipo, produtor in familias:

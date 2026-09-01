@@ -67,9 +67,9 @@ class SupabaseGoogleIntelligence:
     def campanhas_search_ativas(self, customer_id: str | None = None) -> list[CampanhaAtiva]:
         """Agenda continua. Deliberadamente restrita a ENABLED + SEARCH.
 
-        Nao amplie este filtro para alcancar uma campanha pausada: a agenda
-        continua e comandada pelo n8n e ampliar aqui gasta cota de toda a
-        carteira. Para uma PAUSED nomeada existe ``campanha_por_identidade``.
+        Nao amplie este filtro para alcancar uma campanha pausada: quem chama
+        aqui e a varredura agendada, e ampliar gasta cota de toda a carteira a
+        cada rodada. Para uma PAUSED nomeada existe ``campanha_por_identidade``.
         """
 
         parametros = {
