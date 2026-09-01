@@ -504,9 +504,9 @@
           "id": "P04-T09",
           "title": "Fechar a prova segura do builder Demand Gen",
           "status": "partial",
-          "priority": 1,
+          "priority": 2,
           "explanation": "Corrigir o candidato Demand Gen rejeitado sem habilitar criação real: canal, MCC, operações e assets precisam viajar no selo; relabeling não pode alcançar mutate; campos não operados devem falhar de forma explícita.",
-          "proof": "O candidato aebbaef foi incorporado à branch de integração, mas a revisão Fable/Opus/Codex encontrou bypass por relabeling, linhagem autoatestável, descarte silencioso de extensões e ausência de prova com os protos v25 reais.",
+          "proof": "O candidato aebbaef foi incorporado à branch de integração, mas a revisão Fable/Opus/Codex encontrou bypass por relabeling, linhagem autoatestável, descarte silencioso de extensões e ausência de prova com os protos v25 reais. · DECISÃO DE PRIORIDADE (31/08/2026): rebaixada para prioridade 2. Ela e P05-T11 estavam ambas em prioridade 1, e o desempate caía no rank da iniciativa (P04=4 antes de P05=5) — ou seja, a ordem entre as duas era um efeito colateral da numeração, não uma decisão. O dono decidiu explicitamente que o primeiro canário Search pausado precede o fechamento do builder Demand Gen. O escopo e a prova desta tarefa não mudaram; mudou só a posição dela na fila.",
           "acceptance": [
             "Demand Gen relabelado como Search é recusado antes de trava, recibo e cliente",
             "Troca de canal, login_customer_id, hash ou tipo de operação invalida o selo",
