@@ -49,7 +49,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Optional, Sequence, Tuple
 
@@ -171,6 +171,33 @@ class EventoDeConversao:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+def _instante_canonico(bruto: str) -> str:
+    """O mesmo instante escrito sempre do mesmo jeito — ou o texto cru.
+
+    ⚠️ Devolve o TEXTO ORIGINAL quando não dá para interpretar, e nunca levanta.
+    A impressão não pode depender de o evento ser válido: um lote com uma hora
+    malformada continua sendo um lote com identidade, e é a validação — item a
+    item — que reprova o evento. Levantar aqui transformaria falha PARCIAL em
+    falha total pela porta dos fundos.
+    """
+    texto = str(bruto or "").strip()
+    try:
+        quando = datetime.fromisoformat(texto.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return texto
+    if quando.tzinfo is None or quando.utcoffset() is None:
+        # Hora sem fuso é recusada pela validação; aqui ela viaja como veio,
+        # porque inventar UTC afirmaria um fuso que ninguém declarou.
+        return texto
+    return quando.astimezone(timezone.utc).isoformat()
+
+
+def _moeda_canonica(bruta: Optional[str]) -> Optional[str]:
+    """`brl` e `BRL` são a mesma moeda. `None` continua `None`."""
+    texto = str(bruta or "").strip().upper()
+    return texto or None
+
+
 @dataclass(frozen=True)
 class Envelope:
     """O pacote endereçado: destino, perfil, versão e os eventos.
@@ -188,7 +215,7 @@ class Envelope:
     consentimento_da_conta: str
     itens: Tuple[EventoDeConversao, ...]
 
-    def corpo_da_impressao(self) -> Dict[str, Any]:
+    def corpo_da_impressao(self) -> Dict[str, Any]:  # noqa: D401
         """A identidade do PACOTE — e ela não depende da ordem dos eventos.
 
         ⚠️ Reordenar não é um pacote novo. Se a ordem entrasse, um retry que
@@ -209,10 +236,23 @@ class Envelope:
             "perfil_chave": self.perfil_chave,
             "itens": sorted(
                 ({"dedup": e.chave_de_deduplicacao,
-                  "ocorrido_em": e.ocorrido_em,
+                  # ⚠️ O INSTANTE CANÔNICO, e não o texto cru.
+                  #
+                  # `2026-09-01T12:00:00-03:00` e `2026-09-01T15:00:00Z` são o
+                  # MESMO instante e produziam impressões diferentes — logo, um
+                  # retry que reescrevesse a hora em UTC criaria um SEGUNDO
+                  # lote. Reproduzido pela revisão adversarial de 02/09/2026.
+                  "ocorrido_em": _instante_canonico(e.ocorrido_em),
                   "clique_tipo": e.clique.tipo,
+                  # ⚠️ O CONSENTIMENTO ENTRA, e a razão é a mesma que já vale
+                  # para o plano: o que decide o VEREDITO tem de entrar na
+                  # identidade. Dois envelopes idênticos exceto pelo
+                  # consentimento produziam a mesma impressão e vereditos
+                  # opostos (`valido` × `recusado`), e o segundo seria lido
+                  # como retry do primeiro.
+                  "consentimento": e.consentimento_do_usuario,
                   "valor": None if e.valor is None else str(e.valor),
-                  "moeda": e.moeda}
+                  "moeda": _moeda_canonica(e.moeda)}
                  for e in self.itens),
                 key=lambda d: d["dedup"]),
         }
@@ -241,7 +281,7 @@ class Envelope:
                     # dado de usuário e este JSON vai para tela e log.
                     "clique_tipo": e.clique.tipo,
                     "valor": None if e.valor is None else str(e.valor),
-                    "moeda": e.moeda,
+                    "moeda": _moeda_canonica(e.moeda),
                     "consentimento_do_usuario": e.consentimento_do_usuario,
                 }
                 for e in self.itens
@@ -404,6 +444,17 @@ def _valor_valido(valor: Optional[Decimal],
                 "adota a moeda da conta")
     if tem_moeda and not tem_valor:
         return "moeda declarada sem valor: não há o que converter"
+    if tem_moeda:
+        # ⚠️ A MOEDA É VALIDADA AQUI TAMBÉM, e não só em `RegraDeValor`.
+        #
+        # A revisão adversarial de 02/09/2026 mandou `moeda="💩"` com valor e o
+        # item saiu `valido`, sem causa: a checagem exigia apenas PRESENÇA. O
+        # `currencyCode` do wire é ISO-4217, e um código inválido não é recusado
+        # aqui — é recusado LÁ, depois de o evento ter saído.
+        codigo = str(moeda).strip()
+        if len(codigo) != 3 or not codigo.isascii() or not codigo.isalpha():
+            return (f"moeda {moeda!r} não é um código ISO-4217 de três letras; "
+                    "a Data Manager recusa o currencyCode inválido do lado dela")
     if tem_valor:
         try:
             numero = Decimal(str(valor))

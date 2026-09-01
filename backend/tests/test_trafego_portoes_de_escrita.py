@@ -294,6 +294,12 @@ def test_ativacao_pronta_com_bloqueador_material_e_impossivel_por_construcao():
     assert "activation_ready" not in pr.Prontidao.__dataclass_fields__
     assert "smart_bidding_ready" not in pr.Prontidao.__dataclass_fields__
     r = pr.Prontidao(
+        # ⚠️ `campaign_birth` entrou no portão em 02/09/2026 (revisão
+        # adversarial): ativar é despausar algo que existe. Sem ele aqui, o
+        # veredito sairia INDETERMINADO por FALTA de nascimento, e o teste
+        # provaria a coisa errada — ele existe para provar que o bloqueador
+        # MATERIAL fecha a porta, e não que a campanha não nasceu.
+        campaign_birth=pr.PRONTO,
         measurement_readiness=pr.PRONTO, observability_status=pr.PRONTO,
         plano_persistido=True, ativacao_autorizada_por_politica=True,
         activation_blockers=("nenhuma conversão observada",),

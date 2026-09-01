@@ -149,6 +149,25 @@ class Prontidao:
                 raise ValueError(
                     f"bloqueador material fora da lista principal: {b!r}")
 
+        # ⚠️ DERIVAR NÃO BASTA SE A FONTE DA DERIVAÇÃO FOR AFIRMÁVEL SEM LASTRO.
+        #
+        # `smart_bidding_ready` é propriedade e não pode divergir do booleano —
+        # mas o booleano é CAMPO, e a revisão adversarial de 02/09/2026 mostrou
+        # o buraco: `Prontidao(smart_bidding_eligible=True)` construído à mão
+        # devolvia `smart_bidding_ready=PRONTO` com medição e observabilidade
+        # INDETERMINADAS. `avaliar` nunca produz isso; um chamador direto, sim.
+        #
+        # Elegibilidade é CONCLUSÃO de duas evidências, e o tipo passa a exigir
+        # as duas — do mesmo jeito que já exigia ausência de bloqueador material.
+        if self.smart_bidding_eligible and not (
+                self.measurement_readiness == PRONTO
+                and self.observability_status == PRONTO):
+            raise ValueError(
+                "Smart Bidding elegível sem as duas provas que o autorizam: "
+                f"medição={self.measurement_readiness}, "
+                f"observabilidade={self.observability_status}. Elegibilidade é "
+                "conclusão de evidência, não afirmação independente.")
+
 
     # ── os nomes canônicos dos SETE portões ─────────────────────────────────
     #
@@ -209,14 +228,20 @@ class Prontidao:
         Como propriedade, a contradição é impossível de escrever — que é mais
         forte que uma guarda que a detecta.
         """
-        if (self.measurement_readiness == PRONTO
+        # ⚠️ `campaign_birth` ENTRA, e a revisão adversarial mostrou por quê:
+        # sem ele a resposta afirmava, ao mesmo tempo, que a campanha não
+        # nasceu e que despausá-la era seguro. "Ativar" é DESPAUSAR algo que
+        # existe; antes do nascimento não há o que despausar.
+        if (self.campaign_birth == PRONTO
+                and self.measurement_readiness == PRONTO
                 and self.observability_status == PRONTO
                 and self.ativacao_autorizada_por_politica
                 and self.plano_persistido
                 and not self.activation_blockers_materiais):
             return PRONTO
         if INDETERMINADO in (self.measurement_readiness,
-                             self.observability_status):
+                             self.observability_status,
+                             self.campaign_birth):
             return INDETERMINADO
         return NAO_PRONTO
 
@@ -610,6 +635,14 @@ def avaliar(
             "a autorização em vigor cobre criar pausada e nada além; ativar é "
             "outro ato, e ele não foi autorizado.",
             material=False)
+    if not recibo_registrado:
+        # ⚠️ NÃO material: não é sobre medir nem sobre observar. Contá-lo como
+        # material derrubaria `smart_bidding_eligible` de uma campanha que ainda
+        # vai nascer — e o lance dela, esse sim, já pode ser avaliado antes.
+        _bloquear(
+            "a campanha ainda não nasceu: não há o que despausar. Ativar é "
+            "despausar um recurso que já existe na conta.",
+            material=False)
     if not plano_persistido:
         # ⚠️ NÃO material: a campanha aprende igual com o plano fora do banco.
         # O que ela não pode é ser ativada de forma prestável de contas. Contá-lo
@@ -674,6 +707,10 @@ class LanceSemValor(PortaoFechado):
     """Lance por VALOR sem nenhuma regra de valor declarada nem lida."""
 
 
+class EstrategiaDesconhecida(PortaoFechado):
+    """Uma estratégia que este portão não sabe classificar. Recusa, sempre."""
+
+
 #: As estratégias que NÃO aprendem de conversão. Uma lista fechada, e curta.
 #:
 #: ⚠️ `MANUAL_CPC` é o padrão da casa. Recusá-lo porque a conta não mede
@@ -682,8 +719,36 @@ class LanceSemValor(PortaoFechado):
 #: medição. O portão é sobre APRENDER, não sobre nascer.
 ESTRATEGIAS_SEM_APRENDIZADO: tuple[str, ...] = ("MANUAL_CPC",)
 
+#: As que aprendem pela CONTAGEM de conversões.
+ESTRATEGIAS_POR_CONTAGEM: tuple[str, ...] = (
+    "MAXIMIZE_CONVERSIONS",
+    "TARGET_CPA",
+)
+
 #: As que otimizam pelo VALOR de cada conversão, e não pela contagem.
-ESTRATEGIAS_QUE_EXIGEM_VALOR: tuple[str, ...] = ("MAXIMIZE_CONVERSION_VALUE",)
+ESTRATEGIAS_QUE_EXIGEM_VALOR: tuple[str, ...] = (
+    "MAXIMIZE_CONVERSION_VALUE",
+    "TARGET_ROAS",
+)
+
+#: ⚠️ A UNIÃO FECHADA, e ela é o portão de verdade.
+#:
+#: A primeira versão tratava "desconhecida" como se fosse por contagem —
+#: falha fechada no papel e ABERTA na prática, e a revisão adversarial de
+#: 02/09/2026 provou: com `measurement_ready=PRONTO`, a string
+#: `ESTRATEGIA_INVENTADA` atravessava. O fail-closed só valia no caso que já
+#: estava fechado, ou seja, não valia.
+#:
+#: `volc_ads/campanha/brief.py:ESTRATEGIAS_DE_LANCE` aceita exatamente três
+#: (`MANUAL_CPC`, `MAXIMIZE_CONVERSIONS`, `MAXIMIZE_CONVERSION_VALUE`) e é ele
+#: quem recusaria a string inventada mais adiante. Depender disso seria depender
+#: de uma guarda de OUTRO módulo para cumprir o contrato deste — e é
+#: exatamente o arranjo que esta missão existe para desfazer.
+ESTRATEGIAS_CONHECIDAS: tuple[str, ...] = (
+    ESTRATEGIAS_SEM_APRENDIZADO
+    + ESTRATEGIAS_POR_CONTAGEM
+    + ESTRATEGIAS_QUE_EXIGEM_VALOR
+)
 
 
 def exigir_para_criacao(*, estrategia_lance: str,
@@ -703,6 +768,21 @@ def exigir_para_criacao(*, estrategia_lance: str,
     portões fechados —, e deixa de permitir que ela nasça APRENDENDO.
     """
     estrategia = str(estrategia_lance or "MANUAL_CPC").strip().upper()
+
+    # ⚠️ O DESCONHECIDO É RECUSADO ANTES DE QUALQUER AVALIAÇÃO DE MEDIÇÃO.
+    #
+    # Antes, ele caía no ramo "aprende de conversão" — o que parecia
+    # fail-closed e não era: com a medição PRONTA, qualquer string atravessava.
+    # Uma estratégia que este portão não sabe classificar é uma estratégia cujo
+    # requisito ele não conhece, e não conhecer nunca autoriza.
+    if estrategia not in ESTRATEGIAS_CONHECIDAS:
+        raise EstrategiaDesconhecida(
+            f"{estrategia} não é uma estratégia de lance que este portão saiba "
+            f"classificar (conhecidas: {', '.join(ESTRATEGIAS_CONHECIDAS)}). "
+            "Sem saber se ela aprende de conversão, de valor ou de nenhum dos "
+            "dois, não há como dizer o que ela exige — e não saber não "
+            "autoriza. Nada foi enviado ao Google.")
+
     if estrategia in ESTRATEGIAS_SEM_APRENDIZADO:
         return
 

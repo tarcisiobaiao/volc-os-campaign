@@ -991,10 +991,20 @@ def test_bloqueio_de_POLITICA_nao_contradiz_elegibilidade():
     um motivo que nada tem a ver com medir — e é exatamente por isso que a
     classificação nasce no ponto em que cada razão é escrita.
     """
+    # ⚠️ A FIXTURE GANHOU AS DUAS PROVAS EM 02/09/2026, e não por formalidade.
+    #
+    # Ela afirmava `smart_bidding_eligible=True` com medição e observabilidade
+    # INDETERMINADAS — uma combinação que `avaliar` nunca produz e que o tipo
+    # passou a recusar depois da revisão adversarial: elegibilidade é conclusão
+    # de evidência, não afirmação independente. O que este teste prova continua
+    # sendo o mesmo, agora sobre um objeto coerente.
     ok = pr.Prontidao(smart_bidding_eligible=True,
+                      measurement_readiness=pr.PRONTO,
+                      observability_status=pr.PRONTO,
                       activation_blockers=("ativar não é ato deste fluxo",),
                       activation_blockers_materiais=())
     assert ok.smart_bidding_eligible is True
+    assert ok.smart_bidding_ready == pr.PRONTO
 
 
 def test_a_estrategia_de_lance_nao_duplica_a_causa_material():

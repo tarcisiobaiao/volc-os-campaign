@@ -3756,6 +3756,27 @@ async def plano_de_mensuracao_vigente(
             },
         ) from exc
 
+    # ⚠️ A CONFERÊNCIA QUE FALTAVA, e ela é sobre o CONTEÚDO.
+    #
+    # A guarda acima olha a COLUNA `customer_id` — que é o que a consulta
+    # filtrou. O que a rota DEVOLVE é o `payload`, e ninguém o olhava. A revisão
+    # adversarial de 02/09/2026 reproduziu: coluna `5478096539`, payload da
+    # `4820015411`, resposta `persistido: true`.
+    #
+    # Uma consulta é uma INTENÇÃO; a conferência é um FATO. Conferir só a
+    # coluna é conferir a intenção.
+    #
+    # ⚠️ O MCC entra junto: um plano do MCC errado descreve outra hierarquia, e
+    # é a hierarquia que decide de quem é a ação de conversão.
+    if plano.customer_id != cid or plano.login_customer_id != mid:
+        log.error("payload do plano vigente é da conta %s/%s e o pedido era "
+                  "%s/%s", plano.customer_id, plano.login_customer_id, cid, mid)
+        raise HTTPException(
+            status_code=409,
+            detail=("O conteúdo do plano encontrado não pertence à conta "
+                    "pedida. Nada foi devolvido: entregar o plano de outra "
+                    "conta seria mostrar a medição errada com cara de certa."))
+
     portoes = pr.avaliar(
         plano_valido=True,
         # Ler o plano NÃO prova que a campanha nasceu.
@@ -4332,6 +4353,16 @@ async def _vincular_plano_reconciliado(
 
     try:
         plano = pm.do_json(pre.get("payload") or {})
+        # ⚠️ O RECORTE POR CONTA OLHAVA A COLUNA; O QUE VAI PARA A RPC É O
+        # PAYLOAD. A revisão adversarial de 02/09/2026 reproduziu: `vinculado
+        # True`, `documento_customer_id 4820015411`, e o `volc_campaign_id`
+        # derivado da conta PEDIDA — a linha gravada apontaria uma campanha de
+        # uma conta para o plano de outra.
+        if plano.customer_id != str(cid):
+            return _sem(
+                "o conteúdo do plano encontrado não é desta conta. A coluna "
+                "dizia uma coisa e o payload outra; gravar o vínculo ligaria "
+                "uma campanha desta conta ao plano de outra.")
         vinculado = pm.vincular_ao_nascimento(plano, campaign_id=str(campaign_id))
         volc_campaign_id = sinc.volc_campaign_id(cid, str(campaign_id))
         novo_id = await _gravar_plano(

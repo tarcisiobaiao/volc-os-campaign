@@ -194,12 +194,28 @@ class RegraDeValor:
                     f"moeda {self.moeda!r} não é um código ISO-4217 de três "
                     "letras")
             object.__setattr__(self, "moeda", texto.upper())
-        if self.valor is not None and not isinstance(self.valor, Decimal):
+        if self.valor is not None:
             try:
-                object.__setattr__(self, "valor", Decimal(str(self.valor)))
+                numero = (self.valor if isinstance(self.valor, Decimal)
+                          else Decimal(str(self.valor)))
             except (InvalidOperation, ValueError, TypeError) as exc:
                 raise ValueError(
                     f"valor {self.valor!r} não é um número representável") from exc
+            # ⚠️ FINITO E NÃO NEGATIVO, e a revisão adversarial de 02/09/2026
+            # mostrou por que a checagem tem de morar AQUI: `data_manager`
+            # recusava `-1` no evento, e o portão de MAXIMIZE_CONVERSION_VALUE
+            # olhava só o MODO — então uma regra com valor `-1` abria o lance
+            # por valor. A regra é o contrato; validá-la só na hora do envio é
+            # validar tarde demais.
+            #
+            # ⚠️ Zero CONTINUA passando: zero é uma decisão declarada, negativo
+            # é um erro, e colapsar os dois apagaria a distinção que o modo
+            # `sem_valor` já existe para carregar.
+            if not numero.is_finite() or numero < 0:
+                raise ValueError(
+                    f"valor {self.valor!r} precisa ser finito e não negativo: "
+                    "uma conversão não vale menos que nada")
+            object.__setattr__(self, "valor", numero)
 
     def json(self) -> Dict[str, Any]:
         return {
@@ -293,18 +309,43 @@ def janela_nao_declarada(causa: Optional[str] = None) -> JanelaDeAtribuicao:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _slug(valor: Any, campo: str) -> str:
-    """Normaliza um eixo de negócio — e recusa o vazio.
+#: Os caracteres que um eixo de negócio pode ter depois de normalizado.
+_CARACTERES_DO_SLUG = set("abcdefghijklmnopqrstuvwxyz0123456789-")
 
-    ⚠️ `strip().lower()` porque "BPC/LOAS", "bpc-loas" e " bpc-loas " são a
-    mesma oferta, e três perfis para uma oferta é o mesmo defeito que este
-    módulo existe para consertar, só que do lado de dentro.
+
+def _slug(valor: Any, campo: str) -> str:
+    """Normaliza um eixo de negócio — e RECUSA o que não é canônico.
+
+    `strip().lower()` porque " BPC-LOAS " e "bpc-loas" são a mesma oferta: caixa
+    e espaço em volta não carregam decisão nenhuma.
+
+    ⚠️ E aqui a normalização PARA. A primeira versão prometia na docstring que
+    "BPC/LOAS" e "bpc-loas" eram a mesma oferta e produzia duas identidades — a
+    revisão adversarial de 02/09/2026 reproduziu (`bpc/loas` ≠ `bpc-loas`).
+    Havia duas saídas, e a escolhida é a segunda:
+
+      1. **fundir separadores** (`/` → `-`). Isso é um MERGE silencioso: `x/y` e
+         `x-y` podem ser ofertas genuinamente diferentes, e fundi-las é o defeito
+         oposto ao que este módulo combate — e mais caro, porque some com uma
+         das duas em vez de duplicar;
+      2. **recusar o que não é canônico.** O erro aparece no primeiro uso, com o
+         nome do campo e o caractere ofensor, e não seis meses depois num
+         relatório que não fecha.
+
+    Quem escreve "BPC/LOAS" recebe uma recusa que diz o que escrever.
     """
     texto = str(valor or "").strip().lower()
     if not texto:
         raise ValueError(
             f"perfil sem {campo}: um eixo em branco não identifica nada, e "
             "identidade anônima é indistinguível de silêncio")
+    fora = sorted(set(texto) - _CARACTERES_DO_SLUG)
+    if fora:
+        raise ValueError(
+            f"{campo}={valor!r} não é canônico: os caracteres {fora!r} não são "
+            "aceitos. Use apenas letras minúsculas, dígitos e hífen — "
+            "normalizar separadores automaticamente fundiria ofertas que podem "
+            "ser diferentes, e um merge silencioso é pior que uma recusa.")
     return texto
 
 
