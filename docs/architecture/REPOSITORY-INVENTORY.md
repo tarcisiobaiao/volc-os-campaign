@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T06:43:08-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T08:05:52-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 450 arquivos: 296 Markdown e 154 SQL;
-- 450 versionados e 0 ainda não versionados;
+- 460 arquivos: 306 Markdown e 154 SQL;
+- 460 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 93 SQL com palavras de mutação de alto risco.
 
@@ -16,8 +16,8 @@ Gerado em `2026-09-01T06:43:08-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 19 |
-| `documentation` | 160 |
+| `audit` | 21 |
+| `documentation` | 168 |
 | `generated` | 2 |
 | `module-guide` | 30 |
 | `product-document` | 21 |
@@ -158,6 +158,8 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/motor-pautas/README.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/REVISAO-CODEX.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/REVISAO-EXTERNA.md` | `audit` | — | 0 | 0 |
+| `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
+| `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | high | 3 | 4 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | high | 1 | 0 |

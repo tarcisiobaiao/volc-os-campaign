@@ -2268,7 +2268,7 @@
       "state": "implemented",
       "state_label": "Implementado",
       "tier": 2,
-      "summary": "Módulo FastAPI com 19 endpoints.",
+      "summary": "Módulo FastAPI com 21 endpoints.",
       "evidence": "Endpoints medidos no código.",
       "source": "backend/app/routers/trafego.py",
       "endpoints": [
@@ -2288,6 +2288,8 @@
         "POST /reconciliar",
         "GET /trava",
         "GET /capacidades",
+        "GET /canais",
+        "GET /canais/{canal}",
         "GET /veredito/{customer_id}/{campaign_id}",
         "PATCH /copy",
         "POST /remover"
