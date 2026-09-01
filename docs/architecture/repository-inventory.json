@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T08:32:38-03:00",
+  "generated_at": "2026-09-01T08:37:40-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 465,
@@ -1017,7 +1017,7 @@
       "tracked": true,
       "bytes": 18367,
       "lines": 257,
-      "sha256": "9d657e5b8815ce664e6b4c8b9bc034de8d6566b90f04eb60787a094cec2c92c5",
+      "sha256": "ac03f87b5cb0e730066d8c83e0e4a95f349dcb87206b83e7c5fece59d80dd4d0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
