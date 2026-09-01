@@ -293,23 +293,8 @@ class DepositoDeTrabalhos:
                 if linha is None:
                     break
                 if linha["tentativa"] >= linha["max_tentativas"]:
-                    c.execute(
-                        "update trabalho set estado=?, falha_json=?, operario=null,"
-                        " lease_ate=null, atualizado_em=? where id=?",
-                        (
-                            EstadoDoTrabalho.FAILED.value,
-                            json.dumps({
-                                "codigo": "tentativas_esgotadas",
-                                "mensagem": (
-                                    f"o trabalho foi tentado {linha['tentativa']} "
-                                    "vezes e nao concluiu"
-                                ),
-                                "permanente": True,
-                            }),
-                            _iso(_agora()),
-                            linha["id"],
-                        ),
-                    )
+                    self._enterrar(c, linha["id"], linha["estado"],
+                                   linha["tentativa"])
                     continue
                 agora = _agora()
                 c.execute(
@@ -320,6 +305,8 @@ class DepositoDeTrabalhos:
                      _iso(agora + timedelta(seconds=lease_s)), _iso(agora),
                      _iso(agora), linha["id"]),
                 )
+                self._trilhar(c, linha["id"], linha["estado"],
+                              EstadoDoTrabalho.CLAIMED.value, operario)
                 escolhido = linha["id"]
                 break
             c.execute("commit")
@@ -399,10 +386,10 @@ class DepositoDeTrabalhos:
         try:
             cur = c.execute(
                 "update trabalho set estado=?, operario=null, lease_ate=null,"
-                " cancelado_por=?, cancelado_motivo=?, atualizado_em=?"
-                " where id=? and estado not in (?,?,?)",
+                " cancelado_por=?, cancelado_motivo=?, atualizado_em=?,"
+                " terminado_em=? where id=? and estado not in (?,?,?)",
                 (EstadoDoTrabalho.CANCELLED.value, por, motivo.strip()[:280],
-                 _iso(_agora()), trabalho_id,
+                 _iso(_agora()), _iso(_agora()), trabalho_id,
                  EstadoDoTrabalho.RENDERED.value, EstadoDoTrabalho.FAILED.value,
                  EstadoDoTrabalho.CANCELLED.value),
             )
@@ -412,6 +399,8 @@ class DepositoDeTrabalhos:
                 raise TransicaoProibida(
                     atual.estado if atual else t.estado, EstadoDoTrabalho.CANCELLED
                 )
+            self._trilhar(c, trabalho_id, t.estado.value,
+                          EstadoDoTrabalho.CANCELLED.value, por, motivo.strip()[:280])
             c.execute("commit")
         except TransicaoProibida:
             raise
@@ -469,15 +458,7 @@ class DepositoDeTrabalhos:
                 c.execute("commit")
                 return None
             if linha["tentativa"] >= linha["max_tentativas"]:
-                c.execute(
-                    "update trabalho set estado=?, falha_json=?, operario=null,"
-                    " lease_ate=null, atualizado_em=? where id=?",
-                    (EstadoDoTrabalho.FAILED.value,
-                     json.dumps({"codigo": "tentativas_esgotadas",
-                                 "mensagem": "o trabalho foi tentado o maximo de vezes",
-                                 "permanente": True}),
-                     _iso(_agora()), trabalho_id),
-                )
+                self._enterrar(c, trabalho_id, linha["estado"], linha["tentativa"])
                 c.execute("commit")
                 return None
             agora = _agora()
@@ -488,12 +469,73 @@ class DepositoDeTrabalhos:
                  _iso(agora + timedelta(seconds=lease_s)), _iso(agora), _iso(agora),
                  trabalho_id),
             )
+            self._trilhar(c, trabalho_id, linha["estado"],
+                          EstadoDoTrabalho.CLAIMED.value, operario)
             c.execute("commit")
         except Exception:
             with contextlib_suppress():
                 c.execute("rollback")
             raise
         return self.por_id(trabalho_id)
+
+    #: Quem enterra o trabalho esgotado. Vide `DepositoPostgres.RECOLHEDOR`.
+    RECOLHEDOR = "recolhedor"
+
+    def _enterrar(self, c: sqlite3.Connection, trabalho_id: str, de: str,
+                  tentativa: int) -> None:
+        """Tira da fila quem gastou o teto de tentativas, PELO MAPA.
+
+        ⚠️ ACHADO DA SUITE DE CONTRATO. `queued -> failed` nao existe em
+        `TRANSICOES`, e este metodo escrevia exatamente isso por SQL cru — o
+        deposito desobedecendo o mapa que ele mesmo publica. O Postgres recusa em
+        gatilho, e a divergencia so apareceu quando as mesmas assercoes rodaram
+        nos dois. O caminho legitimo e `queued -> claimed -> failed`, com autor
+        na trilha; a tentativa NAO sobe, porque enterrar nao e tentar.
+        """
+        agora = _iso(_agora())
+        c.execute(
+            "update trabalho set estado=?, operario=?, lease_ate=?, batimento_em=?,"
+            " atualizado_em=? where id=?",
+            (EstadoDoTrabalho.CLAIMED.value, self.RECOLHEDOR,
+             _iso(_agora() + timedelta(seconds=60)), agora, agora, trabalho_id),
+        )
+        self._trilhar(c, trabalho_id, de, EstadoDoTrabalho.CLAIMED.value,
+                      self.RECOLHEDOR, "esgotado")
+        c.execute(
+            "update trabalho set estado=?, falha_json=?, operario=null,"
+            " lease_ate=null, atualizado_em=?, terminado_em=? where id=?",
+            (
+                EstadoDoTrabalho.FAILED.value,
+                json.dumps({
+                    "codigo": "tentativas_esgotadas",
+                    "mensagem": (
+                        f"o trabalho foi tentado {tentativa} vezes e nao concluiu"
+                    ),
+                    "permanente": True,
+                }),
+                agora, agora, trabalho_id,
+            ),
+        )
+        self._trilhar(c, trabalho_id, EstadoDoTrabalho.CLAIMED.value,
+                      EstadoDoTrabalho.FAILED.value, self.RECOLHEDOR,
+                      "tentativas_esgotadas")
+
+    @staticmethod
+    def _trilhar(c: sqlite3.Connection, trabalho_id: str, de: str, para: str,
+                 por: str | None = None, motivo: str | None = None) -> None:
+        """Escreve um passo da trilha, na MESMA transacao de quem o causou.
+
+        ⚠️ ACHADO DA SUITE DE CONTRATO. A trilha nascia so em `transicionar`, e
+        no Postgres o gatilho esta no UPDATE da tabela — entao o claim e a
+        devolucao por lease vencido, que sao UPDATE e nao passam por
+        `transicionar`, apareciam la e sumiam aqui. Duas trilhas diferentes para
+        a mesma corrida e a mesma dupla verdade de sempre, so que na auditoria.
+        """
+        c.execute(
+            "insert into transicao (trabalho_id, de, para, por, motivo, em)"
+            " values (?, ?, ?, ?, ?, ?)",
+            (trabalho_id, de, para, por, motivo, _iso(_agora())),
+        )
 
     def _devolver_vencidos(self, c: sqlite3.Connection) -> int:
         """Lease vencido sem batimento volta para a fila.
@@ -502,6 +544,18 @@ class DepositoDeTrabalhos:
         A tentativa ja foi contada na reivindicacao, entao isto nao e infinito.
         """
         agora = _iso(_agora())
+        # Le ANTES do UPDATE: depois dele o estado de origem ja se perdeu, e a
+        # trilha existe para dizer de onde o trabalho veio.
+        vencidos = c.execute(
+            "select id, estado, operario from trabalho where estado in (?,?,?)"
+            " and lease_ate is not null and lease_ate < ?",
+            (
+                EstadoDoTrabalho.CLAIMED.value,
+                EstadoDoTrabalho.RUNNING.value,
+                EstadoDoTrabalho.VALIDATING.value,
+                agora,
+            ),
+        ).fetchall()
         cur = c.execute(
             "update trabalho set estado=?, operario=null, lease_ate=null,"
             " atualizado_em=? where estado in (?,?,?) and lease_ate is not null"
@@ -515,6 +569,9 @@ class DepositoDeTrabalhos:
                 agora,
             ),
         )
+        for v in vencidos:
+            self._trilhar(c, v["id"], v["estado"], EstadoDoTrabalho.QUEUED.value,
+                          v["operario"], "lease_vencido")
         return cur.rowcount or 0
 
     def devolver_vencidos(self) -> int:
@@ -635,13 +692,25 @@ class DepositoDeTrabalhos:
             # pode desaparecer antes da tentativa 2.
             solta = para in TERMINAIS or para is EstadoDoTrabalho.QUEUED
             agora_iso = _iso(_agora())
+            # ⚠️ DIVERGENCIA FECHADA (P17-T04). O CHECK
+            # `criativo_render_job_falha_coerente` diz `(estado='failed') =
+            # (falha_codigo is not null)`: um trabalho que VOLTOU para a fila nao
+            # carrega motivo de falha, porque ele nao falhou — ele vai ser
+            # tentado de novo. A fila local gravava o motivo na propria linha, e
+            # o comentario justificava: "o motivo da tentativa 1 nao pode
+            # desaparecer antes da tentativa 2". A intencao esta certa; o lugar,
+            # nao. Um campo unico guarda o motivo da ULTIMA devolucao e apaga os
+            # anteriores; a trilha guarda TODOS, um por passagem. Agora o motivo
+            # transitorio vai para a trilha, e `falha` na linha significa
+            # exatamente uma coisa: este trabalho terminou mal.
+            falha_na_linha = falha if para is not EstadoDoTrabalho.QUEUED else None
             c.execute(
-                "update trabalho set estado=?, falha_json=coalesce(?, falha_json),"
+                "update trabalho set estado=?, falha_json=?,"
                 " recibo_json=?, operario=?, lease_ate=?, atualizado_em=?,"
                 " terminado_em=? where id=?",
                 (
                     para.value,
-                    json.dumps(falha) if falha else None,
+                    json.dumps(falha_na_linha) if falha_na_linha else None,
                     json.dumps(recibo) if recibo else None,
                     None if solta else linha["operario"],
                     # ⚠️ PRESERVA o lease, nao renova. A versao anterior gravava
@@ -672,7 +741,7 @@ class DepositoDeTrabalhos:
                     de.value,
                     para.value,
                     exigir_operario or linha["operario"],
-                    (falha or {}).get("codigo") if para is EstadoDoTrabalho.FAILED else None,
+                    (falha or {}).get("codigo") if falha else None,
                     agora_iso,
                 ),
             )
@@ -709,10 +778,22 @@ class DepositoDeTrabalhos:
         ).fetchall()
         return [_do_banco(l) for l in linhas]
 
-    def por_chave(self, chave: str) -> Trabalho | None:
-        linha = self._con().execute(
-            "select * from trabalho where chave_idempotencia=?", (chave,)
-        ).fetchone()
+    def por_chave(self, chave: str, *, tenant_id: str | None = None) -> Trabalho | None:
+        """⚠️ `tenant_id` existe para PARIDADE com o Postgres, onde a identidade
+        e `(tenant_id, idempotency_key)` e nao a chave sozinha. Aqui a chave ja
+        e derivada do conteudo COM o tenant dentro, entao as duas consultas dao o
+        mesmo resultado — mas so enquanto ninguem passar `chave=` explicita por
+        fora. Deixar a assinatura divergir seria deixar essa diferenca invisivel
+        ate alguem passar a chave a mao."""
+        if tenant_id is None:
+            linha = self._con().execute(
+                "select * from trabalho where chave_idempotencia=?", (chave,)
+            ).fetchone()
+        else:
+            linha = self._con().execute(
+                "select * from trabalho where chave_idempotencia=? and tenant_id=?",
+                (chave, tenant_id),
+            ).fetchone()
         return _do_banco(linha) if linha else None
 
     def trilha(self, trabalho_id: str, *, tenant_id: str | None = None) -> list[dict[str, Any]]:

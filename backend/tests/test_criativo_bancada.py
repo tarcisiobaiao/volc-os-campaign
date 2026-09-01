@@ -881,7 +881,15 @@ def test_quem_nao_e_dono_nao_bate_o_coracao(bancada):
 def test_trabalho_que_volta_para_a_fila_solta_o_lease_e_guarda_o_motivo(bancada):
     """`transicionar` nunca limpava `operario` nem `lease_ate`: um trabalho
     `queued` ficava com lease no futuro e `vivo` dizia True para algo que ninguém
-    estava fazendo. E o motivo da tentativa 1 era apagado antes da tentativa 2."""
+    estava fazendo. E o motivo da tentativa 1 era apagado antes da tentativa 2.
+
+    ⚠️ O MOTIVO MUDOU DE LUGAR, não sumiu. O CHECK `falha_coerente` da v11_03 diz
+    `(estado='failed') = (falha_codigo is not null)`: um trabalho devolvido à fila
+    não falhou — vai ser tentado de novo — e por isso não carrega motivo de falha
+    na própria linha. Guardá-lo ali resolvia mal o problema certo: o campo é único
+    e a segunda devolução apagava a primeira. A trilha guarda TODAS, uma por
+    passagem, com autor. A asserção passou a ser sobre ela.
+    """
     deposito, _ = bancada
     deposito.enfileirar(encomenda())
     t = deposito.reivindicar("op")
@@ -895,7 +903,12 @@ def test_trabalho_que_volta_para_a_fila_solta_o_lease_e_guarda_o_motivo(bancada)
     assert de_novo.operario is None
     assert de_novo.lease_ate is None
     assert de_novo.vivo is False
-    assert de_novo.falha["codigo"] == "transitoria"
+    assert de_novo.falha is None, "trabalho na fila não falhou; ele vai ser tentado"
+
+    (_claim, devolucao) = deposito.trilha(t.id)
+    assert (devolucao["de"], devolucao["para"]) == ("claimed", "queued")
+    assert devolucao["motivo"] == "transitoria", "o motivo da tentativa 1 se perdeu"
+    assert devolucao["por"] == "op"
 
 
 def test_trabalho_terminal_solta_o_lease(bancada):
