@@ -1,10 +1,8 @@
 {
   "api_version": "v25",
   "auth": {
-    "duration_ms": 788,
-    "error": null,
-    "list_accessible_customers": "ok",
-    "login_customer_source": "collector_default_forced"
+    "duration_ms": 3031,
+    "list_accessible_customers": "ok"
   },
   "called_methods": [
     "CustomerService.ListAccessibleCustomers",
@@ -20,8 +18,17 @@
     "GoogleAdsService.SearchStream",
     "GoogleAdsService.SearchStream",
     "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
     "GoogleAdsService.SearchStream"
   ],
+  "corrective_round": "login_customer_topology_v1",
   "discovery": {
     "accessible_account_pseudonyms": [
       "7226e58df3581679",
@@ -39,270 +46,380 @@
       "1cdcb67a9c90f6b6"
     ],
     "accessible_accounts_count": 13,
-    "coverage": {
-      "failed_accounts": 9,
-      "green_accounts": 4,
-      "green_no_pmax_accounts": 4,
-      "note": "NO_ELIGIBLE_PMAX cobre as contas consultáveis que responderam verde; contas com USER_PERMISSION_DENIED não foram ampliadas nem tratadas como zero.",
-      "queried_accounts": 13
+    "classification_counts": {
+      "falhou": 0,
+      "permission_denied_confirmado": 0,
+      "topologia_nao_resolvida": 0,
+      "vazio_confirmado": 12,
+      "verde_com_pmax": 1
     },
-    "pmax_candidates_count": 0
+    "green_account_pseudonyms": [
+      "2588bd8e0500a4bc",
+      "cbea4415436f3781",
+      "f12f42ff766f6a2a",
+      "7e6150edb3603db5",
+      "e2e8033f986c6076",
+      "7226e58df3581679",
+      "f42f26337e873557",
+      "5b43f1019a072a4a",
+      "91ef1095f75957af",
+      "4e290f5e4629f39a",
+      "1cdcb67a9c90f6b6",
+      "1e26a0c67aa667d2",
+      "67cea02fba30f27a"
+    ],
+    "pmax_candidates_count": 12,
+    "queries": [
+      {
+        "account": "2588bd8e0500a4bc",
+        "classification": "vazio_confirmado",
+        "duration_ms": 738,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "724207c91f9df89e"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "cbea4415436f3781",
+        "classification": "vazio_confirmado",
+        "duration_ms": 993,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "d00c23bb6fc0d02b"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "f12f42ff766f6a2a",
+        "classification": "vazio_confirmado",
+        "duration_ms": 711,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "0a510dea42e0b493"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "7e6150edb3603db5",
+        "classification": "vazio_confirmado",
+        "duration_ms": 644,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "628ef62e7886b9d6"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "e2e8033f986c6076",
+        "classification": "vazio_confirmado",
+        "duration_ms": 843,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "527b56d4b550b191"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "7226e58df3581679",
+        "classification": "vazio_confirmado",
+        "duration_ms": 690,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "fe9939b224bdffd0"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "f42f26337e873557",
+        "classification": "vazio_confirmado",
+        "duration_ms": 563,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "852c7ba7331766bd"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "5b43f1019a072a4a",
+        "classification": "vazio_confirmado",
+        "duration_ms": 1478,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "f42337ba88b58704"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "91ef1095f75957af",
+        "classification": "vazio_confirmado",
+        "duration_ms": 662,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "1cfb56978cd2ad58"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "4e290f5e4629f39a",
+        "classification": "vazio_confirmado",
+        "duration_ms": 919,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "b779d73b3b49c545"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "1cdcb67a9c90f6b6",
+        "classification": "vazio_confirmado",
+        "duration_ms": 874,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "28ab8aa539963243"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "1e26a0c67aa667d2",
+        "classification": "verde_com_pmax",
+        "duration_ms": 1065,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "9a4c1d96515376c9"
+        ],
+        "row_count": 12,
+        "status": "com_dados",
+        "strategy": "direct_without_login_customer_id"
+      },
+      {
+        "account": "67cea02fba30f27a",
+        "classification": "vazio_confirmado",
+        "duration_ms": 626,
+        "error": null,
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+        "request_id_hashes": [
+          "917205d83e4596af"
+        ],
+        "row_count": 0,
+        "status": "vazio_confirmado",
+        "strategy": "direct_without_login_customer_id"
+      }
+    ],
+    "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be"
   },
-  "discovery_queries": [
-    {
-      "account": "2588bd8e0500a4bc",
-      "duration_ms": 398,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "309eb944aa102c96"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "cbea4415436f3781",
-      "duration_ms": 360,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "8dea40476d102daf"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "f12f42ff766f6a2a",
-      "duration_ms": 539,
-      "error": null,
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [
-        "7eb07ec0ff124d63"
-      ],
-      "row_count": 0,
-      "status": "vazio_confirmado"
-    },
-    {
-      "account": "7e6150edb3603db5",
-      "duration_ms": 380,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "c99d45fbaa9b8271"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "e2e8033f986c6076",
-      "duration_ms": 498,
-      "error": null,
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [
-        "05424e7e826264aa"
-      ],
-      "row_count": 0,
-      "status": "vazio_confirmado"
-    },
-    {
-      "account": "7226e58df3581679",
-      "duration_ms": 404,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "48a2429332cfc5f9"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "f42f26337e873557",
-      "duration_ms": 705,
-      "error": null,
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [
-        "77df96d2b1266a1c"
-      ],
-      "row_count": 0,
-      "status": "vazio_confirmado"
-    },
-    {
-      "account": "5b43f1019a072a4a",
-      "duration_ms": 324,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "b2f544c19cc78259"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "91ef1095f75957af",
-      "duration_ms": 331,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "88d4144296510a05"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "4e290f5e4629f39a",
-      "duration_ms": 312,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "8aeebbe0ab3e9866"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "1cdcb67a9c90f6b6",
-      "duration_ms": 756,
-      "error": null,
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [
-        "736b114e8c96110f"
-      ],
-      "row_count": 0,
-      "status": "vazio_confirmado"
-    },
-    {
-      "account": "1e26a0c67aa667d2",
-      "duration_ms": 614,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "c04ae47ed93ca717"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    },
-    {
-      "account": "67cea02fba30f27a",
-      "duration_ms": 406,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "[REDACTED] USER_PERMISSION_DENIED ",
-            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
-        "request_id_hash": "060cad4f3c0369e8"
-      },
-      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou"
-    }
-  ],
   "families": [
     {
+      "campaign_status": "PAUSED",
+      "duration_ms": 1002,
+      "error": null,
       "family": "PMAX_CAMPANHA",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "fields": [
+        "campaign.id",
+        "campaign.resource_name",
+        "campaign.name",
+        "campaign.status",
+        "campaign.primary_status",
+        "campaign.primary_status_reasons",
+        "campaign.serving_status",
+        "campaign.advertising_channel_type",
+        "campaign.bidding_strategy_type",
+        "campaign.start_date_time",
+        "campaign.brand_guidelines_enabled",
+        "campaign_budget.amount_micros"
+      ],
+      "from": "campaign",
+      "query_sha256": "f18609466217aa4cdfa9b78c1dd9c5cf5a160f5ab8b241c08a8d50ce166593b0",
+      "request_id_hashes": [
+        "c3b632b220fa0663"
+      ],
+      "row_count": 1,
+      "status": "com_dados",
+      "window": null
     },
     {
+      "campaign_status": "PAUSED",
+      "duration_ms": 447,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "query_error: UNRECOGNIZED_FIELD ",
+            "message": "Unrecognized fields in the query: 'asset_group.asset_coverage.ad_strength_action_items.action_item_type', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type'."
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+        "request_id_hash": "8b74b8541acbd410"
+      },
       "family": "PMAX_ASSET_GROUPS",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "fields": [
+        "asset_group.resource_name",
+        "asset_group.id",
+        "asset_group.name",
+        "asset_group.campaign",
+        "asset_group.status",
+        "asset_group.primary_status",
+        "asset_group.primary_status_reasons",
+        "asset_group.ad_strength",
+        "asset_group.asset_coverage.ad_strength_action_items.action_item_type",
+        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type",
+        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count",
+        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement",
+        "asset_group.final_urls",
+        "asset_group.final_mobile_urls",
+        "asset_group.path1",
+        "asset_group.path2",
+        "campaign.id"
+      ],
+      "from": "asset_group",
+      "query_sha256": "f5f6c1996db04e86da112d9faa3c6a60e269e1dcab46c6ca0fdf354dc9dc78f4",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou",
+      "window": null
     },
     {
+      "campaign_status": "PAUSED",
+      "duration_ms": 581,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "query_error: UNRECOGNIZED_FIELD ",
+            "message": "Unrecognized fields in the query: 'asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons', 'asset_group_asset.primary_status_details.status', 'asset_group_asset.primary_status_details.reason'."
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+        "request_id_hash": "2050de113272d482"
+      },
       "family": "PMAX_ASSET_GROUP_ASSETS",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "fields": [
+        "asset_group_asset.resource_name",
+        "asset_group_asset.asset_group",
+        "asset_group_asset.asset",
+        "asset_group_asset.field_type",
+        "asset_group_asset.status",
+        "asset_group_asset.primary_status",
+        "asset_group_asset.primary_status_reasons",
+        "asset_group_asset.primary_status_details.status",
+        "asset_group_asset.primary_status_details.reason",
+        "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons",
+        "asset_group_asset.source",
+        "asset_group_asset.policy_summary.approval_status",
+        "asset_group_asset.policy_summary.policy_topic_entries",
+        "campaign.id"
+      ],
+      "from": "asset_group_asset",
+      "query_sha256": "73761676ba811a3c94b89a11bbffb4f030b8578d373b7ce8fad9af1af6336e10",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou",
+      "window": null
     },
     {
       "family": "PMAX_ASSETS",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "reason": "no asset ids from asset_group_asset",
+      "row_count": 0,
+      "status": "vazio_confirmado"
     },
     {
+      "campaign_status": "PAUSED",
+      "duration_ms": 895,
+      "error": null,
       "family": "PMAX_DESEMPENHO_ASSET_GROUP",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "fields": [
+        "asset_group.id",
+        "asset_group.resource_name",
+        "asset_group.name",
+        "asset_group.primary_status",
+        "campaign.id",
+        "metrics.impressions",
+        "metrics.clicks",
+        "metrics.cost_micros",
+        "metrics.conversions",
+        "metrics.conversions_value"
+      ],
+      "from": "asset_group",
+      "query_sha256": "8db334c1917e9746c998878d1700eedca86a9d0369e9dcd48684b50498c9d315",
+      "request_id_hashes": [
+        "a7ec4b7e9e0c0cd6"
+      ],
+      "row_count": 4,
+      "status": "com_dados",
+      "window": [
+        "2026-08-18",
+        "2026-08-31"
+      ]
     },
     {
       "family": "PMAX_SINAIS",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "reason": "no asset group ids",
+      "row_count": 0,
+      "status": "vazio_confirmado"
     },
     {
+      "account_row_count": null,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "query_error: UNRECOGNIZED_FIELD ",
+            "message": "Unrecognized fields in the query: 'recommendation.improve_performance_max_ad_strength_recommendation.ad_strength', 'recommendation.improve_performance_max_ad_strength_recommendation.asset_group'."
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+        "request_id_hash": "63f78d98143cc849"
+      },
       "family": "PMAX_RECOMENDACOES_FORCA",
-      "reason": "NO_ELIGIBLE_PMAX",
-      "status": "inelegivel"
+      "fields": [
+        "recommendation.resource_name",
+        "recommendation.type",
+        "recommendation.campaign",
+        "recommendation.dismissed",
+        "recommendation.improve_performance_max_ad_strength_recommendation.asset_group",
+        "recommendation.improve_performance_max_ad_strength_recommendation.ad_strength"
+      ],
+      "from": "recommendation",
+      "query_sha256": "b8205dac16d8807c96201b62fc1b82c7b251073f29753e005d2df29768d6f1e3",
+      "row_count": null,
+      "status": "falhou"
     }
   ],
-  "generated_at": "2026-09-01T19:14:36.417825+00:00",
+  "generated_at": "2026-09-01T20:23:49.509773+00:00",
   "guard": {
     "forbidden": [
       "mutate",
@@ -316,22 +433,60 @@
     "zero_mutate_confirmed": true
   },
   "performance_label": {
-    "adjudication": "INCONCLUSIVE",
-    "cause": "NO_ELIGIBLE_PMAX",
-    "field_service": "not_executed",
-    "query_real": "not_executed"
-  },
-  "review": {
-    "blocking_findings": 0,
-    "non_blocking_findings": [
-      "runner externo nao versionado; evidencia permanece nos artefatos sanitizados",
-      "NO_ELIGIBLE_PMAX deve ser lido com cobertura 4/13 verde, 9/13 permission denied",
-      "performance_label nao adjudicado por falta de alvo PMax elegivel"
-    ],
-    "reviewer": "Claude Opus fresh context",
-    "verdict": "APROVAR"
+    "adjudication": "NOT_SUPPORTED_IN_V25",
+    "field_service": {
+      "duration_ms": 1412,
+      "error": null,
+      "row_count": 0,
+      "status": "vazio_confirmado"
+    },
+    "query": {
+      "account": "2588bd8e0500a4bc",
+      "duration_ms": 466,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "query_error: UNRECOGNIZED_FIELD ",
+            "message": "Unrecognized field in the query: 'asset_group_asset.performance_label'."
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+        "request_id_hash": "a04b205a6a145509"
+      },
+      "query_sha256": "a1fb5e8a2258e5f12cbd2db6fd20b812e937a3a2aa81075a1e1f9e538d12403b",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    }
   },
   "sdk": "google-ads 31.4.0",
-  "target": null,
-  "verdict": "NO_ELIGIBLE_PMAX"
+  "target": {
+    "campaign_name_hash": "ed52fc6c717e9b3f",
+    "campaign_pseudo": "0c662e23ce3d74ec",
+    "channel": "PERFORMANCE_MAX",
+    "customer_pseudo": "1e26a0c67aa667d2",
+    "selection": "prefer PAUSED, then stable hash",
+    "status": "PAUSED",
+    "strategy": "direct_without_login_customer_id"
+  },
+  "topology": {
+    "configured_login_customer_id": {
+      "present": true,
+      "pseudo": "f42f26337e873557"
+    },
+    "configured_mcc_child_pseudonyms": [
+      "f12f42ff766f6a2a",
+      "e2e8033f986c6076",
+      "f42f26337e873557",
+      "1cdcb67a9c90f6b6"
+    ],
+    "customer_client_from_configured_mcc": {
+      "error": null,
+      "query_sha256": "45cb4fcff230b4e42b18c06ba3fa14f81680d05ea01b49808134b722d6cbd029",
+      "row_count": 4,
+      "status": "com_dados"
+    }
+  },
+  "verdict": "REAL_READ_PARTIAL"
 }
