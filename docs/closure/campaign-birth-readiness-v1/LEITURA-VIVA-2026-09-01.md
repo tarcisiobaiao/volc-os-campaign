@@ -67,3 +67,44 @@ passava com QUALQUER entrada, inclusive com uma conta perfeitamente medida.
 - Google Ads **mutate**: nenhum.
 - Data Manager: nenhum evento, nem em `validateOnly`.
 - Supabase: nenhuma escrita, nenhuma migration aplicada.
+
+---
+
+## Segunda leitura: a campanha 24195821946, e o filtro por resource name
+
+A primeira leitura foi de CONTA (`campaign_id=None`, o caso do nascimento). Esta
+segunda é contra a campanha canário real — e ela existe para provar por EXECUÇÃO
+a única afirmação que estava apoiada só na documentação: que
+`conversion_goal_campaign_config.campaign` é filtrável, e que o valor é o resource
+name `customers/{cid}/campaigns/{id}` e não `campaign.id`.
+
+```
+ler_nivel(5478096539, "24195821946")
+  → ('com_dados', 'CUSTOMER', None, None)
+
+ler_metas_da_campanha(5478096539, "24195821946")
+  → estado: com_dados
+       PURCHASE/WEBSITE  biddable: False
+       DOWNLOAD/APP      biddable: True
+```
+
+O filtro funcionou: a consulta executou e devolveu a linha da campanha. E o que
+ela devolveu é a **reprodução exata** do fato que criou P05-T12 no roadmap —
+`goal_config_level=CUSTOMER` e o único `campaign_conversion_goal` biddable é
+`DOWNLOAD/APP`, enquanto a conta declara compras como primárias.
+
+⚠️ Repare que as metas da campanha EXISTEM (`com_dados`, duas linhas) e **não
+decidem**: com o nível em `CUSTOMER`, quem manda é a conta. `metas_que_mandam`
+devolve a lista da conta. Neste caso específico as duas listas concordam — o que
+é esperado, já que a campanha herda —, e por isso o teste que separa os dois
+níveis usa fixture, e não esta conta.
+
+Plano montado com a campanha real:
+
+```
+completo    = false
+acao_alvo   = null
+causa       = "o objetivo desta campanha (DOWNLOAD/APP) existe na conta, e a única
+               ação que o mede está marcada como NÃO primária — o que a torna
+               não-biddable em toda campanha, qualquer que seja a meta."
+```
