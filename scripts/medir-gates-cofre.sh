@@ -39,7 +39,15 @@ echo "| HEAD | \`git rev-parse HEAD\` | \`$(git rev-parse --short HEAD)\` |"
 echo "| commits | \`git rev-list --count ${BASE:0:7}..HEAD\` | $(git rev-list --count "$BASE"..HEAD 2>/dev/null || n) |"
 DIFF=$(git diff --shortstat "$BASE"..HEAD 2>/dev/null | tr -d '\n')
 echo "| diff | \`git diff --shortstat\` | ${DIFF:-?} |"
-echo "| arvore | \`git status --short\` | $( [ -z "$(git status --short)" ] && echo 'limpa' || echo "SUJA: $(git status --short | wc -l | tr -d ' ') caminho(s)") |"
+# ⚠️ A saida deste script costuma ser redirecionada para um arquivo VERSIONADO
+# (docs/closure/.../GATES.md). Enquanto ele roda, esse arquivo esta modificado —
+# e contar a si mesmo como arvore suja seria o script mentindo sobre o proprio
+# efeito. A contagem exclui o GATES.md por isso, e diz que excluiu.
+SUJOS=$(git status --short | grep -v 'closure/.*GATES\.md' || true)
+# `printf | wc -l` conta QUEBRAS DE LINHA, e uma unica linha sem \n final conta
+# zero — "SUJA: 0 caminho(s)" foi o que este script imprimiu antes deste conserto.
+N_SUJOS=$(printf '%s\n' "$SUJOS" | grep -c . || true)
+echo "| arvore (fora deste GATES.md) | \`git status --short\` | $( [ "$N_SUJOS" -eq 0 ] && echo 'limpa' || echo "SUJA: ${N_SUJOS} caminho(s): $(printf '%s\n' "$SUJOS" | awk '{print $NF}' | tr '\n' ' ')") |"
 echo "| espaco em branco | \`git diff --check\` | $( git diff --check >/dev/null 2>&1 && echo 'limpo' || echo 'PROBLEMA') |"
 
 if [[ $RAPIDO -eq 0 ]]; then
@@ -83,3 +91,10 @@ echo "| rotas do Cofre | \`len(rotas.router.routes)\` | ${ROTAS:-?} |"
 
 echo
 echo "<!-- medido em $(date '+%Y-%m-%d %H:%M:%S %z') -->"
+# ⚠️ Um arquivo gerado nao pode conhecer o hash do commit que o contem: quando
+# este GATES.md e commitado JUNTO com a medicao, o HEAD acima e o commit
+# ANTERIOR. Nao ha conserto — ha o aviso, que e o que impede alguem de ler a
+# diferenca como erro.
+echo "<!-- ⚠️ Se este arquivo foi commitado junto com a medicao, o HEAD acima e o"
+echo "     commit ANTERIOR: um arquivo gerado nao conhece o hash do commit que o"
+echo "     contem. Confira com \`git log --oneline -1\`. -->"
