@@ -339,6 +339,18 @@ const NovaCampanhaPage: React.FC = () => {
     copy: escrita?.copy ?? null,
     budget_diario: Number(budget) || 0,
     cpc_inicial: Number(lance) || 0,
+    // ⚠️ ONDE O ANÚNCIO APARECE — declarado, e não herdado em silêncio.
+    //
+    // Até 01/09/2026 o builder ligava Search Partners como literal: inventário
+    // diferente do Google Search, ativo em toda campanha da casa, invisível no
+    // plano que o operador aprovava. O canário RECUSA pedido sem esta
+    // declaração, e recusa parceiros ligados — ele mede o Google Search com um
+    // plano conhecido, e misturar inventário torna o resultado inatribuível.
+    //
+    // Quando a Mesa de Lance ganhar o controle de rede, ele substitui este
+    // literal. Enquanto isso o valor é explícito aqui em vez de omitido, porque
+    // omitir devolveria o pedido ao default invisível que acabou de ser fechado.
+    rede: { google_search: true, search_partners: false, display_expansion: false },
     // ⚠️ NÃO cravar 'PHRASE' aqui. O match type DECORRE da estratégia, e a
     // regra mora num lugar só (`DECORRE_DA_ESTRATEGIA`) para que a tela e o
     // engine nunca discordem: BROAD com CPC manual não tem sinal de leilão que

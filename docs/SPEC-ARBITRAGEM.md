@@ -1,5 +1,8 @@
 # SPEC — VOLC O.S. Arbitragem: a arquitetura que liga as pontas
 
+> ⚠️ **PREMISSA REFUTADA em 01/09/2026.** `campaign.selective_optimization` é campo de campanha de **APP**, não de Search — confirmado literalmente na doc oficial (callout "Important" em `conversions/goals/overview`), ver `docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md`. Para Search, a campanha **herda** os `CustomerConversionGoal` da conta, e sobrescrever exige `CampaignConversionGoal` — que a API só **atualiza**, nunca cria nem remove. O texto abaixo é histórico e não deve ser implementado como está.
+
+
 > Escrito em 19/08/2026, a partir do catálogo `inventario-n8n/` (30 workflows,
 > 7 camadas, tudo medido), do retrato do repositório e do banco, e das quatro
 > decisões do dono registradas em `inventario-n8n/RESPOSTA-FABLE-01.md`:

@@ -29,11 +29,14 @@ from typing import Any, Dict, List, Optional
 # Os estados possíveis de cada portão. `INDETERMINADO` é o default deliberado:
 # quem não mediu não sabe, e não saber não é o mesmo que estar pronto.
 PRONTO = "PRONTO"
+#: Leu alguma coisa verdadeira, e não o bastante para afirmar prontidão. É o
+#: estado que impede "consultei um recurso próximo" de virar "está pronto".
+PARCIAL = "PARCIAL"
 NAO_PRONTO = "NAO_PRONTO"
 INDETERMINADO = "INDETERMINADO"
 NAO_APLICAVEL = "NAO_APLICAVEL"
 
-ESTADOS = (PRONTO, NAO_PRONTO, INDETERMINADO, NAO_APLICAVEL)
+ESTADOS = (PRONTO, PARCIAL, NAO_PRONTO, INDETERMINADO, NAO_APLICAVEL)
 
 
 @dataclass(frozen=True)
@@ -99,11 +102,36 @@ def avaliar(
             "ausência de meta")
         bloqueios.append("metas de conversão não lidas")
     elif metas_da_conta.get("primaria"):
-        meta_status = PRONTO
+        # ⚠️ PARCIAL, E NÃO PRONTO — e a diferença é o que foi de fato lido.
+        #
+        # O que existe hoje é uma GAQL sobre `conversion_action`, que devolve as
+        # ações e o `primary_for_goal` de cada uma. Isso NÃO é a meta efetiva da
+        # campanha. A doc oficial (evidence/GOOGLE-ADS-DOCS-2026-09-01.md) é
+        # explícita: o efetivo exige `customer_conversion_goal`,
+        # `campaign_conversion_goal` e sobretudo
+        # `conversion_goal_campaign_config.goal_config_level`, que diz se quem
+        # manda é a conta ou a campanha. Nenhuma dessas três é consultada.
+        #
+        # Medido na Portal Mundo Mais em 01/09/2026: NOVE ações ENABLED, OITO
+        # com `primary_for_goal=true`. Dizer "a ação primária" no singular
+        # apagaria sete delas. `PARCIAL` diz o que se sabe sem inventar o resto.
+        primarias = [a for a in (metas_da_conta.get("acoes") or ())
+                     if a.get("primaria")]
+        meta_status = PARCIAL
         notas["conversion_goal"] = (
-            "a conta declara ação primária; a campanha Search a HERDA. "
-            "Sobrescrever por campanha exigiria CampaignConversionGoal, que é "
-            "um ato separado e não faz parte do nascimento")
+            f"leitura PARCIAL: {len(primarias) or 1} ação(ões) com "
+            "primary_for_goal=true em `conversion_action`. Isso não é a meta "
+            "EFETIVA: ela exige customer_conversion_goal, campaign_conversion_goal "
+            "e conversion_goal_campaign_config.goal_config_level, que ainda não "
+            "são consultados. A campanha herda as metas da conta, e sobrescrever "
+            "exigiria CampaignConversionGoal — ato separado, e a API só ATUALIZA "
+            "goals, nunca cria nem remove")
+        notas["conversion_actions_primarias"] = [
+            {"id": a.get("id"), "nome": a.get("nome"),
+             "categoria": a.get("categoria")} for a in primarias]
+        bloqueios.append(
+            "meta de conversão efetiva não lida (faltam customer_conversion_goal "
+            "e conversion_goal_campaign_config)")
     else:
         meta_status = NAO_PRONTO
         notas["conversion_goal"] = (
@@ -146,7 +174,18 @@ def avaliar(
     # ramo que o ligue por ausência de bloqueio conhecido: um sistema que
     # conclui "elegível" porque não achou problema está afirmando algo sobre o
     # mundo a partir do que ele não olhou.
-    elegivel = medicao == PRONTO
+    # ⚠️ G2 GOVERNA G3 JUNTO COM G1.
+    #
+    # A primeira versão fazia `smart_bidding_eligible` depender só de medição.
+    # A alegação "não liga por ausência de bloqueio" continuava verdadeira, mas
+    # os quatro portões não governavam juntos: dava para ter elegibilidade com
+    # `observability_status=INDETERMINADO` e `activation_blockers` VAZIO — ou
+    # seja, autorizado a otimizar sem conseguir observar o que acontece depois.
+    elegivel = medicao == PRONTO and observacao == PRONTO
+    if observacao != PRONTO:
+        bloqueios.append(
+            "observabilidade pós-criação não provada: sem releitura, um "
+            "desvio de entrega ou de política não seria notado")
     if not elegivel and estrategia_lance != "MANUAL_CPC":
         bloqueios.append(
             f"estratégia {estrategia_lance} exige sinal de conversão provado")

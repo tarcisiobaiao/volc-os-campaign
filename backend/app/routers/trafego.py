@@ -2262,6 +2262,7 @@ async def provar(
         cpc_inicial=body.cpc_inicial,
         chave_intencao=chave_intencao,
         carimbo_nome=body.carimbo_nome,
+        rede=_rede_do_corpo(body),
     )
     return {
         "preparo": projecao.preparo(preparo),

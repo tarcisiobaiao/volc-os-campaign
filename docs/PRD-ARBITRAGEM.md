@@ -1,5 +1,8 @@
 # PRD — VOLC O.S. Arbitragem: o que construir, em que ordem
 
+> ⚠️ **PREMISSA REFUTADA em 01/09/2026.** `campaign.selective_optimization` é campo de campanha de **APP**, não de Search — confirmado literalmente na doc oficial (callout "Important" em `conversions/goals/overview`), ver `docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md`. Para Search, a campanha **herda** os `CustomerConversionGoal` da conta, e sobrescrever exige `CampaignConversionGoal` — que a API só **atualiza**, nunca cria nem remove. O texto abaixo é histórico e não deve ser implementado como está.
+
+
 > Escrito em 19/08/2026. Par do [SPEC-ARBITRAGEM.md](SPEC-ARBITRAGEM.md) — os
 > porquês de arquitetura moram lá; aqui mora a ordem, o critério de aceite e
 > o risco. Premissas herdadas das decisões do dono: Supabase hospedado

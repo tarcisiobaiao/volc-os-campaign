@@ -189,9 +189,17 @@ def exigir(
 def elegivel(
     *, customer_id: str, login_customer_id: str, canal: str,
     budget_diario: Any, cpc_inicial: Any, chave_intencao: str,
-    carimbo_nome: Any,
+    carimbo_nome: Any, rede: Any = None,
 ) -> tuple[bool, str]:
-    """Avalia a política na etapa de prova, sem fingir autorização humana."""
+    """Avalia a política na etapa de prova, sem fingir autorização humana.
+
+    ⚠️ `rede` precisa ATRAVESSAR daqui para `exigir`. Quando a rede entrou na
+    janela do canário, esta função continuou sem o parâmetro e passou a devolver
+    sempre `False` — a tela lê `elegivel` para liberar o botão de criar, então o
+    fluxo do operador ficou bloqueado por uma regra que ele não tinha como
+    satisfazer. Uma guarda nova que esquece o caminho de leitura vira negação
+    universal, que é indistinguível de estar quebrada.
+    """
     try:
         exigir(
             customer_id=customer_id,
@@ -202,6 +210,7 @@ def elegivel(
             chave_intencao=chave_intencao,
             carimbo_nome=carimbo_nome,
             confirmar_criacao_pausada=True,
+            rede=rede,
         )
     except CanarioRecusado as exc:
         return False, str(exc)

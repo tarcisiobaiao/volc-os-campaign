@@ -22,6 +22,41 @@ def test_g0_nao_implica_g1():
     assert r.smart_bidding_eligible is False
 
 
+def test_conversion_action_lida_nao_vira_meta_efetiva():
+    """⚠️ Ler um recurso PRÓXIMO não é ler o recurso.
+
+    A GAQL consulta `conversion_action`. A meta EFETIVA exige
+    `customer_conversion_goal`, `campaign_conversion_goal` e sobretudo
+    `conversion_goal_campaign_config.goal_config_level`, que diz se quem manda é
+    a conta ou a campanha. Declarar PRONTO com o que se tem seria afirmar mais
+    do que se leu.
+    """
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta={
+        "primaria": {"id": "1"},
+        "acoes": [{"id": "1", "primaria": True}, {"id": "2", "primaria": True}]})
+    assert r.conversion_goal_status == pr.PARCIAL
+    assert any("não lida" in b for b in r.activation_blockers)
+
+
+def test_as_oito_primarias_nao_viram_uma():
+    """Medido na conta real: 9 ações ENABLED, 8 primárias. Nenhuma some."""
+    acoes = [{"id": str(i), "nome": f"a{i}", "categoria": "PURCHASE",
+              "primaria": i < 8} for i in range(9)]
+    r = pr.avaliar(recibo_registrado=True,
+                   metas_da_conta={"primaria": acoes[0], "acoes": acoes})
+    assert len(r.notas["conversion_actions_primarias"]) == 8
+
+
+def test_g2_governa_g3():
+    """Elegível a otimizar sem conseguir observar seria autorizar às cegas."""
+    r = pr.avaliar(recibo_registrado=True,
+                   metas_da_conta={"primaria": {"id": "1"}},
+                   data_manager_operante=True,
+                   coleta_pos_criacao_provada=False)
+    assert r.smart_bidding_eligible is False
+    assert any("observabilidade" in b for b in r.activation_blockers)
+
+
 def test_meta_ausente_e_meta_nao_lida_sao_estados_diferentes():
     """⚠️ Colapsar os dois faria falha de leitura parecer conta sem meta."""
     nao_lida = pr.avaliar(recibo_registrado=True, metas_da_conta=None)
@@ -50,12 +85,15 @@ def test_smart_bidding_exige_meta_E_sinal():
     so_sinal = pr.avaliar(recibo_registrado=True,
                           metas_da_conta={"primaria": None},
                           data_manager_operante=True)
+    # ⚠️ "Completo" agora exige os QUATRO portões, e não só G1.
     completo = pr.avaliar(recibo_registrado=True,
                           metas_da_conta={"primaria": {"id": "1"}},
-                          data_manager_operante=True)
+                          data_manager_operante=True,
+                          coleta_pos_criacao_provada=True)
     assert so_meta.smart_bidding_eligible is False
     assert so_sinal.smart_bidding_eligible is False
-    assert completo.smart_bidding_eligible is True
+    # Continua False: a meta lida é PARCIAL, não PRONTO — ver o teste acima.
+    assert completo.smart_bidding_eligible is False
 
 
 def test_manual_cpc_nao_e_bloqueio_mas_tambem_nao_e_prontidao():

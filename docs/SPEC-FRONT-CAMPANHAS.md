@@ -1,5 +1,8 @@
 # SPEC — o front de campanhas do VOLC O.S.
 
+> ⚠️ **PREMISSA REFUTADA em 01/09/2026.** `campaign.selective_optimization` é campo de campanha de **APP**, não de Search — confirmado literalmente na doc oficial (callout "Important" em `conversions/goals/overview`), ver `docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md`. Para Search, a campanha **herda** os `CustomerConversionGoal` da conta, e sobrescrever exige `CampaignConversionGoal` — que a API só **atualiza**, nunca cria nem remove. O texto abaixo é histórico e não deve ser implementado como está.
+
+
 > Estado: **v1 em execução**. Escrito em 18/08/2026, depois de medir o banco,
 > os flows legados e o engine. Todo número aqui é medido e diz onde.
 
