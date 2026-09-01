@@ -1308,6 +1308,37 @@ TETO_BYTES_ASSET_DEMAND_GEN = 5 * 1024 * 1024
 TETO_BYTES_LOTE_DEMAND_GEN = 25 * 1024 * 1024
 TETO_BASE64_ASSET_DEMAND_GEN = 4 * ((TETO_BYTES_ASSET_DEMAND_GEN + 2) // 3)
 
+# ── os mesmos tetos, para Display ───────────────────────────────────────────
+#
+# ⚠️ 20, e o número NÃO foi escolhido aqui: `brief.ImagensDisplay` declara os
+# tetos do `ResponsiveDisplayAdInfo` — 15 imagens de marketing (banner +
+# quadrada, COMBINADAS) e 5 logos (larga + quadrada, combinadas). Vinte é a
+# soma, e é o máximo que a API aceita num anúncio de Display.
+#
+# ⚠️ E este teto é da FRONTEIRA HTTP, não do canal. Quantos assets de cada
+# PAPEL o anúncio exige e aceita continua sendo decidido em
+# `volc_ads/criativo/requisitos.py` e cobrado pela ponte — que é quem recusa um
+# lote sem imagem quadrada, por exemplo. Duplicar a regra aqui criaria duas
+# autoridades sobre o mesmo contrato, e elas divergiriam.
+TETO_QUANTIDADE_ASSETS_DISPLAY = 20
+
+#: Campos opcionais acrescentados DEPOIS de identidades já emitidas. Ausentes,
+#: eles não participam da impressão do plano; presentes, participam.
+#:
+#: ⚠️ Esta lista não é uma porta para "campos que não importam". Ela é para
+#: campos que não existiam quando uma chave foi calculada — e cada nome aqui
+#: precisa de uma data e de um motivo, porque a alternativa (mudar a identidade
+#: de planos antigos) tem custo em campanha duplicada, não em teste vermelho.
+CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM: tuple[str, ...] = (
+    # 01/09/2026 — a fronteira HTTP de imagens de Display.
+    "assets_display",
+)
+# Bytes: iguais aos de Demand Gen de propósito. Eles protegem a MEMÓRIA deste
+# processo, e a memória não sabe de que canal é o PNG.
+TETO_BYTES_ASSET_DISPLAY = TETO_BYTES_ASSET_DEMAND_GEN
+TETO_BYTES_LOTE_DISPLAY = TETO_BYTES_LOTE_DEMAND_GEN
+TETO_BASE64_ASSET_DISPLAY = TETO_BASE64_ASSET_DEMAND_GEN
+
 
 class ProvarEntrada(BaseModel):
     opportunity_id: int
@@ -1401,6 +1432,20 @@ class ProvarEntrada(BaseModel):
     # flag de servidor, e os bytes nunca voltam na resposta.
     demand_gen: Optional[ConfiguracaoDemandGenEntrada] = None
     assets_demand_gen: Optional[List[AssetDemandGenEntrada]] = None
+    #: Só é consumido quando `canal=DISPLAY`.
+    #:
+    #: ⚠️ MESMO ENVELOPE de `assets_demand_gen`, e isso é decisão, não preguiça.
+    #: O item — nome, tipo, bytes, hash, origem e procedência — não tem nada de
+    #: Demand Gen: quem decide o PAPEL de cada tipo é o canal, na ponte
+    #: (`PAPEL_POR_TIPO` × `PAPEL_POR_TIPO_DEMAND_GEN`). Um segundo formato para
+    #: dizer a mesma coisa obrigaria o Estúdio a serializar duas vezes o mesmo
+    #: PNG e faria as duas formas divergirem no primeiro campo que só uma
+    #: ganhasse.
+    #:
+    #: ⚠️ E `None` NÃO é lista vazia. Ausência é "o pedido não falou de
+    #: imagem"; `[]` é "declarei que não há nenhuma". As duas recusam Display,
+    #: e recusam com frases diferentes — ver `_imagens_de_display`.
+    assets_display: Optional[List[AssetDemandGenEntrada]] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -1430,6 +1475,18 @@ class ProvarEntrada(BaseModel):
                 "`canal=DEMAND_GEN`; recebido canal "
                 f"{canal!r} com {', '.join(campos_demand_gen)}. "
                 "Nada foi projetado para Search."
+            )
+        # ⚠️ A mesma fronteira, na outra direção. `assets_display` num pedido
+        # de Search seria aceito pelo Pydantic (o modelo é compartilhado e
+        # permissivo por compatibilidade) e IGNORADO pelo builder — o operador
+        # teria mandado imagens e visto um plano sem nenhuma, sem erro. Recusar
+        # aqui é a diferença entre um pedido errado e um pedido que some.
+        if (dados.get("assets_display") is not None
+                and canal != "DISPLAY"):
+            raise ValueError(
+                "`assets_display` pertence ao contrato de Display e exige "
+                f"`canal=DISPLAY`; recebido canal {canal!r}. Nada foi "
+                "projetado, e nenhuma imagem foi descartada em silêncio."
             )
         if canal != "DEMAND_GEN" or classe not in {"ProvarEntrada", "SubirEntrada"}:
             return dados
@@ -1598,8 +1655,14 @@ def _recusar_campos_nao_operados_demand_gen(body: ProvarEntrada) -> None:
         )
 
 
-def _assets_decodificados_demand_gen(
+def _assets_decodificados(
     itens: List[AssetDemandGenEntrada],
+    *,
+    campo: str,
+    teto_quantidade: int,
+    teto_base64: int,
+    teto_por_item: int,
+    teto_do_lote: int,
 ):
     """Decodifica um lote limitado, sem acumular o item que rompe o teto.
 
@@ -1607,24 +1670,29 @@ def _assets_decodificados_demand_gen(
     conferido logo depois; e o total é conferido antes de entregar o item ao
     chamador. Portanto nem o catálogo, nem a lista de assets canônicos recebe
     o byte que excedeu a fronteira.
+
+    ⚠️ Os tetos entram por parâmetro, e a função NÃO os escolhe por canal. Um
+    `if campo == "assets_display"` aqui dentro faria esta função ter de ser
+    reaberta a cada canal novo, e o dia em que alguém esquecesse o ramo o lote
+    entraria sem teto nenhum.
     """
     import base64
     import binascii
 
-    if len(itens) > TETO_QUANTIDADE_ASSETS_DEMAND_GEN:
+    if len(itens) > teto_quantidade:
         raise ValueError(
-            "assets_demand_gen excede o teto de quantidade da fronteira HTTP: "
-            f"{len(itens)} > {TETO_QUANTIDADE_ASSETS_DEMAND_GEN}"
+            f"{campo} excede o teto de quantidade da fronteira HTTP: "
+            f"{len(itens)} > {teto_quantidade}"
         )
 
     total = 0
     for item in itens:
         tamanho_codificado = len(item.dados_base64)
-        if tamanho_codificado > TETO_BASE64_ASSET_DEMAND_GEN:
+        if tamanho_codificado > teto_base64:
             raise ValueError(
                 f"asset {item.nome!r}: base64 excede o teto codificado da "
                 f"fronteira HTTP ({tamanho_codificado} > "
-                f"{TETO_BASE64_ASSET_DEMAND_GEN})"
+                f"{teto_base64})"
             )
         try:
             dados = base64.b64decode(item.dados_base64, validate=True)
@@ -1634,20 +1702,156 @@ def _assets_decodificados_demand_gen(
             ) from exc
         if not dados:
             raise ValueError(f"asset {item.nome!r}: conteúdo ausente")
-        if len(dados) > TETO_BYTES_ASSET_DEMAND_GEN:
+        if len(dados) > teto_por_item:
             raise ValueError(
                 f"asset {item.nome!r}: conteúdo decodificado excede o teto "
-                f"por item ({len(dados)} > {TETO_BYTES_ASSET_DEMAND_GEN})"
+                f"por item ({len(dados)} > {teto_por_item})"
             )
         proximo_total = total + len(dados)
-        if proximo_total > TETO_BYTES_LOTE_DEMAND_GEN:
+        if proximo_total > teto_do_lote:
             raise ValueError(
-                "assets_demand_gen excede o teto total decodificado da "
+                f"{campo} excede o teto total decodificado da "
                 f"fronteira HTTP ({proximo_total} > "
-                f"{TETO_BYTES_LOTE_DEMAND_GEN})"
+                f"{teto_do_lote})"
             )
         total = proximo_total
         yield item, dados
+
+
+def _assets_decodificados_demand_gen(
+    itens: List[AssetDemandGenEntrada],
+):
+    """Os tetos de Demand Gen, sobre o decodificador comum."""
+    return _assets_decodificados(
+        itens,
+        campo="assets_demand_gen",
+        teto_quantidade=TETO_QUANTIDADE_ASSETS_DEMAND_GEN,
+        teto_base64=TETO_BASE64_ASSET_DEMAND_GEN,
+        teto_por_item=TETO_BYTES_ASSET_DEMAND_GEN,
+        teto_do_lote=TETO_BYTES_LOTE_DEMAND_GEN,
+    )
+
+
+def _assets_decodificados_display(
+    itens: List[AssetDemandGenEntrada],
+):
+    """Os tetos de Display, sobre o mesmo decodificador."""
+    return _assets_decodificados(
+        itens,
+        campo="assets_display",
+        teto_quantidade=TETO_QUANTIDADE_ASSETS_DISPLAY,
+        teto_base64=TETO_BASE64_ASSET_DISPLAY,
+        teto_por_item=TETO_BYTES_ASSET_DISPLAY,
+        teto_do_lote=TETO_BYTES_LOTE_DISPLAY,
+    )
+
+
+# ── as imagens de Display, que até 01/09/2026 não atravessavam o HTTP ───────
+#
+# ⚠️ O DEFEITO QUE ESTA FUNÇÃO CONSERTA ERA SILENCIOSO, E ISSO O TORNAVA PIOR.
+#
+# `ProvarEntrada` não tinha campo de imagem, e o brief de Display saía de
+# `pp.montar_brief` com `imagens_display=None` sempre. Um pedido de Display por
+# HTTP produzia, por construção, um plano SEM ASSET NENHUM — e respondia 200.
+#
+# Um plano de Display sem imagem não é um plano de Display: o
+# `ResponsiveDisplayAdInfo` exige pelo menos uma imagem de marketing e uma
+# quadrada, e o mutate seria recusado pela API. Mas a tela já teria mostrado
+# prontidão, porque a resposta foi 200. Readiness verde sem evidência.
+#
+# ⚠️ E a recusa aqui é DELIBERADAMENTE anterior ao builder. Deixar o
+# `validate_only` descobrir a ausência gastaria a chamada, a quota da conta e o
+# tempo do operador para responder o que já se sabia antes de sair da máquina.
+
+
+def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
+    """Traduz `assets_display` em `ImagensDisplay`, ou recusa com causa.
+
+    ⚠️ TRÊS AUSÊNCIAS DIFERENTES, TRÊS FRASES DIFERENTES. Colapsá-las numa só
+    ("Display exige imagens") faria o operador que mandou um lote reprovado ler
+    a mesma coisa que o operador que não mandou lote nenhum — e as duas pedem
+    ações opostas: uma é corrigir o pedido, a outra é corrigir as imagens.
+
+    A validação de PAPEL, geometria, peso e duplicidade não acontece aqui: ela
+    é da ponte (`criativo_ponte.imagens_de_display`), que já é a autoridade do
+    contrato do Estúdio. Esta função monta o lote e repassa o veredito dela.
+    """
+    from datetime import datetime
+
+    from volc_ads import criativo_ponte
+    from volc_ads.criativo.adaptadores import medir_imagem
+    from volc_ads.criativo.contrato import (
+        Asset,
+        LoteDeAssets,
+        Origem,
+        Procedencia,
+        TipoDeAsset,
+    )
+
+    itens = body.assets_display
+    if itens is None:
+        raise ValueError(
+            "Display exige imagens e o pedido não trouxe nenhuma. O anúncio "
+            "responsivo de Display precisa de ao menos uma imagem de marketing "
+            "e uma quadrada; sem elas não há anúncio para montar, e um plano "
+            "sem asset não é um plano de Display. Mande `assets_display` com "
+            "as peças aprovadas no Estúdio."
+        )
+    if not itens:
+        raise ValueError(
+            "Display recebeu `assets_display` VAZIO. Uma lista vazia é uma "
+            "declaração de que não há imagem — e Display não veicula sem "
+            "imagem. Se as peças ainda estão em produção, o pedido não está "
+            "pronto para ser provado."
+        )
+
+    assets = []
+    conteudo_por_identidade: Dict[str, bytes] = {}
+    for item, dados in _assets_decodificados_display(itens):
+        try:
+            quando = datetime.fromisoformat(
+                item.procedencia.quando.replace("Z", "+00:00")
+            )
+            tipo = TipoDeAsset(item.tipo)
+            origem_asset = Origem(item.origem)
+        except ValueError as exc:
+            raise ValueError(
+                f"asset {item.nome!r}: contrato inválido — {exc}") from exc
+
+        medida = medir_imagem.medir(dados)
+        asset = Asset(
+            tipo=tipo,
+            procedencia=Procedencia(
+                motor=item.procedencia.motor,
+                versao_do_motor=item.procedencia.versao_do_motor,
+                insumo=item.procedencia.insumo,
+                quando=quando,
+                pedido=item.procedencia.pedido,
+                custo_usd=item.procedencia.custo_usd,
+            ),
+            conteudo_hash=item.conteudo_hash,
+            origem=origem_asset,
+            bytes_totais=medida.bytes_totais,
+            mime=medida.mime,
+            largura=medida.largura,
+            altura=medida.altura,
+            rotulo=item.nome,
+        )
+        assets.append(asset)
+        conteudo_por_identidade[asset.identidade] = dados
+
+    lote = LoteDeAssets(
+        canal="DISPLAY",
+        assets=tuple(assets),
+        intencao=nicho,
+    )
+    entrega = criativo_ponte.imagens_de_display(lote, conteudo_por_identidade)
+    if not entrega.ok or entrega.imagens is None:
+        raise ValueError(
+            "assets Display recusados pela fronteira do Estúdio:\n"
+            + entrega.resumo()
+        )
+    return entrega.imagens
 
 
 def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
@@ -1680,6 +1884,26 @@ def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, An
     for campo in ("motivo", "plano_impressao", "confirmar_criacao_pausada",
                   "carimbo_nome"):
         bruto.pop(campo, None)
+    # ⚠️ CAMPO QUE SÓ ENTRA NA IDENTIDADE QUANDO EXISTE — e eu descobri isto
+    # quebrando a prova do canário, não teorizando sobre ela.
+    #
+    # `assets_display` nasceu em 01/09/2026, DEPOIS de a identidade do canário
+    # estar congelada. Como `model_dump(exclude_none=False)` inclui a chave com
+    # `null`, o simples ato de declarar o campo mudou a impressão de TODO plano
+    # Search: a chave e0ccfc66… virou 68d83100… sem uma linha do pedido ter
+    # mudado.
+    #
+    # Na conta real isso não seria um teste vermelho. Seria outra marca
+    # `VOLC-CANARY-<impressao[:12]>` e outra chave de idempotência — as duas
+    # defesas contra a segunda campanha procurando um valor que não existe, ao
+    # mesmo tempo, e o leilão recebendo duas campanhas.
+    #
+    # Quando ele EXISTE, ele entra na identidade e deve entrar: as imagens são
+    # conteúdo aprovado por um humano, e trocar uma peça entre a prova e a
+    # escrita precisa invalidar a autorização, como troca de headline invalida.
+    for campo in CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM:
+        if bruto.get(campo) is None:
+            bruto.pop(campo, None)
     bruto["customer_id"] = cid
     bruto["login_customer_id"] = mid
     bruto["canal"] = str(body.canal or "SEARCH").upper()
@@ -2217,6 +2441,16 @@ async def provar(
             )
         else:
             plano = pp.montar_brief(cockpit, escolha, copy=copy)
+            if canal_resolvido == "DISPLAY":
+                # ⚠️ Depois de `montar_brief`, e não dentro dele: o construtor
+                # do brief é do Pautador (outro dono) e não conhece o envelope
+                # HTTP. O que ele monta é o brief comum; o que falta é a única
+                # coisa que só o pedido sabe — quais peças o operador aprovou.
+                origem = getattr(cockpit, "origem", None)
+                plano.brief.imagens_display = _imagens_de_display(
+                    body,
+                    nicho=getattr(origem, "nicho", None) or "sem nicho declarado",
+                )
         # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
         # id colado do painel do Google vem `801-785-1692`, com hífen.
         preparo = sb.preparar(
