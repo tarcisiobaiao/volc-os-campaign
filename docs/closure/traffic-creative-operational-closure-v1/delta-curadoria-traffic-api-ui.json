@@ -1,0 +1,75 @@
+{
+  "_comentario": "Delta de curadoria proposto pelo worker traffic-api-ui. NÃO aplicado: o integrador único aplica e reconstrói o Mapa Vivo uma vez após o merge. Nada aqui marca tarefa como done — trabalho em branch não integrada não fecha a fonte compartilhada.",
+  "worker": "traffic-api-ui",
+  "branch": "sprint/traffic-creative-operational-closure-v1",
+  "data": "2026-09-01",
+  "commits": [
+    "17ce44d", "96fea91", "be77651",
+    "044e7c3", "61aa154", "afd1ecf", "39fe1aa", "23a7e23"
+  ],
+  "nos_propostos": [
+    {
+      "id": "trafego-contrato-canais",
+      "tipo": "modulo",
+      "cluster": "aquisicao/campanhas",
+      "rotulo": "Contrato HTTP dos quatro canais",
+      "estado": "ativo",
+      "path": "backend/app/trafego/contrato_canais.py",
+      "evidence": "Junta manifesto (plataforma.py), capacidades do operador (capacidades.py) e janela do canário (canario.py) num contrato único, e expõe por canal os quatro portões — planejável, validável, criável pausada, ativável — com veredito, bloqueadores nomeados e a ORIGEM de cada recusa, que é o que diz ao operador a quem pedir. Estados: PERMITIDO/BLOQUEADO/INDETERMINADO/NAO_APLICAVEL, com invariantes cobradas na construção (BLOQUEADO sem causa levanta; PERMITIDO com bloqueador levanta; INDETERMINADO sem causa levanta). NÃO chama o Google Ads: o que ninguém leu sai INDETERMINADO com a razão dita. 51 provas em backend/tests/test_trafego_contrato_canais.py."
+    },
+    {
+      "id": "trafego-pmax-cockpit",
+      "tipo": "modulo",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "Observabilidade de PMax projetada para o cockpit",
+      "estado": "parcial",
+      "path": "backend/app/trafego/pmax_cockpit.py",
+      "evidence": "Traduz PMaxCampaignCoverageReport de volc_ads/observabilidade_pmax para o JSON do cockpit SEM reimplementar a semântica: os sete ObservationState e os cinco CollectionState atravessam a fronteira HTTP como estão, e o tri-estado is_structurally_complete sobrevive. Papéis obrigatórios lidos de PMAX_FIELD_REQUIREMENTS (12 papéis, 7 obrigatórios), nunca copiados. PARCIAL porque não há coletor persistido: a resposta é sempre NOT_COLLECTED com causa, o que é honesto e não é a coleta que a tarefa pede. 17 provas em backend/tests/test_trafego_pmax_cockpit.py."
+    },
+    {
+      "id": "trafego-painel-de-canais",
+      "tipo": "superficie",
+      "cluster": "aquisicao/campanhas",
+      "rotulo": "/trafego — aba Canais",
+      "estado": "ativo",
+      "path": "src/components/trafego/canais/PainelDeCanais.tsx",
+      "evidence": "Quinta aba do Hub, entre Campanhas e Preparar. Mostra os quatro canais com os quatro portões, assets, mensuração, observabilidade e — em Search — o canário pausado por superfície. Não recalcula autorização: `aberto` vem do servidor e `portoesAbertos` conta esse campo. INDETERMINADO tem tom próprio e nunca o de BLOQUEADO. Contrato incoerente vindo do servidor é denunciado em vez de lido pela metade. 29 provas (12 de tela + 17 de contrato)."
+    }
+  ],
+  "arestas_propostas": [
+    {"de": "trafego-contrato-canais", "para": "trafego-plataforma", "tipo": "le"},
+    {"de": "trafego-contrato-canais", "para": "trafego-capacidades", "tipo": "le"},
+    {"de": "trafego-contrato-canais", "para": "trafego-canario", "tipo": "le"},
+    {"de": "trafego-contrato-canais", "para": "trafego-prontidao", "tipo": "projeta"},
+    {"de": "trafego-contrato-canais", "para": "volc-ads-campanha-perfil", "tipo": "sonda"},
+    {"de": "trafego-pmax-cockpit", "para": "volc-ads-observabilidade-pmax", "tipo": "projeta"},
+    {"de": "trafego-painel-de-canais", "para": "trafego-contrato-canais", "tipo": "consome"}
+  ],
+  "tarefas_do_roadmap_tocadas": [
+    {
+      "id_provavel": "P05-T12",
+      "titulo": "meta efetiva e bloqueio de Smart Bidding",
+      "estado_proposto": "partial",
+      "delta_de_evidencia": "O bloqueio deixou de ser só uma nota de roadmap e virou contrato HTTP: `meta_efetiva_divergente` e `meta_efetiva_nao_lida` são bloqueadores nomeados do portão `ativavel` de Search, com observado_em=2026-09-01 e caminho de revalidação. A leitura de campo do canário entra no contrato com MANUAL_CPC declarado como ESCOLHA (estado `escolhido`), não como campo vazio — é o que explica por que a meta divergente não afeta o lance hoje e afetaria sob Smart Bidding. SEGUE PARTIAL: a leitura de customer_conversion_goal / campaign_conversion_goal / conversion_goal_campaign_config continua não implementada, e o contrato diz isso em vez de fingir."
+    },
+    {
+      "id_provavel": "P09-T14",
+      "titulo": "canário pausado invisível ao espelho H0",
+      "estado_proposto": "partial",
+      "delta_de_evidencia": "A invisibilidade deixou de ser silêncio e virou resposta. `canario_operacional` consulta TRÊS superfícies (recibo de criação, identidade de campanha, espelho de leitura) e responde por superfície com tri-estado: visível / ausente / NÃO LIDA. Falha de leitura vira `visivel=null` com causa, nunca `false`. A causa da ausência no espelho é nomeada: a leitura contínua de entrega só enxerga campanhas ativas. NÃO RESOLVIDO: o coletor continua em volc_ads/entrega.py:191 (`WHERE campaign.status = 'ENABLED'`), fora do meu ownership, e nenhuma linha foi gravada em espelho nenhum."
+    },
+    {
+      "id_provavel": "(a definir pelo integrador)",
+      "titulo": "imagens de Display atravessando o HTTP",
+      "estado_proposto": "done_com_ressalva",
+      "delta_de_evidencia": "`ProvarEntrada.assets_display` + `criativo_ponte.imagens_de_display` ligados; o brief de Display deixou de sair com `imagens_display=None` por construção. Três ausências com três frases distintas (campo ausente / lista vazia / lote reprovado pela ponte), todas recusando ANTES do validate_only. 15 provas em backend/tests/test_trafego_display_imagens.py, incluindo o caminho feliz com PNG real atravessando a ponte. ⚠️ DEFEITO INTRODUZIDO E CORRIGIDO NA MESMA ENTREGA: declarar o campo mudou a impressão de TODO plano Search (model_dump com exclude_none=False inclui a chave com null), e a chave do canário passou de e0ccfc66… para 68d83100…. Na conta real seriam outra marca VOLC-CANARY e outra chave de idempotência — as duas defesas contra a segunda campanha cegas ao mesmo tempo. Fechado com `CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM`, e provado nos dois sentidos."
+    }
+  ],
+  "fronteiras_externas_nao_cruzadas": [
+    "nenhuma migration aplicada; nenhuma preparada, porque nenhuma foi necessária",
+    "nenhum mutate contra o Google Ads a partir de código meu",
+    "nenhuma escrita no Supabase oficial — as leituras do contrato são SELECT",
+    "nenhum push, merge ou deploy",
+    "nenhum GTM/GA4, nenhum evento ao Data Manager, nenhuma alteração de n8n"
+  ]
+}
