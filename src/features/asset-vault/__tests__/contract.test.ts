@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   ASSET_CLUSTERS,
+  ASSET_KINDS,
   DigitalAssetListSchema,
   KIND_CLUSTER,
   assertPublicAssetContract,
@@ -51,6 +53,24 @@ describe("contrato público do Cofre de Ativos", () => {
     for (const asset of googleAccounts) {
       expect(asset.external.displayId).toMatch(/^•••-•••-\d{4}$/);
       expect(asset.external.displayId).not.toMatch(/^\d{10}$/);
+    }
+  });
+
+  it("o catálogo de tipos é o MESMO da migration v13_01", () => {
+    // Três fontes precisam concordar: este contrato público, `dominio.py` do
+    // backend e `cofre_tipo` no banco. Divergir em silêncio faz a API aceitar
+    // um tipo que a FK do banco recusa — e o operador recebe um erro de
+    // integridade referencial onde deveria ter recebido "tipo desconhecido".
+    const sql = readFileSync(
+      new URL("../../../../supabase/migrations/v13_01_cofre_de_ativos.sql", import.meta.url),
+      "utf-8",
+    );
+    const bloco = sql.slice(sql.indexOf("INSERT INTO public.cofre_tipo"));
+    const pares = [...bloco.slice(0, bloco.indexOf(";")).matchAll(/\('([a-z_]+)',\s*'([a-z_]+)'/g)];
+    const noSql = new Map(pares.map(([, kind, cluster]) => [kind, cluster]));
+    expect(noSql.size).toBe(ASSET_KINDS.length);
+    for (const kind of ASSET_KINDS) {
+      expect(noSql.get(kind)).toBe(KIND_CLUSTER[kind]);
     }
   });
 });

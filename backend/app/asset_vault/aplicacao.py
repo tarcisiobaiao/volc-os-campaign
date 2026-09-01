@@ -106,6 +106,86 @@ class CasosDeUso:
         dom.exigir_id_de_ativo(ativo_id)
         return await self._repo.postura_credencial(ativo_id)
 
+    async def handoff(self, ativo_id: str) -> dict[str, Any]:
+        """Responde o que o proximo componente precisa saber — sem publicar nada.
+
+        Item G da missao, e a fronteira dele importa: esta funcao RESPONDE
+        ("quais engines existem, o que produzem, quem recebe a peca, qual
+        referencia sera resolvida, qual componente vem depois") e NAO EXECUTA
+        ("cria o job, abre o navegador, publica"). O broker do 1Password->AdsPower
+        (P03-T11) e a porta do Postiz (P12-T08/T09) sao outras missoes, e o
+        contrato entre elas esta em
+        `docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md`.
+
+        ⚠️ `referencia_de_acesso` traz provider e NOME LOGICO, nunca o
+        localizador. Quem resolve o endereco e o broker, no host isolado, com o
+        papel `postgres` — nao esta API e nao o navegador. Um handoff que ja
+        viesse com o endereco resolvido transformaria esta rota na porta do
+        cofre, que e exatamente o que o ADR recusa.
+        """
+        detalhe = await self.detalhe(ativo_id)
+        credenciais = detalhe.get("credencial") or []
+        engines = await self._repo.engines()
+
+        # Um perfil de navegador RELACIONADO e o que o broker vai abrir. Sem ele,
+        # o handoff diz que falta — nao inventa um perfil padrao.
+        relacoes = detalhe.get("relacoes") or []
+        perfis = [r for r in relacoes if str(r.get("tipo")) == "authenticates_through"]
+
+        bloqueios: list[str] = []
+        if not credenciais:
+            bloqueios.append(
+                "nenhuma referencia de acesso registrada: o broker nao teria o que resolver")
+        if not perfis:
+            bloqueios.append(
+                "nenhum perfil de navegador relacionado (authenticates_through): "
+                "o QA visual nao saberia qual perfil abrir")
+        if detalhe.get("aposentado_em"):
+            bloqueios.append("o ativo esta aposentado")
+        if not any((c.get("verificacao_estado") == "verified") for c in credenciais):
+            bloqueios.append(
+                "a referencia de acesso nunca foi verificada com sucesso")
+
+        return {
+            "destino": {
+                "ativo_id": detalhe.get("ativo_id"),
+                "nome": detalhe.get("nome"),
+                "kind": detalhe.get("kind"),
+                "plataforma": detalhe.get("plataforma"),
+                "estado": detalhe.get("estado"),
+                "url_publica": detalhe.get("url_publica"),
+                "projeto": detalhe.get("projeto"),
+                "vertical": detalhe.get("vertical"),
+            },
+            "referencia_de_acesso": [
+                {"provider": c.get("provider"), "nome_logico": c.get("nome_logico"),
+                 "estado": c.get("estado"), "verificacao_estado": c.get("verificacao_estado"),
+                 "verificado_em": c.get("verificado_em")}
+                for c in credenciais
+            ],
+            "perfis_de_navegador": perfis,
+            "engines_disponiveis": [
+                {"ativo_id": e.get("ativo_id"), "nome": e.get("nome"),
+                 "modalidade": e.get("modalidade"),
+                 "estado_operacional": e.get("estado_operacional"),
+                 "formatos": e.get("formatos"), "skins": e.get("skins"),
+                 "destinos_compativeis": e.get("destinos_compativeis"),
+                 "limitacoes": e.get("limitacoes")}
+                for e in engines
+            ],
+            # Nao e uma promessa de que o componente existe: e o nome do que
+            # PRECISA existir. Os tres estao em `todo` no Roadmap, e dizer isso
+            # aqui evita que alguem chame uma rota que nao nasceu.
+            "proximo_componente": {
+                "producao_criativa": {"tarefa": "P17", "estado": "fora desta missao"},
+                "broker_de_acesso": {"tarefa": "P03-T11", "estado": "todo"},
+                "porta_de_publicacao": {"tarefa": "P12-T09", "estado": "todo"},
+                "qa_visual": {"tarefa": "P12-T11", "estado": "todo"},
+            },
+            "pronto_para_handoff": not bloqueios,
+            "bloqueios": bloqueios,
+        }
+
     # ── escrita ──────────────────────────────────────────────────────────────
 
     async def cadastrar(self, payload: dict[str, Any], chave: str, autor: Autor,

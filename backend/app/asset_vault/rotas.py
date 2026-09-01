@@ -343,6 +343,25 @@ async def postura_de_credencial(ativo_id: str, casos: Casos) -> dict[str, Any]:
         raise _traduzir(exc) from exc
 
 
+@router.get("/ativos/{ativo_id}/handoff")
+async def handoff(ativo_id: str, casos: Casos) -> dict[str, Any]:
+    """O que o proximo componente precisa saber — e nada que ele possa usar.
+
+    Responde: quais engines existem e o que produzem, qual ativo recebe a peca,
+    qual REFERENCIA de acesso sera resolvida (provider + nome logico, jamais o
+    endereco), qual perfil de navegador esta relacionado, e qual componente vem
+    depois. Nao dispara job, nao abre navegador, nao publica.
+
+    `pronto_para_handoff` e `bloqueios` existem para o chamador nao ter de
+    reimplementar a mesma checagem — e para que "faltou registrar a referencia"
+    seja um FATO no corpo, e nao um 200 que parece sucesso.
+    """
+    try:
+        return await casos.handoff(ativo_id)
+    except Exception as exc:  # noqa: BLE001
+        raise _traduzir(exc) from exc
+
+
 @router.get("/engines")
 async def listar_engines(casos: Casos) -> dict[str, Any]:
     """A ponte para producao criativa: quem existe, o que produz, para onde.

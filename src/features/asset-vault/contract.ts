@@ -49,6 +49,11 @@ export const ASSET_KINDS = [
   "database_service",
   "server",
   "repository",
+  // Perfil de navegador isolado do AdsPower (P03-T07). Entra em `automation`
+  // porque é rotina operacional, não presença social: o perfil EXECUTA, a
+  // página PUBLICA. Confundi-los faria o Cofre responder "temos duas páginas"
+  // quando há uma página e um perfil que a abre.
+  "browser_profile",
 ] as const;
 
 export type AssetKind = (typeof ASSET_KINDS)[number];
@@ -106,6 +111,7 @@ export const KIND_CLUSTER: Record<AssetKind, AssetCluster> = {
   database_service: "infrastructure",
   server: "infrastructure",
   repository: "infrastructure",
+  browser_profile: "automation",
 };
 
 const shortText = z.string().trim().min(1).max(240);
@@ -135,7 +141,11 @@ const assetSchemaBase = z.object({
   capabilities: z.array(shortText).min(1).max(40),
   credential: z.object({
     required: z.boolean(),
-    provider: z.enum(["bitwarden", "vaultwarden", "passbolt", "infisical"]).nullable(),
+    // `1password` entrou em 01/09/2026: o ADR de 28/08 já o havia escolhido, e
+    // o schema privado (v13_01) só aceita as cinco formas de referência deste
+    // enum. Deixá-lo de fora aqui faria o contrato público recusar exatamente o
+    // provider que o backend usa.
+    provider: z.enum(["1password", "bitwarden", "vaultwarden", "passbolt", "infisical"]).nullable(),
     state: z.enum(["not_required", "not_registered", "referenced", "review_due"]),
     lastCheckedAt: dateText.optional(),
     /** Linguagem operacional; nunca inclui locator ou material do cofre. */
@@ -254,6 +264,7 @@ export const KIND_LABEL: Record<AssetKind, string> = {
   database_service: "Banco e API de dados",
   server: "Servidor",
   repository: "Repositório",
+  browser_profile: "Perfil de navegador isolado",
 };
 
 export const STATE_LABEL: Record<AssetState, string> = {

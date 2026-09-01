@@ -602,3 +602,82 @@ def test_corpo_que_nao_e_objeto_json_nao_ecoa_nada():
                      headers={"Content-Type": "application/json"})
     assert r.status_code == 400
     assert SEGREDO not in r.text
+
+
+# ── 9. O HANDOFF: responde sem executar, e sem entregar o endereco ──────────
+
+
+def _repo_para_handoff(**ajustes):
+    detalhe = {
+        "ativo_id": "asset:facebook-page:piloto", "nome": "Pagina do piloto",
+        "kind": "facebook_page", "plataforma": "Meta", "estado": "active",
+        "url_publica": "https://facebook.com/pagina", "projeto": "Piloto", "vertical": "Organico",
+        "aposentado_em": None,
+        "relacoes": [{"tipo": "authenticates_through", "destino": "asset:browser-profile:piloto",
+                      "rotulo": "Perfil AdsPower do piloto", "estado": "declared"}],
+        "credencial": [{"provider": "1password", "nome_logico": "FB_PAGE_ADMIN",
+                        "estado": "referenced", "verificacao_estado": "verified",
+                        "verificado_em": "2026-09-01T10:00:00Z"}],
+        "verificacao": [], "historico": [],
+    }
+    detalhe.update(ajustes)
+    return RepositorioDuble(
+        detalhar=detalhe,
+        engines=[{"ativo_id": "asset:engine:motor-video-volc", "nome": "Motor de Video VOLC",
+                  "modalidade": "video", "estado_operacional": "externo_parcial",
+                  "formatos": 17, "skins": 15, "destinos_compativeis": [],
+                  "limitacoes": ["runtime ainda depende da fabrica externa"]}])
+
+
+def test_o_handoff_responde_o_que_o_proximo_componente_precisa():
+    r = montar(_repo_para_handoff()).get("/api/cofre/ativos/asset:facebook-page:piloto/handoff")
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["destino"]["nome"] == "Pagina do piloto"
+    assert corpo["referencia_de_acesso"][0]["nome_logico"] == "FB_PAGE_ADMIN"
+    assert corpo["engines_disponiveis"][0]["formatos"] == 17
+    assert corpo["perfis_de_navegador"][0]["rotulo"] == "Perfil AdsPower do piloto"
+    assert corpo["pronto_para_handoff"] is True
+    assert corpo["bloqueios"] == []
+    # E o componente seguinte e NOMEADO com o estado real, para ninguem chamar
+    # uma rota que ainda nao nasceu.
+    assert corpo["proximo_componente"]["broker_de_acesso"]["tarefa"] == "P03-T11"
+
+
+def test_o_handoff_NAO_devolve_o_localizador():
+    """Um handoff que ja viesse com o endereco resolvido transformaria esta rota
+    na porta do cofre — exatamente o que o ADR recusa."""
+    repo = _repo_para_handoff()
+    r = montar(repo).get("/api/cofre/ativos/asset:facebook-page:piloto/handoff")
+    assert "op://" not in r.text
+    assert "localizador" not in r.text
+    assert LOCALIZADOR not in r.text
+
+
+def test_o_handoff_diz_o_que_falta_em_vez_de_parecer_pronto():
+    """`pronto_para_handoff: false` com o motivo e um FATO no corpo. Um 200 mudo
+    faria o proximo componente tentar e falhar sem saber por que."""
+    r = montar(_repo_para_handoff(credencial=[], relacoes=[])).get(
+        "/api/cofre/ativos/asset:facebook-page:piloto/handoff")
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["pronto_para_handoff"] is False
+    assert any("referencia de acesso" in b for b in corpo["bloqueios"])
+    assert any("perfil de navegador" in b for b in corpo["bloqueios"])
+
+
+def test_referencia_nunca_verificada_bloqueia_o_handoff():
+    r = montar(_repo_para_handoff(credencial=[{
+        "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+        "verificacao_estado": "unverified", "verificado_em": None}])).get(
+        "/api/cofre/ativos/asset:facebook-page:piloto/handoff")
+    corpo = r.json()
+    assert corpo["pronto_para_handoff"] is False
+    assert any("nunca foi verificada" in b for b in corpo["bloqueios"])
+
+
+def test_ativo_aposentado_bloqueia_o_handoff():
+    r = montar(_repo_para_handoff(aposentado_em="2026-09-01T00:00:00Z")).get(
+        "/api/cofre/ativos/asset:facebook-page:piloto/handoff")
+    assert r.json()["pronto_para_handoff"] is False
+    assert any("aposentado" in b for b in r.json()["bloqueios"])
