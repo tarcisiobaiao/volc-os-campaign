@@ -357,6 +357,143 @@ function FormularioDeCadastro({ aoFechar, aoConcluir }: { aoFechar: () => void; 
   );
 }
 
+function FormularioDeRevisao({ ativo, aoFechar, aoConcluir }: {
+  ativo: cofre.DetalheDoAtivo; aoFechar: () => void; aoConcluir: () => void;
+}) {
+  const { toast } = useToast();
+  const [form, setForm] = React.useState({
+    nome: ativo.nome, plataforma: ativo.plataforma, estado: ativo.estado,
+    criticidade: ativo.criticidade, resumo: ativo.resumo,
+    dono_nome: ativo.dono_nome, dono_custodia: ativo.dono_custodia,
+    projeto: ativo.projeto ?? "", vertical: ativo.vertical ?? "",
+    display_id: ativo.display_id ?? "", url_publica: ativo.url_publica ?? "",
+    capacidades: (ativo.capacidades ?? []).join(", "), tags: (ativo.tags ?? []).join(", "),
+    proxima_acao: ativo.proxima_acao,
+  });
+  const [motivo, setMotivo] = React.useState("");
+  const mudar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [campo]: e.target.value }));
+
+  /**
+   * Só o que MUDOU viaja.
+   *
+   * Mandar o formulário inteiro faria toda revisão reescrever todos os campos —
+   * e a trilha registraria "mudou tudo" mesmo quando alguém corrigiu uma vírgula
+   * no resumo. Pior: um campo que o formulário carregou vazio (porque a API não
+   * o devolveu) apagaria o valor real. O backend é patch, e o cliente precisa
+   * falar patch.
+   */
+  const mudancas = React.useMemo(() => {
+    const delta: Record<string, unknown> = {};
+    const atual: Record<string, string> = {
+      nome: ativo.nome, plataforma: ativo.plataforma, estado: ativo.estado,
+      criticidade: ativo.criticidade, resumo: ativo.resumo, dono_nome: ativo.dono_nome,
+      dono_custodia: ativo.dono_custodia, projeto: ativo.projeto ?? "",
+      vertical: ativo.vertical ?? "", display_id: ativo.display_id ?? "",
+      url_publica: ativo.url_publica ?? "", proxima_acao: ativo.proxima_acao,
+    };
+    for (const [campo, valor] of Object.entries(atual)) {
+      const novo = (form as Record<string, string>)[campo].trim();
+      if (novo !== valor.trim()) delta[campo] = novo;
+    }
+    const listas: Array<[string, string[], string]> = [
+      ["capacidades", ativo.capacidades ?? [], form.capacidades],
+      ["tags", ativo.tags ?? [], form.tags],
+    ];
+    for (const [campo, antes, texto] of listas) {
+      const agora = texto.split(",").map((v) => v.trim()).filter(Boolean);
+      if (agora.join("|") !== antes.join("|")) delta[campo] = agora;
+    }
+    return delta;
+  }, [ativo, form]);
+
+  const enviar = useMutation({
+    mutationFn: () => cofre.revisarAtivo(ativo.ativo_id, {
+      // A chave inclui os CAMPOS mudados: sem isso, duas revisões distintas do
+      // mesmo ativo no mesmo minuto compartilhariam chave, e a segunda voltaria
+      // como replay da primeira — silenciosamente descartada.
+      chave_idempotencia: cofre.chaveDoAto("revisao", ativo.ativo_id, Object.keys(mudancas).sort().join(".")),
+      motivo: motivo.trim(),
+      mudancas,
+    }),
+    onSuccess: (recibo) => {
+      toast({
+        title: recibo.idempotente ? "Esta revisão já havia sido registrada" : "Revisão registrada",
+        description: recibo.idempotente
+          ? "O Cofre reconheceu o reenvio e devolveu o mesmo recibo."
+          : `O ativo está na revisão ${recibo.revisao}.`,
+      });
+      aoConcluir();
+    },
+  });
+
+  const nada = Object.keys(mudancas).length === 0;
+
+  return (
+    <Painel titulo="Revisar ativo" aoFechar={aoFechar}
+      descricao="Só os campos alterados viajam, e a trilha guarda o motivo. Campo não tocado preserva o valor — uma edição de nome não pode zerar a custódia comprovada.">
+      <form className="grid gap-4 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); enviar.mutate(); }}>
+        <Campo rotulo="Nome"><input value={form.nome} onChange={mudar("nome")} className={ENTRADA} /></Campo>
+        <Campo rotulo="Plataforma"><input value={form.plataforma} onChange={mudar("plataforma")} className={ENTRADA} /></Campo>
+        <Campo rotulo="Estado">
+          <select value={form.estado} onChange={mudar("estado")} className={ENTRADA}>
+            {Object.entries(STATE_LABEL).filter(([v]) => v !== "retired").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </Campo>
+        <Campo rotulo="Criticidade">
+          <select value={form.criticidade} onChange={mudar("criticidade")} className={ENTRADA}>
+            <option value="low">Baixa</option><option value="medium">Média</option>
+            <option value="high">Alta</option><option value="critical">Crítica</option>
+          </select>
+        </Campo>
+        <Campo rotulo="Dono"><input value={form.dono_nome} onChange={mudar("dono_nome")} className={ENTRADA} /></Campo>
+        <Campo rotulo="Custódia">
+          <select value={form.dono_custodia} onChange={mudar("dono_custodia")} className={ENTRADA}>
+            <option value="declared">Declarada</option><option value="verified">Comprovada</option>
+            <option value="unassigned">Sem dono definido</option>
+          </select>
+        </Campo>
+        <Campo rotulo="Projeto"><input value={form.projeto} onChange={mudar("projeto")} className={ENTRADA} /></Campo>
+        <Campo rotulo="Vertical"><input value={form.vertical} onChange={mudar("vertical")} className={ENTRADA} /></Campo>
+        <Campo rotulo="ID de exibição" ajuda="já sanitizado; nunca o ID cru quando ele for sensível">
+          <input value={form.display_id} onChange={mudar("display_id")} className={ENTRADA} />
+        </Campo>
+        <Campo rotulo="Endereço público" ajuda="somente HTTP(S)">
+          <input value={form.url_publica} onChange={mudar("url_publica")} className={ENTRADA} />
+        </Campo>
+        <div className="md:col-span-2">
+          <Campo rotulo="Resumo"><textarea value={form.resumo} onChange={mudar("resumo")} className={AREA} /></Campo>
+        </div>
+        <Campo rotulo="Capacidades" ajuda="separadas por vírgula">
+          <input value={form.capacidades} onChange={mudar("capacidades")} className={ENTRADA} />
+        </Campo>
+        <Campo rotulo="Tags" ajuda="separadas por vírgula">
+          <input value={form.tags} onChange={mudar("tags")} className={ENTRADA} />
+        </Campo>
+        <div className="md:col-span-2">
+          <Campo rotulo="Próxima ação"><textarea value={form.proxima_acao} onChange={mudar("proxima_acao")} className={AREA} /></Campo>
+        </div>
+        <div className="md:col-span-2">
+          <Campo rotulo="Motivo da revisão" ajuda="o que mudou e por quê — entra na trilha append-only">
+            <input required value={motivo} onChange={(e) => setMotivo(e.target.value)} className={ENTRADA} />
+          </Campo>
+        </div>
+        <div className="md:col-span-2">
+          <p className="mb-2 text-xs text-muted-foreground">
+            {nada ? "Nenhum campo foi alterado." : `${Object.keys(mudancas).length} campo(s) alterado(s): ${Object.keys(mudancas).join(", ")}.`}
+          </p>
+          <button type="submit" disabled={enviar.isPending || nada}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
+            {enviar.isPending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+            Registrar revisão
+          </button>
+          <ErroDoFormulario erro={enviar.error} />
+        </div>
+      </form>
+    </Painel>
+  );
+}
+
 function FormularioDeCredencial({ ativoId, aoFechar, aoConcluir }: {
   ativoId: string; aoFechar: () => void; aoConcluir: () => void;
 }) {
@@ -673,7 +810,7 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
   ativoId: string; ativos: cofre.AtivoDaLista[]; aoAtualizar: () => void;
 }) {
   const { toast } = useToast();
-  const [painel, setPainel] = React.useState<null | "credencial" | "verificacao" | "relacao">(null);
+  const [painel, setPainel] = React.useState<null | "revisao" | "credencial" | "verificacao" | "relacao">(null);
   const consulta = useQuery({
     queryKey: ["cofre", "detalhe", ativoId],
     queryFn: () => cofre.detalhe(ativoId),
@@ -794,6 +931,8 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
         </div>
 
         <div className="flex flex-wrap gap-2 p-5">
+          <button type="button" onClick={() => setPainel("revisao")}
+            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted">Revisar ativo</button>
           <button type="button" onClick={() => setPainel("verificacao")}
             className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted">Registrar verificação</button>
           <button type="button" onClick={() => setPainel("credencial")}
@@ -816,6 +955,7 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
         </div>
       </section>
 
+      {painel === "revisao" ? <FormularioDeRevisao ativo={ativo} aoFechar={() => setPainel(null)} aoConcluir={recarregar} /> : null}
       {painel === "credencial" ? <FormularioDeCredencial ativoId={ativoId} aoFechar={() => setPainel(null)} aoConcluir={recarregar} /> : null}
       {painel === "verificacao" ? <FormularioDeVerificacao ativoId={ativoId} aoFechar={() => setPainel(null)} aoConcluir={recarregar} /> : null}
       {painel === "relacao" ? <FormularioDeRelacao ativoId={ativoId} ativos={ativos} aoFechar={() => setPainel(null)} aoConcluir={recarregar} /> : null}

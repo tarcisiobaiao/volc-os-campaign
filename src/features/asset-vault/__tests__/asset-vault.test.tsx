@@ -260,4 +260,34 @@ describe("Cofre de Ativos — a fronteira do segredo na tela", () => {
     await waitFor(() => expect(screen.getByText(/Gaveta: Sites e domínios/)).toBeTruthy());
     expect(enviar).not.toHaveBeenCalled();
   });
+  it("a revisão manda só o que MUDOU, e a chave distingue revisões diferentes", async () => {
+    const enviar = vi.spyOn(cofre, "revisarAtivo")
+      .mockResolvedValue({ operacao: "cofre.revisar_ativo", ativo_id: PAGINA.ativo_id, revisao: 2, idempotente: false });
+    const { container } = mount();
+    await waitFor(() => expect(screen.getByRole("button", { name: /revisar ativo/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /revisar ativo/i }));
+
+    // Sem mudança nenhuma, o botão fica desabilitado: mandar um patch vazio
+    // criaria uma revisão que não revisa nada.
+    await waitFor(() => expect(screen.getByText(/nenhum campo foi alterado/i)).toBeTruthy());
+    const botao = screen.getByRole("button", { name: /registrar revisão/i }) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+
+    const formulario = container.querySelectorAll("form")[0];
+    const entradas = formulario.querySelectorAll("input");
+    fireEvent.change(entradas[0], { target: { value: "Página do piloto (renomeada)" } });
+    fireEvent.change(entradas[entradas.length - 1], { target: { value: "nome corrigido pelo dono" } });
+    await waitFor(() => expect(screen.getByText(/1 campo\(s\) alterado\(s\): nome/i)).toBeTruthy());
+    fireEvent.submit(formulario);
+
+    await waitFor(() => expect(enviar).toHaveBeenCalled());
+    const corpo = enviar.mock.calls[0][1] as { mudancas: Record<string, unknown>; chave_idempotencia: string };
+    // SÓ o campo tocado. Um put disfarçado de patch é como uma edição de nome
+    // zera a custódia comprovada.
+    expect(Object.keys(corpo.mudancas)).toEqual(["nome"]);
+    expect(corpo.mudancas.nome).toBe("Página do piloto (renomeada)");
+    // A chave inclui os campos mudados: duas revisões distintas no mesmo minuto
+    // não podem compartilhar recibo.
+    expect(corpo.chave_idempotencia).not.toBe(cofre.chaveDoAto("revisao", PAGINA.ativo_id, "resumo"));
+  });
 });
