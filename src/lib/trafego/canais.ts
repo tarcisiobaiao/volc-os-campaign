@@ -224,6 +224,9 @@ export interface DestinoDataManager {
  */
 export interface FrescorDoSinal {
   estado: EstadoDeLeitura;
+  /** ⚠️ Hoje sempre `null`. O frescor vem da DATA da última conversão, não de
+   *  uma contagem de período — e um número aqui faria a tela dizer "nos últimos
+   *  N dias" sobre algo que não tem período nenhum por trás. */
   janela_dias: number | null;
   ultima_conversao_em: string | null;
   dias_desde_a_ultima: number | null;

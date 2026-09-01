@@ -552,6 +552,12 @@ class Frescor:
     """
 
     estado: str
+    #: A janela consultada, QUANDO a leitura é de janela. ⚠️ Hoje ela é sempre
+    #: `None`, e isso é honesto: o frescor vem de
+    #: `metrics.conversion_last_conversion_date`, que é a data da última
+    #: conversão e NÃO uma contagem de período. Um `30` aqui afirmaria um
+    #: recorte que ninguém aplicou — e faria a tela dizer "nos últimos 30 dias"
+    #: sobre um número que não tem 30 dias nenhum por trás.
     janela_dias: Optional[int] = None
     ultima_conversao_em: Optional[str] = None
     dias_desde_a_ultima: Optional[int] = None
@@ -860,11 +866,6 @@ def propor_acao_nova(categoria: str, origem: str, *,
 #: um contrato antigo não deve colidir com um gravado sob o novo só porque os
 #: campos que mudaram não estavam na chave.
 VERSAO_DO_PLANO = 1
-
-#: A janela padrão de frescor. Trinta dias é o mesmo horizonte que o Google usa
-#: para dizer que uma conversão é "recente" no diagnóstico de conta.
-JANELA_DE_FRESCOR_DIAS = 30
-
 
 @dataclass(frozen=True)
 class PlanoDeMensuracao:
