@@ -134,13 +134,20 @@ impressão, toda linha gravada deixaria de ser reencontrável **de uma vez**.
 Constante de regressão pinada no teste, medida antes de o campo existir:
 `b76c89dc1b7275a2a56b371385a8dc8b7eac37d27d527d770521653a35a6a263`.
 
-### 4.2 Os dois portões novos são **propriedades**, não campos
+### 4.2 Os dois portões novos são **propriedades** — e isso não bastou
 
 Campo permitiria escrever a contradição — estado `PRONTO` ao lado de bloqueador
 material, ou estado discordando do booleano. A primeira versão tinha os dois
 como campos com invariantes de `__post_init__` que os checavam; ela quebrou dois
 testes existentes que constroem `Prontidao` diretamente. Derivado, a contradição
-não é expressável, que é mais forte que uma guarda que a detecta.
+entre os DOIS ESTADOS não é expressável.
+
+⚠️ **E a revisão adversarial mostrou que isso resolvia metade do problema.**
+`smart_bidding_ready` deriva do booleano — e o booleano continuou sendo **campo**.
+`Prontidao(smart_bidding_eligible=True)` produzia `PRONTO` com medição e
+observabilidade indeterminadas. Derivar não basta se a FONTE da derivação for
+afirmável sem lastro: `__post_init__` passou a exigir as duas provas. Ver
+`ADJUDICACAO-CODEX.md` §2.
 
 ### 4.3 O portão de escrita olha `measurement_ready`, não `smart_bidding_ready`
 
@@ -194,7 +201,11 @@ escrito.
 | 15 | resposta vazia da RPC aceita como persistência | já coberto na entrega anterior; preservado |
 | 16 | conta externa vinculada | `test_linha_de_outra_conta_nao_e_vinculada_por_prefixo`, `test_linha_de_outra_conta_e_recusada_e_nao_devolvida` |
 | 17 | repetição criando segunda linha lógica | `test_o_mesmo_perfil_continua_idempotente`, `test_o_mesmo_envelope_tem_a_mesma_impressao` |
-| 18 | verde por configuração na tela | `test_auto_tagging_ligado_aparece_dizendo_que_nao_e_conversao` e o bloco "verde só com prova" |
+| 18 | verde por configuração na tela | o bloco "verde só com prova" em `painel-da-mensuracao.test.tsx` |
+
+E mais **23** nascidas da revisão adversarial, em
+`backend/tests/test_trafego_revisao_adversarial.py` — 15 delas falhavam contra o
+código que a revisão reprovou. Ver `ADJUDICACAO-CODEX.md`.
 
 ---
 
