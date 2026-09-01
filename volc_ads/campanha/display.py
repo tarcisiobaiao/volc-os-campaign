@@ -82,6 +82,7 @@ o sintoma apareceria em outro recurso.
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from ..gads.client import cliente, validar_mutacoes
@@ -385,12 +386,58 @@ def _checar_imagens(cid: str, brief: Brief, r: validacao.Resultado) -> ImagensDi
     # As duas formas contam igual nos tetos abaixo: o que a API vê é o número de
     # imagens no anúncio, e de onde cada uma veio não muda o teto.
     novas = 0
+    # ⚠️ IDENTIDADE POR CONTEÚDO, e a razão foi MEDIDA contra a API em
+    # 01/09/2026, não deduzida.
+    #
+    # Um `validate_only` real na conta 547-809-6539 recusou o mutate inteiro com
+    #
+    #   asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE
+    #   @mutate_operations[7].asset_operation.create.name:
+    #   "Duplicate assets across mutates cannot have different asset level fields."
+    #
+    # e, em cascata, três `mutate_error.RESOURCE_NOT_FOUND` no anúncio — porque
+    # os ids temporários dos assets recusados deixaram de resolver. O payload
+    # tinha dois `ImagemParaSubir` com os MESMOS BYTES em papéis diferentes
+    # (quadrada e logo quadrado) e `name` diferente.
+    #
+    # O Google identifica asset pelo CONTEÚDO. Dois `asset_operation.create` com
+    # a mesma imagem e nomes distintos são o mesmo asset pedindo dois nomes, e
+    # ele recusa o request inteiro. Display não tinha essa guarda; Demand Gen
+    # tinha, e a assimetria era invisível offline: a suíte ficava verde sobre um
+    # payload que a API recusa.
+    #
+    # A recusa é local e antecipa exatamente o erro da API — inclusive quando os
+    # papéis são diferentes, que é o caso legítimo mais provável (a mesma arte
+    # servindo de quadrada e de logo). O conserto é usar o arquivo uma vez só;
+    # deduplicar aqui em silêncio mudaria o payload sem o operador saber qual
+    # dos dois papéis perdeu a imagem.
+    identidades: dict[str, str] = {}
     for atributo, campo in PAPEIS_DE_IMAGEM:
         for item in getattr(im, atributo):
             if isinstance(item, ImagemParaSubir):
                 novas += 1
+                identidade = "bytes:" + hashlib.sha256(item.dados).hexdigest()
+                rotulo = f"{atributo}/{item.nome}"
+            else:
+                _checar_resource_name(cid, item, f"imagens_display.{atributo}",
+                                      campo, r)
+                identidade = f"remoto:{str(item).strip()}"
+                rotulo = f"{atributo}/{item}"
+
+            anterior = identidades.get(identidade)
+            if anterior is not None:
+                r.erro(
+                    f"imagens_display.{atributo}", rotulo,
+                    f"asset repetido no mesmo mutate: este conteúdo já entra "
+                    f"como {anterior}. O Google identifica asset pelo CONTEÚDO "
+                    f"e recusa o request inteiro com "
+                    f"asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE "
+                    f"(medido por validate_only em 01/09/2026). Use o arquivo "
+                    f"uma vez só, ou envie artes diferentes por papel",
+                    plano.ASSET_ACIMA_DO_TETO,
+                )
                 continue
-            _checar_resource_name(cid, item, f"imagens_display.{atributo}", campo, r)
+            identidades[identidade] = rotulo
 
     # ⚠️ Imagem sem LINHAGEM entra, e fica registrada no `Resultado`.
     #
