@@ -20,7 +20,7 @@ export type RedeDoHub = 'google' | 'meta';
  * o alias continua lendo o endereço velho para um link colado ontem não
  * abrir a aba errada.
  */
-export type AbaDoHub = 'campanhas' | 'preparar' | 'criar' | 'atencao';
+export type AbaDoHub = 'campanhas' | 'canais' | 'preparar' | 'criar' | 'atencao';
 
 /**
  * ⚠️ A ORDEM é a do trabalho, não a do alfabeto: o que já gasta dinheiro, o que
@@ -28,7 +28,9 @@ export type AbaDoHub = 'campanhas' | 'preparar' | 'criar' | 'atencao';
  * `abaDaUrl` deriva a validação desta lista — uma aba nova entra aqui e passa a
  * sobreviver ao recarregamento sem tocar no parser.
  */
-export const ABAS_DO_HUB: readonly AbaDoHub[] = ['campanhas', 'preparar', 'criar', 'atencao'];
+export const ABAS_DO_HUB: readonly AbaDoHub[] = [
+  'campanhas', 'canais', 'preparar', 'criar', 'atencao',
+];
 
 /** Nível da árvore Meta. Nunca traduzir conjunto (ad set) para ad group. */
 export type NivelMeta = 'campanhas' | 'conjuntos' | 'anuncios' | 'criativos';

@@ -57,6 +57,7 @@ import FilaDeAtencao from '@/components/trafego/inventario/FilaDeAtencao';
 import { InventarioDeCampanhas } from '@/components/trafego/inventario/InventarioDeCampanhas';
 import { Chip, type Tom } from '@/components/trafego/inventario/Selos';
 import { useContadorDeAtencao } from '@/components/trafego/atencao/useAtencao';
+import { PainelDeCanais } from '@/components/trafego/canais/PainelDeCanais';
 import { EixosDoHub, SeletorDeCanal } from '@/components/trafego/hub/EixosDoHub';
 import { EstudioLigado } from '@/components/trafego/estudio/EstudioLigado';
 import { MetaNaoConfigurada } from '@/components/trafego/hub/MetaNaoConfigurada';
@@ -576,6 +577,14 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
                 contador={google ? totaisOperacionais(operacional.inventario?.totais) : null}
               />
             </TabsTrigger>
+            {/* ⚠️ Canais fica logo depois de Campanhas, e antes de Preparar, por
+                uma razão de ordem de trabalho: a pergunta "este canal pode?"
+                precede a de montar um pedido nele. Descobrir a recusa depois de
+                montar é o desperdício que os quatro portões existem para
+                evitar. */}
+            <TabsTrigger value="canais" className={gatilho}>
+              Canais
+            </TabsTrigger>
             <TabsTrigger value="preparar" className={gatilho}>
               <RotuloDaAba texto="preparar" contador={contadorDeOportunidades} />
             </TabsTrigger>
@@ -642,6 +651,10 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
               O seletor some sozinho no dia em que aquela página deixar de trazer
               recuo próprio; enquanto ela trouxer, é aqui que a moldura se
               defende. */}
+          <TabsContent value="canais" className="mt-6">
+            <PainelDeCanais />
+          </TabsContent>
+
           <TabsContent value="preparar" className="mt-6 [&>div]:p-0">
             {google ? (oportunidades ?? <TrafegoPage />) : <MetaNaoConfigurada nivel={estado.nivel} />}
           </TabsContent>
