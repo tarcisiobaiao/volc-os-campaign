@@ -507,7 +507,7 @@ vinha passando havia semanas, e o achado era real: o gatilho de identidade tinha
 um ramo de código morto (`customer_id nao pode voltar a NULL`) que nunca chegou
 a executar, porque o ramo anterior já cobria o caso.
 
-## Série v10 — ciclo de criação e autogestão T1 · **NENHUMA APLICADA**
+## Série v10 — ciclo de criação e autogestão T1 · **v10_01, v10_03 e v10_04 APLICADAS**
 
 > Janela autorizada em 31/08/2026: **v10_01, v10_03 e v10_04**. A `v10_02`
 > ficou deliberadamente de fora — é autogestão T1 e não participa do caminho
@@ -515,10 +515,45 @@ a executar, porque o ramo anterior já cobria o caso.
 
 | Arquivo | sha256 | Linhas | Estado | Rollback |
 |---|---|---|---|---|
-| `v10_01_intencao_e_lote.sql` | `827e8caae24b088f…` | 1950 | **não aplicada** | `v10_01_rollback.sql` (`b75eb90b09447493…`) |
-| `v10_02_autogestao.sql` | `124eac489c9d3bb8…` | 1722 | **não aplicada** | `v10_02_rollback.sql` (`37a0f0e560a940c1…`) |
-| `v10_03_recibo_atomico.sql` | `bdb26eed7da08b64…` | 992 | **não aplicada** | `v10_03_rollback.sql` (`b1c9d6598bd0bf52…`) |
-| `v10_04_saida_do_indeterminado.sql` | `9122135ac98de62e…` | 384 | **não aplicada** | `v10_04_rollback.sql` (`eb93e200b66cf6df…`) |
+| `v10_01_intencao_e_lote.sql` | `827e8caae24b088f…` | 1950 | **APLICADA** 2026-09-01 00:17-03 | `v10_01_rollback.sql` (`b75eb90b09447493…`) |
+| `v10_02_autogestao.sql` | `124eac489c9d3bb8…` | 1722 | **não aplicada** (fora da janela) | `v10_02_rollback.sql` (`37a0f0e560a940c1…`) |
+| `v10_03_recibo_atomico.sql` | `bdb26eed7da08b64…` | 992 | **APLICADA** 2026-09-01 00:17-03 | `v10_03_rollback.sql` (`b1c9d6598bd0bf52…`) |
+| `v10_04_saida_do_indeterminado.sql` | `9122135ac98de62e…` | 384 | **APLICADA** 2026-09-01 00:17-03 | `v10_04_rollback.sql` (`eb93e200b66cf6df…`) |
+
+### Recibo da aplicação — 2026-09-01, produção `database.agenciavolc.com.br`
+
+Ambiente: `ubuntu-4gb-ash-1` (178.156.196.149), container `supabase-db`,
+PostgreSQL 15.8. Executor: `postgres`, via
+`docker exec -i supabase-db psql -U postgres -v ON_ERROR_STOP=1`.
+Autorizado nominalmente pelo dono, com a v10_02 explicitamente fora da janela.
+
+**Backup pré-migration:** `/root/backups/pre-v10-search-2026-09-01-001700.dump`
+· 2.229.154 bytes (2,2 MB) · `pg_dump -Fc` exit 0 ·
+sha256 `b1631c8c6d206ea4236622182537c92004c9ac427069adfc8208d75fc00f88d1` ·
+`pg_restore -l` lista 2081 itens (o arquivo é um archive legível, não um truncado).
+
+**Estado medido ANTES:** zero tabelas da v10, zero funções `trafego_ledger_*`,
+`trafego_campanha` e `trafego_linhagem` presentes (v9_01 aplicada), os três papéis
+nominais existentes. Nenhum objeto inesperado, nenhuma aplicação parcial.
+
+**Contraprova DEPOIS (todas verdes):**
+
+| Query | Esperado | Medido |
+|---|---|---|
+| 5.1 tabelas da v10 | 10 | **10** |
+| 5.2 vazamento para `anon`/`authenticated` | 0 | **0** |
+| 5.3 execução do ledger | só `service_role` nas 4 funções | **12 linhas: `f`/`f`/`t` nas 4** |
+| 5.4 camada 4 (`trafego_recibo_um_voo_por_item`) | 1 | **1** |
+| 5.5 RLS forçada sem policy | 0 sem RLS · 0 policies | **0 · 0** |
+| 5.6 v10_04 entrou **e** guardas da v10_01 sobreviveram | 5×`t` | **t t t t t** |
+| 5.7 reconciliação confere posse | `t` | **t** |
+| 5.8 `SECURITY DEFINER` no ledger | 0 | **0** |
+| v10_02 fora da janela | 0 tabelas | **0** |
+
+⚠️ A 5.6 confere as **duas** metades de propósito. `CREATE OR REPLACE FUNCTION`
+substitui o corpo inteiro, e uma versão anterior da v10_04 acrescentou a transição
+nova apagando quatro guardas da v10_01 em silêncio. Conferir só a transição
+deixaria passar exatamente isso.
 
 ### v10_04 — a saída do indeterminado, que não existia (31/08/2026)
 
