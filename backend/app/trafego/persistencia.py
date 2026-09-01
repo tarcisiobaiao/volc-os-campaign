@@ -96,6 +96,13 @@ TABELA_ESPELHO = "trafego_campanha_espelho"
 TABELA_SNAPSHOT = "trafego_snapshot_conta"
 TABELA_EVENTO = "trafego_evento"
 TABELA_VINCULO = "trafego_vinculo"
+#: O `campaign_measurement_plan` de P05-T12 (migration v12_02). Append-only, e
+#: a ÚNICA porta de escrita é a função abaixo — `service_role` não tem INSERT.
+TABELA_PLANO_DE_MENSURACAO = "trafego_campanha_plano_de_mensuracao"
+
+#: A função Postgres que grava o plano. Idempotente pela impressão: a MESMA
+#: leitura gravada duas vezes devolve a mesma linha, e não uma segunda.
+RPC_REGISTRAR_PLANO = "volc_registrar_plano_de_mensuracao"
 
 VIEW_CAMPANHAS = "trafego_inventario_campanha"
 VIEW_CONTAS = "trafego_inventario_conta"
@@ -119,6 +126,22 @@ PRESENCA_NAO_ESPELHADA = "nao_espelhada"
 #: ser conferido contra o schema de verdade. Não use como fonte de nada mais —
 #: a fonte do schema é a migration.
 CONTRATO_DE_COLUNAS: Dict[str, Tuple[str, ...]] = {
+    TABELA_PLANO_DE_MENSURACAO: (
+        "plano_id", "impressao", "versao", "customer_id", "login_customer_id",
+        "campaign_id", "volc_campaign_id", "chave_intencao",
+        "nivel", "nivel_estado", "custom_conversion_goal",
+        "metas_da_conta_estado", "metas_da_campanha_estado", "metas_biddable",
+        "meta_resolvida", "acoes_estado", "acao_alvo_id", "acao_alvo_owner_id",
+        "acao_alvo_tipo", "acao_alvo_semantica", "acao_alvo_causa",
+        "destino_resolvido", "destino_operating_account_id",
+        "destino_product_destination_id", "destino_causa",
+        "frescor_estado", "frescor_ultima_em", "frescor_dias",
+        "frescor_conversoes", "marcacao_estado", "auto_tagging",
+        "conversion_tracking_id", "conversion_tracking_owner_id",
+        "conversion_tracking_status", "aceitou_termos_de_dados",
+        "completo", "bloqueadores", "payload", "api_versao", "lido_em",
+        "registrado_em",
+    ),
     TABELA_CAMPANHA: (
         "volc_campaign_id", "customer_id", "campaign_id", "criada_por",
         "procedencia", "campaign_lineage_id",
@@ -383,6 +406,85 @@ def presenca_para_o_banco(valor: Any) -> Optional[str]:
     if not texto or texto == dom.PRESENTE:
         return None
     return texto
+
+
+def documento_de_plano_de_mensuracao(
+        plano: Dict[str, Any], *,
+        lido_em: str,
+        volc_campaign_id: Optional[str] = None,
+        api_versao: str = "v25") -> Dict[str, Any]:
+    """`PlanoDeMensuracao.para_json()` → o documento da função Postgres.
+
+    Função PURA e de módulo, como toda tradução aqui: ela é testável sem banco,
+    e a classe só transporta. Recebe o JSON do domínio — e não o objeto — porque
+    `persistencia.py` não importa `volc_ads` nem o SDK do Google, e essa
+    fronteira é o que permite servir o inventário sem custo de rede externa.
+
+    ⚠️ NENHUM `coalesce` para zero, em campo nenhum. O que o plano não sabe
+    viaja `None` e o schema recusa a linha se `None` for incoerente com o estado
+    declarado. Preencher com zero aqui seria contornar, do lado de fora, as seis
+    invariantes que a v12_02 existe para defender.
+
+    ⚠️ E `frescor_conversoes` é o caso mais fácil de errar: `0.0` é um zero
+    MEDIDO e precisa chegar como `0`; ausência precisa chegar como `None`. Um
+    `or 0` nesta linha destruiria a distinção que o schema, o domínio e a tela
+    carregam em três camadas.
+    """
+    meta = plano.get("meta_efetiva") or {}
+    alvo = plano.get("acao_alvo") or {}
+    destino = plano.get("destino") or {}
+    frescor = plano.get("frescor") or {}
+    marcacao = plano.get("marcacao") or {}
+    biddable = meta.get("metas_biddable")
+    return {
+        "impressao": plano.get("impressao"),
+        "versao": plano.get("versao"),
+        "customer_id": plano.get("customer_id"),
+        "login_customer_id": plano.get("login_customer_id"),
+        "campaign_id": plano.get("campaign_id"),
+        "volc_campaign_id": volc_campaign_id,
+        "chave_intencao": plano.get("chave_intencao"),
+        "nivel": meta.get("nivel"),
+        "nivel_estado": meta.get("nivel_estado"),
+        "custom_conversion_goal": meta.get("custom_conversion_goal"),
+        "metas_da_conta_estado": meta.get("metas_da_conta_estado"),
+        "metas_da_campanha_estado": meta.get("metas_da_campanha_estado"),
+        # ⚠️ `None` vira `[]` SÓ aqui, e a razão é que a coluna é `not null` e o
+        # que ela guarda é a lista de semânticas — não a existência dela. Quem
+        # carrega "não sei qual nível manda" é `nivel_estado`, ao lado.
+        "metas_biddable": [m.get("semantica") for m in (biddable or [])],
+        "meta_resolvida": bool(meta.get("resolvida")),
+        "acoes_estado": plano.get("acoes_estado"),
+        "acao_alvo_id": alvo.get("id"),
+        "acao_alvo_owner_id": alvo.get("owner_customer_id"),
+        "acao_alvo_tipo": alvo.get("tipo"),
+        "acao_alvo_semantica": alvo.get("semantica"),
+        "acao_alvo_causa": plano.get("acao_alvo_causa"),
+        "destino_resolvido": bool(destino.get("resolvido")),
+        "destino_operating_account_id": destino.get("operating_account_id"),
+        "destino_product_destination_id": destino.get("product_destination_id"),
+        "destino_causa": destino.get("causa"),
+        "frescor_estado": frescor.get("estado"),
+        "frescor_ultima_em": frescor.get("ultima_conversao_em"),
+        "frescor_dias": frescor.get("dias_desde_a_ultima"),
+        "frescor_conversoes": frescor.get("conversoes_na_janela"),
+        "marcacao_estado": marcacao.get("estado"),
+        "auto_tagging": marcacao.get("auto_tagging"),
+        "conversion_tracking_id": marcacao.get("conversion_tracking_id"),
+        "conversion_tracking_owner_id": marcacao.get(
+            "conversion_tracking_owner_id"),
+        "conversion_tracking_status": marcacao.get(
+            "conversion_tracking_status"),
+        "aceitou_termos_de_dados": marcacao.get("aceitou_termos_de_dados"),
+        "completo": bool(plano.get("completo")),
+        "bloqueadores": list(plano.get("bloqueadores") or ()),
+        # O plano inteiro sobrevive em `payload`: as colunas acima são o que se
+        # consulta, e o payload é o que se audita. Uma coluna nova amanhã não
+        # apaga o que foi lido hoje.
+        "payload": dict(plano),
+        "api_versao": api_versao,
+        "lido_em": _iso(lido_em),
+    }
 
 
 def linha_de_snapshot(linha: Dict[str, Any]) -> Dict[str, Any]:
@@ -846,6 +948,72 @@ class FonteDeReconciliacao(_Cliente):
 # ═══════════════════════════════════════════════════════════════════════════
 # ESCRITA — implementa `sincronizador.RepositorioDeSnapshot`
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+class RepositorioDePlanoDeMensuracao(_Cliente):
+    """Grava e relê o `campaign_measurement_plan` (migration v12_02).
+
+    ⚠️ A escrita passa pela FUNÇÃO `volc_registrar_plano_de_mensuracao`, e não
+    por um `POST` na tabela — porque `service_role` não tem INSERT ali. A
+    migration foi desenhada assim de propósito: a idempotência pela impressão
+    mora dentro da função, numa transação só, e um INSERT direto a jogaria para
+    o lado de quem chama, onde ela sumiria no primeiro retry.
+
+    ⚠️ E o erro NÃO é engolido. Uma guarda do banco recusando (uma das seis
+    invariantes) e o banco fora do ar exigem reações opostas: a primeira é um
+    plano que não devia ter sido montado, a segunda é uma indisponibilidade.
+    Colapsá-las num `return None` faria a rota tratar as duas como "não deu".
+    """
+
+    async def registrar(self, documento: Dict[str, Any]) -> Optional[str]:
+        """Grava o plano e devolve o `plano_id`. Idempotente pela impressão.
+
+        `None` quando o cliente não está habilitado — ambiente sem Supabase é
+        estado, não erro. Qualquer outra falha sobe.
+        """
+        if not self.habilitado:
+            return None
+        resposta = await self._req(
+            "POST", f"rpc/{RPC_REGISTRAR_PLANO}",
+            headers=self._headers(), json={"documento": documento})
+        # A função devolve `uuid`; o PostgREST o entrega como escalar JSON.
+        if isinstance(resposta, list):
+            resposta = resposta[0] if resposta else None
+        return str(resposta) if resposta else None
+
+    async def vigente_da_conta(self, customer_id: str
+                               ) -> Optional[Dict[str, Any]]:
+        """O plano mais recente desta conta, ou `None` quando não há nenhum.
+
+        ⚠️ `None` aqui é "não há linha", e é DIFERENTE de um plano cujo
+        `completo` é `false`. O primeiro diz que ninguém leu esta conta ainda; o
+        segundo diz que alguém leu e a conta não está pronta. Quem chama precisa
+        das duas respostas separadas.
+        """
+        chave = str(customer_id or "").strip()
+        if not chave or not self.habilitado:
+            return None
+        linhas = await self._get(TABELA_PLANO_DE_MENSURACAO, {
+            "select": "*",
+            "customer_id": f"eq.{chave}",
+            "order": "lido_em.desc,registrado_em.desc",
+            "limit": 1,
+        })
+        return linhas[0] if linhas else None
+
+    async def vigente_da_campanha(self, volc_campaign_id: str
+                                  ) -> Optional[Dict[str, Any]]:
+        """O plano mais recente de UMA campanha interna."""
+        chave = str(volc_campaign_id or "").strip()
+        if not chave or not self.habilitado:
+            return None
+        linhas = await self._get(TABELA_PLANO_DE_MENSURACAO, {
+            "select": "*",
+            "volc_campaign_id": f"eq.{chave}",
+            "order": "lido_em.desc,registrado_em.desc",
+            "limit": 1,
+        })
+        return linhas[0] if linhas else None
 
 
 class RepositorioDeSnapshotSupabase(_Cliente):

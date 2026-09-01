@@ -78,6 +78,14 @@ MIGRATION_ORDEM = os.path.join(RAIZ, "supabase", "migrations",
 MIGRATION_URL = os.path.join(RAIZ, "supabase", "migrations",
                              "v9_04_url_final_preservada.sql")
 
+#: A v12_02 cria `trafego_campanha_plano_de_mensuracao`, e `CONTRATO_DE_COLUNAS`
+#: passou a citá-la. Sem aplicá-la aqui, `test_toda_coluna_do_contrato_existe_no_banco`
+#: acusaria a tabela inteira como ausente — que é EXATAMENTE o que ele deve
+#: fazer quando o módulo cita o que o schema não tem. O conserto é aplicar a
+#: migration, nunca tirar a tabela do contrato.
+MIGRATION_PLANO = os.path.join(RAIZ, "supabase", "migrations",
+                               "v12_02_plano_de_mensuracao.sql")
+
 pytestmark = pytest.mark.skipif(
     not shutil.which("initdb") or not shutil.which("pg_ctl")
     or not shutil.which("psql"),
@@ -143,6 +151,7 @@ class Cluster:
         self.arquivo(MIGRATION_ATENCAO)
         self.arquivo(MIGRATION_ORDEM)
         self.arquivo(MIGRATION_URL)
+        self.arquivo(MIGRATION_PLANO)
 
     def derrubar(self) -> None:
         subprocess.run(["pg_ctl", "-D", self.dados, "-m", "immediate", "stop"],
