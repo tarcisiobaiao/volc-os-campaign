@@ -2,8 +2,10 @@
 
 *Conta-laboratório Portal Mundo Mais `547-809-6539` · MCC `601-673-9364`*
 
-⚠️ **Nada aqui foi executado.** Nenhuma chamada real ao Google Ads — nem `validate_only` —
-saiu nesta sessão. Toda prova rodou contra dublês herméticos e um Postgres descartável.
+⚠️ **Estado em 31/08/2026:** `validate_only` foi **autorizado** pelo dono e executado; o
+`mutate` **não**. A criação real do canário exige aprovação do diff exato, não desta
+autorização. O resultado do `validate_only` e o dossiê do canário estão no
+`RELATORIO-DE-ENTREGA.md`.
 
 ## 1. O que já está fechado por construção, e não depende de você lembrar
 
@@ -24,13 +26,13 @@ saiu nesta sessão. Toda prova rodou contra dublês herméticos e um Postgres de
 
 | # | Condição | Como conferir |
 |---|---|---|
-| P1 | v10_01 + v10_03 aplicadas | `PREFLIGHT-SUPABASE-OFICIAL.md` §5 |
+| P1 | v10_01 + v10_03 + **v10_04** aplicadas | `PREFLIGHT-SUPABASE-OFICIAL.md` §5. Sem a v10_04 a reconciliação **aborta**, e o fluxo vai a produção com a saída de emergência quebrada |
 | P2 | **D4** — grants/RLS fechados e credenciais rotacionadas | `OPEN-DECISIONS.md` D4; smoke anônimo provando zero escrita |
 | P3 | **D10** — webhook n8n `apply-bidding` desativado ou autenticado | ele muta lances fora da porta única |
 | P4 | Trava de escrita de dois fatores | `destravar()` no código **e** `FORGE_PERMITIR_ESCRITA=1` no ambiente |
 | P5 | Backend com `SUPABASE_URL`/`SERVICE_ROLE_KEY` | senão `/subir` responde 503 e nada sai |
 | P6 | Operador presente na tela | a confirmação de criação pausada é um clique humano |
-| P7 | **Ninguém usa o CLI de escrita** | `python -m volc_ads.subir --subir` (`volc_ads/subir.py:1310`) chama o executor direto, **sem ledger, sem política do canário e sem recibo**. A trava de dois fatores continua valendo, mas com ela aberta esse caminho cria campanha sem rastro local. Ver `RELATORIO-DE-ENTREGA.md` §7 |
+| P7 | ~~Ninguém usa o CLI de escrita~~ **RESOLVIDO em 31/08/2026** | `--subir` foi **aposentado**: ele falha fechado com código 2 antes de preparar cliente, destravar ou tocar rede, e a mensagem aponta a rota governada. Deixou de ser uma condição que depende de disciplina humana e passou a ser uma porta fechada. `--dry` continua provando. Prova: `volc_ads/testes_subir.py::prova_cli_subir_aposentado_nao_toca_google_nem_com_trava_aberta`, que roda **com `FORGE_PERMITIR_ESCRITA=1`** |
 
 ## 3. A sequência autorizável, ato por ato
 

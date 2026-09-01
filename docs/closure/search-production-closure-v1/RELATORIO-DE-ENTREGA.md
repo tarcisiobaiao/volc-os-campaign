@@ -11,6 +11,19 @@
 | `876d090` | tela lê o desfecho gravado; o id da campanha volta a existir |
 | `b8aac8f` | ledger ausente vira recusa, não permissão |
 
+### Continuação de 31/08/2026 — base `d51db0a`
+
+| SHA | O quê |
+|---|---|
+| `ff61979` | float derrubava `/subir`; a rota passa a ler `recibo.estado`; uma identidade só; `/reconciliar` como rota |
+| `c6b6a86` | a prova de concorrência para de passar quando não houve concorrência |
+| `ae10e5a` | a tela distingue recusa de ignorância, e mostra o carimbo |
+| `9208188` | correções dos 8 achados da 1ª revisão Codex Sol (o crítico: o carimbo entrava na identidade) |
+| `2d39ae2` | **v10_04** — a saída do indeterminado passa a existir de fato |
+| `8896353` | P05-T11 continua parcial, com evidência precisa |
+| `1f115f6` | correções dos 5 achados da 2ª revisão (o alto: minha própria migration apagava guardas) |
+| `b4a42fa` | a evidência registra também o defeito que eu introduzi |
+
 ## 2. Arquivos
 
 **Novos:** `supabase/migrations/v10_03_recibo_atomico.sql` (992) ·
@@ -39,6 +52,18 @@
 | SQL v10 | `./scripts/provar-ciclo-v10.sh` | ciclo verde | ciclo verde |
 | SQL v10_03 | `./scripts/provar-ledger-v10-03.sh` | *(não existia)* | **56 provas verdes** |
 | Higiene | `git diff --check` | limpo | limpo |
+
+### Gates da continuação de 31/08/2026 (baseline `d51db0a`)
+
+| Gate | Comando | Baseline | Depois |
+|---|---|---|---|
+| Backend + engine | `backend/.venv/bin/python -m pytest backend/tests volc_ads -q` | 2223 passed, 53 skipped | **2261 passed, 53 skipped** |
+| SQL ledger | `bash scripts/provar-ledger-v10-03.sh` | 52 provas | **85 provas, 0 falhas** |
+| QG focal | `npx vitest run src/features/work-road` | 22 passed, **1 failed** | **23 passed** |
+| Frontend | `npx vitest run` | 1106 passed, 1 falha herdada | **1107 passed, 3 skipped** |
+| Tipos | `npx tsc --noEmit -p tsconfig.app.json` | 76 erros | **76 erros** |
+| Build | `npm run build` | verde | **verde** |
+| CLI aposentado | `pytest volc_ads/testes_subir.py` | 3 passed | **6 passed** |
 
 As 3 falhas e os 8 arquivos com erro de coleta do vitest foram medidos **na árvore limpa,
 com `git stash`**, e são idênticos antes e depois: herdados, não tocados por esta entrega.
@@ -83,7 +108,9 @@ Nenhum dos 76 erros de tipo está na superfície de lançamento ou diagnóstico.
 
 ## 6. Decisões que sobraram para o dono
 
-1. **D1 ampliado** — aplicar v10_01 (+v10_02 opcional) **e v10_03**.
+1. **D1 ampliado e DECIDIDO em 31/08/2026** — aplicar **v10_01, v10_03 e v10_04**. A
+   `v10_02` ficou explicitamente fora da janela: é autogestão T1 e não participa do
+   caminho `/subir`.
 2. **Reenvio depois de `sem_resposta`** — hoje é impossível por construção. Afrouxar é
    mexer numa guarda de segurança; ver `ROLLBACK-…md` §3.
 3. **D4 e D10** continuam sendo pré-condição de qualquer lançamento real.
@@ -121,31 +148,39 @@ CHECK de quantidade mascarando a guarda anunciada; e a classe 22 tratada em bloc
 diferente, com permissão de executar os scripts de prova, ainda não aconteceu. Ela não é
 substituível pelo que fiz sozinho.
 
-## 7. Limitação confirmada da invariante — a porta que continua aberta
+## 7. A porta paralela do CLI — FECHADA em 31/08/2026
 
-**A garantia "nenhuma mutação sem recibo" vale para a rota HTTP, não para o processo.**
+**Era a limitação confirmada desta entrega, e deixou de ser.**
 
-`volc_ads/subir.py:1310-1352` expõe um CLI que chama `subir()` diretamente:
+`volc_ads/subir.py` expunha `python -m volc_ads.subir --subir`, que chamava `subir()`
+direto: sem ledger, sem política do canário, sem portão de escopo e sem recibo. Uma
+campanha criada por ali nasce existindo na conta do Google e não existindo no VOLC O.S. —
+a que ninguém consegue reconciliar depois, porque não há chave, item nem recibo para
+procurar. As quatro camadas contra a segunda campanha vivem no banco, e o atalho passava
+por fora de todas.
 
-```bash
-python -m volc_ads.subir --subir --conta <id> --mcc <id> --motivo "..."
-```
+A trava de dois fatores era uma barreira real, mas o que ela protegia era uma **condição
+operacional que dependia de disciplina humana** — e uma pré-condição que depende de
+alguém lembrar não é uma garantia.
 
-Esse caminho **não passa** pelo ledger, pela política do canário, pelo portão de
-escopo nem por qualquer recibo. Ele exige a trava de dois fatores (`destravar()` no
-código **e** `FORGE_PERMITIR_ESCRITA=1` no ambiente), que é uma barreira real e
-deliberada — mas quem tiver shell e a trava aberta cria campanha sem rastro local,
-exatamente o objeto que esta sprint existe para eliminar.
+**Decisão de produto do dono (31/08/2026): a escrita pelo CLI foi aposentada.**
 
-O que **já** protege: `--subir` exige `--conta` explícita, então o default
-`CONTA_PROVA = 8017851692` (Crédito Up) só vale para `--dry`, que não escreve.
+- `--subir` falha fechado com código de saída **2**;
+- a recusa acontece **antes** de `preparar()`, que é quem constrói o cliente do Google e
+  roda `validate_only`. Recusar depois dele seria recusar tarde: o processo já teria
+  autenticado e falado com a API. A ordem é a regra, e é ela que o teste mede;
+- a mensagem aponta a porta certa: criação real é `POST /api/trafego/subir`;
+- **`--dry` foi preservado** — ele monta o grafo e roda `validate_only`, não escreve nada,
+  e continua sendo a forma certa de conferir um plano pelo terminal;
+- a biblioteca interna (`subir()`, `preparar()`, os estados do recibo) permanece: é ela
+  que o backend usa. O que saiu foi a porta de linha de comando, não o motor;
+- **não** foi criada uma segunda implementação do ledger no CLI. Ele deixou de escrever,
+  e ponto — um CLI que virasse cliente da rota seria uma terceira superfície para manter.
 
-**Não foi corrigido aqui, de propósito.** `volc_ads/` está fora do ownership
-declarado em S1 §6, e a correção é uma decisão de produto entre duas opções:
-aposentar o caminho de escrita do CLI, ou fazê-lo atravessar o ledger. Expandir
-`allowed_paths` no meio da execução era proibido pelo enquadramento da missão.
-
-Consta como pré-condição operacional em `PREFLIGHT-GOOGLE-ADS-CANARIO.md` §2.
+**Prova:** `volc_ads/testes_subir.py::prova_cli_subir_aposentado_nao_toca_google_nem_com_trava_aberta`
+roda com **`FORGE_PERMITIR_ESCRITA=1`** — a trava ambiental aberta — e derruba o teste se
+`preparar`, `mutar`, `validar_mutacoes`, `cliente` ou `subir` forem alcançados. Fechar a
+porta só com a trava fechada seria fechá-la exatamente quando ela não precisa estar.
 
 ## 8. Divergências registradas, não resolvidas em silêncio
 

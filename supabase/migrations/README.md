@@ -509,11 +509,64 @@ a executar, porque o ramo anterior já cobria o caso.
 
 ## Série v10 — ciclo de criação e autogestão T1 · **NENHUMA APLICADA**
 
+> Janela autorizada em 31/08/2026: **v10_01, v10_03 e v10_04**. A `v10_02`
+> ficou deliberadamente de fora — é autogestão T1 e não participa do caminho
+> `/subir`. Nem a v10_03 nem a v10_04 dependem dela.
+
 | Arquivo | sha256 | Linhas | Estado | Rollback |
 |---|---|---|---|---|
 | `v10_01_intencao_e_lote.sql` | `827e8caae24b088f…` | 1950 | **não aplicada** | `v10_01_rollback.sql` (`b75eb90b09447493…`) |
 | `v10_02_autogestao.sql` | `124eac489c9d3bb8…` | 1722 | **não aplicada** | `v10_02_rollback.sql` (`37a0f0e560a940c1…`) |
 | `v10_03_recibo_atomico.sql` | `bdb26eed7da08b64…` | 992 | **não aplicada** | `v10_03_rollback.sql` (`b1c9d6598bd0bf52…`) |
+| `v10_04_saida_do_indeterminado.sql` | `9122135ac98de62e…` | 384 | **não aplicada** | `v10_04_rollback.sql` (`eb93e200b66cf6df…`) |
+
+### v10_04 — a saída do indeterminado, que não existia (31/08/2026)
+
+A v10_03 entregou `trafego_ledger_reconciliar` como única saída de um item
+`indeterminado`. Ela **nunca poderia ter funcionado** no caminho para o qual foi
+escrita, e isso passou por três revisões sem ser visto:
+
+1. a chamada de criação não responde;
+2. `trafego_ledger_fechar(...,'sem_resposta')` põe o item em `indeterminado` **e o
+   lote em `interrompido`**;
+3. a reconciliação tenta `UPDATE trafego_lote SET estado='concluido' WHERE ...
+   estado IN ('executando','interrompido')`;
+4. `trafego_lote_estado_valido` (v10_01) recusa: `interrompido->concluido` não
+   está na lista de transições permitidas;
+5. a exceção **aborta a transação inteira** — nem a verificação fica gravada.
+
+Duas migrations discordavam sobre a máquina de estados, e a discordância só
+aparecia no único caminho que importa. Todo item indeterminado ficava travado
+sem saída que não fosse `UPDATE` à mão — exatamente o que o comentário da própria
+função diz que não pode existir.
+
+A prova `provar-ledger-v10-03.sh` não pegava porque o bloco J reconciliava um item
+cujo lote ainda estava `executando`: o caso fácil, que nunca acontece depois de
+uma indeterminação. Os blocos **J2** (reproduz o defeito com a v10_03 sozinha),
+**J3** (aplica a v10_04 e prova a saída), **J4** (posse), **J5** (as guardas da
+v10_01 sobreviveram) e **J6** (lote com irmão em aberto não conclui) fecham isso.
+
+A v10_04 traz três coisas, e nada além delas:
+
+- `interrompido->concluido` na máquina de estados — **uma** transição, não duas:
+  `interrompido->concluido_com_falhas` foi cogitada e removida por não ter
+  chamador nenhum;
+- a verificação passa a apontar para o recibo do item mesmo quando ele já fechou,
+  sem o qual a auditoria perde o fio entre "não respondeu" e "conferi e estava lá";
+  um recibo já fechado **continua fechado** — ele diz o que era verdade na hora;
+- a reconciliação confere que o item pertence à conta informada, e `achou=true`
+  passa a **exigir** `p_customer_id` (antes a guarda se desligava sozinha quando o
+  campo era omitido).
+
+⚠️ **O que quase deu errado nela.** A primeira versão reescreveu
+`trafego_lote_estado_valido` com `CREATE OR REPLACE` copiando só a lista de
+transições e parando no `RETURN NEW` — apagando em silêncio a imutabilidade da
+aprovação, a identidade do lote, a monotonicidade da leitura de quota e o carimbo
+de `atualizado_em`. A verificação escrita junto não pegava, porque procurava a
+substring da transição nova e a encontrava. Uma migration que acrescenta uma linha
+e apaga quatro guardas não é incremental; é uma reescrita disfarçada. O arquivo
+hoje carrega o corpo completo, a verificação exige as quatro guardas pelo texto, e
+o bloco J5 prova cada uma contra o banco.
 
 ⚠️ **Os hashes mudaram em 26/08/2026**, depois da auditoria adversarial. Quinze
 achados foram confirmados por céticos independentes e corrigidos; cinco deles são
