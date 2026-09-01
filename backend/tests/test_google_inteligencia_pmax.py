@@ -17,9 +17,11 @@ deste arquivo abre socket.
 from __future__ import annotations
 
 import ast
+import json
 import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -174,7 +176,7 @@ def linha_desempenho_grupo(
     return row
 
 
-def linha_recomendacao(campaign_id=CAMPANHA_PMAX, *, forca="POOR"):
+def linha_recomendacao(campaign_id=CAMPANHA_PMAX):
     row = _row()
     row.recommendation.resource_name = (
         f"customers/{CONTA}/recommendations/{campaign_id}~IMPROVE"
@@ -182,10 +184,9 @@ def linha_recomendacao(campaign_id=CAMPANHA_PMAX, *, forca="POOR"):
     row.recommendation.type_ = "IMPROVE_PERFORMANCE_MAX_AD_STRENGTH"
     row.recommendation.campaign = f"customers/{CONTA}/campaigns/{campaign_id}"
     row.recommendation.dismissed = False
-    row.recommendation.improve_performance_max_ad_strength_recommendation.asset_group = (
-        f"customers/{CONTA}/assetGroups/{GRUPO_A}"
-    )
-    row.recommendation.improve_performance_max_ad_strength_recommendation.ad_strength = forca
+    # `improve_performance_max_ad_strength_recommendation.*` NAO e preenchido: a
+    # v25 real recusa os dois campos, entao a consulta parou de pedi-los e uma
+    # resposta real nao os traria. Um duble mais generoso que a API mentiria.
     return row
 
 
@@ -208,6 +209,70 @@ def classificar_gaql(gaql: str) -> str:
         "asset_group_signal": "pmax_sinais",
         "recommendation": "pmax_recomendacoes",
     }.get(recurso, recurso)
+
+
+# ---------------------------------------------------------------------------
+# a leitura real de 01/09/2026, transformada em fixture
+# ---------------------------------------------------------------------------
+
+#: Artefato sanitizado da leitura real. Fonte destes campos, e nao ilustracao.
+RESUMO_DA_LEITURA_REAL = (
+    ROOT / "docs/closure/hermes-p04-t07-pmax-real-read-v1/REAL-READ-SUMMARY.json"
+)
+
+#: Os NOVE campos que a v25 real recusou com `query_error: UNRECOGNIZED_FIELD`,
+#: copiados das mensagens sanitizadas do artefato. Todos existem nos descriptors
+#: do SDK v25 instalado — e e exatamente por isso que so a leitura real os pegou.
+CAMPOS_RECUSADOS_REAIS = (
+    "asset_group.asset_coverage.ad_strength_action_items.action_item_type",
+    "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type",
+    "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count",
+    "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement",
+    "asset_group_asset.primary_status_details.status",
+    "asset_group_asset.primary_status_details.reason",
+    "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons",
+    "recommendation.improve_performance_max_ad_strength_recommendation.asset_group",
+    "recommendation.improve_performance_max_ad_strength_recommendation.ad_strength",
+)
+
+#: O campo adjudicado por OUTRA causa, e por outro caminho: GoogleAdsFieldService
+#: mais GAQL minima real. Ele nao entra na lista acima — a coleta ja nao o pedia.
+CAMPO_NAO_SUPORTADO_REAL = "asset_group_asset.performance_label"
+
+CODIGO_DE_ERRO_REAL = "query_error: UNRECOGNIZED_FIELD "
+
+
+def _campos_do_select(gaql):
+    """Campos projetados, um a um. Comparar por campo, nunca por substring."""
+
+    normal = " ".join(gaql.split())
+    return {
+        campo.strip()
+        for campo in normal[len("SELECT "):normal.upper().index(" FROM ")].split(",")
+        if campo.strip()
+    }
+
+
+def _mensagem_unrecognized(campos):
+    """A frase da v25 real, com a mesma forma — inclusive singular e plural."""
+
+    lista = ", ".join(f"'{campo}'" for campo in campos)
+    if len(campos) == 1:
+        return f"Unrecognized field in the query: {lista}."
+    return f"Unrecognized fields in the query: {lista}."
+
+
+class _FalhaUnrecognizedField(Exception):
+    """Imita a forma do GoogleAdsException real que o coletor sabe sanitizar."""
+
+    def __init__(self, campos):
+        mensagem = _mensagem_unrecognized(campos)
+        super().__init__(mensagem)
+        self.campos = tuple(campos)
+        self.request_id = "request-id-sanitizado"
+        self.failure = SimpleNamespace(errors=[
+            SimpleNamespace(error_code=CODIGO_DE_ERRO_REAL, message=mensagem),
+        ])
 
 
 class _Lote:
@@ -238,17 +303,40 @@ class _GoogleAdsServiceDuble:
         raise AttributeError(nome)
 
 
+class _GoogleAdsServiceComoV25Real(_GoogleAdsServiceDuble):
+    """Recusa a consulta pelo MESMO criterio da v25 real: o campo pedido.
+
+    A leitura real de 01/09/2026 nao caiu por transporte nem por permissao —
+    caiu porque o endpoint nao reconhece campos que os descriptors do SDK
+    descrevem. Um duble que so devolvesse linhas nunca teria pego isso.
+    """
+
+    def search_stream(self, *, customer_id, query):
+        recusados = [
+            campo for campo in CAMPOS_RECUSADOS_REAIS
+            if campo in _campos_do_select(query)
+        ]
+        if recusados:
+            raise _FalhaUnrecognizedField(recusados)
+        return super().search_stream(customer_id=customer_id, query=query)
+
+
 class ClienteGoogleDuble:
     """Lista branca deliberada: a coleta PMax so pode falar com uma superficie."""
 
-    def __init__(self, respostas=None):
+    def __init__(self, respostas=None, *, como_v25_real=False):
         self.respostas = dict(respostas or {})
         self.registro: dict[str, list] = {}
+        self.como_v25_real = como_v25_real
 
     def get_service(self, nome):
         self.registro.setdefault("servicos", []).append(nome)
         if nome == "GoogleAdsService":
-            return _GoogleAdsServiceDuble(self.respostas, self.registro)
+            classe = (
+                _GoogleAdsServiceComoV25Real if self.como_v25_real
+                else _GoogleAdsServiceDuble
+            )
+            return classe(self.respostas, self.registro)
         raise AssertionError(f"servico fora da lista branca: {nome}")
 
     def get_type(self, nome):  # pragma: no cover - a coleta PMax nao monta request
@@ -302,10 +390,11 @@ def _alvo(linha=PMAX_PAUSADA):
     )
 
 
-def coletor(respostas=None, inventario=INVENTARIO, **opcoes):
+def coletor(respostas=None, inventario=INVENTARIO, *, como_v25_real=False, **opcoes):
     persistencia = PersistenciaDuble(inventario)
     google = ClienteGoogleDuble(
-        RESPOSTAS_COMPLETAS if respostas is None else respostas
+        RESPOSTAS_COMPLETAS if respostas is None else respostas,
+        como_v25_real=como_v25_real,
     )
     motor = ColetorGoogleInteligencia(
         persistencia=persistencia, cliente_google=google, **opcoes
@@ -596,7 +685,9 @@ def test_g_assets_sem_prerequisito_falha_em_vez_de_fingir_vazio():
 
     assert assets["estado"] == "falhou"
     assert assets["quantidade"] is None
-    assert assets["erro_codigo"] == pmax.CODIGO_PREREQUISITO
+    assert assets["erro_codigo"] == pmax.causa_de_dependencia(
+        pmax.FAMILIA_ASSET_GROUP_ASSETS
+    )
     # E nao foi buscar TODOS os assets da conta como consolo.
     assert "pmax_assets" not in [c for _, c in google.registro["consultas"]]
 
@@ -694,6 +785,297 @@ def test_h_ad_strength_ausente_nao_recebe_valor():
     assert ausente["estado_valor"] == "ausente"
     assert ausente["valor_texto"] is None
     assert ausente["valor_numerico"] is None
+
+
+# ---------------------------------------------------------------------------
+# R. o que a v25 REAL recusou (leitura de 01/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def test_r_a_lista_de_campos_recusados_vem_do_artefato_da_leitura_real():
+    """A fixture nao pode divergir da evidencia que a produziu.
+
+    Se alguem editar o artefato, ou acrescentar um campo a lista sem leitura
+    real que o justifique, os dois lados param de bater e este teste cai.
+    """
+
+    resumo = json.loads(RESUMO_DA_LEITURA_REAL.read_text())
+
+    nomeados = set()
+    for familia in resumo["families"]:
+        erro = familia.get("error")
+        if erro is None:
+            continue
+        for google_error in erro["google_errors"]:
+            assert "UNRECOGNIZED_FIELD" in google_error["code"]
+            nomeados |= set(
+                re.findall(r"'([a-z_][a-z0-9_.]*)'", google_error["message"])
+            )
+    assert nomeados == set(CAMPOS_RECUSADOS_REAIS)
+
+    # E o campo adjudicado por FieldService continua sendo outra pergunta, com
+    # outra causa: `NOT_SUPPORTED_IN_V25` nao e `UNRECOGNIZED_FIELD`.
+    performance = resumo["performance_label"]
+    assert performance["adjudication"] == "NOT_SUPPORTED_IN_V25"
+    assert CAMPO_NAO_SUPORTADO_REAL not in nomeados
+
+
+def test_r_o_codigo_nomeia_exatamente_os_campos_que_a_leitura_real_recusou():
+    assert set(pmax.CAMPOS_RECUSADOS_PELA_API_V25) == set(CAMPOS_RECUSADOS_REAIS)
+    for campo, perda in pmax.CAMPOS_RECUSADOS_PELA_API_V25.items():
+        assert perda.strip(), f"{campo} saiu da consulta sem declarar a perda"
+
+    # As duas listas nao se misturam: causa diferente, prova diferente.
+    assert set(pmax.CAMPOS_NAO_SUPORTADOS_V25) == {CAMPO_NAO_SUPORTADO_REAL}
+    assert not (
+        set(pmax.CAMPOS_NAO_SUPORTADOS_V25) & set(pmax.CAMPOS_RECUSADOS_PELA_API_V25)
+    )
+
+
+def test_r_nenhuma_consulta_pede_campo_que_a_v25_real_recusou():
+    motor, _, google = coletor()
+    motor.executar_alvo_pmax(_alvo())
+
+    assert google.registro["gaql"]
+    for gaql in google.registro["gaql"]:
+        pedidos = _campos_do_select(gaql) & set(CAMPOS_RECUSADOS_REAIS)
+        assert not pedidos, f"consulta ainda pede {sorted(pedidos)}"
+
+
+def test_r_a_recusa_real_deixa_de_derrubar_familia():
+    """A contraprova central: o duble recusa como a v25 real recusou.
+
+    Antes da correcao, `PMAX_ASSET_GROUPS`, `PMAX_ASSET_GROUP_ASSETS` e
+    `PMAX_RECOMENDACOES_FORCA` caiam aqui — e levavam as dependentes junto.
+    """
+
+    motor, _, _ = coletor(como_v25_real=True)
+    resultado = motor.executar_alvo_pmax(_alvo())
+
+    for familia, coleta in por_familia(resultado).items():
+        assert coleta["estado"] != "falhou", (familia, coleta["erro_detalhe"])
+        assert "UNRECOGNIZED_FIELD" not in (coleta["erro_detalhe"] or "")
+    assert set(estados(resultado)) == set(pmax.FAMILIAS_PMAX)
+
+
+def test_r_o_duble_recusaria_a_consulta_antiga_com_a_mensagem_real():
+    """O duble so vale como prova se ele AINDA reprovaria o que era errado."""
+
+    antiga = (
+        "SELECT asset_group.id, "
+        "asset_group.asset_coverage.ad_strength_action_items.action_item_type "
+        "FROM asset_group WHERE campaign.id = 1"
+    )
+    google = ClienteGoogleDuble({}, como_v25_real=True)
+    servico = google.get_service("GoogleAdsService")
+
+    with pytest.raises(_FalhaUnrecognizedField) as caiu:
+        servico.search_stream(customer_id=CONTA, query=antiga)
+    assert "Unrecognized field in the query" in str(caiu.value)
+    assert caiu.value.failure.errors[0].error_code == CODIGO_DE_ERRO_REAL
+
+
+def test_r_campo_removido_sem_equivalente_declara_a_perda_de_cobertura():
+    """Campo que sai sem substituto vira buraco NOMEADO, nao silencio."""
+
+    motor, _, _ = coletor()
+    resultado = motor.executar_alvo_pmax(_alvo())
+    familias = por_familia(resultado)
+
+    declarados = set()
+    for familia, campos in pmax.CAMPOS_RECUSADOS_POR_FAMILIA.items():
+        payload = familias[familia]["payload"]["campos_recusados_pela_api"]
+        assert set(payload) == set(campos)
+        assert all(perda.strip() for perda in payload.values())
+        declarados |= set(payload)
+    assert declarados == set(CAMPOS_RECUSADOS_REAIS)
+
+    # E o resumo que o humano le tambem carrega o que se perdeu.
+    assert set(
+        pmax.resumo_sanitizado(resultado)["cobertura_perdida"]
+    ) == set(CAMPOS_RECUSADOS_REAIS)
+
+
+def test_r_metrica_de_campo_recusado_nao_vira_ausencia_observada():
+    """`ausente` diz "perguntei e nao veio". Ninguem perguntou."""
+
+    motor, _, _ = coletor()
+    resultado = motor.executar_alvo_pmax(_alvo())
+
+    for coleta in resultado["coletas"]:
+        assert not [
+            m for m in coleta["metricas"]
+            if m["nome"] == "asset_coverage_action_items"
+        ]
+
+
+def test_r_pedir_de_novo_um_campo_recusado_explode_na_construcao():
+    reintroduz = (
+        "SELECT asset_group.id, "
+        "asset_group.asset_coverage.ad_strength_action_items.action_item_type "
+        "FROM asset_group"
+    )
+    with pytest.raises(pmax.ErroCampoRecusadoNaConsulta, match="action_item_type"):
+        pmax.assert_sem_campos_recusados(reintroduz)
+
+    # Podada, a mesma consulta atravessa — e nada foi trocado por outro campo.
+    assert pmax.sem_campos_recusados(reintroduz) == (
+        "SELECT asset_group.id FROM asset_group"
+    )
+
+
+def test_r_a_poda_nao_derruba_campo_de_nome_parecido():
+    """`asset_group.ad_strength` sobrevive; o campo recusado e outro."""
+
+    podada = pmax.query_asset_groups(CAMPANHA_PMAX)
+    projetados = _campos_do_select(podada)
+
+    assert "asset_group.ad_strength" in projetados
+    assert "asset_group.primary_status_reasons" in projetados
+    assert "asset_group.id" in projetados
+    assert not (projetados & set(CAMPOS_RECUSADOS_REAIS))
+
+
+# ---------------------------------------------------------------------------
+# S. familia dependente de leitura que caiu NAO e vazio confirmado
+# ---------------------------------------------------------------------------
+
+
+def _comum_de_projecao():
+    from volc_ads.inteligencia_google.persistencia import CampanhaAtiva
+
+    return {
+        "campanha": CampanhaAtiva(
+            volc_campaign_id=PMAX_PAUSADA["volc_campaign_id"],
+            campaign_id=CAMPANHA_PMAX, customer_id=CONTA,
+            nome=PMAX_PAUSADA["nome"], canal="PERFORMANCE_MAX",
+            estado_externo="PAUSED",
+        ),
+        "login_customer_id": "6016739364",
+        "bucket": "daily:2026-09-01",
+        "janela": (date(2026, 8, 19), date(2026, 9, 1)),
+    }
+
+
+def test_s_projecao_sem_prerequisito_lido_nao_produz_vazio_confirmado():
+    """O buraco exato da primeira leitura real: "sem ids" virou "sem assets".
+
+    A decisao precisa morar na PROJECAO: qualquer chamador que so tenha "nao
+    tenho ids" cairia no mesmo engano se ela morasse apenas no coletor.
+    """
+
+    comum = _comum_de_projecao()
+
+    assets = pmax.documento_assets(linhas=[], pedidos=None, **comum)
+    assert assets.estado.value == "falhou"
+    assert assets.quantidade is None
+    assert assets.erro_codigo == pmax.causa_de_dependencia(
+        pmax.FAMILIA_ASSET_GROUP_ASSETS
+    )
+
+    sinais = pmax.documento_sinais(linhas=[], grupos_conhecidos=None, **comum)
+    assert sinais.estado.value == "falhou"
+    assert sinais.quantidade is None
+    assert sinais.erro_codigo == pmax.causa_de_dependencia(pmax.FAMILIA_ASSET_GROUPS)
+
+    # E a lista VAZIA continua sendo vazio observado: sao dois fatos diferentes.
+    assert pmax.documento_assets(
+        linhas=[], pedidos=[], **comum
+    ).estado.value == "vazio_confirmado"
+    assert pmax.documento_sinais(
+        linhas=[], grupos_conhecidos=[], **comum
+    ).estado.value == "vazio_confirmado"
+
+
+def test_s_prerequisito_ausente_com_linhas_e_contradicao_recusada():
+    """Nao ha como ter linha de uma consulta que nunca foi feita."""
+
+    comum = _comum_de_projecao()
+    with pytest.raises(ValueError):
+        pmax.documento_assets(
+            linhas=[{"asset": {"id": ASSET_TITULO}}], pedidos=None, **comum,
+        )
+    with pytest.raises(ValueError):
+        pmax.documento_sinais(
+            linhas=[{"asset_group_signal": {}}], grupos_conhecidos=None, **comum,
+        )
+
+
+@pytest.mark.parametrize(
+    "consulta,recusados,dependente,prerequisito",
+    [
+        (
+            "pmax_asset_group_assets",
+            ("asset_group_asset.primary_status_details.status",),
+            pmax.FAMILIA_ASSETS, pmax.FAMILIA_ASSET_GROUP_ASSETS,
+        ),
+        (
+            "pmax_asset_groups",
+            ("asset_group.asset_coverage.ad_strength_action_items.action_item_type",),
+            pmax.FAMILIA_SINAIS, pmax.FAMILIA_ASSET_GROUPS,
+        ),
+    ],
+)
+def test_s_dependente_de_familia_caida_declara_causa_estruturada(
+    consulta, recusados, dependente, prerequisito,
+):
+    """A familia cai pelo erro REAL, e a dependente diz de quem ela dependia."""
+
+    respostas = dict(RESPOSTAS_COMPLETAS)
+    respostas[consulta] = _FalhaUnrecognizedField(recusados)
+    motor, _, _ = coletor(respostas)
+    resultado = motor.executar_alvo_pmax(_alvo())
+    coleta = por_familia(resultado)[dependente]
+
+    assert coleta["estado"] != "vazio_confirmado"
+    assert coleta["quantidade"] is None
+    assert coleta["erro_codigo"] == pmax.causa_de_dependencia(prerequisito)
+    assert coleta["payload"]["dependia_de"] == prerequisito
+    # A causa e legivel por maquina: prefixo fixo, familia depois dos dois pontos.
+    prefixo, nomeada = coleta["erro_codigo"].split(":", 1)
+    assert prefixo == pmax.CODIGO_DEPENDENCIA_FALHOU
+    assert nomeada in pmax.FAMILIAS_PMAX
+
+
+def test_s_a_dependencia_declarada_e_a_que_o_coletor_usa():
+    """Um mapa de dependencia que ninguem consulta e documentacao, nao contrato."""
+
+    assert pmax.DEPENDENCIA_POR_FAMILIA == {
+        pmax.FAMILIA_ASSETS: pmax.FAMILIA_ASSET_GROUP_ASSETS,
+        pmax.FAMILIA_SINAIS: pmax.FAMILIA_ASSET_GROUPS,
+    }
+    for dependente, prerequisito in pmax.DEPENDENCIA_POR_FAMILIA.items():
+        indice = pmax.FAMILIAS_PMAX.index
+        assert indice(prerequisito) < indice(dependente), (
+            "o prerequisito precisa ser lido antes da familia que depende dele"
+        )
+
+    respostas = dict(
+        RESPOSTAS_COMPLETAS,
+        pmax_asset_groups=ConnectionError("estrutura caiu"),
+        pmax_asset_group_assets=ConnectionError("vinculos caiu"),
+    )
+    motor, _, _ = coletor(respostas)
+    coletas = por_familia(motor.executar_alvo_pmax(_alvo()))
+    for dependente, prerequisito in pmax.DEPENDENCIA_POR_FAMILIA.items():
+        assert coletas[dependente]["erro_codigo"] == pmax.causa_de_dependencia(
+            prerequisito
+        )
+
+
+def test_s_dependencia_caida_nao_conta_como_familia_observada():
+    """Prontidao nao pode ficar verde com familia que ninguem leu."""
+
+    respostas = dict(
+        RESPOSTAS_COMPLETAS, pmax_asset_groups=ConnectionError("estrutura caiu"),
+    )
+    motor, _, _ = coletor(respostas, tipos_sinal_do_ledger=VOCABULARIO_AMPLIADO)
+    resultado = motor.executar_alvo_pmax(_alvo())
+    prontidao = _fotografia(resultado)
+
+    assert prontidao.provada is False
+    assert pmax.FAMILIA_SINAIS in prontidao.faltando
+    assert pmax.FAMILIA_ASSET_GROUPS in prontidao.faltando
 
 
 # ---------------------------------------------------------------------------
