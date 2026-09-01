@@ -1,0 +1,161 @@
+{
+  "_leia_isto": [
+    "Prova durável de que cada alegação dos anúncios do canário existe na página",
+    "de destino. Sem isto, 'a copy é sustentada pela LP' seria uma afirmação",
+    "minha, não um fato conferível — e a revisão externa não conseguiu refazer o",
+    "fetch para checar.",
+    "",
+    "O que este arquivo NÃO faz: julgar se a página é verdadeira. Ele prova que a",
+    "página AFIRMA aquilo. A veracidade do que o publisher escreveu é outra",
+    "responsabilidade, e não é do canário."
+  ],
+  "url": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+  "observed_at": "2026-09-01T06:03:14-03:00",
+  "http_status": 200,
+  "conteudo_sha256": "caed08ab4f9011253c7117a98371d3c6f752093d0995dfc254544456342bb14d",
+  "conteudo_bytes": 164762,
+  "texto_extraido_sha256": "b7c510b542f51099aca00968e45da09ca0ff6df152bcb64447dd1736cc37aa5a",
+  "texto_extraido_chars": 4109,
+  "snapshot": "docs/closure/search-production-closure-v1/EVIDENCIA-LANDING-PAGE.txt",
+  "situacao": "verified",
+  "situacao_nota": "verified = a página foi relida em observed_at e cada fato abaixo foi localizado no texto por busca literal. Se uma releitura futura falhar, marque source_unverified e BLOQUEIE o mutate: uma alegação cuja fonte não responde deixou de ser verificável, mesmo que já tenha sido.",
+  "fatos_usados_nos_anuncios": [
+    {
+      "fato": "A maquininha processa débito, crédito, aproximação (NFC) e Pix.",
+      "usado_em": [
+        "headlines[3] Débito, Crédito e Pix",
+        "callouts[1]",
+        "snippet.values (os cinco tipos)",
+        "descriptions[0]"
+      ],
+      "origem": "cartão é o terminal eletrônico que processa pagamentos via débito, crédito, aproximação (NFC) e Pix. Ela se tornou indispensável porque a maior parte das trans",
+      "situacao": "verified"
+    },
+    {
+      "fato": "As taxas variam conforme o faturamento mensal e o modelo escolhido.",
+      "usado_em": [
+        "headlines[2] Guia de Taxas e Modelos",
+        "descriptions[1]"
+      ],
+      "origem": "5 anos ( PagBank ). 3 pontos que você precisa saber 1️⃣ As taxas variam conforme o faturamento mensal e o modelo escolhido, existindo opções muito competitivas no mercado c",
+      "situacao": "verified"
+    },
+    {
+      "fato": "O prazo de recebimento afeta diretamente o custo da transação.",
+      "usado_em": [
+        "headlines[9] Entenda o Prazo de Recebimento",
+        "descriptions[3]",
+        "sitelinks[5] Prazo de Recebimento"
+      ],
+      "origem": "xa de 0.57 % oferecida pelas Maquininhas Ton ( Ton ). 2️⃣ O prazo de recebimento do dinheiro afeta diretamente o custo da transação, havendo taxas diferenciadas para cada modalid",
+      "situacao": "verified"
+    },
+    {
+      "fato": "Existem planos com taxas promocionais temporárias ou progressivas.",
+      "usado_em": [
+        "headlines[12] Compare Antes de Escolher",
+        "sitelinks[1] Taxas e Custos"
+      ],
+      "origem": "ercado Pago ). 3️⃣ É fundamental analisar se o plano possui taxas promocionais temporárias ou progressivas, comparando-as com taxas padrão como a de 0.58 % da Minizin",
+      "situacao": "verified"
+    },
+    {
+      "fato": "Autônomos podem vender sem CNPJ, usando CPF para credenciamento.",
+      "usado_em": [
+        "headlines[8] Venda Sem Ter CNPJ",
+        "descriptions[2]",
+        "callouts[3]"
+      ],
+      "origem": "te pode se beneficiar? Autônomos e Profissionais Liberais : Podem vender mesmo sem CNPJ, utilizando o CPF para credenciamento na maioria das empresas. Microempreende",
+      "situacao": "verified"
+    },
+    {
+      "fato": "MEIs têm acesso a planos de taxas reduzidas e soluções sem aluguel.",
+      "usado_em": [
+        "headlines[6] Para MEI e Autônomo",
+        "sitelinks[2] Opções Para MEI",
+        "callouts[4]"
+      ],
+      "origem": "esas. Microempreendedores Individuais (MEIs) : Têm acesso a planos de taxas reduzidos e soluções sem aluguel para impulsionar o negócio. Empresas de todos os portes : P",
+      "situacao": "verified"
+    },
+    {
+      "fato": "Predominam modelos de compra única, sem mensalidade pelo uso.",
+      "usado_em": [
+        "headlines[5] Sem Aluguel do Aparelho",
+        "sitelinks[3] Sem Aluguel",
+        "callouts[2]"
+      ],
+      "origem": "ninhas de cartão sem aluguel? Sim. Atualmente predominam os modelos de compra única, onde você adquire o aparelho e não paga mensalidades pelo uso. É possível aceitar Pix na maquininha? Sim. A maio",
+      "situacao": "verified"
+    },
+    {
+      "fato": "A maioria dos modelos modernos recebe Pix por QR Code.",
+      "usado_em": [
+        "headlines[4] Aceite Pix por QR Code",
+        "sitelinks[4] Receber por Pix",
+        "callouts[5]",
+        "snippet.values[3]"
+      ],
+      "origem": "dos modelos modernos já vem integrada com a tecnologia para receber pagamentos via Pix por QR Code. Como funciona o recebimento das vendas parceladas? Depende",
+      "situacao": "verified"
+    },
+    {
+      "fato": "É possível receber de forma antecipada em até um dia útil.",
+      "usado_em": [
+        "headlines[10] Receba em Até 1 Dia Útil"
+      ],
+      "origem": "contratado. Você pode optar por receber os valores de forma antecipada (em até um dia útil) ou conforme as parcelas vencem. Agora que você entende o fu",
+      "situacao": "verified"
+    },
+    {
+      "fato": "O cadastro pode ser por CPF ou CNPJ.",
+      "usado_em": [
+        "headlines[7] Cadastro com CPF ou CNPJ",
+        "sitelinks[2].description2"
+      ],
+      "origem": "onal. Para começar, basta definir o perfil do seu negócio e escolher entre o cadastro por CPF ou CNPJ . Vantagens de profissionalizar seus pagamentos Aumento do",
+      "situacao": "verified"
+    },
+    {
+      "fato": "A página é um guia de 2026 para comparar custos reais.",
+      "usado_em": [
+        "headlines[1] Compare Taxas em 2026",
+        "headlines[11] Como Calcular o Custo Real",
+        "headlines[14] Guia Prático de 2026",
+        "callouts[0]",
+        "sitelinks[0] Como Escolher"
+      ],
+      "origem": "guia prático apresenta as informações necessárias para você comparar custos reais e escolher o modelo mais vantajoso de forma segura. O que é",
+      "situacao": "verified"
+    }
+  ],
+  "descartado_de_proposito": {
+    "taxas_numericas": [
+      "0,57%",
+      "0,58%",
+      "0,75%",
+      "1,25%",
+      "1,39%",
+      "1,44%",
+      "1,99%",
+      "2,39%"
+    ],
+    "motivo": "Na página cada uma dessas taxas aparece SEMPRE atrelada a uma marca (Ton, PagBank, Mercado Pago, InfinitePay). Citar o número sem a fonte seria uma alegação flutuante que ninguém pode conferir; citar com a fonte traria marca de terceiro para o anúncio, que é exatamente o que este canário existe para evitar.",
+    "marcas_na_pagina": [
+      "PagBank",
+      "Ton",
+      "Mercado Pago",
+      "Point Pro 3",
+      "Minizinha NFC 2",
+      "InfinitePay",
+      "InfiniteSmart",
+      "T3 Smart"
+    ]
+  },
+  "alegacoes_nao_usadas": {
+    "superlativos": "Nenhum. A página diz 'melhor' no título; os anúncios não repetem.",
+    "garantias": "Nenhuma. A garantia de 5 anos da página é de uma marca específica.",
+    "precos": "Nenhum preço, taxa ou percentual entrou em qualquer asset."
+  }
+}

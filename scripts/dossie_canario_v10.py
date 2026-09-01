@@ -32,8 +32,17 @@ import re
 import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parents[1]
-PAYLOAD = RAIZ / "docs" / "closure" / "search-production-closure-v1" / "canario-v10-payload.json"
-SAIDA = RAIZ / "docs" / "closure" / "search-production-closure-v1" / "DOSSIE-CANARIO-V10.json"
+_D = RAIZ / "docs" / "closure" / "search-production-closure-v1"
+BASE = _D / "canario-v10-provar-base.json"
+APROVADO = _D / "canario-v10-approved-request.json"
+EVIDENCIA_LP = _D / "EVIDENCIA-LANDING-PAGE.json"
+SAIDA = _D / "DOSSIE-CANARIO-V10.json"
+
+#: O motivo que vai ao recibo. `SubirEntrada` exige 10+ caracteres além de
+#: espaços, e ele é a única explicação que sobra quando alguém perguntar,
+#: semanas depois, por que essa campanha existe.
+MOTIVO = ("canario v10 pausado: prova de criacao, ledger, idempotencia, "
+          "politica e reconciliacao")
 
 
 def _ambiente() -> None:
@@ -64,7 +73,10 @@ def principal() -> int:
     from app.seguranca.identidade import Identidade
     from app.trafego import canario, contas as ct
 
-    pedido = json.loads(PAYLOAD.read_text(encoding="utf-8"))
+    pedido = json.loads(BASE.read_text(encoding="utf-8"))
+    # ⚠️ Metadado editorial NÃO viaja no pedido. `_leia_isto` existe para quem
+    # revisa o arquivo, e um corpo HTTP que carrega prosa é um corpo que não é
+    # exatamente o que foi aprovado.
     corpo_http = {k: v for k, v in pedido.items() if not k.startswith("_")}
     identidade = Identidade(sub="dossie", email="tarcisio@agenciavolc.com.br",
                             papel="ADMIN", origem="dossie-canario-v10")
@@ -132,6 +144,29 @@ def principal() -> int:
     # ⚠️ `pop()` esvaziaria o conjunto antes do relatório e faria
     # `marca_estavel` sair False logo depois de a checagem acima ter passado.
     marca = next(iter(marcas))
+
+    # ⚠️ O PEDIDO APROVADO NASCE DE UMA EXECUÇÃO, E NÃO DA MÉDIA DELAS.
+    #
+    # `plano_impressao` é o selo do executor, e ele VARIA por carimbo porque o
+    # nome da campanha carrega o carimbo. `/subir` recusa quando o selo enviado
+    # difere do selo que o preparo recalcula (`body.plano_impressao !=
+    # preparo.selo.impressao`). Então o corpo aprovado precisa carregar o
+    # carimbo E o selo DA MESMA execução — misturar duas execuções produz um
+    # pedido que falha fechado, e por um motivo que ninguém entenderia.
+    escolhida = execucoes[0]
+    corpo_aprovado = dict(corpo_http)
+    corpo_aprovado["carimbo_nome"] = escolhida["carimbo_nome"]
+    corpo_aprovado["plano_impressao"] = escolhida["selo_do_executor"]
+    corpo_aprovado["confirmar_criacao_pausada"] = True
+    corpo_aprovado["motivo"] = MOTIVO
+
+    # Ele precisa ser aceito por `SubirEntrada` AGORA, e não na hora do POST.
+    trafego.SubirEntrada(**corpo_aprovado)
+
+    texto_aprovado = json.dumps(corpo_aprovado, ensure_ascii=False, indent=2,
+                                sort_keys=True) + "\n"
+    APROVADO.write_text(texto_aprovado, encoding="utf-8")
+    approved_sha = hashlib.sha256(texto_aprovado.encode("utf-8")).hexdigest()
     cid, mid = "5478096539", "6016739364"
     url = next(o.ad_group_ad_operation.create.ad.final_urls[0] for o in operacoes
                if o._pb.WhichOneof("operation") == "ad_group_ad_operation")
@@ -161,12 +196,24 @@ def principal() -> int:
         # arquivo conter o hash do commit que o contém. `arvore_suja` diz se
         # havia mudança não commitada no instante da geração: `true` significa
         # que o código exercitado NÃO é exatamente o de `sha_do_codigo`.
-        "sha_do_codigo": os.popen("git -C %s rev-parse HEAD" % RAIZ).read().strip(),
+        # ⚠️ TRÊS COISAS DIFERENTES, e o relatório anterior tratou como uma.
+        #
+        # `code_sha` é o HEAD que EXECUTOU o validate_only. Ele só identifica o
+        # código de verdade quando `arvore_suja` é false — com mudança local
+        # pendente, o commit citado não é o que rodou.
+        #
+        # `artifacts_commit` é o commit que versiona ESTE arquivo, e ele não
+        # pode estar aqui dentro: nenhum arquivo contém o hash do commit que o
+        # contém. Fica `null`, e o handoff informa o valor. Inventar um SHA
+        # autorreferente seria pior que declarar a ausência.
+        "code_sha": os.popen("git -C %s rev-parse HEAD" % RAIZ).read().strip(),
         "arvore_suja": bool(os.popen("git -C %s status --porcelain" % RAIZ).read().strip()),
+        "artifacts_commit": None,
         "sha_nota": (
-            "sha_do_codigo é o HEAD no momento da geração. O commit que versiona "
-            "este arquivo é o seguinte. Se arvore_suja=true, havia mudança local "
-            "não commitada quando o validate_only rodou."),
+            "code_sha é o HEAD que rodou o validate_only, e só o identifica se "
+            "arvore_suja=false. artifacts_commit é null por construção: um "
+            "arquivo não carrega o hash do commit que o versiona — ele é "
+            "informado no handoff."),
         "qualificacao_historica": (
             "Este é o primeiro canário COM O LEDGER v10 COMPLETO. O primeiro "
             "canário Google da casa foi em 28/08/2026, campanha 24183717006, "
@@ -174,7 +221,21 @@ def principal() -> int:
         "conta": {"customer_id": cid, "formatado": "547-809-6539",
                   "label": "Portal Mundo Mais", "login_customer_id": mid,
                   "mcc_formatado": "601-673-9364"},
-        "payload_humano": corpo_http,
+        "provar_base": str(BASE.relative_to(RAIZ)),
+        "approved_request": str(APROVADO.relative_to(RAIZ)),
+        "approved_request_sha256": approved_sha,
+        "approved_request_corpo": corpo_aprovado,
+        "execucao_escolhida": {
+            "carimbo_nome": escolhida["carimbo_nome"],
+            "selo_do_executor": escolhida["selo_do_executor"],
+            "chave_intencao": escolhida["chave_intencao"],
+            "blueprint_sha256": escolhida["blueprint_sha256"],
+            "n_operacoes": escolhida["n_operacoes"],
+        },
+        "evidencia_landing_page": str(EVIDENCIA_LP.relative_to(RAIZ)),
+        "landing_page_situacao": (
+            json.loads(EVIDENCIA_LP.read_text(encoding="utf-8"))["situacao"]
+            if EVIDENCIA_LP.exists() else "source_unverified"),
         "keywords": [{"texto": k.text, "match_type": k.match_type.name} for k in keywords],
         "negative_keywords": [],
         "negatives_assessed": False,
@@ -263,6 +324,16 @@ def principal() -> int:
         "parceiros_desligados": dossie["rede"]["search_partners"] is False,
         "display_desligado": dossie["rede"]["display_expansion"] is False,
         "sem_negativas_inventadas": dossie["negative_keywords"] == [],
+        # ⚠️ Procedência: um artefato de autorização gerado sobre árvore suja
+        # não identifica o código que o produziu.
+        "arvore_limpa": not dossie["arvore_suja"],
+        # ⚠️ A copy só é defensável enquanto a página que a sustenta responde.
+        "landing_page_verificada": dossie["landing_page_situacao"] == "verified",
+        "confirmacao_pausada_no_pedido":
+            corpo_aprovado.get("confirmar_criacao_pausada") is True,
+        "carimbo_no_pedido": bool(corpo_aprovado.get("carimbo_nome")),
+        "selo_do_pedido_bate_com_a_execucao":
+            corpo_aprovado.get("plano_impressao") == escolhida["selo_do_executor"],
     }
     reprovadas = [k for k, ok in exigidas.items() if not ok]
     dossie["gates_do_dossie"] = exigidas
@@ -273,6 +344,8 @@ def principal() -> int:
     SAIDA.write_text(json.dumps(dossie, ensure_ascii=False, indent=2) + "\n",
                      encoding="utf-8")
     print(f"dossie_id: {dossie['dossie_id']}")
+    print(f"approved_request_sha256: {approved_sha}")
+    print(f"→ {APROVADO.relative_to(RAIZ)}")
     print(f"chave_intencao: {dossie['chave_intencao']}")
     print(f"marca: {marca} · operações: {dossie['operacoes']['total']} · "
           f"duplicidade: {dossie['duplicidade']['veredito']}")
