@@ -19,7 +19,7 @@ from google.ads.googleads.client import GoogleAdsClient
 
 from volc_ads import criativo_ponte
 from volc_ads import subir as motor
-from volc_ads.campanha import comum, demand_gen, perfil
+from volc_ads.campanha import comum, demand_gen, perfil, plano
 from volc_ads.campanha.brief import (
     AssetRemotoDemandGen,
     Brief,
@@ -873,3 +873,101 @@ def test_canal_declarado_pelo_builder_nao_supera_o_canal_da_operacao(
     assert "perfil declarou 'DEMAND_GEN', operações declaram 'SEARCH'" in (
         preparo.recusa_local
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# P04-T09 · aceite 4, a metade que faltava: "offline SEM REDE"
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_protos_v25_e_grafo_sao_montados_com_a_rede_FECHADA(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A prova anterior era *offline por convenção*; esta é offline por FORÇA.
+
+    `test_sdk_v25_real_instancia_e_serializa_folhas_e_operacoes` já prova que os
+    tipos v25 existem e serializam, e o fixture de credencial já impede o
+    carregamento do `~/google-ads.yaml`. O que nenhum dos dois provava é que
+    NENHUM socket é aberto no caminho — e o aceite 4 de P04-T09 diz "offline
+    sem rede", não "offline porque ninguém pediu credencial".
+
+    A diferença é operacional: uma sonda que fizesse resolução de DNS ou
+    carregasse metadados por HTTP passaria nos dois testes antigos e falharia
+    numa máquina sem saída — que é exatamente a máquina de um revisor em
+    sandbox, e foi o que impediu a revisão adversarial anterior de reproduzir
+    metade dos achados.
+
+    Aqui `socket.socket` levanta. Se qualquer linha do caminho tentar falar com
+    o mundo, o teste morre com o traceback apontando a linha.
+    """
+    import socket
+
+    def _sem_rede(*_a, **_k):
+        raise AssertionError(
+            "o caminho de montagem tentou abrir um socket — ele precisa ser "
+            "100% offline")
+
+    monkeypatch.setattr(socket, "socket", _sem_rede)
+    monkeypatch.setattr(socket, "create_connection", _sem_rede)
+    monkeypatch.setattr(socket, "getaddrinfo", _sem_rede)
+
+    suporte = demand_gen.sondar_proto_v25()
+    assert suporte.disponivel, suporte.motivo
+
+    ops, resultado = demand_gen.construir(CID, _brief(), login_customer_id=MCC)
+    assert resultado.ok, _erros(resultado)
+    assert all(op._pb.SerializeToString(deterministic=True) for op in ops)
+
+    # E o plano — que é o que a API/tela consomem — também sai com a rede
+    # fechada, incluindo a impressão sha256 das operações.
+    p = demand_gen.planejar(CID, _brief(), login_customer_id=MCC)
+    assert p.prontidao.monta is True
+    assert p.n_bytes_operacoes > 0
+    assert len(p.impressao) == 64
+
+
+def test_o_plano_de_demand_gen_diz_que_prova_e_nao_cria() -> None:
+    """Aceite 5, dito no vocabulário que a tela lê.
+
+    O fato já era estrutural (`subir.PROVADORES_POR_CANAL` sem
+    `CONSTRUTORES_POR_CANAL`); o que faltava era ele chegar a quem desenha o
+    botão. `pode_provar` e `pode_criar` são campos separados justamente porque
+    a resposta é diferente para os dois.
+    """
+    p = demand_gen.planejar(CID, _brief(), login_customer_id=MCC)
+    assert p.prontidao.pode_provar is True
+    assert p.prontidao.pode_criar is False
+    assert "PROVADORES_POR_CANAL" in p.prontidao.motivo_nao_cria
+    assert "CONSTRUTORES_POR_CANAL" in p.prontidao.motivo_nao_cria
+    assert p.nao_operado is demand_gen.NAO_OPERADO
+
+
+def test_o_plano_declara_o_nivel_onde_a_segmentacao_foi_gravada() -> None:
+    """`upgraded_targeting` move geo/idioma de nível, e o plano precisa dizer.
+
+    É um campo IMUTÁVEL: quem lê o plano depois não tem como descobrir a
+    escolha olhando a campanha sem reler a conta.
+    """
+    no_grupo = demand_gen.planejar(
+        CID, _brief(demand_gen=_configuracao(upgraded_targeting=True)),
+        login_customer_id=MCC)
+    na_campanha = demand_gen.planejar(
+        CID, _brief(demand_gen=_configuracao(upgraded_targeting=False)),
+        login_customer_id=MCC)
+
+    assert no_grupo.segmentacao.nivel_geo_idioma == "ad_group"
+    assert na_campanha.segmentacao.nivel_geo_idioma == "campanha"
+
+
+def test_asset_sem_recibo_chega_ao_plano_com_codigo_e_nao_como_plano_vazio() -> None:
+    """Aceite 3, dito no vocabulário da tela: falha fechada COM código."""
+    aprovadas = _imagens()
+    solto = ImagensDemandGen(
+        marketing=[f"customers/{CID}/assets/9101"],
+        logo_quadrado=aprovadas.logo_quadrado,
+    )
+    p = demand_gen.planejar(
+        CID, _brief(imagens_demand_gen=solto), login_customer_id=MCC)
+    assert p.prontidao.monta is False
+    assert plano.ASSET_SEM_RECIBO in {b.codigo for b in p.bloqueios}
+    assert p.unidades == ()

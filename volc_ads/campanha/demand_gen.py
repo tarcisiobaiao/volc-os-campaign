@@ -663,6 +663,7 @@ def _checar_imagens(cid: str, brief: Brief, r: validacao.Resultado) -> ImagensDe
                     "asset remoto em `str` não carrega recibo tipado de "
                     "catálogo/aprovação nem bytes para reconferência. Use "
                     "AssetRemotoDemandGen emitido por `criativo_ponte`",
+                    plano.ASSET_SEM_RECIBO,
                 )
                 if canonico is None:
                     continue
@@ -672,6 +673,7 @@ def _checar_imagens(cid: str, brief: Brief, r: validacao.Resultado) -> ImagensDe
                     f"imagens_demand_gen.{papel}",
                     type(item).__name__,
                     "forma de asset desconhecida; ausência de tipo não autoriza reuso",
+                    plano.ASSET_SEM_RECIBO,
                 )
                 continue
 
