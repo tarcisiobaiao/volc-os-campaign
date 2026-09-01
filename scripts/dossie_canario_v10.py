@@ -64,6 +64,18 @@ def principal() -> int:
                     help="quantas vezes rodar o validate_only (default 3)")
     args = ap.parse_args()
 
+    # ⚠️ A SUJEIRA É MEDIDA ANTES DE ESCREVER, E IGNORA O QUE ESTE SCRIPT ESCREVE.
+    #
+    # Medir depois seria um paradoxo: o gerador cria os artefatos, isso suja a
+    # árvore, e o gate `arvore_limpa` nunca passaria. A pergunta que importa não
+    # é "a árvore está limpa agora" — é "o CÓDIGO que rodou o validate_only
+    # estava commitado". Por isso a leitura acontece na entrada e os três
+    # arquivos de saída ficam de fora da conta.
+    _saidas = {APROVADO.name, SAIDA.name}
+    _sujo = [l for l in os.popen("git -C %s status --porcelain" % RAIZ).read().splitlines()
+             if l.strip() and pathlib.Path(l[3:].strip()).name not in _saidas]
+    arvore_suja_na_entrada = bool(_sujo)
+
     _ambiente()
     sys.path.insert(0, str(RAIZ))
     sys.path.insert(0, str(RAIZ / "backend"))
@@ -207,7 +219,8 @@ def principal() -> int:
         # contém. Fica `null`, e o handoff informa o valor. Inventar um SHA
         # autorreferente seria pior que declarar a ausência.
         "code_sha": os.popen("git -C %s rev-parse HEAD" % RAIZ).read().strip(),
-        "arvore_suja": bool(os.popen("git -C %s status --porcelain" % RAIZ).read().strip()),
+        "arvore_suja": arvore_suja_na_entrada,
+        "arvore_suja_detalhe": _sujo or None,
         "artifacts_commit": None,
         "sha_nota": (
             "code_sha é o HEAD que rodou o validate_only, e só o identifica se "
