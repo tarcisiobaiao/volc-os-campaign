@@ -126,9 +126,11 @@ CAMPANHA = "24183717006"
 class LedgerDeTeste:
     """Um ledger que registra a ordem dos atos no diário compartilhado."""
 
-    def __init__(self, *, diario: list, disponivel: bool = True):
+    def __init__(self, *, diario: list, disponivel: bool = True,
+                 erro_no_fechar_erro: Exception | None = None):
         self.diario = diario
         self._disponivel = disponivel
+        self._erro_no_fechar_erro = erro_no_fechar_erro
 
     @property
     def disponivel(self) -> bool:
@@ -152,6 +154,8 @@ class LedgerDeTeste:
 
     async def fechar_erro(self, **kw):
         self.diario.append(("fechar_erro", kw))
+        if self._erro_no_fechar_erro is not None:
+            raise self._erro_no_fechar_erro
         return {"desfecho": "erro"}
 
     async def fechar_sem_resposta(self, **kw):
@@ -180,11 +184,16 @@ class RepoDePlanoDeTeste:
 
     def __init__(self, *, diario: list, habilitado: bool = True,
                  erro: Exception | None = None,
-                 erro_no_vinculo: Exception | None = None):
+                 erro_no_vinculo: Exception | None = None,
+                 devolve_vazio: bool = False):
         self.diario = diario
         self.habilitado = habilitado
         self._erro = erro
         self._erro_no_vinculo = erro_no_vinculo
+        # ⚠️ O caso que a revisão adversarial encontrou: a RPC responde 200 com
+        # corpo `null`/`[]` e o repositório real devolve `None` SEM levantar.
+        # Um dublê que sempre devolve id esconderia exatamente esse buraco.
+        self._devolve_vazio = devolve_vazio
         self.documentos: list[dict] = []
         self._por_impressao: dict[str, str] = {}
 
@@ -195,7 +204,7 @@ class RepoDePlanoDeTeste:
             raise self._erro
         if self._erro_no_vinculo is not None and vinculado:
             raise self._erro_no_vinculo
-        if not self.habilitado:
+        if not self.habilitado or self._devolve_vazio:
             return None
         impressao = documento["impressao"]
         if impressao in self._por_impressao:
@@ -449,10 +458,20 @@ def test_a_falha_da_persistencia_fecha_o_recibo_e_deixa_o_item_reentravel(monkey
     _, diario, _ = _rodar(monkeypatch, recibo_ou_erro=None, repo_plano=repo,
                           diario=diario)
 
+    saida, diario, _ = _rodar(monkeypatch, recibo_ou_erro=None, repo_plano=repo,
+                              diario=diario)
     atos = _atos(diario)
     assert atos.index("despachar") < atos.index("registrar_plano")
     assert "fechar_erro" in atos, (
         "o recibo ficou `em_voo` depois de uma falha que provou que nada saiu")
+    # ⚠️ E a RESPOSTA precisa dizer isso. Um 503 que só diz "nada foi enviado"
+    # manda o operador tentar de novo sem lhe dar `item_id` nem `recibo_id`, e
+    # sem dizer se a porta do reenvio está aberta.
+    d = saida.detail
+    assert d["item_id"] == "item-1"
+    assert d["recibo_id"] == "recibo-1"
+    assert d["reenvio_permitido"] is True
+    assert d["proxima_acao"] == "reenviar"
 
 
 def test_repositorio_desabilitado_e_recusa_e_nao_permissao(monkeypatch):
@@ -777,12 +796,53 @@ def test_gravar_o_mesmo_plano_duas_vezes_devolve_a_mesma_linha(monkeypatch):
     assert len(repo.gravados) == 1
 
 
-def test_repetir_subir_com_campanha_ja_na_conta_nao_grava_segundo_plano(monkeypatch):
-    """A pré-checagem remota para ANTES do ledger e antes do plano.
+def test_repetir_subir_de_verdade_nao_cria_segunda_campanha(monkeypatch):
+    """⚠️ Esta prova REPETE a chamada. A versão anterior não repetia nada.
 
-    Um plano gravado aqui registraria a decisão de uma campanha que já existe —
-    e o operador leria isso como se ele tivesse acabado de criá-la.
+    Ela começava com a campanha artificialmente presente na conta e chamava
+    `/subir` UMA vez — ou seja, provava a pré-checagem, não a idempotência. E o
+    dublê de `campanhas_com_marca` devolvia sempre `()`, que é o mundo em que a
+    proteção real está desligada.
+
+    Aqui a conta é ESTADO: o que o primeiro `/subir` cria passa a ser o que o
+    segundo encontra, que é como a conta de verdade se comporta.
     """
+    from volc_ads import subir as sb
+
+    diario: list = []
+    impressao = _impressao_aprovada(monkeypatch)
+    ledger = LedgerDeTeste(diario=diario)
+    repo = RepoDePlanoDeTeste(diario=diario)
+    conta: list[dict] = []
+
+    def subir_dublado(*_a, **_k):
+        diario.append(("MUTATE", {}))
+        conta.append({"campaign_id": CAMPANHA,
+                      "campaign_name": "VOLC-CANARY-teste"})
+        return _recibo_do_executor(sb.ACEITO)
+
+    _montar(monkeypatch, ledger=ledger, repo_plano=repo, subir=subir_dublado,
+            diario=diario)
+    monkeypatch.setattr(canario, "campanhas_com_marca",
+                        lambda **_: tuple(conta))
+
+    primeira = asyncio.run(trafego.subir(_corpo(impressao), identidade=IDENTIDADE))
+    assert primeira["recibo"]["plano_de_mensuracao"]["vinculo"]["vinculado"] is True
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(trafego.subir(_corpo(impressao), identidade=IDENTIDADE))
+
+    assert exc.value.status_code == 409
+    assert _atos(diario).count("MUTATE") == 1, (
+        "a segunda chamada criou uma segunda campanha no mesmo leilão")
+    # Duas linhas: a pré-nascimento e o vínculo. A repetição não acrescenta uma
+    # terceira — e não acrescenta porque nem chegou a montar plano nenhum.
+    assert len(repo.gravados) == 2
+
+
+def test_a_pre_checagem_remota_para_antes_de_gravar_qualquer_plano(monkeypatch):
+    """Um plano gravado aqui registraria a decisão de uma campanha que já
+    existe — e o operador leria isso como se ele tivesse acabado de criá-la."""
     from volc_ads import subir as sb
 
     diario: list = []
@@ -950,12 +1010,32 @@ def test_fonte_observada_e_caminho_declarado_nao_se_confundem():
     declaração. Uma tela que somasse as duas diria que a conta mede por um
     caminho que ninguém provou.
     """
+    # ⚠️ Um plano com MARCAÇÃO lida — sem ela as duas listas saem vazias e a
+    # comparação passaria por vacuidade, provando nada. Aqui há caminho
+    # DECLARADO (auto-tagging ligado, tag no site) e nenhum sinal OBSERVADO,
+    # que é exatamente o par que a distinção existe para separar.
     plano = _plano_lido()
+    plano = pm.montar(
+        customer_id=plano.customer_id, login_customer_id=plano.login_customer_id,
+        meta_efetiva=plano.meta_efetiva, acoes=plano.acoes,
+        acoes_estado=plano.acoes_estado,
+        frescor=pm.Frescor(estado=pm.VAZIO_CONFIRMADO, conversoes_na_janela=0.0),
+        marcacao=pm.InventarioDeMarcacao(
+            estado=pm.COM_DADOS, auto_tagging=True,
+            conversion_tracking_id="7466919994",
+            conversion_tracking_owner_id="1234567890",
+            conversion_tracking_status="CONVERSION_TRACKING_MANAGED_BY_SELF",
+            acoes_com_tag=("7498530235",), fuso="America/Sao_Paulo"),
+        chave_intencao=plano.chave_intencao)
 
     observadas = tuple(pm.fontes_de_sinal_observadas(plano))
     declarados = tuple(pm.caminhos_de_sinal_declarados(plano))
 
-    assert set(observadas) != set(declarados) or not observadas
+    assert declarados, "sem caminho declarado a comparação não prova nada"
+    assert not observadas, (
+        "o sinal está VAZIO_CONFIRMADO — nenhuma fonte pode ser dada como "
+        "observada, ou caminho declarado virou prova de tráfego")
+    assert set(observadas) != set(declarados)
 
 
 def test_o_documento_gravado_carrega_os_estados_de_leitura_sem_colapso(monkeypatch):
@@ -1043,11 +1123,6 @@ def test_migration_ausente_recusa_com_o_nome_do_que_falta(monkeypatch):
     precisa ler qual migration falta, e a campanha não pode nascer sem o plano.
     """
     diario: list = []
-    resposta = httpx.Response(
-        404, json={"code": "PGRST202",
-                   "message": "Could not find the function "
-                              "public.volc_registrar_plano_de_mensuracao(documento)"},
-        request=httpx.Request("POST", "http://x/rest/v1/rpc/x"))
     repo = RepoDePlanoDeTeste(
         diario=diario,
         erro=pers.PlanoIndisponivel(
@@ -1060,8 +1135,8 @@ def test_migration_ausente_recusa_com_o_nome_do_que_falta(monkeypatch):
     assert isinstance(saida, HTTPException)
     assert saida.status_code == 503
     assert "v12_02" in str(saida.detail)
+    assert saida.detail["migration_ausente"] is True
     assert "MUTATE" not in _atos(diario)
-    assert resposta.status_code == 404  # a forma real que originou a mensagem
 
 
 def test_o_repositorio_traduz_pgrst202_em_migration_ausente():
@@ -1114,14 +1189,169 @@ def test_a_identidade_do_recibo_exige_as_duas_metades():
 
 
 def test_recibo_de_outra_conta_nao_vira_identidade(monkeypatch):
-    """A conta do `resource_name` tem de ser a conta do escopo."""
+    """A conta do `resource_name` tem de ser a conta do escopo.
+
+    ⚠️ E a conferência precisa acontecer ANTES de o LEDGER carimbar. Esta prova
+    nasceu fraca: ela olhava só o plano, e passava enquanto
+    `_fechar_recibo_com_sucesso` já tinha derivado
+    `volc_campaign_id(conta pedida, campanha alheia)` — dois endereços para a
+    mesma campanha, cunhados antes de alguém reclamar.
+    """
     from volc_ads import subir as sb
 
     recibo = _recibo_do_executor(sb.ACEITO, customer_id="9999999999")
-    saida, _, repo = _rodar(monkeypatch, recibo_ou_erro=recibo)
+    saida, diario, repo = _rodar(monkeypatch, recibo_ou_erro=recibo)
 
     assert repo.do_nascimento() is None, (
         "vinculou um plano a uma campanha de outra conta")
+    atos = _atos(diario)
+    assert "fechar_sucesso" not in atos, (
+        "o ledger carimbou SUCESSO com um par (conta, campanha) que não existe")
+    assert "fechar_sem_resposta" in atos, (
+        "criou alguma coisa e não sabemos o quê: o desfecho honesto é "
+        "`sem_resposta`, nunca sucesso")
+
+
+def test_o_ledger_nunca_recebe_id_externo_de_outra_conta(monkeypatch):
+    """O par (conta, campanha) que o ledger carimba é derivado, não montado."""
+    from volc_ads import subir as sb
+
+    _, diario, _ = _rodar(
+        monkeypatch,
+        recibo_ou_erro=_recibo_do_executor(sb.ACEITO, customer_id="9999999999"))
+
+    for ato, kw in diario:
+        if ato.startswith("fechar_"):
+            assert kw.get("id_externo") in (None, ""), (
+                f"{ato} recebeu id_externo={kw.get('id_externo')!r} de uma "
+                "campanha que não é da conta do pedido")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Os achados da revisão adversarial de 01/09/2026
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_rpc_que_responde_sem_plano_id_impede_o_mutate(monkeypatch):
+    """⚠️ HTTP 2xx NÃO é prova de que uma linha foi gravada.
+
+    O repositório devolve `None` sem levantar quando a RPC responde 200 com
+    corpo `null` ou `[]` — um contrato divergente ou uma resposta truncada
+    produzem exatamente isso. Sem guarda, "não houve exceção" viraria "a linha
+    existe", e a campanha nasceria com uma prova que ninguém tem.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario, devolve_vazio=True)
+    saida, diario, _ = _rodar(monkeypatch, recibo_ou_erro=None,
+                              repo_plano=repo, diario=diario)
+
+    assert isinstance(saida, HTTPException)
+    assert saida.status_code == 503
+    assert "MUTATE" not in _atos(diario), (
+        "a RPC respondeu sem plano_id e o Google foi chamado assim mesmo")
+    assert "plano_id" in str(saida.detail)
+
+
+def test_fechamento_que_falha_proibe_o_reenvio_em_vez_de_prometê_lo(monkeypatch):
+    """O recibo continuou `em_voo`. Mandar reenviar seria mandar bater numa
+    porta que já sabemos estar trancada.
+
+    Nada foi enviado ao Google — do lado dele reenviar é seguro. Mas a camada 4
+    da v10_03 recusa a próxima tentativa enquanto houver recibo aberto, e a
+    resposta precisa dizer isso em vez de prometer um reenvio impossível.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario,
+                              erro=pers.PlanoIndisponivel("sem banco"))
+    impressao = _impressao_aprovada(monkeypatch)
+    ledger = LedgerDeTeste(diario=diario,
+                           erro_no_fechar_erro=RuntimeError("banco caiu de vez"))
+
+    def subir_proibido(*_a, **_k):
+        diario.append(("MUTATE", {}))
+        raise AssertionError("o Google foi chamado")
+
+    _montar(monkeypatch, ledger=ledger, repo_plano=repo, subir=subir_proibido,
+            diario=diario)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(trafego.subir(_corpo(impressao), identidade=IDENTIDADE))
+
+    d = exc.value.detail
+    assert d["reenvio_permitido"] is False
+    assert d["proxima_acao"] == "reconciliar_na_conta"
+    assert "em_voo" in str(d["atencao"])
+    assert "MUTATE" not in _atos(diario)
+
+
+def test_reconciliar_recusa_campanha_que_nao_carrega_a_marca_da_intencao(monkeypatch):
+    """⚠️ Mesma conta NÃO é prova de mesma campanha.
+
+    A rota provava só que o item e a campanha pertenciam à mesma conta. Um
+    operador que informasse o `campaign_id` de outra campanha qualquer da conta,
+    junto da chave desta intenção, veria o plano ser vinculado a ela.
+
+    O veto é pelo NOME e o vínculo continua sendo por id — e a diferença
+    importa: um veto por nome nunca CRIA um vínculo errado, só impede um.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario)
+    plano = _plano_lido(chave_intencao="d" * 64)
+    asyncio.run(repo.registrar(pers.documento_de_plano_de_mensuracao(
+        plano.para_json(), lido_em="2026-09-01T12:00:00+00:00")))
+    ledger = LedgerDeTeste(diario=diario)
+
+    saida = _reconciliar(
+        monkeypatch, repo=repo, ledger=ledger, diario=diario, chave="d" * 64,
+        encontradas=[{"campaign_id": "77777777777",
+                      "campaign_name": "Campanha antiga do cliente",
+                      "status": "ENABLED"}])
+
+    vinculo = saida["plano_de_mensuracao"]["vinculo"]
+    assert vinculo["vinculado"] is False
+    assert "marca desta intenção" in vinculo["porque"]
+    assert repo.do_nascimento() is None
+
+
+def test_do_json_recusa_reconstruir_um_plano_que_mudaria_de_decisao():
+    """Recalcular só é honesto se divergir LEVANTAR.
+
+    `do_json` não copia os campos derivados: ele os recalcula. Se a eleição
+    recalculada não bater com a gravada, este não é o mesmo plano — a impressão
+    dele já é outra —, e devolvê-lo em silêncio faria a reconciliação vincular
+    ao campaign_id uma decisão diferente da que o operador aprovou.
+    """
+    plano = _plano_lido()
+    bruto = plano.para_json()
+    bruto["acao_alvo"] = {**(bruto["acao_alvo"] or {}), "id": "9999999999"}
+
+    with pytest.raises(ValueError, match="não é o mesmo plano"):
+        pm.do_json(bruto)
+
+
+def test_do_json_nao_ressuscita_click_ids_que_a_conta_nao_suporta():
+    """Lista VAZIA gravada é "nenhum", e não o contrato completo.
+
+    O `or CLICK_IDS` transformava `[]` nos três do default, invertendo o fato
+    que a coluna guarda.
+    """
+    marcacao = pm.InventarioDeMarcacao(
+        estado=pm.COM_DADOS, click_ids_suportados=())
+    plano = pm.montar(customer_id=canario.CONTA, login_customer_id=canario.MCC,
+                      marcacao=marcacao, acoes_estado=pm.NAO_COLETADO)
+
+    de_volta = pm.do_json(plano.para_json())
+
+    assert de_volta.marcacao.click_ids_suportados == ()
+
+
+def test_do_json_herda_o_contrato_completo_quando_a_chave_esta_AUSENTE():
+    """Ausência da chave é outra coisa: aí o default documentado vale."""
+    bruto = pm.montar(customer_id=canario.CONTA,
+                      login_customer_id=canario.MCC,
+                      acoes_estado=pm.NAO_COLETADO).para_json()
+    bruto["marcacao"].pop("click_ids_suportados")
+
+    assert pm.do_json(bruto).marcacao.click_ids_suportados == pm.CLICK_IDS
 
 
 def test_nenhum_vinculo_e_feito_por_nome_textual(monkeypatch):

@@ -3259,11 +3259,24 @@ async def subir(
         plano_id = await _gravar_plano(
             repo_do_plano, plano_de_mensuracao, lido_em=lido_em_do_plano)
     except Exception as exc:  # noqa: BLE001 — traduzida logo abaixo, por tipo
-        await _fechar_recibo_com_erro(ledger, despacho, exc,
-                                      codigo=type(exc).__name__)
+        fechamento = await _fechar_recibo_com_erro(ledger, despacho, exc,
+                                                  codigo=type(exc).__name__)
         log.warning("plano de mensuração do card %s não gravou; nada foi enviado",
                     body.opportunity_id)
-        raise _recusa_de_plano(exc) from exc
+        # ⚠️ O DESFECHO DO FECHAMENTO VAI NO CORPO, e não para o log.
+        #
+        # O recibo já estava `em_voo` quando a gravação falhou. Se `fechar_erro`
+        # também falhar, ele CONTINUA `em_voo` — e a camada 4 da v10_03 recusa a
+        # próxima tentativa deste mesmo plano. Uma resposta que diz só "nada foi
+        # enviado" manda o operador tentar de novo numa porta que já sabemos
+        # estar trancada, sem lhe dar `item_id` nem `recibo_id` para reconciliar.
+        #
+        # `reenvio_permitido` é a permissão EFETIVA, não a teórica: do lado do
+        # Google reenviar é seguro (nada saiu), mas só é possível se o recibo
+        # local tiver de fato fechado.
+        raise _recusa_de_plano(exc, ledger=fechamento, despacho=despacho,
+                               marca=marca,
+                               chave_intencao=chave_intencao) from exc
 
     try:
         recibo = await asyncio.to_thread(sb.subir, preparo, motivo=body.motivo)
@@ -3404,6 +3417,25 @@ async def subir(
     # à conta reconciliar. É estritamente melhor que o comportamento anterior,
     # em que a falha do registro virava um aviso e o rastro se perdia.
     conta_do_recurso, campaign_id = _identidade_do_recibo(recibo)
+
+    # ⚠️ A CONFERÊNCIA DE CONTA VEM ANTES DE O LEDGER CARIMBAR, e a ordem foi um
+    # defeito que a revisão adversarial reproduziu.
+    #
+    # `_fechar_recibo_com_sucesso` deriva `volc_campaign_id(cid, campaign_id)`
+    # com o `cid` DO PEDIDO. Se o `resource_name` que voltou for de outra conta,
+    # o ledger cunha a identidade `(conta pedida, campanha alheia)` — dois
+    # endereços para a mesma campanha — e a checagem que existia só no vínculo
+    # do plano chegava tarde: ela dizia `false` depois de o ledger já ter
+    # afirmado o par errado.
+    #
+    # Sem par coerente, o desfecho honesto é `sem_resposta`: criamos alguma
+    # coisa e não sabemos o quê. `sucesso` exige id externo, e um id externo de
+    # outra conta não é o id desta campanha.
+    if campaign_id and escopo.so_digitos(conta_do_recurso) != escopo.so_digitos(cid):
+        log.error("recurso criado veio da conta %s e o escopo é %s",
+                  conta_do_recurso, cid)
+        campaign_id = ""
+
     projetado["ledger"] = await _fechar_recibo_com_sucesso(
         ledger, despacho, campaign_id=campaign_id, cid=cid,
         recibo=recibo, preparo=preparo,
@@ -3700,7 +3732,8 @@ async def reconciliar_lancamento(
         plano_projetado = await _vincular_plano_reconciliado(
             cid=cid, campaign_id=id_encontrado,
             chave_intencao=str(body.chave_intencao or ""),
-            marca=str(body.marca or ""))
+            marca=str(body.marca or ""),
+            nome_encontrado=str(primeira.get("campaign_name") or ""))
 
     return {
         "reconciliacao": reconciliado,
@@ -3822,7 +3855,25 @@ async def _gravar_plano(repo: Any, plano: Any, *, lido_em: str,
     documento = persistencia.documento_de_plano_de_mensuracao(
         plano.para_json(), lido_em=lido_em,
         volc_campaign_id=volc_campaign_id, vinculo=vinculo)
-    return await repo.registrar(documento)
+    plano_id = await repo.registrar(documento)
+    # ⚠️ AUSÊNCIA DE ID É AUSÊNCIA DE PROVA, e não sucesso silencioso.
+    #
+    # `registrar` devolve `None` quando o cliente está desabilitado — e também
+    # quando a RPC responde 200 com corpo `null` ou `[]`, o que um contrato
+    # divergente ou uma resposta truncada produzem sem levantar exceção nenhuma.
+    # Sem esta guarda, "não houve exceção" viraria "a linha existe", e `/subir`
+    # seguiria para o Google com uma prova que ninguém tem.
+    #
+    # A função Postgres SEMPRE devolve `uuid` — no caminho idempotente ela
+    # devolve o `plano_id` existente. Um retorno vazio é, por construção, um
+    # desacordo com o contrato dela.
+    if not plano_id:
+        raise persistencia.PlanoIndisponivel(
+            f"a função {persistencia.RPC_REGISTRAR_PLANO} respondeu sem "
+            "`plano_id`. Ela devolve `uuid` em todos os caminhos, inclusive no "
+            "idempotente, então uma resposta vazia é desacordo de contrato — e "
+            "não prova de gravação.")
+    return plano_id
 
 
 async def _vincular_plano_ao_nascimento(
@@ -3912,7 +3963,7 @@ async def _vincular_plano_ao_nascimento(
 
 async def _vincular_plano_reconciliado(
         *, cid: str, campaign_id: str, chave_intencao: str = "",
-        marca: str = "") -> Dict[str, Any]:
+        marca: str = "", nome_encontrado: str = "") -> Dict[str, Any]:
     """Liga o plano JÁ GRAVADO à campanha que a leitura tardia encontrou.
 
     ## O que esta função não faz
@@ -3967,6 +4018,39 @@ async def _vincular_plano_reconciliado(
     if not linhas:
         return _sem("não há plano de mensuração gravado para esta intenção")
 
+    # ⚠️ O VETO PELA MARCA — e ele é veto, nunca chave.
+    #
+    # Defeito reproduzido pela revisão adversarial: a rota provava só que o item
+    # e a campanha eram da MESMA CONTA. Um operador que informasse o
+    # `campaign_id` de uma campanha B qualquer da conta, junto da chave da
+    # intenção A, veria o plano A ser vinculado a B — a máquina aceitando uma
+    # correspondência que ninguém provou.
+    #
+    # ⚠️ A distinção que mantém o contrato "nenhum vínculo é feito por nome
+    # textual": o vínculo continua sendo por `campaign_id` + `customer_id`. O
+    # nome entra só como RECUSA. Um veto por nome nunca cria um vínculo errado —
+    # ele só impede um. E a marca não é decoração no nome: ela é
+    # `VOLC-CANARY-<12 hex da chave_intencao>`, escrita por este sistema no
+    # momento da criação.
+    #
+    # Campanha renomeada à mão cai aqui com a causa dita, e não em silêncio.
+    chave_das_linhas = str(linhas[0].get("chave_intencao") or "")
+    try:
+        # ⚠️ `prefixo_da_marca` RECUSA o que não é sha256, e uma linha antiga
+        # pode ter `chave_intencao` nula. Sem chave não há marca a comparar, e
+        # não ter o veto é diferente de o veto ter reprovado.
+        marca_da_intencao = (canario.prefixo_da_marca(chave_das_linhas)
+                             if chave_das_linhas else "")
+    except canario.CanarioRecusado:
+        marca_da_intencao = ""
+    nome = str(nome_encontrado or "").strip()
+    if marca_da_intencao and nome and not nome.startswith(marca_da_intencao):
+        return _sem(
+            f"a campanha {campaign_id} não carrega a marca desta intenção "
+            f"({marca_da_intencao}). O recibo foi reconciliado, mas ligar o "
+            "plano a ela afirmaria uma correspondência que ninguém provou — "
+            "confira se o campaign_id informado é mesmo o deste lançamento.")
+
     ja = next((l for l in linhas
                if str(l.get("campaign_id") or "") == str(campaign_id)), None)
     if ja is not None:
@@ -4012,7 +4096,11 @@ async def _vincular_plano_reconciliado(
     }}
 
 
-def _recusa_de_plano(exc: Exception) -> HTTPException:
+def _recusa_de_plano(exc: Exception, *,
+                     ledger: Optional[Dict[str, Any]] = None,
+                     despacho: Any = None,
+                     marca: str = "",
+                     chave_intencao: str = "") -> HTTPException:
     """A exceção tipada da persistência → a recusa que o operador lê.
 
     As três saídas são diferentes de propósito. Guarda do schema é 409 e o
@@ -4022,22 +4110,48 @@ def _recusa_de_plano(exc: Exception) -> HTTPException:
     """
     from app.trafego import persistencia  # noqa: PLC0415
 
+    fechou = (ledger or {}).get("desfecho") == "erro"
+    corpo: Dict[str, Any] = {
+        "recibo_id": getattr(despacho, "recibo_id", None),
+        "item_id": getattr(despacho, "item_id", None),
+        "marca": marca or None,
+        "chave_intencao": chave_intencao or None,
+        "ledger": ledger,
+        # Do lado do Google reenviar é seguro: nada saiu. Mas se `fechar_erro`
+        # falhou, o recibo local continua `em_voo` e a camada 4 vai recusar.
+        "reenvio_permitido": bool(fechou),
+        "proxima_acao": "reenviar" if fechou else "reconciliar_na_conta",
+    }
+    if not fechou:
+        corpo["atencao"] = (
+            "O recibo deste lançamento continuou `em_voo`: nada foi enviado ao "
+            "Google, mas o registro local não fechou. Reenviar vai ser recusado "
+            "pela camada de idempotência até alguém reconciliar este item.")
+
     if isinstance(exc, persistencia.PlanoRecusado):
         return HTTPException(
             status_code=409,
-            detail=(f"O banco recusou o plano de mensuração: {exc}. NADA foi "
-                    "enviado ao Google — um plano que as guardas da v12_02 "
-                    "recusam é um plano que não devia ter sido montado."))
+            detail={**corpo, "estado": "plano_recusado",
+                    "erro_codigo": getattr(exc, "codigo", ""),
+                    "mensagem": (
+                        f"O banco recusou o plano de mensuração: {exc}. NADA "
+                        "foi enviado ao Google — um plano que as guardas da "
+                        "v12_02 recusam é um plano que não devia ter sido "
+                        "montado.")})
     ausente = getattr(exc, "migration_ausente", False)
     return HTTPException(
         status_code=503,
-        detail=(f"Não consegui gravar o plano de mensuração ({exc}). Por "
-                "segurança, NADA foi enviado ao Google: uma campanha criada "
-                "sem o plano registrado é uma campanha sobre a qual ninguém "
-                "consegue dizer depois o que se sabia quando ela nasceu."
-                + ("" if not ausente else
-                   " Esta é a causa mais provável de você estar lendo isto num "
-                   "ambiente novo: a migration ainda não foi aplicada.")))
+        detail={**corpo,
+                "estado": "plano_indisponivel",
+                "migration_ausente": bool(ausente),
+                "mensagem": (
+                    f"Não consegui gravar o plano de mensuração ({exc}). Por "
+                    "segurança, NADA foi enviado ao Google: uma campanha criada "
+                    "sem o plano registrado é uma campanha sobre a qual ninguém "
+                    "consegue dizer depois o que se sabia quando ela nasceu."
+                    + ("" if not ausente else
+                       " Esta é a causa mais provável de você estar lendo isto "
+                       "num ambiente novo: a migration ainda não foi aplicada."))})
 
 
 def _detalhe_indeterminado(despacho: Any, mensagem: str = "", *,
@@ -4133,10 +4247,16 @@ async def _fechar_recibo_com_sucesso(
     if not campaign_id:
         # Criou, mas não sabemos o quê. `sucesso` exige id externo justamente
         # para que este caso não vire um sucesso sem rastro.
-        await _fechar_recibo_sem_resposta(
+        #
+        # ⚠️ O RESULTADO DO FECHAMENTO É DEVOLVIDO, e não descartado. A versão
+        # anterior afirmava `registrado: True` sem olhar se o fechamento tinha
+        # dado certo — se ele falhasse, o recibo continuava `em_voo` e a resposta
+        # dizia que estava registrado. Um registro que não aconteceu é
+        # exatamente o que este bloco existe para não fingir.
+        fechado = await _fechar_recibo_sem_resposta(
             ledger, despacho,
             "a API não devolveu resource_name de campanha")
-        return {"registrado": True, "desfecho": "sem_resposta",
+        return {**(fechado or {}),
                 "recibo_id": despacho.recibo_id, "item_id": despacho.item_id,
                 "motivo": "a API não devolveu o id da campanha; reconcilie na conta"}
     try:
@@ -4239,14 +4359,20 @@ async def _registrar_campanha(
 
     O `campaign_id` sai do `resource_name` que a API devolveu — é a única fonte
     dele, porque o id é atribuído pelo Google no momento do mutate.
+
+    ⚠️ A extração é `_identidade_do_recibo`, e não uma cópia local dela. Esta
+    função tinha a SEGUNDA derivação: um `next(...)` com critério de tipo mais
+    frouxo e um `rsplit("/", 1)[-1]` que descartava o segmento da conta. Duas
+    derivações da mesma coisa é como nasce o dia em que elas discordam — e aqui
+    a discordância gravaria em `campaigns` um `campaign_id` de outra conta sob
+    o `customer_id` do escopo.
     """
-    campanha_rn = next(
-        (c.resource_name for c in (getattr(recibo, "criados", ()) or ())
-         if "campaign_result" in getattr(c, "tipo", "") or "/campaigns/" in c.resource_name),
-        "")
-    if not campanha_rn or "/campaigns/" not in campanha_rn:
+    conta_do_recurso, campaign_id = _identidade_do_recibo(recibo)
+    if not campaign_id:
         return "a API não devolveu resource_name de campanha; nada foi registrado"
-    campaign_id = campanha_rn.rsplit("/", 1)[-1]
+    if escopo.so_digitos(conta_do_recurso) != escopo.so_digitos(cid):
+        return (f"a API devolveu uma campanha da conta {conta_do_recurso} e o "
+                f"pedido era da {cid}; nada foi registrado em `campaigns`")
 
     try:
         supa = _supa()

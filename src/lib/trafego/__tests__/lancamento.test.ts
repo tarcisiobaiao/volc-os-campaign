@@ -170,6 +170,33 @@ describe('recusaDeclarada', () => {
     expect(recusaDeclarada({ status: 409, corpo: { mensagem: 'não passou' } })).toBeNull();
   });
 
+  it('uma falha de GRAVAÇÃO do plano não vira indeterminação', () => {
+    // ⚠️ NADA foi enviado ao Google: a rota recusa ANTES do mutate quando o
+    // plano de mensuração não grava. O corpo traz `reenvio_permitido: false`
+    // porque o recibo LOCAL não fechou — não porque possa existir campanha na
+    // conta. Lê-lo como indeterminação diria ao operador "pode haver uma
+    // campanha criada" sobre uma chamada que nunca saiu.
+    const planoNaoGravou = {
+      status: 503,
+      corpo: {
+        estado: 'plano_indisponivel',
+        migration_ausente: true,
+        reenvio_permitido: false,
+        proxima_acao: 'reconciliar_na_conta',
+        recibo_id: 'r-1', item_id: 'i-1',
+        mensagem: 'Não consegui gravar o plano de mensuração. NADA foi enviado.',
+      },
+    };
+    expect(indeterminacaoDeclarada(planoNaoGravou)).toBeNull();
+    expect(recusaDeclarada(planoNaoGravou)).toBeNull();
+  });
+
+  it('um corpo que NÃO se nomeia e proíbe reenvio continua sendo indeterminação', () => {
+    // A regra frouxa segue valendo para corpos antigos ou desconhecidos: ali,
+    // "proibiu reenvio" é a melhor pista, e errar para "não reenvie" é barato.
+    expect(indeterminacaoDeclarada({ corpo: { reenvio_permitido: false } })).not.toBeNull();
+  });
+
   it('nunca deixa `reenvio_permitido` virar true por omissão', () => {
     // Se o servidor não disse que pode reenviar, a tela não pode supor que pode.
     const lido = recusaDeclarada({ corpo: { estado: 'recusado' } });

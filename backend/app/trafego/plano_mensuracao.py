@@ -1219,7 +1219,7 @@ def montar(
 
 
 def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
-    """O inverso de `para_json()`: a linha gravada volta a ser plano.
+    """A linha gravada volta a ser plano — RECONSTRUÍDA, não copiada.
 
     ## Por que isto existe
 
@@ -1234,11 +1234,22 @@ def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
     ninguém notar. É o mesmo defeito que `ledger.volc_campaign_id_de` já pagou
     caro para fechar, com outro nome.
 
-    ⚠️ A eleição da ação e o destino NÃO são lidos do JSON: eles são
-    RECALCULADOS por `montar`, a partir das ações e das metas gravadas. Isso é
-    deliberado e é mais forte que copiar — se a regra de eleição mudasse, o
-    round-trip acusaria, em vez de carregar para sempre uma eleição feita por
-    uma versão antiga da regra.
+    ⚠️ NÃO é um inverso exato, e chamá-lo assim era uma promessa que ele não
+    cumpre — a revisão adversarial pegou isso. Os campos DERIVADOS
+    (`acao_alvo`, `acao_alvo_causa`, `destino`, `completo`, `bloqueadores`,
+    `impressao`) não são lidos do JSON: são RECALCULADOS por `montar` a partir
+    das ações, das metas e do frescor gravados.
+
+    Isso é deliberado e é mais forte que copiar — se a regra de eleição mudasse,
+    o round-trip acusaria, em vez de carregar para sempre uma eleição feita por
+    uma versão antiga da regra. Mas "acusar" tinha de ser LEVANTAR, e não
+    devolver em silêncio um plano com outra ação eleita e outra impressão: é o
+    que a guarda abaixo faz.
+
+    ⚠️ `proposta_de_acao` NÃO é reconstruída. Ela é uma PROPOSTA pendente de
+    aprovação humana, não uma leitura da conta, e ressuscitá-la de uma linha
+    append-only faria uma proposta antiga reaparecer como se fosse desta sessão.
+    A linha gravada continua com ela em `payload`, que é o que se audita.
     """
     meta_json = dict(dados.get("meta_efetiva") or {})
     frescor_json = dict(dados.get("frescor") or {})
@@ -1301,8 +1312,12 @@ def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
             "enhanced_conversions_for_leads"),
         acoes_de_ga4=tuple(marcacao_json.get("acoes_de_ga4") or ()),
         acoes_com_tag=tuple(marcacao_json.get("acoes_com_tag") or ()),
-        click_ids_suportados=tuple(
-            marcacao_json.get("click_ids_suportados") or CLICK_IDS),
+        # ⚠️ `is None`, e NÃO `or`. Com `or`, uma lista VAZIA gravada — "nenhum
+        # click id suportado" — voltava como os três do default, invertendo o
+        # fato. Só a AUSÊNCIA da chave herda o contrato completo.
+        click_ids_suportados=(
+            CLICK_IDS if marcacao_json.get("click_ids_suportados") is None
+            else tuple(marcacao_json["click_ids_suportados"])),
         causa=marcacao_json.get("causa"),
     ) if marcacao_json else inventario_nao_lido()
 
@@ -1318,6 +1333,24 @@ def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
     versao = dados.get("versao")
     if isinstance(versao, int) and versao != plano.versao:
         plano = dataclasses.replace(plano, versao=versao)
+
+    # ⚠️ A GUARDA QUE TORNA "recalcular" HONESTO.
+    #
+    # Se a eleição recalculada divergir da que foi GRAVADA, este plano não é o
+    # mesmo plano — a impressão dele já é outra. Devolvê-lo em silêncio faria a
+    # reconciliação vincular ao campaign_id uma decisão diferente da que o
+    # operador aprovou, e a linha nova pareceria continuação da antiga.
+    #
+    # Levantar aqui é fail-closed: quem chama trata como "não consegui religar
+    # este plano", que é a verdade.
+    alvo_gravado = (dados.get("acao_alvo") or {}).get("id")
+    alvo_recalculado = None if plano.acao_alvo is None else plano.acao_alvo.id
+    if str(alvo_gravado or "") != str(alvo_recalculado or ""):
+        raise ValueError(
+            f"a linha gravada elegeu a ação {alvo_gravado!r} e a regra atual "
+            f"elege {alvo_recalculado!r}. Este plano não é reconstruível sem "
+            "mudar o que ele decidiu — e um plano que mudou de decisão não é o "
+            "mesmo plano.")
     return plano
 
 
@@ -1349,8 +1382,12 @@ def vincular_ao_nascimento(plano: PlanoDeMensuracao, *,
       NAQUELE instante, que é falso. Quem carrega a ressalva para quem lê a
       linha depois é `payload.vinculo.observado_antes_do_nascimento`.
     - a ação eleita e o dono dela — o destino da Data Manager é conta DONA mais
-      id numérico, e mandar para a conta operacional não daria erro: daria
-      silêncio.
+      ID NUMÉRICO, e reescrever qualquer um dos dois apontaria a ingestão para
+      outro lugar. (⚠️ O que acontece ao mandar para a conta errada — erro de
+      posse ou silêncio — está em disputa: o fact-check de 01/09/2026 apontou
+      `OPERATING_ACCOUNT_LOGIN_ACCOUNT_MISMATCH`, e a prosa antiga deste módulo
+      afirma silêncio. O CHECK `trafego_plano_destino_e_do_dono_da_acao` fecha a
+      porta nos dois casos, e é por isso que a dúvida não muda esta função.)
 
     ⚠️ `versao` sobe. A tabela é append-only e a impressão inclui o
     `campaign_id`, então a linha nova entra ao lado da antiga em vez de

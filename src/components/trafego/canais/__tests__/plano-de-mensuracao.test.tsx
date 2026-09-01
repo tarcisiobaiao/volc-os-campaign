@@ -208,7 +208,9 @@ describe('o destino de conversão offline', () => {
     })} />);
 
     // A conta DONA, que pode não ser a operacional — é ela que a Data Manager
-    // exige, e mandar para a outra não dá erro: dá silêncio.
+    // exige como operating account, junto do ID NUMÉRICO da ação. Mostrar o
+    // nome ensinaria o operador a identificar a ação pelo campo que a ingestão
+    // não aceita.
     expect(screen.getByText(/7498530235/)).toBeTruthy();
     expect(screen.getByText(/1234567890/)).toBeTruthy();
   });

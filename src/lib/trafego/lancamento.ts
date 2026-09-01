@@ -45,6 +45,20 @@ export function indeterminacaoDeclarada(erro: unknown): SubidaIndeterminada | nu
   const corpo = (erro as ErroComCorpo | undefined)?.corpo as
     Partial<SubidaIndeterminada> | undefined;
   if (!corpo || typeof corpo !== 'object') return null;
+  // ⚠️ UM CORPO QUE DECLARA OUTRO ESTADO NÃO É DESCONHECIDO.
+  //
+  // A regra frouxa abaixo existe para corpos que NÃO se nomeiam: aí, "proibiu
+  // reenvio" é a melhor pista disponível e errar para o lado de "não reenvie" é
+  // barato. Mas desde que `/subir` passou a recusar por falha de gravação do
+  // plano, existe um corpo que se nomeia `plano_indisponivel`/`plano_recusado`
+  // e que também traz `reenvio_permitido: false` — porque o recibo local não
+  // fechou. Tratá-lo como indeterminação diria ao operador "pode haver uma
+  // campanha criada na conta" sobre uma chamada que NUNCA saiu: é transformar
+  // uma falha confirmada em ignorância, que é exatamente a confusão que estas
+  // duas funções existem para não deixar acontecer.
+  if (typeof corpo.estado === 'string' && corpo.estado !== 'indeterminado') {
+    return null;
+  }
   if (corpo.estado !== 'indeterminado' && corpo.reenvio_permitido !== false) return null;
   return {
     estado: 'indeterminado',
