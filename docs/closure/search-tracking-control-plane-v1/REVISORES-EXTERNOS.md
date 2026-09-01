@@ -24,13 +24,12 @@ destino da Data Manager, `gclid/wbraid/gbraid`, event time, currency/value,
 `transaction_id` e tipos de ação aceitos como destino). Ele não contém código,
 credencial, id de conta real nem dado de produção.
 
-⚠️ **Nota de segurança, separada e não acionada:** existe uma `GEMINI_API_KEY` em
-texto claro dentro de uma REGRA DE PERMISSÃO em `~/.claude/settings.json`
-(linhas 411 e 413), de outro projeto. Ela **não foi usada** — uma chave que
-aparece dentro de um allowlist de comando não é configuração desta missão, e
-usá-la seria reaproveitar credencial de outro contexto. Fica registrado porque
-uma chave em texto claro num arquivo de permissões merece rotação, e porque
-autenticar o CLI é o desbloqueio de uma linha para o dono.
+⚠️ **SECURITY_ACTION_REQUIRED: rotacionar e retirar segredo de settings.json.**
+
+Nenhuma credencial foi lida, usada, impressa, copiada ou removida por esta
+missão. O item fica registrado como ação pendente do dono, sem localização
+detalhada — apontar a linha exata de um segredo vivo dentro de um arquivo
+versionado é ampliar a superfície, não reduzi-la.
 
 ### O que ficou sem validação externa por causa disso
 
