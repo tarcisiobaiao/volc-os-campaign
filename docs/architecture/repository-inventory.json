@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T08:05:52-03:00",
+  "generated_at": "2026-09-01T08:10:21-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 460,
-    "markdown": 306,
+    "files": 461,
+    "markdown": 307,
     "sql": 154,
-    "tracked": 460,
+    "tracked": 461,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 21,
-      "documentation": 168,
+      "documentation": 169,
       "generated": 2,
       "module-guide": 30,
       "product-document": 21,
@@ -1015,9 +1015,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 18123,
-      "lines": 255,
-      "sha256": "ecf782ed6f784fe728d8d70b6272c4dce87371172d84e39adcf7424a76874cbc",
+      "bytes": 18367,
+      "lines": 257,
+      "sha256": "0575e1f745e72533be0a1597129346424cdfc56dbdf2aa57392fd1691e7d7a31",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2163,6 +2163,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/traffic-creative-operational-closure-v1/RELATORIO-DE-ENTREGA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7670,
+      "lines": 158,
+      "sha256": "a691f9d1c1b7e9bbf847a6a9447164e4cf10c408737a0e512be5f9f241c51df8",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/traffic-creative-operational-closure-v1/backlog-creative-runtime.md",
       "extension": ".md",
       "classification": "documentation",
@@ -2191,9 +2203,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 27993,
-      "lines": 357,
-      "sha256": "9f7ae450bfbb99ee9ab79f1d0a30775462519f8958b5ea7daa2f2ddd7d6df918",
+      "bytes": 30595,
+      "lines": 393,
+      "sha256": "141080e8a9e8b523f8f047aa6a75fec5e632b240022b5ae92d3bc6f8d4f50e3f",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
