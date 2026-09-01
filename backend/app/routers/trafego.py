@@ -1657,23 +1657,25 @@ def _micros(valor: Any, campo: str) -> int:
     if not numero.is_finite() or numero <= 0:
         raise PlanoIrrepresentavel(
             f"{campo}={valor!r} precisa ser um valor finito e maior que zero.")
-    # ⚠️ ARREDONDA, e não recusa. A primeira versão recusava qualquer resíduo
-    # abaixo de um micro, com o argumento de que arredondar faria dois planos
-    # diferentes derivarem a mesma chave. O argumento se inverte quando se olha
-    # para o executor: `brief.micros` é `int(round(valor * 1_000_000))`
-    # (volc_ads/campanha/brief.py:1283), então dois valores que arredondam para
-    # o mesmo micro produzem exatamente o MESMO payload no Google — eles já são
-    # o mesmo plano, e dar chaves diferentes a eles é que seria o defeito.
+    # ⚠️ A CONVERSÃO É A DO EXECUTOR, LITERALMENTE — e isso não é preguiça.
     #
-    # Na prática a recusa quebrava um caso banal: `0.1 + 0.2` vale
-    # `0.30000000000000004`, o executor manda 300000 micros sem reclamar, e o
-    # ledger devolvia 409 para um pedido perfeitamente válido.
+    # A primeira versão recusava qualquer resíduo abaixo de um micro; a segunda
+    # arredondava com `ROUND_HALF_UP` sobre `Decimal`. As duas erravam a mesma
+    # coisa: a chave de idempotência existe para identificar O QUE FOI ENVIADO,
+    # e quem envia é `brief.micros`, que é `int(round(valor * 1_000_000))`
+    # (volc_ads/campanha/brief.py:1283).
     #
-    # A canonicalização tem de ser a MESMA dos dois lados, e é o executor que
-    # decide o que sai da máquina. `ROUND_HALF_UP` sobre `Decimal(str(v))`
-    # concorda com `round()` do executor em todo valor monetário plausível, e
-    # não herda o float binário no caminho.
-    return int((numero * UM_MILHAO).to_integral_value(rounding=ROUND_HALF_UP))
+    # `round()` do Python arredonda para o PAR no empate, e sobre float o
+    # empate nem sempre é onde parece. Medido: `0.1200005` vira 120000 no
+    # executor e virava 120001 aqui. Uma chave que descreve 120001 micros para
+    # uma campanha que subiu com 120000 identifica um plano que nunca existiu —
+    # e na retomada ela não reconhece o que foi enviado.
+    #
+    # O `Decimal` acima continua fazendo o trabalho dele: recusar o que não é
+    # dinheiro (não finito, zero, negativo, texto). A CONVERSÃO, essa, tem de
+    # ser bit a bit a do executor. Ela é determinística: IEEE754 dá o mesmo
+    # resultado em qualquer máquina para o mesmo float de entrada.
+    return int(round(float(numero) * 1_000_000))
 
 
 def plano_do_ledger(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
@@ -2808,12 +2810,18 @@ def _ler_campanha_na_conta(*, customer_id: str, login_customer_id: str,
                 f"campaign_id={campaign_id!r} precisa conter somente dígitos.")
         onde = f"campaign.id = {int(kid)}"
     elif marca_limpa:
-        # A marca vira um LIKE por prefixo. O literal é escapado e a forma é
-        # restrita para que ela não possa carregar GAQL junto.
-        if not re.fullmatch(r"[A-Za-z0-9_-]{4,64}", marca_limpa):
+        # ⚠️ `_` NÃO ENTRA, e a razão não é estética.
+        #
+        # A marca vira `LIKE '<marca>%'`, e no LIKE o `_` é curinga de UM
+        # caractere. Aceitá-lo faria `marca="____"` casar com qualquer campanha
+        # de quatro letras da conta — e a reconciliação passaria a "encontrar"
+        # campanha alheia e carimbá-la no item. A marca real é
+        # `VOLC-CANARY-<hex>`: letras, dígitos e hífen, nunca sublinhado.
+        if not re.fullmatch(r"[A-Za-z0-9-]{4,64}", marca_limpa):
             raise ValueError(
                 f"marca={marca!r} tem formato inesperado; ela é derivada da "
-                "impressão do plano e só contém letras, dígitos, '-' e '_'.")
+                "impressão do plano e só contém letras, dígitos e '-'. O '_' "
+                "fica de fora porque é curinga no LIKE do GAQL.")
         onde = f"campaign.name LIKE '{marca_limpa}%'"
     else:
         raise ValueError("reconciliar exige `campaign_id` ou `marca`.")
@@ -2904,6 +2912,37 @@ async def reconciliar_lancamento(
         indisponivel = str(exc)
         log.warning("leitura da conta para reconciliar o item %s falhou: %s",
                     body.item_id, exc)
+
+    # ⚠️ DUAS CAMPANHAS NÃO SE RESOLVEM SOZINHAS.
+    #
+    # `trafego_verificacao` documenta que `quantidade_encontrada >= 2` é o
+    # alarme de duplicidade JÁ CONSUMADA. Escolher `encontradas[0]` aí seria a
+    # máquina decidindo qual das duas campanhas é "a certa" — e carimbando a
+    # outra como se não existisse. A leitura FICA registrada, com a quantidade
+    # e a lista, para que a decisão seja humana e informada.
+    if achou is True and len(encontradas) > 1:
+        await ledger.reconciliar(
+            item_id=body.item_id, metodo="listagem_da_conta", achou=None,
+            verificado_por=identidade.email or identidade.sub,
+            plataforma="GOOGLE_ADS", conta_externa=cid,
+            motivo=(f"{len(encontradas)} campanhas casaram o critério; "
+                    "duplicidade consumada exige decisão humana"),
+            divergencia={"campanhas_encontradas": list(encontradas)},
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "estado": "duplicidade_consumada",
+                "mensagem": (
+                    f"O critério casou {len(encontradas)} campanhas na conta. "
+                    "A leitura ficou registrada e NADA foi carimbado: escolher "
+                    "uma delas automaticamente esconderia a outra. Decida qual "
+                    "é a campanha deste item e reconcilie por `campaign_id`."),
+                "item_id": body.item_id,
+                "campanhas": list(encontradas),
+                "reenvio_permitido": False,
+            },
+        )
 
     primeira = encontradas[0] if encontradas else {}
     if achou is None:

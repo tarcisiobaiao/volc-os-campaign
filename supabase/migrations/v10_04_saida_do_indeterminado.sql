@@ -39,7 +39,7 @@
 --
 -- Tres mudancas, e nada alem delas:
 --
---   1. a maquina de estados do lote ganha as duas saidas que faltavam;
+--   1. a maquina de estados do lote ganha a saida que faltava;
 --   2. a reconciliacao passa a ligar a verificacao ao recibo do item mesmo
 --      quando ele ja fechou — sem isso, a auditoria perde o fio entre "nao
 --      respondeu" e "conferi depois e estava la";
@@ -65,10 +65,10 @@ $guarda$;
 -- -----------------------------------------------------------------------------
 -- 1. A maquina de estados do lote ganha a saida que faltava
 -- -----------------------------------------------------------------------------
--- `interrompido->concluido` e `interrompido->concluido_com_falhas` sao
--- transicoes de negocio legitimas, e nao um afrouxamento: "fomos interrompidos,
--- fomos conferir, e o trabalho tinha chegado" e exatamente o que a reconciliacao
--- descobre. Sem elas o estado `interrompido` e um beco sem saida.
+-- `interrompido->concluido` e transicao de negocio legitima, e nao um
+-- afrouxamento: "fomos interrompidos, fomos conferir, e o trabalho tinha
+-- chegado" e exatamente o que a reconciliacao descobre. Sem ela o estado
+-- `interrompido` e um beco sem saida.
 --
 -- O resto da lista continua identico — em particular, `executando` continua
 -- exigindo `aprovado_em`, que e o ADR-09 em forma de schema.
@@ -87,8 +87,11 @@ DECLARE
     'executando->concluido',            'executando->concluido_com_falhas',
     'executando->interrompido',
     'interrompido->executando',         'interrompido->cancelado',
-    -- v10_04: as duas saidas que faltavam para a reconciliacao existir.
-    'interrompido->concluido',          'interrompido->concluido_com_falhas',
+    -- v10_04: a saida que faltava para a reconciliacao existir. UMA, e nao
+    -- duas: `interrompido->concluido_com_falhas` foi cogitada e removida por
+    -- nao ter chamador nenhum. Transicao sem consumidor e superficie que
+    -- alguem vai usar sem que ninguem tenha decidido o que ela significa.
+    'interrompido->concluido',
     'concluido_com_falhas->executando', 'concluido_com_falhas->revertido',
     'concluido->revertido'
   ];
@@ -111,6 +114,53 @@ BEGIN
         USING ERRCODE = 'restrict_violation';
     END IF;
   END IF;
+
+  -- ⚠️ DAQUI PARA BAIXO E COPIA LITERAL DA v10_01, E PRECISA CONTINUAR SENDO.
+  --
+  -- `CREATE OR REPLACE FUNCTION` substitui o CORPO INTEIRO. Uma primeira versao
+  -- desta migration reescreveu a funcao copiando so a lista de transicoes e
+  -- parou no `RETURN NEW` — apagando em silencio a imutabilidade da aprovacao,
+  -- a identidade do lote, a monotonicidade da leitura de quota e o carimbo de
+  -- `atualizado_em`. Nenhuma prova pegava: a verificacao procurava a substring
+  -- da transicao nova, e encontrava.
+  --
+  -- Uma migration que acrescenta uma transicao e apaga quatro guardas nao e uma
+  -- migration incremental; e uma reescrita disfarcada.
+
+  -- A aprovacao, uma vez dada, nao se reescreve: ela e a autorizacao que o
+  -- recibo cita. Reescrever quem aprovou muda quem responde pelo gasto.
+  IF OLD.aprovado_em IS NOT NULL
+     AND (NEW.aprovado_em  IS DISTINCT FROM OLD.aprovado_em
+          OR NEW.aprovado_por IS DISTINCT FROM OLD.aprovado_por) THEN
+    RAISE EXCEPTION
+      'trafego_lote: este lote ja foi aprovado em % por %; a autorizacao nao se reescreve.',
+      OLD.aprovado_em, OLD.aprovado_por
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  IF NEW.lote_id     IS DISTINCT FROM OLD.lote_id
+     OR NEW.intencao_id  IS DISTINCT FROM OLD.intencao_id
+     OR NEW.blueprint_id IS DISTINCT FROM OLD.blueprint_id
+     OR NEW.plataforma    IS DISTINCT FROM OLD.plataforma
+     OR NEW.conta_externa IS DISTINCT FROM OLD.conta_externa
+     OR NEW.canal         IS DISTINCT FROM OLD.canal THEN
+    RAISE EXCEPTION
+      'trafego_lote: intencao, blueprint, plataforma, conta e canal sao a identidade do lote e nao mudam. Outro alvo e outro lote.'
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  -- REGRA A no relogio da quota: uma leitura retroativa sobrescreveria a medida
+  -- nova com a velha, e o executor decidiria "ainda posso gastar quota" olhando
+  -- para um numero de antes.
+  IF NEW.quota_lida_em IS NOT NULL AND OLD.quota_lida_em IS NOT NULL
+     AND NEW.quota_lida_em < OLD.quota_lida_em THEN
+    RAISE EXCEPTION
+      'trafego_lote: leitura de quota de % e mais velha que a corrente (%).',
+      NEW.quota_lida_em, OLD.quota_lida_em
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  NEW.atualizado_em := now();
   RETURN NEW;
 END
 $funcao$;
@@ -160,6 +210,17 @@ BEGIN
   -- conta A com a campanha da conta B — carimbando no item uma identidade
   -- externa que nao e dele. Nao cria campanha nenhuma, e corrompe a procedencia
   -- de duas. `NULL` continua aceito: quem nao afirma a conta nao erra sobre ela.
+  -- ⚠️ E quando `p_achou` afirma que a campanha esta la, a conta e OBRIGATORIA.
+  -- Uma primeira versao so conferia quando `p_customer_id` vinha preenchido, o
+  -- que transformava a guarda num pedido: bastava omitir o parametro para
+  -- carimbar identidade externa em item de qualquer conta. Omitir agora e
+  -- recusado no unico caso em que o campo decide alguma coisa.
+  IF p_achou IS TRUE AND p_customer_id IS NULL THEN
+    RAISE EXCEPTION
+      'trafego_ledger_reconciliar: `achou=true` exige p_customer_id. Sem a conta nao da para conferir que a campanha encontrada e do dono deste item.'
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
   IF p_customer_id IS NOT NULL
      AND regexp_replace(p_customer_id, '\D', '', 'g')
          IS DISTINCT FROM regexp_replace(coalesce(v_lote.conta_externa, ''), '\D', '', 'g') THEN
@@ -221,8 +282,25 @@ BEGIN
              id_externo_lido_em = now(), volc_campaign_id = p_volc_campaign_id
        WHERE item_id = p_item_id;
       v_estado := 'criada_pausada';
-      UPDATE public.trafego_lote SET estado = 'concluido'
-       WHERE lote_id = v_item.lote_id AND estado IN ('executando', 'interrompido');
+      -- ⚠️ O LOTE SO CONCLUI QUANDO NAO SOBRA IRMAO EM ABERTO.
+      --
+      -- A v10_03 concluia o lote ao reconciliar UM item, sem olhar os irmaos.
+      -- Enquanto so `executando->concluido` existia isso ja era frouxo; com a
+      -- v10_04 abrindo `interrompido->concluido` ficaria pior, porque
+      -- `interrompido` e exatamente o estado de um lote com item indeterminado.
+      -- Num lote de dois itens indeterminados, reconciliar um concluiria o lote
+      -- e deixaria o outro para tras — e `concluido` significa, no comentario da
+      -- propria v10_01, "todos os itens chegaram ao fim sem erro".
+      IF NOT EXISTS (
+        SELECT 1 FROM public.trafego_lote_item ir
+         WHERE ir.lote_id = v_item.lote_id
+           AND ir.item_id <> p_item_id
+           AND ir.estado IN ('planejado', 'validado_local', 'validado_remoto',
+                             'aprovado', 'criando', 'indeterminado')
+      ) THEN
+        UPDATE public.trafego_lote SET estado = 'concluido'
+         WHERE lote_id = v_item.lote_id AND estado IN ('executando', 'interrompido');
+      END IF;
     END IF;
 
   ELSIF p_achou IS FALSE THEN
@@ -273,6 +351,19 @@ BEGIN
      WHERE n.nspname = 'public' AND p.proname = 'trafego_lote_estado_valido'
        AND pg_get_functiondef(p.oid) LIKE '%interrompido->concluido%') THEN
     RAISE EXCEPTION 'v10_04: a transicao interrompido->concluido nao entrou.';
+  END IF;
+  -- ⚠️ E as guardas da v10_01 precisam ter SOBREVIVIDO ao CREATE OR REPLACE.
+  -- Procurar so a transicao nova deixaria passar exatamente o defeito que a
+  -- primeira versao desta migration tinha: acrescentar uma linha e apagar
+  -- quatro guardas.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public' AND p.proname = 'trafego_lote_estado_valido'
+       AND pg_get_functiondef(p.oid) LIKE '%a autorizacao nao se reescreve%'
+       AND pg_get_functiondef(p.oid) LIKE '%sao a identidade do lote e nao mudam%'
+       AND pg_get_functiondef(p.oid) LIKE '%mais velha que a corrente%'
+       AND pg_get_functiondef(p.oid) LIKE '%atualizado_em := now()%') THEN
+    RAISE EXCEPTION 'v10_04: o CREATE OR REPLACE apagou guardas da v10_01.';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace

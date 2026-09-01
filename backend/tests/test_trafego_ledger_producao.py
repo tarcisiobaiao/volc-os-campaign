@@ -651,6 +651,15 @@ def test_micros_concorda_com_o_executor_em_vez_de_recusar():
     assert trafego._micros(0.1 + 0.2, "cpc_inicial") == 300_000
     assert trafego._micros(0.3, "cpc_inicial") == 300_000
     assert trafego._micros(10.0, "budget_diario") == 10_000_000
+
+    # ⚠️ E concorda no EMPATE, que é onde as duas convenções divergem.
+    # `ROUND_HALF_UP` sobre Decimal dava 120001 para 0.1200005; o executor
+    # manda 120000, porque `round()` do Python arredonda para o par e sobre
+    # float o empate nem está onde parece. Uma chave que descreve 120001 micros
+    # para uma campanha que subiu com 120000 identifica um plano inexistente.
+    for valor in (0.1200005, 0.0000005, 1.0000005, 2.5e-6, 0.1 + 0.7):
+        assert trafego._micros(valor, "cpc_inicial") == int(round(valor * 1_000_000)), (
+            f"o ledger divergiu do executor em {valor!r}")
     # E o que não é dinheiro continua recusado, com motivo.
     for ruim in (0, -1, "abc", float("inf")):
         with pytest.raises(trafego.PlanoIrrepresentavel):
@@ -781,3 +790,51 @@ def test_marca_com_gaql_embutido_e_recusada():
         trafego._ler_campanha_na_conta(
             customer_id=canario.CONTA, login_customer_id=canario.MCC,
             marca="VOLC' OR 1=1 --")
+
+
+def test_marca_com_curinga_de_like_e_recusada():
+    """⚠️ `_` é curinga de UM caractere no LIKE do GAQL.
+
+    O regex aceitava `_`, então `marca="____"` virava
+    `campaign.name LIKE '____%'` e casava qualquer campanha de quatro letras da
+    conta — a reconciliação passaria a "encontrar" campanha alheia e carimbá-la
+    no item. A marca real é `VOLC-CANARY-<hex>`: nunca tem sublinhado.
+    """
+    for ruim in ("____", "VOLC_CANARY_abc", "_"*8):
+        with pytest.raises(ValueError):
+            trafego._ler_campanha_na_conta(
+                customer_id=canario.CONTA, login_customer_id=canario.MCC,
+                marca=ruim)
+    # E a marca real continua aceita.
+    marca_real = canario.prefixo_da_marca("a" * 64)
+    assert "_" not in marca_real
+
+
+def test_duas_campanhas_no_criterio_nao_se_resolvem_sozinhas(monkeypatch):
+    """⚠️ `quantidade_encontrada >= 2` é duplicidade JÁ CONSUMADA.
+
+    O schema diz isso com todas as letras. Escolher `encontradas[0]` seria a
+    máquina decidindo qual das duas campanhas é a certa e carimbando a outra
+    como se não existisse. A leitura fica registrada; o carimbo não acontece.
+    """
+    supa = SupaDeTeste(respostas={"trafego_ledger_reconciliar": {}})
+    outra = {"campaign_id": "24183717007", "campaign_name": "VOLC-CANARY-outra",
+             "status": "PAUSED"}
+    _montar_reconciliacao(monkeypatch, ledger=led.Ledger(supa),
+                          encontradas=[CAMPANHA_NA_CONTA, outra])
+
+    with pytest.raises(HTTPException) as erro:
+        asyncio.run(trafego.reconciliar_lancamento(
+            trafego.ReconciliarEntrada(
+                item_id="11111111-1111-1111-1111-111111111111",
+                customer_id=canario.CONTA, marca="VOLC-CANARY-abc123def456"),
+            identidade=IDENTIDADE))
+
+    assert erro.value.status_code == 409
+    assert erro.value.detail["estado"] == "duplicidade_consumada"
+    assert len(erro.value.detail["campanhas"]) == 2
+    # A leitura FICA registrada — e como ignorância, que é o que ela é: a
+    # máquina não sabe qual é a certa, e `achou=None` não move nada.
+    corpo = supa.corpo_de("trafego_ledger_reconciliar")
+    assert corpo["p_achou"] is None
+    assert "p_volc_campaign_id" not in corpo

@@ -342,8 +342,55 @@ recusa "reconciliar o item de uma conta com a campanha de OUTRA" \
   "SELECT public.trafego_ledger_reconciliar('$ITEM2'::uuid, 'busca_por_id', true, 'operador',
      p_id_externo := '99999999999', p_volc_campaign_id := 'volc_cmp_outra',
      p_customer_id := '6016739364', p_quantidade := 1);"
+# ⚠️ Omitir a conta era o contorno: a guarda só rodava quando o campo vinha
+# preenchido, então bastava não mandá-lo. Uma guarda que se desliga sozinha
+# quando o chamador cala é um pedido, não uma regra.
+recusa "reconciliar com \`achou=true\` OMITINDO a conta" \
+  "SELECT public.trafego_ledger_reconciliar('$ITEM2'::uuid, 'busca_por_id', true, 'operador',
+     p_id_externo := '99999999999', p_volc_campaign_id := 'volc_cmp_semconta',
+     p_quantidade := 1);"
 cmp_ "$(P -c "SELECT coalesce(id_externo,'-') FROM trafego_lote_item WHERE item_id='$ITEM2';")" \
      "24183717006" "o item manteve a identidade externa que era dele"
+
+echo
+echo "════ J5 · as guardas da v10_01 sobreviveram ao CREATE OR REPLACE ════"
+# ⚠️ Uma migration que acrescenta uma transição e apaga quatro guardas não é
+# incremental; é uma reescrita disfarçada. A primeira versão da v10_04 fazia
+# exatamente isso, e a verificação por substring da transição nova não pegava.
+LOTE_G=$(P -c "SELECT lote_id FROM trafego_lote_item WHERE item_id='$ITEM2';")
+recusa "reescrever quem aprovou o lote (imutabilidade da aprovação)" \
+  "UPDATE trafego_lote SET aprovado_por='outro' WHERE lote_id='$LOTE_G';"
+recusa "trocar a conta do lote (identidade do lote)" \
+  "UPDATE trafego_lote SET conta_externa='9999999999' WHERE lote_id='$LOTE_G';"
+semear "UPDATE trafego_lote SET quota_lida_em=now() WHERE lote_id='$LOTE_G';"
+recusa "gravar leitura de quota retroativa (regra A no relógio)" \
+  "UPDATE trafego_lote SET quota_lida_em=now() - interval '1 hour' WHERE lote_id='$LOTE_G';"
+
+echo
+echo "════ J6 · reconciliar um item NÃO conclui lote com irmão em aberto ════"
+# ⚠️ `concluido` significa, no comentário da própria v10_01, "todos os itens
+# chegaram ao fim sem erro". Concluir o lote ao reconciliar UM item deixaria o
+# irmão indeterminado para trás — e o painel diria que o lote acabou.
+ITEM_A=$(abrir_com 'volc-irmaos-00000001' "$IMPRESSAO" '5478096539')
+LOTE_IRMAOS=$(P -c "SELECT lote_id FROM trafego_lote_item WHERE item_id='$ITEM_A';")
+ITEM_B=$(P -c "SET ROLE service_role;
+  INSERT INTO trafego_lote_item (lote_id, ordem, idempotency_key, rotulo, plano)
+  VALUES ('$LOTE_IRMAOS', 2, 'volc-irmaos-00000002', 'irmao', '{}'::jsonb)
+  RETURNING item_id;")
+REC_A=$(P -c "SET ROLE service_role; SELECT public.trafego_ledger_despachar(
+  'volc-irmaos-00000001','GOOGLE_ADS','5478096539','SEARCH','$IMPRESSAO','dono@volc','sub-1') ->> 'recibo_id';")
+semear "SELECT public.trafego_ledger_fechar('$REC_A'::uuid, 'sem_resposta',
+          p_erro_mensagem := 'timeout');"
+cmp_ "$(P -c "SELECT estado FROM trafego_lote WHERE lote_id='$LOTE_IRMAOS';")" "interrompido" \
+     "o lote com dois itens ficou \`interrompido\` pela indeterminação de um deles"
+aceita "reconciliar o item A, com o irmão B ainda em aberto" \
+  "SELECT public.trafego_ledger_reconciliar('$ITEM_A'::uuid, 'busca_por_id', true, 'operador',
+     p_id_externo := '24183717111', p_volc_campaign_id := 'volc_cmp_irmaoA',
+     p_customer_id := '5478096539', p_quantidade := 1);"
+cmp_ "$(P -c "SELECT estado FROM trafego_lote_item WHERE item_id='$ITEM_A';")" "criada_pausada" \
+     "o item A converge"
+cmp_ "$(P -c "SELECT estado FROM trafego_lote WHERE lote_id='$LOTE_IRMAOS';")" "interrompido" \
+     "e o LOTE não concluiu — o irmão B ainda não chegou ao fim"
 
 echo
 echo "════ K · o id externo resolve para exatamente um item ════"

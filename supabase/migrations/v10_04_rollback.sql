@@ -69,6 +69,39 @@ BEGIN
         USING ERRCODE = 'restrict_violation';
     END IF;
   END IF;
+
+  -- Copia literal da v10_01 daqui para baixo. Um rollback que restaura o corpo
+  -- truncado desfaz a v10_04 E apaga quatro guardas da v10_01 junto — que e
+  -- pior que a migration que ele desfaz.
+  IF OLD.aprovado_em IS NOT NULL
+     AND (NEW.aprovado_em  IS DISTINCT FROM OLD.aprovado_em
+          OR NEW.aprovado_por IS DISTINCT FROM OLD.aprovado_por) THEN
+    RAISE EXCEPTION
+      'trafego_lote: este lote ja foi aprovado em % por %; a autorizacao nao se reescreve.',
+      OLD.aprovado_em, OLD.aprovado_por
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  IF NEW.lote_id     IS DISTINCT FROM OLD.lote_id
+     OR NEW.intencao_id  IS DISTINCT FROM OLD.intencao_id
+     OR NEW.blueprint_id IS DISTINCT FROM OLD.blueprint_id
+     OR NEW.plataforma    IS DISTINCT FROM OLD.plataforma
+     OR NEW.conta_externa IS DISTINCT FROM OLD.conta_externa
+     OR NEW.canal         IS DISTINCT FROM OLD.canal THEN
+    RAISE EXCEPTION
+      'trafego_lote: intencao, blueprint, plataforma, conta e canal sao a identidade do lote e nao mudam. Outro alvo e outro lote.'
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  IF NEW.quota_lida_em IS NOT NULL AND OLD.quota_lida_em IS NOT NULL
+     AND NEW.quota_lida_em < OLD.quota_lida_em THEN
+    RAISE EXCEPTION
+      'trafego_lote: leitura de quota de % e mais velha que a corrente (%).',
+      NEW.quota_lida_em, OLD.quota_lida_em
+      USING ERRCODE = 'restrict_violation';
+  END IF;
+
+  NEW.atualizado_em := now();
   RETURN NEW;
 END
 $funcao$;
