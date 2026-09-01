@@ -1170,13 +1170,36 @@ async def escrever_copy(body: CopyPedido = Body(...)) -> Any:
 # ── a prova ─────────────────────────────────────────────────────────────────
 
 class GrupoEscolhido(BaseModel):
-    """Uma sub-intenção que o operador marcou. Vira UM ad group."""
+    """Uma sub-intenção que o operador marcou. Vira UM ad group.
+
+    ⚠️ `keywords` é AUTORIDADE, não sugestão. O que está aqui é exatamente o
+    que vira ad group — o grupo do cockpit não completa, não corrige e não
+    amplia. Quem quer o grupo inteiro declara `usar_todas`.
+    """
     tipo: str
-    keywords: List[str]
+    keywords: List[str] = Field(default_factory=list)
+    # A única forma de pedir o grupo inteiro. Existe separada da lista vazia de
+    # propósito: lista vazia é ausência, ausência é dúvida, e dúvida não pode
+    # resolver a favor da campanha mais larga.
+    usar_todas: bool = False
     # `None` herda o lance do brief. Preencher só com CPC medido na CONTA —
     # nunca com o minerado, que superestima em 7,4× e inverte a ordem.
     cpc_inicial: Optional[float] = None
     negativas: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _selecao_inequivoca(self):
+        if self.usar_todas and self.keywords:
+            raise ValueError(
+                f"o grupo {self.tipo!r} declara `usar_todas` E lista keywords. "
+                "São duas ordens diferentes; resolver por conta própria "
+                "descartaria uma delas.")
+        if not self.usar_todas and not self.keywords:
+            raise ValueError(
+                f"o grupo {self.tipo!r} não trouxe keyword nenhuma. Se a "
+                "intenção é usar o grupo inteiro do cockpit, diga isso com "
+                "`usar_todas: true` — ausência não é permissão.")
+        return self
 
 
 class EvidenciaEntrada(BaseModel):
@@ -2094,8 +2117,19 @@ async def provar(
 
     def _preparar():
         cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
+        # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
+        # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
+        # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
+        # e `set()` sobre um dict devolve as CHAVES. A seleção do operador era
+        # descartada aqui, em silêncio, e o builder montava o grupo inteiro.
+        # Medido contra a conta real: duas keywords escolhidas viraram oito no
+        # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
+        # com DKI na primeira headline isso vira texto de anúncio.
         escolha = pp.Escolha(
-            grupos={g.tipo: list(g.keywords) for g in body.grupos},
+            grupos=tuple(g.tipo for g in body.grupos),
+            keywords_por_grupo={g.tipo: tuple(g.keywords)
+                                for g in body.grupos if not g.usar_todas},
+            grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas),
             keywords_fora=list(body.keywords_fora),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,
@@ -2366,8 +2400,19 @@ async def subir(
 
     def _provar_de_novo():
         cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
+        # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
+        # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
+        # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
+        # e `set()` sobre um dict devolve as CHAVES. A seleção do operador era
+        # descartada aqui, em silêncio, e o builder montava o grupo inteiro.
+        # Medido contra a conta real: duas keywords escolhidas viraram oito no
+        # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
+        # com DKI na primeira headline isso vira texto de anúncio.
         escolha = pp.Escolha(
-            grupos={g.tipo: list(g.keywords) for g in body.grupos},
+            grupos=tuple(g.tipo for g in body.grupos),
+            keywords_por_grupo={g.tipo: tuple(g.keywords)
+                                for g in body.grupos if not g.usar_todas},
+            grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas),
             keywords_fora=list(body.keywords_fora),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,

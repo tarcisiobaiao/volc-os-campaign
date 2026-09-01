@@ -290,6 +290,26 @@ class Escolha:
 
     grupos: tuple[str, ...] = ()  # tipos escolhidos; vazio = todos os candidatos
     keywords_fora: frozenset[str] = frozenset()  # desmarcadas, texto exato
+    # ⚠️ A SELEÇÃO DO OPERADOR, KEYWORD A KEYWORD — e ela é AUTORIDADE.
+    #
+    # `{tipo: (texto, ...)}`. Quando um tipo aparece aqui, o ad group sai com
+    # EXATAMENTE essas keywords, nessa ordem, e o grupo do cockpit deixa de ter
+    # voz sobre o assunto.
+    #
+    # Existe porque o contrato anterior perdia a seleção em silêncio: o router
+    # passava `{tipo: [keywords]}` para `grupos`, que é `tuple[str, ...]`, e
+    # `set()` sobre um dict devolve as CHAVES. As keywords escolhidas nunca
+    # chegavam aqui, e o builder montava o grupo inteiro. Medido contra a conta
+    # real: duas escolhidas viraram oito no plano aprovado.
+    #
+    # `None` e `{}` significam "o operador não declarou seleção neste grupo" —
+    # e isso NÃO é permissão para usar tudo. Quem quer o grupo inteiro diz o
+    # nome disso em `grupos_usar_todas`.
+    keywords_por_grupo: dict[str, tuple[str, ...]] | None = None
+    # A declaração explícita de "use todas as keywords deste grupo". Ela existe
+    # separada da ausência de propósito: ausência é dúvida, e dúvida não pode
+    # resolver a favor da campanha mais larga.
+    grupos_usar_todas: frozenset[str] = frozenset()
     budget_diario: float | None = None
     cpc_inicial: float | None = None
     # Lance por sub-intenção, {tipo: cpc}. Mesma regra do `cpc_inicial`: só
@@ -958,12 +978,70 @@ def montar_brief(cockpit: Cockpit, escolha: Escolha | None = None,
         )
 
     fora = {_norm(k) for k in escolha.keywords_fora}
+    selecao = dict(escolha.keywords_por_grupo or {})
+    usar_todas = set(escolha.grupos_usar_todas or ())
+
+    # Contradição declarada é recusa, não precedência. Escolher a seleção
+    # silenciaria o "use todas"; escolher o grupo inteiro silenciaria a seleção.
+    # As duas resoluções descartam uma ordem que alguém deu de propósito.
+    ambos = {t for t in usar_todas if selecao.get(t)}
+    if ambos:
+        raise PonteIncompleta(
+            f"os grupos {sorted(ambos)} declaram seleção de keywords E "
+            "`usar todas` ao mesmo tempo. As duas coisas são ordens diferentes; "
+            "escolher uma delas por conta própria descartaria a outra."
+        )
+    desconhecidos_sel = set(selecao) - {g.tipo for g in cockpit.grupos}
+    if desconhecidos_sel:
+        raise PonteIncompleta(
+            f"seleção de keywords para grupos inexistentes: {sorted(desconhecidos_sel)}."
+        )
+
     grupos: list[GrupoCandidato] = []
     keywords: list[str] = []
     for g in cockpit.grupos:
         if g.tipo not in tipos:
             continue
-        kws = tuple(k for k in g.keywords if _norm(k.texto) not in fora)
+        if g.tipo in selecao and g.tipo not in usar_todas:
+            # ⚠️ AQUI A SELEÇÃO MANDA, E O GRUPO NÃO TEM VOTO.
+            #
+            # Nada de interseção "por segurança": interseção com o grupo inteiro
+            # é justamente o caminho pelo qual uma seleção vira sugestão. O que
+            # o operador não escolheu não entra, e o que ele escolheu e não
+            # existe derruba o plano em vez de sumir.
+            pedidas = tuple(selecao[g.tipo])
+            if not pedidas:
+                raise PonteIncompleta(
+                    f"o grupo {g.tipo} veio com seleção de keywords VAZIA. "
+                    "Ausência não é permissão para usar o grupo inteiro: se a "
+                    "intenção é essa, declare o tipo em `grupos_usar_todas`."
+                )
+            por_norma = {_norm(k.texto): k for k in g.keywords}
+            vistos: set[str] = set()
+            escolhidas: list[Any] = []
+            for texto in pedidas:
+                n = _norm(texto)
+                if not n:
+                    raise PonteIncompleta(
+                        f"o grupo {g.tipo} recebeu uma keyword vazia na seleção."
+                    )
+                if n not in por_norma:
+                    raise PonteIncompleta(
+                        f"a keyword {texto!r} não pertence ao grupo {g.tipo}. "
+                        "Uma seleção que aponta para fora do grupo não é um "
+                        "pedido válido, e aceitá-la calado faria o operador "
+                        f"achar que subiu. Disponíveis: "
+                        f"{sorted(k.texto for k in g.keywords)}"
+                    )
+                if n in vistos:      # dedup preserva a PRIMEIRA ocorrência
+                    continue         # e nunca amplia o conjunto
+                vistos.add(n)
+                escolhidas.append(por_norma[n])
+            # A ordem é a do pedido, não a do cockpit: a mesma entrada precisa
+            # produzir sempre a mesma chave de idempotência.
+            kws = tuple(k for k in escolhidas if _norm(k.texto) not in fora)
+        else:
+            kws = tuple(k for k in g.keywords if _norm(k.texto) not in fora)
         if not kws:
             avisos.append(Aviso(
                 "GRUPO_ESVAZIADO", "atencao",

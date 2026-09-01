@@ -637,3 +637,108 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A seleção do operador é AUTORIDADE — defeito contratual de 01/09/2026
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ O defeito, medido contra a conta real durante o preflight do canário: o
+# operador escolheu DUAS keywords e o plano aprovado no `validate_only` saiu com
+# OITO — o grupo inteiro do cockpit, incluindo cinco marcas de concorrentes.
+#
+# A causa não é "expansão": é DESCARTE. `Escolha.grupos` é `tuple[str, ...]` —
+# só os tipos — e o router passava um `dict {tipo: [keywords]}`. Como `Escolha`
+# é dataclass sem validação, o dict entrava; `set(escolha.grupos)` devolvia as
+# CHAVES, e a lista de keywords selecionadas nunca chegava ao builder. O
+# subconjunto do operador desaparecia sem uma linha de log.
+#
+# O estrago é maior que largura de campanha: com DKI na primeira headline
+# (`{KeyWord:...}`), keyword de concorrente vira texto de anúncio. Um teste de
+# infraestrutura viraria um teste de marca sem ninguém ter decidido isso.
+
+
+def teste_selecao_de_keywords_e_autoridade_e_nao_sugestao() -> None:
+    """⚠️ A contraprova do defeito: duas escolhidas têm de virar duas."""
+    c = montar_cockpit(_linhas())
+    escolhidas = ("banco pan telefone", "banco pan cartão de crédito whatsapp")
+    plano = montar_brief(c, Escolha(
+        cpc_inicial=0.20,
+        grupos=("ACESSO",),
+        keywords_por_grupo={"ACESSO": escolhidas},
+    ))
+    grupo = next(g for g in plano.brief.grupos() if g.nome == "ACESSO")
+    saiu = tuple(grupo.keywords)
+    assert saiu == escolhidas, (
+        f"o operador escolheu {len(escolhidas)} keywords e o plano saiu com "
+        f"{len(saiu)}: {saiu}")
+
+
+def teste_ordem_da_selecao_e_deterministica() -> None:
+    """A ordem é a do operador, e a mesma entrada dá sempre a mesma saída."""
+    c = montar_cockpit(_linhas())
+    pedido = ("solicitar cartão caixa poupança", "banco pan telefone")
+    saidas = set()
+    for _ in range(3):
+        plano = montar_brief(c, Escolha(
+            cpc_inicial=0.20, grupos=("ACESSO",),
+            keywords_por_grupo={"ACESSO": pedido}))
+        g = next(x for x in plano.brief.grupos() if x.nome == "ACESSO")
+        saidas.add(tuple(g.keywords))
+    assert saidas == {pedido}, saidas
+
+
+def teste_selecao_deduplica_sem_ampliar() -> None:
+    c = montar_cockpit(_linhas())
+    plano = montar_brief(c, Escolha(
+        cpc_inicial=0.20, grupos=("ACESSO",),
+        keywords_por_grupo={"ACESSO": ("banco pan telefone", "Banco Pan Telefone",
+                                       "banco pan telefone")}))
+    g = next(x for x in plano.brief.grupos() if x.nome == "ACESSO")
+    assert list(g.keywords) == ["banco pan telefone"]
+
+
+def teste_keyword_fora_do_grupo_e_recusada() -> None:
+    """Recusar é o certo: aceitar calado deixaria o operador achar que subiu."""
+    c = montar_cockpit(_linhas())
+    for ruim in ("cartão de crédito para negativado online",  # existe, noutro grupo
+                 "keyword que ninguem minerou", "", "   "):
+        try:
+            montar_brief(c, Escolha(cpc_inicial=0.20, grupos=("ACESSO",),
+                                    keywords_por_grupo={"ACESSO": (ruim,)}))
+        except PonteIncompleta:
+            continue
+        raise AssertionError(f"aceitou keyword inválida: {ruim!r}")
+
+
+def teste_selecao_vazia_nao_vira_grupo_inteiro() -> None:
+    """⚠️ Ausência ambígua NÃO é permissão. É recusa."""
+    c = montar_cockpit(_linhas())
+    try:
+        montar_brief(c, Escolha(cpc_inicial=0.20, grupos=("ACESSO",),
+                                keywords_por_grupo={"ACESSO": ()}))
+    except PonteIncompleta as exc:
+        assert "usar_todas" in str(exc) or "vazia" in str(exc).lower()
+        return
+    raise AssertionError("seleção vazia caiu no grupo inteiro")
+
+
+def teste_usar_todas_precisa_ser_declarado() -> None:
+    """O grupo inteiro continua possível — mas só dito com todas as letras."""
+    c = montar_cockpit(_linhas())
+    plano = montar_brief(c, Escolha(
+        cpc_inicial=0.20, grupos=("ACESSO",), grupos_usar_todas=frozenset({"ACESSO"})))
+    g = next(x for x in plano.brief.grupos() if x.nome == "ACESSO")
+    assert len(g.keywords) == 5, list(g.keywords)
+
+
+def teste_usar_todas_e_selecao_juntas_sao_contradicao() -> None:
+    c = montar_cockpit(_linhas())
+    try:
+        montar_brief(c, Escolha(
+            cpc_inicial=0.20, grupos=("ACESSO",),
+            keywords_por_grupo={"ACESSO": ("banco pan telefone",)},
+            grupos_usar_todas=frozenset({"ACESSO"})))
+    except PonteIncompleta:
+        return
+    raise AssertionError("aceitou seleção e `usar todas` ao mesmo tempo")

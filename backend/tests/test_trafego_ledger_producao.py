@@ -838,3 +838,68 @@ def test_duas_campanhas_no_criterio_nao_se_resolvem_sozinhas(monkeypatch):
     corpo = supa.corpo_de("trafego_ledger_reconciliar")
     assert corpo["p_achou"] is None
     assert "p_volc_campaign_id" not in corpo
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# H. A seleção do operador atravessa a fronteira HTTP inteira (01/09/2026)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_a_selecao_de_keywords_chega_intacta_ao_plano(monkeypatch):
+    """⚠️ Ponta a ponta: o que o operador marcou é o que o Google recebe.
+
+    O defeito foi medido contra a conta real durante o preflight do canário:
+    duas keywords escolhidas viraram OITO no plano que o `validate_only`
+    aprovou. A causa era descarte, não expansão — o router passava um `dict`
+    para `Escolha.grupos`, que é `tuple[str, ...]`, e a seleção sumia.
+
+    Este teste exercita a rota de verdade, com o builder real, e conta o que
+    saiu do outro lado.
+    """
+    from volc_ads import subir as sb
+
+    capturado: dict = {}
+    # ⚠️ O original é capturado DEPOIS das portas herméticas: capturá-lo antes
+    # guardaria a função REAL, e o espião chamaria a rede. A fixture
+    # `_rede_bloqueada` derrubou o teste quando isto estava invertido — foi ela
+    # que pegou, e é para isso que ela existe.
+    _instalar_portas_hermeticas(monkeypatch)
+    hermetica = sb.validar_mutacoes
+
+    def espiao(customer_id, operacoes, *, login_customer_id):
+        capturado["ops"] = list(operacoes)
+        return hermetica(customer_id, operacoes, login_customer_id=login_customer_id)
+
+    monkeypatch.setattr(sb, "validar_mutacoes", espiao)
+
+    escolhidas = ["guia do saque anual"]
+    corpo = trafego.ProvarEntrada(**{
+        **_payload_da_rota(),
+        "grupos": [{"tipo": "INTENCAO", "keywords": escolhidas}],
+    })
+    asyncio.run(trafego.provar(corpo, identidade=IDENTIDADE))
+
+    kws = [o.ad_group_criterion_operation.create.keyword.text
+           for o in capturado["ops"]
+           if o._pb.WhichOneof("operation") == "ad_group_criterion_operation"
+           and o.ad_group_criterion_operation.create.keyword.text]
+    assert kws == escolhidas, (
+        f"o operador escolheu {escolhidas} e o plano saiu com {kws}")
+
+
+def test_grupo_sem_keyword_e_sem_usar_todas_e_recusado_na_fronteira():
+    """Ausência ambígua morre no contrato HTTP, antes de virar plano."""
+    with pytest.raises(Exception) as erro:
+        trafego.ProvarEntrada(**{
+            **_payload_da_rota(),
+            "grupos": [{"tipo": "INTENCAO", "keywords": []}],
+        })
+    assert "usar_todas" in str(erro.value)
+
+
+def test_usar_todas_com_lista_de_keywords_e_contradicao():
+    with pytest.raises(Exception) as erro:
+        trafego.ProvarEntrada(**{
+            **_payload_da_rota(),
+            "grupos": [{"tipo": "INTENCAO", "keywords": ["x"], "usar_todas": True}],
+        })
+    assert "duas ordens diferentes" in str(erro.value)
