@@ -428,8 +428,18 @@ CREATE TABLE public.cofre_ativo (
 
   -- Somente HTTP(S), como no contrato publico. `file://`, `javascript:` e
   -- caminho de disco sao recusados aqui e nao so na tela.
+  --
+  -- ⚠️ O TETO E `+`, E NAO `{3,2000}`, POR DEFEITO MEDIDO EM 01/09/2026.
+  -- O limite de contagem de repeticao do regex do Postgres e 255: `{3,256}` ja
+  -- levanta `invalid repetition count(s)` (SQLSTATE 2201B). Como CHECK
+  -- curto-circuita em NULL, a migration aplicava limpa e a expressao invalida
+  -- so era avaliada no PRIMEIRO ativo com endereco publico — ou seja, todo site,
+  -- toda pagina e todo perfil. O comprimento e limitado por `length()`, que nao
+  -- tem esse teto, e a forma por `+`, que nao tem contagem.
   CONSTRAINT cofre_ativo_url_http CHECK (
-    url_publica IS NULL OR url_publica ~* '^https?://[^[:space:]]{3,2000}$'),
+    url_publica IS NULL OR (
+      length(url_publica) BETWEEN 11 AND 2000
+      AND url_publica ~* '^https?://[^[:space:]]+$')),
 
   CONSTRAINT cofre_ativo_capacidades_util CHECK (public.cofre_lista_util(capacidades, 1, 40)),
   CONSTRAINT cofre_ativo_tags_util         CHECK (public.cofre_lista_util(tags, 0, 30)),

@@ -399,6 +399,51 @@ BEGIN
       'proxima_acao','Conferir ID da pagina, Business Portfolio e administradores.'),
       'chave-cadastro-0001',%L::uuid,%L)$q$, autor, email));
 
+  -- ⚠️ ATIVO COM URL PUBLICA — a prova que faltava, e a lacuna que deixou passar
+  -- um defeito real. Ate 01/09/2026 nenhuma prova inseria `url_publica`, entao
+  -- a CHECK com `{3,2000}` (contagem acima do teto 255 do Postgres) nunca era
+  -- AVALIADA: CHECK curto-circuita em NULL. A migration aplicava limpa e o
+  -- primeiro site cadastrado quebraria em producao.
+  PERFORM _prova_aceita_como('ativo COM url publica entra', 'service_role',
+    format($q$SELECT public.cofre_cadastrar_ativo(jsonb_build_object(
+      'ativo_id','asset:website:portal-de-prova','kind','website','cluster','web_properties',
+      'nome','Portal de prova','plataforma','WordPress','estado','declared','criticidade','low',
+      'resumo','Site usado apenas para provar que a CHECK de URL e avaliavel neste banco.',
+      'dono_nome','VOLC','dono_custodia','declared',
+      'url_publica','https://exemplo.agenciavolc.com.br/pagina?a=1&b=2',
+      'capacidades', jsonb_build_array('Publicacao'),
+      'proxima_acao','Conferir DNS, hospedagem e propriedade do dominio.'),
+      'chave-url-0001',%L::uuid,%L)$q$, autor, email));
+
+  PERFORM _prova_igual('a url publica foi mesmo gravada',
+    $q$SELECT url_publica FROM public.cofre_ativo WHERE ativo_id='asset:website:portal-de-prova'$q$,
+    'https://exemplo.agenciavolc.com.br/pagina?a=1&b=2');
+
+  PERFORM _prova_recusa('url nao HTTP(S) e recusada',
+    $q$INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade,
+        resumo, dono_nome, dono_custodia, capacidades, proxima_acao, url_publica)
+       VALUES ('asset:website:ruim','website','web_properties','Site ruim','WordPress','declared','low',
+               'resumo suficientemente longo para a check','V','declared',ARRAY['a'],
+               'acao suficientemente longa','javascript:alert(1)')$q$,
+    '23514', 'cofre_ativo_url_http');
+
+  PERFORM _prova_recusa('url acima de 2000 caracteres e recusada',
+    format($q$INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade,
+        resumo, dono_nome, dono_custodia, capacidades, proxima_acao, url_publica)
+       VALUES ('asset:website:longa','website','web_properties','Site longo','WordPress','declared','low',
+               'resumo suficientemente longo para a check','V','declared',ARRAY['a'],
+               'acao suficientemente longa',%L)$q$, 'https://x.com/' || repeat('a', 2100)),
+    '23514', 'cofre_ativo_url_http');
+
+  -- Uma URL de 300 caracteres passaria por qualquer teste de "URL curta" e
+  -- morreria no teto 255 se a forma voltasse a usar contagem de repeticao.
+  PERFORM _prova_aceita('url de 300 caracteres (acima do teto de repeticao do regex)',
+    format($q$INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade,
+        resumo, dono_nome, dono_custodia, capacidades, proxima_acao, url_publica)
+       VALUES ('asset:website:trezentos','website','web_properties','Site 300','WordPress','declared','low',
+               'resumo suficientemente longo para a check','V','declared',ARRAY['a'],
+               'acao suficientemente longa',%L)$q$, 'https://x.com/' || repeat('a', 286)));
+
   PERFORM _prova_igual('o ativo existe com revisao 1',
     $q$SELECT revisao_atual::text FROM public.cofre_ativo WHERE ativo_id='asset:facebook-page:piloto'$q$, '1');
   PERFORM _prova_igual('a revisao 1 foi gravada na trilha',
@@ -621,10 +666,12 @@ BEGIN
       'piloto encerrado; a pagina sai de operacao sem sair do inventario','chave-aposenta-0001',%L::uuid,%L)$q$, autor, email));
   PERFORM _prova_igual('o ativo continua existindo, aposentado',
     $q$SELECT estado FROM public.cofre_ativo WHERE ativo_id='asset:facebook-page:piloto'$q$, 'retired');
-  PERFORM _prova_igual('aposentado sai da listagem padrao',
-    $q$SELECT jsonb_array_length(public.cofre_listar_ativos()->'ativos')::text$q$, '0');
+  PERFORM _prova_igual('o aposentado sai da listagem padrao',
+    $q$SELECT count(*)::text FROM jsonb_array_elements(public.cofre_listar_ativos()->'ativos') a
+        WHERE a->>'ativo_id' = 'asset:facebook-page:piloto'$q$, '0');
   PERFORM _prova_igual('e aparece quando pedido explicitamente',
-    $q$SELECT jsonb_array_length(public.cofre_listar_ativos(NULL,NULL,NULL,NULL,true)->'ativos')::text$q$, '1');
+    $q$SELECT count(*)::text FROM jsonb_array_elements(public.cofre_listar_ativos(NULL,NULL,NULL,NULL,true)->'ativos') a
+        WHERE a->>'ativo_id' = 'asset:facebook-page:piloto'$q$, '1');
 
   PERFORM _prova_aceita_como('reativar o ativo', 'service_role',
     format($q$SELECT public.cofre_reativar_ativo('asset:facebook-page:piloto','active',
@@ -640,7 +687,7 @@ BEGIN
     $q$SELECT jsonb_array_length(public.cofre_listar_ativos()->'gavetas')::text$q$, '7');
   PERFORM _prova_igual('gaveta vazia vem com contagem zero, nao some',
     $q$SELECT (SELECT g->>'total' FROM jsonb_array_elements(public.cofre_listar_ativos()->'gavetas') g
-               WHERE g->>'cluster'='infrastructure')$q$, '0');
+               WHERE g->>'cluster'='communities')$q$, '0');
 
   -- FALHA DE ATIVO INEXISTENTE E ERRO, NAO SILENCIO.
   PERFORM _prova_recusa('revisar ativo que nao existe',
