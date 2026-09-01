@@ -741,3 +741,52 @@ def test_sem_leitura_o_plano_viaja_NULO_e_nao_como_plano_vazio():
     assert m.lida is False
     assert m.plano is None
     assert m.json()["plano"] is None
+
+
+def test_o_bloqueio_sobrevive_a_pmax_ENTRAR_no_executor(monkeypatch):
+    """A prova que a independência precisa, e o helper isolado não dá.
+
+    ⚠️ Testar `_bloqueios_de_observabilidade_na_criacao` sozinho prova que a
+    FUNÇÃO responde. Não prova que o COMPOSITOR ainda a chama no dia em que
+    Performance Max deixar de ser recusado por decisão de produto — que é
+    exatamente o dia em que este bloqueio passa a ser o único de pé, e o único
+    motivo pelo qual P04-T07 pede que ele seja independente.
+
+    Aqui o manifesto de PMax é substituído por um que SABE PROVAR e SABE CRIAR.
+    O ramo que produz `PMAX_FORA_DO_EXECUTOR` deixa de ser alcançado — e o
+    bloqueio de observabilidade tem de continuar lá, sozinho, fechando o portão.
+    """
+    from dataclasses import replace
+
+    from app.trafego import plataforma as plat
+
+    original = plat.manifesto(plat.GOOGLE_ADS, "PERFORMANCE_MAX")
+    assert original is not None
+    # Um PMax hipotético que entrou no executor: campos de pedido, prova e
+    # mutação real liberadas. Nada disso é verdade hoje — é o futuro que o
+    # bloqueio precisa sobreviver.
+    futuro = replace(
+        original,
+        campos_do_pedido=("final_url", "budget_diario"),
+        permite_prova=True,
+        permite_mutacao_real=True,
+    )
+    assert futuro.sabe_provar and futuro.sabe_criar
+
+    real = plat.manifesto
+    monkeypatch.setattr(
+        cc.plat, "manifesto",
+        lambda plataforma, canal: (futuro if canal == "PERFORMANCE_MAX"
+                                   else real(plataforma, canal)))
+
+    pmax = cc.contrato("PERFORMANCE_MAX", capacidades=ADMIN_COM_ESCRITA).por_nome
+    portao = pmax[cc.CRIAVEL_PAUSADA]
+    codigos = {b.codigo for b in portao.bloqueadores}
+
+    assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR not in codigos, (
+        "o arranjo não exercitou o futuro: a decisão de produto ainda fecha o "
+        "portão, e o teste mediria o presente")
+    assert cc.CODIGO_PMAX_SEM_OBSERVABILIDADE in codigos, (
+        "com PMax no executor, o portão ficou sem o bloqueio de "
+        "observabilidade — criar sem conseguir reler é gasto cego")
+    assert portao.estado == cc.BLOQUEADO
