@@ -1,0 +1,144 @@
+{
+  "_comentario": "Delta de curadoria PROPOSTO pela missão search-measurement-operational-v1. NÃO aplicado: o integrador único aplica e reconstrói o Mapa Vivo uma vez após o merge. Nada aqui marca tarefa como done — trabalho em branch não integrada não fecha a fonte compartilhada.",
+  "missao": "search-measurement-operational-v1",
+  "branch": "sprint/search-measurement-operational-v1",
+  "base": "812ab0d4ab3091072e695f52db6e117f04aa2ce7 (origin/volc-os-v2)",
+  "data": "2026-09-01",
+  "commits": ["57028f2", "11d5c6b", "2aaa752"],
+
+  "nos_propostos": [
+    {
+      "id": "trafego-plano-mensuracao-persistido",
+      "tipo": "fluxo",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "O caminho produtivo do plano de mensuração",
+      "estado": "ativo",
+      "path": "backend/app/routers/trafego.py",
+      "evidence": "A costura que faltava entre um domínio pronto e um banco pronto. Antes desta missão `RepositorioDePlanoDeMensuracao` (persistencia.py:959) e `documento_de_plano_de_mensuracao` (persistencia.py:411) tinham ZERO chamadores de produção — migration, RPC, domínio e tela existiam e NADA gravava. Agora `/subir` lê o plano antes de `ledger.abrir`, grava-o pela única RPC governada depois de `ledger.despachar` e ANTES de `sb.subir`, e vincula ao campaign_id depois de `_fechar_recibo_com_sucesso` (que é quem declara a identidade em `trafego_campanha`, alvo da FK). Falha da gravação fecha o recibo como erro e aborta com 409 (guarda do schema) ou 503 (banco fora do ar / migration ausente) — o Google não é chamado. Leitura que não completa produz o plano de ignorância com causa, nunca uma recusa: a campanha nasce pausada e os portões seguem fechados. 44 provas em backend/tests/test_trafego_plano_persistido.py, 36 das quais falhavam antes."
+    },
+    {
+      "id": "trafego-plano-vinculo-ao-nascimento",
+      "tipo": "contrato",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "Uma intenção une o pré e o pós-nascimento",
+      "estado": "ativo",
+      "path": "backend/app/trafego/plano_mensuracao.py",
+      "evidence": "`vincular_ao_nascimento` devolve a MESMA observação com o campaign_id que só existe depois do mutate — não relê o Google, porque reler produziria uma observação diferente e o contrato pede vincular o mesmo plano. Preserva `chave_intencao` (o que une as duas linhas), `lido_em` e os seis estados de leitura; sobe `versao`. A impressão inclui o campaign_id, então a linha nova entra AO LADO da antiga: append-only respeitado, sem UPDATE. `payload.vinculo.observado_antes_do_nascimento` carrega a ressalva que impede a linha de mentir depois — `metas_da_campanha_estado='inelegivel'` numa linha com campaign_id descreve o instante da leitura, não a campanha. `do_json` é o inverso exato de `para_json` (round-trip de impressão provado) e existe para que a reconciliação não precise de uma SEGUNDA derivação do sha256."
+    },
+    {
+      "id": "trafego-plano-erro-tipado",
+      "tipo": "contrato",
+      "cluster": "plataforma/integracoes",
+      "rotulo": "Recusa de guarda ≠ banco fora do ar ≠ migration ausente",
+      "estado": "ativo",
+      "path": "backend/app/trafego/persistencia.py",
+      "evidence": "`PlanoRecusado`/`PlanoIndisponivel` e o tradutor puro `erro_de_plano`, no mesmo desenho de `ledger.LedgerRecusou`/`LedgerIndisponivel` e com o mesmo predicado de SQLSTATE (classe 23, 22023, P0001, P0002). PGRST202/PGRST205 viram `migration_ausente=True` e a mensagem nomeia o arquivo a aplicar — a saída ali é aplicar a v12_02, não tentar de novo. Mais `por_intencao` e `por_prefixo_de_intencao` (mínimo de 12 hex, e ambiguidade é recusada em vez de escolhida)."
+    },
+    {
+      "id": "trafego-identidade-do-recibo",
+      "tipo": "correcao",
+      "cluster": "aquisicao/campanhas",
+      "rotulo": "campaign_id nunca é autoridade sem customer_id",
+      "estado": "ativo",
+      "path": "backend/app/routers/trafego.py",
+      "evidence": "DEFEITO REPRODUZIDO. `_campaign_id_do_recibo` fazia `rsplit('/', 1)[-1]` sobre o resource_name e DESCARTAVA o segmento `customers/<conta>` — a única prova de que a campanha criada pertence à conta em que se pediu para criá-la. Como `volc_campaign_id = uuid5(gads:<conta>:<campanha>)`, um resource_name de outra conta produziria uma identidade derivada com a conta do escopo e o id alheio: dois endereços para a mesma campanha, descobertos tarde pelo índice `trafego_campanha_identidade_externa_ux`. `_identidade_do_recibo` casa as DUAS metades por FORMA (`^customers/(\\d{6,12})/campaigns/(\\d+)$`), o `$` impede que um sub-recurso case, e a lógica que estava duplicada em `_registrar_campanha` passa a existir uma vez."
+    },
+    {
+      "id": "trafego-saida-do-indeterminado",
+      "tipo": "correcao",
+      "cluster": "decisao/atuacao",
+      "rotulo": "O 504 entrega a chave da porta que ele manda abrir",
+      "estado": "ativo",
+      "path": "backend/app/routers/trafego.py",
+      "evidence": "DEFEITO REPRODUZIDO. `_detalhe_indeterminado` dizia `proxima_acao: reconciliar_na_conta` e NÃO carregava `marca` nem `chave_intencao`; `ReconciliarEntrada` exige `campaign_id` OU `marca`, e o item que mais precisa de reconciliação é justamente o que não tem campaign_id — a chamada não respondeu. A resposta mandava o operador a uma porta e não lhe dava a chave. Agora `marca`, `chave_intencao` e `plano_de_mensuracao_id` viajam no corpo, e `/reconciliar` religa o plano pela chave (prefixo da marca como reserva) sem criar segunda intenção."
+    },
+    {
+      "id": "trafego-tela-plano-registro",
+      "tipo": "superficie",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "Calculado ≠ persistido ≠ vinculado",
+      "estado": "ativo",
+      "path": "src/components/trafego/canais/PlanoDeMensuracao.tsx",
+      "evidence": "O cartão ganhou o bloco Registro e o recibo parou de perder o plano depois do sucesso. `vinculado: false` é dito com todas as letras porque NÃO é 'não há plano': é 'o plano existe, foi gravado antes da criação, e falta ligá-lo ao id' — e as duas pedem coisas opostas. Ausência de `persistencia`/`vinculo` continua sendo 'este servidor não respondeu isto', nunca um veredito. Primeiro arquivo de teste próprio do componente: 12 provas."
+    },
+    {
+      "id": "trafego-tela-colapsos-de-estado",
+      "tipo": "correcao",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "Quatro ignorâncias que a tela lia como veredito",
+      "estado": "ativo",
+      "path": "src/lib/trafego/canais.ts",
+      "evidence": "QUATRO DEFEITOS REPRODUZIDOS, cada um com contraprova que falhava antes. (1) `textoDaMetaEfetiva` emitia veredito a partir de lista vazia sem olhar o estado da leitura: com a consulta FALHANDO, `metas_biddable=[]` virava 'nenhuma meta é perseguível pelo lance automático', e o operador ia configurar uma meta que talvez já exista. (2) `textoDaFonteDoSinal` tinha `?? 'nenhuma ação foi eleita'` — afirmava uma ELEIÇÃO sobre ignorância. (3) O destino de conversão offline era um booleano: 'não resolvido' dizia ao mesmo tempo 'ninguém leu', 'li e não há endereçável' e 'a leitura falhou'; e resolvido não é pronto. (4) `Lancamento.tsx:394` formatava dinheiro com `Number(x ?? 0).toFixed(2)` no retângulo imediatamente acima do checkbox de confirmação — com o campo ausente saía 'orçamento R$ 0.00 / dia', e zero é uma afirmação. Agora `—`."
+    }
+  ],
+
+  "arestas_propostas": [
+    {"de": "trafego-plano-mensuracao-persistido", "para": "trafego-plano-vinculo-ao-nascimento", "tipo": "usa"},
+    {"de": "trafego-plano-mensuracao-persistido", "para": "trafego-plano-erro-tipado", "tipo": "usa"},
+    {"de": "trafego-plano-mensuracao-persistido", "para": "trafego-identidade-do-recibo", "tipo": "usa"},
+    {"de": "trafego-plano-mensuracao-persistido", "para": "trafego-ledger", "tipo": "ordena_depois_de"},
+    {"de": "trafego-plano-mensuracao-persistido", "para": "v12_02-plano-de-mensuracao", "tipo": "escreve"},
+    {"de": "trafego-plano-erro-tipado", "para": "v12_02-plano-de-mensuracao", "tipo": "traduz"},
+    {"de": "trafego-saida-do-indeterminado", "para": "trafego-plano-mensuracao-persistido", "tipo": "reconcilia"},
+    {"de": "trafego-tela-plano-registro", "para": "trafego-plano-mensuracao-persistido", "tipo": "projeta"},
+    {"de": "trafego-tela-colapsos-de-estado", "para": "trafego-plano-mensuracao", "tipo": "le"},
+    {"de": "trafego-identidade-do-recibo", "para": "trafego-sincronizador-identidade", "tipo": "deriva_por"}
+  ],
+
+  "tarefas_do_roadmap_tocadas": [
+    {
+      "id": "P05-T12",
+      "titulo": "Fechar o plano canônico de mensuração no nascimento Search",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_continua_partial": "A v12_02 NÃO foi aplicada no Supabase oficial e nenhuma escrita foi feita em produção. O código operacional está pronto e o persistence path está provado em ambiente descartável, mas 'campaign_measurement_plan persistido no Supabase oficial' — o primeiro critério de aceite — continua não satisfeito.",
+      "delta_de_evidencia": "Duas das lacunas nomeadas no `proof` anterior foram fechadas: 'o repositório ainda não está ligado a /provar e /subir' deixou de valer — `/subir` grava o plano pela RPC governada ANTES de qualquer mutate e aborta se a gravação falhar; `/provar` continua sem escrever e agora DIZ isso em campo próprio (`prontidao.plano_persistido`), em vez de deixar a tela supor. O vínculo pós-nascimento existe e preserva a intenção: duas linhas, uma `chave_intencao`, append-only, sem UPDATE. A reconciliação tardia religa o plano sem criar segunda intenção. Gates medidos em 812ab0d+3: pytest 2726 passed / 30 skipped / 0 failed (baseline real 2682/30/0 — delta é exatamente as 44 provas novas); Vitest 1169 passed / 5 skipped / 0 failed (baseline 1156/5); TypeScript 76, igual ao baseline, zero erro no ownership; ciclo v12_02 55/0; build verde; gate de zero mutação Google 3/3; secret scan limpo. CONTINUAM ABERTAS: a aplicação da migration em produção, Data Manager não provado em operação, coleta PMax não implementada, e nenhuma meta ou ação de conversão alterada."
+    },
+    {
+      "id": "P09-T14",
+      "titulo": "Operacionalizar a coleta contínua de inteligência oficial Google Ads",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "delta_de_evidencia": "NÃO TOCADA — `volc_ads/inteligencia_google/**` é ownership da lane Hermes e nenhum arquivo dela foi modificado. Registrado aqui só porque a reconciliação do plano usa a mesma leitura read-only da conta que aquela lane opera, e o vínculo pós-descoberta é um consumidor futuro dela."
+    }
+  ],
+
+  "achados_para_o_dono": [
+    {
+      "assunto": "Smart Bidding não tem portão no caminho de ESCRITA",
+      "evidencia": "volc_ads/campanha/search.py:57 — `LANCES_PERMITIDOS = ('MANUAL_CPC', 'MAXIMIZE_CONVERSIONS')`. O construtor escreve MAXIMIZE_CONVERSIONS se o operador o pedir; o bloqueio G3 mora em `prontidao.py` e só é avaliado por `/provar`.",
+      "risco": "BAIXO HOJE, e a razão é estrutural, não sorte: a campanha nasce PAUSED por literal sem condicional (volc_ads/campanha/comum.py:207) e não existe função de ativação em volc_ads. Com o plano agora gravado, a linha registra `meta_resolvida=false` e os bloqueadores, e é ela que o portão de ativação lê.",
+      "decisao": "NÃO consertado nesta missão — seria expandir escopo para dentro do caminho de criação, que é o que a missão manda não fazer. Fica declarado para o dono decidir se `/subir` deve recusar MAXIMIZE_CONVERSIONS enquanto o plano não estiver completo."
+    },
+    {
+      "assunto": "O `intencao_id` do ledger é instável entre /provar e /subir",
+      "evidencia": "backend/app/routers/trafego.py:3100-3101 — `rotulo=str(getattr(plano.brief, 'titulo', '') or body.vertical or 'campanha')`, e `plano.brief.titulo` é recomputado dentro de `_provar_de_novo` a partir do cockpit RELIDO do Pautador no instante do /subir. `intencao_determinista` inclui o `rotulo` na derivação.",
+      "risco": "Não afeta o plano de mensuração, que se ancora em `chave_intencao` (imune ao carimbo e com a conta dentro). Afeta a idempotência do LEDGER se o título da oportunidade mudar entre a prova e a subida.",
+      "decisao": "NÃO consertado — é do domínio do ledger (P10/v10_03) e não bloqueia este Definition of Done."
+    },
+    {
+      "assunto": "Fact-check Google em disputa: o que acontece ao mandar evento para a operating account errada",
+      "evidencia": "A prosa deste repositório (plano_mensuracao.py:226-233 e o cabeçalho da v12_02) afirma que mandar para a conta errada 'não dá erro, dá SILÊNCIO'. O fact-check de 01/09/2026 apontou `OPERATING_ACCOUNT_LOGIN_ACCOUNT_MISMATCH` como erro de posse.",
+      "risco": "NENHUM para o comportamento: o CHECK `trafego_plano_destino_e_do_dono_da_acao` exige que a operating account SEJA a dona da ação, e isso está certo nas duas leituras. O que está em disputa é a narrativa de risco, não a regra.",
+      "decisao": "A prosa NOVA desta missão foi ajustada para não repetir a afirmação disputada. A prosa antiga (pré-812ab0d) foi deixada como está — corrigi-la é decisão de dono e não bloqueia o DoD."
+    },
+    {
+      "assunto": "`goal_config_level = UNSPECIFIED` tratado como 'não decide'",
+      "evidencia": "plano_mensuracao.NIVEIS_DECIDIDOS exclui UNSPECIFIED e UNKNOWN. O fact-check apontou que UNSPECIFIED funcionalmente se comporta como CUSTOMER.",
+      "risco": "Falha na direção SEGURA: produz 'não sei' onde talvez coubesse 'a conta manda'. Nunca autoriza Smart Bidding indevidamente; pode declarar um bloqueador a mais.",
+      "decisao": "NÃO alterado — é comportamento anterior a esta missão e mudá-lo afrouxaria uma guarda com base num fact-check que não é a documentação lida em primeira mão."
+    },
+    {
+      "assunto": "Fragilidade de teste encontrada e fechada",
+      "evidencia": "`volc_ads.gads.client.cliente` é `@lru_cache`. Com `~/google-ads.yaml` presente, `load_from_storage` refresca o token — ou seja, fala com o Google — antes de qualquer consulta. `test_trafego_ledger.py` e `test_trafego_ledger_producao.py` passavam na suíte inteira porque algum módulo importado antes já tinha povoado o cache; rodados sozinhos, abriam socket e a própria fixture de rede derrubava 20 testes.",
+      "decisao": "Fechado nos dois arquivos (dublê de `contas.meta_de_conversao` e de `_plano_de_mensuracao` na fixture autouse). Não é mudança de produto; é um teste que passava por ordem de import."
+    }
+  ],
+
+  "o_que_nao_foi_tocado": [
+    "volc_ads/inteligencia_google/** — lane Hermes P09-T14",
+    "supabase/migrations/** — nenhuma migration foi alterada; a v12_02 não precisou de correção (a invariante 6 é unidirecional, provado por experimento em cluster descartável)",
+    "volc-os-workbook/ROADMAP-VIVO.json, docs/volc-os-graph/curadoria-operacional.json e o grafo — o integrador único aplica",
+    "harness, n8n, main, configuração de produção"
+  ]
+}
