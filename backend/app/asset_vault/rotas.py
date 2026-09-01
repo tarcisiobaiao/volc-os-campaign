@@ -247,6 +247,13 @@ class PedidoDeVerificacao(_Estrito):
     observado_em: Annotated[str, Field(min_length=10, max_length=40)]
     proximo_ato: Optional[Annotated[str, Field(min_length=5, max_length=800)]] = None
     revisar_em: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    #: QUAL referencia foi verificada, quando `alvo` e "credencial".
+    #:
+    #: ⚠️ Sem ele, a primeira versao marcava TODAS as referencias ativas do ativo
+    #: (defeito medido em 01/09/2026): conferir FB_PAGE_ADMIN tornava
+    #: ADSPOWER_API_KEY `verified` sem ninguem ter olhado para ela. O banco agora
+    #: RECUSA a ambiguidade quando ha mais de uma, em vez de escolher em silencio.
+    nome_logico: Optional[Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")]] = None
 
 
 class PedidoDeCredencial(_Estrito):

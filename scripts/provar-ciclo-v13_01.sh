@@ -272,8 +272,9 @@ BEGIN
     $q$SELECT * FROM public.cofre_ativo$q$);
   PERFORM _prova_recusa_como('authenticated nao le cofre_ativo', 'authenticated',
     $q$SELECT * FROM public.cofre_ativo$q$);
-  PERFORM _prova_recusa_como('anon nao le a view de inventario', 'anon',
-    $q$SELECT * FROM public.cofre_inventario$q$);
+  PERFORM _prova_igual('nao existe view no schema (superficie que nao existe nao vaza)',
+    $q$SELECT count(*)::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relkind='v' AND c.relname LIKE 'cofre\_%'$q$, '0');
 
   -- service_role tem BYPASSRLS. Se a contencao dependesse de RLS, esta prova
   -- falharia — e o fato de ela passar e que mostra que o REVOKE nominal e a
@@ -631,6 +632,46 @@ BEGIN
                'evidencia suficientemente longa', now() + interval '2 days',
                '00000000-0000-0000-0000-000000000001'::uuid,'x@y.z')$q$,
     '23514', 'cofre_verificacao_nao_futura');
+
+  -- A VERIFICACAO DE CREDENCIAL NOMEIA A REFERENCIA.
+  -- Defeito medido em 01/09/2026: a primeira versao marcava TODAS as
+  -- referencias ativas do ativo. Conferir uma tornava as outras `verified` sem
+  -- ninguem ter olhado para elas.
+  PERFORM _prova_aceita_como('segunda referencia no mesmo ativo', 'service_role',
+    format($q$SELECT public.cofre_referenciar_credencial(jsonb_build_object(
+      'ativo_id','asset:facebook-page:piloto','provider','1password','nome_logico','ADSPOWER_API_KEY',
+      'localizador','op://VOLC/AdsPower/credential','finalidade','Chave da Local API do AdsPower',
+      'owner_nome','Tarcisio'),'chave-credencial-0002',%L::uuid,%L)$q$, autor, email));
+
+  PERFORM _prova_recusa('verificar credencial sem dizer QUAL, com duas referencias',
+    format($q$SELECT public.cofre_registrar_verificacao(jsonb_build_object(
+      'ativo_id','asset:facebook-page:piloto','alvo','credencial','resultado','verified',
+      'metodo','abertura manual no 1Password','procedencia','live_observation',
+      'evidencia','o item abriu e o campo existe','observado_em', now()::text),
+      'chave-verif-ambigua-01',%L::uuid,%L)$q$, autor, email),
+    '22023', 'informe nome_logico');
+
+  PERFORM _prova_aceita_como('verificar a referencia NOMEADA', 'service_role',
+    format($q$SELECT public.cofre_registrar_verificacao(jsonb_build_object(
+      'ativo_id','asset:facebook-page:piloto','alvo','credencial','nome_logico','FB_PAGE_ADMIN',
+      'resultado','verified','metodo','abertura manual no 1Password',
+      'procedencia','live_observation','evidencia','o item abriu e o campo existe',
+      'observado_em', now()::text),'chave-verif-nomeada-01',%L::uuid,%L)$q$, autor, email));
+
+  PERFORM _prova_igual('so a referencia nomeada ficou verificada',
+    $q$SELECT verificacao_estado FROM public.cofre_credencial_referencia
+        WHERE ativo_id='asset:facebook-page:piloto' AND nome_logico='FB_PAGE_ADMIN'$q$, 'verified');
+  PERFORM _prova_igual('a OUTRA referencia continua nao verificada',
+    $q$SELECT verificacao_estado FROM public.cofre_credencial_referencia
+        WHERE ativo_id='asset:facebook-page:piloto' AND nome_logico='ADSPOWER_API_KEY'$q$, 'unverified');
+
+  PERFORM _prova_recusa('verificar uma referencia que nao existe',
+    format($q$SELECT public.cofre_registrar_verificacao(jsonb_build_object(
+      'ativo_id','asset:facebook-page:piloto','alvo','credencial','nome_logico','NAO_EXISTE',
+      'resultado','verified','metodo','abertura manual','procedencia','live_observation',
+      'evidencia','evidencia suficientemente longa','observado_em', now()::text),
+      'chave-verif-fantasma-1',%L::uuid,%L)$q$, autor, email),
+    'P0002', 'nao tem referencia ativa chamada');
 
   -- RELACOES.
   PERFORM _prova_recusa('relacao de um ativo consigo mesmo',

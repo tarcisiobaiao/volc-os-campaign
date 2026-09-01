@@ -436,6 +436,7 @@ function FormularioDeVerificacao({ ativoId, aoFechar, aoConcluir }: {
   const [form, setForm] = React.useState({
     alvo: "ativo", resultado: "verified", metodo: "", procedencia: "live_observation",
     evidencia: "", observado_em: new Date().toISOString().slice(0, 16), proximo_ato: "",
+    nome_logico: "",
   });
   const mudar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [campo]: e.target.value }));
@@ -449,6 +450,11 @@ function FormularioDeVerificacao({ ativoId, aoFechar, aoConcluir }: {
         observado_em: new Date(form.observado_em).toISOString(),
       };
       if (form.proximo_ato.trim()) corpo.proximo_ato = form.proximo_ato.trim();
+      // Só quando o alvo é a credencial: o banco recusa verificar sem dizer
+      // QUAL referência, quando o ativo tem mais de uma.
+      if (form.alvo === "credencial" && form.nome_logico.trim()) {
+        corpo.nome_logico = form.nome_logico.trim();
+      }
       return cofre.registrarVerificacao(ativoId, corpo);
     },
     onSuccess: () => {
@@ -487,6 +493,14 @@ function FormularioDeVerificacao({ ativoId, aoFechar, aoConcluir }: {
           <input required type="datetime-local" value={form.observado_em} onChange={mudar("observado_em")} className={ENTRADA} />
         </Campo>
         <Campo rotulo="Próximo ato (opcional)"><input value={form.proximo_ato} onChange={mudar("proximo_ato")} className={ENTRADA} /></Campo>
+        {form.alvo === "credencial" ? (
+          <div className="md:col-span-2">
+            <Campo rotulo="Qual referência foi verificada"
+              ajuda="o nome lógico (ex.: FB_PAGE_ADMIN). Obrigatório quando o ativo tem mais de uma referência — conferir uma não torna as outras verificadas.">
+              <input value={form.nome_logico} onChange={mudar("nome_logico")} className={ENTRADA} placeholder="FB_PAGE_ADMIN" />
+            </Campo>
+          </div>
+        ) : null}
         <div className="md:col-span-2">
           <Campo rotulo="Evidência" ajuda="o que foi visto, com precisão suficiente para outra pessoa repetir">
             <textarea required value={form.evidencia} onChange={mudar("evidencia")} className={AREA} />

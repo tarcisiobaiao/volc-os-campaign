@@ -89,12 +89,11 @@ BEGIN
 END
 $guarda$;
 
--- Ordem: view, depois funcoes, depois tabelas na ordem inversa das FKs.
+-- Ordem: funcoes, depois tabelas na ordem inversa das FKs. (Nao ha view:
+-- `cofre_inventario` foi removida do desenho por nao ter consumidor.)
 -- `CASCADE` nao e usado em lugar nenhum: ele apagaria em silencio um objeto de
 -- outro dominio que dependesse destes, e a lista explicita e a unica forma de o
 -- rollback nao levar junto o que nao e dele.
-DROP VIEW IF EXISTS public.cofre_inventario;
-
 DROP FUNCTION IF EXISTS public.cofre_engines_disponiveis();
 DROP FUNCTION IF EXISTS public.cofre_postura_credencial(text);
 DROP FUNCTION IF EXISTS public.cofre_detalhar_ativo(text);

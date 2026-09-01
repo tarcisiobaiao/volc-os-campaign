@@ -1683,11 +1683,12 @@ DECLARE
   ativo    text := p_payload->>'ativo_id';
   nova_ver bigint;
   nova_rev integer;
+  n_refs   integer;
   recibo   jsonb;
 BEGIN
   PERFORM public.cofre_recusa_campo_desconhecido(p_payload, ARRAY[
     'ativo_id','alvo','resultado','metodo','procedencia','evidencia',
-    'observado_em','proximo_ato','revisar_em'
+    'observado_em','proximo_ato','revisar_em','nome_logico'
   ], 'cofre_registrar_verificacao');
   PERFORM public.cofre_recusa_chave_sensivel(p_payload, 'verificacao');
 
@@ -1713,11 +1714,47 @@ BEGIN
 
   -- A verificacao de CREDENCIAL tambem move a postura da referencia. Sem isso,
   -- o recibo diria `verified` e o card continuaria dizendo `unverified`.
+  --
+  -- ⚠️ DEFEITO MEDIDO E CORRIGIDO EM 01/09/2026: a primeira versao deste bloco
+  -- atualizava TODAS as referencias ativas do ativo. Uma pagina com
+  -- FB_PAGE_ADMIN e ADSPOWER_API_KEY teria as duas marcadas `verified` porque
+  -- alguem conferiu UMA — a definicao de confianca inventada que este schema
+  -- inteiro existe para impedir. Agora a referencia e nomeada, e a ambiguidade
+  -- e ERRO em vez de escolha silenciosa.
   IF p_payload->>'alvo' = 'credencial' THEN
-    UPDATE public.cofre_credencial_referencia
-       SET verificacao_estado = p_payload->>'resultado',
-           verificado_em      = (p_payload->>'observado_em')::timestamptz
-     WHERE ativo_id = ativo AND aposentado_em IS NULL;
+    IF p_payload ? 'nome_logico' THEN
+      UPDATE public.cofre_credencial_referencia
+         SET verificacao_estado = p_payload->>'resultado',
+             verificado_em      = (p_payload->>'observado_em')::timestamptz
+       WHERE ativo_id = ativo AND aposentado_em IS NULL
+         AND nome_logico = p_payload->>'nome_logico';
+      IF NOT FOUND THEN
+        RAISE EXCEPTION
+          'o ativo % nao tem referencia ativa chamada %', ativo, p_payload->>'nome_logico'
+          USING ERRCODE = 'no_data_found';
+      END IF;
+    ELSE
+      SELECT count(*) INTO n_refs
+        FROM public.cofre_credencial_referencia
+       WHERE ativo_id = ativo AND aposentado_em IS NULL;
+
+      IF n_refs = 0 THEN
+        RAISE EXCEPTION
+          'o ativo % nao tem referencia de credencial para verificar', ativo
+          USING ERRCODE = 'no_data_found';
+      END IF;
+      IF n_refs > 1 THEN
+        RAISE EXCEPTION
+          'o ativo % tem % referencias ativas; informe nome_logico para dizer qual foi verificada',
+          ativo, n_refs
+          USING ERRCODE = 'invalid_parameter_value';
+      END IF;
+
+      UPDATE public.cofre_credencial_referencia
+         SET verificacao_estado = p_payload->>'resultado',
+             verificado_em      = (p_payload->>'observado_em')::timestamptz
+       WHERE ativo_id = ativo AND aposentado_em IS NULL;
+    END IF;
   END IF;
 
   UPDATE public.cofre_ativo SET revisao_atual = revisao_atual + 1
@@ -2073,34 +2110,7 @@ $guarda_rls$;
 
 
 -- -----------------------------------------------------------------------------
--- 18. VIEW de leitura — security_invoker, e por isso ela nao vaza nada
--- -----------------------------------------------------------------------------
--- Sem `security_invoker=true` uma view roda com os privilegios do DONO, e
--- entregaria as tabelas inteiras a quem tivesse SELECT nela — passando por cima
--- de todo o trabalho da secao 20. Com ele, a view so mostra o que o chamador ja
--- poderia ver; como ninguem tem SELECT nas tabelas, ela e util apenas dentro de
--- funcao `SECURITY DEFINER`.
---
--- ⚠️ Ela NAO junta `cofre_credencial_referencia`. Nem por leitura, nem por
--- EXISTS. A contagem de credenciais vem de `cofre_listar_ativos`, que e funcao
--- governada, para que a superficie de leitura direta nunca toque naquela tabela.
-CREATE VIEW public.cofre_inventario WITH (security_invoker = true) AS
-  SELECT
-    a.ativo_id, a.nome, a.kind, t.rotulo AS tipo_rotulo,
-    a.cluster, g.rotulo AS gaveta_rotulo, g.ordem AS gaveta_ordem,
-    a.plataforma, a.estado, a.criticidade, a.dono_nome, a.dono_custodia,
-    a.projeto, a.vertical, a.display_id, a.url_publica,
-    a.revisao_atual, a.criado_em, a.atualizado_em, a.aposentado_em
-  FROM public.cofre_ativo a
-  JOIN public.cofre_gaveta g ON g.cluster = a.cluster
-  JOIN public.cofre_tipo   t ON t.kind    = a.kind;
-
-COMMENT ON VIEW public.cofre_inventario IS
-  'Projecao de leitura do inventario. security_invoker=true; nao toca cofre_credencial_referencia.';
-
-
--- -----------------------------------------------------------------------------
--- 19. SEGURANCA — REVOKE nominal, RLS forcada, zero policy, grants minimos
+-- 18. SEGURANCA — REVOKE nominal, RLS forcada, zero policy, grants minimos
 -- -----------------------------------------------------------------------------
 -- Ordem importa: REVOKE primeiro (as tabelas ja nasceram abertas pelo default
 -- ACL do achado H), RLS depois, GRANT minimo por ultimo.
@@ -2133,12 +2143,15 @@ BEGIN
     EXECUTE format('ALTER TABLE public.%I FORCE  ROW LEVEL SECURITY', t);
   END LOOP;
 
-  -- A view: mesmo tratamento. security_invoker ja a impede de vazar, e o REVOKE
-  -- faz a segunda camada.
-  EXECUTE 'REVOKE ALL ON TABLE public.cofre_inventario FROM PUBLIC';
-  EXECUTE 'REVOKE ALL ON TABLE public.cofre_inventario FROM anon';
-  EXECUTE 'REVOKE ALL ON TABLE public.cofre_inventario FROM authenticated';
-  EXECUTE 'REVOKE ALL ON TABLE public.cofre_inventario FROM service_role';
+  -- ⚠️ NAO HA VIEW NESTE SCHEMA, e a ausencia e decisao.
+  --
+  -- A primeira versao criou `cofre_inventario` com `security_invoker=true`. Ela
+  -- nao tinha um unico consumidor: as funcoes governadas juntam gaveta e tipo
+  -- direto das tabelas, e a unica referencia a ela no repositorio era a prova
+  -- de que anon nao a le. Uma view que existe so para ser provada inacessivel e
+  -- superficie sem beneficio — e num schema cujo trabalho e reduzir superficie,
+  -- isso e o oposto do desenho. Removida em 01/09/2026 (CLAUDE.md: codigo morto
+  -- confirmado sai, nao e movido).
 
   -- 3) FUNCOES: revogar de todos, inclusive service_role, e so entao conceder
   --    nominalmente as que compoem a API. As internas (`cofre_snapshot_ativo`,
@@ -2185,7 +2198,7 @@ GRANT EXECUTE ON FUNCTION public.cofre_engines_disponiveis()                    
 
 
 -- -----------------------------------------------------------------------------
--- 20. CONFERENCIA FINAL — a migration se recusa a terminar meio feita
+-- 19. CONFERENCIA FINAL — a migration se recusa a terminar meio feita
 -- -----------------------------------------------------------------------------
 DO $conferencia$
 DECLARE

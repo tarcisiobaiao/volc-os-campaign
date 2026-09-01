@@ -681,3 +681,33 @@ def test_ativo_aposentado_bloqueia_o_handoff():
         "/api/cofre/ativos/asset:facebook-page:piloto/handoff")
     assert r.json()["pronto_para_handoff"] is False
     assert any("aposentado" in b for b in r.json()["bloqueios"])
+
+
+def test_a_verificacao_de_credencial_pode_nomear_a_referencia():
+    """Sem `nome_logico`, o banco RECUSA quando ha mais de uma referencia — e a
+    API tem de conseguir mandar o nome, senao o operador nunca sai do impasse."""
+    repo = RepositorioDuble(executar={"operacao": "cofre.registrar_verificacao",
+                                      "ativo_id": "asset:facebook-page:piloto",
+                                      "verificacao_id": 1, "resultado": "verified",
+                                      "idempotente": False})
+    r = montar(repo).post("/api/cofre/ativos/asset:facebook-page:piloto/verificacoes",
+                          json={"chave_idempotencia": "chave-verif-0002", "alvo": "credencial",
+                                "nome_logico": "FB_PAGE_ADMIN", "resultado": "verified",
+                                "metodo": "abertura manual no 1Password",
+                                "procedencia": "live_observation",
+                                "evidencia": "o item abriu e o campo existe",
+                                "observado_em": "2026-09-01T10:00:00Z"})
+    assert r.status_code == 201
+    assert repo.chamadas[0][1]["p_payload"]["nome_logico"] == "FB_PAGE_ADMIN"
+
+
+def test_nome_logico_malformado_e_recusado_antes_da_rede():
+    repo = RepositorioDuble()
+    r = montar(repo).post("/api/cofre/ativos/asset:facebook-page:piloto/verificacoes",
+                          json={"chave_idempotencia": "chave-verif-0003", "alvo": "credencial",
+                                "nome_logico": "minusculo", "resultado": "verified",
+                                "metodo": "manual", "procedencia": "live_observation",
+                                "evidencia": "evidencia suficientemente longa",
+                                "observado_em": "2026-09-01T10:00:00Z"})
+    assert r.status_code == 400
+    assert repo.chamadas == []
