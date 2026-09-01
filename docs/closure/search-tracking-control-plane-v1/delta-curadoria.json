@@ -1,0 +1,113 @@
+{
+  "_comentario": "Delta de curadoria PROPOSTO pela missão search-tracking-control-plane-v1. NÃO aplicado: o integrador único aplica e reconstrói o Mapa Vivo uma vez após o merge. Nada aqui marca tarefa como done — trabalho em branch não integrada não fecha a fonte compartilhada.",
+  "missao": "search-tracking-control-plane-v1",
+  "branch": "sprint/search-tracking-control-plane-v1",
+  "base": "26a58c444f20af547b6e4e01267c9f746cf9e438 (origin/volc-os-v2)",
+  "data": "2026-09-02",
+  "worktree": "/private/tmp/volc-search-tracking-control-plane-v1",
+
+  "nos_propostos": [
+    {
+      "id": "trafego-perfil-de-mensuracao",
+      "tipo": "contrato",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "O perfil de mensuração — a identidade do que se mede",
+      "estado": "ativo",
+      "path": "backend/app/trafego/perfil_de_mensuracao.py",
+      "evidence": "A identidade que faltava, e a razão de ela não poder ser a `chave_intencao`. Medido na própria rota em 02/09/2026 com `_impressao_aprovavel`: a mesma oferta com verba 50 e com verba 80 produz chaves diferentes (928379f2… e e5189893…). `chave_intencao` é o sha256 do payload aprovado inteiro — conta, canal, verba, lance, critérios, copy e destino — e está correta no que faz (marca do canário, idempotência do ledger). Como identidade da MEDIÇÃO ela erra nas duas direções: distingue demais (duas verbas, uma só medição) e não distingue o que importa (nada nela fala de evento de negócio, funil, regra de valor ou janela — BPC/LOAS e IPVA na mesma conta herdam a mesma meta, elegem a mesma ação por semântica e apontam para o mesmo destino). O perfil separa DECISÃO de OBSERVAÇÃO: entram na chave negócio, oferta, funil, evento, conta operacional, conta DONA da ação, id NUMÉRICO, semântica, regra de valor e janela declarada; ficam fora fonte do sinal e consentimento — se entrassem, o dia em que o sinal morresse produziria um perfil novo e o histórico apontaria para um perfil que ninguém criou. Não existe campo de nome humano da ação, e a ausência é o contrato. 32 provas em backend/tests/test_trafego_perfil_de_mensuracao.py."
+    },
+    {
+      "id": "trafego-portao-do-lance-na-escrita",
+      "tipo": "fluxo",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "O portão que transformou veredito em recusa",
+      "estado": "ativo",
+      "path": "backend/app/routers/trafego.py",
+      "evidence": "Até 02/09/2026 `/subir` NÃO chamava `prontidao.avaliar` em momento nenhum — `_prontidao_do_lancamento` só era invocada dentro de `/provar`. Reproduzido contra a base 26a58c4: `/provar` respondeu `smart_bidding_eligible=False` com 5 bloqueadores e `/subir` criou a campanha em MAXIMIZE_CONVERSIONS mesmo assim; o diário de atos registrou `['ler_plano','abrir','despachar','registrar_plano','MUTATE','fechar_sem_resposta']`. O `estrategia_lance` do corpo atravessava `Escolha` (trafego.py:2989) até o executor sem portão. O risco ficava contido só porque a campanha nasce PAUSED por literal em `comum.py` e o engine não tem função de ativação — duas defesas que ninguém escolheu como portão de lance, e que a primeira pessoa a despausar pelo painel do Google desfaz. Agora `pr.exigir_para_criacao` recusa ANTES de `ledger.abrir` (recibo aberto para chamada que não sai fica `em_voo` órfão e a camada 4 da v10_03 bloqueia o item). MANUAL_CPC atravessa: o portão é sobre APRENDER, não sobre nascer. INDETERMINADO recusa: falha de leitura do Google não é permissão."
+    },
+    {
+      "id": "trafego-sete-portoes",
+      "tipo": "contrato",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "Sete portões, e nenhum deles escrito à mão",
+      "estado": "ativo",
+      "path": "backend/app/trafego/prontidao.py",
+      "evidence": "`activation_ready` não existia: havia `activation_blockers` — a lista de razões — e nenhum campo que respondesse à pergunta, de modo que uma lista vazia era lida como permissão. `smart_bidding_ready` também não: o booleano `smart_bidding_eligible` colapsava 'lemos e não há sinal' com 'não conseguimos ler', que pedem coisas opostas. Os dois passaram a existir como PROPRIEDADES derivadas, e não como campos: um campo permitiria escrever a contradição (estado PRONTO ao lado de bloqueador material, ou estado discordando do booleano); derivado, ela não é expressável. Ativação exige política, plano PERSISTIDO e observabilidade — três coisas que Smart Bidding não exige. Efeito colateral verdadeiro: `activation_blockers` deixou de sair vazio com tudo medido, porque `contrato_canais._portao_ativavel` já dizia que ativar está bloqueado por política — dois módulos respondiam coisas opostas sobre o mesmo ato."
+    },
+    {
+      "id": "trafego-data-manager-fronteira",
+      "tipo": "contrato",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "A fronteira validateOnly da Data Manager",
+      "estado": "parcial",
+      "path": "backend/app/trafego/data_manager.py",
+      "evidence": "AUDITORIA ANTES DO CÓDIGO. `conversion_queue` e `conversion_batches` existem vivas no Supabase (as duas com 0 linhas, leitura de 22/08/2026 registrada no snapshot operacional) e NÃO são autoridades adequadas: faltam destino (nenhuma coluna diz conta DONA nem id NUMÉRICO da ação), conta (não há `customer_id`), wbraid/gbraid (só `gclid`), consentimento (nenhuma coluna) e chave de deduplicação (`id` é surrogate). E as duas não têm DDL no repositório. Conclusão: nenhuma fila nova foi criada e nenhum schema foi tocado — o que falta exige migration, que é decisão de dono. A entrega fecha a parte que não precisa de banco: envelope versionado endereçado por conta dona + id numérico, impressão independente da ordem dos eventos, validação com falha PARCIAL por item, event time exigindo offset, valor exigindo moeda, zero como valor MEDIDO, consentimento do evento separado do da conta. `enviar()` é recusa nomeada; `validate_only` não é parâmetro; teste estrutural lê o próprio fonte e prova ausência de cliente HTTP. SEGUE PARCIAL: nenhum evento foi enviado, nem em validateOnly contra a API real."
+    },
+    {
+      "id": "trafego-plano-relido",
+      "tipo": "fluxo",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "A releitura governada do plano persistido",
+      "estado": "ativo",
+      "path": "backend/app/routers/trafego.py",
+      "evidence": "`vigente_da_conta` e `vigente_da_campanha` (persistencia.py:1157 e :1177) tinham ZERO chamadores de produção. A v12_02 foi aplicada em produção com backup e onze contraprovas para que alguém pudesse conferir o que ficou gravado — e não havia por onde. `GET /api/trafego/plano-de-mensuracao` lê UMA linha sem tocar o Google, RECONSTRÓI o plano por `do_json` (que recalcula os derivados e levanta se a eleição gravada divergir), confere que a linha é da conta pedida, e devolve os sete portões calculados sobre o que está GRAVADO. É o único lugar do sistema onde `plano_persistido=True`. Ausência de linha não vira plano vazio; falha de leitura vira 503; linha ilegível vira 409 com o plano_id."
+    },
+    {
+      "id": "trafego-reconciliacao-portao-de-conta",
+      "tipo": "defeito-corrigido",
+      "cluster": "governanca",
+      "rotulo": "A conta que a reconciliação não conferia",
+      "estado": "ativo",
+      "path": "backend/app/routers/trafego.py",
+      "evidence": "`_vincular_plano_reconciliado` nunca comparava `linha['customer_id']` com o `cid` do pedido. Para `por_intencao` a travessia é impossível (a chave é sha256 que inclui a conta), mas `por_prefixo_de_intencao` corta a chave em 12 hex — 48 bits — e a docstring do próprio repositório diz que o prefixo 'NÃO é uma identidade: ele é um candidato'. Um candidato de outra conta chegava até o vínculo, e a única barreira era um veto por NOME, que só funciona enquanto a campanha carregar a marca. O recorte por conta entra antes do veto, e a ambiguidade passou a ser avaliada DEPOIS dele: avaliada no lote cru, duas chaves sob o mesmo prefixo (uma de outra conta) recusavam por ambíguo um caso inequívoco, e uma conta bloqueava a reconciliação da outra."
+    },
+    {
+      "id": "trafego-painel-da-mensuracao",
+      "tipo": "superficie",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "A verdade operacional na tela em que o clique cria",
+      "estado": "ativo",
+      "path": "src/components/trafego/canais/PainelDaMensuracao.tsx",
+      "evidence": "O servidor emitia e a tela descartava: `data_manager_status` e `observability_status` estavam declarados em src/lib/trafego/canais.ts e não apareciam em JSX nenhum; `activation_blockers` e `smart_bidding_eligible` não tinham consumidor; os doze campos de `InventarioDeMarcacao` — cobertura de click IDs, auto-tagging, dono do tracking — nunca chegaram à tela. O painel é montado em `Lancamento.tsx` (não é componente órfão) e mostra os sete portões com a exigência de cada um que está fechado, o perfil, quem mede (conta dona + id numérico, dizendo quando ela não é a conta que roda a campanha), fonte do sinal com a distinção entre caminho declarado e conversão observada, regra de valor, janela, consentimento dito como da CONTA, último momento observado, cobertura de click IDs, meta herdada ou da campanha (e se o nível foi LIDO ou INFERIDO), e os bloqueadores em DOIS grupos. Só PRONTO pinta positivo; `portoesDaProntidao` falha fechada em campo ausente, nulo ou desconhecido; nenhum gclid/wbraid/gbraid, chave ou impressão inteira vai para a tela."
+    }
+  ],
+
+  "arestas_propostas": [
+    {"de": "trafego-perfil-de-mensuracao", "para": "trafego-plano-mensuracao-persistido", "tipo": "compoe", "porque": "o perfil viaja dentro do plano e entra na impressão dele pela chave"},
+    {"de": "trafego-perfil-de-mensuracao", "para": "trafego-plano-vinculo-ao-nascimento", "tipo": "preservado-por", "porque": "o vínculo pós-nascimento preserva a mesma chave de perfil"},
+    {"de": "trafego-sete-portoes", "para": "trafego-perfil-de-mensuracao", "tipo": "consome", "porque": "o portão de MAXIMIZE_CONVERSION_VALUE lê a regra de valor declarada no perfil"},
+    {"de": "trafego-portao-do-lance-na-escrita", "para": "trafego-sete-portoes", "tipo": "consome", "porque": "exigir_para_criacao decide por measurement_ready"},
+    {"de": "trafego-portao-do-lance-na-escrita", "para": "trafego-plano-mensuracao-persistido", "tipo": "precede", "porque": "o portão recusa antes de ledger.abrir, e portanto antes de gravar o plano"},
+    {"de": "trafego-plano-relido", "para": "trafego-sete-portoes", "tipo": "produz", "porque": "é o único caminho que avalia os portões com plano_persistido=True"},
+    {"de": "trafego-data-manager-fronteira", "para": "trafego-perfil-de-mensuracao", "tipo": "consome", "porque": "o envelope exige perfil aplicável a envio offline e carrega a chave dele"},
+    {"de": "trafego-data-manager-fronteira", "para": "db:conversion_queue", "tipo": "auditou-e-recusou", "porque": "a fila viva não tem destino, conta, wbraid/gbraid, consentimento nem chave de dedup"},
+    {"de": "trafego-painel-da-mensuracao", "para": "trafego-sete-portoes", "tipo": "consome", "porque": "renderiza os sete estados sem derivar nenhum"},
+    {"de": "trafego-reconciliacao-portao-de-conta", "para": "trafego-plano-relido", "tipo": "compartilha-guarda", "porque": "as duas conferem que a linha é da conta pedida, e não só que a consulta filtrou"}
+  ],
+
+  "delta_de_roadmap_proposto": [
+    {
+      "id": "P05-T12",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_porque_nao_promove": "Três dos quatro motivos do `partial` continuam de pé: NÃO existe plano real durável de campanha nova (a tabela segue vazia — /subir só aceita a conta canário e nenhum /subir autorizado aconteceu); Data Manager continua NÃO provado em operação (nenhum evento, nem validateOnly contra a API real); e a observabilidade pós-criação continua não exercida (`coleta_pos_criacao_provada` é literal `False`, então `observability_ready` e `activation_ready` não podem sair PRONTO em produção). O que MUDOU é o quarto motivo: os portões de ativação e Smart Bidding deixaram de ser avaliados só por /provar, e o caminho de escrita passou a ter portão. O Tracking Control Plane também deixou de não existir.",
+      "evidencia_a_acrescentar": "Em 02/09/2026 (branch sprint/search-tracking-control-plane-v1, base 26a58c4) o caminho de escrita ganhou portão: `/subir` recusa MAXIMIZE_CONVERSIONS e MAXIMIZE_CONVERSION_VALUE quando `measurement_ready != PRONTO`, antes de `ledger.abrir` e sem tocar o Google. O defeito foi REPRODUZIDO antes de corrigido — /provar dizia `smart_bidding_eligible=False` com 5 bloqueadores e /subir criava a campanha do mesmo jeito, com MUTATE no diário de atos. Os sete portões passaram a existir nomeados (`creation_plan_ready`, `campaign_birth`, `measurement_ready`, `observability_ready`, `activation_ready`, `smart_bidding_ready`, `data_manager_ready`), os dois novos como propriedades derivadas para que a contradição não seja expressável. `data_manager_ready` passou a exigir destino resolvido — antes saía PRONTO com `operante=True` e nenhuma ação eleita. O perfil de mensuração passou a existir e a entrar na impressão do plano pela chave, com prova de que um plano SEM perfil mantém a impressão anterior byte a byte (constante de regressão pinada). A releitura governada passou a existir e é o único caminho com `plano_persistido=True`. A reconciliação ganhou o portão de conta que faltava. A tela mostra os sete portões, o perfil, a cobertura de click IDs e os bloqueadores separados por natureza. Nenhuma mutação externa, nenhuma escrita no Supabase oficial, nenhuma migration aplicada, nenhum evento enviado."
+    },
+    {
+      "id": "P06-T07",
+      "status_atual": "todo",
+      "status_proposto": "partial",
+      "_porque": "O Tracking Control Plane deixou de não existir, e o que existe é a metade de tráfego dele. Existe agora: identidade canônica do que se mede (perfil), vínculo campanha → intenção → perfil, precedência de metas representada honestamente, releitura governada do plano persistido, sete portões nomeados e a fronteira validateOnly da Data Manager. NÃO existe: inventário de propriedades GA4/GTM, streams, tags, eventos, UTMs e drift — que é a outra metade do que a tarefa descreve, e ela continua inteira em aberto.",
+      "evidencia_a_acrescentar": "backend/app/trafego/{perfil_de_mensuracao,data_manager}.py e a extensão de prontidao.py; GET /api/trafego/plano-de-mensuracao; src/lib/trafego/portoes.ts e src/components/trafego/canais/PainelDaMensuracao.tsx. O inventário GA4/GTM/UTM continua inexistente — nenhuma linha desta entrega o toca."
+    }
+  ],
+
+  "o_que_este_delta_NAO_afirma": [
+    "que a v12_02 tenha recebido qualquer linha real (a tabela segue vazia)",
+    "que a Data Manager tenha sido exercitada contra a API do Google, nem em validateOnly",
+    "que a observabilidade pós-criação tenha sido provada (o insumo continua literal False)",
+    "que qualquer campanha tenha sido criada, ativada ou alterada",
+    "que qualquer meta de conversão ou ConversionAction tenha sido tocada",
+    "que o inventário GA4/GTM/UTM de P06-T07 exista"
+  ]
+}
