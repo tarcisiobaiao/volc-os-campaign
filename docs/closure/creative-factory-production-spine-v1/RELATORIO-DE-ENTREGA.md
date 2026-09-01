@@ -126,3 +126,52 @@ contrário afirmaria vídeo que ninguém produziu aqui.
   inclinaria o romano, e a assinatura determinista **não acusaria**.
 - **Oswald é pedido em peso 800/900** e o Google publica só até 700 — o que se vê
   hoje é negrito sintetizado.
+
+## 6. O recibo: onze campos presentes, onze ausentes
+
+A missão pede que o recibo registre modo, provider, modelo, versão, seed,
+dimensão alvo, dimensão nativa, resize/crop, brand pack, hashes de inputs,
+prompt sanitizado, output hash, custo, duração, tentativas, gates, aprovação e
+destino. **Metade não existe**, e a espinha estar fechada não apaga isso.
+
+| Presentes | Ausentes |
+|---|---|
+| versão do motor e das dependências | modo (`modo_slug` existe na Encomenda, não no Recibo) |
+| seed (sem default, por decisão) | provider externo — o mais próximo é `motor_slug` |
+| dimensão alvo (na `Validacao`) | modelo |
+| output hash (sha256 **medido do disco**) | dimensão nativa antes do resize |
+| bytes do artefato (conferidos) | resize / crop / enquadramento |
+| campos de custo (estimado e real) | brand pack |
+| duração do artefato e do trabalho | hashes de input |
+| gates e validações | prompt sanitizado — e o **oposto** acontece: o insumo cru viaja em `parametros` e sai pela API |
+| assinatura determinista | tentativas (vivem só na linha do trabalho) |
+| `produzido_por` (autor permanente) | aprovação humana (só no Estúdio, em tabela Postgres) |
+| chave de idempotência | destino / entrega · storage remoto · medida de áudio |
+
+Três merecem nome próprio, porque não são só ausência:
+
+- **O insumo cru viaja no recibo e sai pela API.** O caminho do Estúdio decidiu o
+  contrário e gravou o motivo (`"insumo_sanitizado": None`, com o comentário
+  dizendo que duplicá-lo num campo que a API lê seria mais um caminho de
+  vazamento). A bancada não seguiu a mesma decisão.
+- **Os campos de custo não têm produtor.** São literais `None` no construtor, e
+  nenhum ponto do caminho os escreve. Está correto como "não apurado" para motor
+  local gratuito — e no dia em que entrar um motor pago, ligar o provider sem
+  ligar a apuração faria todo trabalho nascer com custo nulo permanente.
+- **`MedidaDeAudio` é estrutura morta.** Nenhum motor implementa `medir_audio`,
+  e a v11_03 reservou três colunas numéricas que nascerão permanentemente nulas
+  — exatamente o "null permanente que parece lacuna de preenchimento" que o
+  `PLANO-v11_03.md` diz querer evitar.
+
+## 7. Revisões externas
+
+Codex `gpt-5.6-sol` fez a revisão adversarial sobre o SHA integrado.
+
+⚠️ **A revisão do Gemini 3.7 Flash NÃO aconteceu, e a fronteira é esta:** o CLI
+não tem método de auth configurado nesta máquina — sem `~/.gemini/settings.json`
+e sem `GEMINI_API_KEY` no ambiente. A chave existe dentro de arquivos `.env` de
+projeto, e ler segredo de arquivo para alimentar um CLI é **exatamente o padrão
+que esta missão flagrou como risco R1/R2 no parque externo**. O eixo factual foi
+coberto por um segundo passe do Codex, que continua sendo revisor de outro
+modelo, e isso está declarado em vez de a entrega afirmar uma revisão Gemini que
+não houve.
