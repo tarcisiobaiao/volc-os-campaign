@@ -1,0 +1,90 @@
+{
+  "missao": "P04-T07 PMAX OBSERVABILITY LEDGER CLOSURE V12_03",
+  "branch": "sprint/hermes-p04-t07-pmax-ledger-v12-03-v1",
+  "base": "36bec04ee1cc9f85c2db6d0d082be6a39350a421",
+  "status_proposto": "partial_or_done_after_integrator_review",
+  "roadmap_editar_agora": false,
+  "motivo": "a missão proíbe editar Roadmap/curadoria/grafo nesta lane; integrador deve aplicar depois",
+  "evidencias": [
+    "v12_03 amplia somente CHECK trafego_google_coleta_tipo para seis familias estruturais PMax",
+    "PMAX_RECOMENDACOES_FORCA permanece em RECOMENDACOES_ARMAZENADAS",
+    "releitura exige identidade completa: customer_id, login_customer_id, volc_campaign_id, campaign_id, canal, familia, bucket, origem, api_versao",
+    "contrato de canal aceita somente linhagem releitura_do_ledger; execucao_local continua autoatestada e insuficiente",
+    "PMAX_FORA_DO_EXECUTOR permanece independente; nenhuma campanha PMax fica criavel"
+  ],
+  "gates": {
+    "sql_ciclo": {
+      "comando": "bash scripts/provar-google-inteligencia-v12_03.sh",
+      "resultado": "171 ok / 0 falhas"
+    },
+    "focais": {
+      "comando": "python3 -m pytest backend/tests/test_google_inteligencia_pmax.py backend/tests/test_google_inteligencia_persistente.py backend/tests/test_trafego_contrato_canais.py backend/tests/test_google_inteligencia_v12_03_releitura.py -q -p no:randomly",
+      "resultado": "257 passed / 0 failed"
+    },
+    "backend_tests": {
+      "comando": "python -m pytest backend/tests -q -p no:randomly em .venv-p04-t07",
+      "resultado": "2136 passed / 101 skipped / 0 failed"
+    },
+    "volc_ads": {
+      "comando": "python -m pytest volc_ads -q -p no:randomly em .venv-p04-t07",
+      "resultado": "706 passed / 0 failed"
+    },
+    "diff_check": {
+      "comando": "git diff --check",
+      "resultado": "exit 0"
+    },
+    "compileall": {
+      "comando": "python3 -m compileall -q ...",
+      "resultado": "exit 0"
+    },
+    "json": {
+      "comando": "python3 -m json.tool ...",
+      "resultado": "exit 0"
+    },
+    "segredos": {
+      "resultado": "sem segredo real; somente literais de teste/senha descartavel de container"
+    },
+    "google_ads_mutate": {
+      "resultado": "sem superficie de mutate alcancavel na releitura; hits sao comentarios/testes/capacidades pre-existentes"
+    }
+  },
+  "arquivos_para_revisar": [
+    "supabase/migrations/v12_03_pmax_observability_ledger.sql",
+    "supabase/migrations/v12_03_rollback.sql",
+    "scripts/provar-google-inteligencia-v12_03.sh",
+    "scripts/provar-google-inteligencia-v12_03.sql",
+    "volc_ads/inteligencia_google/releitura.py",
+    "volc_ads/inteligencia_google/persistencia.py",
+    "volc_ads/inteligencia_google/pmax.py",
+    "backend/app/trafego/contrato_canais.py",
+    "backend/tests/test_google_inteligencia_v12_03_releitura.py",
+    "backend/tests/test_google_inteligencia_pmax.py"
+  ],
+  "zero_confirmacoes": {
+    "supabase_oficial": "zero escrita e zero aplicação de migration",
+    "google_ads_mutate": "zero validate/create/update/remove/upload/apply/mutate",
+    "n8n": "zero",
+    "deploy": "zero"
+  },
+  "review": {
+    "reviewer": "Claude Code Opus fallback fresco",
+    "session_id": "98c6cb93-5b8a-4864-8824-11583543a672",
+    "bloqueante_reproduzido": "B1: releitura truncada indistinguivel de completa",
+    "correcao": "coletas_por_identidade pede limite+1 e levanta ErroReleitura se vier sentinela; teste test_i_releitura_truncada_nao_vira_fotografia_completa adicionado",
+    "nao_bloqueantes": [
+      "N1: rollout do código pressupõe v12_03 aplicada; seguro para portão, mas mensagem pode ser crua se banco defasado",
+      "N2: teste de schema tem redundância",
+      "N3: contrato recebe veredito PMax sem identidade explícita na assinatura atual"
+    ]
+  },
+  "hashes_sha256": {
+    "supabase/migrations/v12_03_pmax_observability_ledger.sql": "f31dd1daf921de5c172f4a7d383476598c464181c4020a18f2d9d7289d6769c6",
+    "supabase/migrations/v12_03_rollback.sql": "e92d0d794c5ffe9349854bb10632d8af04031163a4088bc8a8269adbc647e607",
+    "scripts/provar-google-inteligencia-v12_03.sql": "a0f350b5d14bb3cb204d5fe8a9c7e8bc5b06b82b71d264ddf1ad7375d311a4d2",
+    "scripts/provar-google-inteligencia-v12_03.sh": "5c3ddad93fe8cabea3132f607d6afde80c9694d280bb5d5a3180c61f299393c6",
+    "volc_ads/inteligencia_google/releitura.py": "91ccadb461152a05e4d06fd7a724ed997938d50b9ae84ae83cafe2e5260ae39c",
+    "backend/app/trafego/contrato_canais.py": "ef91348863995891d81bb0e649c0cf54a7c814de139c04220c38eec7bb6ae581",
+    "backend/tests/test_google_inteligencia_v12_03_releitura.py": "ba87ab9d4932a7ea3ac1f57207f80d99dfb29be18deddb4469927d5ba9bcb6d0",
+    "backend/tests/test_google_inteligencia_pmax.py": "0b7aa5e531ebda208e8daaf6004a78ad939ca94215722a11dffc3a0cec4370ca"
+  }
+}

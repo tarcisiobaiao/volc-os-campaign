@@ -757,7 +757,7 @@ class ColetorGoogleInteligencia:
                 erro_codigo=codigo, erro_classe=classe, erro_detalhe=detalhe,
                 payload={
                     "somente_leitura": True, "fonte": pmax_dominio.FONTE_GOOGLE_ADS,
-                    "canal": pmax_dominio.CANAL_PMAX,
+                    "canal": pmax_dominio.CANAL_PMAX, "bucket": bucket,
                     "janela_da_execucao": [janela[0].isoformat(), janela[1].isoformat()],
                 },
             )

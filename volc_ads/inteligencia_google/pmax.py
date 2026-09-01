@@ -40,21 +40,26 @@ construcao: sem prerequisito lido a familia sai ``falhou`` com a causa
 estruturada ``DEPENDENCIA_FALHOU:<familia>``, e a decisao mora na projecao
 (``documento_assets``, ``documento_sinais``), nao so no coletor que a chama.
 
-## ⚠️ A lacuna que esta coleta nao pode fechar sozinha
+## A lacuna do ledger, e o que a v12_03 fechou
 
-O ledger v12_01 fecha ``tipo_sinal`` num CHECK de seis valores
+O ledger v12_01 fechava ``tipo_sinal`` num CHECK de seis valores
 (``trafego_google_coleta_tipo``). Das sete familias, apenas
-``PMAX_RECOMENDACOES_FORCA`` cabe — ela E uma leitura de ``recommendation``, e
+``PMAX_RECOMENDACOES_FORCA`` cabia — ela E uma leitura de ``recommendation``, e
 por ser de escopo de campanha nao colide com a varredura de conta. As outras
-seis nao tem lugar no vocabulario, e reaproveitar ``DIAGNOSTICO_ENTREGA`` para
-elas seria pior que nao gravar: ``backend/app/trafego/diagnostico_persistido``
+seis nao tinham lugar no vocabulario, e reaproveitar ``DIAGNOSTICO_ENTREGA``
+para elas seria pior que nao gravar: ``backend/app/trafego/diagnostico_persistido``
 le a coleta MAIS RECENTE desse tipo por campanha, entao um recibo PMax passaria
 a responder pelo diagnostico Search da mesma campanha.
 
-Entao a persistencia dessas seis PARA — nomeada, com a migration exata que a
-destravaria — e o resto da coleta e preservado. O vocabulario aceito e
-injetavel (``tipos_sinal_do_ledger``) justamente para que a prova de que o
-bloqueio mora no banco, e nao aqui, seja executavel.
+``supabase/migrations/v12_03_pmax_observability_ledger.sql`` amplia o CHECK com
+as SEIS familias estruturais — e so com elas.
+``PMAX_RECOMENDACOES_FORCA`` continua sem valor proprio, de proposito.
+
+⚠️ O vocabulario aceito continua injetavel (``tipos_sinal_do_ledger``), e isso
+NAO e resquicio: um coletor apontado para um banco onde a v12_03 ainda nao foi
+aplicada precisa recusar a persistencia e NOMEAR a lacuna, em vez de tentar
+gravar e receber um ``check_violation`` cru. O bloqueio sempre morou no banco; o
+codigo so precisa dizer a verdade sobre qual banco esta na frente dele.
 """
 
 from __future__ import annotations
@@ -115,10 +120,11 @@ TIPO_SINAL_POR_FAMILIA: dict[str, str] = {
     FAMILIA_RECOMENDACOES: "RECOMENDACOES_ARMAZENADAS",
 }
 
-#: Espelho EXATO do CHECK `trafego_google_coleta_tipo` da v12_01 aplicada.
-#: `test_vocabulario_do_ledger_e_o_da_migration_aplicada` compara os dois; se
-#: alguem ampliar o CHECK no banco sem tocar aqui, o teste cai.
-TIPOS_SINAL_ACEITOS_PELO_LEDGER = frozenset({
+#: Espelho EXATO do CHECK `trafego_google_coleta_tipo` como a v12_01 o criou.
+#: Continua nomeado separadamente depois da v12_03 porque "preservar a v12_01"
+#: e uma afirmacao verificavel sobre ESTE conjunto — se ele encolher, algum
+#: consumidor de `DIAGNOSTICO_ENTREGA` ou `RECOMENDACOES_ARMAZENADAS` quebrou.
+TIPOS_SINAL_DA_V12_01 = frozenset({
     "DIAGNOSTICO_ENTREGA",
     "RECOMENDACOES_ARMAZENADAS",
     "RECOMENDACOES_GERADAS",
@@ -127,12 +133,37 @@ TIPOS_SINAL_ACEITOS_PELO_LEDGER = frozenset({
     "EXPERIMENTOS",
 })
 
+#: O que a v12_03 acrescentou: as SEIS familias estruturais PMax.
+#:
+#: ⚠️ `PMAX_RECOMENDACOES_FORCA` NAO esta aqui, e a ausencia e a decisao. Ela e
+#: uma leitura de `recommendation` e continua gravando em
+#: `RECOMENDACOES_ARMAZENADAS`, distinguida por `campaign_id` mais
+#: `payload.familia`. Dar-lhe valor proprio criaria duas respostas para a mesma
+#: pergunta, e o CHECK do banco recusa esse valor de proposito.
+TIPOS_SINAL_DA_V12_03 = frozenset({
+    "PMAX_CAMPANHA",
+    "PMAX_ASSET_GROUPS",
+    "PMAX_ASSET_GROUP_ASSETS",
+    "PMAX_ASSETS",
+    "PMAX_DESEMPENHO_ASSET_GROUP",
+    "PMAX_SINAIS",
+})
+
+#: O vocabulario do ledger com as duas migrations aplicadas.
+#: `test_vocabulario_do_ledger_e_o_das_migrations_aplicadas` compara este
+#: conjunto com o CHECK reconstruido a partir dos DOIS arquivos de migration; se
+#: alguem ampliar um sem o outro, o teste cai.
+TIPOS_SINAL_ACEITOS_PELO_LEDGER = TIPOS_SINAL_DA_V12_01 | TIPOS_SINAL_DA_V12_03
+
+MIGRATION_QUE_ADMITE_AS_FAMILIAS = "v12_03_pmax_observability_ledger.sql"
+
 MIGRATION_NECESSARIA = (
-    "v12_03: ALTER TABLE public.trafego_google_inteligencia_coleta "
-    "DROP CONSTRAINT trafego_google_coleta_tipo, ADD CONSTRAINT "
-    "trafego_google_coleta_tipo CHECK (tipo_sinal IN (<os seis atuais>, "
-    "'PMAX_CAMPANHA', 'PMAX_ASSET_GROUPS', 'PMAX_ASSET_GROUP_ASSETS', "
-    "'PMAX_ASSETS', 'PMAX_DESEMPENHO_ASSET_GROUP', 'PMAX_SINAIS'))"
+    "supabase/migrations/v12_03_pmax_observability_ledger.sql: ALTER TABLE "
+    "public.trafego_google_inteligencia_coleta DROP CONSTRAINT "
+    "trafego_google_coleta_tipo, ADD CONSTRAINT trafego_google_coleta_tipo "
+    "CHECK (tipo_sinal IN (<os seis da v12_01>, 'PMAX_CAMPANHA', "
+    "'PMAX_ASSET_GROUPS', 'PMAX_ASSET_GROUP_ASSETS', 'PMAX_ASSETS', "
+    "'PMAX_DESEMPENHO_ASSET_GROUP', 'PMAX_SINAIS'))"
 )
 
 #: Campos que a doutrina pede e a v25 instalada NAO expoe. Provado contra os
@@ -309,9 +340,9 @@ def recusa_de_persistencia(
         familia=familia,
         tipo_sinal=tipo,
         motivo=(
-            f"o CHECK trafego_google_coleta_tipo da v12_01 nao admite "
-            f"'{tipo}'; gravar sob um dos seis valores existentes faria este "
-            f"recibo responder por outra pergunta"
+            f"o ledger a frente deste coletor nao admite '{tipo}' em "
+            f"trafego_google_coleta_tipo; gravar sob um dos valores que ele "
+            f"aceita faria este recibo responder por outra pergunta"
         ),
         migration_necessaria=MIGRATION_NECESSARIA,
     )
@@ -529,14 +560,25 @@ def _base(
 
 
 def _payload(
-    *, janela: tuple[date, date], **extra: Any,
+    *, janela: tuple[date, date], bucket: str, **extra: Any,
 ) -> dict[str, Any]:
-    """Todo recibo desta coleta carrega procedencia, leitura e janela."""
+    """Todo recibo desta coleta carrega procedencia, leitura, janela e bucket.
+
+    ⚠️ ``bucket`` esta AQUI, no payload, porque o ledger v12_01 nao tem coluna
+    para ele: a RPC grava vinte colunas e ``bucket`` nao e uma delas — ele so
+    entra na ``chave_idempotencia``, que e um sha256 e nao volta a ser lido.
+    Sem ele no payload, uma releitura nao consegue distinguir a fotografia das
+    14h da fotografia das 18h da MESMA campanha, e acabaria escolhendo "a mais
+    recente" — que e exatamente a fronteira que esta lane existe para nao
+    atravessar. Chave nova, e nao coluna nova: a v12_03 amplia vocabulario, nao
+    schema.
+    """
 
     return {
         "somente_leitura": True,
         "fonte": FONTE_GOOGLE_ADS,
         "canal": CANAL_PMAX,
+        "bucket": bucket,
         # A janela da EXECUCAO, presente em toda familia. So a familia de
         # desempenho a aplica como recorte de metrica — as estruturais leem o
         # estado corrente, sem segmentacao por data, e dizer o contrario
@@ -559,7 +601,7 @@ def documento_campanha(
         estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(linhas),  # preenchido pelo coletor
         payload=_payload(
-            janela=janela,
+            janela=janela, bucket=bucket,
             status_observado=campo.get("status"),
             primary_status_observado=campo.get("primary_status"),
             serving_status_observado=campo.get("serving_status"),
@@ -602,7 +644,7 @@ def documento_asset_groups(
         estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(linhas),
         payload=_payload(
-            janela=janela, sem_filtro_de_status=True,
+            janela=janela, bucket=bucket, sem_filtro_de_status=True,
             campos_recusados_pela_api=dict(
                 CAMPOS_RECUSADOS_POR_FAMILIA[FAMILIA_ASSET_GROUPS]
             ),
@@ -629,7 +671,7 @@ def documento_asset_group_assets(
         estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(linhas),
         payload=_payload(
-            janela=janela,
+            janela=janela, bucket=bucket,
             # Duas listas, duas causas diferentes, deliberadamente separadas: o
             # SDK v25 nao tem `performance_label` (adjudicado por
             # GoogleAdsFieldService), e a v25 real recusa campos que o SDK TEM.
@@ -681,7 +723,7 @@ def documento_assets(
         estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(linhas),
         payload=_payload(
-            janela=janela,
+            janela=janela, bucket=bucket,
             assets_pedidos=len(pedidos),
             # Pedido sem resposta e um fato: o vinculo aponta para um asset que
             # a consulta de assets nao devolveu.
@@ -769,7 +811,7 @@ def documento_desempenho(
         estado=estado, quantidade=len(itens),
         janela_inicio=janela[0], janela_fim=janela[1],
         payload=_payload(
-            janela=janela,
+            janela=janela, bucket=bucket,
             grupos_conhecidos=None if grupos_conhecidos is None else sorted(grupos_conhecidos),
             grupos_sem_linha=sem_linha,
             grupos_com_linha=sorted(por_grupo),
@@ -816,7 +858,7 @@ def documento_sinais(
         estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(linhas),
         payload=_payload(
-            janela=janela,
+            janela=janela, bucket=bucket,
             grupos_consultados=sorted(grupos_conhecidos),
             campos_nao_coletados=dict(CAMPOS_NAO_COLETADOS),
         ),
@@ -843,7 +885,7 @@ def documento_recomendacoes(
         return DocumentoColeta.agora(
             estado=EstadoColeta.INELEGIVEL, quantidade=None,
             payload=_payload(
-                janela=janela,
+                janela=janela, bucket=bucket,
                 motivo=(
                     "nenhuma campanha Performance Max com este id foi observada; "
                     "nao existe recomendacao de forca para campanha que a leitura "
@@ -864,7 +906,7 @@ def documento_recomendacoes(
         estado=EstadoColeta.COM_DADOS if desta else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(desta),
         payload=_payload(
-            janela=janela,
+            janela=janela, bucket=bucket,
             tipo_solicitado=TIPO_RECOMENDACAO_FORCA,
             linhas_na_conta=len(linhas),
             filtro_por_campanha="local",
@@ -905,7 +947,9 @@ def documento_prerequisito(
     causa = causa_de_dependencia(dependia_de)
     return DocumentoColeta.agora(
         estado=EstadoColeta.FALHOU, quantidade=None,
-        payload=_payload(janela=janela, dependia_de=dependia_de, causa=causa),
+        payload=_payload(
+            janela=janela, bucket=bucket, dependia_de=dependia_de, causa=causa,
+        ),
         erro_codigo=causa, erro_classe=CLASSE_PREREQUISITO,
         erro_detalhe=(
             f"{familia} depende de {dependia_de}, que nao concluiu; sem ela nao "
