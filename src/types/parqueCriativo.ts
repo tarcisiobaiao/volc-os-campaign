@@ -294,6 +294,17 @@ export interface MotorDaBancada {
   /** Tudo que participa do render e pode mudar o resultado. Vai ao recibo. */
   versoes: Record<string, string>;
   produz: string[];
+  /**
+   * `producao` | `local` | `fixture`. **Opcional de propósito:** um servidor
+   * mais antigo não manda o campo, e ausência NÃO é "produção" — ela é
+   * `nao_declarada`, tratada em `laboratorio/procedencia.ts`.
+   */
+  natureza?: string | null;
+  /**
+   * ⚠️ Derivado NO SERVIDOR de `natureza === 'producao'`, nunca um booleano
+   * gravado que envelhece. A tela lê; não recalcula. Ausente = não autorizado.
+   */
+  publicavel?: boolean | null;
 }
 
 export type EstadoDoTrabalho =

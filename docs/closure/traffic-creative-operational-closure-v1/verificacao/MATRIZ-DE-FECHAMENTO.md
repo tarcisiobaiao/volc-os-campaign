@@ -1,7 +1,7 @@
 # Matriz de fechamento — item a item, com evidência ou sem ela
 
 *Worker 4 · verification · read-only sobre código*
-*Medida três vezes: `5efd756`, `044e7c3` e **fechada em `2b6392f`**. Dois vereditos meus foram corrigidos pelo lead e um por mim; o rastro fica.*
+*Medida quatro vezes: `5efd756`, `044e7c3`, `2b6392f` e **fechada em `76d0f83`**. Dois vereditos meus foram corrigidos pelo lead e dois por mim; o rastro fica.*
 *Base da missão: `3462b14` · baselines do lead: pytest **2319 passed / 53 skipped / 0 failed**, tsc **76 erros**.*
 
 ---
@@ -37,7 +37,7 @@ O gate final continua sendo do integrador, sobre árvore limpa.
 | Ponte chamada em ordem, a partir de um motor | **PROVADO** | `fbb7f3e`: `producao.py` (`Receita` → pedidos → lote catalogado); os papéis saem da **régua**, não de tabela | Worker criativo |
 | Falha explícita (nada de lote vazio silencioso) | **PROVADO** | `fbb7f3e`: os cinco erros da porta viram cinco `Falha` com `codigo` e `permanente` | Worker criativo |
 | `/criativos` com procedência na tela | **PROVADO** | 10 rotas em `src/App.tsx:136-145`; `AtivoPage.tsx:97,138,170` mostra `SeloDeProcedencia`, `hashCurto(asset.contentHash)` e `hashCurto(p.insumoHash)`; `AprovacoesPage.tsx:65-75` mostra motor, versão, licença, disclosure. `JobPage.tsx:16,50` separa `procedenciaExecucao === 'observado'` de produzido | herdado + Worker frontend |
-| **Sem fixture-como-produção** | **PARCIAL** | O controle existe e é fail-closed no default: `criativo_ponte.Destino.PRODUCAO` é o padrão das assinaturas públicas (`imagens_de_display`, `imagens_de_demand_gen`), e `NATUREZAS_ACEITAS` (`criativo_ponte.py:155`) recusa `LOCAL` e `FIXTURE`. **Mas `NAO_DECLARADA` é aceita em PRODUCAO** (`:168`) — dívida **declarada** no próprio código (`:158-168`), compensada por um aviso por asset | Worker criativo |
+| **Sem fixture-como-produção** | **PROVADO** | O controle existe e é fail-closed no default: `criativo_ponte.Destino.PRODUCAO` é o padrão das assinaturas públicas (`imagens_de_display`, `imagens_de_demand_gen`), e `NATUREZAS_ACEITAS` (`criativo_ponte.py:155`) recusa `LOCAL` e `FIXTURE`. **Mas `NAO_DECLARADA` é aceita em PRODUCAO** (`:168`) — dívida **declarada** no próprio código (`:158-168`), compensada por um aviso por asset | Worker criativo |
 
 ### 1.1 Achado — a compensação da dívida não chega a ninguém
 
@@ -55,7 +55,14 @@ Demand Gen não pode mutar — mas o mesmo descarte se aplicará a Display, que
 **pode** criar, assim que o elo de imagem for ligado.
 
 **Classificação: bloqueador de "sem fixture-como-produção", não dívida cosmética.**
-Custo de correção: propagar `entrega.avisos` para `Plano.avisos`.
+
+**FECHADO em `76d0f83`**, e reverificado por mim: `_avisos_da_ponte(entrega)`
+(`trafego.py:1769`) converte as frases de `Entrega.avisos` em `pp.Aviso` com
+código `ASSET_SEM_PROCEDENCIA` e severidade `atencao` — não impedem montar, mas
+aparecem. Entram em `Plano.avisos` nos dois canais: `:1881` (Display, via
+`dataclasses.replace`, porque `Plano` é frozen) e `:2358` (Demand Gen, direto na
+construção). `test_trafego_display_imagens.py:149` asserta o **código** do aviso,
+não só a presença — que é o que impede o teste de passar com qualquer aviso.
 
 ---
 
@@ -119,8 +126,31 @@ como reprovação de gate, sem cláusula de colapso benigno. **Dívida real, bar
 | Plano com budget / segmentação / anúncios / assets | **PROVADO** | `display.py:203-204` emite `comum.op_geo` e `comum.op_idioma`; cadeia budget → campanha → geo → idioma → ad group → RDA (`display.py:6,18`) | herdado |
 | **Imagens chegam ao builder pelo HTTP** | **PROVADO — fechado durante a missão** | Era o meu bloqueador nº 2, levantado em `5efd756` e **corrigido em `96fea91`** ("fix(display): as imagens voltam a atravessar o HTTP — e a identidade não muda"). Reverificado em `044e7c3`: `ProvarEntrada` ganhou a fronteira HTTP de imagens (`trafego.py:1334`) e `:2496` faz `plano.brief.imagens_display = _imagens_de_display(...)`. E a distinção fina foi feita: `None` é "não declarei imagem" e `[]` é "declarei que não há nenhuma" — **as duas recusam Display, com frases diferentes** (`:1447-1448`). O F031 do `fable-global-v1` está agora superado também para Display | Workers 1/2/3 |
 | v25 serializável offline | **PROVADO pela via mais dura** | O `validate_only` real é prova de serialização mais forte que qualquer sonda offline: o payload chegou à API e foi avaliado campo a campo. Campos conferidos por mim nos protos: `contains_eu_political_advertising`, `ai_max_setting`, `demand_gen_campaign_settings` existem | lead |
-| `validate_only` real | **PROVADO — e é a evidência mais forte da missão** | Executado contra a conta real 547-809-6539 e **RECUSADO**: `asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE`. A fixture `_png()` devolvia sempre os mesmos bytes, e **o Google identifica asset pelo CONTEÚDO** — dois `asset_operation.create` com a mesma imagem e nomes distintos são o mesmo asset pedindo dois nomes. **A suíte estava verde sobre um payload que a API recusa.** Corrigido em `06a0d12`, com guarda em `display.py:428-439` e regressão em `testes_display.py:1180,1205` | lead |
+| `validate_only` real | **PROVADO — APROVADO na conta** | Estado corrente, verificado em `VALIDATE-ONLY-CANAIS.md:32-45`: `display.validar("5478096539", …)` → **`falha is None`, 9 operações, `resultado.ok is True`**, com três PNGs de **bytes distintos** (1200×628, 1200×1200, 1200×1200). Grafo completo: budget → campaign (DISPLAY, PAUSED) → geo → idioma → ad group → 3 `asset_operation` → `ad_group_ad`. **A primeira tentativa foi RECUSADA** (§3.1) — a aprovação é sobre o payload corrigido | lead |
 | Zero mutate | **PROVADO** | Ver §7.1: as três superfícies de mutação estão todas atrás de trava de dois fatores | — |
+
+### 3.1 A primeira chamada foi recusada, e o defeito era nosso
+
+`VALIDATE-ONLY-CANAIS.md:1.1` guarda a recusa, e ela vale mais que a aprovação:
+
+```
+asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE
+  @mutate_operations[7].asset_operation.create.name
+mutate_error.RESOURCE_NOT_FOUND
+  @mutate_operations[8]…square_marketing_images
+mutate_error.RESOURCE_NOT_FOUND
+  @mutate_operations[8]…square_logo_images
+```
+
+A fixture `_png()` devolvia **sempre os mesmos bytes**, e o Google identifica
+asset pelo **conteúdo**: dois `asset_operation.create` com a mesma imagem e nomes
+distintos são o mesmo asset pedindo dois nomes. O erro ainda cascateou — os
+assets duplicados não existiram, e o `ad_group_ad` que os referenciava caiu com
+`RESOURCE_NOT_FOUND`.
+
+**A suíte estava verde sobre um payload que a API recusa.** Corrigido em
+`06a0d12`, com guarda em `display.py:428-439` (que cita a medição) e regressão em
+`testes_display.py:1180,1205`.
 
 ⚠️ **Não aceitar como prova**: Gemini afirmou que o payload de Display está
 "100% completo e suficiente para passar pelo `validate_only` em produção real".
@@ -372,7 +402,7 @@ skipped / 0 failed**, **tsc 76** (baseline exato), `git diff --check` limpo,
 
 | Bloco | Veredito |
 |---|---|
-| Motor criativo | **PARCIAL** — motor, bytes, linhagem e recusa provados; `entrega.avisos` segue descartado pelo router |
+| Motor criativo | **PROVADO** — motor, bytes, linhagem, recusa e **a visibilidade da procedência** provados; a dívida de `NAO_DECLARADA` passou a ter contrapartida real |
 | Search | **PARCIAL** — canário provado e reverificado ao vivo; H0 zero e meta efetiva não lida seguem abertos, ambos declarados |
 | Display | **PROVADO** — construtor, plano, elo HTTP de imagem **e `validate_only` real contra a conta**, que recusou e expôs um defeito que nenhum teste offline pegava |
 | Demand Gen | **PARCIAL por teto próprio** — aceites 1, 2, 4 e 5 provados; 3 parcial. Não pode ir a `done` |
@@ -399,12 +429,18 @@ com guarda em `display.py:428-439` e regressão em `testes_display.py:1180,1205`
 |---|---|---|
 | 1 | PMax: mensuração não bloqueia criação por si | **FECHADO** (`be77651`+`8270d48`) — `PMAX_FORA_DO_EXECUTOR` não depende de ausência de construtor, e `testes_pmax.py:420` prova o portão com o canal fingido habilitado, com guarda anti-vacuidade (§5.1) |
 | 2 | Display não recebe imagem pelo HTTP | **FECHADO** (`96fea91`) — `ProvarEntrada` ganhou a fronteira; `None` ≠ `[]`, as duas recusam com frases diferentes |
-| 3 | `entrega.avisos` descartado pelo router | **ABERTO** — reverificado em `2b6392f`: `grep -c` → **0**. Único bloqueador que atravessou a missão inteira |
+| 3 | `entrega.avisos` descartado pelo router | **FECHADO** — reverificado em `76d0f83`: `_avisos_da_ponte(entrega)` (`trafego.py:1769`) converte as frases de `Entrega.avisos` em `pp.Aviso` com código `ASSET_SEM_PROCEDENCIA` e severidade `atencao`, e entra em `Plano.avisos` nos **dois** canais (`:1881` Display, `:2358` Demand Gen). `test_trafego_display_imagens.py:149` asserta o **código**, não só a presença |
 | 4 | `espelho_h0: 0` (aceite 6 de P05-T11) | **ABERTO** — depende de P09-T14, fora do escopo |
 | 5 | Meta efetiva não lida; Smart Bidding infalsificável | **ABERTO** — item 3 de P05-T12; a correção tem forma conhecida, e `testes_pmax.py:420` é o modelo |
 
-**Dois de cinco fecharam dentro da missão.** Nenhum dos três restantes é risco de
-mutação externa, perda de dado, ou prontidão falsa afirmada na tela.
+**Três de cinco fecharam dentro da missão.** Os dois restantes — `espelho_h0: 0`
+e a meta efetiva não lida — dependem de P09-T14 e de P05-T12, ambos fora do
+escopo desta missão, e ambos declarados no Roadmap. Nenhum é risco de mutação
+externa, perda de dado, ou prontidão falsa afirmada na tela.
+
+O bloqueador nº 3 era o único que tinha atravessado a missão inteira, e era o
+que mais importava: sem ele, a dívida de `NAO_DECLARADA` tinha sido aceita **em
+troca de uma visibilidade que não existia**. Agora a troca é feita.
 
 ### Cobertura de revisão adversarial — declarada, não arredondada
 
@@ -447,9 +483,11 @@ provado em `testes_producao.py:230`, que ainda separa `entrega.ok is False` de
 payload.
 
 **O default só alcança produtores legados que não declaram** — que é a dívida
-documentada, não um vazamento. **É dívida legítima**, e vai para o backlog. O que
-falta nela **não é a recusa, é a contrapartida**: a visibilidade prometida
-(`entrega.avisos`) continua descartada — bloqueador nº 3.
+documentada, não um vazamento. **É dívida legítima**, e vai para o backlog.
+
+E a contrapartida que faltava **passou a existir**: `entrega.avisos` agora chega
+ao `Plano` com código `ASSET_SEM_PROCEDENCIA`. A dívida deixou de ser aceita em
+troca de uma promessa não cumprida.
 
 ### Dívida cosmética (não bloqueia)
 

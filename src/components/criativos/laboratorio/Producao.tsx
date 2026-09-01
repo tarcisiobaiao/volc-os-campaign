@@ -25,6 +25,13 @@ import { Button } from '@/components/ui/button';
 import { criativosApi, codigoDaFalha, mensagemDaFalha } from '@/lib/criativosApi';
 import { useTrabalhoDaBancada } from '@/hooks/useTrabalhoDaBancada';
 import { cn } from '@/lib/utils';
+import { procedenciaDaPeca } from '@/components/criativos/laboratorio/procedencia';
+import {
+  bytesLegiveis,
+  custoLegivel,
+  dimensoes,
+  mimeLegivel,
+} from '@/components/criativos/comum/formato';
 import {
   ESTADO_DO_TRABALHO,
   type MotorDaBancada,
@@ -187,6 +194,19 @@ export const Producao: React.FC<{
   const podeClicar = liberado && motorRoda && receita.saidas.length > 0;
 
   const estado = trabalho ? ESTADO_DO_TRABALHO[trabalho.estado] : null;
+
+  // ⚠️ A procedência vem do MOTOR QUE PRODUZIU, casado pelo slug gravado no
+  // recibo — não do motor selecionado agora no formulário. Ler o seletor diria
+  // a natureza de um render que ainda não aconteceu, e uma peça antiga herdaria
+  // o rótulo da escolha nova.
+  //
+  // Motor não encontrado na lista da máquina cai em `undefined`, e
+  // `procedenciaDaPeca` responde `nao_declarada` — que é o que de fato se sabe.
+  const procedencia = procedenciaDaPeca(
+    trabalho?.recibo
+      ? daMaquina.find((m) => m.slug === trabalho.recibo?.motorSlug)
+      : undefined,
+  );
 
   return (
     <Secao
@@ -403,12 +423,31 @@ export const Producao: React.FC<{
                         altura={a.altura}
                       />
                       <figcaption className="mt-2 text-[12px] text-muted-foreground">
-                        {a.slot} · {a.largura}×{a.altura} ·{' '}
-                        {a.bytes.toLocaleString('pt-BR')} bytes ·{' '}
+                        {/* ⚠️ `dimensoes()`, e não `{largura}x{altura}`. Uma
+                            altura nula renderizada crua produzia `600x`, uma
+                            peça com largura e sem altura, que não existe. A
+                            autoridade de "não medido" já mora em
+                            `comum/formato.ts`; uma segunda aqui divergiria. */}
+                        {a.slot} · {dimensoes(a.largura, a.altura)} ·{' '}
+                        {mimeLegivel(a.mime)} · {bytesLegiveis(a.bytes)} ·{' '}
                         <span className="font-mono" title={a.sha256}>
                           {a.sha256.slice(0, 12)}
                         </span>
                       </figcaption>
+                      {/* A procedência viaja com a PEÇA, e não só na ficha lá
+                          embaixo: quem olha a imagem precisa ler ali mesmo que
+                          ela é um ensaio. */}
+                      <p
+                        className={cn(
+                          'mt-1 text-[11px]',
+                          procedencia.publicavel
+                            ? 'text-muted-foreground'
+                            : 'text-warning',
+                        )}
+                        title={procedencia.descricao}
+                      >
+                        {procedencia.palavra}
+                      </p>
                     </figure>
                   ))}
                 </div>
@@ -448,6 +487,33 @@ export const Producao: React.FC<{
                     {
                       rotulo: 'Motor',
                       valor: `${trabalho.recibo.motorSlug} v${trabalho.recibo.motorVersao}`,
+                    },
+                    {
+                      rotulo: 'Procedência',
+                      valor: (
+                        <span
+                          className={
+                            procedencia.publicavel ? undefined : 'text-warning'
+                          }
+                        >
+                          {procedencia.palavra}
+                          <span className="ml-1 text-[12px] text-muted-foreground">
+                            {procedencia.descricao}
+                          </span>
+                        </span>
+                      ),
+                    },
+                    {
+                      // ⚠️ `null` vira "custo não apurado", nunca "US$ 0,00". O
+                      // motor local não custa dinheiro, mas zero é uma
+                      // afirmação de custo APURADO, e um relatório de COGS que
+                      // soma esses zeros fecha bonito e está errado.
+                      rotulo: 'Custo apurado',
+                      valor: custoLegivel(trabalho.recibo.custoRealUsd),
+                    },
+                    {
+                      rotulo: 'Custo estimado',
+                      valor: custoLegivel(trabalho.recibo.custoEstimadoUsd),
                     },
                     {
                       rotulo: 'Versões congeladas',
