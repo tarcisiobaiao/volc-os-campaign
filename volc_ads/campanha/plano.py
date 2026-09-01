@@ -164,6 +164,9 @@ _MOTIVO_DE_ASSET: tuple[tuple[str, str], ...] = (
     ("diverge", ASSET_RECIBO_DIVERGENTE),
     ("resource_name", RESOURCE_NAME_INVALIDO),
     ("resource name", RESOURCE_NAME_INVALIDO),
+    ("não está na conta", RESOURCE_NAME_INVALIDO),
+    ("atravessa conta", RESOURCE_NAME_INVALIDO),
+    ("temporário", RESOURCE_NAME_INVALIDO),
     ("máximo", ASSET_ACIMA_DO_TETO),
     ("acima", ASSET_ACIMA_DO_TETO),
     ("mínimo", ASSET_OBRIGATORIO_AUSENTE),
@@ -184,16 +187,29 @@ def classificar(campo: str, motivo: str) -> str:
     """
     c = (campo or "").strip().lower()
     m = (motivo or "").strip().lower()
+    # ⚠️ A raiz é o segmento ANTES do primeiro ponto, e ela precisa casar por
+    # `startswith` e não por igualdade: os três canais que operam asset nomeiam
+    # o campo como `imagens_display.marketing`, `imagens_demand_gen.logo_quadrado`,
+    # `imagens_pmax.marketing_quadrada`. Um casamento exato contra "imagens"
+    # falharia nos três e mandaria todo achado de asset para o código genérico
+    # — que é como um bloqueio de recibo adulterado vira "não classificado".
+    raiz = c.split(".", 1)[0]
 
     for prefixo, codigo in sorted(_POR_PREFIXO, key=lambda p: -len(p[0])):
-        if c == prefixo or c.startswith(prefixo + "."):
+        if c == prefixo or c.startswith(prefixo + ".") or raiz.startswith(prefixo):
             if codigo is ASSET_OBRIGATORIO_AUSENTE:
                 for agulha, especifico in _MOTIVO_DE_ASSET:
                     if agulha in m:
                         return especifico
+                # ⚠️ NÃO cai em "obrigatório ausente". Um achado de asset que a
+                # tabela não reconhece pode ser peso, geometria ou conta errada,
+                # e carimbar "faltou asset" mandaria o operador adicionar uma
+                # imagem quando o problema é a que já está lá. Errar o código é
+                # pior do que admitir que não se sabe.
+                return BLOQUEIO_NAO_CLASSIFICADO
             return codigo
 
-    if c.split(".", 1)[0] in ("demand_gen", "pmax", "rede", "sub_intencoes"):
+    if raiz in ("demand_gen", "pmax", "rede", "sub_intencoes"):
         return CONFIGURACAO_AUSENTE
     if any(c.startswith(t) for t in _TEXTO):
         if "termo proibido" in m or "política" in m or "politica" in m:
