@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-31T20:45:39-03:00",
+  "generated_at": "2026-08-31T21:02:33-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 449,
@@ -1015,9 +1015,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 17941,
-      "lines": 253,
-      "sha256": "6671ae421a169dfbb31cd6ba46abe6063cd8778e54e6265501fa65fe21988696",
+      "bytes": 18123,
+      "lines": 255,
+      "sha256": "00e9447bed74975a97b34d740101cdff500735d43af6b2db6093b4bc2839c539",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4843,9 +4843,9 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 7371,
-      "lines": 184,
-      "sha256": "ea0e7aa8fe0c01f179c34e73a5ed23e48d5d75e1c35117395cb1a7c32697eaa6",
+      "bytes": 8842,
+      "lines": 217,
+      "sha256": "eb93e200b66cf6dfa289193a8ddbb6b8b49567c52f1ca5e5bcb04699c880439b",
       "graph_nodes": 3,
       "graph_degree": 5,
       "sql_risk": "medium"
@@ -4855,9 +4855,9 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 13901,
-      "lines": 294,
-      "sha256": "104aac3daff7f51d4d134f039967e32ee09d51ae6f7915a8bd32963649018868",
+      "bytes": 18744,
+      "lines": 385,
+      "sha256": "9122135ac98de62ee5b9f12e086a817f16860d59bb117a1d32b2a38b39dedd1b",
       "graph_nodes": 3,
       "graph_degree": 6,
       "sql_risk": "medium"
