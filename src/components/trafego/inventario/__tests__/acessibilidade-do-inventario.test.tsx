@@ -80,6 +80,16 @@ let notificacoes = {
   refetch: vi.fn(),
 };
 
+// O painel dos canais tem prova própria em
+// `src/components/trafego/canais/__tests__`. Aqui ele é dublado porque o objeto
+// desta prova são as ABAS — e porque o painel real pede um `QueryClient`, que
+// esta moldura não monta. Sem o dublê, ativar a aba derruba a árvore inteira e
+// o teste passa a falhar por um motivo que não é o que ele investiga.
+vi.mock('@/components/trafego/canais/PainelDeCanais', () => ({
+  PainelDeCanais: () => 'painel dos canais',
+  default: () => 'painel dos canais',
+}));
+
 vi.mock('@/hooks/useNotificacoes', () => ({
   useNotificacoes: () => notificacoes,
   INTERVALO_NOTIFICACOES_MS: 600000,
@@ -154,14 +164,15 @@ describe('hierarquia de títulos', () => {
 
 // ── 2 · abas ────────────────────────────────────────────────────────────────
 
-describe('as quatro abas', () => {
+describe('as cinco abas', () => {
   it('são tablist/tab/tabpanel de verdade, e cada aba aponta para o painel dela', () => {
     montarHub();
     const lista = screen.getByRole('tablist');
     expect(lista.getAttribute('aria-label')).toBe('seções do tráfego');
 
     const abas = screen.getAllByRole('tab');
-    expect(abas.length).toBe(4);
+    // Cinco desde 01/09/2026: Canais entrou entre Campanhas e Preparar.
+    expect(abas.length).toBe(5);
 
     const painel = screen.getByRole('tabpanel');
     const ativa = abas.find((a) => a.getAttribute('aria-selected') === 'true');

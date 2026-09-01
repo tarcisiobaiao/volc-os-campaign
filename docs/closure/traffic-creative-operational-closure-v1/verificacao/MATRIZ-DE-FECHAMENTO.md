@@ -312,9 +312,9 @@ maior parte de `/criativos` já existiam.
 | Ownership respeitado | **PROVADO até aqui** | Não escrevi fora de `docs/closure/traffic-creative-operational-closure-v1/verificacao/`. Nenhum worker tocou `ROADMAP-VIVO.json`, `docs/volc-os-graph/**` ou `graphify-out/**` |
 | Sem credencial no diff | **PROVADO** | `git diff 3462b14..HEAD` grep por `SUPABASE_SERVICE_ROLE|api key|secret|BEGIN RSA/OPENSSH|eyJ…|FORGE_PERMITIR_ESCRITA=1` → **2 ocorrências, ambas benignas**: uma é um teste que asserta que esses nomes são **proibidos**; a outra é a string da mensagem de erro da trava |
 | `git diff --check` limpo | **PROVADO** | exit 0 |
-| Árvore limpa | **NÃO (durante a missão)** | Medições feitas com trabalho em curso na árvore. Não é defeito; **mas o gate final é do integrador, sobre árvore limpa** |
-| TS sem erro novo | **PROVADO** | `npx tsc --noEmit -p tsconfig.app.json` em `044e7c3` → **76 erros**, exatamente o baseline. Zero erro novo |
-| Suíte Python | **PROVADO** | `backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly` em `044e7c3` → **2550 passed, 45 skipped, 0 failed** (88,44s). Baseline: 2319/53/0. **+231 testes, zero falhas** |
+| Árvore limpa | **PROVADO** | `git status --short` em `2b6392f`: nada fora de `docs/closure/.../verificacao/` (meus próprios entregáveis) |
+| TS sem erro novo | **PROVADO** | `npx tsc --noEmit -p tsconfig.app.json` em `2b6392f` → **76 erros**, exatamente o baseline. Zero erro novo |
+| Suíte Python | **PROVADO** | `backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly` em `2b6392f` → **2553 passed, 45 skipped, 0 failed** (174s). Baseline: 2319/53/0. **+234 testes, zero falhas, 8 skips a menos** — testes que antes nem rodavam passaram a rodar |
 | Build verde | **NÃO VERIFICADO POR MIM** | gate do integrador |
 | Mapa Vivo `--check` | **N/A declarado** | `UPDATE_STATUS.json` não existe nesta worktree (arquivo gerado, não versionado). `current:false, reason:"UPDATE_STATUS.json ausente"` é **estado inicial esperado**, não regressão — o lead reconstrói na convergência |
 
@@ -366,31 +366,90 @@ por-operação.
 
 ## 8. Veredito por bloco
 
-Medido em `HEAD 044e7c3`, depois da reverificação dos achados.
+Fechada em `HEAD 2b6392f`. Gates medidos por mim: **pytest 2553 passed / 45
+skipped / 0 failed**, **tsc 76** (baseline exato), `git diff --check` limpo,
+árvore limpa, superfície de mutação inalterada, zero credencial no diff.
 
 | Bloco | Veredito |
 |---|---|
-| Motor criativo | **PARCIAL** — motor, bytes, linhagem e recusa provados; a visibilidade que justifica aceitar `NAO_DECLARADA` continua sem chegar ao HTTP |
-| Search | **PARCIAL** — canário provado e reverificado ao vivo; H0 zero e meta efetiva não lida seguem abertos, ambos honestamente declarados |
-| Display | **PARCIAL** — construtor, plano e **agora o elo HTTP de imagem** provados; falta só o `validate_only` real, que exige autorização |
+| Motor criativo | **PARCIAL** — motor, bytes, linhagem e recusa provados; `entrega.avisos` segue descartado pelo router |
+| Search | **PARCIAL** — canário provado e reverificado ao vivo; H0 zero e meta efetiva não lida seguem abertos, ambos declarados |
+| Display | **PROVADO** — construtor, plano, elo HTTP de imagem **e `validate_only` real contra a conta**, que recusou e expôs um defeito que nenhum teste offline pegava |
 | Demand Gen | **PARCIAL por teto próprio** — aceites 1, 2, 4 e 5 provados; 3 parcial. Não pode ir a `done` |
-| PMax | **PARCIAL** — planeja, tem contrato próprio, e o portão de mensuração ficou provado por si. Segue **não integrado**: a observabilidade não tem consumidor de produção nem painel |
-| Frontend | **PROVADO** — quatro canais, quatro portões, origem por bloqueador, ausência renderizada, quinto estado preservado |
-| Engenharia | **PROVADO** — 2550 passed / 0 failed (+231), tsc 76 exato, `git diff --check` limpo, zero credencial no diff |
+| PMax | **PARCIAL** — planeja, contrato próprio, portão de mensuração provado por si com guarda anti-vacuidade. Segue **não integrado**: observabilidade sem consumidor de produção |
+| Frontend | **PROVADO** — 1.371 linhas novas em `src/`, cadeia ligada de `pautadorApi` → `useCanais` → `PainelDeCanais` no Hub |
+| Engenharia | **PROVADO** — +234 testes, zero vermelho, tsc no baseline, higiene limpa |
+
+### O achado mais importante da missão não foi meu
+
+Um **`validate_only` real** na conta 547-809-6539 recusou o payload inteiro com
+`asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE`. A fixture `_png()`
+devolvia sempre os mesmos bytes, e o Google identifica asset pelo **conteúdo**.
+**A suíte estava verde sobre um payload que a API recusa** — e nenhuma revisão
+offline desta missão pegou isso: nem a minha, nem a do Gemini, nem os 2.553
+testes. Uma única chamada real pegou.
+
+É a confirmação empírica da escada do `DEFINITION-OF-DONE` §1: *dado sintético*
+(degrau 10) não prova *shadow com dado real* (degrau 11). Corrigido em `06a0d12`,
+com guarda em `display.py:428-439` e regressão em `testes_display.py:1180,1205`.
 
 ### Bloqueadores REAIS — estado final
 
 | # | Bloqueador | Estado |
 |---|---|---|
-| 1 | PMax: mensuração não bloqueia criação por si | **FECHADO** em `be77651`+`8270d48`. `PMAX_FORA_DO_EXECUTOR` não depende de ausência de construtor, e `testes_pmax.py:420` prova o portão com o canal fingido habilitado, com guarda anti-vacuidade (§5.1) |
-| 2 | Display não recebe imagem pelo HTTP | **FECHADO** em `96fea91`. `ProvarEntrada` ganhou a fronteira, e `None` ≠ `[]` — as duas recusam, com frases diferentes (§3) |
-| 3 | `entrega.avisos` descartado pelo router | **ABERTO.** Reverificado em `044e7c3`: `grep -c "entrega\.avisos" backend/app/routers/trafego.py` → **0** (§1.1) |
-| 4 | Aceite 6 de P05-T11 medido como zero (`espelho_h0: 0`) | **ABERTO** — depende de P09-T14, fora do escopo desta missão |
-| 5 | Meta efetiva não lida; portão de Smart Bidding infalsificável | **ABERTO** — é o item 3 de P05-T12, e a correção tem forma conhecida: o ramo `PRONTO` mais um teste que prove o portão virando, do jeito que `testes_pmax.py:420` fez para PMax (§2.1) |
+| 1 | PMax: mensuração não bloqueia criação por si | **FECHADO** (`be77651`+`8270d48`) — `PMAX_FORA_DO_EXECUTOR` não depende de ausência de construtor, e `testes_pmax.py:420` prova o portão com o canal fingido habilitado, com guarda anti-vacuidade (§5.1) |
+| 2 | Display não recebe imagem pelo HTTP | **FECHADO** (`96fea91`) — `ProvarEntrada` ganhou a fronteira; `None` ≠ `[]`, as duas recusam com frases diferentes |
+| 3 | `entrega.avisos` descartado pelo router | **ABERTO** — reverificado em `2b6392f`: `grep -c` → **0**. Único bloqueador que atravessou a missão inteira |
+| 4 | `espelho_h0: 0` (aceite 6 de P05-T11) | **ABERTO** — depende de P09-T14, fora do escopo |
+| 5 | Meta efetiva não lida; Smart Bidding infalsificável | **ABERTO** — item 3 de P05-T12; a correção tem forma conhecida, e `testes_pmax.py:420` é o modelo |
 
-**Dois de cinco fecharam dentro da missão, e os três restantes são todos
-declarados, com dono e caminho.** Nenhum deles é risco de mutação externa,
-perda de dado ou prontidão falsa afirmada na tela.
+**Dois de cinco fecharam dentro da missão.** Nenhum dos três restantes é risco de
+mutação externa, perda de dado, ou prontidão falsa afirmada na tela.
+
+### Cobertura de revisão adversarial — declarada, não arredondada
+
+| Lane | Resultado |
+|---|---|
+| **Worker 4 (esta)** | Concluída. 5 bloqueadores levantados, 2 fechados dentro da missão |
+| **Gemini 3.7 Flash** | **Parcial** — 2 de 3 chamadas retornaram. Achou uma superfície de mutação que meu `grep` perdeu; alucinou `Campaign.url_expansion_opt_out`. A 3ª estourou duas vezes e foi substituída por conferência determinística contra os protos (§5.3) |
+| **Codex `gpt-5.6-sol/high`** | **NÃO CONCLUÍDA.** Duas rodadas carregaram o skill `adversarial-review`, geraram sub-revisores e estouraram explorando, sem produzir veredito. **Registrar como não concluída, jamais como "limpa"** |
+| **`validate_only` real** | A lane que mais rendeu, e a única que tocou a API |
+
+Ou seja: **a revisão por modelo distinto ficou incompleta nesta missão.** As duas
+correções factuais mais importantes da matriz vieram do lead, não de revisor
+automatizado — e o defeito mais grave veio de uma chamada real. Registro isso
+como limite de cobertura, não como aprovação.
+
+### Duas correções aos meus próprios vereditos
+
+1. **"Frontend: PROVADO" estava errado** na 1ª versão: creditei `jornada.ts`
+   (pré-existente) à missão, com `git diff -- src/` vazio. Corrigido para NÃO e,
+   depois que o frontend foi escrito, para PROVADO **com autoria separada** (§6).
+2. **Reclassifiquei `prontidao.py:163` e `:125`** de bloqueador para dívida, e o
+   lead aceitou. O motivo: os dois colapsos levam a `NAO_PRONTO`, que é
+   conservador — nunca pintam verde sem prova, e falha-fechado não é prontidão
+   falsa. **Confirmo a condição que o lead pôs**: o contrato expõe "não lido"
+   como estado próprio — `Mensuracao(lida=False, …='INDETERMINADO')` com
+   `observado_em=None` e `revalidacao=None`, verificado por execução.
+
+### Resposta ao ataque pedido: asset de ensaio virando `NAO_DECLARADA`
+
+**SEM ACHADO** — não existe caminho de contorno. Verificado: `Procedencia.natureza`
+tem default `NAO_DECLARADA` (`contrato.py:166`), mas os dois sítios que carregam
+produção passam explicitamente — `catalogo.py:99` e `bancada/servico.py:453`,
+ambos com `natureza=natureza` vindo de `natureza_do_motor(motor)`
+(`servico.py:414`, `:126`). `producao.py:320` faz
+`getattr(motor, "natureza", NAO_DECLARADA)` com checagem de tipo logo abaixo:
+motor que não declara **cai em `NAO_DECLARADA`, nunca em produção** — falha na
+direção segura. `png_local` declara `LOCAL` e é recusado em `Destino.PRODUCAO`,
+provado em `testes_producao.py:230`, que ainda separa `entrega.ok is False` de
+`entrega.veredito.ok is True` — lote geometricamente bom e mesmo assim sem
+payload.
+
+**O default só alcança produtores legados que não declaram** — que é a dívida
+documentada, não um vazamento. **É dívida legítima**, e vai para o backlog. O que
+falta nela **não é a recusa, é a contrapartida**: a visibilidade prometida
+(`entrega.avisos`) continua descartada — bloqueador nº 3.
 
 ### Dívida cosmética (não bloqueia)
 

@@ -59,6 +59,16 @@ vi.mock('@/hooks/useInventario', () => ({
   usePedirLeituraDaConta: () => ({ pedir: vi.fn(), contaEmLeitura: null, recados: {} }),
 }));
 
+// O painel dos canais tem prova própria em
+// `src/components/trafego/canais/__tests__`. Aqui ele é dublado porque o objeto
+// desta prova são as ABAS — e porque o painel real pede um `QueryClient`, que
+// esta moldura não monta. Sem o dublê, ativar a aba derruba a árvore inteira e
+// o teste passa a falhar por um motivo que não é o que ele investiga.
+vi.mock('@/components/trafego/canais/PainelDeCanais', () => ({
+  PainelDeCanais: () => 'painel dos canais',
+  default: () => 'painel dos canais',
+}));
+
 vi.mock('@/hooks/useNotificacoes', () => ({
   useNotificacoes: () => notificacoes,
   INTERVALO_NOTIFICACOES_MS: 600000,
@@ -129,7 +139,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe('as quatro abas', () => {
+describe('as cinco abas', () => {
   it('Campanhas é a aba padrão', () => {
     montar();
     const campanhas = screen.getByRole('tab', { name: /campanhas/ });
@@ -138,16 +148,24 @@ describe('as quatro abas', () => {
     expect(screen.queryByText('quadro de oportunidades')).toBeNull();
   });
 
-  it('tem exatamente quatro abas, na ordem do fluxo de trabalho', () => {
+  it('tem exatamente cinco abas, na ordem do fluxo de trabalho', () => {
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    // A ordem é a do trabalho: o que já gasta, o que está pronto para virar
-    // campanha, como criar, e o que pede decisão hoje.
+    // A ordem é a do trabalho: o que já gasta, o que cada CANAL pode fazer, o
+    // que está pronto para virar campanha, como criar, e o que pede decisão.
     //
-    // ⚠️ `criar` NÃO tem contador, e a ausência é conteúdo: "quantas campanhas
-    // dá para criar" não é um número que exista, e inventar um seria pior que
-    // não ter. As outras duas só têm porque a leitura as mediu.
-    expect(abas).toEqual(['campanhas7', 'preparar', 'criar', 'atenção2']);
+    // ⚠️ `Canais` entrou em 01/09/2026 e ficou em segundo de propósito: a
+    // pergunta "este canal pode?" precede a de montar um pedido nele, e
+    // descobrir a recusa depois de montar é o desperdício que os quatro
+    // portões existem para evitar.
+    //
+    // ⚠️ Nem `canais` nem `criar` têm contador, e a ausência é conteúdo:
+    // "quantos canais" seria um número sem pergunta, e "quantas campanhas dá
+    // para criar" não é um número que exista. As outras duas só têm porque a
+    // leitura as mediu.
+    expect(abas).toEqual([
+      'campanhas7', 'Canais', 'preparar', 'criar', 'atenção2',
+    ]);
   });
 
   it('o contador vive no rótulo da aba — não numa faixa de números no topo', () => {
@@ -164,7 +182,7 @@ describe('as quatro abas', () => {
     contadorDeAtencao = null;
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    expect(abas).toEqual(['campanhas', 'preparar', 'criar', 'atenção']);
+    expect(abas).toEqual(['campanhas', 'Canais', 'preparar', 'criar', 'atenção']);
   });
 
   it('troca de aba pelo ponteiro e preserva o quadro de oportunidades', () => {
@@ -196,15 +214,28 @@ describe('navegação por teclado', () => {
     // percorrem dentro. É o que evita que três abas custem três Tabs para
     // quem só quer chegar à tabela.
     montar();
-    const [campanhas, preparar] = screen.getAllByRole('tab');
+    // ⚠️ A seta anda UMA casa, e a casa seguinte passou a ser Canais. Pular
+    // para Preparar aqui provaria uma navegação que o teclado não faz.
+    const [campanhas, canais, preparar] = screen.getAllByRole('tab');
     campanhas.focus();
     fireEvent.keyDown(campanhas, { key: 'ArrowRight' });
 
     await waitFor(() => {
+      expect(canais.getAttribute('aria-selected')).toBe('true');
+    });
+    expect(canais.getAttribute('tabindex')).toBe('0');
+    expect(campanhas.getAttribute('tabindex')).toBe('-1');
+
+    // ⚠️ O foco precisa ACOMPANHAR antes da segunda seta. No navegador o
+    // Radix move o foco junto com a seleção; no jsdom o `focus()` do elemento
+    // seguinte é o que reproduz isso. Sem ele, a segunda tecla chega a um
+    // elemento que não está focado e o teste falharia por um motivo que não é
+    // o que ele investiga.
+    canais.focus();
+    fireEvent.keyDown(canais, { key: 'ArrowRight' });
+    await waitFor(() => {
       expect(preparar.getAttribute('aria-selected')).toBe('true');
     });
-    expect(preparar.getAttribute('tabindex')).toBe('0');
-    expect(campanhas.getAttribute('tabindex')).toBe('-1');
     expect(screen.getByText('quadro de oportunidades')).toBeTruthy();
   });
 
