@@ -3,18 +3,13 @@
   "_missao": "asset-vault-onepassword-production-v1",
   "_branch": "sprint/asset-vault-onepassword-production-v1",
   "_base_sha": "36bec04",
-  "_head_medido": "664272f39f88ecbcb110da662245a101e1f89ee4",
-  "_commits": 7,
+  "_head_medido": null,
+  "_commits": 9,
   "_medido_em": "2026-09-01",
-
-  "_aviso_de_arvore_viva": "O HEAD se moveu DURANTE a montagem deste delta: a primeira rodada de gates mediu 1ddccf0 e três commits novos entraram (4c213de, aea3b3c, 664272f). Todos os gates foram rerodados contra 664272f, e é esse o estado que este delta descreve. Ao fechar o pacote, a árvore tinha AINDA mais trabalho não commitado de um agente irmão da mesma missão (backend/app/asset_vault/dominio.py e supabase/migrations/v13_01_cofre_de_ativos.sql modificados, mais scripts/onboarding_pagina_facebook.py não rastreado). NADA disso está coberto por este delta. O integrador deve reconferir o estado antes de aplicar.",
-
-  "_pre_condicao_do_integrador": "A branch NÃO está mesclada na main. Enquanto ela não for mesclada, nenhuma destas propostas pode ser aplicada: trabalho que só existe numa worktree não pode marcar a fonte compartilhada. Além disso, a v13_01 NÃO foi aplicada em produção — consulta somente leitura em database.agenciavolc.com.br nesta sessão devolveu 0 tabelas com prefixo cofre_.",
-
+  "_aviso_de_arvore_viva": "O HEAD se moveu durante a montagem deste delta e parou de se mover. Rodadas anteriores mediram HEADs intermediarios; o ciclo fechou em 2971c8c, que foi medido, revisado adversarialmente, corrigido e aceito. Nao ha trabalho intermediario fora de commit: a arvore esta limpa em 2971c8c, o onboarding foi commitado e avaliado (56/56 no autoteste), e os numeros comprovados estao congelados em GATES.md.",
+  "_pre_condicao_do_integrador": "A branch NAO esta mesclada na main. Enquanto ela nao for mesclada, nenhuma destas propostas pode ser aplicada: trabalho que so existe numa worktree nao pode marcar a fonte compartilhada. Alem disso, a v13_01 NAO foi aplicada em producao — consulta somente leitura em database.agenciavolc.com.br nesta sessao devolveu 0 tabelas com prefixo cofre_.",
   "_nenhuma_tarefa_vira_done": "Nenhuma das sete propostas pede o estado 'done'. Código provado em laboratório não é operação provada, e é isso que 'done' significa neste roadmap ('Concluído e provado').",
-
   "_fora_de_escopo_mas_tocadas": "O commit 4c213de nomeia P03-T11, P12-T09 e P12-T11 no campo 'proximo_componente' do handoff, com o estado REAL delas (todo). Isso é documentação de fronteira, não avanço: nenhuma dessas três foi implementada, e este delta NÃO propõe mudança para elas porque não estavam no escopo desta missão.",
-
   "tarefas": [
     {
       "id": "P03-T02",
@@ -104,12 +99,11 @@
       "lacunas_restantes": [
         "nada foi onboardado; em termos de operação o estado é idêntico ao anterior",
         "a v13_01 não está em produção, então não há Cofre onde onboardar",
-        "AVISO: um agente irmão desta missão criou scripts/onboarding_pagina_facebook.py (1647 linhas, NÃO COMMITADO no momento desta medição). Ele declara atacar P03-T02, P12-T02 e P03-T07 lendo uma ficha preenchida por quem tem acesso à página. Este delta NÃO o avalia e nada aqui se apoia nele.",
+        "scripts/onboarding_pagina_facebook.py está COMMITADO até 2971c8c e foi AVALIADO: 56/56 no autoteste (GATES.md). Ele ataca P03-T02, P12-T02 e P03-T07 lendo uma ficha preenchida por quem tem acesso à página, junto com PEDIDO-AO-OPERADOR.md e FICHA-PAGINA-MODELO.json. O que continua faltando não é ferramenta: é o DADO REAL da página, que só o operador tem — e por isso as três tarefas seguem 'todo'.",
         "a branch não está mesclada"
       ]
     }
   ],
-
   "nos_propostos": [
     {
       "_condicao": "Só entram na curadoria DEPOIS do merge da branch. Antes disso, o grafo apontaria para código que a main não tem.",
@@ -157,7 +151,6 @@
       "evidence": "scripts/importar_engines_no_cofre.py, 1047 linhas; 7 engines emitidos e 248 asserções no autoteste em 01/09/2026. Não escreve no banco e não faz rede; roda duas vezes com bytes idênticos. A sanitização de caminho do Google Drive LEVANTA se /Users/, CloudStorage, GoogleDrive ou @ sobreviverem, porque sanitização que falha calada publica com ar de segurança. Nenhum engine recebe estado 'integrado'."
     }
   ],
-
   "arestas_propostas": [
     {
       "_condicao": "Todas dependem do merge e dos nós acima.",
@@ -220,5 +213,22 @@
       "relation": "aguarda_novos_insumos_em",
       "_por_que": "Relação já existente. O receptáculo (tipo facebook_page, gaveta social_presence, url_publica gravável) passou a existir; o ativo real continua fora."
     }
-  ]
+  ],
+  "_code_sha": "2971c8c5e47e7a89cd11650d09ca17c570bc589c",
+  "_code_sha_estado": "aceito e validado pelo dono da missao",
+  "_closure_artifact_commit": "self_unavailable",
+  "_head_final_da_branch": "reportado externamente, apos o commit documental: um artefato versionado nao conhece o hash do commit que o contem",
+  "_numeros_comprovados": {
+    "fonte": "docs/closure/asset-vault-onepassword-production-v1/GATES.md",
+    "ciclo_sql": "92 provas, PostgreSQL 15.19",
+    "backend_cofre": "67 passed",
+    "frontend_cofre": "24 passed",
+    "typescript": "76 erros do baseline, 0 no ownership",
+    "build": "verde",
+    "onepassword_real": "blocked/cli_ausente, exit 10 (resultado correto: nada instalado)",
+    "onboarding": "56/56 no autoteste",
+    "suite_backend_inteira": "2187 passed, 53 skipped",
+    "baseline_backend": "baseline_delta_not_remeasured — o baseline foi levantado por --collect-only e nunca executado, entao nao ha passed/skipped de origem com que comparar",
+    "vitest_completo": "comparacao contra o baseline NAO provada em 2971c8c; provado apenas o gate focal 24/24 e o build verde"
+  }
 }

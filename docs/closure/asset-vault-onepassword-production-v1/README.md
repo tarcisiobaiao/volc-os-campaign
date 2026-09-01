@@ -1,16 +1,17 @@
 # Cofre de Ativos + 1Password — pacote de fechamento
 
-> ## ⚠️ Os números deste documento envelheceram, e isso tem conserto
+> ## Candidato aceito — este pacote descreve `2971c8c`
 >
-> Este pacote foi escrito enquanto a branch ainda andava. Uma revisão de contrato
-> em 01/09/2026 encontrou **nove números errados** aqui — "75 provas" quando eram
-> 92, "47 testes" quando eram 67, contagens de linha e um HEAD anteriores.
-> Nenhum era mentira: eram verdadeiros no minuto em que foram escritos.
+> `code_sha = 2971c8c5e47e7a89cd11650d09ca17c570bc589c`, **aceito e validado**
+> pelo dono da missão. Os números comprovados estão congelados em
+> **[`GATES.md`](GATES.md)**; este texto não repete contagem nenhuma que possa
+> divergir dela.
 >
-> O conserto não é "revisar melhor". É não digitar número nenhum:
-> **[`GATES.md`](GATES.md) é a fonte corrente**, gerada por
-> `./scripts/medir-gates-cofre.sh`. Onde este texto divergir dela, vale ela —
-> e a divergência é sinal de que alguém precisa rodar o script de novo.
+> Enquanto a branch ainda andava, este pacote carregou números que envelheceram
+> — uma revisão de contrato encontrou nove. Eles não eram mentira: eram
+> verdadeiros no minuto em que foram escritos. O conserto foi parar de digitar
+> número: `./scripts/medir-gates-cofre.sh` gera, e `GATES.md` congela o que o
+> candidato aceito provou.
 
 Missão `asset-vault-onepassword-production-v1`.
 Tudo neste pacote foi medido em **01/09/2026**, nesta worktree, rodando os gates.
@@ -23,13 +24,14 @@ ausência explícita, não zero.
 |---|---|
 | Worktree | `/private/tmp/volc-asset-vault-1p-v1` |
 | Branch | `sprint/asset-vault-onepassword-production-v1` |
-| Base SHA | `36bec04` |
-| HEAD medido | `664272f39f88ecbcb110da662245a101e1f89ee4` |
-| Commits | 7 |
-| Diff | 21 arquivos, +9776 −475 |
+| Base SHA | `36bec04` (`origin/volc-os-v2`) |
+| `code_sha` | `2971c8c5e47e7a89cd11650d09ca17c570bc589c` — **aceito e validado** |
+| Commits de produto | **9**, até `2971c8c` |
+| `closure_artifact_commit` | `self_unavailable` (ver [`GATES.md`](GATES.md)) |
+| HEAD final da branch | reportado externamente, após o commit documental |
 | Mesclada na `main`? | **Não.** |
 
-Os sete commits, do mais antigo para o mais novo:
+Os nove commits de produto, do mais antigo para o mais novo:
 
 | SHA | Assunto |
 |---|---|
@@ -40,26 +42,21 @@ Os sete commits, do mais antigo para o mais novo:
 | `4c213de` | o handoff responde para produção e publicação — e não entrega o endereço |
 | `aea3b3c` | conferir uma credencial marcava TODAS as referências do ativo |
 | `664272f` | revisão pela tela — e ela manda só o que mudou |
+| `9dbebdf` | a revisão adversarial refutou 7 de 8 afirmações de segurança, e ela estava certa |
+| `2971c8c` | os números do fechamento passam a ser gerados, e o gerador para de mentir sobre si |
 
-⚠️ **O HEAD se moveu enquanto este pacote era escrito.** A primeira rodada de
-gates mediu `1ddccf0`; três commits novos entraram (`4c213de`, `aea3b3c`,
-`664272f`) e **todos os gates foram rerodados** contra `664272f`. Os números
-deste pacote são os da segunda rodada. Se o HEAD tiver avançado de novo quando
-você ler isto, rode os gates outra vez antes de confiar em qualquer contagem.
+⚠️ **O HEAD se moveu enquanto este pacote era escrito, e parou de se mover.**
+As primeiras rodadas de gates mediram HEADs intermediários, e as contagens deste
+texto envelheceram junto. O ciclo fechou: `2971c8c` foi medido, revisado
+adversarialmente, corrigido e **aceito**. Os arquivos que estavam pendentes
+quando o pacote foi montado — `onboarding_pagina_facebook.py`,
+`PEDIDO-AO-OPERADOR.md`, `FICHA-PAGINA-MODELO.json`, e as correções da revisão —
+**estão todos commitados até `2971c8c`**, e o onboarding foi avaliado: 56/56 no
+autoteste, registrado em [`GATES.md`](GATES.md).
 
-⚠️ **A missão continuou produzindo depois da medição.** Ao fechar o pacote,
-`git status --short` já mostrava nove arquivos rastreados modificados e não
-commitados (`dominio.py`, `infraestrutura.py`, `rotas.py`, `provar-ciclo-v13_01.sh`,
-`AssetVaultContent.tsx`, `cofreApi.ts`, `contract.ts`, `v13_01`, `v13_99`), mais
-`scripts/onboarding_pagina_facebook.py` não rastreado. **Nada disso está medido
-nem avaliado aqui.** Este pacote descreve `664272f` e só ele.
-
-⚠️ **Este diretório tem mais arquivos do que este pacote.** Enquanto o pacote
-era montado, o agente irmão criou aqui `PEDIDO-AO-OPERADOR.md` e
-`FICHA-PAGINA-MODELO.json` — a metade humana do onboarding da página, que
-`scripts/onboarding_pagina_facebook.py` consome. Eles **não são deste pacote**,
-não foram medidos nem avaliados aqui, e as afirmações do índice abaixo valem
-apenas para os quatro arquivos que esta missão criou.
+⚠️ **A árvore está limpa.** Não há trabalho intermediário fora de commit. O que
+existe além de `2971c8c` é este próprio commit documental, que corrige
+procedência e não toca código de produto, teste, migration nem contrato.
 
 ⚠️ **A branch não foi mesclada.** É por isso que nenhuma proposta de estado
 neste pacote pede `done` na fonte compartilhada. Trabalho que só existe numa
@@ -78,24 +75,30 @@ delta **proposto**, aplicado por um integrador e não por esta missão.
 | `README.md` | Este índice. |
 
 Os outros dois arquivos do diretório — `PEDIDO-AO-OPERADOR.md` e
-`FICHA-PAGINA-MODELO.json` — são do agente irmão, e não deste pacote.
+`FICHA-PAGINA-MODELO.json` fazem parte deste pacote e **foram avaliados**:
+`onboarding_pagina_facebook.py --autoteste` passa 56/56, registrado em
+[`GATES.md`](GATES.md).
 
 ## Os números, num lugar só
 
-| Gate | Resultado |
-|---|---|
-| `./scripts/provar-ciclo-v13_01.sh` | **81 provas**, exit 0, PostgreSQL 15.19 |
-| `pytest backend/tests/test_cofre_ativos.py` | **54 passed** |
-| `npx vitest run src/features/asset-vault` | **21 passed**, 2 arquivos |
-| `tsc -p tsconfig.app.json` | **76 erros herdados**, **0** em asset-vault |
-| `npm run build` | ✓ built in 7.95s |
-| `importar_engines_no_cofre.py --autoteste` | **248 asserções ok, 0 falhas** |
-| `onepassword-smoke/run.py --autoteste` | **0 falhas** |
-| `onepassword-smoke/run.py` | `blocked/cli_ausente`, **exit 10** — o resultado correto |
+Eles estão em **[`GATES.md`](GATES.md)**, congelados no `code_sha` aceito, e não
+são repetidos aqui. Duplicar contagem em dois arquivos é como este pacote
+adquiriu nove números errados: cada cópia envelhece no seu próprio ritmo, e
+quem lê não sabe qual vale.
+
+Dois deles merecem a ressalva que `GATES.md` também carrega:
+
+- **Suíte backend inteira:** `2187 passed, 53 skipped` em `2971c8c`. O delta
+  contra o baseline é `baseline_delta_not_remeasured` — o baseline foi levantado
+  por `--collect-only` (uma contagem de coleta) e nunca executado, então não há
+  `passed`/`skipped` de origem com que comparar.
+- **Vitest completo:** a comparação contra o baseline **não é afirmada** em
+  `2971c8c`; ela foi feita uma vez, num HEAD intermediário. O que está provado
+  aqui é o gate focal (24/24) e o build verde.
 
 ## O que a missão entregou
 
-**Schema privado** (`supabase/migrations/v13_01_cofre_de_ativos.sql`, 2259 linhas).
+**Schema privado** (`supabase/migrations/v13_01_cofre_de_ativos.sql`).
 Nove tabelas `cofre_*` em `public`, `ALL` revogado nominalmente de `PUBLIC`,
 `anon`, `authenticated` **e** `service_role`, RLS forçada nas nove e zero
 policies. Escrita só por `SECURITY DEFINER` com allowlist de campo e blocklist
@@ -103,12 +106,12 @@ de chave normalizada. Rollback em `v13_99_cofre_de_ativos_rollback.sql`.
 
 **Harness de prova** (`scripts/provar-ciclo-v13_01.sh`).
 Aplica → opera → reverte → reaplica num Postgres descartável em Docker.
-**81 provas**, PostgreSQL 15.19 — mesma major da produção, medida em 15.8 nesta
-sessão.
+Contagem e versão em [`GATES.md`](GATES.md). O Postgres é a mesma major da
+produção, medida em 15.8 nesta sessão.
 
-**API administrativa** (`backend/app/asset_vault/`, 4 camadas, 1368 linhas).
+**API administrativa** (`backend/app/asset_vault/`, quatro camadas).
 **13 rotas** sob `/api/cofre`, todas com `exigir_admin` no nível do router.
-54 testes herméticos.
+Testes herméticos: ver [`GATES.md`](GATES.md).
 
 **Handoff para produção e publicação** (`GET /api/cofre/ativos/{id}/handoff`).
 Responde e não executa; traz provider e nome lógico, nunca o localizador.
@@ -117,9 +120,9 @@ Contrato em `docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md`.
 **Tela** (`src/features/asset-vault/`). A fonte passou a ser `/api/cofre`; a
 fixture deixou de ser a única fonte e **não** virou fallback. Seis estados
 distinguidos. Cadastro, revisão, relação, verificação, aposentadoria e
-reativação pela interface. 21 testes.
+reativação pela interface. Testes: ver [`GATES.md`](GATES.md).
 
-**Importador de engines** (`scripts/importar_engines_no_cofre.py`, 1047 linhas).
+**Importador de engines** (`scripts/importar_engines_no_cofre.py`).
 Lê os manifestos versionados e emite 7 payloads para `cofre_cadastrar_ativo`.
 Não escreve no banco e não faz rede. 248 asserções no autoteste.
 
