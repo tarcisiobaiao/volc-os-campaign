@@ -351,15 +351,27 @@ class Executor:
                 },
             )
 
-        try:
-            anyio.from_thread.run(marcar)
-        except Exception as e:  # noqa: BLE001
-            # ⚠️ `anyio` levanta `NoEventLoopError`, que NÃO é `RuntimeError` — a
-            # primeira versão desta correção capturava só `RuntimeError` e o teste
-            # pegou. Fora de uma worker thread do anyio, rodamos um loop próprio.
-            if type(e).__name__ not in ("NoEventLoopError", "RuntimeError"):
-                raise
-            anyio.run(marcar)
+        # ⚠️ DEFEITO CRITICO MEDIDO E FECHADO. A versão anterior tentava
+        # `anyio.from_thread.run` e caía para `anyio.run` — e os DOIS estouram
+        # quando chamados da thread do event loop, que é exatamente de onde a
+        # rota `async def criar_job` chama:
+        #
+        #     anyio.from_thread.run  -> NoEventLoopError
+        #     anyio.run              -> RuntimeError: Already running asyncio
+        #
+        # Consequência medida: o job NÃO virava `failed`, não recebia
+        # `ESTUDIO.despacho_indisponivel`, não recebia carimbo terminal, e a rota
+        # devolvia 500 sobre um job órfão em `queued`. O fail-closed existia para
+        # impedir precisamente isso e falhava aberto.
+        #
+        # Uma thread nova nunca tem loop; ali `anyio.run` sempre vale. A exceção
+        # sobe, que é o contrato: se nem marcar a falha der certo, a rota vira
+        # 503, que é a verdade.
+        from app.criativo.bancada.despacho import (  # noqa: PLC0415
+            _rodar_corrotina_em_thread,
+        )
+
+        _rodar_corrotina_em_thread(marcar)
 
     async def _executar_protegido(self, job_id: str) -> None:
         async with self._trava:
