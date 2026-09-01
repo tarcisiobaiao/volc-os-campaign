@@ -1,0 +1,96 @@
+{
+  "_nota": "DELTA PROPOSTO pelo Worker 1 (creative-runtime). NÃO é o arquivo de curadoria; é o que o integrador único deve aplicar em docs/volc-os-graph/curadoria-operacional.json e volc-os-workbook/ROADMAP-VIVO.json depois do merge, reconstruindo o Mapa Vivo UMA vez. Trabalho em branch/worktree não fecha fonte compartilhada.",
+  "_origem": {
+    "worker": "creative-runtime",
+    "branch": "sprint/traffic-creative-operational-closure-v1",
+    "commits": [
+      "52c3345 docs(criativo): o contrato que a UI vai chamar, escrito antes do codigo",
+      "fbb7f3e feat(criativo): o caminho minimo fecha — receita, motor local, ponte, recusa",
+      "5efd756 fix(ponte): Display e Demand Gen param de divergir onde nao havia razao",
+      "ac0e12a feat(bancada): a producao local ponta a ponta, consultavel pela tela",
+      "022ef2e docs(criativo): o contrato para a UI reescrito contra o envelope real"
+    ],
+    "gates": {
+      "suite_completa": "backend/.venv/bin/python -m pytest backend/tests volc_ads -q → 2445 passed, 45 skipped, 0 failed (baseline do lead no SHA base: 2319 passed, 53 skipped)",
+      "focal_engine": "backend/.venv/bin/python -m pytest volc_ads/criativo volc_ads/testes_criativo_ponte.py -q → 189 → 225 passed",
+      "focal_backend": "backend/.venv/bin/python -m pytest backend/tests -q -k 'criativo or bancada' → 329 → 354 passed",
+      "higiene": "git diff --check → limpo"
+    }
+  },
+
+  "roadmap": [
+    {
+      "id": "P04-T05",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_por_que_continua_partial": "O caminho HTTP ainda não existe: nenhuma rota chama produzir_local nem estado_da_producao, porque backend/app/routers/** é ownership do Worker 3. E nenhuma peça produzida por este caminho pode subir a uma conta real por construção — a natureza dela é `local`, e a ponte recusa promoção a produção. Promover a `done` por causa de código verde seria exatamente o que o protocolo de fechamento proíbe.",
+      "evidencia_a_acrescentar": "2026-09-01 · fbb7f3e/5efd756/ac0e12a: o caminho mínimo de criativo passou a EXISTIR de ponta a ponta e offline, fechando o buraco que a revisão adversarial de 27/08 tinha nomeado (validar_lote sem chamador fora do CLI do operador). Quatro peças: (1) volc_ads/criativo/adaptadores/png_local.py — motor que cumpre porta.MotorDeCriativo e produz PNG REAL com zlib+struct, sem Pillow, sem rede e sem credencial; o MotorFalso não servia porque os bytes dele são sha256*4 declarando mime=image/png, e medir_imagem.medir() lê (None,None,None) neles — um asset que parece produção e não é; há teste prendendo essa diferença. (2) volc_ads/criativo/producao.py — Receita → pedidos → lote catalogado, com os papéis DERIVADOS da régua (obrigatórios individuais mais os mínimos de teto combinado: Demand Gen só é montável porque a derivação lê o teto 'imagem base', onde nenhuma imagem é individualmente obrigatória) e os cinco erros da porta virando cinco Falha com código F5..F9 e `permanente`, nunca lote vazio silencioso. (3) contrato.NaturezaDaProcedencia — Origem diz de que CLASSE é o arquivo, natureza diz se ele pode ser PUBLICADO; um PNG de ensaio é Origem.GERADO exatamente como o banner pago, e era essa colisão que deixava ensaio atravessar com cara de produção. Padrão NAO_DECLARADA: quem não respondeu não autorizou. (4) criativo_ponte.Destino — a ponte é o instante em que o payload nasce, então a recusa mora nela; PRODUCAO (padrão) recusa local/fixture com motivo nomeado, ENSAIO deixa passar e carimba a natureza na Entrega. MEDIDO: mesma receita duas vezes produz as mesmas identidades e os mesmos hashes; o asset carrega sha256, MIME, largura, altura, bytes, procedência (motor, versão, insumo, insumo_hash, pedido, instante) e recibo tipado; a linhagem que sai da ponte é campo a campo a do asset; motor fora do ar devolve uma Falha por papel com permanente=False em vez de lote vazio. FALTA para sair de partial: rota HTTP (Worker 3) e um motor cuja natureza seja `producao`.",
+      "lacunas_restantes": [
+        "Nenhuma rota HTTP alcança produzir_local/estado_da_producao — o contrato para o Worker 3 está em docs/closure/traffic-creative-operational-closure-v1/CONTRATO-CRIATIVO-PARA-UI.md",
+        "Nenhum produtor declara natureza `producao`; a única peça que atravessa é de ensaio, por construção",
+        "NaturezaDaProcedencia.NAO_DECLARADA ainda é aceita em Destino.PRODUCAO — dívida declarada em NATUREZAS_ACEITAS, com aviso nomeado; ver backlog item 1",
+        "Linhagem (campanha/brief.py) não carrega a natureza até o recibo de subir.py — ver backlog item 2",
+        "Não há rota que sirva os BYTES da peça: a tela não consegue exibi-la — ver backlog item 7"
+      ]
+    },
+    {
+      "id": "P11-T04",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "evidencia_a_acrescentar": "2026-09-01 · ac0e12a: a bancada ganhou um segundo motor local, backend/app/criativo/bancada/adaptadores/png_local.py, que IMPORTA o desenho de volc_ads/criativo/adaptadores/png_local em vez de copiá-lo (dois desenhos concordariam hoje e divergiriam no dia em que alguém consertasse só um, e a divergência apareceria como dois sha256 para o mesmo pedido). Ele é o único registrado FORA do try/except FalhaDoMotor de servico.montar(), porque não tem pré-requisito nenhum — e isso expôs um ponto cego do MotorTipografico, que importa Pillow DENTRO de produzir()/versoes_congeladas() e portanto, numa máquina sem Pillow, se registra e falha depois no meio do render (Pillow não está em backend/requirements.txt). Não consertado nesta rodada; registrado no backlog item 4."
+    },
+    {
+      "id": "P17-T09",
+      "acao": "nota_de_contexto",
+      "_nota": "Não proponho mudança de status. Só registro que servico.py ganhou quatro funções novas (receitas_locais, produzir_local, estado_da_producao, ambiente_da_bancada) e motores_disponiveis ganhou dois campos (natureza, publicavel). Quando o aceite 4 (golden OpenAPI reproduzível) for exercitado, ele precisa cobrir as rotas que o Worker 3 criar sobre essas funções."
+    }
+  ],
+
+  "capabilities": [
+    {
+      "id": "cap_google_multichannel",
+      "acao": "atualizar_evidencia",
+      "state_atual": "partial",
+      "state_proposto": "partial",
+      "evidencia_a_acrescentar": "2026-09-01: a fronteira de criativo deixou de ter uma porta só. imagens_de_display e imagens_de_demand_gen passaram a ter assinatura IDÊNTICA (lote, conteudo_por_identidade, *, exigencia, destino) e a emitir recibo tipado NOS DOIS canais — antes só Demand Gen emitia, com o comentário 'Display preserva o contrato anterior', que era o que já existia e não um motivo; com a rota HTTP de Display prestes a chamar a ponte, o mesmo asset atravessaria com prova por uma porta e sem prova pela outra. imagens_de_display também passou a recusar lote de outro canal: um lote DEMAND_GEN era validado contra a régua do DG e mapeado com a tabela de papéis do DISPLAY — onde `logo` é 4:1 e no DG nem existe — montando payload que a API recusaria por proporção, com o erro apontando para o anúncio. Permanecem divergentes por razão real, e está documentado: os conjuntos de papéis (4 no Display, 5 no DG) e o tratamento de entrega parcial (Display entrega o que sobrou com as recusas ao lado; DG zera o payload em qualquer recusa)."
+    }
+  ],
+
+  "concepts_novos": [
+    {
+      "id": "concept:natureza_da_procedencia",
+      "label": "Natureza da procedência",
+      "cluster": "acquisition",
+      "state": "implemented",
+      "summary": "Separa 'de que classe é este arquivo' (Origem) de 'este arquivo pode ser publicado' (natureza), e é o que impede peça de ensaio de subir com cara de produção.",
+      "evidence": "volc_ads/criativo/contrato.py::NaturezaDaProcedencia com quatro valores — nao_declarada, producao, local, fixture — e `publicavel` como propriedade derivada, nunca campo gravado. O padrão é NAO_DECLARADA de propósito: todo Asset construído por código que nunca ouviu falar do campo nasceria publicável por omissão, que é a definição do defeito. A recusa é aplicada em volc_ads/criativo_ponte.py::Destino/NATUREZAS_ACEITAS, no instante em que o payload nasce — não no validador, porque um PNG de ensaio 1200x628 é geometricamente idêntico ao banner pago e a pergunta 'pode subir?' não é sobre o arquivo. Provado em volc_ads/criativo/testes_producao.py (a mesma produção é recusada em destino produção e aceita em ensaio, com veredito.ok True nos dois) e em backend/tests/test_criativo_producao_local.py."
+    },
+    {
+      "id": "concept:producao_local_de_criativo",
+      "label": "Produção local de criativo",
+      "cluster": "acquisition",
+      "state": "partial",
+      "summary": "Uma receita derivada da régua do canal produz asset reproduzível offline, com recibo, e atravessa a ponte até o contrato de campanha — sem rede, sem crédito e sem Pillow.",
+      "evidence": "volc_ads/criativo/producao.py + adaptadores/png_local.py + backend/app/criativo/bancada/{adaptadores/png_local.py,servico.py}. O envelope consultável separa quatro desfechos que `assets == []` colapsaria: pedido recusado (erro preenchido, trabalho_id None), render falhou (estado failed com falha.codigo), pendência (terminal False) e sucesso. `entrega is None` significa que a travessia NÃO foi tentada, e nunca 'zero imagens'. produzir_local consulta despacho.escolher_despachante() antes de tudo e recusa em ambiente sem processo de vida longa, em vez de contornar a fronteira fail-closed. Continua partial: nenhuma rota HTTP a alcança, e não há rota que sirva os bytes da peça.",
+      "documents": [
+        "docs/closure/traffic-creative-operational-closure-v1/CONTRATO-CRIATIVO-PARA-UI.md",
+        "docs/closure/traffic-creative-operational-closure-v1/backlog-creative-runtime.md"
+      ]
+    }
+  ],
+
+  "edges_novas": [
+    {"source": "concept:producao_local_de_criativo", "target": "concept:natureza_da_procedencia", "relation": "depende_de"},
+    {"source": "concept:producao_local_de_criativo", "target": "channel:DISPLAY", "relation": "alimenta"},
+    {"source": "concept:producao_local_de_criativo", "target": "cap_google_multichannel", "relation": "alimenta"},
+    {"source": "concept:natureza_da_procedencia", "target": "cap_google_multichannel", "relation": "protege"}
+  ],
+
+  "_avisos_ao_integrador": [
+    "As relações propostas em edges_novas usam ids existentes (channel:DISPLAY, cap_google_multichannel) e dois ids novos. Confira o vocabulário de `relation` aceito pelo validador antes de aplicar — vi 'alimenta' em uso; 'depende_de' e 'protege' podem não existir no schema.",
+    "Não escrevi em ROADMAP-VIVO.json nem em docs/volc-os-graph/**. Não rodei scripts/atualizar_grafo_volc_os.py. Ambos são do integrador, uma vez, depois do merge.",
+    "Se outro worker propuser delta sobre P04-T05, as evidências são complementares e não conflitantes: a minha é sobre o motor e a ponte; a de tráfego/UI será sobre a rota."
+  ]
+}
