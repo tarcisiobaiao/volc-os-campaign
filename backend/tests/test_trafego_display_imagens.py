@@ -138,8 +138,15 @@ def test_lote_valido_vira_imagens_display_com_papel():
         _asset("imagem_marketing", "banner", 600, 314),
         _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
     ]))
-    imagens = trafego._imagens_de_display(body, nicho="fixture")
+    # ⚠️ Devolve DOIS valores desde 01/09/2026: as imagens e os avisos da ponte.
+    # Os avisos existem porque a ponte aceita `NAO_DECLARADA` em destino de
+    # produção como dívida consciente, e a contrapartida dessa dívida é o asset
+    # sem procedência sair NOMEADO. Descartá-los aqui desfaria a troca.
+    imagens, avisos = trafego._imagens_de_display(body, nicho="fixture")
     assert imagens is not None
+    # A fixture não declara natureza, então a ponte tem o que avisar — e o
+    # aviso precisa chegar com código, não como frase solta.
+    assert all(a.codigo == "ASSET_SEM_PROCEDENCIA" for a in avisos)
     # ⚠️ O papel é DECLARADO, nunca adivinhado pela ordem da lista: subir a
     # quadrada no campo do banner faria a API recusar o mutate inteiro por
     # proporção, com um erro apontando para o anúncio e não para quem montou.

@@ -126,3 +126,80 @@ Foi por causa disto que o motor local novo (`png_local`) foi escrito só com
 
 **Remédio:** ou declarar Pillow como dependência, ou fazer o motor não se
 registrar quando o import falha.
+
+---
+
+## 8. `/criativos` não tem porta HTTP para a produção local
+
+**Onde:** `backend/app/routers/criativos_execucao.py`.
+
+`backend/app/criativo/bancada/servico.py` expõe `receitas_locais`,
+`produzir_local`, `estado_da_producao`, `ambiente_da_bancada` e
+`motores_disponiveis` — todas prontas e JSON-nativas. **Nenhuma rota HTTP as
+alcança.** O router só expõe as rotas antigas da bancada
+(`/bancada/motores`, `/bancada/trabalhos*`, `/bancada/arquivo/...`).
+
+**O que a tela consegue hoje:** `/bancada/trabalhos/{id}` já devolve recibo com
+`sha256`, `mime`, `largura`, `altura`, `motor` e assinatura determinística. A
+procedência **existe** na tela.
+
+**O que falta, e o risco de cada falta:**
+
+| Ausente | Consequência |
+|---|---|
+| `ambiente_da_bancada` | A tela não sabe se pode oferecer o botão de produzir |
+| `receitas_locais` | Não há como listar o que esta máquina consegue produzir |
+| `entrega.recusas` | **A tela pode dizer "aprovado" sobre um lote que a ponte descartou** |
+
+O terceiro é o que importa: é o defeito nominalmente proibido pela missão.
+
+**Por que não foi feito:** a lacuna foi identificada pelo worker de API/UI, que
+corretamente **perguntou em vez de invadir** — `criativos_execucao.py` não está
+no ownership dele e `backend/app/criativo/**` lhe era proibido. A decisão do lead
+foi parar aqui e declarar, em vez de abrir arquivo alheio no fechamento, sem o
+dono disponível para revisar. Foi assim que `display.py` quebrou 9 testes nesta
+mesma missão: metade de um par que precisava viajar junto.
+
+**Remédio:** três rotas em `criativos_execucao.py`, com o esboço já pronto na §6
+de `CONTRATO-CRIATIVO-PARA-UI.md`.
+
+---
+
+## 9. Dois registros defasados sobre construtores
+
+- `volc_ads/campanha/perfil.py:297` — PMAX ainda declara `campos_operados=()`,
+  `recursos_criativos=()` e a frase "não há construtor — o engine levanta
+  exceção". `volc_ads/campanha/pmax.py` existe desde `73e15fa`.
+- `backend/app/trafego/dominio.py:161` — `CANAIS_COM_CONSTRUTOR = {"SEARCH"}`,
+  defasado desde que Display ganhou construtor. Zero consumidores em produção
+  (só o próprio módulo e um teste que fixa o conjunto).
+
+Nenhum dos dois altera comportamento hoje. Ambos são afirmações falsas dentro do
+código, que é o tipo de coisa que engana a próxima pessoa a ler.
+
+---
+
+## 10. O portão de PMax em `criavel_pausada` não tem bloqueador de observabilidade próprio
+
+Medido pelo worker de verificação executando `contrato_dos_canais()` com
+`papel=dono` e `escrita_permitida=True`:
+
+```
+PERFORMANCE_MAX  planejavel       BLOQUEADO ['sem_campos_de_pedido']
+                 validavel        BLOQUEADO ['sem_porta_de_prova']
+                 criavel_pausada  BLOQUEADO ['sem_construtor']
+                 ativavel         BLOQUEADO [..., 'mensuracao_nao_lida',
+                                             'observabilidade_nao_provada']
+```
+
+P04-T07 fala de observabilidade **antes de autorizar criação**, então o portão
+que a tarefa governa é `criavel_pausada` — e lá o único bloqueador é
+`sem_construtor`. Mensuração e observabilidade só aparecem em `ativavel`.
+
+**No dia em que `pmax.py` virar construtor registrado, a criação de PMax fica sem
+nenhum bloqueador de observabilidade.** É a mesma armadilha que o teste
+`test_mensuracao_inadequada_bloqueia_mesmo_com_canal_habilitado` fechou do lado
+do builder, ainda aberta do lado do contrato HTTP.
+
+**Remédio:** um bloqueador próprio em `criavel_pausada` de PMax, derivado de
+observabilidade, que se sustente sozinho quando `sem_construtor` sair.

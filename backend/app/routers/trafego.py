@@ -34,6 +34,7 @@ deliberadamente, nunca este arquivo.
 from __future__ import annotations
 
 import asyncio
+import dataclasses as _dataclasses
 import dataclasses
 import logging
 import pathlib
@@ -1765,6 +1766,26 @@ def _assets_decodificados_display(
 # tempo do operador para responder o que já se sabia antes de sair da máquina.
 
 
+def _avisos_da_ponte(entrega) -> tuple:
+    """Os avisos da ponte criativa, no vocabulário que a tela já lê.
+
+    `Entrega.avisos` é `tuple[str, ...]` — frase pronta, sem código. Aqui elas
+    ganham `ASSET_SEM_PROCEDENCIA` e severidade `atencao`: não impedem montar o
+    plano (a ponte já decidiu que passam), mas o operador precisa vê-las.
+    """
+    from volc_ads import pautador_ponte as pp   # import tardio, como o resto do módulo
+
+    return tuple(
+        pp.Aviso(
+            "ASSET_SEM_PROCEDENCIA",
+            "atencao",
+            "Asset sem procedência declarada",
+            texto,
+        )
+        for texto in getattr(entrega, "avisos", ()) or ()
+    )
+
+
 def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
     """Traduz `assets_display` em `ImagensDisplay`, ou recusa com causa.
 
@@ -1852,7 +1873,12 @@ def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
             "assets Display recusados pela fronteira do Estúdio:\n"
             + entrega.resumo()
         )
-    return entrega.imagens
+    # ⚠️ Os avisos viajam JUNTO, e não são um extra cosmético. A ponte aceita
+    # `NAO_DECLARADA` em destino de produção como dívida consciente, e o que ela
+    # ganha em troca é exatamente isto: cada asset sem procedência declarada sai
+    # nomeado em `Entrega.avisos`. Descartá-los aqui desfazia a troca — o asset
+    # entrava no plano sem sinal nenhum, e a dívida ficava sem contrapartida.
+    return entrega.imagens, _avisos_da_ponte(entrega)
 
 
 def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
@@ -2328,7 +2354,9 @@ def _montar_plano_demand_gen(
                 "página; a URL continua sendo uma decisão explícita do pedido.",
             ),
         )
-    return pp.Plano(brief=brief, grupos=(), avisos=avisos)
+    return pp.Plano(
+        brief=brief, grupos=(), avisos=avisos + _avisos_da_ponte(entrega)
+    )
 
 
 def _recusa_de_canal(canal: Any, exc: Exception) -> Dict[str, Any]:
@@ -2493,10 +2521,15 @@ async def provar(
                 # HTTP. O que ele monta é o brief comum; o que falta é a única
                 # coisa que só o pedido sabe — quais peças o operador aprovou.
                 origem = getattr(cockpit, "origem", None)
-                plano.brief.imagens_display = _imagens_de_display(
+                imagens, avisos_da_ponte = _imagens_de_display(
                     body,
                     nicho=getattr(origem, "nicho", None) or "sem nicho declarado",
                 )
+                plano.brief.imagens_display = imagens
+                if avisos_da_ponte:
+                    plano = _dataclasses.replace(
+                        plano, avisos=plano.avisos + avisos_da_ponte
+                    )
         # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
         # id colado do painel do Google vem `801-785-1692`, com hífen.
         preparo = sb.preparar(
