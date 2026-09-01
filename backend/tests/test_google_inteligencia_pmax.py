@@ -26,7 +26,6 @@ import pytest
 from volc_ads.inteligencia_google import pmax
 from volc_ads.inteligencia_google.alvo import AlvoColeta, ErroAlvoDivergente
 from volc_ads.inteligencia_google.coletor import ColetorGoogleInteligencia
-from volc_ads.inteligencia_google.persistencia import CampanhaAtiva
 
 from test_google_inteligencia_persistente import PersistenciaDuble
 
@@ -981,6 +980,31 @@ def test_l_fotografia_velha_deixa_de_provar():
     velha = pmax.avaliar_prontidao_pmax(resultado, agora=futuro)
     assert velha.provada is False
     assert any("frescor" in motivo for motivo in velha.motivos)
+
+
+def test_l_veredito_da_propria_execucao_se_declara_autoatestado():
+    """Quem afirma que gravou e quem gravou — e o recibo diz isso na cara.
+
+    Sem essa etiqueta, um integrador futuro promoveria
+    `pmax_observabilidade_nao_provada` com a palavra do coletor no lugar de uma
+    releitura do ledger, que e exatamente a linhagem que o VOLC ja derrubou uma
+    vez no plano de mensuracao.
+    """
+
+    motor, _, _ = coletor(tipos_sinal_do_ledger=VOCABULARIO_AMPLIADO)
+    resultado = motor.executar_alvo_pmax(_alvo())
+
+    assert "prontidao" not in resultado
+    veredito = resultado["prontidao_desta_execucao"]
+    assert veredito["linhagem"] == pmax.LINHAGEM_EXECUCAO
+    assert veredito["autoatestada"] is True
+
+    relido = pmax.avaliar_prontidao_pmax(
+        resultado, agora=datetime.now(timezone.utc),
+        linhagem=pmax.LINHAGEM_RELEITURA,
+    ).serializar()
+    assert relido["autoatestada"] is False
+    assert relido["provada"] == veredito["provada"]
 
 
 def test_l_familia_ausente_da_fotografia_nao_e_familia_verde():

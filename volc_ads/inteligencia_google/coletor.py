@@ -28,6 +28,7 @@ from .modelo import (
     DocumentoColeta, EstadoColeta, EstadoValor, Item, Metrica, metrica_de_dict,
 )
 from .persistencia import CampanhaAtiva, SupabaseGoogleIntelligence
+from . import pmax as pmax_dominio
 
 MCC_PADRAO = "6016739364"
 _SEGREDO = re.compile(r"(?i)(authorization|bearer|apikey|token|secret|password)[^\s,;]*")
@@ -66,6 +67,7 @@ class ColetorGoogleInteligencia:
         self, *, login_customer_id: str = MCC_PADRAO,
         persistencia: SupabaseGoogleIntelligence | None = None,
         cliente_google: Any | None = None,
+        tipos_sinal_do_ledger: frozenset[str] | None = None,
     ) -> None:
         if estado_escrita().get("escrita_permitida"):
             raise RuntimeError("coleta recusada: trava de escrita do Google Ads esta aberta")
@@ -73,6 +75,13 @@ class ColetorGoogleInteligencia:
         self.persistencia = persistencia or SupabaseGoogleIntelligence()
         self.google = cliente_google or cliente(self.login_customer_id)
         self.ga = self.google.get_service("GoogleAdsService")
+        # O vocabulario de `tipo_sinal` que o ledger aceita hoje. Injetavel para
+        # que a prova de que a lacuna PMax mora no CHECK do Postgres — e nao
+        # neste codigo — possa ser executada sem um banco por perto.
+        self.tipos_sinal_do_ledger = (
+            pmax_dominio.TIPOS_SINAL_ACEITOS_PELO_LEDGER
+            if tipos_sinal_do_ledger is None else frozenset(tipos_sinal_do_ledger)
+        )
 
     def _query(self, customer_id: str, gaql: str) -> list[dict[str, Any]]:
         if not gaql.lstrip().upper().startswith("SELECT"):
@@ -719,6 +728,260 @@ class ColetorGoogleInteligencia:
         resultado["total"] = len(resultado["coletas"])
         return resultado
 
+    # -- observabilidade read-only de Performance Max (P04-T07) ---------------
+
+    def _persistir_pmax(
+        self, *, familia: str, campanha: CampanhaAtiva, bucket: str,
+        janela: tuple[date, date], produzir: Callable[[], DocumentoColeta],
+    ) -> dict[str, Any]:
+        """Produz o recibo da familia e o grava — se o ledger tiver onde.
+
+        A leitura acontece de qualquer jeito. O que o CHECK da v12_01 decide e
+        se ela vira linha no banco; quando nao vira, a recusa e NOMEADA no
+        resultado, com a migration que a destravaria. Um `except` mudo aqui
+        transformaria a lacuna num vazio, que e exatamente o que esta coleta
+        existe para nao fazer.
+        """
+
+        try:
+            documento = produzir()
+        except Exception as exc:
+            codigo, classe, detalhe, request_ids = _erro(exc)
+            documento = DocumentoColeta.agora(
+                tipo_sinal=pmax_dominio.TIPO_SINAL_POR_FAMILIA[familia],
+                familia=familia, estado=EstadoColeta.FALHOU,
+                customer_id=campanha.customer_id,
+                login_customer_id=self.login_customer_id, bucket=bucket,
+                quantidade=None, volc_campaign_id=campanha.volc_campaign_id,
+                campaign_id=campanha.campaign_id, request_ids=request_ids,
+                erro_codigo=codigo, erro_classe=classe, erro_detalhe=detalhe,
+                payload={
+                    "somente_leitura": True, "fonte": pmax_dominio.FONTE_GOOGLE_ADS,
+                    "canal": pmax_dominio.CANAL_PMAX,
+                    "janela_da_execucao": [janela[0].isoformat(), janela[1].isoformat()],
+                },
+            )
+        documento.payload = {**documento.payload, "origem": ORIGEM_ALVO}
+
+        recusa = pmax_dominio.recusa_de_persistencia(
+            familia, tipos_aceitos=self.tipos_sinal_do_ledger,
+        )
+        serializado = documento.serializar()
+        coleta_id = None if recusa else self.persistencia.registrar(documento)
+        return {
+            **serializado,
+            "familia": familia,
+            "persistido": recusa is None,
+            "coleta_id": coleta_id,
+            "recusa_de_persistencia": None if recusa is None else recusa.serializar(),
+        }
+
+    def executar_alvo_pmax(
+        self, alvo: AlvoColeta, *, modo: str = "completa",
+    ) -> dict[str, Any]:
+        """Fotografa UMA campanha Performance Max nomeada, sem tocar em nada.
+
+        Mesma identidade completa, mesmo bucket, mesma idempotencia e mesmo
+        vocabulario de estados da coleta Search. O que muda sao as perguntas:
+        aqui elas sao sobre grupos de recursos, assets, sinais, desempenho por
+        grupo e a segunda opiniao oficial sobre a forca do anuncio.
+
+        ⚠️ Nao substitui `executar_alvo`, e nao e chamada por ele. Sao duas
+        perguntas diferentes sobre a mesma campanha, e juntar as duas faria uma
+        familia que cai levar a outra junto.
+        """
+
+        if not isinstance(alvo, AlvoColeta):
+            raise ErroAlvoInvalido("alvo precisa ser AlvoColeta")
+        if modo not in {"frequente", "completa"}:
+            raise ValueError("modo precisa ser frequente ou completa")
+
+        # Fail-closed em duas etapas, nesta ordem: primeiro a identidade
+        # (a campanha existe, e e desta conta), depois o canal. Nenhuma consulta
+        # especifica de PMax sai antes das duas passarem.
+        campanha = self.persistencia.campanha_por_identidade(alvo)
+        conferir_identidade_devolvida(alvo, campanha)
+        canal = pmax_dominio.exigir_canal_pmax(campanha.canal)
+
+        agora = datetime.now(timezone.utc)
+        bucket = self._bucket(modo, agora)
+        janela = (agora.date() - timedelta(days=13), agora.date())
+        comum = {
+            "campanha": campanha, "login_customer_id": self.login_customer_id,
+            "bucket": bucket, "janela": janela,
+        }
+
+        resultado: dict[str, Any] = {
+            "modo": modo, "bucket": bucket, "origem": ORIGEM_ALVO,
+            "customer_id": campanha.customer_id,
+            "volc_campaign_id": campanha.volc_campaign_id,
+            "campaign_id": campanha.campaign_id,
+            "canal": canal, "estado_externo": campanha.estado_externo,
+            "janela": [janela[0].isoformat(), janela[1].isoformat()],
+            "coletas": [],
+        }
+
+        def registrar(familia: str, produzir: Callable[[], DocumentoColeta]) -> None:
+            resultado["coletas"].append(self._persistir_pmax(
+                familia=familia, campanha=campanha, bucket=bucket,
+                janela=janela, produzir=produzir,
+            ))
+
+        cid = campanha.customer_id
+
+        # 1. a campanha, como a API a enxerga. `campanha_lida` distingue tres
+        #    coisas que uma lista vazia confundiria: leu e achou, leu e nao
+        #    achou, e nao conseguiu ler.
+        campanha_lida: bool | None = None
+        linhas_campanha: list[dict[str, Any]] = []
+
+        def ler_campanha() -> DocumentoColeta:
+            nonlocal campanha_lida, linhas_campanha
+            linhas_campanha = self._query(
+                cid, pmax_dominio.query_campanha(campanha.campaign_id)
+            )
+            campanha_lida = bool(linhas_campanha)
+            return pmax_dominio.documento_campanha(linhas=linhas_campanha, **comum)
+
+        registrar(pmax_dominio.FAMILIA_CAMPANHA, ler_campanha)
+
+        # 2. os grupos de recursos. `grupos` fica None se a leitura caiu — e e
+        #    essa distincao que impede o desempenho de inventar grupos ausentes.
+        grupos: list[str] | None = None
+
+        def ler_grupos() -> DocumentoColeta:
+            nonlocal grupos
+            linhas = self._query(
+                cid, pmax_dominio.query_asset_groups(campanha.campaign_id)
+            )
+            grupos = _ids_de_asset_group(linhas)
+            return pmax_dominio.documento_asset_groups(linhas=linhas, **comum)
+
+        registrar(pmax_dominio.FAMILIA_ASSET_GROUPS, ler_grupos)
+
+        # 3. os vinculos asset <-> grupo.
+        assets_pedidos: list[str] | None = None
+
+        def ler_vinculos() -> DocumentoColeta:
+            nonlocal assets_pedidos
+            linhas = self._query(cid, pmax_dominio.query_asset_group_assets(
+                cid, campanha.campaign_id,
+            ))
+            assets_pedidos = _ids_de_asset(linhas)
+            return pmax_dominio.documento_asset_group_assets(linhas=linhas, **comum)
+
+        registrar(pmax_dominio.FAMILIA_ASSET_GROUP_ASSETS, ler_vinculos)
+
+        # 4. os assets pedidos, e SOMENTE eles. Sem a lista, a consulta de
+        #    assets leria a conta inteira; e uma leitura larga disfarcada de
+        #    resposta seria pior que a falha honesta do prerequisito.
+        def ler_assets() -> DocumentoColeta:
+            if assets_pedidos is None:
+                return pmax_dominio.documento_prerequisito(
+                    pmax_dominio.FAMILIA_ASSETS,
+                    dependia_de=pmax_dominio.FAMILIA_ASSET_GROUP_ASSETS, **comum,
+                )
+            if not assets_pedidos:
+                return pmax_dominio.documento_assets(linhas=[], pedidos=[], **comum)
+            linhas = self._query(cid, pmax_dominio.query_assets(assets_pedidos))
+            return pmax_dominio.documento_assets(
+                linhas=linhas, pedidos=assets_pedidos, **comum,
+            )
+
+        registrar(pmax_dominio.FAMILIA_ASSETS, ler_assets)
+
+        # 5. desempenho na janela declarada, com a segmentacao por canal como
+        #    parte que pode cair sozinha e rebaixar a familia a PARCIAL.
+        def ler_desempenho() -> DocumentoColeta:
+            linhas = self._query(cid, pmax_dominio.query_desempenho(
+                campanha.campaign_id, janela[0], janela[1],
+            ))
+            por_canal: list[dict[str, Any]] | None = None
+            falha_por_canal: dict[str, str] | None = None
+            try:
+                por_canal = self._query(cid, pmax_dominio.query_desempenho_por_canal(
+                    campanha.campaign_id, janela[0], janela[1],
+                ))
+            except Exception as exc:
+                codigo, classe, detalhe, _ = _erro(exc)
+                falha_por_canal = {
+                    "erro_codigo": codigo, "erro_classe": classe,
+                    "erro_detalhe": detalhe,
+                }
+            return pmax_dominio.documento_desempenho(
+                linhas=linhas, grupos_conhecidos=grupos, por_canal=por_canal,
+                falha_por_canal=falha_por_canal, **comum,
+            )
+
+        registrar(pmax_dominio.FAMILIA_DESEMPENHO, ler_desempenho)
+
+        # 6. sinais dos grupos lidos.
+        def ler_sinais() -> DocumentoColeta:
+            if grupos is None:
+                return pmax_dominio.documento_prerequisito(
+                    pmax_dominio.FAMILIA_SINAIS,
+                    dependia_de=pmax_dominio.FAMILIA_ASSET_GROUPS, **comum,
+                )
+            if not grupos:
+                return pmax_dominio.documento_sinais(
+                    linhas=[], grupos_conhecidos=grupos, **comum,
+                )
+            linhas = self._query(cid, pmax_dominio.query_sinais(cid, grupos))
+            return pmax_dominio.documento_sinais(
+                linhas=linhas, grupos_conhecidos=grupos, **comum,
+            )
+
+        registrar(pmax_dominio.FAMILIA_SINAIS, ler_sinais)
+
+        # 7. a segunda opiniao oficial. Nunca aplicada, nunca dispensada.
+        def ler_recomendacoes() -> DocumentoColeta:
+            if campanha_lida is False:
+                return pmax_dominio.documento_recomendacoes(
+                    linhas=[], campanha_observada=False, **comum,
+                )
+            linhas = self._query(cid, pmax_dominio.query_recomendacoes_forca())
+            return pmax_dominio.documento_recomendacoes(
+                linhas=linhas, campanha_observada=campanha_lida, **comum,
+            )
+
+        registrar(pmax_dominio.FAMILIA_RECOMENDACOES, ler_recomendacoes)
+
+        resultado["total"] = len(resultado["coletas"])
+        resultado["lacunas"] = [
+            coleta["recusa_de_persistencia"] for coleta in resultado["coletas"]
+            if coleta["recusa_de_persistencia"] is not None
+        ]
+        # ⚠️ Veredito AUTOATESTADO, e nomeado como tal. Ele descreve o que esta
+        # execucao acredita ter gravado; promover o bloqueador de prontidao
+        # exige o mesmo calculo sobre recibos RELIDOS do ledger.
+        resultado["prontidao_desta_execucao"] = pmax_dominio.avaliar_prontidao_pmax(
+            resultado, agora=datetime.now(timezone.utc),
+            linhagem=pmax_dominio.LINHAGEM_EXECUCAO,
+        ).serializar()
+        return resultado
+
+
+def _ids_de_asset_group(linhas: list[dict[str, Any]]) -> list[str]:
+    vistos: list[str] = []
+    for linha in linhas:
+        grupo = linha.get("asset_group", {})
+        identificador = str(
+            grupo.get("id") or pmax_dominio.id_do_recurso(grupo.get("resource_name")) or ""
+        )
+        if identificador and identificador not in vistos:
+            vistos.append(identificador)
+    return vistos
+
+
+def _ids_de_asset(linhas: list[dict[str, Any]]) -> list[str]:
+    vistos: list[str] = []
+    for linha in linhas:
+        vinculo = linha.get("asset_group_asset", {})
+        identificador = pmax_dominio.id_do_recurso(vinculo.get("asset"))
+        if identificador and identificador not in vistos:
+            vistos.append(identificador)
+    return vistos
+
 
 def _data_de_inicio(linha: dict[str, Any]) -> date | None:
     """``campaign.start_date_time`` (v25) chega como data ou data-hora local."""
@@ -745,3 +1008,16 @@ def executar_coleta_alvo(
         campaign_id=campaign_id,
     )
     return ColetorGoogleInteligencia().executar_alvo(alvo, modo=modo)
+
+
+def executar_coleta_pmax(
+    *, customer_id: str, volc_campaign_id: str, campaign_id: str,
+    modo: str = "completa",
+) -> dict[str, Any]:
+    """Identidade validada ANTES de qualquer credencial ou conexao."""
+
+    alvo = AlvoColeta(
+        customer_id=customer_id, volc_campaign_id=volc_campaign_id,
+        campaign_id=campaign_id,
+    )
+    return ColetorGoogleInteligencia().executar_alvo_pmax(alvo, modo=modo)
