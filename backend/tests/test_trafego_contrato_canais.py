@@ -618,3 +618,126 @@ def test_a_leitura_de_campo_sobrevive_ao_registro_operacional_fora_do_ar():
     se sabe por causa do que não se conseguiu conferir."""
     r = asyncio.run(cc.canario_operacional(_SupaDesligado()))
     assert r["leitura_de_campo"]["primary_status"] == "PAUSED"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# O PORTÃO DE OBSERVABILIDADE DE PERFORMANCE MAX (P04-T07)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ P04-T07 pede um bloqueador de OBSERVABILIDADE **independente** de
+# `sem_construtor`. A distinção não é semântica: `PMAX_FORA_DO_EXECUTOR` é uma
+# decisão de produto, com dono e data, que alguém pode reverter numa tarde. A
+# observabilidade é um fato sobre o que este sistema consegue RELER. No dia em
+# que a decisão for revertida, o primeiro bloqueio some — e se ele fosse o
+# único, Performance Max passaria a ser criável sem ninguém conseguir observar o
+# que acontece com a campanha depois.
+
+
+def test_pmax_tem_bloqueio_de_observabilidade_ALEM_do_de_produto():
+    pmax = _por_canal(ADMIN_COM_ESCRITA)["PERFORMANCE_MAX"].por_nome
+    portao = pmax[cc.CRIAVEL_PAUSADA]
+    codigos = {b.codigo for b in portao.bloqueadores}
+    assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR in codigos
+    assert cc.CODIGO_PMAX_SEM_OBSERVABILIDADE in codigos, (
+        "PMax fechou só pela decisão de produto: no dia em que ela for "
+        "revertida, o canal ficaria criável sem observabilidade")
+    assert len(codigos) >= 2, "as duas razões colapsaram numa só"
+
+
+def test_os_dois_bloqueios_de_pmax_tem_ORIGENS_diferentes():
+    """A origem decide A QUEM PEDIR, e as duas portas são diferentes."""
+    pmax = _por_canal(ADMIN_COM_ESCRITA)["PERFORMANCE_MAX"].por_nome
+    por_codigo = {b.codigo: b for b in pmax[cc.CRIAVEL_PAUSADA].bloqueadores}
+    assert por_codigo[cc.CODIGO_PMAX_FORA_DO_EXECUTOR].origem == cc.ORIGEM_PRODUTO
+    assert (por_codigo[cc.CODIGO_PMAX_SEM_OBSERVABILIDADE].origem
+            == cc.ORIGEM_OBSERVABILIDADE)
+
+
+def test_o_bloqueio_de_observabilidade_sobrevive_ao_construtor_existir():
+    """A prova que separa este bloqueio do `sem_construtor`.
+
+    ⚠️ Ele é anexado por FORA do `if/elif/else` de `_portao_criavel_pausada`. Se
+    vivesse dentro, morreria junto com `PMAX_FORA_DO_EXECUTOR` no dia em que o
+    canal entrasse no executor — que é exatamente o dia em que ele passa a ser o
+    único de pé. Aqui a função é chamada direto, com uma observabilidade que não
+    foi provada, e ela responde sozinha.
+    """
+    nao_lida = cc.observabilidade_do_canal("PERFORMANCE_MAX")
+    extras = cc._bloqueios_de_observabilidade_na_criacao(
+        "PERFORMANCE_MAX", nao_lida)
+    assert [b.codigo for b in extras] == [cc.CODIGO_PMAX_SEM_OBSERVABILIDADE]
+
+
+def test_o_bloqueio_de_observabilidade_some_quando_a_releitura_e_provada():
+    """Ele descreve um fato, não uma lei: some por MEDIÇÃO, não por alguém
+    apagar a linha."""
+    provada = cc.Observabilidade(estado=cc.PERMITIDO,
+                                 coletor=cc.COLETOR_DO_HUB,
+                                 campanhas_no_espelho=3)
+    assert cc._bloqueios_de_observabilidade_na_criacao(
+        "PERFORMANCE_MAX", provada) == ()
+
+
+def test_o_bloqueio_de_observabilidade_NAO_atinge_os_outros_canais():
+    """⚠️ A guarda de canal é obrigatória, e não defensiva.
+
+    `_com_extras` FECHA qualquer portão que receba um extra. Sem a guarda, este
+    bloqueio derrubaria `criavel_pausada` de Search — o único canal que hoje o
+    atravessa — e a janela do canário deixaria de existir na prática.
+    """
+    nao_lida = cc.observabilidade_do_canal("SEARCH")
+    for canal in ("SEARCH", "DISPLAY", "DEMAND_GEN"):
+        assert cc._bloqueios_de_observabilidade_na_criacao(canal, nao_lida) == (), (
+            f"{canal} recebeu o bloqueio de observabilidade de PMax")
+
+
+def test_search_continua_criavel_pausada_depois_do_portao_novo():
+    """P05-T12 item 12: Search Manual CPC continua funcional."""
+    search = _por_canal(ADMIN_COM_ESCRITA)["SEARCH"].por_nome
+    assert search[cc.CRIAVEL_PAUSADA].estado == cc.PERMITIDO
+    assert search[cc.CRIAVEL_PAUSADA].bloqueadores == ()
+
+
+def test_display_continua_bloqueado_so_pela_janela_do_canario():
+    display = _por_canal(ADMIN_COM_ESCRITA)["DISPLAY"].por_nome
+    codigos = {b.codigo for b in display[cc.CRIAVEL_PAUSADA].bloqueadores}
+    assert codigos == {"fora_da_janela_do_canario"}
+
+
+def test_pmax_nao_entra_no_executor_por_causa_deste_portao():
+    """P05-T12 item 11: o portão não autoriza nada — ele só recusa.
+
+    ⚠️ Prova de AUSÊNCIA, e ela é a que importa aqui: acrescentar um bloqueio a
+    `criavel_pausada` não pode, em hipótese alguma, ABRIR `planejavel` ou
+    `validavel` de Performance Max.
+    """
+    pmax = _por_canal(ADMIN_COM_ESCRITA)["PERFORMANCE_MAX"].por_nome
+    assert pmax[cc.VALIDAVEL].estado != cc.PERMITIDO
+    assert pmax[cc.CRIAVEL_PAUSADA].estado == cc.BLOQUEADO
+    assert pmax[cc.ATIVAVEL].estado == cc.BLOQUEADO
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# O PLANO DE MENSURAÇÃO ATRAVESSA A FRONTEIRA HTTP (P05-T12 item 8)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_o_plano_viaja_na_mensuracao_e_e_copiado_e_nao_recalculado():
+    from app.trafego import plano_mensuracao as pm
+
+    plano = pm.montar(customer_id="5478096539", login_customer_id="6016739364")
+    pronto = pr.Prontidao(conversion_goal_status=pr.NAO_PRONTO,
+                          plano_de_mensuracao=plano)
+    m = cc.mensuracao_do_canal("SEARCH", prontidao=pronto)
+    assert m.plano is plano, "o contrato recalculou o plano em vez de copiá-lo"
+    corpo = m.json()
+    assert corpo["plano"]["impressao"] == plano.impressao()
+    assert corpo["plano"]["bloqueadores"] == list(plano.bloqueadores)
+
+
+def test_sem_leitura_o_plano_viaja_NULO_e_nao_como_plano_vazio():
+    """⚠️ `null` é "ninguém leu", e um plano vazio seria "li e não há nada"."""
+    m = cc.mensuracao_do_canal("SEARCH")
+    assert m.lida is False
+    assert m.plano is None
+    assert m.json()["plano"] is None

@@ -302,6 +302,15 @@ class Mensuracao:
     #: Como esta leitura foi obtida, ou por que ela não foi.
     fonte: Optional[str] = None
     notas: Mapping[str, Any] = field(default_factory=dict)
+    #: O plano canônico de mensuração, quando alguém leu os três recursos que
+    #: decidem a meta efetiva.
+    #:
+    #: ⚠️ `None` NÃO é "não há plano": é "ninguém leu". A tela precisa da
+    #: diferença porque as duas pedem coisas opostas — uma pede que alguém
+    #: configure a conta, a outra pede uma leitura. E é ele que carrega, com
+    #: estrutura em vez de prosa, os quatro fatos que a tela tem de mostrar:
+    #: meta efetiva, fonte do sinal, frescor da última conversão e bloqueadores.
+    plano: Optional[Any] = None
 
     def __post_init__(self) -> None:
         for nome in ("conversion_goal_status", "conversion_signal_status",
@@ -328,6 +337,8 @@ class Mensuracao:
             "smart_bidding_eligible": self.smart_bidding_eligible,
             "fonte": self.fonte,
             "notas": dict(self.notas),
+            "plano": (None if self.plano is None
+                      else self.plano.para_json()),
         }
 
 
@@ -1046,6 +1057,10 @@ def mensuracao_do_canal(canal: str, *,
         smart_bidding_eligible=prontidao.smart_bidding_eligible,
         fonte="leitura da conta feita ao conferir um pedido",
         notas=dict(prontidao.notas),
+        # ⚠️ COPIADO, como todo o resto. Recalcular o plano aqui criaria uma
+        # segunda autoridade sobre a mesma pergunta — foi por isso que este
+        # ramo inteiro copia em vez de derivar.
+        plano=prontidao.plano_de_mensuracao,
     )
 
 
@@ -1450,6 +1465,58 @@ def _bloqueios_medidos(canal: str, medicao: Mensuracao) -> Tuple[Bloqueador, ...
             BLOQUEIO_ANUNCIOS_EM_REVISAO)
 
 
+#: O código do bloqueio de observabilidade de Performance Max na CRIAÇÃO.
+#:
+#: ⚠️ CÓDIGO PRÓPRIO, e não `PMAX_FORA_DO_EXECUTOR`. Os dois fecham o mesmo
+#: portão hoje e por razões INDEPENDENTES, e é essa independência que precisa
+#: sobreviver: `PMAX_FORA_DO_EXECUTOR` é uma decisão de produto, com dono e
+#: data, que alguém pode reverter numa tarde; a observabilidade é um fato sobre
+#: o que este sistema consegue RELER. No dia em que a decisão for revertida, o
+#: primeiro bloqueio some — e se ele fosse o único, Performance Max passaria a
+#: ser criável sem ninguém conseguir observar o que acontece com a campanha
+#: depois. Duas razões, dois códigos, e fechar uma não abre o portão.
+CODIGO_PMAX_SEM_OBSERVABILIDADE = "pmax_observabilidade_nao_provada"
+
+_CAUSA_PMAX_SEM_OBSERVABILIDADE = (
+    "criar uma campanha de Performance Max que este sistema não sabe reler "
+    "seria criar algo que ninguém consegue acompanhar. O inventário enxerga a "
+    "campanha; a estrutura interna dela — os grupos de recursos e os assets de "
+    "cada um — não é lida por ninguém aqui, e é nela que Performance Max "
+    "decide o que entrega. Enquanto isso não for provado, criar é assumir um "
+    "gasto cego.")
+
+
+def _bloqueios_de_observabilidade_na_criacao(
+        canal: str, observacao: Observabilidade) -> Tuple[Bloqueador, ...]:
+    """A observabilidade que a CRIAÇÃO exige, e que hoje só falta em PMax.
+
+    ⚠️ A guarda de canal é obrigatória, e não defensiva. `_com_extras` FECHA
+    qualquer portão que receba um extra: sem a guarda, este bloqueio derrubaria
+    `criavel_pausada` de Search — que hoje é o único canal que o atravessa — e
+    a janela do canário deixaria de existir na prática.
+
+    ⚠️ E ele é anexado por FORA de `_portao_criavel_pausada`, de propósito.
+    Dentro, ele viveria no mesmo `if/elif/else` que produz
+    `PMAX_FORA_DO_EXECUTOR` e morreria junto com ele no dia em que o canal
+    entrasse no executor — que é exatamente o dia em que este bloqueio passa a
+    ser o único de pé.
+    """
+    if str(canal or "").strip().upper() != "PERFORMANCE_MAX":
+        return ()
+    if observacao.estado == PERMITIDO:
+        # Observabilidade provada: este bloqueio some sozinho, e some por
+        # medição — não por alguém ter apagado a linha.
+        return ()
+    return (Bloqueador(
+        codigo=CODIGO_PMAX_SEM_OBSERVABILIDADE,
+        causa=_CAUSA_PMAX_SEM_OBSERVABILIDADE,
+        origem=ORIGEM_OBSERVABILIDADE,
+        revalidacao=(observacao.causa or
+                     "a releitura da estrutura de Performance Max ainda não "
+                     "existe neste sistema."),
+    ),)
+
+
 def contrato(canal: str, *, capacidades: cap.Capacidades,
              politica: Optional[can.Politica] = None,
              prontidao: Optional[pr.Prontidao] = None,
@@ -1476,7 +1543,9 @@ def contrato(canal: str, *, capacidades: cap.Capacidades,
 
     planejavel = _portao_planejavel(m, capacidades, planeja_offline(m.canal))
     validavel = _portao_validavel(m, capacidades)
-    criavel = _portao_criavel_pausada(m, capacidades, pol, validavel)
+    criavel = _com_extras(
+        _portao_criavel_pausada(m, capacidades, pol, validavel),
+        _bloqueios_de_observabilidade_na_criacao(m.canal, observacao))
     ativavel = _com_extras(
         _portao_ativavel(pol, medicao, observacao),
         _bloqueios_medidos(m.canal, medicao))
