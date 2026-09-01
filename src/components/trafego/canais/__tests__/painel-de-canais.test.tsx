@@ -369,6 +369,7 @@ describe('o plano de mensuração na tela (P05-T12 item 8)', () => {
         nivel: 'CUSTOMER',
         nivel_estado: 'com_dados',
         nivel_decidido: true,
+        nivel_herdado: false,
         custom_conversion_goal: null,
         usa_meta_customizada: false,
         campaign_id: null,
@@ -394,7 +395,10 @@ describe('o plano de mensuração na tela (P05-T12 item 8)', () => {
       acao_alvo: {
         id: '7466919994',
         resource_name: 'customers/5478096539/conversionActions/7466919994',
-        owner_customer_id: '5478096539',
+        // ⚠️ Dono DIFERENTE da conta da campanha — o caso de MCC com
+        // conversion tracking centralizado, que é o que a distinção existe
+        // para carregar.
+        owner_customer_id: '8696453882',
         nome: 'Compra no site',
         categoria: 'PURCHASE',
         origem: 'WEBSITE',
@@ -409,7 +413,7 @@ describe('o plano de mensuração na tela (P05-T12 item 8)', () => {
       acao_alvo_causa: null,
       destino: {
         resolvido: true,
-        operating_account_id: '5478096539',
+        operating_account_id: '8696453882',
         product_destination_id: '7466919994',
         conversion_action_resource: 'x',
         tipo_da_acao: 'WEBPAGE',
@@ -433,6 +437,7 @@ describe('o plano de mensuração na tela (P05-T12 item 8)', () => {
         cross_account_conversion_tracking_id: null,
         conversion_tracking_status: 'CONVERSION_TRACKING_MANAGED_BY_SELF',
         aceitou_termos_de_dados: true,
+        fuso: 'America/Sao_Paulo',
         enhanced_conversions_for_leads: false,
         acoes_de_ga4: [],
         acoes_com_tag: ['7466919994'],
@@ -479,10 +484,10 @@ describe('o plano de mensuração na tela (P05-T12 item 8)', () => {
     // sinal e no destino de conversão offline. São dois fatos diferentes sobre
     // a mesma ação, e colapsá-los num só lugar esconderia um deles.
     expect(
-      screen.getByText('Compra no site · ação #7466919994 · conta 5478096539'),
+      screen.getByText('Compra no site · ação #7466919994 · conta 8696453882'),
     ).toBeTruthy();
     expect(
-      screen.getByText('ação #7466919994 na conta 5478096539'),
+      screen.getByText('ação #7466919994 na conta 8696453882'),
     ).toBeTruthy();
     // frescor — "nunca recebeu conversão" é conclusão, e não "sem dados"
     expect(screen.getByText('nunca recebeu conversão')).toBeTruthy();

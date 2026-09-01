@@ -520,23 +520,28 @@ def test_plano_sem_acao_e_sem_causa_e_impossivel():
             acao_alvo=None, acao_alvo_causa=None)
 
 
-def test_a_impressao_ignora_o_frescor_e_muda_com_a_acao():
-    """⚠️ Frescor muda de hora em hora sem o plano ter mudado.
-
-    Incluí-lo faria cada leitura gravar um plano "novo": o histórico viraria
-    ruído e a idempotência da gravação deixaria de existir.
-    """
-    base = _plano_completo()
-    outro_frescor = pm.montar(
+def _plano_com_frescor(dias, data="2026-08-30"):
+    return pm.montar(
         customer_id="5478096539", login_customer_id="6016739364",
         meta_efetiva=_meta_efetiva(), acoes=(_acao(),),
         acoes_estado=pm.COM_DADOS,
-        frescor=pm.Frescor(estado=pm.COM_DADOS,
-                           ultima_conversao_em="2026-07-01",
-                           dias_desde_a_ultima=62, conversoes_na_janela=1.0,
+        frescor=pm.Frescor(estado=pm.COM_DADOS, ultima_conversao_em=data,
+                           dias_desde_a_ultima=dias, conversoes_na_janela=1.0,
                            conversion_action_id="7466919994"),
         marcacao=_marcacao_boa())
-    assert base.impressao() == outro_frescor.impressao()
+
+
+def test_a_impressao_ignora_a_DATA_do_frescor_e_muda_com_a_acao():
+    """⚠️ A DATA muda sem o plano ter mudado.
+
+    Incluí-la faria cada leitura gravar um plano "novo": o histórico viraria
+    ruído e a idempotência da gravação deixaria de existir. Aqui as duas datas
+    estão DENTRO da janela de recência, então o veredito é o mesmo.
+    """
+    base = _plano_com_frescor(2, "2026-08-30")
+    outro_dia = _plano_com_frescor(9, "2026-08-23")
+    assert base.completo == outro_dia.completo is True
+    assert base.impressao() == outro_dia.impressao()
 
     outra_acao = pm.montar(
         customer_id="5478096539", login_customer_id="6016739364",
@@ -544,6 +549,147 @@ def test_a_impressao_ignora_o_frescor_e_muda_com_a_acao():
         acoes_estado=pm.COM_DADOS, frescor=_frescor_bom(),
         marcacao=_marcacao_boa())
     assert base.impressao() != outra_acao.impressao()
+
+
+def test_a_impressao_MUDA_quando_o_veredito_vira():
+    """O defeito que a revisão adversarial reproduziu ponta a ponta.
+
+    ⚠️ A primeira versão excluía o frescor INTEIRO da impressão — e `completo`
+    DEPENDE do frescor. Como a função Postgres é idempotente por impressão e
+    devolve a linha existente SEM gravar, duas leituras com veredito OPOSTO
+    tinham a mesma impressão e a segunda era descartada em silêncio: a linha
+    persistida congelava o veredito da primeira para sempre, e
+    `vigente_da_conta` entregava justamente ela — o portão lendo "pronto" dois
+    meses depois de o sinal ter morrido.
+
+    O que entra na impressão é `comprovado`, um booleano: ele não muda de hora
+    em hora, muda quando o sinal aparece ou morre.
+    """
+    vivo = _plano_com_frescor(2)
+    morto = pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        meta_efetiva=_meta_efetiva(), acoes=(_acao(),),
+        acoes_estado=pm.COM_DADOS,
+        frescor=pm.Frescor(estado=pm.VAZIO_CONFIRMADO,
+                           conversoes_na_janela=0.0,
+                           conversion_action_id="7466919994"),
+        marcacao=_marcacao_boa())
+    assert vivo.completo is True and morto.completo is False
+    assert vivo.impressao() != morto.impressao(), (
+        "veredito oposto com a mesma impressão: a segunda leitura seria "
+        "descartada em silêncio e a linha velha ficaria para sempre")
+
+
+def test_a_impressao_separa_LEITURA_QUE_FALHOU_de_CONTA_SEM_ACAO():
+    """⚠️ `falhou` e `vazio_confirmado` são conclusões OPOSTAS.
+
+    Sem os estados de leitura na impressão, elas colapsavam num registro só,
+    permanentemente — e a que sobrevivia era a primeira gravada.
+    """
+    falhou = pm.montar(customer_id="5478096539",
+                       login_customer_id="6016739364",
+                       meta_efetiva=_meta_efetiva(), acoes=(),
+                       acoes_estado=pm.FALHOU)
+    vazio = pm.montar(customer_id="5478096539",
+                      login_customer_id="6016739364",
+                      meta_efetiva=_meta_efetiva(), acoes=(),
+                      acoes_estado=pm.VAZIO_CONFIRMADO)
+    assert falhou.impressao() != vazio.impressao()
+
+
+def test_uma_conversao_antiga_nao_prova_que_o_sinal_chega_hoje():
+    """Uma conversão de 2019 autorizava Smart Bidding em 2026.
+
+    Ela prova que a ação já mediu alguma coisa um dia; não prova que o sinal
+    chega HOJE, que é a única pergunta que decide o lance.
+    """
+    antiga = _plano_com_frescor(2796, "2019-01-05")
+    assert antiga.frescor.estado == pm.COM_DADOS
+    assert antiga.frescor.comprovado is False
+    assert antiga.completo is False
+    assert antiga.bloqueadores
+
+
+def test_frescor_sem_saber_a_data_de_hoje_nao_e_prova():
+    """⚠️ Fail-closed: sem saber de quando contar, não se sabe se a conversão é
+    de ontem ou de sete anos atrás — e não saber nunca é permissão."""
+    sem_hoje = _plano_com_frescor(None)
+    assert sem_hoje.frescor.comprovado is False
+    assert sem_hoje.completo is False
+
+
+def test_conta_que_mede_por_TAG_e_completa_sem_destino_offline():
+    """⚠️ SINAL ≠ DATA MANAGER, e `completo` exigia o destino offline.
+
+    Uma conta que converte por tag do Google mede perfeitamente e nunca vai ter
+    destino offline resolvido. Exigi-lo declarava despreparo onde não há — e
+    produzia `measurement_readiness=PRONTO` ao lado de um bloqueador dizendo
+    que o plano não está completo.
+    """
+    por_tag = pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        meta_efetiva=_meta_efetiva(), acoes=(_acao(tipo="LEAD_FORM_SUBMIT"),),
+        acoes_estado=pm.COM_DADOS,
+        frescor=pm.Frescor(estado=pm.COM_DADOS, ultima_conversao_em="2026-08-30",
+                           dias_desde_a_ultima=2, conversoes_na_janela=1.0,
+                           conversion_action_id="7466919994"),
+        marcacao=_marcacao_boa())
+    assert por_tag.destino.resolvido is False, "o arranjo não exercita o caso"
+    assert por_tag.completo is True, por_tag.bloqueadores
+    assert por_tag.bloqueadores == ()
+    # A causa do destino continua VISÍVEL, ao lado — ela descreve uma via, e
+    # não a prontidão.
+    assert "LEAD_FORM_SUBMIT" in (por_tag.destino.causa or "")
+
+
+def test_destino_offline_resolvido_nao_e_fonte_de_sinal():
+    """Endereçabilidade não é chegada de evento.
+
+    Três revisores independentes reproduziram o mesmo desfecho: uma conta cuja
+    ação nunca recebeu conversão e cuja marcação ninguém inventariou saía com
+    `conversion_signal_status=PRONTO` e `smart_bidding_eligible=True`.
+    """
+    plano = pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        meta_efetiva=_meta_efetiva(), acoes=(_acao(tipo="UPLOAD_CLICKS"),),
+        acoes_estado=pm.COM_DADOS,
+        frescor=pm.Frescor(estado=pm.VAZIO_CONFIRMADO,
+                           conversoes_na_janela=0.0),
+        marcacao=pm.inventario_nao_lido())
+    assert plano.destino.resolvido is True, "o arranjo não exercita o caso"
+    assert pm.fontes_de_sinal_observadas(plano) == ()
+
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.conversion_signal_status == pr.NAO_PRONTO
+    assert r.smart_bidding_eligible is False
+
+
+def test_leitura_de_acoes_que_falhou_e_ignorancia_e_nao_veredito():
+    """⚠️ As cinco leituras são independentes; a de ações pode cair sozinha.
+
+    Sem olhar `acoes_estado`, o ramo emitia NAO_PRONTO — um veredito sobre a
+    conta derivado de uma falha de rede, e pior que o comportamento anterior.
+    """
+    plano = pm.montar(customer_id="5478096539",
+                      login_customer_id="6016739364",
+                      meta_efetiva=_meta_efetiva(), acoes=(),
+                      acoes_estado=pm.FALHOU)
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano)
+    assert r.conversion_goal_status == pr.INDETERMINADO
+    assert r.measurement_readiness == pr.INDETERMINADO
+
+
+def test_o_ramo_PRONTO_tambem_carrega_as_razoes_do_plano():
+    """Era o único dos três que descartava `plano.bloqueadores`."""
+    plano = _plano_com_frescor(2796, "2019-01-05")   # sinal velho demais
+    assert plano.meta_efetiva.resolvida and plano.acao_alvo is not None
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.conversion_goal_status == pr.PRONTO
+    assert any("2796 dias" in b for b in r.activation_blockers), (
+        r.activation_blockers)
 
 
 def test_a_impressao_separa_contas_diferentes():
@@ -560,9 +706,16 @@ def test_fontes_de_sinal_saem_de_prova_e_nao_de_default():
                          login_customer_id="6016739364")
     assert pm.fontes_de_sinal_observadas(sem_nada) == ()
 
+    # ⚠️ SÓ prova de chegada. "tag do Google no site" saiu daqui de propósito:
+    # ela diz que existe uma tag CONFIGURADA, não que uma conversão chegou.
+    # O inventário continua existindo, em `caminhos_de_sinal_declarados`.
     fontes = pm.fontes_de_sinal_observadas(_plano_completo())
-    assert "tag do Google no site" in fontes
-    assert "conversão observada na janela consultada" in fontes
+    assert fontes and all("conversão observada" in f for f in fontes), fontes
+    assert not any("tag do Google" in f for f in fontes)
+
+    caminhos = pm.caminhos_de_sinal_declarados(_plano_completo())
+    assert any("tag do Google" in c for c in caminhos), caminhos
+    assert any("auto-tagging" in c for c in caminhos), caminhos
 
 
 def test_marcacao_nao_lida_nao_vira_fonte_de_sinal():
@@ -575,6 +728,35 @@ def test_marcacao_nao_lida_nao_vira_fonte_de_sinal():
                                          causa="ninguém inventariou"))
     assert not any("auto-tagging" in f
                    for f in pm.fontes_de_sinal_observadas(plano))
+
+
+def test_marcacao_que_FALHOU_com_dados_dentro_nao_vira_fonte():
+    """A prova que faltava — e sem ela a guarda era removível sem nada acusar.
+
+    ⚠️ O teste acima usa uma marcação NÃO LIDA e VAZIA: a asserção vale com ou
+    sem a guarda `if m.estado not in ESTADOS_SEM_CONCLUSAO`, porque não há dado
+    nenhum para virar fonte. A revisão adversarial provou isso trocando a guarda
+    por `if True:` — 154 testes continuaram passando.
+
+    Aqui a marcação carrega DADOS e está em estado sem conclusão. É construível,
+    e é o caso real: uma leitura que caiu no meio pode ter preenchido parte do
+    inventário. Tratar isso como prova seria ler falha como fonte comprovada.
+    """
+    caiu_com_dados = pm.InventarioDeMarcacao(
+        estado=pm.FALHOU, auto_tagging=True,
+        acoes_com_tag=("7466919994",), acoes_de_ga4=("7466919995",),
+        causa="a leitura da conta caiu no meio")
+    plano = pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        meta_efetiva=_meta_efetiva(), acoes=(_acao(),),
+        acoes_estado=pm.COM_DADOS, marcacao=caiu_com_dados)
+    assert pm.fontes_de_sinal_observadas(plano) == (), (
+        "uma leitura que FALHOU virou fonte de sinal comprovada")
+
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.conversion_signal_status == pr.NAO_PRONTO
+    assert r.smart_bidding_eligible is False
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -604,3 +786,315 @@ def test_o_ramo_antigo_continua_intacto_quando_nao_ha_plano():
     assert r.conversion_goal_status == pr.PARCIAL
     assert any("meta de conversão efetiva não lida" in b
                for b in r.activation_blockers)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 10. AUTO-TAGGING É CAPACIDADE, NUNCA PROVA DE SINAL
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# `auto_tagging=true` significa que o clique PODE receber `gclid`. Ele habilita
+# a reconciliação da conversão offline; ele não produz, não importa e não
+# observa conversão nenhuma. A primeira versão o empilhava em `signal_sources`,
+# e o desfecho foi reproduzido: conta com auto-tagging ligado e
+# `frescor=vazio_confirmado` — a ação existe, a janela foi consultada e NADA
+# chegou — saía com `smart_bidding_eligible=True` carregando, na lista ao lado,
+# o bloqueador que dizia que nenhuma conversão chegou.
+
+
+def _plano_de_sinal(*, auto_tagging, frescor, tag=(), ga4=(), tipo="WEBPAGE",
+                    primaria=True):
+    return pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        meta_efetiva=_meta_efetiva(),
+        acoes=(_acao(tipo=tipo, primaria=primaria),), acoes_estado=pm.COM_DADOS,
+        frescor=frescor,
+        marcacao=pm.InventarioDeMarcacao(
+            estado=pm.COM_DADOS, auto_tagging=auto_tagging,
+            acoes_com_tag=tag, acoes_de_ga4=ga4))
+
+
+_SEM_CONVERSAO = pm.Frescor(estado=pm.VAZIO_CONFIRMADO,
+                            conversoes_na_janela=0.0,
+                            conversion_action_id="7466919994")
+_CONVERSAO_FRESCA = pm.Frescor(estado=pm.COM_DADOS,
+                               ultima_conversao_em="2026-08-30",
+                               dias_desde_a_ultima=2, conversoes_na_janela=1.0,
+                               conversion_action_id="7466919994")
+
+
+def test_par1_auto_tagging_sem_conversao_nao_autoriza_e_diz_por_que():
+    """PAR 1 — o defeito, no cenário exato em que foi reproduzido."""
+    plano = _plano_de_sinal(auto_tagging=True, frescor=_SEM_CONVERSAO)
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+
+    # a) nenhuma fonte de sinal de CONVERSÃO
+    assert r.signal_sources == (), (
+        "auto-tagging entrou como prova de conversão chegando")
+    assert r.conversion_signal_status == pr.NAO_PRONTO
+    # b) Smart Bidding NÃO elegível
+    assert r.smart_bidding_eligible is False
+    # c) bloqueador explícito E didático — ele diz o que fazer a seguir
+    assert any("caminho de mensuração configurado" in b
+               for b in r.activation_blockers_materiais), r.activation_blockers
+    assert any("instrumentação a conferir" in b
+               for b in r.activation_blockers), (
+        "o bloqueio não distingue 'a via existe e não traz evento' de 'não há "
+        "via nenhuma' — as duas pedem coisas opostas")
+    # d) e o auto-tagging continua VISÍVEL, como diagnóstico
+    assert any("auto-tagging ligado" in c for c in r.signal_paths), (
+        "auto-tagging sumiu da tela: ele é o primeiro item a conferir quando "
+        "há caminho declarado e nenhuma conversão chegando")
+
+
+def test_par2_auto_tagging_COM_conversao_observada_e_fresca_autoriza():
+    """PAR 2 — o outro lado. Sem ele o teste acima não prova nada."""
+    plano = _plano_de_sinal(auto_tagging=True, frescor=_CONVERSAO_FRESCA)
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.signal_sources and "conversão observada" in r.signal_sources[0]
+    assert r.conversion_signal_status == pr.PRONTO
+    assert r.smart_bidding_eligible is True, r.activation_blockers
+    assert r.activation_blockers_materiais == ()
+
+
+def test_par3_sem_auto_tagging_a_conversao_importada_continua_provando():
+    """PAR 3 — nada de bloqueio universal de auto-tagging.
+
+    ⚠️ Uma conta que importa conversão do Analytics mede sem depender de
+    `gclid`. Exigir auto-tagging para declarar sinal inventaria um bloqueio
+    onde esse caminho de mensuração não passa.
+    """
+    plano = _plano_de_sinal(auto_tagging=False, frescor=_CONVERSAO_FRESCA,
+                            ga4=("7466919994",))
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.conversion_signal_status == pr.PRONTO
+    assert r.smart_bidding_eligible is True, r.activation_blockers
+    assert not any("auto-tagging" in b for b in r.activation_blockers), (
+        "inventou bloqueio de auto-tagging num caminho que não depende dele")
+
+
+def test_par4_primary_for_goal_false_nunca_vira_biddable_por_inferencia():
+    """PAR 4 — nem com sinal chegando, nem com tudo o mais pronto."""
+    plano = _plano_de_sinal(auto_tagging=True, frescor=_CONVERSAO_FRESCA,
+                            primaria=False)
+    assert plano.acao_alvo is None, "elegeu ação não-biddable"
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.conversion_goal_status == pr.NAO_PRONTO
+    assert r.smart_bidding_eligible is False
+    assert any("NÃO primária" in b for b in r.activation_blockers_materiais)
+
+
+@pytest.mark.parametrize("estado,conversoes,rotulo", [
+    (pm.NAO_COLETADO, None, "ninguém pediu"),
+    (pm.VAZIO_CONFIRMADO, 0.0, "zero MEDIDO"),
+    (pm.FALHOU, None, "a leitura quebrou"),
+    (pm.INELEGIVEL, None, "a pergunta não cabe"),
+    (pm.NAO_SUPORTADO, None, "a API não responde"),
+])
+def test_par5_os_estados_de_leitura_nao_colapsam(estado, conversoes, rotulo):
+    """PAR 5 — `null`, zero medido, falha, inelegível e não suportado.
+
+    ⚠️ Nenhum deles autoriza, e nenhum deles é o outro. O teste cobra as duas
+    coisas: que todos bloqueiem, e que cada um chegue com o PRÓPRIO estado —
+    porque é o estado que decide se a próxima ação é ler, consertar a conta ou
+    consertar a leitura.
+    """
+    causa = None if estado == pm.VAZIO_CONFIRMADO else f"{rotulo}"
+    frescor = pm.Frescor(estado=estado, conversoes_na_janela=conversoes,
+                         conversion_action_id="7466919994", causa=causa)
+    plano = _plano_de_sinal(auto_tagging=True, frescor=frescor)
+    assert plano.frescor.estado == estado, "o estado foi colapsado no caminho"
+    assert plano.frescor.comprovado is False
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.smart_bidding_eligible is False
+    assert r.activation_blockers_materiais
+
+
+def test_os_cinco_estados_de_frescor_sao_cinco_e_nao_dois():
+    """A recíproca do teste acima: eles precisam ser DISTINGUÍVEIS entre si."""
+    vistos = set()
+    for estado, conv in ((pm.NAO_COLETADO, None), (pm.VAZIO_CONFIRMADO, 0.0),
+                         (pm.FALHOU, None), (pm.INELEGIVEL, None),
+                         (pm.NAO_SUPORTADO, None), (pm.COM_DADOS, 1.0)):
+        causa = None if estado in (pm.VAZIO_CONFIRMADO, pm.COM_DADOS) else "x"
+        f = pm.Frescor(estado=estado, conversoes_na_janela=conv, causa=causa,
+                       ultima_conversao_em=("2026-08-30" if estado == pm.COM_DADOS
+                                            else None),
+                       dias_desde_a_ultima=(2 if estado == pm.COM_DADOS else None))
+        vistos.add((f.json()["estado"], f.json()["conversoes_na_janela"]))
+    assert len(vistos) == 6, f"estados colapsaram: {vistos}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 11. A COERÊNCIA É INVARIANTE DO TIPO, NÃO ASSERÇÃO DE TESTE
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_elegivel_com_bloqueador_material_e_impossivel_de_construir():
+    """⚠️ A guarda mora no `__post_init__`, como em `Portao`.
+
+    Um teste sozinho protegeria os caminhos que ele exercita. A invariante
+    protege TODOS — inclusive o que alguém escrever amanhã.
+    """
+    with pytest.raises(ValueError, match="não podem valer ao mesmo tempo"):
+        pr.Prontidao(smart_bidding_eligible=True,
+                     activation_blockers=("nenhuma conversão observada",),
+                     activation_blockers_materiais=("nenhuma conversão observada",))
+
+
+def test_bloqueador_material_fora_da_lista_principal_e_recusado():
+    """Os materiais são um SUBCONJUNTO. Um material órfão seria uma razão que
+    decide o veredito e não aparece para quem lê a resposta."""
+    with pytest.raises(ValueError, match="fora da lista principal"):
+        pr.Prontidao(activation_blockers=("a",),
+                     activation_blockers_materiais=("b",))
+
+
+def test_bloqueio_de_POLITICA_nao_contradiz_elegibilidade():
+    """⚠️ A invariante é contra os MATERIAIS, e não contra a lista inteira.
+
+    Exigir `activation_blockers` vazio tornaria a elegibilidade inalcançável por
+    um motivo que nada tem a ver com medir — e é exatamente por isso que a
+    classificação nasce no ponto em que cada razão é escrita.
+    """
+    ok = pr.Prontidao(smart_bidding_eligible=True,
+                      activation_blockers=("ativar não é ato deste fluxo",),
+                      activation_blockers_materiais=())
+    assert ok.smart_bidding_eligible is True
+
+
+def test_a_estrategia_de_lance_nao_duplica_a_causa_material():
+    """O aviso de estratégia é CONSEQUÊNCIA, e não uma razão independente."""
+    plano = _plano_de_sinal(auto_tagging=True, frescor=_SEM_CONVERSAO)
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True,
+                   estrategia_lance="MAXIMIZE_CONVERSIONS")
+    assert any("MAXIMIZE_CONVERSIONS" in b for b in r.activation_blockers)
+    assert not any("MAXIMIZE_CONVERSIONS" in b
+                   for b in r.activation_blockers_materiais)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 12. O CICLO PRÉ-NASCIMENTO → PÓS-NASCIMENTO
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# O plano existe ANTES da campanha e precisa ser reencontrável DEPOIS que ela
+# nasce. Quem costura os dois momentos é a `chave_intencao`: ela é a mesma
+# impressão que `/provar` aprova e que `/subir` carimba.
+
+
+def test_o_plano_pre_nascimento_e_o_pos_nascimento_sao_linhas_DIFERENTES():
+    """⚠️ Nascer MUDA o plano, e a impressão tem de acompanhar.
+
+    Antes do nascimento o nível é herdado e as metas de campanha são
+    `inelegivel`; depois, os dois são LIDOS do recurso. São dois fatos
+    diferentes sobre a mesma intenção, e colapsá-los numa linha só perderia o
+    que se sabia no instante da decisão.
+    """
+    antes = pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        chave_intencao="INTENCAO-A",
+        meta_efetiva=pm.MetaEfetiva(
+            nivel=pm.NIVEL_CUSTOMER, nivel_estado=pm.INELEGIVEL,
+            nivel_herdado=True,
+            metas_da_conta=(_meta(),), metas_da_conta_estado=pm.COM_DADOS,
+            metas_da_campanha=(), metas_da_campanha_estado=pm.INELEGIVEL),
+        acoes=(_acao(),), acoes_estado=pm.COM_DADOS)
+    depois = pm.montar(
+        customer_id="5478096539", login_customer_id="6016739364",
+        chave_intencao="INTENCAO-A", campaign_id="24195821946",
+        meta_efetiva=pm.MetaEfetiva(
+            nivel=pm.NIVEL_CUSTOMER, nivel_estado=pm.COM_DADOS,
+            nivel_herdado=False,
+            metas_da_conta=(_meta(),), metas_da_conta_estado=pm.COM_DADOS,
+            metas_da_campanha=(_meta(campaign="customers/1/campaigns/2"),),
+            metas_da_campanha_estado=pm.COM_DADOS,
+            campaign_id="24195821946"),
+        acoes=(_acao(),), acoes_estado=pm.COM_DADOS)
+
+    assert antes.campaign_id is None, "o plano pré-nascimento tem campanha"
+    assert depois.campaign_id == "24195821946"
+    assert antes.meta_efetiva.nivel_herdado is True
+    assert depois.meta_efetiva.nivel_herdado is False
+    assert antes.impressao() != depois.impressao(), (
+        "o plano de antes e o de depois do nascimento colidem: a leitura "
+        "pós-criação seria descartada pela gravação idempotente")
+    # E a costura sobrevive: a mesma intenção liga os dois.
+    assert antes.chave_intencao == depois.chave_intencao == "INTENCAO-A"
+
+
+def test_duas_intencoes_da_MESMA_conta_nao_colidem():
+    """Dois nichos, dois planos. A `chave_intencao` entra na impressão.
+
+    ⚠️ Este era um defeito real: `chave_intencao` chegava sempre `None` do
+    router, e por isso TODAS as intenções da mesma conta compartilhavam a mesma
+    impressão — a segunda campanha reusava, em silêncio, o plano da primeira.
+    """
+    def _plano(chave):
+        return pm.montar(customer_id="5478096539",
+                         login_customer_id="6016739364",
+                         chave_intencao=chave, meta_efetiva=_meta_efetiva(),
+                         acoes=(_acao(),), acoes_estado=pm.COM_DADOS)
+
+    a, b = _plano("a" * 64), _plano("b" * 64)
+    assert a.impressao() != b.impressao(), (
+        "duas intenções distintas compartilham plano")
+
+
+def test_duas_CONTAS_nao_colidem_nem_com_a_mesma_intencao():
+    a = pm.montar(customer_id="5478096539", login_customer_id="6016739364",
+                  chave_intencao="MESMA", meta_efetiva=_meta_efetiva(),
+                  acoes=(_acao(),), acoes_estado=pm.COM_DADOS)
+    b = pm.montar(customer_id="1234567890", login_customer_id="6016739364",
+                  chave_intencao="MESMA", meta_efetiva=_meta_efetiva(),
+                  acoes=(_acao(),), acoes_estado=pm.COM_DADOS)
+    assert a.impressao() != b.impressao()
+
+
+def test_custom_conversion_goal_mantem_a_meta_INDETERMINADA():
+    """FASE 3.4 — enquanto o recurso específico não for lido, não se conclui.
+
+    ⚠️ `custom_conversion_goal` preenchido tira as duas listas do comando: a doc
+    diz que metas customizadas NÃO respeitam `primary_for_goal`, e o que elas
+    perseguem mora num recurso que este sistema ainda não lê.
+    """
+    m = _meta_efetiva(custom="customers/1/customConversionGoals/9")
+    assert m.usa_meta_customizada is True
+    assert m.metas_que_mandam is None
+    assert m.metas_biddable is None
+    assert m.resolvida is False
+
+    plano = pm.montar(customer_id="5478096539",
+                      login_customer_id="6016739364", meta_efetiva=m,
+                      acoes=(_acao(),), acoes_estado=pm.COM_DADOS,
+                      frescor=_CONVERSAO_FRESCA, marcacao=_marcacao_boa())
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    # ⚠️ INDETERMINADO, e não NAO_PRONTO: ninguém leu o recurso que decide.
+    assert r.conversion_goal_status == pr.INDETERMINADO
+    assert r.smart_bidding_eligible is False
+    assert any("customizada" in b for b in r.activation_blockers_materiais)
+
+
+def test_data_manager_continua_FALSO_sem_prova_operacional():
+    """FASE 3.5 — endereçar o destino não é operar a ingestão.
+
+    ⚠️ `destino.resolvido` diz que existe uma ação com dono e tipo aceito.
+    `data_manager_status` diz que a ingestão FUNCIONA — fila, lote, envio e
+    diagnóstico. As duas continuam separadas, e a segunda só vira PRONTO quando
+    quem chama afirma ter operado.
+    """
+    plano = _plano_de_sinal(auto_tagging=True, frescor=_CONVERSAO_FRESCA,
+                            tipo="UPLOAD_CLICKS")
+    assert plano.destino.resolvido is True, "o arranjo não exercita o caso"
+    r = pr.avaliar(recibo_registrado=True, metas_da_conta=None,
+                   plano_de_mensuracao=plano, coleta_pos_criacao_provada=True)
+    assert r.data_manager_status == pr.NAO_PRONTO, (
+        "destino endereçável virou Data Manager operante")
+    # E o destino endereçável aparece como CAMINHO, nunca como prova.
+    assert any("ingestão offline endereçável" in c for c in r.signal_paths)
+    assert not any("offline" in f for f in r.signal_sources)

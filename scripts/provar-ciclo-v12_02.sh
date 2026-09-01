@@ -93,8 +93,8 @@ n_ok=$(echo "$SAIDA" | grep -c '^  ok' || true)
 n_ko=$(echo "$SAIDA" | grep -c '^FALHOU' || true)
 # A guarda contra o degrau mudo: se o bloco de comportamento não produziu prova
 # nenhuma, ele NÃO passou — ele não rodou.
-if [ "$((n_ok + n_ko))" -lt 20 ]; then
-  echo "FALHOU  o degrau de comportamento produziu apenas $((n_ok + n_ko)) provas (esperado >= 20)"
+if [ "$((n_ok + n_ko))" -lt 38 ]; then
+  echo "FALHOU  o degrau de comportamento produziu apenas $((n_ok + n_ko)) provas (esperado >= 38)"
   echo "$BRUTO" | tail -20
   falhou=$((falhou + 1))
 fi

@@ -229,6 +229,7 @@ describe('o plano de mensuração, em português', () => {
       nivel: 'CUSTOMER',
       nivel_estado: 'com_dados',
       nivel_decidido: true,
+      nivel_herdado: false,
       custom_conversion_goal: null,
       usa_meta_customizada: false,
       campaign_id: null,
@@ -319,6 +320,7 @@ describe('o plano de mensuração, em português', () => {
     // mesmo campo que a Data Manager não aceita.
     const texto = textoDaFonteDoSinal({
       versao: 1,
+      // ⚠️ A conta que RODA a campanha, DIFERENTE da que POSSUI a ação.
       customer_id: '5478096539',
       login_customer_id: '6016739364',
       campaign_id: null,
@@ -329,7 +331,10 @@ describe('o plano de mensuração, em português', () => {
       acao_alvo: {
         id: '7466919994',
         resource_name: 'customers/5478096539/conversionActions/7466919994',
-        owner_customer_id: '5478096539',
+        // ⚠️ Conversion tracking centralizado no manager: quem POSSUI a
+        // ação não é quem roda a campanha. Mandar o evento para a conta
+        // errada não dá erro de permissão — dá silêncio.
+        owner_customer_id: '8696453882',
         nome: 'Compra no site',
         categoria: 'PURCHASE',
         origem: 'WEBSITE',
@@ -344,7 +349,7 @@ describe('o plano de mensuração, em português', () => {
       acao_alvo_causa: null,
       destino: {
         resolvido: true,
-        operating_account_id: '5478096539',
+        operating_account_id: '8696453882',
         product_destination_id: '7466919994',
         conversion_action_resource: 'x',
         tipo_da_acao: 'WEBPAGE',
@@ -368,6 +373,7 @@ describe('o plano de mensuração, em português', () => {
         cross_account_conversion_tracking_id: null,
         conversion_tracking_status: null,
         aceitou_termos_de_dados: true,
+        fuso: 'America/Sao_Paulo',
         enhanced_conversions_for_leads: false,
         acoes_de_ga4: [],
         acoes_com_tag: ['7466919994'],
@@ -379,7 +385,10 @@ describe('o plano de mensuração, em português', () => {
       impressao: 'a'.repeat(64),
     });
     expect(texto).toContain('#7466919994');
-    expect(texto).toContain('5478096539');
+    // ⚠️ A conta DONA, e não a que roda a campanha. A fixture usa ids
+    // diferentes justamente para que trocar um pelo outro quebre aqui.
+    expect(texto).toContain('8696453882');
+    expect(texto).not.toContain('5478096539');
   });
 
   it('os sete estados de leitura têm rótulo próprio, sem colapso', () => {
