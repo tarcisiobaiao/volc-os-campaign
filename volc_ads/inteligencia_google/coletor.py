@@ -876,13 +876,14 @@ class ColetorGoogleInteligencia:
         #    assets leria a conta inteira; e uma leitura larga disfarcada de
         #    resposta seria pior que a falha honesta do prerequisito.
         def ler_assets() -> DocumentoColeta:
-            if assets_pedidos is None:
-                return pmax_dominio.documento_prerequisito(
-                    pmax_dominio.FAMILIA_ASSETS,
-                    dependia_de=pmax_dominio.FAMILIA_ASSET_GROUP_ASSETS, **comum,
-                )
             if not assets_pedidos:
-                return pmax_dominio.documento_assets(linhas=[], pedidos=[], **comum)
+                # Sem lista nao ha consulta — nem `None` (o prerequisito caiu)
+                # nem `[]` (os vinculos vieram sem asset). Quem separa os dois
+                # estados e a projecao, que e onde a distincao tem de valer para
+                # qualquer chamador, nao so para este.
+                return pmax_dominio.documento_assets(
+                    linhas=[], pedidos=assets_pedidos, **comum,
+                )
             linhas = self._query(cid, pmax_dominio.query_assets(assets_pedidos))
             return pmax_dominio.documento_assets(
                 linhas=linhas, pedidos=assets_pedidos, **comum,
@@ -917,12 +918,9 @@ class ColetorGoogleInteligencia:
 
         # 6. sinais dos grupos lidos.
         def ler_sinais() -> DocumentoColeta:
-            if grupos is None:
-                return pmax_dominio.documento_prerequisito(
-                    pmax_dominio.FAMILIA_SINAIS,
-                    dependia_de=pmax_dominio.FAMILIA_ASSET_GROUPS, **comum,
-                )
             if not grupos:
+                # Mesma regra dos assets: `None` e "a estrutura nao foi lida",
+                # `[]` e "foi lida e nao tinha grupo". Nenhum dos dois consulta.
                 return pmax_dominio.documento_sinais(
                     linhas=[], grupos_conhecidos=grupos, **comum,
                 )

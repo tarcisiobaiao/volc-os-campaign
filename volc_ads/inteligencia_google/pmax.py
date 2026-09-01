@@ -22,6 +22,24 @@ A dependencia que existe e declarada, nao implicita — ``PMAX_ASSETS`` so sabe
 quais assets pedir depois de ``PMAX_ASSET_GROUP_ASSETS``, e quando o
 prerequisito nao foi lido a familia FALHA em vez de fingir vazio.
 
+## O que a primeira leitura real corrigiu
+
+Em 01/09/2026 estas perguntas foram feitas a v25 REAL (evidencia sanitizada em
+``docs/closure/hermes-p04-t07-pmax-real-read-v1/REAL-READ-SUMMARY.json``). Nove
+campos que os descriptors do SDK descrevem voltaram como
+``query_error: UNRECOGNIZED_FIELD``: descriptor de proto NAO e contrato de
+selecao GAQL, e so a leitura real separou os dois. Eles sairam da projecao sem
+substituto — ``CAMPOS_RECUSADOS_PELA_API_V25`` nomeia cada um e o que a coleta
+deixou de enxergar, e essa perda viaja no recibo em vez de sumir.
+
+A mesma leitura expos um erro de contrato pior que um campo faltando: com
+``PMAX_ASSET_GROUPS`` e ``PMAX_ASSET_GROUP_ASSETS`` caidos, as familias que
+dependem delas foram registradas como ``vazio_confirmado`` — "nao ha assets"
+afirmado por quem nunca conseguiu perguntar. Hoje isso e impossivel por
+construcao: sem prerequisito lido a familia sai ``falhou`` com a causa
+estruturada ``DEPENDENCIA_FALHOU:<familia>``, e a decisao mora na projecao
+(``documento_assets``, ``documento_sinais``), nao so no coletor que a chama.
+
 ## ⚠️ A lacuna que esta coleta nao pode fechar sozinha
 
 O ledger v12_01 fecha ``tipo_sinal`` num CHECK de seis valores
@@ -141,8 +159,84 @@ CAMPOS_NAO_COLETADOS: dict[str, str] = {
     ),
 }
 
-CODIGO_PREREQUISITO = "PREREQUISITO_NAO_LIDO"
+#: Campos que a v25 REAL recusou com `query_error: UNRECOGNIZED_FIELD` na
+#: leitura de 01/09/2026, por familia. Todos EXISTEM nos descriptors do SDK
+#: instalado — `assert_v25_descriptor_contract` passa com eles — e mesmo assim o
+#: endpoint os rejeita. Nenhum ganhou substituto: nada equivalente foi
+#: comprovado na v25 real, e inventar um fallback semantico seria pior que o
+#: buraco. Cada valor diz o que a coleta DEIXOU DE ENXERGAR.
+CAMPOS_RECUSADOS_POR_FAMILIA: dict[str, dict[str, str]] = {
+    FAMILIA_ASSET_GROUPS: {
+        "asset_group.asset_coverage.ad_strength_action_items.action_item_type": (
+            "perde-se QUAL acao o Google sugere para subir a forca do grupo; "
+            "`asset_group.ad_strength` continua legivel, mas so como nota, sem "
+            "o que fazer a respeito"
+        ),
+        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type": (
+            "perde-se QUAL tipo de asset falta (titulo, imagem, video)"
+        ),
+        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count": (
+            "perde-se QUANTOS assets faltam para a acao sugerida"
+        ),
+        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement": (
+            "perde-se a proporcao de video exigida quando a acao e adicionar video"
+        ),
+    },
+    FAMILIA_ASSET_GROUP_ASSETS: {
+        "asset_group_asset.primary_status_details.status": (
+            "perde-se o detalhe por tras do status do vinculo; "
+            "`asset_group_asset.primary_status` e `primary_status_reasons` "
+            "continuam sendo lidos, entao resta o motivo grosso, sem o fino"
+        ),
+        "asset_group_asset.primary_status_details.reason": (
+            "perde-se a razao detalhada do status do vinculo"
+        ),
+        "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons": (
+            "perde-se POR QUE um asset reprovado foi reprovado; "
+            "`asset_group_asset.policy_summary` continua trazendo a aprovacao e "
+            "os topicos de politica, que e outra pergunta"
+        ),
+    },
+    FAMILIA_RECOMENDACOES: {
+        "recommendation.improve_performance_max_ad_strength_recommendation.asset_group": (
+            "perde-se A QUAL grupo de recursos a recomendacao se refere; a "
+            "recomendacao continua identificada por `resource_name` e ligada a "
+            "campanha, mas nao ao grupo dentro dela"
+        ),
+        "recommendation.improve_performance_max_ad_strength_recommendation.ad_strength": (
+            "perde-se a forca que a recomendacao reporta; a de "
+            "`asset_group.ad_strength` NAO e substituta — sao duas leituras "
+            "diferentes, e trocar uma pela outra seria fallback inventado"
+        ),
+    },
+}
+
+#: A mesma lista, achatada: e ela que a consulta consulta.
+CAMPOS_RECUSADOS_PELA_API_V25: dict[str, str] = {
+    campo: perda
+    for campos in CAMPOS_RECUSADOS_POR_FAMILIA.values()
+    for campo, perda in campos.items()
+}
+
+#: Quem depende de quem. Declarado aqui, e nao so no coletor, porque quem
+#: precisa saber que "sem prerequisito" nao e "vazio" e a projecao.
+DEPENDENCIA_POR_FAMILIA: dict[str, str] = {
+    FAMILIA_ASSETS: FAMILIA_ASSET_GROUP_ASSETS,
+    FAMILIA_SINAIS: FAMILIA_ASSET_GROUPS,
+}
+
+CODIGO_DEPENDENCIA_FALHOU = "DEPENDENCIA_FALHOU"
 CLASSE_PREREQUISITO = "DependenciaDeLeitura"
+
+
+def causa_de_dependencia(familia_prerequisito: str) -> str:
+    """``DEPENDENCIA_FALHOU:<familia>`` — causa estruturada, legivel por maquina.
+
+    O codigo antigo (``PREREQUISITO_NAO_LIDO``) dizia que faltou prerequisito
+    sem dizer QUAL, e quem lesse o ledger tinha de adivinhar pelo payload.
+    """
+
+    return f"{CODIGO_DEPENDENCIA_FALHOU}:{familia_prerequisito}"
 
 TIPO_RECOMENDACAO_FORCA = "IMPROVE_PERFORMANCE_MAX_AD_STRENGTH"
 
@@ -161,6 +255,10 @@ METRICAS_DE_ASSET_GROUP = (
 
 class ErroCanalNaoPMax(RuntimeError):
     """O alvo existe e a identidade fecha, mas o canal nao e Performance Max."""
+
+
+class ErroCampoRecusadoNaConsulta(RuntimeError):
+    """Uma consulta desta coleta pediu campo que a v25 real ja recusou."""
 
 
 def exigir_canal_pmax(canal: str) -> str:
@@ -226,11 +324,68 @@ def _id_seguro(valor: Any, campo: str) -> str:
     return validate_identifier(str(valor), campo)
 
 
+def campos_projetados(gaql: str) -> list[str]:
+    """A lista do SELECT, campo a campo — sem o FROM e sem o WHERE.
+
+    Comparar por campo, e nao por substring, e o que impede
+    ``asset_group.ad_strength`` de ser confundido com
+    ``...add_asset_details.asset_field_type`` na hora de podar.
+    """
+
+    normalizado = " ".join(gaql.split())
+    fim = normalizado.upper().find(" FROM ")
+    if not normalizado.upper().startswith("SELECT ") or fim < 0:
+        raise ValueError("consulta sem projecao legivel: nao da para conferir campos")
+    return [c.strip() for c in normalizado[len("SELECT "):fim].split(",") if c.strip()]
+
+
+def assert_sem_campos_recusados(gaql: str) -> None:
+    """Fail-closed contra reintroduzir um campo que a v25 REAL ja recusou.
+
+    Este e o unico ponto por onde as sete consultas passam, entao o erro que
+    derrubou tres familias na primeira leitura real nao volta em silencio — nem
+    por edicao aqui, nem por um builder de outra lane mudando debaixo.
+    """
+
+    recusados = [
+        campo for campo in campos_projetados(gaql)
+        if campo in CAMPOS_RECUSADOS_PELA_API_V25
+    ]
+    if recusados:
+        raise ErroCampoRecusadoNaConsulta(
+            f"a v25 real recusou {sorted(recusados)} com UNRECOGNIZED_FIELD; "
+            f"remova o campo e declare a perda de cobertura — nao troque por "
+            f"outro campo sem prova de equivalencia"
+        )
+
+
+def sem_campos_recusados(gaql: str) -> str:
+    """Devolve a consulta sem os campos que a v25 real recusou.
+
+    Poda, nunca substitui. Existe porque os builders de
+    ``volc_ads/observabilidade_pmax/queries.py`` sao de outra lane e continuam
+    projetando os campos que os descriptors do SDK descrevem — mexer neles aqui
+    trocaria uma correcao por uma mudanca fora do escopo desta entrega.
+    """
+
+    normalizado = " ".join(gaql.split())
+    mantidos = [
+        campo for campo in campos_projetados(normalizado)
+        if campo not in CAMPOS_RECUSADOS_PELA_API_V25
+    ]
+    if not mantidos:
+        raise ErroCampoRecusadoNaConsulta(
+            "a poda deixaria a consulta sem projecao alguma"
+        )
+    return f"SELECT {', '.join(mantidos)}{normalizado[normalizado.upper().find(' FROM '):]}"
+
+
 def _select(gaql: str) -> str:
     """Toda consulta desta coleta passa por aqui antes de existir."""
 
     normalizado = " ".join(gaql.split())
     assert_read_only_gaql(normalizado)
+    assert_sem_campos_recusados(normalizado)
     return normalizado
 
 
@@ -256,13 +411,23 @@ def query_campanha(campaign_id: str) -> str:
 
 
 def query_asset_groups(campaign_id: str) -> str:
-    return _select(build_pmax_asset_groups_query(campaign_ids=[campaign_id]))
+    """Estrutura do grupo, menos os quatro campos de ``asset_coverage``.
+
+    A v25 real recusou os quatro juntos e derrubou a familia inteira: um campo
+    impossivel de selecionar nao custa um campo, custa a consulta.
+    """
+
+    return _select(sem_campos_recusados(
+        build_pmax_asset_groups_query(campaign_ids=[campaign_id])
+    ))
 
 
 def query_asset_group_assets(customer_id: str, campaign_id: str) -> str:
-    return _select(build_pmax_asset_group_assets_query(
+    """Vinculos do grupo, menos os tres campos de ``primary_status_details``."""
+
+    return _select(sem_campos_recusados(build_pmax_asset_group_assets_query(
         customer_id, campaign_ids=[campaign_id],
-    ))
+    )))
 
 
 def query_assets(asset_ids: Sequence[str]) -> str:
@@ -317,13 +482,15 @@ def query_recomendacoes_forca() -> str:
     demonstra filtro por ``recommendation.type``; assumir que o campo de
     campanha e filtravel arriscaria um erro de consulta que apagaria a familia
     inteira. O recorte por campanha e feito LOCALMENTE, e o recibo diz isso.
+
+    ⚠️ Sem o detalhe ``improve_performance_max_ad_strength_recommendation.*``:
+    a v25 real recusou os dois campos e a familia caiu inteira. Resta a
+    existencia da recomendacao e a campanha dela — nao o grupo nem a forca.
     """
 
     return _select(f"""
       SELECT recommendation.resource_name, recommendation.type,
-             recommendation.campaign, recommendation.dismissed,
-             recommendation.improve_performance_max_ad_strength_recommendation.asset_group,
-             recommendation.improve_performance_max_ad_strength_recommendation.ad_strength
+             recommendation.campaign, recommendation.dismissed
       FROM recommendation
       WHERE recommendation.type = '{TIPO_RECOMENDACAO_FORCA}'
     """)
@@ -426,17 +593,20 @@ def documento_asset_groups(
                 linha, ("asset_group", nome), recurso_tipo="asset_group",
                 recurso_externo=identificador, nome=nome,
             ))
-        acoes = grupo.get("asset_coverage", {}).get("ad_strength_action_items")
-        metricas.append(Metrica(
-            "asset_group", identificador, "asset_coverage_action_items",
-            EstadoValor.MEDIDO if acoes is not None else EstadoValor.AUSENTE,
-            valor_numerico=len(acoes) if acoes is not None else None,
-            unidade="count",
-        ))
+        # `asset_coverage_action_items` SAIU: a v25 real recusa os campos, entao
+        # a consulta nao os pede mais. Emitir a metrica como `ausente` diria "o
+        # Google nao devolveu" sobre algo que ninguem chegou a perguntar — e
+        # esse e o mesmo erro que esta correcao existe para desfazer. A perda
+        # esta declarada no payload, onde tem nome e causa.
     return DocumentoColeta.agora(
         estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
         quantidade=len(linhas),
-        payload=_payload(janela=janela, sem_filtro_de_status=True),
+        payload=_payload(
+            janela=janela, sem_filtro_de_status=True,
+            campos_recusados_pela_api=dict(
+                CAMPOS_RECUSADOS_POR_FAMILIA[FAMILIA_ASSET_GROUPS]
+            ),
+        ),
         itens=itens, metricas=metricas,
         **_base(FAMILIA_ASSET_GROUPS, campanha=campanha,
                 login_customer_id=login_customer_id, bucket=bucket),
@@ -460,7 +630,13 @@ def documento_asset_group_assets(
         quantidade=len(linhas),
         payload=_payload(
             janela=janela,
+            # Duas listas, duas causas diferentes, deliberadamente separadas: o
+            # SDK v25 nao tem `performance_label` (adjudicado por
+            # GoogleAdsFieldService), e a v25 real recusa campos que o SDK TEM.
             campos_nao_suportados=dict(CAMPOS_NAO_SUPORTADOS_V25),
+            campos_recusados_pela_api=dict(
+                CAMPOS_RECUSADOS_POR_FAMILIA[FAMILIA_ASSET_GROUP_ASSETS]
+            ),
         ),
         itens=itens,
         **_base(FAMILIA_ASSET_GROUP_ASSETS, campanha=campanha,
@@ -471,9 +647,28 @@ def documento_asset_group_assets(
 def documento_assets(
     *, campanha: Any, login_customer_id: str, bucket: str,
     janela: tuple[date, date],
-    linhas: Sequence[Mapping[str, Any]], pedidos: Sequence[str],
+    linhas: Sequence[Mapping[str, Any]], pedidos: Sequence[str] | None,
 ) -> DocumentoColeta:
-    """Metadados dos assets pedidos. Nenhum byte de midia atravessa daqui."""
+    """Metadados dos assets pedidos. Nenhum byte de midia atravessa daqui.
+
+    ``pedidos=None`` quer dizer que ``PMAX_ASSET_GROUP_ASSETS`` nao concluiu —
+    nao existe lista de assets a pedir, e nao existe "nenhum asset" observado.
+    ``pedidos=[]`` e outra coisa: os vinculos FORAM lidos e nao tinham asset.
+    Achatar as duas em ``vazio_confirmado`` foi exatamente o que a primeira
+    leitura real fez, e e por isso que a distincao mora aqui e nao no chamador.
+    """
+
+    if pedidos is None:
+        if linhas:
+            raise ValueError(
+                "assets sem prerequisito lido nao podem trazer linhas: de onde "
+                "elas viriam, se ninguem soube quais assets pedir?"
+            )
+        return documento_prerequisito(
+            FAMILIA_ASSETS, campanha=campanha,
+            login_customer_id=login_customer_id, bucket=bucket, janela=janela,
+            dependia_de=DEPENDENCIA_POR_FAMILIA[FAMILIA_ASSETS],
+        )
 
     itens = [
         Item("asset", dict(linha), linha.get("asset", {}).get("resource_name"))
@@ -591,6 +786,25 @@ def documento_sinais(
     janela: tuple[date, date],
     linhas: Sequence[Mapping[str, Any]], grupos_conhecidos: Sequence[str] | None,
 ) -> DocumentoColeta:
+    """Sinais dos grupos lidos — e so dos grupos que alguem chegou a ler.
+
+    ``grupos_conhecidos=None`` e ``PMAX_ASSET_GROUPS`` que nao concluiu: sem a
+    lista, "nenhum sinal" seria uma afirmacao sobre grupos que ninguem
+    enumerou. ``[]`` continua sendo vazio observado.
+    """
+
+    if grupos_conhecidos is None:
+        if linhas:
+            raise ValueError(
+                "sinais sem grupos lidos nao podem trazer linhas: a consulta "
+                "precisa dos grupos para existir com recorte"
+            )
+        return documento_prerequisito(
+            FAMILIA_SINAIS, campanha=campanha,
+            login_customer_id=login_customer_id, bucket=bucket, janela=janela,
+            dependia_de=DEPENDENCIA_POR_FAMILIA[FAMILIA_SINAIS],
+        )
+
     itens = [
         Item(
             "asset_group_signal", dict(linha),
@@ -603,7 +817,7 @@ def documento_sinais(
         quantidade=len(linhas),
         payload=_payload(
             janela=janela,
-            grupos_consultados=None if grupos_conhecidos is None else sorted(grupos_conhecidos),
+            grupos_consultados=sorted(grupos_conhecidos),
             campos_nao_coletados=dict(CAMPOS_NAO_COLETADOS),
         ),
         itens=itens,
@@ -658,6 +872,9 @@ def documento_recomendacoes(
                 "a doutrina oficial so demonstra filtro por recommendation.type; "
                 "filtrar por recommendation.campaign no GAQL nao foi provado"
             ),
+            campos_recusados_pela_api=dict(
+                CAMPOS_RECUSADOS_POR_FAMILIA[FAMILIA_RECOMENDACOES]
+            ),
             natureza="segunda_opiniao", aplicada=False,
         ),
         itens=[
@@ -674,12 +891,22 @@ def documento_prerequisito(
     familia: str, *, campanha: Any, login_customer_id: str, bucket: str,
     janela: tuple[date, date], dependia_de: str,
 ) -> DocumentoColeta:
-    """A familia nao foi lida porque a leitura de que ela depende caiu."""
+    """A familia nao foi lida porque a leitura de que ela depende caiu.
 
+    Estado ``falhou``, e nao ``parcial``: parcial e o que a familia de
+    desempenho usa quando UMA PARTE respondeu (a agregada chegou, a segmentacao
+    por canal caiu). Aqui nada respondeu — nem uma linha, nem um zero — e
+    chamar isso de parcial afirmaria uma leitura que nao houve. O que a
+    correcao acrescenta e a causa ESTRUTURADA: ``DEPENDENCIA_FALHOU:<familia>``
+    no proprio ``erro_codigo``, para que a distincao entre "esta familia caiu" e
+    "a familia de que ela depende caiu" sobreviva a ida ao ledger.
+    """
+
+    causa = causa_de_dependencia(dependia_de)
     return DocumentoColeta.agora(
         estado=EstadoColeta.FALHOU, quantidade=None,
-        payload=_payload(janela=janela, dependia_de=dependia_de),
-        erro_codigo=CODIGO_PREREQUISITO, erro_classe=CLASSE_PREREQUISITO,
+        payload=_payload(janela=janela, dependia_de=dependia_de, causa=causa),
+        erro_codigo=causa, erro_classe=CLASSE_PREREQUISITO,
         erro_detalhe=(
             f"{familia} depende de {dependia_de}, que nao concluiu; sem ela nao "
             f"ha o que perguntar, e perguntar sem recorte leria a conta inteira"
@@ -809,6 +1036,10 @@ def resumo_sanitizado(resultado: Mapping[str, Any]) -> dict[str, Any]:
     Itens e metricas carregam texto de anuncio, URL final e nome de campanha —
     dado do cliente. Eles ficam no banco, atras da service_role, e nao no
     terminal nem no log de um job.
+
+    ``cobertura_perdida`` viaja junto porque a fotografia so e legivel com o que
+    ela NAO enxerga do lado: sem isso, quem le o resumo confunde campo que a
+    v25 recusou com informacao que a campanha nao tem.
     """
 
     return {
@@ -827,5 +1058,6 @@ def resumo_sanitizado(resultado: Mapping[str, Any]) -> dict[str, Any]:
             for coleta in resultado.get("coletas", [])
         ],
         "lacunas": resultado.get("lacunas", []),
+        "cobertura_perdida": dict(CAMPOS_RECUSADOS_PELA_API_V25),
         "prontidao_desta_execucao": resultado.get("prontidao_desta_execucao"),
     }
