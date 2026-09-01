@@ -1372,7 +1372,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Declara antes do nascimento qual meta efetiva governa a campanha, qual ação a mede, quem é o dono, por onde o sinal pode chegar, o que foi realmente observado e quais bloqueios impedem ativação ou Smart Bidding.",
-      "evidence": "Implementado em 349e1a9..70e1382 com cinco leituras Google Ads somente-SELECT, contrato tipado, persistência preparada, projeção no cockpit e portões falsificáveis. Foram medidos 2682 testes Python, 1158 testes de front, 7/7 mutações mortas e 55 provas SQL. Permanece partial: a v12_02 não foi aplicada no Supabase oficial, a gravação não foi ligada ao fluxo produtivo e Data Manager continua não provado.",
+      "evidence": "Implementado em 349e1a9..70e1382 com cinco leituras Google Ads somente-SELECT, contrato tipado, projeção no cockpit e portões falsificáveis. Em 2026-09-01 (57028f2..48fd4d1, integrado em volc-os-v2 por fast-forward) o caminho PRODUTIVO foi fechado: RepositorioDePlanoDeMensuracao tinha ZERO chamadores de produção e agora /subir grava o plano pela única RPC governada entre ledger.despachar e sb.subir — falha de gravação IMPEDE o mutate. O vínculo pós-nascimento preserva a mesma chave_intencao em linha nova (append-only, sem UPDATE) e a reconciliação tardia religa sem criar segunda intenção. /provar continua sem escrever e declara isso em campo próprio. A v12_02 FOI APLICADA no Supabase oficial em 2026-09-01T18:32:18Z, com backup validado antes e 11 contraprovas pós-aplicação verdes; a RPC foi provada em transação controlada com ROLLBACK (INSERT aceito, idempotência pela impressão, escrita direta recusada, append-only recusando UPDATE/DELETE) e a tabela ficou em ZERO linhas. Gates: 2736 testes Python, 1173 de front, 54 contraprovas do caminho produtivo, ciclo v12_02 55/0. PERMANECE PARTIAL: não existe plano real durável de campanha nova — a tabela está vazia e a primeira linha nascerá no primeiro /subir autorizado —, Data Manager continua não provado em operação e os portões de ativação/Smart Bidding seguem avaliados só por /provar.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -1398,7 +1398,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Inventário e governança de GA4, GTM, UTMs, eventos, conversões, streams, dimensões, vínculos e drift antes de qualquer alteração.",
-      "evidence": "A primeira fatia canônica existe em 349e1a9..70e1382: InventarioDeMarcacao distingue auto-tagging, importações e caminhos declarados de sinais realmente observados; lê dono da ação, click IDs, consentimento e frescor sem transformar capacidade em conversão. O controle amplo de GA4/GTM/UTMs/streams e drift, a operação do Data Manager e a aplicação da v12_02 continuam pendentes.",
+      "evidence": "A primeira fatia canônica existe em 349e1a9..70e1382: InventarioDeMarcacao distingue auto-tagging, importações e caminhos declarados de sinais realmente observados; lê dono da ação, click IDs, consentimento e frescor sem transformar capacidade em conversão. Em 2026-09-01 o schema que guarda esse inventário passou a existir no banco oficial (v12_02 aplicada, RPC provada em transação com rollback). O controle amplo de GA4/GTM/UTMs/streams e drift continua NÃO construído, e a operação do Data Manager continua NÃO provada — nenhum evento foi enviado, nem em validateOnly.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -9848,8 +9848,22 @@
     },
     {
       "source": "concept:campaign_measurement_plan",
+      "target": "concept:media_hub",
+      "relation": "governa",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:campaign_measurement_plan",
       "target": "concept:search_paused_canary",
       "relation": "governa_nascimento",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:campaign_measurement_plan",
+      "target": "concept:tracking_control_plane",
+      "relation": "depende_de",
       "evidence": "",
       "confidence": "curated"
     },
