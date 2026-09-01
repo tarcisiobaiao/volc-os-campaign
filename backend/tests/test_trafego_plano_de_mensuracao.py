@@ -118,7 +118,37 @@ def test_com_tudo_provado_o_smart_bidding_fica_elegivel():
     assert r.measurement_readiness == pr.PRONTO
     assert r.observability_status == pr.PRONTO
     assert r.smart_bidding_eligible is True, r.activation_blockers
-    assert r.activation_blockers == ()
+
+    # ⚠️ ESTE ASSERT MUDOU EM 02/09/2026, e a mudança é uma correção.
+    #
+    # Antes ele exigia `activation_blockers == ()` — e essa lista vazia era
+    # falsa: `contrato_canais._portao_ativavel` dizia, ao mesmo tempo, que
+    # ativar está BLOQUEADO por política em todo canal. Dois módulos do mesmo
+    # sistema respondiam coisas opostas sobre o mesmo ato, e o que a tela lia
+    # era o vazio.
+    #
+    # Agora `prontidao` carrega as duas razões que faltavam — política e plano
+    # não persistido —, ambas NÃO materiais: nenhuma delas é sobre medir ou
+    # observar, e por isso nenhuma contradiz `smart_bidding_eligible`. O que
+    # "tudo provado" quer dizer é que a lista MATERIAL está vazia.
+    assert r.activation_blockers_materiais == ()
+    assert r.activation_ready != pr.PRONTO
+    assert any("política" in b or "autorização" in b
+               for b in r.activation_blockers)
+    assert any("PERSISTIDO" in b for b in r.activation_blockers)
+
+    # E o ramo em que a ativação ABRE existe — sem ele, "está bloqueado" volta
+    # a ser infalsificável, agora um degrau acima.
+    liberado = pr.avaliar(
+        recibo_registrado=True,
+        metas_da_conta=None,
+        plano_de_mensuracao=plano,
+        coleta_pos_criacao_provada=True,
+        plano_persistido=True,
+        ativacao_autorizada_por_politica=True,
+    )
+    assert liberado.activation_ready == pr.PRONTO
+    assert liberado.activation_blockers == ()
 
 
 @pytest.mark.parametrize("peca", ["meta", "acao", "sinal", "observacao"])

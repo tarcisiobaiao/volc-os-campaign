@@ -26,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
+from app.trafego import perfil_de_mensuracao as pdm
 from app.trafego import plano_mensuracao as pm
 
 # Os estados possíveis de cada portão. `INDETERMINADO` é o default deliberado:
@@ -98,6 +99,15 @@ class Prontidao:
     #: "Smart Bidding está bloqueado" seria uma afirmação infalsificável, que
     #: passaria com qualquer entrada e não provaria nada.
     plano_de_mensuracao: Optional["pm.PlanoDeMensuracao"] = None
+    #: O plano CALCULADO sobreviveu à requisição? ⚠️ Era literal fixo na rota
+    #: (`routers/trafego.py`), fora do alcance de qualquer portão. Ativar com
+    #: base num plano que não existe no banco é ativar com base numa tela.
+    plano_persistido: bool = False
+    #: A política em vigor cobre o ato de ATIVAR? ⚠️ Default `False`, e ele é o
+    #: ponto: uma chamada que esqueça o parâmetro produz recusa, nunca permissão.
+    ativacao_autorizada_por_politica: bool = False
+    #: O perfil de mensuração desta campanha, quando alguém o declarou.
+    perfil: Optional["pdm.PerfilDeMensuracao"] = None
 
     def __post_init__(self) -> None:
         # ⚠️ `frozen=True` impede REBIND de atributo e não impede mutação do
@@ -139,8 +149,108 @@ class Prontidao:
                 raise ValueError(
                     f"bloqueador material fora da lista principal: {b!r}")
 
+
+    # ── os nomes canônicos dos SETE portões ─────────────────────────────────
+    #
+    # ⚠️ PROPRIEDADES, e não renomeação dos campos. Os nomes antigos
+    # (`measurement_readiness`, `observability_status`, `data_manager_status`)
+    # são o contrato que `src/types/trafego.ts` já consome e que os testes já
+    # afirmam; trocá-los quebraria a tela sem nenhum ganho de verdade. Os dois
+    # vocabulários saem no JSON lado a lado, e a aposentadoria dos antigos tem
+    # condição explícita: quando nenhum consumidor de `src/` os ler.
+
+    @property
+    def measurement_ready(self) -> str:
+        return self.measurement_readiness
+
+    @property
+    def smart_bidding_ready(self) -> str:
+        """O estado de `smart_bidding_eligible`, com a distinção que falta ao bool.
+
+        ⚠️ PROPRIEDADE DERIVADA, e não um campo. Um campo tornaria possível
+        construir uma resposta em que o estado e o booleano discordam sobre a
+        mesma pergunta — e dois campos da mesma resposta HTTP se contradizendo
+        é um defeito que esta casa já pegou duas vezes. Derivado, ele não pode
+        divergir: não há como escrevê-lo.
+
+        ⚠️ E a distinção que ele acrescenta é operacional, não cosmética.
+        `False` colapsava duas conclusões OPOSTAS: "lemos a conta e não há
+        sinal" pede instrumentação a conferir; "não conseguimos ler" pede
+        leitura a repetir.
+        """
+        if self.smart_bidding_eligible:
+            return PRONTO
+        if INDETERMINADO in (self.measurement_readiness,
+                             self.observability_status):
+            return INDETERMINADO
+        return NAO_PRONTO
+
+    @property
+    def activation_ready(self) -> str:
+        """Despausar é seguro? ⚠️ O portão que não existia.
+
+        Havia `activation_blockers` — a lista de razões — e nenhum campo que
+        respondesse à pergunta. Uma lista vazia lida como permissão é o default
+        otimista que este módulo recusa em todos os outros portões, e que aqui
+        entrava pela ausência do campo.
+
+        Ele exige TRÊS coisas que Smart Bidding não exige, e é por isso que os
+        dois não podem ser o mesmo campo:
+
+          1. autorização de POLÍTICA — a autorização em vigor cobre criar
+             pausada e nada além; ativar é outro ato;
+          2. plano PERSISTIDO — plano calculado não é plano gravado. `/provar`
+             calcula e mostra, e nada sobrevive à requisição;
+          3. observabilidade — despausar sem conseguir reler é autorizar às
+             cegas.
+
+        ⚠️ Também derivado, e pela mesma razão: "ativação PRONTA" ao lado de um
+        bloqueador material afirmaria duas coisas opostas sobre o mesmo mundo.
+        Como propriedade, a contradição é impossível de escrever — que é mais
+        forte que uma guarda que a detecta.
+        """
+        if (self.measurement_readiness == PRONTO
+                and self.observability_status == PRONTO
+                and self.ativacao_autorizada_por_politica
+                and self.plano_persistido
+                and not self.activation_blockers_materiais):
+            return PRONTO
+        if INDETERMINADO in (self.measurement_readiness,
+                             self.observability_status):
+            return INDETERMINADO
+        return NAO_PRONTO
+
+    @property
+    def observability_ready(self) -> str:
+        return self.observability_status
+
+    @property
+    def data_manager_ready(self) -> str:
+        return self.data_manager_status
+
+    def portoes(self) -> Dict[str, str]:
+        """Os SETE, cada um respondendo a UMA pergunta.
+
+        ⚠️ "Pronto" sem sujeito virou uma palavra vazia, e é por isso que eles
+        estão separados: poder NASCER não diz nada sobre poder MEDIR, e nenhum
+        dos dois diz nada sobre poder ATIVAR.
+        """
+        return {
+            "creation_plan_ready": self.creation_plan_ready,
+            "campaign_birth": self.campaign_birth,
+            "measurement_ready": self.measurement_ready,
+            "observability_ready": self.observability_ready,
+            "activation_ready": self.activation_ready,
+            "smart_bidding_ready": self.smart_bidding_ready,
+            "data_manager_ready": self.data_manager_ready,
+        }
+
     def para_json(self) -> Dict[str, Any]:
         return {
+            **self.portoes(),
+            "plano_persistido_no_portao": self.plano_persistido,
+            "perfil_de_mensuracao": (None if self.perfil is None
+                                     else self.perfil.json()),
             "creation_plan_ready": self.creation_plan_ready,
             "campaign_birth": self.campaign_birth,
             "conversion_goal_status": self.conversion_goal_status,
@@ -176,6 +286,9 @@ def avaliar(
     coleta_pos_criacao_provada: bool = False,
     estrategia_lance: str = "MANUAL_CPC",
     plano_de_mensuracao: Optional[pm.PlanoDeMensuracao] = None,
+    plano_persistido: bool = False,
+    perfil: Optional[pdm.PerfilDeMensuracao] = None,
+    ativacao_autorizada_por_politica: bool = False,
 ) -> Prontidao:
     """O veredito, calculado só do que foi de fato observado.
 
@@ -387,8 +500,38 @@ def avaliar(
             "vias por onde o sinal PODERIA chegar — inventário, não prova: "
             + ", ".join(caminhos))
 
-    if data_manager_operante:
+    # ⚠️ O DESTINO ENTRA NO PORTÃO, e a primeira versão o ignorava.
+    #
+    # Reproduzido em 02/09/2026: com `data_manager_operante=True` e um plano
+    # sem ação eleita — logo sem `operating_account_id` e sem
+    # `product_destination_id` — o portão saía `PRONTO`. Pronto para mandar
+    # evento para lugar nenhum.
+    #
+    # "Operante" descreve a NOSSA fila. "Destino resolvido" descreve para ONDE
+    # o evento vai, e a Data Manager resolve destino por conta DONA + id
+    # NUMÉRICO da ação. Sem o segundo, o primeiro não significa nada — e mandar
+    # para a conta errada não é um erro barulhento.
+    destino_resolvido = (plano_de_mensuracao is not None
+                         and plano_de_mensuracao.destino.resolvido)
+    if data_manager_operante and destino_resolvido:
         dm_status = PRONTO
+    elif data_manager_operante:
+        dm_status = NAO_PRONTO
+        causa_do_destino = (
+            (plano_de_mensuracao.destino.causa
+             if plano_de_mensuracao is not None else None)
+            or "nenhum plano de mensuração foi lido, então não há destino a "
+               "resolver")
+        notas["data_manager"] = (
+            "a ingestão offline foi declarada operante e o DESTINO não está "
+            f"resolvido: {causa_do_destino}")
+        # ⚠️ NÃO material: ele não impede aprender nem observar. Contá-lo como
+        # material declararia despreparo de MEDIÇÃO numa conta que mede por tag
+        # do Google e nunca vai usar ingestão offline.
+        _bloquear(
+            "Data Manager declarado operante sem destino resolvido (conta dona "
+            "+ id numérico da ação): o envio não tem para onde ir.",
+            material=False)
     else:
         dm_status = NAO_PRONTO
         notas["data_manager"] = (
@@ -445,7 +588,43 @@ def avaliar(
         "Manual CPC pode existir no canário pausado sem Data Manager. Isso não "
         "autoriza ativação nem implica prontidão de ROI")
 
+    # ── G3b: ATIVAÇÃO — as razões; o estado é derivado no tipo ──────────────
+    #
+    # ⚠️ Ele exige TRÊS coisas que Smart Bidding não exige, e é por isso que os
+    # dois não podem ser o mesmo campo:
+    #
+    #   1. autorização de POLÍTICA — a autorização em vigor cobre criar pausada
+    #      e nada além; ativar é outro ato. O default é `False`, de modo que uma
+    #      chamada que esqueça o parâmetro produz recusa, nunca permissão;
+    #   2. plano PERSISTIDO — plano calculado não é plano gravado. `/provar`
+    #      calcula e mostra, e nada sobrevive à requisição. Ativar com base nele
+    #      é ativar com base numa tela, e semanas depois ninguém consegue dizer
+    #      o que o operador viu quando decidiu;
+    #   3. observabilidade — despausar sem conseguir reler é autorizar às cegas.
+    #
+    # ⚠️ E a recíproca vale: sem política, a ativação fecha e a MEDIÇÃO continua
+    # provada. Colapsar os dois faria uma recusa administrativa parecer uma
+    # conta que não mede.
+    if not ativacao_autorizada_por_politica:
+        _bloquear(
+            "a autorização em vigor cobre criar pausada e nada além; ativar é "
+            "outro ato, e ele não foi autorizado.",
+            material=False)
+    if not plano_persistido:
+        # ⚠️ NÃO material: a campanha aprende igual com o plano fora do banco.
+        # O que ela não pode é ser ativada de forma prestável de contas. Contá-lo
+        # como material derrubaria `smart_bidding_eligible` por um motivo que
+        # não é sobre medir — e a invariante do tipo levantaria.
+        _bloquear(
+            "o plano de mensuração desta campanha não está PERSISTIDO: o que "
+            "se sabe sobre a medição dela não sobreviveu à requisição, e "
+            "ativar com base nisso é ativar com base numa tela.",
+            material=False)
+
     return Prontidao(
+        plano_persistido=plano_persistido,
+        ativacao_autorizada_por_politica=ativacao_autorizada_por_politica,
+        perfil=perfil,
         creation_plan_ready=plano_pronto,
         campaign_birth=nascimento,
         conversion_goal_status=meta_status,
@@ -461,3 +640,95 @@ def avaliar(
         notas=notas,
         plano_de_mensuracao=plano_de_mensuracao,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# O PORTÃO DO CAMINHO DE ESCRITA
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ Tudo acima é DIAGNÓSTICO: `/provar` calcula os portões, projeta na resposta
+# e ninguém é obrigado a obedecer. Medido em 02/09/2026 contra a base `26a58c4`:
+#
+#     PROVAR diz: smart_bidding_eligible = False
+#     PROVAR diz: bloqueadores = 5
+#     ATOS: ['ler_plano','abrir','despachar','registrar_plano','MUTATE', …]
+#
+# `/subir` nunca chamou `avaliar`. O `estrategia_lance` do corpo atravessava
+# `Escolha` até o executor sem passar por portão nenhum, e o risco ficava contido
+# só porque a campanha nasce PAUSED por literal e o engine não tem função de
+# ativação — duas defesas que ninguém escolheu como portão de lance, e que a
+# primeira pessoa a despausar pelo painel do Google desfaz.
+#
+# Este bloco é a diferença entre um veredito e um portão.
+
+
+class PortaoFechado(RuntimeError):
+    """A estratégia pedida exige prova que esta conta não tem. Nada foi enviado."""
+
+
+class LanceSemMedicao(PortaoFechado):
+    """Lance automático sem meta efetiva resolvida e sinal chegando."""
+
+
+class LanceSemValor(PortaoFechado):
+    """Lance por VALOR sem nenhuma regra de valor declarada nem lida."""
+
+
+#: As estratégias que NÃO aprendem de conversão. Uma lista fechada, e curta.
+#:
+#: ⚠️ `MANUAL_CPC` é o padrão da casa. Recusá-lo porque a conta não mede
+#: transformaria uma conta sem conversão numa conta sem campanha — e o canário
+#: pausado existe justamente para colher veredito de política sem depender de
+#: medição. O portão é sobre APRENDER, não sobre nascer.
+ESTRATEGIAS_SEM_APRENDIZADO: tuple[str, ...] = ("MANUAL_CPC",)
+
+#: As que otimizam pelo VALOR de cada conversão, e não pela contagem.
+ESTRATEGIAS_QUE_EXIGEM_VALOR: tuple[str, ...] = ("MAXIMIZE_CONVERSION_VALUE",)
+
+
+def exigir_para_criacao(*, estrategia_lance: str,
+                        prontidao: Prontidao) -> None:
+    """Recusa criar em lance automático o que a conta não sabe medir.
+
+    Levanta `PortaoFechado`; devolve `None` quando pode seguir.
+
+    ⚠️ O portão olha `measurement_ready`, e NÃO `smart_bidding_ready`. A
+    diferença é o instante: `smart_bidding_ready` exige observabilidade
+    pós-criação, que por definição não existe antes de a campanha nascer.
+    Exigi-la aqui tornaria `MANUAL_CPC` a única estratégia possível para sempre
+    — um portão que nunca abre não protege, só esconde a decisão.
+
+    ⚠️ `INDETERMINADO` RECUSA. Uma falha de leitura do Google não é permissão.
+    O plano de ignorância continua deixando a campanha NASCER — pausada, com os
+    portões fechados —, e deixa de permitir que ela nasça APRENDENDO.
+    """
+    estrategia = str(estrategia_lance or "MANUAL_CPC").strip().upper()
+    if estrategia in ESTRATEGIAS_SEM_APRENDIZADO:
+        return
+
+    if prontidao.measurement_ready != PRONTO:
+        razoes = list(prontidao.activation_blockers_materiais) or [
+            "a medição desta conta não foi provada nesta leitura"]
+        raise LanceSemMedicao(
+            f"{estrategia} exige meta de conversão efetiva resolvida e sinal "
+            f"CHEGANDO, e a medição está {prontidao.measurement_ready}: "
+            + "; ".join(razoes)
+            + ". Nada foi enviado ao Google. Suba em MANUAL_CPC — que não "
+              "aprende de conversão e por isso não depende desta prova — ou "
+              "conserte a medição antes.")
+
+    if estrategia in ESTRATEGIAS_QUE_EXIGEM_VALOR:
+        # ⚠️ VALOR NÃO É CONVERSÃO, e este sistema não lê
+        # `conversion_action.value_settings` em nenhuma das cinco leituras
+        # GAQL. Sem ele, o único lastro possível é uma regra de valor DECLARADA
+        # no perfil de mensuração. Otimizar pelo valor sem nenhum dos dois é
+        # perseguir um número que pode ser zero em todas as linhas.
+        regra = None if prontidao.perfil is None else prontidao.perfil.regra_de_valor
+        if regra is None or regra.modo == pdm.VALOR_SEM_VALOR:
+            raise LanceSemValor(
+                f"{estrategia} otimiza pelo VALOR de cada conversão, e nenhuma "
+                "regra de valor foi declarada no perfil de mensuração. Este "
+                "sistema também não lê `conversion_action.value_settings`, "
+                "então não há como provar que a ação eleita carrega valor. "
+                "Nada foi enviado ao Google: declare a regra de valor do perfil "
+                "ou suba em MAXIMIZE_CONVERSIONS, que otimiza pela contagem.")

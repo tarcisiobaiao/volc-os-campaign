@@ -52,7 +52,15 @@ from app.config import get_settings
 from app.trafego import (canario, capacidades as cap,
                          contrato_canais as ccan, escopo,
                          inteligencia_lab, ledger as led,
-                         pmax_cockpit, projecao)
+                         pmax_cockpit, projecao,
+                         # ⚠️ No topo, e não dentro da função: desde 02/09/2026
+                         # `/subir` depende dele para RECUSAR, e uma importação
+                         # tardia num caminho de escrita transformaria um erro
+                         # de import num 500 depois de o recibo já existir.
+                         # `prontidao` é domínio puro — não fala com o Google
+                         # nem com o Supabase —, então subir o import não custa
+                         # nada no boot.
+                         prontidao as pr)
 
 log = logging.getLogger("volc.trafego")
 
@@ -3108,6 +3116,63 @@ async def subir(
         # ninguém ter tentado.
         plano_de_mensuracao = _plano_de_ignorancia(
             cid, mid, chave_intencao=chave_intencao)
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # O PORTÃO DO LANCE — a diferença entre um veredito e um portão
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ ATÉ 02/09/2026 ESTA ROTA NÃO TINHA PORTÃO NENHUM, e o defeito foi
+    # medido, não deduzido: `/provar` respondia `smart_bidding_eligible=False`
+    # com cinco bloqueadores, e `/subir` criava a campanha em
+    # `MAXIMIZE_CONVERSIONS` do mesmo jeito. O `estrategia_lance` do corpo
+    # atravessava `Escolha` (logo acima) até o executor sem passar por nada.
+    #
+    # O risco ficava contido só porque a campanha nasce PAUSED por literal em
+    # `comum.py` e o engine não tem função de ativação — duas defesas que
+    # ninguém escolheu como portão de lance, e que a primeira pessoa a
+    # despausar pelo painel do Google desfaz.
+    #
+    # ⚠️ AQUI, E NÃO DEPOIS DO `abrir`. Um recibo aberto para uma chamada que
+    # nunca sai fica `em_voo` órfão, e a camada 4 da v10_03 passa a bloquear o
+    # item até alguém reconciliar uma tentativa que não existiu. É o mesmo
+    # raciocínio que já põe a LEITURA do plano antes do `abrir`.
+    #
+    # ⚠️ E ele NÃO recusa `MANUAL_CPC`. O portão é sobre APRENDER, não sobre
+    # nascer: recusar o padrão da casa porque a conta não mede transformaria
+    # uma conta sem conversão numa conta sem campanha, e o canário pausado
+    # existe justamente para colher veredito de política sem depender de
+    # medição. Uma indisponibilidade do Google continua não virando uma
+    # indisponibilidade do VOLC.
+    portoes_do_lance = pr.avaliar(
+        plano_valido=True,
+        # A campanha ainda não nasceu — este é o instante ANTES do mutate.
+        recibo_registrado=False,
+        # ⚠️ `None` e não a leitura barata: com o plano presente, o ramo do
+        # plano tem precedência em `avaliar`, e passar as duas faria a leitura
+        # de `conversion_action` disputar com as três que decidem o efetivo.
+        metas_da_conta=None,
+        plano_de_mensuracao=plano_de_mensuracao,
+        estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
+    )
+    try:
+        pr.exigir_para_criacao(
+            estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
+            prontidao=portoes_do_lance)
+    except pr.PortaoFechado as exc:
+        # 409, e não 422: o payload é válido: é o MUNDO que não sustenta o que
+        # ele pede. O detalhe carrega os portões inteiros porque a tela precisa
+        # poder mostrar QUAL deles fechou sem repetir a chamada mais lenta do
+        # fluxo.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "estado": "lance_sem_medicao",
+                "mensagem": str(exc),
+                "portoes": portoes_do_lance.portoes(),
+                "bloqueadores": list(portoes_do_lance.activation_blockers),
+                "plano_de_mensuracao": plano_de_mensuracao.para_json(),
+            },
+        ) from exc
 
     repo_do_plano = _repositorio_de_plano()
     if not getattr(repo_do_plano, "habilitado", False):
