@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -16,6 +17,13 @@ from typing import Any
 
 COLETOR_VERSAO = 3
 API_VERSAO = "v25"
+
+# Uma familia e o nome da PERGUNTA que a leitura respondeu. Ela existe porque o
+# `tipo_sinal` do ledger v12_01 e um CHECK fechado em seis valores, e leituras
+# diferentes podem precisar caber sob o mesmo valor sem se confundirem. Formato
+# fechado de proposito: a familia entra na chave de idempotencia, e um separador
+# ou um sinal de igual dentro dela criaria ambiguidade na chave.
+_FAMILIA = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
 
 
 class EstadoColeta(str, Enum):
@@ -119,8 +127,11 @@ class DocumentoColeta:
     erro_codigo: str | None = None
     erro_classe: str | None = None
     erro_detalhe: str | None = None
+    familia: str | None = None
 
     def __post_init__(self) -> None:
+        if self.familia is not None and not _FAMILIA.fullmatch(self.familia):
+            raise ValueError("familia possui formato invalido")
         if self.coletada_em.tzinfo is None:
             raise ValueError("coletada_em precisa de timezone")
         if (self.volc_campaign_id is None) != (self.campaign_id is None):
@@ -149,15 +160,31 @@ class DocumentoColeta:
         desfecho = self.estado.value
         if self.estado is EstadoColeta.FALHOU:
             desfecho = "|".join((desfecho, self.erro_codigo or "", self.erro_classe or ""))
-        chave_material = "|".join((
+        partes = [
             self.customer_id, escopo, self.tipo_sinal, self.bucket,
             str(COLETOR_VERSAO), desfecho,
-        ))
-        chave = hashlib.sha256(chave_material.encode()).hexdigest()
-        payload_hash = hashlib.sha256(_json_canonico(self.payload).encode()).hexdigest()
+        ]
+        if self.familia is not None:
+            # Componente ADICIONAL, nunca posicional: sem familia a chave sai
+            # byte a byte igual a de antes desta linha existir, e o que ja esta
+            # gravado continua deduplicando contra a proxima repeticao. O
+            # prefixo `familia=` desambigua do sufixo de uma falha, cujos dois
+            # componentes sao codigo e classe de excecao — nenhum deles carrega
+            # `=`, entao nenhuma falha consegue se disfarcar de familia.
+            partes.append(f"familia={self.familia}")
+        chave = hashlib.sha256("|".join(partes).encode()).hexdigest()
+        # A familia viaja no payload porque a RPC v12_01 grava `documento->
+        # 'payload'` inteiro e nao tem coluna para ela. O hash cobre o payload
+        # efetivo, entao o recibo continua verificavel campo a campo.
+        payload = (
+            self.payload if self.familia is None
+            else {**self.payload, "familia": self.familia}
+        )
+        payload_hash = hashlib.sha256(_json_canonico(payload).encode()).hexdigest()
         return {
             "chave_idempotencia": chave,
             "tipo_sinal": self.tipo_sinal,
+            "familia": self.familia,
             "estado": self.estado.value,
             "customer_id": self.customer_id,
             "login_customer_id": self.login_customer_id,
@@ -172,7 +199,7 @@ class DocumentoColeta:
             "coletor_versao": COLETOR_VERSAO,
             "quantidade": self.quantidade,
             "request_ids": self.request_ids,
-            "payload": self.payload,
+            "payload": payload,
             "payload_sha256": payload_hash,
             "erro_codigo": self.erro_codigo,
             "erro_classe": self.erro_classe,

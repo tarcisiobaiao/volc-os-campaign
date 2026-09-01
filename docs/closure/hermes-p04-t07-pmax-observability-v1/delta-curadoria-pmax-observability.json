@@ -1,0 +1,113 @@
+{
+  "_comentario": "Delta de curadoria proposto pela lane hermes-p04-t07-pmax-observability-v1. NÃO aplicado: nem ROADMAP-VIVO.json nem curadoria-operacional.json nem graphify-out/** foram tocados nesta árvore. O integrador único aplica e reconstrói o Mapa Vivo UMA vez, depois do merge.",
+  "worker": "hermes-p04-t07-pmax-observability-v1",
+  "branch": "sprint/hermes-p04-t07-pmax-observability-v1",
+  "base_oficial": "812ab0d4ab3091072e695f52db6e117f04aa2ce7",
+  "base_da_lane": "046cbb9",
+  "data": "2026-09-01",
+  "commits": [
+    "7c11530 test(inteligencia): as catorze contraprovas da observabilidade PMax, vermelhas",
+    "feb0b87 feat(inteligencia): a familia da leitura entra no recibo e na chave",
+    "be26ba3 feat(inteligencia): as sete perguntas de Performance Max, read-only",
+    "14894c1 feat(inteligencia): o coletor fotografa o alvo PMax e nomeia o que o ledger recusa",
+    "ae30eb2 feat(cli): --pmax le a estrutura do alvo e imprime resumo sanitizado"
+  ],
+  "gates": {
+    "focais_pmax": "55 passed",
+    "herdados_p09_t14": "139 passed",
+    "suite_backend": "2002 passed, 102 skipped, 0 failed (baseline 1947/102)",
+    "suite_volc_ads": "706 passed, 0 failed (exige o pytest.ini da raiz; com -c backend/pytest.ini a coleta devolve 'no tests ran')",
+    "ausencia_de_mutacao_google": "8 arquivos varridos, nenhum achado; 8 GAQL confirmadas SELECT/read-only",
+    "git_diff_check": "sem achados",
+    "credenciais_no_diff": "9 padrões sobre 2364 linhas adicionadas, nenhum achado",
+    "arvore": "limpa"
+  },
+  "leitura_real": "REAL_READ_NOT_PROVEN",
+  "tarefas_propostas": [
+    {
+      "id": "P04-T07",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "motivo_de_nao_promover": "nenhuma leitura real de conta foi executada, e o CHECK trafego_google_coleta_tipo da v12_01 não admite seis das sete famílias — a persistência delas para com recusa estruturada. Código pronto não fecha entrega material.",
+      "proof_proposto": "As seis consultas do kernel PMax ganharam coletor produtivo (volc_ads/inteligencia_google/pmax.py + executar_alvo_pmax), com sete famílias independentes no contrato canônico, identidade completa, idempotência e CLI one-shot fail-closed. Continua partial por dois motivos nomeados: REAL_READ_NOT_PROVEN, e a lacuna de tipo_sinal que exige a migration v12_03.",
+      "evidencia_a_acrescentar": "2026-09-01 · feb0b87 + be26ba3 + 14894c1 + ae30eb2 (sprint/hermes-p04-t07-pmax-observability-v1): a observabilidade PMax deixou de ser só kernel e ganhou coletor. Sete famílias read-only — campanha, asset groups, vínculos, assets, desempenho por grupo em janela declarada, sinais e a recomendação oficial IMPROVE_PERFORMANCE_MAX_AD_STRENGTH — todas no contrato canônico de volc_ads/inteligencia_google, com recibo, chave de idempotência, erro estruturado e famílias que caem separadamente. 55 provas herméticas contra protos v25 reais, das quais três decidem esta tarefa: test_l_impressions_positivas_nao_provam_prontidao (o bloqueador não fica verde por entrega), test_l_familia_lida_mas_nao_persistida_nao_prova_prontidao (leitura sem recibo não é observabilidade) e test_ampliar_o_vocabulario_basta_para_persistir_tudo (o bloqueio restante é o CHECK do Postgres, não o código). Onze mutações dirigidas mataram provas. Suíte backend: 2002 passed / 102 skipped, contra 1947 / 102 antes. PARTIAL: REAL_READ_NOT_PROVEN e a lacuna do tipo_sinal (v12_03) seguem abertas, e pmax_observabilidade_nao_provada continua fechado por medição, não por esquecimento."
+    }
+  ],
+  "conceitos_propostos": [
+    {
+      "id": "concept:pmax_observability",
+      "state_atual": "partial",
+      "state_proposto": "partial",
+      "evidence_proposta": "O kernel de observabilidade e as consultas de referência existem, e em 2026-09-01 elas ganharam coletor produtivo: sete famílias read-only no contrato canônico de inteligência Google Ads, com identidade completa, idempotência por bucket, erro estruturado e independência entre famílias (volc_ads/inteligencia_google/pmax.py, executar_alvo_pmax, CLI --pmax). Continua partial por dois fatos medidos, não por falta de código: nenhuma leitura real de conta foi executada, e o CHECK trafego_google_coleta_tipo da v12_01 admite só uma das sete famílias — as outras seis param na persistência com recusa nomeada e a migration v12_03 pedida. O portão pmax_observabilidade_nao_provada segue fechado, e avaliar_prontidao_pmax explicita o que o abriria: as sete famílias observadas, gravadas e recentes, avaliadas sobre recibos relidos do ledger — nunca sobre o autoatestado da própria execução."
+    }
+  ],
+  "nos_propostos": [
+    {
+      "id": "google-inteligencia-pmax",
+      "tipo": "modulo",
+      "cluster": "aquisicao",
+      "rotulo": "Coletor de observabilidade PMax",
+      "estado": "ativo",
+      "path": "volc_ads/inteligencia_google/pmax.py",
+      "evidence": "Domínio e aplicação da leitura read-only de Performance Max: oito GAQL somente-SELECT, sete famílias com estados epistêmicos distintos (com_dados, vazio_confirmado, parcial, inelegivel, nao_suportado, falhou), adaptador de ledger que nomeia o que o CHECK da v12_01 recusa em vez de gravar sob um tipo_sinal que responderia por outra pergunta, e avaliação de prontidão com linhagem explícita (execucao_local vs releitura_do_ledger). Sem socket, sem cliente Google, sem Supabase, sem relógio próprio. Campos conferidos contra os descriptors do SDK v25 instalado (google-ads 31.4.0) e contra a doutrina oficial lida em 01/09/2026; asset_group_asset.performance_label é nomeado como não suportado porque a v25 não o expõe."
+    }
+  ],
+  "arestas_propostas": [
+    {
+      "source": "google-inteligencia-pmax",
+      "target": "concept:pmax_observability",
+      "relation": "implementa"
+    },
+    {
+      "source": "google-inteligencia-pmax",
+      "target": "channel:PERFORMANCE_MAX",
+      "relation": "observa"
+    },
+    {
+      "source": "google-inteligencia-pmax",
+      "target": "trafego-google-inteligencia-ledger",
+      "relation": "bloqueado_por_schema",
+      "_nota": "seis das sete famílias não cabem no CHECK trafego_google_coleta_tipo; destravar exige v12_03. Se o nó do ledger tiver outro id na curadoria, o integrador substitui o target."
+    }
+  ],
+  "lacunas_abertas": [
+    {
+      "id": "v12_03_tipo_sinal_pmax",
+      "descricao": "O CHECK trafego_google_coleta_tipo da v12_01 admite seis valores e nenhuma das seis famílias estruturais PMax. Reaproveitar DIAGNOSTICO_ENTREGA faria o recibo PMax responder pelo diagnóstico Search da mesma campanha (backend/app/trafego/diagnostico_persistido.py:567 lê a coleta mais recente desse tipo por volc_campaign_id).",
+      "migration_pedida": "v12_03: ampliar trafego_google_coleta_tipo com PMAX_CAMPANHA, PMAX_ASSET_GROUPS, PMAX_ASSET_GROUP_ASSETS, PMAX_ASSETS, PMAX_DESEMPENHO_ASSET_GROUP, PMAX_SINAIS",
+      "prova_de_que_o_bloqueio_e_o_banco": "test_ampliar_o_vocabulario_basta_para_persistir_tudo — com o vocabulário ampliado por injeção, as mesmas famílias atravessam sem uma linha de código diferente",
+      "guarda_contra_deriva": "test_vocabulario_do_ledger_e_o_da_migration_aplicada compara a constante local com o CHECK do arquivo de migration"
+    },
+    {
+      "id": "leitura_real_pmax",
+      "descricao": "REAL_READ_NOT_PROVEN. Os descriptors do SDK provam que os campos existem no recurso; não provam que o par (recurso, métrica/segmento) é selecionável em GAQL — isso vive no google_ads_field, que só a API responde.",
+      "comando": "backend/.venv/bin/python scripts/coletar_google_inteligencia.py --pmax --customer-id <CID> --volc-campaign-id <VOLC> --campaign-id <GADS> --modo completa"
+    },
+    {
+      "id": "sinais_sem_approval_status",
+      "descricao": "asset_group_signal.approval_status e disapproval_reasons existem na v25 e não são coletados: a consulta de sinais vive em volc_ads/observabilidade_pmax/queries.py, fora do ownership desta lane. Declarados em CAMPOS_NAO_COLETADOS para que a ausência no recibo não seja lida como resposta da API."
+    },
+    {
+      "id": "regra_dos_60_caracteres_sem_doutrina",
+      "descricao": "volc_ads/observabilidade_pmax/coverage.py exige pelo menos uma DESCRIPTION com até 60 caracteres, mas a página oficial de asset-requirements lida em 01/09/2026 não menciona essa regra. Divergência registrada, não corrigida — o arquivo está fora do ownership desta lane."
+    },
+    {
+      "id": "diagnostico_entrega_de_campanha_pmax",
+      "descricao": "executar_alvo (caminho Search de P09-T14) produz DIAGNOSTICO_ENTREGA para alvo PMax, com consultas de keyword_view e ad_group_ad que não se aplicam ao canal. Pré-existente a esta lane; não alterado para não misturar mudança funcional de outra lane com esta entrega."
+    }
+  ],
+  "prontidao_pmax": {
+    "bloqueador": "pmax_observabilidade_nao_provada",
+    "estado": "continua fechado",
+    "motivo": "provada=False é o veredito correto hoje: seis das sete famílias nunca chegam a persistido=True por causa da lacuna v12_03_tipo_sinal_pmax",
+    "funcao_de_dominio_entregue": "volc_ads.inteligencia_google.pmax.avaliar_prontidao_pmax",
+    "exigencias_para_abrir": [
+      "as sete famílias presentes na fotografia",
+      "cada uma em com_dados ou vazio_confirmado",
+      "cada uma com recibo persistido no ledger",
+      "todas dentro de 26h de frescor",
+      "veredito calculado com linhagem releitura_do_ledger, nunca sobre o autoatestado da própria execução"
+    ],
+    "arquivo_nao_tocado": "backend/app/trafego/contrato_canais.py"
+  }
+}

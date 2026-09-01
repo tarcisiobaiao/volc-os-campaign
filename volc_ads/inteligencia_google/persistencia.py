@@ -10,7 +10,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from .alvo import AlvoColeta, ErroAlvoDivergente, conferir_identidade_devolvida
 from .modelo import DocumentoColeta
+
+CAMPOS_INVENTARIO = "volc_campaign_id,campaign_id,customer_id,nome,canal,estado_externo"
 
 
 class ErroPersistenciaGoogle(RuntimeError):
@@ -24,6 +27,9 @@ class CampanhaAtiva:
     customer_id: str
     nome: str
     canal: str
+    # Estado externo observado no inventario. O scan continuo so traz ENABLED;
+    # o caminho one-shot traz o que o alvo for — e precisa dizer qual foi.
+    estado_externo: str | None = None
 
 
 class SupabaseGoogleIntelligence:
@@ -59,8 +65,15 @@ class SupabaseGoogleIntelligence:
         return json.loads(raw) if raw else None
 
     def campanhas_search_ativas(self, customer_id: str | None = None) -> list[CampanhaAtiva]:
+        """Agenda continua. Deliberadamente restrita a ENABLED + SEARCH.
+
+        Nao amplie este filtro para alcancar uma campanha pausada: quem chama
+        aqui e a varredura agendada, e ampliar gasta cota de toda a carteira a
+        cada rodada. Para uma PAUSED nomeada existe ``campanha_por_identidade``.
+        """
+
         parametros = {
-            "select": "volc_campaign_id,campaign_id,customer_id,nome,canal,estado_externo",
+            "select": CAMPOS_INVENTARIO,
             "estado_externo": "eq.ENABLED",
             "canal": "eq.SEARCH",
             "order": "customer_id.asc,campaign_id.asc",
@@ -77,9 +90,56 @@ class SupabaseGoogleIntelligence:
                 customer_id=str(linha["customer_id"]),
                 nome=str(linha["nome"]),
                 canal=str(linha["canal"]),
+                estado_externo=(
+                    None if linha.get("estado_externo") is None
+                    else str(linha["estado_externo"])
+                ),
             )
             for linha in linhas
         ]
+
+    def campanha_por_identidade(self, alvo: AlvoColeta) -> CampanhaAtiva:
+        """Resolve UMA campanha nomeada, em qualquer estado externo.
+
+        Sem filtro de ``estado_externo``: e exatamente isso que torna a PAUSED
+        alcancavel. O que substitui o filtro como protecao e a identidade
+        completa — conta, ID interno e ID externo — mais a reconferencia do que
+        o inventario devolveu. Zero, duas ou uma linha divergente falham fechado
+        antes de qualquer chamada ao Google Ads.
+        """
+
+        if not isinstance(alvo, AlvoColeta):
+            raise ErroAlvoDivergente("alvo precisa ser AlvoColeta")
+        parametros = {
+            "select": CAMPOS_INVENTARIO,
+            "customer_id": f"eq.{alvo.customer_id}",
+            "volc_campaign_id": f"eq.{alvo.volc_campaign_id}",
+            "campaign_id": f"eq.{alvo.campaign_id}",
+            # 2 e suficiente para provar ambiguidade sem paginar a carteira.
+            "limit": "2",
+        }
+        linhas = self._request(
+            "trafego_inventario_campanha?" + urlencode(parametros, safe=".,")
+        )
+        if not linhas:
+            raise ErroAlvoDivergente(
+                "nenhuma campanha no inventario com essa identidade e conta"
+            )
+        if len(linhas) > 1:
+            raise ErroAlvoDivergente(
+                "identidade resolve para mais de uma campanha; recusado"
+            )
+        linha = linhas[0]
+        canal = conferir_identidade_devolvida(alvo, linha)
+        estado_externo = linha.get("estado_externo")
+        return CampanhaAtiva(
+            volc_campaign_id=alvo.volc_campaign_id,
+            campaign_id=alvo.campaign_id,
+            customer_id=alvo.customer_id,
+            nome=str(linha.get("nome") or ""),
+            canal=canal,
+            estado_externo=None if estado_externo is None else str(estado_externo),
+        )
 
     def registrar(self, documento: DocumentoColeta) -> str:
         resposta = self._request(
