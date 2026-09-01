@@ -156,7 +156,17 @@ def principal() -> int:
     dossie = {
         "versao_do_dossie": "canario-v10.2",
         "gerado_por": "scripts/dossie_canario_v10.py",
+        # ⚠️ Este é o SHA do commit ANTERIOR ao que versiona este dossiê — o
+        # gerador roda antes do commit que o carrega, e não existe forma de um
+        # arquivo conter o hash do commit que o contém. `arvore_suja` diz se
+        # havia mudança não commitada no instante da geração: `true` significa
+        # que o código exercitado NÃO é exatamente o de `sha_do_codigo`.
         "sha_do_codigo": os.popen("git -C %s rev-parse HEAD" % RAIZ).read().strip(),
+        "arvore_suja": bool(os.popen("git -C %s status --porcelain" % RAIZ).read().strip()),
+        "sha_nota": (
+            "sha_do_codigo é o HEAD no momento da geração. O commit que versiona "
+            "este arquivo é o seguinte. Se arvore_suja=true, havia mudança local "
+            "não commitada quando o validate_only rodou."),
         "qualificacao_historica": (
             "Este é o primeiro canário COM O LEDGER v10 COMPLETO. O primeiro "
             "canário Google da casa foi em 28/08/2026, campanha 24183717006, "
@@ -233,6 +243,31 @@ def principal() -> int:
             "recibo atômico antes da rede e reconciliação com saída provada",
         ],
     }
+    # ⚠️ AS PROVAS DECLARADAS SÃO GATES, E NÃO CAMPOS DECORATIVOS.
+    #
+    # A primeira versão só falhava quando chave ou marca variavam; o resto era
+    # gravado mesmo `false` e o processo saía 0. Um gerador que escreve
+    # "aprovado_em_todas: false" e devolve sucesso produz um dossiê que parece
+    # aprovado para quem lê o exit code.
+    v = dossie["validate_only"]
+    exigidas = {
+        "aprovado_em_todas": v["aprovado_em_todas"],
+        "chave_estavel": v["chave_estavel"],
+        "marca_estavel": v["marca_estavel"],
+        "carimbos_distintos": v["carimbos_distintos"],
+        "n_operacoes_estavel": v["n_operacoes_estavel"],
+        "blueprint_estavel": v["blueprint_estavel"],
+        "selo_varia_por_carimbo": v["selo_varia_por_carimbo"],
+        "sem_duplicidade": dossie["duplicidade"]["veredito"] == "LIVRE",
+        "nasce_pausada": dossie["status_inicial"] == "PAUSED",
+        "parceiros_desligados": dossie["rede"]["search_partners"] is False,
+        "display_desligado": dossie["rede"]["display_expansion"] is False,
+        "sem_negativas_inventadas": dossie["negative_keywords"] == [],
+    }
+    reprovadas = [k for k, ok in exigidas.items() if not ok]
+    dossie["gates_do_dossie"] = exigidas
+    dossie["gates_reprovados"] = reprovadas
+
     texto = json.dumps(dossie, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     dossie["dossie_id"] = hashlib.sha256(texto.encode("utf-8")).hexdigest()
     SAIDA.write_text(json.dumps(dossie, ensure_ascii=False, indent=2) + "\n",
@@ -242,6 +277,9 @@ def principal() -> int:
     print(f"marca: {marca} · operações: {dossie['operacoes']['total']} · "
           f"duplicidade: {dossie['duplicidade']['veredito']}")
     print(f"→ {SAIDA.relative_to(RAIZ)}")
+    if reprovadas:
+        print("GATES REPROVADOS: " + ", ".join(reprovadas), file=sys.stderr)
+        return 1
     return 0
 
 

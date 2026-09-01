@@ -1,7 +1,9 @@
 {
   "versao_do_dossie": "canario-v10.2",
   "gerado_por": "scripts/dossie_canario_v10.py",
-  "sha_do_codigo": "3e8318ccb0167d421e9dab00248be27bf21b2017",
+  "sha_do_codigo": "186170885f095661c65abc881710be243ea8e81e",
+  "arvore_suja": true,
+  "sha_nota": "sha_do_codigo é o HEAD no momento da geração. O commit que versiona este arquivo é o seguinte. Se arvore_suja=true, havia mudança local não commitada quando o validate_only rodou.",
   "qualificacao_historica": "Este é o primeiro canário COM O LEDGER v10 COMPLETO. O primeiro canário Google da casa foi em 28/08/2026, campanha 24183717006, sem ledger. Chamar este de 'primeiro canário Search' seria falso.",
   "conta": {
     "customer_id": "5478096539",
@@ -144,15 +146,15 @@
   },
   "estrategia_lance": "MANUAL_CPC",
   "status_inicial": "PAUSED",
-  "nome_campanha": "VOLC-CANARY-e0ccfc66d8e4 BR - 20260901_053239 / Maquininha de Cartão / https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+  "nome_campanha": "VOLC-CANARY-e0ccfc66d8e4 BR - 20260901_055217 / Maquininha de Cartão / https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
   "url_final": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
   "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
   "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
   "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
   "selo_do_executor_por_execucao": [
-    "e315b3cd4b24339834f531f279dd995f045ef58191f4b0554453d392d05c1b5b",
-    "2bbe056be57f6641e60c37c5759a972e72de6a4a41943bba14468a798cbc04ad",
-    "47ab62cf197cc14c77c49fd6905f0eb2be3cf236308a3b652d333f2d802878e2"
+    "6b9bddab59be1954b5bddb30067b702c9a6e0b5e4cfd382150fbc1674e912cb1",
+    "3865b6a0c59912302ec6952db1f5658240dbe66ce23d1dbfe546848180e06aa5",
+    "f2794af28180a260470e66c89383491b14e36f18448d758dcbe2732ab6dd99ae"
   ],
   "operacoes": {
     "total": 34,
@@ -178,11 +180,11 @@
     "selo_varia_por_carimbo": true,
     "detalhe": [
       {
-        "carimbo_nome": "20260901_053239",
+        "carimbo_nome": "20260901_055217",
         "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
         "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
         "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
-        "selo_do_executor": "e315b3cd4b24339834f531f279dd995f045ef58191f4b0554453d392d05c1b5b",
+        "selo_do_executor": "6b9bddab59be1954b5bddb30067b702c9a6e0b5e4cfd382150fbc1674e912cb1",
         "n_operacoes": 34,
         "aprovado": true,
         "recusa_local": null,
@@ -190,11 +192,11 @@
         "avisos": []
       },
       {
-        "carimbo_nome": "20260901_053248",
+        "carimbo_nome": "20260901_055225",
         "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
         "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
         "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
-        "selo_do_executor": "2bbe056be57f6641e60c37c5759a972e72de6a4a41943bba14468a798cbc04ad",
+        "selo_do_executor": "3865b6a0c59912302ec6952db1f5658240dbe66ce23d1dbfe546848180e06aa5",
         "n_operacoes": 34,
         "aprovado": true,
         "recusa_local": null,
@@ -202,11 +204,11 @@
         "avisos": []
       },
       {
-        "carimbo_nome": "20260901_053255",
+        "carimbo_nome": "20260901_055233",
         "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
         "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
         "blueprint_sha256": "afea0c3176a137d0b747033077fa298fca26e9b3a5d7371a71e483242ea77f75",
-        "selo_do_executor": "47ab62cf197cc14c77c49fd6905f0eb2be3cf236308a3b652d333f2d802878e2",
+        "selo_do_executor": "f2794af28180a260470e66c89383491b14e36f18448d758dcbe2732ab6dd99ae",
         "n_operacoes": 34,
         "aprovado": true,
         "recusa_local": null,
@@ -382,5 +384,20 @@
     "assets sem marca de terceiro (antes 10 marcas em headlines e snippet)",
     "recibo atômico antes da rede e reconciliação com saída provada"
   ],
-  "dossie_id": "53423888355c34d4aea9af542b2952cc561079500d08814d25d1ef848fc5f4aa"
+  "gates_do_dossie": {
+    "aprovado_em_todas": true,
+    "chave_estavel": true,
+    "marca_estavel": true,
+    "carimbos_distintos": true,
+    "n_operacoes_estavel": true,
+    "blueprint_estavel": true,
+    "selo_varia_por_carimbo": true,
+    "sem_duplicidade": true,
+    "nasce_pausada": true,
+    "parceiros_desligados": true,
+    "display_desligado": true,
+    "sem_negativas_inventadas": true
+  },
+  "gates_reprovados": [],
+  "dossie_id": "80de185ecebfea26d9a8e5ad07622710b84ed2b9e8145aa02404782782e7b88e"
 }
