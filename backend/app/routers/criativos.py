@@ -383,7 +383,14 @@ async def criar_job(
 
     if criado:
         resposta.status_code = 201
-        executor.disparar(str(job["id"]))
+        # ⚠️ `to_thread`, e nao chamada direta. `criar_job` e `async def`, logo roda
+        # NA THREAD DO EVENT LOOP, e `disparar` e sincrono ate o fim do render —
+        # o despachante local declara `sincrono = True` de proposito, porque o
+        # request espera. Mas esperar nao pode significar CONGELAR o loop: com a
+        # chamada direta, nenhuma outra requisicao do processo era atendida
+        # durante toda a producao. E o mesmo defeito que a rota da bancada tinha
+        # e que `criativos_execucao._despachar` ja fechou; aqui ele ficou.
+        await asyncio.to_thread(executor.disparar, str(job["id"]))
     else:
         resposta.status_code = 200
         resposta.headers["X-Criativo-Idempotente"] = "replay"

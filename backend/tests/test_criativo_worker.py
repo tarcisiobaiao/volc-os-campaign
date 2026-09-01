@@ -457,3 +457,59 @@ def test_dois_despachos_concorrentes_nao_penduram_no_lock_do_executor() -> None:
     assert not nao_daemon, (
         f"thread não-daemon de despacho impediria o processo de sair: {nao_daemon}"
     )
+
+
+def test_a_rota_do_estudio_nao_congela_o_event_loop_durante_o_render() -> None:
+    """`sincrono = True` significa "o request espera", não "o servidor para".
+
+    ⚠️ `criar_job` é `async def`, então roda NA THREAD DO EVENT LOOP, e chamava
+    `executor.disparar(...)` — síncrono até o fim do render — direto dali.
+    Durante toda a produção, nenhuma outra requisição do processo era atendida.
+    É o mesmo defeito que `criativos_execucao._despachar` fechou para a bancada;
+    na rota do Estúdio ele tinha ficado.
+
+    A prova não olha o código: ela mede. Enquanto um "disparar" lento roda pela
+    ponte de `to_thread`, uma segunda tarefa do MESMO loop precisa conseguir
+    progredir. Com a chamada direta, ela não progredia até o render acabar.
+    """
+    import asyncio
+    import threading
+    import time
+
+    comecou = threading.Event()
+    liberar = threading.Event()
+
+    def disparar_lento(_job_id: str) -> None:
+        comecou.set()
+        assert liberar.wait(10), "o teste não liberou o disparo"
+
+    async def cenario() -> tuple[bool, float]:
+        marcos: list[float] = []
+
+        async def outra_requisicao() -> None:
+            # Se o loop estiver congelado, esta corrotina não roda.
+            for _ in range(20):
+                marcos.append(time.monotonic())
+                await asyncio.sleep(0.01)
+
+        vizinha = asyncio.create_task(outra_requisicao())
+        despacho = asyncio.create_task(asyncio.to_thread(disparar_lento, "job-1"))
+        # ⚠️ `comecou.wait(5)` aqui BLOQUEARIA o loop — e um teste que congela o
+        # loop para provar que o loop não congela não prova nada. Cede a vez até
+        # a thread do disparo acordar.
+        limite = time.monotonic() + 5
+        while not comecou.is_set() and time.monotonic() < limite:
+            await asyncio.sleep(0.01)
+        assert comecou.is_set(), "o disparo nem começou"
+        # O loop segue vivo com o disparo em voo: espera a vizinha terminar.
+        await asyncio.wait_for(vizinha, timeout=5)
+        atendida = len(marcos) >= 20
+        liberar.set()
+        await despacho
+        return atendida, len(marcos)
+
+    atendida, quantos = asyncio.run(cenario())
+    assert atendida, (
+        f"o event loop ficou preso durante o disparo: a requisição vizinha "
+        f"avançou {quantos} vezes de 20"
+    )
