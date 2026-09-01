@@ -3644,6 +3644,146 @@ def _ler_campanha_na_conta(*, customer_id: str, login_customer_id: str,
     return tuple(encontradas[k] for k in sorted(encontradas))
 
 
+@router.get("/plano-de-mensuracao")
+async def plano_de_mensuracao_vigente(
+    customer_id: str,
+    login_customer_id: str,
+    campaign_id: Optional[str] = None,
+    identidade: Identidade = Depends(exigir_usuario),
+) -> Any:
+    """O plano de mensuração GRAVADO desta conta (ou campanha). Zero rede.
+
+    ## Por que esta rota existe
+
+    Até 02/09/2026 `vigente_da_conta` e `vigente_da_campanha`
+    (`persistencia.py:1157` e `:1177`) tinham **zero chamadores de produção**. A
+    v12_02 foi aplicada em produção com backup e onze contraprovas para que
+    alguém pudesse conferir o que ficou gravado — e não havia por onde conferir.
+    Uma linha que ninguém lê é uma linha que ninguém audita.
+
+    ## O que ela NÃO faz
+
+    ⚠️ Ela **não consulta o Google**. `/provar` gasta até cinco GAQL por clique;
+    esta rota lê uma linha do Supabase e nada mais. É por isso que ela pode
+    ficar aberta a `exigir_usuario` e ser chamada a cada abertura de tela.
+
+    ⚠️ Ela **não abre portão nenhum**. Ela devolve os sete estados calculados
+    sobre o que está GRAVADO — e `campaign_birth`, `observability_ready` e
+    `activation_ready` continuam fechados aqui, porque ler um plano não prova
+    que a campanha nasceu, nem que sabemos reler, nem que ativar foi autorizado.
+
+    ⚠️ E ela **nunca devolve plano de conta que não foi pedida**. O repositório
+    já filtra por `customer_id`; a rota confere de novo, porque um filtro é uma
+    intenção e a conferência é um fato. Se o filtro mudar, ou um índice parcial
+    mentir, a conta errada continua não saindo daqui.
+    """
+    from app.trafego import plano_mensuracao as pm  # noqa: PLC0415
+
+    cid, mid = _no_escopo(customer_id, login_customer_id)
+    repo = _repositorio_de_plano()
+    if not getattr(repo, "habilitado", False):
+        # ⚠️ 503 e não 200 com `plano: null`. "Não configurado" e "não há linha"
+        # são estados diferentes: o primeiro é nosso, o segundo é da conta.
+        raise HTTPException(
+            status_code=503,
+            detail=("O repositório do plano de mensuração não está configurado "
+                    "neste processo. Isto NÃO significa que a conta não tem "
+                    "plano — significa que não há de onde ler."))
+
+    externo = str(campaign_id or "").strip()
+    try:
+        if externo:
+            from app.trafego import sincronizador as sinc  # noqa: PLC0415
+
+            # ⚠️ Por `volc_campaign_id`, e não pelo id externo solto:
+            # `uuid5(gads:<conta>:<campanha>)` carrega a conta DENTRO da
+            # identidade, e é o que impede o id de outra conta de casar aqui.
+            linha = await repo.vigente_da_campanha(
+                sinc.volc_campaign_id(cid, externo))
+        else:
+            linha = await repo.vigente_da_conta(cid)
+    except Exception as exc:  # noqa: BLE001
+        log.exception("leitura do plano vigente da conta %s falhou", cid)
+        raise HTTPException(
+            status_code=503,
+            detail=("Não consegui ler o plano de mensuração gravado "
+                    f"({str(exc)[:200]}). Falhar em ler NÃO é 'não há plano': "
+                    "os dois pedem coisas opostas."),
+        ) from exc
+
+    portoes_sem_linha = pr.avaliar(
+        recibo_registrado=False, metas_da_conta=None, plano_de_mensuracao=None)
+    if not linha:
+        return {
+            "persistido": False,
+            "plano_id": None,
+            "plano": None,
+            "perfil": None,
+            "porque": (
+                "nenhum plano de mensuração foi gravado para esta conta. Isso "
+                "é diferente de um plano que diz que a conta não está pronta: "
+                "aqui ninguém leu ainda."),
+            "portoes": portoes_sem_linha.portoes(),
+            "bloqueadores": list(portoes_sem_linha.activation_blockers),
+        }
+
+    # ⚠️ A CONFERÊNCIA DE CONTA, e ela é sobre a linha, não sobre a consulta.
+    da_linha = str(linha.get("customer_id") or "")
+    if da_linha != cid:
+        log.error("plano vigente veio da conta %s e o pedido era da %s",
+                  da_linha, cid)
+        raise HTTPException(
+            status_code=409,
+            detail=("O plano encontrado não pertence à conta pedida. Nada foi "
+                    "devolvido: entregar o plano de outra conta seria mostrar "
+                    "a medição errada com cara de certa."))
+
+    try:
+        plano = pm.do_json(linha.get("payload") or {})
+    except Exception as exc:  # noqa: BLE001
+        # ⚠️ 409 e não 200 com `plano: null`. A linha EXISTE. `do_json` levanta
+        # quando a eleição gravada diverge da recalculada, e isso é um fato
+        # sobre o acervo que alguém precisa investigar — não uma ausência.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "estado": "plano_ilegivel",
+                "mensagem": (
+                    "a linha gravada existe e não foi possível reconstruí-la: "
+                    f"{str(exc)[:300]}"),
+                "plano_id": linha.get("plano_id"),
+                "impressao": linha.get("impressao"),
+            },
+        ) from exc
+
+    portoes = pr.avaliar(
+        plano_valido=True,
+        # Ler o plano NÃO prova que a campanha nasceu.
+        recibo_registrado=False,
+        metas_da_conta=None,
+        plano_de_mensuracao=plano,
+        # ⚠️ O único lugar do sistema em que isto é `True`, e ele é o único que
+        # tem a linha na mão para provar.
+        plano_persistido=True,
+        perfil=plano.perfil,
+    )
+    return {
+        "persistido": True,
+        "plano_id": linha.get("plano_id"),
+        "impressao": linha.get("impressao"),
+        "lido_em": linha.get("lido_em"),
+        "registrado_em": linha.get("registrado_em"),
+        "campaign_id": linha.get("campaign_id"),
+        "chave_intencao": linha.get("chave_intencao"),
+        "versao": linha.get("versao"),
+        "plano": plano.para_json(),
+        "perfil": None if plano.perfil is None else plano.perfil.json(),
+        "portoes": portoes.portoes(),
+        "bloqueadores": list(portoes.activation_blockers),
+        "bloqueadores_materiais": list(portoes.activation_blockers_materiais),
+    }
+
+
 @router.post("/reconciliar")
 async def reconciliar_lancamento(
     body: ReconciliarEntrada = Body(...),
@@ -4097,18 +4237,52 @@ async def _vincular_plano_reconciliado(
             prefixo = str(marca or "").strip()
             prefixo = prefixo.split("-")[-1] if "-" in prefixo else prefixo
             linhas = await repo.por_prefixo_de_intencao(prefixo)
-            chaves = {str(l.get("chave_intencao") or "") for l in linhas}
-            if len(chaves) > 1:
-                return _sem(
-                    f"a marca casou {len(chaves)} intenções diferentes; "
-                    "escolher uma esconderia a outra. Reconcilie informando "
-                    "`chave_intencao`.")
+            # ⚠️ A ambiguidade é avaliada DEPOIS do recorte de conta, logo
+            # abaixo — e não aqui. Avaliá-la no lote cru recusava por ambíguo
+            # um caso que é inequívoco: duas chaves sob o mesmo prefixo de 12
+            # hex, uma delas de OUTRA conta. A linha alheia nunca foi candidata
+            # desta reconciliação, e deixá-la votar na ambiguidade fazia uma
+            # conta bloquear a reconciliação da outra.
     except Exception as exc:  # noqa: BLE001
         log.exception("leitura do plano para reconciliar falhou")
         return _sem(f"não consegui ler o plano gravado: {str(exc)[:200]}")
 
     if not linhas:
         return _sem("não há plano de mensuração gravado para esta intenção")
+
+    # ⚠️ O PORTÃO DE CONTA, e ele faltava. Adicionado em 02/09/2026.
+    #
+    # Nenhuma das duas leituras acima confere a conta. Para `por_intencao` a
+    # travessia é impossível — a chave é um sha256 que já inclui conta e MCC —,
+    # mas para `por_prefixo_de_intencao` a chave é CORTADA em 12 hex, e a
+    # docstring do próprio repositório diz o que isso significa: "este filtro
+    # NÃO é uma identidade: ele é um candidato". Um candidato de outra conta
+    # chegava até aqui, e a única barreira era um veto por NOME — que só
+    # funciona se a campanha ainda carregar a marca.
+    #
+    # ⚠️ Filtrar, e não recusar o lote inteiro: linhas de outra conta que
+    # tenham casado o prefixo simplesmente não são desta reconciliação. O que
+    # sobra é o que é da conta, e a ambiguidade é reavaliada sobre esse resto.
+    alheias = [l for l in linhas if str(l.get("customer_id") or "") != str(cid)]
+    linhas = [l for l in linhas if str(l.get("customer_id") or "") == str(cid)]
+    if alheias:
+        log.warning("reconciliação descartou %d linha(s) de outra conta ao "
+                    "procurar o plano da conta %s", len(alheias), cid)
+    if not linhas:
+        return _sem(
+            "o plano encontrado não é desta conta. O prefixo da marca são 12 "
+            "hex da chave de intenção, e ele identifica um CANDIDATO — nunca "
+            "uma conta. Reconcilie informando `chave_intencao`.")
+    # A ambiguidade tem de ser reavaliada DEPOIS do recorte: duas chaves que
+    # eram ambíguas no lote cru podem ser uma só dentro da conta certa — e
+    # vice-versa, uma conta pode ter duas intenções sob o mesmo prefixo.
+    if not str(chave_intencao or "").strip():
+        chaves_da_conta = {str(l.get("chave_intencao") or "") for l in linhas}
+        if len(chaves_da_conta) > 1:
+            return _sem(
+                f"a marca casou {len(chaves_da_conta)} intenções diferentes "
+                "nesta conta; escolher uma esconderia a outra. Reconcilie "
+                "informando `chave_intencao`.")
 
     # ⚠️ O VETO PELA MARCA — e ele é veto, nunca chave.
     #
