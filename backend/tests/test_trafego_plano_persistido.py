@@ -1312,6 +1312,57 @@ def test_reconciliar_recusa_campanha_que_nao_carrega_a_marca_da_intencao(monkeyp
     assert repo.do_nascimento() is None
 
 
+def test_o_plano_de_ignorancia_respeita_a_invariante_6_do_schema():
+    """⚠️ Defeito reproduzido contra o schema REAL, depois de aplicar a v12_02.
+
+    O plano de ignorância nasce SEM campanha — é essa a definição dele. A
+    INVARIANTE 6 (`trafego_plano_campanha_inexistente_nao_tem_meta`) exige que,
+    com `campaign_id` nulo, `metas_da_campanha_estado` seja `inelegivel`. O
+    padrão de `meta_efetiva_nao_lida()` é `nao_coletado`, e a linha era recusada
+    com 23514 na prova transacional contra o banco oficial.
+
+    O efeito seria o oposto do que esta função existe para permitir: uma leitura
+    do Google que falhasse impediria a criação da campanha, em vez de deixá-la
+    nascer pausada com os bloqueadores gravados.
+
+    `inelegivel` também é a resposta mais honesta — a campanha não existe, então
+    a pergunta "quais são as metas DELA" não cabe ainda.
+    """
+    plano = trafego._plano_de_ignorancia(
+        canario.CONTA, canario.MCC, chave_intencao="a" * 64)
+    doc = pers.documento_de_plano_de_mensuracao(
+        plano.para_json(), lido_em="2026-09-01T12:00:00+00:00")
+
+    assert doc["campaign_id"] is None
+    assert doc["metas_da_campanha_estado"] == pm.INELEGIVEL, (
+        "invariante 6: campanha que não nasceu não tem meta de campanha")
+    # E ele continua sendo um plano HONESTO de ignorância, não um plano vazio
+    # que passaria por completo.
+    assert doc["completo"] is False
+    assert doc["bloqueadores"], "plano incompleto sem bloqueador nomeado é recusado"
+    assert doc["meta_resolvida"] is False
+
+
+def test_a_leitura_que_falha_ainda_deixa_a_campanha_nascer(monkeypatch):
+    """A campanha nasce pausada mesmo quando o plano não pôde ser lido.
+
+    Recusar aqui transformaria uma indisponibilidade do Google numa
+    indisponibilidade do VOLC. O que impede a ATIVAÇÃO é o plano gravado, com
+    `completo=false` e os bloqueadores nomeados — e ele é gravado.
+    """
+    from volc_ads import subir as sb
+
+    saida, diario, repo = _rodar(
+        monkeypatch, recibo_ou_erro=_recibo_do_executor(sb.ACEITO), plano=None)
+
+    assert not isinstance(saida, HTTPException)
+    assert "MUTATE" in _atos(diario)
+    gravado = repo.gravados[0]
+    assert gravado["completo"] is False
+    assert gravado["bloqueadores"]
+    assert gravado["metas_da_campanha_estado"] == pm.INELEGIVEL
+
+
 def test_do_json_recusa_reconstruir_um_plano_que_mudaria_de_decisao():
     """Recalcular só é honesto se divergir LEVANTAR.
 

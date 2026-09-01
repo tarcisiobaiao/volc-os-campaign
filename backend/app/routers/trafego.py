@@ -3836,8 +3836,35 @@ def _plano_de_ignorancia(cid: str, mid: str, *, chave_intencao: str):
     """
     from app.trafego import plano_mensuracao as pm  # noqa: PLC0415
 
+    # ⚠️ `metas_da_campanha_estado = inelegivel`, e NÃO o `nao_coletado` que
+    # `meta_efetiva_nao_lida()` traz por padrão.
+    #
+    # Defeito reproduzido contra o schema REAL em 01/09/2026, na prova
+    # transacional que se seguiu à aplicação da v12_02: a INVARIANTE 6
+    # (`trafego_plano_campanha_inexistente_nao_tem_meta`) exige `inelegivel`
+    # sempre que `campaign_id` é nulo — e o plano de ignorância nasce sem
+    # campanha, por definição. A linha era recusada com 23514, ou seja: uma
+    # leitura do Google que falhasse impediria a criação da campanha, que é
+    # exatamente o contrário do que esta função existe para permitir.
+    #
+    # `inelegivel` também é a resposta mais honesta: a campanha não existe,
+    # então a pergunta "quais são as metas DELA" não cabe ainda. É a mesma
+    # coisa que `metas_efetivas.ler_meta_efetiva` grava no caminho real — o
+    # padrão de ignorância é que estava dizendo "ninguém consultou" sobre uma
+    # pergunta que sequer podia ser feita.
+    meta = pm.MetaEfetiva(
+        nivel=None,
+        nivel_estado=pm.NAO_COLETADO,
+        metas_da_conta=(),
+        metas_da_conta_estado=pm.NAO_COLETADO,
+        metas_da_campanha=(),
+        metas_da_campanha_estado=pm.INELEGIVEL,
+        causa=("a leitura do plano de mensuração não completou nesta subida. "
+               "Ausência de leitura não é ausência de meta, e a campanha nasce "
+               "pausada com os portões fechados."),
+    )
     return pm.montar(customer_id=cid, login_customer_id=mid,
-                     chave_intencao=chave_intencao)
+                     meta_efetiva=meta, chave_intencao=chave_intencao)
 
 
 async def _gravar_plano(repo: Any, plano: Any, *, lido_em: str,
