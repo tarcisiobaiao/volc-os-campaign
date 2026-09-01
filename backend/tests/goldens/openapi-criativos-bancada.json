@@ -1,0 +1,642 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PedidoDeCancelamento": {
+        "properties": {
+          "motivo": {
+            "maxLength": 280,
+            "minLength": 3,
+            "title": "Motivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "motivo"
+        ],
+        "title": "PedidoDeCancelamento",
+        "type": "object"
+      },
+      "PedidoDeProducao": {
+        "description": "Um pedido de produção local. Não publica, não entrega, não sai daqui.",
+        "properties": {
+          "apoio": {
+            "anyOf": [
+              {
+                "maxLength": 280,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apoio"
+          },
+          "finalidadeSlug": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Finalidadeslug",
+            "type": "string"
+          },
+          "modoSlug": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Modoslug",
+            "type": "string"
+          },
+          "motorSlug": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Motorslug",
+            "type": "string"
+          },
+          "receitaId": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Receitaid",
+            "type": "string"
+          },
+          "seed": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "slots": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Slots",
+            "type": "array"
+          },
+          "titulo": {
+            "maxLength": 280,
+            "minLength": 1,
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receitaId",
+          "motorSlug",
+          "modoSlug",
+          "finalidadeSlug",
+          "seed",
+          "slots",
+          "titulo"
+        ],
+        "title": "PedidoDeProducao",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Pautador Pro API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/criativos/bancada/arquivo/{trabalho_id}/{slot}": {
+      "get": {
+        "description": "Serve o artefato produzido localmente.\n\n⚠️ O caminho vem do RECIBO, nunca da URL. Montar o caminho a partir do que o\ncliente mandou seria travessia de diretório com outro nome.",
+        "operationId": "bancada_arquivo_api_criativos_bancada_arquivo__trabalho_id___slot__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trabalho_id",
+            "required": true,
+            "schema": {
+              "title": "Trabalho Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot",
+            "required": true,
+            "schema": {
+              "title": "Slot",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Bancada Arquivo Api Criativos Bancada Arquivo  Trabalho Id   Slot  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Arquivo",
+        "tags": [
+          "criativos"
+        ]
+      }
+    },
+    "/api/criativos/bancada/motores": {
+      "get": {
+        "description": "Quais motores ESTA máquina consegue rodar agora.\n\n⚠️ Diferente de `criativo_motor`, que diz quais motores existem no patrimônio.\nA tela precisa dos dois: um motor registrado que esta máquina não roda não\npode oferecer botão de produzir.",
+        "operationId": "bancada_motores_api_criativos_bancada_motores_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Motores Api Criativos Bancada Motores Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Motores",
+        "tags": [
+          "criativos"
+        ]
+      }
+    },
+    "/api/criativos/bancada/trabalhos": {
+      "get": {
+        "operationId": "bancada_listar_api_criativos_bancada_trabalhos_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limite",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Listar Api Criativos Bancada Trabalhos Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Listar",
+        "tags": [
+          "criativos"
+        ]
+      },
+      "post": {
+        "operationId": "bancada_criar_api_criativos_bancada_trabalhos_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeProducao"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Criar Api Criativos Bancada Trabalhos Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Criar",
+        "tags": [
+          "criativos"
+        ]
+      }
+    },
+    "/api/criativos/bancada/trabalhos/{trabalho_id}": {
+      "get": {
+        "operationId": "bancada_ler_api_criativos_bancada_trabalhos__trabalho_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trabalho_id",
+            "required": true,
+            "schema": {
+              "title": "Trabalho Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Ler Api Criativos Bancada Trabalhos  Trabalho Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Ler",
+        "tags": [
+          "criativos"
+        ]
+      }
+    },
+    "/api/criativos/bancada/trabalhos/{trabalho_id}/cancelar": {
+      "post": {
+        "operationId": "bancada_cancelar_api_criativos_bancada_trabalhos__trabalho_id__cancelar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trabalho_id",
+            "required": true,
+            "schema": {
+              "title": "Trabalho Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeCancelamento"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Cancelar Api Criativos Bancada Trabalhos  Trabalho Id  Cancelar Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Cancelar",
+        "tags": [
+          "criativos"
+        ]
+      }
+    },
+    "/api/criativos/bancada/trabalhos/{trabalho_id}/linhagem": {
+      "get": {
+        "operationId": "bancada_linhagem_api_criativos_bancada_trabalhos__trabalho_id__linhagem_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trabalho_id",
+            "required": true,
+            "schema": {
+              "title": "Trabalho Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Linhagem Api Criativos Bancada Trabalhos  Trabalho Id  Linhagem Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Linhagem",
+        "tags": [
+          "criativos"
+        ]
+      }
+    },
+    "/api/criativos/bancada/trabalhos/{trabalho_id}/retomar": {
+      "post": {
+        "description": "Cria um trabalho NOVO a partir de um terminal, com linhagem.\n\n⚠️ Não reabre o antigo. Um `failed` guarda o motivo de ter falhado, e reabrir\napagaria essa história. Dois cliques na mesma retomada convergem para o mesmo\ntrabalho novo, porque a chave é derivada da original mais o número da retomada.",
+        "operationId": "bancada_retomar_api_criativos_bancada_trabalhos__trabalho_id__retomar_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trabalho_id",
+            "required": true,
+            "schema": {
+              "title": "Trabalho Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bancada Retomar Api Criativos Bancada Trabalhos  Trabalho Id  Retomar Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bancada Retomar",
+        "tags": [
+          "criativos"
+        ]
+      }
+    }
+  },
+  "x-volc-scope": "/api/criativos/bancada",
+  "x-volc-source": "app.main:app.openapi()"
+}
