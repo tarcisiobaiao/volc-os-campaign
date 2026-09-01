@@ -1948,6 +1948,21 @@ AS $funcao$
                'proxima_acao',  a.proxima_acao,
                'revisao_atual', a.revisao_atual,
                'aposentado_em', a.aposentado_em,
+               -- As relacoes viajam na LISTAGEM, e nao so no detalhe, porque a
+               -- tela tem uma visao de relacoes: buscar o detalhe de cada ativo
+               -- so para desenhar as arestas seria um N+1 que some do plano de
+               -- consulta e reaparece como lentidao sem causa visivel — o mesmo
+               -- motivo pelo qual a v9_01 criou projecoes em vez de montar o
+               -- inventario no cliente. Sao poucas linhas por ativo.
+               'relacoes', (
+                 SELECT coalesce(jsonb_agg(jsonb_build_object(
+                          'relacao_id', r.relacao_id,
+                          'tipo',       r.tipo,
+                          'destino',    coalesce(r.destino_id, r.destino_externo),
+                          'rotulo',     r.destino_rotulo,
+                          'estado',     r.estado) ORDER BY r.relacao_id), '[]'::jsonb)
+                   FROM public.cofre_relacao r
+                  WHERE r.origem_id = a.ativo_id AND r.desfeito_em IS NULL),
                'credencial_registrada', EXISTS (
                  SELECT 1 FROM public.cofre_credencial_referencia c
                   WHERE c.ativo_id = a.ativo_id AND c.aposentado_em IS NULL),

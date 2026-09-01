@@ -682,6 +682,17 @@ BEGIN
     $q$SELECT count(*)::text FROM public.cofre_ativo_revisao
         WHERE ativo_id='asset:facebook-page:piloto' AND operacao IN ('aposentadoria','reativacao')$q$, '2');
 
+  -- A LISTAGEM TRAZ AS ARESTAS, para a visao de relacoes nao precisar de N+1.
+  PERFORM _prova_igual('a listagem traz as relacoes do ativo',
+    $q$SELECT (SELECT a->'relacoes'->0->>'rotulo'
+                 FROM jsonb_array_elements(public.cofre_listar_ativos(NULL,NULL,NULL,NULL,true)->'ativos') a
+                WHERE a->>'ativo_id'='asset:facebook-page:piloto')$q$,
+    'Operacao de conteudo organico');
+  PERFORM _prova_igual('ativo sem relacao traz lista vazia, nao null',
+    $q$SELECT (SELECT a->'relacoes'
+                 FROM jsonb_array_elements(public.cofre_listar_ativos()->'ativos') a
+                WHERE a->>'ativo_id'='asset:website:portal-de-prova')::text$q$, '[]');
+
   -- AS SETE GAVETAS VIAJAM SEMPRE.
   PERFORM _prova_igual('a listagem devolve as 7 gavetas',
     $q$SELECT jsonb_array_length(public.cofre_listar_ativos()->'gavetas')::text$q$, '7');
