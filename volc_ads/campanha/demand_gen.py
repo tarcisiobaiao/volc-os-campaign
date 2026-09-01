@@ -23,7 +23,7 @@ from dataclasses import dataclass, replace
 from importlib import import_module
 
 from ..gads.client import cliente, validar_mutacoes
-from . import comum, conteudo, taxonomia, validacao
+from . import comum, conteudo, plano, taxonomia, validacao
 from .brief import (
     AssetRemotoDemandGen,
     CANAIS_SELECIONAVEIS_DEMAND_GEN,
@@ -850,3 +850,68 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str):
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)
     return r, falha, len(ops)
+
+
+# ── o plano, para quem não pode importar protobuf ──────────────────────────
+
+#: Ausências DECLARADAS de Demand Gen — a MESMA tupla que
+#: `campanha/perfil.py` publica como `DEMAND_GEN.acoes_indisponiveis`.
+NAO_OPERADO: tuple[str, ...] = (
+    "subir: a primeira onda só monta e prova por validate_only. O único "
+    "executor recusa criação real mesmo com selo válido.",
+    "formatos carrossel, vídeo responsivo e produto não entram: cada um "
+    "tem outro contrato de assets e imutáveis.",
+    "intenção textual e exclusão de audiência ficam separadas, mas não "
+    "viram operação até a documentação/SDK local confirmarem o caminho.",
+)
+
+
+def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDeCanal:
+    """Monta offline e projeta o payload em plano serializável.
+
+    `pode_criar` é `False` por ESTRUTURA e não por opinião deste arquivo:
+    `volc_ads/subir.py` tem dois registros — `CONSTRUTORES_POR_CANAL`
+    (SEARCH, DISPLAY) e `PROVADORES_POR_CANAL` (SEARCH, DISPLAY, DEMAND_GEN) —
+    e Demand Gen só aparece no segundo. É esse par de dicionários, e não uma
+    checagem aqui, que faz "a rota produtiva permanecer recusada".
+    """
+    ops, r = construir(cid, brief, login_customer_id=login_customer_id)
+    monta = bool(ops) and r.ok
+    cfg = brief.demand_gen
+    nivel = ("ad_group" if (cfg is not None and cfg.upgraded_targeting)
+             else "campanha")
+    return plano.projetar(
+        canal=CANAL,
+        customer_id=cid,
+        login_customer_id=login_customer_id,
+        operacoes=ops,
+        resultado=r,
+        prontidao=plano.Prontidao(
+            monta=monta,
+            # O BUILDER sabe provar. A rota HTTP acrescenta um portão de
+            # ambiente (`VOLC_DEMAND_GEN_VALIDATE_ONLY`) que não é fato deste
+            # módulo — e afirmá-lo aqui seria este arquivo declarar uma coisa
+            # que quem o lê não pode verificar.
+            pode_provar=True,
+            pode_criar=False,
+            motivo_nao_monta=(
+                "" if monta
+                else "o brief não passou na validação local; veja bloqueios"),
+            motivo_nao_cria=(
+                "Demand Gen prova e não cria, por estrutura: "
+                "`volc_ads/subir.py` lista o canal em PROVADORES_POR_CANAL e "
+                "NÃO em CONSTRUTORES_POR_CANAL, e uma guarda de import derruba "
+                "o módulo se as duas vistas divergirem de `perfil.py`. O único "
+                "executor recusa a criação mesmo com selo de validate_only "
+                "válido"),
+        ),
+        nao_operado=NAO_OPERADO,
+        aberto_por_ausencia=(
+            ()
+            if (cfg is not None and cfg.audiencias)
+            else ("audiência: nenhum critério de audiência foi declarado — o "
+                  "ad group recebe o inventário que os channel controls "
+                  "permitirem, sem restrição de público.",)
+        ),
+        nivel_geo_idioma=nivel,
+    )

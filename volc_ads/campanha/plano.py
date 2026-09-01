@@ -95,6 +95,12 @@ MENSURACAO_INADEQUADA = "MENSURACAO_INADEQUADA"
 SINAL_OBRIGATORIO_AUSENTE = "SINAL_OBRIGATORIO_AUSENTE"
 #: O grafo monta, mas o executor não encaminha este canal ao mutate real.
 CRIACAO_NAO_AUTORIZADA = "CRIACAO_NAO_AUTORIZADA"
+#: Performance Max planeja e serializa offline, e não está no registro do
+#: executor. Código PRÓPRIO, e não `CANAL_SEM_BUILDER`, porque as duas leituras
+#: são opostas para quem opera: "o canal não existe aqui" convida a desistir,
+#: "o canal planeja e a porta ainda não abriu" convida a pedir a porta. O 422
+#: que a rota devolve para `canal=PMAX` precisa carregar ESTE código.
+PMAX_FORA_DO_EXECUTOR = "PMAX_FORA_DO_EXECUTOR"
 #: O grafo monta, mas a prova externa (`validate_only`) não está habilitada.
 PROVA_EXTERNA_NAO_AUTORIZADA = "PROVA_EXTERNA_NAO_AUTORIZADA"
 #: A API respondeu recusando o payload no `validate_only`.
@@ -119,6 +125,7 @@ CODIGOS: tuple[str, ...] = (
     MENSURACAO_INADEQUADA,
     SINAL_OBRIGATORIO_AUSENTE,
     CRIACAO_NAO_AUTORIZADA,
+    PMAX_FORA_DO_EXECUTOR,
     PROVA_EXTERNA_NAO_AUTORIZADA,
     VALIDATE_ONLY_RECUSADO,
     BLOQUEIO_NAO_CLASSIFICADO,
@@ -525,8 +532,27 @@ def _micros(valor: Any) -> int | None:
     return int(valor)
 
 
-def _asset_de_imagem(op_create: Any) -> Asset:
-    """`asset_operation.create` com bytes → Asset do plano."""
+def _asset_do_proto(op_create: Any) -> Asset:
+    """`asset_operation.create` → Asset do plano, de texto OU de imagem.
+
+    Os dois convivem porque Performance Max cria assets de TEXTO como recurso
+    próprio: em PMax não existe anúncio onde a headline pudesse morar inline,
+    então cada título é um `Asset` ligado ao asset group por `AssetGroupAsset`.
+    Nos outros três canais o texto vive dentro do `Ad`, e aqui só passam
+    imagens.
+
+    Em asset de texto, `identidade` É o texto — e isso é deliberado: é ele que
+    a régua de cobertura lê para decidir a regra "ao menos uma DESCRIPTION com
+    60 caracteres ou menos".
+    """
+    texto = getattr(getattr(op_create, "text_asset", None), "text", "") or ""
+    if texto:
+        return Asset(
+            papel="TEXT",
+            origem="texto",
+            identidade=str(texto),
+            bytes_totais=None,
+        )
     dados = bytes(getattr(getattr(op_create, "image_asset", None), "data", b"") or b"")
     return Asset(
         papel=_nome_enum(getattr(op_create, "type_", None)) or "IMAGE",
@@ -656,14 +682,23 @@ def projetar(
     avisos: list[Achado] = []
     for a in getattr(resultado, "achados", ()) or ():
         destino = bloqueios if getattr(a, "severidade", "") == "erro" else avisos
+        # O código DITO pelo builder ganha do adivinhado. A tabela por prefixo
+        # continua existindo para os achados antigos, que são a maioria; ela é
+        # a rede, não a regra.
+        codigo = str(getattr(a, "codigo", "") or "") or classificar(
+            getattr(a, "campo", ""), getattr(a, "motivo", ""))
         destino.append(Achado(
-            codigo=classificar(getattr(a, "campo", ""), getattr(a, "motivo", "")),
+            codigo=codigo,
             campo=str(getattr(a, "campo", "")),
             causa=str(getattr(a, "motivo", "")),
             valor=str(getattr(a, "valor", "")),
         ))
 
-    if not prontidao.monta and prontidao.motivo_nao_monta:
+    # ⚠️ Só quando NADA MAIS explica a ausência do grafo. Um brief reprovado no
+    # conteúdo também produz `monta=False`, e carimbar `CANAL_SEM_BUILDER` ali
+    # mandaria o operador procurar um builder que existe — enquanto o defeito
+    # está numa headline de 34 caracteres, que já está listada logo acima.
+    if not prontidao.monta and prontidao.motivo_nao_monta and not bloqueios:
         bloqueios.append(Achado(
             codigo=CANAL_SEM_BUILDER, campo="canal",
             causa=prontidao.motivo_nao_monta, valor=canal,
@@ -754,7 +789,7 @@ def projetar(
         elif qual == "ad_group_ad_operation":
             anuncios_soltos.append(_anuncio_de(create))
         elif qual == "asset_operation":
-            a = _asset_de_imagem(create)
+            a = _asset_do_proto(create)
             rn = str(getattr(create, "resource_name", "") or "")
             if rn:
                 assets_novos[rn] = a

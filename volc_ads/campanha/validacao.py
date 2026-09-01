@@ -29,6 +29,17 @@ class Achado:
     campo: str
     valor: str
     motivo: str
+    #: Código estável para a máquina, quando o builder sabe nomeá-lo. Vazio é
+    #: o padrão histórico e continua válido: `campanha/plano.py` classifica
+    #: pelo campo nesse caso. O que este campo compra é o direito de o builder
+    #: DIZER o código em vez de deixar uma tabela adivinhar — e adivinhar erra
+    #: exatamente onde dói: "keyword positiva não existe neste canal" é
+    #: `CAMPO_NAO_OPERADO`, mas o nome do campo começa com "keyword" e uma
+    #: tabela por prefixo o leria como texto reprovado.
+    #:
+    #: Os valores válidos são os de `plano.CODIGOS`. Este módulo NÃO importa
+    #: `plano` — seria ciclo, e `validacao` é o mais baixo da pilha.
+    codigo: str = ""
 
 
 @dataclass
@@ -43,11 +54,13 @@ class Resultado:
     def ok(self) -> bool:
         return not self.erros
 
-    def erro(self, campo, valor, motivo):
-        self.achados.append(Achado("erro", campo, str(valor)[:80], motivo))
+    def erro(self, campo, valor, motivo, codigo: str = ""):
+        self.achados.append(
+            Achado("erro", campo, str(valor)[:80], motivo, codigo))
 
-    def aviso(self, campo, valor, motivo):
-        self.achados.append(Achado("aviso", campo, str(valor)[:80], motivo))
+    def aviso(self, campo, valor, motivo, codigo: str = ""):
+        self.achados.append(
+            Achado("aviso", campo, str(valor)[:80], motivo, codigo))
 
     def resumo(self) -> str:
         if not self.achados:

@@ -65,6 +65,24 @@ T_ASSET_BASE, T_ASSET_MAX = -100, 100
 # para a faixa não vazar, não para autorizar 100.
 T_IMAGEM_BASE, T_IMAGEM_MAX = -200, 100
 
+# ── a faixa de ASSET GROUP, que só Performance Max ocupa ───────────────────
+#
+# PMax é o único canal sem `AdGroup`: o degrau intermediário dele é o
+# `AssetGroup`, e o `AssetGroupAsset` precisa referenciá-lo por id temporário
+# no mesmo mutate (a matriz §2 é literal: asset group e os assets que cumprem
+# os mínimos "have to be created in the same bulk mutate request", e
+# "partial failure is not supported").
+#
+# Faixa PRÓPRIA, e não reaproveitamento da de ad group, porque um id temporário
+# é único no request inteiro mesmo entre tipos: se `AssetGroup` e `AdGroup`
+# dividissem a numeração, um payload que um dia carregue os dois teria duas
+# referências válidas apontando para recursos diferentes — e a API não avisaria.
+#
+# 100 é o teto REAL da API (matriz §10: "Asset groups por campanha: 100"),
+# não uma folga arbitrada. O teto do código e o da API coincidirem é o que
+# permite a recusa local dizer a mesma coisa que a remota diria.
+T_ASSET_GROUP_BASE, T_ASSET_GROUP_MAX = -300, 100
+
 
 def temp_asset(cid: str, indice: int) -> str:
     """Resource name temporário do asset de TEXTO nº `indice` (0-based)."""
@@ -113,25 +131,72 @@ def temp_adgroup(cid: str, indice: int) -> str:
     return temp(cid, "adGroups", T_ADGROUP_BASE - indice)
 
 
+def temp_asset_group(cid: str, indice: int) -> str:
+    """Resource name temporário do asset group nº `indice` (0-based)."""
+    if not 0 <= indice < T_ASSET_GROUP_MAX:
+        raise ValueError(
+            f"asset group nº {indice} fora da faixa reservada "
+            f"({T_ASSET_GROUP_MAX} grupos, ids {T_ASSET_GROUP_BASE} a "
+            f"{T_ASSET_GROUP_BASE - T_ASSET_GROUP_MAX + 1}). O teto é o da "
+            f"própria API — 100 asset groups por campanha PMax — e não uma "
+            f"folga deste código: chegar aqui é um payload que a API recusaria "
+            f"com ResourceCountLimitExceededError.RESOURCE_LIMIT."
+        )
+    return temp(cid, "assetGroups", T_ASSET_GROUP_BASE - indice)
+
+
 def carimbo() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def op_budget(c, cid: str, brief: Brief, nome: str):
+def op_budget(c, cid: str, brief: Brief, nome: str, *, periodo: str | None = None):
+    """O orçamento. `periodo` é opcional porque só um canal o exige hoje.
+
+    `matriz-api/performance-max.md` §3 declara `CampaignBudget.period`
+    obrigatório em PMax (`DAILY` para diário, `CUSTOM_PERIOD` para total).
+    Os outros três canais nunca o emitiram e a API os aceitou; passar a emitir
+    para todos mudaria um payload já provado por `validate_only` na conta real
+    — e um canário verde é caro demais para se invalidar de graça.
+
+    Por isso o parâmetro tem padrão `None`: quem precisa declara.
+    """
     o = c.get_type("MutateOperation")
     b = o.campaign_budget_operation.create
     b.resource_name = temp(cid, "campaignBudgets", T_BUDGET)
     b.name = nome
     b.amount_micros = brief.micros(brief.budget_diario)
     b.delivery_method = c.enums.BudgetDeliveryMethodEnum.STANDARD
+    if periodo:
+        b.period = getattr(c.enums.BudgetPeriodEnum, periodo)
     # nunca compartilhado: budget compartilhado impede ajuste por campanha,
-    # que é justamente a alavanca principal do motor de decisão.
+    # que é justamente a alavanca principal do motor de decisão. Em PMax isso
+    # deixa de ser preferência e vira regra da API: "The budget cannot be
+    # shared" (matriz §3, `[alta]`).
     b.explicitly_shared = False
     return o
 
 
+def _selecionar_ramo_vazio(mensagem, rotulo: str) -> None:
+    """Marca um `oneof` sem inventar valor para nenhum campo dele.
+
+    Nasceu inline no ramo de Demand Gen e virou função quando PMax passou a
+    precisar do mesmo gesto em dois lugares. O que ele protege é a diferença
+    entre "escolhi maximizar conversões e não defini meta" e "defini a meta
+    como zero" — que em `target_cpa_micros` são a mesma sequência de bytes se
+    ninguém tomar cuidado.
+    """
+    pb = getattr(mensagem, "_pb", mensagem)
+    selecionar = getattr(pb, "SetInParent", None)
+    if selecionar is None:
+        raise TypeError(
+            f"o SDK local não expõe SetInParent em {rotulo}; não há forma "
+            f"comprovada de selecionar o lance sem inventar um valor de meta"
+        )
+    selecionar()
+
+
 def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: bool = False):
-    """Campanha base. `canal` ∈ SEARCH | DISPLAY | DEMAND_GEN."""
+    """Campanha base. `canal` ∈ SEARCH | DISPLAY | DEMAND_GEN | PERFORMANCE_MAX."""
     o = c.get_type("MutateOperation")
     camp = o.campaign_operation.create
     camp.resource_name = temp(cid, "campaigns", T_CAMPANHA)
@@ -227,6 +292,38 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
                 "target_cpa_micros=0"
             )
         selecionar()
+    elif canal == "PERFORMANCE_MAX":
+        cfg = brief.pmax
+        if cfg is None or cfg.brand_guidelines_enabled is None:
+            raise ValueError(
+                "Performance Max exige `pmax.brand_guidelines_enabled` "
+                "explícito: o campo é IMUTÁVEL na criação (matriz §5/§6) e "
+                "decide se BUSINESS_NAME e LOGO nascem como CampaignAsset ou "
+                "como AssetGroupAsset. Desde a v21 a API liga por default — "
+                "herdar esse default em silêncio move o asset de nível sem "
+                "ninguém escolher, e não há update normal que desfaça"
+            )
+        camp.brand_guidelines_enabled = cfg.brand_guidelines_enabled
+
+        # ⚠️ SEM `network_settings`. PMax é o único canal sem controle de rede
+        # (matriz §13): ele serve em Search, Display, YouTube, Discover, Gmail
+        # e Maps sem opt-out. Emitir o campo aqui, ainda que com os valores
+        # "certos", declararia um controle que não existe.
+        if brief.estrategia_lance == "MAXIMIZE_CONVERSION_VALUE":
+            alvo = camp.maximize_conversion_value
+            if brief.target_roas:
+                alvo.target_roas = float(brief.target_roas)
+            else:
+                _selecionar_ramo_vazio(alvo, "MaximizeConversionValue")
+        else:
+            alvo = camp.maximize_conversions
+            if brief.tcpa:
+                alvo.target_cpa_micros = brief.micros(brief.tcpa)
+            else:
+                # Mesma disciplina de Demand Gen: ausência de meta continua
+                # ausência. `target_cpa_micros = 0` diria que alguém escolheu
+                # zero, e o oneof precisa apenas ser selecionado.
+                _selecionar_ramo_vazio(alvo, "MaximizeConversions")
     else:
         raise ValueError(f"canal desconhecido: {canal}")
 

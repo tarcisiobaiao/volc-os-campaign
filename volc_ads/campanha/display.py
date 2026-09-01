@@ -85,7 +85,7 @@ from __future__ import annotations
 import re
 
 from ..gads.client import cliente, validar_mutacoes
-from . import comum, conteudo, taxonomia, validacao
+from . import comum, conteudo, plano, taxonomia, validacao
 from .brief import Brief, ImagemParaSubir, ImagensDisplay
 
 CANAL = "DISPLAY"
@@ -372,7 +372,8 @@ def _checar_imagens(cid: str, brief: Brief, r: validacao.Resultado) -> ImagensDi
                "`marketing` (1.91:1, mín 600x314) e `marketing_quadrada` "
                "(1:1, mín 300x300) são obrigatórias; `logo` (4:1) e "
                "`logo_quadrado` (1:1) entram quando houver. Uma lista chapada "
-               "não serve: o resource name não carrega a proporção")
+               "não serve: o resource name não carrega a proporção",
+               plano.ASSET_OBRIGATORIO_AUSENTE)
         return ImagensDisplay()
 
     # ⚠️ Só o `str` é resource name. Uma `ImagemParaSubir` é um asset que ainda
@@ -576,3 +577,69 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str):
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)
     return r, falha, len(ops)
+
+
+# ── o plano, para quem não pode importar protobuf ──────────────────────────
+
+#: Ausências DECLARADAS de Display. Esta é a MESMA tupla que
+#: `campanha/perfil.py` publica como `DISPLAY.acoes_indisponiveis`: o perfil a
+#: referencia daqui em vez de repetir o texto, porque a doutrina do índice é
+#: "cada fato é declarado uma vez, no módulo do canal".
+NAO_OPERADO: tuple[str, ...] = (
+    "segmentar: topic, user list, custom audience, custom intent e "
+    "demografia estão confirmados `[alta]` em matriz-api/display.md §7 e "
+    "entram na próxima fatia. Nesta, a campanha nasce em inventário "
+    "aberto, escolhido pelo lance.",
+    "segmentação POSITIVA por placement não entra: a tabela oficial de "
+    "critérios marca placement como positivo ❌, e "
+    "`network_settings.target_content_network` descreve a rede como "
+    "'specified placements'. As duas fontes são oficiais e se contradizem; "
+    "a matriz marca `[NÃO CONFIRMADO]` e a prova por `validate_only` na "
+    "conta real ainda não foi autorizada. Exclusão por placement "
+    "(negativo) é onde as duas concordam e é por onde a próxima fatia "
+    "começa.",
+    "extensões de campanha: sitelink, callout e snippet não são montados — "
+    "a matriz não declara tipo nem field_type para Display, e montá-los "
+    "por analogia com Search subiria asset que não veicula.",
+    "lance manual: `MANUAL_CPC` está `[NÃO CONFIRMADO]` para Display na "
+    "tabela oficial de estratégias, e sem termo de busca ele não teria "
+    "sinal que filtrasse inventário. Só MaxConv (com tCPA dentro).",
+)
+
+
+def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDeCanal:
+    """Monta offline e projeta o payload em plano serializável.
+
+    ⚠️ **Display sem imagem não produz plano feliz.** `_checar_imagens()`
+    recusa `imagens_display is None` com erro, e o erro chega aqui como
+    bloqueio `ASSET_OBRIGATORIO_AUSENTE` com `monta=False`. Isso importa porque
+    o caminho HTTP ainda passa `imagens_display=None` literal
+    (`backend/app/routers/trafego.py`, `ProvarEntrada` sem campo de imagem):
+    enquanto essa rota não for corrigida, é ESTE bloqueio que impede um plano
+    de Display vazio de parecer aprovado.
+    """
+    ops, r = construir(cid, brief, login_customer_id=login_customer_id)
+    monta = bool(ops) and r.ok
+    return plano.projetar(
+        canal=CANAL,
+        customer_id=cid,
+        login_customer_id=login_customer_id,
+        operacoes=ops,
+        resultado=r,
+        prontidao=plano.Prontidao(
+            monta=monta,
+            pode_provar=True,
+            pode_criar=True,
+            motivo_nao_monta=(
+                "" if monta
+                else "o brief não passou na validação local; veja bloqueios"),
+        ),
+        nao_operado=NAO_OPERADO,
+        aberto_por_ausencia=(
+            "audiência e posicionamento: a campanha nasce em INVENTÁRIO "
+            "ABERTO, escolhido pelo lance. Não é 'segmentada com zero "
+            "audiências' — é uma campanha que pode aparecer em qualquer site "
+            "da rede de display.",
+        ),
+        nivel_geo_idioma="campanha",
+    )

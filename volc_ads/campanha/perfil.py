@@ -51,7 +51,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple
 
-from . import demand_gen, display, search
+from . import demand_gen, display, pmax, search
 
 # ═══════════════════════════════════════════════════════════════════════════
 # VOCABULÁRIO
@@ -76,6 +76,17 @@ APELIDOS: Dict[str, str] = {
 
 class CanalSemConstrutor(ValueError):
     """O canal existe no inventário, mas ainda não possui builder seguro."""
+
+
+class CanalSemPlanejador(ValueError):
+    """O canal não sabe produzir um `plano.PlanoDeCanal`.
+
+    Separada de `CanalSemConstrutor` de propósito: um canal pode saber PLANEJAR
+    (montar offline e projetar) sem estar autorizado a PROVAR ou CRIAR — é
+    exatamente o estado de Performance Max hoje. Colapsar as duas exceções
+    faria a rota devolver "não possui builder provável" para um canal que
+    monta, serializa e devolve plano completo.
+    """
 
 
 class OpcaoIndisponivel(ValueError):
@@ -117,6 +128,13 @@ class PerfilDeCanal:
     #: Monta e prova por `validate_only`. Anda junto com o construtor.
     validador: Optional[Callable[..., Any]] = None
 
+    #: Monta offline e devolve `plano.PlanoDeCanal` — a forma serializável que
+    #: a API e a tela consomem. **NÃO anda junto com o construtor**, e essa
+    #: independência é o ponto: Performance Max planeja, serializa e devolve
+    #: plano completo sem estar no registro do executor. Um canal que só sabe
+    #: planejar responde a "o que aconteceria?" sem responder a "posso?".
+    planejador: Optional[Callable[..., Any]] = None
+
     #: Se o único executor pode encaminhar este canal a ``mutar``. Demand Gen
     #: deliberadamente tem builder e validador, mas permanece False nesta onda.
     permite_mutacao_real: bool = False
@@ -149,6 +167,11 @@ class PerfilDeCanal:
     @property
     def sabe_provar(self) -> bool:
         return self.construtor is not None
+
+    @property
+    def sabe_planejar(self) -> bool:
+        """Produz plano serializável offline? Independente de provar/criar."""
+        return self.planejador is not None
 
     @property
     def sabe_criar(self) -> bool:
@@ -204,6 +227,7 @@ SEARCH = PerfilDeCanal(
     ),
     construtor=search.construir,
     validador=search.validar,
+    planejador=search.planejar,
     coletor=_COLETOR,
     recursos_criativos=("texto", "sitelink", "callout", "structured_snippet"),
     lances_permitidos=search.LANCES_PERMITIDOS,
@@ -226,6 +250,7 @@ DISPLAY = PerfilDeCanal(
     ),
     construtor=display.construir,
     validador=display.validar,
+    planejador=display.planejar,
     coletor=_COLETOR,
     recursos_criativos=("texto", "imagem_marketing", "imagem_marketing_quadrada",
                         "logo", "logo_quadrado", "video_youtube"),
@@ -235,26 +260,7 @@ DISPLAY = PerfilDeCanal(
     autocorrige_keywords=False,
     permite_mutacao_real=True,
     acoes_permitidas=("montar", "provar", "subir"),
-    acoes_indisponiveis=(
-        "segmentar: topic, user list, custom audience, custom intent e "
-        "demografia estão confirmados `[alta]` em matriz-api/display.md §7 e "
-        "entram na próxima fatia. Nesta, a campanha nasce em inventário "
-        "aberto, escolhido pelo lance.",
-        "segmentação POSITIVA por placement não entra: a tabela oficial de "
-        "critérios marca placement como positivo ❌, e "
-        "`network_settings.target_content_network` descreve a rede como "
-        "'specified placements'. As duas fontes são oficiais e se contradizem; "
-        "a matriz marca `[NÃO CONFIRMADO]` e a prova por `validate_only` na "
-        "conta real ainda não foi autorizada. Exclusão por placement "
-        "(negativo) é onde as duas concordam e é por onde a próxima fatia "
-        "começa.",
-        "extensões de campanha: sitelink, callout e snippet não são montados — "
-        "a matriz não declara tipo nem field_type para Display, e montá-los "
-        "por analogia com Search subiria asset que não veicula.",
-        "lance manual: `MANUAL_CPC` está `[NÃO CONFIRMADO]` para Display na "
-        "tabela oficial de estratégias, e sem termo de busca ele não teria "
-        "sinal que filtrasse inventário. Só MaxConv (com tCPA dentro).",
-    ),
+    acoes_indisponiveis=display.NAO_OPERADO,
 )
 
 DEMAND_GEN = PerfilDeCanal(
@@ -272,6 +278,7 @@ DEMAND_GEN = PerfilDeCanal(
     ),
     construtor=demand_gen.construir,
     validador=demand_gen.validar,
+    planejador=demand_gen.planejar,
     coletor=_COLETOR,
     recursos_criativos=(
         "texto", "imagem_marketing", "imagem_marketing_quadrada",
@@ -284,28 +291,60 @@ DEMAND_GEN = PerfilDeCanal(
     autocorrige_keywords=False,
     permite_mutacao_real=False,
     acoes_permitidas=("inventariar", "montar", "provar"),
-    acoes_indisponiveis=(
-        "subir: a primeira onda só monta e prova por validate_only. O único "
-        "executor recusa criação real mesmo com selo válido.",
-        "formatos carrossel, vídeo responsivo e produto não entram: cada um "
-        "tem outro contrato de assets e imutáveis.",
-        "intenção textual e exclusão de audiência ficam separadas, mas não "
-        "viram operação até a documentação/SDK local confirmarem o caminho.",
-    ),
+    acoes_indisponiveis=demand_gen.NAO_OPERADO,
 )
 
+#: ⚠️ **`construtor` e `validador` continuam `None`, e isso é uma DECISÃO.**
+#:
+#: `campanha/pmax.py` existe, monta o grafo completo, serializa os protos v25 e
+#: devolve plano — está referenciado abaixo em `planejador`. O que ele NÃO faz é
+#: entrar no registro do executor, e o motivo é mecânico: `sabe_provar` deriva de
+#: `construtor is not None`, `subir.py` compara `PROVADORES_POR_CANAL` com
+#: `canais_que_provam()` **no import** e levanta se divergirem. Preencher
+#: `construtor` aqui sem mexer em `subir.py`, no backend e em `plataforma.py`
+#: derrubaria a rota HTTP dos QUATRO canais — trocar um canal novo por uma
+#: regressão nos três que funcionam.
+#:
+#: `planejador` é o campo que permite dizer a verdade inteira: PMax **planeja** e
+#: não **prova**. Sem ele, a única forma de expressar "este canal faz alguma
+#: coisa" seria ligar o construtor, e a única forma de expressar "não pode
+#: gastar" seria não fazer nada.
 PERFORMANCE_MAX = PerfilDeCanal(
-    canal="PERFORMANCE_MAX",
+    canal=pmax.CANAL,
     rotulo="Performance Max",
     marcador="Pmax",
-    hierarquia=(CAMPANHA, "asset_group", ASSET_DE_ANUNCIO),
-    campos_operados=(),
-    acoes_permitidas=("inventariar",),
-    acoes_indisponiveis=(
-        "criar: não há construtor de campanha para Performance Max — o engine "
-        "levanta exceção. O canal existe no inventário porque a conta pode ter "
-        "campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+    #: PMax é o único canal SEM ad group e SEM anúncio: o Google monta a
+    #: combinação a partir dos assets ligados ao asset group.
+    hierarquia=(CAMPANHA, "asset_group", "asset_group_asset",
+                "asset_group_signal", ASSET_DE_CAMPANHA),
+    campos_operados=(
+        "copy.headlines", "copy.long_headlines", "copy.descriptions",
+        "copy.business_name", "imagens_pmax", "pmax.brand_guidelines_enabled",
+        "pmax.mensuracao", "pmax.sinais", "pmax.negativas",
+        "pmax.nome_do_asset_group", "url_final", "budget_diario", "tcpa",
+        "target_roas", "estrategia_lance",
     ),
+    planejador=pmax.planejar,
+    coletor="volc_ads/observabilidade_pmax (kernel read-only, GAQL v25)",
+    recursos_criativos=(
+        "texto", "imagem_marketing", "imagem_marketing_quadrada",
+        "imagem_marketing_retrato", "logo", "logo_paisagem", "video_youtube",
+    ),
+    lances_permitidos=pmax.LANCES_PERMITIDOS,
+    opcoes=pmax.OPCOES,
+    autocorrige_keywords=False,
+    permite_mutacao_real=False,
+    acoes_permitidas=("inventariar", "planejar"),
+    acoes_indisponiveis=(
+        "criar: Performance Max não está no registro do executor "
+        "(`subir.CONSTRUTORES_POR_CANAL`). O canal existe no inventário porque "
+        "a conta pode ter campanhas dele, e escondê-las seria mentir sobre o "
+        "que está gastando.",
+        "provar por validate_only: o builder monta e serializa offline, e a "
+        "prova externa exige o canal habilitado no executor — mudança "
+        "coordenada em subir.py, backend e plataforma.py. Ver "
+        "`plano.PMAX_FORA_DO_EXECUTOR`.",
+    ) + pmax.NAO_OPERADO,
 )
 
 PERFIS: Dict[str, PerfilDeCanal] = {
@@ -336,6 +375,14 @@ def canais_que_criam() -> Tuple[str, ...]:
 def canais_que_provam() -> Tuple[str, ...]:
     """Canais com builder e validate_only, mesmo sem mutação real."""
     return tuple(sorted(c for c, p in PERFIS.items() if p.sabe_provar))
+
+
+def canais_que_planejam() -> Tuple[str, ...]:
+    """Canais que montam offline e devolvem plano serializável.
+
+    Superconjunto de `canais_que_provam()`: Performance Max planeja e não prova.
+    """
+    return tuple(sorted(c for c, p in PERFIS.items() if p.sabe_planejar))
 
 
 def exigir(canal: Any) -> PerfilDeCanal:
@@ -384,3 +431,41 @@ def montar(canal: Any, cid: str, brief: Any, *, login_customer_id: str, **opcoes
         )
     aceitas = {k: v for k, v in opcoes.items() if k in p.opcoes}
     return p.construtor(cid, brief, login_customer_id=login_customer_id, **aceitas)
+
+
+def exigir_planejador(canal: Any) -> PerfilDeCanal:
+    """O perfil, e ele PRECISA saber montar offline e projetar o plano."""
+    canonico = canonizar(canal)
+    p = PERFIS.get(canonico)
+    if p is None or not p.sabe_planejar:
+        disponiveis = ", ".join(canais_que_planejam())
+        raise CanalSemPlanejador(
+            f"canal {canonico or '(vazio)'} não sabe produzir plano; "
+            f"disponível para planejar: {disponiveis}."
+        )
+    return p
+
+
+def planejar(canal: Any, cid: str, brief: Any, *, login_customer_id: str,
+             **opcoes):
+    """Monta offline e devolve `plano.PlanoDeCanal`. **Não fala com o Google.**
+
+    É o irmão de `montar()` para quem precisa do payload em forma serializável
+    em vez de em protobuf — a rota HTTP e a tela, que não podem importar o SDK.
+
+    A mesma disciplina de opções vale aqui: opção pedida em canal que não a tem
+    é RECUSADA, não ignorada. Ignorar faria o operador marcar uma caixa que não
+    faz nada, e ver um plano que não corresponde ao que ele pediu.
+    """
+    p = exigir_planejador(canal)
+    pedidas = {k for k, v in opcoes.items() if v}
+    faltantes = sorted(pedidas - set(p.opcoes))
+    if faltantes:
+        raise OpcaoIndisponivel(
+            f"{p.rotulo} não tem a opção {', '.join(faltantes)}. "
+            f"Opções deste canal: {', '.join(sorted(p.opcoes)) or '(nenhuma)'}. "
+            f"Desmarque no pedido ou escolha um canal que a tenha."
+        )
+    aceitas = {k: v for k, v in opcoes.items() if k in p.opcoes}
+    return p.planejador(cid, brief, login_customer_id=login_customer_id,
+                        **aceitas)

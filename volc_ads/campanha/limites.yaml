@@ -33,6 +33,19 @@ texto:
   headline_display:      {max_chars: 30,  min_itens: 1,  max_itens: 5}
   description_display:   {max_chars: 90,  min_itens: 1,  max_itens: 5}
   long_headline_display: {max_chars: 90,  min_itens: 1,  max_itens: 1}
+  # ── Performance Max (asset group) ────────────────────────────────────────
+  # Fonte: a ÚNICA tabela oficial e completa de asset requirements dos quatro
+  # canais — `docs/growth-engine/matriz-api/performance-max.md` §4, que
+  # reproduz o guia oficial de asset requirements (`[alta]`, ref `[X8]`,
+  # consulta de 26/08/2026).
+  #
+  # ⚠️ Chaves PRÓPRIAS, e a diferença com Search não é cosmética: o RSA aceita
+  # 3–15 headlines de 30 e 2–4 descriptions de 90; PMax aceita 3–15 headlines
+  # de 30 e **2–5** descriptions de 90, mais 1–5 `LONG_HEADLINE` que o RSA não
+  # tem. Herdar a chave de Search cortaria a quinta descrição em silêncio.
+  headline_pmax:       {max_chars: 30,  min_itens: 3,  max_itens: 15}
+  long_headline_pmax:  {max_chars: 90,  min_itens: 1,  max_itens: 5}
+  description_pmax:    {max_chars: 90,  min_itens: 2,  max_itens: 5}
   sitelink_texto:      {max_chars: 25,  min_itens: 2,  max_itens: 20}
   sitelink_desc:       {max_chars: 35,  min_itens: 0,  max_itens: 2}
   callout:             {max_chars: 25,  min_itens: 2,  max_itens: 20}
@@ -141,3 +154,33 @@ demand_gen_asset:
   marketing_total_max: 20
   logo_min: 1
   logo_max: 5
+
+# ── Performance Max ────────────────────────────────────────────────────────
+# ⚠️ **A CONTAGEM POR PAPEL NÃO MORA AQUI.** Ela já existe, medida e testada,
+# em `volc_ads/observabilidade_pmax/coverage.py::PMAX_FIELD_REQUIREMENTS` —
+# `HEADLINE` 3..15, `LONG_HEADLINE` 1..5, `DESCRIPTION` 2..5, `BUSINESS_NAME`
+# 1..1, `MARKETING_IMAGE` 1..20, `SQUARE_MARKETING_IMAGE` 1..20, `LOGO` 1..5,
+# `PORTRAIT_MARKETING_IMAGE` 0..20, `LANDSCAPE_LOGO` 0..20, `YOUTUBE_VIDEO`
+# 0..15 — junto da regra "ao menos uma DESCRIPTION com ≤60 caracteres".
+#
+# `campanha/pmax.py` IMPORTA aquela tabela. Copiá-la para cá criaria duas
+# verdades sobre o mesmo número: o observador leria a conta com um teto e o
+# construtor montaria o payload com outro, e a divergência só apareceria no
+# dia em que alguém corrigisse um dos dois.
+#
+# O que sobra aqui é o que aquele módulo NÃO declara, porque ele observa o que
+# já existe e não monta nada: comprimento de caractere por campo (acima, em
+# `texto:`), peso de arquivo e os tetos de estrutura da campanha.
+pmax_asset:
+  # 5120 KB, o teto declarado para TODA imagem de PMax
+  # (`matriz-api/performance-max.md` §4, `[alta]`, ref [X8]).
+  peso_maximo_bytes: 5242880
+
+pmax_limites:
+  # `AssetGroup.name`: **Required**, 1–128 caracteres, único dentro da
+  # campanha (§3, fonte P — proto do SDK instalado).
+  nome_asset_group_max_chars: 128
+  # §10, ref [X15] — system limits oficiais.
+  asset_groups_min: 1
+  asset_groups_max: 100
+  negativas_por_campanha_max: 10000

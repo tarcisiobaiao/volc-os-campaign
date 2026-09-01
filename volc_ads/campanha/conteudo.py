@@ -88,6 +88,9 @@ CAMPO_POLITICA = {
     "long_headline_display": "long_headline",
     "headline_demandgen": "headline",
     "description_dgen": "description",
+    "headline_pmax": "headline",
+    "long_headline_pmax": "long_headline",
+    "description_pmax": "description",
     "business_name": "business_name",
 }
 

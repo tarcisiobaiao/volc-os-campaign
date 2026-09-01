@@ -13,11 +13,30 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Sequence
 
 from ..referencia import geo as _geo
 from .criterio import Criterio, de_lista
+
+
+#: Todas as estratégias que ALGUM canal deste engine aceita. Esta lista é o
+#: portão de FORMA — ela impede um valor inventado de entrar no brief; ela
+#: **não** autoriza o valor em canal nenhum.
+#:
+#: ⚠️ Quem autoriza é `<canal>.LANCES_PERMITIDOS`, e cada builder confere a
+#: sua. `MAXIMIZE_CONVERSION_VALUE` entrou aqui por causa de Performance Max
+#: (matriz §7: as duas únicas suportadas são MaxConv e MaxConvValue) — e no
+#: mesmo commit `search.py` passou a conferir a lista dele, porque até então
+#: Search confiava neste portão para barrar o que não sabia montar. Sem essa
+#: conferência, um brief de Search com MaxConvValue cairia no `else` de
+#: `comum.op_campanha` e viraria MaxConv em silêncio.
+ESTRATEGIAS_DE_LANCE: tuple[str, ...] = (
+    "MANUAL_CPC",
+    "MAXIMIZE_CONVERSIONS",
+    "MAXIMIZE_CONVERSION_VALUE",
+)
 
 
 @dataclass
@@ -378,13 +397,20 @@ def _emitir_recibo_asset_aprovado(**campos) -> ReciboAssetAprovado:
 
 
 @dataclass(frozen=True)
-class AssetRemotoDemandGen:
+class AssetRemotoAprovado:
     """Asset já existente, acompanhado dos bytes e do recibo que o aprovou.
 
     ``ImageAsset.data`` não volta da API. Portanto, reusar um resource name sem
     conservar os bytes no catálogo torna impossível conferir hash, mime e
     geometria antes do validate-only. Esta forma exige os dois; ``str`` puro
-    continua aceito em Display por compatibilidade, mas Demand Gen o recusa.
+    continua aceito em Display por compatibilidade, mas Demand Gen e
+    Performance Max o recusam.
+
+    ⚠️ O canal NÃO está no nome desta classe, e está no recibo
+    (``recibo.canal``). Nasceu como ``AssetRemotoDemandGen`` quando havia um
+    canal exigente só; o segundo canal exigente (PMax) tornaria o nome uma
+    mentira. O apelido histórico continua logo abaixo, apontando para este
+    mesmo objeto — nenhum ``isinstance`` existente muda de resposta.
     """
 
     resource_name: str
@@ -409,6 +435,14 @@ class AssetRemotoDemandGen:
     @property
     def linhagem(self) -> Linhagem:
         return self.recibo.linhagem
+
+
+#: Apelido histórico. É o MESMO objeto — `AssetRemotoDemandGen is
+#: AssetRemotoAprovado` — para que todo `isinstance` já escrito (no builder de
+#: Demand Gen, na ponte criativa e nos testes) continue respondendo igual.
+#: Uma segunda classe com os mesmos campos seria um segundo contrato para
+#: divergir.
+AssetRemotoDemandGen = AssetRemotoAprovado
 
 
 @dataclass(frozen=True)
@@ -516,11 +550,12 @@ def _mime_canonico(valor: str | None) -> str | None:
     return _MIME_CANONICO.get(limpo, limpo)
 
 
-def conferir_asset_demand_gen(
-    item: ImagemParaSubir | AssetRemotoDemandGen,
+def conferir_asset_aprovado(
+    item: ImagemParaSubir | AssetRemotoAprovado,
     *,
     papel: str,
     customer_id: str,
+    canal: str,
 ) -> tuple[str, ...]:
     """Reconfere o recibo contra o objeto que entraria no proto.
 
@@ -528,7 +563,19 @@ def conferir_asset_demand_gen(
     ``criativo_ponte`` emite o recibo e injeta seu medidor local, enquanto o
     builder conhece apenas ``brief``. Assim não nasce o ciclo campanha → ponte
     → campanha e a régua continua sendo a que aprovou o asset.
+
+    ``canal`` é parâmetro e não literal desde que existe um segundo canal
+    exigente. Um recibo aprovado para Demand Gen **não** vale em Performance
+    Max: os dois têm tabelas de papel e geometria diferentes, e aceitar o
+    recibo do outro canal seria exatamente o relabeling que este contrato
+    existe para barrar.
     """
+    canal = str(canal or "").strip().upper()
+    if not canal:
+        raise ValueError(
+            "conferir_asset_aprovado exige o canal do slot: sem ele o recibo "
+            "de qualquer canal passaria a valer em qualquer outro"
+        )
     erros: list[str] = []
     if isinstance(item, ImagemParaSubir):
         recibo = item.recibo_aprovacao
@@ -539,7 +586,7 @@ def conferir_asset_demand_gen(
         mime_declarado = item.mime
         largura_declarada = item.largura
         altura_declarada = item.altura
-    elif isinstance(item, AssetRemotoDemandGen):
+    elif isinstance(item, AssetRemotoAprovado):
         recibo = item.recibo
         dados = item.dados
         resource_name = item.resource_name
@@ -560,8 +607,8 @@ def conferir_asset_demand_gen(
         erros.append(
             "recibo não foi emitido pela ponte desta execução ou foi alterado"
         )
-    if recibo.canal != "DEMAND_GEN":
-        erros.append(f"recibo é do canal {recibo.canal!r}, não DEMAND_GEN")
+    if recibo.canal != canal:
+        erros.append(f"recibo é do canal {recibo.canal!r}, não {canal}")
     if recibo.papel != papel:
         erros.append(f"recibo aprovou papel {recibo.papel!r}, não {papel!r}")
     if recibo.nome != nome:
@@ -659,6 +706,18 @@ def conferir_asset_demand_gen(
             erros.append("estado provisório da aprovação diverge do recibo")
 
     return tuple(erros)
+
+
+def conferir_asset_demand_gen(
+    item: ImagemParaSubir | AssetRemotoAprovado,
+    *,
+    papel: str,
+    customer_id: str,
+) -> tuple[str, ...]:
+    """Nome histórico, fixado em ``DEMAND_GEN``. Ver ``conferir_asset_aprovado``."""
+    return conferir_asset_aprovado(
+        item, papel=papel, customer_id=customer_id, canal="DEMAND_GEN"
+    )
 
 
 @dataclass(frozen=True)
@@ -955,6 +1014,368 @@ class ConfiguracaoDemandGen:
             )
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# PERFORMANCE MAX — contrato próprio, jamais o de Search
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# PMax é o único canal sem `AdGroup`, sem `Ad` e sem keyword positiva. Reusar
+# qualquer estrutura de Search aqui não seria atalho: seria montar um payload
+# que a API recusa inteiro, com o erro apontando para o asset group e a causa
+# morando no contrato. Fonte de tudo abaixo:
+# `docs/growth-engine/matriz-api/performance-max.md` (consulta de 26/08/2026,
+# confiança `[alta]`, com as URLs oficiais na última seção).
+
+#: Os papéis de asset de PMax, no vocabulário do `AssetFieldType` da API — que
+#: é diferente do de Display E do de Demand Gen. `LANDSCAPE_LOGO` não existe em
+#: nenhum dos outros dois; `TALL_PORTRAIT_MARKETING_IMAGE` é de Demand Gen e
+#: não existe aqui.
+PAPEIS_DE_ASSET_PMAX: tuple[tuple[str, str], ...] = (
+    ("marketing", "MARKETING_IMAGE"),
+    ("marketing_quadrada", "SQUARE_MARKETING_IMAGE"),
+    ("marketing_retrato", "PORTRAIT_MARKETING_IMAGE"),
+    ("logo", "LOGO"),
+    ("logo_paisagem", "LANDSCAPE_LOGO"),
+)
+
+#: Os dois tipos de `AssetGroupSignal` que este builder emite. O terceiro
+#: (`local_services_id`) existe na API e fica de fora: ele só faz sentido em
+#: Local Services PMax, que tem exigências próprias (§8 da matriz) e não é
+#: desta onda.
+TIPOS_DE_SINAL_PMAX: tuple[str, ...] = ("audience", "search_theme")
+
+
+@dataclass(frozen=True)
+class AcaoDeConversao:
+    """Uma `ConversionAction` lida da conta — não uma declarada pelo chamador.
+
+    `conversoes_ultimos_30d` é tri-estado e a distinção é cara: `None` é
+    "ninguém mediu", `0.0` é "medido e deu zero". Colapsar os dois faria uma
+    conta nunca consultada parecer uma conta sem conversão — e a decisão que
+    depende disso é se PMax pode nascer.
+    """
+
+    resource_name: str
+    nome: str
+    tipo: str
+    categoria: str
+    status: str
+    primaria_para_meta: bool
+    inclui_em_conversoes: bool
+    carrega_valor: bool
+    conversoes_ultimos_30d: float | None = None
+
+    @property
+    def valida_para_lance(self) -> bool:
+        """Serve de sinal para o Smart Bidding de PMax?
+
+        As três condições são da API, não de gosto: uma ação pausada não
+        recebe, uma ação fora de `include_in_conversions_metric` não entra na
+        métrica que o lance otimiza, e uma que não é primária da meta não
+        participa do objetivo da campanha.
+        """
+        return (
+            self.status == "ENABLED"
+            and self.primaria_para_meta
+            and self.inclui_em_conversoes
+        )
+
+    def para_json(self) -> dict:
+        return {
+            "resource_name": self.resource_name,
+            "nome": self.nome,
+            "tipo": self.tipo,
+            "categoria": self.categoria,
+            "status": self.status,
+            "primaria_para_meta": self.primaria_para_meta,
+            "inclui_em_conversoes": self.inclui_em_conversoes,
+            "carrega_valor": self.carrega_valor,
+            "conversoes_ultimos_30d": self.conversoes_ultimos_30d,
+            "valida_para_lance": self.valida_para_lance,
+        }
+
+
+_AUTORIDADE_RECIBO_MENSURACAO = object()
+
+
+@dataclass(frozen=True, init=False)
+class ReciboDeMensuracao:
+    """Prova de que alguém LEU a mensuração da conta. Ninguém se autoatesta.
+
+    ## Por que existe um recibo, e não um booleano
+
+    "PMax sem conversão válida não pode ser criável" só é uma garantia se a
+    resposta vier de uma leitura da conta. Um campo `tem_conversao: bool` no
+    brief seria preenchido por quem monta o brief — isto é, pela mesma parte
+    interessada em subir a campanha. Foi exatamente o defeito de *linhagem
+    autoatestável* que a revisão de Demand Gen encontrou, e a correção é a
+    mesma: fábrica privada + autoridade em memória.
+
+    A autoridade não pretende ser assinatura persistente. Ela impede o
+    autoatestado **dentro deste processo** sem inventar chave secreta nem
+    serviço externo. Persistir e reidratar recibos é outra capacidade, e
+    permanece recusada.
+
+    ## O que ele NÃO faz
+
+    Não decide. Ele transporta o que a conta respondeu — inclusive "respondeu
+    que não há ação nenhuma", que é uma resposta e não uma falha de leitura.
+    Quem transforma isso em bloqueio é o builder.
+    """
+
+    VERSAO: ClassVar[str] = "volc.mensuracao.lida.v1"
+    EMISSOR: ClassVar[str] = "volc_ads.campanha.pmax"
+
+    customer_id: str
+    login_customer_id: str
+    lido_em: str
+    consulta: str
+    coletor: str
+    acoes: tuple[AcaoDeConversao, ...]
+    leitura_id: str
+    _autoridade: object = field(repr=False, compare=False)
+
+    @classmethod
+    def _emitir(
+        cls,
+        *,
+        customer_id: str,
+        login_customer_id: str,
+        lido_em: str,
+        consulta: str,
+        coletor: str,
+        acoes: Sequence["AcaoDeConversao"],
+    ) -> "ReciboDeMensuracao":
+        valores = {
+            "customer_id": str(customer_id or "").strip(),
+            "login_customer_id": str(login_customer_id or "").strip(),
+            "lido_em": str(lido_em or "").strip(),
+            "consulta": str(consulta or "").strip(),
+            "coletor": str(coletor or "").strip(),
+            "acoes": tuple(acoes),
+        }
+        for campo in ("customer_id", "login_customer_id", "lido_em",
+                      "consulta", "coletor"):
+            if not valores[campo]:
+                raise ValueError(f"recibo de mensuração sem {campo}")
+        for a in valores["acoes"]:
+            if not isinstance(a, AcaoDeConversao):
+                raise TypeError(
+                    "recibo de mensuração exige AcaoDeConversao tipada; um "
+                    "dicionário solto não veio de leitura nenhuma"
+                )
+
+        obj = object.__new__(cls)
+        for campo, valor in valores.items():
+            object.__setattr__(obj, campo, valor)
+        object.__setattr__(obj, "_autoridade", _AUTORIDADE_RECIBO_MENSURACAO)
+        object.__setattr__(obj, "leitura_id", obj._impressao_esperada())
+        return obj
+
+    def _material(self) -> dict:
+        return {
+            "versao": self.VERSAO,
+            "emissor": self.EMISSOR,
+            "customer_id": self.customer_id,
+            "login_customer_id": self.login_customer_id,
+            "lido_em": self.lido_em,
+            "consulta": self.consulta,
+            "coletor": self.coletor,
+            "acoes": [a.para_json() for a in self.acoes],
+        }
+
+    def _impressao_esperada(self) -> str:
+        bruto = json.dumps(
+            self._material(), ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(bruto).hexdigest()
+
+    @property
+    def integro(self) -> bool:
+        return (
+            self._autoridade is _AUTORIDADE_RECIBO_MENSURACAO
+            and self.leitura_id == self._impressao_esperada()
+        )
+
+    @property
+    def acoes_validas(self) -> tuple[AcaoDeConversao, ...]:
+        return tuple(a for a in self.acoes if a.valida_para_lance)
+
+    @property
+    def acoes_com_valor(self) -> tuple[AcaoDeConversao, ...]:
+        return tuple(a for a in self.acoes_validas if a.carrega_valor)
+
+    @property
+    def volume_30d(self) -> float | None:
+        """Soma das conversões das ações válidas. `None` se nenhuma foi medida.
+
+        Uma ação medida com `0.0` e outra não medida somam `0.0` *e* deixam de
+        ser a mesma coisa que "nada foi medido" — por isso a soma só existe
+        quando ao menos um número real chegou.
+        """
+        medidos = [
+            a.conversoes_ultimos_30d
+            for a in self.acoes_validas
+            if a.conversoes_ultimos_30d is not None
+        ]
+        return float(sum(medidos)) if medidos else None
+
+    def para_json(self) -> dict:
+        return {
+            "customer_id": self.customer_id,
+            "login_customer_id": self.login_customer_id,
+            "lido_em": self.lido_em,
+            "consulta": self.consulta,
+            "coletor": self.coletor,
+            "leitura_id": self.leitura_id,
+            "integro": self.integro,
+            "acoes": [a.para_json() for a in self.acoes],
+            "volume_30d": self.volume_30d,
+        }
+
+
+def _emitir_recibo_de_mensuracao(**campos) -> ReciboDeMensuracao:
+    """Única fábrica do recibo de mensuração; usada por ``campanha/pmax.py``."""
+    return ReciboDeMensuracao._emitir(**campos)
+
+
+@dataclass(frozen=True)
+class SinalDeAudiencia:
+    """`AssetGroupSignal` — a dica que substitui targeting positivo em PMax.
+
+    ⚠️ Sinal **não se edita**: a matriz §6 registra que todo o `oneof` é
+    imutável e que um sinal "can only be added to or removed from an
+    AssetGroup". Por isso ele é frozen aqui também — um sinal mutável daria a
+    impressão de que dá para corrigir depois.
+    """
+
+    tipo: str
+    valor: str
+
+    def __post_init__(self) -> None:
+        if self.tipo not in TIPOS_DE_SINAL_PMAX:
+            raise ValueError(
+                f"sinal PMax de tipo {self.tipo!r} inválido; esta onda emite "
+                f"{', '.join(TIPOS_DE_SINAL_PMAX)}. `local_services_id` existe "
+                "na API e só serve a Local Services PMax, que tem exigência "
+                "própria de sinal e localização"
+            )
+        if not str(self.valor or "").strip():
+            raise ValueError(
+                f"sinal PMax {self.tipo!r} sem valor: um sinal vazio não é "
+                "'sem preferência', é uma operação que a API recusa"
+            )
+        if self.tipo == "audience" and not re.fullmatch(
+            r"customers/\d+/audiences/\d+", self.valor.strip()
+        ):
+            raise ValueError(
+                f"sinal de audiência {self.valor!r} fora da forma canônica "
+                "`customers/<cid>/audiences/<id>`"
+            )
+
+
+@dataclass(frozen=True)
+class ConfiguracaoPMax:
+    """As escolhas de PMax que não têm default seguro, e a prova de mensuração.
+
+    Como em ``ConfiguracaoDemandGen``, todo campo é obrigatório no construtor —
+    inclusive os que podem ser vazios. ``None`` continua significando "não
+    informado" e ``()`` significa "confirmado vazio".
+    """
+
+    #: **IMUTÁVEL na criação** (matriz §5/§6). Ligado, `BUSINESS_NAME` e `LOGO`
+    #: viram `CampaignAsset`; desligado, ficam no `AssetGroupAsset`. Não existe
+    #: default seguro: desde a v21 a API liga por padrão, e herdar esse padrão
+    #: em silêncio move o asset de nível sem ninguém decidir.
+    brand_guidelines_enabled: bool | None
+
+    #: O recibo da leitura de conversões. ``None`` é ausência de leitura, e o
+    #: builder a trata como bloqueio — nunca como "provavelmente tem".
+    mensuracao: ReciboDeMensuracao | None
+
+    #: `AssetGroupSignal`. PMax padrão funciona sem sinal (matriz §8), então
+    #: ``()`` é uma escolha legítima e ``None`` é a ausência de escolha.
+    sinais: tuple[SinalDeAudiencia, ...] | None
+
+    #: Keyword negativa de campanha — o ÚNICO uso de keyword em PMax.
+    negativas: tuple[str, ...] | None
+
+    #: Nome do asset group. Vazio faz o builder derivar do nome da campanha.
+    nome_do_asset_group: str = ""
+
+    def __post_init__(self) -> None:
+        if self.brand_guidelines_enabled is not None and not isinstance(
+            self.brand_guidelines_enabled, bool
+        ):
+            raise TypeError(
+                "brand_guidelines_enabled precisa ser bool explícito ou None; "
+                "0/1 não substituem uma escolha imutável"
+            )
+        for campo in ("sinais", "negativas"):
+            valor = getattr(self, campo)
+            if valor is not None and not isinstance(valor, tuple):
+                raise TypeError(
+                    f"ConfiguracaoPMax.{campo} precisa ser tupla ou None — "
+                    "lista mutável deixaria trocar a escolha depois do selo"
+                )
+        for s in self.sinais or ():
+            if not isinstance(s, SinalDeAudiencia):
+                raise TypeError(
+                    "ConfiguracaoPMax.sinais exige SinalDeAudiencia tipado"
+                )
+
+
+@dataclass
+class ImagensPMax:
+    """Assets visuais de Performance Max, separados pelo `AssetFieldType` real.
+
+    ⚠️ **`str` puro NÃO é aceito aqui**, diferente de Display. PMax é o canal
+    com a única tabela oficial e completa de requisitos de asset (matriz §4):
+    proporção, dimensão mínima e peso máximo por papel. Aceitar um resource
+    name sem bytes tornaria impossível reconferir qualquer uma dessas coisas
+    antes do `validate_only` — e o erro voltaria da API apontando para o asset
+    group, com a causa no catálogo.
+
+    Vídeo é a exceção declarada: `YOUTUBE_VIDEO` é asset de vídeo do YouTube,
+    não tem bytes para conferir aqui e entra por resource name, como em Display.
+    """
+
+    PAPEIS: ClassVar[tuple[str, ...]] = tuple(
+        papel for papel, _campo in PAPEIS_DE_ASSET_PMAX
+    )
+
+    marketing: list[ImagemParaSubir | AssetRemotoAprovado] = field(
+        default_factory=list)
+    marketing_quadrada: list[ImagemParaSubir | AssetRemotoAprovado] = field(
+        default_factory=list)
+    marketing_retrato: list[ImagemParaSubir | AssetRemotoAprovado] = field(
+        default_factory=list)
+    logo: list[ImagemParaSubir | AssetRemotoAprovado] = field(
+        default_factory=list)
+    logo_paisagem: list[ImagemParaSubir | AssetRemotoAprovado] = field(
+        default_factory=list)
+    #: Resource names de `YOUTUBE_VIDEO` já existentes na conta.
+    videos_youtube: list[str] = field(default_factory=list)
+
+    @property
+    def todas(self) -> list[ImagemParaSubir | AssetRemotoAprovado]:
+        return [item for papel in self.PAPEIS for item in getattr(self, papel)]
+
+    def linhagens(self) -> tuple[Linhagem, ...]:
+        saida: list[Linhagem] = []
+        for papel in self.PAPEIS:
+            for item in getattr(self, papel):
+                if isinstance(item, ImagemParaSubir):
+                    saida.append(
+                        item.linhagem
+                        if item.linhagem is not None
+                        else Linhagem.desconhecida(item.nome, papel)
+                    )
+                elif isinstance(item, AssetRemotoAprovado):
+                    saida.append(item.linhagem)
+        return tuple(saida)
+
+
 # Nome do grupo sintético que `Brief.grupos()` devolve quando o brief não
 # declara sub-intenção nenhuma. Não é rótulo de exibição: é o sinal, legível
 # em um lugar só, de que o ad group deve manter o nome histórico do payload
@@ -1014,6 +1435,12 @@ class Brief:
     budget_diario: float = 10.0
     cpc_inicial: float = 0.12
     tcpa: float | None = None
+    #: Meta de retorno sobre investimento em anúncio, para
+    #: `MAXIMIZE_CONVERSION_VALUE` — hoje só Performance Max. `None` é ausência
+    #: de meta, e nunca 0: um ROAS-alvo zero pediria ao Google que ignorasse o
+    #: valor, que é o oposto de escolher esta estratégia. A razão é `4.0` para
+    #: 400%, como a API a recebe.
+    target_roas: float | None = None
     conversao: str = ""          # nome da ação de conversão (p/ custom goal)
     prefixo_nome: str = "FORGE"
     # Congelado pela prova quando o plano será aprovado em outra requisição.
@@ -1088,10 +1515,21 @@ class Brief:
     # quadrado. Reusar `imagens_display` perderia 4:5/9:16 e aceitaria logo 4:1
     # num campo que o anúncio multi-asset não possui.
     imagens_demand_gen: ImagensDemandGen | None = None
+    # Performance Max tem a única tabela oficial e completa de requisitos de
+    # asset dos quatro canais, com papéis que não existem nos outros
+    # (`LANDSCAPE_LOGO`) e sem os que são de outro (`TALL_PORTRAIT`). Reusar
+    # `imagens_display` ou `imagens_demand_gen` aqui subiria asset em campo que
+    # o asset group não tem.
+    imagens_pmax: ImagensPMax | None = None
 
     # Escolhas imutáveis, channel controls e segmentação de Demand Gen. Vazio
     # nos outros canais; no builder de Demand Gen a ausência é uma recusa.
     demand_gen: ConfiguracaoDemandGen | None = None
+
+    # Brand guidelines (imutável), sinais de audiência, negativas e — o que
+    # separa PMax dos outros três — o recibo da leitura de mensuração. Vazio
+    # nos outros canais; no builder de PMax a ausência é uma recusa.
+    pmax: ConfiguracaoPMax | None = None
 
     # ── marcação de URL ─────────────────────────────────────────────────────
     # O contrato completo vive em `marcacao.py` e é montado por canal; aqui só
@@ -1113,10 +1551,10 @@ class Brief:
             raise ValueError("url_final precisa ser https")
         if self.match_type not in ("EXACT", "PHRASE", "BROAD"):
             raise ValueError(f"match_type {self.match_type!r} inválido")
-        if self.estrategia_lance not in ("MANUAL_CPC", "MAXIMIZE_CONVERSIONS"):
+        if self.estrategia_lance not in ESTRATEGIAS_DE_LANCE:
             raise ValueError(
                 f"estrategia_lance {self.estrategia_lance!r} inválida — "
-                "use MANUAL_CPC ou MAXIMIZE_CONVERSIONS"
+                f"use {' ou '.join(ESTRATEGIAS_DE_LANCE)}"
             )
         # BROAD sem lance automático não tem sinal de leilão que filtre a
         # consulta: o Google recomenda broad apenas com Smart Bidding. Deixar
@@ -1316,11 +1754,19 @@ class Brief:
                 "para um ad group por sub-intenção, mova TODAS para lá e deixe "
                 "`keywords=[]`."
             )
-        if not self.keywords and not self.sub_intencoes and self.demand_gen is None:
+        if (not self.keywords and not self.sub_intencoes
+                and self.demand_gen is None and self.pmax is None):
             raise ValueError(
                 "brief sem keyword: preencha `keywords`/`sub_intencoes` ou o "
-                "contrato `demand_gen`; ausência não escolhe um canal"
+                "contrato `demand_gen`/`pmax`; ausência não escolhe um canal"
             )
+        # ⚠️ PMax entra na isenção pelo motivo OPOSTO ao de Demand Gen, e a
+        # diferença importa. Demand Gen simplesmente não opera keyword. PMax
+        # opera — só que **exclusivamente como negativa** (matriz §8: "brand e
+        # keyword só podem ser negativos"). Sem esta isenção, um brief de PMax
+        # seria obrigado a declarar `keywords` positivas para poder existir, e
+        # o builder de PMax as recusaria na linha seguinte: o contrato de
+        # entrada exigiria exatamente o que o canal proíbe.
 
         vistos: set[str] = set()
         for s in self.sub_intencoes:

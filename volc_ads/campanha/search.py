@@ -40,7 +40,7 @@ from __future__ import annotations
 import dataclasses
 
 from ..gads.client import cliente, validar_mutacoes
-from . import comum, conteudo, criterio, validacao
+from . import comum, conteudo, criterio, plano, validacao
 from .brief import SEM_SUB_INTENCAO, Brief, SubIntencao
 from .criterio import Criterio
 from .taxonomia import MAX_NOME_ADGROUP
@@ -85,8 +85,35 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
     NÃO envie: a validação local é mais barata que a da API, e a da API é
     mais barata que a reprovação de política.
     """
-    c = cliente(login_customer_id)
     r = validacao.Resultado()
+
+    # ⚠️ Search passou a conferir a PRÓPRIA lista em 01/09/2026, e a razão é
+    # que ele deixou de poder confiar no portão do brief.
+    #
+    # `Brief.__post_init__` aceitava exatamente `MANUAL_CPC` e
+    # `MAXIMIZE_CONVERSIONS`, então este módulo nunca precisou checar nada: o
+    # que chegasse aqui já era uma das duas. Performance Max exige
+    # `MAXIMIZE_CONVERSION_VALUE` (matriz-api/performance-max.md §7: as duas
+    # únicas suportadas são MaxConv e MaxConvValue), e abrir o portão do brief
+    # para o terceiro valor abriria para os quatro canais.
+    #
+    # Sem esta conferência, um brief de Search com `MAXIMIZE_CONVERSION_VALUE`
+    # cairia no `else` de `comum.op_campanha` e nasceria em `maximize_conversions`
+    # com `target_cpa_micros = 0` — a campanha subiria, com outra estratégia, e
+    # ninguém saberia. É o descarte em silêncio que este projeto recusa.
+    #
+    # A checagem vem ANTES de `cliente()` de propósito: autenticar para depois
+    # recusar o brief faz um pedido já inválido renovar OAuth e transforma
+    # "Google fora do ar" em "contrato incompleto". Display documenta o mesmo.
+    if brief.estrategia_lance not in LANCES_PERMITIDOS:
+        r.erro("estrategia_lance", brief.estrategia_lance,
+               f"Search não monta {brief.estrategia_lance} — este canal aceita "
+               f"{', '.join(LANCES_PERMITIDOS)}. Maximizar VALOR de conversão "
+               f"é estratégia de Performance Max e exige conversão com valor "
+               f"declarado, que o RSA de busca não carrega")
+        return [], r
+
+    c = cliente(login_customer_id)
     # A porta HTTP congela este valor entre `validate_only` e a escrita. Sem
     # isso, cada reconstrução mudaria os nomes e, portanto, a impressão do
     # protobuf — tornando impossível provar que o escrito é o que foi revisto.
@@ -434,3 +461,55 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = Fa
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)
     return r, falha, len(ops)
+
+
+# ── o plano, para quem não pode importar protobuf ──────────────────────────
+
+#: Ausências DECLARADAS de Search. Search é o canal mais completo do engine, e
+#: por isso a lista é curta — mas curta não é vazia, e o que falta aqui falta
+#: em voz alta.
+NAO_OPERADO: tuple[str, ...] = (
+    "imagem e vídeo: o RSA não tem asset visual. `brief.imagens_display` e "
+    "`imagens_demand_gen` são de outros canais e não têm campo onde entrar.",
+    "audiência, demografia e lista de remarketing como critério: suportadas "
+    "pela API em Search e sem campo no brief. A segmentação desta fatia é "
+    "keyword, geo e idioma.",
+    "MAXIMIZE_CONVERSION_VALUE: é estratégia de Performance Max (e de Shopping) "
+    "e exige conversão com valor declarado; o RSA de busca não carrega valor.",
+)
+
+
+def planejar(cid: str, brief: Brief, *, login_customer_id: str,
+             ai_max: bool = False) -> plano.PlanoDeCanal:
+    """Monta offline e projeta o payload em plano serializável.
+
+    Não fala com o Google: `construir()` só instancia o cliente para usar
+    `get_type`/`enums`, e nenhuma requisição sai daqui. O `validate_only`
+    continua sendo `validar()`, à parte.
+    """
+    ops, r = construir(cid, brief, login_customer_id=login_customer_id,
+                       ai_max=ai_max)
+    monta = bool(ops) and r.ok
+    return plano.projetar(
+        canal=CANAL,
+        customer_id=cid,
+        login_customer_id=login_customer_id,
+        operacoes=ops,
+        resultado=r,
+        prontidao=plano.Prontidao(
+            monta=monta,
+            # Search é o único canal com criação real provada em conta:
+            # campanha `24195821946`, PAUSED, com ledger v10.
+            pode_provar=True,
+            pode_criar=True,
+            motivo_nao_monta=(
+                "" if monta
+                else "o brief não passou na validação local; veja bloqueios"),
+        ),
+        nao_operado=NAO_OPERADO,
+        aberto_por_ausencia=(
+            "audiência: a campanha não declara critério de audiência — ela "
+            "compete por termo de busca, não por perfil de pessoa.",
+        ),
+        nivel_geo_idioma="campanha",
+    )
