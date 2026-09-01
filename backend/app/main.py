@@ -11,6 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.config import get_settings
+# O Cofre e um modulo coeso proprio (dominio/aplicacao/infraestrutura/rotas),
+# e nao mais um arquivo em `app/routers/`. O router mora dentro dele.
+from app.asset_vault import rotas as cofre_ativos
 from app.routers import (
     criativos,
     criativos_execucao,
@@ -187,6 +190,11 @@ trafego_inventario.registrar(app)
 # fronteira separada. Nenhum dos dois publica em plataforma.
 app.include_router(criativos.router)
 app.include_router(criativos_execucao.router)
+# Cofre de Ativos (P03-T06/T10). O router ja nasce fechado: `exigir_admin` esta
+# no nivel do APIRouter, entao uma rota nova adicionada la nao pode nascer
+# aberta por esquecimento — que e o defeito que a camada de identidade veio
+# consertar em 24/08/2026.
+app.include_router(cofre_ativos.router)
 
 
 @app.get("/health")
