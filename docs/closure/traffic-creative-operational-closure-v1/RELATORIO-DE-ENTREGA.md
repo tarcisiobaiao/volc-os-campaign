@@ -99,14 +99,45 @@ errado geraria `CampaignError.REQUIRED_LOGO_ASSET_NOT_LINKED`.
 
 ## 3. O que NÃO foi feito, e por quê
 
-### Nenhum `validate_only` foi executado
-É a lacuna mais importante desta entrega e ela é declarada. A lacuna literal de
-P04-T04 é "a prova contra a conta real", e ela continua aberta.
+### ~~Nenhum `validate_only` foi executado~~ — FOI, e mudou a entrega
 
-O Gemini afirmou que o payload de Display está "**100% completo e suficiente para
-passar pelo `validate_only` em produção real**". **Descartado**: não é
-verificável sem executar, é afirmação sem prova com a forma de prova, e aceitá-la
-fecharia P04-T04 sem o único ato que a fecha.
+**Esta seção foi escrita antes do fato e está corrigida aqui.** O `validate_only`
+foi executado na conta real 547-809-6539 via MCC 601-673-9364, com
+`validate_only=True` e **zero mutate em conta nenhuma**:
+
+| Chamada | Resultado |
+|---|---|
+| `display.validar(...)` | **APROVADO**, 9 operações |
+| `demand_gen.validar(...)` | **APROVADO**, 9 operações (budget ≥ R$ 25,40/dia) |
+| `pmax.ler_mensuracao(...)` | 10 ações de conversão, **0 válidas** |
+| `pmax.validar(...)` | **recusa LOCAL** — o portão de mensuração barrou antes da API |
+
+E a chamada real pagou por si. Ela expôs um defeito que **nenhum teste offline
+pegaria**: Display emitia dois `asset_operation.create` com os **mesmos bytes**
+em papéis diferentes. Offline isso é um payload perfeitamente válido. Só o
+Google, que identifica asset por **conteúdo**, sabia que eram o mesmo asset
+pedindo dois nomes:
+
+```
+asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE
+@mutate_operations[7].asset_operation.create.name
+"Duplicate assets across mutates cannot have different asset level fields."
+```
+mais três `mutate_error.RESOURCE_NOT_FOUND` em cascata no anúncio.
+
+**A suíte estava verde sobre um payload que a API recusa.** Demand Gen já tinha a
+guarda; Display não. Corrigido em `2b6392f`.
+
+A API também devolveu o mínimo de orçamento de Demand Gen em BRL nessa conta —
+`budget_per_day_minimum_micros: 25400000`, ou **R$ 25,40/dia**. Não foi codificado
+em `limites.yaml` porque é por moeda e por conta: cravado em YAML viraria mentira
+na primeira conta em USD, e mentira em arquivo de configuração é pior que
+ausência, porque ninguém desconfia dela.
+
+O Gemini havia afirmado que o payload de Display estava "**100% completo e
+suficiente para passar pelo `validate_only` em produção real**". Foi
+**descartado** como afirmação sem prova com a forma de prova — e a execução real
+mostrou que ele estava **errado**: o payload era recusado.
 
 ### PMax fora do executor
 Decisão registrada em `DECISAO-PMAX-FORA-DO-EXECUTOR.md`. Habilitar o construtor
