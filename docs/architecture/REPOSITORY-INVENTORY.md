@@ -1,6 +1,6 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T08:28:22-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T08:29:33-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
