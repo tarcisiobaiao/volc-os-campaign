@@ -53,6 +53,32 @@ export function custoLegivel(usd: number | null): string {
   return `US$ ${usd.toFixed(4)}`;
 }
 
+/**
+ * O custo de um JOB, dizendo qual dos dois custos está na tela.
+ *
+ * ⚠️ Conserto de um colapso medido (defeito D2 da auditoria P17). `JobPage` e
+ * `home/Linhas` escreviam `custoLegivel(job.custoRealUsd ?? job.custoEstimadoUsd)`.
+ * O `??` funde dois campos que o contrato guarda separados de propósito, e o
+ * resultado é uma frase única — "US$ 0.0300" — que quem lê o cabeçalho de um job
+ * em execução entende como gasto REALIZADO. Estimativa não é apuração: a
+ * primeira é o que o motor achou que ia custar antes de rodar, a segunda é o que
+ * o provider cobrou. Um relatório de COGS montado a partir da leitura errada
+ * fecha bonito e está errado.
+ *
+ * `0` continua sendo zero MEDIDO — o erro simétrico (achatar zero apurado em
+ * "não apurado") seria igualmente falso.
+ */
+export function custoDoJobLegivel(
+  custoRealUsd: number | null,
+  custoEstimadoUsd: number | null,
+): string {
+  if (custoRealUsd !== null) return `${custoLegivel(custoRealUsd)} apurado`;
+  if (custoEstimadoUsd !== null) {
+    return `${custoLegivel(custoEstimadoUsd)} de estimativa; custo real não apurado`;
+  }
+  return 'custo não apurado';
+}
+
 export function instante(iso: string | null): string {
   if (!iso) return NAO_INFORMADO;
   const d = new Date(iso);
@@ -133,6 +159,17 @@ const NOME_DO_ENQUADRAMENTO: Record<string, { palavra: string; descricao: string
   recomposto: {
     palavra: 'Recomposto',
     descricao: 'A cena foi remontada para esta proporção, não apenas cortada.',
+  },
+  /**
+   * ⚠️ O contrato declara este enquadramento desde a v11; o mapa é que estava
+   * sem ele (defeito D4 da auditoria P17), então a tela imprimia o slug cru
+   * `nao_normalizado` com a descrição "que esta versão da tela não conhece" —
+   * rebaixando um MISMATCH DECLARADO a estado desconhecido. A tela conhece.
+   */
+  nao_normalizado: {
+    palavra: 'Fora da dimensão pedida',
+    descricao:
+      'A normalização não pôde rodar. A peça ficou na dimensão que o provider entregou, diferente da pedida.',
   },
 };
 

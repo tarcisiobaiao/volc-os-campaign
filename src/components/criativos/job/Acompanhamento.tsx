@@ -30,8 +30,9 @@ import {
   bytesLegiveis,
 } from '@/components/criativos/comum/formato';
 import { lerProgresso } from '@/components/criativos/job/progresso';
+import { divergenciaDeDimensao } from '@/components/criativos/job/pecas';
 import { DESCRICAO_DA_CONEXAO, type EstadoDaConexao } from '@/hooks/useCriativosEventos';
-import { ROTULO_DO_JOB, type CreativeJob, type EventoDoJob, type Rendition } from '@/types/criativos';
+import { rotuloDoJob, type CreativeJob, type EventoDoJob, type Rendition } from '@/types/criativos';
 
 export const PainelDeFase: React.FC<{
   job: CreativeJob;
@@ -40,7 +41,10 @@ export const PainelDeFase: React.FC<{
   falhaDoFluxo: string | null;
 }> = ({ job, eventos, conexao, falhaDoFluxo }) => {
   const progresso = lerProgresso(eventos);
-  const rotulo = ROTULO_DO_JOB[job.estado];
+  // ⚠️ Consulta TOLERANTE. `ROTULO_DO_JOB[job.estado]` cru devolvia `undefined`
+  // para um estado que esta versão não conhece, e a linha seguinte lia
+  // `.palavra`: um oitavo estado no servidor trocava esta tela por tela branca.
+  const rotulo = rotuloDoJob(job.estado);
 
   return (
     <div className="space-y-3">
@@ -105,6 +109,10 @@ export const PecaDoJob: React.FC<{ peca: Rendition; aoRenovar?: () => void }> = 
   aoRenovar,
 }) => {
   const enquadramento = enquadramentoLegivel(peca.enquadramento);
+  // ⚠️ A divergência precisa de FRASE, não de três números alinhados num `<dl>`
+  // para o operador comparar de cabeça. Uma peça fora da dimensão pedida é fato
+  // operacional, e ninguém faz essa conferência numa lista de quatro formatos.
+  const divergencia = divergenciaDeDimensao(peca);
   return (
     <li className="rounded-md border border-border bg-muted/30 p-3">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
@@ -154,6 +162,13 @@ export const PecaDoJob: React.FC<{ peca: Rendition; aoRenovar?: () => void }> = 
             </div>
           </div>
         </div>
+      )}
+
+      {divergencia && (
+        <p className="mt-3 rounded-md border border-warning/55 bg-warning/[0.08] px-3 py-2 text-[12px] leading-relaxed text-foreground">
+          {divergencia.frase} A peça existe e o arquivo é real; o que não bate é a dimensão. Confira
+          o enquadramento antes de usar em um canal que exige a medida exata.
+        </p>
       )}
 
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-[12px] sm:grid-cols-2">

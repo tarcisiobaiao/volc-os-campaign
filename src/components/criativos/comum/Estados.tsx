@@ -33,8 +33,17 @@ export const Vazio: React.FC<{
 );
 
 export const VazioAposFiltro: React.FC<{
-  /** Quantos existem sem filtro. Sem esse número, "vazio" vira ambíguo. */
-  universo: number;
+  /**
+   * Quantos existem sem filtro. Sem esse número, "vazio" vira ambíguo.
+   *
+   * ⚠️ `null` é "o servidor não informou o total", e NÃO zero. A chamadora
+   * passava `universo ?? 0`, e a caixa escrevia "A biblioteca tem 0 ativos. O
+   * filtro atual é que não alcança nenhum deles." — duas afirmações que se
+   * contradizem, e a primeira falsa (defeito D5 da auditoria P17).
+   * `comum/leitura.ts` documenta que este estado é alcançável com universo
+   * desconhecido, então o caso não é hipotético.
+   */
+  universo: number | null;
   aoLimpar: () => void;
   className?: string;
 }> = ({ universo, aoLimpar, className }) => (
@@ -44,8 +53,18 @@ export const VazioAposFiltro: React.FC<{
       Nenhum ativo casa com este recorte
     </p>
     <p className="mx-auto mt-1 max-w-[52ch] text-pretty text-[13px] leading-relaxed text-muted-foreground">
-      A biblioteca tem {universo} {universo === 1 ? 'ativo' : 'ativos'}. O filtro atual é que não
-      alcança nenhum deles.
+      {universo === null ? (
+        <>
+          O servidor não informou quantos ativos a biblioteca tem, então não dá para afirmar se ela
+          está vazia ou se é este recorte que não alcança nada. O que se sabe é que este recorte não
+          trouxe nenhum.
+        </>
+      ) : (
+        <>
+          A biblioteca tem {universo} {universo === 1 ? 'ativo' : 'ativos'}. O filtro atual é que
+          não alcança nenhum deles.
+        </>
+      )}
     </p>
     <div className="mt-4 flex justify-center">
       <Button variant="outline" size="sm" onClick={aoLimpar}>

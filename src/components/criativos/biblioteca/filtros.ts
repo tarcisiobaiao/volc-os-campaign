@@ -100,3 +100,38 @@ export function contagemLegivel(total: number, universo: number, comFiltro: bool
   }
   return `${total} de ${universo} ${universo === 1 ? 'ativo' : 'ativos'}`;
 }
+
+/**
+ * A contagem que a tela pode AFIRMAR, dado o estado da leitura.
+ *
+ * ⚠️ Conserto do defeito D5 da auditoria P17. A `BibliotecaPage` montava a frase
+ * com `total = consulta.data?.total ?? 0` e ramificava só em `isLoading`. Quando
+ * a leitura FALHAVA, `isLoading` já era falso, `data` era `undefined` e o painel
+ * de filtros escrevia "0 ativos neste recorte" — logo acima do próprio alerta de
+ * erro de leitura. Zero medido e leitura que não chegou viravam a mesma frase, e
+ * é a diferença entre "não existe ativo" e "não sei o que existe".
+ *
+ * Os quatro casos são fatos diferentes com ações diferentes: esperar, tentar de
+ * novo, ler o recorte sabendo que o total não veio, ou confiar no número.
+ */
+export interface SituacaoDaContagem {
+  carregando: boolean;
+  erro: boolean;
+  /** `null` = a leitura não trouxe número nenhum. Nunca substituir por `0`. */
+  total: number | null;
+  /** `null` = o servidor não informou o total sem filtro. */
+  universo: number | null;
+  comFiltro: boolean;
+}
+
+export function fraseDaContagem(s: SituacaoDaContagem): string {
+  if (s.carregando) return 'Contagem ainda não lida.';
+  if (s.erro || s.total === null) {
+    return 'A contagem não chegou nesta leitura. Nenhum ativo desapareceu; o que falhou foi a leitura.';
+  }
+  if (s.universo === null) {
+    const recorte = `${s.total} ${s.total === 1 ? 'ativo neste recorte' : 'ativos neste recorte'}`;
+    return `${recorte}. O servidor não informou o total da biblioteca.`;
+  }
+  return contagemLegivel(s.total, s.universo, s.comFiltro);
+}

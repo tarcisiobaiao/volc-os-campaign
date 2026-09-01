@@ -533,17 +533,15 @@ export const Producao: React.FC<{
                         </span>
                       ),
                     },
-                    {
-                      rotulo: 'Custo apurado',
-                      valor:
-                        trabalho.recibo.custoRealUsd === null ? (
-                          <span className="text-muted-foreground">
-                            Não apurado. Este motor roda nesta máquina e não cobra por peça.
-                          </span>
-                        ) : (
-                          `US$ ${trabalho.recibo.custoRealUsd}`
-                        ),
-                    },
+                    // ⚠️ Havia aqui uma SEGUNDA linha com o rótulo 'Custo
+                    // apurado' — duas entradas com a mesma `key` na `Ficha`, e a
+                    // segunda escrevia, para `custoRealUsd === null`, "Não
+                    // apurado. Este motor roda nesta máquina e não cobra por
+                    // peça." A primeira metade era verdade; a segunda era uma
+                    // afirmação de custo que ninguém apurou. `null` é ausência
+                    // de apuração, e concluir "não cobra" dela é exatamente o
+                    // colapso "custo não apurado → custo zero" que o
+                    // `custoLegivel` acima existe para impedir.
                   ]}
                 />
                 <p className="text-[12px] leading-relaxed text-muted-foreground">

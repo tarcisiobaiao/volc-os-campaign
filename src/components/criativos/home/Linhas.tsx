@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { SeloDaAprovacao, SeloDoJob, SeloDeProcedencia } from '@/components/criativos/comum/Selo';
 import {
-  custoLegivel,
+  custoDoJobLegivel,
   dimensoes,
   instante,
   kindLegivel,
@@ -41,7 +41,9 @@ export const LinhaDeJob: React.FC<{ job: CreativeJob }> = ({ job }) => {
         <span className="mt-0.5 block text-[12px] leading-relaxed text-muted-foreground">
           {kindLegivel(job.tipo)}, {resumo.total} {resumo.total === 1 ? 'peça' : 'peças'}.{' '}
           {frasePecas(resumo)} Motor {job.motor} {job.motorVersao}.{' '}
-          {custoLegivel(job.custoRealUsd ?? job.custoEstimadoUsd)}. Última mudança{' '}
+          {/* Estimativa e apuração não podem sair da mesma frase sem rótulo:
+              o `??` anterior fazia a linha da Home parecer gasto realizado. */}
+          {custoDoJobLegivel(job.custoRealUsd, job.custoEstimadoUsd)}. Última mudança{' '}
           {instante(mudou)}.
         </span>
         {job.procedenciaExecucao === 'observado' && (

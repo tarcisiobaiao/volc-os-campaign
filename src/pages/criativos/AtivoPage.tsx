@@ -157,11 +157,22 @@ const AtivoPage: React.FC = () => {
             itens={[
               { rotulo: 'Motor', valor: `${p.motor} ${p.motorVersao}` },
               {
+                // ⚠️ TRÊS valores, não dois. `procedenciaExecucao` é
+                // `ProcedenciaDeExecucao | null`, e o `null` significa **não
+                // apurada**: o servidor não leu o job desta peça. A versão
+                // anterior ramificava `=== 'observado' ? A : B`, então o `null`
+                // caía no `else` e esta ficha afirmava "Produzida pelo motor do
+                // VOLC O.S." para um ativo cuja autoria ninguém verificou —
+                // exatamente a frase que o comentário do contrato existe para
+                // impedir. Com `strict: false` no tsconfig, o compilador não
+                // acusa; a guarda tem de ser esta.
                 rotulo: 'Execução',
                 valor:
                   asset.procedenciaExecucao === 'observado'
                     ? 'Observada. O VOLC O.S. leu um build externo, não o produziu.'
-                    : 'Produzida pelo motor do VOLC O.S.',
+                    : asset.procedenciaExecucao === 'volc_os'
+                      ? 'Produzida pelo motor do VOLC O.S.'
+                      : 'Não apurada. O servidor não informou quem executou este trabalho, e ausência de resposta não é declaração de autoria.',
               },
               {
                 rotulo: 'Hash do insumo',
