@@ -761,13 +761,33 @@ interface PedidoDeProvaBase {
   certificacoes?: string[];
   url_final?: string | null;
   prefixo_nome?: string;
+  /** Onde o anúncio pode aparecer. Ausente = o backend herda
+   *  `REDE_LEGADA_SEARCH` (parceiros ON), que é como toda campanha da casa
+   *  nasceu até 01/09/2026. O canário EXIGE esta declaração. */
+  rede?: RedeDePesquisa | null;
   /** Devolvido pela prova; não é preenchido manualmente pelo operador. */
   carimbo_nome?: string | null;
-  /** ⚠️ MORTO. Nenhum leitor no engine. Substituído por `meta_conversao_id`,
-   *  cujo destino é `campaign.selective_optimization`. Mantido só para não
-   *  quebrar chamada antiga. */
+  /** ⚠️ MORTO. Nenhum leitor no engine. Substituído por `meta_conversao_id`.
+   *
+   *  O destino que este comentário citava — `campaign.selective_optimization`
+   *  — foi REFUTADO em 01/09/2026 contra o proto v25: aquele campo é de
+   *  campanha de APP, não de Search. Para Search a campanha herda os conversion
+   *  goals da CONTA, e sobrescrever exige `CampaignConversionGoal`, num ato
+   *  separado. Mantido só para não quebrar chamada antiga. */
   conversao?: string;
   ai_max?: boolean;
+}
+
+/** Onde a campanha Search pode aparecer — decisão do operador, não default.
+ *
+ *  ⚠️ Search Partners é inventário DIFERENTE do Google Search: outros sites,
+ *  outro comportamento de consulta, outro CPC efetivo. Até 01/09/2026 ele
+ *  nascia ligado como literal dentro do builder, sem aparecer no plano
+ *  aprovado — e portanto sem entrar na impressão que o humano assina. */
+export interface RedeDePesquisa {
+  google_search: boolean;
+  search_partners: boolean;
+  display_expansion: boolean;
 }
 
 export type CanalLegadoDeProva = Exclude<CanalComManifesto, 'DEMAND_GEN'>;

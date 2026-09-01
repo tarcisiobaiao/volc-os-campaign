@@ -126,12 +126,15 @@ export const PainelDoLancamento: React.FC<Props> = ({
         </Aviso>
       )}
 
-      {/* ⚠️ Este bloco dizia "o cockpit não escolhe a meta" e "nasce em
-          maximize_conversions". As duas frases morreram quando a Mesa de Lance
-          passou a escolher a estratégia. O que continua verdadeiro — e é o que
-          o operador precisa saber — é que a META em si ainda não é aplicada:
-          ligá-la exige `campaign.selective_optimization`, que o engine ainda
-          não escreve. Dizer isso é diferente de deixar ele supor. */}
+      {/* ⚠️ Este bloco já citou `campaign.selective_optimization` como o que
+          faltaria implementar. A premissa foi refutada em 01/09/2026 contra o
+          proto v25: aquele campo é de campanha de APP, não de Search. Repetir
+          isso na tela mandaria o operador — e quem fosse implementar — para o
+          caminho errado com confiança.
+          O que É verdade para Search: a campanha HERDA os conversion goals da
+          CONTA, e sobrescrever exige `CampaignConversionGoal`, que é um ato
+          separado. A meta continua sendo a da conta, e continua não sendo
+          escolhida por campanha. */}
       {meta && (
         <Aviso tom="nota">
           A campanha nasce em{' '}
@@ -141,9 +144,10 @@ export const PainelDoLancamento: React.FC<Props> = ({
           {estrategia === 'MANUAL_CPC'
             ? ' — o lance que você definiu é o lance do leilão.'
             : ' e persegue a ação primária da conta.'}{' '}
-          A meta acima é a da conta; vinculá-la a esta campanha exige{' '}
-          <span className="font-mono">selective_optimization</span>, que o engine
-          ainda não escreve.
+          A meta acima é a da conta, e é ela que esta campanha herda. Trocá-la
+          só nesta campanha exige{' '}
+          <span className="font-mono">CampaignConversionGoal</span> — um ato
+          separado, com aprovação própria, que o engine ainda não escreve.
         </Aviso>
       )}
 

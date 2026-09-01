@@ -1359,10 +1359,25 @@ class ProvarEntrada(BaseModel):
     # O lançamento apenas REGISTRA a regra — não a executa. Quem executa é o
     # motor de gestão, lendo o que o nascimento declarou.
     graduacao_em_conversoes: int = 30
-    # A ação de conversão que esta campanha persegue, quando a conta tem uma.
-    # Destino: `campaign.selective_optimization.conversion_actions`. Enquanto o
-    # engine não escreve esse campo, ela viaja e é exibida — mas não é aplicada,
-    # e a tela diz isso em vez de fingir.
+    # ⚠️ PREMISSA REFUTADA — corrigida em 01/09/2026.
+    #
+    # Este campo dizia que o destino era
+    # `campaign.selective_optimization.conversion_actions`. Está errado, e a
+    # `MATRIZ-COBERTURA-V25.md` já tinha provado contra o proto v25 instalado:
+    # `Campaign.selective_optimization` é campo de campanha de APP, não de
+    # Search. Ligar `meta_conversao_id` naquele destino faria a operação
+    # falhar na conta — e quem lesse só a docstring implementaria o caminho
+    # errado com confiança.
+    #
+    # Para Search, o caminho oficial é outro: uma campanha HERDA os
+    # `CustomerConversionGoal` da conta, e sobrescrever exige
+    # `CampaignConversionGoal` — um recurso separado, com ato separado.
+    #
+    # O campo continua viajando e sendo exibido porque a tela mostra a meta
+    # REAL da conta; ele não é aplicado por campanha, e nada aqui finge que é.
+    # Trocar a meta de uma campanha é um SEGUNDO ato, com validate_only,
+    # aprovação, fingerprint, recibo e rollback próprios — nunca misturado ao
+    # mutate atômico de nascimento.
     meta_conversao_id: Optional[str] = None
     # ── contrato ANTIGO de negativas (mantido, e convertido no adaptador) ───
     negativas_campanha: List[str] = Field(default_factory=list)
@@ -2268,8 +2283,46 @@ async def provar(
             "budget_diario": body.budget_diario,
             "cpc_inicial": body.cpc_inicial,
             "ativacao_incluida": False,
+            # A rede declarada, visível no que o humano aprova. Ausente = o
+            # legado nomeado, e a resposta diz qual é em vez de calar.
+            "rede": (_rede_do_corpo(body).para_json() if _rede_do_corpo(body)
+                     else {"herdada": "REDE_LEGADA_SEARCH",
+                           "google_search": True, "search_partners": True,
+                           "display_expansion": False}),
         },
+        # ⚠️ OS QUATRO PORTÕES, e a razão de existirem separados: "pronto" sem
+        # sujeito virou uma palavra vazia. Nascer com recibo (G0) não diz nada
+        # sobre medir (G1), observar (G2) ou poder ativar (G3). Uma campanha em
+        # lance automático sem sinal chegando otimiza para nada e gasta o
+        # orçamento inteiro aprendendo o que ninguém mediu.
+        "prontidao": _prontidao_do_lancamento(cid, mid, body).para_json(),
     }
+
+
+def _prontidao_do_lancamento(cid: str, mid: str, body: Any):
+    """Avalia G0–G3 com o que foi REALMENTE observado, e nada além.
+
+    ⚠️ A leitura de metas pode falhar, e falhar NÃO é "a conta não tem meta".
+    `metas=None` viaja como INDETERMINADO até o dossiê, porque colapsar os dois
+    faria uma falha de rede parecer uma conta despreparada — e o operador
+    tomaria a decisão oposta à correta.
+    """
+    from app.trafego import contas as ct, prontidao as pr
+
+    try:
+        metas = ct.meta_de_conversao(cid, login_customer_id=mid)
+    except Exception:  # noqa: BLE001
+        log.warning("não consegui ler as metas de conversão da conta %s", cid)
+        metas = None
+    return pr.avaliar(
+        recibo_registrado=False,   # /provar não abre recibo, e não finge que abre
+        metas_da_conta=metas,
+        # Nenhum dos dois foi provado em operação real. Declarar `True` aqui
+        # seria exatamente a mentira que o módulo existe para impedir.
+        data_manager_operante=False,
+        coleta_pos_criacao_provada=False,
+        estrategia_lance=str(getattr(body, "estrategia_lance", "MANUAL_CPC")),
+    )
 
 
 def _copy_do_corpo(c: Optional[CopyEntrada]):
