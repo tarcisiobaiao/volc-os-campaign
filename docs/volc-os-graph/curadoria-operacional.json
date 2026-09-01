@@ -1066,7 +1066,7 @@
       "cluster": "acquisition",
       "state": "partial",
       "summary": "Leitura de asset groups, cobertura e qualidade de assets, resultados e riscos de PMax antes de liberar criação ou atuação.",
-      "evidence": "O kernel de observabilidade e as consultas de referência existem; em 09e70e1 + d80b17d, o portão `pmax_observabilidade_nao_provada` tornou-se independente da ausência do executor e sobrevive ao futuro registro do construtor, sem contaminar outros canais. Continua partial porque não há coletor produtivo nem leitura real de asset groups, assets e cobertura PMax."
+      "evidence": "O kernel, o portão independente `pmax_observabilidade_nao_provada` e o coletor produtivo existem. Em 2d1895d, uma leitura real somente leitura na Google Ads API v25 corrigiu a topologia de login, consultou 13/13 contas acessíveis, encontrou 12 campanhas PMax em uma conta e escolheu um alvo PAUSED. As sete famílias foram medidas separadamente: campanha=1, asset groups=4, vínculos=137, assets=123, desempenho=4, sinais=4 e recomendações de força=vazio_confirmado(0). FieldService + GAQL removeram campos incompatíveis e adjudicaram `asset_group_asset.performance_label` como NOT_SUPPORTED_IN_V25. Continua partial: a v12_03 ainda não amplia o CHECK do ledger v12_01 para seis famílias estruturais, portanto não há fotografia PMax completa persistida e relida no Supabase oficial; o portão permanece fechado por evidência, não por ausência de código."
     },
     {
       "id": "system:google-ads-monitor-reference",
