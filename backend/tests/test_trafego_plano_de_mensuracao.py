@@ -118,7 +118,37 @@ def test_com_tudo_provado_o_smart_bidding_fica_elegivel():
     assert r.measurement_readiness == pr.PRONTO
     assert r.observability_status == pr.PRONTO
     assert r.smart_bidding_eligible is True, r.activation_blockers
-    assert r.activation_blockers == ()
+
+    # ⚠️ ESTE ASSERT MUDOU EM 02/09/2026, e a mudança é uma correção.
+    #
+    # Antes ele exigia `activation_blockers == ()` — e essa lista vazia era
+    # falsa: `contrato_canais._portao_ativavel` dizia, ao mesmo tempo, que
+    # ativar está BLOQUEADO por política em todo canal. Dois módulos do mesmo
+    # sistema respondiam coisas opostas sobre o mesmo ato, e o que a tela lia
+    # era o vazio.
+    #
+    # Agora `prontidao` carrega as duas razões que faltavam — política e plano
+    # não persistido —, ambas NÃO materiais: nenhuma delas é sobre medir ou
+    # observar, e por isso nenhuma contradiz `smart_bidding_eligible`. O que
+    # "tudo provado" quer dizer é que a lista MATERIAL está vazia.
+    assert r.activation_blockers_materiais == ()
+    assert r.activation_ready != pr.PRONTO
+    assert any("política" in b or "autorização" in b
+               for b in r.activation_blockers)
+    assert any("PERSISTIDO" in b for b in r.activation_blockers)
+
+    # E o ramo em que a ativação ABRE existe — sem ele, "está bloqueado" volta
+    # a ser infalsificável, agora um degrau acima.
+    liberado = pr.avaliar(
+        recibo_registrado=True,
+        metas_da_conta=None,
+        plano_de_mensuracao=plano,
+        coleta_pos_criacao_provada=True,
+        plano_persistido=True,
+        ativacao_autorizada_por_politica=True,
+    )
+    assert liberado.activation_ready == pr.PRONTO
+    assert liberado.activation_blockers == ()
 
 
 @pytest.mark.parametrize("peca", ["meta", "acao", "sinal", "observacao"])
@@ -961,10 +991,20 @@ def test_bloqueio_de_POLITICA_nao_contradiz_elegibilidade():
     um motivo que nada tem a ver com medir — e é exatamente por isso que a
     classificação nasce no ponto em que cada razão é escrita.
     """
+    # ⚠️ A FIXTURE GANHOU AS DUAS PROVAS EM 02/09/2026, e não por formalidade.
+    #
+    # Ela afirmava `smart_bidding_eligible=True` com medição e observabilidade
+    # INDETERMINADAS — uma combinação que `avaliar` nunca produz e que o tipo
+    # passou a recusar depois da revisão adversarial: elegibilidade é conclusão
+    # de evidência, não afirmação independente. O que este teste prova continua
+    # sendo o mesmo, agora sobre um objeto coerente.
     ok = pr.Prontidao(smart_bidding_eligible=True,
+                      measurement_readiness=pr.PRONTO,
+                      observability_status=pr.PRONTO,
                       activation_blockers=("ativar não é ato deste fluxo",),
                       activation_blockers_materiais=())
     assert ok.smart_bidding_eligible is True
+    assert ok.smart_bidding_ready == pr.PRONTO
 
 
 def test_a_estrategia_de_lance_nao_duplica_a_causa_material():

@@ -29,6 +29,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, Loader2, Lock, X } from 'lucide-react';
 
 import { CartaoDoPlanoDeMensuracao } from '@/components/trafego/canais/PlanoDeMensuracao';
+import { PainelDaMensuracao } from '@/components/trafego/canais/PainelDaMensuracao';
+import { portoesDaProntidao } from '@/lib/trafego/portoes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PautadorApiError, pautadorApi } from '@/lib/pautadorApi';
@@ -423,6 +425,40 @@ export const Lancamento: React.FC<Props> = ({
                     // a tela calar faria o operador supor que existe registro do
                     // que ele está lendo — e não existe ainda.
                     persistencia={prova.prontidao.plano_persistido}
+                  />
+                </div>
+              )}
+              {/* ⚠️ OS SETE PORTÕES E O PERFIL, na tela em que o clique cria.
+                  O cartão acima diz o que a conta MEDE; este painel diz o que
+                  cada ato ainda exige — e separa os bloqueadores de medição dos
+                  de política, que fecham a mesma porta por motivos que não se
+                  comparam. Sem essa separação o operador tenta consertar
+                  autorização com instrumentação. */}
+              {prova?.prontidao && (
+                <div className="mb-4 rounded-md border border-white/10 bg-black/20 p-3">
+                  <PainelDaMensuracao
+                    portoes={portoesDaProntidao(prova.prontidao)}
+                    perfil={prova.prontidao.perfil_de_mensuracao ?? null}
+                    plano={prova.prontidao.plano_de_mensuracao}
+                    bloqueadores={prova.prontidao.activation_blockers}
+                    bloqueadoresMateriais={
+                      prova.prontidao.activation_blockers_materiais
+                    }
+                    // ⚠️ A conta vem do PLANO, que é quem a carrega — e não da
+                    // autorização, que não tem o campo. Ela serve só para dizer
+                    // "da própria conta" quando o dono da ação coincide; com
+                    // plano ausente o painel mostra o id do dono, que continua
+                    // sendo a verdade.
+                    customerId={prova.prontidao.plano_de_mensuracao?.customer_id ?? ''}
+                    // ⚠️ `/provar` NÃO escreve, e a tela diz isso com o campo do
+                    // servidor — nunca por dedução. Ausência de
+                    // `plano_persistido` é "este servidor não respondeu isto",
+                    // e o `?? false` a trata como não gravado, que é a leitura
+                    // segura: supor gravado faria o operador acreditar que
+                    // existe registro do que ele está vendo.
+                    persistido={prova.prontidao.plano_persistido?.persistido ?? false}
+                    planoId={prova.prontidao.plano_persistido?.plano_id}
+                    porque={prova.prontidao.plano_persistido?.porque}
                   />
                 </div>
               )}

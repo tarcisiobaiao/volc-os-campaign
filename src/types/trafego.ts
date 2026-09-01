@@ -18,6 +18,7 @@
 // junto do contrato dos canais que o emite. Redeclará-lo aqui criaria dois
 // tipos para a mesma resposta, e eles divergiriam no primeiro campo novo.
 import type { PlanoDeMensuracao } from '@/lib/trafego/canais';
+import type { PerfilDeMensuracao } from '@/lib/trafego/portoes';
 
 export interface Cpc {
   valor: number;
@@ -541,7 +542,11 @@ export interface Preparo {
 }
 
 /**
- * Os quatro portões G0–G3 do lançamento, e o plano canônico de mensuração.
+ * Os SETE portões do lançamento, e o plano canônico de mensuração.
+ *
+ * ⚠️ Eram QUATRO até 02/09/2026 (G0–G3). `activation_ready` não existia como
+ * campo — havia `activation_blockers`, que é a lista de razões, e uma lista
+ * vazia lida como permissão é o default otimista que o resto do sistema recusa.
  *
  * ⚠️ O servidor já emitia isto e a tela DESCARTAVA. O efeito é que o operador
  * aprovava o gasto sem ver para o que a campanha vai otimizar, por onde o sinal
@@ -549,6 +554,33 @@ export interface Preparo {
  * para pôr na frente dele ANTES do clique.
  */
 export interface ProntidaoDoLancamento {
+  /**
+   * Os SETE portões, nos nomes canônicos.
+   *
+   * ⚠️ Opcionais porque um servidor anterior a 02/09/2026 não os emite, e a
+   * ausência da chave é "este servidor não responde isto" — nunca "está
+   * pronto". Quem lê tem de tratar `undefined` como `INDETERMINADO`, que é o
+   * que `PainelDaMensuracao` faz: falha fechada, como no resto do sistema.
+   *
+   * ⚠️ `measurement_ready`, `observability_ready` e `data_manager_ready` são os
+   * MESMOS valores de `measurement_readiness`, `observability_status` e
+   * `data_manager_status`, com os nomes canônicos. Os antigos continuam sendo
+   * emitidos porque a tela já os consome; eles saem quando nenhum consumidor de
+   * `src/` os ler.
+   */
+  measurement_ready?: EstadoDeMensuracaoDoLancamento;
+  observability_ready?: EstadoDeMensuracaoDoLancamento;
+  data_manager_ready?: EstadoDeMensuracaoDoLancamento;
+  /** ⚠️ Portão PRÓPRIO. Exige política, plano PERSISTIDO e observabilidade. */
+  activation_ready?: EstadoDeMensuracaoDoLancamento;
+  /**
+   * O estado de `smart_bidding_eligible`, com a distinção que o booleano não
+   * carrega: `NAO_PRONTO` é "lemos e não há sinal"; `INDETERMINADO` é "não
+   * conseguimos ler". As duas pedem coisas opostas.
+   */
+  smart_bidding_ready?: EstadoDeMensuracaoDoLancamento;
+  /** O perfil de mensuração declarado para esta campanha, quando há um. */
+  perfil_de_mensuracao?: PerfilDeMensuracao | null;
   creation_plan_ready: EstadoDeMensuracaoDoLancamento;
   campaign_birth: EstadoDeMensuracaoDoLancamento;
   conversion_goal_status: EstadoDeMensuracaoDoLancamento;
