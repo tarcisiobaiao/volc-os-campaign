@@ -992,9 +992,21 @@ def test_criativo_continua_sem_importar_campanha():
 #: isentaria qualquer `volc_ads/<outra_pasta>/testes_motor.py` novo — a mesma
 #: classe de defeito que o guard vizinho de `ImagemParaSubir` já corrigiu, e
 #: que este aqui tinha mantido.
+#: ⚠️ `destinos.py` e `testes_destinos.py` entraram em 01/09/2026, e a decisão
+#: está aqui em vez de a lista ter crescido em silêncio — que é para isso que
+#: este guard existe. O P17-T08 pede provar a diferença entre RECOMPOSIÇÃO e
+#: CROP "medindo os pixels, não confiando no nome", e medir pixel é ler pixel.
+#: O uso é sob demanda e falha explícita: `_pillow()` devolve `None` quando
+#: Pillow não está lá e o chamador levanta `MedicaoDePixelsIndisponivel` — não
+#: existe caminho em que a ausência da biblioteca vire um veredito de adaptação
+#: dado de graça. E Pillow já está em `backend/requirements.txt` como
+#: CAPACIDADE DE PRODUTO, com o motivo escrito lá: sem ela a peça sai na
+#: dimensão nativa do provider em vez da pedida.
 PILLOW_HERDADO = {
     "volc_ads/criativo/adaptadores/funnelforge_imagem.py",
     "volc_ads/criativo/testes_motor.py",
+    "volc_ads/criativo/destinos.py",
+    "volc_ads/criativo/testes_destinos.py",
 }
 
 #: Funções que importam por string e por isso escapam de `ast.Import`.

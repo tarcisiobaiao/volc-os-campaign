@@ -190,7 +190,13 @@ def _motor_lento(raiz: Path, segundos: float) -> Path:
                 d = Path(dir_trabalho)
                 (d / "COMECOU").write_text("sim")
                 time.sleep({segundos})
-                dados = b"\\x89PNG\\r\\n\\x1a\\n" + b"w" * 64
+                # ⚠️ PNG de verdade: desde 01/09/2026 o gate de dimensao abre o
+                # arquivo, e assinatura seguida de lixo e reprovada — que e o
+                # comportamento certo.
+                from volc_ads.criativo.adaptadores.png_local import escrever_png_paletado
+                dados = escrever_png_paletado(
+                    64, 64, ((255, 255, 255),),
+                    [bytearray(b"\\x00" * 64) for _ in range(64)])
                 p = d / "1x1.png"
                 p.write_bytes(dados)
                 return (Artefato("1x1", str(p), "image/png", len(dados),

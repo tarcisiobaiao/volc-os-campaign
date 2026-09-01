@@ -66,6 +66,29 @@ def _sha256_do_arquivo(p: Path) -> str:
     return h.hexdigest()
 
 
+#: MIMEs cuja dimensao este operario SABE medir. Um artefato que declara um
+#: destes e nao abre nao e "formato desconhecido": e arquivo quebrado.
+_MIMES_MENSURAVEIS = frozenset({"image/png", "image/jpeg", "image/gif"})
+
+
+def _medir_dimensao(caminho: Path) -> tuple[int, int] | None:
+    """Largura e altura LIDAS DO ARQUIVO. `None` quando nao da para saber.
+
+    ⚠️ `None` e ausencia de medicao, nunca `(0, 0)`. O medidor le o cabecalho do
+    formato com a biblioteca padrao (PNG, GIF, JPEG) e ja recusa o caso classico
+    do IHDR todo zero.
+    """
+    try:
+        from volc_ads.criativo.adaptadores.medir_imagem import medir  # noqa: PLC0415
+
+        m = medir(caminho.read_bytes())
+    except Exception:  # noqa: BLE001 — medidor ausente ou arquivo ilegivel
+        return None
+    if m.largura is None or m.altura is None:
+        return None
+    return (m.largura, m.altura)
+
+
 def _mensagem_para_o_operador(e: BaseException) -> str:
     """⚠️ ACHADO ADVERSARIAL. `str(e)` cru ia direto para a tela e trazia caminho
     de disco junto: "[Errno 28] No space left on device: '/var/folders/.../1x1.png'".
@@ -467,12 +490,74 @@ class Operario:
                     detalhe={"slot": a.slot, "motivo": "produzido sem ter sido pedido"},
                     bloqueante=True))
                 continue
-            bate = a.largura == esperado.largura and a.altura == esperado.altura
-            validacoes.append(Validacao(
-                gate="dimensao", resultado="PASS" if bate else "FAIL",
-                detalhe={"pedido": [esperado.largura, esperado.altura],
-                         "produzido": [a.largura, a.altura]},
-                bloqueante=True))
+            # ⚠️ ACHADO DESTA RODADA. O gate comparava `a.largura/a.altura` com o
+            # pedido — e os DOIS lados eram numeros que o MOTOR escreveu. O
+            # arquivo nunca era aberto. Este comentario, tres blocos acima, ja
+            # conta que `bytes_` e `sha256` foram movidos para a medida do disco
+            # por esse exato motivo; a dimensao ficou para tras.
+            #
+            # Contraprova em `contraprova_dimensao_declarada.py`: um motor que
+            # grava 64x64 e declara 1200x628 chegava a `rendered`, com recibo, e
+            # o gate dizia PASS {'pedido': [1200,628], 'produzido': [1200,628]}.
+            # A peca nao serve a canal nenhum, e nada acusava.
+            medida = _medir_dimensao(caminho)
+            if medida is None:
+                # ⚠️ ACHADO NA PROPRIA CORRECAO. A primeira versao mandava TODO
+                # nao-medivel para `SKIPPED` nao-bloqueante, e com isso um motor
+                # que gravasse `b"x" * 128` declarando `image/png` e 640x480
+                # passava — onde o gate antigo, que so olhava a declaracao,
+                # REPROVAVA. Consertar um buraco abrindo outro.
+                #
+                # A distincao que faltava e entre duas ausencias diferentes:
+                # "este medidor nao le mp4" e ausencia legitima; "declarou PNG e
+                # os bytes nao abrem como PNG" e DEFEITO, e o mais grave dos
+                # dois, porque nem arquivo de imagem ha.
+                if a.mime in _MIMES_MENSURAVEIS:
+                    validacoes.append(Validacao(
+                        gate="dimensao", resultado="FAIL",
+                        detalhe={"slot": a.slot,
+                                 "pedido": [esperado.largura, esperado.altura],
+                                 "declarado": [a.largura, a.altura],
+                                 "mime_declarado": a.mime,
+                                 "motivo": (
+                                     "declarou um formato que sei medir e os bytes"
+                                     " nao abrem como esse formato"
+                                 )},
+                        bloqueante=True))
+                else:
+                    # Ausencia de medicao NAO e aprovacao, mas tambem nao e
+                    # reprovacao: fica SKIPPED, nao-bloqueante, com o motivo.
+                    validacoes.append(Validacao(
+                        gate="dimensao", resultado="SKIPPED",
+                        detalhe={"slot": a.slot,
+                                 "pedido": [esperado.largura, esperado.altura],
+                                 "declarado": [a.largura, a.altura],
+                                 "mime_declarado": a.mime,
+                                 "motivo": "nao sei medir a dimensao deste formato"},
+                        bloqueante=False))
+            else:
+                bate = medida == (esperado.largura, esperado.altura)
+                validacoes.append(Validacao(
+                    gate="dimensao", resultado="PASS" if bate else "FAIL",
+                    # ⚠️ O `slot` entra no detalhe: com dois envelopes de mesma
+                    # medida no mesmo pedido, nada dizia qual arquivo o gate
+                    # julgou. E `declarado` fica como TERCEIRO numero, para o
+                    # recibo guardar o que o motor afirmou ao lado do que o disco
+                    # tem.
+                    detalhe={"slot": a.slot,
+                             "pedido": [esperado.largura, esperado.altura],
+                             "medido": [medida[0], medida[1]],
+                             "declarado": [a.largura, a.altura]},
+                    bloqueante=True))
+                if (a.largura, a.altura) != medida:
+                    # Um motor que mente sobre a propria saida e um motor que nao
+                    # se pode usar para decidir mais nada. Gate proprio, para o
+                    # recibo distinguir "produziu do tamanho errado" de "mentiu".
+                    validacoes.append(Validacao(
+                        gate="dimensao_declarada_confere", resultado="FAIL",
+                        detalhe={"slot": a.slot, "declarado": [a.largura, a.altura],
+                                 "medido": [medida[0], medida[1]]},
+                        bloqueante=True))
             validacoes.append(Validacao(
                 gate="arquivo_nao_vazio",
                 resultado="PASS" if a.bytes_ > 0 else "FAIL",

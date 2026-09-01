@@ -35,6 +35,23 @@ from app.criativo.bancada.deposito import DepositoDeTrabalhos
 from app.criativo.bancada.operario import Operario
 
 
+
+def _png_real(largura: int, altura: int) -> bytes:
+    """Um PNG de verdade, na medida pedida.
+
+    ⚠️ Estes testes gravavam `b"\\x89PNG\\r\\n\\x1a\\n" + b"0" * 64`: a
+    ASSINATURA de um PNG seguida de lixo, sem IHDR. Isso bastava enquanto o gate
+    de dimensao julgava a DECLARACAO do motor. Agora ele abre o arquivo — e
+    "declarou image/png e os bytes nao abrem como PNG" e reprovacao, nao formato
+    desconhecido. As fixtures passaram a produzir a coisa que dizem produzir,
+    pelo MESMO escritor que o motor de producao usa.
+    """
+    from volc_ads.criativo.adaptadores.png_local import escrever_png_paletado
+
+    linhas = [bytearray(b"\x00" * largura) for _ in range(altura)]
+    return escrever_png_paletado(largura, altura, ((255, 255, 255),), linhas)
+
+
 def encomenda(seed: int = 7, titulo: str = "Inscrições abertas", **extra: Any) -> Encomenda:
     return Encomenda(
         receita_id=extra.pop("receita_id", "receita-1"),
@@ -405,7 +422,7 @@ def test_motor_que_nao_mede_contraste_marca_SKIPPED_e_nao_PASS(bancada, tmp_path
             import hashlib
 
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             # ⚠️ hash REAL. A primeira versão deste dublê declarava `"0"*64`, e o
             # teste passava — porque o executor acreditava no que o motor dizia.
@@ -790,7 +807,7 @@ class MotorQueMenteOHash:
 
     def produzir(self, e: Encomenda, d: str) -> tuple[Artefato, ...]:
         p = Path(d) / "x.png"
-        dados = b"\x89PNG\r\n\x1a\n" + b"z" * 200
+        dados = _png_real(1080, 1080)
         p.write_bytes(dados)
         return (Artefato("1x1", str(p), "image/png", len(dados), "f" * 64, 1080, 1080),)
 
@@ -1114,7 +1131,7 @@ def test_operario_cancelado_no_meio_nao_conclui(bancada, tmp_path):
             pronto_para_cancelar.set()
             pode_terminar.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"q" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -1347,7 +1364,7 @@ def test_bytes_declarados_diferentes_do_arquivo_reprovam(bancada, tmp_path):
 
         def produzir(self, e: Encomenda, d: str) -> tuple[Artefato, ...]:
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"k" * 300
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             # hash CERTO, tamanho ERRADO: só o gate de bytes pode pegar.
             return (Artefato("1x1", str(p), "image/png", 999999,
@@ -1381,7 +1398,7 @@ def test_o_OPERARIO_que_perdeu_o_lease_nao_conclui(bancada, tmp_path):
             comecou.set()
             pode_seguir.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"w" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -1437,7 +1454,7 @@ def test_trabalho_cancelado_tem_o_diretorio_limpo(bancada, tmp_path):
             comecou.set()
             pode_seguir.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"c" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -1586,7 +1603,7 @@ def test_render_que_perde_a_posse_nao_deixa_arquivo_no_disco(bancada, tmp_path):
             comecou.set()
             segue.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"p" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -2001,7 +2018,7 @@ def test_a_perda_entre_a_validacao_e_o_recibo_e_barrada_antes_de_gravar(tmp_path
             import hashlib
 
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"r" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -2042,7 +2059,7 @@ def test_zumbi_nao_reprova_o_trabalho_do_novo_dono(tmp_path, monkeypatch):
             import hashlib
 
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"z" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)

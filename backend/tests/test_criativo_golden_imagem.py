@@ -318,7 +318,7 @@ def test_cada_envelope_saiu_na_medida_com_mime_lido_do_magic_byte(travessia):
 
 
 def test_o_gate_de_dimensao_do_operario_aprovou_cada_envelope(travessia):
-    """Cada envelope tem um `dimensao PASS` com o par pedido/produzido dele.
+    """Cada envelope tem um `dimensao PASS` com o par pedido/medido dele.
 
     O casamento é por `detalhe["pedido"]` porque a `Validacao` de dimensão NÃO
     carrega o slot — ver `precisa_de_terceiro` no relato desta lane. Aqui isso
@@ -334,7 +334,11 @@ def test_o_gate_de_dimensao_do_operario_aprovou_cada_envelope(travessia):
     for v in dimensoes:
         assert v["resultado"] == "PASS"
         assert v["bloqueante"] is True
-        assert v["detalhe"]["pedido"] == v["detalhe"]["produzido"]
+        # ⚠️ `medido` e nao `produzido`: o gate passou a abrir o arquivo. O
+        # `declarado` continua no detalhe como terceiro numero, para o recibo
+        # guardar o que o motor AFIRMOU ao lado do que o disco TEM.
+        assert v["detalhe"]["pedido"] == v["detalhe"]["medido"]
+        assert v["detalhe"]["declarado"] == v["detalhe"]["medido"]
 
     # Os outros gates bloqueantes também passaram, e o de contraste trouxe o
     # NÚMERO — um gate que só diz "passou" impede a próxima pergunta.
@@ -973,21 +977,24 @@ class MotorQueMenteNaDimensao:
         return tuple(artefatos)
 
 
-def test_sentinela_o_gate_de_dimensao_do_operario_julga_a_declaracao(tmp_path):
-    """⚠️ DIVERGÊNCIA ABERTA, medida em 01/09/2026.
+def test_o_gate_de_dimensao_mede_o_arquivo_e_nao_acredita_no_motor(tmp_path):
+    """DIVERGÊNCIA FECHADA em 01/09/2026 — esta prova era a sentinela dela.
 
-    `Operario._validar` já move `bytes_` e `sha256` para a medida do disco — a
+    `Operario._validar` já movia `bytes_` e `sha256` para a medida do disco — a
     própria docstring conta por quê: "um motor que devolvesse `bytes_=4096,
     sha256='f'*64` sem escrever byte nenhum chegava a `rendered`". A DIMENSÃO
-    ficou para trás: ela continua sendo `Artefato.largura` (declaração do motor)
-    contra `SaidaPedida.largura` (o pedido), e o arquivo nunca é aberto.
+    ficou para trás: ela era `Artefato.largura` (declaração do motor)
+    contra `SaidaPedida.largura` (o pedido), e o arquivo nunca era aberto.
 
-    Consequência medida abaixo: um PNG de 64x64 chega a `rendered`, com recibo e
-    `dimensao PASS` dizendo `pedido == produzido == [1200, 628]`.
+    Consequência medida antes da correção, em
+    `contraprovas/contraprova_dimensao_declarada.py`: um PNG de 64x64 chegava a
+    `rendered`, com recibo e `dimensao PASS` dizendo
+    `pedido == produzido == [1200, 628]`. A peça não servia a canal nenhum e
+    nada acusava.
 
-    Este teste falha no dia em que o gate passar a medir os bytes — e é para
-    falhar. Quando falhar, troque as duas asserções marcadas e apague o item
-    correspondente do relato de P17-T08.
+    Agora o gate abre o arquivo. Este teste é a prova de que ele abre: um motor
+    que grava 64x64 e declara 1200x628 é recusado por DOIS gates bloqueantes, e
+    não sai recibo nenhum.
     """
     envelope = D.envelope_de("google-display-191x1")
     deposito = DepositoDeTrabalhos(tmp_path / "fila.db")
@@ -1019,29 +1026,41 @@ def test_sentinela_o_gate_de_dimensao_do_operario_julga_a_declaracao(tmp_path):
     trabalho = operario.trabalhar_uma_vez()
     assert trabalho is not None
 
-    # ← DIVERGÊNCIA (1/2): o trabalho conclui.
-    assert trabalho.estado is EstadoDoTrabalho.RENDERED
-    dimensao = next(
-        v for v in trabalho.recibo["validacoes"] if v["gate"] == "dimensao"
-    )
-    # ← DIVERGÊNCIA (2/2): o gate aprova o que não mediu.
-    assert dimensao["resultado"] == "PASS"
-    assert dimensao["detalhe"]["produzido"] == [envelope.largura, envelope.altura]
+    # O trabalho é RECUSADO, e por dois gates diferentes.
+    assert trabalho.estado is EstadoDoTrabalho.FAILED
+    assert trabalho.recibo is None, "recibo sobre peça que não serve a canal nenhum"
+    validacoes = trabalho.falha["validacoes"]
 
-    # E a medida REAL dos bytes — que é o que este golden usa em toda parte —
-    # reprova sem hesitar. É a diferença entre confiar no nome e medir.
-    artefato = trabalho.recibo["artefatos"][0]
-    medida = medir_imagem.medir(Path(str(artefato["caminho"])).read_bytes())
+    dimensao = next(v for v in validacoes if v["gate"] == "dimensao")
+    assert dimensao["resultado"] == "FAIL"
+    assert dimensao["bloqueante"] is True
+    # O gate agora traz os TRÊS números, e o `slot` junto — antes ele não trazia
+    # o slot, e com dois envelopes de mesma medida nada diria qual arquivo ele
+    # julgou.
+    assert dimensao["detalhe"]["slot"] == envelope.slot
+    assert dimensao["detalhe"]["pedido"] == [envelope.largura, envelope.altura]
+    assert dimensao["detalhe"]["medido"] == [64, 64]
+    assert dimensao["detalhe"]["declarado"] == [envelope.largura, envelope.altura]
+
+    # E há um gate SÓ para a mentira: "produziu do tamanho errado" e "mentiu
+    # sobre o tamanho" são coisas distintas, e o recibo distingue as duas.
+    mentira = next(v for v in validacoes if v["gate"] == "dimensao_declarada_confere")
+    assert mentira["resultado"] == "FAIL" and mentira["bloqueante"] is True
+    assert mentira["detalhe"]["declarado"] == [envelope.largura, envelope.altura]
+    assert mentira["detalhe"]["medido"] == [64, 64]
+
+    # A medida REAL dos bytes é a mesma que o gate usou.
+    caminho = next(Path(str(operario.raiz)).rglob("*.png"))
+    medida = medir_imagem.medir(caminho.read_bytes())
     assert (medida.largura, medida.altura) == (64, 64)
-    assert (medida.largura, medida.altura) != (envelope.largura, envelope.altura)
 
 
-def test_sentinela_o_motor_tipografico_nao_declara_natureza(travessia):
-    """⚠️ DIVERGÊNCIA ABERTA, medida em 01/09/2026.
+def test_o_motor_tipografico_declara_natureza_local(travessia):
+    """DIVERGÊNCIA FECHADA em 01/09/2026 — esta prova era a sentinela dela.
 
     `MotorPngLocal` declara `natureza = NaturezaDaProcedencia.LOCAL`.
-    `MotorTipografico` não declara nada, então `servico.natureza_do_motor`
-    devolve `NAO_DECLARADA` — que é a resposta correta da função, e a errada
+    `MotorTipografico` não declarava nada, então `servico.natureza_do_motor`
+    devolvia `NAO_DECLARADA` — que é a resposta correta da função, e a errada
     para este motor: ele é tão local quanto o outro.
 
     O custo aparece no portão de produção: `NATUREZAS_ACEITAS[Destino.PRODUCAO]`
@@ -1051,7 +1070,8 @@ def test_sentinela_o_motor_tipografico_nao_declara_natureza(travessia):
 
     Falha quando o motor declarar. É para falhar.
     """
-    assert travessia.natureza is NaturezaDaProcedencia.NAO_DECLARADA  # ← DIVERGÊNCIA
+    # DIVERGÊNCIA FECHADA: o motor declara, e a resposta deixou de ser "não sei".
+    assert travessia.natureza is NaturezaDaProcedencia.LOCAL
     assert travessia.natureza.publicavel is False
 
     assets = _assets(travessia)
@@ -1063,12 +1083,13 @@ def test_sentinela_o_motor_tipografico_nao_declara_natureza(travessia):
     producao = ponte.imagens_de_demand_gen(
         lote, conteudo, destino=ponte.Destino.PRODUCAO
     )
-    # ← DIVERGÊNCIA: passa no portão de produção.
-    assert producao.recusas == ()
-    assert producao.ok is True
-    # A visibilidade que a dívida comprou: cada asset sem natureza sai nomeado.
-    assert len(producao.avisos) == len(D.ENVELOPES)
-    assert all("natureza" in aviso.lower() for aviso in producao.avisos)
+    # ⚠️ AGORA O PORTÃO RECUSA, que é o certo. Antes ele PASSAVA com aviso,
+    # porque `NAO_DECLARADA` é aceita como dívida declarada — então a peça de um
+    # motor 100% local passava em produção enquanto a do `png-local`, que declara
+    # corretamente, era recusada. O incentivo estava invertido: não declarar
+    # valia mais que declarar.
+    assert producao.ok is False
+    assert producao.recusas != (), "peça local passou no portão de produção"
 
     # Contraste: o MESMO caminho com natureza declarada RECUSA. Sem esta metade,
     # o teste acima provaria só que a ponte não recusa nada.

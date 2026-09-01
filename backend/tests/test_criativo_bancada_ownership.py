@@ -75,14 +75,44 @@ def _encomenda(*, motor: str = "motor-ownership", seed: int = 7) -> Encomenda:
     )
 
 
+def _png_real(largura: int, altura: int, tinta: int) -> bytes:
+    """Um PNG de verdade, na medida pedida, com uma cor que varia por `tinta`.
+
+    ⚠️ Estas provas gravavam texto cru como se fosse imagem. Isso bastava enquanto
+    o gate de dimensao do operario julgava a DECLARACAO do motor; desde
+    01/09/2026 ele abre o arquivo, e "declarou image/png e os bytes nao abrem
+    como PNG" e reprovacao — corretamente. O `tinta` preserva o que os bytes de
+    texto davam de graca aqui: peca de A e peca de B com conteudos DIFERENTES,
+    que e como estas provas distinguem quem escreveu o que.
+    """
+    from volc_ads.criativo.adaptadores.png_local import escrever_png_paletado
+
+    cor = (tinta % 256, (tinta * 7) % 256, (tinta * 13) % 256)
+    linhas = [bytearray(b"\x00" * largura) for _ in range(altura)]
+    return escrever_png_paletado(largura, altura, (cor,), linhas)
+
+
+def bytes_da_peca(etiqueta: str, seed: int) -> bytes:
+    """Os bytes que o motor de `etiqueta` produz para `seed`.
+
+    ⚠️ As provas identificavam quem escreveu a peca por `startswith(b"novo:")` —
+    o texto cru servia de assinatura. Com PNG de verdade isso deixou de valer, e
+    a identidade passou a ser os BYTES INTEIROS, que e uma verificacao mais forte
+    e nao mais fraca: um prefixo igual nao prova arquivo igual.
+    """
+    return _png_real(LADO, LADO, sum(f"{etiqueta}:{seed}".encode("ascii")))
+
+
 def _artefato(slot: str, arquivo: Path, conteudo: bytes) -> Artefato:
-    arquivo.write_bytes(conteudo)
+    """`conteudo` vira a SEMENTE da cor, e o arquivo sai PNG de verdade."""
+    dados = _png_real(LADO, LADO, sum(conteudo))
+    arquivo.write_bytes(dados)
     return Artefato(
         slot=slot,
         caminho=str(arquivo),
         mime="image/png",
-        bytes_=len(conteudo),
-        sha256=hashlib.sha256(conteudo).hexdigest(),
+        bytes_=len(dados),
+        sha256=hashlib.sha256(dados).hexdigest(),
         largura=LADO,
         altura=LADO,
     )
@@ -365,7 +395,12 @@ def test_operario_atrasado_nao_publica_nem_apaga_o_diretorio_do_novo_dono(
         assert feito.recibo["produzido_por"] == "worker-novo"
         arquivo_do_novo = Path(feito.recibo["artefatos"][0]["caminho"])
         assert arquivo_do_novo.is_file()
-        assert arquivo_do_novo.read_bytes().startswith(b"novo:")
+        # ⚠️ BYTES INTEIROS, e nao prefixo. A prova identificava o autor por
+        # `startswith(b"novo:")` — o texto cru servia de assinatura. Com PNG de
+        # verdade a identidade sao os bytes todos, o que e mais forte: prefixo
+        # igual nao prova arquivo igual.
+        assert arquivo_do_novo.read_bytes() == bytes_da_peca("novo", 7)
+        assert arquivo_do_novo.read_bytes() != bytes_da_peca("antigo", 7)
 
         liberar.set()
         resultado_antigo = futuro_antigo.result(timeout=15)
@@ -379,7 +414,10 @@ def test_operario_atrasado_nao_publica_nem_apaga_o_diretorio_do_novo_dono(
         "o operario atrasado gravou recibo por cima do trabalho do novo dono"
     )
     assert arquivo_do_novo.is_file(), "o dono antigo apagou o arquivo do novo dono"
-    assert arquivo_do_novo.read_bytes().startswith(b"novo:")
+    assert arquivo_do_novo.read_bytes() == bytes_da_peca("novo", 7)
+    assert arquivo_do_novo.read_bytes() != bytes_da_peca("antigo", 7), (
+        "o arquivo no fim e o do dono ANTIGO"
+    )
 
     # A saiu de cena levando so o que era dele, e nao inventou estado nenhum.
     assert resultado_antigo is not None
@@ -466,7 +504,10 @@ def test_claim_antigo_de_MESMO_NOME_nao_conclui_por_cima_da_reivindicacao_nova(
         "o recibo aponta para um arquivo que nao existe — o zumbi concluiu"
     )
     assert caminho_do_recibo.parent.name == "t2-op-X", caminho_do_recibo
-    assert caminho_do_recibo.read_bytes().startswith(b"novo:")
+    assert caminho_do_recibo.read_bytes() == bytes_da_peca("novo", 7)
+    assert caminho_do_recibo.read_bytes() != bytes_da_peca("antigo", 7), (
+        "o recibo do dono atual aponta para a peca do zumbi"
+    )
     assert not motor_zumbi.diretorios[0].exists()
 
     trilha = deposito.trilha(trabalho.id)

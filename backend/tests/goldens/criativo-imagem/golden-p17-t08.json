@@ -11,7 +11,7 @@
     "validating",
     "rendered"
   ],
-  "natureza_declarada_pelo_motor": "nao_declarada",
+  "natureza_declarada_pelo_motor": "local",
   "custo": {
     "custo_estimado_usd": null,
     "custo_real_usd": null,

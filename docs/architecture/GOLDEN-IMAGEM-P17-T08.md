@@ -1,7 +1,8 @@
 # GOLDEN DE IMAGEM — P17-T08
 
-**Estado:** cadeia local atravessada e provada · duas divergências abertas, com
-sentinela cada uma · aprovação humana e Postgres fora de alcance nesta fatia.
+**Estado:** cadeia local atravessada e provada · **as duas divergências foram
+fechadas pelo integrador em 01/09/2026** e as sentinelas viraram provas positivas
+· aprovação humana e Postgres fora de alcance nesta fatia.
 **Medido em:** 01/09/2026, nesta máquina (macOS, Python 3.14.6, Pillow 12.3.0).
 
 Aceite da fatia:
@@ -179,9 +180,15 @@ Estado do custo no golden: **`nao_apurado`**, e não `0`.
 Além disso, os três pacotes saem `publicavel = False`: a peça é de motor local, e
 `NaturezaDaProcedencia.publicavel` só é verdadeira para `PRODUCAO`.
 
-## Duas divergências abertas (sentinelas no teste)
+## Duas divergências, encontradas por esta lane e FECHADAS pelo integrador
 
-### 1. O gate de dimensão do operário julga a DECLARAÇÃO, não os pixels
+> A lane não tinha ownership de `operario.py` nem dos adaptadores, então
+> escreveu duas sentinelas — provas que falhariam **no dia em que o defeito
+> fosse corrigido**. O integrador corrigiu os dois no mesmo dia, e as sentinelas
+> foram reescritas como provas positivas do comportamento novo. O texto abaixo
+> fica como registro do que estava errado e de como foi medido.
+
+### 1. O gate de dimensão do operário julgava a DECLARAÇÃO, não os pixels — CORRIGIDO
 
 `Operario._validar` compara `Artefato.largura/altura` com
 `SaidaPedida.largura/altura`. As duas são números que o **motor** escreveu; o
@@ -204,15 +211,22 @@ integrador): medir `largura`/`altura` do arquivo — `medir_imagem.medir()` já 
 isso com stdlib — e comparar o MEDIDO com o pedido, deixando a declaração do
 motor como terceiro número no `detalhe`.
 
-Sentinela: `test_sentinela_o_gate_de_dimensao_do_operario_julga_a_declaracao`.
-Ele **falha quando o defeito for corrigido**, e a docstring diz o que trocar.
+**Correção aplicada:** `Operario._validar` passou a abrir o arquivo com
+`medir_imagem.medir()` e comparar o MEDIDO com o pedido. A declaração do motor
+virou terceiro número no `detalhe`, ao lado do `slot` — que também faltava. E há
+um gate próprio, `dimensao_declarada_confere`, porque "produziu do tamanho
+errado" e "mentiu sobre o tamanho" são coisas distintas e o recibo distingue as
+duas. Formato que o medidor não lê fica `SKIPPED` e não-bloqueante, com o motivo
+escrito: ausência de medição não é aprovação.
+
+A sentinela virou `test_o_gate_de_dimensao_mede_o_arquivo_e_nao_acredita_no_motor`.
 
 Achado menor da mesma família: a `Validacao` de dimensão não carrega o `slot`.
 Aqui o casamento por `detalhe["pedido"]` funciona porque as cinco geometrias são
 distintas; com dois envelopes de mesma medida no mesmo pedido, nada diria qual
 arquivo o gate julgou.
 
-### 2. `MotorTipografico` não declara `natureza`
+### 2. `MotorTipografico` não declarava `natureza` — CORRIGIDO
 
 `MotorPngLocal` declara `NaturezaDaProcedencia.LOCAL`. `MotorTipografico` não
 declara nada, então `servico.natureza_do_motor` devolve `NAO_DECLARADA` — que é a
@@ -232,9 +246,11 @@ onde o `png-local` recebe recusa. **Correção necessária, e ela não é desta 
 (os adaptadores são de outro dono): acrescentar
 `natureza = NaturezaDaProcedencia.LOCAL` a `MotorTipografico`.
 
-Sentinela: `test_sentinela_o_motor_tipografico_nao_declara_natureza`. Ele afirma
-as duas metades — a que está errada e o contraste com a declaração correta —
-então quando alguém declarar a natureza, a metade errada falha e aponta para cá.
+**Correção aplicada:** `MotorTipografico.natureza = NaturezaDaProcedencia.LOCAL`.
+O portão de produção passou a RECUSAR a peça, como já recusava a do `png-local` —
+o incentivo estava invertido, e não declarar valia mais que declarar.
+
+A sentinela virou `test_o_motor_tipografico_declara_natureza_local`.
 
 ## O que este golden NÃO alcança
 
