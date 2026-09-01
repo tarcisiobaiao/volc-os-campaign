@@ -221,6 +221,27 @@ Enquanto não existir, P04-T07 **não pode passar de `todo`** para além de
 - PMax não-retail: `AssetGroup` + todos os `AssetGroupAsset` mínimos **no mesmo
   bulk mutate** (`:33-53`).
 
+### 5.3 As queries GAQL de PMax não têm campo morto — conferido, não opinado
+
+A revisão externa desta pergunta **não foi obtida** (a lane Gemini estourou duas
+vezes; registrado em `REVISAO-GEMINI-CONTRATOS.md` §3.1). No lugar dela fiz a
+conferência determinística, que é evidência mais forte:
+
+extraí toda referência `recurso.campo` de `volc_ads/observabilidade_pmax/queries.py`
+e resolvi cada uma contra o `DESCRIPTOR` protobuf da v25 instalada, descendo em
+campos aninhados, sobre `campaign`, `asset_group`, `asset_group_asset`,
+`asset_group_signal`, `asset` e `campaign_asset`.
+
+**61 campos válidos, ZERO inexistentes.** Os dois suspeitos da primeira passada
+eram defeito do meu extrator: `asset_group.path` é o meu regex truncando
+`path1`/`path2` (`queries.py:285-286`), e `asset.type` (`:377`) é o nome de wire
+correto em GAQL — no proto Python o campo é `type_`, porque `type` é reservado.
+
+Importa porque uma query com campo inexistente falha **inteira**
+(`UNRECOGNIZED_FIELD`) e não degrada: era o risco mais caro do módulo, e não se
+materializa. **Não promove P04-T07** — contrato correto e desligado continua
+desligado.
+
 ---
 
 ## 6. Frontend

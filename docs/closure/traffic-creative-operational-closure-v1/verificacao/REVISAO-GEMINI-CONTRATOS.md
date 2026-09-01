@@ -262,6 +262,15 @@ e desligado continua sendo contrato desligado.
 | **Descartado por alucinação** | 2 | `url_expansion_opt_out`; `SearchTheme` obrigatório |
 | **Descartado por falso achado de recorte** | 2 | "linhagem promovida sem conferir bytes"; "forja de `confirmada`" |
 | **Descartado por afirmar sem prova** | 1 | "Display 100% completo para `validate_only` real" |
+| **Não obtido — lane estourou** | 1 | chamada 3 (PMax/`AssetGroupSignal`), substituída por conferência determinística contra os protos (§3.3) |
+
+**Cobertura, dita com honestidade:** de três chamadas planejadas, **duas
+retornaram e uma estourou**. A pergunta da chamada 3 foi respondida por
+verificação própria contra os descritores protobuf, que é evidência mais forte
+que parecer de modelo — mas as perguntas qualitativas dela (o código *trata* a
+exclusão mútua entre `search_theme` e `audience`? algum ramo colapsa `[]` com
+falha de coleta?) **ficaram sem segunda opinião externa**. Registro como lacuna,
+não como cobertura.
 
 **Conclusão sobre o uso do modelo.** Gemini 3.7 Flash foi útil como **segunda
 varredura mecânica** — ele achou uma superfície de mutação que meu próprio `grep`
