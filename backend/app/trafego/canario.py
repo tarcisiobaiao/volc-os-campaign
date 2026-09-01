@@ -124,8 +124,16 @@ def exigir(
     chave_intencao: str,
     carimbo_nome: Any,
     confirmar_criacao_pausada: bool,
+    rede: Any = None,
 ) -> str:
-    """Confere a janela do canário e devolve a marca remota determinística."""
+    """Confere a janela do canário e devolve a marca remota determinística.
+
+    ⚠️ `rede` é OBRIGATÓRIA aqui, e `None` é recusa — ao contrário do resto do
+    sistema, onde `None` herda `REDE_LEGADA_SEARCH` para não mudar campanha
+    antiga em silêncio. O canário não tem campanha antiga: ele é o primeiro
+    lançamento com ledger v10 completo, e um lançamento cuja rede ninguém
+    escolheu não prova o que ele existe para provar.
+    """
     if str(customer_id) != CONTA or str(login_customer_id) != MCC:
         raise CanarioRecusado(
             f"esta janela cria somente na conta {CONTA_FORMATADA} "
@@ -153,6 +161,27 @@ def exigir(
         raise CanarioRecusado(
             f"CPC inicial de R$ {cpc} supera o teto do canário "
             f"(R$ {CPC_MAXIMO_BRL})."
+        )
+    if rede is None:
+        raise CanarioRecusado(
+            "o canário exige a rede declarada (`rede`). Search Partners é "
+            "inventário diferente do Google Search — outros sites, outro "
+            "comportamento de consulta, outro CPC — e até 01/09/2026 ele "
+            "nascia ligado sem ninguém escolher e sem aparecer no plano "
+            "aprovado. Herdar isso calado num lançamento de prova seria provar "
+            "outra coisa."
+        )
+    if getattr(rede, "search_partners", False):
+        raise CanarioRecusado(
+            "o canário roda com Search Partners DESLIGADO. Ele mede o "
+            "comportamento do Google Search com um plano conhecido; misturar "
+            "inventário de parceiros na primeira medição torna o resultado "
+            "impossível de atribuir."
+        )
+    if getattr(rede, "display_expansion", False):
+        raise CanarioRecusado(
+            "o canário roda sem expansão para Display: ela troca o inventário "
+            "sem trocar o tipo da campanha."
         )
     return prefixo_da_marca(chave_intencao)
 

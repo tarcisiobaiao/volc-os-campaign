@@ -903,3 +903,48 @@ def test_usar_todas_com_lista_de_keywords_e_contradicao():
             "grupos": [{"tipo": "INTENCAO", "keywords": ["x"], "usar_todas": True}],
         })
     assert "duas ordens diferentes" in str(erro.value)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# I. A rede entra na identidade que o humano aprova (01/09/2026)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_a_rede_muda_a_chave_intencao_e_a_marca():
+    """⚠️ Havia DUAS impressões, e elas discordavam.
+
+    `subir._impressao` hasheia o protobuf inteiro, então a rede sempre entrou
+    nele. Já `canario.impressao_do_plano` hasheia o corpo do pedido — e a rede
+    não era campo do pedido, então NÃO entrava. Consequência: dois planos com
+    redes diferentes tinham a mesma `chave_intencao` e a mesma marca remota. A
+    autorização humana passaria a cobrir um alcance que o humano não escolheu.
+    """
+    def identidade(parceiros: bool) -> tuple[str, str]:
+        corpo = trafego.ProvarEntrada(**{
+            **_payload_da_rota(),
+            "rede": {"google_search": True, "search_partners": parceiros,
+                     "display_expansion": False},
+        })
+        chave = trafego._impressao_aprovavel(corpo, cid=canario.CONTA, mid=canario.MCC)
+        return chave, canario.prefixo_da_marca(chave)
+
+    sem_parceiros = identidade(False)
+    com_parceiros = identidade(True)
+    assert sem_parceiros != com_parceiros, (
+        "mudar a rede não mudou a identidade: o selo anterior continuaria valendo")
+
+
+def test_o_canario_recusa_rede_ausente_e_recusa_parceiros():
+    """Ausência é recusa aqui — ao contrário do resto do sistema."""
+    for rede, trecho in (
+        (None, "rede declarada"),
+        ({"google_search": True, "search_partners": True, "display_expansion": False},
+         "Search Partners DESLIGADO"),
+    ):
+        corpo = trafego.ProvarEntrada(**{**_payload_da_rota(), "rede": rede})
+        with pytest.raises(canario.CanarioRecusado, match=trecho):
+            canario.exigir(
+                customer_id=canario.CONTA, login_customer_id=canario.MCC,
+                canal="SEARCH", budget_diario=10.0, cpc_inicial=1.0,
+                chave_intencao="a" * 64, carimbo_nome="20260901_000000",
+                confirmar_criacao_pausada=True,
+                rede=trafego._rede_do_corpo(corpo))

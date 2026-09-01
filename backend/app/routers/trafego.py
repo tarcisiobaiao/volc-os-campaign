@@ -1169,6 +1169,21 @@ async def escrever_copy(body: CopyPedido = Body(...)) -> Any:
 
 # ── a prova ─────────────────────────────────────────────────────────────────
 
+class RedeEntrada(BaseModel):
+    """Onde o anúncio pode aparecer — escolha do operador, não default.
+
+    ⚠️ Search Partners é inventário DIFERENTE do Google Search: outros sites,
+    outro comportamento de consulta, outro CPC efetivo. Até 01/09/2026 ele
+    nascia ligado como literal dentro do builder, sem o operador escolher e sem
+    aparecer no plano aprovado. Agora ele é campo, e campo obrigatório: os três
+    valores são explícitos porque um default aqui recriaria o efeito invisível
+    que este contrato existe para eliminar.
+    """
+    google_search: bool
+    search_partners: bool
+    display_expansion: bool = False
+
+
 class GrupoEscolhido(BaseModel):
     """Uma sub-intenção que o operador marcou. Vira UM ad group.
 
@@ -1332,6 +1347,11 @@ class ProvarEntrada(BaseModel):
     # filtre a consulta. Nascer em MAXIMIZE_CONVERSIONS sem histórico entrega
     # o lance a um modelo que ainda não tem o que aprender.
     estrategia_lance: str = "MANUAL_CPC"
+    # ⚠️ `None` é COMPATIBILIDADE, e ela tem nome: o builder herda
+    # `REDE_LEGADA_SEARCH` (parceiros ON), que é como toda campanha da casa
+    # nasceu até 01/09/2026. Mudar esse default alteraria campanhas antigas em
+    # silêncio. O canário, esse, EXIGE declaração — ver `canario.exigir`.
+    rede: Optional[RedeEntrada] = None
     # Em quantas conversões a campanha troca de estratégia. Medido no flow
     # `GOOGLE ADS - New Campaigns Validation`, nó `Code1`:
     # `TCPA_GRADUATION_CONVS: 30`. Zero desliga a graduação.
@@ -1746,6 +1766,26 @@ def _prefixo_operacional(body: ProvarEntrada, *, impressao: str) -> str:
     return body.prefixo_nome
 
 
+def _rede_do_corpo(body: Any) -> Any:
+    """A rede declarada, como objeto do domínio — ou `None` para o legado.
+
+    ⚠️ `None` NÃO é "não sei": é "este chamador ainda não declara rede, e herda
+    `REDE_LEGADA_SEARCH` com parceiros ligados". A diferença importa porque o
+    canário recusa exatamente esse `None` — ver `canario.exigir`.
+    """
+    r = getattr(body, "rede", None)
+    if r is None:
+        return None
+    _ponte()
+    from volc_ads.campanha.brief import RedeDePesquisa
+
+    return RedeDePesquisa(
+        google_search=bool(r.google_search),
+        search_partners=bool(r.search_partners),
+        display_expansion=bool(r.display_expansion),
+    )
+
+
 def _criterios_do_corpo(body: Any, pp: Any) -> list:
     """Reúne TODOS os critérios do pedido num contrato tipado só.
 
@@ -2130,6 +2170,7 @@ async def provar(
             keywords_por_grupo={g.tipo: tuple(g.keywords)
                                 for g in body.grupos if not g.usar_todas},
             grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas),
+            rede=_rede_do_corpo(body),
             keywords_fora=list(body.keywords_fora),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,
@@ -2384,6 +2425,7 @@ async def subir(
             chave_intencao=chave_intencao,
             carimbo_nome=body.carimbo_nome,
             confirmar_criacao_pausada=body.confirmar_criacao_pausada,
+            rede=_rede_do_corpo(body),
         )
     except canario.CanarioRecusado as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
@@ -2413,6 +2455,7 @@ async def subir(
             keywords_por_grupo={g.tipo: tuple(g.keywords)
                                 for g in body.grupos if not g.usar_todas},
             grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas),
+            rede=_rede_do_corpo(body),
             keywords_fora=list(body.keywords_fora),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,

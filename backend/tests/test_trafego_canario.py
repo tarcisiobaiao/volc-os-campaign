@@ -26,6 +26,15 @@ def _rede_bloqueada(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(socket.socket, "connect_ex", recusar_rede)
 
 
+#: A rede que o canário exige: Google Search ON, parceiros e Display OFF.
+#: Importada do domínio, e não redigitada aqui — um dublê que declara a própria
+#: rede provaria a rede do dublê.
+from volc_ads.campanha.brief import RedeDePesquisa as _Rede  # noqa: E402
+
+REDE_DO_CANARIO = _Rede(google_search=True, search_partners=False,
+                        display_expansion=False)
+
+
 def _pedido(**mudancas):
     base = dict(
         customer_id=canario.CONTA,
@@ -36,6 +45,7 @@ def _pedido(**mudancas):
         chave_intencao="a" * 64,
         carimbo_nome="20260828_120000",
         confirmar_criacao_pausada=True,
+        rede=REDE_DO_CANARIO,
     )
     base.update(mudancas)
     return base
@@ -64,6 +74,9 @@ def test_a_politica_nomeia_a_conta_laboratorio_e_nao_inclui_ativacao():
         ({"budget_diario": "20.01"}, "supera o teto"),
         ({"cpc_inicial": "1.01"}, "supera o teto"),
         ({"confirmar_criacao_pausada": False}, "confirmação explícita"),
+        # A rede entrou na janela do canário em 01/09/2026.
+        ({"rede": None}, "rede declarada"),
+        ({"rede": _Rede(True, True, False)}, "Search Partners DESLIGADO"),
     ],
 )
 def test_o_canario_falha_fechado_fora_da_janela(mudanca, trecho):
@@ -212,6 +225,12 @@ def _payload_da_rota(**mudancas):
         }],
         "budget_diario": 10.0,
         "cpc_inicial": 0.20,
+        # ⚠️ Desde 01/09/2026 o canário EXIGE a rede declarada. Ela não tem
+        # default aqui de propósito: o payload de teste representa o pedido de
+        # um operador, e um operador que não escolhe a rede é exatamente o que
+        # o contrato novo recusa.
+        "rede": {"google_search": True, "search_partners": False,
+                 "display_expansion": False},
         "vertical": "informativo",
         "carimbo_nome": "20260828_120000",
         "copy": {

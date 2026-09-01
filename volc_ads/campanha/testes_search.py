@@ -38,6 +38,8 @@ from google.ads.googleads.client import GoogleAdsClient  # noqa: E402
 
 from volc_ads.campanha import comum, conteudo, search, validacao  # noqa: E402
 from volc_ads.campanha.brief import (  # noqa: E402
+    REDE_LEGADA_SEARCH,
+    RedeDePesquisa,
     SEM_SUB_INTENCAO,
     Brief,
     Copy,
@@ -644,3 +646,80 @@ def test_mesmo_carimbo_reconstroi_o_mesmo_nome_e_grafo():
         "BR - 20260828_120000 / Saque Anual / "
         "https://creditoup.com.br/r/saque-anual/"
     ]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A REDE DE PESQUISA É DECISÃO, NÃO DEFAULT — 01/09/2026
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ `comum.py:169` ligava `target_search_network = True` como literal. Search
+# Partners é um inventário DIFERENTE do Google Search: outros sites, outro
+# comportamento de consulta, outro CPC. Ele estava ligado em toda campanha
+# Search da casa sem o operador escolher, sem aparecer no plano aprovado e sem
+# entrar em nenhuma tela. A matriz de cobertura v25 já registrava isso como
+# "efeito invisível".
+#
+# O defeito não é o valor `True` — é ele não ser uma decisão de ninguém.
+
+
+def teste_rede_declarada_chega_ao_payload() -> None:
+    b = _brief(rede=RedeDePesquisa(google_search=True, search_partners=False,
+                                   display_expansion=False))
+    ops, _ = search.construir(CID, b, login_customer_id="x")
+    camp = next(o.campaign_operation.create for o in ops
+                if o._pb.WhichOneof("operation") == "campaign_operation")
+    assert camp.network_settings.target_google_search is True
+    assert camp.network_settings.target_search_network is False
+    assert camp.network_settings.target_content_network is False
+
+
+def teste_parceiros_ligados_exige_declaracao() -> None:
+    """Ligar parceiros continua possível — mas agora alguém precisa ter dito."""
+    b = _brief(rede=RedeDePesquisa(google_search=True, search_partners=True,
+                                   display_expansion=False))
+    ops, _ = search.construir(CID, b, login_customer_id="x")
+    camp = next(o.campaign_operation.create for o in ops
+                if o._pb.WhichOneof("operation") == "campaign_operation")
+    assert camp.network_settings.target_search_network is True
+
+
+def teste_rede_ausente_usa_o_legado_nomeado_e_nao_um_literal_solto() -> None:
+    """Compatibilidade preservada, e com nome: `REDE_LEGADA_SEARCH`.
+
+    Campanhas antigas não podem mudar de comportamento em silêncio. O que muda
+    é que o estado legado deixou de ser um literal perdido no builder e passou
+    a ser uma constante que se pode citar, testar e aposentar.
+    """
+    b = _brief()
+    assert b.rede is None
+    ops, _ = search.construir(CID, b, login_customer_id="x")
+    camp = next(o.campaign_operation.create for o in ops
+                if o._pb.WhichOneof("operation") == "campaign_operation")
+    assert camp.network_settings.target_google_search is REDE_LEGADA_SEARCH.google_search
+    assert camp.network_settings.target_search_network is REDE_LEGADA_SEARCH.search_partners
+    assert REDE_LEGADA_SEARCH.search_partners is True, (
+        "o legado tinha parceiros ON; mudar isso aqui alteraria campanhas "
+        "antigas em silêncio, que é o oposto do conserto")
+
+
+def teste_google_search_desligado_e_recusado_em_search() -> None:
+    """Uma campanha Search sem Google Search não é uma campanha Search."""
+    with pytest.raises(ValueError):
+        RedeDePesquisa(google_search=False, search_partners=True,
+                       display_expansion=False)
+
+
+def teste_mudar_a_rede_muda_a_impressao_do_payload() -> None:
+    """⚠️ O selo tem de invalidar: rede diferente é plano diferente.
+
+    Sem isto, um plano aprovado com parceiros OFF poderia subir com eles ON e o
+    selo continuaria conferindo — a autorização humana passaria a cobrir algo
+    que o humano não viu.
+    """
+    from volc_ads import subir as sb
+
+    sem, _ = search.construir(CID, _brief(rede=RedeDePesquisa(True, False, False)),
+                              login_customer_id="x")
+    com, _ = search.construir(CID, _brief(rede=RedeDePesquisa(True, True, False)),
+                              login_customer_id="x")
+    assert sb._impressao(sem) != sb._impressao(com)

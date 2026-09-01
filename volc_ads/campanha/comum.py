@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from . import marcacao
-from .brief import Brief
+from .brief import REDE_LEGADA_SEARCH, Brief
 
 # ── ids temporários: a alocação de faixas ───────────────────────────────────
 # Um id temporário é negativo e só precisa ser único DENTRO do mesmo mutate:
@@ -165,9 +165,20 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
             camp.maximize_conversions.target_cpa_micros = brief.micros(brief.tcpa)
         else:
             camp.maximize_conversions.target_cpa_micros = 0
-        camp.network_settings.target_google_search = True
-        camp.network_settings.target_search_network = True
-        camp.network_settings.target_content_network = False
+        # ⚠️ A REDE VEM DO BRIEF, E NÃO DAQUI.
+        #
+        # Até 01/09/2026 estas três linhas eram literais, e `target_search_network`
+        # nascia `True`: Search Partners ligado em toda campanha da casa sem o
+        # operador escolher, sem aparecer no plano aprovado e sem entrar em tela
+        # nenhuma. Parceiros são inventário diferente do Google Search — outros
+        # sites, outro comportamento de consulta, outro CPC efetivo.
+        #
+        # `REDE_LEGADA_SEARCH` preserva exatamente o comportamento antigo para
+        # quem ainda não declara rede. O que mudou é que agora ela tem nome.
+        rede = brief.rede or REDE_LEGADA_SEARCH
+        camp.network_settings.target_google_search = rede.google_search
+        camp.network_settings.target_search_network = rede.search_partners
+        camp.network_settings.target_content_network = rede.display_expansion
         if ai_max:
             camp.ai_max_setting.enable_ai_max = True
     elif canal == "DISPLAY":

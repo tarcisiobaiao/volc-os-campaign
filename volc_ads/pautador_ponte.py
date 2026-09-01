@@ -306,6 +306,9 @@ class Escolha:
     # e isso NÃO é permissão para usar tudo. Quem quer o grupo inteiro diz o
     # nome disso em `grupos_usar_todas`.
     keywords_por_grupo: dict[str, tuple[str, ...]] | None = None
+    # Onde o anúncio pode aparecer. `None` herda `REDE_LEGADA_SEARCH` (parceiros
+    # ON) para não mudar campanha antiga em silêncio; o caminho novo declara.
+    rede: Any = None
     # A declaração explícita de "use todas as keywords deste grupo". Ela existe
     # separada da ausência de propósito: ausência é dúvida, e dúvida não pode
     # resolver a favor da campanha mais larga.
@@ -1132,6 +1135,9 @@ def montar_brief(cockpit: Cockpit, escolha: Escolha | None = None,
         ("carimbo_nome", escolha.carimbo_nome),
         ("conversao", escolha.conversao),
         ("estrategia_lance", escolha.estrategia_lance),
+        # A rede declarada atravessa. `None` continua herdando o legado
+        # nomeado dentro de `comum.py`, e não um literal solto.
+        ("rede", escolha.rede),
     ):
         if valor is not None:
             campos[nome] = valor

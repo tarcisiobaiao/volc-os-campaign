@@ -661,6 +661,70 @@ def conferir_asset_demand_gen(
     return tuple(erros)
 
 
+@dataclass(frozen=True)
+class RedeDePesquisa:
+    """Onde a campanha Search pode aparecer — declarado, nunca herdado.
+
+    ## Por que isto existe
+
+    `comum.py` ligava `target_search_network = True` como literal. Search
+    Partners é inventário DIFERENTE do Google Search: outros sites, outro
+    comportamento de consulta, outro CPC efetivo. Ele estava ligado em toda
+    campanha Search da casa sem o operador escolher, sem aparecer no plano
+    aprovado e sem entrar em nenhuma tela — a matriz de cobertura v25 já
+    registrava isso como "efeito invisível".
+
+    O defeito não era o valor `True`. Era ele não ser decisão de ninguém.
+
+    ## Por que é frozen
+
+    A rede entra no protobuf e portanto na impressão do payload. Um objeto
+    mutável deixaria alguém trocar a rede DEPOIS do selo, e o selo continuaria
+    conferindo — a autorização humana passaria a cobrir algo que o humano não
+    viu. Para mudar, `dataclasses.replace()`, que devolve outro objeto.
+    """
+
+    google_search: bool
+    search_partners: bool
+    display_expansion: bool
+
+    def __post_init__(self) -> None:
+        if not self.google_search:
+            raise ValueError(
+                "uma campanha SEARCH sem `google_search` não é uma campanha "
+                "Search. Se a intenção é outro canal, escolha outro canal."
+            )
+        if self.display_expansion:
+            # A expansão para Display muda o inventário sem mudar o tipo da
+            # campanha — é a forma mais silenciosa de sair da rede de pesquisa.
+            # Ela não é proibida para sempre; é proibida enquanto ninguém tiver
+            # escrito o que ela significa para verba, lance e medição.
+            raise ValueError(
+                "`display_expansion` ainda não tem contrato declarado no VOLC "
+                "O.S.: ela troca o inventário sem trocar o tipo da campanha. "
+                "Deixe False até existir decisão escrita."
+            )
+
+    def para_json(self) -> dict[str, bool]:
+        return {
+            "google_search": self.google_search,
+            "search_partners": self.search_partners,
+            "display_expansion": self.display_expansion,
+        }
+
+
+#: O que o builder fazia antes de a rede virar decisão. Parceiros LIGADOS.
+#:
+#: ⚠️ Não "corrija" esta constante para `search_partners=False`. Ela existe
+#: para que campanhas antigas continuem nascendo exatamente como nasciam; mudar
+#: o valor aqui alteraria em silêncio o alcance de todo brief que não declara
+#: rede, que é o oposto do conserto. A aposentadoria dela é migrar os chamadores
+#: para `rede` explícita e então remover o ramo — não reescrevê-la.
+REDE_LEGADA_SEARCH = RedeDePesquisa(
+    google_search=True, search_partners=True, display_expansion=False
+)
+
+
 @dataclass
 class ImagensDisplay:
     """Assets de imagem do responsive display ad, POR PAPEL.
@@ -966,6 +1030,18 @@ class Brief:
     # Só vale para SEARCH. Display e Demand Gen não têm CPC manual como opção
     # razoável e continuam em MaxConv/tCPA.
     estrategia_lance: str = "MANUAL_CPC"   # MANUAL_CPC | MAXIMIZE_CONVERSIONS
+
+    # ⚠️ ONDE O ANÚNCIO APARECE — decisão, e não default do builder.
+    #
+    # `None` significa "este chamador é antigo e herda `REDE_LEGADA_SEARCH`",
+    # que tem PARCEIROS LIGADOS. Isso é compatibilidade deliberada: mudar o
+    # default aqui alteraria em silêncio toda campanha já criada pela casa.
+    #
+    # O que mudou é que o estado legado deixou de ser um literal perdido dentro
+    # de `comum.py` e virou constante nomeada — citável, testável e com
+    # aposentadoria possível. Quem declara `rede` decide, e a decisão viaja até
+    # o protobuf, o selo e o dossiê.
+    rede: "RedeDePesquisa | None" = None
 
     # ⚠️ `match_type` é o match type PADRÃO do brief, não mais o único. Quem
     # declara `criterios` escolhe um por keyword; este campo só preenche a
