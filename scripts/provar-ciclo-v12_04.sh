@@ -39,16 +39,32 @@ docker run --rm -d --name "$C" \
   -e POSTGRES_PASSWORD=descartavel -e POSTGRES_HOST_AUTH_METHOD=trust \
   "$IMAGEM" >/dev/null
 
+# ⚠️ `pg_isready` sozinho NÃO serve, e isto foi medido: a imagem oficial sobe um
+# servidor TEMPORÁRIO no mesmo socket para rodar o initdb, e o `pg_isready`
+# responde verde para ELE. Logo depois o entrypoint derruba esse servidor e sobe
+# o definitivo — e no intervalo o `psql` morre com "connection to server on
+# socket ... failed". Duas de três execuções seguidas caíram assim.
+# A espera correta é pelo marcador de fim do init E por um SELECT que responde.
 pronto=0
-for _ in $(seq 1 60); do
-  if docker exec "$C" pg_isready -U postgres -q >/dev/null 2>&1; then pronto=1; break; fi
+for _ in $(seq 1 90); do
+  if docker logs "$C" 2>&1 | grep -q "PostgreSQL init process complete"; then
+    if docker exec "$C" psql -U postgres -d postgres -X -q -At -c "select 1" \
+        >/dev/null 2>&1; then pronto=1; break; fi
+  fi
   sleep 1
 done
-[ "$pronto" = 1 ] || { echo "o cluster descartável não subiu"; docker logs "$C" | tail -20; exit 2; }
+[ "$pronto" = 1 ] || { echo "o cluster descartável não subiu"; docker logs "$C" 2>&1 | tail -20; exit 2; }
 
 q() { docker exec -i "$C" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -X -q -At -c "$1"; }
 f() { docker exec -i "$C" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -X -q -f - >/dev/null; }
-fq() { docker exec -i "$C" psql -U postgres -d postgres -v ON_ERROR_STOP=0 -X -q -f - 2>&1; }
+# ⚠️ `2>&1 >/dev/null`, nesta ordem, e nao `2>&1`. As provas de comportamento
+# falam SO por NOTICE, que sai pelo stderr; o stdout do psql leva uma linha VAZIA
+# para cada `select pg_temp.tenta(...)`, porque a funcao devolve void. Juntando
+# os dois streams num pipe, as 65 linhas vazias corriam com as 65 notices e
+# volta e meia se interpolavam NO MEIO de uma linha, quebrando a ancora `^  ok`.
+# O sintoma foi um contador que oscilava entre 104 e 107 provas na MESMA arvore,
+# sem nada ter mudado — ou seja, um degrau que as vezes nao contava o que rodou.
+fq() { docker exec -i "$C" psql -U postgres -d postgres -v ON_ERROR_STOP=0 -X -q -f - 2>&1 >/dev/null; }
 
 # ── papéis e o ACL padrão QUEBRADO de produção, reproduzido ─────────────────
 #

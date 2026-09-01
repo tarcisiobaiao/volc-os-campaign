@@ -29,12 +29,21 @@ docker run --rm -d --name "$C" \
   -e POSTGRES_PASSWORD=descartavel -e POSTGRES_HOST_AUTH_METHOD=trust \
   "$IMAGEM" >/dev/null
 
+# ⚠️ `pg_isready` sozinho NÃO serve, e isto foi medido: a imagem oficial sobe um
+# servidor TEMPORÁRIO no mesmo socket para rodar o initdb, e o `pg_isready`
+# responde verde para ELE. Logo depois o entrypoint derruba esse servidor e sobe
+# o definitivo — e no intervalo o `psql` morre com "connection to server on
+# socket ... failed". Duas de três execuções seguidas caíram assim.
+# A espera correta é pelo marcador de fim do init E por um SELECT que responde.
 pronto=0
-for _ in $(seq 1 60); do
-  if docker exec "$C" pg_isready -U postgres -q >/dev/null 2>&1; then pronto=1; break; fi
+for _ in $(seq 1 90); do
+  if docker logs "$C" 2>&1 | grep -q "PostgreSQL init process complete"; then
+    if docker exec "$C" psql -U postgres -d postgres -X -q -At -c "select 1" \
+        >/dev/null 2>&1; then pronto=1; break; fi
+  fi
   sleep 1
 done
-[ "$pronto" = 1 ] || { echo "o cluster descartável não subiu"; exit 2; }
+[ "$pronto" = 1 ] || { echo "o cluster descartável não subiu"; docker logs "$C" 2>&1 | tail -20; exit 2; }
 
 f() { docker exec -i "$C" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -X -q -f - >/dev/null; }
 q() { docker exec -i "$C" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -X -q -At -c "$1"; }

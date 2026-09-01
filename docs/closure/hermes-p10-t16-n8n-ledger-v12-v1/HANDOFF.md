@@ -65,7 +65,7 @@ a única descrição de como os fluxos antigos foram corrigidos em 28/08.
 | `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | **NOVO.** Ledger + fato + RPC única + projeção + view de saúde |
 | `supabase/migrations/v12_04_rollback.sql` | **NOVO.** Reversão par a par, recusa perda silenciosa |
 | `supabase/migrations/README.md` | seção v12_04 com hashes, provas e o portão que falta |
-| `scripts/provas-v12_04.sql` | **NOVO.** 64 provas de comportamento, em SQL puro |
+| `scripts/provas-v12_04.sql` | **NOVO.** 65 provas de comportamento, em SQL puro |
 | `scripts/provar-ciclo-v12_04.sh` | **NOVO.** Ciclo aplicar→operar→reverter→reaplicar em container |
 | `scripts/provar-ponta-a-ponta-gads.sh` | **NOVO.** Documentos do fluxo contra a RPC real |
 | `n8n/gerar_flows_gads_ledger_v12.py` | **NOVO.** Gerador único dos dois papéis, com `--check` |
@@ -154,7 +154,7 @@ Detalhe completo em `GATES.md`. Resumo:
 
 | Gate | Resultado |
 |---|---|
-| `bash scripts/provar-ciclo-v12_04.sh` | **106 provas, 0 falhas** |
+| `bash scripts/provar-ciclo-v12_04.sh` | **107 provas, 0 falhas** |
 | `python3 scripts/validar_workflows_n8n_gads.py` | **339 provas, 0 falhas, 0 pulados** |
 | `node scripts/simular_gads_ledger_v12.mjs` | **65 provas, 0 falhas** |
 | `bash scripts/provar-ponta-a-ponta-gads.sh` | **12 provas, 0 falhas** |

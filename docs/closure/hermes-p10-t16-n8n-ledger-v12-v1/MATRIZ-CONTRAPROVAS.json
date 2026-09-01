@@ -14,7 +14,7 @@
     "suite": "python3 -m pytest backend/tests/test_gads_workflows_n8n.py -q"
   },
   "totais": {
-    "ciclo_sql": "106 provas, 0 falhas",
+    "ciclo_sql": "107 provas, 0 falhas",
     "validador": "339 provas, 0 falhas, 0 pulados",
     "simulador": "65 provas, 0 falhas",
     "ponta_a_ponta": "12 provas, 0 falhas",
@@ -194,7 +194,7 @@
       "n": 22,
       "exigencia": "apply→operate→rollback→reapply verde",
       "estado": "provada",
-      "onde": ["scripts/provar-ciclo-v12_04.sh :: DEGRAU 1..4, 106 provas, 0 falhas, incluindo 'aplicar uma terceira vez é recusado com nome'"],
+      "onde": ["scripts/provar-ciclo-v12_04.sh :: DEGRAU 1..4, 107 provas, 0 falhas, incluindo 'aplicar uma terceira vez é recusado com nome'"],
       "mecanismo": "cluster Postgres 16 efêmero em container, criado e destruído a cada execução; nunca fala com database.agenciavolc.com.br"
     },
     {

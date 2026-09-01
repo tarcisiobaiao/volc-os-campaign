@@ -18,7 +18,7 @@ bash scripts/provar-ciclo-v12_04.sh
 ```
 
 ```
-passaram 106 · falharam 0
+passaram 107 · falharam 0
 CICLO v12_04 COMPLETO: aplicar → operar → reverter → reaplicar
 ```
 
@@ -27,7 +27,7 @@ Quatro degraus, num container Postgres 16 que nasce e morre no comando:
 | Degrau | O que mede |
 |---|---|
 | 1 — aplicar | duas tabelas, view de saúde, RPC única `SECURITY DEFINER` com `search_path` fixo, RLS `ENABLE + FORCE`, zero policies, zero grant `anon`/`authenticated`, `service_role` sem escrita direta, nenhuma métrica com DEFAULT, chave canônica com a CONTA, FK `DEFERRABLE INITIALLY DEFERRED`, e `daily_campaign_metrics` **não criada nem alterada** |
-| 2 — comportamento | `scripts/provas-v12_04.sql`: 64 provas de contrato (CP-01 a CP-24) |
+| 2 — comportamento | `scripts/provas-v12_04.sql`: 65 provas de contrato (CP-01 a CP-24) |
 | 2-bis — contenção | `service_role` recusado fora da RPC e **aceito** por ela; zero medido chega zero, ausência chega NULL |
 | 3 — reverter | rollback recusado sem declaração de perda; com declaração, reverte; `trafego_campanha` e a legada continuam de pé, com receita intacta |
 | 4 — reaplicar | tudo volta, a RPC volta a aceitar ingestão, e uma terceira aplicação é recusada com nome |
@@ -35,6 +35,26 @@ Quatro degraus, num container Postgres 16 que nasce e morre no comando:
 ⚠️ O degrau 2 tem guarda contra degrau mudo: se produzir menos de 45 provas, ele
 **falha** em vez de anunciar "0 falharam" — que foi como as provas da v12_02
 quase passaram sem medir nada.
+
+### Dois defeitos que o próprio arranjo de prova tinha
+
+Estabilidade foi medida, não suposta: o ciclo rodou **três vezes seguidas** e
+devolveu `passaram 107 · falharam 0` nas três. Chegar lá exigiu consertar o
+harness duas vezes.
+
+**1. Contador que oscilava entre 104 e 107 na mesma árvore.** As provas de
+comportamento falam só por `NOTICE`, que sai pelo **stderr**; o stdout do `psql`
+leva uma linha **vazia** para cada `select pg_temp.tenta(...)`, porque a função
+devolve `void`. Com `2>&1`, as 65 linhas vazias corriam com as 65 notices e volta
+e meia se interpolavam no meio de uma linha, quebrando a âncora `^  ok`. Um
+degrau que às vezes não conta o que rodou é pior do que um degrau que falha. A
+captura passou a ser `2>&1 >/dev/null` — só stderr.
+
+**2. Duas de três execuções seguidas morriam sem conectar.** A imagem oficial do
+Postgres sobe um servidor **temporário** no mesmo socket para rodar o `initdb`, e
+o `pg_isready` responde verde para *ele*; logo depois o entrypoint derruba esse
+servidor e sobe o definitivo. A espera passou a ser pelo marcador
+`PostgreSQL init process complete` **e** por um `select 1` que responde.
 
 ## 2. Validação n8n — nó a nó, workflow completo, expressões e varreduras
 

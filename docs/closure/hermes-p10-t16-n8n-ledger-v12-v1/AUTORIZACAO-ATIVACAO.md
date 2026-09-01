@@ -15,9 +15,9 @@ foram importados nem ativados, e nenhum timer foi instalado. Enquanto os passos
 
 | Artefato | Estado | Prova |
 |---|---|---|
-| `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | escrita, **não aplicada** | ciclo aplicar→operar→reverter→reaplicar, 106 provas, Postgres descartável |
+| `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | escrita, **não aplicada** | ciclo aplicar→operar→reverter→reaplicar, 107 provas, Postgres descartável |
 | `supabase/migrations/v12_04_rollback.sql` | escrito, **não executado em produção** | executado no descartável; recusa perda silenciosa sem declaração |
-| `n8n/volc_gads_campanha_dia_d0.json` | gerado, **inativo, não importado** | 311 provas de validação nó a nó |
+| `n8n/volc_gads_campanha_dia_d0.json` | gerado, **inativo, não importado** | 339 provas de validação nó a nó |
 | `n8n/volc_gads_campanha_dia_d1.json` | gerado, **inativo, não importado** | idem |
 | JavaScript dos Code nodes | executado offline | 65 provas com relógio injetado, zero rede |
 | Costura fluxo↔RPC | provada | 12 provas ponta a ponta contra a v12_04 real |
@@ -89,7 +89,7 @@ defeito que P10-T16 fecha.
 
 ```bash
 # preflight: o descartável primeiro, sempre
-bash scripts/provar-ciclo-v12_04.sh          # esperado: passaram 106 · falharam 0
+bash scripts/provar-ciclo-v12_04.sh          # esperado: passaram 107 · falharam 0
 
 # só então, no oficial, com backup do P2 conferido
 cat supabase/migrations/v12_04_gads_fato_canonico_dia.sql \
