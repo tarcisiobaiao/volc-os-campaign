@@ -579,9 +579,17 @@ def _pedido(seed: int = 7, titulo: str = "Inscrições abertas 2027") -> dict[st
 def test_a_maquina_declara_quais_motores_consegue_rodar(cliente):
     r = cliente.get("/api/criativos/bancada/motores")
     assert r.status_code == 200
-    slugs = [m["slug"] for m in r.json()["motores"]]
-    assert "tipografico-local" in slugs
-    versoes = r.json()["motores"][0]["versoes"]
+    por_slug = {m["slug"]: m for m in r.json()["motores"]}
+    assert "tipografico-local" in por_slug
+
+    # ⚠️ Procurado pelo SLUG, e não por `motores[0]`. A lista é ordenada por
+    # slug e passou a ter um segundo motor local (`png-local`, stdlib, sem
+    # fonte): a versão por índice deixou de apontar para o tipográfico e
+    # quebrou afirmando que o motor errado não tem hash de fonte. O que este
+    # teste quer dizer é "o tipográfico declara a fonte que usou", porque
+    # trocar o arquivo da fonte muda o pixel e um recibo que não registrasse
+    # isso mentiria sobre reprodutibilidade.
+    versoes = por_slug["tipografico-local"]["versoes"]
     assert len(versoes["fonte_sha256"]) == 64
 
 
