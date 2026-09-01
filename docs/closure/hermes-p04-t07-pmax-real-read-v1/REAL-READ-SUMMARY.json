@@ -1,0 +1,337 @@
+{
+  "api_version": "v25",
+  "auth": {
+    "duration_ms": 788,
+    "error": null,
+    "list_accessible_customers": "ok",
+    "login_customer_source": "collector_default_forced"
+  },
+  "called_methods": [
+    "CustomerService.ListAccessibleCustomers",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream"
+  ],
+  "discovery": {
+    "accessible_account_pseudonyms": [
+      "7226e58df3581679",
+      "1e26a0c67aa667d2",
+      "cbea4415436f3781",
+      "67cea02fba30f27a",
+      "f12f42ff766f6a2a",
+      "f42f26337e873557",
+      "4e290f5e4629f39a",
+      "5b43f1019a072a4a",
+      "2588bd8e0500a4bc",
+      "e2e8033f986c6076",
+      "7e6150edb3603db5",
+      "91ef1095f75957af",
+      "1cdcb67a9c90f6b6"
+    ],
+    "accessible_accounts_count": 13,
+    "coverage": {
+      "failed_accounts": 9,
+      "green_accounts": 4,
+      "green_no_pmax_accounts": 4,
+      "note": "NO_ELIGIBLE_PMAX cobre as contas consultáveis que responderam verde; contas com USER_PERMISSION_DENIED não foram ampliadas nem tratadas como zero.",
+      "queried_accounts": 13
+    },
+    "pmax_candidates_count": 0
+  },
+  "discovery_queries": [
+    {
+      "account": "2588bd8e0500a4bc",
+      "duration_ms": 398,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "309eb944aa102c96"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "cbea4415436f3781",
+      "duration_ms": 360,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "8dea40476d102daf"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "f12f42ff766f6a2a",
+      "duration_ms": 539,
+      "error": null,
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [
+        "7eb07ec0ff124d63"
+      ],
+      "row_count": 0,
+      "status": "vazio_confirmado"
+    },
+    {
+      "account": "7e6150edb3603db5",
+      "duration_ms": 380,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "c99d45fbaa9b8271"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "e2e8033f986c6076",
+      "duration_ms": 498,
+      "error": null,
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [
+        "05424e7e826264aa"
+      ],
+      "row_count": 0,
+      "status": "vazio_confirmado"
+    },
+    {
+      "account": "7226e58df3581679",
+      "duration_ms": 404,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "48a2429332cfc5f9"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "f42f26337e873557",
+      "duration_ms": 705,
+      "error": null,
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [
+        "77df96d2b1266a1c"
+      ],
+      "row_count": 0,
+      "status": "vazio_confirmado"
+    },
+    {
+      "account": "5b43f1019a072a4a",
+      "duration_ms": 324,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "b2f544c19cc78259"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "91ef1095f75957af",
+      "duration_ms": 331,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "88d4144296510a05"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "4e290f5e4629f39a",
+      "duration_ms": 312,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "8aeebbe0ab3e9866"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "1cdcb67a9c90f6b6",
+      "duration_ms": 756,
+      "error": null,
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [
+        "736b114e8c96110f"
+      ],
+      "row_count": 0,
+      "status": "vazio_confirmado"
+    },
+    {
+      "account": "1e26a0c67aa667d2",
+      "duration_ms": 614,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "c04ae47ed93ca717"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    },
+    {
+      "account": "67cea02fba30f27a",
+      "duration_ms": 406,
+      "error": {
+        "class": "GoogleAdsException",
+        "google_errors": [
+          {
+            "code": "[REDACTED] USER_PERMISSION_DENIED ",
+            "message": "User doesn't have permission to access customer. Note: If you're accessing a client customer, the manager's customer id must be set in the 'login-customer-id' header. See https://developers.google.com/google-ads/api/docs/concepts/call-structure#cid"
+          }
+        ],
+        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.PERMISSION_DENIED \tdetails = \"The caller does not have permission\" \tdebug_error_string = \"PERMISSION_DENIED:The caller does not have permission\" >, errors {   error_code {     [REDACTED] USER_PERMI",
+        "request_id_hash": "060cad4f3c0369e8"
+      },
+      "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+      "request_id_hashes": [],
+      "row_count": null,
+      "status": "falhou"
+    }
+  ],
+  "families": [
+    {
+      "family": "PMAX_CAMPANHA",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    },
+    {
+      "family": "PMAX_ASSET_GROUPS",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    },
+    {
+      "family": "PMAX_ASSET_GROUP_ASSETS",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    },
+    {
+      "family": "PMAX_ASSETS",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    },
+    {
+      "family": "PMAX_DESEMPENHO_ASSET_GROUP",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    },
+    {
+      "family": "PMAX_SINAIS",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    },
+    {
+      "family": "PMAX_RECOMENDACOES_FORCA",
+      "reason": "NO_ELIGIBLE_PMAX",
+      "status": "inelegivel"
+    }
+  ],
+  "generated_at": "2026-09-01T19:14:36.417825+00:00",
+  "guard": {
+    "forbidden": [
+      "mutate",
+      "create",
+      "update",
+      "remove",
+      "upload",
+      "apply"
+    ],
+    "forbidden_attempts": [],
+    "zero_mutate_confirmed": true
+  },
+  "performance_label": {
+    "adjudication": "INCONCLUSIVE",
+    "cause": "NO_ELIGIBLE_PMAX",
+    "field_service": "not_executed",
+    "query_real": "not_executed"
+  },
+  "review": {
+    "blocking_findings": 0,
+    "non_blocking_findings": [
+      "runner externo nao versionado; evidencia permanece nos artefatos sanitizados",
+      "NO_ELIGIBLE_PMAX deve ser lido com cobertura 4/13 verde, 9/13 permission denied",
+      "performance_label nao adjudicado por falta de alvo PMax elegivel"
+    ],
+    "reviewer": "Claude Opus fresh context",
+    "verdict": "APROVAR"
+  },
+  "sdk": "google-ads 31.4.0",
+  "target": null,
+  "verdict": "NO_ELIGIBLE_PMAX"
+}
