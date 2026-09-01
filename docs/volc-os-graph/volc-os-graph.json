@@ -618,7 +618,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Aplica mudança no Google Ads e registra o resultado.",
-      "evidence": "A esteira existe desenhada e provada em cluster descartável (19 tabelas), com idempotência para \"timeout mas criou\" e T2 ausente. O canário Search restringe conta, MCC, canal, status PAUSED, tetos e duplicidade remota. A auditoria registra exatamente três famílias de snapshots com mutate (Webhook, Form Triggers e ClickUp); active:true é estado do snapshot, não prova de execução viva. Continua parcial porque v10_01 não foi aplicada. A ligação às rotas deixou de faltar em código: em 31/08/2026 a sprint search-production-closure-v1 entregou o writer produtivo (backend/app/trafego/ledger.py) e a v10_03, com recibo em_voo anterior ao mutate e recusa da escrita quando o ledger está ausente — mas isso vive numa branch não integrada e não alcança banco nenhum. As superfícies legadas ainda precisam ser autenticadas ou aposentadas.",
+      "evidence": "A esteira existe desenhada e provada em cluster descartável (19 tabelas), com idempotência para \"timeout mas criou\" e T2 ausente. O canário Search restringe conta, MCC, canal, status PAUSED, tetos e duplicidade remota. A auditoria registra exatamente três famílias de snapshots com mutate (Webhook, Form Triggers e ClickUp); active:true é estado do snapshot, não prova de execução viva. Continua parcial, mas NÃO mais por falta de migration: em 01/09/2026 a v10_01, a v10_03 e a v10_04 foram APLICADAS no Supabase oficial (a v10_02 ficou fora da janela, por decisão), e no mesmo dia o primeiro canário COM LEDGER v10 nasceu — campanha 24195821946, PAUSED, com recibo 5526a821-d843-4221-94a6-cdeb9a174dd4 fechado como sucesso e identidade bfd10e8f-7028-5ec4-885b-efa1dc7bf96e. O que sustenta o `partial` agora é outra coisa: a campanha PAUSED não aparece no espelho H0 (o coletor contínuo lê só ENABLED), o vínculo editorial funil × campanha tem zero linhas, e a reconciliação nunca foi exercida contra um item indeterminado real. A ligação às rotas deixou de faltar em código: em 31/08/2026 a sprint search-production-closure-v1 entregou o writer produtivo (backend/app/trafego/ledger.py) e a v10_03, com recibo em_voo anterior ao mutate e recusa da escrita quando o ledger está ausente — mas isso vive numa branch não integrada e não alcança banco nenhum. As superfícies legadas ainda precisam ser autenticadas ou aposentadas.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -1268,7 +1268,7 @@
       "state_label": "Estrutura vazia",
       "tier": 1,
       "summary": "Transforma visitas identificadas em sinais enviados ao Google Ads.",
-      "evidence": "9.407 visitas com GCLID; 9.468 pendentes; fila, lotes e valores calculados permanecem zerados.",
+      "evidence": "9.407 visitas com GCLID; 9.468 pendentes; fila, lotes e valores calculados permanecem zerados. Em 01/09/2026 a doutrina oficial da Data Manager API foi fixada em docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md (endpoint, validateOnly no corpo, diagnóstico assíncrono, limites, e a confirmação de que ela NÃO cria campanha nem seleciona goal). NADA foi promovido: continua `empty` porque não há fila, não há lote, não há envio e nenhum evento foi enviado — nem em validateOnly.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {

@@ -1,0 +1,132 @@
+{
+  "_leia_isto": [
+    "Recibo do primeiro canário Search COM LEDGER v10. Uma única chamada, autorizada",
+    "literalmente. Não é o primeiro canário histórico: aquele foi em 28/08/2026,",
+    "campanha 24183717006, sem ledger.",
+    "",
+    "Nenhum segredo aqui: só ids de recurso do Google e uuids do ledger."
+  ],
+  "executado_em": "2026-09-01T06:37:22-03:00",
+  "terminou_em": "2026-09-01T06:37:41-03:00",
+  "rota": "POST /api/trafego/subir",
+  "corpo_sha256": "7c987adb26b7bef5818e0858031a39c4412619b36bd02cd5af7d61a51fc53429",
+  "code_sha": "8765f6a70587d37922f2f86fbbcb06e9f190cf37",
+  "desfecho_http": 200,
+  "estado_do_executor": "ACEITO",
+  "tentativas": 1,
+  "reenvios": 0,
+  "ledger": {
+    "intencao_id": "ffceaebb-b51f-54e7-92b5-cd07490d668d",
+    "lote_id": "1e61195c-daa7-4dd3-b1e3-35a4778871dd",
+    "lote_estado": "concluido",
+    "item_id": "6c5a473c-718f-488f-a17e-e0627b687362",
+    "item_estado": "criada_pausada",
+    "recibo_id": "5526a821-d843-4221-94a6-cdeb9a174dd4",
+    "recibo_desfecho": "sucesso",
+    "operacoes_consumidas": 34,
+    "idempotency_key": "volc-gads-0000-f56d46af6cdfb9bf",
+    "volc_campaign_id": "bfd10e8f-7028-5ec4-885b-efa1dc7bf96e",
+    "identidade_confere_com_sincronizador": true
+  },
+  "aprovacao": {
+    "plano_impressao": "8a21a469950218ed1d50df7a2269e52045a5565688c894c71e8760a1cd805382",
+    "chave_intencao": "e0ccfc66d8e4724b7e9d0ef88f1fc13d30f10a7ca36c04c26e050a773d5b0830",
+    "aprovado_por_sub": "tarcisio-dono",
+    "aprovado_por_email": "tarcisio@agenciavolc.com.br",
+    "confirmou_criacao_pausada": true,
+    "ativacao_incluida": false,
+    "marca_remota": "VOLC-CANARY-e0ccfc66d8e4"
+  },
+  "google_ads": {
+    "customer_id": "5478096539",
+    "login_customer_id": "6016739364",
+    "campaign_id": "24195821946",
+    "campaign_status": "PAUSED",
+    "serving_status": "SERVING",
+    "serving_status_nota": "SERVING é o estado do SERVIÇO da campanha; quem impede a veiculação é campaign.status=PAUSED. Os dois convivem e não se contradizem.",
+    "advertising_channel_type": "SEARCH",
+    "bidding_strategy": "MANUAL_CPC",
+    "budget_micros": 10000000,
+    "budget_compartilhado": false,
+    "ad_group_id": "199845978876",
+    "ad_group_status": "ENABLED",
+    "ad_group_cpc_bid_micros": 1000000,
+    "keywords": [
+      {
+        "texto": "maquininha de cartão",
+        "match": "PHRASE",
+        "status": "ENABLED",
+        "negativa": false
+      },
+      {
+        "texto": "maquininha de cartão no celular pessoa física",
+        "match": "PHRASE",
+        "status": "ENABLED",
+        "negativa": false
+      }
+    ],
+    "ad_id": "823057104443",
+    "ad_status": "ENABLED",
+    "final_url": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+    "headlines": 15,
+    "descriptions": 4,
+    "assets": {
+      "SITELINK": 6,
+      "CALLOUT": 6,
+      "STRUCTURED_SNIPPET": 1,
+      "todos_status": "ENABLED"
+    },
+    "redes": {
+      "google_search": true,
+      "search_partners": false,
+      "content_network": false
+    },
+    "policy": {
+      "approval_status": "UNKNOWN",
+      "review_status": "REVIEW_IN_PROGRESS"
+    },
+    "marca_remota": "VOLC-CANARY-e0ccfc66d8e4",
+    "campanhas_com_a_marca": 1,
+    "conta_antes": 6,
+    "conta_depois": 7,
+    "delta": 1
+  },
+  "metas_de_conversao": {
+    "alteradas": false,
+    "goal_config_level": "CUSTOMER",
+    "custom_conversion_goal": null,
+    "campaign_conversion_goal_linhas": 2,
+    "biddable_true": [
+      {
+        "category": "DOWNLOAD",
+        "origin": "APP"
+      }
+    ],
+    "achado": "O único goal biddable desta campanha é DOWNLOAD/APP, enquanto a conta declara oito ações primárias PURCHASE. Em MANUAL_CPC não afeta o lance; sob Smart Bidding a campanha otimizaria para um objetivo que ninguém escolheu. É o que P05-T12 existe para fechar."
+  },
+  "pendencias_medidas": {
+    "espelho_h0": 0,
+    "vinculo_funil_campanha": 0,
+    "verificacoes_reconciliacao": 0,
+    "registro_legado_campaigns": "falhou com HTTP 400: a tabela exige project_id NOT NULL. Por desenho isso vira aviso no recibo e não derruba o lançamento — o registro canônico é o ledger v10."
+  },
+  "excecao_autorizada": "O vínculo editorial Portal Mundo Mais × pauta/LP NÃO foi satisfeito: a landing page é creditoup.com.br e a conta é Portal Mundo Mais. Isso é deliberado e autorizado como TESTE DE INFRAESTRUTURA — o canário prova criação, ledger, idempotência, política e reconciliação, e não a junta editorial. P05-T11 permanece partial por isso, entre outros motivos.",
+  "rollback": {
+    "estado_atual": "PAUSED — não entra em leilão e não gasta",
+    "reversao_autorizada_futuramente": "definir campaign.status = REMOVED em customers/5478096539/campaigns/24195821946",
+    "o_que_nao_se_desfaz": "o recibo fechado permanece como memória do que aconteceu; reverter a campanha não apaga o ledger, e é isso que torna a operação auditável depois",
+    "nao_executado": "nenhuma reversão foi executada"
+  },
+  "nao_executado": [
+    "ativação da campanha",
+    "alteração de ConversionAction/CustomerConversionGoal/CampaignConversionGoal/ConversionGoalCampaignConfig",
+    "Data Manager (nem validateOnly)",
+    "GTM/GA4",
+    "migration adicional",
+    "push",
+    "merge",
+    "deploy",
+    "n8n",
+    "segunda chamada a /subir"
+  ]
+}
