@@ -1,0 +1,1732 @@
+{
+ "schema_version": 1,
+ "gerado_em": "2026-09-01",
+ "missao": "creative-factory-production-spine-v1",
+ "base_sha": "b6e226ab2f6d339d2c7c899b83b05ff4a95ebcac",
+ "como_ler": {
+  "taxonomia": [
+   "executed_integrated",
+   "executed_external",
+   "implemented_integrated",
+   "implemented_external",
+   "documented_only",
+   "fixture_only",
+   "unavailable_on_machine",
+   "blocked_by_external_authorization",
+   "not_supported",
+   "failed",
+   "unknown"
+  ],
+  "nunca_colapsar": [
+   "zero != ausencia",
+   "ausencia != falha",
+   "falha != lista vazia",
+   "nao suportado != zero",
+   "custo nao apurado != custo zero",
+   "provider indisponivel != provider reprovado",
+   "formato documentado != formato executado",
+   "render local != producao",
+   "storage local != storage remoto",
+   "arquivo escrito != arquivo verificado",
+   "WARN != PASS"
+  ],
+  "aviso": "`executed_external` significa que a capacidade foi executada NO PARQUE, fora deste repositorio e fora do contrato do VOLC O.S. Nao e producao do VOLC O.S. e nao e prova de que o contrato daqui a alcanca."
+ },
+ "modos_criativos": [
+  {
+   "modo": "typography_only",
+   "estado_factual": "executed_external",
+   "onde": "Externo: /Users/mac/Desktop/Volc Mídia Global/motor-imagem/compartilhado/prensa-poc. Neste repositório: NENHUM código de PRENSA. Catálogo em produção: supabase/migrations/v11_02_parque_criativo.sql:770-775 (estado_de_prova='executado_externo', saidas_no_snapshot=26). Front: src/components/criativos/briefing/contrato.ts:96-102 declara disponivel:false com motivo 'O compositor tipográfico ainda não está ligado neste ambiente.' Router: backend/app/routers/criativos.py:344-350 devolve 400 ESTUDIO.modo_indisponivel para qualquer modo != full_llm.",
+   "evidencia": "MEDIDO POR MIM: /Users/mac/Desktop/Volc Mídia Global/motor-imagem/compartilhado/prensa-poc/out/carrossel_produtividade_metodo90_s02.png existe, sha256 da472d076df827dcb6a08ad8c9704de38607660cc1e73408a95ee7dc668cf078, IHDR 1080x1350. O manifesto (motores-de-imagem.json:245-255) declara production_mode='typography_only' e image_provider_used=false para essa mesma peça.",
+   "lacuna": "MotorTipografico (backend/app/criativo/bancada/adaptadores/tipografico.py) NÃO é este modo: ele compõe fundo sólido + texto com Inter, sem grid, sem variantes por destino, sem gate de DOM e sem promoção transacional — o próprio arquivo diz isso em :11-17. O slug 'typography_only' aparece em backend/tests/test_criativo_bancada.py:43,570 como texto livre de Encomenda.modo_slug; nada no runtime valida esse slug contra o catálogo. Adaptador PRENSA ausente."
+  },
+  {
+   "modo": "deterministic_graphics",
+   "estado_factual": "executed_external",
+   "onde": "Externo: prensa-poc (graficos.py, 5 tipos de gráfico segundo docs/design/MATRIZ-ESTUDIO-LEGADO-SCHEMA-RUNTIME-FRONTEND.md:21). Neste repositório: nenhum código. Catálogo: v11_02:776-779 (estado_de_prova='executado_externo', saidas_no_snapshot=13). Front: contrato.ts:104-110 disponivel:false.",
+   "evidencia": "MEDIDO POR MIM: anderson_grafico_s01.png, s02.png e s03.png existem no `out` canônico, todos 1088x1360, com sidecars anderson_grafico_sNN.pixelgate.json e .veredito.json ao lado de cada um. ⚠️ Discrepância de contagem entre fontes internas: motores-de-imagem.json:237 e o CATALOGO dizem 12 saídas 'deterministic_graphics_and_typography'; v11_02:779 grava 13. Não resolvi qual está certa.",
+   "lacuna": "nenhum gerador de SVG/data-viz determinístico no repositório; o modo é oferecido ao operador como indisponível, com motivo."
+  },
+  {
+   "modo": "full_llm",
+   "estado_factual": "implemented_integrated",
+   "onde": "services/creative_engine/motores/gemini_imagem.py + services/creative_engine/enquadramento.py; instanciado em backend/app/routers/criativos.py:137-139; é o ÚNICO modo aceito por POST /api/criativos/jobs (:344-350). Também implementado, sem consumidor, em volc_ads/criativo/adaptadores/funnelforge_imagem.py (gpt-image-2 injetado).",
+   "evidencia": "v11_02:762-768 registra o modo com estado_de_prova='implementado_no_volc', renderer='provider_de_imagem', exige_provider_de_imagem=true. src/components/criativos/briefing/contrato.ts:88-93 é o único modo com disponivel:true. src/types/criativos.ts:81-89 declara os seis modos + 'observado'.",
+   "lacuna": "ZERO peça em produção: 0 briefings, 0 jobs, 0 masters, 0 renditions (docs/design/RECONCILIACAO-ESTUDIO-2026-08-28.md §3, medido no banco oficial). O 'job real de 3 renditions' citado em v11_02:767 e no DELTA C0-C1-C3 não tem artefato nem hash versionado no repositório — é documented_only, não reproduzível aqui. O despacho é fail-closed em serverless (bancada/despacho.py:88-103), e o executor antigo continua usando asyncio.create_task."
+  },
+  {
+   "modo": "photo_preserved",
+   "estado_factual": "implemented_external",
+   "onde": "Externo: /Users/.../positivo-ad-studio/backend/app/agents/{photo_analyzer,vision_zone,coordinate_compositor,chroma_compositor,orchestrator}.py. Neste repositório: NENHUM código. Catálogo: v11_02:783-786 (estado_de_prova='componentes_observados', renderer='positivo_photo'). Front: contrato.ts:110-116 disponivel:false, motivo 'Depende do envio de insumo próprio, que ainda não existe nesta tela.'",
+   "evidencia": "CONFERIDO POR MIM: os quatro componentes especializados que motores-de-imagem.json:130-135 nomeia (PhotoAnalyzer, VisionZoneAgent, CoordinateCompositor, PhotoAdComposer) correspondem a arquivos existentes no projeto externo. Não executei nada lá.",
+   "lacuna": "nem adaptador nem upload de insumo próprio existem no VOLC O.S.; a política de retenção/consentimento de foto real (risco 5 do INVENTARIO) não está escrita em lugar nenhum deste repositório."
+  },
+  {
+   "modo": "prensa_hybrid",
+   "estado_factual": "executed_external",
+   "onde": "Externo: prensa-poc. Neste repositório: nenhum código. Catálogo: v11_02:780-782 (estado_de_prova='executado_externo', renderer='provider_depois_prensa', saidas_no_snapshot=26). Front: contrato.ts:117-123 disponivel:false, motivo 'A prensa ainda não está ligada neste ambiente.'",
+   "evidencia": "MEDIDO POR MIM: kintsugi_planejado.png = 1088x1360; volcnews_iphone_laranja.png = 1088x1360, __pmax__img_191x1 = 1200x628, __pmax__img_1x1 = 1200x1200, __pmax__img_4x5 = 1088x1360, __demandgen__img_9x16 = 1080x1920. As cinco batem exatamente com a tabela de INVENTARIO-MOTORES-DE-IMAGEM.md:168-174, o que sustenta a afirmação de recomposição por destino (dimensões diferentes, não um crop).",
+   "lacuna": "o repositório conhece o canvas nativo da PRENSA mas não sabe renderizar: backend/app/criativo/parque.py:193-197 guarda CANVAS_NATIVO_EXTERNO['prensa'] = {'4x5': (1088,1360), '1x1': (1200,1200)} e canvas_a_renormalizar() só avisa que precisaria renormalizar (defeito G11). Nada consome isso hoje."
+  },
+  {
+   "modo": "full_llm_then_prensa",
+   "estado_factual": "documented_only",
+   "onde": "Nenhum código, em lugar nenhum — nem interno nem externo. Catálogo: v11_02:787-789 com estado_de_prova='planejado' e prova 'Os dois componentes existem separados; a combinacao nao foi executada.' Front: contrato.ts:124-130 disponivel:false. PACOTE-REUSO-MOTOR-IMAGEM.json:44-50 status='planned_combination'.",
+   "evidencia": "grep por 'full_llm_then_prensa' fora de docs/: apenas supabase/migrations/v11_01:227 e v11_02:788 (enum/seed), src/types/criativos.ts:88 (tipo) e src/components/criativos/briefing/contrato.ts:124 (card desabilitado). Zero código de execução.",
+   "lacuna": "é o único dos seis modos sem NENHUMA prova executada, nem interna nem externa. 'formato-documentado ≠ formato-executado' aplica-se integralmente aqui."
+  }
+ ],
+ "capacidades": [
+  {
+   "engine_id": "gemini-imagem (MotorGeminiImagem)",
+   "midia": "imagem",
+   "modo": "full_llm",
+   "provider": "Gemini (google) — generativelanguage.googleapis.com/v1beta/models",
+   "modelo": "gemini-3.1-flash-image",
+   "versao": "VERSAO_DO_ADAPTADOR = \"1.0.0\"",
+   "papel_do_modelo": "compõe a peça inteira (cena+composição) na proporção nativa pedida via generationConfig.imageConfig.aspectRatio; nenhum texto tipografado por código",
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/services/creative_engine/motores/gemini_imagem.py",
+   "origem_contrato": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/porta.py (Protocol MotorDeCriativo, contrato de 2 passos solicitar_geracao/receber)",
+   "estado_factual": "implemented_integrated",
+   "dimensoes_observadas": [
+    "1080x1080",
+    "1080x1350",
+    "1080x1920",
+    "1200x628 (via dominio.FORMATOS: 1x1, 4x5, 9x16, 1.91x1)"
+   ],
+   "destinos_suportados": [
+    "google_display",
+    "meta_feed",
+    "instagram_organic",
+    "meta_stories_reels",
+    "youtube_shorts (dominio.FORMATOS destinos_tipicos)"
+   ],
+   "credencial_env": "GEMINI_API_KEY (gemini_imagem.py:79-89: os.environ['GEMINI_API_KEY'] e, em fallback, app.config.get_settings().gemini_api_key). Nesta máquina a var NÃO está no ambiente do processo e backend/.env não existe nesta worktree; existe backend/.env no repo principal com a chave (nome conferido, valor não lido).",
+   "custo": "não-apurado como fatura. custo_referencia_usd = 0.039/imagem, com fonte declarada (gemini_imagem.py:72-76 PRECO_REFERENCIA_USD_POR_IMAGEM/FONTE_DO_PRECO; v11_02:733). O código grava custo_usd=None de propósito (gemini_imagem.py:278) porque a API devolve tokens, não dólares; execucao.py:202-204 grava custo_estimado_usd e mantém custo_real_usd NULL.",
+   "precisa_rede": true,
+   "licenca": "unknown — nenhum termo de uso do provider levantado no repositório",
+   "qa_disponivel": "parcial. services/creative_engine/tests/ contém APENAS __init__.py vazio (0 testes do próprio motor). Cobertura indireta em backend/tests/test_criativo_estudio.py e test_criativo_parque.py. Coleta medida (pytest --collect-only, não execução): 279 testes nos 5 módulos backend de criativo; 149 em volc_ads/criativo.",
+   "storage": "local. backend/app/criativo/armazenamento.py:432-442 armazenamento_padrao() devolve sempre ArmazenamentoLocal; ArmazenamentoSupabase existe e está declarado NÃO ATIVADO (:235-240) porque o bucket 'criativos' não existe (0 linhas em storage.buckets, medido 27-28/08/2026, docs/design/RECONCILIACAO-ESTUDIO-2026-08-28.md §3)",
+   "prova": "Nenhuma peça produzida em produção: 0 jobs, 0 renditions, 0 masters (RECONCILIACAO-ESTUDIO-2026-08-28.md §3, medido no banco oficial). O 'job real de 3 renditions com 3 content_hash distintos' aparece em docs/creative-engines/DELTA-PROPOSTO-ESTUDIO-C0-C1-C3.md:42-51 e v11_02:767, mas NENHUM artefato, hash ou sidecar desse job está versionado no repositório — não é reproduzível nesta máquina.",
+   "lacuna": "execução do job real citado é documented_only (sem artefato versionado); executor é asyncio.create_task em função serverless Vercel (defeito estrutural G4, execucao.py + backend/vercel.json); despacho durável inexistente.",
+   "evidencia": "gemini_imagem.py:140-233 implementa a porta; :242-249 monta payload com imageConfig.aspectRatio; backend/app/routers/criativos.py:137-139 instancia MotorGeminiImagem em obter_motor(); :344-350 recusa qualquer modo != 'full_llm' com 400 ESTUDIO.modo_indisponivel; :335-343 recusa 503 quando não há credencial. Catálogo em produção: supabase/migrations/v11_02_parque_criativo.sql:729-740 registra slug 'gemini-imagem', runtime 'interno', provider 'google', modelo 'gemini-3.1-flash-image'."
+  },
+  {
+   "engine_id": "creative_engine.enquadramento (normalização de canvas)",
+   "midia": "imagem",
+   "modo": "full_llm (pós-processamento de qualquer provider)",
+   "provider": "nenhum (Pillow local, opcional)",
+   "modelo": null,
+   "versao": "—",
+   "papel_do_modelo": "nenhum — código puro",
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/services/creative_engine/enquadramento.py",
+   "origem_contrato": null,
+   "estado_factual": "implemented_integrated",
+   "dimensoes_observadas": [
+    "1:1 -> 1024x1024",
+    "4:5 -> 928x1152",
+    "9:16 -> 768x1376 (medidas de sonda declaradas no cabeçalho do módulo)"
+   ],
+   "destinos_suportados": [],
+   "credencial_env": null,
+   "custo": "zero-real (compute local; não apurado em máquina/tempo)",
+   "precisa_rede": false,
+   "licenca": null,
+   "qa_disponivel": "sem teste dedicado no diretório do serviço; nenhum arquivo de teste existe em services/creative_engine/tests/",
+   "storage": null,
+   "prova": null,
+   "lacuna": "Pillow é importado sob demanda e NÃO está em backend/requirements.txt (declarado em volc_ads/criativo/adaptadores/medir_imagem.py e em bancada/adaptadores/png_local.py:9-14); sem Pillow a peça sai com enquadramento='nao_normalizado' na dimensão nativa. É cover-crop de UMA imagem, não recomposição por destino — a MATRIZ (docs/design/MATRIZ-ESTUDIO-LEGADO-SCHEMA-RUNTIME-FRONTEND.md:24) classifica isso como 'mais pobre' que o re-layout da PRENSA.",
+   "evidencia": "RAZOES_NATIVAS com 10 proporções e FONTE_DO_ENVELOPE datada (sonda 27/08/2026 contra gemini-3.1-flash-image) em enquadramento.py:65-81; enquadrar() devolve quatro rótulos distintos — 'nativo', 'resize', 'cover_crop', 'nao_normalizado' (:199-343) e registra nativa_largura/nativa_altura separadas da medida final; tolerância de razão 0.001 (:90) escolhida para não esticar 768x1376→1080x1920."
+  },
+  {
+   "engine_id": "png-local (MotorPngLocal, bancada)",
+   "midia": "imagem",
+   "modo": "ensaio-local / ensaio (NÃO é um dos seis modos do ADR-001)",
+   "provider": "nenhum (zlib + struct da stdlib)",
+   "modelo": null,
+   "versao": "VERSAO_DO_ADAPTADOR do desenho compartilhado + VERSAO_DO_ALGORITMO='blocos-1'",
+   "papel_do_modelo": "nenhum — desenho determinístico derivado de sha256(seed|slot|dimensão|insumo|versão)",
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/adaptadores/png_local.py (desenho em /private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/adaptadores/png_local.py)",
+   "origem_contrato": "backend/app/criativo/bancada/contrato.py (Encomenda/Artefato/MotorDeProducao)",
+   "estado_factual": "implemented_integrated",
+   "dimensoes_observadas": [
+    "derivadas de dominio.FORMATOS: 1080x1080, 1080x1350, 1080x1920, 1200x628"
+   ],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma",
+   "custo": "zero-real (nenhum provider; custo de compute não apurado)",
+   "precisa_rede": false,
+   "licenca": "n/a (sem asset de terceiro)",
+   "qa_disponivel": "backend/tests/test_criativo_bancada.py (100 testes coletados) e volc_ads/criativo/testes_png_local.py (226 linhas). Coleta, não execução.",
+   "storage": "diretório de trabalho da bancada: CRIATIVO_BANCADA_DIR ou ~/.volc-os/bancada (servico.py:36-46); fila SQLite local",
+   "prova": "natureza = NaturezaDaProcedencia.LOCAL declarada no motor (png_local.py:72), e a ponte recusa promoção a produção com essa natureza (volc_ads/criativo_ponte.py::Destino)",
+   "lacuna": "peça de ENSAIO por construção — não publicável. servico.produzir_local() (servico.py:239-317) fixa motor_slug='png-local' e modo_slug='ensaio-local' e NÃO tem consumidor HTTP: o único chamador é backend/tests/test_criativo_producao_local.py:49.",
+   "evidencia": "servico.py:72 registra MotorPngLocal FORA de try (deliberado: sem pré-requisito); png_local.py:60-138 produz, escreve e RE-MEDE do disco (bytes e sha256 lidos do arquivo, :123-137). Alcançável por HTTP: POST /api/criativos/bancada/trabalhos aceita motorSlug/modoSlug livres (backend/app/routers/criativos_execucao.py:33-42, :143-190)."
+  },
+  {
+   "engine_id": "tipografico-local (MotorTipografico, bancada)",
+   "midia": "imagem",
+   "modo": "composição tipográfica local — NÃO é o typography_only da PRENSA",
+   "provider": "nenhum (Pillow + fonte de arquivo)",
+   "modelo": null,
+   "versao": "VERSAO_DO_ADAPTADOR = \"1.0.0\"",
+   "papel_do_modelo": "nenhum — fundo sólido + texto real, paleta sorteada por random.Random(encomenda.seed)",
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/adaptadores/tipografico.py",
+   "origem_contrato": null,
+   "estado_factual": "implemented_integrated",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma. CRIATIVO_FONTES_DIR é opcional (2ª na ordem de resolução) — ausente nesta máquina.",
+   "custo": "zero-real (nenhum provider; compute não apurado)",
+   "precisa_rede": false,
+   "licenca": "SIL Open Font License 1.1 — Inter. backend/app/criativo/bancada/fontes/PROCEDENCIA.md, arquivo Inter-Variable.ttf presente (876.576 bytes), sha256 MEDIDO por mim: 29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+   "qa_disponivel": "backend/tests/test_criativo_bancada.py — 100 testes coletados (inclui provas de determinismo e de corrida de lease). Coleta, não execução.",
+   "storage": "idem png-local (bancada SQLite + diretório por reivindicação)",
+   "prova": "determinismo declarado e provado por teste: sem relógio no pixel, sem random global, fonte entra no recibo por sha256 (versoes_congeladas, :187-195)",
+   "lacuna": "(1) NÃO declara `natureza` — servico.natureza_do_motor() devolve NAO_DECLARADA e portanto `publicavel=False`, ao contrário do png-local que declara LOCAL; (2) importa Pillow DENTRO de produzir()/versoes_congeladas() e Pillow não está em backend/requirements.txt: numa máquina sem Pillow o motor SE REGISTRA e falha depois, no meio do render (defeito nomeado no cabeçalho de bancada/adaptadores/png_local.py:9-14); (3) não é PRENSA: sem grid, sem variantes por destino, sem gate de DOM, sem promoção transacional (declarado em tipografico.py:11-17).",
+   "evidencia": "servico.py:60-65 registra dentro de try/except FalhaDoMotor (um motor que não nasce simplesmente não entra no registro); tipografico.py:162-175 roda _conferir_paletas() no import e derruba o módulo se alguma paleta ficar abaixo do piso WCAG AA 4.5; medir_contraste() (:268-279) devolve o NÚMERO da razão, não PASS/FAIL. Alcançável por HTTP com motorSlug='tipografico-local' via POST /api/criativos/bancada/trabalhos."
+  },
+  {
+   "engine_id": "MotorFalso (volc_ads/criativo/adaptadores/falso.py)",
+   "midia": "imagem e vídeo (declarado)",
+   "modo": "dublê de teste — nenhum modo de produção",
+   "provider": "nenhum",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/adaptadores/falso.py",
+   "origem_contrato": null,
+   "estado_factual": "fixture_only",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma",
+   "custo": "zero-real",
+   "precisa_rede": false,
+   "licenca": null,
+   "qa_disponivel": "volc_ads/criativo/testes_motor.py (340 linhas)",
+   "storage": null,
+   "prova": null,
+   "lacuna": "não declara `natureza`; usar em caminho real produziria 'asset que parece produção e não é' — foi exatamente o motivo de nascer o png_local.",
+   "evidencia": "falso.py:41-52 enumera 9 Defeitos sob encomenda (PEQUENO_DEMAIS, PROPORCAO_ERRADA, PESADO_DEMAIS, SEM_MEDIDA, MIME_ERRADO, CURTO_DEMAIS, TEXTO_LONGO, RECUSADO). Os bytes são sha256(...)*4 e DECLARAM mime='image/png' sem existir PNG — medir_imagem.medir() lê (None, None, None) neles; isso está escrito como defeito conhecido em volc_ads/criativo/adaptadores/png_local.py:1-16."
+  },
+  {
+   "engine_id": "MotorDeImagemFunnelForge",
+   "midia": "imagem",
+   "modo": "full_llm (via gerador injetado)",
+   "provider": "OpenAI Image / gpt-image-2 (injetado, NÃO construído aqui)",
+   "modelo": "gpt-image-2 (declarado no FunnelForge, não neste adaptador)",
+   "versao": null,
+   "papel_do_modelo": "gera a peça inteira em um dos três tamanhos aceitos",
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/adaptadores/funnelforge_imagem.py",
+   "origem_contrato": "volc_ads/criativo/porta.py",
+   "estado_factual": "implemented_integrated",
+   "dimensoes_observadas": [
+    "1024x1024 (1:1)",
+    "1536x1024 (1.5:1)",
+    "1024x1536 (0.67:1)"
+   ],
+   "destinos_suportados": [],
+   "credencial_env": "OPENAI_API_KEY — no ambiente do processo do FunnelForge, nunca neste adaptador. Ausente no ambiente desta máquina; backend/.env.example:69 traz a chave vazia; gemini_imagem.py:12 registra que ela estava VAZIA em 27/08/2026.",
+   "custo": "não-apurado. O port do FunnelForge tem telemetria OPCIONAL em `last_usage` (custo medido, latência, modelo) segundo o cabeçalho do adaptador; nada disso é lido aqui.",
+   "precisa_rede": true,
+   "licenca": "unknown",
+   "qa_disponivel": "volc_ads/criativo/testes_motor.py; a tradução de contrato é testável sem rede porque o gerador é injetado",
+   "storage": "nenhum — devolve bytes",
+   "prova": null,
+   "lacuna": "buraco de proporção DECLARADO no próprio cabeçalho: o Google Display pede 1.91:1, 1:1 e 4:5 e só o quadrado bate; os outros dois reprovam em validacao.py com D3.proporcao (classe SANEAVEL_EM_CODIGO). services/creative_engine/enquadramento.py é o passo que fecharia isso e NÃO foi ligado a este adaptador. Além disso: nenhum consumidor HTTP — o Estúdio só instancia MotorGeminiImagem.",
+   "evidencia": "funnelforge_imagem.py:44 TAMANHOS_ACEITOS = ('1024x1024','1536x1024','1024x1536'); :104-108 recusa por TypeError qualquer objeto sem `.generate(prompt, size) -> bytes`; o gerador concreto vive fora, em funnelforge-migracao/engine/src/funnelforge/adapters/image_openai.py (referenciado no cabeçalho e em docs/growth-engine/creative-engine.md:23)."
+  },
+  {
+   "engine_id": "prensa (registro interno)",
+   "midia": "imagem",
+   "modo": "typography_only, deterministic_graphics, prensa_hybrid",
+   "provider": "nenhum (renderer determinístico Chromium/Playwright, fora do repo)",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "NÃO EXISTE NESTE REPOSITÓRIO. Só há: linha de catálogo em supabase/migrations/v11_02_parque_criativo.sql:741-746 e conhecimento de canvas em backend/app/criativo/parque.py:182-211.",
+   "origem_contrato": "docs/creative-engines/CATALOGO-PRENSA-E-MOTOR-IMAGEM.md; docs/creative-engines/PACOTE-REUSO-MOTOR-IMAGEM.json (12 módulos a extrair, com risco por módulo)",
+   "estado_factual": "documented_only",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma (o renderer externo é declarado 'zero rede e zero segredo')",
+   "custo": "zero-real de provider (custo de compute/Chromium não apurado). v11_02 grava custo_referencia_usd NULL — ausência, não zero.",
+   "precisa_rede": false,
+   "licenca": "não apurada no repositório para as fontes vendorizadas da PRENSA (7 skins, 11 famílias citadas no CATALOGO); PACOTE-REUSO marca risco 'font_licensing' na migração das fontes.",
+   "qa_disponivel": "backend/tests/test_criativo_parque.py:612-633 prova apenas o conhecimento de canvas (G11), não o render",
+   "storage": "n/a",
+   "prova": null,
+   "lacuna": "adaptador PRENSA ausente — confirmado por motores-de-imagem.json:344 (\"prensa_adapter_implemented\": false) e por DELTA-PROPOSTO-TEMPLATE-LAB.md §3.1 (\"adaptadores continuam 1 de 3\").",
+   "evidencia": "Busca exaustiva por 'prensa' fora de docs/ retorna apenas: parque.py:193 CANVAS_NATIVO_EXTERNO={'prensa': {'4x5':(1088,1360),'1x1':(1200,1200)}} + canvas_a_renormalizar(); v11_02:741-746 semeia o motor com runtime='servico', provider NULL, modelo NULL, custo NULL, fonte = o próprio CATALOGO .md e verificado_em = NULL; tipografico.py:11-17 declara que copiar a PRENSA foi proibido. Nenhum renderer, nenhum gate de pixel, nenhuma fonte vendorizada da PRENSA no repositório."
+  },
+  {
+   "engine_id": "PRENSA (parque externo, autoridade do código)",
+   "midia": "imagem",
+   "modo": "typography_only, deterministic_graphics, prensa_hybrid, multi-destino",
+   "provider": "nenhum (typography_only/deterministic_graphics) ou provider de imagem apenas para a cena (prensa_hybrid)",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "externo: /Users/mac/Desktop/Volc Mídia Global/motor-imagem/prensa e .../compartilhado/prensa-poc",
+   "origem_contrato": null,
+   "estado_factual": "executed_external",
+   "dimensoes_observadas": [
+    "1080x1350",
+    "1088x1360",
+    "1200x628",
+    "1200x1200",
+    "1080x1920"
+   ],
+   "destinos_suportados": [
+    "organic_instagram_feed_4x5",
+    "organic_instagram_story_9x16",
+    "organic_feed_1x1",
+    "google_performance_max",
+    "google_demand_gen",
+    "google_responsive_display",
+    "meta_feed (documented_destinations do manifesto)"
+   ],
+   "credencial_env": "nenhuma declarada",
+   "custo": "zero-real de provider nos modos sem imagem generativa",
+   "precisa_rede": false,
+   "licenca": "fontes vendorizadas validadas por SHA-256 dentro do token pack (CATALOGO:91); as licenças em si não estão levantadas neste repositório",
+   "qa_disponivel": "gates DOM + pixel com sidecars materializados; contagem do manifesto: 47 com pixel gate aprovado e 65 com veredito DOM ok — números que o próprio catálogo diz não serem iguais porque provas antigas não materializaram ambos os sidecars",
+   "storage": "arquivos locais no `out` canônico do POC",
+   "prova": "64 saídas renderizadas no snapshot (26 typography_only, 12 deterministic_graphics, 26 prensa_hybrid) — números do snapshot, não de lista à mão",
+   "lacuna": "library/CLI, não gateway HTTP; um browser por chamada; sem API de lote; determinismo por bytes exige runtime pinado (limitations em motores-de-imagem.json:227-233). NÃO É INTEGRADO ao VOLC O.S.",
+   "evidencia": "CONFERIDO POR MIM NESTA MÁQUINA (leitura e medição direta dos bytes, não citação do manifesto): carrossel_produtividade_metodo90_s02.png existe, sha256 da472d076df827dcb6a08ad8c9704de38607660cc1e73408a95ee7dc668cf078, IHDR 1080x1350; kintsugi_planejado.png 1088x1360; anderson_grafico_s01/s02/s03.png 1088x1360 com sidecars .pixelgate.json e .veredito.json ao lado; volcnews_iphone_laranja.png 1088x1360, __pmax__img_191x1 1200x628, __pmax__img_1x1 1200x1200, __pmax__img_4x5 1088x1360, __demandgen__img_9x16 1080x1920 — as cinco dimensões batem exatamente com docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md:168-174."
+  },
+  {
+   "engine_id": "Aprova Ad Studio oficial (externo)",
+   "midia": "imagem",
+   "modo": "full_llm",
+   "provider": "Gemini, OpenAI Image, mock (três providers intercambiáveis)",
+   "modelo": "gemini-3.1-flash-image-preview e gpt-image-2",
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "externo: /Users/mac/Library/CloudStorage/GoogleDrive-tarcisio@agenciavolc.com.br/Drives compartilhados/VOLC/VOLC/CLIENTES/IESDE/2026/Aprova-Ad-Sstudio",
+   "origem_contrato": null,
+   "estado_factual": "implemented_external",
+   "dimensoes_observadas": [
+    "12 proporções reconhecidas pelo backend: 1:1, 1:4, 2:3, 3:2, 3:4, 4:1, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9"
+   ],
+   "destinos_suportados": [],
+   "credencial_env": "GEMINI_API_KEY / OPENAI_API_KEY no ambiente daquele projeto (nomes conferidos em backend/.env.example do projeto externo; valores não lidos)",
+   "custo": "não-apurado",
+   "precisa_rede": true,
+   "licenca": "unknown",
+   "qa_disponivel": "testes de erros, tamanhos, eventos do orquestrador e streaming (declarado no manifesto; não re-executado por mim)",
+   "storage": "ZIP genérico (manifesto)",
+   "prova": null,
+   "lacuna": "branding específico de cliente; revisão só técnica básica (não substitui gates tipográficos/pixel da PRENSA); NÃO é serviço do VOLC O.S. (aprova_adapter_implemented=false, motores-de-imagem.json:342). ⚠️ Divergência factual: o literal do modelo lá é 'gemini-3.1-flash-image-preview' e o motor interno usa 'gemini-3.1-flash-image' (sem -preview) — gemini_imagem.py:62 afirma usar 'o literal que Aprova e Positivo já declaram em config.py' e o literal não é o mesmo.",
+   "evidencia": "CONFERIDO POR MIM: backend/app/providers/ contém base.py, gemini.py, mock.py, openai_image.py; backend/app/config.py:28-29 declara gemini_model='gemini-3.1-flash-image-preview' e openai_image_model='gpt-image-2'; openai_image.py:1 diz 'OpenAI gpt-image-2 provider via Images Edit API'. Manifesto: motores-de-imagem.json:41-87 (HEAD a1d9ae65…, 12 mappings de proporção no backend, 8 presets de UI, working_tree_clean=false)."
+  },
+  {
+   "engine_id": "Positivo Ad Studio (externo)",
+   "midia": "imagem",
+   "modo": "full_llm e photo_preserved (nativo, visão/coordenadas, chroma key, híbrido)",
+   "provider": "Gemini, OpenAI Image, mock",
+   "modelo": "gemini-3.1-flash-image-preview e gpt-image-2",
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "externo: /Users/mac/Library/CloudStorage/GoogleDrive-tarcisio@agenciavolc.com.br/Drives compartilhados/VOLC/VOLC/CLIENTES/CURSO POSITIVO/IMAGE-SYSTEM/positivo-ad-studio",
+   "origem_contrato": null,
+   "estado_factual": "implemented_external",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "GEMINI_API_KEY / OPENAI_API_KEY no ambiente daquele projeto",
+   "custo": "não-apurado",
+   "precisa_rede": true,
+   "licenca": "unknown; a foto real do usuário levanta questão de retenção/consentimento, registrada como risco 5 no INVENTARIO",
+   "qa_disponivel": "testes de geração, saúde, falhas, schemas, tamanhos, eventos e rotação (declarado no manifesto; não re-executado)",
+   "storage": "ZIP genérico",
+   "prova": null,
+   "lacuna": "positivo_adapter_implemented=false (motores-de-imagem.json:343); nenhuma linha de código de preservação de foto neste repositório; governança de foto real não integrada ao VOLC O.S.",
+   "evidencia": "CONFERIDO POR MIM: backend/app/agents/ contém photo_analyzer.py, vision_zone.py, coordinate_compositor.py, chroma_compositor.py e orchestrator.py — os quatro compositores que o manifesto declara; backend/app/config.py:14-15 e :32 (image_provider: 'gemini' | 'openai-image' | 'mock'); providers/ com gemini.py, mock.py, openai_image.py. Manifesto: motores-de-imagem.json:100-147 (HEAD 9d0035d, 11 presets de UI, 14 mappings)."
+  },
+  {
+   "engine_id": "mock/fake dos produtos externos",
+   "midia": "imagem",
+   "modo": "full_llm simulado",
+   "provider": "mock",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "externo: .../Aprova-Ad-Sstudio/backend/app/providers/mock.py e .../positivo-ad-studio/backend/app/providers/mock.py",
+   "origem_contrato": null,
+   "estado_factual": "implemented_external",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma",
+   "custo": "zero-real",
+   "precisa_rede": false,
+   "licenca": null,
+   "qa_disponivel": "é a base dos testes daqueles projetos",
+   "storage": null,
+   "prova": null,
+   "lacuna": "não confundir com o MotorFalso interno — são dublês distintos, em repositórios distintos.",
+   "evidencia": "arquivos mock.py conferidos por listagem de diretório nos dois projetos; config.py:32 do Positivo declara 'mock' como valor válido de image_provider"
+  },
+  {
+   "engine_id": "volc-factory (Motor de Vídeo, leitura observacional)",
+   "midia": "video e audio",
+   "modo": "observado (o VOLC O.S. LÊ um build que já existia; não renderizou)",
+   "provider": "Remotion + providers da fábrica externa",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/video_observado.py (1235 linhas) e backend/app/criativo/video_ponte.py",
+   "origem_contrato": null,
+   "estado_factual": "implemented_integrated",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma para LER o build",
+   "custo": "não-apurado. A MATRIZ registra ~US$0,24–0,40 por vídeo no legado e `criativo_job.custo_*` = None por design (\"não gastamos\").",
+   "precisa_rede": false,
+   "licenca": "risco aberto — Remotion Free License cobre organização de até 3 pessoas, preço acima disso NÃO CONFIRMADO (docs/architecture/PROPOSTA-CURADORIA-ESTUDIO-CRIATIVO.json, risco:remotion-licenca)",
+   "qa_disponivel": "backend/tests/test_criativo_video_observado.py",
+   "storage": null,
+   "prova": null,
+   "lacuna": "fora do meu território (imagem); registrado porque compartilha a mesma tabela criativo_motor. Leitura observacional NÃO é execução.",
+   "evidencia": "v11_02:747-753 registra slug 'volc-factory', runtime='observado', produz=['video','audio'], custo NULL; v11_02:790-793 registra o modo 'observado' com estado_de_prova 'implementado_no_volc' e prova 'short_odete lido em 27/08/2026 com sha256 batendo o freeze.json'. video_observado.py:723-744 trata licença de item Wikimedia com `licenca: None` como AUSÊNCIA real, não como zero."
+  },
+  {
+   "engine_id": "Wikimedia Commons (fonte de asset)",
+   "midia": "imagem (still dentro de build de vídeo)",
+   "modo": "fonte de asset — não é modo de produção de imagem",
+   "provider": "Wikimedia",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "Nenhum cliente/fetcher no repositório. Único código que a MENCIONA: backend/app/criativo/video_observado.py:30, :713, :723, :742 (leitura do ledger de direitos de um build já pronto).",
+   "origem_contrato": null,
+   "estado_factual": "documented_only",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "nenhuma",
+   "custo": "zero-real de geração, com obrigação de crédito (CATALOGO-MOTOR-DE-VIDEO.md:146)",
+   "precisa_rede": true,
+   "licenca": "CC/PD com crédito obrigatório; regra do legado: rosto real só entra por Wikimedia CC/PD ou still editorial autorizado (CATALOGO-MOTOR-DE-VIDEO.md:74)",
+   "qa_disponivel": "backend/tests/test_criativo_video_observado.py:159-161, :330 provam a leitura do license=null",
+   "storage": null,
+   "prova": null,
+   "lacuna": "nenhum motor de imagem do VOLC O.S. consome Wikimedia; é fonte do parque de vídeo externo.",
+   "evidencia": "video_observado.py:742-744 documenta que `licenca: None` é o valor REAL dos cinco itens de Wikimedia do short_odete e que a nota explica o porquê ('licenca implicita de imprensa; CREDITAR'); v11_02:414-417 comenta a distinção entre licença real de arquivo Wikimedia e string SPDX. Como PROVIDER de imagem, aparece só em docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md:37,74,139-146."
+  },
+  {
+   "engine_id": "Pexels (fonte de asset)",
+   "midia": "video/imagem (b-roll)",
+   "modo": "fonte de asset — não é modo de produção de imagem",
+   "provider": "Pexels",
+   "modelo": null,
+   "versao": null,
+   "papel_do_modelo": null,
+   "origem_codigo": "NENHUM código no repositório. Ocorrências apenas em docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md:37,139,146, docs/creative-engines/PACOTE-REUSO-MOTOR-VIDEO.json:37 e no snapshot motor-video-2026-08-26.json (SRC:pexels = 'grátis').",
+   "origem_contrato": null,
+   "estado_factual": "documented_only",
+   "dimensoes_observadas": [],
+   "destinos_suportados": [],
+   "credencial_env": "unavailable_on_machine — nenhuma env var de Pexels citada em nenhum arquivo deste repositório",
+   "custo": "declarado 'grátis' no snapshot do motor de vídeo; obrigações de uso/crédito citadas em CATALOGO-MOTOR-DE-VIDEO.md:146. Não apurado por mim.",
+   "precisa_rede": true,
+   "licenca": "não levantada neste repositório",
+   "qa_disponivel": "nenhum",
+   "storage": null,
+   "prova": null,
+   "lacuna": "provider citado apenas no catálogo de VÍDEO externo; não há nenhuma capacidade de imagem que o use.",
+   "evidencia": "grep exaustivo por 'pexels'/'Pexels' fora de docs/ e snapshots: zero ocorrências em .py/.ts/.sql"
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "producao propria de video pelo VOLC O.S.",
+   "provider": "n/a",
+   "origem_codigo": "backend/app/criativo/ + volc_ads/criativo/",
+   "estado_factual": "not_supported",
+   "lacuna": "Adapter MotorDeCriativo VIDEO, CreativeJob persistido, fila, worker, storage de MP4 e tela de criacao — os cinco ausentes, nao um deles. ADR-002 esta 'aceita como direcao arquitetural, implementacao pendente' desde 26/08/2026.",
+   "evidencia": "Nao existe adapter de VIDEO. grep -n -i 'video|VIDEO|midia|MediaKind' em volc_ads/criativo/porta.py: ZERO ocorrencias — o Protocol MotorDeCriativo (porta.py:183) nao modela a midia video. ls volc_ads/criativo/adaptadores/ = falso.py, funnelforge_imagem.py, medir_imagem.py, png_local.py — os quatro sao de IMAGEM. backend/app/criativo/worker/ contem apenas __init__.py (193B) e __pycache__: nao ha worker. docs/creative-engines/motores-de-video.json declara integration.adapter='todo' e integration.runtime='todo'."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "leitura de build observado (procedencia 'observado')",
+   "provider": "volc-factory (fabrica externa)",
+   "origem_codigo": "backend/app/criativo/video_observado.py (50.705B), backend/app/criativo/video_ponte.py (9.283B), backend/app/routers/criativos.py:794-827 e :885, src/hooks/useCriativosVideo.ts, src/components/criativos/video/{LeituraDeVideo,Direcao,Inspecao,Player}.tsx (582 linhas)",
+   "estado_factual": "implemented_integrated",
+   "lacuna": "So DOIS slugs sao legiveis. ls /Users/mac/volc-factory/out/builds/ devolve exatamente short_das e short_odete. Os outros 36 masters existem em out/*.mp4 e sao INVISIVEIS para a rota, porque video_observado._artefatos() exige out/builds/<slug>/{props,timings,ledger}.json. Cobertura: 2 de 38 = 5,3%. Alem disso RAIZ_PADRAO='/Users/mac/volc-factory' esta em video_observado.py:90 — e default sobrescrivel por VOLC_FACTORY_RAIZ, nao contrato, mas fora desta maquina disponivel() devolve false e a tela fica vazia.",
+   "evidencia": "Rotas vivas e guardadas: GET /video/{slug} (criativos.py:794, Depends exigir_usuario + obter_assinador), GET /videos (:823), GET /arquivo/{token} com streaming por range da fabrica (:885 -> video_ponte.caminho_da_chave). O leitor distingue tres estados que a maioria colapsaria: FabricaIndisponivel (503) != BuildNaoEncontrado (404) != build lido com ausencias. 28 testes coletados em backend/tests/test_criativo_video_observado.py (pytest --collect-only), incluindo test_o_estado_de_producao_propria_nao_e_alcancavel e test_motor_versao_conhecida_e_sempre_nula. video_ponte.py:8-15 declara que NADA e persistido: CreativeJob e AssetMaster sao montados na leitura e nunca gravados, para nao misturar patrimonio observado com peca propria na biblioteca. video_ponte.py:37 restringe a chave por regex a 'fabrica/<slug>/(video.mp4|poster.jpg)'."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "contrato criativo resolvivel por maquina",
+   "provider": "n/a",
+   "origem_codigo": "/Users/mac/Desktop/Volc Midia Global/motor-video/contrato/ (27 arquivos, 295.441B)",
+   "estado_factual": "implemented_external",
+   "lacuna": "15 skins para 17 formatos. fofoca nao tem skin (contract_skins=[]); horoscopo e novela rodam como forks de esoterico e gossip sem entrada propria. ORGANIZACAO.md secao 4 item 2: 'O grafo e a fonte da verdade — quem nao esta nele nao existe para o resolve.py'. E o contrato DIVERGE do codigo em 5 skins no campo hook_default e em 4 no campo snd.",
+   "evidencia": "VERIFIQUEI OS HASHES eu mesmo e eles batem com o snapshot do VOLC O.S.: shasum -a 256 contrato/motor/mapa.json = 878cffb957ca9e574d43987a7c4b78dd19204cd3860388a3d6f9cc072f09913f (identico a snapshot.contract.map_sha256) e contrato/schema/contrato.schema.json = 7f83eeb3e1319681a657cdddf8d567d8d43bfb46c3a29061949b57f82a6045de (identico a schema_sha256). Contagens conferidas lendo o JSON: versao 1.2.1, 15 nichos, 15 skins, 14 vozes, 15 regras_globais, 6 custos_referencia. Distribuicao de hook_default: 8 grok, 5 imagem, 2 omni. required_fields=['tema'] apenas."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "QA tecnico (gate de aceite por FFmpeg)",
+   "provider": "FFmpeg + thresholds versionados",
+   "origem_codigo": "motor/qa.py (14.050B), motor/thresholds.json (368B), motor/finish.py, motor/tighten.py",
+   "estado_factual": "executed_external",
+   "lacuna": "⚠️ O CATALOGO-MOTOR-DE-VIDEO.md so menciona o FAIL e omite os 4 WARN. Dos 20 relatorios apenas 15 sao PASS limpos — 75%, nao 100% menos um. E 18 renders (47,4%) nunca foram medidos, porque 9 runners nao invocam QA nenhum (achadinhos x2, copa, esoterico, fofoca, horoscopo, news/make.py, news/make_solo.py, promo), com a nota do proprio mapa.json: 'runner legado NAO chama QA hoje (confirmado por grep jul/2026)'. Onde ha relatorio para esses formatos, o QA rodou manualmente FORA do caminho de build — o gate nao dispara sozinho num build futuro.",
+   "evidencia": "thresholds.json lido por mim, valores exatos: tighten gap_min 0.30 / gap_keep 0.13; captions coverage_min 0.85, density [1.6, 4.2]; loudness i -14, i_tol 2.5, tp -0.8 — batem com o CATALOGO. Cobertura real: 20 de 38 renders tem relatorio (52,6%). Vereditos que eu contei no snapshot: 15 PASS, 4 WARN (short_corta_en, short_das, short_lenda, short_mei), 1 FAIL (short_relato_proibido)."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "QA visual (VLM sobre frames de risco)",
+   "provider": "Gemini vision",
+   "origem_codigo": "motor/qa_visual.py (37.849B), motor/test_qa_visual_aceitacao.py (4.679B, 0 chamadas de API)",
+   "estado_factual": "executed_external",
+   "lacuna": "WARN nao e PASS: nao existe um unico QA visual aprovado limpo em todo o parque. E o campo 'checks' vem 0 nos quatro relatorios do snapshot — a cobertura de gates nao foi registrada, so a contagem de warns, entao nem da para dizer quantos criterios foram avaliados.",
+   "evidencia": "Cobertura: 4 de 38 renders (10,5%) — short_corta_en, short_corta_pt, short_mei, short_odete. Contei os vereditos: TODOS OS QUATRO SAO WARN, ZERO PASS. Warns: corta_en 6, corta_pt 4, mei 2, odete 1. Cada relatorio guarda mp4_sha256 proprio (odete dc2e6cb803ecf0aaec2281b03ccac9f8891c9a75d0d4cca8d7a8180cf2123cbb), o que impede reusar relatorio de outro render. Custo declarado <US$0.01/video (frames 720px). Exit codes distintos: 1=conteudo FAIL, 2=uso, 3=infra."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "portao de publicacao (freeze -> gen -> check -> pack -> log)",
+   "provider": "n/a",
+   "origem_codigo": "motor/publicar.py (31.993B), motor/canais.json (2.069B)",
+   "estado_factual": "executed_external",
+   "lacuna": "TRES lacunas que nao devem ser colapsadas. (1) O CATALOGO diz '2 tem snapshot de publicacao' — verdade para o freeze, mas so 1 chegou ao pacote de metadados, e por OVERRIDE (--allow-warn), nao por aprovacao limpa. (2) ZERO publicacoes: find /Users/mac/volc-factory -name 'publish_log.jsonl' nao retorna nada, e publicar.py:469 mostra que esse arquivo e a trilha append-only do comando 'log'. (3) canais.json tem handles placeholder '@...' nos tres canais — nenhuma conta real cadastrada.",
+   "evidencia": "Estado real medido por ls em /Users/mac/volc-factory/out/meta/: DUAS pastas, e elas NAO estao no mesmo estagio. short_mei tem os 8 arquivos (freeze+ledger+metadata+props+pubqa+qa+qa_visual+timings) — atravessou ate 'check'; pubqa.json verdict=WARN com os detalhes literais 'QA WARN — aceito com --allow-warn' e 'QA-VISUAL WARN — aceito com --allow-warn'. short_odete tem 6, SEM metadata.json e SEM pubqa.json — parou no freeze. canais.json define 3 canais: corta-pt, cut-en, foco-genial-pt, com i18n de creditos/ia_line/disclosure em pt e en."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "empacotamento por destino publicitario (PMax, Display, Demand Gen, YouTube, organico)",
+   "provider": "n/a",
+   "origem_codigo": "/Users/mac/Desktop/Volc Midia Global/motor-video/destinos/",
+   "estado_factual": "documented_only",
+   "lacuna": "Zero codigo, zero asset multi-proporcao. Verifiquei por ffprobe que os 38 renders sao 100% 1080x1920. PMax e Display sao materialmente impossiveis sem re-resolucao de layout por canvas — PONTE-PRENSA.md mede a causa: 'SAFE = {top:120, bottom:320, right:140}' cravado em fx.tsx:9 para 9:16, e '151 valores cravados em px nos 15 compositores'.",
+   "evidencia": "find destinos -type f devolve exatamente 5 arquivos, todos LEIA.md, somando 400 bytes (snapshot components.destinos.bytes=400, files=5). Conteudo integral de cada um e uma frase: demandgen 'o mais proximo do organico; aceita o mesmo 9:16'; display 'banner responsivo; imagem estatica, nao video'; organico 'E o unico que hoje tem motor pronto'; pmax 'exige acervo multi-proporcao (1:1, 4:5, 1.91:1) + limites de texto'; youtube 'Shorts herda o 9:16; long-form NAO tem motor'. INVENTARIO.md: 'destinos/ VAZIO de proposito. E o que ainda nao existe.'"
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "execucao a partir da raiz organizada (motor-video)",
+   "provider": "n/a",
+   "origem_codigo": "/Users/mac/Desktop/Volc Midia Global/motor-video/motor/ambiente.py (4.980B)",
+   "estado_factual": "implemented_external",
+   "lacuna": "A raiz limpa nunca rendeu nada e a raiz que rende esta suja. snapshot.execution_evidence.organized_root_full_render_proven=false; INVENTARIO.md: 'nenhum render saiu desta pasta ainda. Ate isso acontecer, e um arquivo bem organizado.' E o desacoplamento e PARCIAL: 31 arquivos da raiz organizada ainda cravam /opt/homebrew/bin/ffmpeg, e formatos/arquivo/make.py:354 chama PROJ/'pipeline'/'qa.py' — a copia da FABRICA, nao motor/qa.py, apesar de motor/qa.py existir na mesma arvore.",
+   "evidencia": "ambiente.py:42-49: TRABALHO = os.environ['VOLC_TRABALHO'] or ~/volc-factory, e PROJ = TRABALHO, RM = TRABALHO/'remotion', OUT = TRABALHO/'out'. HIGIENE MEDIDA POR MIM na raiz organizada: 0 arquivos citando /Users/mac/volc-factory, 0 citando Desktop/SISTEMAS ou Aprova-Ad-Sstudio, 0 com regex 'sk-[A-Za-z0-9' — o conserto de 15/08 e real. Comparacao com a FABRICA (pipeline/ + news/): 62 arquivos com a raiz cravada, 36 citando projeto de cliente, 18 colhendo segredo por regex sk-."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "isolamento de workspace por build (pre-requisito de concorrencia)",
+   "provider": "n/a",
+   "origem_codigo": "motor/buildspace.py (2.322B), motor/core.py",
+   "estado_factual": "failed",
+   "lacuna": "⚠️ ADR-REMOTION-RUNTIME-STORAGE.md, adendo de 28/08 noite, CORRIGE o enquadramento: 'Eu havia tratado 21 de 26 geradores escrevem em singletons compartilhados como se fosse um problema de concorrencia DO REMOTION. Nao e. O render do Remotion e isolado por processo e por caminho de saida. Quem compartilha estado sao os wrappers Python da fabrica.' O risco e real e continua real, mas mora um andar acima do compositor — e a correcao e la, nao no Remotion.",
+   "evidencia": "Contagem citada em backend/app/criativo/video_observado.py:105-115, feita com rg sobre os 26 geradores da fabrica em 27/08/2026: 26 geradores no total, 21 ainda gravam nos arquivos de trabalho compartilhados da raiz, 4 abrem area isolada e NENHUM DOS 4 tem teste de concorrencia, 1 nao grava nenhum dos dois. Arquivos compartilhados na raiz confirmados por ls: /Users/mac/volc-factory/{clips_registry.json (1188B), timings.json (541B), words.json (3425B), audio.wav (1.632.570B)}. LIMITACAO_DECLARADA (video_observado.py:118) e o texto que a interface mostra no lugar de 'Criar video', e vem do SERVIDOR (useCriativosVideo.ts cabecalho explica por que nao pode estar congelado no bundle)."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "internacionalizacao (gemeos PT/EN/ES)",
+   "provider": "TTS Gemini + motor/locales.py",
+   "origem_codigo": "motor/locales.py (34.680B) e contrato/locales/{corta,gossip,holerite}.json",
+   "estado_factual": "executed_external",
+   "lacuna": "So PT e EN foram renderizados; o ES existe como idioma declarado e 4 vozes (VOZ:documentarista-es, VOZ:fofoqueira-es, VOZ:amigo-contador-es) sem um unico MP4. 12 das 15 skins nao tem locale. E o gemeo EN saiu WARN no QA tecnico e WARN com 6 avisos no QA visual — o par bilingue nao esta em paridade de qualidade.",
+   "evidencia": "locales.py e o UNICO modulo do motor com hash IDENTICO entre a raiz organizada e a fabrica (shasum -a256 = bda6574550ea... nos dois) — qa.py, qa_visual.py, core.py, publicar.py e gen_images.py TODOS divergem. Idiomas declarados: pt, en, es. Skins cobertas: apenas 3 de 15 (corta, gossip, holerite). Regra do loader: 'idioma so entra com VOZ:* resolvivel no grafo; scaffold nunca derruba skin em producao (draft+promote)'. Prova de execucao: o par short_corta_pt.mp4 (54.200s, QA PASS) e short_corta_en.mp4 (55.600s, QA WARN), medidos por mim."
+  },
+  {
+   "engine_id": "motor-video-volc",
+   "midia": "VIDEO",
+   "modo": "compositor Remotion e determinismo de render",
+   "provider": "Remotion 4.0.479",
+   "origem_codigo": "/Users/mac/volc-factory/remotion/src/ (15 .tsx + fx.tsx + Root.tsx) e motor/visual/",
+   "estado_factual": "executed_external",
+   "lacuna": "O proprio ADR marca NAO CONFIRMADO: 'as outras 11 composicoes nao foram renderizadas no upgrade' e 'render de video completo (nao so still) sob concorrencia' continua nao provado. @remotion/rough-notation exige 4.0.490 e a fabrica esta em 4.0.479 — confirmado que existe, nao exercitado. O hermetismo (fontes locais) foi provado viavel numa copia isolada mas NAO adotado: exige as 11 familias com licenca conferida (as 10 da PRENSA nao as cobrem) e tocar os 15 arquivos da fabrica.",
+   "evidencia": "15 composicoes registradas em Root.tsx para os 17 formatos — 3 compositores servem 2 formatos cada (Gossip -> fofoca+novela, Esoterico -> esoterico+horoscopo, Main -> os 3 runners de news), cada compartilhamento documentado por um COMPARTILHADO.md. Determinismo e concorrencia PROVADOS por execucao no ADR-REMOTION-RUNTIME-STORAGE.md (hash identico entre dois stills; hash do render concorrente de Corta identico ao sequencial). Upgrade 4.0.479 -> 4.0.518 testado em copia: 4 stills sem erro, Corta com hash identico ao baseline."
+  },
+  {
+   "engine_id": "provider:KIE (kie.ai)",
+   "midia": "video",
+   "modo": "Gerador do hook em video (image-to-video). E o UNICO provider de video generativo realmente cabeado na raiz organizada.",
+   "provider": "KIE (kie.ai)",
+   "modelo": "grok-imagine/image-to-video (mode normal, duration 6, resolution 720p, aspect_ratio 9:16). Variante t2v em /Users/mac/volc-factory/news/grok_t2v_test.py:31 ('grok-imagine/text-to-video'). Variante Veo em /Users/mac/volc-factory/news/kie_hooks.py:81 (model 'veo3_lite').",
+   "papel_do_modelo": "Gerador do hook em video (image-to-video). E o UNICO provider de video generativo realmente cabeado na raiz organizada.",
+   "origem_codigo": "15 call sites de '\"model\": \"grok-imagine/image-to-video\"' em /Users/mac/Desktop/Volc Midia Global/motor-video/formatos/*/make*.py (arquivo, briga_estado, cartas_perdidas, causa_familia, copa, esoterico, fofoca, holerite/make.py, horoscopo, lenda, news/make_entretenimento, promo, relato_proibido, tribunal_zap) + helper core.grok_hook usado por corta/make.py:70. Endpoints: https://api.kie.ai/api/v1/jobs/createTask e /jobs/recordInfo.",
+   "estado_factual": "executed_external",
+   "credencial_env": "KIE_API_KEY — NOME presente nos dois .env desta maquina (motor-video/.env e /Users/mac/volc-factory/.env). Valor nao lido, nao verificado, nao testado.",
+   "evidencia": "17 artefatos hook_grok_*.mp4 em /Users/mac/volc-factory/remotion/public/. ffprobe meu em hook_grok_tribunal_zap.mp4: h264 + aac, 768x1168, 24/1, 6.041667s, 3.784.913B (+ stream mjpeg de capa). Custo declarado: 'kie.ai por clipe 6s' (mapa.json custos_referencia['SRC:grok']); INDICE.md:93 diz ~US$0,09/clipe 6s. Custo REAL nunca apurado — nao ha fatura nem contador em nenhum artefato."
+  },
+  {
+   "engine_id": "provider:Grok Imagine",
+   "midia": "video",
+   "modo": "Modelo de video generativo consumido SEMPRE atraves da KIE, nunca direto. E a familia de hook de 8 das 15 skins pelo contrato, e de 14 dos 17 formatos na pratica.",
+   "provider": "Grok Imagine",
+   "modelo": "grok-imagine/image-to-video e grok-imagine/text-to-video",
+   "papel_do_modelo": "Modelo de video generativo consumido SEMPRE atraves da KIE, nunca direto. E a familia de hook de 8 das 15 skins pelo contrato, e de 14 dos 17 formatos na pratica.",
+   "origem_codigo": "so via KIE. Zero chamada direta a x.ai ou endpoint Grok em qualquer arquivo dos dois parques.",
+   "estado_factual": "executed_external",
+   "credencial_env": "KIE_API_KEY (indireta)",
+   "evidencia": "hook_grok_{arquivo,briga,cartas_perdidas,causa_familia,copa,coracao_acelerado,eso,fofoca,holerite,horo,irpf,itau,lenda,novela,promo,relato_proibido,tribunal_zap}.mp4 — 17 arquivos em remotion/public/ (ls). O output NAO e o envelope do master: 768x1168 @24fps medido por mim, contra 1080x1920 @30fps dos 38 MP4 finais."
+  },
+  {
+   "engine_id": "provider:Veo (Google)",
+   "midia": "video",
+   "modo": "Hook em video alternativo. NAO foi extraido para a raiz organizada — vive so na fabrica de execucao.",
+   "provider": "Veo (Google)",
+   "modelo": "veo-3.1-generate-preview, veo-3.1-fast-generate-preview, veo-3.0-generate-001, veo-3.0-fast-generate-001 (veo_hook.py:32); veo3_lite via KIE",
+   "papel_do_modelo": "Hook em video alternativo. NAO foi extraido para a raiz organizada — vive so na fabrica de execucao.",
+   "origem_codigo": "TRES caminhos, todos FORA de motor-video: (1) /Users/mac/volc-factory/pipeline/veo_hook.py — SDK google.genai direto, client.models.generate_videos; (2) /Users/mac/volc-factory/news/veo_news.py e news/veo_nubank.py; (3) via KIE em /Users/mac/volc-factory/news/kie_hooks.py:81 com model 'veo3_lite'. O arquivo de saida e consumido por motor/build_props.py:38 ('_veo = PUB / \"hook_veo.mp4\"'); os runners de news apenas REUSAM o arquivo pronto (news/make.py:122-125), sem chamar API.",
+   "estado_factual": "executed_external",
+   "credencial_env": "GEMINI_API_KEY (caminho AI Studio) — nome presente nesta maquina. VERTEX_PROJECT + GOOGLE_APPLICATION_CREDENTIALS (caminho Vertex) — NOMES AUSENTES dos dois .env, entao o caminho Vertex esta desautenticado aqui. ALERTA: veo_hook.py:8-13 le o .env de um projeto de CLIENTE — '/Users/mac/Desktop/SISTEMAS/ALVO - SISTEMA OFICIAL E LEGADO/aprova-plataforma-alvo-hybrid/materials/.env' — e esse arquivo EXISTE nesta maquina (4663B, verificado por ls, nao lido). E exatamente o padrao que motor-video/.env.exemplo declara morto.",
+   "evidencia": "Quatro artefatos em /Users/mac/volc-factory/remotion/public/, tres medidos por ffprobe meu: hook_veo.mp4 (h264+aac, 720x1280, 24/1, 8.000s, 2.231.102B), hook_veo_news.mp4 (mesmas specs, 5.413.951B), hook_veo_nubank.mp4 (1.763.404B) e hook_veo_nubank2.mp4. Resolucao 720x1280 @24fps, abaixo do master 1080x1920 @30fps. NAO existe em motor-video: grep '\\bveo\\b' --include=*.py na raiz organizada devolve so news/make.py e make_solo.py, que apenas reusam arquivo."
+  },
+  {
+   "engine_id": "provider:Kling",
+   "midia": "video",
+   "modo": "nenhum papel executavel",
+   "provider": "Kling",
+   "modelo": "nenhum modelo Kling nomeado em codigo VOLC",
+   "papel_do_modelo": "nenhum papel executavel",
+   "origem_codigo": "SOMENTE prosa. INDICE.md:93 ('kie.ai — hook em video (Grok i2v, Veo, Kling)'), /Users/mac/volc-factory/MODELO.md, e tres JSON de workflow n8n de TERCEIROS dentro de /Users/mac/volc-factory/_templates/*.zip (Video_Miniaturas.json, _COMUNIDADE_DARK____Guerreiro.json, N8N.json). INVENTARIO.md classifica Templates/ como 'referencia de terceiro... Nao e engenharia sua'.",
+   "estado_factual": "documented_only",
+   "credencial_env": "nenhuma",
+   "evidencia": "grep -rin 'kling' --include=*.py em motor-video = 0 ocorrencias. Em /Users/mac/volc-factory o unico hit .py e news/kie_hooks.py, que na verdade usa model 'veo3_lite'. Zero artefato de saida. Esta no CATALOGO do VOLC O.S. como provider de hook sem uma linha de codigo que o chame — documentado nao e executado."
+  },
+  {
+   "engine_id": "provider:Wan 2.2 (via Replicate)",
+   "midia": "video",
+   "modo": "Hook image-to-video alternativo, experimental. Nao esta no contrato de 4 chaves, nem no snapshot, nem no CATALOGO, nem no PACOTE-REUSO.",
+   "provider": "Wan 2.2 (via Replicate)",
+   "modelo": "wan-video/wan-2.2-i2v-fast (Wan 2.2, licenca Apache segundo o docstring)",
+   "papel_do_modelo": "Hook image-to-video alternativo, experimental. Nao esta no contrato de 4 chaves, nem no snapshot, nem no CATALOGO, nem no PACOTE-REUSO.",
+   "origem_codigo": "/Users/mac/volc-factory/pipeline/wan_hook.py — POST https://api.replicate.com/v1/models/wan-video/wan-2.2-i2v-fast/predictions. A saida e referenciada por motor/build_props.py:38-39 (NA RAIZ ORGANIZADA) como FALLBACK do Veo: 'hook_vid = _veo if (_veo.exists() and _veo.stat().st_size > 10000) else _wan'. NAO existe em motor-video: grep 'wan' na raiz organizada = 0.",
+   "estado_factual": "executed_external",
+   "credencial_env": "NENHUMA variavel de ambiente. wan_hook.py:22-31 colhe a chave por REGEX 'r8_[A-Za-z0-9]{30,}' varrendo todos os *.json de /Users/mac/volc-factory/_templates e de 'Volc Midia Global/Templates' — templates de comunidade de TERCEIROS. Verifiquei por CONTAGEM (sem ler valor): 1 arquivo nesses templates casa com o padrao, ou seja o script ACHARIA uma chave nesta maquina. Replicate nao aparece em nenhum .env nem .env.exemplo.",
+   "evidencia": "Artefato de saida existe e foi medido por mim: /Users/mac/volc-factory/remotion/public/hook_i2v.mp4 — h264, 624x624, 16/1, 5.0625s, 320.134B, SEM stream de audio. QUADRADO e 16fps, contra o envelope 1080x1920 @30fps de todos os 38 masters. Nenhum dos 38 renders finais usa hook_i2v.mp4, mas o fallback do build_props.py o colocaria como cena 0 se o Veo faltasse."
+  },
+  {
+   "engine_id": "provider:Gemini Omni (gemini-omni-flash-preview)",
+   "midia": "video",
+   "modo": "Hook falado por avatar IA com audio nativo. E a familia 'omni' do contrato — 2 das 15 skins (gossip e holerite), e a unica capacidade de 'perfil de autoridade com rosto' que o motor tem.",
+   "provider": "Gemini Omni (gemini-omni-flash-preview)",
+   "modelo": "gemini-omni-flash-preview. Docstring omni.py:1-11: clipes 3-10s, 720p fixo, 9:16/16:9, ~US$0.10/s (5792 tok/s @ US$17.50/M), audio nativo dirigido pelo prompt, SynthID invisivel, 'EN suporte total, PT nao avaliado', 'sem quality/fps/seed/negative'.",
+   "papel_do_modelo": "Hook falado por avatar IA com audio nativo. E a familia 'omni' do contrato — 2 das 15 skins (gossip e holerite), e a unica capacidade de 'perfil de autoridade com rosto' que o motor tem.",
+   "origem_codigo": "motor/omni.py (5190B) na raiz organizada e pipeline/omni.py (6103B) na fabrica — DIVERGENTES em tamanho. Consumido por formatos/holerite/make_padrao.py (17 refs), holerite/make_das.py (18 refs) e formatos/novela/make.py (12 refs). API: client.interactions.create (Interactions API, experimental).",
+   "estado_factual": "executed_external",
+   "credencial_env": "GEMINI_API_KEY — nome presente nesta maquina. DEPENDENCIA EXTRA: omni.py:11 'REQUER google-genai >= 2.0.0 (schema 2026-05) -> usar o venv isolado: .venv-omni/bin/python (a fabrica fica no SDK 1.72; NAO fazer upgrade global por causa de um preview)'. O diretorio /Users/mac/volc-factory/.venv-omni existe (ls).",
+   "evidencia": "Artefatos medidos por ffprobe meu em remotion/public/: hook_omni_odete.mp4 (h264, 1080x1920, 30/1, 4.700s, 2.307.130B) e hook_omni_mei.mp4 (mesmas specs, 2.862.767B) — os UNICOS hooks que nascem no envelope do master. ⚠️ Os dois NAO tem stream de audio: o audio nativo foi separado em hook_omni_*_aud.wav e ha hook_omni_*_raw.mp4 ao lado. O ledger de out/builds/short_odete/ledger.json confirma uso e conformidade: source='Gemini Omni t2v — avatar IA FICTICIO falado (hook)', disclosure='conteudo sintetico/IA — marcar na plataforma', synthid=True, atendendo REGRA:disclosure. Custo de referencia US$0.10/s (~US$0,47 nesses 4,7s) nunca apurado em fatura."
+  },
+  {
+   "engine_id": "provider:ElevenLabs / TTS de terceiro",
+   "midia": "video",
+   "modo": "nenhum",
+   "provider": "ElevenLabs / TTS de terceiro",
+   "modelo": "n/a",
+   "papel_do_modelo": "nenhum",
+   "origem_codigo": "lugar nenhum dos dois parques",
+   "estado_factual": "not_supported",
+   "credencial_env": "nenhuma",
+   "evidencia": "grep -rin 'elevenlabs|eleven_labs|ELEVEN' em toda a raiz /Users/mac/Desktop/Volc Midia Global/motor-video: ZERO ocorrencias. O TTS do motor e Gemini — motor-video/.env.exemplo: 'TTS (voz) + geracao de imagem de fallback. [SRC:geminiimg] / Modelos: gemini-3.1-flash-tts-preview -> gemini-2.5-flash-preview-tts' — e os runners usam motor/make_audio.py. As 14 VOZ:* do contrato sao presets de estilo do TTS Gemini, nao vozes clonadas de provider externo. Isto e ausencia de integracao, NAO provider avaliado e reprovado."
+  },
+  {
+   "engine_id": "provider:Remotion",
+   "midia": "video",
+   "modo": "Compositor visual — o unico executor de composicao do parque. 15 composicoes registradas para 17 formatos.",
+   "provider": "Remotion",
+   "modelo": "remotion 4.0.479 INSTALADO (lido em /Users/mac/volc-factory/remotion/node_modules/remotion/package.json). ADR-REMOTION-RUNTIME-STORAGE.md registra 4.0.518 como latest, 39 patches de distancia, e range declarado '^4.0.0' com lockstep preservado so pelo lockfile.",
+   "papel_do_modelo": "Compositor visual — o unico executor de composicao do parque. 15 composicoes registradas para 17 formatos.",
+   "origem_codigo": "/Users/mac/volc-factory/remotion/ (workspace com node_modules) e motor/visual/{fx.tsx,Root.tsx,index.ts,props.json} na raiz organizada. /Users/mac/volc-factory/remotion/src/Root.tsx registra 15 <Composition>: Main(:25), Gossip(:28), Copa(:31), Esoterico(:34), Achadinhos(:37), Promo(:40), Lendas(:43), TribunalZap(:46), RelatoProibido(:49), CartasPerdidas(:52), CausaFamilia(:55), Arquivo(:58), Holerite(:61), BrigaEstado(:64), Corta(:67).",
+   "estado_factual": "executed_external",
+   "credencial_env": "nenhuma (render local). Mas o render NAO e hermetico: o ADR mediu ~290 requisicoes de rede por quadro para @remotion/google-fonts, e 34 chamadas loadFont() em 11 familias, porque Root.tsx importa as 15 composicoes no topo do modulo.",
+   "evidencia": "38 MP4 finais que eu mesmo verifiquei por ffprobe, todos h264/aac 1080x1920 30/1. ADR-REMOTION-RUNTIME-STORAGE.md registra determinismo PROVADO (dois 'remotion still' com sha256 identico 4d83af8c...cde4a, 2.463.274 bytes, diferenca de pixel nenhuma) e concorrencia PROVADA. ⚠️ O render integral a partir da raiz organizada motor-video NUNCA aconteceu: snapshot campo organized_root_full_render_proven=false; INVENTARIO.md 'O que falta, nesta ordem, 1. Rodar um formato completo daqui... nenhum render saiu desta pasta ainda'. Nao existe diretorio out/ em motor-video."
+  },
+  {
+   "engine_id": "provider:FFmpeg / ffprobe",
+   "midia": "video",
+   "modo": "Sound design, acabamento (finish/tighten) e prova tecnica do QA",
+   "provider": "FFmpeg / ffprobe",
+   "modelo": "binario de sistema",
+   "papel_do_modelo": "Sound design, acabamento (finish/tighten) e prova tecnica do QA",
+   "origem_codigo": "motor/{qa.py,qa_visual.py,core.py,sound_design.py,sound_design_terror.py} + os 10 formatos/*/som.py + praticamente todos os runners",
+   "estado_factual": "executed_integrated",
+   "credencial_env": "nenhuma. PORTABILIDADE QUEBRADA: 46 arquivos fixam o caminho absoluto '/opt/homebrew/bin/ffmpeg' — 31 na raiz ORGANIZADA (que INVENTARIO.md declara desacoplada) e 15 em /Users/mac/volc-factory/pipeline. Entre os 31: motor/qa.py, motor/qa_visual.py, motor/core.py, motor/sound_design.py, motor/sound_design_terror.py, contrato/clusters/som.md e 25 arquivos de formatos/. ADR-002 'Ordem segura de extracao' item 1 exige exatamente remover isto.",
+   "evidencia": "/opt/homebrew/bin/ffprobe e /opt/homebrew/bin/ffmpeg existem nesta maquina (which). Eu usei o ffprobe para medir os 38 masters e os 6 hooks — todas as duracoes e codecs deste relatorio vem dele. E o unico provider do territorio comprovadamente disponivel e funcionando localmente agora."
+  },
+  {
+   "engine_id": "provider:Pexels",
+   "midia": "video",
+   "modo": "B-roll de atmosfera, com avaliacao, limiar e duracao limitada (CAP 2-3 por video). Em achadinhos e o proprio hook.",
+   "provider": "Pexels",
+   "modelo": "API de stock video/foto",
+   "papel_do_modelo": "B-roll de atmosfera, com avaliacao, limiar e duracao limitada (CAP 2-3 por video). Em achadinhos e o proprio hook.",
+   "origem_codigo": "motor/pexels.py (6701B; mesmo tamanho de pipeline/pexels.py). Usado por achadinhos (hook real), arquivo (4 refs), briga_estado (2), copa (2), esoterico (2), holerite/make.py (2), horoscopo (2), lenda (2)",
+   "estado_factual": "executed_external",
+   "credencial_env": "PEXELS_API_KEY — nome presente nos dois .env. Fallback declarado no codigo: achadinhos/make_padrao.py:79 '>>> PEXELS_API_KEY ausente — hook/dor caem em gradiente.'",
+   "evidencia": "out/short_copa_broll.mp4 (41.080.118B, 28.800s, QA PASS 13) e o render explicitamente marcado como b-roll, contra out/short_copa.mp4 (33.974.756B, mesma duracao) sem. Custo declarado 'gratis' (mapa.json custos_referencia['SRC:pexels']), com obrigacao de credito i18n em canais.json ('B-roll: {credit} (Pexels)')."
+  },
+  {
+   "engine_id": "provider:Wikimedia Commons",
+   "midia": "video",
+   "modo": "Stills CC/PD de pessoa real — o UNICO caminho permitido para rosto real (REGRA:pessoa-real-so-wikimedia)",
+   "provider": "Wikimedia Commons",
+   "modelo": "API do Commons",
+   "papel_do_modelo": "Stills CC/PD de pessoa real — o UNICO caminho permitido para rosto real (REGRA:pessoa-real-so-wikimedia)",
+   "origem_codigo": "motor/wikimedia.py (4945B). ⚠️ wikimedia.py NAO consta da lista 'copiado' de _extracao.json, apesar de existir na pasta motor/ e de o INDICE.md o citar entre os modulos — o manifesto de extracao esta incompleto e declara 'ausente': []. Usado por causa_familia (8 refs), arquivo (7), news/make_entretenimento (5), novela (5), corta (3), copa (2), fofoca (1)",
+   "estado_factual": "failed",
+   "credencial_env": "nenhuma (API publica). A obrigacao aqui nao e credencial, e CREDITO.",
+   "evidencia": "O unico ledger preservado que usa Wikimedia — /Users/mac/volc-factory/out/builds/short_odete/ledger.json, lido por mim — tem 6 itens Commons e TODOS com license=None, credit=None, url=None. Literal: {'asset':'med_dl','scene':5,'file':'med_dl.jpg','source':'Wikimedia Commons','wm_file':'\"Cassia Kis\" premiere','license':None,'credit':None,'url':None,'commercial_ok':True}. REGRA:pessoa-real-so-wikimedia exige 'Commons CC/PD CREDITADO' e REGRA:ledger-incompleto diz 'ausencia = FAIL na publicacao'. Nao e dado faltando: e a regra descumprida no unico caso auditavel. copa/make.py:302 e news/make_entretenimento.py:253 delegam a checagem ao humano por nota de texto, confirmando que o motor nao a resolve."
+  },
+  {
+   "engine_id": "provider:OpenAI gpt-image-2",
+   "midia": "video",
+   "modo": "Geracao das CENAS estaticas e da imagem-base do hook para o i2v. Nao e provider de video, mas e a origem de todo hook 'imagem' e a ENTRADA do Grok i2v.",
+   "provider": "OpenAI gpt-image-2",
+   "modelo": "gpt-image-2 (LOW ~US$0,013; MEDIUM no hook ~US$0,05 segundo INDICE.md:91; mapa.json custos_referencia['SRC:gptimg'] = 'low ~US$0.02-0.04/img')",
+   "papel_do_modelo": "Geracao das CENAS estaticas e da imagem-base do hook para o i2v. Nao e provider de video, mas e a origem de todo hook 'imagem' e a ENTRADA do Grok i2v.",
+   "origem_codigo": "motor/gen_images.py (3140B na raiz organizada; pipeline/gen_images.py 3472B — DIVERGENTES, hashes 9a4e5d94ea3c vs 1712dae9d931). Presente em 14 dos 22 makers.",
+   "estado_factual": "executed_external",
+   "credencial_env": "OPENAI_API_KEY — nome presente nos dois .env",
+   "evidencia": "O ledger do short_odete registra 5 cenas como 'IA (gemini) - cena sem rosto' — esse build caiu no FALLBACK Gemini, nao no gpt-image. tribunal_zap/make.py:434 grava por cena 'GPT Image 2/1 ou Gemini fallback', provando que os dois caminhos coexistem e que o ledger nao distingue qual rodou. Ou seja: 'gptimg declarado' nao prova 'gptimg executado' em nenhum render especifico."
+  }
+ ],
+ "formatos_de_video": [
+  {
+   "nome": "achadinhos",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe meu, 01/09/2026: /Users/mac/volc-factory/out/short_ach.mp4 (h264,1080x1920,30/1,48.6s,31.430.087B) e short_achadinho.mp4 (40.3s,28.427.082B). Nenhum qa_short_ach*.json existe (snapshot motor-video-2026-08-26.json technical_qa=null nos dois). Pasta formatos/achadinhos/ = compositor.tsx(17824B)+make.py(10926B)+make_padrao.py(11677B); sem design.md, sem som.py.",
+   "runner": "formatos/achadinhos/make_padrao.py (declarado em contrato/motor/mapa.json skins.achadinhos.runner) + formatos/achadinhos/make.py; 2 makers",
+   "skin": "SKIN:achadinhos -> nicho 'achadinhos' (mapa.json nichos.achadinhos.skin=achadinhos)",
+   "compositor": "Achadinhos.tsx proprio (17824B); registrado em /Users/mac/volc-factory/remotion/src/Root.tsx:37 <Composition id=\"Achadinhos\">",
+   "audio": "SND:base(sound_design.py) COMPARTILHADO — nao ha formatos/achadinhos/som.py (gap 'som_proprio_ausente' no snapshot)",
+   "voz": "VOZ:fofoqueira-natural (mapa.json skins.achadinhos.voz_default)",
+   "hook": "DIVERGENCIA COMPROVADA. Contrato declara hook_default='grok'. O runner NAO chama Grok: grep de 'grok-imagine/image-to-video' em make.py e make_padrao.py = 0; 'KIE_API_KEY|kie.ai' = 0. O hook real e b-roll de video do Pexels (make_padrao.py:52 '---- B-ROLL Pexels: chuva (hook) ----', :79 fallback gradiente se PEXELS_API_KEY ausente).",
+   "assets": "SRC:pexels + SRC:gptimg (mapa.json fontes_assets)",
+   "qa_tecnico": "NAO EXECUTADO no runner: grep de invocacao de qa.py = 0. mapa.json qa.retrofit=true com nota 'runner legado NAO chama QA hoje (confirmado por grep jul/2026)'. Nenhum dos 2 MP4 tem relatorio.",
+   "qa_visual": "ausente (snapshot visual_qa=null nos 2 renders)",
+   "ledger_licenca": "unknown — nao ha out/builds/short_ach* nem out/meta/short_ach*; o ledger do build nao foi preservado",
+   "publicacao": "nenhuma. Sem out/meta/short_ach*/; nenhum publish_log.jsonl existe em toda a fabrica (find /Users/mac/volc-factory -name publish_log.jsonl = vazio)",
+   "formato_comprovado": "1080x1920 9:16 (ffprobe)",
+   "duracao_comprovada": "48.600s (short_ach.mp4) e 40.300s (short_achadinho.mp4), ffprobe direto",
+   "codec_comprovado": "video h264, audio aac, r_frame_rate 30/1 (ffprobe direto)"
+  },
+  {
+   "nome": "arquivo",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe meu: out/short_arquivo.mp4 h264/aac 1080x1920 30/1 51.400s 73.951.309B (o maior dos 38). QA tecnico PASS 20 checks — out/qa_short_arquivo.json, sha256 720e3ef5f97... formatos/arquivo/ = compositor.tsx+make.py+som.py, SEM design.md.",
+   "runner": "formatos/arquivo/make.py (23759B) — 1 maker",
+   "skin": "SKIN:arquivo -> nicho 'historia-absurda'",
+   "compositor": "Arquivo.tsx proprio (16486B); Root.tsx:58",
+   "audio": "SND:arquivo PROPRIO (formatos/arquivo/som.py, 4847B)",
+   "voz": "VOZ:documentarista-grave",
+   "hook": "grok, declarado E executado: make.py tem 1x '\"model\": \"grok-imagine/image-to-video\"' e 2 refs KIE; artefato hook_grok_arquivo.mp4 existe em remotion/public/",
+   "assets": "SRC:grok, SRC:wikimedia, SRC:gptimg, SRC:pexels — grep no runner: wikimedia=7, gptimg=7, pexels=4",
+   "qa_tecnico": "EXECUTADO, PASS. make.py:354 invoca subprocess ['python3', PROJ/'pipeline'/'qa.py', 'out/short_arquivo.mp4', '--min-dur','30','--max-dur','62'] e aborta em returncode!=0. Perfil wow_v2 gravado em props (make.py:314 qaProfile).",
+   "qa_visual": "NAO EXECUTADO — grep 'qa_visual' no runner = 0; snapshot visual_qa=null",
+   "ledger_licenca": "ledger escrito pelo runner, mas o build nao foi preservado em out/builds/ (so short_das e short_odete existem). Estado do ledger deste render: unknown.",
+   "publicacao": "nenhuma (sem out/meta/short_arquivo/)",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "51.400s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "briga_estado",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_briga.mp4 h264/aac 1080x1920 30/1 35.000s 33.068.473B. QA PASS 20 checks (out/qa_short_briga.json, sha 7cb9ae00...). Um dos 5 formatos com os 4 artefatos: design.md(3213B)+make.py(18359B)+compositor.tsx(18459B)+som.py(4404B).",
+   "runner": "formatos/briga_estado/make.py — 1 maker",
+   "skin": "SKIN:brigaestado -> nicho 'briga-consumidor'",
+   "compositor": "BrigaEstado.tsx proprio (18459B); Root.tsx:64",
+   "audio": "SND:briga PROPRIO (formatos/briga_estado/som.py)",
+   "voz": "VOZ:ancora-urgente",
+   "hook": "grok declarado e executado (1x modelo grok-imagine/image-to-video, 2 refs KIE; hook_grok_briga.mp4 em remotion/public/)",
+   "assets": "SRC:grok, SRC:gptimg, SRC:pexels",
+   "qa_tecnico": "EXECUTADO, PASS, perfil wow_v2 — mas mapa.json marca skins.brigaestado.qa.verificar=true: a integracao do perfil nao esta confirmada pelo proprio contrato",
+   "qa_visual": "NAO EXECUTADO (grep qa_visual=0; snapshot visual_qa=null)",
+   "ledger_licenca": "build nao preservado; unknown",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "35.000s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "cartas_perdidas",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_cartas_perdidas.mp4 h264/aac 1080x1920 30/1 50.300s 35.754.456B. QA PASS 20 checks (sha c7b53d63...). Pasta: compositor.tsx+make.py+som.py, sem design.md.",
+   "runner": "formatos/cartas_perdidas/make.py (18239B) — 1 maker",
+   "skin": "SKIN:cartasperdidas -> nicho 'cartas'",
+   "compositor": "CartasPerdidas.tsx proprio (10395B); Root.tsx:52",
+   "audio": "DIVERGENCIA: mapa.json declara snd='SND:base(sound_design.py)', mas existe formatos/cartas_perdidas/som.py (4385B) proprio. Contrato e filesystem discordam.",
+   "voz": "VOZ:documentarista-grave",
+   "hook": "DIVERGENCIA COMPROVADA: contrato declara hook_default='imagem' e fontes_assets=['SRC:gptimg'] apenas; o runner chama Grok — 1x '\"model\": \"grok-imagine/image-to-video\"' e 2 refs KIE, e hook_grok_cartas_perdidas.mp4 existe. O provider real nao esta no contrato de custo/ledger da skin.",
+   "assets": "declarado SRC:gptimg (4 refs); real = gptimg + Grok i2v via KIE",
+   "qa_tecnico": "EXECUTADO, PASS 20 checks, perfil wow_v2",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "build nao preservado; unknown",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "50.300s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "causa_familia",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_causa_familia.mp4 h264/aac 1080x1920 30/1 37.400s 40.811.669B. QA PASS com 24 checks (sha 00b7aee4...) — o unico com 24, e o unico com perfil viral_docu_v1.",
+   "runner": "formatos/causa_familia/make.py (21804B) — 1 maker",
+   "skin": "SKIN:causafamilia -> nicho 'familia'",
+   "compositor": "CausaFamilia.tsx proprio (10457B); Root.tsx:55",
+   "audio": "DIVERGENCIA: mapa.json diz SND:base(sound_design.py); existe formatos/causa_familia/som.py (4078B) proprio",
+   "voz": "VOZ:ancora-urgente",
+   "hook": "DIVERGENCIA: contrato hook_default='imagem'; runner chama Grok (make.py:190 'def grok_hook()', :204 model grok-imagine/image-to-video, 3 refs KIE; hook_grok_causa_familia.mp4 presente). Prompt inclui 'no faces'.",
+   "assets": "declarado SRC:gptimg; real = wikimedia (8 refs) + gptimg (3) + Grok i2v",
+   "qa_tecnico": "EXECUTADO, PASS, 24 checks, perfil viral_docu_v1 (o mais estrito dos tres)",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "build nao preservado; unknown. Runner usa Wikimedia (8 refs) sob REGRA:pessoa-real-so-wikimedia, que exige credito — nao verificavel sem o ledger.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "37.400s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "copa",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_copa.mp4 28.800s 33.974.756B (technical_qa=null) e out/short_copa_broll.mp4 28.800s 41.080.118B com QA PASS 13 checks (sha 182d32e0...). Ambos h264/aac 1080x1920 30/1. Pasta tem design.md mas nao tem som.py.",
+   "runner": "formatos/copa/make.py (19464B) — 1 maker",
+   "skin": "SKIN:copa -> nicho 'futebol'",
+   "compositor": "Copa.tsx proprio (15886B); Root.tsx:31",
+   "audio": "SND:base(sound_design.py) COMPARTILHADO — sem som.py proprio",
+   "voz": "VOZ:narrador-esportivo",
+   "hook": "grok declarado e executado (make.py:154 'def kie_grok_hook()', :161 model grok-imagine/image-to-video; hook_grok_copa.mp4 presente)",
+   "assets": "SRC:pexels, SRC:wikimedia, SRC:gptimg (grep: pexels=2, wikimedia=2, gptimg=6)",
+   "qa_tecnico": "RUNNER NAO CHAMA QA (grep=0; mapa.json qa.retrofit=true, nota 'runner legado NAO chama QA hoje'). O relatorio de short_copa_broll existe, logo o QA foi rodado FORA do runner; short_copa.mp4 ficou sem relatorio.",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "make.py:302 grava no ledger source='Wikimedia Commons' com license='verificar por-arquivo (CC/PD) - uso editorial' e note 'checar licenca especifica do arquivo antes de publicar' — licenca NAO resolvida, delegada a humano. Build nao preservado.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "28.800s nos dois (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "corta",
+   "estado_factual": "executed_external",
+   "evidencia": "Dois renders bilingues, ffprobe meu: out/short_corta_pt.mp4 54.200s 57.636.245B e out/short_corta_en.mp4 55.600s 58.205.721B, ambos h264/aac 1080x1920 30/1. QA tecnico: PT=PASS 19 checks; EN=WARN 19 checks. QA VISUAL executado nos dois, ambos WARN (PT 4 warns, EN 6 warns) — nenhum PASS. Pasta completa.",
+   "runner": "formatos/corta/make.py (17241B) — thin runner [C-02], boilerplate em motor/core.py",
+   "skin": "SKIN:corta -> nicho 'cinema-classico'",
+   "compositor": "Corta.tsx proprio (15899B); Root.tsx:67",
+   "audio": "SND:corta PROPRIO (formatos/corta/som.py, 4554B); make.py:216 core.finish(ctx,30,62,'sound_design_corta.py')",
+   "voz": "VOZ:documentarista-grave; locales cobrem pt/en/es (contrato/locales/corta.json)",
+   "hook": "grok via helper do core: make.py:70 'GROK_OK = core.grok_hook(ctx, IMG/\"hook.png\", GROK_PROMPT, PUB/\"hook_grok_corta.mp4\") # [SRC:grok]'. Fallback explicito para imagem em make.py:148 se GROK_OK falso.",
+   "assets": "SRC:grok, SRC:omni, SRC:wikimedia-pd, SRC:gptimg",
+   "qa_tecnico": "EXECUTADO DENTRO do loop de build via core.finish (make.py:216, comentario '# gate DENTRO do loop [CAMADA:qa-gate]'). Perfil wow_v2. PT PASS, EN WARN.",
+   "qa_visual": "EXECUTADO nos dois — out/short_corta_pt.qa_visual.json (WARN, 4 warns, mp4_sha256 650d20a8...) e out/short_corta_en.qa_visual.json (WARN, 6 warns, mp4_sha256 92de38e3...). Campo checks=0 nos dois: a contagem de gates nao foi registrada.",
+   "ledger_licenca": "make.py:198-206 grava fontes IA no ledger com [REGRA:disclosure-ia]+[REGRA:ledger-por-video]; ha TODO explicito na linha 199: 'scenes[].src do props precisa de fonte, senao publicar.py check = FAIL ledger_incompleto'. Build nao preservado.",
+   "publicacao": "NAO congelado. Nao ha out/meta/short_corta_pt/ nem short_corta_en/. Os perfis de canal existem em motor/canais.json ('corta-pt' e 'cut-en'), com handles placeholder '@...' — nunca publicado.",
+   "formato_comprovado": "1080x1920 9:16 (os dois)",
+   "duracao_comprovada": "PT 54.200s, EN 55.600s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1 (os dois)"
+  },
+  {
+   "nome": "esoterico",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_eso.mp4 h264/aac 1080x1920 30/1 42.000s 28.851.345B. QA PASS 13 checks (sha 94c73472...). Pasta completa (design.md+make.py+compositor.tsx+som.py).",
+   "runner": "formatos/esoterico/make.py (18424B); mapa.json registra o runner da skin como 'formatos/esoterico/make.py | formatos/horoscopo/make.py' — dois runners para uma skin",
+   "skin": "SKIN:esoterico -> nicho 'esoterico'; a MESMA skin serve o formato horoscopo",
+   "compositor": "Esoterico.tsx proprio (14826B); Root.tsx:34. Tambem consumido por horoscopo.",
+   "audio": "mapa.json declara SND:base(sound_design.py), mas ha formatos/esoterico/som.py proprio (4922B) — divergencia contrato/filesystem",
+   "voz": "VOZ:mistica",
+   "hook": "grok declarado e executado (make.py:137 'def kie_grok_hook()', :144 model grok-imagine/image-to-video; hook_grok_eso.mp4 presente). design.md:28 descreve: '0 HOOK Grok i2v: vela acende sozinha'.",
+   "assets": "SRC:grok, SRC:gptimg, SRC:pexels",
+   "qa_tecnico": "RUNNER NAO CHAMA QA (grep=0). mapa.json qa.retrofit=true, nota literal: 'runner legado NAO chama QA hoje (confirmado por grep jul/2026) — debito explicito em contrato/camadas.md; caminho: python3 motor/finish.py <slug> apos o build'. O relatorio PASS existe, logo o QA rodou fora do runner.",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "build nao preservado; unknown",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "42.000s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "fofoca",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_fofoca.mp4 26.300s 44.201.387B e out/short_fofoca_v2.mp4 25.900s 44.526.784B, ambos h264/aac 1080x1920 30/1. NENHUM dos dois tem QA tecnico nem visual. E o UNICO formato com contract_skins=[] — nao existe no grafo do contrato.",
+   "runner": "formatos/fofoca/make.py (13269B) — 1 maker, sem entrada em mapa.json",
+   "skin": "NENHUMA no contrato (snapshot contract_skins=[]). A skin 'gossip' aponta para formatos/novela/make.py, nao para fofoca. ORGANIZACAO.md secao 4 item 2: 'fofoca/gossip aparecem com dois nomes' e 'quem nao esta nele nao existe para o resolve.py'.",
+   "compositor": "Gossip.tsx — formatos/fofoca/compositor.tsx (21192B) e a FONTE; formatos/novela/COMPARTILHADO.md declara que novela reusa este mesmo compositor. Root.tsx:28.",
+   "audio": "sem som.py proprio (gap 'som_proprio_ausente'); usa sound_design.py base",
+   "voz": "unknown — nao ha entrada de skin no mapa.json declarando voz para 'fofoca'",
+   "hook": "TRES FONTES, TRES RESPOSTAS. INDICE.md:60 declara hook 'omni'. design.md:37 diz 'Hook Grok i2v animando uma cena glamour gpt'. O codigo confirma o Grok: make.py 1x model grok-imagine/image-to-video, 2 refs KIE, hook_grok_fofoca.mp4 presente.",
+   "assets": "gptimg (4 refs), wikimedia (1 ref) — sem declaracao contratual",
+   "qa_tecnico": "NAO EXECUTADO em nenhum dos dois renders, e o runner nao invoca qa (grep=0)",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "build nao preservado; unknown",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "26.300s e 25.900s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "holerite",
+   "estado_factual": "executed_external",
+   "evidencia": "Formato com mais evidencia do parque. Tres renders atribuiveis, ffprobe meu: out/short_holerite.mp4 55.500s (QA PASS 20), out/short_das.mp4 23.100s (QA WARN 20), out/short_mei.mp4 53.000s (QA WARN 20 + QA VISUAL WARN 2 warns + pacote de publicacao completo). Todos h264/aac 1080x1920 30/1. Atribuicao PROVADA: /Users/mac/volc-factory/out/builds/short_das/ledger.json tem comp='Holerite'.",
+   "runner": "TRES makers no filesystem — make.py (19147B), make_padrao.py (11651B, thin runner [C-02]) e make_das.py (10718B). O snapshot e o CATALOGO registram apenas 2 (undercount). mapa.json declara: 'formatos/holerite/make_padrao.py (clonar padrao; make_holerite.py = ep fixo)'.",
+   "skin": "SKIN:holerite -> nicho 'dinheiro'",
+   "compositor": "Holerite.tsx proprio (16320B); Root.tsx:61",
+   "audio": "SND:holerite PROPRIO (formatos/holerite/som.py, 4450B); make_padrao.py e make_das.py chamam finish (3 e 2 refs)",
+   "voz": "VOZ:amigo-contador",
+   "hook": "omni declarado e executado — make_padrao.py 17 refs a omni, make_das.py 18. Artefatos medidos por ffprobe: hook_omni_mei.mp4 (h264, 1080x1920, 30/1, 4.700s, 2.862.767B, SEM stream de audio; o audio esta em hook_omni_mei_aud.wav) e hook_omni_das.mp4. ATENCAO: formatos/holerite/make.py (maker legado) usa GROK, nao omni: 1x model grok-imagine/image-to-video, hook_grok_holerite.mp4 presente. Tres makers, dois providers de hook diferentes no mesmo formato.",
+   "assets": "SRC:omni, SRC:grok, SRC:gptimg, SRC:pexels",
+   "qa_tecnico": "EXECUTADO nos tres. short_holerite PASS 20; short_das WARN 20; short_mei WARN 20. Perfil wow_v2. Os thin runners chamam qa e qa_visual via core.finish.",
+   "qa_visual": "EXECUTADO so em short_mei: out/short_mei.qa_visual.json, WARN, 2 warns, mp4_sha256 33d83922875a78618f8da0da5872bec776ca6866f920e4876ab99affe0ffaffc. short_das e short_holerite: ausente.",
+   "ledger_licenca": "short_das tem ledger preservado em out/builds/short_das/ledger.json (1188B; chaves video/comp/caso/sources/note). short_mei tem ledger congelado em out/meta/short_mei/ledger.json (1614B). Demais renders sem build preservado.",
+   "publicacao": "UNICO caso do parque que atravessou o portao completo. out/meta/short_mei/ tem 8 arquivos: freeze.json, ledger.json, metadata.json, props.json, pubqa.json, qa.json, qa_visual.json, timings.json. metadata.json: schema volc.metadata/1, canal='foco-genial-pt', idioma pt, plataformas [youtube_shorts, tiktok, reels], titulo 69 chars. pubqa.json: verdict=WARN, com os detalhes literais 'QA WARN — aceito com --allow-warn' e 'QA-VISUAL WARN — aceito com --allow-warn'. Passou por OVERRIDE humano, nao por aprovacao limpa. E nao ha publish_log.jsonl: nada foi de fato publicado.",
+   "formato_comprovado": "1080x1920 9:16 nos tres",
+   "duracao_comprovada": "short_holerite 55.500s; short_das 23.100s; short_mei 53.000s (ffprobe direto, 01/09/2026)",
+   "codec_comprovado": "h264 + aac, 30/1 nos tres"
+  },
+  {
+   "nome": "horoscopo",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_horoscopo.mp4 h264/aac 1080x1920 30/1 45.700s 44.984.625B. QA PASS 13 checks (sha 2fc8c82b...). E o formato com MAIS lacunas de filesystem: so make.py + COMPARTILHADO.md; sem design.md, sem compositor proprio, sem som proprio (3 gaps no snapshot).",
+   "runner": "formatos/horoscopo/make.py (17027B) — 1 maker. Sem skin propria: mapa.json aponta skins.esoterico.runner = 'formatos/esoterico/make.py | formatos/horoscopo/make.py'.",
+   "skin": "SKIN:esoterico (compartilhada). ORGANIZACAO.md secao 4 item 2 registra que horoscopo 'roda sem entrada propria' no grafo.",
+   "compositor": "COMPARTILHADO. formatos/horoscopo/COMPARTILHADO.md: 'Compositor: Esoterico.tsx — o mesmo de formatos/esoterico/compositor.tsx. Nao foram duplicados de proposito.' Nao ha compositor.tsx local.",
+   "audio": "COMPARTILHADO. COMPARTILHADO.md: 'Som: sound_design_eso.py — o mesmo de formatos/esoterico/som.py.'",
+   "voz": "VOZ:mistica (herdada da skin esoterico)",
+   "hook": "grok, executado: make.py 1x model grok-imagine/image-to-video, 3 refs KIE; hook_grok_horo.mp4 existe em remotion/public/",
+   "assets": "SRC:grok, SRC:gptimg, SRC:pexels herdados da skin; grep no runner: pexels=2, gptimg=5",
+   "qa_tecnico": "RUNNER NAO CHAMA QA (grep=0; herda a nota retrofit da skin esoterico). O relatorio PASS 13 existe, logo rodou fora do runner.",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "COMPARTILHADO.md declara que o formato 'tem COMPLIANCE BLOCK que aborta asset sem licenca'. Nao verificavel neste render: build nao preservado. Estado do ledger: unknown.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "45.700s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "lenda",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_lenda.mp4 h264/aac 1080x1920 30/1 46.800s 45.332.572B. QA tecnico WARN 14 checks (sha 15a2a6b7...) — NAO e PASS. Pasta: design.md+make.py+compositor.tsx+NOTA.md, sem som.py.",
+   "runner": "formatos/lenda/make.py (18288B) — 1 maker",
+   "skin": "SKIN:lendas -> nicho 'terror-folclore'",
+   "compositor": "Lendas.tsx proprio (11775B); Root.tsx:43",
+   "audio": "SND:terror COMPARTILHADO. NOTA.md: 'O som vem de motor/sound_design_terror.py, que e compartilhado com news, promo e o runner solo — por isso mora no motor, nao aqui.'",
+   "voz": "VOZ:documentarista-grave",
+   "hook": "grok, executado: 1x model grok-imagine/image-to-video, 2 refs KIE; hook_grok_lenda.mp4 presente",
+   "assets": "SRC:grok, SRC:gptimg, SRC:pexels (grep: pexels=2, gptimg=7)",
+   "qa_tecnico": "EXECUTADO, veredito WARN. mapa.json skins.lendas.qa marca verificar=true e perfil_alvo='viral_docu_v1', com a nota: 'make_lenda.py chama qa.py mas nao grava qaProfile nos props -> so o perfil base roda hoje; retrofit: gravar qaProfile viral_docu_v1 + migrar p/ finish.py'. Ou seja: rodou o gate ERRADO, por omissao de props.",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "build nao preservado; unknown. NOTA.md declara 'folclore e dominio publico' e 'Jumpscare-lite, zero gore', consistente com REGRA:zero-gore.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "46.800s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "news",
+   "estado_factual": "executed_external",
+   "evidencia": "Tres renders atribuiveis, ffprobe meu: out/short_news.mp4 44.300s (sem QA), out/short_news_solo.mp4 46.500s (sem QA), out/short_entnews.mp4 39.500s (QA PASS 14 checks, sha c645b62c...). Todos h264/aac 1080x1920 30/1. Pasta com 3 makers e design.md de 445B (o menor do parque).",
+   "runner": "TRES makers: make.py (8965B), make_entretenimento.py (17352B), make_solo.py (6449B). mapa.json declara o padrao: 'formatos/news/make_entretenimento.py (padrao)'.",
+   "skin": "SKIN:main -> nicho 'ent-news'",
+   "compositor": "Main.tsx proprio (22198B, o maior compositor); Root.tsx:25. INVENTARIO.md: 'Main -> os tres runners de news'.",
+   "audio": "SND:base(sound_design.py) COMPARTILHADO; sem som.py proprio. A NOTA.md de lenda registra que sound_design_terror.py tambem serve news.",
+   "voz": "VOZ:ancora-urgente",
+   "hook": "DUAS familias no mesmo formato. (a) make_entretenimento.py chama Grok (1x model grok-imagine/image-to-video, 2 refs KIE). (b) make.py e make_solo.py NAO geram hook: apenas REUSAM um arquivo Veo pre-existente — make.py:122 'veo = PUB / \"hook_veo_news.mp4\"' e :125 'if i == 0 and veo.exists() and veo.stat().st_size > 10000'. Nao ha chamada de API Veo nesses runners. Artefato medido por mim: hook_veo_news.mp4 h264+aac 720x1280 24/1 8.000s 5.413.951B — resolucao e fps DIFERENTES do master.",
+   "assets": "SRC:grok, SRC:wikimedia, SRC:gptimg, SRC:pexels; grep em make_entretenimento.py: wikimedia=5, gptimg=4",
+   "qa_tecnico": "SO make_entretenimento.py invoca QA. make.py e make_solo.py: grep=0. Reflete-se na evidencia: so short_entnews tem relatorio (PASS 14); short_news e short_news_solo nao tem nenhum.",
+   "qa_visual": "NAO EXECUTADO em nenhum dos tres",
+   "ledger_licenca": "make_entretenimento.py:253 grava ledger['note'] = 'Fotos CC do Commons (shows/eventos) — CREDITAR fotografo+licenca na descricao. Fatos de fontes publicas citadas. Datas podem mudar: conferir antes de publicar.' — obrigacao delegada a humano, nao resolvida no ledger. Build nao preservado.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16 nos tres masters (o hook Veo entra em 720x1280 24fps)",
+   "duracao_comprovada": "short_news 44.300s; short_news_solo 46.500s; short_entnews 39.500s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1 nos tres masters"
+  },
+  {
+   "nome": "novela",
+   "estado_factual": "executed_external",
+   "evidencia": "Atribuicao PROVADA por leitura direta: /Users/mac/volc-factory/out/builds/short_odete/ledger.json tem comp='Gossip' e a chave 'novela'. ffprobe meu: out/short_odete.mp4 h264/aac 1080x1920 30/1 43.800s 40.555.197B — QA tecnico PASS 15, QA VISUAL WARN 1 warn, freeze congelado. Tambem out/short_novela.mp4 31.600s (sem QA), out/short_coracao_acelerado.mp4 36.100s (QA PASS 15) e out/short_qac_v2.mp4 41.500s (QA PASS 14), correspondentes a formatos/novela/configs/{coracao_acelerado,quem_ama_cuida_v2}.json.",
+   "runner": "formatos/novela/make.py (14615B) — THIN RUNNER. COMPARTILHADO.md: 'E thin runner [C-02]: o boilerplate vive em motor/core.py e o video inteiro sai de 1 JSON de config. Provado em 2 novelas — quem_ama_cuida (das 9) e coracao_acelerado (das 7).' Cinco configs: coracao_acelerado.json, o_sequestro_da_salete_em.json, odete.json, quem_ama_cuida.json, quem_ama_cuida_v2.json.",
+   "skin": "SKIN:gossip -> nicho 'novela'. mapa.json skins.gossip.config_driven=true (UNICO com essa marca) e runner='formatos/novela/make.py'.",
+   "compositor": "COMPARTILHADO. formatos/novela/COMPARTILHADO.md: 'Compositor: Gossip.tsx — o mesmo de formatos/fofoca/compositor.tsx. Nao foi duplicado de proposito: duas copias divergem.' Nao ha compositor.tsx local. Root.tsx:28.",
+   "audio": "SND:base(sound_design.py) COMPARTILHADO; sem som.py proprio",
+   "voz": "VOZ:fofoqueira-natural",
+   "hook": "omni, executado. make.py tem 12 refs a omni. Artefato medido por ffprobe: hook_omni_odete.mp4 h264 1080x1920 30/1 4.700s 2.307.130B, SEM stream de audio (audio separado em hook_omni_odete_aud.wav). Ledger confirma: {'scene': 0, 'file': 'hook_omni_odete.mp4', 'source': 'Gemini Omni t2v — avatar IA FICTICIO falado (hook)', 'disclosure': 'conteudo sintetico/IA — marcar na plataforma', 'synthid': True}.",
+   "assets": "SRC:omni, SRC:grok, SRC:wikimedia, SRC:stills-divulgacao, SRC:gptimg. Ledger real do short_odete: 12 insumos — 6 Wikimedia Commons, 1 hook omni, 5 cenas 'IA (gemini) - cena sem rosto'.",
+   "qa_tecnico": "EXECUTADO via core.finish. short_odete PASS 15; short_coracao_acelerado PASS 15; short_qac_v2 PASS 14; short_novela sem relatorio.",
+   "qa_visual": "EXECUTADO so em short_odete: out/short_odete.qa_visual.json, WARN, 1 warn, mp4_sha256 dc2e6cb803ecf0aaec2281b03ccac9f8891c9a75d0d4cca8d7a8180cf2123cbb.",
+   "ledger_licenca": "LACUNA JURIDICA MEDIDA POR MIM, lendo out/builds/short_odete/ledger.json: os 6 itens de Wikimedia Commons tem license=None, credit=None e url=None. Literal: {'asset':'med_dl','scene':5,'file':'med_dl.jpg','source':'Wikimedia Commons','wm_file':'\"Cassia Kis\" premiere','license':None,'credit':None,'url':None,'commercial_ok':True}. REGRA:pessoa-real-so-wikimedia exige 'Commons CC/PD CREDITADO'. A nota do ledger reconhece ('creditar autor+TV Globo') e nao cumpre. backend/app/criativo/video_observado.py preserva esse None de proposito, com o motivo no cabecalho.",
+   "publicacao": "CONGELADO, NAO EMPACOTADO. out/meta/short_odete/ tem 6 arquivos: freeze.json, ledger.json, props.json, qa.json, qa_visual.json, timings.json. NAO tem metadata.json nem pubqa.json (o short_mei tem os 8). freeze.json: sha256 dc2e6cb8..., dur_s 43.8, qa_verdict PASS, qa_visual_verdict WARN, frozen_at 2026-07-12T12:36:12-03:00. Parou no 'freeze', nao chegou a 'gen/check/pack'.",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "short_odete 43.800s (ffprobe; bate com freeze.json dur_s=43.8); short_novela 31.600s; short_coracao_acelerado 36.100s; short_qac_v2 41.500s",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "promo",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_promo.mp4 h264/aac 1080x1920 30/1 15.200s 7.449.615B — o mais CURTO e o mais LEVE dos 38. QA PASS 13 checks (sha 229c8061...). Pasta so com compositor.tsx+make.py; sem design.md, sem som.py.",
+   "runner": "formatos/promo/make.py (12408B) — 1 maker",
+   "skin": "SKIN:promo -> nicho 'promo'",
+   "compositor": "Promo.tsx proprio (14642B); Root.tsx:40",
+   "audio": "SND:base(sound_design.py) COMPARTILHADO; a NOTA.md de lenda registra que sound_design_terror.py tambem serve promo",
+   "voz": "VOZ:ancora-urgente",
+   "hook": "DIVERGENCIA: contrato declara hook_default='imagem' e fontes_assets=['SRC:gptimg']; o runner chama Grok — 1x model grok-imagine/image-to-video e 3 refs KIE, e hook_grok_promo.mp4 existe em remotion/public/",
+   "assets": "declarado SRC:gptimg; real inclui Grok i2v via KIE",
+   "qa_tecnico": "RUNNER NAO CHAMA QA (grep=0; mapa.json qa.retrofit=true, nota 'runner legado NAO chama QA hoje'). O relatorio PASS 13 existe, logo rodou fora do runner.",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "make.py:195 grava nota 'IA deve manter o produto FIEL; conferir (sobretudo marcas/rotulos) antes de publicar p/ nao induzir a erro' — risco de marca delegado a humano. Build nao preservado.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "15.200s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "relato_proibido",
+   "estado_factual": "failed",
+   "evidencia": "O UNICO formato cujo unico render REPROVOU. ffprobe: out/short_relato_proibido.mp4 h264/aac 1080x1920 30/1 54.500s 34.041.941B. out/qa_short_relato_proibido.json (sha 0b4857d8d1ac154fd40d374317209cc5f651982b7a6c81ac623692f9c48acca0): verdict=FAIL, 20 checks. REGRA:qa-gate: 'build aborta se QA reprovar'. Nao ha outro render deste formato — chamar isto de capacidade entregue seria colapsar falha em lista vazia.",
+   "runner": "formatos/relato_proibido/make.py (18331B) — 1 maker",
+   "skin": "SKIN:relatoproibido -> nicho 'relato'",
+   "compositor": "RelatoProibido.tsx proprio (11198B); Root.tsx:49",
+   "audio": "SND:terror (mapa.json) + formatos/relato_proibido/som.py proprio (3991B) — declara o compartilhado E tem o proprio",
+   "voz": "VOZ:sussurro-confissao",
+   "hook": "DIVERGENCIA: contrato declara hook_default='imagem'; o runner chama Grok — 1x model grok-imagine/image-to-video, 2 refs KIE; hook_grok_relato_proibido.mp4 presente",
+   "assets": "declarado SRC:gptimg (4 refs); real inclui Grok i2v",
+   "qa_tecnico": "EXECUTADO (grep=3, invoca qa por subprocess). Perfil wow_v2. Veredito FAIL.",
+   "qa_visual": "NAO EXECUTADO — e nem poderia promover: o gate tecnico ja reprovou",
+   "ledger_licenca": "build nao preservado; unknown",
+   "publicacao": "impossivel — REGRA:qa-gate e o fluxo de publicar.py exigem QA aprovado antes do freeze",
+   "formato_comprovado": "1080x1920 9:16",
+   "duracao_comprovada": "54.500s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  },
+  {
+   "nome": "tribunal_zap",
+   "estado_factual": "executed_external",
+   "evidencia": "ffprobe: out/short_tribunal_zap.mp4 h264/aac 1080x1920 30/1 41.400s 33.261.843B. QA PASS 20 checks (sha 6839325b...). Pasta completa: design.md+make.py+compositor.tsx+som.py.",
+   "runner": "formatos/tribunal_zap/make.py (20722B) — 1 maker. Cabecalho :4 declara a stack: 'Stack padrao premium da fabrica: GPT Image 2/1 + Grok i2v + Gemini TTS + Remotion + numpy/FFmpeg + QA.'",
+   "skin": "SKIN:tribunalzap -> nicho 'justica-zap'",
+   "compositor": "TribunalZap.tsx proprio (15262B); Root.tsx:46",
+   "audio": "DIVERGENCIA: mapa.json declara snd='SND:base(sound_design.py)'; existe formatos/tribunal_zap/som.py proprio (4530B)",
+   "voz": "VOZ:ancora-urgente",
+   "hook": "A DIVERGENCIA MAIS CLARA DO PARQUE. mapa.json skins.tribunalzap.hook_default='imagem' e fontes_assets=['SRC:gptimg'] (nada de SRC:grok). O runner faz o oposto: make.py:149 'def grok_hook()', :165 '\"model\": \"grok-imagine/image-to-video\"', :215 SCENE_SRC usa hook_grok_tribunal_zap.mp4 se ok. design.md:12: 'Grok i2v: hook de 6s a partir da imagem principal'. Artefato medido por mim: hook_grok_tribunal_zap.mp4 h264+aac 768x1168 24/1 6.041667s 3.784.913B.",
+   "assets": "declarado SRC:gptimg; real = gptimg (4 refs) + Grok i2v via KIE (2 refs). O custo Grok nao entra no contrato de custo da skin.",
+   "qa_tecnico": "EXECUTADO, PASS 20 checks, perfil wow_v2",
+   "qa_visual": "NAO EXECUTADO",
+   "ledger_licenca": "make.py:432 grava ledger com rights='Caso ficcional; sem pessoa real/celebridade; cenas IA + Grok + Gemini TTS.' e :434 marca a fonte por cena ('Grok i2v a partir de hook GPT Image' ou 'GPT Image 2/1 ou Gemini fallback'). Consistente com REGRA:caso-anonimizado. Build nao preservado, entao o ledger final e unknown.",
+   "publicacao": "nenhuma",
+   "formato_comprovado": "1080x1920 9:16 no master; hook em 768x1168 24fps",
+   "duracao_comprovada": "41.400s (ffprobe)",
+   "codec_comprovado": "h264 + aac, 30/1"
+  }
+ ],
+ "destinos": [
+  {
+   "destino": "google_display (Google Ads Responsive Display)",
+   "estado_factual": "implemented_integrated",
+   "dimensoes": [
+    "contrato de canal (requisitos.yaml DISPLAY): imagem_marketing 1.91:1, dimensão MÍNIMA 600x314, SEM dimensão recomendada (matriz marca [NÃO CONFIRMADO])",
+    "imagem_marketing_quadrada 1:1, mínima 300x300, sem recomendada",
+    "logo_quadrado 1:1 mínima 128x128",
+    "logo_paisagem 4:1 mínima 512x128",
+    "slots que o Estúdio oferece para este destino: 1x1 = 1080x1080 e 1.91x1 = 1200x628 (dominio.py:82-123)",
+    "o motor local de ensaio produz 600x314 e 320x320 — MEDIDO nesta máquina, não 1200x628/1080x1080"
+   ],
+   "mime": [
+    "image/png",
+    "image/jpeg",
+    "image/gif"
+   ],
+   "limite_peso": "null — bytes_maximos NÃO existe para nenhum asset de Display; requisitos.yaml marca explicitamente `[NÃO CONFIRMADO] — não herdar os 5120 KB de PMax`. validacao.py:99 só cobra peso quando spec.bytes_maximos is not None, portanto peso NÃO é validado em Display. custo-não-apurado, não peso-zero.",
+   "transparencia": "unknown — nenhum contrato, coluna, gate ou teste menciona alpha/RGBA/tRNS em todo o código criativo. Pior: services/creative_engine/enquadramento.py:269 faz `img.convert(\"RGB\")` antes de salvar, então qualquer alpha do provider é ACHATADO em silêncio, inclusive para logo_quadrado/logo_paisagem. Não é 'sem transparência': é ausência de contrato.",
+   "pixel_gate": "Dois caminhos distintos, e só um tem gate. (a) Caminho do JOB (execucao.py, motor Gemini): grep por `gate|validar|conferir_upload` em backend/app/criativo/execucao.py retorna UMA linha (570, `enquadramento`) — nenhum gate, nenhuma validação de canal. (b) Caminho da BANCADA local (operario.py:430-500): gates arquivo_no_disco, bytes_conferem, hash_confere, slot_pedido, dimensao, arquivo_nao_vazio, cobertura_dos_slots, contraste (PISO_AA=4.5). Os gates de PRENSA (contrast/box_fit/clipping) só existem como LINHA DE SEED no banco (v11_02:913-918) apontando para `motor-imagem/contrato/saida/provas/*.pixelgate.json`, fora do repo.",
+   "safe_area": "not_supported — nenhuma implementação. `rg -in 'safe.?area|zona segura'` acha 6 ocorrências, todas em documentação/PLANO ou no docstring do gate_runner do harness. docs/design/MATRIZ-ESTUDIO-LEGADO-SCHEMA-RUNTIME-FRONTEND.md:39 registra safe area como 'conceito inexistente' no VOLC; supabase/migrations/PLANO-v11_03.md:29 chama de 'lacuna maior'.",
+   "preset_ui": "2 dos 4 slots do briefing carregam este destino em destinosTipicos (1x1 e 1.91x1). O destino é selecionável em src/components/criativos/briefing/contrato.ts:145-148. O backend NÃO valida a string: routers/criativos.py:191 aceita `destinosPretendidos: list[str] max_length=12` sem allowlist.",
+   "prensa_recompila": "recompila por canvas, mas FORA do VOLC O.S. docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md:143 registra 'recompilação por canvas; nunca crop cego de uma peça-mãe' e motores-de-imagem.json lista `google_responsive_display` em documented_destinations. Dentro do VOLC não há adaptador PRENSA (motores-de-imagem.json: prensa_adapter_implemented: false); v11_02 seed marca o motor `prensa` como runtime='servico' sem verificado_em.",
+   "evidencia": "volc_ads/criativo/requisitos.yaml (bloco DISPLAY, incl. `bytes_maximos: null # [NÃO CONFIRMADO]`); backend/app/criativo/dominio.py:82-123; volc_ads/criativo_ponte.py:363-403 (`imagens_de_display`, único caminho que chama validar_lote); volc_ads/criativo/validacao.py:99-104; backend/app/criativo/bancada/operario.py:430-500; MEDIDO nesta máquina: `dimensao_para` para DISPLAY devolve imagem_marketing (600,314) e imagem_marketing_quadrada (320,320), bytes_max=None, mimes=('image/png','image/jpeg','image/gif')."
+  },
+  {
+   "destino": "google_demand_gen (Demand Gen)",
+   "estado_factual": "implemented_integrated",
+   "dimensoes": [
+    "imagem_marketing 1.91:1, mínima 600x314, recomendada 1200x628",
+    "imagem_marketing_quadrada 1:1, mínima 300x300, recomendada 1200x1200",
+    "imagem_marketing_retrato 4:5, mínima 480x600, recomendada 960x1200",
+    "imagem_marketing_retrato_alto 9:16, mínima 600x1067, recomendada 1080x1920 (Shorts)",
+    "logo_quadrado 1:1, mínima 144x144, recomendada 1200x1200",
+    "MEDIDO nesta máquina: receita `demand-gen-minimo` produz logo_quadrado 1200x1200 e imagem_marketing 1200x628"
+   ],
+   "mime": [
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "vídeo: video/mp4, video/mpeg"
+   ],
+   "limite_peso": "5242880 B (5 MB) para as quatro famílias de imagem de marketing; 153600 B (150 KB) SÓ para logo_quadrado — teto próprio, explicitamente separado no YAML. Vídeo: bytes_maximos null (não apurado).",
+   "transparencia": "unknown — mesma ausência de contrato. O logo (1:1, 150 KB) é justamente o asset onde transparência costuma importar, e nada no repo a declara, mede ou preserva.",
+   "pixel_gate": "Idem Display: nenhum no caminho do job; os 8 gates da bancada no caminho local. Os gates de pixel da PRENSA não estão portados.",
+   "safe_area": "not_supported — nenhuma implementação, embora o slot 9:16 recomendado 1080x1920 seja o que mais depende de safe area (Shorts).",
+   "preset_ui": "AUSENTE do seletor. src/components/criativos/comum/formato.ts:95 tem o rótulo 'Demand Gen' para `google_demand_gen`, mas DESTINOS em src/components/criativos/briefing/contrato.ts:144-170 lista apenas google_display, meta_feed, meta_stories_reels, instagram_organic e manual. Nenhum Formato declara `google_demand_gen` em destinos_tipicos. O operador não consegue escolher este destino na tela.",
+   "prensa_recompila": "recompila por canvas, externo. motores-de-imagem.json lista `google_demand_gen` em documented_destinations, e o snapshot registra UM artefato executado `volcnews_iphone_laranja__demandgen__img_9x16.png` em 1080x1920 (verdict_ok). Um, não uma esteira.",
+   "evidencia": "volc_ads/criativo/requisitos.yaml (bloco DEMAND_GEN, incl. `bytes_maximos: 153600` no logo com nota 'o peso do logo é 150 KB, NÃO os 5 MB'); supabase/migrations/v11_02_parque_criativo.sql:968-972; volc_ads/criativo_ponte.py:405-421 (`imagens_de_demand_gen`); MEDIDO: dimensao_para DEMAND_GEN → logo_quadrado (1200,1200) bytes_max=153600, imagem_marketing (1200,628) bytes_max=5242880."
+  },
+  {
+   "destino": "google_performance_max (PMax)",
+   "estado_factual": "documented_only",
+   "dimensoes": [
+    "imagem_marketing 1.91:1, mín 600x314, rec 1200x628",
+    "imagem_marketing_quadrada 1:1, mín 300x300, rec 1200x1200",
+    "imagem_marketing_retrato 4:5, mín 480x600, rec 960x1200",
+    "logo_quadrado 1:1, mín 128x128, rec 1200x1200",
+    "logo_paisagem 4:1, mín 512x128, rec 1200x300"
+   ],
+   "mime": [
+    "image/png",
+    "image/jpeg",
+    "image/gif"
+   ],
+   "limite_peso": "5242880 B (5120 KB) para TODOS os assets de imagem e logo. É a única tabela oficial completa, e requisitos.yaml avisa em caixa alta que este número NÃO vale para os outros canais.",
+   "transparencia": "unknown — sem contrato.",
+   "pixel_gate": "unknown — não há caminho executável para PMax dentro do VOLC O.S., portanto não há gate a adjudicar.",
+   "safe_area": "not_supported",
+   "preset_ui": "AUSENTE. `google_performance_max` só aparece na SPEC (docs/design/SPEC-ESTUDIO-CRIATIVO-VOLC.md:372) e em documented_destinations do inventário. Não é opção de UI, não é destinosTipicos de nenhum formato, não tem rótulo em formato.ts.",
+   "prensa_recompila": "recompila por canvas, EXTERNO, e é o caso com melhor prova factual: o snapshot registra `volcnews_iphone_laranja__pmax__img_191x1.png` 1200x628, `__pmax__img_1x1.png` 1200x1200 e `__pmax__img_4x5.png` 1088x1360, todos verdict_ok. Ou seja: PMax multiformato foi EXECUTADO — fora do repositório, pela PRENSA.",
+   "evidencia": "volc_ads/criativo/requisitos.yaml (bloco PERFORMANCE_MAX, fonte matriz-api/performance-max.md §4); supabase/migrations/v11_02_parque_criativo.sql:974-978; docs/creative-engines/motores-de-imagem.json (executed_artifacts, dimensões 1200x628 / 1200x1200 / 1088x1360); docs/closure/traffic-creative-operational-closure-v1/DECISAO-PMAX-FORA-DO-EXECUTOR.md; volc_ads/criativo_ponte.py declara apenas CANAL_DISPLAY e CANAL_DEMAND_GEN (linhas 92-93), não há `imagens_de_pmax`."
+  },
+  {
+   "destino": "meta_feed (Facebook/Instagram feed pago)",
+   "estado_factual": "implemented_integrated",
+   "dimensoes": [
+    "NENHUMA exigência de canal existe. `criativo_exigencia_de_canal` e requisitos.yaml só conhecem DISPLAY, DEMAND_GEN, PERFORMANCE_MAX, VIDEO e SEARCH. Meta não tem uma linha de contrato de dimensão em lugar nenhum.",
+    "o que existe é INTENÇÃO: 3 dos 4 slots do Estúdio declaram meta_feed em destinos_tipicos — 1x1 1080x1080, 4x5 1080x1350 e 1.91x1 1200x628"
+   ],
+   "mime": [
+    "unknown — nenhum contrato de MIME para Meta. O único filtro no caminho é a allowlist de STORAGE: image/png, image/jpeg, image/webp, video/mp4 (backend/app/criativo/armazenamento.py:62-64), que não é regra de plataforma."
+   ],
+   "limite_peso": "unknown para a plataforma. O único teto no caminho é o teto de UPLOAD do storage: 25 MB (TETO_DE_IMAGEM_BYTES, armazenamento.py:68) — guarda de infraestrutura, não limite de Meta.",
+   "transparencia": "unknown — sem contrato.",
+   "pixel_gate": "nenhum. O caminho do job não valida nada; a bancada local só produz DISPLAY e DEMAND_GEN (_PORTA_DA_PONTE em bancada/servico.py:186-189), então nem os 8 gates da bancada alcançam uma peça destinada a Meta.",
+   "safe_area": "not_supported",
+   "preset_ui": "SELECIONÁVEL. src/components/criativos/briefing/contrato.ts:149-153. E é selecionável sem que exista qualquer regra que o valide depois — pretender não valida (o próprio src/types/criativos.ts:198-203 diz isso).",
+   "prensa_recompila": "documented_only — `meta_feed` está em documented_destinations de motores-de-imagem.json, sem artefato executado nomeado para este destino no snapshot.",
+   "evidencia": "backend/app/criativo/dominio.py:91,101,121; src/components/criativos/briefing/contrato.ts:149-153; backend/app/criativo/armazenamento.py:59-68; backend/app/criativo/bancada/servico.py:186-189; ausência confirmada: `criativo_exigencia_de_canal` em v11_02:960-980 tem 18 linhas e nenhuma com canal Meta; nenhum arquivo do repo referencia graph.facebook.com / adimages / ad_image."
+  },
+  {
+   "destino": "meta_stories_reels",
+   "estado_factual": "implemented_integrated",
+   "dimensoes": [
+    "nenhuma exigência de canal. Intenção: slot 9x16 = 1080x1920 (dominio.py:103-112) e, no banco, o slot video-9x16 = 1080x1920"
+   ],
+   "mime": [
+    "unknown — mesma ausência de contrato de plataforma; storage aceita png/jpeg/webp/mp4"
+   ],
+   "limite_peso": "unknown para a plataforma; 25 MB de teto de upload no storage",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum no caminho do job. Para vídeo, o que existe é LEITURA de gates de uma fábrica externa (video_observado.py: QA técnico PASS 15 gates, visual WARN 10 gates) — leitura, não execução.",
+   "safe_area": "not_supported — e é o destino onde a ausência mais custa: 9:16 tela cheia é exatamente onde a interface da plataforma ocupa topo e base. O gate `ui_occlusion` ('Elemento na zona da interface da plataforma') existe como SEED de banco (v11_02:940) apontando para volc-factory/pipeline/qa_visual.py, fora do repo, e é bloqueante=false.",
+   "preset_ui": "SELECIONÁVEL (contrato.ts:154-158).",
+   "prensa_recompila": "documented_only para stories pago; o inventário lista `organic_instagram_story_9x16` (orgânico) e o snapshot tem UM artefato 1080x1920.",
+   "evidencia": "backend/app/criativo/dominio.py:103-112; supabase/migrations/v11_02_parque_criativo.sql:832-835; src/components/criativos/briefing/contrato.ts:154-158; backend/app/criativo/video_observado.py:56-62 (resolução 1080x1920 @30fps, QA técnico PASS / visual WARN)."
+  },
+  {
+   "destino": "instagram_organic",
+   "estado_factual": "implemented_integrated",
+   "dimensoes": [
+    "nenhuma exigência de canal. Intenção: 1x1 1080x1080 e 4x5 1080x1350 (dominio.py:91,101)"
+   ],
+   "mime": [
+    "unknown"
+   ],
+   "limite_peso": "unknown para a plataforma; 25 MB de teto de storage",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum",
+   "safe_area": "not_supported",
+   "preset_ui": "SELECIONÁVEL (contrato.ts:159-163).",
+   "prensa_recompila": "documented_only — motores-de-imagem.json lista `organic_instagram_feed_4x5` e `organic_feed_1x1` em documented_destinations; o snapshot tem 23 saídas em 1080x1350, mas nenhuma nomeada por destino orgânico.",
+   "evidencia": "backend/app/criativo/dominio.py:91,101; src/components/criativos/briefing/contrato.ts:159-163; docs/creative-engines/motores-de-imagem.json (documented_destinations)."
+  },
+  {
+   "destino": "facebook_organic",
+   "estado_factual": "documented_only",
+   "dimensoes": [
+    "nenhuma"
+   ],
+   "mime": [],
+   "limite_peso": "unknown",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum",
+   "safe_area": "not_supported",
+   "preset_ui": "AUSENTE do seletor e do mapa de rótulos. Aparece só na SPEC (§11 e §12: `/criativos/novo?origem=conteudo&destino=facebook_organic`). destinoLegivel() cairia no fallback `destino.replace(/_/g,' ')` → 'facebook organic'.",
+   "prensa_recompila": "unknown",
+   "evidencia": "docs/design/SPEC-ESTUDIO-CRIATIVO-VOLC.md:376 e :397; ausente de src/components/criativos/comum/formato.ts:92-100 e de src/components/criativos/briefing/contrato.ts:144-170."
+  },
+  {
+   "destino": "youtube_shorts",
+   "estado_factual": "implemented_external",
+   "dimensoes": [
+    "1080x1920 — e este é o único destino com dimensão MEDIDA nesta máquina, não declarada. `ffprobe -show_entries stream=width,height,r_frame_rate /Users/mac/volc-factory/out/short_novela.mp4` → `1080,1920,30/1`.",
+    "slots que o declaram: 9x16 (imagem, 1080x1920) e video-9x16 (vídeo, 1080x1920, só no banco)"
+   ],
+   "mime": [
+    "video/mp4"
+   ],
+   "limite_peso": "unknown — o canal VIDEO em requisitos.yaml traz `bytes_maximos: null` e `duracao: {min_s: null, max_s: null}`, com `provisorio: true` e a nota 'a matriz oficial ainda NÃO cobre campanhas de vídeo'. Ausência declarada, não zero.",
+   "transparencia": "not_supported (vídeo MP4).",
+   "pixel_gate": "LEITURA de gates externos, não execução. video_observado.py lê QA técnico (15 gates PASS) e visual (10 gates WARN, 5 quadros) de um build da volc-factory. WARN≠PASS e leitura≠execução.",
+   "safe_area": "not_supported no VOLC. O gate `ui_occlusion` está no seed do banco como não-bloqueante, com fonte externa.",
+   "preset_ui": "AUSENTE do seletor de destinos, embora o slot 9x16 declare `youtube_shorts` em destinos_tipicos e formato.ts:99 tenha rótulo para ele. O operador vê o destino escrito no card do formato e não pode selecioná-lo.",
+   "prensa_recompila": "não se aplica (vídeo). O motor de vídeo é Remotion na volc-factory; docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md:195-201 diz que as pastas destinos/pmax, display, demandgen, youtube e organico 'existem, mas seus arquivos declaram que a adaptação ainda falta'.",
+   "evidencia": "MEDIDO: ffprobe em /Users/mac/volc-factory/out/short_novela.mp4 → 1080,1920,30/1; backend/app/criativo/video_observado.py:56-62; supabase/migrations/v11_02_parque_criativo.sql:832-835; docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md:192-201; volc_ads/criativo/requisitos.yaml bloco VIDEO (provisorio: true)."
+  },
+  {
+   "destino": "youtube (bare, no seed do slot 16x9) / google_video (SPEC)",
+   "estado_factual": "documented_only",
+   "dimensoes": [
+    "slot 16x9 = 1920x1080, tipo_de_asset imagem_marketing, declarado SÓ no banco (v11_02:825-828), com fonte apontando para código externo `positivo-ad-studio/backend/app/agents/orchestrator.py:104-119`",
+    "canal VIDEO em requisitos.yaml: video quantidade 1..5, duração min/max null, logo_quadrado 1:1 mín 128x128"
+   ],
+   "mime": [
+    "video/mp4"
+   ],
+   "limite_peso": "null / não apurado, com `provisorio: true` declarado",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum",
+   "safe_area": "not_supported",
+   "preset_ui": "não selecionável, e o slot 16x9 é EXECUTÁVEL=false: parque.py:143-157 marca `executavel_agora=false` porque `dominio.FORMATOS` não o conhece. A string de destino `youtube` (sem `_shorts`) não tem rótulo em formato.ts, então a tela renderiza 'youtube' cru.",
+   "prensa_recompila": "unknown",
+   "evidencia": "supabase/migrations/v11_02_parque_criativo.sql:825-828; backend/app/criativo/parque.py:143-157 e :231-360 (_medir_divergencias); volc_ads/criativo/requisitos.yaml bloco VIDEO; docs/design/SPEC-ESTUDIO-CRIATIVO-VOLC.md:373."
+  },
+  {
+   "destino": "pinterest_organic",
+   "estado_factual": "documented_only",
+   "dimensoes": [
+    "nenhuma"
+   ],
+   "mime": [],
+   "limite_peso": "unknown",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum",
+   "safe_area": "not_supported",
+   "preset_ui": "AUSENTE de tudo exceto da SPEC. (O Aprova externo tem content_type 'pinterest', mas é produto externo não integrado.)",
+   "prensa_recompila": "unknown",
+   "evidencia": "docs/design/SPEC-ESTUDIO-CRIATIVO-VOLC.md:377; docs/creative-engines/motores-de-imagem.json (aprova_ad_studio_official.content_types inclui 'pinterest', maturity 'external_working_product_not_integrated')."
+  },
+  {
+   "destino": "manual / manual_export (exportação manual)",
+   "estado_factual": "implemented_integrated",
+   "dimensoes": [
+    "qualquer uma dos 4 slots do executor — não há regra de destino a cumprir"
+   ],
+   "mime": [
+    "o que o storage aceitar: image/png, image/jpeg, image/webp, video/mp4"
+   ],
+   "limite_peso": "25 MB (teto de upload do storage), não regra de plataforma",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum",
+   "safe_area": "não se aplica",
+   "preset_ui": "SELECIONÁVEL como 'Exportação manual' (contrato.ts:164-168). Note a divergência de identificador: a UI usa `manual`, a SPEC §11 usa `manual_export`.",
+   "prensa_recompila": "não se aplica",
+   "evidencia": "src/components/criativos/briefing/contrato.ts:164-168; src/components/criativos/comum/formato.ts:100 (`manual: 'Exportação manual'`); docs/design/SPEC-ESTUDIO-CRIATIVO-VOLC.md:378 (`manual_export`)."
+  },
+  {
+   "destino": "SEARCH (RSA)",
+   "estado_factual": "not_supported",
+   "dimensoes": [
+    "nenhuma, por decisão explícita"
+   ],
+   "mime": [],
+   "limite_peso": "não se aplica",
+   "transparencia": "não se aplica",
+   "pixel_gate": "não se aplica",
+   "safe_area": "não se aplica",
+   "preset_ui": "não aparece, corretamente",
+   "prensa_recompila": "não se aplica",
+   "evidencia": "volc_ads/criativo/requisitos.yaml, bloco `sem_exigencia_de_criativo: SEARCH: \"volc_ads/campanha/validacao.py (RSA é texto, não asset binário)\"`. Ausência declarada com dono nomeado — é o único destino onde 'não tem' está modelado como resposta e não como silêncio."
+  },
+  {
+   "destino": "PACOTE DE DESTINO (a camada que transformaria peça em entrega, para TODOS os destinos acima)",
+   "estado_factual": "documented_only",
+   "dimensoes": [
+    "a SPEC §11 diz que o pacote 'pode transformar dimensão, crop, composição, copy, duração, legenda e metadados, mas registra toda derivação'. Nenhuma linha de código faz isso."
+   ],
+   "mime": [],
+   "limite_peso": "unknown",
+   "transparencia": "unknown",
+   "pixel_gate": "nenhum",
+   "safe_area": "not_supported",
+   "preset_ui": "a SPEC §7 prevê a ação 'Criar pacote de destino'. Não existe na UI.",
+   "prensa_recompila": "não se aplica",
+   "evidencia": "backend/app/criativo/destino.py é um arquivo de 204 bytes contendo APENAS docstring: 'Fronteira reservada à entrega aprovada de P17-T08. O módulo não possui implementação em S0.' As tabelas `criativo_pacote` e `criativo_entrega` existem (v11_01:601-648) e `grep -rn 'criativo_pacote|criativo_entrega' backend src` fora da migration retorna ZERO — nenhum writer, nenhum reader, nenhum tipo TS. Tabela vazia por desenho ('Elas nascem vazias e a interface nao promete nenhum destino como pronto', v11_01:600)."
+  }
+ ],
+ "dimensoes_do_contrato": [
+  {
+   "nome": "1x1 (Quadrado)",
+   "largura": 1080,
+   "altura": 1080,
+   "proporcao": "1:1",
+   "onde": "backend/app/criativo/dominio.py:83-92 (executor) · src/types/criativos.ts:576-584 (bundle) · supabase/migrations/v11_02_parque_criativo.sql:809-812 (banco). As três pontas concordam."
+  },
+  {
+   "nome": "4x5 (Retrato)",
+   "largura": 1080,
+   "altura": 1350,
+   "proporcao": "4:5",
+   "onde": "backend/app/criativo/dominio.py:93-102 · src/types/criativos.ts:585-593 · v11_02:813-816. Concordam."
+  },
+  {
+   "nome": "9x16 (Vertical)",
+   "largura": 1080,
+   "altura": 1920,
+   "proporcao": "9:16",
+   "onde": "backend/app/criativo/dominio.py:103-112 · src/types/criativos.ts:594-602 · v11_02:817-820. Concordam."
+  },
+  {
+   "nome": "1.91x1 (Paisagem)",
+   "largura": 1200,
+   "altura": 628,
+   "proporcao": "1.91:1",
+   "onde": "backend/app/criativo/dominio.py:113-122 · src/types/criativos.ts:603-611 · v11_02:821-824. Concordam — mas é o único slot cuja proporção NÃO existe no envelope nativo do provider (ver providers_dimensoes)."
+  },
+  {
+   "nome": "16x9 (Paisagem larga)",
+   "largura": 1920,
+   "altura": 1080,
+   "proporcao": "16:9",
+   "onde": "SÓ no banco: v11_02:825-828, fonte declarada `positivo-ad-studio/backend/app/agents/orchestrator.py:104-119` (repositório externo). parque.py marca executavel_agora=false."
+  },
+  {
+   "nome": "3x4 (Retrato suave)",
+   "largura": 1080,
+   "altura": 1440,
+   "proporcao": "3:4",
+   "onde": "SÓ no banco: v11_02:829-831, mesma fonte externa. executavel_agora=false."
+  },
+  {
+   "nome": "video-9x16 (Vídeo vertical)",
+   "largura": 1080,
+   "altura": 1920,
+   "proporcao": "9:16",
+   "onde": "SÓ no banco: v11_02:832-835, fonte `docs/creative-engines/snapshots/motor-video-2026-08-26.json` ('38 MP4, todos 1080x1920 a 30fps'). executavel_agora=false. Confirmado por ffprobe nesta máquina."
+  },
+  {
+   "nome": "DISPLAY imagem_marketing — mínima",
+   "largura": 600,
+   "altura": 314,
+   "proporcao": "1.91:1",
+   "onde": "volc_ads/criativo/requisitos.yaml DISPLAY.imagem_marketing.dimensao_minima · v11_02:960. Sem dimensão recomendada ([NÃO CONFIRMADO]). MEDIDO: é esta a dimensão que o motor local de ensaio produz."
+  },
+  {
+   "nome": "DISPLAY imagem_marketing_quadrada — mínima",
+   "largura": 300,
+   "altura": 300,
+   "proporcao": "1:1",
+   "onde": "requisitos.yaml DISPLAY · v11_02:961. MEDIDO: o motor local produz 320x320 (piso de 320 de png_local.dimensao_para, linha 245), não 300x300."
+  },
+  {
+   "nome": "DISPLAY logo_quadrado — mínima",
+   "largura": 128,
+   "altura": 128,
+   "proporcao": "1:1",
+   "onde": "requisitos.yaml DISPLAY.logo_quadrado · v11_02:962. quantidade min 0, recomendada 1 — o proto não escreve 'is required'."
+  },
+  {
+   "nome": "DISPLAY logo_paisagem — mínima",
+   "largura": 512,
+   "altura": 128,
+   "proporcao": "4:1",
+   "onde": "requisitos.yaml DISPLAY.logo_paisagem · v11_02:963. Note: 4:1 é a única proporção do contrato que NÃO existe em RAZOES_CANONICAS nem em RAZOES_NATIVAS."
+  },
+  {
+   "nome": "DEMAND_GEN imagem_marketing — recomendada",
+   "largura": 1200,
+   "altura": 628,
+   "proporcao": "1.91:1",
+   "onde": "requisitos.yaml DEMAND_GEN · v11_02:968. MEDIDO: dimensao_para devolve (1200,628)."
+  },
+  {
+   "nome": "DEMAND_GEN imagem_marketing_quadrada — recomendada",
+   "largura": 1200,
+   "altura": 1200,
+   "proporcao": "1:1",
+   "onde": "requisitos.yaml · v11_02:969"
+  },
+  {
+   "nome": "DEMAND_GEN imagem_marketing_retrato — recomendada",
+   "largura": 960,
+   "altura": 1200,
+   "proporcao": "4:5",
+   "onde": "requisitos.yaml · v11_02:970 (mínima 480x600)"
+  },
+  {
+   "nome": "DEMAND_GEN imagem_marketing_retrato_alto — recomendada",
+   "largura": 1080,
+   "altura": 1920,
+   "proporcao": "9:16",
+   "onde": "requisitos.yaml · v11_02:971 (mínima 600x1067; comentário 'recomendado para Shorts')"
+  },
+  {
+   "nome": "DEMAND_GEN logo_quadrado — recomendada",
+   "largura": 1200,
+   "altura": 1200,
+   "proporcao": "1:1",
+   "onde": "requisitos.yaml · v11_02:972. Mínima 144x144 (Help Center) e não 128x128 (proto) — as duas fontes divergem e o YAML escolhe o maior. Peso 150 KB, não 5 MB."
+  },
+  {
+   "nome": "PERFORMANCE_MAX logo_paisagem — recomendada",
+   "largura": 1200,
+   "altura": 300,
+   "proporcao": "4:1",
+   "onde": "requisitos.yaml PERFORMANCE_MAX.logo_paisagem (mínima 512x128). Não seedado no banco: v11_02 só traz 5 das 9 linhas de PMax."
+  },
+  {
+   "nome": "PRENSA 4x5 nativo (canvas externo divergente)",
+   "largura": 1088,
+   "altura": 1360,
+   "proporcao": "4:5",
+   "onde": "backend/app/criativo/parque.py:190-195 (CANVAS_NATIVO_EXTERNO). Proporção idêntica ao 1080x1350 do Estúdio (0.8), arquivo-base diferente. Confirmado no snapshot: 50 dos 94 artefatos da PRENSA são 1088x1360."
+  },
+  {
+   "nome": "PRENSA 1x1 nativo (canvas externo divergente)",
+   "largura": 1200,
+   "altura": 1200,
+   "proporcao": "1:1",
+   "onde": "backend/app/criativo/parque.py:190-195. O Estúdio declara 1080x1080. `canvas_a_renormalizar()` existe para expor a diferença — mas nenhum adaptador PRENSA a chama hoje."
+  }
+ ],
+ "recomposicao_versus_crop": [
+  {
+   "caso": "UMA CHAMADA AO MODELO POR FORMATO, cada uma pedindo a proporção nativa correspondente",
+   "tipo": "recomposição real (composição independente por formato)",
+   "onde": "services/creative_engine/motores/gemini_imagem.py:239-248 — `razao = razao_nativa(largura, altura)` e `\"imageConfig\": {\"aspectRatio\": razao}` no payload; backend/app/criativo/execucao.py chama `_chamar_motor` uma vez por slot",
+   "evidencia": "services/creative_engine/enquadramento.py:17-29 explica a decisão ('Uma peça 1:1, uma 4:5 e uma 9:16 do mesmo briefing não são a mesma composição... Recortar uma imagem-mãe entrega três arquivos com três dimensões e UMA composição'). Esta é a resposta ao alerta: NÃO é o mesmo PNG recortado. É N gerações independentes. Ressalva factual: as três medidas citadas (1024x1024, 928x1152, 768x1376) vêm de uma sonda de 27/08/2026 registrada só no docstring — não achei o artefato da sonda no repo, e sem chave no ambiente não pude reexecutá-la."
+  },
+  {
+   "caso": "Normalização final do provider para a dimensão pedida — proporção BATE (tolerância 0.001)",
+   "tipo": "resize (escala pura, sem perda de conteúdo)",
+   "onde": "services/creative_engine/enquadramento.py:271-274 — `img.resize((largura_alvo, altura_alvo), Image.LANCZOS)`, rótulo `resize`",
+   "evidencia": "EXECUTADO nesta máquina: nativo 1024x1024 -> pedido 1080x1080 devolve enquadramento='resize'. A tolerância é 0.001 e não 0.005 de propósito (linha 83-90): com 0.5% de folga, 768x1376 -> 1080x1920 caía em resize e ESTICAVA 0,8%; o ADR-001 pede 'sem distorção'."
+  },
+  {
+   "caso": "Normalização final do provider para a dimensão pedida — proporção DIVERGE",
+   "tipo": "CROP real (cover centralizado, conteúdo descartado)",
+   "onde": "services/creative_engine/enquadramento.py:276-293 — escala pelo lado que falta e `img.crop((esquerda, topo, esquerda+largura_alvo, topo+altura_alvo))`, rótulo `cover_crop`",
+   "evidencia": "EXECUTADO nesta máquina, quatro casos: 928x1152 -> 1080x1350 = cover_crop; 768x1376 -> 1080x1920 = cover_crop; 1344x768 -> 1200x628 = cover_crop com passos ('cover 1344x768->1200x686','crop centralizado ->1200x628') = 8,5% da altura fora; 1024x1024 -> 1200x628 = cover_crop com 47,7% da altura fora. O crop é CENTRALIZADO e explicitamente NÃO inteligente ('reprodutibilidade vale mais aqui que acerto médio', linha 277-279) — o que significa que o assunto da imagem pode sair do quadro sem que nada acuse."
+  },
+  {
+   "caso": "Provider entregou fora da medida e a normalização NÃO pôde rodar (Pillow ausente ou bytes ilegíveis)",
+   "tipo": "nem recomposição nem crop — a peça fica na dimensão do provider, DIFERENTE da pedida",
+   "onde": "services/creative_engine/enquadramento.py:226-237, :250-261, :302-314 — rótulo `nao_normalizado`",
+   "evidencia": "Rótulo criado em 28/08/2026 como conserto de mentira: antes reusava `nativo`, e a interface traduz `nativo` como 'O motor entregou já nesta dimensão, sem redimensionar' (src/components/criativos/comum/formato.ts:121-124) — frase que apareceria ao lado de 'Pedido 1080 x 1920 px' para uma peça de 768x1376. Nesta máquina Pillow 12.3.0 está presente, então este ramo não dispara aqui; num ambiente sem Pillow, dispara em silêncio para toda peça."
+  },
+  {
+   "caso": "Motor tipográfico da bancada — texto reflui no canvas pedido",
+   "tipo": "recomposição real, dentro do repositório",
+   "onde": "backend/app/criativo/bancada/adaptadores/tipografico.py:222-241 — `Image.new('RGB', (saida.largura, saida.altura))`, `margem = max(48, saida.largura // 12)`, `largura_util = saida.largura - 2*margem`, `corpo = max(28, saida.largura // 14)` e `_quebrar()` requebrando as linhas para a largura útil",
+   "evidencia": "É o único motor DO REPOSITÓRIO que recompõe: tipografia, margem e corpo derivam do canvas, e o bloco é recentrado (`y = (saida.altura - bloco - altura_apoio) // 2`). Zero crop, zero resize. Ressalva: a margem proporcional (largura/12) NÃO é safe area de plataforma — é margem tipográfica. E o motor não é alcançável pelo caminho de destino: bancada/servico.py:180,204 fixa 'png-local'."
+  },
+  {
+   "caso": "Motor local de PNG — desenha nativamente na dimensão da régua",
+   "tipo": "sem crop e sem resize, mas também sem recomposição de conteúdo (peça de ensaio)",
+   "onde": "volc_ads/criativo/adaptadores/png_local.py:185-220 (desenhar) e :223-250 (dimensao_para)",
+   "evidencia": "MEDIDO nesta máquina: desenha 600x314, 320x320, 1200x628, 1200x1200 diretamente. A geometria sai da régua do canal, não de uma tabela escrita à mão. Mas natureza=LOCAL/ensaio (linhas 256-262) e o conteúdo é faixa + grade a partir de uma semente — não é adaptação criativa de nada."
+  },
+  {
+   "caso": "PRENSA — recompilação por canvas",
+   "tipo": "recomposição real, EXTERNA ao repositório",
+   "onde": "docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md:143 ('recompilação por canvas; nunca crop cego de uma peça-mãe') e :223 ('cada destino recompila texto, tipografia, layers, safe areas e gates')",
+   "evidencia": "Prova de execução no snapshot: a família volcnews_iphone_laranja produziu base 1088x1360 (PIXEL_READY, 9 checks, 0 falhas) e, do MESMO material, __pmax__img_191x1 1200x628, __pmax__img_1x1 1200x1200, __pmax__img_4x5 1088x1360 e __demandgen__img_9x16 1080x1920, todos verdict_ok. Isto é multidestino real. E está inteiramente fora do VOLC O.S.: motores-de-imagem.json declara prensa_adapter_implemented: false; v11_02 registra o modo prensa_hybrid como estado_de_prova='executado_externo'."
+  },
+  {
+   "caso": "Rótulo `recomposto` no contrato do Estúdio",
+   "tipo": "declarado e nunca produzido",
+   "onde": "src/types/criativos.ts:112 · src/components/criativos/comum/formato.ts:133-136 · supabase/migrations/v11_01_estudio_criativo.sql:515 (CHECK)",
+   "evidencia": "`grep -rn 'recomposto' backend src services volc_ads supabase docs` devolve 4 ocorrências: as três acima mais uma linha de tabela em CATALOGO-PRENSA-E-MOTOR-IMAGEM.md:72. ZERO produtores em código. A UI está pronta para exibir 'A cena foi remontada para esta proporção, não apenas cortada' sobre um valor que nenhuma execução do VOLC O.S. consegue gravar."
+  },
+  {
+   "caso": "Divergência de canvas PRENSA vs Estúdio (G11)",
+   "tipo": "renormalização obrigatória detectada mas nunca aplicada — nem crop nem recomposição hoje",
+   "onde": "backend/app/criativo/parque.py:186-210 — CANVAS_NATIVO_EXTERNO {'prensa': {'4x5': (1088,1360), '1x1': (1200,1200)}} e `canvas_a_renormalizar()`",
+   "evidencia": "A proporção bate nos dois casos (1088/1360 = 1080/1350 = 0.8) e o arquivo-base não. O comentário do código é explícito: 'Um adaptador que herdasse pixels da PRENSA sem renormalizar entregaria dimensao que o Google Ads recusa'. A função existe, tem teste, e não tem chamador — porque o adaptador PRENSA não existe. Confirmado no snapshot: 50 dos 94 artefatos da PRENSA estão em 1088x1360, que nenhum destino do contrato aceita como está."
+  }
+ ],
+ "gates_existentes": [
+  {
+   "gate": "validar_lote / validar_asset (spec de canal Google Ads)",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/validacao.py:65 e :225; especificação em volc_ads/criativo/requisitos.yaml",
+   "mede": "tipo x slot, mime na lista aceita, bytes vs bytes_maximos, duração min/max de vídeo, dimensão mínima, proporção com tolerância, caracteres de texto, contagem mínima/máxima por tipo sobre os APROVADOS, tetos combinados e a regra 'pelo menos uma descrição curta' de PMax",
+   "comando": "cd /private/tmp/volc-creative-factory-production-spine-v1 && PYTHONPATH=. /Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python -m pytest volc_ads/criativo -q -p no:randomly",
+   "risco_warn_como_pass": "SIM, dois vetores medidos. (a) ResultadoDeValidacao.ok (validacao.py:191) é `not self.erros_do_lote` — ignora TODA violação de severidade 'aviso' e TODO erro de asset individual. Um lote com asset que o canal nem tem slot para receber sai como aviso E2.sem_slot (validacao.py:238-243) e o lote continua ok=True. Idem D2.abaixo_do_recomendado (:156), Q2.excedem (:266), Q3.abaixo_do_recomendado (:281). (b) Onde a especificação declara `bytes_maximos: null` — TODO o canal DISPLAY em requisitos.yaml — o peso simplesmente não é checado; ausência de número vira ausência de gate, e o asset passa sem M1.sem_medida. Isso é deliberado e documentado (número emprestado seria pior), mas o efeito é um gate inerte para Display."
+  },
+  {
+   "gate": "medir_imagem.medir (medição de pixel a partir dos bytes)",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/adaptadores/medir_imagem.py:215 (mime_de :204, _do_png :109, _do_gif :118, _do_jpeg :127)",
+   "mede": "mime pela assinatura do arquivo e largura/altura pelo cabeçalho de PNG/GIF/JPEG, só stdlib; medida não-positiva vira None (_positivos :97); no JPEG caminha até o SOS e o ÚLTIMO SOF vence, com guarda _MIN_SOF=11 e 'o segmento tem de caber'",
+   "comando": "cd /private/tmp/volc-creative-factory-production-spine-v1 && PYTHONPATH=. /Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python -m pytest volc_ads/criativo/testes_medir_imagem.py -q -p no:randomly",
+   "risco_warn_como_pass": "NÃO neste módulo: ausência é None e vira erro M1.sem_medida no validador, nunca aprovação. Risco adjacente registrado: FORMATOS_RECONHECIDOS (:200) documenta que `mime_de() -> None` é REFUTAÇÃO ('olhei e não é nenhum dos três'), não 'não apurei' — quem confunde os dois trata declaração falsa como ausência. Observação de frescor: a docstring :10-18 afirma que Pillow 'não está declarado em backend/requirements.txt'; hoje ele está (backend/requirements.txt:35, Pillow>=11.0), então essa justificativa está defasada."
+  },
+  {
+   "gate": "Gates do operário da bancada (execução local de imagem)",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/operario.py:426-500; consumo do veredito em :209-243",
+   "mede": "arquivo_no_disco (o arquivo declarado existe), bytes_conferem (stat vs declarado), hash_confere (sha256 recomputado do disco vs declarado), slot_pedido, dimensao (produzido vs pedido), arquivo_nao_vazio, cobertura_dos_slots, contraste (razão vs piso AA, com o NÚMERO no detalhe)",
+   "comando": "cd /private/tmp/volc-creative-factory-production-spine-v1 && PYTHONPATH=. /Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python -m pytest backend/tests/test_criativo_bancada.py backend/tests/test_criativo_producao_local.py -q -p no:randomly",
+   "risco_warn_como_pass": "PARCIAL e declarado. O gate 'contraste' vira SKIPPED com bloqueante=False quando o motor não expõe medir_contraste (operario.py:496-499); só o motor tipográfico o implementa (adaptadores/tipografico.py:268). Um motor sem medição chega a `rendered` sem nenhuma medida de contraste — a ausência é registrada como SKIPPED (correto), mas não impede a peça. Reprovação só ocorre para v.bloqueante and v.resultado=='FAIL' (:211): WARN, se algum motor emitir, não reprova."
+  },
+  {
+   "gate": "MedidaDeAudio (LUFS integrado, true peak, alvo e tolerância)",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/contrato.py:227-240 e operario.py:503-507",
+   "mede": "nada hoje na raiz. O contrato preserva lufs_integrado, true_peak_dbtp, alvo_lufs, tolerancia_lufs como NÚMEROS (explicitamente para não achatar em PASS/FAIL), mas `medir_audio` é resolvido por getattr e NENHUM motor do repositório o implementa (grep 'medir_audio' devolve só a chamada em operario.py:504)",
+   "comando": "cd /private/tmp/volc-creative-factory-production-spine-v1 && grep -rn 'medir_audio' backend volc_ads services | grep -v __pycache__",
+   "risco_warn_como_pass": "NÃO produz falso PASS porque devolve None (ausência), mas é o gap: áudio é contrato, nunca execução. `Recibo.audio` é sempre None na raiz."
+  },
+  {
+   "gate": "Gate de DOM / grid / variantes / promoção transacional",
+   "onde": "declarado AUSENTE em /private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/adaptadores/tipografico.py:17",
+   "mede": "nada — a docstring diz literalmente que o legado 'faz grid, variantes, gates de DOM e promocao transacional; nada disso esta aqui'",
+   "comando": "sed -n 14,20p /private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/adaptadores/tipografico.py",
+   "risco_warn_como_pass": "N/A — não existe. Registrar como ausência, não como gate que passa."
+  },
+  {
+   "gate": "Catálogo SQL de gates (criativo_gate) — 28 gates pixel/técnico/visual/compliance",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/supabase/migrations/v11_02_parque_criativo.sql:367-383 (DDL) e :911-944 (seed)",
+   "mede": "só a IDENTIDADE dos portões e o campo `fonte`; a coluna `fonte` aponta para executores FORA do repositório: 'volc-factory/pipeline/qa.py' (14 gates técnicos + ledger_broll + ledger_credit) e 'volc-factory/pipeline/qa_visual.py' (11 visuais) e 'motor-imagem/contrato/saida/provas/*.pixelgate.json' (contrast, box_fit, clipping)",
+   "comando": "sed -n 911,944p /private/tmp/volc-creative-factory-production-spine-v1/supabase/migrations/v11_02_parque_criativo.sql",
+   "risco_warn_como_pass": "O catálogo não executa nada. Além disso a migration não está aplicada no Supabase oficial: volc-os-workbook/ROADMAP-VIVO.json marca P17-T03 'Aplicar a v11_03 no Supabase oficial' como todo. Ler o catálogo como cobertura de QA seria confundir formato-documentado com formato-executado."
+  },
+  {
+   "gate": "qa.py da fábrica externa (QA técnico de vídeo, ffprobe/ebur128)",
+   "onde": "/Users/mac/volc-factory/pipeline/qa.py (FORA do worktree); limiares em /Users/mac/volc-factory/pipeline/thresholds.json",
+   "mede": "resolução 1080x1920, fps ~30, h264+aac, sample rate, duração na faixa, loudness integrado -14 LUFS ±2,5, true peak <= -0,8 dBTP, black frames, freeze frames, gap de voz >2,8s, hook >=3,5s, cobertura de legendas >=0,85, densidade de legenda 1,6-4,2, card sobre rosto, ledger_broll, ledger_credit",
+   "comando": "python3 /Users/mac/volc-factory/pipeline/qa.py out/short_odete.mp4 --props /Users/mac/volc-factory/out/builds/short_odete/props.json --ledger /Users/mac/volc-factory/out/builds/short_odete/ledger.json   (NÃO executado nesta missão: escreve out/qa_<nome>.json)",
+   "risco_warn_como_pass": "SIM, quatro vetores medidos no fonte. (1) qa.py:211 `sys.exit(1 if fails else 0)` — WARN sai com código 0; um consumidor que só olha exit code lê WARN como PASS. (2) qa.py:197: clips_registry.json ausente vira WARN, ou seja LEDGER DE DIREITOS AUSENTE = exit 0. (3) qa.py:75: `warn=(tp <= 0.0)` — true peak entre -0,8 e 0,0 dBTP vira WARN em vez de FAIL. (4) qa.py:185: props de outro build viram WARN e TODOS os checks de props (hook, legendas, card sobre rosto, arco, retenção) são PULADOS, ainda com exit 0."
+  },
+  {
+   "gate": "ledger_broll / ledger_credit (os únicos gates de COMPLIANCE de direitos)",
+   "onde": "/Users/mac/volc-factory/pipeline/qa.py:187-195",
+   "mede": "ledger_broll: itens cujo `file` começa com 'clip_' e não têm commercial_ok. ledger_credit: itens cujo `use` começa com 'editorial' OU cujo commercial_ok é False, e destes os que não têm credit nem source",
+   "comando": "sed -n 186,196p /Users/mac/volc-factory/pipeline/qa.py",
+   "risco_warn_como_pass": "SIM, e é o achado mais grave do meu território. (a) Sem --ledger explícito o gate audita o SINGLETON DA RAIZ /Users/mac/volc-factory/clips_registry.json, que não é vinculado ao vídeo: o arquivo hoje tem `\"video\": \"short_das\"` e 5 sources, e seria auditado numa rodada de qualquer outro vídeo. Existe cross-check de identidade para props (props_match, qa.py:183) e NÃO existe equivalente para o ledger. (b) O escopo é estreito por construção: só arquivos com prefixo 'clip_' e só itens explicitamente marcados como editorial. (c) Prova factual: /Users/mac/volc-factory/out/qa_short_odete.json registra verdict PASS com 'ledger_credit: 0 assets editoriais, 0 sem crédito', enquanto /Users/mac/volc-factory/out/builds/short_odete/ledger.json tem 12 de 12 sources com `license: null` E `credit: null`, seis deles com source 'Wikimedia Commons', e a `note` do próprio ledger diz 'Stills/logo=uso EDITORIAL, copyright Globo ... creditar autor+TV Globo'. O gate de compliance emitiu PASS sobre uma obrigação de crédito declarada e não cumprida."
+  },
+  {
+   "gate": "qa_visual.py (QA multimodal por modelo de visão)",
+   "onde": "/Users/mac/volc-factory/pipeline/qa_visual.py (FORA do worktree)",
+   "mede": "11 checks visuais em quadros extraídos (legenda_cortada, texto_sobre_rosto, emoji_errado, selo_cortado, elemento_esperado, rosto_inesperado via ledger x faces_count, texto_ilegivel, artefato_ia, ui_occlusion, hook_weak); decisão FAIL/WARN local, limiares nunca no modelo; candidato a FAIL exige dupla evidência em t±0,3s",
+   "comando": "python3 /Users/mac/volc-factory/pipeline/qa_visual.py out/short_X.mp4 --props ... --ledger ...   (NÃO executável nesta missão: uma chamada Gemini paga por quadro)",
+   "risco_warn_como_pass": "SIM, declarado no próprio cabeçalho: 'Exit: 0 PASS/WARN/SKIPPED · 1 FAIL'. WARN e SKIPPED saem 0. hook_weak é WARN-only e 'jamais FAIL' por design. Estado nesta máquina: blocked_by_external_authorization / not_supported nesta missão (chamada paga proibida)."
+  },
+  {
+   "gate": "Leitura do QA da fábrica pelo VOLC O.S. (video_observado)",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/video_observado.py:838 (_resultado_de_gate), :785 (_SEVERIDADE), :925 (_qa), :978 (_resolucao)",
+   "mede": "NÃO mede: normaliza e exibe o veredito que a fábrica gravou. Higiene positiva: token ausente ou desconhecido vira WARN e nunca PASS/SKIPPED (:841-855); SKIPPED tem severidade -1 e escolhe-se a PIOR ocorrência entre quadros (:785); vereditoVisual None ≠ PASS (:928-932). O módulo declara em :981 que NÃO abre o MP4 e não usa ffprobe",
+   "comando": "cd /private/tmp/volc-creative-factory-production-spine-v1 && PYTHONPATH=. /Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python -m pytest backend/tests/test_criativo_video_observado.py -q -p no:randomly",
+   "risco_warn_como_pass": "Indireto e real: a leitura repete fielmente um PASS mentiroso da fábrica. O PASS de ledger_credit do short_odete (ver gate acima) atravessa esta camada intacto e chega à tela do operador como 'Crédito das imagens editoriais: PASS' (rótulo em :775), ao lado de um ledger com 12 licenças nulas. Nenhuma regra desta camada confronta o veredito contra o ledger que ela mesma lê em :739-766."
+  },
+  {
+   "gate": "Catálogo de gates do harness (gate-catalog.json)",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/tools/agent-harness/gate-catalog.json",
+   "mede": "12 gates: harness-unit, backend-unit, volc-ads-unit, diff-limpo, tipos-frontend, build-vite, verificar-segredos, autoridade-supabase, ledger-v10-03, tipos-frontend-ratchet, testes-frontend-lancamento, sem-mutacao-google",
+   "comando": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python -c \"import json;print(list(json.load(open('/private/tmp/volc-creative-factory-production-spine-v1/tools/agent-harness/gate-catalog.json'))['gates'])\"",
+   "risco_warn_como_pass": "NENHUM gate do catálogo cobre direitos, licença, disclosure, QA multimodal, loudness ou legendas. ARMADILHA DE NOME: o gate 'ledger-v10-03' (scripts/gate_provar_ledger_v10_03.py) prova a fronteira atômica do `trafego_ledger` de GASTO (v10_03), NÃO o ledger de direitos criativos. Quem ler o nome como cobertura de direitos conclui cobertura que não existe."
+  },
+  {
+   "gate": "gate_tsc_ratchet / gate_vitest_lancamento / gate_sem_mutacao_google / gates-backend.sh",
+   "onde": "/private/tmp/volc-creative-factory-production-spine-v1/scripts/gate_tsc_ratchet.py, scripts/gate_vitest_lancamento.py, scripts/gate_sem_mutacao_google.py, scripts/gates-backend.sh",
+   "mede": "ratchet de tipos TS contra baseline 76 (recusa contar se houver TS2688); recorte de 7 testes vitest do lançamento (zero coletado = falha); trava de escrita Google Ads + 5 contraprovas de rota; suíte pytest do backend com PYTHONPATH e interpretador conferidos",
+   "comando": "python3 /private/tmp/volc-creative-factory-production-spine-v1/scripts/gate_tsc_ratchet.py · python3 .../gate_vitest_lancamento.py · python3 .../gate_sem_mutacao_google.py · /private/tmp/volc-creative-factory-production-spine-v1/scripts/gates-backend.sh",
+   "risco_warn_como_pass": "gate_tsc_ratchet é ratchet, não gate absoluto — ele afirma 'não piorou', nunca 'está limpo'; ler o verde como saúde de tipos é o falso PASS clássico, e o próprio script declara isso. gates-backend.sh imprime 'Resultado PARCIAL' e ainda propaga o exit code do pytest quando google-ads está ausente (2 módulos fora, 3 testes vermelhos): verde parcial com aviso textual. Nenhum destes toca o caminho criativo de direitos."
+  }
+ ],
+ "ferramentas_locais": [
+  {
+   "ferramenta": "ffmpeg",
+   "versao": "8.1.2 (/opt/homebrew/bin/ffmpeg)",
+   "disponivel": true
+  },
+  {
+   "ferramenta": "ffprobe",
+   "versao": "8.1.2 (/opt/homebrew/bin/ffprobe)",
+   "disponivel": true
+  },
+  {
+   "ferramenta": "node",
+   "versao": "v26.5.0 (/opt/homebrew/bin/node)",
+   "disponivel": true
+  },
+  {
+   "ferramenta": "python (backend/.venv, o interpretador dos gates)",
+   "versao": "3.14.6 com pytest 9.1.1, fastapi 0.115.6, httpx 0.28.1",
+   "disponivel": true
+  },
+  {
+   "ferramenta": "Pillow (medição de imagem de referência)",
+   "versao": "12.3.0 no backend/.venv E declarado em backend/requirements.txt:35 (Pillow>=11.0)",
+   "disponivel": true
+  },
+  {
+   "ferramenta": "chromium (CLI no PATH)",
+   "versao": "which chromium -> not found",
+   "disponivel": false
+  },
+  {
+   "ferramenta": "chrome / google-chrome (CLI no PATH)",
+   "versao": "which chrome / google-chrome -> not found; existe /Applications/Google Chrome.app, sem binário no PATH",
+   "disponivel": false
+  },
+  {
+   "ferramenta": "playwright",
+   "versao": "which playwright -> not found; ausente de package.json (dependencies e devDependencies) e de node_modules/.bin",
+   "disponivel": false
+  },
+  {
+   "ferramenta": "puppeteer",
+   "versao": "ausente de package.json e de node_modules/.bin",
+   "disponivel": false
+  },
+  {
+   "ferramenta": "vitest (runner de frontend)",
+   "versao": "^4.1.10 em devDependencies; script npm test = 'vitest run'",
+   "disponivel": true
+  }
+ ],
+ "lacunas": {
+  "imagem": [
+   "ADAPTADORES: 1 de 3 motores catalogados tem adaptador real. `criativo_motor` em produção tem 3 linhas (gemini-imagem, prensa, volc-factory) e só gemini-imagem implementa o Protocol MotorDeCriativo. PRENSA tem linha de catálogo e zero código; volc-factory tem só leitura observacional (video_observado.py), que não é execução. Confirmado em motores-de-imagem.json:342-344 e em DELTA-PROPOSTO-TEMPLATE-LAB.md §3.1.",
+   "MODO: dos seis modos do ADR-001, apenas full_llm tem caminho de execução no VOLC O.S. O router recusa os outros cinco com 400 (backend/app/routers/criativos.py:344-350) e o front os declara disponivel:false com motivo por modo (src/components/criativos/briefing/contrato.ts:88-130). Isso é honesto, não é lacuna escondida — mas significa que 5/6 do contrato é vocabulário, não capacidade.",
+   "VALIDAÇÃO DE MODO INEXISTENTE NA BANCADA: POST /api/criativos/bancada/trabalhos aceita `motorSlug`, `modoSlug` e `finalidadeSlug` como strings livres de até 64 caracteres (routers/criativos_execucao.py:33-42) sem confrontar nenhuma delas com criativo_motor/criativo_modo_de_producao. Um `modoSlug` inventado é aceito e gravado no recibo. `Resolvedor` (parque.py:401-444) traduz slug→uuid best-effort e devolve None em silêncio quando não bate.",
+   "MOTOR TIPOGRÁFICO SEM `natureza`: MotorTipografico não declara o atributo `natureza`, então servico.natureza_do_motor() (servico.py:126-135) devolve NAO_DECLARADA e `publicavel=False`. MotorPngLocal declara LOCAL. A diferença é invisível na tela e nenhum teste que eu tenha visto prende essa assimetria.",
+   "PILLOW NÃO DECLARADO: Pillow não está em backend/requirements.txt e é importado sob demanda por tipografico.py (dentro de produzir() e versoes_congeladas()) e por enquadramento.py. Numa máquina sem Pillow, MotorTipografico SE REGISTRA no despacho e falha no meio do render — o próprio bancada/adaptadores/png_local.py:9-14 documenta esse ponto cego e nasceu por causa dele. Em enquadramento.py a degradação é mais suave (peça sai em dimensão nativa com enquadramento='nao_normalizado').",
+   "`produzir_local` SEM CONSUMIDOR HTTP: backend/app/criativo/bancada/servico.py:239-317 fixa motor_slug='png-local' e modo_slug='ensaio-local' e seu único chamador em todo o repositório é backend/tests/test_criativo_producao_local.py:49. Documentado como contrato para UI em docs/closure/traffic-creative-operational-closure-v1/CONTRATO-CRIATIVO-PARA-UI.md, mas nenhuma rota o chama.",
+   "AFIRMAÇÃO DESATUALIZADA NOS DELTAS: DELTA-PROPOSTO-ESTUDIO-C0-C1-C3.md:50-52 e DELTA-PROPOSTO-TEMPLATE-LAB.md §3.2 afirmam que 'criativo_ponte continua sem consumidor HTTP'. No SHA-base desta worktree isso NÃO é mais verdade: backend/app/routers/trafego.py:1833/1900 chama criativo_ponte.imagens_de_display e :2197/2336 chama criativo_ponte.imagens_de_demand_gen. O integrador deve reconferir antes de aplicar essa evidência à curadoria.",
+   "DIVERGÊNCIA DE LITERAL DE MODELO: gemini_imagem.py:20-24 justifica a escolha dizendo que 'gemini-3.1-flash-image' é 'o literal que Aprova e Positivo já declaram em config.py'. Conferido nos dois projetos externos: ambos declaram 'gemini-3.1-flash-image-preview'. O literal interno (sem -preview) é outro. Não sei se são o mesmo endpoint; não testei rede.",
+   "DIVERGÊNCIA DE CONTAGEM deterministic_graphics: motores-de-imagem.json:237 e CATALOGO-PRENSA dizem 12 saídas; supabase/migrations/v11_02_parque_criativo.sql:779 grava 13. Duas fontes internas, dois números, nenhum árbitro.",
+   "SERVICES/CREATIVE_ENGINE SEM TESTES PRÓPRIOS: services/creative_engine/tests/ contém apenas __init__.py vazio. Nem gemini_imagem.py nem enquadramento.py — os dois módulos que traduzem o contrato para o provider pago e decidem se houve crop — têm suíte dedicada. A cobertura existe indiretamente em backend/tests/test_criativo_estudio.py e test_criativo_parque.py.",
+   "GATES NÃO EXECUTADOS POR MIM: rodei apenas `pytest --collect-only` (279 testes coletados nos 5 módulos backend de criativo, com PYTHONPATH=raiz da worktree; 149 em volc_ads/criativo). Sem PYTHONPATH, 4 dos 5 módulos backend NÃO COLETAM (ModuleNotFoundError: volc_ads). Nenhuma execução, nenhum número de aprovação: coleta ≠ passagem.",
+   "CUSTO NUNCA MEDIDO: nenhuma fatura, nenhum custo realizado em lugar nenhum. gemini_imagem.py grava custo_usd=None e manda a estimativa (US$0,039/img) em metadados; execucao.py:202-204 grava custo_estimado_usd e mantém custo_real_usd NULL; v11_02 grava custo_referencia_usd NULL para PRENSA e volc-factory (ausência, não zero). custo-não-apurado ≠ custo-zero.",
+   "STORAGE REMOTO INEXISTENTE: armazenamento_padrao() devolve sempre ArmazenamentoLocal (armazenamento.py:432-442). ArmazenamentoSupabase está escrito e declarado NÃO ATIVADO porque o bucket 'criativos' não existe (0 linhas em storage.buckets, medido 27-28/08/2026). storage-local ≠ storage-remoto.",
+   "CREDENCIAIS AUSENTES NESTA MÁQUINA: GEMINI_API_KEY, OPENAI_API_KEY, CRIATIVO_FONTES_DIR, CRIATIVO_BANCADA_DIR, CRIATIVO_STORAGE_DIR e CRIATIVO_URL_SECRET estão todas ausentes do ambiente deste processo, e backend/.env não existe nesta worktree (é gitignored). Existe backend/.env no repo principal com GEMINI_API_KEY preenchida (presença conferida por grep de nome; valor não lido). Portanto: qualquer execução real do motor Gemini a partir desta worktree é unavailable_on_machine.",
+   "LICENÇAS DE FONTE: apenas UMA fonte tem licença levantada e hash medido neste repositório — Inter-Variable.ttf, SIL OFL 1.1, sha256 29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031 (backend/app/criativo/bancada/fontes/PROCEDENCIA.md). As 7 skins e ~11 famílias da PRENSA continuam com licença NÃO LEVANTADA aqui; PACOTE-REUSO-MOTOR-IMAGEM.json:63 marca 'font_licensing' como risco da migração.",
+   "EXECUÇÃO SERVERLESS AINDA VIVA: a bancada é fail-closed em ambiente sem processo longo (despacho.py:80-103 recusa em vercel/lambda/cloudflare), mas ela NÃO substituiu o executor antigo — PROPOSTA-CURADORIA-ESTUDIO-CRIATIVO.json registra que 'os dois coexistem' e que enquanto criar_job_de_imagem usar asyncio.create_task o defeito segue vivo no caminho de produção.",
+   "GOVERNANÇA: o Estúdio Criativo continua SEM iniciativa própria em volc-os-workbook/ROADMAP-VIVO.json. Há código, schema em produção (21 tabelas criativo_*), 2 ADRs e vários commits, e nenhuma tarefa que os represente. A proposta P17 (6 tarefas) existe em docs/architecture/PROPOSTA-CURADORIA-ESTUDIO-CRIATIVO.json e NÃO foi aplicada.",
+   "GRAFO DEFASADO NESTA WORKTREE: docs/creative-engines/DELTA-PROPOSTO-ESTUDIO-C0-C1-C3.md:18-30 registra que `--check` devolve {'current': false, 'reason': 'UPDATE_STATUS.json ausente'} em worktree, e que graphify-out/ e .venv-graphify/ não existem aqui. Não consultei o grafo; tudo neste relatório veio de leitura de código, manifesto e medição direta de arquivo."
+  ],
+  "video": [
+   "CONTRATO CONTRADIZ O CODIGO EM 5 SKINS, no campo que decide o provider PAGO. mapa.json declara hook_default='imagem' e fontes_assets=['SRC:gptimg'] (sem SRC:grok) para tribunalzap, relatoproibido, cartasperdidas, causafamilia e promo. Os cinco runners chamam Grok i2v via KIE: grep de '\"model\": \"grok-imagine/image-to-video\"' devolve 1 ocorrencia em cada um dos cinco make.py, e os artefatos hook_grok_{tribunal_zap,relato_proibido,cartas_perdidas,causa_familia,promo}.mp4 existem em remotion/public/. Consequencia material: o custo do clipe Grok e a obrigacao de disclosure de video sintetico ficam FORA do contrato de custo e do ledger dessas cinco skins. O CATALOGO do VOLC O.S. reproduz a contagem contratual (8 grok / 5 imagem / 2 omni) como se fosse realidade de execucao — na pratica sao 14 dos 17 formatos chamando Grok.",
+   "A DIVERGENCIA INVERSA, em achadinhos: mapa.json declara hook_default='grok', mas achadinhos/make.py e make_padrao.py tem ZERO chamada a KIE e ZERO ao modelo grok. O hook real e b-roll de video do Pexels (make_padrao.py:52 e :79). O contrato promete um provider que o runner nao usa — o erro existe nas duas direcoes.",
+   "TRES PROVIDERS DE VIDEO NO CATALOGO, TRES ESTADOS DIFERENTES, UM ROTULO SO. O CATALOGO-MOTOR-DE-VIDEO.md diz 'KIE: hooks em video por modelos como Grok/Veo/Kling'. Medido: Grok = executado via KIE (17 artefatos). Veo = NAO passa pela KIE no caminho principal — /Users/mac/volc-factory/pipeline/veo_hook.py chama o SDK google.genai direto (veo-3.1-generate-preview e 3 irmaos), e ha um segundo caminho via KIE com model 'veo3_lite' em news/kie_hooks.py:81. Kling = ZERO linha de codigo em qualquer lugar dos dois parques; so prosa em INDICE.md:93/MODELO.md e workflows n8n de terceiros dentro de _templates/*.zip. Provider-executado, provider-por-outra-via e provider-so-documentado descritos como se fossem a mesma coisa.",
+   "WAN E REPLICATE EXISTEM, EXECUTARAM, E NAO ESTAO EM NENHUM INVENTARIO. /Users/mac/volc-factory/pipeline/wan_hook.py chama wan-video/wan-2.2-i2v-fast na Replicate. Replicate nao aparece no .env, no .env.exemplo, nos 4 nomes de variavel do snapshot, no CATALOGO nem no PACOTE-REUSO. O output existe e eu o medi: hook_i2v.mp4, 624x624, 16fps, 5.0625s, 320.134B, sem audio. E motor/build_props.py:38-39 — NA RAIZ ORGANIZADA, que se declara limpa — mantem esse arquivo como FALLBACK do hook Veo: 'hook_vid = _veo if (_veo.exists() and _veo.stat().st_size > 10000) else _wan'. Se o Veo faltasse, um clipe QUADRADO de 16fps entraria como cena 0 de um master 1080x1920 30fps.",
+   "O PADRAO DE COLHEITA DE SEGREDO DE CLIENTE NAO MORREU — MUDOU DE PASTA. motor-video/.env.exemplo e INVENTARIO.md declaram o conserto, e eu confirmei na raiz organizada: 0 arquivos citando Desktop/SISTEMAS, 0 com regex sk-, 0 com /Users/mac/volc-factory. Mas a FABRICA, unica que ja renderizou alguma coisa, continua com 36 arquivos citando projeto de cliente, 18 colhendo segredo por regex sk- e 62 com a raiz cravada. Dois casos nominais no meu territorio: pipeline/veo_hook.py:8-13 le o .env de '/Users/mac/Desktop/SISTEMAS/ALVO - SISTEMA OFICIAL E LEGADO/aprova-plataforma-alvo-hybrid/materials/.env' (arquivo que EXISTE nesta maquina, 4663B, verificado por ls e nao lido); pipeline/wan_hook.py:22-31 varre *.json de _templates atras de 'r8_[A-Za-z0-9]{30,}' e nesta maquina 1 arquivo casa com o padrao. Nenhum dos dois foi extraido para motor-video, logo nenhum foi consertado.",
+   "31 ARQUIVOS DA RAIZ 'DESACOPLADA' AINDA CRAVAM /opt/homebrew/bin/ffmpeg. INVENTARIO.md apresenta a tabela antes/agora com 0 em todas as linhas, mas ela mediu raizes de PROJETO, nao caminho de FERRAMENTA. Medi: 46 arquivos no total, 31 em motor-video (incluindo motor/qa.py, motor/qa_visual.py, motor/core.py, motor/sound_design.py, motor/sound_design_terror.py, contrato/clusters/som.md e 25 de formatos/) e 15 em pipeline/. ADR-002 'Ordem segura de extracao' item 1 exige exatamente 'sem depender de /Users/mac/volc-factory ou /opt/homebrew/bin/ffmpeg' — metade do item continua aberta e o documento nao registra isso.",
+   "O MOTOR ORGANIZADO CHAMA O QA DA FABRICA, NAO O PROPRIO — E AS COPIAS JA DIVERGIRAM. formatos/arquivo/make.py:354 invoca subprocess ['python3', PROJ/'pipeline'/'qa.py', ...] com PROJ = TRABALHO = ~/volc-factory (ambiente.py:47), apesar de motor/qa.py existir na mesma arvore. Shasum -a256, primeiros 12 hex: qa.py motor-video=3c6c70c5285f vs fabrica=01e89d5dabd9; qa_visual.py 826484252d4c vs df3af48efea8; core.py 9e1af63a030b vs 10d462b18ef5; publicar.py 8c4a70d0d2f5 vs e67115b1fb33; gen_images.py 9a4e5d94ea3c vs 1712dae9d931. Cinco modulos criticos duplicados e divergentes; so locales.py e identico. Nao ha gerador, direcao de sincronizacao nem dono documentado.",
+   "QA VISUAL: QUATRO RELATORIOS, ZERO PASS. Os 4 de 38 renders com QA visual (10,5%) estao TODOS em WARN — corta_en 6 warns, corta_pt 4, mei 2, odete 1. O CATALOGO registra isso corretamente, mas o PACOTE-REUSO-MOTOR-VIDEO.json lista 'QA visual' entre os gates da primeira vertical sem dizer que ele nunca aprovou nada limpo. E o campo 'checks' vem 0 nos quatro: a cobertura de gates nao foi registrada, so a contagem de warns.",
+   "QA TECNICO: O CATALOGO CONTA O FAIL E OMITE OS QUATRO WARN. Contei os 20 relatorios: 15 PASS, 4 WARN (short_corta_en, short_das, short_lenda, short_mei), 1 FAIL (short_relato_proibido). O CATALOGO-MOTOR-DE-VIDEO.md so menciona o FAIL. 75% dos renders medidos sao PASS limpos, nao 100% menos um. E o caso do lenda tem causa contratual registrada no proprio mapa.json: 'make_lenda.py chama qa.py mas nao grava qaProfile nos props -> so o perfil base roda hoje' — rodou o gate errado, e o veredito WARN e sobre o gate frouxo.",
+   "PUBLICACAO: DOIS FREEZES, UM PACOTE, ZERO PUBLICACOES. ls out/meta/ mostra short_mei com 8 arquivos (com metadata.json e pubqa.json) e short_odete com 6 (sem os dois). O CATALOGO trata os dois como 'snapshot de publicacao' equivalentes. E o unico pacote completo passou por OVERRIDE: pubqa.json do short_mei tem verdict=WARN com os detalhes 'QA WARN — aceito com --allow-warn' e 'QA-VISUAL WARN — aceito com --allow-warn'. Nenhum publish_log.jsonl existe em toda a fabrica (find retorna vazio) e publicar.py:469 mostra que esse e o arquivo do comando 'log'. Nada foi publicado; e o unico pacote que existe nao foi aprovado, foi dispensado.",
+   "LICENCA WIKIMEDIA EM FALTA NO UNICO LEDGER AUDITAVEL. Li /Users/mac/volc-factory/out/builds/short_odete/ledger.json: os 6 itens de Wikimedia Commons tem license=None, credit=None e url=None. REGRA:pessoa-real-so-wikimedia exige 'rosto real so via Commons CC/PD creditado', e REGRA:ledger-incompleto diz 'ausencia = FAIL na publicacao'. O proprio ledger reconhece a obrigacao na nota ('Stills/logo=uso EDITORIAL, copyright Globo... creditar autor+TV Globo') e nao a cumpre. Nao e dado ausente: e a regra descumprida no unico caso que da para auditar. backend/app/criativo/video_observado.py preserva o None de proposito e diz por que no cabecalho — a lacuna e da fabrica, nao do leitor.",
+   "SO 2 DE 38 RENDERS SAO OBSERVAVEIS PELO PRODUTO (5,3%). video_observado._artefatos() exige out/builds/<slug>/{props,timings,ledger}.json, e ls /Users/mac/volc-factory/out/builds/ devolve exatamente short_das e short_odete. Os outros 36 MP4 existem em out/ e sao invisiveis para GET /video/{slug}. A leitura esta implementada e integrada com qualidade real (28 testes coletados, tres estados distintos, streaming por range, nenhum caminho absoluto no JSON), mas o catalogo que ela serve tem 2 itens. Leitura-boa nao e cobertura-boa.",
+   "NENHUM RENDER SAIU DA RAIZ ORGANIZADA. snapshot.execution_evidence.organized_root_full_render_proven=false; nao existe diretorio out/ em motor-video; INVENTARIO.md item 1 do 'o que falta': 'Rodar um formato completo daqui. O codigo esta desacoplado, mas nenhum render saiu desta pasta ainda. Ate isso acontecer, e um arquivo bem organizado.' Os 38 MP4 sao todos de /Users/mac/volc-factory/out. Formato-documentado nao e formato-executado, e raiz-limpa nao e raiz-provada.",
+   "OS DESTINOS PUBLICITARIOS SAO 400 BYTES DE PROSA. Os 5 LEIA.md de destinos/ somam 400 bytes e cada um e uma frase. Zero codigo de empacotamento, zero asset fora de 1080x1920 (confirmei por ffprobe nos 38). Display se auto-declara 'imagem estatica, nao video'. PMax exige 1:1/4:5/1.91:1 e o SAFE de 9:16 esta cravado em fx.tsx:9, com '151 valores cravados em px nos 15 compositores' (PONTE-PRENSA.md). 'Pode fornecer materia-prima' nao e 'entrega o formato exigido pelo canal'.",
+   "SUBCONTAGEM DE RUNNERS NO SNAPSHOT E NO CATALOGO, com consequencia de provider. O snapshot lista makers=['make.py','make_padrao.py'] para holerite e o CATALOGO diz 'Runner 2'. O filesystem tem TRES (ls): make.py, make_das.py, make_padrao.py. E os tres nao sao equivalentes — make_padrao.py e make_das.py usam omni (17 e 18 refs), make.py usa GROK (1 call de grok-imagine/image-to-video, hook_grok_holerite.mp4 presente). Um formato com tres runners e dois providers de hook nao pode ser contado como 'um formato com hook omni'.",
+   "FOFOCA NAO EXISTE NO GRAFO E NENHUM DOS SEUS DOIS RENDERS FOI MEDIDO. E o unico formato com contract_skins=[] no snapshot. Seus dois MP4 (short_fofoca 26.300s, short_fofoca_v2 25.900s, ffprobe meu) nao tem QA tecnico nem visual. E ha tres fontes com tres respostas sobre o hook: INDICE.md:60 diz 'omni', design.md:37 diz 'Hook Grok i2v animando uma cena glamour gpt', e o codigo confirma o Grok. Ainda assim fofoca e dono do compositor Gossip.tsx que a skin 'gossip' (novela) consome.",
+   "NOVE RUNNERS NAO INVOCAM QA NENHUM, E O CONTRATO SABE DISSO POR ESCRITO. mapa.json carrega a nota literal, repetida em 4 skins: 'runner legado NAO chama QA hoje (confirmado por grep jul/2026) — debito explicito em contrato/camadas.md; caminho: python3 motor/finish.py <slug> apos o build'. Confirmei por grep: achadinhos/make.py, achadinhos/make_padrao.py, copa/make.py, esoterico/make.py, fofoca/make.py, horoscopo/make.py, news/make.py, news/make_solo.py e promo/make.py nao invocam qa.py. Onde existe relatorio para esses formatos (eso PASS, horoscopo PASS, promo PASS, copa_broll PASS), o QA rodou FORA do runner, manualmente — o gate nao esta no caminho de build e nao dispara sozinho no proximo episodio.",
+   "MOTOR/BUILD_PROPS.PY E ORFAO E CARREGA CONTEUDO DE PAUTA UNICA CRAVADO. grep 'build_props' em motor-video/formatos/ e em /Users/mac/volc-factory/{news,pipeline} nao retorna nenhum consumidor. Ainda assim ele esta na lista 'copiado' de _extracao.json, mantem o encadeamento Veo->Wan (linhas 38-39), le PROJ/'words.json' da raiz compartilhada (linha 47) e traz um newsCard cravado ('MARKETWATCH', 'RPM de financas nos EUA chega a US$ 50 por mil views', linhas 55-56). E codigo de uma pauta especifica promovido a modulo generico do motor.",
+   "MOTOR/WIKIMEDIA.PY FICOU FORA DO MANIFESTO DE EXTRACAO, QUE DECLARA 'ausente': []. _extracao.json lista 28 itens em 'copiado' e afirma que nada ficou faltando. motor/wikimedia.py (4945B) existe na pasta e NAO consta da lista, e o INDICE.md o cita entre os modulos do motor. O manifesto que deveria provar transporte fiel esta incompleto E afirma o contrario — e ele e a unica prova documental de que o motor-video e copia integral do volc-factory.",
+   "O RENDER REMOTION NAO E HERMETICO, E ISSO E PRE-REQUISITO NAO CUMPRIDO DE QUALQUER EXECUTOR REMOTO. ADR-REMOTION-RUNTIME-STORAGE.md mediu ~290 requisicoes de rede por quadro, 34 chamadas loadFont() em 11 familias, e a causa estrutural: Root.tsx importa as 15 composicoes no topo, entao um still de Corta baixa fontes de Esoterico, Arquivo e Holerite. O adendo de 29/08 provou por experimento que a falha sem rede e DURA (NetworkError, nenhum arquivo gerado) e nao silenciosa — o que e melhor do que a primeira versao do ADR afirmava, e o ADR se corrige em publico — mas as 11 familias continuam sem licenca conferida no repositorio e as 10 fontes da PRENSA nao as cobrem.",
+   "REMOTION INSTALADO E 4.0.479, 39 PATCHES ATRAS, COM LOCKSTEP SEGURO SO PELO LOCKFILE. Confirmei a versao lendo /Users/mac/volc-factory/remotion/node_modules/remotion/package.json. O package.json declara '^4.0.0' para os seis pacotes: um npm install sem lock leva a 4.0.518, e uma instalacao parcial mistura versoes 'e quebra de um jeito dificil de diagnosticar'. @remotion/rough-notation, que o ADR decidiu adotar, nasce em 4.0.490 — exige o upgrade que ainda nao foi feito na fabrica.",
+   "OS HOOKS DE VIDEO NAO NASCEM NO ENVELOPE DO MASTER, E NENHUM DOCUMENTO REGISTRA A CONVERSAO. Medi os quatro providers por ffprobe: Grok 768x1168 @24fps 6.04s; Veo 720x1280 @24fps 8.00s; Wan 624x624 @16fps 5.06s; Omni 1080x1920 @30fps 4.70s. Todos os 38 masters sao 1080x1920 @30fps. Ou seja: exceto o Omni, todo hook e reescalado e recadenciado dentro do compositor. Nenhum relatorio de QA visual do parque cobre artefato de upscale de hook, e nem o CATALOGO nem o snapshot mencionam a diferenca de resolucao entre hook e master.",
+   "OS HOOKS OMNI NAO TEM STREAM DE AUDIO, APESAR DE O PROVIDER SER VENDIDO POR 'AUDIO NATIVO'. ffprobe em hook_omni_odete.mp4 e hook_omni_mei.mp4: um unico stream h264, nenhum aac. O audio existe separado (hook_omni_*_aud.wav) e ha um hook_omni_*_raw.mp4 ao lado. O docstring de motor/omni.py:1-2 promete 'geracao de video com AUDIO NATIVO (dialogo/VO/SFX)'. A esteira desmonta o que o provider entrega junto, e nenhum documento explica por que — o que importa porque REGRA:copy-punch e a matematica de sincronia da CAMADA:master-omni dependem desse audio.",
+   "OMNI DEPENDE DE VENV SEPARADO E DE API EXPERIMENTAL SEM SEMENTE. motor/omni.py:11 exige google-genai >= 2.0.0 e o venv .venv-omni ('a fabrica fica no SDK 1.72; NAO fazer upgrade global por causa de um preview'); o diretorio /Users/mac/volc-factory/.venv-omni existe. A API e client.interactions.create, marcada 'experimental', e o docstring registra 'sem quality/fps/seed/negative' — nao ha semente, logo o hook das duas unicas skins de autoridade nao e reproduzivel. O ADR do Remotion exige seed fixa para determinismo do compositor; o provider do hook nao oferece nenhuma. Determinismo do compositor nao e determinismo da peca.",
+   "CUSTO: TUDO E REFERENCIA, NADA E FATURA. mapa.json custos_referencia da 6 numeros (omni US$0.10/s, grok por clipe 6s, gptimg US$0.02-0.04, geminiimg US$0.039, pexels e wikimedia gratis). Nenhum artefato do parque registra custo REAL: nao ha contador, nao ha fatura, nao ha campo de custo em nenhum dos ledgers preservados. backend/app/criativo/video_ponte.py:136-138 e explicito ao devolver custoEstimadoUsd=None e custoRealUsd=None com o motivo escrito. Custo-nao-apurado nao e custo-zero — e nas 5 skins com divergencia de hook o custo nem sequer esta estimado.",
+   "ELEVENLABS NAO EXISTE NESTE PARQUE, E ISSO E AUSENCIA DE INTEGRACAO, NAO REPROVACAO. grep -rin 'elevenlabs|eleven_labs|ELEVEN' em toda a raiz motor-video: zero ocorrencias. O TTS e Gemini (gemini-3.1-flash-tts-preview -> gemini-2.5-flash-preview-tts, declarado em .env.exemplo), via motor/make_audio.py. As 14 VOZ:* do contrato sao presets de estilo do TTS Gemini, nao vozes clonadas de provider externo. Se a missao esperava ElevenLabs no inventario de motores, a resposta e 'nao integrado', nunca 'avaliado e rejeitado'.",
+   "O VOLC O.S. NAO TEM ADAPTER DE VIDEO, E A LACUNA E ESTRUTURAL, NAO DE FIACAO. volc_ads/criativo/porta.py nao contem a palavra 'video' em nenhuma linha — o Protocol MotorDeCriativo (porta.py:183) nao modela a midia video. Os 4 adaptadores existentes (falso, funnelforge_imagem, medir_imagem, png_local) sao todos de imagem. backend/app/criativo/worker/ tem so __init__.py (193B). motores-de-video.json declara adapter='todo' e runtime='todo'. Nao e 'falta plugar': falta o tipo no contrato de porta.",
+   "UM WARN ACEITO POR --allow-warn NAO E UM PASS, E O UNICO PACOTE DE PUBLICACAO DO PARQUE E FEITO DISSO. Registro separado porque o PACOTE-REUSO lista como criterios da primeira vertical: 'contrato resolvido, job idempotente, MP4 H.264 + AAC, QA tecnico, QA visual, ledger completo, snapshot congelado, aprovacao humana'. O unico caso que chegou la — short_mei — tem QA tecnico WARN, QA visual WARN, ledger de 1614B nao auditado quanto a licenca, e um pubqa.json que registra os dois overrides por escrito. Apresenta-lo como prova de que o portao FUNCIONA e correto e util; apresenta-lo como prova de que o parque esta pronto para publicar nao e.",
+   "A EVIDENCIA DE EXECUCAO DO CATALOGO E FIEL AO SNAPSHOT — VERIFIQUEI E CONFIRMO. Registro como contraponto para nao inflar a lista de defeitos: ffprobe meu sobre os 38 MP4 de /Users/mac/volc-factory/out bate exatamente com o snapshot em resolucao (38/38 em 1080x1920), codec (38/38 h264+aac), fps (38/38 em 30/1) e duracao (min 15.2s no short_promo, max 64.3s no short_nubank). Os dois sha256 do contrato (mapa.json 878cffb9... e schema 7f83eeb3...) tambem batem. As contagens de QA (20 tecnicos, 4 visuais, 2 snapshots) estao corretas. O problema do CATALOGO nao e numero errado: e distincao colapsada — WARN contado junto de PASS, freeze contado junto de pacote, provider documentado contado junto de provider executado."
+  ],
+  "formatos_destinos": [
+   "A camada de destino NÃO EXISTE em código. backend/app/criativo/destino.py tem 204 bytes e só docstring ('O módulo não possui implementação em S0'). As tabelas criativo_pacote e criativo_entrega não têm um único writer, reader ou tipo TS fora da migration. Consequência factual: nenhum destino do Estúdio tem regra de destino aplicada a uma peça — nem Display, nem Demand Gen. Os destinos são PRETENDIDOS e permanecem pretendidos.",
+   "O caminho de JOB (Gemini) não valida nada. `grep 'gate|validar|conferir_upload'` em backend/app/criativo/execucao.py devolve UMA linha (570, gravação do campo `enquadramento`). O único caminho que chama volc_ads/criativo/validacao.py::validar_lote é volc_ads/criativo_ponte.py, que serve DISPLAY e DEMAND_GEN a partir de uma PASTA via CLI — não a partir de um job do Estúdio.",
+   "O slot 1.91x1 (Google Display paisagem) é o único cuja proporção não existe no envelope nativo do provider, e isso está PROVADO nesta máquina: enquadrar() com nativo 1344x768 (16:9 real) → 'cover 1344x768->1200x686' + 'crop centralizado ->1200x628', ou seja 8,5% da altura descartada. Com nativo 1024x1024 (fallback) → 'cover 1024x1024->1200x1200' + crop, 47,7% da altura. O docstring de enquadramento.py:31-39 afirma 'menos de 1% de área' — número medido só para 4:5 e 9:16 (928x1152 e 768x1376). O teste `test_a_proporcao_pedida_ao_provider_e_a_do_formato` (backend/tests/test_criativo_estudio.py:479-486) cobre 1:1, 4:5 e 9:16 e NÃO cobre 1.91x1.",
+   "O rótulo `recomposto` tem ZERO produtores. Ele existe em src/types/criativos.ts:112, em src/components/criativos/comum/formato.ts:133-136 ('A cena foi remontada para esta proporção, não apenas cortada') e na CHECK de v11_01:515 — e nenhuma linha de código o atribui. `enquadrar()` só emite nativo, resize, cover_crop e nao_normalizado. A interface está preparada para prometer recomposição que o sistema não faz.",
+   "Transparência é lacuna total, não escolha. Nenhum contrato, coluna, gate, teste ou documento menciona alpha/RGBA/tRNS. Pior: services/creative_engine/enquadramento.py:269 executa `img.convert(\"RGB\")` no caminho de normalização, achatando qualquer alpha em silêncio — inclusive para logo_quadrado e logo_paisagem, os assets onde transparência normalmente é obrigatória. Ausência de contrato ≠ 'não precisa'.",
+   "Safe area é conceito inexistente. 6 ocorrências no repo, todas em documentação, plano ou docstring de harness. docs/design/MATRIZ-ESTUDIO-LEGADO-SCHEMA-RUNTIME-FRONTEND.md:39 registra 'conceito inexistente'; supabase/migrations/PLANO-v11_03.md:29 chama de 'lacuna maior do vídeo'. Nenhuma implementação, para nenhum destino — inclusive 9:16, onde a interface da plataforma come topo e base.",
+   "Divergência de MIME entre storage e plataforma, nos DOIS sentidos. backend/app/criativo/armazenamento.py:62 aceita image/webp, que requisitos.yaml (padroes.imagem.mimes, API v25) NÃO lista; e REJEITA image/gif, que requisitos.yaml lista como aceito. Uma peça WebP passa pelo storage e seria recusada pela API; um GIF válido para o Google não entra no Estúdio.",
+   "Peso NÃO é validado em Display. requisitos.yaml declara `bytes_maximos: null` para os cinco assets de Display com a nota '[NÃO CONFIRMADO] — não herdar os 5120 KB de PMax', e validacao.py:99 só cobra quando o valor existe. Isto é honesto (custo-não-apurado ≠ custo-zero) mas o efeito operacional é que nenhum peso de Display é conferido em lugar nenhum.",
+   "Presets de UI e catálogo de destinos divergem em três níveis. SPEC §11 lista 11 identificadores; src/components/criativos/comum/formato.ts:92-100 tem rótulo para 7; src/components/criativos/briefing/contrato.ts:144-170 oferece 5. `google_demand_gen` e `youtube_shorts` têm rótulo e NÃO são selecionáveis; `google_performance_max`, `google_video`, `facebook_organic` e `pinterest_organic` não têm nem rótulo. E `manual` (UI) vs `manual_export` (SPEC) são identificadores diferentes para a mesma coisa.",
+   "O backend não valida a string de destino. backend/app/routers/criativos.py:191 aceita `destinosPretendidos: list[str] = Field(default_factory=list, max_length=12)` sem allowlist. Qualquer string entra, é persistida em criativo_briefing.destinos_pretendidos e ENTRA NA CHAVE DE IDEMPOTÊNCIA (dominio.py:183), portanto um typo de destino produz um job novo e uma cobrança nova.",
+   "O banco declara 7 formatos e o executor conhece 4. A divergência é deliberada e exposta (parque.py:143-157 marca executavel_agora + motivo; _medir_divergencias compara 7 campos), mas os 3 slots inexecutáveis — 16x9, 3x4, video-9x16 — citam como fonte código de um repositório EXTERNO (`positivo-ad-studio/...orchestrator.py:104-119`) e um snapshot externo. Formato-declarado ≠ formato-executável.",
+   "PMax tem contrato de dimensão completo e nenhum caminho executável. requisitos.yaml e v11_02 trazem as regras, e volc_ads/criativo_ponte.py só declara CANAL_DISPLAY e CANAL_DEMAND_GEN (linhas 92-93). Há decisão registrada (docs/closure/traffic-creative-operational-closure-v1/DECISAO-PMAX-FORA-DO-EXECUTOR.md), então é escolha e não esquecimento — mas o seed de PMax no banco traz só 5 das 9 famílias do YAML (falta logo_paisagem, imagem_marketing_retrato, headline, headline_longa, nome_da_empresa).",
+   "Meta e orgânico não têm UMA LINHA de contrato de dimensão. criativo_exigencia_de_canal (v11_02:960-980) tem 18 linhas cobrindo DISPLAY, DEMAND_GEN e PERFORMANCE_MAX. Meta feed, Meta stories/reels, Instagram orgânico e Facebook orgânico — quatro destinos, três deles SELECIONÁVEIS na tela — não têm dimensão, peso, MIME nem contagem declarados em lugar nenhum. E não há um único byte de integração de upload Meta no repo (`grep -rl 'graph.facebook.com|adimages|ad_image' backend src volc_ads` → vazio).",
+   "docs/creative-engines/motores-de-imagem.json está defasado quanto ao próprio repositório: declara `architecture_decision.planned_path: services/creative-engine, implemented: false` e `integration_state.engine_port_implemented: true / creative_job_envelope_implemented: false`, enquanto services/creative_engine/ existe com gemini_imagem.py e enquadramento.py, e o envelope de CreativeJob está em v11_01. Documento datado 2026-08-26; código andou depois.",
+   "unavailable_on_machine: não há GEMINI_API_KEY / GOOGLE_API_KEY / OPENAI_API_KEY no ambiente e o worktree não tem .env nem .env.server (só .example). Logo, o caminho full_llm não pôde ser exercido de ponta a ponta aqui — o que verifiquei executando foi a NORMALIZAÇÃO (Pillow 12.3.0 presente) com nativos sintéticos, não uma geração real. provider-indisponível ≠ provider-reprovado.",
+   "Prova de multiformato real (1x1 + 4x5 + 9:16 + 1.91:1 do mesmo briefing, com gates) existe — mas EXTERNA. O snapshot da PRENSA (docs/creative-engines/snapshots/motor-imagem-2026-08-26.json, source_root `/Users/mac/Desktop/Volc Mídia Global/motor-imagem`, fora do repo) tem 94 artefatos: 50 em 1088x1360, 23 em 1080x1350, 12 em 520x650, 6 em 720x900, e UM cada em 1080x1920, 1200x628 e 1200x1200. Ou seja: o único destino com esteira multiformato executada é PMax, uma vez, na PRENSA, fora do VOLC O.S. Dentro do VOLC não há adaptador PRENSA (prensa_adapter_implemented: false)."
+  ]
+ },
+ "provado_por_esta_missao": {
+  "aviso": "Estas linhas foram EXECUTADAS nesta branch, nesta maquina, com prova reproduzivel. Elas sao a unica parte da matriz em que `executed_integrated` significa producao do VOLC O.S.",
+  "linhas": [
+   {
+    "engine_id": "png-local (MotorPngLocal)",
+    "midia": "imagem",
+    "modo": "ensaio-local",
+    "provider": "nenhum (zlib + struct)",
+    "estado_factual": "executed_integrated",
+    "prova": "backend/tests/test_criativo_worker.py::test_o_worker_e_outro_processo_e_conclui_o_trabalho — um `python -m app.criativo.bancada.worker` SEPARADO produziu a peca; o teste reconferiu bytes e sha256 do arquivo no disco contra o recibo.",
+    "custo": "nao apurado (None), e o teste prova que isso nao e zero",
+    "precisa_rede": false
+   },
+   {
+    "engine_id": "deposito SQLite (fila local)",
+    "midia": "n/a",
+    "modo": "fila",
+    "provider": "sqlite3",
+    "estado_factual": "executed_integrated",
+    "prova": "backend/tests/test_criativo_deposito_contrato.py — 36 provas de contrato; claim exclusivo sob threading.Barrier, lease, batimento, trilha append-only, idempotencia por tenant."
+   },
+   {
+    "engine_id": "deposito Postgres (v11_03)",
+    "midia": "n/a",
+    "modo": "fila",
+    "provider": "psycopg 3.3.5 + Postgres descartavel",
+    "estado_factual": "executed_integrated",
+    "prova": "as MESMAS 36 provas, parametrizadas, contra um cluster que nasce e morre na sessao com a v11_03 aplicada. `VOLC_EXIGIR_POSTGRES=1` transforma 'nao subiu' em FALHA, nao em skip.",
+    "lacuna": "aplicar a v11_03 no Supabase oficial e P17-T03 e continua blocked_by_external_authorization."
+   },
+   {
+    "engine_id": "worker fora do processo web",
+    "midia": "n/a",
+    "modo": "execucao",
+    "provider": "processo do sistema operacional",
+    "estado_factual": "executed_integrated",
+    "prova": "9 provas; as centrais sobem subprocess. Tres workers e seis trabalhos: um claim por trabalho na trilha e tentativa==1 em todos. SIGTERM deixa o trabalho atual terminar. SIGKILL no meio devolve para a fila SEM marcar falha, e um worker novo refaz com tentativa==2."
+   }
+  ]
+ },
+ "riscos_do_parque_externo": {
+  "aviso": "Achados do parque `/Users/mac/Desktop/Volc Midia Global` e `/Users/mac/volc-factory`, levantados em modo somente leitura. NADA disto entrou no runtime do VOLC O.S., e nada disto pode entrar como esta. Registrados aqui porque a matriz seria desonesta sem eles.",
+  "achados": [
+   {
+    "id": "R1",
+    "severidade": "alta",
+    "titulo": "hook de video le o .env de um projeto de CLIENTE",
+    "detalhe": "veo_hook.py:8-13 carrega '/Users/mac/Desktop/SISTEMAS/ALVO - SISTEMA OFICIAL E LEGADO/aprova-plataforma-alvo-hybrid/materials/.env', que EXISTE nesta maquina (4663 bytes, confirmado por ls; conteudo NAO lido). Credencial de um cliente alcancada por outro produto. O proprio motor-video/.env.exemplo declara esse padrao morto.",
+    "acao": "nenhum adapter do VOLC O.S. pode herdar esse caminho."
+   },
+   {
+    "id": "R2",
+    "severidade": "alta",
+    "titulo": "hook colhe chave de API por regex em templates de terceiros",
+    "detalhe": "wan_hook.py:22-31 varre todos os *.json de `_templates` e de 'Volc Midia Global/Templates' procurando `r8_[A-Za-z0-9]{30,}`. Verificado por CONTAGEM, sem ler valor: 1 arquivo casa nesta maquina — o script ACHARIA uma chave. Replicate nao aparece em nenhum .env.",
+    "acao": "credencial vem do Cofre, por referencia nominal, nunca por varredura de disco."
+   },
+   {
+    "id": "R3",
+    "severidade": "media",
+    "titulo": "caminho absoluto de maquina em 46 arquivos",
+    "detalhe": "'/opt/homebrew/bin/ffmpeg' fixado em 46 arquivos — 31 na raiz que INVENTARIO.md declara desacoplada (motor/qa.py, qa_visual.py, core.py, sound_design*.py e 25 de formatos/) e 15 em volc-factory/pipeline. O ADR-002 ja exige remover isto como item 1 da ordem segura de extracao.",
+    "acao": "nenhum path absoluto desta maquina pode aparecer no runtime final."
+   },
+   {
+    "id": "R4",
+    "severidade": "media",
+    "titulo": "um dos 17 formatos de video esta `failed`, e Wikimedia tambem",
+    "detalhe": "relato_proibido = failed; Wikimedia Commons = failed. Nao sao 'ausentes' nem 'zero': foram exercitados e nao funcionaram.",
+    "acao": "nao contar nenhum dos dois como capacidade."
+   }
+  ]
+ },
+ "leitura_de_uma_linha": "Das 37 capacidades catalogadas, 14 sao `executed_external` — executadas NO PARQUE, fora deste repositorio e fora do contrato do VOLC O.S. Antes desta missao, o VOLC O.S. tinha UMA capacidade `executed_integrated` (ffmpeg como binario de sistema). Os 17 formatos de video sao 16 `executed_external` e 1 `failed`: nenhum e producao do VOLC O.S., e nenhum tem envelope comprovado alem de 1080x1920."
+}
