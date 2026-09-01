@@ -1,0 +1,245 @@
+{
+  "_leia_isto": [
+    "PROPOSTA de delta de curadoria do Worker 2 (channel-builders). NÃO APLICADA.",
+    "Não editei ROADMAP-VIVO.json nem docs/volc-os-graph/**. Quem aplica é o",
+    "integrador único, uma vez, depois do merge — o protocolo do CLAUDE.md.",
+    "Nenhuma tarefa é promovida a `done` por causa de código: cada entrada abaixo",
+    "diz o que foi PROVADO, com arquivo e nome de teste, e o que continua faltando.",
+    "As contagens de gate são da árvore no momento em que rodei; o integrador deve",
+    "reconfirmá-las sobre árvore limpa, porque três workers escreveram em paralelo."
+  ],
+  "gerado_em": "2026-09-01",
+  "autor": "worker-2-channel-builders",
+  "branch": "sprint/traffic-creative-operational-closure-v1",
+  "base": "3462b1407cb18c9f1fae3775d1db64608f56f3e9",
+  "aplicado": false,
+
+  "commits_deste_worker": [
+    {"sha": "eefb712", "o_que": "plano.py — o payload dito em português, sem o SDK — e o contrato para a API"},
+    {"sha": "73e15fa", "o_que": "pmax.py — contrato próprio do quarto canal; planejador no perfil; Achado.codigo"},
+    {"sha": "8270d48", "o_que": "testes_pmax.py — 50 provas, incluindo o portão de mensuração provado por si"},
+    {"sha": "330c7a2", "o_que": "testes_plano.py + aceite 4 de P04-T09 com socket fechado"},
+    {"sha": "2b6392f", "o_que": "display.py — guarda de asset duplicado que o validate_only real exigiu"}
+  ],
+
+  "gates_medidos": {
+    "campanha": {
+      "comando": "backend/.venv/bin/python -m pytest volc_ads/campanha -q",
+      "baseline_na_base": "193 passed",
+      "medido": "267 passed, 0 failed",
+      "veredito": "+74 testes, zero falha"
+    },
+    "higiene": {
+      "comando": "git diff --check",
+      "medido": "exit 0",
+      "veredito": "limpo"
+    },
+    "validate_only_real": {
+      "comando": "display.validar / demand_gen.validar / pmax.ler_mensuracao + pmax.validar, conta 547-809-6539 via MCC 601-673-9364",
+      "medido": "DISPLAY APROVADO (9 ops) · DEMAND_GEN APROVADO (9 ops) · PMAX recusa local pelo portão de mensuração (0 ops, não chegou à API)",
+      "mutate_real": "NÃO EXECUTADO em conta nenhuma; validate_only=True em 100% das chamadas",
+      "evidencia": "docs/closure/traffic-creative-operational-closure-v1/verificacao/VALIDATE-ONLY-CANAIS.md"
+    }
+  },
+
+  "tarefas": [
+    {
+      "id": "P04-T04",
+      "titulo": "Implementar builder e validate_only do primeiro canal",
+      "status_atual": "partial",
+      "status_proposto": "done",
+      "justificativa_da_promocao": [
+        "A própria evidência de P04-T04 dizia: 'O caminho de validate_only está",
+        "implementado e testado com cliente falso; FALTA a prova contra a conta",
+        "real, que exige autorização — e é só ela que separa esta tarefa de done'.",
+        "Essa prova foi executada em 01/09/2026 e o payload foi APROVADO."
+      ],
+      "evidencia_a_acrescentar": [
+        "2026-09-01 · validate_only REAL na conta 547-809-6539 via MCC 601-673-9364:",
+        "`display.validar(\"5478096539\", brief, login_customer_id=\"6016739364\")` devolveu",
+        "`falha is None` com 9 operações. ZERO mutate.",
+        "A PRIMEIRA tentativa foi RECUSADA, e o defeito era nosso: dois",
+        "`ImagemParaSubir` com os MESMOS BYTES em papéis diferentes produziram",
+        "`asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE` mais três",
+        "`mutate_error.RESOURCE_NOT_FOUND` em cascata no anúncio (RequestId",
+        "EepaLiOkghFZmlwHARty3A). Demand Gen tinha guarda de duplicidade por",
+        "conteúdo; Display não tinha, e a suíte ficava verde sobre um payload que",
+        "a API recusa, porque a fixture `_png()` devolvia sempre os mesmos bytes.",
+        "Corrigido em 06a0d12 (fixture) e 2b6392f (guarda), com três provas em",
+        "testes_display.py — incluindo `test_artes_diferentes_por_papel_continuam_passando`,",
+        "porque uma recusa que dispara no caso legítimo é uma recusa que alguém desliga."
+      ],
+      "lacuna_que_permanece": [
+        "O caminho HTTP de Display ainda não carrega imagem (ProvarEntrada sem",
+        "campo). Isso é do Worker 3 e NÃO pertence a esta tarefa: o builder recusa",
+        "`imagens_display=None` com ASSET_OBRIGATORIO_AUSENTE",
+        "(testes_plano.py::test_display_sem_imagem_e_bloqueio_e_nao_plano_feliz)."
+      ]
+    },
+    {
+      "id": "P04-T09",
+      "titulo": "Fechar a prova segura do builder Demand Gen",
+      "status_atual": "partial",
+      "status_proposto": "done",
+      "correcao_de_fato": [
+        "A evidência de 2026-08-30 registra 'PENDENTE: aceites 2, 3 e 4 não foram",
+        "exercitados'. Isso está DESATUALIZADO: os aceites 2 e 3 já estavam provados",
+        "em testes escritos depois daquela entrada, e o 4 estava provado pela metade."
+      ],
+      "aceites": [
+        {
+          "n": 1,
+          "texto": "Demand Gen relabelado como Search é recusado antes de trava, recibo e cliente",
+          "estado": "PROVADO (já era, e07f05a1)",
+          "prova": "testes_demand_gen.py::test_canal_declarado_pelo_builder_nao_supera_o_canal_da_operacao — o validate_only recebe pytest.fail e o preparo é recusado antes dele"
+        },
+        {
+          "n": 2,
+          "texto": "Troca de canal, login_customer_id, hash ou tipo de operação invalida o selo",
+          "estado": "PROVADO",
+          "prova": "testes_demand_gen.py::test_relabel_mcc_tipo_e_hash_divergentes_morrem_antes_da_trava_e_mutacao — parametrizado nos QUATRO eixos, com `_recusar_trava_ambiente` e `mutar` substituídos por pytest.fail; se a divergência chegasse à trava ou ao cliente, o teste morreria"
+        },
+        {
+          "n": 3,
+          "texto": "Asset remoto sem recibo tipado e campos não operados falham fechado",
+          "estado": "PROVADO",
+          "prova": "testes_demand_gen.py::test_linhagem_autoatestada_e_resource_name_solto_nao_sao_recibo (asset) · ::test_extensao_nao_operada_e_recusada_antes_do_cliente (sitelink/callout/snippet) · ::test_keywords_long_headline_video_e_tcpa_nao_migram_por_analogia (campos de outro canal) · NOVO ::test_asset_sem_recibo_chega_ao_plano_com_codigo_e_nao_como_plano_vazio — o fato agora chega ao vocabulário da tela, com código ASSET_SEM_RECIBO"
+        },
+        {
+          "n": 4,
+          "texto": "Objetos v25 são instanciados e serializados offline sem rede",
+          "estado": "PROVADO — e a metade que faltava foi fechada nesta entrega",
+          "prova": "testes_demand_gen.py::test_sdk_v25_real_instancia_e_serializa_folhas_e_operacoes provava os protos; NOVO ::test_protos_v25_e_grafo_sao_montados_com_a_rede_FECHADA substitui `socket.socket`, `create_connection` e `getaddrinfo` por funções que levantam, e roda sonda + montagem + projeção. A prova anterior era offline POR CONVENÇÃO (o fixture impedia carregar credencial); esta é offline por FORÇA. A diferença é operacional: uma sonda que resolvesse DNS passaria na antiga e falharia na máquina de um revisor em sandbox — que foi exatamente o que impediu a revisão adversarial anterior de reproduzir metade dos achados."
+        },
+        {
+          "n": 5,
+          "texto": "A rota produtiva de Demand Gen permanece recusada e o estado máximo é partial",
+          "estado": "PROVADO, e é TETO POR DESIGN — não tentei 'terminar' liberando a rota",
+          "prova": "volc_ads/subir.py:122 CONSTRUTORES_POR_CANAL={SEARCH,DISPLAY} e :127 PROVADORES_POR_CANAL={SEARCH,DISPLAY,DEMAND_GEN}, com guarda de import em :133-148. testes_demand_gen.py::test_perfil_prova_demand_gen_mas_registry_real_e_executor_recusam · NOVO ::test_o_plano_de_demand_gen_diz_que_prova_e_nao_cria leva o fato ao plano (pode_provar=True, pode_criar=False, com motivo citando os dois registros)"
+        }
+      ],
+      "evidencia_a_acrescentar": [
+        "2026-09-01 · Os cinco aceites de P04-T09 estão provados. Os aceites 2 e 3",
+        "já estavam, em testes posteriores à evidência de 30/08 que os declara",
+        "pendentes; o aceite 4 ganhou a metade que faltava (rede fechada por força).",
+        "ALÉM DO ACEITE, e não no lugar dele: validate_only REAL de Demand Gen na",
+        "conta 547-809-6539 via MCC 601-673-9364 devolveu `falha is None` com 9",
+        "operações. ZERO mutate; a rota produtiva continua recusada pelo registry.",
+        "A API expôs uma constraint que não conhecíamos: Demand Gen tem mínimo de",
+        "orçamento POR DIA que Display não tem. Com budget_diario=10.0 respondeu",
+        "campaign_budget_error.BUDGET_BELOW_PER_DAY_MINIMUM e entregou o número em",
+        "budget_per_day_minimum_error_details: currency_code BRL,",
+        "budget_per_day_minimum_micros 25400000 (R$ 25,40/dia).",
+        "O número NÃO foi gravado em limites.yaml de propósito: ele é por moeda, e",
+        "fixá-lo valeria no Brasil e mentiria nos outros cinco países da operação.",
+        "Caminho no backlog-channel-builders.md §1."
+      ]
+    },
+    {
+      "id": "P04-T07",
+      "titulo": "Definir observabilidade PMax antes de autorizar criação",
+      "status_atual": "todo",
+      "status_proposto": "partial",
+      "justificativa": [
+        "A descrição da tarefa diz 'não existe coleta PMax nem painel VOLC",
+        "específico'. A primeira metade está desatualizada: volc_ads/observabilidade_pmax/",
+        "existe com 2580 linhas — DTOs, queries GAQL read-only, projetor e",
+        "coverage. O que esta entrega acrescenta é o ELO que faltava: a",
+        "observabilidade deixou de ser só leitura do que já existe e passou a ser",
+        "o PORTÃO de quem quer criar.",
+        "Continua `partial` e não `done` porque o painel VOLC específico não existe."
+      ],
+      "evidencia_a_acrescentar": [
+        "2026-09-01 · campanha/pmax.py IMPORTA PMAX_FIELD_REQUIREMENTS e reusa",
+        "evaluate_asset_group_coverage de volc_ads/observabilidade_pmax/ em vez de",
+        "redeclarar mínimos. Consequência: o portão de criação e o observador da",
+        "conta usam a MESMA régua — o que o builder recusa montar é exatamente o",
+        "que o observador apontaria como GAPS depois de criado. Uma segunda tabela",
+        "divergiria no primeiro ajuste, e a divergência apareceria como 'o VOLC",
+        "deixou subir uma campanha que o VOLC classifica como incompleta'.",
+        "limites.yaml declara em voz alta que a contagem por papel NÃO mora nele.",
+        "Prova: testes_pmax.py::test_a_cobertura_do_plano_usa_a_regua_do_observador",
+        "(cada lacuna estrutural cita PMAX_FIELD_REQUIREMENTS) e",
+        "::test_descricao_curta_obrigatoria_e_conferida_pelo_texto_real (a regra",
+        "SHORT_DESCRIPTION_REQUIRED só é verificável se o TEXTO do asset chegar ao",
+        "avaliador, e é o que plano.Asset.identidade carrega quando origem='texto')."
+      ]
+    },
+    {
+      "id": "P04-T05",
+      "titulo": "Integrar assets de imagem e vídeo ao contrato de canal",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "justificativa": [
+        "Continua partial, e as lacunas (a) e (b) da evidência atual continuam de",
+        "pé — o caminho HTTP e a tela são do Worker 3. O que mudou é a lacuna (c)."
+      ],
+      "evidencia_a_acrescentar": [
+        "2026-09-01 · A lacuna (c) ('o construtor de Display AVISA quando falta",
+        "linhagem, não recusa') continua verdadeira e DELIBERADA — display não sabe",
+        "geometria e não pode virar segundo juiz dela. Mas nasceu uma recusa nova",
+        "que display PODE afirmar sozinho, e ela é sobre IDENTIDADE, não geometria:",
+        "asset repetido por conteúdo no mesmo mutate (2b6392f), medida contra a API.",
+        "PMax entra com contrato de asset PRÓPRIO e mais estrito que os dois",
+        "anteriores: brief.imagens_pmax NÃO aceita resource name solto, exige",
+        "ReciboAssetAprovado com canal='PERFORMANCE_MAX', e um recibo de Demand Gen",
+        "NÃO vale (testes_pmax.py::test_recibo_de_outro_canal_nao_vale_em_pmax).",
+        "A ponte criativa ainda não emite recibo de PMax — pedido registrado em",
+        "PEDIDO-PONTE-channel-builders.md, e é a razão pela qual o caminho de",
+        "PRODUÇÃO de asset PMax não existe (o de teste existe e usa a mesma fábrica)."
+      ]
+    }
+  ],
+
+  "nos_do_mapa_vivo_a_propor": [
+    {
+      "acao": "criar",
+      "id_sugerido": "codigo.campanha.plano",
+      "rotulo": "campanha/plano.py — plano de canal serializável",
+      "cluster": "aquisicao/campanhas",
+      "estado": "ativo",
+      "significado": "O payload dito em português, sem o SDK. É PROJEÇÃO das operações protobuf que iriam para a API — não uma segunda montagem a partir do brief —, então um plano que discorde do payload é impossível por construção. Único módulo de campanha/ que o backend pode importar no topo de um arquivo.",
+      "arestas": [
+        {"para": "codigo.campanha.search", "tipo": "consumido_por"},
+        {"para": "codigo.campanha.display", "tipo": "consumido_por"},
+        {"para": "codigo.campanha.demand_gen", "tipo": "consumido_por"},
+        {"para": "codigo.campanha.pmax", "tipo": "consumido_por"},
+        {"para": "codigo.backend.trafego.contrato_canais", "tipo": "consumido_por"}
+      ]
+    },
+    {
+      "acao": "criar",
+      "id_sugerido": "codigo.campanha.pmax",
+      "rotulo": "campanha/pmax.py — builder Performance Max",
+      "cluster": "aquisicao/campanhas",
+      "estado": "parcial",
+      "significado": "Quarto canal, com contrato próprio: único sem AdGroup, sem Ad e sem keyword positiva. Planeja e serializa offline; NÃO está no registro do executor (decisão ratificada de 01/09/2026) e a criação depende de um portão de mensuração que lê a conta.",
+      "arestas": [
+        {"para": "codigo.observabilidade_pmax.coverage", "tipo": "reusa_regua_de"},
+        {"para": "codigo.campanha.plano", "tipo": "produz"},
+        {"para": "codigo.campanha.brief", "tipo": "consome"},
+        {"para": "doc.matriz_api.performance_max", "tipo": "derivado_de"}
+      ]
+    },
+    {
+      "acao": "atualizar",
+      "id_sugerido": "codigo.observabilidade_pmax",
+      "mudanca": "Deixou de ser só leitura do que existe: PMAX_FIELD_REQUIREMENTS e evaluate_asset_group_coverage passaram a ser a régua do PORTÃO de criação, importados por campanha/pmax.py. Acrescentar aresta 'regua_de → codigo.campanha.pmax'."
+    },
+    {
+      "acao": "atualizar",
+      "id_sugerido": "codigo.campanha.perfil",
+      "mudanca": "Ganhou o campo `planejador`, independente de `construtor`. É o que permite declarar 'este canal planeja e não prova' — o estado de PMax. `canais_que_planejam()` é superconjunto de `canais_que_provam()`, que é superconjunto de `canais_que_criam()`."
+    }
+  ],
+
+  "fronteiras_que_permanecem_fechadas": [
+    "Mutate real (validate_only=False) — NÃO EXECUTADO em conta nenhuma",
+    "FORGE_PERMITIR_ESCRITA / modo.destravar() — NÃO TOCADOS",
+    "Criar, ativar, pausar, remover, alterar budget ou bidding — NÃO EXECUTADO",
+    "validate_only fora da conta 547-809-6539 — NÃO EXECUTADO",
+    "Performance Max no registro do executor — NÃO HABILITADO (decisão ratificada)",
+    "git push, merge, deploy — NÃO EXECUTADOS",
+    "ROADMAP-VIVO.json, docs/volc-os-graph/**, graphify-out/** — NÃO EDITADOS"
+  ]
+}

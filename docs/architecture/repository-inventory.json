@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T08:10:21-03:00",
+  "generated_at": "2026-09-01T08:14:57-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 461,
-    "markdown": 307,
+    "files": 464,
+    "markdown": 310,
     "sql": 154,
-    "tracked": 461,
+    "tracked": 464,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 21,
-      "documentation": 169,
+      "documentation": 172,
       "generated": 2,
       "module-guide": 30,
       "product-document": 21,
@@ -1017,7 +1017,7 @@
       "tracked": true,
       "bytes": 18367,
       "lines": 257,
-      "sha256": "0575e1f745e72533be0a1597129346424cdfc56dbdf2aa57392fd1691e7d7a31",
+      "sha256": "051619ed86f09536b4febdead2d7a05d2374f6ca197f13946e4f6798096a6441",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2151,6 +2151,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/traffic-creative-operational-closure-v1/PEDIDO-PONTE-channel-builders.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4589,
+      "lines": 105,
+      "sha256": "09f3f5bbf1ca8e15ac7c5fd09e54919542fbe445fdf9b1d577f5f22374f65491",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/traffic-creative-operational-closure-v1/PREFLIGHT-MEDIDO.md",
       "extension": ".md",
       "classification": "documentation",
@@ -2170,6 +2182,18 @@
       "bytes": 7670,
       "lines": 158,
       "sha256": "a691f9d1c1b7e9bbf847a6a9447164e4cf10c408737a0e512be5f9f241c51df8",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-creative-operational-closure-v1/backlog-channel-builders.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6368,
+      "lines": 142,
+      "sha256": "54d16196714fae8ca47a5a5864b84c89a3c3170177c799ba553bc4f144c364e2",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2203,9 +2227,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 30595,
+      "bytes": 31012,
       "lines": 393,
-      "sha256": "141080e8a9e8b523f8f047aa6a75fec5e632b240022b5ae92d3bc6f8d4f50e3f",
+      "sha256": "0dfd1e348bbacd6a6b7c59abc30889302e7fc18a26eab850edda172a603e480a",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2230,6 +2254,18 @@
       "bytes": 20026,
       "lines": 286,
       "sha256": "bcb417664d3b96ce6611a3310bcb3ec92099fc075e1d5ec956f4b5b723909f6f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-creative-operational-closure-v1/verificacao/VALIDATE-ONLY-CANAIS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 10757,
+      "lines": 237,
+      "sha256": "daf8876cde74804d5948487512f666f3f14a1c2c79a05221eff71c94345bc795",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

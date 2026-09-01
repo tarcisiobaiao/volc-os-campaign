@@ -1,7 +1,7 @@
 # Matriz de fechamento — item a item, com evidência ou sem ela
 
 *Worker 4 · verification · read-only sobre código*
-*Primeira medição em `HEAD 5efd756`; **revista e fechada em `HEAD 044e7c3`**, depois de os workers agirem sobre três achados meus.*
+*Medida três vezes: `5efd756`, `044e7c3` e **fechada em `2b6392f`**. Dois vereditos meus foram corrigidos pelo lead e um por mim; o rastro fica.*
 *Base da missão: `3462b14` · baselines do lead: pytest **2319 passed / 53 skipped / 0 failed**, tsc **76 erros**.*
 
 ---
@@ -118,8 +118,8 @@ como reprovação de gate, sem cláusula de colapso benigno. **Dívida real, bar
 | Brief de Display | **PROVADO** | `volc_ads/campanha/display.py`, construtor completo | herdado |
 | Plano com budget / segmentação / anúncios / assets | **PROVADO** | `display.py:203-204` emite `comum.op_geo` e `comum.op_idioma`; cadeia budget → campanha → geo → idioma → ad group → RDA (`display.py:6,18`) | herdado |
 | **Imagens chegam ao builder pelo HTTP** | **PROVADO — fechado durante a missão** | Era o meu bloqueador nº 2, levantado em `5efd756` e **corrigido em `96fea91`** ("fix(display): as imagens voltam a atravessar o HTTP — e a identidade não muda"). Reverificado em `044e7c3`: `ProvarEntrada` ganhou a fronteira HTTP de imagens (`trafego.py:1334`) e `:2496` faz `plano.brief.imagens_display = _imagens_de_display(...)`. E a distinção fina foi feita: `None` é "não declarei imagem" e `[]` é "declarei que não há nenhuma" — **as duas recusam Display, com frases diferentes** (`:1447-1448`). O F031 do `fable-global-v1` está agora superado também para Display | Workers 1/2/3 |
-| v25 serializável offline | **PARCIAL** | Verificado por mim nos protos instalados: `Campaign.contains_eu_political_advertising`, `ai_max_setting`, `demand_gen_campaign_settings` **existem**. Não há para Display o equivalente ao `sondar_proto_v25()` que Demand Gen tem | herdado |
-| `validate_only` real | **NÃO** | Nunca executado contra a conta. É a **única** lacuna que o Roadmap reconhece separar P04-T04 de `done`: *"FALTA a prova contra a conta real, que exige autorização"* | ninguém — exige autorização |
+| v25 serializável offline | **PROVADO pela via mais dura** | O `validate_only` real é prova de serialização mais forte que qualquer sonda offline: o payload chegou à API e foi avaliado campo a campo. Campos conferidos por mim nos protos: `contains_eu_political_advertising`, `ai_max_setting`, `demand_gen_campaign_settings` existem | lead |
+| `validate_only` real | **PROVADO — e é a evidência mais forte da missão** | Executado contra a conta real 547-809-6539 e **RECUSADO**: `asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE`. A fixture `_png()` devolvia sempre os mesmos bytes, e **o Google identifica asset pelo CONTEÚDO** — dois `asset_operation.create` com a mesma imagem e nomes distintos são o mesmo asset pedindo dois nomes. **A suíte estava verde sobre um payload que a API recusa.** Corrigido em `06a0d12`, com guarda em `display.py:428-439` e regressão em `testes_display.py:1180,1205` | lead |
 | Zero mutate | **PROVADO** | Ver §7.1: as três superfícies de mutação estão todas atrás de trava de dois fatores | — |
 
 ⚠️ **Não aceitar como prova**: Gemini afirmou que o payload de Display está
@@ -277,22 +277,32 @@ desligado.
 
 ## 6. Frontend
 
+⚠️ **Corrigi este bloco duas vezes.** Na primeira versão eu escrevi
+**"Frontend: PROVADO"** e creditei `src/components/trafego/canal/jornada.ts` a
+"Worker API/UI". **Estava errado**, e o lead pegou com o comando certo:
+`git diff --stat 3462b14..HEAD -- src/` estava **vazio** — `jornada.ts` é código
+**pré-existente**, e eu credenciei à missão o que já existia. É exatamente o erro
+que eu mesmo mandei evitar com a observabilidade PMax. Reclassifiquei para NÃO.
+
+Depois disso o frontend **foi escrito de verdade**, e reverifiquei em `2b6392f`.
+
 | Item | Estado | Evidência | Quem entregou |
 |---|---|---|---|
-| Quatro canais | **PROVADO** | `contrato_dos_canais()` devolve SEARCH, DISPLAY, DEMAND_GEN, PERFORMANCE_MAX; `src/components/trafego/canal/jornada.ts:543-586` tem **seis** jornadas (as quatro + SHOPPING + VIDEO) | Worker API/UI |
-| Quatro portões | **PROVADO** | `planejavel`, `validavel`, `criavel_pausada`, `ativavel` — com `estado`, `bloqueadores[]`, e **`origem`** por bloqueador (`operador`, `politica`, `produto`, `manifesto`, `servidor`, `construtor`), que é o que diz ao operador **a quem pedir** | Worker API/UI |
-| `/criativos` com procedência | **PROVADO** | §1 desta matriz | herdado + Worker frontend |
-| **Nenhum verde sem evidência** | **PROVADO** | Com nada lido, `mensuracao.lida=False` e todos os status saem `INDETERMINADO`, com causa literal ("ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão"). `observado_em=None` e `revalidacao=None` marcam o não lido. Nenhum portão sai `PERMITIDO` por ausência de bloqueador conhecido | Worker API/UI |
-| Quinto estado (`não aplicável`) preservado | **PROVADO** | PMax: `Assets(estado='NAO_APLICAVEL', recursos=(), causa='Performance Max não tem construtor de campanha, então não há pedido para carregar assets.')` — distinto de ausência e de vazio | Worker API/UI |
-| Sem leitura viva do Google na rota | **PROVADO** | `17ce44d`: "Nenhuma leitura viva do Google: a rota desenha um cockpit e gastaria quota da conta a cada navegação" |
-| Sobe local (`./start-dev.sh`) | **NÃO VERIFICADO POR MIM** | Não executei; é gate do integrador | — |
+| Contrato HTTP dos quatro canais | **PROVADO** | `GET /api/trafego/canais` e `/canais/{canal}` (`trafego.py:3779`, `:3820`); `backend/tests/test_trafego_contrato_canais.py` → **51 passed** | Worker API (`17ce44d`) |
+| **Tela consome o contrato** | **PROVADO — e é novo desta missão** | `git diff --stat 3462b14..HEAD -- src/` → **8 arquivos, 1.371 inserções**. A cadeia está ligada ponta a ponta: `pautadorApi.ts:754` define `contratoDosCanais()`; `useCanais.ts:20` chama `pautadorApi.contratoDosCanais()`; `HubDeTrafegoPage.tsx:60,655` importa e renderiza `<PainelDeCanais />` | Worker frontend |
+| Quatro canais na tela | **PROVADO** | `src/lib/trafego/canais.ts` (422 linhas) + `PainelDeCanais.tsx` (17,8 KB) + `PortoesDoCanal.tsx` (198 linhas) | Worker frontend |
+| Quatro portões na tela | **PROVADO** | `PortoesDoCanal.tsx`, alimentado pelo contrato real | Worker frontend |
+| Cobertura de teste do frontend novo | **PROVADO** | `src/lib/trafego/__tests__/canais.test.ts` — 207 linhas | Worker frontend |
+| Seis jornadas de canal | **PROVADO, mas PRÉ-EXISTENTE** | `src/components/trafego/canal/jornada.ts:543-586`. **Não creditar a esta missão** | anterior à missão |
+| `/criativos` com procedência | **PROVADO, majoritariamente pré-existente** | §1 desta matriz | anterior + missão |
+| **Nenhum verde sem evidência** | **PROVADO** | Com nada lido, `Mensuracao(lida=False, …='INDETERMINADO')`, `observado_em=None`, `revalidacao=None`, e causa literal ("ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão"). Nenhum portão sai `PERMITIDO` por ausência de bloqueador conhecido | Worker API |
+| Quinto estado (`não aplicável`) | **PROVADO** | `Assets(estado='NAO_APLICAVEL', recursos=(), causa='Performance Max não tem construtor…')` — distinto de ausência e de vazio | Worker API |
+| Sem leitura viva do Google na rota | **PROVADO** | `17ce44d`: a rota desenha um cockpit e gastaria quota a cada navegação |
+| Sobe local (`./start-dev.sh`) | **NÃO VERIFICADO POR MIM** | Lead reporta build verde; gate do integrador |
 
-Dois colapsos que `17ce44d` evitou explicitamente, e que confirmo pela saída:
-`sem_construtor` **deixou de** cobrir Demand Gen (que tem construtor e é recusado
-pelo **executor** — o bloqueador dele é `mutacao_real_recusada`, `origem='manifesto'`);
-e a causa de cada portão deixou de ser `indisponibilidades[0]`.
-
----
+**Veredito: PROVADO** — mas com a autoria separada. O que é desta missão são as
+1.371 linhas de `src/` e o contrato que as alimenta; as jornadas de canal e a
+maior parte de `/criativos` já existiam.
 
 ## 7. Engenharia
 
