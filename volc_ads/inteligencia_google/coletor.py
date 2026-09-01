@@ -19,6 +19,11 @@ from google.protobuf.json_format import MessageToDict
 from volc_ads.gads.client import cliente
 from volc_ads.gads.modo import estado as estado_escrita
 
+from .alvo import (
+    MOTIVO_SIMULACAO_SEM_HISTORICO, ORIGEM_ALVO, AlvoColeta, ErroAlvoInvalido,
+    conferir_identidade_devolvida, familias_nao_suportadas, motivo_nao_suportado,
+    simulacao_elegivel,
+)
 from .modelo import (
     DocumentoColeta, EstadoColeta, EstadoValor, Item, Metrica, metrica_de_dict,
 )
@@ -60,12 +65,13 @@ class ColetorGoogleInteligencia:
     def __init__(
         self, *, login_customer_id: str = MCC_PADRAO,
         persistencia: SupabaseGoogleIntelligence | None = None,
+        cliente_google: Any | None = None,
     ) -> None:
         if estado_escrita().get("escrita_permitida"):
             raise RuntimeError("coleta recusada: trava de escrita do Google Ads esta aberta")
         self.login_customer_id = login_customer_id.replace("-", "")
         self.persistencia = persistencia or SupabaseGoogleIntelligence()
-        self.google = cliente(self.login_customer_id)
+        self.google = cliente_google or cliente(self.login_customer_id)
         self.ga = self.google.get_service("GoogleAdsService")
 
     def _query(self, customer_id: str, gaql: str) -> list[dict[str, Any]]:
@@ -87,6 +93,7 @@ class ColetorGoogleInteligencia:
         self, *, tipo: str, customer_id: str, bucket: str,
         campanha: CampanhaAtiva | None,
         produzir: Callable[[], DocumentoColeta],
+        origem: str | None = None,
     ) -> tuple[str, str]:
         try:
             documento = produzir()
@@ -102,6 +109,10 @@ class ColetorGoogleInteligencia:
                 erro_classe=classe, erro_detalhe=detalhe,
                 payload={"somente_leitura": True},
             )
+        if origem is not None:
+            # Procedencia vive no payload, nunca na chave de idempotencia: o
+            # recibo diz de onde veio sem que repetir a coleta crie outro.
+            documento.payload = {**documento.payload, "origem": origem}
         coleta_id = self.persistencia.registrar(documento)
         return coleta_id, documento.estado.value
 
@@ -263,7 +274,16 @@ class ColetorGoogleInteligencia:
             }, itens=itens, metricas=metricas,
         )
 
-    def _simulacoes(self, campanha: CampanhaAtiva, bucket: str) -> DocumentoColeta:
+    def _simulacoes(
+        self, campanha: CampanhaAtiva, bucket: str, *,
+        elegivel: bool | None = None,
+    ) -> DocumentoColeta:
+        """``elegivel=None`` preserva o comportamento da coleta continua.
+
+        So o caminho one-shot investiga o historico da campanha, e so ele pode
+        rebaixar ausencia a INELEGIVEL — com prova, nunca por suposicao.
+        """
+
         linhas = self._query(campanha.customer_id, f"""
           SELECT campaign_simulation.resource_name,
                  campaign_simulation.campaign_id,
@@ -279,6 +299,18 @@ class ColetorGoogleInteligencia:
           FROM campaign_simulation
           WHERE campaign_simulation.campaign_id = {campanha.campaign_id}
         """)
+        if not linhas and elegivel is False:
+            return DocumentoColeta.agora(
+                tipo_sinal="SIMULACOES_CAMPANHA", estado=EstadoColeta.INELEGIVEL,
+                customer_id=campanha.customer_id,
+                login_customer_id=self.login_customer_id, bucket=bucket,
+                quantidade=None, volc_campaign_id=campanha.volc_campaign_id,
+                campaign_id=campanha.campaign_id,
+                payload={
+                    "motivo": MOTIVO_SIMULACAO_SEM_HISTORICO,
+                    "somente_leitura": True,
+                },
+            )
         return DocumentoColeta.agora(
             tipo_sinal="SIMULACOES_CAMPANHA",
             estado=EstadoColeta.COM_DADOS if linhas else EstadoColeta.VAZIO_CONFIRMADO,
@@ -523,6 +555,158 @@ class ColetorGoogleInteligencia:
         resultado["total"] = len(resultado["coletas"])
         return resultado
 
+    # -- caminho one-shot por identidade canonica explicita -------------------
+
+    def _nao_suportado(
+        self, tipo: str, campanha: CampanhaAtiva, bucket: str,
+    ) -> DocumentoColeta:
+        """Conclusao de dominio: a pergunta nao existe para este canal.
+
+        Nao gasta chamada, nao inventa quantidade e nao se confunde com vazio.
+        """
+
+        return DocumentoColeta.agora(
+            tipo_sinal=tipo, estado=EstadoColeta.NAO_SUPORTADO,
+            customer_id=campanha.customer_id,
+            login_customer_id=self.login_customer_id, bucket=bucket,
+            quantidade=None, volc_campaign_id=campanha.volc_campaign_id,
+            campaign_id=campanha.campaign_id,
+            payload={
+                "motivo": motivo_nao_suportado(campanha.canal),
+                "canal": campanha.canal, "somente_leitura": True,
+            },
+        )
+
+    def _veiculacao_na_janela(
+        self, campanha: CampanhaAtiva, inicio: date, fim: date,
+    ) -> tuple[bool | None, date | None]:
+        """Sonda read-only: a campanha veiculou na janela, e quando ela comecou?
+
+        Serve so para decidir entre ``vazio_confirmado`` e ``inelegivel`` na
+        simulacao. Se a sonda nao puder rodar devolve ``(None, None)`` e nada e
+        rebaixado — quem falha alto e a propria consulta da familia, que corre
+        em seguida e vira FALHOU pelo caminho normal.
+        """
+
+        cid = campanha.customer_id
+        try:
+            base = self._query(cid, f"""
+              SELECT campaign.id, campaign.start_date_time
+              FROM campaign WHERE campaign.id = {campanha.campaign_id}
+            """)
+            if not base:
+                return None, None
+            desempenho = self._query(cid, f"""
+              SELECT campaign.id, metrics.impressions
+              FROM campaign
+              WHERE campaign.id = {campanha.campaign_id}
+                AND segments.date BETWEEN '{inicio.isoformat()}' AND '{fim.isoformat()}'
+            """)
+        except Exception:
+            return None, None
+
+        # Relatorio segmentado por data omite dias sem atividade: nenhuma linha
+        # na janela inteira e ausencia de veiculacao, nao ausencia de leitura.
+        veiculou: bool | None = False
+        for linha in desempenho:
+            valor = linha.get("metrics", {}).get("impressions")
+            if valor is None:
+                veiculou = None  # linha veio sem a metrica: nao sabemos
+                break
+            if int(valor) > 0:
+                veiculou = True
+                break
+        return veiculou, _data_de_inicio(base[0])
+
+    def executar_alvo(
+        self, alvo: AlvoColeta, *, modo: str = "completa",
+    ) -> dict[str, Any]:
+        """Coleta uma unica campanha nomeada, em qualquer estado externo.
+
+        Uma execucao, um alvo, sem agenda propria: a autoridade de frequencia
+        continua sendo o n8n. Reutiliza as mesmas familias, o mesmo bucket e a
+        mesma persistencia da coleta continua, entao repetir o comando devolve
+        o mesmo recibo em vez de criar outro.
+        """
+
+        if not isinstance(alvo, AlvoColeta):
+            raise ErroAlvoInvalido("alvo precisa ser AlvoColeta")
+        if modo not in {"frequente", "completa"}:
+            raise ValueError("modo precisa ser frequente ou completa")
+
+        # Fail-closed antes da primeira chamada ao Google: a persistencia
+        # resolve, e o coletor reconfere por conta propria o que recebeu.
+        campanha = self.persistencia.campanha_por_identidade(alvo)
+        conferir_identidade_devolvida(alvo, campanha)
+
+        agora = datetime.now(timezone.utc)
+        bucket = self._bucket(modo, agora)
+        inicio = agora.date() - timedelta(days=13)
+        fim = agora.date()
+        veiculou, comeco = self._veiculacao_na_janela(campanha, inicio, fim)
+        elegivel = simulacao_elegivel(
+            veiculou_na_janela=veiculou, inicio_da_campanha=comeco,
+            janela_inicio=inicio,
+        )
+
+        familias: list[tuple[str, Callable[[], DocumentoColeta]]] = [
+            ("DIAGNOSTICO_ENTREGA", lambda: self._diagnostico(campanha, bucket, inicio, fim)),
+            ("SIMULACOES_CAMPANHA", lambda: self._simulacoes(campanha, bucket, elegivel=elegivel)),
+        ]
+        if modo == "completa":
+            familias.extend((
+                ("RECOMENDACOES_GERADAS", lambda: self._recomendacoes_geradas(campanha, bucket)),
+                ("FORECAST_KEYWORDS", lambda: self._forecast(campanha, bucket)),
+            ))
+        nao_suportadas = set(familias_nao_suportadas(campanha.canal))
+
+        resultado: dict[str, Any] = {
+            "modo": modo, "bucket": bucket, "origem": ORIGEM_ALVO,
+            "customer_id": campanha.customer_id,
+            "volc_campaign_id": campanha.volc_campaign_id,
+            "campaign_id": campanha.campaign_id,
+            "canal": campanha.canal, "estado_externo": campanha.estado_externo,
+            "veiculou_na_janela": veiculou, "simulacao_elegivel": elegivel,
+            "coletas": [],
+        }
+        for tipo, produtor in familias:
+            if tipo in nao_suportadas:
+                produtor = lambda t=tipo: self._nao_suportado(t, campanha, bucket)
+            coleta_id, estado = self._persistir_familia(
+                tipo=tipo, customer_id=campanha.customer_id, bucket=bucket,
+                campanha=campanha, produzir=produtor, origem=ORIGEM_ALVO,
+            )
+            resultado["coletas"].append({
+                "coleta_id": coleta_id, "tipo": tipo, "estado": estado,
+                "customer_id": campanha.customer_id,
+                "campaign_id": campanha.campaign_id,
+            })
+        resultado["total"] = len(resultado["coletas"])
+        return resultado
+
+
+def _data_de_inicio(linha: dict[str, Any]) -> date | None:
+    """``campaign.start_date_time`` (v25) chega como data ou data-hora local."""
+
+    bruto = linha.get("campaign", {}).get("start_date_time")
+    if not isinstance(bruto, str) or len(bruto) < 10:
+        return None
+    try:
+        return date.fromisoformat(bruto[:10])
+    except ValueError:
+        return None
+
 
 def executar_coleta(*, modo: str = "completa", customer_id: str | None = None) -> dict[str, Any]:
     return ColetorGoogleInteligencia().executar(modo=modo, customer_id=customer_id)
+
+
+def executar_coleta_alvo(
+    *, customer_id: str, volc_campaign_id: str, campaign_id: str,
+    modo: str = "completa",
+) -> dict[str, Any]:
+    alvo = AlvoColeta(
+        customer_id=customer_id, volc_campaign_id=volc_campaign_id,
+        campaign_id=campaign_id,
+    )
+    return ColetorGoogleInteligencia().executar_alvo(alvo, modo=modo)
