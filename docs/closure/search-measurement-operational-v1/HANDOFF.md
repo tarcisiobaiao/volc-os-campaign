@@ -4,7 +4,7 @@
 **Branch:** `sprint/search-measurement-operational-v1`
 **Base:** `812ab0d4ab3091072e695f52db6e117f04aa2ce7` (= `origin/volc-os-v2`, conferido)
 **Worktree:** `/private/tmp/volc-search-measurement-operational-v1`
-**Commits:** `57028f2` · `11d5c6b` · `2aaa752` · `3837892`
+**Commits:** `57028f2` · `11d5c6b` · `2aaa752` · `3837892` · `43fa370` · commit desta correção documental
 
 ---
 
@@ -89,8 +89,10 @@ linha de mentir depois: `metas_da_campanha_estado='inelegivel'` numa linha com
 | 14 | migration ausente ⇒ falha fechado e didática | `test_migration_ausente_recusa_com_o_nome_do_que_falta`, `test_o_repositorio_traduz_pgrst202_em_migration_ausente`, `test_uma_guarda_do_schema_nao_e_confundida_com_migration_ausente` | ✅ |
 | 15 | zero mutação externa | fixture autouse `_rede_bloqueada` (socket) em todo o arquivo + `scripts/gate_sem_mutacao_google.py` 3/3 | ✅ |
 
-Arquivo: `backend/tests/test_trafego_plano_persistido.py` — **52 provas**, escritas
-**antes** da correção (36 falhavam na primeira execução).
+Arquivo: `backend/tests/test_trafego_plano_persistido.py` — **52 provas**. As 44
+primeiras foram escritas **antes** da correção, e 36 delas falhavam na primeira
+execução; as outras 8 nasceram dos achados da revisão adversarial e falhavam
+contra o código que a revisão reprovou.
 
 ---
 
