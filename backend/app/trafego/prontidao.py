@@ -24,7 +24,9 @@ falta de evidência contrária. Ausência de prova é `INDETERMINADO`, não perm
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
+
+from app.trafego import plano_mensuracao as pm
 
 # Os estados possíveis de cada portão. `INDETERMINADO` é o default deliberado:
 # quem não mediu não sabe, e não saber não é o mesmo que estar pronto.
@@ -62,16 +64,39 @@ class Prontidao:
     #: caminhos legítimos. Exigir Data Manager para uma conta que converte por
     #: tag declararia despreparo onde não há.
     conversion_signal_status: str = INDETERMINADO
-    #: As fontes de sinal efetivamente OBSERVADAS. Lista vazia = nenhuma foi
+    #: As fontes de sinal efetivamente OBSERVADAS. Vazia = nenhuma foi
     #: comprovada, e isso é diferente de "não existe nenhuma".
-    signal_sources: List[str] = field(default_factory=list)
+    #:
+    #: ⚠️ TUPLA, e não lista — ver `__post_init__`. `para_json` continua
+    #: emitindo `list(...)`, então o JSON e o contrato da tela não mudam.
+    signal_sources: Sequence[str] = ()
     measurement_readiness: str = INDETERMINADO
     data_manager_status: str = INDETERMINADO
     observability_status: str = INDETERMINADO
     #: ⚠️ Nunca derivado por otimismo. Ver `avaliar`.
     smart_bidding_eligible: bool = False
-    activation_blockers: List[str] = field(default_factory=list)
+    activation_blockers: Sequence[str] = ()
     notas: Dict[str, Any] = field(default_factory=dict)
+    #: O plano canônico de mensuração desta campanha, quando alguém o leu.
+    #:
+    #: ⚠️ `None` é o caso normal e NÃO significa "não há plano": significa que
+    #: ninguém leu os três recursos que decidem a meta efetiva. É ele que torna
+    #: `conversion_goal_status=PRONTO` alcançável — e sem um ramo alcançável,
+    #: "Smart Bidding está bloqueado" seria uma afirmação infalsificável, que
+    #: passaria com qualquer entrada e não provaria nada.
+    plano_de_mensuracao: Optional["pm.PlanoDeMensuracao"] = None
+
+    def __post_init__(self) -> None:
+        # ⚠️ `frozen=True` impede REBIND de atributo e não impede mutação do
+        # que o atributo aponta. Sem estas três cópias, `avaliar` devolvia os
+        # MESMOS objetos que usa por dentro, e
+        # `r.activation_blockers.append("...")` alterava um veredito já
+        # apresentado — exatamente o que a docstring desta classe diz que ela
+        # existe para impedir. Tupla e dict novo fecham as duas portas.
+        object.__setattr__(self, "signal_sources", tuple(self.signal_sources))
+        object.__setattr__(self, "activation_blockers",
+                           tuple(self.activation_blockers))
+        object.__setattr__(self, "notas", dict(self.notas))
 
     def para_json(self) -> Dict[str, Any]:
         return {
@@ -86,6 +111,14 @@ class Prontidao:
             "smart_bidding_eligible": self.smart_bidding_eligible,
             "activation_blockers": list(self.activation_blockers),
             "notas": dict(self.notas),
+            # ⚠️ Campo de PRIMEIRA CLASSE, e não uma chave dentro de `notas`.
+            # `notas` é prosa para o operador; o plano é estrutura que a tela lê
+            # campo a campo — meta efetiva, fonte, frescor, bloqueadores. Enfiá-lo
+            # em `notas` obrigaria o navegador a adivinhar a forma de algo que o
+            # servidor já conhece.
+            "plano_de_mensuracao": (
+                None if self.plano_de_mensuracao is None
+                else self.plano_de_mensuracao.para_json()),
         }
 
 
@@ -98,6 +131,7 @@ def avaliar(
     data_manager_operante: bool = False,
     coleta_pos_criacao_provada: bool = False,
     estrategia_lance: str = "MANUAL_CPC",
+    plano_de_mensuracao: Optional[pm.PlanoDeMensuracao] = None,
 ) -> Prontidao:
     """O veredito, calculado só do que foi de fato observado.
 
@@ -105,6 +139,13 @@ def avaliar(
     meta". Os dois viram estados diferentes de propósito: colapsá-los faria uma
     falha de leitura parecer uma conta sem meta, e uma conta sem meta parecer
     uma falha de leitura. As duas confusões levam a decisões opostas.
+
+    ⚠️ `plano_de_mensuracao` é o que torna `PRONTO` ALCANÇÁVEL — e isso não é
+    conveniência, é o que faz o portão poder ser provado. Enquanto o ramo
+    `PRONTO` fosse inalcançável, "Smart Bidding está bloqueado" passaria com
+    QUALQUER entrada, inclusive com uma conta perfeitamente medida: um teste
+    que não pode falhar não prova nada. Com o plano, existem os dois lados —
+    e é o par que vira prova.
     """
     bloqueios: List[str] = []
     notas: Dict[str, Any] = {}
@@ -119,7 +160,59 @@ def avaliar(
             "mutate + recibo fechado + releitura do id externo na conta")
 
     # ── G1: meta de conversão ────────────────────────────────────────────────
-    if metas_da_conta is None:
+    #
+    # ⚠️ O PLANO TEM PRECEDÊNCIA, e o motivo é que ele responde a pergunta certa.
+    #
+    # `metas_da_conta` é uma GAQL sobre `conversion_action`: ela diz quais ações
+    # a CONTA marcou como primárias. `plano_de_mensuracao` leu os TRÊS recursos
+    # que decidem o efetivo — `customer_conversion_goal`,
+    # `campaign_conversion_goal` e `conversion_goal_campaign_config
+    # .goal_config_level`. Quando o plano existe, é ele que manda; o ramo antigo
+    # continua abaixo, palavra por palavra, para quem não o passa.
+    if plano_de_mensuracao is not None:
+        meta = plano_de_mensuracao.meta_efetiva
+        if meta.resolvida and plano_de_mensuracao.acao_alvo is not None:
+            # ⚠️ ESTE É O ÚNICO RAMO QUE DEVOLVE `PRONTO`, e ele exige as duas
+            # coisas: meta efetiva resolvida E uma ação de conversão eleita por
+            # semântica. Meta sem ação seria um objetivo sem nada que o meça;
+            # ação sem meta seria uma medida que o lance não persegue.
+            meta_status = PRONTO
+            alvo = plano_de_mensuracao.acao_alvo
+            notas["conversion_goal"] = (
+                f"meta efetiva RESOLVIDA no nível {meta.nivel}: "
+                + ", ".join(sorted(m.semantica
+                                   for m in (meta.metas_biddable or ())))
+                + f". A ação que a mede é #{alvo.id} ({alvo.nome}), da conta "
+                + f"{alvo.owner_customer_id or 'não lida'}.")
+        elif meta.nivel_estado in pm.ESTADOS_SEM_CONCLUSAO or (
+                meta.metas_biddable is None):
+            meta_status = INDETERMINADO
+            notas["conversion_goal"] = (
+                "a leitura da meta efetiva não completou: "
+                + (meta.causa or "sem causa registrada")
+                + ". Ausência de leitura não é ausência de meta.")
+            bloqueios.extend(plano_de_mensuracao.bloqueadores)
+        else:
+            # Leu as três, e a conclusão é que não há o que perseguir. Isso é
+            # NAO_PRONTO — um fato sobre a conta, e não uma lacuna nossa.
+            #
+            # ⚠️ A causa vem do PLANO, e não de uma frase fixa. "Não há meta
+            # biddable" e "há meta biddable e nenhuma ação primária que a meça"
+            # são conclusões diferentes, com conserto diferente, e uma frase
+            # única apagaria a distinção justamente no caso medido na conta
+            # real.
+            meta_status = NAO_PRONTO
+            notas["conversion_goal"] = (
+                plano_de_mensuracao.acao_alvo_causa
+                or "as metas efetivas foram lidas e nenhuma é biddable: uma "
+                   "campanha em lance automático otimizaria para nada.")
+            bloqueios.extend(plano_de_mensuracao.bloqueadores)
+        notas["conversion_actions_primarias"] = [
+            {"id": a.id, "nome": a.nome, "categoria": a.categoria,
+             "owner_customer_id": a.owner_customer_id}
+            for a in plano_de_mensuracao.acoes if a.primaria_efetiva
+        ]
+    elif metas_da_conta is None:
         meta_status = INDETERMINADO
         notas["conversion_goal"] = (
             "não foi possível ler as metas da conta; ausência de leitura não é "
@@ -142,8 +235,13 @@ def avaliar(
         primarias = [a for a in (metas_da_conta.get("acoes") or ())
                      if a.get("primaria")]
         meta_status = PARCIAL
+        # ⚠️ `len(primarias)`, e não `len(primarias) or 1`. O `or 1` fazia a
+        # frase afirmar "1 ação" quando `metas_da_conta` traz `primaria` e não
+        # traz `acoes` — enquanto `conversion_actions_primarias`, logo abaixo,
+        # saía vazia. Dois campos da MESMA resposta se contradiziam, e quem
+        # lesse o número acreditaria nele.
         notas["conversion_goal"] = (
-            f"leitura PARCIAL: {len(primarias) or 1} ação(ões) com "
+            f"leitura PARCIAL: {len(primarias)} ação(ões) com "
             "primary_for_goal=true em `conversion_action`. Isso não é a meta "
             "EFETIVA: ela exige customer_conversion_goal, campaign_conversion_goal "
             "e conversion_goal_campaign_config.goal_config_level, que ainda não "
@@ -171,6 +269,14 @@ def avaliar(
     # sinal chegando e seria declarada despreparada por não usar uma via que
     # não precisa. Data Manager é UMA fonte, e a que ainda não existe aqui.
     fontes = list(fontes_de_sinal_observadas or ())
+    if not fontes and plano_de_mensuracao is not None:
+        # ⚠️ Derivado do PLANO, e só do plano. `fontes_de_sinal_observadas`
+        # continua tendo precedência porque quem a passa está afirmando ter
+        # observado algo que este módulo não tem como conferir. O que vem daqui
+        # é o que o plano PROVOU: conversão vista na janela, tag do Google,
+        # importação GA4, auto-tagging, destino offline resolvido. Nenhuma
+        # dessas sai de um default — todas saem de uma leitura com estado.
+        fontes = list(pm.fontes_de_sinal_observadas(plano_de_mensuracao))
     if fontes:
         sinal = PRONTO
         notas["conversion_signal"] = (
@@ -249,4 +355,5 @@ def avaliar(
         smart_bidding_eligible=elegivel,
         activation_blockers=bloqueios,
         notas=notas,
+        plano_de_mensuracao=plano_de_mensuracao,
     )

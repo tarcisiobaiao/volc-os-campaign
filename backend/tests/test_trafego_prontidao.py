@@ -155,7 +155,10 @@ def test_sinal_de_conversao_nao_e_data_manager():
                          data_manager_operante=False)
     assert por_tag.conversion_signal_status == pr.PRONTO
     assert por_tag.data_manager_status == pr.NAO_PRONTO
-    assert por_tag.signal_sources == ["google_tag"]
+    # ⚠️ TUPLA. `Prontidao` congela as coleções em `__post_init__`: `frozen`
+    # sozinho impedia rebind e não impedia `r.activation_blockers.append(...)`
+    # num veredito já apresentado. `para_json` segue emitindo lista.
+    assert por_tag.signal_sources == ("google_tag",)
     # Data Manager ausente não entra em activation_blockers por si só.
     assert not any("Data Manager" in b for b in por_tag.activation_blockers)
 
@@ -163,7 +166,7 @@ def test_sinal_de_conversao_nao_e_data_manager():
 def test_lista_de_fontes_vazia_e_nao_comprovado_e_nao_inexistente():
     r = pr.avaliar(recibo_registrado=True, metas_da_conta={"primaria": {"id": "1"}})
     assert r.conversion_signal_status == pr.NAO_PRONTO
-    assert r.signal_sources == []
+    assert r.signal_sources == ()
     assert "não comprovado" in r.notas["conversion_signal"]
 
 
