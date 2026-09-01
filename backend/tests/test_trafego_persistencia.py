@@ -1568,3 +1568,170 @@ def test_paginacao_do_quadro_nao_para_no_corte_do_postgrest(ligado: Cluster) -> 
     assert len(paginado) == 10
     assert len({l["volc_campaign_id"] for l in paginado}) == 10, (
         "keyset: nenhuma linha repetida entre páginas")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A COSTURA: o tradutor Python produz um documento que o SCHEMA aceita?
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ Os dois lados estavam provados SEPARADOS: `scripts/provas-v12_02.sql` exerce
+# as seis invariantes com JSON escrito à mão, e os testes de domínio exercem o
+# plano sem banco nenhum. Nenhum dos dois pega o defeito que mora ENTRE eles —
+# um tradutor que emite uma chave a menos, um estado com outra grafia, ou um
+# `None` onde a coluna é `not null`. O plano seria montado, a gravação
+# explodiria em produção, e a prova verde de cada lado continuaria verde.
+
+
+def _plano_json(**over):
+    """O JSON do domínio, produzido pelo DOMÍNIO — nunca escrito à mão aqui."""
+    from app.trafego import plano_mensuracao as pm
+
+    acao = pm.AcaoDeConversao(
+        id="7466919994",
+        resource_name="customers/5478096539/conversionActions/7466919994",
+        owner_customer_id="5478096539", nome="Compra no site",
+        categoria="PURCHASE", origem="WEBSITE", tipo="WEBPAGE",
+        status="ENABLED", primaria=True, incluida_em_metricas=True)
+    meta = pm.MetaEfetiva(
+        nivel=pm.NIVEL_CUSTOMER, nivel_estado=pm.COM_DADOS,
+        metas_da_conta=(pm.Meta(categoria="PURCHASE", origem="WEBSITE",
+                                biddable=True),),
+        metas_da_conta_estado=pm.COM_DADOS,
+        metas_da_campanha=(), metas_da_campanha_estado=pm.INELEGIVEL)
+    base = dict(
+        customer_id="5478096539", login_customer_id="6016739364",
+        meta_efetiva=meta, acoes=(acao,), acoes_estado=pm.COM_DADOS,
+        frescor=pm.Frescor(estado=pm.COM_DADOS,
+                           ultima_conversao_em="2026-08-30",
+                           dias_desde_a_ultima=2, conversoes_na_janela=1.0,
+                           conversion_action_id="7466919994"),
+        marcacao=pm.InventarioDeMarcacao(estado=pm.COM_DADOS,
+                                         auto_tagging=True),
+    )
+    base.update(over)
+    return pm.montar(**base).para_json()
+
+
+def _gravar(banco: Cluster, documento: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Grava pela ÚNICA porta que produção tem: a função, sob `service_role`."""
+    corpo = json.dumps(documento).replace("'", "''")
+    return banco.linhas(
+        f"SELECT public.volc_registrar_plano_de_mensuracao('{corpo}'::jsonb) "
+        f"AS plano_id", papel="service_role")
+
+
+def test_o_documento_do_tradutor_e_aceito_pelo_schema(banco: Cluster) -> None:
+    """A costura, no caso COMPLETO — o que autorizaria Smart Bidding."""
+    plano = _plano_json()
+    assert plano["completo"] is True, plano["bloqueadores"]
+    doc = pers.documento_de_plano_de_mensuracao(
+        plano, lido_em="2026-09-01T12:00:00Z")
+    linhas = _gravar(banco, doc)
+    assert linhas and linhas[0]["plano_id"], "o schema recusou o tradutor"
+
+    gravado = banco.linhas(
+        "SELECT completo, meta_resolvida, destino_resolvido, frescor_estado, "
+        "       frescor_conversoes, acao_alvo_id, acao_alvo_owner_id, "
+        "       destino_product_destination_id, nivel, cardinality(bloqueadores) AS n "
+        "  FROM public.trafego_campanha_plano_de_mensuracao "
+        f" WHERE impressao = '{plano['impressao']}'")[0]
+    assert gravado["completo"] is True
+    assert gravado["destino_resolvido"] is True
+    # ⚠️ O id do destino é o da ação ELEITA, e é NUMÉRICO. É a invariante que
+    # impede a conversão offline de sair para a conta errada em silêncio.
+    assert gravado["acao_alvo_id"] == "7466919994"
+    assert gravado["destino_product_destination_id"] == "7466919994"
+    assert gravado["acao_alvo_owner_id"] == "5478096539"
+    assert gravado["nivel"] == "CUSTOMER"
+    assert gravado["n"] == 0, "plano completo gravado com bloqueador"
+
+
+def test_o_documento_do_caso_INCOMPLETO_tambem_e_aceito(banco: Cluster) -> None:
+    """O caso real da conta: objetivo existe, e nenhuma ação primária o mede.
+
+    ⚠️ Este é o que mais importa da costura. O caso completo é o feliz; o
+    incompleto é o que a conta de verdade produz, e é ele que exercita
+    `acao_alvo` nulo + causa, destino não resolvido com causa, e a lista de
+    bloqueadores não vazia — três CHECKs de uma vez.
+    """
+    from app.trafego import plano_mensuracao as pm
+
+    acao = pm.AcaoDeConversao(
+        id="7498530235",
+        resource_name="customers/5478096539/conversionActions/7498530235",
+        owner_customer_id="5478096539", nome="Instalações",
+        categoria="DOWNLOAD", origem="APP",
+        tipo="ANDROID_INSTALLS_ALL_OTHER_APPS", status="ENABLED",
+        primaria=False)
+    meta = pm.MetaEfetiva(
+        nivel=pm.NIVEL_CUSTOMER, nivel_estado=pm.COM_DADOS,
+        metas_da_conta=(pm.Meta(categoria="DOWNLOAD", origem="APP",
+                                biddable=True),),
+        metas_da_conta_estado=pm.COM_DADOS,
+        metas_da_campanha=(), metas_da_campanha_estado=pm.INELEGIVEL)
+    plano = pm.montar(customer_id="5478096539", login_customer_id="6016739364",
+                      meta_efetiva=meta, acoes=(acao,),
+                      acoes_estado=pm.COM_DADOS).para_json()
+    assert plano["completo"] is False
+    assert plano["acao_alvo"] is None
+
+    doc = pers.documento_de_plano_de_mensuracao(
+        plano, lido_em="2026-09-01T12:00:00Z")
+    assert _gravar(banco, doc), "o schema recusou o caso real da conta"
+
+    gravado = banco.linhas(
+        "SELECT completo, acao_alvo_id, acao_alvo_causa, destino_resolvido, "
+        "       destino_causa, frescor_estado, frescor_conversoes, "
+        "       cardinality(bloqueadores) AS n "
+        "  FROM public.trafego_campanha_plano_de_mensuracao "
+        f" WHERE impressao = '{plano['impressao']}'")[0]
+    assert gravado["completo"] is False
+    assert gravado["acao_alvo_id"] is None
+    assert "primária" in gravado["acao_alvo_causa"]
+    assert gravado["destino_resolvido"] is False
+    assert gravado["n"] >= 1, "plano incompleto gravado sem bloqueador nomeado"
+    # ⚠️ Frescor NÃO LIDO chega NULO, e não zero. É a distinção que o schema, o
+    # domínio e a tela carregam em três camadas, e a que um `or 0` no tradutor
+    # destruiria sem ninguém notar.
+    assert gravado["frescor_estado"] == "nao_coletado"
+    assert gravado["frescor_conversoes"] is None
+
+
+def test_gravar_o_mesmo_plano_duas_vezes_nao_cria_segunda_linha(
+        banco: Cluster) -> None:
+    """Idempotência pela impressão, exercida pelo caminho real de produção."""
+    plano = _plano_json(chave_intencao="intencao-idempotente")
+    doc = pers.documento_de_plano_de_mensuracao(
+        plano, lido_em="2026-09-01T12:00:00Z")
+    a = _gravar(banco, doc)[0]["plano_id"]
+    # A segunda gravação carrega OUTRO carimbo de leitura — e mesmo assim é a
+    # mesma linha, porque a impressão cobre o que DECIDE, não quando se leu.
+    b = _gravar(banco, pers.documento_de_plano_de_mensuracao(
+        plano, lido_em="2026-09-01T18:30:00Z"))[0]["plano_id"]
+    assert a == b, "a mesma leitura gravada duas vezes virou duas linhas"
+    n = banco.linhas(
+        "SELECT count(*) AS n FROM public.trafego_campanha_plano_de_mensuracao "
+        f" WHERE impressao = '{plano['impressao']}'")[0]["n"]
+    assert n == 1
+
+
+def test_service_role_nao_escreve_direto_na_tabela(banco: Cluster) -> None:
+    """A porta única, provada EXECUTANDO sob o papel — e não lendo catálogo.
+
+    ⚠️ Se `service_role` pudesse inserir direto, a idempotência sairia da função
+    e viraria responsabilidade de quem chama — onde ela sumiria no primeiro retry.
+    """
+    with pytest.raises(ErroDoBanco) as erro:
+        banco.escrever(
+            "INSERT INTO public.trafego_campanha_plano_de_mensuracao "
+            "(impressao, versao, customer_id, login_customer_id, nivel_estado, "
+            " metas_da_conta_estado, metas_da_campanha_estado, meta_resolvida, "
+            " acoes_estado, acao_alvo_causa, destino_resolvido, destino_causa, "
+            " frescor_estado, marcacao_estado, completo, bloqueadores, "
+            " api_versao, lido_em) VALUES "
+            "('" + "9" * 64 + "', 1, '5478096539', '6016739364', "
+            "'nao_coletado', 'nao_coletado', 'inelegivel', false, "
+            "'nao_coletado', 'ninguem leu', false, 'ninguem leu', "
+            "'nao_coletado', 'nao_coletado', false, ARRAY['x'], 'v25', now())",
+            papel="service_role")
+    assert "permission denied" in str(erro.value).lower()
