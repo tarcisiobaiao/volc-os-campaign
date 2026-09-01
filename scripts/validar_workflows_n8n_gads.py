@@ -562,6 +562,20 @@ def main() -> int:
             continue
         r.prova(f"{rotulo} · JSON parseável", True)
 
+        # Round trip de import/export: o que o n8n devolveria num export tem de
+        # sobreviver a uma ida e volta por JSON sem perder nada, e o subconjunto
+        # que o contrato público do PUT aceita tem de estar completo.
+        r.prova(f"{rotulo} · sobrevive ao round trip de import/export",
+                json.loads(json.dumps(wf, ensure_ascii=False)) == wf)
+        publico = {k: wf[k] for k in ("name", "nodes", "connections", "settings")
+                   if k in wf}
+        r.prova(f"{rotulo} · o payload público de import está completo",
+                set(publico) == {"name", "nodes", "connections", "settings"}
+                and json.loads(json.dumps(publico, ensure_ascii=False)) == publico)
+        r.prova(f"{rotulo} · nenhum nó carrega campo interno de execução",
+                not any(set(n) & {"issues", "credentialsId", "webhookId", "disabled"}
+                        for n in wf["nodes"]))
+
         nos = validar_estrutura(wf, r, rotulo)
         validar_nos(wf, nos, r, rotulo)
         validar_expressoes(wf, nos, r, rotulo)

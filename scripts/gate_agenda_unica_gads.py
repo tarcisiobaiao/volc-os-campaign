@@ -196,19 +196,39 @@ else:
     prova("nenhum workflow da família com agenda ativa no inventário versionado", True)
 
 print("\n── 4. nenhuma chamada de ativação da API do n8n")
+#
+# ⚠️ A varredura é sobre artefato CAPAZ de fazer a chamada — código e
+# configuração —, não sobre texto que a menciona. A primeira versão varria tudo e
+# acusou a própria MATRIZ-CONTRAPROVAS.json, que descreve o padrão proibido. Um
+# gate que aponta a documentação da proibição como violação da proibição ensina a
+# ignorar o gate, e é a segunda vez que esse mesmo defeito aparece nesta lane.
 ativacao = re.compile(r"/(?:api/v1|rest)/workflows/[^\"'\s]*/activate")
+EXECUTAVEIS = {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".sh", ".bash",
+               ".yml", ".yaml", ".toml", ".env"}
 achados_ativacao = []
 for arquivo in rastreados():
-    if not arquivo.is_file() or arquivo.suffix in {".png", ".jpg", ".lockb", ".pdf"}:
+    if not arquivo.is_file():
+        continue
+    rel = str(arquivo.relative_to(RAIZ))
+    executavel = arquivo.suffix in EXECUTAVEIS or (
+        arquivo.suffix == ".json" and not rel.startswith("docs/"))
+    if not executavel:
         continue
     try:
         texto = arquivo.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         continue
     if ativacao.search(texto):
-        achados_ativacao.append(str(arquivo.relative_to(RAIZ)))
-prova("nenhum artefato rastreado ativa workflow por API", not achados_ativacao,
+        achados_ativacao.append(rel)
+prova("nenhum artefato executável ativa workflow por API", not achados_ativacao,
       ", ".join(achados_ativacao))
+
+# E o nó `n8n` do próprio n8n (que fala com a API dele) não pode estar em fluxo
+# nenhum desta família.
+no_n8n = [str(w.relative_to(RAIZ)) for w in WORKFLOWS
+          if "n8n-nodes-base.n8n" in w.read_text(encoding="utf-8")]
+prova("nenhum workflow desta família usa o nó da API do n8n", not no_n8n,
+      ", ".join(no_n8n))
 
 print()
 print("════════════════════════════════════════════════════════")
