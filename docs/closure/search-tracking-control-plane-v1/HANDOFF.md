@@ -291,3 +291,14 @@ plano_com_perfil,plano_relido,data_manager,plano_de_mensuracao}.py`,
    limpa. `package.json` e `package-lock.json` conferidos idênticos por `diff`.
 4. `AUTORIZACAO-UNICA.md` é o pacote de dono: cinco atos, em ordem de
    dependência, cada um com operação, destino, impacto, rollback e verificação.
+5. ⚠️ **A base ANDOU durante esta missão.** `origin/volc-os-v2` saiu de
+   `26a58c4` para `36bec04` — 21 commits das lanes Hermes de observabilidade
+   PMax, todos em `volc_ads/inteligencia_google/**`, `scripts/`, `docs/` e
+   Roadmap/curadoria. **Zero arquivos em comum** com esta branch, conferido por
+   `comm -12` sobre as duas listas de arquivos alterados; `git merge-tree
+   --write-tree` (que não muta nada) devolve **merge limpo**. Eu **não** rebasei
+   nem mergeei: a base declarada da missão era `26a58c4`, e mudá-la
+   unilateralmente apagaria a rastreabilidade do que foi medido contra o quê.
+   ⚠️ E `36bec04` inclui um `V12-03-REQUIREMENTS.md` da lane PMax — se ele pedir
+   schema novo, vale conferir a interação com o `payload` da v12_02 antes de
+   aplicar as duas coisas na mesma janela.
