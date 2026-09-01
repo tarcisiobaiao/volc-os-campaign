@@ -20,12 +20,14 @@ em `AUTORIZACAO-EXTERNA.md`.
 
 | Gate | Baseline (medido no SHA base) | Final |
 |---|---|---|
-| `pytest backend/tests volc_ads` | 2972 passed · 53 skipped | **ver rodapé** |
-| `vitest run` | 1208 passed · 5 skipped | ver rodapé |
+| `pytest backend/tests volc_ads` | 2972 passed · 53 skipped | **3195 passed · 53 skipped** |
+| `vitest run` | 1208 passed · 5 skipped | **1243 passed · 3 skipped** |
 | `tsc --noEmit -p tsconfig.app.json` | 76 erros herdados | 76 |
 | `vite build` | verde | verde |
 | `scripts/provar-ciclo-v11_03.sh` | 129 passaram · 0 falharam | 129 · 0 |
-| contrato do depósito (novo) | — | 71 (36 SQLite + 35 Postgres) |
+| contrato do depósito (novo) | — | **71** (36 SQLite + 35 Postgres) |
+
+Medidos em série, num único HEAD (`2733715`), árvore limpa.
 
 ⚠️ **Correção de um baseline herdado.** O handoff da bancada registrava
 "Frontend completo 902 (7 arq./2 testes falhos)" e tratava as falhas como
