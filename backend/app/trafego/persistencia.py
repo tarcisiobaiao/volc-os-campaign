@@ -104,6 +104,96 @@ TABELA_PLANO_DE_MENSURACAO = "trafego_campanha_plano_de_mensuracao"
 #: leitura gravada duas vezes devolve a mesma linha, e não uma segunda.
 RPC_REGISTRAR_PLANO = "volc_registrar_plano_de_mensuracao"
 
+#: A migration que cria a tabela e a função acima. O nome aparece na mensagem de
+#: erro porque um operador diante de "a função não existe" precisa saber QUAL
+#: arquivo aplicar — e não sair procurando.
+MIGRATION_DO_PLANO = "supabase/migrations/v12_02_plano_de_mensuracao.sql"
+
+#: Os códigos do PostgREST para "o objeto que você pediu não existe no schema
+#: cache". `PGRST202` é função; `PGRST205` é tabela. Os dois significam, aqui, a
+#: mesma coisa: a v12_02 não foi aplicada neste banco.
+_CODIGOS_DE_OBJETO_AUSENTE = ("PGRST202", "PGRST205")
+
+
+class PlanoIndisponivel(RuntimeError):
+    """Não deu para gravar o plano. NÃO significa que o plano é inválido.
+
+    ⚠️ A distinção com `PlanoRecusado` não é estética: as duas exigem reações
+    opostas. Indisponível é "o banco não respondeu, ou a migration não está
+    aplicada" — o operador não tem o que corrigir no pedido. Recusado é "uma das
+    seis invariantes disparou" — o plano não devia ter sido montado assim.
+    Colapsá-las mandaria alguém repetir para sempre uma chamada que vai recusar
+    de novo.
+    """
+
+    def __init__(self, mensagem: str, *, migration_ausente: bool = False):
+        super().__init__(mensagem)
+        #: `True` quando o banco respondeu que a FUNÇÃO/TABELA não existe. É o
+        #: único caso em que a saída é aplicar um arquivo, e não tentar de novo.
+        self.migration_ausente = migration_ausente
+
+
+class PlanoRecusado(RuntimeError):
+    """Uma guarda da v12_02 disparou. A linha não entrou, e não devia entrar.
+
+    `codigo` é o SQLSTATE, no mesmo desenho de `ledger.LedgerRecusou`: classe 23
+    (integridade), `22023`, `P0001` e `P0002` são recusa de regra; o resto é
+    defeito de infraestrutura e vira `PlanoIndisponivel`.
+    """
+
+    def __init__(self, mensagem: str, *, codigo: str = "", detalhe: Any = None):
+        super().__init__(mensagem)
+        self.codigo = codigo
+        self.detalhe = detalhe
+
+
+def _e_recusa_de_regra(codigo: str) -> bool:
+    """O mesmo predicado de `ledger._e_recusa_de_regra`, e de propósito.
+
+    Duas tabelas do mesmo domínio classificando SQLSTATE de formas diferentes
+    seria a maneira mais barata de fazer a mesma falha virar 409 numa rota e 503
+    noutra.
+    """
+    return bool(codigo) and (
+        codigo in ("P0001", "P0002", "22023") or codigo.startswith("23")
+    )
+
+
+def erro_de_plano(exc: Any) -> RuntimeError:
+    """`httpx.HTTPStatusError` do PostgREST → a exceção tipada desta camada.
+
+    Função de módulo e PURA: ela é testável sem banco e sem rota, e a tradução
+    mora num lugar só. A rota nunca lê `response.json()` — se lesse, a
+    classificação passaria a existir em dois lugares, e o dia em que os dois
+    discordassem ninguém saberia qual estava certo.
+    """
+    resposta = getattr(exc, "response", None)
+    status = getattr(resposta, "status_code", 0)
+    codigo, mensagem = "", ""
+    if resposta is not None:
+        try:
+            corpo = resposta.json()
+        except Exception:  # noqa: BLE001
+            corpo = None
+        if isinstance(corpo, dict):
+            codigo = str(corpo.get("code") or "")
+            mensagem = str(corpo.get("message") or "")[:2000]
+        else:
+            mensagem = str(getattr(resposta, "text", "") or exc)[:500]
+
+    if codigo in _CODIGOS_DE_OBJETO_AUSENTE or (
+            status == 404 and RPC_REGISTRAR_PLANO in mensagem):
+        return PlanoIndisponivel(
+            f"a função {RPC_REGISTRAR_PLANO} não existe neste banco "
+            f"({mensagem or 'sem detalhe'}): aplique {MIGRATION_DO_PLANO} "
+            "antes de criar campanha. Nada foi enviado ao Google.",
+            migration_ausente=True)
+    if _e_recusa_de_regra(codigo):
+        return PlanoRecusado(mensagem or str(exc), codigo=codigo,
+                             detalhe=None)
+    return PlanoIndisponivel(
+        f"o registro do plano respondeu {status}: {mensagem or exc}")
+
 VIEW_CAMPANHAS = "trafego_inventario_campanha"
 VIEW_CONTAS = "trafego_inventario_conta"
 
@@ -412,6 +502,7 @@ def documento_de_plano_de_mensuracao(
         plano: Dict[str, Any], *,
         lido_em: str,
         volc_campaign_id: Optional[str] = None,
+        vinculo: Optional[Dict[str, Any]] = None,
         api_versao: str = "v25") -> Dict[str, Any]:
     """`PlanoDeMensuracao.para_json()` → o documento da função Postgres.
 
@@ -429,6 +520,19 @@ def documento_de_plano_de_mensuracao(
     MEDIDO e precisa chegar como `0`; ausência precisa chegar como `None`. Um
     `or 0` nesta linha destruiria a distinção que o schema, o domínio e a tela
     carregam em três camadas.
+
+    ## `vinculo` — o que liga a linha pós-nascimento à pré
+
+    ⚠️ Ele entra APENAS em `payload`, e não vira coluna. A tabela já tem a
+    coluna que responde a pergunta consultável — `chave_intencao`, com índice
+    próprio —, e o vínculo é a PROCEDÊNCIA daquela linha: de qual impressão ela
+    veio, em que momento, e a ressalva de que os estados de leitura descrevem
+    uma observação feita ANTES de a campanha existir.
+
+    Sem essa ressalva, uma linha com `campaign_id` preenchido e
+    `metas_da_campanha_estado='inelegivel'` seria lida, meses depois, como "a
+    campanha existe e as metas dela são inelegíveis" — que é falso. O que é
+    verdade é "quando isto foi lido, a campanha ainda não existia".
     """
     meta = plano.get("meta_efetiva") or {}
     alvo = plano.get("acao_alvo") or {}
@@ -487,7 +591,8 @@ def documento_de_plano_de_mensuracao(
         # O plano inteiro sobrevive em `payload`: as colunas acima são o que se
         # consulta, e o payload é o que se audita. Uma coluna nova amanhã não
         # apaga o que foi lido hoje.
-        "payload": dict(plano),
+        "payload": (dict(plano) if vinculo is None
+                    else {**plano, "vinculo": dict(vinculo)}),
         "api_versao": api_versao,
         "lido_em": _iso(lido_em),
     }
@@ -975,17 +1080,79 @@ class RepositorioDePlanoDeMensuracao(_Cliente):
         """Grava o plano e devolve o `plano_id`. Idempotente pela impressão.
 
         `None` quando o cliente não está habilitado — ambiente sem Supabase é
-        estado, não erro. Qualquer outra falha sobe.
+        estado, não erro. Quem chama decide o que fazer com esse `None`, e no
+        caminho de `/subir` ele é RECUSA: criar campanha sem plano gravado
+        produz exatamente a campanha que ninguém consegue explicar depois.
+
+        ⚠️ As demais falhas sobem TIPADAS. `PlanoRecusado` é uma das seis
+        invariantes disparando; `PlanoIndisponivel` é o banco fora do ar ou a
+        migration não aplicada. A tradução mora em `erro_de_plano`, que é pura.
         """
         if not self.habilitado:
             return None
-        resposta = await self._req(
-            "POST", f"rpc/{RPC_REGISTRAR_PLANO}",
-            headers=self._headers(), json={"documento": documento})
+        import httpx  # noqa: PLC0415 — mantém o módulo importável sem rede
+
+        try:
+            resposta = await self._req(
+                "POST", f"rpc/{RPC_REGISTRAR_PLANO}",
+                headers=self._headers(), json={"documento": documento})
+        except httpx.HTTPStatusError as exc:
+            raise erro_de_plano(exc) from exc
+        except httpx.HTTPError as exc:
+            raise PlanoIndisponivel(
+                f"o registro do plano não respondeu: {exc}") from exc
         # A função devolve `uuid`; o PostgREST o entrega como escalar JSON.
         if isinstance(resposta, list):
             resposta = resposta[0] if resposta else None
         return str(resposta) if resposta else None
+
+    async def por_intencao(self, chave_intencao: str) -> List[Dict[str, Any]]:
+        """Todas as linhas de UMA intenção, a mais recente primeiro.
+
+        ⚠️ É esta leitura que prova "exatamente uma intenção une o pré e o
+        pós-nascimento". A tabela é append-only e a impressão inclui o
+        `campaign_id`, então a mesma intenção tem DUAS linhas depois de a
+        campanha nascer: uma sem id, outra com. Elas não são duplicata — são a
+        mesma decisão antes e depois de ela ter endereço.
+
+        ⚠️ Filtra por `chave_intencao` sozinha, e isso é seguro porque a chave
+        JÁ é um sha256 que inclui a conta e o MCC normalizados
+        (`routers/trafego.py:_plano_aprovavel`). Duas contas nunca produzem a
+        mesma chave, então não há como esta consulta atravessar a fronteira de
+        conta — e há prova disso em `test_trafego_plano_persistido.py`.
+        """
+        chave = str(chave_intencao or "").strip()
+        if not chave or not self.habilitado:
+            return []
+        return await self._get(TABELA_PLANO_DE_MENSURACAO, {
+            "select": "*",
+            "chave_intencao": f"eq.{chave}",
+            "order": "versao.desc,registrado_em.desc",
+        })
+
+    async def por_prefixo_de_intencao(self, prefixo: str) -> List[Dict[str, Any]]:
+        """As linhas cuja `chave_intencao` COMEÇA com `prefixo`.
+
+        Existe para uma porta só: a reconciliação tardia, quando o operador tem
+        a MARCA remota (`VOLC-CANARY-<12 hex>`) e não a chave inteira. A marca
+        são os 12 primeiros hex do sha256 — 48 bits —, então este filtro NÃO é
+        uma identidade: ele é um candidato, e quem chama tem de tratar duas
+        chaves distintas como ambiguidade, nunca escolher a primeira.
+
+        ⚠️ Exige 12 caracteres hex, no mínimo. Um prefixo curto varreria a
+        tabela e devolveria planos de contas alheias — a chave inclui a conta,
+        mas um prefixo de 2 caracteres não inclui nada.
+        """
+        pre = str(prefixo or "").strip().lower()
+        if len(pre) < 12 or not all(c in "0123456789abcdef" for c in pre):
+            return []
+        if not self.habilitado:
+            return []
+        return await self._get(TABELA_PLANO_DE_MENSURACAO, {
+            "select": "*",
+            "chave_intencao": f"like.{pre}*",
+            "order": "versao.desc,registrado_em.desc",
+        })
 
     async def vigente_da_conta(self, customer_id: str
                                ) -> Optional[Dict[str, Any]]:

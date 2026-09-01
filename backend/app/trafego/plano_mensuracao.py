@@ -55,6 +55,7 @@ teste que quebra se elas divergirem.
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -1214,6 +1215,171 @@ def montar(
         marcacao=marcacao or inventario_nao_lido(),
         campaign_id=(str(campaign_id).strip() if campaign_id else None),
         chave_intencao=chave_intencao,
+    )
+
+
+def do_json(dados: Mapping[str, Any]) -> PlanoDeMensuracao:
+    """O inverso de `para_json()`: a linha gravada volta a ser plano.
+
+    ## Por que isto existe
+
+    A reconciliação tardia precisa vincular o plano que `/subir` gravou ANTES do
+    mutate — a linha que sobreviveu justamente porque a resposta se perdeu. Para
+    gravar a versão vinculada é preciso recalcular a `impressao`, e a impressão
+    é uma função do domínio.
+
+    A alternativa seria recomputar o sha256 a partir das colunas planas do
+    banco. Ela foi descartada: seriam DUAS derivações da mesma impressão, e o
+    dia em que discordassem produziria duas linhas para a mesma leitura sem
+    ninguém notar. É o mesmo defeito que `ledger.volc_campaign_id_de` já pagou
+    caro para fechar, com outro nome.
+
+    ⚠️ A eleição da ação e o destino NÃO são lidos do JSON: eles são
+    RECALCULADOS por `montar`, a partir das ações e das metas gravadas. Isso é
+    deliberado e é mais forte que copiar — se a regra de eleição mudasse, o
+    round-trip acusaria, em vez de carregar para sempre uma eleição feita por
+    uma versão antiga da regra.
+    """
+    meta_json = dict(dados.get("meta_efetiva") or {})
+    frescor_json = dict(dados.get("frescor") or {})
+    marcacao_json = dict(dados.get("marcacao") or {})
+
+    def _metas(chave: str) -> Tuple[Meta, ...]:
+        return tuple(
+            Meta(categoria=m.get("categoria", ""), origem=m.get("origem", ""),
+                 biddable=bool(m.get("biddable")), campaign=m.get("campaign"))
+            for m in (meta_json.get(chave) or ()))
+
+    meta = MetaEfetiva(
+        nivel=meta_json.get("nivel"),
+        nivel_estado=meta_json.get("nivel_estado") or NAO_COLETADO,
+        metas_da_conta=_metas("metas_da_conta"),
+        metas_da_conta_estado=(meta_json.get("metas_da_conta_estado")
+                               or NAO_COLETADO),
+        metas_da_campanha=_metas("metas_da_campanha"),
+        metas_da_campanha_estado=(meta_json.get("metas_da_campanha_estado")
+                                  or NAO_COLETADO),
+        campaign_id=meta_json.get("campaign_id"),
+        custom_conversion_goal=meta_json.get("custom_conversion_goal"),
+        nivel_herdado=bool(meta_json.get("nivel_herdado")),
+        causa=meta_json.get("causa"),
+    )
+
+    acoes = tuple(
+        AcaoDeConversao(
+            id=str(a.get("id") or ""), resource_name=a.get("resource_name") or "",
+            owner_customer_id=a.get("owner_customer_id"),
+            nome=a.get("nome") or "", categoria=a.get("categoria") or "",
+            origem=a.get("origem") or "", tipo=a.get("tipo") or "",
+            status=a.get("status") or "", primaria=a.get("primaria"),
+            incluida_em_metricas=a.get("incluida_em_metricas"))
+        for a in (dados.get("acoes") or ()))
+
+    frescor = Frescor(
+        estado=frescor_json.get("estado") or NAO_COLETADO,
+        janela_dias=frescor_json.get("janela_dias"),
+        ultima_conversao_em=frescor_json.get("ultima_conversao_em"),
+        dias_desde_a_ultima=frescor_json.get("dias_desde_a_ultima"),
+        conversoes_na_janela=frescor_json.get("conversoes_na_janela"),
+        conversion_action_id=frescor_json.get("conversion_action_id"),
+        causa=frescor_json.get("causa"),
+    ) if frescor_json else frescor_nao_lido()
+
+    marcacao = InventarioDeMarcacao(
+        estado=marcacao_json.get("estado") or NAO_COLETADO,
+        auto_tagging=marcacao_json.get("auto_tagging"),
+        conversion_tracking_id=marcacao_json.get("conversion_tracking_id"),
+        conversion_tracking_owner_id=marcacao_json.get(
+            "conversion_tracking_owner_id"),
+        cross_account_conversion_tracking_id=marcacao_json.get(
+            "cross_account_conversion_tracking_id"),
+        conversion_tracking_status=marcacao_json.get(
+            "conversion_tracking_status"),
+        fuso=marcacao_json.get("fuso"),
+        aceitou_termos_de_dados=marcacao_json.get("aceitou_termos_de_dados"),
+        enhanced_conversions_for_leads=marcacao_json.get(
+            "enhanced_conversions_for_leads"),
+        acoes_de_ga4=tuple(marcacao_json.get("acoes_de_ga4") or ()),
+        acoes_com_tag=tuple(marcacao_json.get("acoes_com_tag") or ()),
+        click_ids_suportados=tuple(
+            marcacao_json.get("click_ids_suportados") or CLICK_IDS),
+        causa=marcacao_json.get("causa"),
+    ) if marcacao_json else inventario_nao_lido()
+
+    plano = montar(
+        customer_id=str(dados.get("customer_id") or ""),
+        login_customer_id=str(dados.get("login_customer_id") or ""),
+        meta_efetiva=meta, acoes=acoes,
+        acoes_estado=str(dados.get("acoes_estado") or NAO_COLETADO),
+        frescor=frescor, marcacao=marcacao,
+        campaign_id=dados.get("campaign_id"),
+        chave_intencao=dados.get("chave_intencao"),
+    )
+    versao = dados.get("versao")
+    if isinstance(versao, int) and versao != plano.versao:
+        plano = dataclasses.replace(plano, versao=versao)
+    return plano
+
+
+def vincular_ao_nascimento(plano: PlanoDeMensuracao, *,
+                           campaign_id: str) -> PlanoDeMensuracao:
+    """A MESMA observação, agora endereçada à campanha que nasceu dela.
+
+    ## Por que revincular, e não reler
+
+    O contrato manda "vincular o MESMO plano ao campaign_id". Reler a conta
+    depois do mutate produziria uma observação DIFERENTE — outros estados,
+    outro instante — e a linha gravada deixaria de ser a que sustentou a
+    decisão. Pior: a releitura acontece DEPOIS de a campanha já existir, então
+    uma falha de rede ali não pode derrubar nada, e um caminho que pode falhar
+    sem consequência é um caminho que ninguém percebe quando para de funcionar.
+
+    O que muda entre a linha pré e a pós-nascimento é exatamente o que passou a
+    ser conhecido: qual campanha a intenção produziu. Nada mais mudou, e por
+    isso nada mais é reescrito.
+
+    ## O que NÃO é tocado, e por quê
+
+    - `chave_intencao` — é ela que une as duas linhas. Trocá-la criaria a
+      segunda intenção que o contrato existe para impedir.
+    - os seis estados de leitura — eles descrevem o que foi lido, e nada foi
+      relido. `metas_da_campanha_estado` continua `inelegivel` porque, no
+      instante da leitura, a campanha não existia: a pergunta não cabia.
+      Trocá-lo para `nao_coletado` afirmaria que a pergunta passou a caber
+      NAQUELE instante, que é falso. Quem carrega a ressalva para quem lê a
+      linha depois é `payload.vinculo.observado_antes_do_nascimento`.
+    - a ação eleita e o dono dela — o destino da Data Manager é conta DONA mais
+      id numérico, e mandar para a conta operacional não daria erro: daria
+      silêncio.
+
+    ⚠️ `versao` sobe. A tabela é append-only e a impressão inclui o
+    `campaign_id`, então a linha nova entra ao lado da antiga em vez de
+    substituí-la — e a ordem entre as duas precisa ser legível sem depender do
+    relógio de gravação.
+
+    ## A recusa
+
+    `campaign_id` não numérico levanta. Um id inventado, vazio ou com prefixo de
+    recurso viraria uma linha que aponta para campanha nenhuma, e o CHECK
+    `trafego_plano_campaign_id` a recusaria no banco — depois de o mutate já ter
+    acontecido, quando não há mais como voltar atrás.
+    """
+    kid = str(campaign_id or "").strip()
+    if not kid.isdigit():
+        raise ValueError(
+            f"campaign_id={campaign_id!r} não é um id numérico do Google Ads. "
+            "Vincular um plano a um id que não existe seria pior que não "
+            "vincular: a linha afirmaria uma campanha.")
+    if plano.campaign_id is not None and plano.campaign_id != kid:
+        raise ValueError(
+            f"este plano já está vinculado à campanha {plano.campaign_id} e "
+            f"alguém tentou revinculá-lo a {kid}. Uma observação tem um "
+            "endereço só.")
+    return dataclasses.replace(
+        plano,
+        campaign_id=kid,
+        meta_efetiva=dataclasses.replace(plano.meta_efetiva, campaign_id=kid),
+        versao=plano.versao + 1,
     )
 
 
