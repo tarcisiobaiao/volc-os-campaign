@@ -801,8 +801,15 @@ def test_r_a_lista_de_campos_recusados_vem_do_artefato_da_leitura_real():
 
     resumo = json.loads(RESUMO_DA_LEITURA_REAL.read_text())
 
+    # O topo do artefato acompanha a leitura final pós-correção; a primeira
+    # queda real precisa sobreviver em lineage para que a evidência vermelha não
+    # seja apagada quando a segunda leitura ficar verde.
+    familias_da_queda = resumo.get("lineage", {}).get(
+        "first_incompatible_read", {}
+    ).get("families", resumo["families"])
+
     nomeados = set()
-    for familia in resumo["families"]:
+    for familia in familias_da_queda:
         erro = familia.get("error")
         if erro is None:
             continue

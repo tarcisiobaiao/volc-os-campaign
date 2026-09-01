@@ -3,7 +3,14 @@
 **Data:** 2026-09-01
 **Branch:** `sprint/hermes-p04-t07-pmax-real-read-v1`
 **Base:** `7eaa93faef9d9546b09462ee8380496dc5e679e8`
-**Veredito:** `NO_ELIGIBLE_PMAX`
+**Veredito da 1ª rodada:** `NO_ELIGIBLE_PMAX`
+**Veredito da 2ª rodada (topologia corrigida):** `REAL_READ_PARTIAL` — ver §11
+
+> As seções 1 a 10 descrevem a **primeira** rodada e continuam valendo como o
+> registro dela: a leitura forçava `login_customer_id`, 9 de 13 contas
+> responderam `USER_PERMISSION_DENIED` e nenhum alvo PMax foi encontrado. Elas
+> não foram reescritas. A partir da §11 está a rodada corretiva, que achou alvo
+> real e expôs o que a v25 recusa.
 
 ## 1. Escopo executado
 
@@ -125,3 +132,147 @@ Achados não bloqueantes preservados:
 - zero Roadmap/grafo;
 - zero dados brutos versionados;
 - zero segredo versionado.
+
+---
+
+# 2ª rodada — topologia corrigida e alvo real
+
+## 11. O que a correção de topologia mudou
+
+Testar as contas **diretamente**, sem forçar `login_customer_id`, eliminou as
+negativas de permissão da §4. A mesma credencial, a mesma consulta mínima, outra
+topologia de chamada:
+
+| Medida | 1ª rodada | 2ª rodada |
+|---|---|---|
+| contas acessíveis | 13 | 13 |
+| verdes com PMax | 0 | **1** (12 campanhas) |
+| vazio confirmado | 4 | **12** |
+| `USER_PERMISSION_DENIED` confirmado | 9 | **0** |
+| topologia não resolvida | — | 0 |
+| falhou | — | 0 |
+
+Alvo determinístico selecionado: preferir `PAUSED`, depois hash estável. Alvo
+escolhido `PAUSED`, pseudônimos e hashes no `REAL-READ-SUMMARY.json`.
+
+O veredito `NO_ELIGIBLE_PMAX` da 1ª rodada não era um fato sobre a carteira: era
+um fato sobre **como a leitura estava sendo feita**. Registrar as 9 negativas em
+vez de tratá-las como zero foi o que permitiu descobrir isso.
+
+## 12. As sete famílias contra a v25 real
+
+| Família | Estado na leitura real | Causa |
+|---|---|---|
+| `PMAX_CAMPANHA` | `com_dados` | 1 linha |
+| `PMAX_ASSET_GROUPS` | `falhou` | `UNRECOGNIZED_FIELD` em 4 campos de `asset_coverage` |
+| `PMAX_ASSET_GROUP_ASSETS` | `falhou` | `UNRECOGNIZED_FIELD` em 3 campos de `primary_status_details` |
+| `PMAX_ASSETS` | `vazio_confirmado` ❌ | sem asset ids — **por causa da família anterior ter falhado** |
+| `PMAX_DESEMPENHO_ASSET_GROUP` | `com_dados` | 4 linhas na janela |
+| `PMAX_SINAIS` | `vazio_confirmado` ❌ | sem asset group ids — **mesma dependência falha** |
+| `PMAX_RECOMENDACOES_FORCA` | `falhou` | `UNRECOGNIZED_FIELD` em 2 campos da recomendação |
+
+Os dois ❌ são erro de contrato, não de API: uma família cuja consulta prerequisita
+falhou não observou vazio nenhum. Corrigido nesta rodada.
+
+## 13. `asset_group_asset.performance_label` — adjudicado
+
+`NOT_SUPPORTED_IN_V25`, por `GoogleAdsFieldService` (0 linhas) mais GAQL mínima
+real (recusada com `UNRECOGNIZED_FIELD`). O `INCONCLUSIVE` da §6 está fechado.
+O campo permanece fora das consultas e nomeado em `CAMPOS_NAO_SUPORTADOS_V25`.
+
+## 14. Correção aplicada
+
+Detalhe completo, campo a campo, em **`LINHAGEM-CORRECAO-V25.md`**. Em resumo:
+
+- os nove campos recusados saíram da projeção, **sem substituto**, com a perda
+  de cobertura declarada por campo no recibo de cada família e no resumo
+  sanitizado que o CLI imprime;
+- `assert_sem_campos_recusados()` impede a reintrodução, inclusive vinda do
+  builder da outra lane;
+- família dependente de leitura que caiu passou a ser `falhou` com causa
+  estruturada `DEPENDENCIA_FALHOU:<familia>`, e a decisão mora na projeção — não
+  só no coletor, que era por onde o runner da leitura real escapava dela.
+
+Commits: `23fbcf3` (evidência), `5e935f5` (contraprovas, 13 falhando),
+`808e940` (correção, 70 passando).
+
+## 15. Runbook para fechar `REAL_READ_PROVEN`
+
+A correção é provada **sem rede**, contra um dublê que reproduz o erro real. Ela
+não substitui uma certificação real. Para fechar:
+
+1. reexecutar a leitura real no mesmo alvo, com a topologia da §11;
+2. confirmar `PMAX_ASSET_GROUPS`, `PMAX_ASSET_GROUP_ASSETS` e
+   `PMAX_RECOMENDACOES_FORCA` verdes, e `PMAX_ASSETS`/`PMAX_SINAIS` com estado
+   observado de verdade;
+3. só então classificar `REAL_READ_PROVEN`.
+
+Enquanto isso não acontecer, o veredito honesto é `REAL_READ_PARTIAL`.
+---
+
+# 3ª rodada — pós-correção, leitura real certificada
+
+## 16. Resultado final pós-correção
+
+Após os commits `5e935f5` e `808e940`, a leitura real foi reexecutada no mesmo critério determinístico de alvo (`PAUSED`, depois hash estável), sem Supabase e com a topologia corrigida (`direct_without_login_customer_id`).
+
+**Veredito final do artefato:** `REAL_READ_PROVEN`.
+
+Cobertura final de contas:
+
+| Classe | Contagem |
+|---|---:|
+| `verde_com_pmax` | 1 |
+| `vazio_confirmado` | 12 |
+| `permission_denied_confirmado` | 0 |
+| `topologia_nao_resolvida` | 0 |
+| `falhou` | 0 |
+
+Alvo final sanitizado: campanha `PAUSED`, canal `PERFORMANCE_MAX`, com `customer_pseudo`, `campaign_pseudo` e `campaign_name_hash` no `REAL-READ-SUMMARY.json`.
+
+## 17. Estados finais das sete famílias
+
+| Família | Estado final | Contagem sanitizada |
+|---|---|---:|
+| `PMAX_CAMPANHA` | `com_dados` | 1 |
+| `PMAX_ASSET_GROUPS` | `com_dados` | 4 |
+| `PMAX_ASSET_GROUP_ASSETS` | `com_dados` | 137 |
+| `PMAX_ASSETS` | `com_dados` | 123 |
+| `PMAX_DESEMPENHO_ASSET_GROUP` | `com_dados` | 4 |
+| `PMAX_SINAIS` | `com_dados` | 4 |
+| `PMAX_RECOMENDACOES_FORCA` | `vazio_confirmado` | 0 |
+
+Nenhuma família terminou `falhou` por incompatibilidade conhecida. `PMAX_RECOMENDACOES_FORCA` verde com zero recomendações ficou `vazio_confirmado`, não falha.
+
+## 18. Campos removidos/substituídos
+
+Nenhum dos nove campos recusados ganhou substituto sem prova. Todos foram removidos da projeção da coleta e nomeados em `CAMPOS_RECUSADOS_PELA_API_V25` com cobertura perdida.
+
+Adicionalmente, a rodada final consultou `GoogleAdsFieldService` para os nove campos recusados: todos voltaram `not_found` (`row_count=0`) na metadata v25. Isso reforça a decisão de não reintroduzir nem substituir os campos.
+
+## 19. `asset_group_asset.performance_label`
+
+Adjudicação literal final: `NOT_SUPPORTED_IN_V25`.
+
+Provas:
+
+- `GoogleAdsFieldService.SearchGoogleAdsFields`: `vazio_confirmado`, `row_count=0` para `asset_group_asset.performance_label`;
+- GAQL mínima real: falhou com `UNRECOGNIZED_FIELD` para `asset_group_asset.performance_label`;
+- nenhum valor real observado, porque o campo não é reconhecido na v25 desta conta/API.
+
+## 20. Zero mutate final
+
+Métodos chamados na certificação final, sanitizados:
+
+- `CustomerService.ListAccessibleCustomers`;
+- `GoogleAdsService.SearchStream`;
+- `GoogleAdsFieldService.SearchGoogleAdsFields`.
+
+Nenhum método chamado contém `mutate`, `create`, `update`, `remove`, `upload` ou `apply`. Nenhuma tentativa proibida ocorreu.
+
+## 21. Estado da missão após a 3ª rodada
+
+- `REAL_READ_PROVEN` para a observabilidade read-only PMax, com alvo real `PAUSED`;
+- `performance_label` fechado como `NOT_SUPPORTED_IN_V25`;
+- a evidência vermelha da 2ª rodada permanece preservada em `lineage.first_incompatible_read` dentro de `REAL-READ-SUMMARY.json` e em `LINHAGEM-CORRECAO-V25.md`;
+- a lacuna v12_03 permanece: esta missão não criou migration nem escreveu no Supabase.

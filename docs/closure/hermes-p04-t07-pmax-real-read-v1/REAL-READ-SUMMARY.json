@@ -1,7 +1,7 @@
 {
   "api_version": "v25",
   "auth": {
-    "duration_ms": 3031,
+    "duration_ms": 1289,
     "list_accessible_customers": "ok"
   },
   "called_methods": [
@@ -26,7 +26,18 @@
     "GoogleAdsService.SearchStream",
     "GoogleAdsService.SearchStream",
     "GoogleAdsService.SearchStream",
-    "GoogleAdsService.SearchStream"
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsService.SearchStream",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "GoogleAdsFieldService.SearchGoogleAdsFields"
   ],
   "corrective_round": "login_customer_topology_v1",
   "discovery": {
@@ -73,11 +84,11 @@
       {
         "account": "2588bd8e0500a4bc",
         "classification": "vazio_confirmado",
-        "duration_ms": 738,
+        "duration_ms": 650,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "724207c91f9df89e"
+          "8885e1d5c5a87570"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -86,11 +97,11 @@
       {
         "account": "cbea4415436f3781",
         "classification": "vazio_confirmado",
-        "duration_ms": 993,
+        "duration_ms": 850,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "d00c23bb6fc0d02b"
+          "624409aed948b3c3"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -99,11 +110,11 @@
       {
         "account": "f12f42ff766f6a2a",
         "classification": "vazio_confirmado",
-        "duration_ms": 711,
+        "duration_ms": 1486,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "0a510dea42e0b493"
+          "83fa4d1529d6ec45"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -112,11 +123,11 @@
       {
         "account": "7e6150edb3603db5",
         "classification": "vazio_confirmado",
-        "duration_ms": 644,
+        "duration_ms": 1213,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "628ef62e7886b9d6"
+          "a599c291aea17e69"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -125,11 +136,11 @@
       {
         "account": "e2e8033f986c6076",
         "classification": "vazio_confirmado",
-        "duration_ms": 843,
+        "duration_ms": 871,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "527b56d4b550b191"
+          "395f134af26eef16"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -138,11 +149,11 @@
       {
         "account": "7226e58df3581679",
         "classification": "vazio_confirmado",
-        "duration_ms": 690,
+        "duration_ms": 1549,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "fe9939b224bdffd0"
+          "64b27b8a614ff659"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -151,11 +162,11 @@
       {
         "account": "f42f26337e873557",
         "classification": "vazio_confirmado",
-        "duration_ms": 563,
+        "duration_ms": 582,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "852c7ba7331766bd"
+          "a24dfdec3b329094"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -164,11 +175,11 @@
       {
         "account": "5b43f1019a072a4a",
         "classification": "vazio_confirmado",
-        "duration_ms": 1478,
+        "duration_ms": 615,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "f42337ba88b58704"
+          "c2ffcfd64c0f39d1"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -177,11 +188,11 @@
       {
         "account": "91ef1095f75957af",
         "classification": "vazio_confirmado",
-        "duration_ms": 662,
+        "duration_ms": 637,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "1cfb56978cd2ad58"
+          "192875ffb3a2671a"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -190,11 +201,11 @@
       {
         "account": "4e290f5e4629f39a",
         "classification": "vazio_confirmado",
-        "duration_ms": 919,
+        "duration_ms": 643,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "b779d73b3b49c545"
+          "de96bfbd1c05664b"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -203,11 +214,11 @@
       {
         "account": "1cdcb67a9c90f6b6",
         "classification": "vazio_confirmado",
-        "duration_ms": 874,
+        "duration_ms": 930,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "28ab8aa539963243"
+          "4c19042cbc13f93e"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -216,11 +227,11 @@
       {
         "account": "1e26a0c67aa667d2",
         "classification": "verde_com_pmax",
-        "duration_ms": 1065,
+        "duration_ms": 789,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "9a4c1d96515376c9"
+          "5ca13ff423e0036c"
         ],
         "row_count": 12,
         "status": "com_dados",
@@ -229,11 +240,11 @@
       {
         "account": "67cea02fba30f27a",
         "classification": "vazio_confirmado",
-        "duration_ms": 626,
+        "duration_ms": 569,
         "error": null,
         "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
         "request_id_hashes": [
-          "917205d83e4596af"
+          "6cbea03d940d019b"
         ],
         "row_count": 0,
         "status": "vazio_confirmado",
@@ -245,7 +256,7 @@
   "families": [
     {
       "campaign_status": "PAUSED",
-      "duration_ms": 1002,
+      "duration_ms": 2019,
       "error": null,
       "family": "PMAX_CAMPANHA",
       "fields": [
@@ -265,7 +276,7 @@
       "from": "campaign",
       "query_sha256": "f18609466217aa4cdfa9b78c1dd9c5cf5a160f5ab8b241c08a8d50ce166593b0",
       "request_id_hashes": [
-        "c3b632b220fa0663"
+        "59865a9385ce9778"
       ],
       "row_count": 1,
       "status": "com_dados",
@@ -273,18 +284,8 @@
     },
     {
       "campaign_status": "PAUSED",
-      "duration_ms": 447,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "query_error: UNRECOGNIZED_FIELD ",
-            "message": "Unrecognized fields in the query: 'asset_group.asset_coverage.ad_strength_action_items.action_item_type', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type'."
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
-        "request_id_hash": "8b74b8541acbd410"
-      },
+      "duration_ms": 715,
+      "error": null,
       "family": "PMAX_ASSET_GROUPS",
       "fields": [
         "asset_group.resource_name",
@@ -295,10 +296,6 @@
         "asset_group.primary_status",
         "asset_group.primary_status_reasons",
         "asset_group.ad_strength",
-        "asset_group.asset_coverage.ad_strength_action_items.action_item_type",
-        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type",
-        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count",
-        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement",
         "asset_group.final_urls",
         "asset_group.final_mobile_urls",
         "asset_group.path1",
@@ -306,26 +303,18 @@
         "campaign.id"
       ],
       "from": "asset_group",
-      "query_sha256": "f5f6c1996db04e86da112d9faa3c6a60e269e1dcab46c6ca0fdf354dc9dc78f4",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou",
+      "query_sha256": "a18adaecfb659e64b4e27e4e9d8e85c441f5b6eb4473637286346322e6935082",
+      "request_id_hashes": [
+        "2858982c394b1369"
+      ],
+      "row_count": 4,
+      "status": "com_dados",
       "window": null
     },
     {
       "campaign_status": "PAUSED",
-      "duration_ms": 581,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "query_error: UNRECOGNIZED_FIELD ",
-            "message": "Unrecognized fields in the query: 'asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons', 'asset_group_asset.primary_status_details.status', 'asset_group_asset.primary_status_details.reason'."
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
-        "request_id_hash": "2050de113272d482"
-      },
+      "duration_ms": 1622,
+      "error": null,
       "family": "PMAX_ASSET_GROUP_ASSETS",
       "fields": [
         "asset_group_asset.resource_name",
@@ -335,30 +324,49 @@
         "asset_group_asset.status",
         "asset_group_asset.primary_status",
         "asset_group_asset.primary_status_reasons",
-        "asset_group_asset.primary_status_details.status",
-        "asset_group_asset.primary_status_details.reason",
-        "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons",
         "asset_group_asset.source",
         "asset_group_asset.policy_summary.approval_status",
         "asset_group_asset.policy_summary.policy_topic_entries",
         "campaign.id"
       ],
       "from": "asset_group_asset",
-      "query_sha256": "73761676ba811a3c94b89a11bbffb4f030b8578d373b7ce8fad9af1af6336e10",
-      "request_id_hashes": [],
-      "row_count": null,
-      "status": "falhou",
+      "query_sha256": "2552e334bb47c07f705f9795f3a9ff92063a687b85ba4ee525d49ea0666b1a5e",
+      "request_id_hashes": [
+        "4a0713719c027543"
+      ],
+      "row_count": 137,
+      "status": "com_dados",
       "window": null
     },
     {
+      "campaign_status": "PAUSED",
+      "duration_ms": 725,
+      "error": null,
       "family": "PMAX_ASSETS",
-      "reason": "no asset ids from asset_group_asset",
-      "row_count": 0,
-      "status": "vazio_confirmado"
+      "fields": [
+        "asset.resource_name",
+        "asset.id",
+        "asset.name",
+        "asset.type",
+        "asset.text_asset.text",
+        "asset.youtube_video_asset.youtube_video_id",
+        "asset.youtube_video_asset.youtube_video_title",
+        "asset.image_asset.full_size.url",
+        "asset.policy_summary.approval_status",
+        "asset.policy_summary.policy_topic_entries"
+      ],
+      "from": "asset",
+      "query_sha256": "8ed0f8b3e92b6897b5be98410dae8810685013daf22ee067934b7e658c315cf4",
+      "request_id_hashes": [
+        "691c8b820d54a1e3"
+      ],
+      "row_count": 123,
+      "status": "com_dados",
+      "window": null
     },
     {
       "campaign_status": "PAUSED",
-      "duration_ms": 895,
+      "duration_ms": 868,
       "error": null,
       "family": "PMAX_DESEMPENHO_ASSET_GROUP",
       "fields": [
@@ -376,7 +384,7 @@
       "from": "asset_group",
       "query_sha256": "8db334c1917e9746c998878d1700eedca86a9d0369e9dcd48684b50498c9d315",
       "request_id_hashes": [
-        "a7ec4b7e9e0c0cd6"
+        "243a370f7a51edd5"
       ],
       "row_count": 4,
       "status": "com_dados",
@@ -386,40 +394,42 @@
       ]
     },
     {
+      "campaign_status": "PAUSED",
+      "duration_ms": 579,
+      "error": null,
       "family": "PMAX_SINAIS",
-      "reason": "no asset group ids",
-      "row_count": 0,
-      "status": "vazio_confirmado"
+      "fields": [
+        "asset_group_signal.resource_name",
+        "asset_group_signal.asset_group",
+        "asset_group_signal.audience.audience",
+        "asset_group_signal.search_theme.text"
+      ],
+      "from": "asset_group_signal",
+      "query_sha256": "6c4cb27d80f872d49ea845d6083fc9a2dea07b40b898409755042365750a7f72",
+      "request_id_hashes": [
+        "b4d94c446d727f2c"
+      ],
+      "row_count": 4,
+      "status": "com_dados",
+      "window": null
     },
     {
-      "account_row_count": null,
-      "error": {
-        "class": "GoogleAdsException",
-        "google_errors": [
-          {
-            "code": "query_error: UNRECOGNIZED_FIELD ",
-            "message": "Unrecognized fields in the query: 'recommendation.improve_performance_max_ad_strength_recommendation.ad_strength', 'recommendation.improve_performance_max_ad_strength_recommendation.asset_group'."
-          }
-        ],
-        "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
-        "request_id_hash": "63f78d98143cc849"
-      },
+      "account_row_count": 2,
+      "error": null,
       "family": "PMAX_RECOMENDACOES_FORCA",
       "fields": [
         "recommendation.resource_name",
         "recommendation.type",
         "recommendation.campaign",
-        "recommendation.dismissed",
-        "recommendation.improve_performance_max_ad_strength_recommendation.asset_group",
-        "recommendation.improve_performance_max_ad_strength_recommendation.ad_strength"
+        "recommendation.dismissed"
       ],
       "from": "recommendation",
-      "query_sha256": "b8205dac16d8807c96201b62fc1b82c7b251073f29753e005d2df29768d6f1e3",
-      "row_count": null,
-      "status": "falhou"
+      "query_sha256": "f400b386a302d47b4088d2270e00b123c5f2d5999adbc0f87d27599fa7f5c2e3",
+      "row_count": 0,
+      "status": "vazio_confirmado"
     }
   ],
-  "generated_at": "2026-09-01T20:23:49.509773+00:00",
+  "generated_at": "2026-09-01T20:47:51.440744+00:00",
   "guard": {
     "forbidden": [
       "mutate",
@@ -432,17 +442,441 @@
     "forbidden_attempts": [],
     "zero_mutate_confirmed": true
   },
+  "lineage": {
+    "first_incompatible_read": {
+      "discovery": {
+        "accessible_account_pseudonyms": [
+          "7226e58df3581679",
+          "1e26a0c67aa667d2",
+          "cbea4415436f3781",
+          "67cea02fba30f27a",
+          "f12f42ff766f6a2a",
+          "f42f26337e873557",
+          "4e290f5e4629f39a",
+          "5b43f1019a072a4a",
+          "2588bd8e0500a4bc",
+          "e2e8033f986c6076",
+          "7e6150edb3603db5",
+          "91ef1095f75957af",
+          "1cdcb67a9c90f6b6"
+        ],
+        "accessible_accounts_count": 13,
+        "classification_counts": {
+          "falhou": 0,
+          "permission_denied_confirmado": 0,
+          "topologia_nao_resolvida": 0,
+          "vazio_confirmado": 12,
+          "verde_com_pmax": 1
+        },
+        "green_account_pseudonyms": [
+          "2588bd8e0500a4bc",
+          "cbea4415436f3781",
+          "f12f42ff766f6a2a",
+          "7e6150edb3603db5",
+          "e2e8033f986c6076",
+          "7226e58df3581679",
+          "f42f26337e873557",
+          "5b43f1019a072a4a",
+          "91ef1095f75957af",
+          "4e290f5e4629f39a",
+          "1cdcb67a9c90f6b6",
+          "1e26a0c67aa667d2",
+          "67cea02fba30f27a"
+        ],
+        "pmax_candidates_count": 12,
+        "queries": [
+          {
+            "account": "2588bd8e0500a4bc",
+            "classification": "vazio_confirmado",
+            "duration_ms": 738,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "724207c91f9df89e"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "cbea4415436f3781",
+            "classification": "vazio_confirmado",
+            "duration_ms": 993,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "d00c23bb6fc0d02b"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "f12f42ff766f6a2a",
+            "classification": "vazio_confirmado",
+            "duration_ms": 711,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "0a510dea42e0b493"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "7e6150edb3603db5",
+            "classification": "vazio_confirmado",
+            "duration_ms": 644,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "628ef62e7886b9d6"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "e2e8033f986c6076",
+            "classification": "vazio_confirmado",
+            "duration_ms": 843,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "527b56d4b550b191"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "7226e58df3581679",
+            "classification": "vazio_confirmado",
+            "duration_ms": 690,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "fe9939b224bdffd0"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "f42f26337e873557",
+            "classification": "vazio_confirmado",
+            "duration_ms": 563,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "852c7ba7331766bd"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "5b43f1019a072a4a",
+            "classification": "vazio_confirmado",
+            "duration_ms": 1478,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "f42337ba88b58704"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "91ef1095f75957af",
+            "classification": "vazio_confirmado",
+            "duration_ms": 662,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "1cfb56978cd2ad58"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "4e290f5e4629f39a",
+            "classification": "vazio_confirmado",
+            "duration_ms": 919,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "b779d73b3b49c545"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "1cdcb67a9c90f6b6",
+            "classification": "vazio_confirmado",
+            "duration_ms": 874,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "28ab8aa539963243"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "1e26a0c67aa667d2",
+            "classification": "verde_com_pmax",
+            "duration_ms": 1065,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "9a4c1d96515376c9"
+            ],
+            "row_count": 12,
+            "status": "com_dados",
+            "strategy": "direct_without_login_customer_id"
+          },
+          {
+            "account": "67cea02fba30f27a",
+            "classification": "vazio_confirmado",
+            "duration_ms": 626,
+            "error": null,
+            "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be",
+            "request_id_hashes": [
+              "917205d83e4596af"
+            ],
+            "row_count": 0,
+            "status": "vazio_confirmado",
+            "strategy": "direct_without_login_customer_id"
+          }
+        ],
+        "query_sha256": "bf8be1abe90b176619c1d944af5d7ca744e4ea425e3a347fd43314167b2557be"
+      },
+      "families": [
+        {
+          "campaign_status": "PAUSED",
+          "duration_ms": 1002,
+          "error": null,
+          "family": "PMAX_CAMPANHA",
+          "fields": [
+            "campaign.id",
+            "campaign.resource_name",
+            "campaign.name",
+            "campaign.status",
+            "campaign.primary_status",
+            "campaign.primary_status_reasons",
+            "campaign.serving_status",
+            "campaign.advertising_channel_type",
+            "campaign.bidding_strategy_type",
+            "campaign.start_date_time",
+            "campaign.brand_guidelines_enabled",
+            "campaign_budget.amount_micros"
+          ],
+          "from": "campaign",
+          "query_sha256": "f18609466217aa4cdfa9b78c1dd9c5cf5a160f5ab8b241c08a8d50ce166593b0",
+          "request_id_hashes": [
+            "c3b632b220fa0663"
+          ],
+          "row_count": 1,
+          "status": "com_dados",
+          "window": null
+        },
+        {
+          "campaign_status": "PAUSED",
+          "duration_ms": 447,
+          "error": {
+            "class": "GoogleAdsException",
+            "google_errors": [
+              {
+                "code": "query_error: UNRECOGNIZED_FIELD ",
+                "message": "Unrecognized fields in the query: 'asset_group.asset_coverage.ad_strength_action_items.action_item_type', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement', 'asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type'."
+              }
+            ],
+            "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+            "request_id_hash": "8b74b8541acbd410"
+          },
+          "family": "PMAX_ASSET_GROUPS",
+          "fields": [
+            "asset_group.resource_name",
+            "asset_group.id",
+            "asset_group.name",
+            "asset_group.campaign",
+            "asset_group.status",
+            "asset_group.primary_status",
+            "asset_group.primary_status_reasons",
+            "asset_group.ad_strength",
+            "asset_group.asset_coverage.ad_strength_action_items.action_item_type",
+            "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type",
+            "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count",
+            "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement",
+            "asset_group.final_urls",
+            "asset_group.final_mobile_urls",
+            "asset_group.path1",
+            "asset_group.path2",
+            "campaign.id"
+          ],
+          "from": "asset_group",
+          "query_sha256": "f5f6c1996db04e86da112d9faa3c6a60e269e1dcab46c6ca0fdf354dc9dc78f4",
+          "request_id_hashes": [],
+          "row_count": null,
+          "status": "falhou",
+          "window": null
+        },
+        {
+          "campaign_status": "PAUSED",
+          "duration_ms": 581,
+          "error": {
+            "class": "GoogleAdsException",
+            "google_errors": [
+              {
+                "code": "query_error: UNRECOGNIZED_FIELD ",
+                "message": "Unrecognized fields in the query: 'asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons', 'asset_group_asset.primary_status_details.status', 'asset_group_asset.primary_status_details.reason'."
+              }
+            ],
+            "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+            "request_id_hash": "2050de113272d482"
+          },
+          "family": "PMAX_ASSET_GROUP_ASSETS",
+          "fields": [
+            "asset_group_asset.resource_name",
+            "asset_group_asset.asset_group",
+            "asset_group_asset.asset",
+            "asset_group_asset.field_type",
+            "asset_group_asset.status",
+            "asset_group_asset.primary_status",
+            "asset_group_asset.primary_status_reasons",
+            "asset_group_asset.primary_status_details.status",
+            "asset_group_asset.primary_status_details.reason",
+            "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons",
+            "asset_group_asset.source",
+            "asset_group_asset.policy_summary.approval_status",
+            "asset_group_asset.policy_summary.policy_topic_entries",
+            "campaign.id"
+          ],
+          "from": "asset_group_asset",
+          "query_sha256": "73761676ba811a3c94b89a11bbffb4f030b8578d373b7ce8fad9af1af6336e10",
+          "request_id_hashes": [],
+          "row_count": null,
+          "status": "falhou",
+          "window": null
+        },
+        {
+          "family": "PMAX_ASSETS",
+          "reason": "no asset ids from asset_group_asset",
+          "row_count": 0,
+          "status": "vazio_confirmado"
+        },
+        {
+          "campaign_status": "PAUSED",
+          "duration_ms": 895,
+          "error": null,
+          "family": "PMAX_DESEMPENHO_ASSET_GROUP",
+          "fields": [
+            "asset_group.id",
+            "asset_group.resource_name",
+            "asset_group.name",
+            "asset_group.primary_status",
+            "campaign.id",
+            "metrics.impressions",
+            "metrics.clicks",
+            "metrics.cost_micros",
+            "metrics.conversions",
+            "metrics.conversions_value"
+          ],
+          "from": "asset_group",
+          "query_sha256": "8db334c1917e9746c998878d1700eedca86a9d0369e9dcd48684b50498c9d315",
+          "request_id_hashes": [
+            "a7ec4b7e9e0c0cd6"
+          ],
+          "row_count": 4,
+          "status": "com_dados",
+          "window": [
+            "2026-08-18",
+            "2026-08-31"
+          ]
+        },
+        {
+          "family": "PMAX_SINAIS",
+          "reason": "no asset group ids",
+          "row_count": 0,
+          "status": "vazio_confirmado"
+        },
+        {
+          "account_row_count": null,
+          "error": {
+            "class": "GoogleAdsException",
+            "google_errors": [
+              {
+                "code": "query_error: UNRECOGNIZED_FIELD ",
+                "message": "Unrecognized fields in the query: 'recommendation.improve_performance_max_ad_strength_recommendation.ad_strength', 'recommendation.improve_performance_max_ad_strength_recommendation.asset_group'."
+              }
+            ],
+            "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+            "request_id_hash": "63f78d98143cc849"
+          },
+          "family": "PMAX_RECOMENDACOES_FORCA",
+          "fields": [
+            "recommendation.resource_name",
+            "recommendation.type",
+            "recommendation.campaign",
+            "recommendation.dismissed",
+            "recommendation.improve_performance_max_ad_strength_recommendation.asset_group",
+            "recommendation.improve_performance_max_ad_strength_recommendation.ad_strength"
+          ],
+          "from": "recommendation",
+          "query_sha256": "b8205dac16d8807c96201b62fc1b82c7b251073f29753e005d2df29768d6f1e3",
+          "row_count": null,
+          "status": "falhou"
+        }
+      ],
+      "note": "Preserved from commit 23fbcf3; final families at top-level are the post-correction real read.",
+      "performance_label": {
+        "adjudication": "NOT_SUPPORTED_IN_V25",
+        "field_service": {
+          "duration_ms": 1412,
+          "error": null,
+          "row_count": 0,
+          "status": "vazio_confirmado"
+        },
+        "query": {
+          "account": "2588bd8e0500a4bc",
+          "duration_ms": 466,
+          "error": {
+            "class": "GoogleAdsException",
+            "google_errors": [
+              {
+                "code": "query_error: UNRECOGNIZED_FIELD ",
+                "message": "Unrecognized field in the query: 'asset_group_asset.performance_label'."
+              }
+            ],
+            "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
+            "request_id_hash": "a04b205a6a145509"
+          },
+          "query_sha256": "a1fb5e8a2258e5f12cbd2db6fd20b812e937a3a2aa81075a1e1f9e538d12403b",
+          "request_id_hashes": [],
+          "row_count": null,
+          "status": "falhou"
+        }
+      },
+      "verdict": "REAL_READ_PARTIAL"
+    }
+  },
   "performance_label": {
     "adjudication": "NOT_SUPPORTED_IN_V25",
     "field_service": {
-      "duration_ms": 1412,
+      "duration_ms": 504,
       "error": null,
       "row_count": 0,
       "status": "vazio_confirmado"
     },
     "query": {
       "account": "2588bd8e0500a4bc",
-      "duration_ms": 466,
+      "duration_ms": 448,
       "error": {
         "class": "GoogleAdsException",
         "google_errors": [
@@ -452,13 +886,83 @@
           }
         ],
         "message_sanitized": "(<_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, <_SingleThreadedRendezvous of RPC that terminated with: \tstatus = StatusCode.INVALID_ARGUMENT \tdetails = \"Request contains an invalid argument.\" \tdebug_error_string = \"INVALID_ARGUMENT:Request contains an invalid argument.\" >, errors {   error_code {     query_error: UNRE",
-        "request_id_hash": "a04b205a6a145509"
+        "request_id_hash": "8fc63be40bb2726d"
       },
       "query_sha256": "a1fb5e8a2258e5f12cbd2db6fd20b812e937a3a2aa81075a1e1f9e538d12403b",
       "request_id_hashes": [],
       "row_count": null,
       "status": "falhou"
     }
+  },
+  "refused_fields_fieldservice": {
+    "count": 9,
+    "method": "GoogleAdsFieldService.SearchGoogleAdsFields",
+    "note": "metadata query only; query real had already returned UNRECOGNIZED_FIELD for these exact projections before correction",
+    "results": [
+      {
+        "duration_ms": 528,
+        "field": "asset_group.asset_coverage.ad_strength_action_items.action_item_type",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 430,
+        "field": "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 484,
+        "field": "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 1333,
+        "field": "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 485,
+        "field": "asset_group_asset.primary_status_details.status",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 514,
+        "field": "asset_group_asset.primary_status_details.reason",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 448,
+        "field": "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 465,
+        "field": "recommendation.improve_performance_max_ad_strength_recommendation.asset_group",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      },
+      {
+        "duration_ms": 428,
+        "field": "recommendation.improve_performance_max_ad_strength_recommendation.ad_strength",
+        "properties": null,
+        "row_count": 0,
+        "status": "not_found"
+      }
+    ]
   },
   "sdk": "google-ads 31.4.0",
   "target": {
@@ -488,5 +992,5 @@
       "status": "com_dados"
     }
   },
-  "verdict": "REAL_READ_PARTIAL"
+  "verdict": "REAL_READ_PROVEN"
 }
