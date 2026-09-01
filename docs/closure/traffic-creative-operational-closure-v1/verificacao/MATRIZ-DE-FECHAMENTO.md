@@ -356,32 +356,37 @@ por-operação.
 
 ## 8. Veredito por bloco
 
+Medido em `HEAD 044e7c3`, depois da reverificação dos achados.
+
 | Bloco | Veredito |
 |---|---|
-| Motor criativo | **PARCIAL** — motor, bytes, linhagem e recusa provados; a visibilidade que justifica aceitar `NAO_DECLARADA` não chega ao HTTP |
+| Motor criativo | **PARCIAL** — motor, bytes, linhagem e recusa provados; a visibilidade que justifica aceitar `NAO_DECLARADA` continua sem chegar ao HTTP |
 | Search | **PARCIAL** — canário provado e reverificado ao vivo; H0 zero e meta efetiva não lida seguem abertos, ambos honestamente declarados |
-| Display | **PARCIAL** — construtor e plano completos; imagem não atravessa o HTTP, `validate_only` real nunca executado |
+| Display | **PARCIAL** — construtor, plano e **agora o elo HTTP de imagem** provados; falta só o `validate_only` real, que exige autorização |
 | Demand Gen | **PARCIAL por teto próprio** — aceites 1, 2, 4 e 5 provados; 3 parcial. Não pode ir a `done` |
-| PMax | **NÃO** — observabilidade existe e não está integrada; o bloqueio de criação não é o de mensuração |
+| PMax | **PARCIAL** — planeja, tem contrato próprio, e o portão de mensuração ficou provado por si. Segue **não integrado**: a observabilidade não tem consumidor de produção nem painel |
 | Frontend | **PROVADO** — quatro canais, quatro portões, origem por bloqueador, ausência renderizada, quinto estado preservado |
-| Engenharia | **PARCIAL** — higiene e ownership provados; gates finais a remedir sobre árvore limpa |
+| Engenharia | **PROVADO** — 2550 passed / 0 failed (+231), tsc 76 exato, `git diff --check` limpo, zero credencial no diff |
 
-### Bloqueadores REAIS
+### Bloqueadores REAIS — estado final
 
-1. **PMax: mensuração não bloqueia criação** (§5.1) — contradiz o critério
-   literal de P04-T07, e some sozinho quando o builder existir.
-2. **Display não recebe imagem pelo HTTP** (§3) — `imagens_display=None` literal;
-   critério literal de Display.
-3. **`entrega.avisos` descartado pelo router** (§1.1) — a compensação da dívida
-   de `NAO_DECLARADA` não existe na prática.
-4. **Aceite 6 de P05-T11 medido como zero** (§2) — `espelho_h0: 0`.
-5. **Meta efetiva não lida** (§2) — P05-T12 item 3, causa declarada do `partial`.
+| # | Bloqueador | Estado |
+|---|---|---|
+| 1 | PMax: mensuração não bloqueia criação por si | **FECHADO** em `be77651`+`8270d48`. `PMAX_FORA_DO_EXECUTOR` não depende de ausência de construtor, e `testes_pmax.py:420` prova o portão com o canal fingido habilitado, com guarda anti-vacuidade (§5.1) |
+| 2 | Display não recebe imagem pelo HTTP | **FECHADO** em `96fea91`. `ProvarEntrada` ganhou a fronteira, e `None` ≠ `[]` — as duas recusam, com frases diferentes (§3) |
+| 3 | `entrega.avisos` descartado pelo router | **ABERTO.** Reverificado em `044e7c3`: `grep -c "entrega\.avisos" backend/app/routers/trafego.py` → **0** (§1.1) |
+| 4 | Aceite 6 de P05-T11 medido como zero (`espelho_h0: 0`) | **ABERTO** — depende de P09-T14, fora do escopo desta missão |
+| 5 | Meta efetiva não lida; portão de Smart Bidding infalsificável | **ABERTO** — é o item 3 de P05-T12, e a correção tem forma conhecida: o ramo `PRONTO` mais um teste que prove o portão virando, do jeito que `testes_pmax.py:420` fez para PMax (§2.1) |
+
+**Dois de cinco fecharam dentro da missão, e os três restantes são todos
+declarados, com dono e caminho.** Nenhum deles é risco de mutação externa,
+perda de dado ou prontidão falsa afirmada na tela.
 
 ### Dívida cosmética (não bloqueia)
 
-- `prontidao.py:145` `len(primarias) or 1` imprimindo 1 para 0.
-- `prontidao.py:163` e `:125` colapsando "não li" em "vazio" (direção segura).
-- `prontidao.py:205` ramo `sinal == INDETERMINADO` morto.
-- `volc_ads/entrega.py:263-267` — `try/except` devolvendo `[]`, ausência lida
-  como zero num caminho de **alerta**. **Pré-existente e fora do ownership desta
-  missão**; registrado para o Roadmap, não para este diff.
+- `prontidao.py:145` — `len(primarias) or 1` imprime 1 quando a contagem é 0.
+- `prontidao.py:163` e `:125` — colapsam "não li" em "vazio"; direção segura.
+- `prontidao.py:205` — ramo `sinal == INDETERMINADO` é código morto.
+- `volc_ads/entrega.py:263-267` — `try/except` devolvendo `[]` transforma falha
+  de leitura GAQL em "sem dados", num caminho de **alerta**. **Pré-existente e
+  fora do ownership desta missão**; registrado para o Roadmap, não para este diff.

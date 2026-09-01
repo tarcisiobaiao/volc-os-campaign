@@ -4,26 +4,26 @@
     "Quem aplica é o integrador único, uma vez, na convergência (G12 do DoD).",
     "Nenhuma tarefa é promovida a `done` aqui. Duas têm teto declarado e uma",
     "tem aceites medidos como zero — os motivos estão em cada entrada.",
-    "As contagens de gate são de 96fea91, com trabalho ainda em curso na árvore;",
-    "o integrador deve reconfirmá-las sobre árvore limpa antes de aplicar."
+    "As contagens de gate sao de 044e7c3; a arvore ainda recebia trabalho,",
+    "entao o integrador deve reconfirma-las sobre arvore limpa antes de aplicar."
   ],
   "gerado_em": "2026-09-01",
   "autor": "worker-4-verification",
   "branch": "sprint/traffic-creative-operational-closure-v1",
   "base": "3462b1407cb18c9f1fae3775d1db64608f56f3e9",
-  "head_medido": "96fea91",
+  "head_medido": "044e7c3",
   "aplicado": false,
   "gates_medidos": {
     "pytest": {
       "comando": "backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly",
       "baseline": "2319 passed, 53 skipped, 0 failed",
-      "medido": "2445 passed, 45 skipped, 0 failed (75,08s)",
-      "veredito": "+126 testes, zero falhas novas"
+      "medido": "2550 passed, 45 skipped, 0 failed (88,44s) em 044e7c3",
+      "veredito": "+231 testes sobre o baseline, zero falhas novas"
     },
     "tsc": {
       "comando": "npx tsc --noEmit -p tsconfig.app.json",
       "baseline": "76 erros",
-      "medido": "76 erros",
+      "medido": "76 erros em 044e7c3",
       "veredito": "zero erro novo"
     },
     "higiene": {
@@ -49,13 +49,14 @@
       "status_atual": "todo",
       "status_proposto": "todo",
       "mudanca_de_status": false,
-      "motivo_de_nao_promover": "O critério literal é observabilidade ANTES de autorizar criação, e o portão que a tarefa governa é `criavel_pausada`. Hoje o único bloqueador de `criavel_pausada` em PMax é `sem_construtor` (origem='construtor'). Mensuração e observabilidade só aparecem no portão `ativavel`. No dia em que o construtor existir, a criação de PMax fica sem nenhum bloqueador de observabilidade — e PMax nem recebe `fora_da_janela_do_canario`, o bloqueador de política que Display recebe, porque a avaliação para antes em `sem_construtor`.",
+      "motivo_de_nao_promover": "O modulo de observabilidade continua SEM CONSUMIDOR DE PRODUCAO e sem painel — degrau 6 da escada do DoD nao alcancado. O portao de mensuracao, que era o meu achado, FOI FECHADO durante a missao; o que sustenta o `todo` agora e a integracao ausente, nao o portao.",
       "evidencia_proposta": [
         "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: FISCALIZAÇÃO DA TERCEIRA CONDIÇÃO DO LEAD — confirmada. Executado `contrato_canais.contrato_dos_canais(capacidades=cap.de_identidade(papel='dono', escrita_permitida=True))`, privilégio máximo para isolar o que resta. PERFORMANCE_MAX devolve: planejavel BLOQUEADO ['sem_campos_de_pedido']; validavel BLOQUEADO ['sem_porta_de_prova']; criavel_pausada BLOQUEADO ['sem_construtor']; ativavel BLOQUEADO ['ativacao_fora_de_escopo','politica_nao_inclui_ativacao','mensuracao_nao_lida','observabilidade_nao_provada']. Os TRÊS primeiros portões têm a MESMA causa literal ('não há construtor de campanha para Performance Max'), origem='construtor'. O bloqueio de mensuração NÃO está no portão de criação — e não só em PMax: SEARCH, DISPLAY e DEMAND_GEN também têm `criavel_pausada` sem bloqueador de mensuração. Isso é coerente com a doutrina de `prontidao.py:18-21` ('G0 não implica G1'; o canário pausado atravessa G0 sozinho), mas NÃO satisfaz o critério literal desta tarefa, que fala de criação e não de ativação. FALTA: um bloqueador próprio no `criavel_pausada` de PMax, derivado de observabilidade, que se sustente sozinho quando `sem_construtor` desaparecer.",
         "2026-09-01 · worker-4: `volc_ads/observabilidade_pmax/` (2.580 linhas em types/coverage/kernel/projector/queries) EXISTE, mas é ANTERIOR a esta missão e NÃO ESTÁ INTEGRADO: `grep -rn 'observabilidade_pmax' --include='*.py'` devolve como único importador `backend/tests/test_observabilidade_pmax.py`. Zero consumidores de produção — sem router, sem coletor agendado, sem painel. Degrau 6 da escada do DoD ('funcionalidade integrada') não alcançado. A frase do proof atual, 'não existe coleta PMax nem painel VOLC específico', continua verdadeira quanto ao PAINEL; quanto à coleta, existe CONTRATO de query e kernel, não execução.",
         "2026-09-01 · worker-4: contra os protos v25 instalados (google-ads 31.3.0), para quem escrever o builder — `AssetGroup` tem {ad_strength, asset_coverage, campaign, final_mobile_urls, final_urls, google_local_services_info, id, name, path1, path2, primary_status, primary_status_reasons, resource_name, status}; `AssetGroupSignal` tem {approval_status, asset_group, audience, disapproval_reasons, local_services_id, resource_name, search_theme, vertical_ads_item_group_rule_list}; `AssetGroupAsset` tem {asset, asset_group, field_type, policy_summary, primary_status, primary_status_details, primary_status_reasons, resource_name, source, status}. `Campaign.url_expansion_opt_out` NÃO EXISTE em v25 (verificado: 'url_expansion_opt_out' in Campaign._meta.fields -> False) — o Gemini o apresentou como exigência de PMax e foi DESCARTADO como alucinação; o repositório já o documentava como inexistente em HANDOFF-PMAX-OBSERVABILITY-V25.md. `SEARCH_THEME` não é um AssetFieldType.",
         "2026-09-01 · worker-4: as queries GAQL do modulo NAO tem campo morto — conferencia deterministica, nao parecer. Extrai toda referencia `recurso.campo` de volc_ads/observabilidade_pmax/queries.py e resolvi cada uma contra o DESCRIPTOR protobuf da v25 instalada, descendo em campos aninhados, sobre campaign, asset_group, asset_group_asset, asset_group_signal, asset e campaign_asset: 61 CAMPOS VALIDOS, ZERO INEXISTENTES. Os dois suspeitos da primeira passada eram defeito do meu extrator, nao do codigo: `asset_group.path` era o regex truncando `path1`/`path2` (queries.py:285-286), e `asset.type` (:377) e o nome DE WIRE correto em GAQL — no proto Python o campo se chama `type_` porque `type` e reservado ('type_' in Asset.DESCRIPTOR.fields_by_name -> True; 'type' -> False). Isso importa porque uma query com campo inexistente falha INTEIRA com UNRECOGNIZED_FIELD e nao degrada — era o risco mais caro do modulo e nao se materializa. NAO PROMOVE a tarefa: contrato correto e desligado continua desligado.",
-        "2026-09-01 · worker-4: DECLARACAO DE COBERTURA PARCIAL, sem fallback silencioso. A revisao externa (Gemini 3.7 Flash) desta pergunta especifica NAO FOI OBTIDA: duas tentativas penduraram (exit 144 e timeout de 7 min encerrado por mim, exit 143), enquanto duas outras chamadas do mesmo binario no mesmo dia funcionaram. Nao substitui por outro provedor e nao inventei resultado. As perguntas QUANTITATIVAS foram respondidas pela conferencia deterministica acima; as QUALITATIVAS (o codigo trata a exclusao mutua entre search_theme e audience? algum ramo colapsa [] com falha de coleta?) ficaram SEM segunda opiniao externa. Registrado como lacuna, nao como cobertura."
+        "2026-09-01 · worker-4: DECLARACAO DE COBERTURA PARCIAL, sem fallback silencioso. A revisao externa (Gemini 3.7 Flash) desta pergunta especifica NAO FOI OBTIDA: duas tentativas penduraram (exit 144 e timeout de 7 min encerrado por mim, exit 143), enquanto duas outras chamadas do mesmo binario no mesmo dia funcionaram. Nao substitui por outro provedor e nao inventei resultado. As perguntas QUANTITATIVAS foram respondidas pela conferencia deterministica acima; as QUALITATIVAS (o codigo trata a exclusao mutua entre search_theme e audience? algum ramo colapsa [] com falha de coleta?) ficaram SEM segunda opiniao externa. Registrado como lacuna, nao como cobertura.",
+        "2026-09-01 · worker-4, REVERIFICACAO em HEAD 044e7c3: o achado que eu levantei em 5efd756 FOI FECHADO pelos commits be77651 e 8270d48, e eu reconferi em vez de repetir o achado velho. Reexecutado `contrato_dos_canais(capacidades=cap.de_identidade(papel='dono', escrita_permitida=True))`: PERFORMANCE_MAX agora devolve planejavel PERMITIDO [], validavel BLOQUEADO ['PMAX_FORA_DO_EXECUTOR'], criavel_pausada BLOQUEADO ['PMAX_FORA_DO_EXECUTOR']. Duas mudancas materiais: (1) PMax passou a PLANEJAR — volc_ads/campanha/pmax.py existe; (2) o bloqueio de criacao virou um codigo de POLITICA explicito (contrato_canais.py:561-574) que NAO depende da ausencia de construtor, que era exatamente a minha objecao ('some sozinho quando o builder existir'). E o portao de mensuracao passou a ser provado POR SI: volc_ads/campanha/testes_pmax.py:420 `test_mensuracao_inadequada_bloqueia_mesmo_com_canal_habilitado` faz monkeypatch de pmax._prontidao para devolver monta/pode_provar/pode_criar todos True — canal FINGIDO HABILITADO — e exige que MENSURACAO_INADEQUADA continue de pe. A linha que a torna prova de verdade e a guarda anti-vacuidade imediatamente antes: `assert p.prontidao.pode_criar is True, 'o teste nao forcou a prontidao'`, que faz o teste FALHAR se o monkeypatch nao pegar, em vez de passar por o canal seguir desabilitado. testes_pmax.py:404 complementa exercitando as tres condicoes uma a uma (status=PAUSED, primaria_para_meta=False, inclui_em_conversoes=False). ACHADO FECHADO. RESSALVA REGISTRADA, nao bloqueadora: `criavel_pausada` segue sem bloqueador de mensuracao no contrato_canais — nem em PMax nem em SEARCH/DISPLAY/DEMAND_GEN; a arquitetura poe mensuracao em `ativavel`, coerente com prontidao.py:18-21 ('G0 nao implica G1'). Para PMax a exigencia da tarefa esta satisfeita pela camada de PLANO, a montante da criacao."
       ]
     },
     {
@@ -105,7 +106,9 @@
       "evidencia_proposta": [
         "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: a lacuna (a) do proof está PARCIALMENTE FECHADA e a distinção importa. DEMAND GEN já atravessa por HTTP: `backend/app/routers/trafego.py:2054` chama `criativo_ponte.imagens_de_demand_gen(lote, conteudo_por_identidade)`. DISPLAY NÃO atravessa: `:2086` passa `imagens_display=None` LITERAL, e `ProvarEntrada` (:1311-1400) continua SEM CAMPO DE IMAGEM. Consequência: o fato F031 do fable-global-v1 ('ProvarEntrada não tem campo de imagem') está SUPERADO para Demand Gen e VIGENTE para Display — e Display é justamente o canal que está em CONSTRUTORES_POR_CANAL e pode mutar.",
         "2026-09-01 · worker-4: ACHADO — a compensação declarada da dívida de natureza não chega ao operador. `volc_ads/criativo_ponte.py:155` define NATUREZAS_ACEITAS e recusa LOCAL e FIXTURE em Destino.PRODUCAO (que é o DEFAULT das assinaturas públicas `imagens_de_display` e `imagens_de_demand_gen` — fail-closed, verificado por introspecção). Mas NAO_DECLARADA é ACEITA em PRODUCAO (:168), e o código declara isso como dívida consciente (:158-168), justificando-a assim: 'O que ELA ganha em troca é visibilidade: cada asset sem natureza sai [com aviso]'. ESSA TROCA NÃO É FEITA no caminho HTTP: em `trafego.py:2074-2088` a `Entrega` é consumida apenas por `entrega.ok` e `entrega.imagens`; `entrega.avisos` e `entrega.naturezas` NUNCA são lidos, e os avisos que chegam ao Plano (:2091-2097) vêm de `cockpit.avisos`, outra fonte. Resultado: um asset sem procedência declarada entra num plano sem nenhum sinal visível. Raio de dano hoje é limitado porque Demand Gen não muta — mas o mesmo descarte se aplicará a Display assim que o elo de imagem for ligado. CORREÇÃO BARATA: propagar `entrega.avisos` para `Plano.avisos`.",
-        "2026-09-01 · worker-4: as invariantes de linhagem do proof foram RECONFERIDAS e estão íntegras, e são mais fortes do que o proof descreve. `volc_ads/subir.py:468-540` `_medidas_batem` DECODIFICA os bytes com `medir_imagem.medir(dados)` e corrobora, de forma independente do hash: bytes_totais, MIME normalizado (image/jpg->image/jpeg, caixa e parâmetro RFC tratados) e largura/altura; assinatura não reconhecida não corrobora NADA. `subir.py:543-620` `_linhagem_do_payload` tem TRÊS ramos de rebaixamento para `Linhagem.desconhecida`: sem candidata; hash declarado que não bate com os bytes; e linhagem que OMITE o hash — este último criado porque omitir saía mais barato que mentir. Nenhum ramo promove."
+        "2026-09-01 · worker-4: as invariantes de linhagem do proof foram RECONFERIDAS e estão íntegras, e são mais fortes do que o proof descreve. `volc_ads/subir.py:468-540` `_medidas_batem` DECODIFICA os bytes com `medir_imagem.medir(dados)` e corrobora, de forma independente do hash: bytes_totais, MIME normalizado (image/jpg->image/jpeg, caixa e parâmetro RFC tratados) e largura/altura; assinatura não reconhecida não corrobora NADA. `subir.py:543-620` `_linhagem_do_payload` tem TRÊS ramos de rebaixamento para `Linhagem.desconhecida`: sem candidata; hash declarado que não bate com os bytes; e linhagem que OMITE o hash — este último criado porque omitir saía mais barato que mentir. Nenhum ramo promove.",
+        "2026-09-01 · worker-4, REVERIFICACAO em HEAD 044e7c3: a lacuna (a) do proof FOI FECHADA PARA DISPLAY pelo commit 96fea91 ('fix(display): as imagens voltam a atravessar o HTTP — e a identidade nao muda'). Reconferido: `ProvarEntrada` ganhou a fronteira HTTP de imagens de Display (trafego.py:1334) e trafego.py:2496 faz `plano.brief.imagens_display = _imagens_de_display(...)`. A distincao fina que o DoD exige foi feita e esta comentada em :1447-1448: `None` significa 'nao declarei imagem' e `[]` significa 'declarei que nao ha nenhuma' — AS DUAS RECUSAM Display, e recusam COM FRASES DIFERENTES. Com isso o fato F031 do fable-global-v1 ('ProvarEntrada nao tem campo de imagem') esta SUPERADO tambem para Display, e nao so para Demand Gen. SEGUE PARTIAL por (d), (e) e (f) do proof, e pelo achado de `entrega.avisos` abaixo.",
+        "2026-09-01 · worker-4, REVERIFICACAO em HEAD 044e7c3: o achado de `entrega.avisos` CONTINUA ABERTO. `grep -c 'entrega\\.avisos' backend/app/routers/trafego.py` devolve 0. A visibilidade que o proprio criativo_ponte.py:165 declara como a contrapartida de aceitar NAO_DECLARADA em producao segue sem chegar ao operador. Agora importa mais do que quando eu levantei: com o elo HTTP de Display fechado em 96fea91, o descarte passa a valer para o canal que PODE criar, e nao so para Demand Gen, que nao muta. Correcao barata e localizada: propagar entrega.avisos para Plano.avisos."
       ]
     },
     {
@@ -169,14 +172,15 @@
     ],
     "proof_recomendado_para_substituicao": [
       "P05-T05"
-    ]
+    ],
+    "bloqueadores_fechados_durante_a_missao": 2
   },
   "bloqueadores_reais": [
-    "PMax: mensuração não bloqueia CRIAÇÃO — o único bloqueador de `criavel_pausada` é `sem_construtor`, e ele some sozinho quando o builder existir. Contradiz o critério literal de P04-T07.",
-    "Display não recebe imagem pelo HTTP — `trafego.py:2086` `imagens_display=None` literal e `ProvarEntrada` sem campo de imagem.",
-    "`entrega.avisos` descartado pelo router — a visibilidade que justifica aceitar NAO_DECLARADA em produção não existe na prática.",
-    "Aceite 6 de P05-T11 medido como zero — `espelho_h0: 0` (depende de P09-T14).",
-    "Meta efetiva não lida — P05-T12 item 3; e o portão de Smart Bidding é hoje infalsificável."
+    "FECHADO (be77651+8270d48): PMax — mensuracao agora bloqueia por si, com teste que forca o canal habilitado e guarda anti-vacuidade.",
+    "FECHADO (96fea91): Display — imagens atravessam o HTTP, e None != [] com recusas distintas.",
+    "ABERTO: `entrega.avisos` descartado pelo router (grep = 0 em 044e7c3) — e agora alcanca Display, que pode criar.",
+    "ABERTO: aceite 6 de P05-T11 medido como zero (espelho_h0: 0) — depende de P09-T14, fora do escopo.",
+    "ABERTO: meta efetiva nao lida (P05-T12 item 3), e o portao de Smart Bidding e infalsificavel enquanto o ramo PRONTO nao existir."
   ],
   "divida_cosmetica": [
     "prontidao.py:145 — `len(primarias) or 1` imprime 1 quando a contagem é 0.",
