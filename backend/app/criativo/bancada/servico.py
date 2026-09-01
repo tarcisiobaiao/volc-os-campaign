@@ -25,11 +25,11 @@ from volc_ads.criativo.contrato import NaturezaDaProcedencia
 from .adaptadores.png_local import MotorPngLocal
 from .adaptadores.tipografico import MotorTipografico
 from .contrato import FalhaDoMotor
-from .deposito import DepositoDeTrabalhos
 from .operario import DespachanteLocal, Operario, Reaper
+from .porta import Deposito, escolher_deposito
 
 _TRAVA = threading.Lock()
-_BANCADA: tuple[DepositoDeTrabalhos, Operario, DespachanteLocal] | None = None
+_BANCADA: tuple[Deposito, Operario, DespachanteLocal] | None = None
 _REAPER: Reaper | None = None
 
 
@@ -46,14 +46,20 @@ def raiz_da_bancada() -> Path:
     return Path.home() / ".volc-os" / "bancada"
 
 
-def montar() -> tuple[DepositoDeTrabalhos, Operario, DespachanteLocal]:
+def montar() -> tuple[Deposito, Operario, DespachanteLocal]:
     global _BANCADA
     with _TRAVA:
         if _BANCADA is not None:
             return _BANCADA
         raiz = raiz_da_bancada()
         raiz.mkdir(parents=True, exist_ok=True)
-        deposito = DepositoDeTrabalhos(raiz / "fila.db")
+        # ⚠️ Pela PORTA, e nao pela classe. `escolher_deposito` le
+        # `CRIATIVO_DEPOSITO` e devolve o adapter do ambiente; ausencia e
+        # `sqlite`, que e o unico que sobe sem infraestrutura, e pedir
+        # `postgres` sem DSN LEVANTA em vez de cair aqui em silencio. Instanciar
+        # `DepositoDeTrabalhos` direto — como era — significava que o processo
+        # web tinha uma fila e o worker podia ter outra.
+        deposito = escolher_deposito(caminho_sqlite=raiz / "fila.db")
 
         motores: dict[str, Any] = {}
         # ⚠️ Um motor que nao consegue nascer NAO derruba a bancada, e tambem nao
