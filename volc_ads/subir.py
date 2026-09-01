@@ -47,6 +47,7 @@ import argparse
 import dataclasses
 import hashlib
 import json
+import sys
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -1308,21 +1309,52 @@ CONTA_PROVA = "8017851692"        # Crédito Up
 MCC_PROVA = "6016739364"          # MCC VOLC Negócios Digitais
 
 
+ESCRITA_PELO_CLI_APOSENTADA = (
+    "`--subir` foi aposentado em 31/08/2026. Criação real de campanha passa "
+    "exclusivamente pela rota governada `POST /api/trafego/subir`.\n\n"
+    "Motivo, sem rodeio: este caminho chamava o executor sem ledger, sem "
+    "política de idempotência e sem recibo. Uma campanha criada por aqui nasce "
+    "existindo na conta do Google e não existindo no VOLC O.S. — e é justamente "
+    "a que ninguém consegue reconciliar depois, porque não há chave, item nem "
+    "recibo para procurar. As quatro camadas contra a segunda campanha vivem no "
+    "banco, e este atalho passava por fora de todas elas.\n\n"
+    "O que continua aqui: `--dry`, que monta o grafo e roda `validate_only`. "
+    "Ele não escreve nada, e é a forma certa de conferir um plano pelo terminal.\n\n"
+    "NADA foi enviado ao Google."
+)
+
+
+class EscritaPeloCLIAposentada(RuntimeError):
+    """`--subir` não escreve mais. A porta de escrita é a rota governada."""
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description="prova e (com trava aberta) sobe a campanha")
+    ap = argparse.ArgumentParser(description="prova a campanha (a escrita é pela rota)")
     ap.add_argument("--dry", action="store_true",
                     help="monta e roda validate_only; não escreve nada")
     ap.add_argument("--subir", action="store_true",
-                    help="escreve de verdade; exige trava aberta e --motivo")
+                    help="APOSENTADO — a criação real é por POST /api/trafego/subir")
     ap.add_argument("--conta", default="")
     ap.add_argument("--mcc", default="")
     ap.add_argument("--motivo", default="")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
-    if args.subir and not args.conta:
-        ap.error("--subir exige --conta explícita")
-    if args.subir == args.dry:
+    # ⚠️ A RECUSA VEM ANTES DE TUDO, E A ORDEM É A REGRA.
+    #
+    # `preparar()` constrói o cliente do Google e roda `validate_only` — ou
+    # seja, toca a rede. Recusar depois dele seria recusar tarde: o processo já
+    # teria autenticado e falado com a API. A guarda mora aqui, acima do import
+    # do brief e de qualquer construção, para que `--subir` termine sem que uma
+    # única chamada saia da máquina, com a trava ambiental aberta ou fechada.
+    #
+    # Não há aqui uma segunda implementação do ledger, e não deve haver: o CLI
+    # não vira um cliente da rota. Ele deixa de escrever, e ponto.
+    if args.subir:
+        print(ESCRITA_PELO_CLI_APOSENTADA, file=sys.stderr)
+        return 2
+
+    if args.dry == args.subir:
         ap.error("escolha exatamente um: --dry ou --subir")
 
     from .briefs.fgts_saque_aniversario import BRIEF
@@ -1335,23 +1367,19 @@ def main() -> int:
         print(f"NÃO PROVADO — {preparo.porque_nao()}")
         return 1
 
-    if args.dry:
-        saida = {
-            "provado": True,
-            "conta": conta,
-            "campanha": preparo.nome_campanha,
-            "n_operacoes": preparo.selo.n_operacoes,
-            "impressao": preparo.selo.impressao,
-            "trava": "fechada" if not modo.escrita_permitida() else "ABERTA",
-        }
-        print(json.dumps(saida, ensure_ascii=False, indent=1) if args.json
-              else "\n".join(f"{k:14} {v}" for k, v in saida.items()))
-        return 0
-
-    recibo = subir(preparo, motivo=args.motivo)
-    print(json.dumps(recibo.para_json(), ensure_ascii=False, indent=1)
-          if args.json else recibo.resumo())
-    return 0 if recibo.estado == ACEITO else 1
+    # Só `--dry` chega aqui: `--subir` retornou lá em cima, e o argparse recusa
+    # a ausência dos dois. Um `if args.dry` aqui seria condição sempre verdadeira.
+    saida = {
+        "provado": True,
+        "conta": conta,
+        "campanha": preparo.nome_campanha,
+        "n_operacoes": preparo.selo.n_operacoes,
+        "impressao": preparo.selo.impressao,
+        "trava": "fechada" if not modo.escrita_permitida() else "ABERTA",
+    }
+    print(json.dumps(saida, ensure_ascii=False, indent=1) if args.json
+          else "\n".join(f"{k:14} {v}" for k, v in saida.items()))
+    return 0
 
 
 if __name__ == "__main__":

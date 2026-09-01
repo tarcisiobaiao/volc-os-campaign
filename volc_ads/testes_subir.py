@@ -50,9 +50,11 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import google.auth.credentials as _credenciais
 import pytest
@@ -838,6 +840,89 @@ CASOS = [
     ("linhagem no pré-recibo", caso_linhagem_no_pre_recibo),
     ("linhagem serializa", caso_linhagem_serializa_sem_default),
 ]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A porta paralela do CLI, fechada em 31/08/2026
+# ═══════════════════════════════════════════════════════════════════════════
+
+def prova_cli_subir_aposentado_nao_toca_google_nem_com_trava_aberta(monkeypatch, capsys):
+    """⚠️ `--subir` chamava o executor sem ledger, sem idempotência e sem recibo.
+
+    Uma campanha criada por ali nasce existindo na conta do Google e não
+    existindo no VOLC O.S. — a que ninguém consegue reconciliar depois, porque
+    não há chave, item nem recibo para procurar. As quatro camadas contra a
+    segunda campanha vivem no banco, e este atalho passava por fora de todas.
+
+    O teste prova a ORDEM, que é o que importa: a recusa acontece antes de
+    `preparar()`, que constrói o cliente e roda `validate_only`. Recusar depois
+    dele seria recusar tarde — o processo já teria falado com a API.
+
+    A trava ambiental é aberta de propósito aqui: fechar a porta só quando a
+    trava está fechada seria fechá-la exatamente quando ela não precisa estar.
+    """
+    from volc_ads import subir as sb
+    from volc_ads.gads import modo
+
+    monkeypatch.setenv("FORGE_PERMITIR_ESCRITA", "1")
+
+    def nao_pode_ser_chamado(*_a, **_k):
+        raise AssertionError(
+            "`--subir` construiu/preparou algo antes de recusar — a recusa "
+            "precisa vir ANTES de qualquer contato com o Google")
+
+    monkeypatch.setattr(sb, "preparar", nao_pode_ser_chamado)
+    monkeypatch.setattr(sb, "mutar", nao_pode_ser_chamado)
+    monkeypatch.setattr(sb, "validar_mutacoes", nao_pode_ser_chamado)
+    monkeypatch.setattr(sb, "cliente", nao_pode_ser_chamado)
+    monkeypatch.setattr(sb, "subir", nao_pode_ser_chamado)
+    monkeypatch.setattr(sys, "argv", [
+        "volc_ads.subir", "--subir", "--conta", "5478096539",
+        "--mcc", "6016739364", "--motivo", "tentativa pelo caminho antigo"])
+
+    codigo = sb.main()
+
+    assert codigo == 2, f"`--subir` devolveu {codigo}; falha fechada é código 2"
+    erro = capsys.readouterr().err
+    assert "aposentado" in erro.lower()
+    assert "/api/trafego/subir" in erro, "a mensagem não aponta a porta certa"
+    assert "NADA foi enviado ao Google" in erro
+
+
+def prova_cli_dry_continua_provando(monkeypatch, capsys):
+    """`--dry` é preservado: ele monta e roda validate_only, e não escreve."""
+    from volc_ads import subir as sb
+
+    chamou = []
+
+    def preparar_dublado(conta, brief, *, login_customer_id):
+        chamou.append((conta, login_customer_id))
+        return SimpleNamespace(
+            provado=True, nome_campanha="VOLC-CANARY-teste",
+            selo=SimpleNamespace(n_operacoes=72, impressao="a" * 64),
+            porque_nao=lambda: "")
+
+    monkeypatch.setattr(sb, "preparar", preparar_dublado)
+    monkeypatch.setattr(sys, "argv", ["volc_ads.subir", "--dry", "--json"])
+
+    assert sb.main() == 0
+    assert chamou, "`--dry` deixou de preparar — ele é a prova que sobrou"
+    saida = json.loads(capsys.readouterr().out)
+    assert saida["provado"] is True
+    assert saida["n_operacoes"] == 72
+
+
+def prova_cli_sem_dry_e_sem_subir_recusa():
+    """Sem escolher nada, o argparse recusa — e não assume escrita."""
+    from volc_ads import subir as sb
+
+    with pytest.raises(SystemExit):
+        old = sys.argv
+        try:
+            sys.argv = ["volc_ads.subir"]
+            sb.main()
+        finally:
+            sys.argv = old
 
 
 def main() -> int:
