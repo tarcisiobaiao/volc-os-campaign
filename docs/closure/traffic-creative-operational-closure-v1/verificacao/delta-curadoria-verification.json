@@ -1,0 +1,179 @@
+{
+  "_leia_isto": [
+    "PROPOSTA de delta de curadoria do Worker 4 (verification). NÃO APLICADA.",
+    "Quem aplica é o integrador único, uma vez, na convergência (G12 do DoD).",
+    "Nenhuma tarefa é promovida a `done` aqui. Duas têm teto declarado e uma",
+    "tem aceites medidos como zero — os motivos estão em cada entrada.",
+    "As contagens de gate são de 96fea91, com trabalho ainda em curso na árvore;",
+    "o integrador deve reconfirmá-las sobre árvore limpa antes de aplicar."
+  ],
+  "gerado_em": "2026-09-01",
+  "autor": "worker-4-verification",
+  "branch": "sprint/traffic-creative-operational-closure-v1",
+  "base": "3462b1407cb18c9f1fae3775d1db64608f56f3e9",
+  "head_medido": "96fea91",
+  "aplicado": false,
+  "gates_medidos": {
+    "pytest": {
+      "comando": "backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly",
+      "baseline": "2319 passed, 53 skipped, 0 failed",
+      "medido": "2445 passed, 45 skipped, 0 failed (75,08s)",
+      "veredito": "+126 testes, zero falhas novas"
+    },
+    "tsc": {
+      "comando": "npx tsc --noEmit -p tsconfig.app.json",
+      "baseline": "76 erros",
+      "medido": "76 erros",
+      "veredito": "zero erro novo"
+    },
+    "higiene": {
+      "comando": "git diff --check",
+      "medido": "exit 0",
+      "veredito": "limpo"
+    },
+    "credencial_no_diff": {
+      "comando": "git diff 3462b14..HEAD | grep -Ei 'SUPABASE_SERVICE_ROLE|api[_-]?key|secret|BEGIN (RSA|OPENSSH)|eyJ[A-Za-z0-9_-]{20,}|FORGE_PERMITIR_ESCRITA=1'",
+      "medido": "2 ocorrências, ambas benignas",
+      "detalhe": "uma é teste que asserta que esses nomes são PROIBIDOS; outra é a string da mensagem de erro da trava. Nenhuma credencial."
+    },
+    "mapa_vivo": {
+      "comando": "python3 scripts/atualizar_grafo_volc_os.py --check",
+      "medido": "{\"current\": false, \"reason\": \"UPDATE_STATUS.json ausente\"}",
+      "veredito": "N/A declarado — arquivo gerado e não versionado; estado inicial esperado de worktree nova, não regressão. O integrador reconstrói na convergência."
+    }
+  },
+  "tarefas": [
+    {
+      "id": "P04-T07",
+      "titulo": "Definir observabilidade PMax antes de autorizar criação",
+      "status_atual": "todo",
+      "status_proposto": "todo",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "O critério literal é observabilidade ANTES de autorizar criação, e o portão que a tarefa governa é `criavel_pausada`. Hoje o único bloqueador de `criavel_pausada` em PMax é `sem_construtor` (origem='construtor'). Mensuração e observabilidade só aparecem no portão `ativavel`. No dia em que o construtor existir, a criação de PMax fica sem nenhum bloqueador de observabilidade — e PMax nem recebe `fora_da_janela_do_canario`, o bloqueador de política que Display recebe, porque a avaliação para antes em `sem_construtor`.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: FISCALIZAÇÃO DA TERCEIRA CONDIÇÃO DO LEAD — confirmada. Executado `contrato_canais.contrato_dos_canais(capacidades=cap.de_identidade(papel='dono', escrita_permitida=True))`, privilégio máximo para isolar o que resta. PERFORMANCE_MAX devolve: planejavel BLOQUEADO ['sem_campos_de_pedido']; validavel BLOQUEADO ['sem_porta_de_prova']; criavel_pausada BLOQUEADO ['sem_construtor']; ativavel BLOQUEADO ['ativacao_fora_de_escopo','politica_nao_inclui_ativacao','mensuracao_nao_lida','observabilidade_nao_provada']. Os TRÊS primeiros portões têm a MESMA causa literal ('não há construtor de campanha para Performance Max'), origem='construtor'. O bloqueio de mensuração NÃO está no portão de criação — e não só em PMax: SEARCH, DISPLAY e DEMAND_GEN também têm `criavel_pausada` sem bloqueador de mensuração. Isso é coerente com a doutrina de `prontidao.py:18-21` ('G0 não implica G1'; o canário pausado atravessa G0 sozinho), mas NÃO satisfaz o critério literal desta tarefa, que fala de criação e não de ativação. FALTA: um bloqueador próprio no `criavel_pausada` de PMax, derivado de observabilidade, que se sustente sozinho quando `sem_construtor` desaparecer.",
+        "2026-09-01 · worker-4: `volc_ads/observabilidade_pmax/` (2.580 linhas em types/coverage/kernel/projector/queries) EXISTE, mas é ANTERIOR a esta missão e NÃO ESTÁ INTEGRADO: `grep -rn 'observabilidade_pmax' --include='*.py'` devolve como único importador `backend/tests/test_observabilidade_pmax.py`. Zero consumidores de produção — sem router, sem coletor agendado, sem painel. Degrau 6 da escada do DoD ('funcionalidade integrada') não alcançado. A frase do proof atual, 'não existe coleta PMax nem painel VOLC específico', continua verdadeira quanto ao PAINEL; quanto à coleta, existe CONTRATO de query e kernel, não execução.",
+        "2026-09-01 · worker-4: contra os protos v25 instalados (google-ads 31.3.0), para quem escrever o builder — `AssetGroup` tem {ad_strength, asset_coverage, campaign, final_mobile_urls, final_urls, google_local_services_info, id, name, path1, path2, primary_status, primary_status_reasons, resource_name, status}; `AssetGroupSignal` tem {approval_status, asset_group, audience, disapproval_reasons, local_services_id, resource_name, search_theme, vertical_ads_item_group_rule_list}; `AssetGroupAsset` tem {asset, asset_group, field_type, policy_summary, primary_status, primary_status_details, primary_status_reasons, resource_name, source, status}. `Campaign.url_expansion_opt_out` NÃO EXISTE em v25 (verificado: 'url_expansion_opt_out' in Campaign._meta.fields -> False) — o Gemini o apresentou como exigência de PMax e foi DESCARTADO como alucinação; o repositório já o documentava como inexistente em HANDOFF-PMAX-OBSERVABILITY-V25.md. `SEARCH_THEME` não é um AssetFieldType."
+      ]
+    },
+    {
+      "id": "P04-T09",
+      "titulo": "Fechar a prova segura do builder Demand Gen",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "TETO DECLARADO PELO PRÓPRIO ACEITE 5: 'A rota produtiva de Demand Gen permanece recusada e o estado máximo é partial'. Promover a `done` violaria o critério ao tentar cumpri-lo.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: os aceites 2 e 4, registrados como PENDENTES na evidência de e0f05a1, estão AGORA PROVADOS no código; o aceite 3 segue PARCIAL. Aceite 2 (troca de canal, login_customer_id, hash ou tipo invalida o selo) — os QUATRO eixos existem em `volc_ads/subir.py::_exigir_selo`: customer_id (:977), login_customer_id (:984), canal declarado (:991), n_operacoes (:1000), canal DERIVADO de campaign_operation.create vs selo (:1014), tipos_operacoes (:1021), hashes_operacoes individuais (:1028) e impressão do grafo (:1038). Aceite 4 (objetos v25 instanciados e serializados offline sem rede) — `demand_gen.sondar_proto_v25()` (:94-292) importa os namespaces v25, instancia e serializa as operações e as folhas (DemandGenMultiAssetAdInfo, AdImageAsset, AdTextAsset), e `construir()` (:297) RECUSA quando indisponível, com 'capacidade Demand Gen rebaixada sem fallback'. Exercitado em `volc_ads/campanha/testes_demand_gen.py:374`; medido: 31 passed em 4,85s. Aceite 3 (asset remoto sem recibo tipado falha fechado) PARCIAL: `demand_gen.py:640-670` distingue `conteudo:{hash}` de `novo-sem-recibo:{nome}` e `remoto-sem-recibo:{canonico}` e recusa em :663 'asset remoto em str [que] não carrega recibo tipado', mas falta a contraprova executada nesta missão.",
+        "2026-09-01 · worker-4: o aceite 5 é ESTRUTURAL e não disciplinar, e isso é mais forte do que o proof atual registra. `campanha/perfil.py:122` define `permite_mutacao_real: bool = False` como DEFAULT — só SEARCH (:213) e DISPLAY (:236) o ligam. `sabe_criar` (:154) é `sabe_provar and permite_mutacao_real`. `volc_ads/subir.py` mantém DUAS vistas separadas: `CONSTRUTORES_POR_CANAL` (:122) = {SEARCH, DISPLAY} e `PROVADORES_POR_CANAL` (:127) = {SEARCH, DISPLAY, DEMAND_GEN}; e :133-148 DERRUBA O IMPORT se qualquer das duas divergir de perfil.py. Ou seja: canal novo nasce incapaz de criar por OMISSÃO, e esquecer de registrar é erro na hora do import, não na tela. A revisão adversarial anterior citava 'bypass por relabeling' e 'linhagem autoatestável': nenhum dos dois foi reencontrado — o canal do selo vem de `campaign_operation.create` via `_autoridade_das_operacoes`, nunca do rótulo, e a linhagem é reconciliada contra os BYTES em `subir.py:468-620`."
+      ]
+    },
+    {
+      "id": "P05-T11",
+      "titulo": "Executar o primeiro canário Search pausado na Portal Mundo Mais",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "Dois dos sete aceites estão MEDIDOS COMO ZERO: aceite 1 (vínculo editorial, `vinculo_funil_campanha: 0`, registrado como exceção autorizada de teste de infraestrutura) e aceite 6 (`espelho_h0: 0`). Enquanto forem zero, `done` seria falso.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only): auditoria dos sete aceites contra RECIBO-CANARIO-V10-24195821946.json e reverificação ao vivo pelo lead. PROVADOS: aceite 2 (plano efetivo com URL, 1 grupo, 2 keywords PHRASE, RSA 15+4, budget R$10/dia, CPC R$1 — negativas = 0 POR DECISÃO DECLARADA, 'nenhuma negativa foi inventada', e não por omissão); aceite 3 (recibo 5526a821 desfecho sucesso, 34 operações consumidas, item criada_pausada, aprovação vinculada ao plano); aceite 4 (campanha 24195821946 PAUSED, campanhas_com_a_marca=1, conta 6->7, delta 1); aceite 7 (ativacao_incluida=false, nenhuma operação altera status). NÃO PROVADOS: aceite 1 (vinculo_funil_campanha=0 — a LP é creditoup.com.br e a conta é Portal Mundo Mais; exceção autorizada, mas exceção não é satisfação); aceite 6 (espelho_h0=0, porque o coletor contínuo lê apenas ENABLED e uma campanha PAUSED some da observabilidade — é P09-T14). PROVADO EM CÓDIGO MAS NÃO EXERCIDO EM PRODUÇÃO: aceite 5 (timeout nunca oferece reenvio) — o desfecho foi sucesso direto e trafego_verificacao tem zero linhas, então o caminho de indeterminado nunca ocorreu contra campanha real.",
+        "2026-09-01 · worker-4: o achado de mensuração do canário virou CÓDIGO nesta missão. `contrato_canais.contrato_dos_canais()` devolve, no portão `ativavel` de SEARCH, os bloqueadores `meta_efetiva_divergente` e `meta_efetiva_nao_lida` — ou seja, o desalinhamento 'único goal biddable é DOWNLOAD/APP enquanto a conta tem oito ações primárias PURCHASE' deixou de ser uma nota em recibo e passou a ser bloqueador nomeado no contrato HTTP. Isso NÃO fecha nenhum aceite de P05-T11; é insumo de P05-T12."
+      ]
+    },
+    {
+      "id": "P05-T12",
+      "titulo": "Fechar o plano canônico de mensuração no nascimento Search",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "O item 1 do aceite exige `campaign_measurement_plan` PERSISTIDO NO SUPABASE OFICIAL (degrau 9 da escada do DoD) e o item 3 exige a leitura dos goals efetivos. Nenhum dos dois foi feito. Nenhuma migration foi aplicada nesta missão.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: ACHADO DE CONTRATO no portão que esta tarefa existe para fechar. Em `backend/app/trafego/prontidao.py` NÃO EXISTE nenhum ramo que atribua `meta_status = PRONTO` — os únicos valores atribuídos são INDETERMINADO (:121), PARCIAL (:137) e NAO_PRONTO (:151). Logo `medicao == PRONTO` (:203) é INALCANÇÁVEL e `elegivel = medicao == PRONTO and observacao == PRONTO` (:224) é SEMPRE False. Isso está CERTO para hoje (a meta efetiva não é lida, então declarar PRONTO seria mentir) e o módulo é honestamente fail-closed. MAS a consequência é que `smart_bidding_eligible=False` é hoje uma CONSTANTE, não uma computação — e portanto INFALSIFICÁVEL: qualquer teste que afirme 'Smart Bidding está bloqueado' passa com QUALQUER entrada, inclusive com uma conta perfeitamente medida. É o anti-padrão 'teste que passa com qualquer entrada' do DEFINITION-OF-DONE §4. EXIGÊNCIA para quem fechar o item 3 do aceite: acrescentar o ramo PRONTO E um teste que prove o portão VIRANDO; sem isso o portão nunca terá sido testado, apenas observado desligado.",
+        "2026-09-01 · worker-4: COLAPSOS DE ESTADO no mesmo módulo, contra a regra dura do DEFINITION-OF-DONE §1 ('ausência != zero medido != falha != indisponível != não aplicável != vazio confirmado'). O docstring de `prontidao.avaliar` (:104-108) separa com cuidado 'não conseguimos ler' de 'não há meta' para `metas_da_conta` — mas o mesmo módulo colapsa os dois em dois pontos: (a) :163 `fontes = list(fontes_de_sinal_observadas or ())` faz None ('não li') e [] ('li e está vazio') caírem ambos em NAO_PRONTO, o que torna MORTO o ramo `sinal == INDETERMINADO` de :205; (b) :125 `metas_da_conta.get('primaria')` ausente cai no else 'a conta não tem ação de conversão primária' (:150) IGNORANDO `acoes[]`, que pode estar cheio — ausência de chave virando zero medido. A direção dos dois é a segura (ambos bloqueiam), então NÃO há risco operacional hoje; mas o DoD trata colapso como reprovação de gate, sem cláusula de colapso benigno. Menor, de relato: :145 `f\"{len(primarias) or 1} ação(ões)\"` imprime 1 quando a contagem é 0, podendo contradizer `conversion_actions_primarias: []` no mesmo objeto.",
+        "2026-09-01 · worker-4: o item 9 do aceite ('front mostrando meta efetiva, fonte do sinal, frescor e bloqueadores') teve avanço PARCIAL e correto: `contrato_canais` expõe `Mensuracao(lida=False, conversion_goal_status='INDETERMINADO', ...)` e os bloqueadores `mensuracao_nao_lida`, `meta_efetiva_nao_lida` e `meta_efetiva_divergente`. O contrato NÃO afirma prontidão falsa — declara que não sabe, com causa literal. Isso satisfaz a metade defensiva do item 9; a metade afirmativa (mostrar a meta EFETIVA) continua impossível enquanto o item 3 não for feito."
+      ]
+    },
+    {
+      "id": "P04-T05",
+      "titulo": "Integrar assets de imagem e vídeo ao contrato de canal",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "A lacuna (a) do proof — 'o caminho HTTP não alcança a ponte' — continua verdadeira PARA DISPLAY, que é o canal que pode criar.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: a lacuna (a) do proof está PARCIALMENTE FECHADA e a distinção importa. DEMAND GEN já atravessa por HTTP: `backend/app/routers/trafego.py:2054` chama `criativo_ponte.imagens_de_demand_gen(lote, conteudo_por_identidade)`. DISPLAY NÃO atravessa: `:2086` passa `imagens_display=None` LITERAL, e `ProvarEntrada` (:1311-1400) continua SEM CAMPO DE IMAGEM. Consequência: o fato F031 do fable-global-v1 ('ProvarEntrada não tem campo de imagem') está SUPERADO para Demand Gen e VIGENTE para Display — e Display é justamente o canal que está em CONSTRUTORES_POR_CANAL e pode mutar.",
+        "2026-09-01 · worker-4: ACHADO — a compensação declarada da dívida de natureza não chega ao operador. `volc_ads/criativo_ponte.py:155` define NATUREZAS_ACEITAS e recusa LOCAL e FIXTURE em Destino.PRODUCAO (que é o DEFAULT das assinaturas públicas `imagens_de_display` e `imagens_de_demand_gen` — fail-closed, verificado por introspecção). Mas NAO_DECLARADA é ACEITA em PRODUCAO (:168), e o código declara isso como dívida consciente (:158-168), justificando-a assim: 'O que ELA ganha em troca é visibilidade: cada asset sem natureza sai [com aviso]'. ESSA TROCA NÃO É FEITA no caminho HTTP: em `trafego.py:2074-2088` a `Entrega` é consumida apenas por `entrega.ok` e `entrega.imagens`; `entrega.avisos` e `entrega.naturezas` NUNCA são lidos, e os avisos que chegam ao Plano (:2091-2097) vêm de `cockpit.avisos`, outra fonte. Resultado: um asset sem procedência declarada entra num plano sem nenhum sinal visível. Raio de dano hoje é limitado porque Demand Gen não muta — mas o mesmo descarte se aplicará a Display assim que o elo de imagem for ligado. CORREÇÃO BARATA: propagar `entrega.avisos` para `Plano.avisos`.",
+        "2026-09-01 · worker-4: as invariantes de linhagem do proof foram RECONFERIDAS e estão íntegras, e são mais fortes do que o proof descreve. `volc_ads/subir.py:468-540` `_medidas_batem` DECODIFICA os bytes com `medir_imagem.medir(dados)` e corrobora, de forma independente do hash: bytes_totais, MIME normalizado (image/jpg->image/jpeg, caixa e parâmetro RFC tratados) e largura/altura; assinatura não reconhecida não corrobora NADA. `subir.py:543-620` `_linhagem_do_payload` tem TRÊS ramos de rebaixamento para `Linhagem.desconhecida`: sem candidata; hash declarado que não bate com os bytes; e linhagem que OMITE o hash — este último criado porque omitir saía mais barato que mentir. Nenhum ramo promove."
+      ]
+    },
+    {
+      "id": "P04-T06",
+      "titulo": "Adicionar inventário e H0 específicos sem duplicar o Hub",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "A lacuna de H0 do canário (`espelho_h0: 0`) não foi fechada, e ela depende de P09-T14 (o coletor contínuo lê apenas ENABLED).",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only), HEAD 96fea91: a exigência do CL-06 ('nenhum canal novo sem EstruturaDoCanal distinguindo as três ausências') foi ATENDIDA e ampliada por `backend/app/trafego/contrato_canais.py` (commit 17ce44d). Executado com privilégio máximo, o contrato distingue: canal operado com porta aberta (SEARCH/DISPLAY/DEMAND_GEN `planejavel=PERMITIDO`); canal recusado pelo EXECUTOR e não por falta de construtor (DEMAND_GEN `criavel_pausada` bloqueado por `mutacao_real_recusada`, origem='manifesto'); canal sem construtor (PERFORMANCE_MAX, origem='construtor'); leitura que não aconteceu (`Observabilidade(estado='INDETERMINADO', causa='ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão', campanhas_no_espelho=None)`); e NÃO APLICÁVEL com motivo (`Assets(estado='NAO_APLICAVEL', recursos=(), causa='Performance Max não tem construtor de campanha, então não há pedido para carregar assets')`). São CINCO estados mantidos distintos, não três. Nenhum portão sai PERMITIDO por ausência de bloqueador conhecido, e `observado_em=None`/`revalidacao=None` marcam explicitamente o não lido.",
+        "2026-09-01 · worker-4: o commit 17ce44d evitou por construção dois colapsos que eu confirmei na saída — `sem_construtor` deixou de cobrir Demand Gen (que TEM construtor e é recusado pelo executor), e a causa de cada portão deixou de ser `indisponibilidades[0]`, que respondia sobre a prova quando a pergunta era sobre a criação. FALTA, e é o que mantém `partial`: o espelho H0 do canário continua com ZERO linhas para a campanha 24195821946, porque o coletor contínuo lê apenas ENABLED (P09-T14)."
+      ]
+    },
+    {
+      "id": "P04-T04",
+      "titulo": "Implementar builder e validate_only do primeiro canal",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "O proof declara que a ÚNICA coisa que separa esta tarefa de `done` é a prova de validate_only contra a conta real, que exige autorização. Ela não foi executada nesta missão.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only): a lacuna declarada continua exatamente onde estava — nenhum `validate_only` real de Display foi executado contra a conta. ADVERTÊNCIA REGISTRADA: na revisão Gemini desta missão o modelo afirmou que o payload de Display está '100% completo e suficiente para passar pelo validate_only em produção real'. Essa afirmação foi DESCARTADA por mim: é asserção sem execução, com a forma de prova, e aceitá-la fecharia P04-T04 sem o único ato que a fecha. Registro para que a afirmação não seja reciclada como evidência por outra rodada.",
+        "2026-09-01 · worker-4: o construtor emite segmentação, ao contrário do que uma leitura apressada do parecer externo sugeriria — `volc_ads/campanha/display.py:203-204` emite `comum.op_geo(c, cid, brief)` e `comum.op_idioma(c, cid, brief)`, e a cadeia documentada em :6/:18 é budget -> campanha (DISPLAY) -> geo -> idioma -> ad group (DISPLAY_STANDARD) -> responsive display ad. Campos v25 usados por `comum.py` e verificados por mim contra os protos instalados: `Campaign.contains_eu_political_advertising` EXISTE, `Campaign.ai_max_setting` EXISTE, `Campaign.demand_gen_campaign_settings` EXISTE."
+      ]
+    },
+    {
+      "id": "P05-T05",
+      "titulo": "Levar recibo de lançamento ao cockpit existente",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "mudanca_de_status": false,
+      "motivo_de_nao_promover": "Nada nesta missão levou o recibo ao cockpit. A proposta aqui é substituir um proof não-auditável por um proof medido, mantendo o estado.",
+      "recomendacao_ao_integrador": "O proof atual desta tarefa é a frase única 'jornada ainda tem rotas e identidades históricas' — sem comando, sem contagem, sem caminho. Ele não sustenta promoção nem rebaixamento, e é o proof mais fraco das nove tarefas auditadas. Sugiro substituí-lo pela evidência medida abaixo mesmo mantendo `partial`: um proof que não pode ser conferido é uma dívida de auditoria, não uma economia de escrita.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only): a frase 'rotas e identidades históricas' tem AGORA um caso medido e citável, e ele está no recibo do canário. `RECIBO-CANARIO-V10-24195821946.json` registra em `pendencias_medidas.registro_legado_campaigns`: a gravação legada na tabela `campaigns` FALHOU com HTTP 400 porque a tabela exige `project_id` NOT NULL, e por desenho isso vira aviso e não derruba o lançamento. Ou seja: para a MESMA campanha, o cockpit histórico e o ledger v10 discordam, e o canônico é o ledger. O recibo existe em disco (docs/closure/search-production-closure-v1/RECIBO-CANARIO-V10-24195821946.json) e NÃO existe no cockpit. Levar o recibo ao cockpit é renderizar intencao/lote/item/recibo/identidade numa tela, com os estados de ausência explícitos (regra dura do CL-E). Identidades envolvidas, todas já reconciliadas no ledger: intencao ffceaebb-b51f-54e7-92b5-cd07490d668d, lote 1e61195c-daa7-4dd3-b1e3-35a4778871dd, item 6c5a473c-718f-488f-a17e-e0627b687362, recibo 5526a821-d843-4221-94a6-cdeb9a174dd4, volc_campaign_id bfd10e8f-7028-5ec4-885b-efa1dc7bf96e (que COINCIDE com sincronizador.volc_campaign_id — a convergência das duas derivações provada em produção)."
+      ]
+    },
+    {
+      "id": "P03-T04",
+      "titulo": "Catalogar engines de imagem e vídeo por contrato",
+      "status_atual": "done",
+      "status_proposto": "done",
+      "mudanca_de_status": false,
+      "motivo": "Permanece `done`. Auditada apenas como FRONTEIRA — nenhuma prova nova foi exigida dela, e nenhuma regressão foi encontrada.",
+      "evidencia_proposta": [
+        "2026-09-01 · worker-4 verification (read-only): auditada quanto ao risco INVERSO — não 'está incompleta?', e sim 'algum artefato do catálogo foi apresentado como produção?'. NÃO FOI, e nesta missão o controle contra isso passou a existir em código: `volc_ads/criativo/contrato.NaturezaDaProcedencia` separa {NAO_DECLARADA, PRODUCAO, LOCAL, FIXTURE} de `Origem` (que diz de que CLASSE é o arquivo), fechando a colisão em que um PNG de ensaio era `Origem.GERADO` exatamente como o banner pago. `criativo_ponte.Destino.PRODUCAO` é o default e recusa LOCAL e FIXTURE com motivo nomeado. Ressalva registrada em P04-T05: NAO_DECLARADA ainda é aceita em produção, como dívida declarada, e o aviso que a compensa não chega ao HTTP. Os dois parques seguem externos ao runtime, como o proof já dizia."
+      ]
+    }
+  ],
+  "resumo": {
+    "tarefas_auditadas": 9,
+    "promocoes_propostas": 0,
+    "rebaixamentos_propostos": 0,
+    "tarefas_com_evidencia_nova": 8,
+    "tarefas_com_teto_declarado": ["P04-T09"],
+    "tarefas_com_aceite_medido_zero": ["P05-T11"],
+    "proof_recomendado_para_substituicao": ["P05-T05"]
+  },
+  "bloqueadores_reais": [
+    "PMax: mensuração não bloqueia CRIAÇÃO — o único bloqueador de `criavel_pausada` é `sem_construtor`, e ele some sozinho quando o builder existir. Contradiz o critério literal de P04-T07.",
+    "Display não recebe imagem pelo HTTP — `trafego.py:2086` `imagens_display=None` literal e `ProvarEntrada` sem campo de imagem.",
+    "`entrega.avisos` descartado pelo router — a visibilidade que justifica aceitar NAO_DECLARADA em produção não existe na prática.",
+    "Aceite 6 de P05-T11 medido como zero — `espelho_h0: 0` (depende de P09-T14).",
+    "Meta efetiva não lida — P05-T12 item 3; e o portão de Smart Bidding é hoje infalsificável."
+  ],
+  "divida_cosmetica": [
+    "prontidao.py:145 — `len(primarias) or 1` imprime 1 quando a contagem é 0.",
+    "prontidao.py:163 e :125 — colapsam 'não li' em 'vazio'; direção segura, mas o DoD §1 não tem cláusula de colapso benigno.",
+    "prontidao.py:205 — ramo `sinal == INDETERMINADO` é código morto.",
+    "volc_ads/entrega.py:263-267 — try/except devolvendo [] transforma falha de leitura GAQL em 'sem dados', num caminho de ALERTA. PRÉ-EXISTENTE e fora do ownership desta missão; registrado para o Roadmap, não para este diff."
+  ]
+}
