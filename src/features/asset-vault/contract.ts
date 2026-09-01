@@ -49,6 +49,11 @@ export const ASSET_KINDS = [
   "database_service",
   "server",
   "repository",
+  // Perfil de navegador isolado do AdsPower (P03-T07). Entra em `automation`
+  // porque é rotina operacional, não presença social: o perfil EXECUTA, a
+  // página PUBLICA. Confundi-los faria o Cofre responder "temos duas páginas"
+  // quando há uma página e um perfil que a abre.
+  "browser_profile",
 ] as const;
 
 export type AssetKind = (typeof ASSET_KINDS)[number];
@@ -65,7 +70,20 @@ export const ASSET_STATES = [
 
 export type AssetState = (typeof ASSET_STATES)[number];
 export type AssetCriticality = "low" | "medium" | "high" | "critical";
-export type VerificationState = "unverified" | "partial" | "verified" | "expired";
+/**
+ * Seis estados, e nenhum é sinônimo de outro.
+ *
+ * ⚠️ `failed` e `blocked` entraram em 01/09/2026, por divergência que uma
+ * revisão adversarial reproduziu: o schema privado e o backend já aceitavam os
+ * seis, e este contrato aceitava quatro. O efeito era o contrato PÚBLICO
+ * recusar um fato VÁLIDO do banco — uma verificação que falhou, ou um cofre
+ * trancado, não cabiam no retrato. E a diferença entre eles é justamente o que
+ * impede o painel de dizer "acesso ok" sobre algo que ninguém abriu:
+ * `failed` é uma tentativa que aconteceu e deu errado, `blocked` é o cofre
+ * trancado (que não é falha da credencial), `unverified` é "nunca tentei".
+ */
+export type VerificationState =
+  | "unverified" | "partial" | "verified" | "expired" | "failed" | "blocked";
 export type CustodyState = "not_required" | "not_registered" | "referenced" | "review_due";
 export type EvidenceKind = "owner_declaration" | "live_observation" | "repository_inventory" | "provider_record";
 export type RelationKind =
@@ -106,6 +124,7 @@ export const KIND_CLUSTER: Record<AssetKind, AssetCluster> = {
   database_service: "infrastructure",
   server: "infrastructure",
   repository: "infrastructure",
+  browser_profile: "automation",
 };
 
 const shortText = z.string().trim().min(1).max(240);
@@ -135,14 +154,18 @@ const assetSchemaBase = z.object({
   capabilities: z.array(shortText).min(1).max(40),
   credential: z.object({
     required: z.boolean(),
-    provider: z.enum(["bitwarden", "vaultwarden", "passbolt", "infisical"]).nullable(),
+    // `1password` entrou em 01/09/2026: o ADR de 28/08 já o havia escolhido, e
+    // o schema privado (v13_01) só aceita as cinco formas de referência deste
+    // enum. Deixá-lo de fora aqui faria o contrato público recusar exatamente o
+    // provider que o backend usa.
+    provider: z.enum(["1password", "bitwarden", "vaultwarden", "passbolt", "infisical"]).nullable(),
     state: z.enum(["not_required", "not_registered", "referenced", "review_due"]),
     lastCheckedAt: dateText.optional(),
     /** Linguagem operacional; nunca inclui locator ou material do cofre. */
     note: z.string().trim().min(5).max(500),
   }).strict(),
   verification: z.object({
-    state: z.enum(["unverified", "partial", "verified", "expired"]),
+    state: z.enum(["unverified", "partial", "verified", "expired", "failed", "blocked"]),
     checkedAt: dateText.optional(),
     reviewAt: dateText.optional(),
     checkedBy: shortText.optional(),
@@ -254,6 +277,7 @@ export const KIND_LABEL: Record<AssetKind, string> = {
   database_service: "Banco e API de dados",
   server: "Servidor",
   repository: "Repositório",
+  browser_profile: "Perfil de navegador isolado",
 };
 
 export const STATE_LABEL: Record<AssetState, string> = {
@@ -271,6 +295,8 @@ export const VERIFICATION_LABEL: Record<VerificationState, string> = {
   partial: "Verificação parcial",
   verified: "Verificado",
   expired: "Revisão vencida",
+  failed: "Verificação falhou",
+  blocked: "Acesso bloqueado",
 };
 
 export const CUSTODY_LABEL: Record<CustodyState, string> = {

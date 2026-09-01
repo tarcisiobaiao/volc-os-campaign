@@ -51,24 +51,38 @@ Cada ativo publicado para a interface contém:
 
 O schema executável está em `src/features/asset-vault/contract.ts`. Ele é estrito: campos desconhecidos falham, URLs fora de HTTP(S) falham e tipos colocados na gaveta errada falham.
 
-## Fronteira privada da próxima etapa
+## Fronteira privada — implementada em 01/09/2026
 
-A persistência será criada no Supabase oficial do VOLC O.S., `https://database.agenciavolc.com.br`, atrás de API administrativa e autorização por papel.
+A persistência existe: `supabase/migrations/v13_01_cofre_de_ativos.sql`, nove tabelas com prefixo `cofre_` no Supabase oficial, atrás de API administrativa (`/api/cofre`) e `exigir_admin`. **Não aplicada em produção** — exige autorização separada.
 
-O backend privado poderá guardar uma referência opaca para um item em Bitwarden, Vaultwarden, Passbolt ou Infisical. Essa referência:
+O backend guarda uma referência opaca em `cofre_credencial_referencia.localizador`. Essa referência:
 
-- não será retornada ao browser;
-- não será escrita no grafo;
-- não aparecerá em logs ou recibos públicos;
-- não permitirá buscar o segredo sem uma operação administrativa auditada.
+- não é retornada ao browser — nenhuma função de leitura do banco a projeta;
+- não é escrita no grafo nem no Roadmap;
+- não aparece em log, recibo, snapshot de revisão ou mensagem de erro;
+- não permite buscar o segredo sem uma operação administrativa com o papel `postgres`.
 
-O provedor do cofre especializado ainda é uma decisão pendente. A interface atual não finge que essa escolha já foi feita.
+O provedor foi decidido: **1Password**, conforme o ADR de 28/08. O enum aceita os cinco (`1password`, `bitwarden`, `vaultwarden`, `passbolt`, `infisical`) porque a gramática do localizador é por provider e a coluna precisa aceitar a forma de cada um.
 
-## Retrato editorial inicial
+### O que impede uma senha de entrar, na prática
 
-`src/features/asset-vault/fixtures.ts` é um retrato temporário para validar contrato e experiência. Não é seed, cadastro nem prova adicional de propriedade. Cada linha carrega a evidência que sustenta o que está sendo mostrado.
+Três mecanismos, e nenhum sozinho bastaria:
 
-Gavetas sem ativos continuam visíveis com contagem zero. Isso torna a estrutura compreensível sem inventar contas, páginas ou canais ainda não conferidos.
+1. **Forma.** `localizador` tem CHECK de gramática por provider. `op://cofre/item/campo` entra; `Tr0ub4dor&3` não é uma referência mal formatada — é um texto que a gramática não gera.
+
+   ⚠️ **E até onde isso vai.** Uma revisão adversarial de 01/09/2026 mostrou o limite: `op://Vault/Item/password` tem forma de referência e também pode ser, literalmente, a senha escolhida por alguém. Sintaxe não alcança semântica, e nenhuma CHECK alcançará. O que a forma entrega é real e limitado — recusa o que **não** tem forma de referência, que é o caso de praticamente toda senha, todo token e toda chave que existem por aí.
+2. **Chave.** Todo jsonb que entra passa por varredura recursiva que compara a chave *normalizada* (minúscula, sem separadores) contra lista fechada. `accessToken`, `ACCESS-TOKEN` e `access_token` colapsam em `accesstoken`.
+3. **Superfície.** Nenhuma função devolve o localizador. A postura sai por `cofre_postura_credencial`, que projeta provider, nome lógico, finalidade, estado e frescor.
+
+⚠️ **Query string é recusada de propósito.** `op://cofre/item/campo?attribute=otp` aponta para um TOTP, e o ADR é explícito: MFA não entra no Cofre nem por referência.
+
+## Retrato editorial — e por que ele deixou de ser a fonte
+
+`src/features/asset-vault/fixtures.ts` continua existindo, e **apenas para teste hermético do contrato público**. Desde 01/09/2026 a tela lê `/api/cofre`, e a fixture **não é fallback**.
+
+O motivo é preciso: uma tela que sempre mostra os mesmos oito ativos não distingue "o Cofre está vazio" de "o Cofre não respondeu" — porque nunca esteve vazio nem deixou de responder. Há teste que percorre os oito nomes da fixture e exige que nenhum apareça quando a API falha.
+
+Gavetas sem ativos continuam visíveis com contagem zero, agora vindas do servidor. Isso torna a estrutura compreensível sem inventar contas, páginas ou canais ainda não conferidos.
 
 ## Ordem de implementação
 
@@ -91,12 +105,19 @@ Gavetas sem ativos continuam visíveis com contagem zero. Isso torna a estrutura
 - URL não HTTP(S) é recusada;
 - build e testes do Cofre passam.
 
+## Entregue em 01/09/2026 (branch `sprint/asset-vault-onepassword-production-v1`)
+
+- banco e migrations (`v13_01` + rollback `v13_99`), com 75 provas no ciclo aplicar→operar→reverter→reaplicar em `postgres:15`;
+- API administrativa com 13 rotas, idempotência e recibo;
+- formulários de cadastro, revisão, relação, verificação, referência de acesso, aposentadoria e reativação;
+- importação determinística dos 7 engines criativos a partir dos manifestos versionados;
+- escolha do cofre externo (1Password) e o smoke local de viabilidade;
+- rota de handoff para produção criativa e publicação.
+
 ## Ainda não entregue
 
-- banco e migrations;
-- API;
-- formulário de cadastro;
-- importação automática;
-- escrita no grafo;
-- escolha e integração do cofre externo;
-- rotação ou leitura de qualquer credencial.
+- **aplicação da migration em produção** — exige autorização separada;
+- **cadastro real da página Facebook monetizada** — não há um único dado real dela no repositório; o fluxo e o pedido ao operador estão prontos (`docs/closure/asset-vault-onepassword-production-v1/`);
+- **prova do 1Password ao vivo** — o app e o CLI não estão instalados nesta máquina, e o smoke reporta `blocked/cli_ausente`, que é o resultado correto;
+- **escrita no grafo** — esta missão produz um delta de curadoria, e só o integrador aplica;
+- **rotação ou leitura de qualquer credencial** — nunca foi escopo, e o desenho impede.
