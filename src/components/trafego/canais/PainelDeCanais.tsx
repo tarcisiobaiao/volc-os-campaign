@@ -40,9 +40,11 @@ import {
   incoerenciasDoContrato,
   numeroOuTraco,
   portoesAbertos,
+  ROTULO_DA_MENSURACAO,
   type ContratoDeCanal,
   type RespostaDosCanais,
 } from '@/lib/trafego/canais';
+import { CartaoDoPlanoDeMensuracao } from '@/components/trafego/canais/PlanoDeMensuracao';
 import { PortoesDoCanal } from '@/components/trafego/canais/PortoesDoCanal';
 import { useCanais } from '@/components/trafego/canais/useCanais';
 
@@ -79,6 +81,11 @@ function Fato({
  */
 function Mensuracao({ c }: { c: ContratoDeCanal }) {
   const m = c.mensuracao;
+  // ⚠️ Palavra E estado cru, como nos portões. Quem lê a tela e quem lê o
+  // contrato na API precisam ver o mesmo nome — e o operador não deveria
+  // precisar aprender o vocabulário do backend para entender a própria tela.
+  const rotulo = (e: typeof m.measurement_readiness) =>
+    `${ROTULO_DA_MENSURACAO[e]} (${e})`;
   if (!m.lida) {
     return (
       <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
@@ -96,11 +103,14 @@ function Mensuracao({ c }: { c: ContratoDeCanal }) {
     <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
       <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
         <Target className="h-3.5 w-3.5" aria-hidden />
-        Mensuração — {m.measurement_readiness}
+        Mensuração — {rotulo(m.measurement_readiness)}
       </p>
       <dl className="mt-2 grid gap-2 sm:grid-cols-2">
-        <Fato rotulo="meta de conversão" valor={m.conversion_goal_status} />
-        <Fato rotulo="sinal chegando" valor={m.conversion_signal_status} />
+        <Fato
+          rotulo="meta de conversão"
+          valor={rotulo(m.conversion_goal_status)}
+        />
+        <Fato rotulo="sinal chegando" valor={rotulo(m.conversion_signal_status)} />
         <Fato
           rotulo="fontes comprovadas"
           valor={
@@ -118,7 +128,17 @@ function Mensuracao({ c }: { c: ContratoDeCanal }) {
           rotulo="lance automático"
           valor={m.smart_bidding_eligible ? 'elegível' : 'não elegível'}
         />
+        {/* ⚠️ A procedência da LEITURA, no ramo lido. Ela só aparecia no ramo
+            não-lido, e sumia justo quando havia o que explicar. `fonte` (como a
+            leitura foi obtida) e `signal_sources` (por onde a conversão chega)
+            são coisas diferentes, e a tela mostrava uma por vez. */}
+        <Fato rotulo="procedência da leitura" valor={m.fonte ?? '—'} />
       </dl>
+      {m.plano ? (
+        <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+          <CartaoDoPlanoDeMensuracao plano={m.plano} />
+        </div>
+      ) : null}
     </div>
   );
 }

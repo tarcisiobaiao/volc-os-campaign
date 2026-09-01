@@ -28,6 +28,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, Loader2, Lock, X } from 'lucide-react';
 
+import { CartaoDoPlanoDeMensuracao } from '@/components/trafego/canais/PlanoDeMensuracao';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PautadorApiError, pautadorApi } from '@/lib/pautadorApi';
@@ -397,6 +398,28 @@ export const Lancamento: React.FC<Props> = ({
                   Cria PAUSADA. Esta autorização não ativa nem começa a gastar.
                 </p>
               </div>
+              {/* ⚠️ O PLANO DE MENSURAÇÃO, NA TELA EM QUE O PRÓXIMO CLIQUE CRIA.
+                  O servidor já emitia isto em `/provar` e a tela DESCARTAVA: o
+                  operador aprovava sem ver para o que a campanha vai otimizar,
+                  de quem é a ação que mede isso, por onde o sinal chega e quão
+                  fresco ele é. Em Manual CPC nada disso muda o lance — e é
+                  justamente por isso que ninguém percebia. */}
+              {prova?.prontidao?.plano_de_mensuracao && (
+                <div className="mb-4 rounded-md border border-white/10 bg-black/20 p-3">
+                  <CartaoDoPlanoDeMensuracao
+                    plano={prova.prontidao.plano_de_mensuracao}
+                  />
+                </div>
+              )}
+              {/* ⚠️ Ausência do plano é dita, e não escondida. Uma tela que
+                  cala sobre a mensuração ensina que ela não importa. */}
+              {prova && !prova.prontidao?.plano_de_mensuracao && (
+                <p className="mb-4 rounded-md border border-white/10 bg-black/20 p-3 text-[11px] text-white/65">
+                  O plano de mensuração desta conta não foi lido nesta prova.
+                  Isso não quer dizer que a conta não tenha meta — quer dizer
+                  que ninguém leu, e a campanha nasce pausada de qualquer forma.
+                </p>
+              )}
               <label className="block">
                 <span className="kicker text-white/60">por que está subindo</span>
                 <Input value={motivo} onChange={(e) => setMotivo(e.target.value)}

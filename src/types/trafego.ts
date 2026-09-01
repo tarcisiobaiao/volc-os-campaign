@@ -14,6 +14,11 @@
  *
  *  Por isso o tipo carrega os quatro campos juntos: apresentar `valor` sem
  *  `procedencia` é o defeito que este módulo inteiro existe para não cometer. */
+// ⚠️ O plano de mensuração é declarado UMA vez, em `lib/trafego/canais.ts`,
+// junto do contrato dos canais que o emite. Redeclará-lo aqui criaria dois
+// tipos para a mesma resposta, e eles divergiriam no primeiro campo novo.
+import type { PlanoDeMensuracao } from '@/lib/trafego/canais';
+
 export interface Cpc {
   valor: number;
   procedencia: string;
@@ -535,8 +540,44 @@ export interface Preparo {
   avisos_locais?: string[];
 }
 
+/**
+ * Os quatro portões G0–G3 do lançamento, e o plano canônico de mensuração.
+ *
+ * ⚠️ O servidor já emitia isto e a tela DESCARTAVA. O efeito é que o operador
+ * aprovava o gasto sem ver para o que a campanha vai otimizar, por onde o sinal
+ * chega e quão fresco ele é — que é exatamente a informação que P05-T12 existe
+ * para pôr na frente dele ANTES do clique.
+ */
+export interface ProntidaoDoLancamento {
+  creation_plan_ready: EstadoDeMensuracaoDoLancamento;
+  campaign_birth: EstadoDeMensuracaoDoLancamento;
+  conversion_goal_status: EstadoDeMensuracaoDoLancamento;
+  conversion_signal_status: EstadoDeMensuracaoDoLancamento;
+  signal_sources: string[];
+  measurement_readiness: EstadoDeMensuracaoDoLancamento;
+  data_manager_status: EstadoDeMensuracaoDoLancamento;
+  observability_status: EstadoDeMensuracaoDoLancamento;
+  /** ⚠️ Vem do servidor. Nunca ligado por ausência de bloqueio conhecido. */
+  smart_bidding_eligible: boolean;
+  activation_blockers: string[];
+  notas: Record<string, unknown>;
+  /** ⚠️ `null` é "ninguém leu", e NÃO "não há plano". */
+  plano_de_mensuracao: PlanoDeMensuracao | null;
+}
+
+/** Os cinco estados de `prontidao.py`, sem colapso. */
+export type EstadoDeMensuracaoDoLancamento =
+  | 'PRONTO'
+  | 'PARCIAL'
+  | 'NAO_PRONTO'
+  | 'INDETERMINADO'
+  | 'NAO_APLICAVEL';
+
 export interface RespostaDaProva {
   preparo: Preparo;
+  /** ⚠️ Opcional porque um servidor mais antigo não a emite — e a ausência da
+   *  chave é "este servidor não responde isto", nunca "está tudo pronto". */
+  prontidao?: ProntidaoDoLancamento;
   avisos: AvisoDoCockpit[];
   /** O que este funil já lançou. Vazio quando nenhuma — e é isso que decide se
    *  a tela mostra "lançar" ou "já está no ar". */

@@ -97,6 +97,9 @@ function canal(over: Partial<ContratoDeCanal> = {}): ContratoDeCanal {
       data_manager_status: 'INDETERMINADO',
       observability_status: 'INDETERMINADO',
       smart_bidding_eligible: false,
+      // ⚠️ `null` é "ninguém leu os três recursos que decidem a meta
+      // efetiva", e não "não há plano". O servidor sempre emite a chave.
+      plano: null,
       fonte: 'esta tela não consulta a conta do Google',
       notas: {},
     },
@@ -350,5 +353,164 @@ describe('o canário pausado', () => {
     expect(screen.getByText('sim')).toBeTruthy();
     expect(screen.getByText('não')).toBeTruthy();
     expect(screen.getByText('?')).toBeTruthy();
+  });
+});
+
+describe('o plano de mensuração na tela (P05-T12 item 8)', () => {
+  /** Um plano com tudo lido, e uma coisa faltando — que é o caso real. */
+  function plano(over: Record<string, unknown> = {}) {
+    return {
+      versao: 1,
+      customer_id: '5478096539',
+      login_customer_id: '6016739364',
+      campaign_id: null,
+      chave_intencao: null,
+      meta_efetiva: {
+        nivel: 'CUSTOMER',
+        nivel_estado: 'com_dados',
+        nivel_decidido: true,
+        custom_conversion_goal: null,
+        usa_meta_customizada: false,
+        campaign_id: null,
+        metas_da_conta: [],
+        metas_da_conta_estado: 'com_dados',
+        metas_da_campanha: [],
+        metas_da_campanha_estado: 'inelegivel',
+        metas_que_mandam: [],
+        metas_biddable: [
+          {
+            categoria: 'DOWNLOAD',
+            origem: 'APP',
+            biddable: true,
+            campaign: null,
+            semantica: 'DOWNLOAD/APP',
+          },
+        ],
+        resolvida: true,
+        causa: null,
+      },
+      acoes: [],
+      acoes_estado: 'com_dados',
+      acao_alvo: {
+        id: '7466919994',
+        resource_name: 'customers/5478096539/conversionActions/7466919994',
+        owner_customer_id: '5478096539',
+        nome: 'Compra no site',
+        categoria: 'PURCHASE',
+        origem: 'WEBSITE',
+        tipo: 'WEBPAGE',
+        status: 'ENABLED',
+        primaria: true,
+        primaria_efetiva: true,
+        incluida_em_metricas: true,
+        semantica: 'PURCHASE/WEBSITE',
+        aceita_como_destino: true,
+      },
+      acao_alvo_causa: null,
+      destino: {
+        resolvido: true,
+        operating_account_id: '5478096539',
+        product_destination_id: '7466919994',
+        conversion_action_resource: 'x',
+        tipo_da_acao: 'WEBPAGE',
+        causa: null,
+      },
+      frescor: {
+        estado: 'vazio_confirmado',
+        janela_dias: null,
+        ultima_conversao_em: null,
+        dias_desde_a_ultima: null,
+        conversoes_na_janela: 0,
+        conversion_action_id: '7466919994',
+        comprovado: false,
+        causa: null,
+      },
+      marcacao: {
+        estado: 'com_dados',
+        auto_tagging: true,
+        conversion_tracking_id: '17862729897',
+        conversion_tracking_owner_id: '5478096539',
+        cross_account_conversion_tracking_id: null,
+        conversion_tracking_status: 'CONVERSION_TRACKING_MANAGED_BY_SELF',
+        aceitou_termos_de_dados: true,
+        enhanced_conversions_for_leads: false,
+        acoes_de_ga4: [],
+        acoes_com_tag: ['7466919994'],
+        click_ids_suportados: ['gclid', 'gbraid', 'wbraid'],
+      },
+      proposta_de_acao: null,
+      completo: false,
+      bloqueadores: [
+        'a ação de conversão desta campanha não recebeu NENHUMA conversão na janela consultada.',
+      ],
+      impressao: 'a'.repeat(64),
+    };
+  }
+
+  function comPlano(over: Record<string, unknown> = {}) {
+    return canal({
+      canal: 'SEARCH',
+      rotulo: 'Search',
+      mensuracao: {
+        lida: true,
+        conversion_goal_status: 'PRONTO',
+        conversion_signal_status: 'PRONTO',
+        signal_sources: ['tag do Google no site'],
+        measurement_readiness: 'PRONTO',
+        data_manager_status: 'NAO_PRONTO',
+        observability_status: 'INDETERMINADO',
+        smart_bidding_eligible: false,
+        plano: plano(over) as never,
+        fonte: 'leitura da conta feita ao conferir um pedido',
+        notas: {},
+      },
+    });
+  }
+
+  it('mostra a meta efetiva, a fonte do sinal, o frescor e os bloqueadores', async () => {
+    contratoDosCanais.mockResolvedValue(resposta([comPlano()]));
+    montar();
+    await waitFor(() => screen.getByText(/Plano de mensuração/));
+
+    // meta efetiva — o objetivo E o nível de onde ele vem
+    expect(screen.getByText('DOWNLOAD/APP (da conta)')).toBeTruthy();
+    // fonte do sinal — com o ID NUMÉRICO e a conta DONA, nunca só o nome.
+    // ⚠️ `getAllByText`: o id aparece DUAS vezes de propósito — na fonte do
+    // sinal e no destino de conversão offline. São dois fatos diferentes sobre
+    // a mesma ação, e colapsá-los num só lugar esconderia um deles.
+    expect(
+      screen.getByText('Compra no site · ação #7466919994 · conta 5478096539'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('ação #7466919994 na conta 5478096539'),
+    ).toBeTruthy();
+    // frescor — "nunca recebeu conversão" é conclusão, e não "sem dados"
+    expect(screen.getByText('nunca recebeu conversão')).toBeTruthy();
+    // bloqueadores — em linguagem operacional, e não em código
+    expect(screen.getByText(/não recebeu NENHUMA conversão/)).toBeTruthy();
+  });
+
+  it('diz que a campanha ainda não nasceu em vez de esconder o id ausente', async () => {
+    // ⚠️ `campaign_id` nulo é o caso NORMAL — o plano existe ANTES do
+    // nascimento. Omitir a informação faria o operador ler a ausência do id
+    // como defeito.
+    contratoDosCanais.mockResolvedValue(resposta([comPlano()]));
+    montar();
+    await waitFor(() => screen.getByText(/antes do nascimento/));
+  });
+
+  it('o estado de mensuração aparece em português E cru', async () => {
+    // ⚠️ Quem lê a tela e quem lê o contrato na API precisam ver o mesmo nome.
+    contratoDosCanais.mockResolvedValue(resposta([comPlano()]));
+    montar();
+    await waitFor(() => screen.getByText(/Mensuração — provado \(PRONTO\)/));
+  });
+
+  it('sem plano lido, a tela não desenha um plano vazio', async () => {
+    // ⚠️ `null` é "ninguém leu"; um plano vazio seria "li e não há nada".
+    contratoDosCanais.mockResolvedValue(resposta([canal()]));
+    montar();
+    await waitFor(() => screen.getByText(/Mensuração/));
+    expect(screen.queryByText(/Plano de mensuração/)).toBeNull();
   });
 });

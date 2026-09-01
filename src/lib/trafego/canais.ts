@@ -127,6 +127,156 @@ export type EstadoDeMensuracao =
   | 'INDETERMINADO'
   | 'NAO_APLICAVEL';
 
+/**
+ * Os sete estados de uma LEITURA — e eles não são os cinco da prontidão.
+ *
+ * ⚠️ São vocabulários diferentes de propósito. `EstadoDeMensuracao` responde
+ * "estamos prontos?"; isto aqui responde "o que a leitura devolveu?". Colapsar
+ * os dois faria `vazio_confirmado` (li e não há nenhum) virar `NAO_PRONTO`, que
+ * é um veredito, e `nao_coletado` (ninguém leu) virar a mesma coisa — apagando
+ * justamente a distinção que decide se a próxima ação é ler ou consertar.
+ */
+export type EstadoDeLeitura =
+  | 'nao_coletado'
+  | 'com_dados'
+  | 'vazio_confirmado'
+  | 'parcial'
+  | 'inelegivel'
+  | 'nao_suportado'
+  | 'falhou';
+
+/** Uma meta de conversão: o par (categoria, origem) e se o lance a persegue. */
+export interface MetaDeConversao {
+  categoria: string;
+  origem: string;
+  biddable: boolean;
+  campaign: string | null;
+  /** `CATEGORIA/ORIGEM` — a identidade do EVENTO, nunca o nome. */
+  semantica: string;
+}
+
+/**
+ * A meta que a campanha EFETIVAMENTE persegue.
+ *
+ * ⚠️ Não existe um recurso único que responda isto: são duas listas mais o
+ * nível que diz qual delas manda. `metas_que_mandam: null` é "não se sabe qual
+ * nível manda"; `[]` é "o nível manda e a lista está vazia". As duas chegam
+ * diferentes porque pedem coisas diferentes.
+ */
+export interface MetaEfetiva {
+  /** `CUSTOMER | CAMPAIGN | UNSPECIFIED | UNKNOWN`. Os dois últimos NÃO são herança. */
+  nivel: string | null;
+  nivel_estado: EstadoDeLeitura;
+  nivel_decidido: boolean;
+  custom_conversion_goal: string | null;
+  /** Meta customizada não respeita `primary_for_goal`: as listas param de decidir. */
+  usa_meta_customizada: boolean;
+  campaign_id: string | null;
+  metas_da_conta: MetaDeConversao[];
+  metas_da_conta_estado: EstadoDeLeitura;
+  metas_da_campanha: MetaDeConversao[];
+  metas_da_campanha_estado: EstadoDeLeitura;
+  /** ⚠️ `null` ≠ `[]`. Ver a nota acima. */
+  metas_que_mandam: MetaDeConversao[] | null;
+  metas_biddable: MetaDeConversao[] | null;
+  resolvida: boolean;
+  causa: string | null;
+}
+
+/** A identidade completa de uma ação de conversão — com DONO. */
+export interface AcaoDeConversao {
+  /** O id NUMÉRICO. É ele que vira destino no Data Manager, nunca o nome. */
+  id: string;
+  resource_name: string;
+  /** ⚠️ `null` quando a ação é definida pelo sistema, ou quando não foi lido. */
+  owner_customer_id: string | null;
+  nome: string;
+  categoria: string;
+  origem: string;
+  tipo: string;
+  status: string;
+  /** ⚠️ TRI-ESTADO. `null` = o campo não veio. O Google trata ausente como true. */
+  primaria: boolean | null;
+  /** O default documentado já aplicado, e dito em voz alta. */
+  primaria_efetiva: boolean;
+  incluida_em_metricas: boolean | null;
+  semantica: string;
+  aceita_como_destino: boolean;
+}
+
+export interface DestinoDataManager {
+  resolvido: boolean;
+  /** A conta que POSSUI a ação — não a que roda a campanha. */
+  operating_account_id: string | null;
+  /** O id NUMÉRICO da ação. */
+  product_destination_id: string | null;
+  conversion_action_resource: string | null;
+  tipo_da_acao: string | null;
+  causa: string | null;
+}
+
+/**
+ * Quando chegou a última conversão.
+ *
+ * ⚠️ `dias_desde_a_ultima: null` NUNCA vira um número grande. "Faz muito tempo"
+ * e "não sei" são coisas diferentes, e um `999` no lugar de `null` viraria um
+ * gráfico com cara de dado.
+ */
+export interface FrescorDoSinal {
+  estado: EstadoDeLeitura;
+  janela_dias: number | null;
+  ultima_conversao_em: string | null;
+  dias_desde_a_ultima: number | null;
+  /** `0` com estado `vazio_confirmado` é um zero MEDIDO, e é um fato caro. */
+  conversoes_na_janela: number | null;
+  conversion_action_id: string | null;
+  comprovado: boolean;
+  causa: string | null;
+}
+
+export interface InventarioDeMarcacao {
+  estado: EstadoDeLeitura;
+  auto_tagging: boolean | null;
+  conversion_tracking_id: string | null;
+  /** Quem é o dono do tracking numa hierarquia com conversão centralizada. */
+  conversion_tracking_owner_id: string | null;
+  cross_account_conversion_tracking_id: string | null;
+  conversion_tracking_status: string | null;
+  aceitou_termos_de_dados: boolean | null;
+  enhanced_conversions_for_leads: boolean | null;
+  acoes_de_ga4: string[];
+  acoes_com_tag: string[];
+  click_ids_suportados: string[];
+}
+
+/**
+ * O plano canônico de mensuração — o que a campanha persegue, de quem é a ação
+ * que mede isso, por onde o sinal chega e quão fresco ele é.
+ *
+ * ⚠️ Ele existe ANTES de a campanha nascer: `campaign_id` nulo é o caso normal.
+ */
+export interface PlanoDeMensuracao {
+  versao: number;
+  customer_id: string;
+  login_customer_id: string;
+  campaign_id: string | null;
+  chave_intencao: string | null;
+  meta_efetiva: MetaEfetiva;
+  acoes: AcaoDeConversao[];
+  acoes_estado: EstadoDeLeitura;
+  /** ⚠️ Excludente com `acao_alvo_causa`: sempre exatamente um dos dois. */
+  acao_alvo: AcaoDeConversao | null;
+  acao_alvo_causa: string | null;
+  destino: DestinoDataManager;
+  frescor: FrescorDoSinal;
+  marcacao: InventarioDeMarcacao;
+  proposta_de_acao: Record<string, unknown> | null;
+  completo: boolean;
+  /** Em linguagem operacional, prontos do servidor. Não os remonte. */
+  bloqueadores: string[];
+  impressao: string;
+}
+
 export interface MensuracaoDoCanal {
   /** ⚠️ `false` = ninguém leu a conta. Os campos abaixo são o padrão de
    *  ignorância, e não um veredito. */
@@ -141,6 +291,12 @@ export interface MensuracaoDoCanal {
   smart_bidding_eligible: boolean;
   fonte: string | null;
   notas: Record<string, unknown>;
+  /**
+   * ⚠️ `null` NÃO é "não há plano": é "ninguém leu os três recursos que decidem
+   * a meta efetiva". A tela precisa da diferença porque as duas pedem coisas
+   * opostas — uma pede que alguém configure a conta, a outra pede uma leitura.
+   */
+  plano: PlanoDeMensuracao | null;
 }
 
 export interface ObservabilidadeDoCanal {
@@ -405,6 +561,106 @@ export function incoerenciasDoContrato(contrato: ContratoDeCanal): string[] {
  */
 export function portoesAbertos(contrato: ContratoDeCanal): number {
   return contrato.portoes.filter((p) => p.aberto).length;
+}
+
+/**
+ * Os cinco estados de prontidão, em linguagem de operador.
+ *
+ * ⚠️ Isto é TRADUÇÃO, e não decisão. A tela mostrava `PRONTO`, `PARCIAL` e
+ * `INDETERMINADO` crus, e o operador tinha de saber o vocabulário do backend
+ * para entender a própria tela — enquanto os portões, ao lado, já traziam
+ * glifo, palavra e pergunta. A lacuna não era convenção deliberada: era lacuna.
+ *
+ * O estado CRU continua sendo emitido junto, como nos portões, porque quem lê o
+ * contrato na API e quem lê a tela precisam ver o mesmo nome.
+ */
+export const ROTULO_DA_MENSURACAO: Record<EstadoDeMensuracao, string> = {
+  PRONTO: 'provado',
+  PARCIAL: 'provado pela metade',
+  NAO_PRONTO: 'não está pronto',
+  INDETERMINADO: 'ninguém mediu',
+  NAO_APLICAVEL: 'não se aplica',
+};
+
+/**
+ * Os sete estados de uma LEITURA, em linguagem de operador.
+ *
+ * ⚠️ `vazio_confirmado` é "li, e não há nenhum" — uma conclusão. `nao_coletado`
+ * é "ninguém pediu". Escrever "sem dados" para os dois seria apagar a diferença
+ * entre consertar a conta e fazer uma leitura.
+ */
+export const ROTULO_DA_LEITURA: Record<EstadoDeLeitura, string> = {
+  nao_coletado: 'ninguém consultou',
+  com_dados: 'consultado',
+  vazio_confirmado: 'consultado, e não há nenhum',
+  parcial: 'consultado em parte',
+  inelegivel: 'a pergunta ainda não cabe',
+  nao_suportado: 'a API não responde isto',
+  falhou: 'a consulta falhou',
+};
+
+/**
+ * O que a campanha persegue, em uma frase — ou por que não se sabe.
+ *
+ * ⚠️ FORMATAÇÃO, nunca decisão. Ela não escolhe meta, não deriva prontidão e
+ * não inventa fallback: cada ramo aqui corresponde a um estado que o SERVIDOR
+ * já distinguiu, e a frase só o diz em português.
+ */
+export function textoDaMetaEfetiva(meta: MetaEfetiva): string {
+  if (!meta.nivel_decidido) {
+    return 'não se sabe se quem manda é a conta ou a campanha';
+  }
+  if (meta.usa_meta_customizada) {
+    return 'meta customizada — o objetivo mora em outro recurso, ainda não lido';
+  }
+  const biddable = meta.metas_biddable;
+  if (biddable === null) {
+    return 'as metas do nível que manda não foram lidas';
+  }
+  if (biddable.length === 0) {
+    return 'nenhuma meta é perseguível pelo lance automático';
+  }
+  const onde = meta.nivel === 'CAMPAIGN' ? 'da campanha' : 'da conta';
+  return `${biddable.map((m) => m.semantica).join(', ')} (${onde})`;
+}
+
+/**
+ * Quão fresco é o sinal, em uma frase.
+ *
+ * ⚠️ `vazio_confirmado` NÃO vira "sem dados". Ele vira "nunca recebeu
+ * conversão", que é o fato mais caro desta tela: a ação existe, a janela foi
+ * consultada, e nada chegou.
+ */
+export function textoDoFrescor(f: FrescorDoSinal): string {
+  if (f.estado === 'vazio_confirmado') {
+    return 'nunca recebeu conversão';
+  }
+  if (f.estado !== 'com_dados' || !f.ultima_conversao_em) {
+    return ROTULO_DA_LEITURA[f.estado];
+  }
+  if (f.dias_desde_a_ultima === null) {
+    return `última conversão em ${f.ultima_conversao_em}`;
+  }
+  if (f.dias_desde_a_ultima <= 0) {
+    return `última conversão hoje (${f.ultima_conversao_em})`;
+  }
+  const dias = f.dias_desde_a_ultima;
+  return `última conversão há ${dias} ${dias === 1 ? 'dia' : 'dias'} (${f.ultima_conversao_em})`;
+}
+
+/**
+ * De onde o sinal chega — a ação eleita, com dono e id.
+ *
+ * ⚠️ O id NUMÉRICO aparece, e não só o nome. É por ele que o destino de
+ * conversão offline é resolvido, e mostrar só o nome ensinaria o operador a
+ * identificar a ação pelo campo errado — o mesmo campo que a Data Manager não
+ * aceita.
+ */
+export function textoDaFonteDoSinal(plano: PlanoDeMensuracao): string {
+  const a = plano.acao_alvo;
+  if (a === null) return plano.acao_alvo_causa ?? 'nenhuma ação foi eleita';
+  const dono = a.owner_customer_id ?? 'conta não lida';
+  return `${a.nome || a.semantica} · ação #${a.id} · conta ${dono}`;
 }
 
 /**
