@@ -54,6 +54,27 @@ def _rede_bloqueada(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(socket.socket, "connect_ex", recusar_rede)
 
 
+@pytest.fixture(autouse=True)
+def _plano_de_mensuracao_nao_lido(monkeypatch: pytest.MonkeyPatch):
+    """A leitura do plano de mensuração não acontece nestes testes.
+
+    ⚠️ Ela é a SEGUNDA leitura do Google feita por `/provar` — cinco consultas
+    GAQL, teto próprio — e este arquivo declara, no cabeçalho, que nada aqui
+    toca rede, Supabase ou Google. Sem este dublê, cada teste do ledger passaria
+    a depender da conta real: o veredito de mensuração mudaria conforme o dia,
+    e uma suíte que muda de resposta sem o código mudar não prova nada.
+
+    ⚠️ `None` é o valor HONESTO, e não um atalho: é exatamente o que a rota
+    produz quando a leitura do plano não completa, e faz `prontidao.avaliar`
+    cair de volta no ramo que julga `metas_da_conta` — que é o que estes testes
+    exercem. Quem quiser um plano de verdade sobrescreve este dublê.
+    """
+    async def sem_plano(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(trafego, "_plano_de_mensuracao", sem_plano)
+
+
 IDENTIDADE = Identidade(
     sub="operador-sub-1", email="tarcisio@agenciavolc.com.br",
     papel="ADMIN", origem="teste",
@@ -953,6 +974,7 @@ def test_o_canario_recusa_rede_ausente_e_recusa_parceiros():
 # ═══════════════════════════════════════════════════════════════════════════
 # J. A leitura de metas não pendura a prova (01/09/2026)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_leitura_de_metas_lenta_vira_indeterminado_e_nao_pendura(monkeypatch):
     """⚠️ Ela roda DEPOIS do teto de `_preparar`, então precisa do teto dela.

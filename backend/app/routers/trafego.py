@@ -2620,6 +2620,48 @@ async def provar(
 #: informativa, e uma resposta que não chega é pior que um `INDETERMINADO`.
 TIMEOUT_METAS_S = 15.0
 
+#: Teto da leitura do PLANO de mensuração. Maior que o de metas porque são
+#: cinco consultas independentes — metas da conta, nível, metas da campanha,
+#: ações e frescor — e não uma. ⚠️ Continua sendo um teto, e estourá-lo produz
+#: um plano ausente com causa, nunca um plano pela metade com cara de completo.
+TIMEOUT_PLANO_S = 30.0
+
+
+async def _plano_de_mensuracao(cid: str, mid: str, *,
+                               campaign_id: Optional[str] = None,
+                               chave_intencao: Optional[str] = None):
+    """O plano canônico de mensuração, lido da conta. `None` quando não deu.
+
+    ⚠️ LEITURA SEPARADA da de metas, e não um campo a mais nela. As duas
+    respondem perguntas diferentes — `meta_de_conversao` diz quais ações a conta
+    marcou como primárias, o plano diz o que a campanha efetivamente persegue —
+    e mantê-las separadas é o que impede a falha de uma de apagar a outra. Era
+    esse o defeito de `metas = None`: tudo-ou-nada, em que uma leitura
+    parcialmente bem-sucedida virava ignorância total.
+
+    ⚠️ E `None` aqui NÃO é "a conta não tem plano". É "não deu para montar o
+    plano nesta requisição", e `prontidao.avaliar` cai de volta no ramo antigo —
+    que continua dizendo PARCIAL, palavra por palavra.
+    """
+    from datetime import date
+
+    from app.trafego import metas_efetivas as mef
+
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(mef.ler_plano, cid, login_customer_id=mid,
+                              campaign_id=campaign_id,
+                              chave_intencao=chave_intencao,
+                              hoje=date.today().isoformat()),
+            timeout=TIMEOUT_PLANO_S)
+    except asyncio.TimeoutError:
+        log.warning("leitura do plano de mensuração da conta %s passou de %.0fs",
+                    cid, TIMEOUT_PLANO_S)
+        return None
+    except Exception:  # noqa: BLE001 — falha de leitura não vira veredito
+        log.warning("não consegui montar o plano de mensuração da conta %s", cid)
+        return None
+
 
 async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
                                    plano_valido: bool = False):
@@ -2649,10 +2691,18 @@ async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
     except Exception:  # noqa: BLE001
         log.warning("não consegui ler as metas de conversão da conta %s", cid)
         metas = None
+    # ⚠️ A campanha ainda NÃO existe aqui — `/provar` não cria nada. O plano
+    # nasce com `campaign_id=None`, e é justamente esse o ponto de P05-T12: o
+    # plano de mensuração precisa existir ANTES do nascimento, senão ninguém
+    # consegue ativar a campanha com segurança depois.
+    plano = await _plano_de_mensuracao(
+        cid, mid, campaign_id=None,
+        chave_intencao=getattr(body, "chave_intencao", None))
     return pr.avaliar(
         plano_valido=plano_valido,
         recibo_registrado=False,   # /provar não abre recibo, e não finge que abre
         metas_da_conta=metas,
+        plano_de_mensuracao=plano,
         # Nenhum dos dois foi provado em operação real. Declarar `True` aqui
         # seria exatamente a mentira que o módulo existe para impedir.
         data_manager_operante=False,
