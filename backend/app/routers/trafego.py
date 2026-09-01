@@ -48,8 +48,9 @@ from pydantic import (BaseModel, ConfigDict, Field, field_validator,
 
 from app.services.supabase_service import SupabaseService
 from app.config import get_settings
-from app.trafego import (canario, capacidades as cap, escopo, inteligencia_lab,
-                         ledger as led, projecao)
+from app.trafego import (canario, capacidades as cap,
+                         contrato_canais as ccan, escopo,
+                         inteligencia_lab, ledger as led, projecao)
 
 log = logging.getLogger("volc.trafego")
 
@@ -3479,6 +3480,140 @@ async def capacidades_do_operador(
     c = cap.de_identidade(papel=quem.papel,
                           escrita_permitida=bool(e.get("env_presente")))
     return c.json()
+
+
+# ── os quatro canais, e os quatro portões de cada um ────────────────────────
+#
+# ⚠️ ESTA ROTA NÃO CHAMA O GOOGLE ADS, E ISSO É PARTE DO CONTRATO.
+#
+# Ela desenha um cockpit que abre a cada navegação. Uma leitura viva aqui
+# gastaria quota da conta do cliente para pintar uma tela, e — pior — faria a
+# página inteira depender de a rede do Google estar boa. O que ela sabe sobre a
+# conta vem do que já está persistido; o que ninguém leu sai `INDETERMINADO`,
+# com a razão dita.
+#
+# ⚠️ E ela não autoriza nada. `exigir_admin` em `/subir`, `canario.elegivel` no
+# pedido, `modo.exigir_leitura_apenas` na saída e `perfil.exigir` no engine
+# continuam sendo quem recusa. Aqui só se projeta, para a tela, o que aquelas
+# quatro já decidiram — e é por isso que o navegador não precisa recalcular
+# nada: o veredito e o motivo chegam prontos.
+
+
+def _capacidades_de(quem: Identidade) -> Any:
+    """As capacidades desta pessoa, neste servidor, agora.
+
+    ⚠️ `env_presente`, e NÃO `escrita_permitida()` — o mesmo cuidado da rota
+    `/capacidades`, pela mesma razão: `escrita_permitida()` exige o `destravar()`
+    de processo e devolveria `False` sempre quando chamada fora de um bloco de
+    operação, inclusive num servidor onde `POST /subir` cria campanha de verdade.
+    """
+    from volc_ads.gads import modo
+
+    e = modo.estado()
+    return cap.de_identidade(papel=quem.papel,
+                             escrita_permitida=bool(e.get("env_presente")))
+
+
+def _supa_opcional() -> SupabaseService:
+    """O snapshot, sem exigir que ele exista.
+
+    ⚠️ `_supa()` levanta 503 quando o Supabase não está configurado, e ele está
+    certo para as rotas que não têm o que responder sem ele. Esta rota TEM: o
+    manifesto, as capacidades e a política não dependem de banco nenhum, e um
+    503 aqui apagaria os três por causa da camada que faltou. O contrato
+    prevê exatamente esse caso — a leitura que não aconteceu sai
+    `INDETERMINADO` com a razão dita, e o resto continua verdadeiro.
+    """
+    return SupabaseService(get_settings())
+
+
+async def _operacional_por_canal(supa: SupabaseService) -> Dict[str, Any]:
+    """Fatos operacionais que não cabem nos portões, por canal.
+
+    Hoje há um só, e ele é o canário Search: onde a campanha pausada aparece e
+    onde ela não aparece. Ele fica FORA dos portões de propósito — não é uma
+    permissão, é uma observação sobre o mundo, e misturá-la com autorização
+    faria a tela ler "o canário existe" como "posso criar outro".
+    """
+    return {
+        canario.CANAL: {
+            "canario": await ccan.canario_operacional(supa),
+        }
+    }
+
+
+@router.get("/canais")
+async def contrato_dos_canais(
+    quem: Identidade = Depends(exigir_usuario),
+) -> Any:
+    """Os quatro canais do Google, com veredito e motivo por portão.
+
+    A resposta carrega, por canal: o manifesto do que ele sabe fazer, os quatro
+    portões (`planejável`, `validável`, `criável pausada`, `ativável`) com
+    estado e bloqueadores nomeados, os recursos criativos que ele monta, o que
+    se sabe sobre medição, o que se sabe sobre reler a campanha depois — e, em
+    Search, onde o canário pausado aparece.
+
+    Nenhum campo pode ser derivado de outro pela tela.
+    """
+    _ponte()
+    c = _capacidades_de(quem)
+    supa = _supa_opcional()
+    espelho = await ccan.contar_espelho_por_canal(supa)
+    operacional = await _operacional_por_canal(supa)
+    canais = ccan.contrato_dos_canais(
+        capacidades=c,
+        espelho_por_canal=espelho,
+        operacional_por_canal=operacional,
+    )
+    return {
+        "operador": c.json(),
+        "politica_canario": canario.POLITICA.para_json(),
+        "canais": [x.json() for x in canais],
+        # ⚠️ De onde cada camada veio, para a tela poder dizer "não sei" com
+        # precisão em vez de mostrar um vazio mudo. `espelho_lido=False` é a
+        # diferença entre "a conta não tem campanhas" e "ninguém perguntou".
+        "fontes": {
+            "manifesto": "declaração do que cada canal sabe fazer",
+            "capacidades": "papel da sessão + permissão de escrita do servidor",
+            "espelho_lido": espelho is not None,
+            "leitura_viva_do_google": False,
+            "por_que_sem_leitura_viva": ccan.SEM_LEITURA_VIVA,
+        },
+    }
+
+
+@router.get("/canais/{canal}")
+async def contrato_de_um_canal(
+    canal: str,
+    quem: Identidade = Depends(exigir_usuario),
+) -> Any:
+    """O mesmo contrato, de um canal só. `PMAX` é aceito como apelido de tela."""
+    _ponte()
+    c = _capacidades_de(quem)
+    supa = _supa_opcional()
+    try:
+        alvo = ccan.contrato(canal, capacidades=c)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    espelho = await ccan.contar_espelho_por_canal(supa, canais=(alvo.canal,))
+    operacional = await _operacional_por_canal(supa)
+    final = ccan.contrato(
+        alvo.canal,
+        capacidades=c,
+        espelho=(espelho or {}).get(alvo.canal),
+        operacional=operacional.get(alvo.canal),
+    )
+    return {
+        "operador": c.json(),
+        "politica_canario": canario.POLITICA.para_json(),
+        "canal": final.json(),
+        "fontes": {
+            "espelho_lido": espelho is not None,
+            "leitura_viva_do_google": False,
+            "por_que_sem_leitura_viva": ccan.SEM_LEITURA_VIVA,
+        },
+    }
 
 
 # ── o veredito de política ──────────────────────────────────────────────────
