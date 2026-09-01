@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-31T22:33:51-03:00",
+  "generated_at": "2026-09-01T05:55:15-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 450,
@@ -559,9 +559,9 @@
       "extension": ".md",
       "classification": "product-document",
       "tracked": true,
-      "bytes": 30524,
+      "bytes": 30665,
       "lines": 521,
-      "sha256": "ea31e30bd6d4889020b5a93ac03f0ab951453cd0be93495067992d2cecacc64e",
+      "sha256": "28ab97662e5e48c5c1cd4275773d6813fe7f216201bb918e0d37e27363196e14",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -619,9 +619,9 @@
       "extension": ".md",
       "classification": "product-document",
       "tracked": true,
-      "bytes": 54309,
+      "bytes": 54468,
       "lines": 886,
-      "sha256": "3e22134fcb9fc062a769f75ce965e87618cc0e1552f6ca92b1670f733b6afd2d",
+      "sha256": "0bca660ab41733669322a4a3fcc0b8e53e8289daafdd720b4d5732a2c68caa58",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -631,9 +631,9 @@
       "extension": ".md",
       "classification": "product-document",
       "tracked": true,
-      "bytes": 10725,
-      "lines": 189,
-      "sha256": "d752fe25a9e5f209fe8df1b0d9330cd2d3a8474bfc93d8982c18bf525c2e56e5",
+      "bytes": 11287,
+      "lines": 191,
+      "sha256": "11675085bf436675db9ee2441042d6053cfe668fbc01ef1372240a810dcfe2bf",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1017,7 +1017,7 @@
       "tracked": true,
       "bytes": 18123,
       "lines": 255,
-      "sha256": "4bc415b02162ac5346358618928b694324eb46ed46cd05c95e9314cf125909a9",
+      "sha256": "f1ba2657b30fda9b31def49a04e672462764c6c9bf0195580d745a32977da424",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2503,9 +2503,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 43127,
+      "bytes": 43446,
       "lines": 690,
-      "sha256": "f6dbc71abf352c05dfdb208b57e64721bc3620262cc2470630edd060abf9b0d0",
+      "sha256": "4657083f02cc11d84695dcdab001eb42af5ecf1083b386065c341a6b0d34ccb9",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
