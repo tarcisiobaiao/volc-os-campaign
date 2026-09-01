@@ -711,3 +711,92 @@ def test_nome_logico_malformado_e_recusado_antes_da_rede():
                                 "observado_em": "2026-09-01T10:00:00Z"})
     assert r.status_code == 400
     assert repo.chamadas == []
+
+
+# ── 10. Os achados da revisao adversarial de 01/09/2026 ─────────────────────
+
+
+@pytest.mark.parametrize("campo", ["nome", "plataforma", "resumo", "dono_nome",
+                                   "projeto", "vertical", "proxima_acao",
+                                   "display_id", "localizacao_rotulo"])
+def test_A1_referencia_op_nao_entra_por_NENHUM_campo_publicado(campo):
+    """ACHADO A1. A primeira versao protegia quatro campos — os que EU imaginei
+    que alguem usaria para prosa — e deixava `plataforma`, `nome` e `dono_nome`
+    de fora. A revisao entrou com `op://Vault/Item/password` em `plataforma` e a
+    referencia voltou pela listagem, pelo detalhe, pela postura e pelo snapshot.
+
+    A pergunta certa nao era "onde alguem escreveria um token?" e sim "qual
+    coluna sai numa resposta?". Este teste percorre todas.
+    """
+    repo = RepositorioDuble()
+    base = dict(ATIVO_VALIDO)
+    base[campo] = ("op://Vault/Item/password" if campo not in ("resumo", "proxima_acao")
+                   else "usar op://Vault/Item/password para entrar na conta agora")
+    r = montar(repo).post("/api/cofre/ativos",
+                          json={"chave_idempotencia": "chave-a1-0001", "ativo": base})
+    assert r.status_code == 400, campo
+    assert "op://" not in r.text
+    assert repo.chamadas == []
+
+
+def test_A1_owner_nome_da_credencial_tambem_e_protegido():
+    repo = RepositorioDuble()
+    r = montar(repo).post("/api/cofre/ativos/asset:facebook-page:piloto/credencial",
+                          json={"chave_idempotencia": "chave-a1-0002", "provider": "1password",
+                                "nome_logico": "A1_OWNER", "localizador": LOCALIZADOR,
+                                "finalidade": "acesso administrativo",
+                                "owner_nome": "op://Vault/Item/password"})
+    assert r.status_code == 400
+    assert repo.chamadas == []
+
+
+def test_A3_a_frase_de_conflito_de_idempotencia_nao_carrega_mais_a_chave():
+    """ACHADO A3. A mensagem do banco era 'chave de idempotencia X ja foi
+    usada...', e o filtro tratava qualquer frase com 'chave de idempotencia'
+    como segura. A gramatica da chave aceita uma senha inteira, entao um cliente
+    que usasse uma senha como chave a receberia de volta no 409.
+
+    Agora a frase segura e a NOVA, sem a chave; a antiga cai na frase fechada.
+    """
+    antiga = f"chave de idempotencia {SEGREDO} ja foi usada por outra operacao (rota x)"
+    saida = _mensagem_segura(antiga, "conflito")
+    assert SEGREDO not in saida
+    assert saida == "Ja existe um registro em conflito com este pedido."
+
+    nova = "esta chave de idempotencia ja foi usada por outra operacao (rota cofre.revisar_ativo); use uma chave nova"
+    assert _mensagem_segura(nova, "conflito") == nova
+
+
+def test_A6_lista_com_elemento_estranho_e_indisponibilidade_e_nao_lista_vazia():
+    """ACHADO A6. `[i for i in bruto if isinstance(i, dict)]` transformava
+    `[None]` em `[]`, e a rota respondia 200 com engines vazias sobre um banco
+    que respondeu errado — o mesmo defeito que `_objeto` ja evitava, escrito de
+    novo uma funcao abaixo."""
+    class SupaTorto:
+        enabled = True
+
+        async def rpc(self, funcao, argumentos):
+            return [None]
+
+    repo = RepositorioSupabase(SupaTorto())
+    with pytest.raises(CofreIndisponivel):
+        asyncio.run(repo.engines())
+    with pytest.raises(CofreIndisponivel):
+        asyncio.run(repo.postura_credencial("asset:x:y"))
+
+
+def test_A6_a_rota_de_engines_devolve_503_e_nao_engines_vazias():
+    class SupaTorto:
+        enabled = True
+
+        async def rpc(self, funcao, argumentos):
+            return [None]
+
+    app = FastAPI()
+    app.include_router(rotas.router)
+    app.dependency_overrides[rotas.obter_casos] = lambda: CasosDeUso(RepositorioSupabase(SupaTorto()))
+    app.dependency_overrides[exigir_usuario] = lambda: ADMIN
+    app.dependency_overrides[exigir_admin] = lambda: ADMIN
+    r = TestClient(app, raise_server_exceptions=False).get("/api/cofre/engines")
+    assert r.status_code == 503
+    assert '"engines":[]' not in r.text.replace(" ", "")

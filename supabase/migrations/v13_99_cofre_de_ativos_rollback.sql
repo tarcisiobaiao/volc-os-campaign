@@ -108,7 +108,7 @@ DROP FUNCTION IF EXISTS public.cofre_revisar_ativo(text, jsonb, text, uuid, text
 DROP FUNCTION IF EXISTS public.cofre_cadastrar_ativo(jsonb, text, uuid, text, text);
 DROP FUNCTION IF EXISTS public.cofre_registra_operacao(text, text, text, jsonb, uuid, text);
 DROP FUNCTION IF EXISTS public.cofre_idempotencia(text, text, text);
-DROP FUNCTION IF EXISTS public.cofre_entrada_hash(text, jsonb);
+DROP FUNCTION IF EXISTS public.cofre_entrada_hash(text, jsonb, jsonb);
 DROP FUNCTION IF EXISTS public.cofre_snapshot_ativo(text);
 
 -- As tabelas primeiro, porque os gatilhos as referenciam.

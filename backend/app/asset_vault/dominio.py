@@ -12,7 +12,8 @@ uma ida a rede, e — como foi medido em 01/09/2026 — a violacao de CHECK anex
 ANTES de o valor sair desta maquina, com uma frase escrita para quem opera.
 
 Onde as duas listas tem de concordar, a concordancia e PROVADA por teste
-(`backend/tests/test_cofre_dominio.py`), nao prometida por comentario.
+(`backend/tests/test_cofre_ativos.py`, os tres testes do bloco 1: eles LEEM a
+migration e comparam tipo a tipo), nao prometida por comentario.
 """
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ from typing import Any, Iterable
 #
 # Espelham `cofre_gaveta` e `cofre_tipo` da v13_01 e `ASSET_CLUSTERS`/
 # `ASSET_KINDS` de `src/features/asset-vault/contract.ts`. Os tres tem de
-# concordar, e `test_cofre_dominio.py` compara este arquivo com o SQL lendo a
+# concordar, e `test_cofre_ativos.py` compara este arquivo com o SQL lendo a
 # migration — se alguem adicionar um tipo so num lugar, o teste cai.
 
 GAVETAS: tuple[str, ...] = (

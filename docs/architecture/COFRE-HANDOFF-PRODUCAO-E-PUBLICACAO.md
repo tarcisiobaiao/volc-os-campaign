@@ -2,7 +2,8 @@
 
 **Data:** 01/09/2026
 **Estado:** contrato aceito; os três consumidores ainda não existem
-**Alvos:** P03-T11 (broker 1Password ↔ AdsPower), P12-T08 e P12-T09 (Postiz), P12-T11 (QA visual)
+**Alvos:** P03-T11 (broker 1Password ↔ AdsPower), P12-T09 (porta VOLC de publicação), P12-T11 (QA visual)
+**Adjacente, e não respondido pela rota:** P12-T08 (subir o Postiz). O handoff diz *quem publica* e *com qual acesso*; **onde** o Postiz roda é decisão de infraestrutura, não fato do inventário.
 
 ## Resultado em uma frase
 

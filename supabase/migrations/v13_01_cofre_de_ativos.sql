@@ -21,8 +21,15 @@
 -- mecanismos, em camadas, e cada um sozinho seria insuficiente:
 --
 --   1) FORMA. `cofre_credencial_referencia.localizador` tem CHECK de FORMA por
---      provider: `op://cofre/item/campo` e aceito, `Tr0ub4dor&3` nao. Uma senha
---      bruta nao cabe na coluna — nao por politica, por gramatica.
+--      provider: `op://cofre/item/campo` e aceito, `Tr0ub4dor&3` nao.
+--
+--      ⚠️ E ATE ONDE ISSO VAI, dito por uma revisao adversarial de 01/09/2026:
+--      a gramatica prova que o texto TEM FORMA DE ENDERECO, e nao que ele E um
+--      endereco. `op://Vault/Item/password` e uma referencia bem formada e
+--      tambem pode ser, literalmente, a senha que alguem escolheu. Sintaxe nao
+--      alcanca semantica, e nenhuma CHECK alcancara. O que a forma entrega e
+--      real e limitado: recusa o que NAO tem forma de referencia — que e o caso
+--      de praticamente toda senha, todo token e toda chave que existem por ai.
 --
 --   2) CHAVE. Todo jsonb que entra passa por `cofre_recusa_chave_sensivel`,
 --      que percorre o documento INTEIRO (aninhado, dentro de array) e compara a
@@ -38,10 +45,18 @@
 --      do banco por operacao administrativa direta, fora desta API, com o papel
 --      `postgres`, e isso e proposital.
 --
--- ⚠️ O QUE ISTO **NAO** PROTEGE, dito sem rodeio: quem tem a senha do papel
--- `postgres` le a coluna. A promessa aqui e que nem a API, nem o navegador, nem
--- o grafo, nem o recibo, nem `service_role` a alcancam — e que um payload com
--- valor bruto e RECUSADO em vez de aceito e escondido.
+-- ⚠️ O QUE ISTO **NAO** PROTEGE, dito sem rodeio:
+--
+--   a) quem tem a senha do papel `postgres` le a coluna. A promessa aqui e que
+--      nem a API, nem o navegador, nem o grafo, nem o recibo, nem `service_role`
+--      a alcancam;
+--   b) uma ESCRITA DIRETA que chegue a CHECK ainda ecoa o valor recusado no
+--      `DETAIL: Failing row contains (…)` do Postgres, e isso e comportamento do
+--      servidor, nao coisa que uma constraint possa evitar. E exatamente por
+--      isso que o caminho governado valida a forma ANTES do INSERT (secao 15) e
+--      o backend nunca repassa `details` — a CHECK e a ultima linha de defesa,
+--      para uma escrita que nao deveria existir, e nao o primeiro portao;
+--   c) sintaxe nao alcanca semantica: ver o item 1 acima.
 --
 -- -----------------------------------------------------------------------------
 -- AS QUATRO REGRAS QUE ATRAVESSAM O SCHEMA
@@ -76,7 +91,7 @@
 -- criada aqui NASCE escrivel pelo navegador, e `REVOKE ... FROM PUBLIC` nao
 -- resolve: os grants do default ACL sao NOMINAIS.
 --
--- Por isso a secao 20 revoga NOMINALMENTE de cada papel, liga RLS com FORCE e
+-- Por isso a secao 18 revoga NOMINALMENTE de cada papel, liga RLS com FORCE e
 -- zero policies (negacao por ausencia), e so entao concede EXECUTE das funcoes
 -- governadas a `service_role` — e so a ele.
 -- =============================================================================
@@ -99,12 +114,17 @@ BEGIN
       current_user;
   END IF;
 
-  -- PG15 e o piso: `security_invoker` em VIEW so existe a partir do 15, e a
-  -- secao 19 depende dele para que a view de leitura NAO passe por cima da RLS
-  -- das tabelas que ela junta. Producao medida: supabase/postgres:15.8.1.085.
+  -- PG15 e o piso porque e o que PRODUCAO roda: `supabase/postgres:15.8.1.085`,
+  -- confirmado por `SHOW server_version` = 15.8 em 01/09/2026.
+  --
+  -- ⚠️ A primeira versao justificava o piso por `security_invoker` em VIEW, que
+  -- so existe a partir do 15. Aquela justificativa MORREU quando a view saiu do
+  -- desenho (ver secao 18): nao ha mais view neste schema. O piso continua, e o
+  -- motivo passou a ser o unico honesto — provar num banco de major diferente
+  -- do de producao e provar outra coisa.
   IF current_setting('server_version_num')::int < 150000 THEN
     RAISE EXCEPTION
-      'v13_01 exige PostgreSQL 15 ou maior (security_invoker em VIEW); aqui: %',
+      'v13_01 exige PostgreSQL 15 ou maior, que e a major de producao; aqui: %',
       current_setting('server_version');
   END IF;
 
@@ -122,7 +142,7 @@ BEGIN
       ja_existem;
   END IF;
 
-  -- Os REVOKE nominais da secao 20 falham com erro cru se o papel nao existir.
+  -- Os REVOKE nominais da secao 18 falham com erro cru se o papel nao existir.
   -- Num Supabase real os tres existem; num cluster descartavel, nao — e por
   -- isso o harness de prova os cria antes de aplicar.
   SELECT string_agg(r, ', ' ORDER BY r) INTO faltando
@@ -299,7 +319,7 @@ INSERT INTO public.cofre_gaveta (cluster, rotulo, descricao, ordem) VALUES
 
 
 -- -----------------------------------------------------------------------------
--- 3. cofre_tipo — os 27 tipos, cada um em exatamente uma gaveta
+-- 3. cofre_tipo — os 28 tipos, cada um em exatamente uma gaveta
 -- -----------------------------------------------------------------------------
 CREATE TABLE public.cofre_tipo (
   kind      text     PRIMARY KEY,
@@ -992,28 +1012,59 @@ COMMENT ON FUNCTION public.cofre_sem_material_de_credencial(text) IS
   'Recusa FORMATOS reconheciveis de credencial (PEM, JWT, op://, prefixos de token). Nao e detector de entropia.';
 
 
--- Aplicada aos campos de prosa que uma pessoa preenche a mao — que sao
--- exatamente onde um copiar-colar apressado deposita um token.
+-- Aplicada a TODO campo de texto livre — nao so aos que "parecem" prosa.
+--
+-- ⚠️ DEFEITO MEDIDO POR REVISAO ADVERSARIAL EM 01/09/2026. A primeira versao
+-- cobria quatro colunas (`resumo`, `proxima_acao`, `display_id`,
+-- `localizacao_rotulo`) e deixava de fora `nome`, `plataforma`, `dono_nome`,
+-- `projeto`, `vertical` — e `owner_nome` na tabela de referencias. O ataque
+-- reproduzido foi trivial:
+--
+--     cofre_cadastrar_ativo(... "plataforma":"op://Vault/Item/password" ...)
+--     -> a referencia voltava em cofre_listar_ativos, cofre_detalhar_ativo,
+--        cofre_postura_credencial E no snapshot da trilha.
+--
+-- A protecao existia e cobria os campos errados: os que eu imaginei que
+-- alguem usaria para prosa, e nao os que o schema realmente publica. Agora
+-- cobre todos, porque a pergunta certa nao e "onde alguem escreveria um
+-- token?" e sim "qual coluna sai numa resposta?".
 ALTER TABLE public.cofre_ativo
   ADD CONSTRAINT cofre_ativo_prosa_limpa CHECK (
-    public.cofre_sem_material_de_credencial(resumo)
+    public.cofre_sem_material_de_credencial(nome)
+    AND public.cofre_sem_material_de_credencial(plataforma)
+    AND public.cofre_sem_material_de_credencial(resumo)
+    AND public.cofre_sem_material_de_credencial(dono_nome)
+    AND public.cofre_sem_material_de_credencial(projeto)
+    AND public.cofre_sem_material_de_credencial(vertical)
     AND public.cofre_sem_material_de_credencial(proxima_acao)
     AND public.cofre_sem_material_de_credencial(display_id)
     AND public.cofre_sem_material_de_credencial(localizacao_rotulo));
 
 ALTER TABLE public.cofre_credencial_referencia
   ADD CONSTRAINT cofre_credencial_prosa_limpa CHECK (
-    public.cofre_sem_material_de_credencial(finalidade));
+    public.cofre_sem_material_de_credencial(finalidade)
+    AND public.cofre_sem_material_de_credencial(owner_nome));
+
+ALTER TABLE public.cofre_relacao
+  ADD CONSTRAINT cofre_relacao_prosa_limpa CHECK (
+    public.cofre_sem_material_de_credencial(destino_rotulo)
+    AND public.cofre_sem_material_de_credencial(declarada_por));
 
 ALTER TABLE public.cofre_verificacao
   ADD CONSTRAINT cofre_verificacao_prosa_limpa CHECK (
     public.cofre_sem_material_de_credencial(evidencia)
     AND public.cofre_sem_material_de_credencial(metodo)
-    AND public.cofre_sem_material_de_credencial(proximo_ato));
+    AND public.cofre_sem_material_de_credencial(proximo_ato)
+    AND public.cofre_sem_material_de_credencial(autor_email));
 
 ALTER TABLE public.cofre_ativo_revisao
   ADD CONSTRAINT cofre_revisao_prosa_limpa CHECK (
-    public.cofre_sem_material_de_credencial(motivo));
+    public.cofre_sem_material_de_credencial(motivo)
+    AND public.cofre_sem_material_de_credencial(autor_email));
+
+ALTER TABLE public.cofre_engine_perfil
+  ADD CONSTRAINT cofre_engine_prosa_limpa CHECK (
+    public.cofre_sem_material_de_credencial(manifesto_fonte));
 
 
 -- -----------------------------------------------------------------------------
@@ -1201,9 +1252,15 @@ BEGIN
     -- O ramo que quase sempre falta. Sobrescrever aqui faria duas operacoes
     -- diferentes compartilharem um recibo, e o retry silencioso viraria perda
     -- de dado com aparencia de sucesso.
+    -- ⚠️ A CHAVE NAO ENTRA NA MENSAGEM, e isso foi medido. A primeira versao
+    -- escrevia 'chave de idempotencia % ja foi usada...' com `p_chave`, e a
+    -- gramatica da chave (`[A-Za-z0-9._:-]{8,120}`) aceita uma senha inteira.
+    -- Como o filtro do backend trata "chave de idempotencia" como frase segura,
+    -- um cliente que usasse uma senha como chave a veria de volta no 409.
+    -- Quem chamou JA SABE qual chave mandou; repeti-la nao informa nada.
     RAISE EXCEPTION
-      'chave de idempotencia % ja foi usada por outra operacao (rota %); use uma chave nova',
-      p_chave, anterior.rota
+      'esta chave de idempotencia ja foi usada por outra operacao (rota %); use uma chave nova',
+      anterior.rota
       USING ERRCODE = 'unique_violation';
   END IF;
 
@@ -1244,7 +1301,7 @@ COMMENT ON FUNCTION public.cofre_registra_operacao(text, text, text, jsonb, uuid
 -- 15. AS FUNCOES GOVERNADAS DE ESCRITA
 -- -----------------------------------------------------------------------------
 -- Toda escrita do dominio entra por aqui. Nenhum papel do Data API tem INSERT,
--- UPDATE ou DELETE nas tabelas (secao 20), entao este e o unico caminho — nao
+-- UPDATE ou DELETE nas tabelas (secao 18), entao este e o unico caminho — nao
 -- por convencao, por privilegio.
 --
 -- Cada funcao segue a MESMA disciplina, na mesma ordem:
@@ -1262,7 +1319,11 @@ COMMENT ON FUNCTION public.cofre_registra_operacao(text, text, text, jsonb, uuid
 -- ⚠️ Nenhuma delas devolve `localizador`. Nem no recibo, nem no snapshot, nem
 -- na mensagem de erro.
 
-CREATE OR REPLACE FUNCTION public.cofre_entrada_hash(p_rota text, p_payload jsonb)
+CREATE OR REPLACE FUNCTION public.cofre_entrada_hash(
+  p_rota    text,
+  p_payload jsonb,
+  p_extra   jsonb DEFAULT '{}'::jsonb
+)
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
@@ -1272,10 +1333,19 @@ AS $funcao$
   -- `jsonb::text` e canonico: o Postgres ordena as chaves e descarta duplicatas
   -- na entrada. Dois payloads logicamente iguais escritos em ordens diferentes
   -- produzem o MESMO hash, que e exatamente o que um retry precisa.
-  SELECT encode(sha256(convert_to(p_rota || '|' || p_payload::text, 'UTF8')), 'hex');
+  --
+  -- ⚠️ `p_extra` existe por defeito medido em 01/09/2026. A primeira versao
+  -- derivava o hash SO de `p_payload`, e `p_motivo`, `p_autor_sub` e
+  -- `p_autor_email` ficavam de fora. Consequencia reproduzida: a MESMA chave
+  -- com o MESMO payload, mas outro autor e outro motivo, devolvia o recibo
+  -- guardado como `idempotente: true` — e a trilha registrava so o primeiro
+  -- autor. Duas operacoes diferentes compartilhando recibo e exatamente o ramo
+  -- que a secao 14 existe para tornar ruidoso.
+  SELECT encode(sha256(convert_to(
+    p_rota || '|' || p_payload::text || '|' || p_extra::text, 'UTF8')), 'hex');
 $funcao$;
 
-COMMENT ON FUNCTION public.cofre_entrada_hash(text, jsonb) IS
+COMMENT ON FUNCTION public.cofre_entrada_hash(text, jsonb, jsonb) IS
   'Hash canonico da entrada, derivado no banco. O chamador nao o envia e portanto nao pode falsifica-lo.';
 
 CREATE OR REPLACE FUNCTION public.cofre_cadastrar_ativo(
@@ -1303,7 +1373,8 @@ BEGIN
   ], 'cofre_cadastrar_ativo');
   PERFORM public.cofre_recusa_chave_sensivel(p_payload, 'ativo');
 
-  hash := public.cofre_entrada_hash('cofre.cadastrar_ativo', p_payload);
+  hash := public.cofre_entrada_hash('cofre.cadastrar_ativo', p_payload,
+            jsonb_build_object('motivo', p_motivo, 'autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.cadastrar_ativo', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1399,7 +1470,8 @@ BEGIN
   ], 'cofre_revisar_ativo');
   PERFORM public.cofre_recusa_chave_sensivel(p_payload, 'revisao');
 
-  hash := public.cofre_entrada_hash('cofre.revisar_ativo:' || p_ativo_id, p_payload);
+  hash := public.cofre_entrada_hash('cofre.revisar_ativo:' || p_ativo_id, p_payload,
+            jsonb_build_object('motivo', p_motivo, 'autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.revisar_ativo', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1473,7 +1545,8 @@ BEGIN
   ], 'cofre_relacionar');
   PERFORM public.cofre_recusa_chave_sensivel(p_payload, 'relacao');
 
-  hash := public.cofre_entrada_hash('cofre.relacionar', p_payload);
+  hash := public.cofre_entrada_hash('cofre.relacionar', p_payload,
+            jsonb_build_object('autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.relacionar', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1526,7 +1599,8 @@ DECLARE
   recibo   jsonb;
 BEGIN
   hash := public.cofre_entrada_hash('cofre.desfazer_relacao',
-            jsonb_build_object('relacao_id', p_relacao_id, 'motivo', p_motivo));
+            jsonb_build_object('relacao_id', p_relacao_id, 'motivo', p_motivo),
+            jsonb_build_object('autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.desfazer_relacao', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1580,7 +1654,8 @@ DECLARE
   recibo   jsonb;
 BEGIN
   hash := public.cofre_entrada_hash('cofre.aposentar_ativo',
-            jsonb_build_object('ativo_id', p_ativo_id, 'motivo', p_motivo));
+            jsonb_build_object('ativo_id', p_ativo_id, 'motivo', p_motivo),
+            jsonb_build_object('autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.aposentar_ativo', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1637,7 +1712,8 @@ BEGIN
   END IF;
 
   hash := public.cofre_entrada_hash('cofre.reativar_ativo',
-            jsonb_build_object('ativo_id', p_ativo_id, 'estado', p_estado, 'motivo', p_motivo));
+            jsonb_build_object('ativo_id', p_ativo_id, 'estado', p_estado, 'motivo', p_motivo),
+            jsonb_build_object('autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.reativar_ativo', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1692,7 +1768,8 @@ BEGIN
   ], 'cofre_registrar_verificacao');
   PERFORM public.cofre_recusa_chave_sensivel(p_payload, 'verificacao');
 
-  hash := public.cofre_entrada_hash('cofre.registrar_verificacao', p_payload);
+  hash := public.cofre_entrada_hash('cofre.registrar_verificacao', p_payload,
+            jsonb_build_object('autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.registrar_verificacao', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1822,7 +1899,8 @@ BEGIN
       USING ERRCODE = 'invalid_parameter_value';
   END IF;
 
-  hash := public.cofre_entrada_hash('cofre.referenciar_credencial', p_payload);
+  hash := public.cofre_entrada_hash('cofre.referenciar_credencial', p_payload,
+            jsonb_build_object('autor', p_autor_sub, 'email', p_autor_email));
   guardado := public.cofre_idempotencia(p_chave, 'cofre.referenciar_credencial', hash);
   IF guardado IS NOT NULL THEN
     RETURN guardado;
@@ -1918,7 +1996,7 @@ AS $funcao$
                       'observado_em',   v.observado_em,
                       'proximo_ato',    v.proximo_ato,
                       'revisar_em',     v.revisar_em)
-                      ORDER BY v.observado_em DESC), '[]'::jsonb)
+                      ORDER BY v.observado_em DESC, v.verificacao_id DESC), '[]'::jsonb)
                FROM public.cofre_verificacao v WHERE v.ativo_id = a.ativo_id),
            'historico', (
              SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -2003,14 +2081,22 @@ AS $funcao$
                'credencial_registrada', EXISTS (
                  SELECT 1 FROM public.cofre_credencial_referencia c
                   WHERE c.ativo_id = a.ativo_id AND c.aposentado_em IS NULL),
+               -- ⚠️ O DESEMPATE POR `verificacao_id DESC` NAO E ENFEITE, e foi
+               -- medido por revisao adversarial em 01/09/2026. Ordenar so por
+               -- `observado_em DESC` deixa duas provas do MESMO instante em
+               -- ordem indefinida — e a tela preenche `observado_em` com
+               -- precisao de MINUTO. Uma correcao `unverified` registrada
+               -- depois de um `verified` no mesmo minuto podia continuar sendo
+               -- projetada como `verified`: a correcao existia na trilha e nao
+               -- aparecia no card. Append-only sem desempate nao e ordem.
                'verificacao_estado', coalesce((
                  SELECT v.resultado FROM public.cofre_verificacao v
                   WHERE v.ativo_id = a.ativo_id AND v.alvo = 'ativo'
-                  ORDER BY v.observado_em DESC LIMIT 1), 'unverified'),
+                  ORDER BY v.observado_em DESC, v.verificacao_id DESC LIMIT 1), 'unverified'),
                'verificado_em', (
                  SELECT v.observado_em FROM public.cofre_verificacao v
                   WHERE v.ativo_id = a.ativo_id AND v.alvo = 'ativo'
-                  ORDER BY v.observado_em DESC LIMIT 1))
+                  ORDER BY v.observado_em DESC, v.verificacao_id DESC LIMIT 1))
                ORDER BY a.cluster, a.nome), '[]'::jsonb)
         FROM public.cofre_ativo a
         JOIN public.cofre_tipo t ON t.kind = a.kind
@@ -2068,7 +2154,7 @@ COMMENT ON FUNCTION public.cofre_engines_disponiveis() IS
 -- -----------------------------------------------------------------------------
 -- 17. A GUARDA QUE FALTAVA — o dono precisa atravessar a propria RLS
 -- -----------------------------------------------------------------------------
--- `FORCE ROW LEVEL SECURITY` sujeita o DONO da tabela a RLS, e a secao 20 nao
+-- `FORCE ROW LEVEL SECURITY` sujeita o DONO da tabela a RLS, e a secao 18 nao
 -- cria policy nenhuma. Num banco onde o dono nao atravessa RLS, o schema
 -- aplicaria limpo e TODA escrita governada falharia depois — o pior momento
 -- possivel para descobrir.
@@ -2090,7 +2176,7 @@ COMMENT ON FUNCTION public.cofre_engines_disponiveis() IS
 --
 -- ⚠️ Note o outro lado da mesma tabela: `service_role` TAMBEM tem BYPASSRLS.
 -- RLS nao contem `service_role` — quem o contem sao os REVOKE nominais da
--- secao 20. Confiar em RLS para conter o backend seria confiar na trava errada.
+-- secao 18. Confiar em RLS para conter o backend seria confiar na trava errada.
 DO $guarda_rls$
 DECLARE
   atravessa boolean;

@@ -58,13 +58,34 @@ trap limpar EXIT
 if [[ $LOCAL -eq 0 ]] && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   echo "▶ cluster descartavel em Docker (${IMAGEM} — mesma major da producao)"
   CID=$(docker run -d --rm -e POSTGRES_PASSWORD=prova -e POSTGRES_HOST_AUTH_METHOD=trust "$IMAGEM" -c fsync=off)
-  for _ in $(seq 1 60); do
-    if docker exec "$CID" pg_isready -U postgres -q 2>/dev/null; then break; fi
+  # ⚠️ A espera e generosa e DIAGNOSTICA de proposito. A versao anterior tentava
+  # 30 segundos e, ao falhar, dizia so "Postgres nao subiu" — que e a mensagem
+  # menos util possivel: ela nao distingue "a imagem esta baixando", "a porta
+  # esta ocupada" e "o container morreu no initdb". Sob carga (varios agentes
+  # rodando em paralelo nesta maquina) o primeiro caso acontece de verdade.
+  PRONTO=0
+  for _ in $(seq 1 180); do
+    if docker exec "$CID" pg_isready -U postgres -q 2>/dev/null; then PRONTO=1; break; fi
+    if ! docker inspect -f '{{.State.Running}}' "$CID" 2>/dev/null | grep -q true; then
+      echo "ERRO: o container morreu antes de aceitar conexao. Log:" >&2
+      docker logs "$CID" 2>&1 | tail -20 >&2
+      exit 1
+    fi
     sleep 0.5
   done
-  docker exec "$CID" pg_isready -U postgres -q || { echo "ERRO: Postgres nao subiu" >&2; exit 1; }
+  if [[ $PRONTO -ne 1 ]]; then
+    echo "ERRO: Postgres nao aceitou conexao em 90s. Log do container:" >&2
+    docker logs "$CID" 2>&1 | tail -20 >&2
+    exit 1
+  fi
   executar() { docker exec -i "$CID" psql -U postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
   aplicar()  { docker exec -i "$CID" psql -U postgres -X -q -v ON_ERROR_STOP=1 < "$1"; }
+  # O SQL do importador de engines usa `:'autor_sub'` / `:'autor_email'`: a
+  # identidade de quem opera nao pertence a artefato versionado, e por isso ela
+  # entra por variavel do psql em vez de estar escrita no arquivo.
+  aplicar_com_autor() { docker exec -i "$CID" psql -U postgres -X -q -v ON_ERROR_STOP=1 \
+      -v autor_sub=00000000-0000-0000-0000-000000000001 \
+      -v autor_email=prova@agenciavolc.com.br < "$1"; }
 else
   for binario in initdb pg_ctl psql; do
     command -v "$binario" >/dev/null 2>&1 || { echo "ERRO: '$binario' ausente e Docker indisponivel." >&2; exit 1; }
@@ -76,6 +97,9 @@ else
   pg_ctl -D "$PGDATA" -l "${BASE}/postgres.log" -o "-k ${SOCK} -h ''" -w start >/dev/null
   executar() { psql -X -q -h "$SOCK" -U postgres -d postgres -v ON_ERROR_STOP=1 "$@"; }
   aplicar()  { psql -X -q -h "$SOCK" -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$1"; }
+  aplicar_com_autor() { psql -X -q -h "$SOCK" -U postgres -d postgres -v ON_ERROR_STOP=1 \
+      -v autor_sub=00000000-0000-0000-0000-000000000001 \
+      -v autor_email=prova@agenciavolc.com.br -f "$1"; }
 fi
 
 VERSAO=$(executar -tA -c "SHOW server_version")
@@ -528,6 +552,114 @@ BEGIN
       'chave-otp-0001',%L::uuid,%L)$q$, autor, email),
     '22023', 'forma esperada');
 
+  -- (f) ⚠️ ACHADO A1 DA REVISAO ADVERSARIAL (01/09/2026): a limpeza de prosa
+  --     cobria quatro colunas e deixava `plataforma`, `nome`, `dono_nome`,
+  --     `projeto` e `vertical` de fora. Uma referencia op:// colada em
+  --     `plataforma` voltava pela listagem, pelo detalhe, pela postura E pelo
+  --     snapshot da trilha. Estas provas percorrem TODAS as colunas publicadas.
+  PERFORM _prova_recusa('op:// em plataforma (achado A1)',
+    format($q$SELECT public.cofre_cadastrar_ativo(jsonb_build_object(
+      'ativo_id','asset:a1:plataforma','kind','facebook_page','cluster','social_presence',
+      'nome','Ativo adversarial','plataforma','op://Vault/Item/password','estado','declared',
+      'criticidade','high','resumo','Resumo operacional sem material sensivel aqui.',
+      'dono_nome','VOLC','dono_custodia','declared',
+      'capacidades', jsonb_build_array('publicar'),
+      'proxima_acao','Revisar este ativo com a equipe responsavel.'),
+      'chave-a1-plataforma-1',%L::uuid,%L)$q$, autor, email),
+    '23514', 'cofre_ativo_prosa_limpa');
+
+  PERFORM _prova_recusa('op:// em nome (achado A1)',
+    format($q$SELECT public.cofre_cadastrar_ativo(jsonb_build_object(
+      'ativo_id','asset:a1:nome','kind','facebook_page','cluster','social_presence',
+      'nome','op://Vault/Item/password','plataforma','Meta','estado','declared',
+      'criticidade','high','resumo','Resumo operacional sem material sensivel aqui.',
+      'dono_nome','VOLC','dono_custodia','declared',
+      'capacidades', jsonb_build_array('publicar'),
+      'proxima_acao','Revisar este ativo com a equipe responsavel.'),
+      'chave-a1-nome-0001',%L::uuid,%L)$q$, autor, email),
+    '23514', 'cofre_ativo_prosa_limpa');
+
+  PERFORM _prova_recusa('op:// em dono_nome (achado A1)',
+    format($q$SELECT public.cofre_cadastrar_ativo(jsonb_build_object(
+      'ativo_id','asset:a1:dono','kind','facebook_page','cluster','social_presence',
+      'nome','Ativo adversarial','plataforma','Meta','estado','declared',
+      'criticidade','high','resumo','Resumo operacional sem material sensivel aqui.',
+      'dono_nome','op://Vault/Item/password','dono_custodia','declared',
+      'capacidades', jsonb_build_array('publicar'),
+      'proxima_acao','Revisar este ativo com a equipe responsavel.'),
+      'chave-a1-dono-0001',%L::uuid,%L)$q$, autor, email),
+    '23514', 'cofre_ativo_prosa_limpa');
+
+  PERFORM _prova_recusa('op:// em owner_nome da credencial (achado A1)',
+    format($q$SELECT public.cofre_referenciar_credencial(jsonb_build_object(
+      'ativo_id','asset:facebook-page:piloto','provider','1password','nome_logico','A1_OWNER',
+      'localizador','op://VOLC/Outro/credential','finalidade','Acesso administrativo',
+      'owner_nome','op://Vault/Item/password'),'chave-a1-owner-0001',%L::uuid,%L)$q$, autor, email),
+    '23514', 'cofre_credencial_prosa_limpa');
+
+  -- (g) ⚠️ ACHADO A3 (parte 2): a mensagem de conflito de idempotencia ecoava a
+  --     CHAVE, e a gramatica da chave aceita uma senha inteira.
+  PERFORM _prova_aceita_como('primeira operacao com chave que parece senha', 'service_role',
+    format($q$SELECT public.cofre_aposentar_ativo('asset:website:portal-de-prova',
+      'saindo de operacao para provar o eco da chave','SenhaBruta1234',%L::uuid,%L)$q$, autor, email));
+
+  BEGIN
+    PERFORM public.cofre_reativar_ativo('asset:website:portal-de-prova','active',
+      'outra operacao com a mesma chave','SenhaBruta1234',autor,email);
+    RAISE EXCEPTION 'PROVA FALHOU: a chave repetida com outra entrada foi ACEITA';
+  EXCEPTION WHEN unique_violation THEN
+    saida := SQLERRM;
+    IF position('SenhaBruta1234' IN saida) > 0 THEN
+      RAISE EXCEPTION 'PROVA FALHOU: o conflito de idempotencia ECOA a chave | %', left(saida,120);
+    END IF;
+    RAISE NOTICE 'PROVA ok: o conflito de idempotencia nao repete a chave | %', left(replace(saida,E'\n',' '),100);
+  END;
+
+  -- (h) ⚠️ ACHADO A5 (parte 1): o hash ignorava motivo e autor, e a MESMA chave
+  --     com OUTRO autor devolvia o recibo guardado como replay.
+  PERFORM _prova_aceita_como('cadastro para provar o hash com autor', 'service_role',
+    format($q$SELECT public.cofre_cadastrar_ativo(jsonb_build_object(
+      'ativo_id','asset:a5:hash','kind','domain','cluster','web_properties',
+      'nome','Dominio da prova A5','plataforma','Registro','estado','declared',
+      'criticidade','low','resumo','Dominio usado para provar que o autor entra no hash.',
+      'dono_nome','VOLC','dono_custodia','declared',
+      'capacidades', jsonb_build_array('registro'),
+      'proxima_acao','Conferir titularidade e renovacao do dominio.'),
+      'chave-a5-hash-0001',%L::uuid,%L,'cadastro do primeiro autor')$q$, autor, email));
+
+  PERFORM _prova_recusa('mesma chave com OUTRO autor nao vira replay (achado A5)',
+    $q$SELECT public.cofre_cadastrar_ativo(jsonb_build_object(
+      'ativo_id','asset:a5:hash','kind','domain','cluster','web_properties',
+      'nome','Dominio da prova A5','plataforma','Registro','estado','declared',
+      'criticidade','low','resumo','Dominio usado para provar que o autor entra no hash.',
+      'dono_nome','VOLC','dono_custodia','declared',
+      'capacidades', jsonb_build_array('registro'),
+      'proxima_acao','Conferir titularidade e renovacao do dominio.'),
+      'chave-a5-hash-0001','00000000-0000-0000-0000-000000000009'::uuid,
+      'outro@example.test','cadastro do segundo autor')$q$,
+    '23505', 'ja foi usada por outra operacao');
+
+  -- (i) ⚠️ ACHADO A7: sem desempate, duas provas do mesmo instante saem em
+  --     ordem indefinida — e a correcao podia nao aparecer no card.
+  PERFORM _prova_aceita_como('primeira prova do minuto', 'service_role',
+    format($q$SELECT public.cofre_registrar_verificacao(jsonb_build_object(
+      'ativo_id','asset:a5:hash','alvo','ativo','resultado','verified',
+      'metodo','conferencia inicial','procedencia','owner_declaration',
+      'evidencia','o dono afirmou a titularidade do dominio',
+      'observado_em','2026-09-01T12:00:00Z'),'chave-a7-primeira-01',%L::uuid,%L)$q$, autor, email));
+
+  PERFORM _prova_aceita_como('correcao no MESMO instante', 'service_role',
+    format($q$SELECT public.cofre_registrar_verificacao(jsonb_build_object(
+      'ativo_id','asset:a5:hash','alvo','ativo','resultado','unverified',
+      'metodo','revisao da conferencia','procedencia','owner_declaration',
+      'evidencia','a afirmacao anterior nao tinha prova documental',
+      'observado_em','2026-09-01T12:00:00Z'),'chave-a7-correcao-01',%L::uuid,%L)$q$, autor, email));
+
+  PERFORM _prova_igual('a listagem mostra a CORRECAO, nao a prova empatada (achado A7)',
+    $q$SELECT (SELECT a->>'verificacao_estado'
+                 FROM jsonb_array_elements(public.cofre_listar_ativos(NULL,NULL,NULL,NULL,true)->'ativos') a
+                WHERE a->>'ativo_id'='asset:a5:hash')$q$, 'unverified');
+
   -- (e) ⚠️ A PROVA CENTRAL: NENHUMA funcao concedida a service_role devolve o
   --     localizador. Nao e inspecao de catalogo — e chamar cada uma delas e
   --     procurar a string no texto da resposta.
@@ -729,10 +861,15 @@ BEGIN
                  FROM jsonb_array_elements(public.cofre_listar_ativos(NULL,NULL,NULL,NULL,true)->'ativos') a
                 WHERE a->>'ativo_id'='asset:facebook-page:piloto')$q$,
     'Operacao de conteudo organico');
+  -- ⚠️ O ativo desta prova mudou: `asset:website:portal-de-prova` e aposentado
+  -- pela prova do eco da chave de idempotencia (bloco 5) e some da listagem
+  -- padrao. Usar um ativo que outra prova aposenta faz esta medir ausencia em
+  -- vez de lista vazia — e as duas coisas sao justamente o que este schema
+  -- existe para distinguir.
   PERFORM _prova_igual('ativo sem relacao traz lista vazia, nao null',
     $q$SELECT (SELECT a->'relacoes'
                  FROM jsonb_array_elements(public.cofre_listar_ativos()->'ativos') a
-                WHERE a->>'ativo_id'='asset:website:portal-de-prova')::text$q$, '[]');
+                WHERE a->>'ativo_id'='asset:a5:hash')::text$q$, '[]');
 
   -- AS SETE GAVETAS VIAJAM SEMPRE.
   PERFORM _prova_igual('a listagem devolve as 7 gavetas',
@@ -762,6 +899,55 @@ if [[ $CODIGO -ne 0 ]]; then
   exit 1
 fi
 echo "  ✓ ${APROVADAS} provas passaram"
+
+# ---------------------------------------------------------------------------
+# 3b. DEGRAU 2b — o importador de engines contra o schema DE VERDADE
+# ---------------------------------------------------------------------------
+# ⚠️ ESTE DEGRAU EXISTE POR UMA REVISAO DE CONTRATO DE 01/09/2026.
+#
+# Um commit desta missao afirmou "prova ponta-a-ponta: 7 engines entram,
+# reaplicar nao duplica" — e a prova tinha acontecido A MAO, num cluster que ja
+# nao existia. Nao havia artefato que a repetisse: `provar-ciclo` nao importava
+# engine nenhum e o importador so tinha `--autoteste` e `--sql`. Afirmacao de
+# "provado" sem prova re-executavel e exatamente o que este repositorio recusa
+# em qualquer outro lugar.
+#
+# Agora o importador roda contra o schema recem-aplicado, no mesmo cluster.
+echo; echo "DEGRAU 2b — importador de engines contra o schema aplicado"
+if python3 "${RAIZ}/scripts/importar_engines_no_cofre.py" --sql > "${BASE}/engines.sql" 2>/dev/null; then
+  if aplicar_com_autor "${BASE}/engines.sql" > "${BASE}/engines.out" 2>&1; then
+    N_ENG=$(executar -tA -c "SELECT count(*) FROM public.cofre_engine_perfil")
+    echo "  ✓ ${N_ENG} engines entraram pelas funcoes governadas"
+
+    # Reaplicar o MESMO SQL: a chave de idempotencia e derivada do sha256 do
+    # manifesto, entao o replay devolve o recibo guardado em vez de duplicar.
+    aplicar_com_autor "${BASE}/engines.sql" >/dev/null 2>&1
+    N_ENG2=$(executar -tA -c "SELECT count(*) FROM public.cofre_engine_perfil")
+    N_REV=$(executar -tA -c "SELECT count(*) FROM public.cofre_ativo_revisao WHERE operacao='importacao_engine'")
+    if [[ "$N_ENG" != "$N_ENG2" ]]; then
+      echo "  ✗ reaplicar duplicou: ${N_ENG} -> ${N_ENG2}" >&2; exit 1
+    fi
+    echo "  ✓ reaplicar nao duplica (${N_ENG2} engines, ${N_REV} revisoes de importacao)"
+
+    # E o que o importador jurou NAO fazer: nenhum caminho de disco, nenhum
+    # e-mail, nenhuma contagem zero inventada.
+    SUJO=$(executar -tA -c "SELECT count(*) FROM public.cofre_ativo
+             WHERE localizacao_rotulo ~ '/Users/|GoogleDrive|CloudStorage|@'
+                OR resumo ~ '/Users/|@' OR proxima_acao ~ '/Users/|@'")
+    ZERO=$(executar -tA -c "SELECT count(*) FROM public.cofre_engine_perfil
+             WHERE formatos = 0 OR skins = 0 OR nichos = 0 OR vozes = 0")
+    INTEG=$(executar -tA -c "SELECT count(*) FROM public.cofre_engine_perfil
+             WHERE estado_operacional = 'integrado'")
+    if [[ "$SUJO" != "0" || "$ZERO" != "0" || "$INTEG" != "0" ]]; then
+      echo "  ✗ caminho/e-mail=${SUJO} contagem-zero=${ZERO} integrado=${INTEG}" >&2; exit 1
+    fi
+    echo "  ✓ zero caminho de disco, zero contagem inventada, zero engine 'integrado'"
+  else
+    echo "  ✗ o SQL do importador nao aplicou:" >&2; tail -12 "${BASE}/engines.out" >&2; exit 1
+  fi
+else
+  echo "  ⚠ importador indisponivel; os engines NAO foram exercitados contra o schema"
+fi
 
 # ---------------------------------------------------------------------------
 # 4. DEGRAU 3 — reverter
@@ -797,5 +983,6 @@ echo
 echo "════════════════════════════════════════════════════════════════"
 echo " ${APROVADAS} provas · PostgreSQL ${VERSAO}"
 echo " v13_01 aplicavel → operavel → reversivel → reaplicavel"
+echo " engines importados pelo caminho governado, sem duplicar e sem caminho de disco"
 echo " cluster descartado. Nada foi tocado em producao."
 echo "════════════════════════════════════════════════════════════════"

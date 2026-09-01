@@ -77,12 +77,12 @@ const VERIFICATION_TONE: Record<string, string> = {
   blocked: "text-warning",
 };
 
-/** Dois estados que o contrato público não tinha, e que o banco distingue. */
-const VERIFICATION_TEXTO: Record<string, string> = {
-  ...VERIFICATION_LABEL,
-  failed: "Verificação falhou",
-  blocked: "Acesso bloqueado",
-};
+/**
+ * Rótulos dos seis estados. Vem do contrato público — que passou a ter os seis
+ * em 01/09/2026, depois de uma revisão adversarial mostrar que ele aceitava
+ * quatro enquanto o banco gravava seis.
+ */
+const VERIFICATION_TEXTO: Record<string, string> = VERIFICATION_LABEL;
 
 const CLUSTER_ICONS: Record<string, typeof Vault> = {
   social_presence: Megaphone,
@@ -270,7 +270,7 @@ function FormularioDeCadastro({ aoFechar, aoConcluir }: { aoFechar: () => void; 
         if (valor) ativo[opcional] = valor;
       }
       return cofre.cadastrarAtivo({
-        chave_idempotencia: cofre.chaveDoAto("cadastro", ativo.ativo_id as string),
+        chave_idempotencia: cofre.chaveDoAto("cadastro", ativo.ativo_id as string, ativo),
         motivo: "cadastro pela tela do Cofre de Ativos",
         ativo,
       });
@@ -412,7 +412,7 @@ function FormularioDeRevisao({ ativo, aoFechar, aoConcluir }: {
       // A chave inclui os CAMPOS mudados: sem isso, duas revisões distintas do
       // mesmo ativo no mesmo minuto compartilhariam chave, e a segunda voltaria
       // como replay da primeira — silenciosamente descartada.
-      chave_idempotencia: cofre.chaveDoAto("revisao", ativo.ativo_id, Object.keys(mudancas).sort().join(".")),
+      chave_idempotencia: cofre.chaveDoAto("revisao", ativo.ativo_id, { mudancas, motivo: motivo.trim() }),
       motivo: motivo.trim(),
       mudancas,
     }),
@@ -508,7 +508,7 @@ function FormularioDeCredencial({ ativoId, aoFechar, aoConcluir }: {
   const enviar = useMutation({
     mutationFn: async () => {
       const corpo: Record<string, unknown> = {
-        chave_idempotencia: cofre.chaveDoAto("credencial", ativoId, form.nome_logico),
+        chave_idempotencia: cofre.chaveDoAto("credencial", ativoId, form),
         provider: form.provider,
         nome_logico: form.nome_logico.trim(),
         localizador: form.localizador.trim(),
@@ -581,7 +581,7 @@ function FormularioDeVerificacao({ ativoId, aoFechar, aoConcluir }: {
   const enviar = useMutation({
     mutationFn: async () => {
       const corpo: Record<string, unknown> = {
-        chave_idempotencia: cofre.chaveDoAto("verificacao", ativoId, form.alvo + form.resultado),
+        chave_idempotencia: cofre.chaveDoAto("verificacao", ativoId, form),
         alvo: form.alvo, resultado: form.resultado, metodo: form.metodo.trim(),
         procedencia: form.procedencia, evidencia: form.evidencia.trim(),
         observado_em: new Date(form.observado_em).toISOString(),
@@ -665,7 +665,7 @@ function FormularioDeRelacao({ ativoId, ativos, aoFechar, aoConcluir }: {
   const enviar = useMutation({
     mutationFn: async () => {
       const corpo: Record<string, unknown> = {
-        chave_idempotencia: cofre.chaveDoAto("relacao", ativoId, tipo + destinoId + destinoExterno),
+        chave_idempotencia: cofre.chaveDoAto("relacao", ativoId, { tipo, destinoId, destinoExterno, rotulo }),
         tipo, destino_rotulo: rotulo.trim(), estado: "declared",
       };
       if (modo === "interno") corpo.destino_id = destinoId;
@@ -819,7 +819,7 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
 
   const aposentar = useMutation({
     mutationFn: (motivo: string) => cofre.aposentar(ativoId, {
-      chave_idempotencia: cofre.chaveDoAto("aposentar", ativoId), motivo,
+      chave_idempotencia: cofre.chaveDoAto("aposentar", ativoId, motivo), motivo,
     }),
     onSuccess: () => { toast({ title: "Ativo aposentado", description: "Ele continua no inventário, com a data e o motivo." }); aoAtualizar(); consulta.refetch(); },
     onError: (e) => toast({ variant: "destructive", title: "Não foi possível aposentar", description: e instanceof Error ? e.message : undefined }),
@@ -827,7 +827,7 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
 
   const reativar = useMutation({
     mutationFn: (motivo: string) => cofre.reativar(ativoId, {
-      chave_idempotencia: cofre.chaveDoAto("reativar", ativoId), motivo, estado: "active",
+      chave_idempotencia: cofre.chaveDoAto("reativar", ativoId, motivo), motivo, estado: "active",
     }),
     onSuccess: () => { toast({ title: "Ativo reativado" }); aoAtualizar(); consulta.refetch(); },
     onError: (e) => toast({ variant: "destructive", title: "Não foi possível reativar", description: e instanceof Error ? e.message : undefined }),

@@ -70,7 +70,20 @@ export const ASSET_STATES = [
 
 export type AssetState = (typeof ASSET_STATES)[number];
 export type AssetCriticality = "low" | "medium" | "high" | "critical";
-export type VerificationState = "unverified" | "partial" | "verified" | "expired";
+/**
+ * Seis estados, e nenhum é sinônimo de outro.
+ *
+ * ⚠️ `failed` e `blocked` entraram em 01/09/2026, por divergência que uma
+ * revisão adversarial reproduziu: o schema privado e o backend já aceitavam os
+ * seis, e este contrato aceitava quatro. O efeito era o contrato PÚBLICO
+ * recusar um fato VÁLIDO do banco — uma verificação que falhou, ou um cofre
+ * trancado, não cabiam no retrato. E a diferença entre eles é justamente o que
+ * impede o painel de dizer "acesso ok" sobre algo que ninguém abriu:
+ * `failed` é uma tentativa que aconteceu e deu errado, `blocked` é o cofre
+ * trancado (que não é falha da credencial), `unverified` é "nunca tentei".
+ */
+export type VerificationState =
+  | "unverified" | "partial" | "verified" | "expired" | "failed" | "blocked";
 export type CustodyState = "not_required" | "not_registered" | "referenced" | "review_due";
 export type EvidenceKind = "owner_declaration" | "live_observation" | "repository_inventory" | "provider_record";
 export type RelationKind =
@@ -152,7 +165,7 @@ const assetSchemaBase = z.object({
     note: z.string().trim().min(5).max(500),
   }).strict(),
   verification: z.object({
-    state: z.enum(["unverified", "partial", "verified", "expired"]),
+    state: z.enum(["unverified", "partial", "verified", "expired", "failed", "blocked"]),
     checkedAt: dateText.optional(),
     reviewAt: dateText.optional(),
     checkedBy: shortText.optional(),
@@ -282,6 +295,8 @@ export const VERIFICATION_LABEL: Record<VerificationState, string> = {
   partial: "Verificação parcial",
   verified: "Verificado",
   expired: "Revisão vencida",
+  failed: "Verificação falhou",
+  blocked: "Acesso bloqueado",
 };
 
 export const CUSTODY_LABEL: Record<CustodyState, string> = {

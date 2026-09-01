@@ -72,7 +72,7 @@ _FRASES_PROPRIAS: tuple[str, ...] = (
     "campo proibido no Cofre:",
     "recebeu campo(s) que este contrato nao conhece:",
     "referencia invalida para o provider",
-    "chave de idempotencia",
+    "esta chave de idempotencia ja foi usada",
     "e append-only:",
     "nao existe no Cofre",
     "nao existe ou ja estava desfeita",
@@ -220,11 +220,23 @@ class RepositorioSupabase:
 
     @staticmethod
     def _lista(bruto: Any, o_que: str) -> list[dict[str, Any]]:
+        """Uma lista com elemento estranho e resposta QUEBRADA, nao lista curta.
+
+        ⚠️ Defeito medido por revisao adversarial em 01/09/2026: a versao
+        anterior terminava em `[i for i in bruto if isinstance(i, dict)]`, e com
+        `[None]` na resposta o filtro devolvia `[]` — a rota respondia
+        `200 {"engines": []}` sobre um banco que respondeu errado. E o mesmo
+        defeito que `_objeto` ja evitava, escrito de novo uma funcao abaixo:
+        descartar o que nao se entende produz um vazio que parece verdade.
+        """
         if isinstance(bruto, list) and len(bruto) == 1 and isinstance(bruto[0], list):
             bruto = bruto[0]
         if not isinstance(bruto, list):
             raise CofreIndisponivel(f"O Cofre respondeu {o_que} em forma inesperada.")
-        return [i for i in bruto if isinstance(i, dict)]
+        if any(not isinstance(i, dict) for i in bruto):
+            log.warning("cofre: %s trouxe elemento que nao e objeto", o_que)
+            raise CofreIndisponivel(f"O Cofre respondeu {o_que} em forma inesperada.")
+        return bruto
 
     async def executar(self, funcao: str, argumentos: dict[str, Any]) -> dict[str, Any]:
         recibo = self._objeto(await self._rpc(funcao, argumentos), f"recibo de {funcao}")

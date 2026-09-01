@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ASSET_CLUSTERS,
   ASSET_KINDS,
+  VERIFICATION_LABEL,
   DigitalAssetListSchema,
   KIND_CLUSTER,
   assertPublicAssetContract,
@@ -72,5 +73,20 @@ describe("contrato público do Cofre de Ativos", () => {
     for (const kind of ASSET_KINDS) {
       expect(noSql.get(kind)).toBe(KIND_CLUSTER[kind]);
     }
+  });
+
+  it("A8: os seis estados de verificação são os mesmos do banco", () => {
+    // ACHADO A8 da revisão adversarial: este contrato aceitava quatro estados
+    // enquanto o schema e o backend gravavam seis. O contrato PÚBLICO recusava
+    // um fato VÁLIDO do banco — uma verificação que falhou, ou um cofre
+    // trancado, não cabiam no retrato.
+    const sql = readFileSync(
+      new URL("../../../../supabase/migrations/v13_01_cofre_de_ativos.sql", import.meta.url),
+      "utf-8",
+    );
+    const bloco = sql.slice(sql.indexOf("cofre_verificacao_resultado_conhecido"));
+    const noSql = new Set([...bloco.slice(0, bloco.indexOf(")")).matchAll(/'([a-z]+)'/g)].map((m) => m[1]));
+    const noContrato = new Set(Object.keys(VERIFICATION_LABEL));
+    expect(noContrato).toEqual(noSql);
   });
 });

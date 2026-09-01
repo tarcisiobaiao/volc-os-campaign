@@ -69,6 +69,8 @@ O provedor foi decidido: **1Password**, conforme o ADR de 28/08. O enum aceita o
 Três mecanismos, e nenhum sozinho bastaria:
 
 1. **Forma.** `localizador` tem CHECK de gramática por provider. `op://cofre/item/campo` entra; `Tr0ub4dor&3` não é uma referência mal formatada — é um texto que a gramática não gera.
+
+   ⚠️ **E até onde isso vai.** Uma revisão adversarial de 01/09/2026 mostrou o limite: `op://Vault/Item/password` tem forma de referência e também pode ser, literalmente, a senha escolhida por alguém. Sintaxe não alcança semântica, e nenhuma CHECK alcançará. O que a forma entrega é real e limitado — recusa o que **não** tem forma de referência, que é o caso de praticamente toda senha, todo token e toda chave que existem por aí.
 2. **Chave.** Todo jsonb que entra passa por varredura recursiva que compara a chave *normalizada* (minúscula, sem separadores) contra lista fechada. `accessToken`, `ACCESS-TOKEN` e `access_token` colapsam em `accesstoken`.
 3. **Superfície.** Nenhuma função devolve o localizador. A postura sai por `cofre_postura_credencial`, que projeta provider, nome lógico, finalidade, estado e frescor.
 

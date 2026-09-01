@@ -1,0 +1,224 @@
+{
+  "_papel": "DELTA PROPOSTO. Não aplicado. Esta missão NÃO editou volc-os-workbook/ROADMAP-VIVO.json nem docs/volc-os-graph/curadoria-operacional.json, e NÃO reconstruiu o Mapa Vivo. Quem aplica é o integrador único, depois do merge.",
+  "_missao": "asset-vault-onepassword-production-v1",
+  "_branch": "sprint/asset-vault-onepassword-production-v1",
+  "_base_sha": "36bec04",
+  "_head_medido": "664272f39f88ecbcb110da662245a101e1f89ee4",
+  "_commits": 7,
+  "_medido_em": "2026-09-01",
+
+  "_aviso_de_arvore_viva": "O HEAD se moveu DURANTE a montagem deste delta: a primeira rodada de gates mediu 1ddccf0 e três commits novos entraram (4c213de, aea3b3c, 664272f). Todos os gates foram rerodados contra 664272f, e é esse o estado que este delta descreve. Ao fechar o pacote, a árvore tinha AINDA mais trabalho não commitado de um agente irmão da mesma missão (backend/app/asset_vault/dominio.py e supabase/migrations/v13_01_cofre_de_ativos.sql modificados, mais scripts/onboarding_pagina_facebook.py não rastreado). NADA disso está coberto por este delta. O integrador deve reconferir o estado antes de aplicar.",
+
+  "_pre_condicao_do_integrador": "A branch NÃO está mesclada na main. Enquanto ela não for mesclada, nenhuma destas propostas pode ser aplicada: trabalho que só existe numa worktree não pode marcar a fonte compartilhada. Além disso, a v13_01 NÃO foi aplicada em produção — consulta somente leitura em database.agenciavolc.com.br nesta sessão devolveu 0 tabelas com prefixo cofre_.",
+
+  "_nenhuma_tarefa_vira_done": "Nenhuma das sete propostas pede o estado 'done'. Código provado em laboratório não é operação provada, e é isso que 'done' significa neste roadmap ('Concluído e provado').",
+
+  "_fora_de_escopo_mas_tocadas": "O commit 4c213de nomeia P03-T11, P12-T09 e P12-T11 no campo 'proximo_componente' do handoff, com o estado REAL delas (todo). Isso é documentação de fronteira, não avanço: nenhuma dessas três foi implementada, e este delta NÃO propõe mudança para elas porque não estavam no escopo desta missão.",
+
+  "tarefas": [
+    {
+      "id": "P03-T02",
+      "titulo": "Cadastrar a página Facebook monetizada",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudança de estado, apenas de evidência. O RECEPTÁCULO passou a existir e está provado: o tipo 'facebook_page' existe e é coerente com a gaveta 'social_presence' — o ciclo prova inclusive a recusa do contrário ('PROVA ok: facebook_page na gaveta errada (paid_media) | 23503 cofre_ativo_gaveta_coerente'). A URL pública de uma página agora é gravável, o que era impossível antes pelo defeito da regex ('PROVA ok: a url publica foi mesmo gravada | https://exemplo.agenciavolc.com.br/pagina?a=1&b=2'). Mas NENHUMA página real foi cadastrada nesta missão: os ativos que aparecem nas 81 provas são de teste, criados e descartados junto com o cluster.",
+      "lacunas_restantes": [
+        "nenhum ativo real foi cadastrado — o inventário do Cofre em produção continua vazio, porque a v13_01 não foi aplicada lá",
+        "nome, page_id, propriedade, acesso e monetização da página continuam não inventariados, exatamente como a evidência de 26/08/2026 já dizia",
+        "a única linha do repositório que fala da página é a fixture editorial, e ela declara 'external: {}' — sem ID, sem URL, sem Business Portfolio",
+        "a branch não está mesclada"
+      ]
+    },
+    {
+      "id": "P03-T04",
+      "titulo": "Catalogar engines de imagem e vídeo por contrato",
+      "estado_atual": "done",
+      "estado_proposto": "done",
+      "prova": "Sem mudança de estado — a tarefa já estava provada pelo pacote docs/creative-engines e nada nesta missão a regride. O que muda é a evidência: existe agora uma PONTE do catálogo para o Cofre. scripts/importar_engines_no_cofre.py lê os manifestos versionados e emite 7 payloads para cofre_cadastrar_ativo (6 de imagem, 1 de vídeo; dois manifestos com schemas diferentes, mapeados sem achatar um no outro). Autoteste: '248 asserções ok, 0 falhas'. Cada campo sai marcado como FONTE, DERIVADO, DECLARADO ou AUSENTE, e ausência nunca vira capacidade: 'backend_ratio_mappings_observed=12' NÃO virou '12 formatos'. Nenhum engine recebe estado 'integrado', porque integration_state.registered_in_volc_os_runtime é false nos manifestos. O banco recusa contagem inventada: 'PROVA ok: engine com zero formatos (contagem inventada) | 23514 cofre_engine_formatos_positivos'.",
+      "lacunas_restantes": [
+        "o importador NÃO escreve no banco e NÃO faz rede — ele emite payloads; a importação de verdade depende da v13_01 aplicada em produção",
+        "os dois parques (imagem e vídeo) continuam externos ao runtime do VOLC O.S., como a evidência atual já registra",
+        "a branch não está mesclada"
+      ]
+    },
+    {
+      "id": "P03-T06",
+      "titulo": "Criar a tela Cofre de Ativos e ligá-la ao grafo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Continua 'partial', mas por um motivo DIFERENTE do atual — e é isso que o integrador precisa registrar. A evidência de hoje diz 'usa retrato editorial validado e ainda não persiste'. Isso deixou de ser verdade: a fonte da tela passou a ser /api/cofre e a fixture NÃO é fallback (teste em src/features/asset-vault/__tests__/asset-vault.test.tsx:93 percorre os oito nomes da fixture e exige que nenhum apareça quando a API falha). Seis estados distinguidos: 401, 403, 503, sem-configuração, vazio e desconhecido — e o vazio mostra as sete gavetas com contagem zero vindas do servidor. Cadastro, revisão, relação, verificação, aposentadoria e reativação pela interface; o formulário de revisão calcula o DELTA e manda só ele, porque mandar o formulário inteiro apagaria campo que a API não devolveu. 21 testes de frontend passam; zero erro de tsc em asset-vault. A segunda metade da tarefa — 'ligá-la ao grafo' — continua INTEIRA em aberto.",
+      "lacunas_restantes": [
+        "NENHUMA correspondência é escrita, lida ou proposta no grafo: a segunda metade do título da tarefa não foi tocada, e a decisão de COMO ligar (coluna de referência, delta para revisão humana, ou correspondência por nome) nem sequer foi tomada",
+        "a tela consulta um backend que consulta um schema que não existe em produção; hoje ela responderia com o estado 503 ou com o 404 traduzido em 'a v13_01 não foi aplicada'",
+        "a branch não está mesclada"
+      ]
+    },
+    {
+      "id": "P03-T07",
+      "titulo": "Inventariar perfis AdsPower sem copiar segredos",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudança de estado. O receptáculo existe em TRÊS fontes que agora concordam: o tipo 'browser_profile' foi criado na v13_01 ('PROVA ok: os 28 tipos existem (27 do contrato + browser_profile) | 28'), entrou no contrato público (src/features/asset-vault/contract.ts:56) na gaveta 'automation' — porque o perfil EXECUTA e a página PUBLICA — e a concordância entre contrato e migration passou a ser PROVADA por um teste que lê o SQL (contract.test.ts, 'o catálogo de tipos é o MESMO da migration v13_01'). O handoff nomeia o perfil de navegador relacionado ao ativo sem entregar endereço. A cláusula 'sem copiar segredos' está mecanizada: nenhuma função devolve localizador ('PROVA ok: nenhuma funcao, snapshot, recibo ou motivo contem o localizador (10994 bytes varridos)'), e cookie/senha/token são recusados em qualquer grafia, inclusive aninhados em array. Mas nenhum perfil foi inventariado.",
+      "lacunas_restantes": [
+        "zero perfis AdsPower cadastrados: o critério de aceite pede um perfil do piloto com ID de referência, owner, ativo relacionado, estado, finalidade, última revisão e referência segura de credencial — nada disso existe",
+        "depende de P03-T02 e P03-T06, que continuam abertos",
+        "nenhuma integração com a Local API do AdsPower foi escrita ou testada",
+        "a branch não está mesclada"
+      ]
+    },
+    {
+      "id": "P03-T09",
+      "titulo": "Provar 1Password MCP no ambiente local controlado",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "prova": "Existe agora um INSTRUMENTO de prova que funciona e que não mente: tools/onepassword-smoke/ (907 linhas), com nove estados tipados e exit code próprio para cada um, e sem caminho de falso sucesso. A lógica está provada — autoteste 'resultado: 0 falhas', incluindo 'prova f: recibos e logs não contêm o valor de teste -> arquivos varridos=10 contaminados=nenhum'. Um dublê que ECOA o segredo vira falha/vazamento (exit 20); 'LostConnectionToApp' e 'No accounts configured' viram blocked/sem_sessao e nunca ok; '--no-masking' é recusado no preflight; o processo filho confirma só presença booleana, nem comprimento nem hash, porque comprimento vaza entropia e hash permite confirmar um palpite. O dublê só entra atrás de flag explícita (--duple), porque um smoke que usa dublê em silêncio é um smoke que mente. Contra o ambiente REAL, o smoke sai 'blocked/cli_ausente' com exit 10 — o resultado correto e honesto desta máquina, medido item a item nesta sessão (sem app, sem CLI op, sem 1password-mcp, sem variável OP_*, sem MCP em ~/.claude.json). Do lado do banco, a fronteira que o ADR decidiu virou gramática executável: cofre_localizador_valido aceita op://<cofre>/<item>/[secao/]<campo> e recusa qualquer outra coisa, inclusive '?attribute=otp' — MFA não entra no Cofre nem por referência.",
+      "lacunas_restantes": [
+        "O TÍTULO DA TAREFA DIZ 'MCP', E O SMOKE COBRE O CLI. A cadeia provada pelo instrumento é CLI op -> app -> sessão -> injeção, como o próprio README declara. O servidor MCP do 1Password não foi instalado, configurado nem chamado. Se o integrador ler o título ao pé da letra, 'todo' continua defensável e esta proposta de 'partial' deve ser recusada.",
+        "os quatro itens que o próprio recibo lista como nao_verificado continuam não verificados: 'app do 1Password', 'sessão / conta', 'listagem de nomes', 'injeção em processo descartável'",
+        "o critério de aceite pede que o lock do 1Password revogue o acesso — isso não foi testado, e não pode ser sem o app instalado",
+        "'partial' aqui significa 'o instrumento está pronto e provado, a medição do ambiente é 0%'. Não significa metade da tarefa feita.",
+        "a branch não está mesclada"
+      ]
+    },
+    {
+      "id": "P03-T10",
+      "titulo": "Persistir referências de credencial no Cofre sem duplicar segredo",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "prova": "Os ARTEFATOS que o critério de aceite descreve existem e estão provados em laboratório. Schema privado: 9 tabelas cofre_* com ALL revogado nominalmente de PUBLIC, anon, authenticated E service_role, RLS forçada nas 9 e zero policies ('PROVA ok: RLS forcada nas 9 tabelas | 9', 'PROVA ok: zero policy em cofre_* | 0', 'PROVA ok: service_role nao tem privilegio NENHUM de tabela | 0'). API administrativa: 13 rotas sob /api/cofre, todas com exigir_admin no nível do router, escrita só por RPC governada; 54 testes herméticos passam. Auditoria: trilha append-only provada por tentativa ('PROVA ok: UPDATE na trilha de revisoes | 23001 ~ append-only'). Recusa de valor bruto: provada em três camadas e em qualquer grafia (accessToken, ACCESS-TOKEN, codigo_recuperacao, aninhado em array). A fronteira do segredo é gramática, não política: senha bruta no localizador é recusada SEM ecoar o valor. E a verificação deixou de inventar confiança: conferir UMA referência não marca as outras — 'PROVA ok: a OUTRA referencia continua nao verificada | unverified'. Ciclo completo aplicar -> operar -> reverter -> reaplicar: 81 provas em PostgreSQL 15.19, mesma major da produção (medida em 15.8 nesta sessão).",
+      "lacunas_restantes": [
+        "O VERBO DA TAREFA É 'PERSISTIR', E NADA ESTÁ PERSISTIDO. A v13_01 não foi aplicada em produção: SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'cofre\\_%' devolveu 0 em database.agenciavolc.com.br nesta sessão. Aplicar exige autorização separada.",
+        "zero referências de credencial reais registradas — as do ciclo são de teste e morrem com o cluster",
+        "o 1Password, que é o outro lado da fronteira, não está instalado (ver P03-T09): hoje o Cofre guardaria referências para itens que ninguém pode resolver",
+        "o broker que resolve op:// no host isolado não existe; o handoff entrega provider e nome lógico e para aí, de propósito",
+        "depende de P03-T08 e P02-T03, que esta missão não tocou",
+        "a branch não está mesclada"
+      ]
+    },
+    {
+      "id": "P12-T02",
+      "titulo": "Onboard da página real no Cofre",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudança de estado, e sem evidência nova própria. Esta tarefa é o pré-requisito do piloto e depende inteiramente de P03-T02, P03-T06 e P03-T10, que esta missão deixou respectivamente em todo, partial e partial. Nenhuma página real entrou no Cofre. O que mudou é que o caminho existe: schema, API e tela conseguem receber um onboarding — em laboratório.",
+      "lacunas_restantes": [
+        "nada foi onboardado; em termos de operação o estado é idêntico ao anterior",
+        "a v13_01 não está em produção, então não há Cofre onde onboardar",
+        "AVISO: um agente irmão desta missão criou scripts/onboarding_pagina_facebook.py (1647 linhas, NÃO COMMITADO no momento desta medição). Ele declara atacar P03-T02, P12-T02 e P03-T07 lendo uma ficha preenchida por quem tem acesso à página. Este delta NÃO o avalia e nada aqui se apoia nele.",
+        "a branch não está mesclada"
+      ]
+    }
+  ],
+
+  "nos_propostos": [
+    {
+      "_condicao": "Só entram na curadoria DEPOIS do merge da branch. Antes disso, o grafo apontaria para código que a main não tem.",
+      "id": "system:cofre-schema-v13-01",
+      "label": "Schema privado do Cofre (v13_01)",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Nove tabelas cofre_* em public com escrita só por função SECURITY DEFINER, allowlist de campo, blocklist de chave sensível normalizada, idempotência por chave derivada do ato e trilha append-only.",
+      "evidence": "Escrita em 01/09/2026 (supabase/migrations/v13_01_cofre_de_ativos.sql, 2259 linhas), com rollback em v13_99. Provada por scripts/provar-ciclo-v13_01.sh: 81 provas num PostgreSQL 15.19 descartável, ciclo aplicar → operar → reverter → reaplicar, mesma major da produção medida em 15.8. As provas de acesso TENTAM em vez de inspecionar catálogo, porque service_role tem BYPASSRLS e quem o contém é o REVOKE. Não há view no schema: a única que existia saiu por não ter consumidor. NÃO APLICADA EM PRODUÇÃO: 0 tabelas cofre_* em database.agenciavolc.com.br em 01/09/2026."
+    },
+    {
+      "_condicao": "Idem — só depois do merge.",
+      "id": "system:cofre-api-administrativa",
+      "label": "API administrativa do Cofre",
+      "cluster": "platform",
+      "state": "partial",
+      "summary": "Treze rotas sob /api/cofre em quatro camadas (domínio, aplicação, infraestrutura, rotas), todas com exigir_admin no nível do router, sem caminho de INSERT direto em tabela; inclui o handoff que responde para produção e publicação sem entregar o endereço do segredo.",
+      "evidence": "backend/app/asset_vault/, 1368 linhas, 54 testes herméticos verdes em 01/09/2026. Falha de banco vira 503 e nunca lista vazia; resposta em forma inesperada também. A mensagem do Postgres não é repassada: details e hint morrem no adapter e message só passa quando casa uma frase auditada deste projeto. Lê o corpo cru e valida à mão porque o 422 padrão do FastAPI devolve o valor recusado no campo input — defeito medido e provado em oito rotas. Nunca chamada contra o Supabase oficial, porque a v13_01 não está lá."
+    },
+    {
+      "_condicao": "Idem — só depois do merge.",
+      "id": "concept:cofre-handoff",
+      "label": "Handoff do Cofre para produção e publicação",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "GET /api/cofre/ativos/{id}/handoff RESPONDE quais engines existem, qual ativo recebe a peça, qual referência será resolvida e qual perfil de navegador está relacionado — e NÃO EXECUTA nada.",
+      "evidence": "Contrato em docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md, 01/09/2026. A assimetria é deliberada: traz provider e NOME LÓGICO, nunca o localizador, porque um handoff com endereço resolvido transformaria a rota na porta do cofre — uma sessão ADMIN comprometida enumeraria todos os endereços de uma vez. 'pronto_para_handoff' e 'bloqueios' fazem de 'faltou registrar a referência' um FATO no corpo, e não um 200 que parece sucesso. Quatro bloqueios provados por teste. O broker que resolveria op:// no host isolado NÃO existe."
+    },
+    {
+      "_condicao": "Idem — só depois do merge.",
+      "id": "tool:onepassword-smoke",
+      "label": "Smoke seguro do 1Password local",
+      "cluster": "governance",
+      "state": "partial",
+      "summary": "Prova, num processo descartável, a cadeia CLI → app → sessão → injeção do 1Password, sem revelar, medir ou derivar o valor do segredo; nove estados tipados com exit code próprio e nenhum caminho de falso sucesso.",
+      "evidence": "tools/onepassword-smoke/, 907 linhas, autoteste com 0 falhas em 01/09/2026. Nesta máquina o smoke real sai blocked/cli_ausente (exit 10), que é o estado honesto: não há app, CLI op, 1password-mcp, variável OP_* nem MCP configurado — os cinco medidos. A lógica é provada por dublê atrás de flag explícita (--duple). NÃO cobre o servidor MCP do 1Password, só o CLI."
+    },
+    {
+      "_condicao": "Idem — só depois do merge.",
+      "id": "tool:importador-engines-cofre",
+      "label": "Importador de engines para o Cofre",
+      "cluster": "production",
+      "state": "partial",
+      "summary": "Lê os manifestos versionados dos parques criativos e emite payloads para cofre_cadastrar_ativo, marcando cada campo como FONTE, DERIVADO, DECLARADO ou AUSENTE.",
+      "evidence": "scripts/importar_engines_no_cofre.py, 1047 linhas; 7 engines emitidos e 248 asserções no autoteste em 01/09/2026. Não escreve no banco e não faz rede; roda duas vezes com bytes idênticos. A sanitização de caminho do Google Drive LEVANTA se /Users/, CloudStorage, GoogleDrive ou @ sobreviverem, porque sanitização que falha calada publica com ar de segurança. Nenhum engine recebe estado 'integrado'."
+    }
+  ],
+
+  "arestas_propostas": [
+    {
+      "_condicao": "Todas dependem do merge e dos nós acima.",
+      "source": "cap_asset_vault",
+      "target": "system:cofre-schema-v13-01",
+      "relation": "persiste_apenas_referencias_em",
+      "_por_que": "Relação já existente no vocabulário da curadoria. É literalmente o que a v13_01 faz: guarda o endereço op://, nunca o valor."
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "system:cofre-api-administrativa",
+      "relation": "exposto_por",
+      "_por_que": "Relação já existente. A tela do Cofre passou a ler /api/cofre e não a fixture."
+    },
+    {
+      "source": "system:cofre-api-administrativa",
+      "target": "system:cofre-schema-v13-01",
+      "relation": "depende_de_porta_governada",
+      "_por_que": "Relação já existente. O adapter não tem caminho de INSERT em tabela porque a v13_01 revoga ALL de service_role; se ele tentasse, o banco responderia 403 — e essa é a intenção."
+    },
+    {
+      "source": "concept:secret-reference-boundary",
+      "target": "system:cofre-schema-v13-01",
+      "relation": "materializa_em",
+      "_por_que": "Relação já existente. A evidência atual do nó diz 'Schema privado, API, MCP e broker ainda não foram implementados'; dois dos quatro deixaram de ser verdade em laboratório, e o integrador deve reescrever essa frase em vez de apagá-la."
+    },
+    {
+      "source": "system:cofre-api-administrativa",
+      "target": "concept:cofre-handoff",
+      "relation": "emite_handoff_para",
+      "_por_que": "Relação já existente. O handoff é uma rota desta API, e a aresta guarda que ele responde sem executar."
+    },
+    {
+      "source": "concept:cofre-handoff",
+      "target": "cap_creative_engines",
+      "relation": "informa_sem_autorizar",
+      "_por_que": "Relação já existente, e é a fronteira exata: o handoff diz quais engines existem e o que produzem, e não dispara job."
+    },
+    {
+      "source": "tool:onepassword-smoke",
+      "target": "system:onepassword-mcp",
+      "relation": "nao_comprova_operacao_de",
+      "_por_que": "Relação já existente no vocabulário, e é exatamente a aresta honesta aqui: o smoke prova o CLI, não o MCP. Desenhar 'prova' seria inventar."
+    },
+    {
+      "source": "tool:importador-engines-cofre",
+      "target": "cap_creative_engines",
+      "relation": "le_de",
+      "_por_que": "Relação já existente. O importador lê os manifestos do pacote docs/creative-engines."
+    },
+    {
+      "source": "tool:importador-engines-cofre",
+      "target": "cap_asset_vault",
+      "relation": "emite_handoff_para",
+      "_por_que": "Relação já existente. 'emite handoff' e não 'registra': o importador NÃO escreve no banco, e uma aresta de escrita seria falsa."
+    },
+    {
+      "source": "concept:facebook_page_monetized",
+      "target": "cap_asset_vault",
+      "relation": "aguarda_novos_insumos_em",
+      "_por_que": "Relação já existente. O receptáculo (tipo facebook_page, gaveta social_presence, url_publica gravável) passou a existir; o ativo real continua fora."
+    }
+  ]
+}

@@ -182,10 +182,17 @@ Modos: `feliz`, `vazamento` (mascaramento quebrado: ecoa o segredo em stderr),
 | e | `--no-masking` → `falha/preflight` (30) |
 | f | o valor de teste não aparece em recibo nenhum nem em log nenhum |
 
-### As provas foram testadas contra mutantes
+### As provas foram testadas contra mutantes — À MÃO, e isso é uma limitação
 
 Um teste que passa não vale nada até alguém mostrar que ele sabe falhar. Cada
-prova foi rodada contra uma versão sabotada do código:
+prova foi rodada contra uma versão sabotada do código.
+
+⚠️ **Não há harness de mutação versionado.** A tabela abaixo registra o que foi
+observado durante o desenvolvimento, editando o código à mão e desfazendo em
+seguida — ninguém reproduz isso a partir do repositório, e uma revisão de
+contrato em 01/09/2026 apontou a lacuna com razão. Leia a tabela como registro
+histórico, não como prova corrente. A prova corrente é `--autoteste`.
+Automatizar a mutação é trabalho legítimo e está no backlog nomeado.
 
 | Mutante | Efeito |
 |---|---|

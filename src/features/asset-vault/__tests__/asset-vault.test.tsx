@@ -290,4 +290,35 @@ describe("Cofre de Ativos — a fronteira do segredo na tela", () => {
     // não podem compartilhar recibo.
     expect(corpo.chave_idempotencia).not.toBe(cofre.chaveDoAto("revisao", PAGINA.ativo_id, "resumo"));
   });
+
+  it("A5: a chave de idempotência não depende do relógio", () => {
+    // ACHADO A5 da revisão adversarial. A versão anterior misturava uma janela
+    // de 60s: com Date.now() em 59999 e 60000 a MESMA ação produzia duas chaves,
+    // e o mesmo payload entrava duas vezes no banco. Um retry que cruza a
+    // fronteira do minuto deixava de ser retry — e é justamente quando o retry
+    // humano acontece.
+    const corpo = { alvo: "ativo", resultado: "verified", metodo: "conferência" };
+    const antes = cofre.chaveDoAto("verificacao", "asset:x:y", corpo);
+    // Substituição deliberada do relógio: a prova é que ele NÃO importa mais.
+    const real = Date.now;
+    try {
+      Date.now = () => 59_999;
+      const a = cofre.chaveDoAto("verificacao", "asset:x:y", corpo);
+      Date.now = () => 60_000;
+      const b = cofre.chaveDoAto("verificacao", "asset:x:y", corpo);
+      expect(a).toBe(b);
+      expect(a).toBe(antes);
+    } finally {
+      Date.now = real;
+    }
+  });
+
+  it("A5: conteúdo diferente produz chave diferente, e a ordem das chaves não conta", () => {
+    const a = cofre.chaveDoAto("verificacao", "asset:x:y", { alvo: "ativo", resultado: "verified" });
+    const b = cofre.chaveDoAto("verificacao", "asset:x:y", { resultado: "verified", alvo: "ativo" });
+    const c = cofre.chaveDoAto("verificacao", "asset:x:y", { alvo: "ativo", resultado: "failed" });
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
+    expect(a).toMatch(/^[A-Za-z0-9._:-]{8,120}$/);
+  });
 });

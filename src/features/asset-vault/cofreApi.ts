@@ -315,26 +315,50 @@ export function engines(): Promise<{ engines: EngineDisponivel[] }> {
 // ── escrita ─────────────────────────────────────────────────────────────────
 
 /**
- * Chave de idempotência derivada do ATO, não sorteada.
+ * Chave de idempotência derivada do CONTEÚDO do ato, não do relógio.
  *
- * Sorteá-la faria cada clique no botão "Cadastrar" valer como operação nova —
- * inclusive o segundo clique de quem achou que o primeiro não pegou. Derivada
- * do ativo e do tipo de ato, o retry devolve o recibo guardado e o servidor
- * responde 200 com `X-Cofre-Idempotente: replay`.
+ * Sorteá-la faria cada clique no botão valer como operação nova — inclusive o
+ * segundo clique de quem achou que o primeiro não pegou.
  *
- * ⚠️ O sufixo de janela é DELIBERADO e tem custo: dois atos iguais sobre o
- * mesmo ativo dentro do mesmo minuto compartilham chave. É o que se quer para
- * um duplo-clique; não é o que se quer para duas edições distintas em sequência
- * rápida — e por isso as revisões incluem um resumo das mudanças na chave.
+ * ⚠️ A primeira versão misturava uma janela de 60 segundos, e uma revisão
+ * adversarial reproduziu o defeito: com `Date.now()` em 59999 e 60000 a mesma
+ * ação produzia `verificacao-3jq480-0` e `verificacao-3jq47z-1`, e o mesmo
+ * payload entrou DUAS vezes no banco — `verificacao_id` 1 e 2, ambas
+ * `idempotente: false`. Um retry que cruza a fronteira do minuto deixava de ser
+ * retry. Pior: era o caso mais provável, porque o retry humano acontece depois
+ * de alguns segundos de espera.
+ *
+ * Sem relógio, a chave é função pura do ato: mesmo conteúdo → mesma chave →
+ * replay; conteúdo diferente → chave diferente → operação nova. Se a pessoa
+ * quiser mesmo repetir um ato idêntico (registrar duas verificações
+ * rigorosamente iguais), o servidor devolve o recibo da primeira — e é o
+ * comportamento certo, porque duas provas idênticas são a mesma prova.
  */
-export function chaveDoAto(ato: string, ativoId: string, discriminante = ''): string {
-  const janela = Math.floor(Date.now() / 60_000);
-  const bruto = `${ato}:${ativoId}:${discriminante}:${janela}`;
-  let hash = 0;
-  for (let i = 0; i < bruto.length; i += 1) {
-    hash = (hash * 31 + bruto.charCodeAt(i)) | 0;
+function digest(texto: string): string {
+  // FNV-1a de 32 bits em duas passadas com sementes diferentes. Não é
+  // criptográfico e não precisa ser: ele só distingue conteúdos, e uma colisão
+  // aqui produz um replay indevido — que o servidor ainda recusa, porque o hash
+  // canônico da entrada é derivado NO BANCO e não bate.
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b + c, 0x85ebca6b) >>> 0;
   }
-  return `${ato}-${Math.abs(hash).toString(36)}-${janela}`.slice(0, 120);
+  return (a.toString(36) + b.toString(36)).slice(0, 16);
+}
+
+/** JSON estável: a ordem das chaves não pode mudar a identidade do ato. */
+function estavel(valor: unknown): string {
+  if (valor === null || typeof valor !== 'object') return JSON.stringify(valor) ?? 'null';
+  if (Array.isArray(valor)) return `[${valor.map(estavel).join(',')}]`;
+  const chaves = Object.keys(valor as Record<string, unknown>).sort();
+  return `{${chaves.map((k) => `${JSON.stringify(k)}:${estavel((valor as Record<string, unknown>)[k])}`).join(',')}}`;
+}
+
+export function chaveDoAto(ato: string, ativoId: string, conteudo: unknown = ''): string {
+  return `${ato}-${digest(`${ato}|${ativoId}|${estavel(conteudo)}`)}`.slice(0, 120);
 }
 
 export function cadastrarAtivo(corpo: Record<string, unknown>): Promise<Recibo> {

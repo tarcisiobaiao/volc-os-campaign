@@ -397,8 +397,12 @@ async def cadastrar_ativo(request: Request, resposta: Response,
         dom.exigir_gaveta_coerente(ativo.kind, ativo.cluster)
         dom.exigir_url_publica(ativo.url_publica)
         dom.sanitizar_localizacao(ativo.localizacao_rotulo)
-        dom.recusar_material_de_credencial(ativo.resumo, "resumo")
-        dom.recusar_material_de_credencial(ativo.proxima_acao, "proxima_acao")
+        # TODO campo que a API publica, e nao so os que "parecem" prosa: a
+        # revisao adversarial de 01/09/2026 entrou com `op://…` em `plataforma`
+        # e a referencia voltou pela listagem, pelo detalhe e pelo snapshot.
+        for campo in ("nome", "plataforma", "resumo", "dono_nome", "projeto",
+                      "vertical", "proxima_acao", "display_id", "localizacao_rotulo"):
+            dom.recusar_material_de_credencial(getattr(ativo, campo), campo)
         # `exclude_none` para que campo ausente vire ausencia no banco, e nao um
         # `null` explicito que a funcao trataria como "apagar".
         recibo = await casos.cadastrar(
@@ -419,7 +423,8 @@ async def revisar_ativo(ativo_id: str, request: Request, resposta: Response,
             raise dom.PayloadRecusado("a revisao nao mudou nada.")
         dom.exigir_url_publica(mudancas.get("url_publica"))
         dom.sanitizar_localizacao(mudancas.get("localizacao_rotulo"))
-        for campo in ("resumo", "proxima_acao"):
+        for campo in ("nome", "plataforma", "resumo", "dono_nome", "projeto",
+                      "vertical", "proxima_acao", "display_id", "localizacao_rotulo"):
             dom.recusar_material_de_credencial(mudancas.get(campo), campo)
         recibo = await casos.revisar(ativo_id, mudancas, pedido.chave_idempotencia,
                                      _autor(quem), pedido.motivo)
@@ -440,6 +445,7 @@ async def relacionar(ativo_id: str, request: Request, resposta: Response,
             raise dom.PayloadRecusado(
                 "informe destino_id (outro ativo) OU destino_externo (projeto, "
                 "capacidade, conceito) — exatamente um dos dois.")
+        dom.recusar_material_de_credencial(pedido.destino_rotulo, "destino_rotulo")
         payload = pedido.model_dump(exclude_none=True, exclude={"chave_idempotencia"})
         payload["origem_id"] = ativo_id
         recibo = await casos.relacionar(payload, pedido.chave_idempotencia, _autor(quem))
@@ -496,7 +502,8 @@ async def registrar_verificacao(ativo_id: str, request: Request, resposta: Respo
     try:
         pedido = _validado(PedidoDeVerificacao, await _corpo_json(request))
         dom.exigir_id_de_ativo(ativo_id)
-        dom.recusar_material_de_credencial(pedido.evidencia, "evidencia")
+        for campo in ("evidencia", "metodo", "proximo_ato"):
+            dom.recusar_material_de_credencial(getattr(pedido, campo), campo)
         payload = pedido.model_dump(exclude_none=True, exclude={"chave_idempotencia"})
         payload["ativo_id"] = ativo_id
         recibo = await casos.registrar_verificacao(payload, pedido.chave_idempotencia, _autor(quem))
@@ -517,6 +524,7 @@ async def referenciar_credencial(ativo_id: str, request: Request, resposta: Resp
         pedido = _validado(PedidoDeCredencial, await _corpo_json(request))
         dom.exigir_id_de_ativo(ativo_id)
         dom.recusar_material_de_credencial(pedido.finalidade, "finalidade")
+        dom.recusar_material_de_credencial(pedido.owner_nome, "owner_nome")
         payload = pedido.model_dump(exclude_none=True, exclude={"chave_idempotencia"})
         payload["ativo_id"] = ativo_id
         recibo = await casos.referenciar_credencial(payload, pedido.chave_idempotencia, _autor(quem))
