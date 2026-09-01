@@ -64,7 +64,7 @@
           "id": "P01-T06",
           "title": "Fazer o QG ler tarefas e evidências da fonte viva",
           "status": "done",
-          "proof": "QG autenticado atualiza automaticamente a cada 15 segundos, sem seed ou localStorage"
+          "proof": "QG autenticado atualiza automaticamente a cada 15 segundos, sem seed ou localStorage. · 01/09/2026, convergência volc-os-v2: o FastAPI passou a carregar o .env.server validado pelo launcher a partir da raiz da própria worktree. Contraprova real: /api/work-road saiu de 503 (configuração de segurança ausente) para 401 (credencial de usuário ausente), /health declarou supabase=true e 23 provas focais ficaram verdes. O navegador autenticado pode novamente ler a fonte viva; a trava de escrita Google Ads permaneceu fechada."
         },
         {
           "id": "P01-T07",

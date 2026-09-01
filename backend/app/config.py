@@ -8,14 +8,28 @@ boots locally and on Vercel even before real keys exist.
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(".env", ".env.local"),
+        # O launcher local valida `.env.server` na raiz e o Node já lê esse
+        # arquivo. O FastAPI, porém, roda com cwd=backend; sem o caminho
+        # absoluto ele sobe saudável mas todo portão de identidade responde
+        # 503 por falta de SUPABASE_URL/service_role. Variáveis do processo
+        # continuam tendo precedência e os arquivos backend/.env/.env.local
+        # seguem válidos para as demais integrações locais.
+        env_file=(
+            str(_RAIZ_REPOSITORIO / ".env.server"),
+            ".env",
+            ".env.local",
+        ),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
