@@ -18,6 +18,7 @@ criação**, em vez de cair em silêncio no SQLite ou no render longo.
 from __future__ import annotations
 
 import os
+import threading
 from typing import Any, Protocol
 
 
@@ -81,35 +82,91 @@ class DespachoSincronoLocal:
         _rodar_corrotina_em_thread(executor._executar_protegido, job_id)  # noqa: SLF001
 
 
+class _LoopDeExecucao:
+    """UM loop de fundo, para a vida do processo. Nao um loop por chamada.
+
+    ## Por que um so, e nao um por despacho
+
+    ⚠️ A primeira versao desta correcao abria uma thread e um loop NOVOS a cada
+    despacho. Ela consertava os dois estouros — e criava um terceiro defeito,
+    mais dificil de ver, que so aparece com CONCORRENCIA.
+
+    `Executor.__init__` cria `self._trava = asyncio.Lock()`, e o executor e
+    reusado entre requisicoes. Desde o 3.10 o `Lock` nao se liga a loop nenhum na
+    construcao: ele se liga na PRIMEIRA DISPUTA. A aquisicao sem disputa passa por
+    um atalho que nem consulta o loop — foi por isso que a primeira medicao, com
+    um uso de cada vez, deu tudo verde. Com dois despachos concorrentes, cada um
+    no seu loop, o segundo espera num future que pertence ao loop do primeiro, e
+    ninguem o acorda. E o mesmo vale para qualquer `httpx.AsyncClient` que o
+    repositorio mantenha entre chamadas.
+
+    E a thread era `daemon=False`: uma que pendurasse impedia o processo INTEIRO
+    de sair. Medido: o processo de prova ficou vivo depois de imprimir o
+    resultado, e precisou de `pkill`.
+
+    Um loop unico resolve os dois de uma vez. Todo `Lock`, todo cliente HTTP e
+    todo future vivem no MESMO loop, que e exatamente a premissa que eles tem
+    dentro de um servidor. A thread e daemon: se o processo quiser morrer, ele
+    morre.
+    """
+
+    def __init__(self) -> None:
+        self._trava = threading.Lock()
+        self._loop: Any = None
+        self._thread: threading.Thread | None = None
+
+    def _garantir(self) -> Any:
+        import asyncio  # noqa: PLC0415
+
+        with self._trava:
+            if self._loop is not None and self._thread is not None and self._thread.is_alive():
+                return self._loop
+            pronto = threading.Event()
+
+            def girar() -> None:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._loop = loop
+                pronto.set()
+                loop.run_forever()
+
+            self._thread = threading.Thread(
+                target=girar, name="despacho-criativo", daemon=True
+            )
+            self._thread.start()
+            pronto.wait(10)
+            if self._loop is None:
+                raise RuntimeError("o loop de despacho nao subiu")
+            return self._loop
+
+    def rodar(self, corrotina: Any, *args: Any, prazo_s: float | None = None) -> Any:
+        """Submete e ESPERA. A excecao do trabalho sobe para quem chamou.
+
+        Engoli-la faria a rota responder 201 sobre producao que falhou.
+        """
+        import asyncio  # noqa: PLC0415
+
+        futuro = asyncio.run_coroutine_threadsafe(corrotina(*args), self._garantir())
+        return futuro.result(timeout=prazo_s)
+
+
+_LOOP = _LoopDeExecucao()
+
+
 def _rodar_corrotina_em_thread(corrotina: Any, *args: Any) -> None:
-    """Roda uma corrotina ate o fim, funcione ou nao haja loop nesta thread.
+    """Roda uma corrotina ate o fim, haja ou nao um loop nesta thread.
 
     ⚠️ Existe porque `anyio.from_thread.run` e `anyio.run` falham nos DOIS lados
     da mesma moeda: o primeiro exige estar numa worker thread do anyio, o segundo
-    exige NAO haver loop rodando. Chamado da thread do event loop, os dois
-    estouram — e foi assim que dois defeitos criticos coexistiram nesta casa.
+    exige NAO haver loop rodando. Chamado da thread do event loop — que e de onde
+    a rota `async def` chama — os dois estouram, e foi assim que dois defeitos
+    criticos coexistiram nesta casa.
 
-    Uma thread nova nunca tem loop, entao `anyio.run` ali sempre vale. A excecao
-    do trabalho e re-levantada na thread chamadora: engoli-la faria a rota
-    responder 201 sobre producao que falhou.
+    O nome ficou pelo que ele resolve; o mecanismo e o loop unico de
+    `_LoopDeExecucao`, e o docstring de la explica por que um por chamada nao
+    serve.
     """
-    import threading  # noqa: PLC0415
-
-    import anyio  # noqa: PLC0415
-
-    caixa: dict[str, BaseException] = {}
-
-    def alvo() -> None:
-        try:
-            anyio.run(corrotina, *args)
-        except BaseException as e:  # noqa: BLE001 — devolvida a quem chamou
-            caixa["erro"] = e
-
-    t = threading.Thread(target=alvo, name="despacho-sincrono", daemon=False)
-    t.start()
-    t.join()
-    if "erro" in caixa:
-        raise caixa["erro"]
+    _LOOP.rodar(corrotina, *args)
 
 
 def ambiente_atual() -> str:

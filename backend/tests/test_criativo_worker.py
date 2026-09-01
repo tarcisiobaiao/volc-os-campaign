@@ -386,3 +386,68 @@ def test_despachar_de_dentro_do_event_loop_nao_estoura() -> None:
     assert asyncio.run(a_excecao_sobe()) == "o motor recusou", (
         "a exceção engolida faria a rota responder 201 sobre produção que falhou"
     )
+
+
+def test_dois_despachos_concorrentes_nao_penduram_no_lock_do_executor() -> None:
+    """Um loop POR CHAMADA consertava os dois estouros e criava um terceiro.
+
+    ⚠️ `Executor.__init__` cria `self._trava = asyncio.Lock()`, e o executor é
+    reusado entre requisições. Desde o 3.10 o `Lock` não se liga a loop nenhum na
+    construção: ele se liga na PRIMEIRA DISPUTA, e a aquisição sem disputa passa
+    por um atalho que nem consulta o loop. Por isso a medição com um uso de cada
+    vez dava tudo verde. Com dois despachos concorrentes, cada um no seu loop, o
+    segundo esperava num future que pertence ao loop do primeiro — e ninguém o
+    acordava. Medido: o processo de prova ficou vivo depois de imprimir o
+    resultado e precisou de `pkill`, porque a thread era `daemon=False`.
+
+    Esta prova exige as duas coisas: que a ordem seja respeitada (A pega, A
+    solta, B pega) e que nenhuma thread NÃO-daemon fique para trás.
+    """
+    import asyncio
+    import threading
+
+    from app.criativo.bancada.despacho import _rodar_corrotina_em_thread
+
+    trava = asyncio.Lock()
+    ordem: list[str] = []
+    erros: list[str] = []
+    segurando = threading.Event()
+
+    async def segurar() -> None:
+        async with trava:
+            ordem.append("A pegou")
+            segurando.set()
+            await asyncio.sleep(0.4)
+            ordem.append("A soltou")
+
+    async def tentar() -> None:
+        async with trava:
+            ordem.append("B pegou")
+
+    def alvo(fn) -> None:
+        try:
+            _rodar_corrotina_em_thread(fn)
+        except BaseException as e:  # noqa: BLE001
+            erros.append(f"{type(e).__name__}: {e}")
+
+    a = threading.Thread(target=alvo, args=(segurar,))
+    a.start()
+    assert segurando.wait(5), "o primeiro despacho nem pegou a trava"
+    b = threading.Thread(target=alvo, args=(tentar,))
+    b.start()
+    a.join(20)
+    b.join(20)
+
+    assert not erros, f"o despacho concorrente estourou: {erros}"
+    assert ordem == ["A pegou", "A soltou", "B pegou"], (
+        f"a trava não foi respeitada entre loops: {ordem}"
+    )
+    assert not a.is_alive() and not b.is_alive(), "um despacho ficou pendurado"
+    nao_daemon = [
+        t.name for t in threading.enumerate()
+        if t.is_alive() and not t.daemon and t is not threading.current_thread()
+        and t.name.startswith("despacho")
+    ]
+    assert not nao_daemon, (
+        f"thread não-daemon de despacho impediria o processo de sair: {nao_daemon}"
+    )
