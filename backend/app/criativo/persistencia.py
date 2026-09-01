@@ -299,20 +299,30 @@ class Repositorio:
         )
         return linhas[0] if linhas else None
 
-    async def buscar_job(self, job_id: str) -> dict[str, Any] | None:
-        linhas = await self._get(
-            _TABELA_JOB, {"id": f"eq.{job_id}", "select": "*", "limit": 1}
-        )
+    async def buscar_job(
+        self, job_id: str, *, criado_por: str | None = None
+    ) -> dict[str, Any] | None:
+        """⚠️ `criado_por` NAO e opcional por conveniencia — e opcional porque o
+        executor, que ja tem o job na mao, nao precisa reprovar posse a cada
+        transicao. Toda leitura vinda de HTTP passa o dono, e a rota nunca chama
+        sem ele. E a mesma regra que `bancada.deposito.por_id` ja escrevia."""
+        params: dict[str, Any] = {"id": f"eq.{job_id}", "select": "*", "limit": 1}
+        if criado_por is not None:
+            params["criado_por"] = f"eq.{criado_por}"
+        linhas = await self._get(_TABELA_JOB, params)
         return linhas[0] if linhas else None
 
     async def listar_jobs(
-        self, *, estados: list[str] | None = None, limite: int = 20
+        self, *, estados: list[str] | None = None, limite: int = 20,
+        criado_por: str | None = None,
     ) -> list[dict[str, Any]]:
         params: dict[str, Any] = {
             "select": "*",
             "order": "criado_em.desc",
             "limit": limite,
         }
+        if criado_por is not None:
+            params["criado_por"] = f"eq.{criado_por}"
         if estados:
             params["estado"] = f"in.({','.join(estados)})"
         return await self._get(_TABELA_JOB, params)

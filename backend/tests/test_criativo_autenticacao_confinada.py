@@ -506,3 +506,108 @@ def test_usuario_autenticado_escreve_so_na_bancada_temporaria(
     assert any(p.name == "fila.db" for p in escritos), [p.name for p in escritos]
     alvo = tmp_path.resolve()
     assert all(p.resolve().is_relative_to(alvo) for p in escritos)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Leitura cruzada entre inquilinos (achado do revisor adversarial)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _RepoDeDoisDonos:
+    """Espelha o `eq.` do PostgREST: com filtro de dono, não devolve linha alheia."""
+
+    JOB_A = "11111111-1111-4111-8111-111111111111"
+    JOB_B = "22222222-2222-4222-8222-222222222222"
+
+    def __init__(self) -> None:
+        self.jobs = {
+            self.JOB_A: {"id": self.JOB_A, "briefing_id": "b-a", "motor": "gemini",
+                         "motor_versao": "1", "estado": "succeeded",
+                         "criado_por": "usuario-A", "criado_em": "2026-09-01"},
+            self.JOB_B: {"id": self.JOB_B, "briefing_id": "b-b", "motor": "gemini",
+                         "motor_versao": "1", "estado": "succeeded",
+                         "criado_por": "usuario-B", "criado_em": "2026-09-01"},
+        }
+
+    async def buscar_job(self, job_id, *, criado_por=None):
+        job = self.jobs.get(job_id)
+        if job is not None and criado_por is not None and job["criado_por"] != criado_por:
+            return None
+        return job
+
+    async def listar_jobs(self, *, estados=None, limite=20, criado_por=None):
+        linhas = list(self.jobs.values())
+        if criado_por is not None:
+            linhas = [j for j in linhas if j["criado_por"] == criado_por]
+        return linhas[:limite]
+
+    async def renditions_do_job(self, job_id):
+        return []
+
+    async def ultimo_seq(self, job_id):
+        return 0
+
+    async def buscar_briefing(self, briefing_id):
+        return {"projeto_id": "p", "tipo": "imagem", "modo": "full_llm"}
+
+    async def buscar_projeto(self, projeto_id):
+        return {"titulo": "BRIEFING CONFIDENCIAL DO USUARIO A"}
+
+
+def _identidade(sub: str):
+    from app.seguranca.identidade import Identidade
+
+    return Identidade(sub=sub, email=f"{sub}@x", papel="", origem="sessao")
+
+
+def test_ler_job_de_outro_dono_devolve_404_e_nao_o_briefing() -> None:
+    """⚠️ VAZAMENTO ENTRE INQUILINOS, achado pelo revisor adversarial.
+
+    `obter_job` ligava a identidade a `_` — literalmente descartava — e chamava
+    `repo.buscar_job(job_id)` sem filtro. O repositório também não filtrava:
+    `persistencia.buscar_job` consultava `id=eq.<uuid>` e nada mais. Qualquer
+    usuário autenticado lia o job de qualquer outro pelo UUID, com o título do
+    projeto junto.
+
+    O comentário da rota IRMÃ, na bancada, já tinha escrito a regra: "O UUID não
+    é autorização". A bancada aplicou; o Estúdio não.
+
+    E o 404 é o MESMO de "não existe": responder diferente confirmaria a
+    existência de job alheio.
+    """
+    import asyncio
+
+    from fastapi import HTTPException
+
+    from app.criativo.armazenamento import Assinador
+    from app.routers.criativos import obter_job
+
+    repo, ass = _RepoDeDoisDonos(), Assinador("s" * 32)
+
+    with pytest.raises(HTTPException) as erro:
+        asyncio.run(obter_job(repo.JOB_A, _identidade("usuario-B"), repo, ass))
+    assert erro.value.status_code == 404
+
+    # E o dono legítimo continua lendo o próprio.
+    meu = asyncio.run(obter_job(repo.JOB_A, _identidade("usuario-A"), repo, ass))
+    assert meu["id"] == repo.JOB_A
+
+
+def test_listar_jobs_nao_devolve_os_de_outro_dono() -> None:
+    """Pior que a leitura por UUID: aqui nem era preciso conhecer um id.
+
+    `repo.listar_jobs` não tinha nem PARÂMETRO de dono, então a rota devolvia os
+    jobs de TODOS os usuários para qualquer um que a chamasse.
+    """
+    import asyncio
+
+    from app.criativo.armazenamento import Assinador
+    from app.routers.criativos import listar_jobs
+
+    repo, ass = _RepoDeDoisDonos(), Assinador("s" * 32)
+    saida = asyncio.run(
+        listar_jobs(identidade=_identidade("usuario-B"), repo=repo, assinador=ass,
+                    estado=None, limite=20)
+    )
+    assert len(saida["jobs"]) == 1, "a listagem atravessou inquilino"
+    assert saida["jobs"][0]["id"] == repo.JOB_B

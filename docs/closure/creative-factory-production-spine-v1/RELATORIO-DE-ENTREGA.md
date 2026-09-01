@@ -165,7 +165,40 @@ Três merecem nome próprio, porque não são só ausência:
 
 ## 7. Revisões externas
 
-Codex `gpt-5.6-sol` fez a revisão adversarial sobre o SHA integrado.
+Codex `gpt-5.6-sol` fez a revisão adversarial sobre o SHA integrado, e ela pagou
+o preço da rodada inteira num achado só.
+
+### Vazamento entre inquilinos no Estúdio — CONFIRMADO E FECHADO
+
+`GET /api/criativos/jobs/{job_id}` e `GET /api/criativos/jobs` ligavam a
+identidade a `_` — literalmente descartavam — e serviam só para exigir "algum
+usuário autenticado". O repositório também não ajudava: `buscar_job` consultava
+`id=eq.<uuid>` e nada mais, e `listar_jobs` **não tinha nem parâmetro de dono**.
+
+Reproduzido por mim contra as funções reais
+(`contraprovas/contraprova_leitura_cruzada.py`):
+
+```
+--- B pede o job de A pelo UUID ---
+   VAZOU: B recebeu o job de A -> projetoTitulo='BRIEFING CONFIDENCIAL DO USUARIO A'
+--- B lista os jobs ---
+   B viu 2 job(s) · VAZOU: a listagem atravessa inquilino
+```
+
+A listagem é a pior das duas: não era preciso nem conhecer um UUID.
+
+O comentário da rota **irmã**, na bancada, já tinha escrito a regra: *"O UUID não
+é autorização: buscar sem o filtro faria esta rota diferir das rotas de
+leitura/listagem"*. A bancada aplicou; o Estúdio não. Agora a leitura filtra pelo
+**mesmo campo que a criação grava** (`criado_por = identidade.sub`), e o 404 é o
+mesmo de "não existe" — responder diferente confirmaria a existência de job
+alheio.
+
+**Pendência declarada:** o mesmo padrão existe em `obter_asset` e
+`listar_assets`, que também ligam a identidade a `_`. Fechá-las exige resolver a
+posse *através* do job (o asset não carrega dono próprio), o que é mudança maior
+do que cabe nesta rodada corretiva. Fica registrada aqui e no handoff de
+curadoria como achado reproduzido e **não corrigido**.
 
 ⚠️ **A revisão do Gemini 3.7 Flash NÃO aconteceu, e a fronteira é esta:** o CLI
 não tem método de auth configurado nesta máquina — sem `~/.gemini/settings.json`

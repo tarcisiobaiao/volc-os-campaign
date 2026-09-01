@@ -399,25 +399,45 @@ async def criar_job(
 
 @router.get("/jobs")
 async def listar_jobs(
-    _: Identidade = Depends(exigir_usuario),
+    identidade: Identidade = Depends(exigir_usuario),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
     estado: Optional[str] = None,
     limite: int = Query(default=20, ge=1, le=100),
 ) -> dict[str, Any]:
+    """⚠️ VAZAMENTO ENTRE INQUILINOS, FECHADO. A identidade era ligada a `_` —
+    literalmente descartada — e servia so para exigir "algum usuario
+    autenticado". `repo.listar_jobs` nao tinha nem PARAMETRO de dono, entao esta
+    rota devolvia os jobs de TODOS os usuarios para qualquer um que a chamasse.
+    Nao era preciso nem conhecer um UUID.
+
+    Contraprova em `contraprovas/contraprova_leitura_cruzada.py`: o usuario B
+    recebia o briefing confidencial do usuario A. A leitura agora filtra pelo
+    MESMO campo que a criacao grava (`criado_por = identidade.sub`)."""
     estados = [e for e in (estado or "").split(",") if e] or None
-    linhas = await _ou_503(repo.listar_jobs(estados=estados, limite=limite))
+    linhas = await _ou_503(
+        repo.listar_jobs(estados=estados, limite=limite, criado_por=identidade.sub)
+    )
     return {"jobs": [await _job_dto(repo, assinador, j) for j in linhas]}
 
 
 @router.get("/jobs/{job_id}")
 async def obter_job(
     job_id: str,
-    _: Identidade = Depends(exigir_usuario),
+    identidade: Identidade = Depends(exigir_usuario),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
 ) -> dict[str, Any]:
-    job = await _ou_503(repo.buscar_job(_uuid_ou_404(job_id, "job")))
+    """⚠️ VAZAMENTO ENTRE INQUILINOS, FECHADO. Vide `listar_jobs`.
+
+    O comentario da rota IRMA, na bancada, ja tinha escrito a regra: "O UUID nao
+    e autorizacao: buscar sem o filtro faria esta rota diferir das rotas de
+    leitura/listagem". A bancada aplicou; o Estudio nao. E o 404 e o mesmo para
+    "nao existe" e "nao e seu" — responder diferente confirmaria a existencia de
+    job alheio."""
+    job = await _ou_503(
+        repo.buscar_job(_uuid_ou_404(job_id, "job"), criado_por=identidade.sub)
+    )
     if job is None:
         raise _falha("ESTUDIO.job_inexistente", "Este trabalho não existe.", 404)
     return await _job_dto(repo, assinador, job)
