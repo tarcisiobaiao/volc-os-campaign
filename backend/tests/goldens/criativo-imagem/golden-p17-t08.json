@@ -1,0 +1,129 @@
+{
+  "_leia": "GERADO por test_criativo_golden_imagem.py. Regravar com CRIATIVO_REGRAVAR_GOLDEN=1. Só entra aqui o que NÃO depende da máquina: sha256, bytes e assinatura_determinista ficam de fora porque Pillow, FreeType e o arquivo da fonte os mudam — o determinismo deles é provado por comparação entre duas execuções.",
+  "tarefa": "P17-T08",
+  "seed": 20260901,
+  "motor_slug": "tipografico-local",
+  "modo_slug": "ensaio-local",
+  "canal": "DEMAND_GEN",
+  "estados": [
+    "claimed",
+    "running",
+    "validating",
+    "rendered"
+  ],
+  "natureza_declarada_pelo_motor": "nao_declarada",
+  "custo": {
+    "custo_estimado_usd": null,
+    "custo_real_usd": null,
+    "estado": "nao_apurado"
+  },
+  "envelopes": [
+    {
+      "envelope": "meta-feed-1x1",
+      "destino": "meta",
+      "slot": "0-imagem_marketing_quadrada",
+      "tipo": "imagem_marketing_quadrada",
+      "proporcao": "1:1",
+      "largura": 1080,
+      "altura": 1080,
+      "mime": "image/png",
+      "gate_dimensao": "PASS",
+      "adaptacao": "mestre",
+      "fora_da_rampa": 0,
+      "adaptacao_se_fosse_recorte": null
+    },
+    {
+      "envelope": "meta-feed-4x5",
+      "destino": "meta",
+      "slot": "1-imagem_marketing_retrato",
+      "tipo": "imagem_marketing_retrato",
+      "proporcao": "4:5",
+      "largura": 1080,
+      "altura": 1350,
+      "mime": "image/png",
+      "gate_dimensao": "PASS",
+      "adaptacao": "recomposicao",
+      "fora_da_rampa": 0,
+      "adaptacao_se_fosse_recorte": "crop_resize"
+    },
+    {
+      "envelope": "google-display-191x1",
+      "destino": "google",
+      "slot": "2-imagem_marketing",
+      "tipo": "imagem_marketing",
+      "proporcao": "1.91:1",
+      "largura": 1200,
+      "altura": 628,
+      "mime": "image/png",
+      "gate_dimensao": "PASS",
+      "adaptacao": "recomposicao",
+      "fora_da_rampa": 0,
+      "adaptacao_se_fosse_recorte": "crop_resize"
+    },
+    {
+      "envelope": "google-logo-1x1",
+      "destino": "google",
+      "slot": "3-logo_quadrado",
+      "tipo": "logo_quadrado",
+      "proporcao": "1:1",
+      "largura": 1200,
+      "altura": 1200,
+      "mime": "image/png",
+      "gate_dimensao": "PASS",
+      "adaptacao": "recomposicao",
+      "fora_da_rampa": 0,
+      "adaptacao_se_fosse_recorte": "crop_resize"
+    },
+    {
+      "envelope": "organico-reels-9x16",
+      "destino": "organico",
+      "slot": "4-imagem_marketing_retrato_alto",
+      "tipo": "imagem_marketing_retrato_alto",
+      "proporcao": "9:16",
+      "largura": 1080,
+      "altura": 1920,
+      "mime": "image/png",
+      "gate_dimensao": "PASS",
+      "adaptacao": "recomposicao",
+      "fora_da_rampa": 0,
+      "adaptacao_se_fosse_recorte": "crop_resize"
+    }
+  ],
+  "pacotes": [
+    {
+      "destino": "google",
+      "esperados": [
+        "google-display-191x1",
+        "google-logo-1x1"
+      ],
+      "faltando": [],
+      "completo": true,
+      "verificado": true,
+      "publicavel": false,
+      "publicacao_automatica": false
+    },
+    {
+      "destino": "meta",
+      "esperados": [
+        "meta-feed-1x1",
+        "meta-feed-4x5"
+      ],
+      "faltando": [],
+      "completo": true,
+      "verificado": true,
+      "publicavel": false,
+      "publicacao_automatica": false
+    },
+    {
+      "destino": "organico",
+      "esperados": [
+        "organico-reels-9x16"
+      ],
+      "faltando": [],
+      "completo": true,
+      "verificado": true,
+      "publicavel": false,
+      "publicacao_automatica": false
+    }
+  ]
+}
