@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T08:42:09-03:00",
+  "generated_at": "2026-09-01T12:59:58-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 465,
-    "markdown": 311,
-    "sql": 154,
-    "tracked": 465,
+    "files": 470,
+    "markdown": 313,
+    "sql": 157,
+    "tracked": 470,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 21,
-      "documentation": 173,
+      "documentation": 175,
       "generated": 2,
       "module-guide": 30,
       "product-document": 21,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 41,
+      "sql-needs-review": 44,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 93,
+      "high": 96,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -1017,7 +1017,7 @@
       "tracked": true,
       "bytes": 18367,
       "lines": 257,
-      "sha256": "a737648ea8ebdb9cb46050741725496d97ad5f217f83866dedcbbff7677d929f",
+      "sha256": "af3d9c166e70e84897f9078302233ec3b66668d968c3a024f59fce0e41b0eb1d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1558,6 +1558,30 @@
       "bytes": 9238,
       "lines": 137,
       "sha256": "e168c9bf26c817c342696e46048c20e8184e32d45cd15ef1305c501a30dfedf9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/campaign-birth-readiness-v1/LEITURA-VIVA-2026-09-01.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4533,
+      "lines": 111,
+      "sha256": "20e2787bdfcdab6c54290df4ac26cff1930dcbddcce55cf0c4f1f7fee2a0c350",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/campaign-birth-readiness-v1/PROVA-SDK-V25.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2609,
+      "lines": 43,
+      "sha256": "48ed15212016311718c78017148c1afb2f546dcc0029a8100a898a0de31a7868",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2997,7 +3021,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "bfa09f55dd6bdd0af499764f20d3fa7822573ac666354902ca2ebb82aa55d0f5",
+      "sha256": "2fecc603ea324e8883d4c800b2cc30881368fcd492a4d3122ba9c9629e3d636f",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3346,6 +3370,18 @@
       "bytes": 31305,
       "lines": 483,
       "sha256": "723ebe93d0065d2ab3e21ea879b06086f59fceb05c718b0c024238bd9c89353b",
+      "graph_nodes": 3,
+      "graph_degree": 4,
+      "sql_risk": "high"
+    },
+    {
+      "path": "scripts/provas-v12_02.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 22650,
+      "lines": 442,
+      "sha256": "2f7c7550c37cdfe09c81c4693ffb58829546207c146a546af416e673ad86ec90",
       "graph_nodes": 3,
       "graph_degree": 4,
       "sql_risk": "high"
@@ -5146,6 +5182,30 @@
       "bytes": 461,
       "lines": 10,
       "sha256": "66089b477ffc21441fa2b9165526f1e93a435886bab2c0b0b4d293518882eb92",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v12_02_plano_de_mensuracao.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 32270,
+      "lines": 582,
+      "sha256": "6ea4da6283bb74529ebbb9e8b2ce540f89813c47160a8620daa9440a75715276",
+      "graph_nodes": 5,
+      "graph_degree": 23,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v12_02_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4042,
+      "lines": 92,
+      "sha256": "f95da19eef129570432d5b226707893a5ecaa319b4cccc37f492e7cb94b5b79d",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"

@@ -393,11 +393,11 @@
       "type": "concept",
       "cluster": "acquisition",
       "cluster_label": "Aquisição & campanhas",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Leitura de asset groups, cobertura e qualidade de assets, resultados e riscos de PMax antes de liberar criação ou atuação.",
-      "evidence": "pMaximizer foi aceito como referência de consultas e painel. O VOLC ainda não coleta nem opera PMax.",
+      "evidence": "O kernel de observabilidade e as consultas de referência existem; em 09e70e1 + d80b17d, o portão `pmax_observabilidade_nao_provada` tornou-se independente da ausência do executor e sobrevive ao futuro registro do construtor, sem contaminar outros canais. Continua partial porque não há coletor produtivo nem leitura real de asset groups, assets e cobertura PMax.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -1363,6 +1363,19 @@
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
+      "id": "concept:campaign_measurement_plan",
+      "label": "Plano canônico de mensuração da campanha",
+      "type": "concept",
+      "cluster": "measurement",
+      "cluster_label": "Medição & monetização",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Declara antes do nascimento qual meta efetiva governa a campanha, qual ação a mede, quem é o dono, por onde o sinal pode chegar, o que foi realmente observado e quais bloqueios impedem ativação ou Smart Bidding.",
+      "evidence": "Implementado em 349e1a9..70e1382 com cinco leituras Google Ads somente-SELECT, contrato tipado, persistência preparada, projeção no cockpit e portões falsificáveis. Foram medidos 2682 testes Python, 1158 testes de front, 7/7 mutações mortas e 55 provas SQL. Permanece partial: a v12_02 não foi aplicada no Supabase oficial, a gravação não foi ligada ao fluxo produtivo e Data Manager continua não provado.",
+      "source": "Curadoria humana, atualizada em 2026-08-29"
+    },
+    {
       "id": "concept:ads_health_monitor",
       "label": "VOLC Ads Health Monitor",
       "type": "concept",
@@ -1381,11 +1394,11 @@
       "type": "concept",
       "cluster": "measurement",
       "cluster_label": "Medição & monetização",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Inventário e governança de GA4, GTM, UTMs, eventos, conversões, streams, dimensões, vínculos e drift antes de qualquer alteração.",
-      "evidence": "ga4-gtm-utilities, google-analytics-utilities e ga4_dataform foram aceitos como referências; não existe inventário canônico nem contrato de drift no VOLC O.S.",
+      "evidence": "A primeira fatia canônica existe em 349e1a9..70e1382: InventarioDeMarcacao distingue auto-tagging, importações e caminhos declarados de sinais realmente observados; lê dono da ação, click IDs, consentimento e frescor sem transformar capacidade em conversão. O controle amplo de GA4/GTM/UTMs/streams e drift, a operação do Data Manager e a aplicação da v12_02 continuam pendentes.",
       "source": "Curadoria humana, atualizada em 2026-08-29"
     },
     {
@@ -9827,6 +9840,27 @@
       "confidence": "curated"
     },
     {
+      "source": "concept:campaign_measurement_plan",
+      "target": "cap_search_birth",
+      "relation": "bloqueia_ativacao_sem_prova",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:campaign_measurement_plan",
+      "target": "concept:search_paused_canary",
+      "relation": "governa_nascimento",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:campaign_measurement_plan",
+      "target": "concept:tracking_control_plane",
+      "relation": "integra",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
       "source": "concept:campaign_onboarding_guard",
       "target": "concept:search_intelligence",
       "relation": "especializa",
@@ -10446,6 +10480,13 @@
       "source": "concept:pmax_observability",
       "target": "channel:PERFORMANCE_MAX",
       "relation": "precede_operacao",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:pmax_observability",
+      "target": "concept:campaign_measurement_plan",
+      "relation": "depende_de_mensuracao",
       "evidence": "",
       "confidence": "curated"
     },

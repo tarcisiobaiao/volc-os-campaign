@@ -503,7 +503,8 @@
           "proof": "pMaximizer foi aceito como referência de consultas, cobertura de asset groups e qualidade de assets; não existe coleta PMax nem painel VOLC específico",
           "evidencia": [
             "2026-09-01 · 73e15fa + 8270d48 (sprint/traffic-creative-operational-closure-v1): volc_ads/campanha/pmax.py (1172 linhas) reusa PMAX_FIELD_REQUIREMENTS e evaluate_asset_group_coverage de volc_ads/observabilidade_pmax (que já existia antes desta missão — o delta desta missão é o PORTÃO, não a observabilidade). 50 provas em testes_pmax.py, das quais duas decidem esta tarefa: test_mensuracao_inadequada_bloqueia_mesmo_com_canal_habilitado prova que o bloqueio de criação vem da MENSURAÇÃO e não do construtor None (PMax está bloqueado por dois motivos empilhados; só um é o que esta tarefa pede), e test_sdk_v25_real_instancia_e_serializa_o_grafo_pmax instancia e serializa os protos v25 reais offline. Também: test_recibo_de_mensuracao_autoatestado_nao_e_leitura mata a linhagem autoatestável. PARTIAL e não done: PMax permanece fora do executor por decisão registrada em docs/closure/traffic-creative-operational-closure-v1/DECISAO-PMAX-FORA-DO-EXECUTOR.md.",
-            "2026-09-01 · 134083a (sprint/traffic-creative-operational-closure-v1): o portao de mensuracao disparou contra a CONTA REAL, nao contra fixture. pmax.ler_mensuracao leu 10 acoes de conversao na Portal Mundo Mais, TODAS com include_in_conversions_metric=False — nenhuma valida para lance. pmax.validar recusou LOCALMENTE com MENSURACAO_INADEQUADA e nao chegou a API. E' a prova de que o bloqueio vem da mensuracao lida e nao do construtor None."
+            "2026-09-01 · 134083a (sprint/traffic-creative-operational-closure-v1): o portao de mensuracao disparou contra a CONTA REAL, nao contra fixture. pmax.ler_mensuracao leu 10 acoes de conversao na Portal Mundo Mais, TODAS com include_in_conversions_metric=False — nenhuma valida para lance. pmax.validar recusou LOCALMENTE com MENSURACAO_INADEQUADA e nao chegou a API. E' a prova de que o bloqueio vem da mensuracao lida e nao do construtor None.",
+            "2026-09-01 · 09e70e1 + d80b17d (sprint/campaign-birth-readiness-v1): `criavel_pausada` de PERFORMANCE_MAX passou a carregar o bloqueador `pmax_observabilidade_nao_provada` independentemente de `PMAX_FORA_DO_EXECUTOR`. A mutação que remove a ligação mata três testes; o bloqueador sobrevive ao futuro registro do construtor e não atinge Search, Display ou Demand Gen. Continua partial: as seis consultas do kernel PMax ainda não possuem coletor produtivo nem leitura real de asset groups/assets/cobertura."
           ]
         },
         {
@@ -684,7 +685,7 @@
           "title": "Fechar o plano canônico de mensuração no nascimento Search",
           "status": "partial",
           "priority": 1,
-          "proof": "Criada em 01/09/2026, logo após o primeiro canário com ledger v10. O que a motiva é um fato medido na conta, não uma preocupação abstrata: a campanha 24195821946 nasceu com goal_config_level=CUSTOMER e o ÚNICO campaign_conversion_goal biddable é DOWNLOAD/APP — enquanto a conta declara oito ações primárias PURCHASE. Em MANUAL_CPC isso não afeta o lance; sob qualquer Smart Bidding, a campanha otimizaria para um objetivo que ninguém escolheu. O contrato de prontidão já existe em backend/app/trafego/prontidao.py (G0..G3, com conversion_goal_status, conversion_signal_status, signal_sources e smart_bidding_eligible fail-closed), e é por isso que esta tarefa nasce partial e não todo: a leitura hoje é de `conversion_action`, e não dos recursos que decidem o efetivo (customer_conversion_goal, campaign_conversion_goal, conversion_goal_campaign_config.goal_config_level). Doutrina oficial fixada em docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md: a API só ATUALIZA goals, nunca cria nem remove, e selective_optimization é de campanha de APP.",
+          "proof": "O plano canônico de mensuração foi fechado no código em 349e1a9..70e1382: cinco leituras GAQL somente-SELECT resolvem nível, goals efetivos, ações, dono e frescor; o portão PRONTO tornou-se alcançável e falsificável; capacidade declarada foi separada de conversão realmente observada; o front mostra meta, origem, frescor e bloqueadores; e a v12_02 tem migration, rollback e ciclo descartável com 55 provas. A leitura real read-only confirmou uma campanha herdando meta inadequada para Smart Bidding e nenhuma escrita externa ocorreu. Continua partial porque a v12_02 ainda não foi aplicada no Supabase oficial, o repositório ainda não está ligado a /provar e /subir, Data Manager não foi provado em operação e nenhuma meta foi alterada.",
           "explanation": "Uma campanha que nasce sem plano de mensuração declarado é uma campanha que ninguém consegue ativar com segurança depois. O plano precisa dizer, ANTES do nascimento, qual ação de conversão a campanha persegue, de quem é essa ação, por onde o sinal chega e quão fresco ele é — e precisa impedir ativação e Smart Bidding enquanto isso não estiver provado.",
           "acceptance": [
             "campaign_measurement_plan persistido no Supabase oficial, com migration e rollback provados",
@@ -698,6 +699,11 @@
             "front mostrando meta efetiva, fonte do sinal, frescor da última conversão e bloqueadores",
             "ativação e Smart Bidding impossíveis enquanto G1 e G2 não estiverem PRONTO"
           ],
+          "evidencia": [
+            "2026-09-01 · 349e1a9..70e1382 (sprint/campaign-birth-readiness-v1): `plano_mensuracao.py`, `metas_efetivas.py`, `prontidao.py`, persistência, router e front foram integrados. Gates: 220 focais; 7/7 mutações mortas; 2682 testes Python; ciclo v12_02 com 55 provas; 1158 Vitest; build verde; TypeScript no baseline de 76 e zero erro no ownership.",
+            "A prontidão agora separa `fontes_de_sinal_observadas` de `caminhos_de_sinal_declarados`: auto-tagging, tag configurada e destino endereçável não provam chegada de conversão. `smart_bidding_eligible=true` com bloqueador material tornou-se estado impossível de construir.",
+            "A v12_02 permanece somente versionada e provada em Postgres descartável. Leitura no Supabase oficial confirmou ausência da tabela e da função; por isso o estado não foi promovido a done."
+          ],
           "dependencies": [
             "P06-T07",
             "P07-T02",
@@ -706,7 +712,11 @@
             "P07-T05",
             "P09-T14"
           ],
-          "links": []
+          "links": [
+            "docs/closure/campaign-birth-readiness-v1/delta-curadoria-campaign-birth-readiness.json",
+            "docs/closure/campaign-birth-readiness-v1/PROVA-SDK-V25.md",
+            "supabase/migrations/v12_02_plano_de_mensuracao.sql"
+          ]
         }
       ]
     },

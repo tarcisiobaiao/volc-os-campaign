@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T08:42:09-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T12:59:58-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 465 arquivos: 311 Markdown e 154 SQL;
-- 465 versionados e 0 ainda não versionados;
+- 470 arquivos: 313 Markdown e 157 SQL;
+- 470 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 93 SQL com palavras de mutação de alto risco.
+- 96 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-01T08:42:09-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 21 |
-| `documentation` | 173 |
+| `documentation` | 175 |
 | `generated` | 2 |
 | `module-guide` | 30 |
 | `product-document` | 21 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-01T08:42:09-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 41 |
+| `sql-needs-review` | 44 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -43,6 +43,7 @@ estejam errados, mas impede aplicação automática.
 |---|---|---:|---:|
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | 3 | 4 |
+| `scripts/provas-v12_02.sql` | `sql-needs-review` | 3 | 4 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 7 |
 | `sql/archive/campaign-highlights/APLICAR_NO_SUPABASE.sql` | `archived` | 0 | 0 |
@@ -123,6 +124,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
+| `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |
@@ -162,6 +165,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | high | 3 | 4 |
+| `scripts/provas-v12_02.sql` | `sql-needs-review` | high | 3 | 4 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | high | 2 | 7 |
 | `sql/fix_marliseac_password_final.sql` | `sql-needs-review` | medium | 1 | 0 |
@@ -236,6 +240,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | high | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
+| `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | high | 1 | 0 |
