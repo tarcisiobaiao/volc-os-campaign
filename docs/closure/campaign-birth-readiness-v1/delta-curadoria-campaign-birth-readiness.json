@@ -11,9 +11,15 @@
     "09e70e1 fix(canais): PMax ganha bloqueador de observabilidade independente do executor",
     "cb137fd feat(router): /provar lê o plano de mensuração numa leitura separada, com teto",
     "501cd9c feat(db): v12_02 persiste o campaign_measurement_plan, com rollback provado",
-    "e085ca2 feat(cockpit): o plano de mensuração aparece antes do clique que gasta"
+    "e085ca2 feat(cockpit): o plano de mensuração aparece antes do clique que gasta",
+    "640170b docs(closure): a leitura viva que derrubou um defeito, e o handoff de curadoria",
+    "7367579 docs(closure): o filtro por resource name da campanha, provado por execução",
+    "bd3ee15 fix(mensuracao): apaga uma janela de frescor que ninguém aplicava",
+    "d80b17d test(canais): prova que o bloqueio sobrevive a PMax entrar no executor",
+    "3a3d928 test(persistencia): a costura entre o tradutor Python e os CHECKs do schema",
+    "521ad52 fix(mensuracao): capacidade deixa de ser lida como prova de sinal",
+    "80203cb test: os cinco pares do achado, o ciclo do plano, e provas que podem falhar"
   ],
-
   "nos_propostos": [
     {
       "id": "trafego-plano-mensuracao",
@@ -22,7 +28,7 @@
       "rotulo": "Plano canônico de mensuração",
       "estado": "ativo",
       "path": "backend/app/trafego/plano_mensuracao.py",
-      "evidence": "O vocabulário e as REGRAS do campaign_measurement_plan, sem I/O: sete estados de leitura (nao_coletado, com_dados, vazio_confirmado, parcial, inelegivel, nao_suportado, falhou — os seis últimos LITERALMENTE os de volc_ads.inteligencia_google.modelo.EstadoColeta, com teste que quebra se divergirem), o tri-estado de primary_for_goal, a eleição por semântica de evento (category/origin) e a resolução de destino Data Manager por dono + id numérico. NUNCA cria ConversionAction: PropostaDeAcaoNova nasce Secondary e levanta CriacaoDeAcaoRecusada se alguém a marcar como criada. 44 testes."
+      "evidence": "O vocabulário e as REGRAS do campaign_measurement_plan, sem I/O: sete estados de leitura (nao_coletado, com_dados, vazio_confirmado, parcial, inelegivel, nao_suportado, falhou — os seis últimos LITERALMENTE os de volc_ads.inteligencia_google.modelo.EstadoColeta, com teste que quebra se divergirem), o tri-estado de primary_for_goal, a eleição por semântica de evento (category/origin) e a resolução de destino Data Manager por dono + id numérico. NUNCA cria ConversionAction: PropostaDeAcaoNova nasce Secondary e levanta CriacaoDeAcaoRecusada se alguém a marcar como criada. 72 testes, cada correção verificada por mutação."
     },
     {
       "id": "trafego-metas-efetivas",
@@ -40,7 +46,7 @@
       "rotulo": "trafego_campanha_plano_de_mensuracao (v12_02)",
       "estado": "escrita_nao_aplicada",
       "path": "supabase/migrations/v12_02_plano_de_mensuracao.sql",
-      "evidence": "Append-only, RLS forçada, zero policies, service_role SEM escrita direta (a única porta é volc_registrar_plano_de_mensuracao, SECURITY DEFINER e idempotente pela impressão). 26 CHECKs defendendo seis invariantes, incluindo a que impede destino de conversão offline sem conta dona e sem id numérico. Ciclo aplicar→operar→reverter→reaplicar provado em cluster descartável: 42 provas, 0 falhas (scripts/provar-ciclo-v12_02.sh). ⚠️ NÃO APLICADA no Supabase oficial — exige autorização literal do dono."
+      "evidence": "Append-only, RLS forçada, zero policies, service_role SEM escrita direta (a única porta é volc_registrar_plano_de_mensuracao, SECURITY DEFINER e idempotente pela impressão). 28 CHECKs defendendo seis invariantes, incluindo a que impede destino de conversão offline sem conta dona e sem id numérico. Ciclo aplicar→operar→reverter→reaplicar provado em cluster descartável: 55 provas, 0 falhas (scripts/provar-ciclo-v12_02.sh). ⚠️ NÃO APLICADA no Supabase oficial — exige autorização literal do dono."
     },
     {
       "id": "trafego-cartao-plano-mensuracao",
@@ -50,19 +56,59 @@
       "estado": "ativo",
       "path": "src/components/trafego/canais/PlanoDeMensuracao.tsx",
       "evidence": "Mostra meta efetiva com o nível de onde ela vem, fonte do sinal com id numérico e conta dona, frescor da última conversão e TODOS os bloqueadores em linguagem operacional. Aparece em dois lugares — cockpit de canais e painel do lançamento, a tela em que o próximo clique cria — e mora sozinho porque duas implementações divergiriam no primeiro campo novo."
+    },
+    {
+      "id": "trafego-caminhos-de-sinal",
+      "tipo": "contrato",
+      "cluster": "medicao/monetizacao",
+      "rotulo": "Fonte de sinal vs. caminho declarado",
+      "estado": "ativo",
+      "path": "backend/app/trafego/plano_mensuracao.py",
+      "evidence": "A distinção que a revisão adversarial obrigou a existir. `fontes_de_sinal_observadas` devolve SÓ o que prova chegada — conversão observada e recente. `caminhos_de_sinal_declarados` devolve o inventário de capacidade: auto-tagging ligado, tag configurada, importação declarada, destino offline endereçável. Auto-tagging permanece como pré-requisito de IDENTIDADE (sem gclid a conversão offline não reconcilia) e nunca como evidência de sinal. `Prontidao` recebe os dois em campos separados — `signal_sources` decide o portão, `signal_paths` é diagnóstico — e recusa no `__post_init__` a combinação `smart_bidding_eligible=True` com bloqueador MATERIAL, do mesmo jeito que `Portao` proíbe 'PERMITIDO com bloqueador'."
     }
   ],
-
   "arestas_propostas": [
-    { "de": "trafego-metas-efetivas", "para": "trafego-plano-mensuracao", "tipo": "traduz_para" },
-    { "de": "trafego-metas-efetivas", "para": "volc-ads-gads-client", "tipo": "le" },
-    { "de": "trafego-prontidao", "para": "trafego-plano-mensuracao", "tipo": "decide_com" },
-    { "de": "trafego-contrato-canais", "para": "trafego-plano-mensuracao", "tipo": "projeta" },
-    { "de": "trafego-persistencia", "para": "trafego-plano-mensuracao-tabela", "tipo": "escreve_por_funcao" },
-    { "de": "trafego-cartao-plano-mensuracao", "para": "trafego-contrato-canais", "tipo": "consome" },
-    { "de": "concept:pmax_observability", "para": "trafego-contrato-canais", "tipo": "bloqueia_criacao" }
+    {
+      "de": "trafego-metas-efetivas",
+      "para": "trafego-plano-mensuracao",
+      "tipo": "traduz_para"
+    },
+    {
+      "de": "trafego-metas-efetivas",
+      "para": "volc-ads-gads-client",
+      "tipo": "le"
+    },
+    {
+      "de": "trafego-prontidao",
+      "para": "trafego-plano-mensuracao",
+      "tipo": "decide_com"
+    },
+    {
+      "de": "trafego-contrato-canais",
+      "para": "trafego-plano-mensuracao",
+      "tipo": "projeta"
+    },
+    {
+      "de": "trafego-persistencia",
+      "para": "trafego-plano-mensuracao-tabela",
+      "tipo": "escreve_por_funcao"
+    },
+    {
+      "de": "trafego-cartao-plano-mensuracao",
+      "para": "trafego-contrato-canais",
+      "tipo": "consome"
+    },
+    {
+      "de": "concept:pmax_observability",
+      "para": "trafego-contrato-canais",
+      "tipo": "bloqueia_criacao"
+    },
+    {
+      "de": "trafego-caminhos-de-sinal",
+      "para": "trafego-prontidao",
+      "tipo": "alimenta"
+    }
   ],
-
   "tarefas_do_roadmap_tocadas": [
     {
       "id_provavel": "P05-T12",
@@ -70,7 +116,7 @@
       "estado_atual": "partial",
       "estado_proposto": "partial",
       "por_que_nao_done": "O item 1 do aceite exige `campaign_measurement_plan persistido no Supabase OFICIAL`. A migration e o rollback existem e o ciclo foi provado em cluster descartável, mas NADA foi aplicado no Supabase oficial — isso exige autorização literal do dono, que esta missão não tinha. Promover a `done` com a tabela inexistente em produção seria exatamente a promoção por código que o protocolo de fechamento proíbe.",
-      "delta_de_evidencia": "2026-09-01 · 349e1a9..e085ca2 (sprint/campaign-birth-readiness-v1): a lacuna nomeada como causa do `partial` FECHOU no código. `backend/app/trafego/metas_efetivas.py` lê os TRÊS recursos que decidem o efetivo — customer_conversion_goal, campaign_conversion_goal e conversion_goal_campaign_config.goal_config_level —, e `prontidao.avaliar` ganhou um ramo PRONTO ALCANÇÁVEL, o que torna o portão de Smart Bidding falsificável pela primeira vez (antes, `smart_bidding_eligible=False` passava com qualquer entrada, inclusive com uma conta perfeitamente medida — o anti-padrão que a MATRIZ-DE-FECHAMENTO nomeia). PROVA VIVA, read-only, na conta 5478096539 em 01/09/2026: goal_config_level=CUSTOMER, única meta biddable DOWNLOAD/APP, e a única ação dessa semântica (#7498530235, ANDROID_INSTALLS_ALL_OTHER_APPS) com primary_for_goal=FALSE declarado — logo não-biddable em toda campanha. O sistema respondeu conversion_goal_status=NAO_PRONTO com a causa exata, conversion_signal_status=PRONTO (tag do Google + auto-tagging, comprovados), e smart_bidding_eligible=False bloqueado por G2. Essa leitura DERRUBOU um defeito meu: a primeira versão da eleição caía em `primarias or candidatas` e elegia a ação não-biddable, saindo com a mensuração 'resolvida'. Itens do aceite fechados: 2, 3, 4, 5, 6, 7, 8, 9, 12. Item 1 tem migration+rollback escritos e ciclo provado, e falta a aplicação oficial. O inventário de GTM/GA4/auto-tagging/click-ids/consentimento existe em InventarioDeMarcacao, derivado de leitura (customer.conversion_tracking_setting completo, incluindo google_ads_conversion_customer, que é quem DE FATO possui as ações numa hierarquia com tracking centralizado)."
+      "delta_de_evidencia": "2026-09-01 · 349e1a9..e085ca2 (sprint/campaign-birth-readiness-v1): a lacuna nomeada como causa do `partial` FECHOU no código. `backend/app/trafego/metas_efetivas.py` lê os TRÊS recursos que decidem o efetivo — customer_conversion_goal, campaign_conversion_goal e conversion_goal_campaign_config.goal_config_level —, e `prontidao.avaliar` ganhou um ramo PRONTO ALCANÇÁVEL, o que torna o portão de Smart Bidding falsificável pela primeira vez (antes, `smart_bidding_eligible=False` passava com qualquer entrada, inclusive com uma conta perfeitamente medida — o anti-padrão que a MATRIZ-DE-FECHAMENTO nomeia). PROVA VIVA, read-only, na conta 5478096539 em 01/09/2026: goal_config_level=CUSTOMER, única meta biddable DOWNLOAD/APP, e a única ação dessa semântica (#7498530235, ANDROID_INSTALLS_ALL_OTHER_APPS) com primary_for_goal=FALSE declarado — logo não-biddable em toda campanha. O sistema respondeu conversion_goal_status=NAO_PRONTO com a causa exata, conversion_signal_status=NAO_PRONTO — a conta tem CAMINHO declarado (auto-tagging ligado, tag configurada em 8 ações) e NENHUMA conversão observada, e a revisão adversarial provou que a primeira versão lia esse caminho como prova e autorizava Smart Bidding; e smart_bidding_eligible=False. Essa leitura DERRUBOU um defeito meu: a primeira versão da eleição caía em `primarias or candidatas` e elegia a ação não-biddable, saindo com a mensuração 'resolvida'. Itens do aceite fechados: 2, 3, 4, 5, 6, 7, 8, 9, 12. Item 1 tem migration+rollback escritos e ciclo provado, e falta a aplicação oficial. O inventário de GTM/GA4/auto-tagging/click-ids/consentimento existe em InventarioDeMarcacao, derivado de leitura (customer.conversion_tracking_setting completo, incluindo google_ads_conversion_customer, que é quem DE FATO possui as ações numa hierarquia com tracking centralizado)."
     },
     {
       "id_provavel": "P04-T07",
@@ -81,7 +127,6 @@
       "delta_de_evidencia": "2026-09-01 · 09e70e1 (sprint/campaign-birth-readiness-v1): `criavel_pausada` de PERFORMANCE_MAX passa a carregar DOIS bloqueadores independentes, de origens diferentes — PMAX_FORA_DO_EXECUTOR (origem `produto`) e pmax_observabilidade_nao_provada (origem `observabilidade`). A independência é o ponto: o primeiro é uma decisão reversível numa tarde, e se fosse o único, PMax ficaria criável no dia da reversão sem ninguém conseguir reler a estrutura interna da campanha. O extra é anexado por FORA do if/elif/else de `_portao_criavel_pausada`, com `_com_extras` — dentro, ele morreria junto com o primeiro exatamente no dia em que passa a ser o único de pé. Há prova de que ele sobrevive ao construtor existir, de que some por MEDIÇÃO quando a observabilidade é provada, e de que NÃO atinge SEARCH, DISPLAY nem DEMAND_GEN (a guarda de canal é obrigatória: `_com_extras` fecha qualquer portão que receba um extra). Medido depois da mudança: SEARCH criavel_pausada=PERMITIDO sem bloqueador; DISPLAY só `fora_da_janela_do_canario`; DEMAND_GEN só `mutacao_real_recusada`. E há prova de ausência de que `planejavel` e `validavel` de PMax continuam fechados — acrescentar uma recusa nunca pode abrir uma porta."
     }
   ],
-
   "fronteiras_externas_nao_cruzadas": [
     "Google Ads mutate: NENHUM. Toda GAQL nova é SELECT; o diff não introduz uma única chamada de mutação (git diff | grep -E '^\\+.*(mutate|MutateOperation)' → vazio).",
     "Google Ads read-only: SIM, EXERCIDO e declarado. Cinco GAQL de leitura contra a conta 5478096539 sob o MCC 6016739364, em 01/09/2026, para conferir os contratos — expressamente permitido pela missão. Nenhum recurso foi criado, alterado ou removido.",
@@ -91,7 +136,6 @@
     "Deploy, push, merge: nenhum. Sete commits locais na branch da worktree.",
     "ROADMAP-VIVO.json e docs/volc-os-graph/curadoria-operacional.json: INTOCADOS (git status confirma). Este arquivo é a proposta; o integrador único aplica."
   ],
-
   "pendencias_que_dependem_de_autorizacao": [
     {
       "o_que": "Aplicar a v12_02 no Supabase oficial (database.agenciavolc.com.br)",
@@ -109,7 +153,6 @@
       "plano_exato": "Ato separado, fora desta missão, com validate_only, fingerprint, recibo e rollback próprios."
     }
   ],
-
   "achados_adjacentes_nao_consertados": [
     {
       "onde": "backend/app/trafego/contrato_canais.py:896 e :833",
@@ -126,5 +169,86 @@
       "o_que": "As '4 falhas herdadas' que medi no baseline eram FLAKE DE CARGA, e não falhas reais. Rodando vitest sozinho na árvore final: 1158 passam, 0 falham, EXIT 0. Rodando-o junto com pytest+tsc+build, o conjunto que falha MUDA entre execuções (4 arquivos de tráfego numa, asset-vault noutra) — são timeouts sob disputa de CPU.",
       "por_que_nao_consertei": "É um defeito do arranjo de execução, não do produto, e aumentar timeout de teste alheio está fora do escopo."
     }
-  ]
+  ],
+  "revisao_adversarial": {
+    "_comentario": "Cinco lentes disjuntas, cada achado verificado por um agente independente que tinha de REPRODUZIR o cenário — o ônus da prova ficou com quem afirmou. Gemini 3.7 Flash e Codex gpt-5.6-sol/high estavam indisponíveis nesta máquina (ver `desvios_de_ferramenta`) e foram substituídos, não pulados.",
+    "achados_alegados": 29,
+    "confirmados_e_corrigidos": [
+      "fontes_de_sinal_observadas contava `destino.resolvido` como fonte de sinal — endereçabilidade não é chegada de evento",
+      "fontes_de_sinal_observadas contava `auto_tagging`, `acoes_com_tag` e `acoes_de_ga4` como fonte — capacidade não é prova; separados em `caminhos_de_sinal_declarados`",
+      "o ramo PRONTO de G1 era o único que descartava `plano.bloqueadores`",
+      "`acoes_estado` sem conclusão produzia NAO_PRONTO em vez de INDETERMINADO — veredito sobre a conta derivado de falha de rede",
+      "`Frescor.comprovado` não tinha limite de recência: uma conversão de 2019 autorizava Smart Bidding em 2026",
+      "`completo` exigia destino de ingestão OFFLINE, contradizendo a doutrina sinal != Data Manager",
+      "`ler_frescor` repassava `vazio_confirmado` quando o RELATÓRIO voltava sem linha — zero linha não é zero conversão",
+      "`impressao()` não cobria o veredito nem os estados de leitura: duas leituras opostas colidiam e a segunda era descartada em silêncio",
+      "`conversion_tracking_id` e `cross_account_...` são int64 COM presence: `_texto(0)` devolvia '0' onde a ausência deveria ser None",
+      "`nivel_estado` era sintetizado como `com_dados` na herança pré-nascimento — ninguém consultou o recurso; virou `nivel_herdado`",
+      "`chave_intencao` chegava sempre None do router (ProvarEntrada não tem o campo): TODAS as intenções da conta colidiam na mesma impressão",
+      "`hoje` vinha do relógio do SERVIDOR; a data da última conversão é escrita no fuso da CONTA",
+      "CHECK `completo_exige_prova` era satisfazível com zero dado (só o rótulo `com_dados`)",
+      "faltava CHECK amarrando `destino_operating_account_id` ao `acao_alvo_owner_id` — o cabeçalho prometia e o schema não defendia",
+      "`cardinality(bloqueadores)` conta elemento NULL: um bloqueador nulo satisfazia a guarda de razão NOMEADA",
+      "o arranjo `pg_temp.tenta` aceitava QUALQUER erro como recusa válida — 14 de 22 casos passavam com a função sob teste renomeada",
+      "provas da migration atribuíam a recusa ao CHECK errado; agora cada caso declara a constraint que exerce",
+      "`test_marcacao_nao_lida_nao_vira_fonte_de_sinal` era infalsificável (fixture sem dados)",
+      "fixtures de front usavam o mesmo id de conta em quatro campos: trocar dono por conta-da-campanha passava despercebido"
+    ],
+    "refutados_na_verificacao": {
+      "quantidade": 6,
+      "motivo": "Reproduziam apenas no HEAD commitado; a árvore de trabalho já os havia superado enquanto a revisão rodava. Os verificadores rodaram o repro do alegante contra os dois estados e registraram a diferença."
+    },
+    "nao_reproduzivel": 1,
+    "pendencias_legitimas_nao_corrigidas": [
+      {
+        "onde": "backend/app/routers/trafego.py — `_plano_de_mensuracao`",
+        "o_que": "`/provar` passou de 1 para até 5 GAQL por chamada, e `asyncio.wait_for` sobre `asyncio.to_thread` NÃO cancela a thread: ela segue lendo a conta depois de a resposta HTTP sair. O teto protege o operador, não a cota.",
+        "por_que_nao_corrigi": "A mitigação é um cache curto por conta, e ela exige decidir qual frescor é aceitável — decisão de dono. O custo está documentado na docstring, em voz alta."
+      },
+      {
+        "onde": "supabase/migrations/v12_02 — gatilho de TRUNCATE",
+        "o_que": "TRUNCATE não dispara gatilho de linha e apaga em silêncio uma tabela que o rollback declara não reconstruível. Alcançável pelo SQL editor do Studio, que roda como `postgres`; `service_role` não tem TRUNCATE.",
+        "por_que_nao_corrigi": "O gatilho foi escrito e REVERTIDO: ele quebra uma decisão já tomada por esta casa — a bancada usa TRUNCATE como escape hatch do append-only, e o `TRUNCATE ... CASCADE` dela alcança esta tabela pela FK, sem como opt-out. Registrado no próprio arquivo."
+      },
+      {
+        "onde": "backend/app/trafego/contrato_canais.py:896 e :833",
+        "o_que": "`planeja_offline(canal) is not False` colapsa 'medi e ele planeja' com 'não consegui perguntar'.",
+        "por_que_nao_corrigi": "Fora dos 12 itens de aceite; o veredito final não muda e quatro testes existentes fixam o ramo."
+      },
+      {
+        "onde": "backend/tests/test_trafego_ledger_producao.py",
+        "o_que": "Nove testes falham quando o arquivo roda SOZINHO, também na base: `contas.meta_de_conversao` alcança a rede com o lru_cache de `cliente` frio.",
+        "por_que_nao_corrigi": "PRÉ-EXISTENTE, provado com `git stash` na base. Minha mudança reduziu de 11 para 9 ao tornar hermética a leitura do plano."
+      },
+      {
+        "onde": "gate vitest",
+        "o_que": "Sob contenção de CPU o conjunto que falha MUDA entre execuções (4 arquivos de tráfego numa, asset-vault noutra, sino-de-alertas noutra). Rodado sozinho: 1158 passam, 0 falham.",
+        "por_que_nao_corrigi": "Defeito do arranjo de execução, não do produto. Aumentar timeout de teste alheio está fora do escopo."
+      }
+    ]
+  },
+  "desvios_de_ferramenta": [
+    {
+      "ferramenta": "Gemini 3.7 Flash",
+      "o_que_aconteceu": "CLI sem autenticação nesta máquina (GEMINI_API_KEY ausente, sem ~/.gemini/settings.json).",
+      "substituicao": "Prova executável contra os descritores REAIS do SDK google-ads v25 instalado, mais WebFetch em developers.google.com com citação literal e URL. Evidência mais forte que opinião de modelo."
+    },
+    {
+      "ferramenta": "Codex gpt-5.6-sol/high",
+      "o_que_aconteceu": "Três tentativas, duas formas de prompt: o CLI sai com exit 0 logo após a frase de abertura, sem produzir achados.",
+      "substituicao": "Revisão adversarial de 5 lentes disjuntas com verificação independente de cada achado (34 agentes, 29 achados, 10 confirmados)."
+    }
+  ],
+  "verificacao_final": {
+    "supabase_oficial": {
+      "metodo": "SELECT read-only via SSH em 178.156.196.149, docker exec supabase-db psql",
+      "resultado": "to_regclass('public.trafego_campanha_plano_de_mensuracao') = NULL; to_regprocedure('public.volc_registrar_plano_de_mensuracao(jsonb)') = NULL; to_regclass('public.trafego_campanha') = trafego_campanha",
+      "conclusao": "A v12_02 NÃO está aplicada. A âncora da v9_01 segue intacta. Nenhuma escrita foi feita."
+    },
+    "ciclo_v12_02": "55 provas, 0 falhas, aplicar → operar → reverter → reaplicar em cluster descartável",
+    "pytest": "2677 passed, 30 skipped, 0 failed",
+    "typescript": "76 erros — exatamente o baseline herdado; ZERO dentro do ownership",
+    "vitest": "1158 passed, 0 failed (rodado sozinho)",
+    "build": "vite build OK"
+  }
 }
