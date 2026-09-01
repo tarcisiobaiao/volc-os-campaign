@@ -560,6 +560,23 @@ export interface ProntidaoDoLancamento {
   /** ⚠️ Vem do servidor. Nunca ligado por ausência de bloqueio conhecido. */
   smart_bidding_eligible: boolean;
   activation_blockers: string[];
+  /**
+   * ⚠️ O SUBCONJUNTO MATERIAL de `activation_blockers`: os que dizem que a
+   * campanha não pode APRENDER ou não pode ser OBSERVADA. `activation_blockers`
+   * mistura naturezas — uma recusa de política e uma de medição fecham a mesma
+   * porta por motivos que não se comparam, e só a segunda contradiz
+   * `smart_bidding_eligible`. O servidor impõe essa coerência no próprio tipo.
+   */
+  activation_blockers_materiais: string[];
+  /**
+   * Por onde o sinal PODERIA chegar — auto-tagging, tag configurada, importação
+   * declarada, destino offline endereçável.
+   *
+   * ⚠️ DIAGNÓSTICO, nunca prova. Caminho não é tráfego: auto-tagging ligado diz
+   * que o clique carrega `gclid`, não que uma conversão chegou. Nada daqui move
+   * `conversion_signal_status`.
+   */
+  signal_paths: string[];
   notas: Record<string, unknown>;
   /** ⚠️ `null` é "ninguém leu", e NÃO "não há plano". */
   plano_de_mensuracao: PlanoDeMensuracao | null;

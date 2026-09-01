@@ -150,6 +150,7 @@ GAQL_FRESCOR = """
 GAQL_MARCACAO = """
     SELECT
       customer.id,
+      customer.time_zone,
       customer.auto_tagging_enabled,
       customer.conversion_tracking_setting.conversion_tracking_id,
       customer.conversion_tracking_setting.cross_account_conversion_tracking_id,
@@ -210,6 +211,19 @@ def _bool_ou_none(mensagem: Any, campo: str) -> Optional[bool]:
     if not _tem(mensagem, campo):
         return None
     return bool(getattr(mensagem, campo))
+
+
+def _int_ou_none(mensagem: Any, campo: str) -> Optional[str]:
+    """Um int64 com *presence*, como texto — ou `None` quando não veio.
+
+    ⚠️ `str(0)` é `"0"`, que é truthy. Sem esta função, `x or None` sobre um
+    campo int64 não setado devolvia `"0"` e uma conta SEM conversion tracking
+    saía declarando o id `0`.
+    """
+    if mensagem is None or not _tem(mensagem, campo):
+        return None
+    valor = getattr(mensagem, campo, None)
+    return None if valor is None else str(valor)
 
 
 def _texto(valor: Any) -> str:
@@ -387,9 +401,16 @@ def ler_meta_efetiva(customer_id: str, *, login_customer_id: str,
     # vai otimizar. Aplicá-lo DEPOIS do nascimento seria outra coisa — seria
     # ignorar o campo que existe e responde.
     causas: List[str] = [c for c in (causa_conta, causa_nivel, causa_camp) if c]
+    herdado = False
     if campaign_id is None and estado_nivel == pm.INELEGIVEL:
         nivel = pm.NIVEL_CUSTOMER
-        estado_nivel = pm.COM_DADOS
+        # ⚠️ O ESTADO CONTINUA `inelegivel`, e é o campo `nivel_herdado` que
+        # carrega a inferência. Sintetizar `com_dados` aqui — como a primeira
+        # versão fazia — afirmaria que o recurso foi consultado. Ninguém o
+        # consultou: a campanha não existe. E o estado sintetizado ia parar numa
+        # coluna consultável do banco, onde ficaria indistinguível de um nível
+        # de fato lido.
+        herdado = True
         causas.insert(0, (
             "a campanha ainda não nasceu: o nível que manda é o da CONTA, por "
             "herança declarada na documentação oficial. No dia em que a "
@@ -405,6 +426,7 @@ def ler_meta_efetiva(customer_id: str, *, login_customer_id: str,
         metas_da_campanha_estado=estado_camp,
         campaign_id=(str(campaign_id) if campaign_id else None),
         custom_conversion_goal=custom,
+        nivel_herdado=herdado,
         causa=(" · ".join(causas) if causas else None),
     )
 
@@ -489,13 +511,37 @@ def ler_frescor(customer_id: str, acao: Optional[pm.AcaoDeConversao], *,
         GAQL_FRESCOR, customer_id=customer_id,
         login_customer_id=login_customer_id, buscar=buscar,
         rotulo="data da última conversão")
+    if estado == pm.VAZIO_CONFIRMADO:
+        # ⚠️ ZERO LINHA NO RELATÓRIO NÃO É ZERO CONVERSÃO, e confundir os dois
+        # era um defeito meu que a revisão adversarial reproduziu.
+        #
+        # `_ler` devolve `vazio_confirmado` quando a consulta volta sem linha —
+        # o que, para a maioria das leituras, é a conclusão "não há nenhum".
+        # Para o FRESCOR não é: o relatório não ter trazido linha nenhuma não
+        # diz nada sobre esta ação ter recebido conversão. O zero MEDIDO desta
+        # leitura mora noutro lugar: a linha vem e o campo de data vem vazio
+        # (mais abaixo). Repassar `vazio_confirmado` daqui produzia um
+        # `Frescor(vazio_confirmado, conversoes=None)` que o schema recusa e que
+        # a tela afirmava como "nunca recebeu conversão" — uma afirmação sobre a
+        # conta a partir de um relatório que voltou vazio.
+        #
+        # ⚠️ E há um motivo concreto para isso acontecer: `GAQL_ACOES` filtra
+        # `status != 'REMOVED'` e `GAQL_FRESCOR` filtra `status = 'ENABLED'`.
+        # As duas consultas NÃO veem o mesmo conjunto, e uma ação `HIDDEN`
+        # eleita cai exatamente aqui.
+        return pm.Frescor(
+            estado=pm.INELEGIVEL,
+            conversion_action_id=acao.id,
+            causa=("a leitura de frescor não devolveu linha nenhuma. Isso é "
+                   "diferente de esta ação ter recebido zero conversões: o "
+                   "relatório não trouxe ação alguma, e daqui as duas são "
+                   "indistinguíveis."))
     if estado != pm.COM_DADOS:
         return pm.Frescor(
             estado=estado,
             conversion_action_id=acao.id,
             causa=(causa or
-                   "a leitura de frescor não devolveu linha nenhuma para esta "
-                   "conta."))
+                   "a leitura de frescor não completou para esta conta."))
 
     data: Optional[str] = None
     for l in linhas:
@@ -598,13 +644,18 @@ def ler_marcacao(customer_id: str, *, login_customer_id: str,
     return pm.InventarioDeMarcacao(
         estado=pm.COM_DADOS,
         auto_tagging=_bool_ou_none(c, "auto_tagging_enabled"),
-        conversion_tracking_id=(
-            _texto(getattr(cts, "conversion_tracking_id", "")) or None),
+        fuso=(_texto(getattr(c, "time_zone", "")) or None),
+        # ⚠️ `conversion_tracking_id` e `cross_account_conversion_tracking_id`
+        # são INT64 COM PRESENCE (provado contra o descritor v25). `_texto(0)`
+        # devolve a string "0", que é truthy — então o campo NÃO SETADO virava
+        # `"0"` em vez de `None`, e uma conta sem tracking chegava à tela e ao
+        # banco declarando um id que não existe. `_int_ou_none` respeita a
+        # presença, como `_bool_ou_none` já fazia para os booleanos.
+        conversion_tracking_id=_int_ou_none(cts, "conversion_tracking_id"),
         conversion_tracking_owner_id=pm.customer_id_do_recurso(
             _texto(getattr(cts, "google_ads_conversion_customer", "")) or None),
-        cross_account_conversion_tracking_id=(
-            _texto(getattr(cts, "cross_account_conversion_tracking_id", ""))
-            or None),
+        cross_account_conversion_tracking_id=_int_ou_none(
+            cts, "cross_account_conversion_tracking_id"),
         conversion_tracking_status=(
             _enum(getattr(cts, "conversion_tracking_status", "")) or None),
         aceitou_termos_de_dados=(
@@ -622,6 +673,32 @@ def ler_marcacao(customer_id: str, *, login_customer_id: str,
 # ═══════════════════════════════════════════════════════════════════════════
 # O PLANO INTEIRO, DE UMA LEITURA SÓ
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+def hoje_na_conta(fuso: Optional[str]) -> Optional[str]:
+    """A data de HOJE no fuso da CONTA — nunca no do servidor.
+
+    ⚠️ `metrics.conversion_last_conversion_date` é, literalmente, "the date of
+    the most recent conversion for this conversion action. The date is **in the
+    customer's time zone**". Subtraí-la da data local do servidor compara dois
+    fusos como se fossem um: num container em UTC, toda conversão de hoje entre
+    21h e meia-noite de Brasília vira "há 1 dia", e o ramo "última conversão
+    hoje" fica inalcançável por três horas por dia.
+
+    `None` quando o fuso não foi lido ou não é conhecido — e `None` não vira o
+    relógio do servidor: sem saber de quando contar, `Frescor.comprovado` é
+    `False`, que é o lado seguro.
+    """
+    if not fuso:
+        return None
+    from datetime import datetime  # noqa: PLC0415
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # noqa: PLC0415
+
+    try:
+        return datetime.now(ZoneInfo(str(fuso))).date().isoformat()
+    except (ZoneInfoNotFoundError, ValueError):
+        log.warning("fuso %r da conta não é conhecido nesta máquina", fuso)
+        return None
 
 
 def ler_plano(customer_id: str, *, login_customer_id: str,
@@ -650,12 +727,18 @@ def ler_plano(customer_id: str, *, login_customer_id: str,
         campaign_id=campaign_id,
         chave_intencao=chave_intencao,
     )
-    frescor = ler_frescor(customer_id, plano.acao_alvo,
-                          login_customer_id=login_customer_id, hoje=hoje,
-                          buscar=buscar)
     marcacao = ler_marcacao(customer_id, login_customer_id=login_customer_id,
                             acoes=acoes, acoes_estado=estado_acoes,
                             buscar=buscar)
+    # ⚠️ A MARCAÇÃO VEM ANTES DO FRESCOR, e a ordem é a correção de um defeito.
+    # É ela que traz `customer.time_zone`, e é no fuso da CONTA que a data da
+    # última conversão foi escrita. `hoje` explícito de quem chama ainda vence —
+    # é o que torna os testes determinísticos —, mas o default deixou de ser o
+    # relógio do servidor.
+    frescor = ler_frescor(customer_id, plano.acao_alvo,
+                          login_customer_id=login_customer_id,
+                          hoje=hoje or hoje_na_conta(marcacao.fuso),
+                          buscar=buscar)
     # Remontado com as duas leituras que dependiam da eleição. A eleição não
     # muda: ela é função das metas e das ações, e nenhuma das duas foi relida.
     return pm.montar(

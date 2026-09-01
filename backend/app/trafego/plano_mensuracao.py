@@ -428,6 +428,20 @@ class MetaEfetiva:
     #: das listas com um custom goal ativo daria uma resposta confiante e
     #: errada — que é pior que `não sei`.
     custom_conversion_goal: Optional[str] = None
+    #: ⚠️ O nível foi INFERIDO pela herança documentada, e não LIDO do recurso.
+    #:
+    #: Antes do nascimento, `conversion_goal_campaign_config` não pode ser
+    #: consultado — a campanha não existe. A doc oficial diz que uma campanha
+    #: nova herda as metas da conta, e aplicar isso é o ponto inteiro desta
+    #: tarefa. O que a primeira versão fazia de errado era sintetizar
+    #: `nivel_estado = com_dados` para dizer isso: `com_dados` significa
+    #: "pedimos, leu, e veio coisa", e aqui NINGUÉM PEDIU. O estado sintetizado
+    #: viajava para a coluna consultável do banco, onde ficava indistinguível de
+    #: um nível de fato lido — e a ressalva só sobrevivia em prosa.
+    #:
+    #: Agora o estado continua `inelegivel` (a pergunta não cabe ainda) e a
+    #: herança é declarada AQUI, num campo próprio que o banco também guarda.
+    nivel_herdado: bool = False
     causa: Optional[str] = None
 
     def __post_init__(self) -> None:
@@ -444,8 +458,16 @@ class MetaEfetiva:
 
     @property
     def nivel_decidido(self) -> bool:
-        """O nível diz quem manda? `UNSPECIFIED` e `UNKNOWN` NÃO dizem."""
-        return self.nivel in NIVEIS_DECIDIDOS
+        """O nível diz quem manda? `UNSPECIFIED` e `UNKNOWN` NÃO dizem.
+
+        ⚠️ Vale por LEITURA (`com_dados`) ou por HERANÇA DECLARADA
+        (`nivel_herdado`), e as duas chegam distinguíveis à tela e ao banco.
+        Nenhum outro estado abre: um `falhou` com nível preenchido continua sem
+        decidir nada.
+        """
+        if self.nivel not in NIVEIS_DECIDIDOS:
+            return False
+        return self.nivel_estado == COM_DADOS or self.nivel_herdado
 
     @property
     def usa_meta_customizada(self) -> bool:
@@ -499,6 +521,7 @@ class MetaEfetiva:
             "nivel": self.nivel,
             "nivel_estado": self.nivel_estado,
             "nivel_decidido": self.nivel_decidido,
+            "nivel_herdado": self.nivel_herdado,
             "custom_conversion_goal": self.custom_conversion_goal,
             "usa_meta_customizada": self.usa_meta_customizada,
             "campaign_id": self.campaign_id,
@@ -581,13 +604,26 @@ class Frescor:
 
     @property
     def comprovado(self) -> bool:
-        """Chegou conversão de verdade nesta janela?
+        """O sinal está chegando AGORA? Três exigências, e nenhuma opcional.
 
-        ⚠️ Exige `com_dados` E contagem positiva. `vazio_confirmado` é uma
-        conclusão válida e é justamente a conclusão de que NÃO chegou.
+        1. `com_dados` — a leitura concluiu. `vazio_confirmado` é conclusão
+           válida, e é justamente a conclusão de que não chegou nada.
+        2. contagem positiva.
+        3. ⚠️ RECÊNCIA. `dias_desde_a_ultima` tem de existir E caber em
+           `JANELA_DE_RECENCIA_DIAS`. Sem esta terceira, uma conversão de 2019
+           autorizava Smart Bidding em 2026 — reproduzido pela revisão.
+
+        ⚠️ `dias_desde_a_ultima=None` NÃO passa. Quando ninguém injetou a data
+        de hoje, não se sabe se a conversão é de ontem ou de sete anos atrás — e
+        não saber nunca é permissão. Fail-closed, como o resto do módulo.
         """
-        return (self.estado == COM_DADOS
-                and (self.conversoes_na_janela or 0) > 0)
+        if self.estado != COM_DADOS:
+            return False
+        if (self.conversoes_na_janela or 0) <= 0:
+            return False
+        if self.dias_desde_a_ultima is None:
+            return False
+        return self.dias_desde_a_ultima <= JANELA_DE_RECENCIA_DIAS
 
     def json(self) -> Dict[str, Any]:
         return {
@@ -642,6 +678,14 @@ class InventarioDeMarcacao:
     conversion_tracking_owner_id: Optional[str] = None
     cross_account_conversion_tracking_id: Optional[str] = None
     conversion_tracking_status: Optional[str] = None
+    #: `customer.time_zone` — o fuso em que o Google conta os dias desta conta.
+    #:
+    #: ⚠️ Ele existe aqui porque `metrics.conversion_last_conversion_date` é,
+    #: literalmente, "in the customer's time zone". Comparar essa data com o
+    #: relógio do SERVIDOR subtrai duas datas de fusos diferentes como se fossem
+    #: do mesmo — e num container em UTC isso erra por um dia todo fim de tarde
+    #: no horário de Brasília.
+    fuso: Optional[str] = None
     #: `accepted_customer_data_terms` — o consentimento de dados do cliente,
     #: que é pré-requisito de enhanced conversions e de upload de user data.
     aceitou_termos_de_dados: Optional[bool] = None
@@ -677,6 +721,7 @@ class InventarioDeMarcacao:
             "cross_account_conversion_tracking_id":
                 self.cross_account_conversion_tracking_id,
             "conversion_tracking_status": self.conversion_tracking_status,
+            "fuso": self.fuso,
             "aceitou_termos_de_dados": self.aceitou_termos_de_dados,
             "enhanced_conversions_for_leads": self.enhanced_conversions_for_leads,
             "acoes_de_ga4": list(self.acoes_de_ga4),
@@ -862,6 +907,20 @@ def propor_acao_nova(categoria: str, origem: str, *,
 # O PLANO
 # ═══════════════════════════════════════════════════════════════════════════
 
+#: Até quando uma conversão ainda PROVA que o sinal está chegando.
+#:
+#: ⚠️ Esta constante já existiu e foi APAGADA por não ser aplicada — e apagá-la
+#: deixou um buraco pior: sem limite nenhum, `comprovado` saía `True` para
+#: QUALQUER data. A revisão adversarial reproduziu o desfecho: uma conversão de
+#: 05/01/2019 fechava os quatro portões e autorizava Smart Bidding em 2026, com
+#: zero razão nomeada na tela. Uma conversão de sete anos atrás prova que a ação
+#: já mediu alguma coisa um dia; ela não prova que o sinal chega HOJE, que é a
+#: única pergunta que decide o lance.
+#:
+#: Trinta dias é o mesmo horizonte que o Google usa para "conversão recente" no
+#: diagnóstico de conta. Agora ela é APLICADA — ver `Frescor.comprovado`.
+JANELA_DE_RECENCIA_DIAS = 30
+
 #: A versão do CONTRATO do plano. Ela entra na impressão: um plano gravado sob
 #: um contrato antigo não deve colidir com um gravado sob o novo só porque os
 #: campos que mudaram não estavam na chave.
@@ -924,14 +983,24 @@ class PlanoDeMensuracao:
     def completo(self) -> bool:
         """O plano prova o que precisa provar para autorizar Smart Bidding?
 
-        Exige as QUATRO coisas, e nenhuma delas é derivada de ausência:
-        meta efetiva resolvida, ação eleita, destino com dono+id, e frescor
-        comprovado. Faltando uma, o plano existe e não autoriza.
+        Exige TRÊS coisas, e nenhuma delas é derivada de ausência: meta
+        efetiva resolvida, ação eleita que a meça, e sinal chegando e RECENTE.
+
+        ⚠️ O DESTINO DE INGESTÃO OFFLINE NÃO ENTRA, e a primeira versão o exigia.
+        Isso contradizia a doutrina que este próprio sistema impõe desde
+        `prontidao.py`: **sinal ≠ Data Manager**. Uma conta que converte por tag
+        do Google mede perfeitamente e nunca vai ter destino offline resolvido;
+        exigi-lo aqui declarava despreparo onde não há, e produzia a contradição
+        que a revisão pegou — `measurement_readiness=PRONTO` ao lado de um
+        bloqueador dizendo que o plano não está completo.
+
+        O destino continua sendo lido, resolvido por dono + id numérico e
+        exibido com a causa quando não resolve. Ele descreve UMA via, e não a
+        prontidão.
         """
         return bool(
             self.meta_efetiva.resolvida
             and self.acao_alvo is not None
-            and self.destino.resolvido
             and self.frescor.comprovado
         )
 
@@ -968,9 +1037,11 @@ class PlanoDeMensuracao:
         if self.acao_alvo is None:
             razoes.append(self.acao_alvo_causa or
                           "nenhuma ação de conversão foi eleita.")
-        elif not self.destino.resolvido:
-            razoes.append(self.destino.causa or
-                          "o destino de conversão offline não foi resolvido.")
+        # ⚠️ O destino offline NÃO entra aqui. Ele não impede a campanha de
+        # medir — impede uma VIA de ingestão. Listá-lo como bloqueador fazia a
+        # tela dizer "o que ainda impede: a ação é do tipo X" para uma conta que
+        # mede por tag e nunca precisou de ingestão offline. A causa dele viaja
+        # em `destino.causa`, ao lado, e a tela já a mostra ali.
         if not self.frescor.comprovado:
             if self.frescor.estado == VAZIO_CONFIRMADO:
                 razoes.append(
@@ -982,6 +1053,25 @@ class PlanoDeMensuracao:
                     "ninguém mediu quando chegou a última conversão desta "
                     "ação. Não saber não é o mesmo que não ter chegado — e as "
                     "duas pedem coisas diferentes.")
+            elif self.frescor.dias_desde_a_ultima is None:
+                # Leu a data e não sabe de quando contar. Ver `Frescor.comprovado`.
+                razoes.append(
+                    "a última conversão desta ação foi lida "
+                    f"({self.frescor.ultima_conversao_em}), e não se sabe há "
+                    "quantos dias isso foi. Sem a distância, a data não diz se "
+                    "o sinal chega hoje ou parou anos atrás.")
+            else:
+                # ⚠️ Este ramo faltava, e o buraco era exatamente o que a
+                # revisão descreveu: um sinal velho DERRUBAVA o plano e não
+                # dizia por quê — portão fechado sem causa nomeada, que é o
+                # botão cinza com outro nome.
+                razoes.append(
+                    "a última conversão desta ação foi há "
+                    f"{self.frescor.dias_desde_a_ultima} dias "
+                    f"({self.frescor.ultima_conversao_em}), além dos "
+                    f"{JANELA_DE_RECENCIA_DIAS} dias que ainda provam sinal "
+                    "chegando. Ela prova que a ação já mediu alguma coisa um "
+                    "dia; não prova que ela mede agora.")
         return tuple(razoes)
 
     # ── identidade ──────────────────────────────────────────────────────────
@@ -989,11 +1079,23 @@ class PlanoDeMensuracao:
     def impressao(self) -> str:
         """A impressão do plano — estável, e sobre o que DECIDE.
 
-        ⚠️ Entram só os campos que mudam a decisão: conta, campanha, nível,
-        metas que mandam, ação eleita e destino. Frescor NÃO entra: ele muda a
-        cada hora sem que o plano tenha mudado, e incluí-lo faria cada leitura
-        gravar um plano "novo" — o histórico viraria ruído e a idempotência
-        deixaria de existir.
+        ⚠️ A DATA e a contagem do frescor NÃO entram: elas mudam sem o plano ter
+        mudado, e incluí-las faria cada leitura gravar um plano "novo" — o
+        histórico viraria ruído e a idempotência deixaria de existir.
+
+        ⚠️ Mas `comprovado` ENTRA, e a primeira versão desta função errou nisso.
+        Ela excluía o frescor INTEIRO — e `completo` DEPENDE do frescor. O
+        efeito, reproduzido ponta a ponta pela revisão adversarial: duas leituras
+        com veredito OPOSTO (uma com sinal chegando, outra com o sinal já morto)
+        produziam a MESMA impressão, e como a função Postgres é idempotente por
+        impressão, a segunda era descartada em silêncio. A linha gravada
+        congelava o veredito da primeira para sempre, e `vigente_da_conta`
+        devolvia justamente ela — o portão lendo "pronto" dois meses depois de o
+        sinal ter morrido, e no sentido inverso um plano que ficou pronto nunca
+        chegando a ser gravado como pronto.
+
+        `comprovado` é um booleano: ele não muda de hora em hora, muda quando o
+        sinal aparece ou morre. É exatamente a parte do frescor que decide.
         """
         mandam = self.meta_efetiva.metas_que_mandam
         corpo = {
@@ -1016,6 +1118,26 @@ class PlanoDeMensuracao:
                 "operating_account_id": self.destino.operating_account_id,
                 "product_destination_id": self.destino.product_destination_id,
             },
+            # A parte do frescor que MUDA O VEREDITO, e só ela.
+            "sinal_comprovado": self.frescor.comprovado,
+            # ⚠️ E os ESTADOS das leituras, porque `falhou` e `vazio_confirmado`
+            # são conclusões OPOSTAS sobre a mesma conta. Sem eles, "a leitura
+            # das ações falhou" e "a conta não tem ação habilitada" produziam a
+            # mesma impressão — e como a gravação é idempotente por impressão e
+            # append-only, a segunda era descartada devolvendo o id da primeira.
+            # As duas colapsavam num registro só, permanentemente.
+            "estados": {
+                "nivel": self.meta_efetiva.nivel_estado,
+                "metas_da_conta": self.meta_efetiva.metas_da_conta_estado,
+                "metas_da_campanha": self.meta_efetiva.metas_da_campanha_estado,
+                "acoes": self.acoes_estado,
+                "frescor": self.frescor.estado,
+                "marcacao": self.marcacao.estado,
+            },
+            # O veredito em si. Ele é derivado dos campos acima, e entra
+            # explicitamente para que nenhuma mudança futura na derivação possa
+            # produzir dois vereditos com a mesma chave sem ninguém notar.
+            "completo": self.completo,
         }
         canonico = json.dumps(corpo, ensure_ascii=False, sort_keys=True,
                               separators=(",", ":"))
@@ -1097,24 +1219,77 @@ def montar(
 
 def fontes_de_sinal_observadas(
         plano: PlanoDeMensuracao) -> Tuple[str, ...]:
-    """As fontes de sinal que este plano COMPROVOU — nunca as que ele supõe.
+    """O que PROVA que conversão está chegando. Só isso, e nada parecido.
 
-    ⚠️ Lista vazia significa "nenhuma foi comprovada NESTA leitura", e não "a
-    conta não tem nenhuma". É o mesmo contrato que `prontidao.avaliar` já impõe
-    em `signal_sources`, e esta função existe para alimentá-lo com prova em vez
-    de com um literal escrito à mão na rota.
+    ## A distinção que esta função existe para não perder
+
+    ⚠️ **CAPACIDADE NÃO É PROVA.** Auto-tagging ligado significa que o clique
+    PODE carregar `gclid`; uma ação do tipo `WEBPAGE` significa que existe uma
+    tag CONFIGURADA; uma ação de GA4 significa que existe uma importação
+    DECLARADA. Nenhuma das três diz que uma conversão foi produzida, importada
+    ou observada — elas descrevem o caminho, não o tráfego nele.
+
+    A primeira versão empilhava as três aqui, e o desfecho foi reproduzido:
+    uma conta com `auto_tagging=True` e `frescor=vazio_confirmado` — ou seja,
+    a ação existe, a janela foi consultada e NADA chegou — saía com
+    `conversion_signal_status=PRONTO`, `measurement_readiness=PRONTO` e
+    `smart_bidding_eligible=True`, **ao lado de um bloqueador dizendo que não
+    houve conversão nenhuma**. O portão elegível e bloqueado ao mesmo tempo.
+
+    O que sobra aqui é uma coisa só: uma conversão OBSERVADA e RECENTE. Ela é
+    agnóstica ao caminho — vale para tag do Google, para importação GA4 e para
+    upload offline —, e é por isso que uma conta SEM auto-tagging que importa
+    conversão continua provando sinal. Ver `caminhos_de_sinal_declarados` para
+    o inventário de capacidade, que continua visível e continua útil.
+
+    ⚠️ Lista vazia significa "nada foi comprovado NESTA leitura", e não "a conta
+    não tem sinal".
     """
     fontes: List[str] = []
     if plano.frescor.comprovado:
-        fontes.append("conversão observada na janela consultada")
-    m = plano.marcacao
-    if m.estado not in ESTADOS_SEM_CONCLUSAO:
-        if m.acoes_com_tag:
-            fontes.append("tag do Google no site")
-        if m.acoes_de_ga4:
-            fontes.append("importação do Google Analytics 4")
-        if m.auto_tagging is True:
-            fontes.append("auto-tagging ligado (gclid anexado pelo Google)")
-    if plano.destino.resolvido:
-        fontes.append("destino de conversão offline resolvido")
+        quando = plano.frescor.ultima_conversao_em or "data não lida"
+        fontes.append(f"conversão observada na conta (última em {quando})")
+    # ⚠️ `destino.resolvido` NÃO ENTRA — ele prova ENDEREÇABILIDADE, e não que
+    # sinal algum chegue. Nem `auto_tagging`, nem `acoes_com_tag`, nem
+    # `acoes_de_ga4`: as três são capacidade declarada. Ver a docstring.
     return tuple(fontes)
+
+
+#: Como o sinal PODE chegar nesta conta — inventário, nunca prova.
+#:
+#: ⚠️ Ele existe separado de `fontes_de_sinal_observadas` porque as duas
+#: respostas levam a ações diferentes. Um caminho declarado e SEM conversão
+#: chegando é um problema de instrumentação: a tag está no site e não dispara,
+#: ou a importação está ligada e não traz nada. Nenhum caminho declarado E
+#: nenhuma conversão é um problema anterior — não há por onde medir. Colapsar
+#: os dois faria as duas conversas virarem "sem sinal".
+def caminhos_de_sinal_declarados(
+        plano: PlanoDeMensuracao) -> Tuple[str, ...]:
+    """As vias por onde a conversão PODERIA chegar — capacidade, não evidência.
+
+    ⚠️ Nada daqui autoriza coisa alguma. `prontidao.avaliar` recebe isto em
+    `signal_paths`, que é campo de DIAGNÓSTICO, e nunca em `signal_sources`,
+    que é o que decide o portão. Auto-tagging continua sendo pré-requisito de
+    identidade — sem ele o `gclid` não é anexado e a conversão offline não tem
+    como ser reconciliada —, e continuar visível é o ponto: ele é a primeira
+    coisa a conferir quando há caminho declarado e nenhuma conversão chegando.
+    """
+    caminhos: List[str] = []
+    m = plano.marcacao
+    if m.estado in ESTADOS_SEM_CONCLUSAO:
+        return ()
+    if m.auto_tagging is True:
+        caminhos.append(
+            "auto-tagging ligado (o clique carrega gclid; isto habilita a "
+            "reconciliação, e não é conversão chegando)")
+    if m.acoes_com_tag:
+        caminhos.append(
+            f"tag do Google configurada em {len(m.acoes_com_tag)} ação(ões)")
+    if m.acoes_de_ga4:
+        caminhos.append(
+            f"importação de analytics declarada em {len(m.acoes_de_ga4)} "
+            "ação(ões)")
+    if plano.destino.resolvido:
+        caminhos.append(
+            "destino de ingestão offline endereçável (conta dona + id numérico)")
+    return tuple(caminhos)

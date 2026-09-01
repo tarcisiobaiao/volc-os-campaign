@@ -129,7 +129,7 @@ CONTRATO_DE_COLUNAS: Dict[str, Tuple[str, ...]] = {
     TABELA_PLANO_DE_MENSURACAO: (
         "plano_id", "impressao", "versao", "customer_id", "login_customer_id",
         "campaign_id", "volc_campaign_id", "chave_intencao",
-        "nivel", "nivel_estado", "custom_conversion_goal",
+        "nivel", "nivel_estado", "nivel_herdado", "custom_conversion_goal",
         "metas_da_conta_estado", "metas_da_campanha_estado", "metas_biddable",
         "meta_resolvida", "acoes_estado", "acao_alvo_id", "acao_alvo_owner_id",
         "acao_alvo_tipo", "acao_alvo_semantica", "acao_alvo_causa",
@@ -138,7 +138,7 @@ CONTRATO_DE_COLUNAS: Dict[str, Tuple[str, ...]] = {
         "frescor_estado", "frescor_ultima_em", "frescor_dias",
         "frescor_conversoes", "marcacao_estado", "auto_tagging",
         "conversion_tracking_id", "conversion_tracking_owner_id",
-        "conversion_tracking_status", "aceitou_termos_de_dados",
+        "conversion_tracking_status", "aceitou_termos_de_dados", "fuso",
         "completo", "bloqueadores", "payload", "api_versao", "lido_em",
         "registrado_em",
     ),
@@ -446,6 +446,11 @@ def documento_de_plano_de_mensuracao(
         "chave_intencao": plano.get("chave_intencao"),
         "nivel": meta.get("nivel"),
         "nivel_estado": meta.get("nivel_estado"),
+        # ⚠️ A herança declarada viaja como COLUNA, e não só como prosa em
+        # `causa`. Sem ela, "o nível foi lido do recurso" e "o nível foi
+        # inferido porque a campanha não existe" ficam indistinguíveis para
+        # quem consultar o banco depois.
+        "nivel_herdado": bool(meta.get("nivel_herdado")),
         "custom_conversion_goal": meta.get("custom_conversion_goal"),
         "metas_da_conta_estado": meta.get("metas_da_conta_estado"),
         "metas_da_campanha_estado": meta.get("metas_da_campanha_estado"),
@@ -476,6 +481,7 @@ def documento_de_plano_de_mensuracao(
         "conversion_tracking_status": marcacao.get(
             "conversion_tracking_status"),
         "aceitou_termos_de_dados": marcacao.get("aceitou_termos_de_dados"),
+        "fuso": marcacao.get("fuso"),
         "completo": bool(plano.get("completo")),
         "bloqueadores": list(plano.get("bloqueadores") or ()),
         # O plano inteiro sobrevive em `payload`: as colunas acima são o que se

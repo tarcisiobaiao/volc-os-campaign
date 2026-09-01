@@ -2579,7 +2579,8 @@ async def provar(
         rede=_rede_do_corpo(body),
     )
     prontidao_do_lancamento = await _prontidao_do_lancamento(
-        cid, mid, body, plano_valido=bool(preparo.selo) and elegivel)
+        cid, mid, body, plano_valido=bool(preparo.selo) and elegivel,
+        chave_intencao=chave_intencao)
     return {
         "preparo": projecao.preparo(preparo),
         "avisos": [projecao.aviso(a) for a in (plano.avisos or ())],
@@ -2642,17 +2643,36 @@ async def _plano_de_mensuracao(cid: str, mid: str, *,
     ⚠️ E `None` aqui NÃO é "a conta não tem plano". É "não deu para montar o
     plano nesta requisição", e `prontidao.avaliar` cai de volta no ramo antigo —
     que continua dizendo PARCIAL, palavra por palavra.
-    """
-    from datetime import date
 
+    ## O custo, dito em voz alta
+
+    ⚠️ `/provar` passou de UMA leitura da conta (`meta_de_conversao`) para até
+    CINCO: metas da conta, nível, metas da campanha, ações e frescor. Contadas,
+    não estimadas — são 3 quando a campanha não existe e nenhuma ação é eleita,
+    4 quando há ação, 5 quando a campanha já nasceu.
+
+    ⚠️ E o teto NÃO cancela o trabalho. `asyncio.wait_for` sobre
+    `asyncio.to_thread` para de ESPERAR; a thread continua rodando as leituras
+    que faltam depois de a resposta HTTP ter saído, e cada uma passa pelo retry
+    de `volc_ads.gads.client.buscar` (cinco tentativas, teto de 60s, com
+    `time.sleep`). Numa conta em `RATE_EXCEEDED`, dez cliques em cinco minutos
+    devolvem dez `plano=None` em 30s cada e deixam dez threads órfãs gastando
+    quota. O teto protege o operador, não a cota do cliente.
+
+    Isso é um custo NOVO e ele não foi mitigado nesta entrega: o caminho óbvio é
+    um cache curto por conta, e ele exige decidir qual frescor é aceitável — uma
+    decisão de dono, não de implementação.
+    """
     from app.trafego import metas_efetivas as mef
 
     try:
         return await asyncio.wait_for(
+            # ⚠️ `hoje` NÃO é passado. Ele sai do fuso da CONTA, lido em
+            # `customer.time_zone` — a data da última conversão é escrita
+            # naquele fuso, e o relógio deste servidor não é ele.
             asyncio.to_thread(mef.ler_plano, cid, login_customer_id=mid,
                               campaign_id=campaign_id,
-                              chave_intencao=chave_intencao,
-                              hoje=date.today().isoformat()),
+                              chave_intencao=chave_intencao),
             timeout=TIMEOUT_PLANO_S)
     except asyncio.TimeoutError:
         log.warning("leitura do plano de mensuração da conta %s passou de %.0fs",
@@ -2664,7 +2684,8 @@ async def _plano_de_mensuracao(cid: str, mid: str, *,
 
 
 async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
-                                   plano_valido: bool = False):
+                                   plano_valido: bool = False,
+                                   chave_intencao: Optional[str] = None):
     """Avalia G0–G3 com o que foi REALMENTE observado, e nada além.
 
     ⚠️ A leitura de metas pode falhar, e falhar NÃO é "a conta não tem meta".
@@ -2695,9 +2716,17 @@ async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
     # nasce com `campaign_id=None`, e é justamente esse o ponto de P05-T12: o
     # plano de mensuração precisa existir ANTES do nascimento, senão ninguém
     # consegue ativar a campanha com segurança depois.
+    # ⚠️ A chave vem por PARÂMETRO, e não de `body`. `ProvarEntrada` não tem o
+    # campo `chave_intencao` e não aceita extras, então `getattr(body, ...)`
+    # devolvia SEMPRE `None`: o plano nascia sem a intenção que o originou, dois
+    # campos da mesma resposta HTTP discordavam (`autorizacao.chave_intencao`
+    # trazia a impressão real e `prontidao.plano_de_mensuracao.chave_intencao`
+    # trazia null), e — pior — como a chave entra na impressão do plano, TODAS
+    # as intenções diferentes da mesma conta passavam a compartilhar a mesma
+    # impressão. A chave real é calculada por `_impressao_aprovavel` na própria
+    # rota, e é ela que chega aqui.
     plano = await _plano_de_mensuracao(
-        cid, mid, campaign_id=None,
-        chave_intencao=getattr(body, "chave_intencao", None))
+        cid, mid, campaign_id=None, chave_intencao=chave_intencao)
     return pr.avaliar(
         plano_valido=plano_valido,
         recibo_registrado=False,   # /provar não abre recibo, e não finge que abre

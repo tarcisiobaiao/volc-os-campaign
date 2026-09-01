@@ -168,6 +168,10 @@ export interface MetaEfetiva {
   nivel: string | null;
   nivel_estado: EstadoDeLeitura;
   nivel_decidido: boolean;
+  /** ⚠️ O nível foi INFERIDO pela herança documentada, não LIDO do recurso.
+   *  Antes do nascimento a campanha não existe e o recurso não pode ser
+   *  consultado. `nivel_estado` continua `inelegivel` — não `com_dados`. */
+  nivel_herdado: boolean;
   custom_conversion_goal: string | null;
   /** Meta customizada não respeita `primary_for_goal`: as listas param de decidir. */
   usa_meta_customizada: boolean;
@@ -246,6 +250,9 @@ export interface InventarioDeMarcacao {
   cross_account_conversion_tracking_id: string | null;
   conversion_tracking_status: string | null;
   aceitou_termos_de_dados: boolean | null;
+  /** `customer.time_zone` — o fuso em que a data da última conversão foi
+   *  escrita. `null` quando não foi lido. */
+  fuso: string | null;
   enhanced_conversions_for_leads: boolean | null;
   acoes_de_ga4: string[];
   acoes_com_tag: string[];
@@ -624,7 +631,11 @@ export function textoDaMetaEfetiva(meta: MetaEfetiva): string {
     return 'nenhuma meta é perseguível pelo lance automático';
   }
   const onde = meta.nivel === 'CAMPAIGN' ? 'da campanha' : 'da conta';
-  return `${biddable.map((m) => m.semantica).join(', ')} (${onde})`;
+  // ⚠️ Herdado e lido são fatos diferentes, e a tela diz qual é. Antes do
+  // nascimento o nível não pode ser consultado: ele vem da herança documentada,
+  // e chamar isso de "lido" seria afirmar uma consulta que ninguém fez.
+  const como = meta.nivel_herdado ? ', por herança' : '';
+  return `${biddable.map((m) => m.semantica).join(', ')} (${onde}${como})`;
 }
 
 /**

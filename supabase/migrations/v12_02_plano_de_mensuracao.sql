@@ -131,6 +131,12 @@ create table public.trafego_campanha_plano_de_mensuracao (
     -- ── meta efetiva ────────────────────────────────────────────────────────
     nivel                   text,
     nivel_estado            text not null,
+    -- ⚠️ O nível foi INFERIDO pela herança documentada, e não LIDO do recurso.
+    -- Antes do nascimento `conversion_goal_campaign_config` nao pode ser
+    -- consultado. Sintetizar `nivel_estado='com_dados'` para dizer isso — como
+    -- a primeira versao fazia — afirmaria que o recurso foi lido, e a coluna
+    -- ficaria indistinguivel de um nivel de fato consultado.
+    nivel_herdado           boolean not null default false,
     custom_conversion_goal  text,
     metas_da_conta_estado   text not null,
     metas_da_campanha_estado text not null,
@@ -164,6 +170,10 @@ create table public.trafego_campanha_plano_de_mensuracao (
     conversion_tracking_owner_id text,
     conversion_tracking_status   text,
     aceitou_termos_de_dados boolean,
+    -- `customer.time_zone`: o fuso em que a data da ultima conversao foi
+    -- escrita. Sem ele, `frescor_dias` seria a subtracao de duas datas de
+    -- fusos diferentes.
+    fuso                    text,
 
     -- ── veredito ────────────────────────────────────────────────────────────
     completo                boolean not null,
@@ -249,6 +259,16 @@ create table public.trafego_campanha_plano_de_mensuracao (
                or (destino_product_destination_id is not null
                    and acao_alvo_id is not null
                    and destino_product_destination_id = acao_alvo_id)),
+    -- ⚠️ E A CONTA TEM DE SER A DONA DA ACAO. Este CHECK faltava, e sem ele o
+    -- cabecalho da INVARIANTE 1 dizia uma coisa que o schema nao defendia: uma
+    -- linha entrava com `acao_alvo_owner_id` NULO e
+    -- `destino_operating_account_id` apontando para outra conta qualquer.
+    -- A Data Manager exige que a operating account POSSUA a acao; mandar para a
+    -- conta errada nao da erro, da SILENCIO.
+    constraint trafego_plano_destino_e_do_dono_da_acao
+        check (not destino_resolvido
+               or (acao_alvo_owner_id is not null
+                   and destino_operating_account_id = acao_alvo_owner_id)),
 
     -- INVARIANTE 5.
     constraint trafego_plano_frescor_sem_conclusao_nao_conta
@@ -267,17 +287,55 @@ create table public.trafego_campanha_plano_de_mensuracao (
         check (frescor_dias is null or frescor_ultima_em is not null),
 
     -- INVARIANTE 3.
+    --
+    -- ⚠️ A primeira versao exigia apenas o ROTULO `frescor_estado='com_dados'` e
+    -- o booleano livre `meta_resolvida` — e as duas "provas" eram satisfativeis
+    -- com ZERO dado: `com_dados` entrava com data, dias e contagem TODOS nulos,
+    -- e `meta_resolvida` passava `true` com `nivel_estado='falhou'` e
+    -- `metas_biddable={}`. Era exatamente a "opiniao com forca de fato" que o
+    -- cabecalho diz que esta invariante existe para impedir.
+    --
+    -- ⚠️ E `destino_resolvido` SAIU da exigencia. Ele descreve a via de ingestao
+    -- OFFLINE, e este sistema impoe desde `prontidao.py` que sinal != Data
+    -- Manager: uma conta que converte por tag do Google mede perfeitamente e
+    -- nunca vai ter destino offline. Exigi-lo declarava despreparo onde nao ha.
     constraint trafego_plano_completo_exige_prova
         check (not completo
                or (acao_alvo_id is not null
-                   and destino_resolvido
+                   and meta_resolvida
                    and frescor_estado = 'com_dados'
-                   and meta_resolvida)),
+                   and frescor_ultima_em is not null
+                   and frescor_dias is not null
+                   and frescor_conversoes is not null
+                   and frescor_conversoes > 0)),
+
+    -- `meta_resolvida` tambem precisa de lastro: ele e um booleano que a
+    -- aplicacao calcula, e o schema nao pode aceitar a palavra dela.
+    constraint trafego_plano_meta_resolvida_exige_evidencia
+        check (not meta_resolvida
+               or (nivel in ('CUSTOMER', 'CAMPAIGN')
+                   and (nivel_estado = 'com_dados' or nivel_herdado)
+                   and cardinality(metas_biddable) > 0
+                   -- Meta customizada tira as duas listas do comando: ela nao
+                   -- respeita `primary_for_goal`, e o que ela persegue mora num
+                   -- recurso que este sistema ainda nao le.
+                   and custom_conversion_goal is null)),
 
     -- INVARIANTE 4.
+    --
+    -- ⚠️ `cardinality` CONTA elemento NULL: `cardinality('{NULL}')` = 1. E a
+    -- funcao de escrita monta o array com `jsonb_array_elements_text`, que
+    -- converte um `null` de JSON em NULL de SQL. Entao um plano incompleto cujo
+    -- unico "bloqueador" fosse NULL — ou string vazia — satisfazia a guarda de
+    -- "bloqueador NOMEADO", e a tela renderizava a caixa de bloqueio com um
+    -- item em branco: o portao fechado e nenhuma razao. E a mesma familia dos
+    -- CHECKs que valem NULL, so que aqui o NULL entra por dentro do array.
     constraint trafego_plano_bloqueador_ou_completude
         check ((completo and cardinality(bloqueadores) = 0)
-               or (not completo and cardinality(bloqueadores) > 0)),
+               or (not completo
+                   and cardinality(bloqueadores) > 0
+                   and cardinality(array_remove(array_remove(bloqueadores, null), ''))
+                       = cardinality(bloqueadores))),
 
     constraint trafego_plano_payload_objeto
         check (jsonb_typeof(payload) = 'object'),
@@ -337,6 +395,23 @@ create trigger trafego_plano_append_only_tg
     before update or delete on public.trafego_campanha_plano_de_mensuracao
     for each row execute function public.trafego_plano_append_only();
 
+-- ⚠️ TRUNCATE NAO DISPARA GATILHO DE LINHA, e AQUI ISSO E DELIBERADO.
+--
+-- Medido no cluster descartavel: `delete` e recusado com 55000, e `truncate`
+-- apaga em silencio. Um `before truncate ... for each statement` fecharia essa
+-- porta — e foi escrito, e foi REVERTIDO, porque ele quebra uma decisao que
+-- esta casa ja tinha tomado: a bancada usa TRUNCATE como escape hatch do
+-- append-only, e o diz em voz alta em backend/tests/test_trafego_persistencia.py
+-- ("o gatilho protege o dominio, nao a bancada"). Com a FK desta tabela para
+-- `trafego_campanha`, o `TRUNCATE ... CASCADE` da bancada alcanca esta tabela
+-- por forca do proprio Postgres, e nao ha como pedir que ele nao alcance.
+--
+-- O risco residual e real e esta registrado: no SQL editor do Studio, que roda
+-- como `postgres`, o DELETE grita e o TRUNCATE apaga sem aviso uma tabela que o
+-- rollback declara NAO reconstruivel. `service_role` nao tem TRUNCATE, entao o
+-- backend e o PostgREST nao alcancam. Fechar essa porta e uma decisao de dono,
+-- e ela custa o arranjo de testes de todo o dominio de trafego.
+
 -- ── 3. a única porta de escrita ─────────────────────────────────────────────
 --
 -- ⚠️ `service_role` recebe SELECT e EXECUTE, e NÃO recebe INSERT. Toda escrita
@@ -371,7 +446,7 @@ begin
     insert into public.trafego_campanha_plano_de_mensuracao (
         impressao, versao, customer_id, login_customer_id, campaign_id,
         volc_campaign_id, chave_intencao,
-        nivel, nivel_estado, custom_conversion_goal,
+        nivel, nivel_estado, nivel_herdado, custom_conversion_goal,
         metas_da_conta_estado, metas_da_campanha_estado, metas_biddable,
         meta_resolvida,
         acoes_estado, acao_alvo_id, acao_alvo_owner_id, acao_alvo_tipo,
@@ -381,7 +456,7 @@ begin
         frescor_estado, frescor_ultima_em, frescor_dias, frescor_conversoes,
         marcacao_estado, auto_tagging, conversion_tracking_id,
         conversion_tracking_owner_id, conversion_tracking_status,
-        aceitou_termos_de_dados,
+        aceitou_termos_de_dados, fuso,
         completo, bloqueadores, payload, api_versao, lido_em
     ) values (
         documento->>'impressao',
@@ -393,6 +468,7 @@ begin
         nullif(documento->>'chave_intencao',''),
         nullif(documento->>'nivel',''),
         documento->>'nivel_estado',
+        coalesce((documento->>'nivel_herdado')::boolean, false),
         nullif(documento->>'custom_conversion_goal',''),
         documento->>'metas_da_conta_estado',
         documento->>'metas_da_campanha_estado',
@@ -421,6 +497,7 @@ begin
         nullif(documento->>'conversion_tracking_owner_id',''),
         nullif(documento->>'conversion_tracking_status',''),
         nullif(documento->>'aceitou_termos_de_dados','')::boolean,
+        nullif(documento->>'fuso',''),
         (documento->>'completo')::boolean,
         array(select jsonb_array_elements_text(
                        coalesce(documento->'bloqueadores','[]'::jsonb))),

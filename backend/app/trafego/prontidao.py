@@ -76,6 +76,19 @@ class Prontidao:
     #: ⚠️ Nunca derivado por otimismo. Ver `avaliar`.
     smart_bidding_eligible: bool = False
     activation_blockers: Sequence[str] = ()
+    #: ⚠️ O SUBCONJUNTO MATERIAL de `activation_blockers`: os que dizem que a
+    #: campanha não pode APRENDER ou não pode ser OBSERVADA. Ele existe separado
+    #: porque `activation_blockers` mistura naturezas — uma recusa de política
+    #: ("ativar não é ato deste fluxo") e uma de medição ("nenhuma conversão
+    #: chegou") fecham a mesma porta por motivos que não se comparam, e só a
+    #: segunda contradiz `smart_bidding_eligible`.
+    #:
+    #: É contra ESTE campo que a coerência é imposta, em `__post_init__`.
+    activation_blockers_materiais: Sequence[str] = ()
+    #: Por onde o sinal PODERIA chegar. ⚠️ DIAGNÓSTICO, nunca prova: auto-tagging
+    #: ligado, tag configurada e importação declarada descrevem o caminho, não o
+    #: tráfego nele. Nada daqui move `conversion_signal_status`.
+    signal_paths: Sequence[str] = ()
     notas: Dict[str, Any] = field(default_factory=dict)
     #: O plano canônico de mensuração desta campanha, quando alguém o leu.
     #:
@@ -96,7 +109,35 @@ class Prontidao:
         object.__setattr__(self, "signal_sources", tuple(self.signal_sources))
         object.__setattr__(self, "activation_blockers",
                            tuple(self.activation_blockers))
+        object.__setattr__(self, "activation_blockers_materiais",
+                           tuple(self.activation_blockers_materiais))
+        object.__setattr__(self, "signal_paths", tuple(self.signal_paths))
         object.__setattr__(self, "notas", dict(self.notas))
+
+        # ⚠️ A COERÊNCIA VIRA INVARIANTE DO TIPO, e não uma asserção de teste.
+        #
+        # `smart_bidding_eligible=True` ao lado de um bloqueador MATERIAL é a
+        # resposta que afirma duas coisas opostas sobre o mesmo mundo — e ela
+        # aconteceu: com `auto_tagging=True` e `frescor=vazio_confirmado`, o
+        # veredito saía elegível carregando "não recebeu NENHUMA conversão" na
+        # lista ao lado. É o mesmo defeito que `Portao.__post_init__` já proíbe
+        # em `contrato_canais` ("PERMITIDO com bloqueador"), e ele precisava
+        # existir aqui também.
+        #
+        # ⚠️ Contra os MATERIAIS, e não contra a lista inteira: um bloqueio de
+        # política não contradiz a elegibilidade de lance, e exigir lista vazia
+        # tornaria a elegibilidade inalcançável por um motivo que nada tem a ver
+        # com medir.
+        if self.smart_bidding_eligible and self.activation_blockers_materiais:
+            raise ValueError(
+                "Smart Bidding elegível com bloqueador material de mensuração "
+                "ou observabilidade: "
+                f"{'; '.join(self.activation_blockers_materiais)}. As duas "
+                "afirmações não podem valer ao mesmo tempo.")
+        for b in self.activation_blockers_materiais:
+            if b not in self.activation_blockers:
+                raise ValueError(
+                    f"bloqueador material fora da lista principal: {b!r}")
 
     def para_json(self) -> Dict[str, Any]:
         return {
@@ -110,6 +151,9 @@ class Prontidao:
             "observability_status": self.observability_status,
             "smart_bidding_eligible": self.smart_bidding_eligible,
             "activation_blockers": list(self.activation_blockers),
+            "activation_blockers_materiais":
+                list(self.activation_blockers_materiais),
+            "signal_paths": list(self.signal_paths),
             "notas": dict(self.notas),
             # ⚠️ Campo de PRIMEIRA CLASSE, e não uma chave dentro de `notas`.
             # `notas` é prosa para o operador; o plano é estrutura que a tela lê
@@ -148,6 +192,16 @@ def avaliar(
     e é o par que vira prova.
     """
     bloqueios: List[str] = []
+    #: ⚠️ O subconjunto MATERIAL. Cada `_bloquear` decide a natureza no ponto em
+    #: que a razão nasce — quem escreve a razão é quem sabe se ela é sobre medir
+    #: ou sobre outra coisa. Classificar depois, por texto, seria adivinhar.
+    materiais: List[str] = []
+
+    def _bloquear(razao: str, *, material: bool = True) -> None:
+        bloqueios.append(razao)
+        if material:
+            materiais.append(razao)
+
     notas: Dict[str, Any] = {}
 
     # ⚠️ DUAS PERGUNTAS DIFERENTES, e confundi-las produziu um relatório que
@@ -184,14 +238,32 @@ def avaliar(
                                    for m in (meta.metas_biddable or ())))
                 + f". A ação que a mede é #{alvo.id} ({alvo.nome}), da conta "
                 + f"{alvo.owner_customer_id or 'não lida'}.")
-        elif meta.nivel_estado in pm.ESTADOS_SEM_CONCLUSAO or (
-                meta.metas_biddable is None):
+            # ⚠️ O PLANO CONTINUA TENDO RAZÕES DEPOIS QUE A META ABRE.
+            #
+            # Este era o único dos três ramos que não empilhava
+            # `plano.bloqueadores`, e o efeito é que destino não resolvido e
+            # frescor não comprovado sumiam de `activation_blockers` EXATAMENTE
+            # quando o portão da meta abria — a resposta afirmava prontidão sem
+            # a razão que ela mesma carregava no campo vizinho. Reproduzido por
+            # dois revisores independentes.
+            for _r in plano_de_mensuracao.bloqueadores:
+                _bloquear(_r)
+        elif (meta.nivel_estado in pm.ESTADOS_SEM_CONCLUSAO
+              or meta.metas_biddable is None
+              # ⚠️ E a leitura das AÇÕES também decide o estado. Sem esta
+              # condição, uma GAQL de `conversion_action` que cai sozinha —
+              # as cinco leituras são independentes e nenhuma aborta a outra —
+              # produzia NAO_PRONTO: um veredito sobre a conta derivado de uma
+              # falha de rede. Era pior que o comportamento anterior, em que
+              # qualquer falha virava INDETERMINADO.
+              or plano_de_mensuracao.acoes_estado in pm.ESTADOS_SEM_CONCLUSAO):
             meta_status = INDETERMINADO
             notas["conversion_goal"] = (
                 "a leitura da meta efetiva não completou: "
                 + (meta.causa or "sem causa registrada")
                 + ". Ausência de leitura não é ausência de meta.")
-            bloqueios.extend(plano_de_mensuracao.bloqueadores)
+            for _r in plano_de_mensuracao.bloqueadores:
+                _bloquear(_r)
         else:
             # Leu as três, e a conclusão é que não há o que perseguir. Isso é
             # NAO_PRONTO — um fato sobre a conta, e não uma lacuna nossa.
@@ -206,7 +278,8 @@ def avaliar(
                 plano_de_mensuracao.acao_alvo_causa
                 or "as metas efetivas foram lidas e nenhuma é biddable: uma "
                    "campanha em lance automático otimizaria para nada.")
-            bloqueios.extend(plano_de_mensuracao.bloqueadores)
+            for _r in plano_de_mensuracao.bloqueadores:
+                _bloquear(_r)
         notas["conversion_actions_primarias"] = [
             {"id": a.id, "nome": a.nome, "categoria": a.categoria,
              "owner_customer_id": a.owner_customer_id}
@@ -217,7 +290,7 @@ def avaliar(
         notas["conversion_goal"] = (
             "não foi possível ler as metas da conta; ausência de leitura não é "
             "ausência de meta")
-        bloqueios.append("metas de conversão não lidas")
+        _bloquear("metas de conversão não lidas")
     elif metas_da_conta.get("primaria"):
         # ⚠️ PARCIAL, E NÃO PRONTO — e a diferença é o que foi de fato lido.
         #
@@ -251,7 +324,7 @@ def avaliar(
         notas["conversion_actions_primarias"] = [
             {"id": a.get("id"), "nome": a.get("nome"),
              "categoria": a.get("categoria")} for a in primarias]
-        bloqueios.append(
+        _bloquear(
             "meta de conversão efetiva não lida (faltam customer_conversion_goal "
             "e conversion_goal_campaign_config)")
     else:
@@ -259,7 +332,7 @@ def avaliar(
         notas["conversion_goal"] = (
             "a conta não tem ação de conversão primária: uma campanha em lance "
             "automático otimizaria para nada")
-        bloqueios.append("conta sem ação de conversão primária")
+        _bloquear("conta sem ação de conversão primária")
 
     # ── G1: sinal chegando ───────────────────────────────────────────────────
     #
@@ -269,25 +342,50 @@ def avaliar(
     # sinal chegando e seria declarada despreparada por não usar uma via que
     # não precisa. Data Manager é UMA fonte, e a que ainda não existe aqui.
     fontes = list(fontes_de_sinal_observadas or ())
-    if not fontes and plano_de_mensuracao is not None:
-        # ⚠️ Derivado do PLANO, e só do plano. `fontes_de_sinal_observadas`
-        # continua tendo precedência porque quem a passa está afirmando ter
-        # observado algo que este módulo não tem como conferir. O que vem daqui
-        # é o que o plano PROVOU: conversão vista na janela, tag do Google,
-        # importação GA4, auto-tagging, destino offline resolvido. Nenhuma
-        # dessas sai de um default — todas saem de uma leitura com estado.
-        fontes = list(pm.fontes_de_sinal_observadas(plano_de_mensuracao))
+    caminhos: List[str] = []
+    if plano_de_mensuracao is not None:
+        # ⚠️ CAPACIDADE E PROVA SAEM SEPARADAS, e é essa separação que conserta
+        # o defeito. Auto-tagging ligado, tag configurada e importação declarada
+        # dizem por onde a conversão PODERIA chegar; nenhuma delas diz que
+        # alguma chegou. Empilhá-las em `fontes` fazia uma conta com
+        # `auto_tagging=True` e ZERO conversão medida sair com sinal PRONTO e
+        # Smart Bidding elegível — carregando, na lista ao lado, o bloqueador
+        # que dizia que nenhuma conversão chegou.
+        caminhos = list(pm.caminhos_de_sinal_declarados(plano_de_mensuracao))
+        if not fontes:
+            # `fontes_de_sinal_observadas` explícito continua tendo precedência:
+            # quem o passa está AFIRMANDO ter observado algo que este módulo não
+            # tem como conferir.
+            fontes = list(pm.fontes_de_sinal_observadas(plano_de_mensuracao))
     if fontes:
         sinal = PRONTO
         notas["conversion_signal"] = (
-            "fontes de sinal observadas: " + ", ".join(fontes))
+            "sinal COMPROVADO: " + ", ".join(fontes))
     else:
         sinal = NAO_PRONTO
-        notas["conversion_signal"] = (
-            "nenhuma fonte de sinal foi COMPROVADA nesta leitura (tag do "
-            "Google, importação GA4, upload offline ou Data Manager). Lista "
-            "vazia significa 'não comprovado', e não 'não existe'")
-        bloqueios.append("nenhuma fonte de sinal de conversão comprovada")
+        # ⚠️ A frase distingue os dois desfechos, porque eles pedem coisas
+        # opostas: caminho declarado e sem conversão é problema de
+        # instrumentação — a tag está lá e não dispara; nenhum caminho e nenhuma
+        # conversão é problema anterior, não há por onde medir.
+        if caminhos:
+            notas["conversion_signal"] = (
+                "há caminho declarado para o sinal (" + ", ".join(caminhos)
+                + ") e NENHUMA conversão observada. Caminho não é tráfego: o "
+                "que decide o lance é conversão chegando, não a via existir.")
+            _bloquear(
+                "há caminho de mensuração configurado e nenhuma conversão "
+                "observada. A via existe e não está trazendo evento — é "
+                "instrumentação a conferir, não configuração a criar.")
+        else:
+            notas["conversion_signal"] = (
+                "nenhuma fonte de sinal foi COMPROVADA nesta leitura (tag do "
+                "Google, importação GA4, upload offline ou Data Manager). Lista "
+                "vazia significa 'não comprovado', e não 'não existe'")
+            _bloquear("nenhuma fonte de sinal de conversão comprovada")
+    if caminhos:
+        notas["signal_paths"] = (
+            "vias por onde o sinal PODERIA chegar — inventário, não prova: "
+            + ", ".join(caminhos))
 
     if data_manager_operante:
         dm_status = PRONTO
@@ -333,12 +431,16 @@ def avaliar(
     # seja, autorizado a otimizar sem conseguir observar o que acontece depois.
     elegivel = medicao == PRONTO and observacao == PRONTO
     if observacao != PRONTO:
-        bloqueios.append(
+        _bloquear(
             "observabilidade pós-criação não provada: sem releitura, um "
             "desvio de entrega ou de política não seria notado")
     if not elegivel and estrategia_lance != "MANUAL_CPC":
-        bloqueios.append(
-            f"estratégia {estrategia_lance} exige sinal de conversão provado")
+        # ⚠️ NÃO material: é a CONSEQUÊNCIA das razões acima, e não uma razão
+        # independente. Contá-la como material duplicaria a mesma causa e faria
+        # a lista sugerir dois problemas onde há um.
+        _bloquear(
+            f"estratégia {estrategia_lance} exige sinal de conversão provado",
+            material=False)
     notas["manual_cpc"] = (
         "Manual CPC pode existir no canário pausado sem Data Manager. Isso não "
         "autoriza ativação nem implica prontidão de ROI")
@@ -354,6 +456,8 @@ def avaliar(
         observability_status=observacao,
         smart_bidding_eligible=elegivel,
         activation_blockers=bloqueios,
+        activation_blockers_materiais=materiais,
+        signal_paths=caminhos,
         notas=notas,
         plano_de_mensuracao=plano_de_mensuracao,
     )
