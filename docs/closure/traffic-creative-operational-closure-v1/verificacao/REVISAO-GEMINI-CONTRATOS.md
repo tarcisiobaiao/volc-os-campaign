@@ -186,8 +186,21 @@ resposta certa.
 `coverage.py`. Este módulo já existia **antes** desta missão e nunca tinha sido
 revisado contra o contrato externo.
 
-*(Resultado registrado em §3.1 quando a chamada retornar; o que já está
-verificado por mim, independentemente do parecer, está em §3.2.)*
+### 3.1 A lane estourou — declarado, não preenchido
+
+**A chamada não retornou.** Tentada duas vezes: a primeira pendurou por vários
+minutos e morreu com exit 144; a segunda, com prompt encurtado e o arquivo
+embutido em vez de lido por ferramenta, estourou um teto de 7 minutos e foi
+encerrada por mim (exit 143). As duas primeiras chamadas do dia, no mesmo
+binário e com a mesma credencial, funcionaram — então não é configuração.
+
+**Não substituí por outro provedor e não inventei resultado.** Registro a lane
+como indisponível para esta pergunta, do mesmo jeito que a sprint anterior
+registrou a lane DeepSeek como ausente em vez de fingir cobertura.
+
+**O que fiz no lugar é mais forte que o parecer que eu teria recebido:** em vez
+de perguntar a um modelo quais campos GAQL existem, **conferi todos contra os
+descritores protobuf da v25 instalada**. Ver §3.3.
 
 ### 3.2 Verificado por mim, contra os protos v25 instalados
 
@@ -209,6 +222,33 @@ Fatos que decorrem disso e valem como gate para quem escrever PMax:
 3. **`Campaign.url_expansion_opt_out` não existe** — ver §1.2.
 4. **`AssetGroupAsset.primary_status_details` existe**, e é o que dá a razão de
    um asset não estar servindo. Um coletor que leia só `status` perde o motivo.
+
+### 3.3 Conferência determinística das queries GAQL de PMax
+
+Extraí toda referência `recurso.campo` de
+`volc_ads/observabilidade_pmax/queries.py` e resolvi cada uma contra o
+`DESCRIPTOR` protobuf da v25 instalada, descendo em campos aninhados. Recursos
+cobertos: `campaign`, `asset_group`, `asset_group_asset`, `asset_group_signal`,
+`asset`, `campaign_asset`.
+
+**Resultado: 61 campos válidos, ZERO campos inexistentes.**
+
+Dois candidatos apareceram na primeira passada, e **ambos eram defeito do meu
+extrator, não do código**:
+
+| Suspeito | Veredito | Prova |
+|---|---|---|
+| `asset_group.path` | **falso positivo meu** | O código usa `asset_group.path1` e `path2` (`queries.py:285-286`). Meu regex `[a-z_]+` não casa dígito e truncou o nome |
+| `asset.type` | **falso positivo meu** | `queries.py:377` seleciona `asset.type`, o nome **de wire** correto em GAQL. No proto Python o campo se chama `type_`, porque `type` é reservado — confirmado: `'type_' in Asset.DESCRIPTOR.fields_by_name` → `True`; `'type'` → `False` |
+
+**Conclusão:** o módulo de observabilidade PMax não tem campo GAQL morto. Como
+uma query com campo inexistente falha **inteira** (`UNRECOGNIZED_FIELD`) e não
+degrada, esse era o risco mais caro do módulo — e ele não se materializa.
+
+Isso **não promove P04-T07**: o módulo continua sem consumidor de produção (único
+importador é `backend/tests/test_observabilidade_pmax.py`), e o bloqueio de
+criação de PMax continua sendo `sem_construtor`, não mensuração. Contrato correto
+e desligado continua sendo contrato desligado.
 
 ---
 
