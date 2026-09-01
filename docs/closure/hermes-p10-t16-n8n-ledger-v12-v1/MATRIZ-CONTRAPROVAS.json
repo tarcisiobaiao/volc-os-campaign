@@ -1,0 +1,300 @@
+{
+  "_comentario": "As 30 contraprovas mínimas exigidas por P10-T16, cada uma amarrada ao artefato que a executa. `estado` diz o que a evidência sustenta, não o que se espera dela: `provada` = há um comando que falha se a invariante cair; `parcial` = provada offline mas não contra o sistema real; `nao_provada` = declarada e aberta. Nenhuma linha é marcada `provada` por leitura de código.",
+  "tarefa": "P10-T16",
+  "lane": "hermes-p10-t16-n8n-ledger-v12-v1",
+  "base": "b6e226ab2f6d339d2c7c899b83b05ff4a95ebcac",
+  "data": "2026-09-01",
+  "comandos": {
+    "ciclo_sql": "bash scripts/provar-ciclo-v12_04.sh",
+    "provas_sql": "scripts/provas-v12_04.sql (rodado pelo ciclo, degrau 2)",
+    "validador": "python3 scripts/validar_workflows_n8n_gads.py",
+    "simulador": "node scripts/simular_gads_ledger_v12.mjs",
+    "ponta_a_ponta": "bash scripts/provar-ponta-a-ponta-gads.sh",
+    "agenda": "python3 scripts/gate_agenda_unica_gads.py",
+    "suite": "python3 -m pytest backend/tests/test_gads_workflows_n8n.py -q"
+  },
+  "totais": {
+    "ciclo_sql": "106 provas, 0 falhas",
+    "validador": "339 provas, 0 falhas, 0 pulados",
+    "simulador": "65 provas, 0 falhas",
+    "ponta_a_ponta": "12 provas, 0 falhas",
+    "agenda": "14 provas, 0 falhas, 1 pulado declarado",
+    "suite_focal": "18 passed"
+  },
+  "contraprovas": [
+    {
+      "n": 1,
+      "exigencia": "duas contas com mesmo campaign_id não colidem",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-01a/b/c", "scripts/simular_gads_ledger_v12.mjs :: duas contas com o MESMO campaign_id produzem duas linhas distintas", "scripts/provar-ponta-a-ponta-gads.sh :: duas contas com o mesmo campaign_id coexistem no fato"],
+      "mecanismo": "UNIQUE (customer_id, campaign_id, metric_date, segments_hash) — a conta entra na chave, ao contrário de daily_campaign_metrics",
+      "falharia_se": "a chave voltasse a ser (campaign_id, date): a segunda conta sobrescreveria a primeira e a soma de impressões cairia de 1207 para 7"
+    },
+    {
+      "n": 2,
+      "exigencia": "D0/D-1 não disputam chave",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-02a..f", "scripts/simular_gads_ledger_v12.mjs :: D0 e D-1 nunca disputam a chave"],
+      "mecanismo": "as duas COMPARTILHAM a chave do fato e a precedência é total e declarada (D0=1 < D-1=2 < backfill=3); no ledger, a `execucao_chave` inclui job e passo, então os recibos nunca colidem",
+      "falharia_se": "o D0 posterior rebaixasse o dia fechado — CP-02d/e/f medem exatamente isso e o resultado é `preterida`, não `aceita`"
+    },
+    {
+      "n": 3,
+      "exigencia": "repetição idempotente não duplica",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-03a..d", "scripts/provar-ponta-a-ponta-gads.sh :: repetir o lote não duplica"],
+      "mecanismo": "UNIQUE em chave_idempotencia + retorno antecipado do recibo guardado, com zero escrita",
+      "falharia_se": "a RPC reescrevesse: a contagem de recibos e de fatos passaria de 1 para 2"
+    },
+    {
+      "n": 4,
+      "exigencia": "mesma chave com payload diferente é recusado",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-04 (token CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE) e CP-04b"],
+      "mecanismo": "sha256 do CONTEÚDO (identidade, janela, contrato, desfecho e linhas), excluindo carimbos de tempo — senão todo retry legítimo viraria 'conteúdo diferente'",
+      "falharia_se": "o hash incluísse `encerrada_em`: CP-04b (retry com outro carimbo) passaria a ser recusado"
+    },
+    {
+      "n": 5,
+      "exigencia": "null permanece null",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-05a..f", "scripts/simular_gads_ledger_v12.mjs :: métrica ausente continua NULA / string vazia é ausência", "scripts/provar-ponta-a-ponta-gads.sh :: métrica NÃO medida chegou ao banco como NULL", "backend/tests/test_gads_workflows_n8n.py :: test_a_ausencia_nunca_vira_zero_no_normalizador"],
+      "mecanismo": "nenhuma métrica tem DEFAULT; o normalizador devolve null para ausente/undefined/''; métrica que chega como string é REJEITADA com motivo",
+      "falharia_se": "voltasse o `parseFloat(x || 0)` do Code legado — o teste focal morre por padrão textual e a prova de banco vê 0 onde esperava NULL"
+    },
+    {
+      "n": 6,
+      "exigencia": "zero medido permanece zero",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-06a/b", "scripts/simular_gads_ledger_v12.mjs :: zero medido continua ZERO", "scripts/provar-ponta-a-ponta-gads.sh :: zero medido chegou ao banco como ZERO (0/0/0/0/0 na MESMA linha que tem NULL)"],
+      "mecanismo": "a mesma linha carrega zero medido e ausência, e as duas sobrevivem juntas até a coluna",
+      "falharia_se": "o normalizador tratasse 0 como falsy — a linha zerada viraria toda NULL"
+    },
+    {
+      "n": 7,
+      "exigencia": "falha não vira vazio",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-07a..d", "scripts/simular_gads_ledger_v12.mjs :: a conta que falhou NÃO entra como vazio / erro sem código vira DESCONHECIDA"],
+      "mecanismo": "CHECK exige motivo quando resultado != 'ok'; CHECK proíbe 'falhou' com linha aceita; o classificador nunca devolve 'ok' para erro sem código",
+      "falharia_se": "o fluxo declarasse `resultado: ok` com `linhas: []` após um 5xx — o teste 'todas as contas falhando é FALHOU' cai"
+    },
+    {
+      "n": 8,
+      "exigencia": "parcial preserva linhas verdes",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-08a..e", "scripts/simular_gads_ledger_v12.mjs :: a linha boa sobreviveu / a linha verde sobreviveu à falha da outra conta"],
+      "mecanismo": "validação por linha com motivo nomeado; a linha recusada não derruba o lote e a aceita persiste",
+      "falharia_se": "a validação abortasse o lote inteiro na primeira recusa"
+    },
+    {
+      "n": 9,
+      "exigencia": "retry 429/5xx termina ou recupera no limite",
+      "estado": "parcial",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: [Google Ads: search] tem retry controlado (retryOnFail + maxTries 3 + waitBetweenTries 5000)", "scripts/simular_gads_ledger_v12.mjs :: 429 vira COTA com retry recomendado / 5xx vira INDISPONIVEL"],
+      "mecanismo": "o teto é `maxTries` do nó; esgotado, a saída de erro classifica e a conta é encerrada como recusada",
+      "limitacao": "o comportamento do retry é do motor do n8n e NÃO foi executado contra um n8n real (REAL_N8N_READ_NOT_PROVEN). O que está provado é a DECLARAÇÃO do teto e a classificação da falha depois dele."
+    },
+    {
+      "n": 10,
+      "exigencia": "401/403 sem loop",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: erro de autenticação não tem como voltar ao pedido sem passar pelo laço", "scripts/simular_gads_ledger_v12.mjs :: 401 é classificado como AUTENTICAÇÃO, sem retry recomendado / erro classificado nunca reentra no pedido"],
+      "mecanismo": "prova de alcançabilidade no grafo de conexões: a partir do classificador não existe caminho de volta ao nó de requisição sem passar pelo laço de contas, que só avança",
+      "falharia_se": "alguém ligasse o classificador de volta em `Pagina: preparar pedido` — o validador acusa por busca em grafo, não por leitura"
+    },
+    {
+      "n": 11,
+      "exigencia": "paginação não descarta",
+      "estado": "provada",
+      "onde": ["scripts/simular_gads_ledger_v12.mjs :: nenhuma linha foi descartada na paginação (3 páginas, 7 linhas) / estourar o teto para a execução em vez de truncar", "scripts/provas-v12_04.sql :: CP-11a..e"],
+      "mecanismo": "token de página viaja no item; duplicata dentro do lote e entre lotes da mesma execução é RECUSADA; teto de páginas lança erro em vez de truncar",
+      "falharia_se": "o laço parasse na primeira página: a contagem cairia de 7 para 3"
+    },
+    {
+      "n": 12,
+      "exigencia": "batch final não perdido",
+      "estado": "provada",
+      "onde": ["scripts/simular_gads_ledger_v12.mjs :: a ÚLTIMA página, parcial, não se perdeu (1 linha) / o fechamento soma o acumulado inteiro", "scripts/provas-v12_04.sql :: CP-12a..c (token LOTE_FALTANDO)"],
+      "mecanismo": "ordinal contíguo derivado do índice de rodada do nó que só executa em página bem-sucedida; o fechamento recusa quando count(lotes) != max(ordinal)",
+      "falharia_se": "o último lote não fosse enviado — o fechamento acusaria RECONCILIACAO_DIVERGENTE"
+    },
+    {
+      "n": 13,
+      "exigencia": "SplitInBatches com outputs corretos",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: main[0] (done) fecha a execução / main[1] (lote atual) entra no laço / typeVersion 3", "backend/tests/test_gads_workflows_n8n.py :: test_split_in_batches_liga_done_e_lote_nas_saidas_certas"],
+      "mecanismo": "índice de saída conferido no JSON, não na documentação",
+      "falharia_se": "as saídas fossem trocadas — o fechamento passaria a rodar por lote e o laço nunca terminaria"
+    },
+    {
+      "n": 14,
+      "exigencia": "acumulado não é só o último batch",
+      "estado": "provada",
+      "onde": ["scripts/simular_gads_ledger_v12.mjs :: o acumulado cobre TODAS as páginas / o fechamento soma as três contas, não só a última", "backend/tests/test_gads_workflows_n8n.py :: test_o_fechamento_soma_a_entrada_do_laco_e_nao_um_no_de_dentro", "scripts/provas-v12_04.sql :: CP-14a"],
+      "mecanismo": "`Fechar execucao` soma `$input.all()` (a saída `done`), e o validador PROÍBE `$('No').all()` nos nós de dentro do laço",
+      "falharia_se": "o fechamento lesse um nó de dentro do laço: o total cairia de 3 contas para 1"
+    },
+    {
+      "n": 15,
+      "exigencia": "recibo resolve exatamente as linhas persistidas",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-15a/b/c (tokens RECONCILIACAO_DIVERGENTE e RECIBO_NAO_RESOLVE_FATOS)", "scripts/provar-ponta-a-ponta-gads.sh :: o recibo de fechamento resolve exatamente as linhas persistidas (3/0/0/ok)", "scripts/simular_gads_ledger_v12.mjs :: recibo que conta diferente do enviado derruba a execução"],
+      "mecanismo": "o fechamento compara o declarado com a soma do ledger E com o COUNT real da tabela; divergência levanta exceção nomeada",
+      "falharia_se": "o fluxo declarasse 99 aceitas — CP-15a mede isso e a RPC recusa"
+    },
+    {
+      "n": 16,
+      "exigencia": "fechamento não vem antes da escrita",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-16a (token FECHAMENTO_SEM_ESCRITA) e CP-16b (fato órfão recusado no fim da transação)"],
+      "mecanismo": "FK do fato para o ledger é DEFERRABLE INITIALLY DEFERRED: o fato entra antes, o recibo depois, e fato sem recibo não sobrevive ao COMMIT",
+      "falharia_se": "a FK fosse removida — CP-16b passaria a aceitar o fato órfão"
+    },
+    {
+      "n": 17,
+      "exigencia": "falha da compatibilidade não apaga o fato",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-17a/b/c (legada ganha constraint hostil; fato sobrevive; SQLSTATE 23514 nomeado no recibo)"],
+      "mecanismo": "a projeção roda em bloco com EXCEPTION próprio; a subtransação que morre é só a dela, e o SQLSTATE vai para `projecao_erro_codigo`",
+      "nao_e_engolir_excecao": "o erro fica visível em `projecao_estado='falhou'` + `projecao_erro_codigo`, e um CHECK exige o código quando o estado é 'falhou'"
+    },
+    {
+      "n": 18,
+      "exigencia": "projeção não sobrescreve receita nem orientação",
+      "estado": "provada",
+      "onde": ["scripts/provas-v12_04.sql :: CP-18a..d (revenue, revenue_converted, revshare, roas, rps, gam_impressions, commission_operator, orientacao_texto/resumo e otimizacao_resumo INTACTOS)", "backend/tests/test_gads_workflows_n8n.py :: test_a_projecao_legada_nao_encosta_em_receita_nem_orientacao"],
+      "mecanismo": "o UPDATE lista 16 colunas de ENTREGA e nenhuma outra; o teste focal varre o corpo do UPDATE procurando as 17 colunas proibidas",
+      "extra": "a projeção também NUNCA cria linha nova na legada — criar exigiria decidir receita/revshare/projeto sem dado"
+    },
+    {
+      "n": 19,
+      "exigencia": "anon/authenticated escrevem zero",
+      "estado": "provada",
+      "onde": ["scripts/provar-ciclo-v12_04.sh :: anon/authenticated sem privilégio nas duas tabelas / anon NÃO lê o fato / authenticated NÃO executa a RPC"],
+      "mecanismo": "RLS ENABLE+FORCE, zero policies, REVOKE antes de GRANT (o ACL padrão de `public` concede tudo a todos e isso é real em produção)",
+      "reproducao_fiel": "o cluster de prova recria os papéis com o DEFAULT PRIVILEGES quebrado e `service_role` com BYPASSRLS, como medido no Supabase oficial"
+    },
+    {
+      "n": 20,
+      "exigencia": "escrita direta é recusada",
+      "estado": "provada",
+      "onde": ["scripts/provar-ciclo-v12_04.sh :: service_role NÃO insere direto no fato / nem no ledger / service_role GRAVA pela RPC"],
+      "mecanismo": "`service_role` tem SELECT e EXECUTE, e nada de INSERT/UPDATE/DELETE; a única porta é a RPC SECURITY DEFINER com search_path fixo",
+      "falharia_se": "o GRANT incluísse INSERT — a prova de recusa passa a aceitar"
+    },
+    {
+      "n": 21,
+      "exigencia": "rollback recusa perda silenciosa",
+      "estado": "provada",
+      "onde": ["scripts/provar-ciclo-v12_04.sh :: rollback com dado gravado é RECUSADO sem declaração de perda / as tabelas continuam de pé depois da recusa"],
+      "mecanismo": "sem `SET volc.rollback_v12_04_apagar_fatos = 'sim'`, o rollback aborta dizendo quantos fatos e recibos morreriam",
+      "limitacao_declarada": "o rollback NÃO desfaz o que a projeção escreveu em daily_campaign_metrics: o valor anterior não foi guardado, e inventar um seria pior do que declarar a lacuna"
+    },
+    {
+      "n": 22,
+      "exigencia": "apply→operate→rollback→reapply verde",
+      "estado": "provada",
+      "onde": ["scripts/provar-ciclo-v12_04.sh :: DEGRAU 1..4, 106 provas, 0 falhas, incluindo 'aplicar uma terceira vez é recusado com nome'"],
+      "mecanismo": "cluster Postgres 16 efêmero em container, criado e destruído a cada execução; nunca fala com database.agenciavolc.com.br"
+    },
+    {
+      "n": 23,
+      "exigencia": "systemd e timers inativos",
+      "estado": "provada",
+      "onde": ["scripts/gate_agenda_unica_gads.py :: nenhuma unit INSTALADA / nenhuma ATIVA / nenhuma em list-timers / nenhuma em /etc/systemd/system"],
+      "mecanismo": "medido em `systemctl` nesta máquina, não deduzido dos arquivos",
+      "limitacao": "mede ESTA máquina. O servidor Hetzner não foi inspecionado nesta lane."
+    },
+    {
+      "n": 24,
+      "exigencia": "workflows inativos",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: workflow nasce INATIVO", "scripts/gate_agenda_unica_gads.py :: nasce inativo + declara o estado no meta", "backend/tests/test_gads_workflows_n8n.py :: test_os_dois_workflows_nascem_inativos"],
+      "mecanismo": "`active: false` no artefato versionado, e o gerador não tem caminho que produza true"
+    },
+    {
+      "n": 25,
+      "exigencia": "somente o n8n agenda",
+      "estado": "parcial",
+      "onde": ["scripts/gate_agenda_unica_gads.py :: nenhum artefato capaz de agendar fora do conjunto declarado / a alternativa systemd continua versionada e não instalada", "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/ADR-N8N-AUTORIDADE-DE-AGENDA.md"],
+      "mecanismo": "varredura por artefato CAPAZ de agendar (timer, service, n8n json, vercel/railway crons), não por menção textual",
+      "limitacao": "REAL_N8N_READ_NOT_PROVEN. O inventário versionado de 19/08/2026 registra CINCO workflows da família com agenda ATIVA na instância viva (custo-gads-report, custo-gads-report-d1, custo-gads-placements-display, custo-gads-placements-display-d1, criacao-gads-factory-v3). Conferir e desligar no painel é o PASSO 1 da autorização. Hoje a sobreposição é impossível apenas porque nada desta entrega está ligado."
+    },
+    {
+      "n": 26,
+      "exigencia": "nenhum segredo no JSON",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: nenhum segredo literal no JSON / credencial é referência (id+nome), sem valor / [Code] sem credencial literal", "python3 scripts/verificar_segredos.py"],
+      "mecanismo": "seis padrões fortes (JWT, AIza, sk-, chave privada, token literal, bearer literal); o gate nunca imprime o trecho casado",
+      "extra": "o `developer-token` sai da credencial em tempo de execução (`={{ $credentials.developerToken }}`), nunca do artefato"
+    },
+    {
+      "n": 27,
+      "exigencia": "nenhum *.supabase.co em workflow novo",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: nenhuma referência a *.supabase.co", "backend/tests/test_gads_workflows_n8n.py :: test_nenhum_destino_fora_da_autoridade_oficial"],
+      "mecanismo": "varredura textual no JSON inteiro"
+    },
+    {
+      "n": 28,
+      "exigencia": "destino exclusivamente database.agenciavolc.com.br",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: destinos são exclusivamente database.agenciavolc.com.br e googleads.googleapis.com", "python3 scripts/verificar_autoridade_supabase.py"],
+      "mecanismo": "conjunto de hosts extraído do JSON, comparado com a allowlist; qualquer host novo falha",
+      "nota": "googleads.googleapis.com é a origem de leitura, não destino de escrita"
+    },
+    {
+      "n": 29,
+      "exigencia": "nenhuma mutação Google alcançável",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: nenhuma mutação Google Ads alcançável / a consulta é SELECT/FROM/WHERE / os 27 campos GAQL existem nos descriptors v25", "backend/tests/test_gads_workflows_n8n.py :: test_nenhuma_mutacao_google_alcancavel", "python3 scripts/gate_sem_mutacao_google.py"],
+      "mecanismo": "cinco padrões de mutate + verbo de escrita no GAQL + a consulta montada em JS que começa literalmente por SELECT",
+      "limitacao": "os campos existem no recurso segundo o SDK v25 instalado; isso NÃO prova que o par (recurso, campo) é selecionável em GAQL — só `google_ads_field` da API responde"
+    },
+    {
+      "n": 30,
+      "exigencia": "nenhuma activation API do n8n chamada",
+      "estado": "provada",
+      "onde": ["scripts/validar_workflows_n8n_gads.py :: nenhuma chamada de ativação da API do n8n", "scripts/gate_agenda_unica_gads.py :: nenhum artefato rastreado ativa workflow por API"],
+      "mecanismo": "varredura em TODO arquivo rastreado por /api/v1/workflows/*/activate, /rest/workflows/*/activate e pelo nó n8n-nodes-base.n8n",
+      "extra": "esta lane nunca teve credencial de n8n; nenhuma chamada de rede ao n8n foi feita"
+    }
+  ],
+  "contraprovas_extras_nao_exigidas": [
+    {
+      "nome": "o contexto da iteração não vem de índice de rodada",
+      "onde": "backend/tests/test_gads_workflows_n8n.py :: test_o_contexto_da_iteracao_vem_do_merge_e_nao_de_indice_de_rodada",
+      "por_que_existe": "DEFEITO REAL encontrado pelo simulador antes de qualquer ativação: o contexto vinha de $('Pagina: preparar pedido'), e $() resolve pelo ÍNDICE DA RODADA do nó que pergunta. Uma conta que falha faz o pedido rodar mais vezes que a normalização, e a partir dali cada iteração lia o contexto de OUTRA conta, em silêncio. A defesa passou a ser dois Merge por posição."
+    },
+    {
+      "nome": "os nomes de campo do fluxo são os que a RPC valida",
+      "onde": "backend/tests/test_gads_workflows_n8n.py :: test_o_documento_do_fluxo_usa_os_nomes_que_a_rpc_espera",
+      "por_que_existe": "um `cost_micros` no fluxo contra um `custo_micros` no banco passaria em qualquer teste isolado dos dois lados"
+    },
+    {
+      "nome": "identidade devolvida é reconferida",
+      "onde": "scripts/simular_gads_ledger_v12.mjs :: conta devolvida diferente da pedida derruba a página",
+      "por_que_existe": "mesma doutrina de P09-T14: um filtro remoto ignorado devolveria a conta errada com a mesma cara"
+    },
+    {
+      "nome": "zero conta autorizada falha fechado",
+      "onde": "scripts/simular_gads_ledger_v12.mjs :: zero conta autorizada para a execução em vez de declarar vazio",
+      "por_que_existe": "seguir daria um recibo verde de uma rodada que não leu nada"
+    },
+    {
+      "nome": "D0 e D-1 compartilham o mesmo código, byte a byte",
+      "onde": "scripts/validar_workflows_n8n_gads.py :: D0 e D-1 compartilham o MESMO código / backend/tests :: test_os_dois_papeis_compartilham_o_mesmo_codigo",
+      "por_que_existe": "foi divergindo assim que o legado ganhou `Code` e `Code15` fazendo quase a mesma coisa de jeitos diferentes"
+    },
+    {
+      "nome": "round trip de import/export",
+      "onde": "scripts/validar_workflows_n8n_gads.py :: sobrevive ao round trip / payload público completo / nenhum nó carrega campo interno de execução",
+      "por_que_existe": "o contrato público do PUT rejeita propriedades internas que o GET inclui"
+    },
+    {
+      "nome": "a série reservada a outras lanes não foi tocada",
+      "onde": "backend/tests/test_gads_workflows_n8n.py :: test_a_migration_nao_toca_a_serie_reservada_a_outra_lane",
+      "por_que_existe": "v13_01 é da lane M-W2-02 e v12_03 é do PMax; a migration desta lane é v12_04 e ABORTA se as tabelas já existirem"
+    }
+  ]
+}
