@@ -137,6 +137,28 @@ def _fonte_de_reconciliacao() -> Any:
     return persistencia.FonteDeReconciliacao(base, chave)
 
 
+def _repositorio_de_plano() -> Any:
+    """A única porta de escrita do plano de mensuração (migration v12_02).
+
+    ⚠️ Ela NÃO levanta quando falta credencial, e a diferença com
+    `_fonte_de_reconciliacao` acima é deliberada. Ali a ausência de credencial é
+    uma leitura que não pode ser feita, e o 503 é imediato. Aqui o objeto nasce
+    com `habilitado=False` e quem decide o que fazer com isso é a ROTA: `/subir`
+    trata como recusa (uma campanha sem plano gravado é uma campanha que ninguém
+    explica depois), e as rotas de leitura tratam como "ainda não há linha".
+
+    Fabricar o 503 aqui dentro apagaria essa diferença, e faria uma rota de
+    leitura morrer por falta de uma escrita que ela não ia fazer.
+    """
+    from app.config import get_settings as _cfg  # noqa: PLC0415
+    from app.trafego import persistencia  # noqa: PLC0415
+
+    cfg = _cfg()
+    return persistencia.RepositorioDePlanoDeMensuracao(
+        str(getattr(cfg, "supabase_url", "") or ""),
+        str(getattr(cfg, "supabase_service_role_key", "") or ""))
+
+
 def _supa() -> SupabaseService:
     supa = SupabaseService(get_settings())
     if not supa.enabled:
@@ -2613,7 +2635,29 @@ async def provar(
         # sobre medir (G1), observar (G2) ou poder ativar (G3). Uma campanha em
         # lance automático sem sinal chegando otimiza para nada e gasta o
         # orçamento inteiro aprendendo o que ninguém mediu.
-        "prontidao": prontidao_do_lancamento.para_json(),
+        "prontidao": {
+            **prontidao_do_lancamento.para_json(),
+            # ⚠️ CAMPO PRÓPRIO, e não um booleano dentro do plano.
+            #
+            # "plano calculado" e "plano persistido" são coisas diferentes, e a
+            # tela precisa das duas separadas: a primeira diz o que se sabe
+            # sobre a medição; a segunda diz se isso sobreviveu à requisição.
+            # `/provar` produz só a primeira, e diz isso em voz alta em vez de
+            # deixar a tela supor — supor "gravado" faria o operador acreditar
+            # que existe registro do que ele está vendo, e não existe.
+            #
+            # ⚠️ E `recibo_registrado` continua `False` ao lado: nascimento é
+            # sobre mutate mais recibo, nunca sobre plano gravado. Somar os dois
+            # num campo só faria a nota de `campaign_birth` mentir.
+            "plano_persistido": {
+                "persistido": False,
+                "plano_id": None,
+                "porque": (
+                    "/provar não escreve: ele calcula o plano e o mostra. A "
+                    "gravação acontece em /subir, depois da confirmação humana "
+                    "e antes de qualquer chamada ao Google."),
+            },
+        },
     }
 
 
@@ -3038,6 +3082,49 @@ async def subir(
         )
 
     # ═══════════════════════════════════════════════════════════════════════
+    # O PLANO DE MENSURAÇÃO — LIDO AQUI, GRAVADO DEPOIS DO RECIBO
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ A LEITURA vem ANTES do `abrir`, e a GRAVAÇÃO vem DEPOIS do `despachar`.
+    # Não é a mesma coisa e a ordem tem uma razão medida em cada metade.
+    #
+    # A leitura são CINCO consultas GAQL com teto de 30 s, e ela pode falhar.
+    # Rodá-la depois do `abrir` faria um timeout deixar um recibo `em_voo` órfão
+    # para uma chamada que nunca saiu — e a camada 4 da v10_03 passaria a
+    # bloquear o item até alguém reconciliar uma tentativa que não existiu.
+    #
+    # A gravação é rápida e é a ÚLTIMA coisa antes da rede, porque é ela que o
+    # contrato manda ser obrigatória: se ela falhar, o Google não é chamado.
+    #
+    # ⚠️ `campaign_id=None` porque a campanha ainda não existe — é esse o ponto
+    # inteiro de P05-T12. A `chave_intencao` é a mesma que `/provar` calculou
+    # para este corpo, e é ela que vai unir esta linha à do pós-nascimento.
+    lido_em_do_plano = _agora_iso()
+    plano_de_mensuracao = await _plano_de_mensuracao(
+        cid, mid, campaign_id=None, chave_intencao=chave_intencao)
+    if plano_de_mensuracao is None:
+        # A leitura não completou. O que se sabe é "nada", e o plano diz isso —
+        # em vez de não existir linha nenhuma, que seria indistinguível de
+        # ninguém ter tentado.
+        plano_de_mensuracao = _plano_de_ignorancia(
+            cid, mid, chave_intencao=chave_intencao)
+
+    repo_do_plano = _repositorio_de_plano()
+    if not getattr(repo_do_plano, "habilitado", False):
+        # ⚠️ MESMO RACIOCÍNIO DO LEDGER AUSENTE, e pela mesma razão.
+        #
+        # `/subir` não tem modo dry: ele cria campanha de verdade. Um processo
+        # sem Supabase pode provar à vontade (`/provar` não escreve nada); o que
+        # ele não pode é escrever uma campanha cujo plano de mensuração não tem
+        # onde ser gravado.
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "O repositório do plano de mensuração não está configurado "
+                "neste processo, então não há onde registrar o que se sabe "
+                "sobre a medição desta campanha. NADA foi enviado ao Google."))
+
+    # ═══════════════════════════════════════════════════════════════════════
     # O LEDGER, ANTES DA ÚNICA CHAMADA QUE MUTA
     # ═══════════════════════════════════════════════════════════════════════
     #
@@ -3156,6 +3243,28 @@ async def subir(
                     "uma campanha que ninguém consegue reconciliar depois."),
         ) from exc
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # O PLANO PERSISTIDO — a última escrita antes da rede
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ Falhar aqui ABORTA, e fecha o recibo como erro. O recibo já está
+    # `em_voo` (o `despachar` acima commitou), e abandoná-lo assim deixaria a
+    # camada 4 bloqueando este item para sempre — uma campanha que nunca foi
+    # criada e que ninguém consegue mais tentar criar.
+    #
+    # `fechar_erro` é o desfecho HONESTO deste caso, e é o mesmo que as guardas
+    # locais do executor usam logo abaixo: a plataforma nem chegou a ser
+    # consultada, então "falha confirmada e reentrável" é literalmente verdade.
+    try:
+        plano_id = await _gravar_plano(
+            repo_do_plano, plano_de_mensuracao, lido_em=lido_em_do_plano)
+    except Exception as exc:  # noqa: BLE001 — traduzida logo abaixo, por tipo
+        await _fechar_recibo_com_erro(ledger, despacho, exc,
+                                      codigo=type(exc).__name__)
+        log.warning("plano de mensuração do card %s não gravou; nada foi enviado",
+                    body.opportunity_id)
+        raise _recusa_de_plano(exc) from exc
+
     try:
         recibo = await asyncio.to_thread(sb.subir, preparo, motivo=body.motivo)
     except (sb.TravaAberta, sb.PayloadNaoValidado, sb.CanalSemMutacaoReal) as exc:
@@ -3194,6 +3303,8 @@ async def subir(
             status_code=504,
             detail=_detalhe_indeterminado(
                 despacho,
+                marca=marca, chave_intencao=chave_intencao, plano_id=plano_id,
+                mensagem=
                 "A chamada de criação não chegou ao fim de forma verificável. "
                 "NÃO reenvie: pode haver uma campanha criada na conta. O recibo "
                 "ficou registrado e a próxima ação é verificar na conta e "
@@ -3256,7 +3367,9 @@ async def subir(
         raise HTTPException(
             status_code=504,
             detail=_detalhe_indeterminado(despacho, motivo, ledger=fechamento,
-                                          recibo=recibo),
+                                          recibo=recibo, marca=marca,
+                                          chave_intencao=chave_intencao,
+                                          plano_id=plano_id),
         )
 
     # ⚠️ A CAMPANHA PASSA A EXISTIR NO NOSSO BANCO, e não só na conta do Google.
@@ -3290,11 +3403,30 @@ async def subir(
     # recibo fica `em_voo` — e isso é a verdade, não um bug: alguém precisa ir
     # à conta reconciliar. É estritamente melhor que o comportamento anterior,
     # em que a falha do registro virava um aviso e o rastro se perdia.
-    campaign_id = _campaign_id_do_recibo(recibo)
+    conta_do_recurso, campaign_id = _identidade_do_recibo(recibo)
     projetado["ledger"] = await _fechar_recibo_com_sucesso(
         ledger, despacho, campaign_id=campaign_id, cid=cid,
         recibo=recibo, preparo=preparo,
     )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # O VÍNCULO — a mesma observação, agora com endereço
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ DEPOIS de `_fechar_recibo_com_sucesso`, e a ordem é imposta pelo
+    # schema: é o `fechar` do ledger que declara a identidade em
+    # `trafego_campanha`, e `trafego_campanha_plano_de_mensuracao.volc_campaign_id`
+    # tem FK para lá com `on delete restrict`. Vincular antes violaria a chave
+    # estrangeira — depois do mutate, quando não há mais como voltar atrás.
+    #
+    # ⚠️ E ele NÃO derruba a resposta. A campanha já existe na conta quando
+    # chegamos aqui; falhar em 5xx trocaria um problema de registro por um de
+    # veiculação, e o operador ficaria sem o recibo de uma campanha que existe.
+    # O erro vira aviso NOMEADO, com a próxima ação dita.
+    projetado["plano_de_mensuracao"] = await _vincular_plano_ao_nascimento(
+        repo_do_plano, plano_de_mensuracao,
+        cid=cid, conta_do_recurso=conta_do_recurso, campaign_id=campaign_id,
+        lido_em=lido_em_do_plano, plano_id=plano_id)
 
     aviso_registro = await _registrar_campanha(
         body, recibo, cid, mid, canal=preparo.canal,
@@ -3338,6 +3470,14 @@ class ReconciliarEntrada(BaseModel):
     marca: Optional[str] = None
     login_customer_id: Optional[str] = None
     motivo: Optional[str] = None
+    #: A intenção que originou o lançamento, para religar o PLANO de mensuração
+    #: à campanha descoberta. Opcional, e é o corpo do 504 que a entrega — foi
+    #: para isso que ela passou a viajar lá.
+    #:
+    #: ⚠️ Sem ela ainda dá para reconciliar o RECIBO; o que não dá é ligar o
+    #: plano com certeza. O fallback pela marca é candidato, não identidade: são
+    #: 12 hex, e duas chaves com o mesmo prefixo são ambiguidade, não escolha.
+    chave_intencao: Optional[str] = None
 
     @model_validator(mode="after")
     def _exige_um_criterio(self):
@@ -3539,8 +3679,32 @@ async def reconciliar_lancamento(
             detail=f"Não consegui fechar o recibo no ledger: {exc}.",
         ) from exc
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # O PLANO DE MENSURAÇÃO, AGORA QUE A CAMPANHA TEM ENDEREÇO
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ SÓ quando `achou is True`. `achou=None` é ignorância nossa e `False` é
+    # ausência conferida: nenhum dos dois autoriza dizer que existe campanha à
+    # qual ligar o plano.
+    #
+    # ⚠️ E ele NÃO cria intenção nenhuma. O plano pré-nascimento já está no
+    # banco — `/subir` o gravou ANTES do mutate, e é justamente por isso que ele
+    # sobreviveu à resposta que se perdeu. Esta rota acha aquela linha pela
+    # `chave_intencao` e grava a versão vinculada ao lado dela.
+    plano_projetado: Dict[str, Any] = {
+        "vinculo": {"vinculado": False,
+                    "porque": "a leitura não encontrou campanha para vincular",
+                    "proxima_acao": "reconciliar"}}
+    id_encontrado = str(primeira.get("campaign_id") or "")
+    if achou is True and id_encontrado:
+        plano_projetado = await _vincular_plano_reconciliado(
+            cid=cid, campaign_id=id_encontrado,
+            chave_intencao=str(body.chave_intencao or ""),
+            marca=str(body.marca or ""))
+
     return {
         "reconciliacao": reconciliado,
+        "plano_de_mensuracao": plano_projetado,
         "leitura": {
             "customer_id": cid,
             "campaign_id": str(body.campaign_id or "") or None,
@@ -3618,10 +3782,283 @@ def _resposta_bruta_do_recibo(recibo: Any) -> Dict[str, Any]:
     }
 
 
-def _detalhe_indeterminado(despacho: Any, mensagem: str, *,
+#: Teto da leitura do plano dentro de `/subir`. O MESMO de `/provar`
+#: (`TIMEOUT_PLANO_S`), por construção: são as mesmas cinco consultas, e dois
+#: tetos diferentes para a mesma leitura fariam a prova e a criação
+#: discordarem sobre o que é "demorou demais".
+
+
+def _plano_de_ignorancia(cid: str, mid: str, *, chave_intencao: str):
+    """O plano quando a leitura NÃO completou. Honesto, e gravável.
+
+    ⚠️ Ele não é um atalho: `pm.montar` sem argumento nenhum produz o padrão de
+    ignorância com causa — todos os estados `nao_coletado`, `completo=False` e
+    os bloqueadores nomeados. É exatamente o que a v12_02 aceita e o que os
+    portões G0–G3 leem para manter a ativação fechada.
+
+    A alternativa seria recusar a criação quando a leitura falha. Ela foi
+    descartada: a campanha nasce PAUSADA e a ativação continua bloqueada pelo
+    próprio plano gravado, então o risco é zero — e recusar transformaria uma
+    indisponibilidade do Google numa indisponibilidade do VOLC.
+    """
+    from app.trafego import plano_mensuracao as pm  # noqa: PLC0415
+
+    return pm.montar(customer_id=cid, login_customer_id=mid,
+                     chave_intencao=chave_intencao)
+
+
+async def _gravar_plano(repo: Any, plano: Any, *, lido_em: str,
+                        volc_campaign_id: Optional[str] = None,
+                        vinculo: Optional[Dict[str, Any]] = None) -> str:
+    """Traduz o plano e o grava pela ÚNICA porta governada. Devolve `plano_id`.
+
+    ⚠️ `service_role` não tem INSERT na tabela: a escrita passa por
+    `volc_registrar_plano_de_mensuracao`, onde a idempotência pela impressão
+    mora dentro de uma transação. Um INSERT direto a jogaria para o lado de quem
+    chama, e ela sumiria no primeiro retry.
+    """
+    from app.trafego import persistencia  # noqa: PLC0415
+
+    documento = persistencia.documento_de_plano_de_mensuracao(
+        plano.para_json(), lido_em=lido_em,
+        volc_campaign_id=volc_campaign_id, vinculo=vinculo)
+    return await repo.registrar(documento)
+
+
+async def _vincular_plano_ao_nascimento(
+        repo: Any, plano: Any, *, cid: str, conta_do_recurso: str,
+        campaign_id: str, lido_em: str, plano_id: Optional[str],
+) -> Dict[str, Any]:
+    """Grava a segunda versão do plano, agora ligada à campanha que nasceu.
+
+    ## As três recusas, e nenhuma delas levanta
+
+    1. **Sem `campaign_id`** — a API não devolveu `resource_name` de campanha.
+       Criou alguma coisa e não sabemos o quê; inventar um id seria pior que
+       não vincular.
+    2. **Conta do recurso ≠ conta do escopo** — o `resource_name` veio de outra
+       conta. `volc_campaign_id` é `uuid5(gads:<conta>:<campanha>)`, e derivá-lo
+       com a conta do escopo mais o id alheio cunharia uma identidade que aponta
+       para uma campanha que não é essa.
+    3. **A escrita falhou** — o banco caiu depois do mutate.
+
+    Nos três casos a resposta é 200 com o vínculo declarado `false` e a próxima
+    ação dita. `/reconciliar` fecha o que sobrou, e é por isso que ele existe.
+
+    ⚠️ `vinculado: false` NUNCA é omitido nem colapsado com "não há plano". A
+    tela precisa da diferença entre "esta campanha não tem plano" e "o plano
+    existe, foi gravado antes da criação, e a ligação com o id ainda não foi
+    feita".
+    """
+    from app.trafego import plano_mensuracao as pm  # noqa: PLC0415
+    from app.trafego import sincronizador as sinc  # noqa: PLC0415
+
+    base: Dict[str, Any] = {
+        "plano_id": plano_id,
+        "impressao": plano.impressao(),
+        "chave_intencao": plano.chave_intencao,
+        "lido_em": lido_em,
+    }
+    if not campaign_id:
+        return {**base, "vinculo": {
+            "vinculado": False,
+            "porque": ("a API não devolveu resource_name de campanha, então "
+                       "não há id ao qual ligar o plano"),
+            "proxima_acao": "reconciliar"}}
+    if escopo.so_digitos(conta_do_recurso) != escopo.so_digitos(cid):
+        log.error("recurso criado veio da conta %s e o escopo é %s",
+                  conta_do_recurso, cid)
+        return {**base, "vinculo": {
+            "vinculado": False,
+            "porque": ("o recurso criado pertence a outra conta; vincular o "
+                       "plano derivaria uma identidade interna errada"),
+            "proxima_acao": "reconciliar"}}
+
+    try:
+        vinculado = pm.vincular_ao_nascimento(plano, campaign_id=campaign_id)
+        volc_campaign_id = sinc.volc_campaign_id(cid, campaign_id)
+        novo_id = await _gravar_plano(
+            repo, vinculado, lido_em=lido_em,
+            volc_campaign_id=volc_campaign_id,
+            vinculo={
+                "momento": "pos_nascimento",
+                "impressao_anterior": plano.impressao(),
+                "plano_id_anterior": plano_id,
+                # ⚠️ A ressalva que impede a linha de mentir daqui a seis meses.
+                # Os estados de leitura dela descrevem uma observação feita
+                # ANTES de a campanha existir — `metas_da_campanha_estado` é
+                # `inelegivel` porque a pergunta não cabia, e não porque a
+                # campanha tenha metas inelegíveis.
+                "observado_antes_do_nascimento": True,
+                "vinculado_em": _agora_iso(),
+            })
+    except Exception as exc:  # noqa: BLE001 — a campanha já existe; nunca 5xx
+        log.exception("vínculo do plano à campanha %s falhou", campaign_id)
+        return {**base, "vinculo": {
+            "vinculado": False,
+            "porque": f"a gravação do vínculo falhou: {str(exc)[:200]}",
+            "proxima_acao": "reconciliar"}}
+
+    return {**base, "vinculo": {
+        "vinculado": True,
+        "plano_id": novo_id,
+        "campaign_id": campaign_id,
+        "volc_campaign_id": volc_campaign_id,
+        "impressao": vinculado.impressao(),
+        "versao": vinculado.versao,
+        "observado_antes_do_nascimento": True,
+    }}
+
+
+async def _vincular_plano_reconciliado(
+        *, cid: str, campaign_id: str, chave_intencao: str = "",
+        marca: str = "") -> Dict[str, Any]:
+    """Liga o plano JÁ GRAVADO à campanha que a leitura tardia encontrou.
+
+    ## O que esta função não faz
+
+    Ela NÃO lê o Google, NÃO monta plano novo e NÃO cria intenção. A linha
+    pré-nascimento existe porque `/subir` a gravou antes do mutate — é
+    exatamente por isso que ela sobreviveu à resposta que se perdeu. O que falta
+    é dar endereço a ela, e endereço é a única coisa que a leitura tardia
+    descobriu.
+
+    ## Como a linha é encontrada
+
+    Pela `chave_intencao`, que o corpo do 504 entrega. Sem ela, pelo PREFIXO
+    derivado da marca — e aí duas chaves distintas casando é AMBIGUIDADE, com
+    recusa nomeada. Escolher a primeira seria a máquina decidindo qual intenção
+    é "a certa" e carimbando a outra como se não existisse; é a mesma decisão
+    que esta rota já toma quando duas campanhas casam o critério.
+
+    ⚠️ Nada aqui derruba a resposta. A reconciliação do RECIBO já aconteceu e
+    vale por si; o vínculo do plano é uma segunda coisa, e o desfecho dela vai
+    no corpo, dito com todas as letras.
+    """
+    from app.trafego import plano_mensuracao as pm  # noqa: PLC0415
+    from app.trafego import sincronizador as sinc  # noqa: PLC0415
+
+    def _sem(porque: str) -> Dict[str, Any]:
+        return {"vinculo": {"vinculado": False, "porque": porque,
+                            "proxima_acao": "reconciliar"}}
+
+    repo = _repositorio_de_plano()
+    if not getattr(repo, "habilitado", False):
+        return _sem("o repositório do plano não está configurado neste processo")
+
+    try:
+        chave = str(chave_intencao or "").strip()
+        if chave:
+            linhas = await repo.por_intencao(chave)
+        else:
+            prefixo = str(marca or "").strip()
+            prefixo = prefixo.split("-")[-1] if "-" in prefixo else prefixo
+            linhas = await repo.por_prefixo_de_intencao(prefixo)
+            chaves = {str(l.get("chave_intencao") or "") for l in linhas}
+            if len(chaves) > 1:
+                return _sem(
+                    f"a marca casou {len(chaves)} intenções diferentes; "
+                    "escolher uma esconderia a outra. Reconcilie informando "
+                    "`chave_intencao`.")
+    except Exception as exc:  # noqa: BLE001
+        log.exception("leitura do plano para reconciliar falhou")
+        return _sem(f"não consegui ler o plano gravado: {str(exc)[:200]}")
+
+    if not linhas:
+        return _sem("não há plano de mensuração gravado para esta intenção")
+
+    ja = next((l for l in linhas
+               if str(l.get("campaign_id") or "") == str(campaign_id)), None)
+    if ja is not None:
+        # Idempotência: reconciliar duas vezes não grava duas versões.
+        return {"vinculo": {"vinculado": True, "ja_estava": True,
+                            "campaign_id": str(campaign_id),
+                            "impressao": ja.get("impressao"),
+                            "observado_antes_do_nascimento": True}}
+
+    pre = next((l for l in linhas if not l.get("campaign_id")), None)
+    if pre is None:
+        return _sem("as linhas desta intenção já apontam para outra campanha")
+
+    try:
+        plano = pm.do_json(pre.get("payload") or {})
+        vinculado = pm.vincular_ao_nascimento(plano, campaign_id=str(campaign_id))
+        volc_campaign_id = sinc.volc_campaign_id(cid, str(campaign_id))
+        novo_id = await _gravar_plano(
+            repo, vinculado,
+            lido_em=str(pre.get("lido_em") or _agora_iso()),
+            volc_campaign_id=volc_campaign_id,
+            vinculo={
+                "momento": "pos_nascimento",
+                "por": "reconciliacao",
+                "impressao_anterior": pre.get("impressao"),
+                "plano_id_anterior": pre.get("plano_id"),
+                "observado_antes_do_nascimento": True,
+                "vinculado_em": _agora_iso(),
+            })
+    except Exception as exc:  # noqa: BLE001
+        log.exception("vínculo reconciliado do plano falhou")
+        return _sem(f"a gravação do vínculo falhou: {str(exc)[:200]}")
+
+    return {"vinculo": {
+        "vinculado": True,
+        "plano_id": novo_id,
+        "campaign_id": str(campaign_id),
+        "volc_campaign_id": volc_campaign_id,
+        "impressao": vinculado.impressao(),
+        "versao": vinculado.versao,
+        "observado_antes_do_nascimento": True,
+        "por": "reconciliacao",
+    }}
+
+
+def _recusa_de_plano(exc: Exception) -> HTTPException:
+    """A exceção tipada da persistência → a recusa que o operador lê.
+
+    As três saídas são diferentes de propósito. Guarda do schema é 409 e o
+    operador precisa da mensagem inteira: ela nomeia qual invariante disparou.
+    Migration ausente é 503 e nomeia o ARQUIVO — a saída é aplicá-lo, não tentar
+    de novo. Banco fora do ar é 503 e a saída é tentar de novo.
+    """
+    from app.trafego import persistencia  # noqa: PLC0415
+
+    if isinstance(exc, persistencia.PlanoRecusado):
+        return HTTPException(
+            status_code=409,
+            detail=(f"O banco recusou o plano de mensuração: {exc}. NADA foi "
+                    "enviado ao Google — um plano que as guardas da v12_02 "
+                    "recusam é um plano que não devia ter sido montado."))
+    ausente = getattr(exc, "migration_ausente", False)
+    return HTTPException(
+        status_code=503,
+        detail=(f"Não consegui gravar o plano de mensuração ({exc}). Por "
+                "segurança, NADA foi enviado ao Google: uma campanha criada "
+                "sem o plano registrado é uma campanha sobre a qual ninguém "
+                "consegue dizer depois o que se sabia quando ela nasceu."
+                + ("" if not ausente else
+                   " Esta é a causa mais provável de você estar lendo isto num "
+                   "ambiente novo: a migration ainda não foi aplicada.")))
+
+
+def _detalhe_indeterminado(despacho: Any, mensagem: str = "", *,
                            ledger: Optional[Dict[str, Any]] = None,
-                           recibo: Any = None) -> Dict[str, Any]:
-    """O corpo do 504. `reenvio_permitido` é False e não tem exceção."""
+                           recibo: Any = None,
+                           marca: str = "",
+                           chave_intencao: str = "",
+                           plano_id: Optional[str] = None) -> Dict[str, Any]:
+    """O corpo do 504. `reenvio_permitido` é False e não tem exceção.
+
+    ⚠️ `marca` e `chave_intencao` VIAJAM, e a falta delas era um defeito que
+    fechava a única saída deste estado. `proxima_acao` diz "reconciliar", e
+    `ReconciliarEntrada` exige `campaign_id` OU `marca` — mas o item que mais
+    precisa de reconciliação é justamente o que NÃO tem `campaign_id`, porque a
+    chamada não respondeu. A resposta mandava o operador a uma porta e não lhe
+    dava a chave dela.
+
+    `plano_id` entra porque o plano de mensuração JÁ está gravado quando este
+    corpo é montado — ele é escrito antes do mutate. Dizer qual linha é permite
+    que a reconciliação vincule aquela, e não uma nova.
+    """
     detalhe: Dict[str, Any] = {
         "estado": "indeterminado",
         "mensagem": mensagem,
@@ -3629,6 +4066,9 @@ def _detalhe_indeterminado(despacho: Any, mensagem: str, *,
         "item_id": getattr(despacho, "item_id", None),
         "reenvio_permitido": False,
         "proxima_acao": "reconciliar_na_conta",
+        "marca": marca or None,
+        "chave_intencao": chave_intencao or None,
+        "plano_de_mensuracao_id": plano_id,
     }
     if recibo is not None:
         detalhe["erro_codigo"] = _erro_codigo_do_recibo(recibo)
@@ -3638,13 +4078,49 @@ def _detalhe_indeterminado(despacho: Any, mensagem: str, *,
     return detalhe
 
 
+#: `customers/<conta>/campaigns/<campanha>` — as DUAS metades, e nada mais.
+#:
+#: ⚠️ O `$` no fim não é enfeite. Sem ele, `customers/1/campaigns/2/adGroups/3`
+#: casaria e devolveria a conta certa com a campanha certa a partir de um
+#: recurso que não é campanha nenhuma.
+_RECURSO_DE_CAMPANHA = re.compile(r"^customers/(\d{6,12})/campaigns/(\d+)$")
+
+
+def _identidade_do_recibo(recibo: Any) -> tuple[str, str]:
+    """`(customer_id, campaign_id)` do recurso criado — ou `("", "")`.
+
+    ## Por que as duas metades, e não só o id
+
+    A identidade interna é `uuid5(gads:<conta>:<campanha>)`
+    (`sincronizador.volc_campaign_id`), e ela EXIGE a conta. Extrair só o id com
+    `rsplit("/", 1)[-1]` — que é o que esta rota fazia — descarta em silêncio a
+    única prova de que a campanha criada pertence à conta em que se pediu para
+    criá-la. Um `resource_name` de outra conta produziria um `volc_campaign_id`
+    derivado com a conta do escopo e o id alheio: dois endereços apontando para
+    a mesma linha, que é exatamente o defeito que o índice
+    `trafego_campanha_identidade_externa_ux` existe para descobrir tarde demais.
+
+    ⚠️ `campaign_budget_result` NÃO casa, e hoje isso é sorte de nomenclatura: o
+    recurso de verba é `customers/<c>/campaignBudgets/<id>` — camelCase, plural
+    diferente. A regex fecha isso por FORMA, e não por confiar no nome do tipo.
+    """
+    for criado in (getattr(recibo, "criados", ()) or ()):
+        casou = _RECURSO_DE_CAMPANHA.match(
+            str(getattr(criado, "resource_name", "") or "").strip())
+        if casou:
+            return casou.group(1), casou.group(2)
+    return "", ""
+
+
 def _campaign_id_do_recibo(recibo: Any) -> str:
-    """O id que a API atribuiu, extraído do `resource_name`. Única fonte dele."""
-    rn = next(
-        (c.resource_name for c in (getattr(recibo, "criados", ()) or ())
-         if "campaign_result" in getattr(c, "tipo", "") or "/campaigns/" in c.resource_name),
-        "")
-    return rn.rsplit("/", 1)[-1] if rn and "/campaigns/" in rn else ""
+    """O id que a API atribuiu. Única fonte dele.
+
+    Delega para `_identidade_do_recibo` porque a extração precisa existir UMA
+    vez: ela estava duplicada aqui e em `_registrar_campanha`, com dois
+    critérios ligeiramente diferentes, e duas derivações da mesma coisa é como
+    nasce o dia em que elas discordam.
+    """
+    return _identidade_do_recibo(recibo)[1]
 
 
 async def _fechar_recibo_com_sucesso(
@@ -3736,6 +4212,19 @@ def _hoje_iso() -> str:
     from datetime import date
 
     return date.today().isoformat()
+
+
+def _agora_iso() -> str:
+    """O instante da LEITURA, com fuso, para carimbar `lido_em`.
+
+    ⚠️ Com fuso explícito, e não `datetime.now()` nu. `lido_em` é
+    `timestamptz` na v12_02 e um instante ingênuo chegaria lá interpretado no
+    fuso do servidor — que não é o fuso da conta nem o do operador, e é
+    exatamente a confusão que a coluna `fuso` do plano existe para não repetir.
+    """
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
 
 
 async def _registrar_campanha(

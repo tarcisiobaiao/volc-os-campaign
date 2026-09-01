@@ -50,6 +50,54 @@ IDENTIDADE = Identidade(
 )
 
 
+@pytest.fixture(autouse=True)
+def _repositorio_de_plano_de_teste(monkeypatch: pytest.MonkeyPatch):
+    """`/subir` grava o PLANO DE MENSURAÇÃO antes do mutate. Aqui ele é dublê.
+
+    ⚠️ Sem este dublê a rota recusa com 503 — corretamente. Desde a costura do
+    caminho produtivo, uma campanha só nasce se o plano de mensuração tiver onde
+    ser gravado: criar sem ele produz exatamente a campanha que ninguém consegue
+    explicar depois. Num processo de teste não há Supabase, então o repositório
+    real nasce `habilitado=False`.
+
+    ⚠️ Ele NÃO escreve no `diario` destes arquivos, de propósito. A ORDEM que
+    eles provam é a do ledger, e um ato a mais na lista faria toda asserção de
+    sequência daqui falhar por uma razão que não é a delas. Quem prova a ordem
+    do plano é `test_trafego_plano_persistido.py`.
+    """
+    from test_trafego_plano_persistido import RepoDePlanoDeTeste
+
+    repo = RepoDePlanoDeTeste(diario=[])
+    monkeypatch.setattr(trafego, "_repositorio_de_plano", lambda: repo)
+
+    # ⚠️ E a SEGUNDA porta, que este arquivo prometia fechar e não fechava.
+    #
+    # `_prontidao_do_lancamento` chama `contas.meta_de_conversao`, que desce até
+    # `volc_ads.gads.client.cliente` — e `cliente` é `lru_cache`. Com um
+    # `google-ads.yaml` presente na máquina, `load_from_storage` REFRESCA o
+    # token, ou seja, fala com o Google antes de qualquer consulta.
+    #
+    # A suíte inteira passava por sorte: algum módulo importado antes já tinha
+    # povoado esse cache. Rodar SÓ este arquivo abria socket e a fixture de rede
+    # derrubava vinte testes por um motivo que não era o deles. A rota captura a
+    # exceção e segue com `metas=None`, que é o caminho honesto de "não li".
+    from app.trafego import contas as ct
+
+    def _sem_metas(*_a, **_k):
+        raise RuntimeError("leitura de metas desligada neste arquivo de teste")
+
+    monkeypatch.setattr(ct, "meta_de_conversao", _sem_metas)
+
+    # E a TERCEIRA: a leitura do plano de mensuração, que são cinco consultas
+    # GAQL. `None` é o valor honesto — é exatamente o que a rota produz quando a
+    # leitura não completa, e `/subir` cai no plano de ignorância com causa.
+    async def _sem_plano(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(trafego, "_plano_de_mensuracao", _sem_plano)
+    return repo
+
+
 class LedgerDeTeste:
     """Um ledger que registra a ORDEM dos atos — é a ordem que está sob prova."""
 
