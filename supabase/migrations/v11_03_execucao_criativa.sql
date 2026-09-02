@@ -229,6 +229,13 @@ create table if not exists public.criativo_render_recibo (
     lufs_integrado        numeric,
     true_peak_dbtp        numeric,
     alvo_lufs             numeric,
+    -- ⚠️ A MARGEM. `MedidaDeAudio` (backend/app/criativo/bancada/contrato.py)
+    -- declara QUATRO numeros e o recibo guardava tres: a tolerancia ficava de
+    -- fora. Sem ela, "-15,8 com alvo -16" nao permite reconstruir se aquilo foi
+    -- PASS ou FAIL no dia — guardar a medida e o alvo e jogar fora a tolerancia
+    -- e preservar a conta pela metade. Mesmo tratamento de ausencia das outras
+    -- tres: NULL, nunca 0. "Nao foi medido" e "tolerancia zero" sao diferentes.
+    tolerancia_lufs       numeric,
 
     criado_em             timestamptz not null default now(),
 
@@ -276,6 +283,19 @@ create table if not exists public.criativo_render_artefato (
     -- ⚠️ `null` NÃO é "hash bate". É "ninguém comparou o objeto remoto com o
     -- sha256 local". Afirmar coincidência sem download é afirmar o que não se mediu.
     storage_hash_conferido boolean,
+    -- ⚠️ ACRESCENTADA. O booleano acima e o Python discordavam: aqui o veredito
+    -- era `boolean`, e `armazenamento_verificado.estado_de` recebe a STRING do
+    -- sha256 relido. As duas metades da mesma máquina não trocavam o mesmo tipo.
+    --
+    -- Hoje nada escreve nenhuma das duas — `deposito_postgres` não toca nestas
+    -- colunas e `para_registro()` não tem chamador de produção —, então isto não
+    -- quebrava a aplicação; quebraria no dia em que alguém ligasse os dois lados.
+    --
+    -- A resolução é ADITIVA, e não a troca do tipo: o booleano responde "bateu?"
+    -- e é o que os gatilhos e as provas já usam; o hash responde "o que voltou?",
+    -- que é a única pergunta útil no dia de um mismatch. Um booleano perde essa
+    -- resposta para sempre, e mismatch é exatamente quando a forense importa.
+    storage_sha256_remoto text,
 
     constraint criativo_render_artefato_bytes_positivos check (bytes > 0),
     constraint criativo_render_artefato_hash_forma check (sha256 ~ '^[0-9a-f]{64}$'),
@@ -296,6 +316,22 @@ create table if not exists public.criativo_render_artefato (
     -- Conferência sem carimbo, ou carimbo sem conferência, é meia verdade.
     constraint criativo_render_artefato_conferencia_coerente check (
         (storage_conferido_em is null) = (storage_hash_conferido is null)
+    ),
+    -- O hash remoto tem forma de hash, e só existe quando houve conferência:
+    -- um sha256 remoto sem carimbo seria um número sem leitura que o produziu.
+    constraint criativo_render_artefato_hash_remoto_forma check (
+        storage_sha256_remoto is null
+        or storage_sha256_remoto ~ '^[0-9a-f]{64}$'
+    ),
+    constraint criativo_render_artefato_hash_remoto_exige_conferencia check (
+        storage_sha256_remoto is null or storage_conferido_em is not null
+    ),
+    -- E o booleano não pode CONTRADIZER o hash: se o remoto é igual ao local,
+    -- `storage_hash_conferido` é `true`; se difere, é `false`. Sem esta amarra,
+    -- os dois campos poderiam contar histórias opostas sobre a mesma leitura.
+    constraint criativo_render_artefato_veredito_coerente check (
+        storage_sha256_remoto is null
+        or storage_hash_conferido = (storage_sha256_remoto = sha256)
     ),
     -- Não se confere o que não subiu.
     constraint criativo_render_artefato_conferencia_exige_chave check (
@@ -825,6 +861,7 @@ $seguranca$;
 do $verifica$
 declare
     n_tab integer; n_rls integer; n_pol integer; n_trg integer; n_priv integer;
+    n_rec integer;
 begin
     select count(*) into n_tab from pg_tables
      where schemaname='public' and tablename like 'criativo_render_%';
@@ -839,14 +876,29 @@ begin
     select count(*) into n_priv from information_schema.role_table_grants
      where table_schema='public' and table_name like 'criativo_render_%'
        and grantee in ('anon','authenticated','PUBLIC');
+    -- As QUATRO medidas de `MedidaDeAudio`. Contadas aqui porque a divergencia
+    -- entre contrato Python e schema e silenciosa: o INSERT simplesmente nao
+    -- manda a coluna que nao existe.
+    select count(*) into n_rec from information_schema.columns
+     where table_schema='public' and table_name='criativo_render_recibo'
+       and column_name in ('lufs_integrado','true_peak_dbtp','alvo_lufs','tolerancia_lufs');
 
     if n_tab <> 5 then raise exception 'v11_03: esperava 5 tabelas, achei %', n_tab; end if;
     if n_rls <> 5 then raise exception 'v11_03: RLS forcada em % de 5', n_rls; end if;
     if n_pol <> 0 then raise exception 'v11_03: esperava 0 policies, achei %', n_pol; end if;
-    if n_trg < 6 then raise exception 'v11_03: esperava >=6 gatilhos, achei %', n_trg; end if;
+    -- ⚠️ IGUALDADE EXATA. Esta era a unica das cinco conferencias deste bloco
+    -- que aceitava desigualdade: a migration cria SETE gatilhos e o `>= 6`
+    -- deixava passar verde uma edicao futura que perdesse um deles, com a
+    -- mensagem "v11_03 OK" logo abaixo. Uma verificacao que aceita menos do
+    -- que ela mesma criou nao verifica.
+    if n_trg <> 7 then raise exception 'v11_03: esperava 7 gatilhos, achei %', n_trg; end if;
     if n_priv <> 0 then raise exception 'v11_03: anon/authenticated tem % privilegio(s)', n_priv; end if;
 
-    raise notice 'v11_03 OK: 5 tabelas, RLS forcada, 0 policies, % gatilhos.', n_trg;
+    if n_rec <> 4 then
+        raise exception 'v11_03: recibo tem % das 4 medidas de audio do contrato', n_rec;
+    end if;
+
+    raise notice 'v11_03 OK: 5 tabelas, RLS forcada, 0 policies, % gatilhos, 4 medidas de audio.', n_trg;
 end
 $verifica$;
 

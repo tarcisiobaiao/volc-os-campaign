@@ -1,0 +1,349 @@
+{
+  "_leia": "Matriz de capacidades REAL da Fabrica Criativa, medida na worktree sprint/creative-factory-production-last-mile-v1. Um formato documentado nao e um formato executado, e um engine presente nao esta integrado ate atravessar a porta canonica. Cada linha traz a evidencia que sustenta o estado; onde nao ha evidencia executavel, o estado NAO e promovido.",
+  "_legenda": {
+    "documented_only": "existe em documento ou catalogo, e nao ha codigo executavel",
+    "fixture_verified": "ha codigo e teste, e o teste usa fixture — nenhum byte real de producao",
+    "executed_local": "executado nesta worktree, produzindo bytes reais, fora da porta canonica",
+    "executed_integrated": "executado ATRAVES da porta canonica, com recibo, gates e storage",
+    "live_provider_verified": "chamada real a um provider externo, confirmada",
+    "blocked": "existe e nao pode ser exercitado sem autorizacao externa",
+    "not_applicable": "a combinacao nao faz sentido neste sistema"
+  },
+  "_envelope_de_atos_externos": {
+    "provider_pago_chamado": 0,
+    "escrita_no_supabase_oficial": 0,
+    "leitura_do_supabase_oficial": 0,
+    "bucket_criado": 0,
+    "publicacao_em_plataforma": 0,
+    "migration_aplicada_em_producao": 0,
+    "escrita_no_parque_externo": 0
+  },
+  "portas_de_motor": {
+    "_achado": "Existem DUAS portas distintas, e nenhuma conhece a outra. Isto nao e defeito desta fatia e nao foi criado aqui; e o fato que decide o que significa 'integrado'.",
+    "porta_do_estudio": {
+      "caminho": "volc_ads/criativo/porta.py:182-202",
+      "nome": "MotorDeCriativo",
+      "forma": "Protocol runtime_checkable, dois passos (solicitar_geracao / receber)",
+      "campos": [
+        "nome",
+        "versao",
+        "tipos_suportados"
+      ]
+    },
+    "porta_da_bancada": {
+      "caminho": "backend/app/criativo/bancada/contrato.py",
+      "nome": "MotorDeProducao",
+      "forma": "Protocol sincrono de um passo",
+      "campos": [
+        "slug",
+        "versao",
+        "versoes_congeladas()",
+        "produzir()"
+      ],
+      "ganchos_opcionais_lidos_pelo_operario": [
+        "medir_contraste(encomenda)",
+        "medir_audio(encomenda, dir_trabalho)  # NOVO nesta fatia",
+        "gates(encomenda, dir_trabalho)        # NOVO nesta fatia",
+        "hashes_de_entrada(encomenda, dir_trabalho)  # NOVO nesta fatia",
+        "custo(encomenda)                      # NOVO nesta fatia",
+        "provider() / modelo() / licenca() / disclosure()  # NOVOS nesta fatia"
+      ],
+      "nota": "Esta e a porta que o worker despacha. 'executed_integrated' significa: atravessou ESTA porta, com recibo assinado, gates no recibo e artefato publicado e relido."
+    }
+  },
+  "engines": [
+    {
+      "slug": "remotion-local",
+      "midia": "video",
+      "porta": "bancada",
+      "local_sem_rede": true,
+      "estado": "executed_integrated",
+      "evidencia": "backend/app/criativo/bancada/adaptadores/remotion.py · backend/tests/test_criativo_golden_video.py (20 provas) · scripts/provar-render-hermetico.sh (17 provas) · MP4 1080x1920 h264/aac, 90 quadros CONTADOS, container byte-identico em 6 renders",
+      "observacao": "PRIMEIRO motor de video executavel do repositorio. Render em sandbox-exec com deny network-outbound: o kernel recusa connect(), nao ha amostragem."
+    },
+    {
+      "slug": "tipografico-local",
+      "midia": "imagem",
+      "porta": "bancada",
+      "local_sem_rede": true,
+      "estado": "executed_integrated",
+      "evidencia": "backend/app/criativo/bancada/adaptadores/tipografico.py · Pillow 12.3.0 + Inter-Variable.ttf versionada (OFL 1.1) · golden P17-T08",
+      "observacao": "Pillow importado dentro de produzir(); nao esta em backend/requirements.txt."
+    },
+    {
+      "slug": "png-local",
+      "midia": "imagem",
+      "porta": "bancada",
+      "local_sem_rede": true,
+      "estado": "executed_integrated",
+      "evidencia": "backend/app/criativo/bancada/adaptadores/png_local.py · so zlib e struct · 1080x1080 / 2625 bytes medidos",
+      "observacao": "O piso: registra-se FORA do try porque nao tem pre-requisito nenhum."
+    },
+    {
+      "slug": "png-local",
+      "midia": "imagem",
+      "porta": "estudio",
+      "local_sem_rede": true,
+      "estado": "executed_local",
+      "evidencia": "volc_ads/criativo/adaptadores/png_local.py · PNG 600x314 / 547 bytes, medir_imagem confirma a dimensao",
+      "observacao": "Mesma funcao `desenhar` que a bancada importa — um desenho so, dois envolucros."
+    },
+    {
+      "slug": "falso",
+      "midia": "imagem+video+texto",
+      "porta": "estudio",
+      "local_sem_rede": true,
+      "estado": "fixture_verified",
+      "evidencia": "volc_ads/criativo/adaptadores/falso.py — 128 bytes com MIME de imagem; medir_imagem devolve Medida(mime=None, largura=None)",
+      "observacao": "DUBLE. Os bytes NAO sao arquivo: existe para exercitar contrato, nunca para produzir peca. O medidor autoritativo o desmascara, e isso e desejado."
+    },
+    {
+      "slug": "gemini-imagem",
+      "midia": "imagem",
+      "porta": "estudio",
+      "local_sem_rede": false,
+      "estado": "blocked",
+      "evidencia": "services/creative_engine/motores/gemini_imagem.py — POST generativelanguage.googleapis.com, preco de referencia US$ 0,039/img; catalogado em v11_02:734-751",
+      "observacao": "PROVIDER PAGO. Sem credencial nesta worktree e nao chamado. Ligar exige autorizacao literal E ligar a apuracao de custo junto: o recibo tem os campos, e um provider ligado sem apuracao faz todo trabalho nascer com custo nulo."
+    },
+    {
+      "slug": "funnelforge (ponte)",
+      "midia": "imagem",
+      "porta": "estudio",
+      "local_sem_rede": false,
+      "estado": "documented_only",
+      "evidencia": "volc_ads/criativo/adaptadores/funnelforge_imagem.py exige um gerador injetado; o gerador real e OpenAIImageGenerator (gpt-image-2, api.openai.com), fora deste repo",
+      "observacao": "NADA neste repositorio o injeta. Adaptador sem consumidor."
+    },
+    {
+      "slug": "prensa",
+      "midia": "imagem",
+      "porta": "nenhuma",
+      "local_sem_rede": null,
+      "estado": "documented_only",
+      "evidencia": "linha em criativo_motor (v11_02) e CANVAS_NATIVO_EXTERNO em parque.py:192-197; grep por 'prensa' em backend/app, volc_ads e services nao acha adaptador nenhum",
+      "observacao": "Catalogo sem codigo. A propria docstring do tipografico diz: 'um pipeline que nao esta portado'."
+    },
+    {
+      "slug": "volc-factory (video observado)",
+      "midia": "video",
+      "porta": "leitura",
+      "local_sem_rede": true,
+      "estado": "executed_local",
+      "evidencia": "backend/app/criativo/video_observado.py — le builds de /Users/mac/volc-factory; 2 builds reais (short_das, short_odete), sha256 conferido contra o snapshot",
+      "observacao": "LEITURA, nao producao. A procedencia e `observado` e o token da procedencia oposta NAO existe no arquivo — ha teste que varre o fonte atras dele."
+    },
+    {
+      "slug": "TTS / sintese de fala",
+      "midia": "audio",
+      "porta": "nenhuma",
+      "local_sem_rede": null,
+      "estado": "documented_only",
+      "evidencia": "14 vozes catalogadas em criativo_voz (v11_02:860-878, provider gemini); nenhum adaptador implementa sintese",
+      "observacao": "NAO EXISTE. O leito sonoro do motor de video e SINTETIZADO por ffmpeg (senoides deterministas, sem licenca de terceiro) — isso e trilha, nao fala."
+    }
+  ],
+  "medicao": [
+    {
+      "o_que": "dimensao de imagem",
+      "como": "volc_ads/criativo/adaptadores/medir_imagem.py (stdlib)",
+      "estado": "executed_integrated",
+      "evidencia": "gate `dimensao` le do ARQUIVO; contraprova de motor que declara 1200x628 e grava 64x64"
+    },
+    {
+      "o_que": "dimensao, fps, quadros, duracao e codec de video",
+      "como": "volc_ads/criativo/adaptadores/medir_video.py (ffprobe 8.1.2)",
+      "estado": "executed_integrated",
+      "evidencia": "NOVO nesta fatia. video/mp4 entrou em _MIMES_MENSURAVEIS; quadros sao CONTADOS (-count_frames), nao lidos do cabecalho",
+      "achado_fechado": "antes disto um mp4 caia em SKIPPED nao-bloqueante e chegava a rendered sem que ninguem abrisse o arquivo"
+    },
+    {
+      "o_que": "LUFS integrado e true peak",
+      "como": "ffmpeg ebur128, sobre o ARTEFATO",
+      "estado": "executed_integrated",
+      "evidencia": "NOVO nesta fatia. MedidaDeAudio deixou de ser estrutura morta: medido -32,0 LUFS / -27,2 dBTP na peca canario",
+      "achado_fechado": "a v11_03 reservou 3 colunas numericas que nasceriam permanentemente nulas"
+    },
+    {
+      "o_que": "bytes e sha256 do artefato",
+      "como": "lidos do disco pelo operario",
+      "estado": "executed_integrated",
+      "evidencia": "gates `bytes_conferem` e `hash_confere`"
+    },
+    {
+      "o_que": "contraste",
+      "como": "gancho medir_contraste do motor tipografico",
+      "estado": "executed_integrated",
+      "evidencia": "gate `contraste` com o NUMERO no detalhe"
+    },
+    {
+      "o_que": "safe zone",
+      "como": "gancho gates() do motor de video",
+      "estado": "executed_integrated",
+      "evidencia": "margem de 10% declarada no codigo que DESENHA, nao em documento",
+      "limitacao": "e a margem declarada pela composicao, nao uma leitura de pixel do arquivo"
+    }
+  ],
+  "formatos_e_destinos": {
+    "_achado": "Ha DUAS fontes de formato e elas cobrem coisas diferentes. `requisitos.yaml` cobre SO canais do Google Ads. Meta, organico, feed/stories/reels/shorts vivem em destinos.py. Nenhuma das duas e superset da outra.",
+    "requisitos_yaml": {
+      "caminho": "volc_ads/criativo/requisitos.yaml",
+      "canais": [
+        "DISPLAY",
+        "DEMAND_GEN",
+        "PERFORMANCE_MAX",
+        "VIDEO"
+      ],
+      "estado": "fixture_verified",
+      "nota_video": "O canal VIDEO e `provisorio=True`: sem dimensao, sem duracao, sem peso. A fonte diz 'matriz-api ainda nao cobre campanhas de video'.",
+      "nao_cobre": [
+        "meta",
+        "organico",
+        "feed",
+        "stories",
+        "reels",
+        "shorts"
+      ]
+    },
+    "envelopes": [
+      {
+        "slug": "meta-feed-1x1",
+        "destino": "meta",
+        "midia": "imagem",
+        "medida": "1080x1080",
+        "estado": "executed_integrated",
+        "evidencia": "golden P17-T08, pacote completo e verificado"
+      },
+      {
+        "slug": "meta-feed-4x5",
+        "destino": "meta",
+        "midia": "imagem",
+        "medida": "1080x1350",
+        "estado": "executed_integrated",
+        "evidencia": "golden P17-T08"
+      },
+      {
+        "slug": "google-display-191x1",
+        "destino": "google",
+        "midia": "imagem",
+        "medida": "1200x628",
+        "estado": "executed_integrated",
+        "evidencia": "golden P17-T08"
+      },
+      {
+        "slug": "google-logo-1x1",
+        "destino": "google",
+        "midia": "imagem",
+        "medida": "1200x1200",
+        "estado": "executed_integrated",
+        "evidencia": "golden P17-T08"
+      },
+      {
+        "slug": "organico-reels-9x16",
+        "destino": "organico",
+        "midia": "imagem",
+        "medida": "1080x1920",
+        "estado": "executed_integrated",
+        "evidencia": "golden P17-T08"
+      },
+      {
+        "slug": "organico-reels-video-9x16",
+        "destino": "organico",
+        "midia": "video",
+        "medida": "1080x1920",
+        "estado": "executed_integrated",
+        "evidencia": "NOVO nesta fatia. Primeiro envelope de VIDEO do catalogo; peca real atravessou storage, releitura e pacote",
+        "achado": "TipoDeAsset.VIDEO existia no enum desde a v11 e nao tinha nenhum envelope: o tipo estava declarado e o formato nao. Sem alvo, 'validacao por destino' de video respondia sempre nao_avaliado por AUSENCIA, e nao por decisao."
+      }
+    ],
+    "declarados_no_banco_e_sem_executor": {
+      "fonte": "criativo_formato (v11_02:805-835) seeda 7 slots",
+      "sem_produtor_hoje": [
+        "16x9 (1920x1080)",
+        "3x4 (1080x1440)"
+      ],
+      "estado": "documented_only",
+      "nota": "A divergencia entre os 7 do banco e o que o executor conhece e medida e exposta, nao escondida."
+    }
+  },
+  "espinha_produtiva": [
+    {
+      "elo": "brief/receita",
+      "estado": "executed_integrated",
+      "evidencia": "Encomenda congelada com seed obrigatoria"
+    },
+    {
+      "elo": "job persistido",
+      "estado": "executed_integrated",
+      "evidencia": "deposito SQLite e Postgres pela mesma porta, 71 provas de contrato"
+    },
+    {
+      "elo": "claim exclusivo",
+      "estado": "executed_integrated",
+      "evidencia": "BEGIN IMMEDIATE (SQLite) e for update skip locked (Postgres)"
+    },
+    {
+      "elo": "worker fora do processo web",
+      "estado": "executed_integrated",
+      "evidencia": "subprocess real; o recibo e assinado por `worker-<pid>` e o pid NAO e o do teste"
+    },
+    {
+      "elo": "engine real",
+      "estado": "executed_integrated",
+      "evidencia": "remotion-local, render hermetico"
+    },
+    {
+      "elo": "bytes reais",
+      "estado": "executed_integrated",
+      "evidencia": "MP4 de 3 s com video e audio, medido"
+    },
+    {
+      "elo": "medicao tecnica",
+      "estado": "executed_integrated",
+      "evidencia": "ffprobe + ebur128, do ARQUIVO"
+    },
+    {
+      "elo": "armazenamento",
+      "estado": "executed_integrated",
+      "evidencia": "ArmazenamentoLocal atras da porta ArmazenamentoConferivel",
+      "limitacao": "o adapter Supabase existe e esta DESARMADO; bucket remoto exige autorizacao"
+    },
+    {
+      "elo": "releitura do armazenamento",
+      "estado": "executed_integrated",
+      "evidencia": "VERIFIED_OK so depois de ler de volta e comparar bytes E sha256"
+    },
+    {
+      "elo": "verificacao de bytes e hash",
+      "estado": "executed_integrated",
+      "evidencia": "o teste rele por conta propria e exige que os dois hashes concordem"
+    },
+    {
+      "elo": "validacao por destino",
+      "estado": "executed_integrated",
+      "evidencia": "casamento por midia E medida; geometria igual nao basta"
+    },
+    {
+      "elo": "aprovacao humana",
+      "estado": "executed_integrated",
+      "evidencia": "nasce `aguardando`; nenhum caminho do operario aprova em nome de alguem",
+      "limitacao": "aprovacao REAL por uma pessoa nao foi executada — isso e ato externo"
+    },
+    {
+      "elo": "biblioteca",
+      "estado": "executed_integrated",
+      "evidencia": "golden P17-T08, dedup por conteudo"
+    },
+    {
+      "elo": "pacote de entrega",
+      "estado": "executed_integrated",
+      "evidencia": "montar_pacotes com variante real, chave de storage e hash relido; publicacao_automatica e False por ClassVar",
+      "limitacao": "NAO ha superficie de pacote no frontend nem endpoint HTTP — o pacote existe no dominio e e provado por teste"
+    },
+    {
+      "elo": "publicacao externa",
+      "estado": "not_applicable",
+      "evidencia": "fora do escopo desta missao por decisao explicita; nenhuma rota publica"
+    }
+  ]
+}

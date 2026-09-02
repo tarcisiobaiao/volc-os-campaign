@@ -1,0 +1,316 @@
+{
+  "_leia": "Peca canario produzida pela espinha produtiva inteira, em diretorio descartavel. Nenhum ato externo: armazenamento LOCAL, sem provider pago, sem Supabase, sem publicacao. O texto do briefing NAO esta aqui — so o estado e a impressao digital dele.",
+  "pecas": {
+    "imagem": {
+      "trabalho_id": "6cc5d1af-1a0c-430d-9faf-99e02ec788e5",
+      "estado": "rendered",
+      "tentativa": 1,
+      "produzido_por": "operario-f4fccc72",
+      "motor": "tipografico-local@1.0.0",
+      "seed": 20260902,
+      "chave_de_idempotencia": "79976b5a406f1458ff0b602b7eb7358cfb0610053169ef25b8262282ad47b766",
+      "assinatura_determinista": "bcfc7518afdffb151dbcd44f42e472cd44288d11e41ef39a1a5f28655056f19c",
+      "duracao_do_trabalho_s": 0.109757,
+      "artefato": {
+        "slot": "2-imagem_marketing",
+        "mime": "image/png",
+        "bytes": 27568,
+        "sha256": "31dbc13fa0f54399e45999c80dc861b164afabb8ec679ec91fe7cda32b34be54",
+        "largura": 1200,
+        "altura": 628,
+        "duracao_s": null,
+        "video": null,
+        "enquadramento": null
+      },
+      "audio": null,
+      "audio_ausente_porque": "nao_suportado",
+      "video_ausente_porque": "nao_aplicavel",
+      "procedencia": {
+        "receita_id": "display-matricula-2027",
+        "tenant_id": "positivo",
+        "modo_slug": "estatica-1x1",
+        "finalidade_slug": "captacao",
+        "natureza": "local",
+        "provider": {
+          "valor": null,
+          "ausencia": "nao_declarado"
+        },
+        "modelo": {
+          "valor": null,
+          "ausencia": "nao_declarado"
+        },
+        "licenca": {
+          "valor": null,
+          "ausencia": "nao_declarado"
+        },
+        "disclosure": {
+          "valor": null,
+          "ausencia": "nao_declarado"
+        },
+        "brand_pack": {
+          "valor": "positivo-2027",
+          "ausencia": null
+        }
+      },
+      "custo": {
+        "estimado_usd": {
+          "valor": null,
+          "ausencia": "nao_apurado"
+        },
+        "real_usd": {
+          "valor": null,
+          "ausencia": "nao_apurado"
+        },
+        "apurado_por": null
+      },
+      "insumo": {
+        "estado": "sanitizado",
+        "hash_do_completo": "c194d4decaab8239f344cd04398d926d84859dc1876b5a213223525f2837f5ce",
+        "substituicoes": {
+          "<numero>": 1
+        },
+        "versao_do_sanitizador": "1"
+      },
+      "hashes_de_entrada": {},
+      "storage": {
+        "estado": "VERIFIED_OK",
+        "chave": "criativos/positivo/6cc5d1af-1a0c-430d-9faf-99e02ec788e5/2-imagem_marketing__31dbc13fa0f54399e45999c80dc861b1.png",
+        "sha256_relido": "31dbc13fa0f54399e45999c80dc861b164afabb8ec679ec91fe7cda32b34be54",
+        "bytes_relidos": 27568,
+        "lido_em": "2026-09-02T11:35:38.512773+00:00",
+        "objeto_existe_no_disco": true,
+        "hash_do_artefato_bate_com_o_relido": true
+      },
+      "destinos": [
+        {
+          "slug": "google",
+          "veredito": "serve_parcialmente",
+          "motivos": [
+            "envelope nao produzido: google-logo-1x1"
+          ]
+        },
+        {
+          "slug": "meta",
+          "veredito": "nao_serve",
+          "motivos": [
+            "nenhuma peca desta producao casa um envelope deste destino"
+          ]
+        },
+        {
+          "slug": "organico",
+          "veredito": "nao_serve",
+          "motivos": [
+            "nenhuma peca desta producao casa um envelope deste destino"
+          ]
+        }
+      ],
+      "aprovacao": {
+        "estado": "aguardando",
+        "por": null,
+        "em": null,
+        "motivo": null
+      },
+      "gates": [
+        {
+          "gate": "hash_confere",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "dimensao",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "arquivo_nao_vazio",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "contraste",
+          "resultado": "PASS",
+          "bloqueante": true
+        }
+      ]
+    },
+    "video": {
+      "trabalho_id": "c9c90e5a-6121-4d15-85fd-1b1a7139c812",
+      "estado": "rendered",
+      "tentativa": 1,
+      "produzido_por": "operario-f4fccc72",
+      "motor": "remotion-local@1",
+      "seed": 20260902,
+      "chave_de_idempotencia": "3bfeff28d9a416911e64dcb5d7f68e5970a3f60828fa9824f0f8f7416595069e",
+      "assinatura_determinista": "4d41909ca4b79d6ff1fe75868b57a499de3494b27dd40662797dc843f3ef125a",
+      "duracao_do_trabalho_s": 17.307561,
+      "artefato": {
+        "slot": "5-video",
+        "mime": "video/mp4",
+        "bytes": 448196,
+        "sha256": "3e5ae27082f61c8456172c1a7726229b72db8469a2f632cb8aaa3fd97d5e7164",
+        "largura": 1080,
+        "altura": 1920,
+        "duracao_s": 2.048,
+        "video": {
+          "codec_video": "h264",
+          "codec_audio": "aac",
+          "largura": 1080,
+          "altura": 1920,
+          "fps_num": 24,
+          "fps_den": 1,
+          "quadros": 48,
+          "duracao_s": 2.048,
+          "sample_rate": 48000,
+          "canais": 2,
+          "fonte": "ffprobe version 8.1.2 Copyright (c) 2007-2026 the FFmpeg developers"
+        },
+        "enquadramento": {
+          "largura_nativa": 1080,
+          "altura_nativa": 1920,
+          "largura_alvo": 1080,
+          "altura_alvo": 1920,
+          "operacao": "nenhuma"
+        }
+      },
+      "audio": {
+        "lufs_integrado": -32.3,
+        "true_peak_dbtp": -27.2,
+        "alvo_lufs": -14.0,
+        "tolerancia_lufs": 2.0,
+        "fonte": "ffmpeg ebur128"
+      },
+      "audio_ausente_porque": null,
+      "video_ausente_porque": null,
+      "procedencia": {
+        "receita_id": "reels-matricula-2027",
+        "tenant_id": "positivo",
+        "modo_slug": "video-vertical",
+        "finalidade_slug": "captacao",
+        "natureza": "local",
+        "provider": {
+          "valor": null,
+          "ausencia": "nao_aplicavel"
+        },
+        "modelo": {
+          "valor": null,
+          "ausencia": "nao_aplicavel"
+        },
+        "licenca": {
+          "valor": "propria-volc-os",
+          "ausencia": null
+        },
+        "disclosure": {
+          "valor": false,
+          "ausencia": null
+        },
+        "brand_pack": {
+          "valor": "positivo-2027",
+          "ausencia": null
+        }
+      },
+      "custo": {
+        "estimado_usd": {
+          "valor": null,
+          "ausencia": "sem_custo_de_provider"
+        },
+        "real_usd": {
+          "valor": null,
+          "ausencia": "sem_custo_de_provider"
+        },
+        "apurado_por": null
+      },
+      "insumo": {
+        "estado": "sanitizado",
+        "hash_do_completo": "cf53e4f1ece72eac637f91d772234c29c322f56402bb1fe08888cf6d9b8eba61",
+        "substituicoes": {
+          "<numero>": 1
+        },
+        "versao_do_sanitizador": "1"
+      },
+      "hashes_de_entrada": {
+        "fonte:Inter-Variable.ttf": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+        "leito:leito.wav": "d0354092714a6df4cc914d6c6552b4a8d420b3288618090dca09c33b04bab5ea"
+      },
+      "storage": {
+        "estado": "VERIFIED_OK",
+        "chave": "criativos/positivo/c9c90e5a-6121-4d15-85fd-1b1a7139c812/5-video__3e5ae27082f61c8456172c1a7726229b.mp4",
+        "sha256_relido": "3e5ae27082f61c8456172c1a7726229b72db8469a2f632cb8aaa3fd97d5e7164",
+        "bytes_relidos": 448196,
+        "lido_em": "2026-09-02T11:35:55.763033+00:00",
+        "objeto_existe_no_disco": true,
+        "hash_do_artefato_bate_com_o_relido": true
+      },
+      "destinos": [
+        {
+          "slug": "google",
+          "veredito": "nao_serve",
+          "motivos": [
+            "nenhuma peca desta producao casa um envelope deste destino"
+          ]
+        },
+        {
+          "slug": "meta",
+          "veredito": "nao_serve",
+          "motivos": [
+            "nenhuma peca desta producao casa um envelope deste destino"
+          ]
+        },
+        {
+          "slug": "organico",
+          "veredito": "serve_parcialmente",
+          "motivos": [
+            "envelope nao produzido: organico-reels-9x16"
+          ]
+        }
+      ],
+      "aprovacao": {
+        "estado": "aguardando",
+        "por": null,
+        "em": null,
+        "motivo": null
+      },
+      "gates": [
+        {
+          "gate": "hash_confere",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "dimensao",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "arquivo_nao_vazio",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "contraste",
+          "resultado": "SKIPPED",
+          "bloqueante": false
+        },
+        {
+          "gate": "render_sem_rede",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "quadros_conferem",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "fps",
+          "resultado": "PASS",
+          "bloqueante": true
+        },
+        {
+          "gate": "safe_zone",
+          "resultado": "PASS",
+          "bloqueante": false
+        }
+      ]
+    }
+  }
+}

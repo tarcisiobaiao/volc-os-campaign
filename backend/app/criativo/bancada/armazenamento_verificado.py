@@ -166,21 +166,34 @@ def estado_de(
     *,
     storage_chave: str | None,
     storage_conferido_em: datetime | None,
-    storage_hash_conferido: str | None,
+    storage_hash_conferido: bool | None,
+    storage_sha256_remoto: str | None = None,
     sha256_do_artefato: str,
 ) -> EstadoDoArmazenamento:
     """Classifica uma LINHA (do banco ou de um registro) na mesma máquina.
 
-    Recebe exatamente as três colunas que o gatilho olha em
+    Recebe exatamente as colunas que o gatilho olha em
     `criativo_render_artefato`. Existe para que a leitura de volta do banco e a
     publicação usem a MESMA regra: sem isto, a aplicação teria a sua noção de
     "verificado" e o banco a dele, que é a dupla verdade que o P17-T04 já pagou
     para eliminar na fila de trabalhos.
 
+    ⚠️ DIVERGÊNCIA FECHADA. `storage_hash_conferido` é `boolean` no SQL e esta
+    função recebia a STRING do sha256 remoto — as duas metades da mesma máquina
+    trocando tipos diferentes para o mesmo fato. Nenhuma das duas tinha produtor,
+    então nada quebrava; quebraria no dia em que alguém ligasse os dois lados.
+
+    Agora são dois campos com papéis distintos, e o segundo é opcional para que
+    uma linha gravada antes de `storage_sha256_remoto` existir continue legível:
+
+    - `storage_hash_conferido` é o VEREDITO (`bateu?`), e é o que decide;
+    - `storage_sha256_remoto` é O QUE VOLTOU, e serve à forense de um mismatch.
+
     Duas linhas impossíveis levantam em vez de virar um estado plausível:
-    conferência sem endereço (regra 3 do gatilho) e hash conferido sem carimbo
-    de conferência — meia conferência registrada é pior que nenhuma, porque
-    parece completa.
+    conferência sem endereço (regra 3 do gatilho) e veredito sem carimbo de
+    conferência — meia conferência registrada é pior que nenhuma, porque parece
+    completa. E uma terceira: veredito que CONTRADIZ o hash remoto, que é a única
+    forma de os dois campos contarem histórias opostas sobre a mesma leitura.
     """
     if storage_chave is None:
         if storage_conferido_em is not None:
@@ -188,27 +201,39 @@ def estado_de(
                 "conferencia sem endereco no armazenamento: "
                 "storage_conferido_em preenchido com storage_chave nula"
             )
-        if storage_hash_conferido is not None:
-            raise ValueError("hash conferido sem endereco no armazenamento")
+        if storage_hash_conferido is not None or storage_sha256_remoto is not None:
+            raise ValueError("conferencia sem endereco no armazenamento")
         return EstadoDoArmazenamento.LOCAL
 
     if storage_conferido_em is None:
-        if storage_hash_conferido is not None:
+        if storage_hash_conferido is not None or storage_sha256_remoto is not None:
             raise ValueError(
-                "hash conferido sem carimbo de conferencia: "
+                "veredito sem carimbo de conferencia: "
                 "conferencia pela metade nao e um estado"
             )
         return EstadoDoArmazenamento.UPLOADED_UNVERIFIED
 
-    # ⚠️ Carimbo COM hash nulo é o objeto ausente na releitura: a conferência
-    # aconteceu e não havia o que hashear. Preencher esse campo com um hash de
-    # bytes vazios seria inventar um conteúdo que ninguém leu — ausência
-    # preservada como ausência, e o veredito é divergência.
     if storage_hash_conferido is None:
-        return EstadoDoArmazenamento.VERIFIED_MISMATCH
-    if storage_hash_conferido == sha256_do_artefato:
-        return EstadoDoArmazenamento.VERIFIED_OK
-    return EstadoDoArmazenamento.VERIFIED_MISMATCH
+        raise ValueError(
+            "carimbo de conferencia sem veredito: "
+            "alguem releu e nao registrou o que concluiu"
+        )
+    if storage_sha256_remoto is not None:
+        bate = storage_sha256_remoto == sha256_do_artefato
+        if bate is not storage_hash_conferido:
+            raise ValueError(
+                "veredito contradiz o hash remoto: os dois campos contam "
+                "historias opostas sobre a mesma leitura"
+            )
+    # ⚠️ Veredito `False` com hash remoto NULO é o objeto ausente na releitura: a
+    # conferência aconteceu e não havia o que hashear. Preencher esse campo com o
+    # hash de bytes vazios seria inventar um conteúdo que ninguém leu — ausência
+    # preservada como ausência, e o veredito é divergência.
+    return (
+        EstadoDoArmazenamento.VERIFIED_OK
+        if storage_hash_conferido
+        else EstadoDoArmazenamento.VERIFIED_MISMATCH
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -336,18 +361,36 @@ class Publicacao:
         return self
 
     def para_registro(self) -> dict[str, Any]:
-        """As três colunas do gatilho, e nada além delas.
+        """As quatro colunas do gatilho, e nada além delas.
 
         `UPLOADED_UNVERIFIED` sai com carimbo e hash NULOS de propósito: é assim
         que o banco também representa "subiu e não foi conferido", e escrever um
         carimbo aqui gravaria uma conferência que não houve — que o gatilho, por
         ser terminal, nunca deixaria corrigir depois.
+
+        ⚠️ DIVERGÊNCIA FECHADA. `storage_hash_conferido` é `boolean` no SQL e este
+        método devolvia a STRING do sha256 remoto: as duas metades da mesma
+        máquina não trocavam o mesmo tipo. Nada escrevia nenhuma das duas — nem
+        `deposito_postgres` toca nestas colunas, nem este método tem chamador de
+        produção —, então a divergência era LATENTE, e latente é o que vira
+        defeito no dia em que alguém liga os dois lados.
+
+        A v11_03 ganhou `storage_sha256_remoto text` e este método passa a emitir
+        os dois: o booleano responde "bateu?", o hash responde "o que voltou?".
+        Um booleano perde a segunda resposta para sempre, e um mismatch é
+        exatamente quando ela importa. Um CHECK impede que os dois se
+        contradigam.
         """
         conferiu = self.estado in TERMINAIS
         return {
             "storage_chave": self.chave if self.estado is not EstadoDoArmazenamento.LOCAL else None,
             "storage_conferido_em": self.conferido_em if conferiu else None,
-            "storage_hash_conferido": self.sha256_remoto if conferiu else None,
+            "storage_hash_conferido": (
+                # `None` quando ninguém releu: `False` diria "conferi e não bateu".
+                None if not conferiu
+                else self.sha256_remoto == self.sha256_local
+            ),
+            "storage_sha256_remoto": self.sha256_remoto if conferiu else None,
         }
 
 
