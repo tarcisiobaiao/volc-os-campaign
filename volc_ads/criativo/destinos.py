@@ -206,7 +206,11 @@ ENVELOPES: tuple[Envelope, ...] = (
         largura=1200,
         altura=1200,
         proporcao="1:1",
-        fonte="Google Ads, logo quadrado 1:1 recomendado 1200x1200 (mínimo 128x128)",
+        fonte="Google Ads, logo quadrado 1:1 recomendado 1200x1200 "
+               "(mínimo 144x144 pelo Help Center, que também satisfaz os "
+               "128x128 do proto). ⚠️ A primeira versão citava 128x128 como "
+               "mínimo; `requisitos.yaml:185` é a fonte deste repositório e "
+               "diz 144x144.",
     ),
     Envelope(
         slug="organico-reels-9x16",

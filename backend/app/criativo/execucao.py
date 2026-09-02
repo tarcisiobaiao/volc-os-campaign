@@ -47,6 +47,10 @@ from volc_ads.criativo.porta import (
 )
 
 from . import dominio
+from .bancada.armazenamento_verificado import (
+    EstadoDoArmazenamento,
+    publicar_artefato,
+)
 from .armazenamento import (
     ArmazenamentoDeObjetos,
     Assinador,
@@ -481,12 +485,42 @@ class Executor:
             str(briefing["projeto_id"]), str(job_id), slot, content_hash, extensao
         )
 
+        # ⚠️ ACHADO DO REVISOR ADVERSARIAL. Isto era `guardar(...)` e mais nada:
+        # o Executor subia os bytes e, algumas linhas abaixo, marcava a peça
+        # `pronta` e o job `succeeded` — com ZERO leituras de volta. "Voltou sem
+        # exceção" virava "está lá, íntegro", que é o colapso de
+        # `arquivo escrito` em `arquivo verificado` que este projeto proíbe.
+        # Um 200 prova que o servidor ACEITOU os bytes, não que os guardou
+        # inteiros nem que a próxima leitura devolve os mesmos.
+        #
+        # `publicar_artefato` sobe E relê, e só chama de verificado depois de
+        # comparar bytes e sha256. Divergência é terminal e vira falha da peça —
+        # não um `pronta` sobre arquivo que ninguém conferiu.
         try:
-            self.armazenamento.guardar(chave, dados, mime)
+            publicacao = publicar_artefato(
+                self.armazenamento, chave=chave, dados=dados, mime=mime
+            )
         except Exception as erro:  # noqa: BLE001
             log.exception("armazenamento recusou a peça %s", slot)
             await self._marcar_falha_da_peca(
                 job_id, slot, _erro_generico(f"não foi possível guardar a peça: {erro}")
+            )
+            return
+        if publicacao.estado is not EstadoDoArmazenamento.VERIFIED_OK:
+            # ⚠️ `UPLOADED_UNVERIFIED` (a releitura não concluiu) e
+            # `VERIFIED_MISMATCH` (os bytes voltaram diferentes) são desfechos
+            # DIFERENTES, e nenhum dos dois é "pronta". O motivo vai junto,
+            # porque um estado ruim sem motivo obriga quem lê a adivinhar.
+            log.error(
+                "peça %s não ficou verificada no armazenamento: %s · %s",
+                slot, publicacao.estado.value, publicacao.motivo,
+            )
+            await self._marcar_falha_da_peca(
+                job_id, slot,
+                _erro_generico(
+                    "a peça subiu mas não passou na conferência de bytes "
+                    f"({publicacao.estado.value})"
+                ),
             )
             return
 

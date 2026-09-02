@@ -204,9 +204,33 @@ class DespachoDeFila:
     sincrono = False
 
     def despachar_job_do_estudio(self, job_id: str, executor: Any) -> None:
-        return None
+        """⚠️ RECUSA, e nao no-op. Achado do revisor adversarial, e o defeito era
+        meu: eu tinha feito este metodo devolver `None`.
+
+        O worker (`app.criativo.bancada.worker`) reivindica do deposito da
+        BANCADA — `fila.db` no local, `criativo_render_job` no Postgres. O job do
+        Estudio vive em `criativo_job`, que e outra tabela e nao tem consumidor
+        nenhum. Devolver `None` aqui fazia a rota responder 201 sobre um job que
+        ficaria `queued` para sempre — exatamente o "erro invisivel" que os dois
+        criticos anteriores produziam, agora por caminho novo e em silencio.
+
+        A ponte entre `criativo_job` e `criativo_render_job` e o que o
+        `ORDEM-INTEGRACAO-P17.md` registra como nao implementada. Enquanto ela
+        nao existir, `fila` NAO serve ao Estudio, e dizer isso e melhor que
+        enfileirar no vazio.
+        """
+        raise DespachoIndisponivel(
+            ambiente_atual(),
+            "O modo `fila` serve a bancada, cujo worker reivindica de "
+            "`criativo_render_job`. O job do Estudio vive em `criativo_job`, que "
+            "nenhum worker consome hoje — a ponte entre as duas filas ainda nao "
+            "existe. Use CRIATIVO_DESPACHO=inline num ambiente com processo de "
+            "vida longa, ou implante a ponte antes de ligar a fila.",
+        )
 
     def despachar(self, trabalho_id: str) -> None:
+        """Aqui o no-op E o certo: o trabalho ja esta durável no deposito da
+        bancada quando este metodo e chamado, e o worker o reivindica de la."""
         return None
 
 

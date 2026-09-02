@@ -88,12 +88,6 @@
    "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/services/creative_engine/motores/gemini_imagem.py",
    "origem_contrato": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/porta.py (Protocol MotorDeCriativo, contrato de 2 passos solicitar_geracao/receber)",
    "estado_factual": "implemented_integrated",
-   "dimensoes_observadas": [
-    "1080x1080",
-    "1080x1350",
-    "1080x1920",
-    "1200x628 (via dominio.FORMATOS: 1x1, 4x5, 9x16, 1.91x1)"
-   ],
    "destinos_suportados": [
     "google_display",
     "meta_feed",
@@ -109,7 +103,14 @@
    "storage": "local. backend/app/criativo/armazenamento.py:432-442 armazenamento_padrao() devolve sempre ArmazenamentoLocal; ArmazenamentoSupabase existe e está declarado NÃO ATIVADO (:235-240) porque o bucket 'criativos' não existe (0 linhas em storage.buckets, medido 27-28/08/2026, docs/design/RECONCILIACAO-ESTUDIO-2026-08-28.md §3)",
    "prova": "Nenhuma peça produzida em produção: 0 jobs, 0 renditions, 0 masters (RECONCILIACAO-ESTUDIO-2026-08-28.md §3, medido no banco oficial). O 'job real de 3 renditions com 3 content_hash distintos' aparece em docs/creative-engines/DELTA-PROPOSTO-ESTUDIO-C0-C1-C3.md:42-51 e v11_02:767, mas NENHUM artefato, hash ou sidecar desse job está versionado no repositório — não é reproduzível nesta máquina.",
    "lacuna": "execução do job real citado é documented_only (sem artefato versionado); executor é asyncio.create_task em função serverless Vercel (defeito estrutural G4, execucao.py + backend/vercel.json); despacho durável inexistente.",
-   "evidencia": "gemini_imagem.py:140-233 implementa a porta; :242-249 monta payload com imageConfig.aspectRatio; backend/app/routers/criativos.py:137-139 instancia MotorGeminiImagem em obter_motor(); :344-350 recusa qualquer modo != 'full_llm' com 400 ESTUDIO.modo_indisponivel; :335-343 recusa 503 quando não há credencial. Catálogo em produção: supabase/migrations/v11_02_parque_criativo.sql:729-740 registra slug 'gemini-imagem', runtime 'interno', provider 'google', modelo 'gemini-3.1-flash-image'."
+   "evidencia": "gemini_imagem.py:140-233 implementa a porta; :242-249 monta payload com imageConfig.aspectRatio; backend/app/routers/criativos.py:137-139 instancia MotorGeminiImagem em obter_motor(); :344-350 recusa qualquer modo != 'full_llm' com 400 ESTUDIO.modo_indisponivel; :335-343 recusa 503 quando não há credencial. Catálogo em produção: supabase/migrations/v11_02_parque_criativo.sql:729-740 registra slug 'gemini-imagem', runtime 'interno', provider 'google', modelo 'gemini-3.1-flash-image'.",
+   "dimensoes_finais_normalizadas": [
+    "1080x1080",
+    "1080x1350",
+    "1080x1920",
+    "1200x628 (via dominio.FORMATOS: 1x1, 4x5, 9x16, 1.91x1)"
+   ],
+   "nota_de_dimensao": "REVISAO FACTUAL: sao ALVOS de normalizacao de `enquadramento.py`, nao pixels nativos do provider."
   },
   {
    "engine_id": "creative_engine.enquadramento (normalização de canvas)",
@@ -122,11 +123,6 @@
    "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/services/creative_engine/enquadramento.py",
    "origem_contrato": null,
    "estado_factual": "implemented_integrated",
-   "dimensoes_observadas": [
-    "1:1 -> 1024x1024",
-    "4:5 -> 928x1152",
-    "9:16 -> 768x1376 (medidas de sonda declaradas no cabeçalho do módulo)"
-   ],
    "destinos_suportados": [],
    "credencial_env": null,
    "custo": "zero-real (compute local; não apurado em máquina/tempo)",
@@ -136,7 +132,13 @@
    "storage": null,
    "prova": null,
    "lacuna": "Pillow é importado sob demanda e NÃO está em backend/requirements.txt (declarado em volc_ads/criativo/adaptadores/medir_imagem.py e em bancada/adaptadores/png_local.py:9-14); sem Pillow a peça sai com enquadramento='nao_normalizado' na dimensão nativa. É cover-crop de UMA imagem, não recomposição por destino — a MATRIZ (docs/design/MATRIZ-ESTUDIO-LEGADO-SCHEMA-RUNTIME-FRONTEND.md:24) classifica isso como 'mais pobre' que o re-layout da PRENSA.",
-   "evidencia": "RAZOES_NATIVAS com 10 proporções e FONTE_DO_ENVELOPE datada (sonda 27/08/2026 contra gemini-3.1-flash-image) em enquadramento.py:65-81; enquadrar() devolve quatro rótulos distintos — 'nativo', 'resize', 'cover_crop', 'nao_normalizado' (:199-343) e registra nativa_largura/nativa_altura separadas da medida final; tolerância de razão 0.001 (:90) escolhida para não esticar 768x1376→1080x1920."
+   "evidencia": "RAZOES_NATIVAS com 10 proporções e FONTE_DO_ENVELOPE datada (sonda 27/08/2026 contra gemini-3.1-flash-image) em enquadramento.py:65-81; enquadrar() devolve quatro rótulos distintos — 'nativo', 'resize', 'cover_crop', 'nao_normalizado' (:199-343) e registra nativa_largura/nativa_altura separadas da medida final; tolerância de razão 0.001 (:90) escolhida para não esticar 768x1376→1080x1920.",
+   "dimensoes_finais_normalizadas": [
+    "1:1 -> 1024x1024",
+    "4:5 -> 928x1152",
+    "9:16 -> 768x1376 (medidas de sonda declaradas no cabeçalho do módulo)"
+   ],
+   "nota_de_dimensao": "REVISAO FACTUAL: sao ALVOS de normalizacao de `enquadramento.py`, nao pixels nativos do provider."
   },
   {
    "engine_id": "png-local (MotorPngLocal, bancada)",
@@ -149,9 +151,6 @@
    "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/backend/app/criativo/bancada/adaptadores/png_local.py (desenho em /private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/adaptadores/png_local.py)",
    "origem_contrato": "backend/app/criativo/bancada/contrato.py (Encomenda/Artefato/MotorDeProducao)",
    "estado_factual": "implemented_integrated",
-   "dimensoes_observadas": [
-    "derivadas de dominio.FORMATOS: 1080x1080, 1080x1350, 1080x1920, 1200x628"
-   ],
    "destinos_suportados": [],
    "credencial_env": "nenhuma",
    "custo": "zero-real (nenhum provider; custo de compute não apurado)",
@@ -161,7 +160,11 @@
    "storage": "diretório de trabalho da bancada: CRIATIVO_BANCADA_DIR ou ~/.volc-os/bancada (servico.py:36-46); fila SQLite local",
    "prova": "natureza = NaturezaDaProcedencia.LOCAL declarada no motor (png_local.py:72), e a ponte recusa promoção a produção com essa natureza (volc_ads/criativo_ponte.py::Destino)",
    "lacuna": "peça de ENSAIO por construção — não publicável. servico.produzir_local() (servico.py:239-317) fixa motor_slug='png-local' e modo_slug='ensaio-local' e NÃO tem consumidor HTTP: o único chamador é backend/tests/test_criativo_producao_local.py:49.",
-   "evidencia": "servico.py:72 registra MotorPngLocal FORA de try (deliberado: sem pré-requisito); png_local.py:60-138 produz, escreve e RE-MEDE do disco (bytes e sha256 lidos do arquivo, :123-137). Alcançável por HTTP: POST /api/criativos/bancada/trabalhos aceita motorSlug/modoSlug livres (backend/app/routers/criativos_execucao.py:33-42, :143-190)."
+   "evidencia": "servico.py:72 registra MotorPngLocal FORA de try (deliberado: sem pré-requisito); png_local.py:60-138 produz, escreve e RE-MEDE do disco (bytes e sha256 lidos do arquivo, :123-137). Alcançável por HTTP: POST /api/criativos/bancada/trabalhos aceita motorSlug/modoSlug livres (backend/app/routers/criativos_execucao.py:33-42, :143-190).",
+   "dimensoes_finais_normalizadas": [
+    "derivadas de dominio.FORMATOS: 1080x1080, 1080x1350, 1080x1920, 1200x628"
+   ],
+   "nota_de_dimensao": "REVISAO FACTUAL: sao ALVOS de normalizacao de `enquadramento.py`, nao pixels nativos do provider."
   },
   {
    "engine_id": "tipografico-local (MotorTipografico, bancada)",
@@ -220,11 +223,6 @@
    "origem_codigo": "/private/tmp/volc-creative-factory-production-spine-v1/volc_ads/criativo/adaptadores/funnelforge_imagem.py",
    "origem_contrato": "volc_ads/criativo/porta.py",
    "estado_factual": "implemented_integrated",
-   "dimensoes_observadas": [
-    "1024x1024 (1:1)",
-    "1536x1024 (1.5:1)",
-    "1024x1536 (0.67:1)"
-   ],
    "destinos_suportados": [],
    "credencial_env": "OPENAI_API_KEY — no ambiente do processo do FunnelForge, nunca neste adaptador. Ausente no ambiente desta máquina; backend/.env.example:69 traz a chave vazia; gemini_imagem.py:12 registra que ela estava VAZIA em 27/08/2026.",
    "custo": "não-apurado. O port do FunnelForge tem telemetria OPCIONAL em `last_usage` (custo medido, latência, modelo) segundo o cabeçalho do adaptador; nada disso é lido aqui.",
@@ -234,7 +232,13 @@
    "storage": "nenhum — devolve bytes",
    "prova": null,
    "lacuna": "buraco de proporção DECLARADO no próprio cabeçalho: o Google Display pede 1.91:1, 1:1 e 4:5 e só o quadrado bate; os outros dois reprovam em validacao.py com D3.proporcao (classe SANEAVEL_EM_CODIGO). services/creative_engine/enquadramento.py é o passo que fecharia isso e NÃO foi ligado a este adaptador. Além disso: nenhum consumidor HTTP — o Estúdio só instancia MotorGeminiImagem.",
-   "evidencia": "funnelforge_imagem.py:44 TAMANHOS_ACEITOS = ('1024x1024','1536x1024','1024x1536'); :104-108 recusa por TypeError qualquer objeto sem `.generate(prompt, size) -> bytes`; o gerador concreto vive fora, em funnelforge-migracao/engine/src/funnelforge/adapters/image_openai.py (referenciado no cabeçalho e em docs/growth-engine/creative-engine.md:23)."
+   "evidencia": "funnelforge_imagem.py:44 TAMANHOS_ACEITOS = ('1024x1024','1536x1024','1024x1536'); :104-108 recusa por TypeError qualquer objeto sem `.generate(prompt, size) -> bytes`; o gerador concreto vive fora, em funnelforge-migracao/engine/src/funnelforge/adapters/image_openai.py (referenciado no cabeçalho e em docs/growth-engine/creative-engine.md:23).",
+   "dimensoes_finais_normalizadas": [
+    "1024x1024 (1:1)",
+    "1536x1024 (1.5:1)",
+    "1024x1536 (0.67:1)"
+   ],
+   "nota_de_dimensao": "REVISAO FACTUAL: sao ALVOS de normalizacao de `enquadramento.py`, nao pixels nativos do provider."
   },
   {
    "engine_id": "prensa (registro interno)",
@@ -270,13 +274,6 @@
    "origem_codigo": "externo: /Users/mac/Desktop/Volc Mídia Global/motor-imagem/prensa e .../compartilhado/prensa-poc",
    "origem_contrato": null,
    "estado_factual": "executed_external",
-   "dimensoes_observadas": [
-    "1080x1350",
-    "1088x1360",
-    "1200x628",
-    "1200x1200",
-    "1080x1920"
-   ],
    "destinos_suportados": [
     "organic_instagram_feed_4x5",
     "organic_instagram_story_9x16",
@@ -294,7 +291,15 @@
    "storage": "arquivos locais no `out` canônico do POC",
    "prova": "64 saídas renderizadas no snapshot (26 typography_only, 12 deterministic_graphics, 26 prensa_hybrid) — números do snapshot, não de lista à mão",
    "lacuna": "library/CLI, não gateway HTTP; um browser por chamada; sem API de lote; determinismo por bytes exige runtime pinado (limitations em motores-de-imagem.json:227-233). NÃO É INTEGRADO ao VOLC O.S.",
-   "evidencia": "CONFERIDO POR MIM NESTA MÁQUINA (leitura e medição direta dos bytes, não citação do manifesto): carrossel_produtividade_metodo90_s02.png existe, sha256 da472d076df827dcb6a08ad8c9704de38607660cc1e73408a95ee7dc668cf078, IHDR 1080x1350; kintsugi_planejado.png 1088x1360; anderson_grafico_s01/s02/s03.png 1088x1360 com sidecars .pixelgate.json e .veredito.json ao lado; volcnews_iphone_laranja.png 1088x1360, __pmax__img_191x1 1200x628, __pmax__img_1x1 1200x1200, __pmax__img_4x5 1088x1360, __demandgen__img_9x16 1080x1920 — as cinco dimensões batem exatamente com docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md:168-174."
+   "evidencia": "CONFERIDO POR MIM NESTA MÁQUINA (leitura e medição direta dos bytes, não citação do manifesto): carrossel_produtividade_metodo90_s02.png existe, sha256 da472d076df827dcb6a08ad8c9704de38607660cc1e73408a95ee7dc668cf078, IHDR 1080x1350; kintsugi_planejado.png 1088x1360; anderson_grafico_s01/s02/s03.png 1088x1360 com sidecars .pixelgate.json e .veredito.json ao lado; volcnews_iphone_laranja.png 1088x1360, __pmax__img_191x1 1200x628, __pmax__img_1x1 1200x1200, __pmax__img_4x5 1088x1360, __demandgen__img_9x16 1080x1920 — as cinco dimensões batem exatamente com docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md:168-174.",
+   "dimensoes_finais_normalizadas": [
+    "1080x1350",
+    "1088x1360",
+    "1200x628",
+    "1200x1200",
+    "1080x1920"
+   ],
+   "nota_de_dimensao": "REVISAO FACTUAL: sao ALVOS de normalizacao de `enquadramento.py`, nao pixels nativos do provider."
   },
   {
    "engine_id": "Aprova Ad Studio oficial (externo)",
@@ -307,9 +312,6 @@
    "origem_codigo": "externo: /Users/mac/Library/CloudStorage/GoogleDrive-tarcisio@agenciavolc.com.br/Drives compartilhados/VOLC/VOLC/CLIENTES/IESDE/2026/Aprova-Ad-Sstudio",
    "origem_contrato": null,
    "estado_factual": "implemented_external",
-   "dimensoes_observadas": [
-    "12 proporções reconhecidas pelo backend: 1:1, 1:4, 2:3, 3:2, 3:4, 4:1, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9"
-   ],
    "destinos_suportados": [],
    "credencial_env": "GEMINI_API_KEY / OPENAI_API_KEY no ambiente daquele projeto (nomes conferidos em backend/.env.example do projeto externo; valores não lidos)",
    "custo": "não-apurado",
@@ -319,7 +321,11 @@
    "storage": "ZIP genérico (manifesto)",
    "prova": null,
    "lacuna": "branding específico de cliente; revisão só técnica básica (não substitui gates tipográficos/pixel da PRENSA); NÃO é serviço do VOLC O.S. (aprova_adapter_implemented=false, motores-de-imagem.json:342). ⚠️ Divergência factual: o literal do modelo lá é 'gemini-3.1-flash-image-preview' e o motor interno usa 'gemini-3.1-flash-image' (sem -preview) — gemini_imagem.py:62 afirma usar 'o literal que Aprova e Positivo já declaram em config.py' e o literal não é o mesmo.",
-   "evidencia": "CONFERIDO POR MIM: backend/app/providers/ contém base.py, gemini.py, mock.py, openai_image.py; backend/app/config.py:28-29 declara gemini_model='gemini-3.1-flash-image-preview' e openai_image_model='gpt-image-2'; openai_image.py:1 diz 'OpenAI gpt-image-2 provider via Images Edit API'. Manifesto: motores-de-imagem.json:41-87 (HEAD a1d9ae65…, 12 mappings de proporção no backend, 8 presets de UI, working_tree_clean=false)."
+   "evidencia": "CONFERIDO POR MIM: backend/app/providers/ contém base.py, gemini.py, mock.py, openai_image.py; backend/app/config.py:28-29 declara gemini_model='gemini-3.1-flash-image-preview' e openai_image_model='gpt-image-2'; openai_image.py:1 diz 'OpenAI gpt-image-2 provider via Images Edit API'. Manifesto: motores-de-imagem.json:41-87 (HEAD a1d9ae65…, 12 mappings de proporção no backend, 8 presets de UI, working_tree_clean=false).",
+   "dimensoes_finais_normalizadas": [
+    "12 proporções reconhecidas pelo backend: 1:1, 1:4, 2:3, 3:2, 3:4, 4:1, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9"
+   ],
+   "nota_de_dimensao": "REVISAO FACTUAL: sao ALVOS de normalizacao de `enquadramento.py`, nao pixels nativos do provider."
   },
   {
    "engine_id": "Positivo Ad Studio (externo)",
@@ -400,7 +406,7 @@
    "papel_do_modelo": null,
    "origem_codigo": "Nenhum cliente/fetcher no repositório. Único código que a MENCIONA: backend/app/criativo/video_observado.py:30, :713, :723, :742 (leitura do ledger de direitos de um build já pronto).",
    "origem_contrato": null,
-   "estado_factual": "documented_only",
+   "estado_factual": "executed_external",
    "dimensoes_observadas": [],
    "destinos_suportados": [],
    "credencial_env": "nenhuma",
@@ -410,8 +416,9 @@
    "qa_disponivel": "backend/tests/test_criativo_video_observado.py:159-161, :330 provam a leitura do license=null",
    "storage": null,
    "prova": null,
-   "lacuna": "nenhum motor de imagem do VOLC O.S. consome Wikimedia; é fonte do parque de vídeo externo.",
-   "evidencia": "video_observado.py:742-744 documenta que `licenca: None` é o valor REAL dos cinco itens de Wikimedia do short_odete e que a nota explica o porquê ('licenca implicita de imprensa; CREDITAR'); v11_02:414-417 comenta a distinção entre licença real de arquivo Wikimedia e string SPDX. Como PROVIDER de imagem, aparece só em docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md:37,74,139-146."
+   "lacuna": "REVISAO FACTUAL: o provider EXECUTOU (seis assets do Commons obtidos); o que falhou foi o ledger de licenca, credito e URL. nenhum motor de imagem do VOLC O.S. consome Wikimedia; é fonte do parque de vídeo externo.",
+   "evidencia": "video_observado.py:742-744 documenta que `licenca: None` é o valor REAL dos cinco itens de Wikimedia do short_odete e que a nota explica o porquê ('licenca implicita de imprensa; CREDITAR'); v11_02:414-417 comenta a distinção entre licença real de arquivo Wikimedia e string SPDX. Como PROVIDER de imagem, aparece só em docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md:37,74,139-146.",
+   "gate_de_licenca": "failed"
   },
   {
    "engine_id": "Pexels (fonte de asset)",
@@ -650,9 +657,10 @@
    "modelo": "binario de sistema",
    "papel_do_modelo": "Sound design, acabamento (finish/tighten) e prova tecnica do QA",
    "origem_codigo": "motor/{qa.py,qa_visual.py,core.py,sound_design.py,sound_design_terror.py} + os 10 formatos/*/som.py + praticamente todos os runners",
-   "estado_factual": "executed_integrated",
+   "estado_factual": "executed_external",
    "credencial_env": "nenhuma. PORTABILIDADE QUEBRADA: 46 arquivos fixam o caminho absoluto '/opt/homebrew/bin/ffmpeg' — 31 na raiz ORGANIZADA (que INVENTARIO.md declara desacoplada) e 15 em /Users/mac/volc-factory/pipeline. Entre os 31: motor/qa.py, motor/qa_visual.py, motor/core.py, motor/sound_design.py, motor/sound_design_terror.py, contrato/clusters/som.md e 25 arquivos de formatos/. ADR-002 'Ordem segura de extracao' item 1 exige exatamente remover isto.",
-   "evidencia": "/opt/homebrew/bin/ffprobe e /opt/homebrew/bin/ffmpeg existem nesta maquina (which). Eu usei o ffprobe para medir os 38 masters e os 6 hooks — todas as duracoes e codecs deste relatorio vem dele. E o unico provider do territorio comprovadamente disponivel e funcionando localmente agora."
+   "evidencia": "/opt/homebrew/bin/ffprobe e /opt/homebrew/bin/ffmpeg existem nesta maquina (which). Eu usei o ffprobe para medir os 38 masters e os 6 hooks — todas as duracoes e codecs deste relatorio vem dele. E o unico provider do territorio comprovadamente disponivel e funcionando localmente agora.",
+   "lacuna": "REVISAO FACTUAL: ffprobe do sistema auditou arquivos do parque; o codigo produtor tambem e externo. Ferramenta disponivel e auditoria feita nao sao integracao produtiva. "
   },
   {
    "engine_id": "provider:Pexels",
@@ -674,9 +682,11 @@
    "modelo": "API do Commons",
    "papel_do_modelo": "Stills CC/PD de pessoa real — o UNICO caminho permitido para rosto real (REGRA:pessoa-real-so-wikimedia)",
    "origem_codigo": "motor/wikimedia.py (4945B). ⚠️ wikimedia.py NAO consta da lista 'copiado' de _extracao.json, apesar de existir na pasta motor/ e de o INDICE.md o citar entre os modulos — o manifesto de extracao esta incompleto e declara 'ausente': []. Usado por causa_familia (8 refs), arquivo (7), news/make_entretenimento (5), novela (5), corta (3), copa (2), fofoca (1)",
-   "estado_factual": "failed",
+   "estado_factual": "executed_external",
    "credencial_env": "nenhuma (API publica). A obrigacao aqui nao e credencial, e CREDITO.",
-   "evidencia": "O unico ledger preservado que usa Wikimedia — /Users/mac/volc-factory/out/builds/short_odete/ledger.json, lido por mim — tem 6 itens Commons e TODOS com license=None, credit=None, url=None. Literal: {'asset':'med_dl','scene':5,'file':'med_dl.jpg','source':'Wikimedia Commons','wm_file':'\"Cassia Kis\" premiere','license':None,'credit':None,'url':None,'commercial_ok':True}. REGRA:pessoa-real-so-wikimedia exige 'Commons CC/PD CREDITADO' e REGRA:ledger-incompleto diz 'ausencia = FAIL na publicacao'. Nao e dado faltando: e a regra descumprida no unico caso auditavel. copa/make.py:302 e news/make_entretenimento.py:253 delegam a checagem ao humano por nota de texto, confirmando que o motor nao a resolve."
+   "evidencia": "O unico ledger preservado que usa Wikimedia — /Users/mac/volc-factory/out/builds/short_odete/ledger.json, lido por mim — tem 6 itens Commons e TODOS com license=None, credit=None, url=None. Literal: {'asset':'med_dl','scene':5,'file':'med_dl.jpg','source':'Wikimedia Commons','wm_file':'\"Cassia Kis\" premiere','license':None,'credit':None,'url':None,'commercial_ok':True}. REGRA:pessoa-real-so-wikimedia exige 'Commons CC/PD CREDITADO' e REGRA:ledger-incompleto diz 'ausencia = FAIL na publicacao'. Nao e dado faltando: e a regra descumprida no unico caso auditavel. copa/make.py:302 e news/make_entretenimento.py:253 delegam a checagem ao humano por nota de texto, confirmando que o motor nao a resolve.",
+   "gate_de_licenca": "failed",
+   "lacuna": "REVISAO FACTUAL: o provider EXECUTOU (seis assets do Commons obtidos); o que falhou foi o ledger de licenca, credito e URL. "
   },
   {
    "engine_id": "provider:OpenAI gpt-image-2",
@@ -686,9 +696,10 @@
    "modelo": "gpt-image-2 (LOW ~US$0,013; MEDIUM no hook ~US$0,05 segundo INDICE.md:91; mapa.json custos_referencia['SRC:gptimg'] = 'low ~US$0.02-0.04/img')",
    "papel_do_modelo": "Geracao das CENAS estaticas e da imagem-base do hook para o i2v. Nao e provider de video, mas e a origem de todo hook 'imagem' e a ENTRADA do Grok i2v.",
    "origem_codigo": "motor/gen_images.py (3140B na raiz organizada; pipeline/gen_images.py 3472B — DIVERGENTES, hashes 9a4e5d94ea3c vs 1712dae9d931). Presente em 14 dos 22 makers.",
-   "estado_factual": "executed_external",
+   "estado_factual": "implemented_external",
    "credencial_env": "OPENAI_API_KEY — nome presente nos dois .env",
-   "evidencia": "O ledger do short_odete registra 5 cenas como 'IA (gemini) - cena sem rosto' — esse build caiu no FALLBACK Gemini, nao no gpt-image. tribunal_zap/make.py:434 grava por cena 'GPT Image 2/1 ou Gemini fallback', provando que os dois caminhos coexistem e que o ledger nao distingue qual rodou. Ou seja: 'gptimg declarado' nao prova 'gptimg executado' em nenhum render especifico."
+   "evidencia": "O ledger do short_odete registra 5 cenas como 'IA (gemini) - cena sem rosto' — esse build caiu no FALLBACK Gemini, nao no gpt-image. tribunal_zap/make.py:434 grava por cena 'GPT Image 2/1 ou Gemini fallback', provando que os dois caminhos coexistem e que o ledger nao distingue qual rodou. Ou seja: 'gptimg declarado' nao prova 'gptimg executado' em nenhum render especifico.",
+   "lacuna": "REVISAO FACTUAL: o ledger nao distingue qual modelo da cascata gpt-image-2 -> gpt-image-1 -> gemini-2.5-flash-image executou. "
   }
  ],
  "formatos_de_video": [
@@ -1241,7 +1252,7 @@
   },
   {
    "destino": "PACOTE DE DESTINO (a camada que transformaria peça em entrega, para TODOS os destinos acima)",
-   "estado_factual": "documented_only",
+   "estado_factual": "executed_integrated",
    "dimensoes": [
     "a SPEC §11 diz que o pacote 'pode transformar dimensão, crop, composição, copy, duração, legenda e metadados, mas registra toda derivação'. Nenhuma linha de código faz isso."
    ],
@@ -1252,7 +1263,8 @@
    "safe_area": "not_supported",
    "preset_ui": "a SPEC §7 prevê a ação 'Criar pacote de destino'. Não existe na UI.",
    "prensa_recompila": "não se aplica",
-   "evidencia": "backend/app/criativo/destino.py é um arquivo de 204 bytes contendo APENAS docstring: 'Fronteira reservada à entrega aprovada de P17-T08. O módulo não possui implementação em S0.' As tabelas `criativo_pacote` e `criativo_entrega` existem (v11_01:601-648) e `grep -rn 'criativo_pacote|criativo_entrega' backend src` fora da migration retorna ZERO — nenhum writer, nenhum reader, nenhum tipo TS. Tabela vazia por desenho ('Elas nascem vazias e a interface nao promete nenhum destino como pronto', v11_01:600)."
+   "evidencia": "REVISAO FACTUAL: `volc_ads/criativo/destinos.py` implementa PacoteDeDestino, verificacao, completude e agrupamento, e o golden de P17-T08 atravessa tres pacotes completos e verificados, nenhum publicavel. backend/app/criativo/destino.py é um arquivo de 204 bytes contendo APENAS docstring: 'Fronteira reservada à entrega aprovada de P17-T08. O módulo não possui implementação em S0.' As tabelas `criativo_pacote` e `criativo_entrega` existem (v11_01:601-648) e `grep -rn 'criativo_pacote|criativo_entrega' backend src` fora da migration retorna ZERO — nenhum writer, nenhum reader, nenhum tipo TS. Tabela vazia por desenho ('Elas nascem vazias e a interface nao promete nenhum destino como pronto', v11_01:600).",
+   "escopo": "local; publicacao_externa = not_executed"
   }
  ],
  "dimensoes_do_contrato": [
@@ -1728,5 +1740,20 @@
    }
   ]
  },
- "leitura_de_uma_linha": "Das 37 capacidades catalogadas, 14 sao `executed_external` — executadas NO PARQUE, fora deste repositorio e fora do contrato do VOLC O.S. Antes desta missao, o VOLC O.S. tinha UMA capacidade `executed_integrated` (ffmpeg como binario de sistema). Os 17 formatos de video sao 16 `executed_external` e 1 `failed`: nenhum e producao do VOLC O.S., e nenhum tem envelope comprovado alem de 1080x1920."
+ "leitura_de_uma_linha": "Das 37 capacidades catalogadas, 14 sao `executed_external` — executadas NO PARQUE, fora deste repositorio e fora do contrato do VOLC O.S. Antes desta missao, o VOLC O.S. tinha UMA capacidade `executed_integrated` (ffmpeg como binario de sistema). Os 17 formatos de video sao 16 `executed_external` e 1 `failed`: nenhum e producao do VOLC O.S., e nenhum tem envelope comprovado alem de 1080x1920. ⚠️ Corrigido apos a revisao factual: a matriz foi commitada ANTES de as lanes de P17-T06 e P17-T08 landarem, e cinco estados envelheceram. Vide `_correcoes_da_revisao_factual`.",
+ "_correcoes_da_revisao_factual": {
+  "revisor": "Codex gpt-5.6-sol, passe factual, 01/09/2026",
+  "por_que_existiam": "A matriz foi commitada em f2d9533, ANTES de as lanes de P17-T06 e P17-T08 landarem. Ela descrevia com honestidade o estado que leu — e os commits seguintes o superaram. Envelhecimento de artefato de fechamento e um modo de falha proprio, e o registro fica aqui em vez de a correcao aparecer sem historia.",
+  "aplicadas": [
+   "PACOTE DE DESTINO deixa de ser documented_only: `volc_ads/criativo/destinos.py` implementa PacoteDeDestino, verificacao, completude e agrupamento, e o golden de P17-T08 o atravessa. Passa a executed_integrated NO ESCOPO LOCAL, com publicacao_externa registrada a parte como not_executed.",
+   "`provider:OpenAI gpt-image-2` cai de executed_external para implemented_external. A propria matriz admitia que o ledger observado caiu em Gemini e que outro ledger registra 'GPT Image 2/1 ou Gemini fallback' sem distinguir o modelo. Atribuir a execucao ao primeiro literal da cascata e colapsar codigo-disponivel em modelo-executado.",
+   "FFmpeg cai de executed_integrated para executed_external: o ffprobe do sistema auditou arquivos do parque, e o codigo produtor tambem e externo. Isso prova ferramenta disponivel e auditoria feita, nao integracao produtiva no VOLC O.S.",
+   "Wikimedia deixa de ser `failed` no provider: seis assets do Commons foram obtidos. O que falhou foi o ledger de licenca, credito e URL. Vira provider=executed_external com gate_de_licenca=failed — colapsar 'provider executou' em 'compliance reprovou' e a mesma familia de erro que esta matriz existe para nao cometer.",
+   "As `dimensoes_observadas` do bloco Gemini viram `dimensoes_finais_normalizadas`: `services/creative_engine/enquadramento.py` as trata como ALVO de normalizacao. 1200x628 e mapeado a 16:9 e enquadrado; afirmar que saiu nativo do modelo e confundir a saida do provider com a saida do produto."
+  ],
+  "aceitas_e_nao_aplicadas": [
+   "Catalogar gpt-image-1, gemini-2.5-flash-image e um provider proprio de Gemini TTS (gemini-3.1-flash-tts-preview -> gemini-2.5-flash-preview-tts). Sao capacidades reais do parque que a matriz mencionou so de passagem. Ficam como lacuna declarada: acrescentar linha de capacidade exige a mesma investigacao de procedencia que as outras 37 tiveram, e inventa-las agora seria repetir o defeito que esta correcao conserta.",
+   "Separar 'adaptador integrado ao contrato' de 'gerador/runtime nao integrado' no FunnelForge — o revisor propoe um estado `implemented_unwired` que a taxonomia da missao nao tem. Registrado como proposta de taxonomia, nao aplicado por conta propria."
+  ]
+ }
 }

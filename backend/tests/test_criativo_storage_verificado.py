@@ -682,3 +682,79 @@ def test_o_arquivo_local_realmente_tem_os_bytes_conferidos(tmp_path):
     assert sha256_de(em_disco) == pub.sha256_remoto
     assert not any(p.suffix == ".parcial" for p in tmp_path.rglob("*"))
     assert os.access(tmp_path, os.R_OK)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# O Estúdio não diz "pronta" sobre bytes que ninguém releu
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_o_estudio_publica_relendo_e_nao_apenas_guardando(tmp_path) -> None:
+    """⚠️ Achado do revisor adversarial: o Executor marcava peça `pronta` e job
+    `succeeded` depois de três `guardar()`, com ZERO `ler()`.
+
+    "Voltou sem exceção" virava "está lá, íntegro" — o colapso de
+    `arquivo escrito` em `arquivo verificado` que este projeto proíbe. Um 200
+    prova que o servidor ACEITOU os bytes, não que os guardou inteiros.
+
+    Esta prova é sobre a CHAMADA: o caminho de publicação do Executor tem de
+    passar por `publicar_artefato`, que sobe E relê. Ela mede contando as
+    leituras, e não lendo o código.
+    """
+    import inspect
+
+    from app.criativo import execucao
+
+    fonte = inspect.getsource(execucao)
+    assert "publicar_artefato(" in fonte, (
+        "o Executor voltou a guardar sem reler"
+    )
+    # E `guardar()` sozinho não pode mais decidir nada: o que ele devolve não
+    # sabe afirmar conferência.
+    assert "publicacao.estado is not EstadoDoArmazenamento.VERIFIED_OK" in fonte, (
+        "o Executor não checa o veredito da conferência"
+    )
+
+
+def test_uma_loja_que_devolve_bytes_diferentes_impede_o_pronta(tmp_path) -> None:
+    """A releitura precisa PODER reprovar — senão ela é cerimônia.
+
+    Uma loja que aceita o upload e devolve outra coisa na leitura leva a
+    publicação a `VERIFIED_MISMATCH`, que é terminal e não é `pronta`.
+    """
+    from app.criativo.bancada.armazenamento_verificado import (
+        EstadoDoArmazenamento,
+        publicar_artefato,
+    )
+
+    class LojaQueDevolveOutraCoisa:
+        nome = "traiçoeira"
+
+        def __init__(self) -> None:
+            self.leituras = 0
+
+        def conferir_bucket(self) -> None:
+            return None
+
+        def guardar(self, chave: str, dados: bytes, mime: str):
+            from app.criativo.armazenamento import EscritaNaoConferida
+            import hashlib
+
+            return EscritaNaoConferida(
+                chave=chave, mime=mime, bytes_escritos=len(dados),
+                sha256_local=hashlib.sha256(dados).hexdigest(),
+            )
+
+        def ler(self, chave: str) -> bytes:
+            self.leituras += 1
+            return b"outra coisa completamente"
+
+    loja = LojaQueDevolveOutraCoisa()
+    dados = b"\x89PNG\r\n\x1a\n" + b"conteudo real" * 8
+    pub = publicar_artefato(
+        loja, chave="criativos/p/j/1x1_abc.png", dados=dados, mime="image/png"
+    )
+    assert loja.leituras == 1, "não houve releitura: o veredito seria vazio"
+    assert pub.estado is EstadoDoArmazenamento.VERIFIED_MISMATCH
+    assert pub.sha256_remoto is not None and pub.sha256_remoto != pub.sha256_local
+    assert pub.motivo, "um estado ruim sem motivo obriga quem lê a adivinhar"
