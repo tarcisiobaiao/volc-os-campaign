@@ -270,7 +270,8 @@ class Operario:
                        lease_s=self.lease_s) as batimento:
             try:
                 self.deposito.transicionar(
-                    trabalho.id, EstadoDoTrabalho.RUNNING, exigir_operario=self.nome
+                    trabalho.id, EstadoDoTrabalho.RUNNING,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
                 artefatos = motor.produzir(trabalho.encomenda, str(dir_trabalho))
 
@@ -295,7 +296,8 @@ class Operario:
                     return self._largar(trabalho, dir_trabalho)
 
                 self.deposito.transicionar(
-                    trabalho.id, EstadoDoTrabalho.VALIDATING, exigir_operario=self.nome
+                    trabalho.id, EstadoDoTrabalho.VALIDATING,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
                 validacoes = self._validar(
                     trabalho.encomenda, artefatos, motor, str(dir_trabalho)
@@ -321,6 +323,7 @@ class Operario:
                             "validacoes": [asdict(v) for v in validacoes],
                         },
                         exigir_operario=self.nome,
+                        exigir_tentativa=trabalho.tentativa,
                     )
 
                 # A publicacao acontece DEPOIS de os gates aprovarem e ANTES do
@@ -398,7 +401,7 @@ class Operario:
                     return self._largar(trabalho, dir_trabalho)
                 return self.deposito.transicionar(
                     trabalho.id, EstadoDoTrabalho.RENDERED, recibo=corpo,
-                    exigir_operario=self.nome,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
 
             except FalhaDoMotor as e:
@@ -518,7 +521,7 @@ class Operario:
             try:
                 devolvido = self.deposito.transicionar(
                     trabalho.id, EstadoDoTrabalho.QUEUED, falha=falha,
-                    exigir_operario=self.nome,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
             except TransicaoProibida:
                 # ⚠️ ACHADO #13. Aqui estava o dano. O `rmtree` era incondicional
@@ -536,7 +539,7 @@ class Operario:
         try:
             return self.deposito.transicionar(
                 trabalho.id, EstadoDoTrabalho.FAILED, falha=falha,
-                exigir_operario=self.nome,
+                exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
             )
         except TransicaoProibida:
             return self.deposito.por_id(trabalho.id) or trabalho

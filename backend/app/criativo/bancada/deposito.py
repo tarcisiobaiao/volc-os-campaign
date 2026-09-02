@@ -187,6 +187,31 @@ class Trabalho:
         return self.lease_ate is not None and self.lease_ate > _agora()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ACHADO_FENCING — por que `exigir_operario` sozinho nao cerca nada
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# `Operario._ainda_somos_donos` ja dizia, na propria docstring, que "a posse e da
+# REIVINDICACAO, nao do nome", e conferia `(operario, tentativa, vivo)`. Mas
+# quem GRAVA e este deposito, e aqui a unica pergunta era o nome.
+#
+# O nome padrao do operario e `worker-<pid>`, e PID repete entre containers.
+# Contraprova executada (02/09/2026, SQLite, `Operario` real):
+#
+#   zumbi reivindica  -> tentativa=1, operario='worker-4242', lease 1s
+#   o lease vence     -> devolver_vencidos() devolve para a fila
+#   dono vivo         -> tentativa=2, operario='worker-4242'  (mesmo PID)
+#   o zumbi acorda e chama transicionar(QUEUED, exigir_operario='worker-4242')
+#   ACEITO: o trabalho que o dono vivo esta produzindo volta para `queued`
+#
+# A cerca existia no chamador e nao existia no portao. Uma guarda que so vale
+# quando o chamador se lembra de aplica-la e documentacao.
+#
+# `exigir_tentativa` e opcional de proposito: um chamador que so sabe o nome
+# continua com a garantia antiga, e quem tem o token da reivindicacao — o
+# operario, em todas as suas escritas — passa os dois.
+
+
 class DepositoDeTrabalhos:
     def __init__(self, caminho: str | Path) -> None:
         self.caminho = str(caminho)
@@ -629,12 +654,14 @@ class DepositoDeTrabalhos:
         falha: dict[str, Any] | None = None,
         recibo: dict[str, Any] | None = None,
         exigir_operario: str | None = None,
+        exigir_tentativa: int | None = None,
     ) -> Trabalho:
         c = self._con()
         c.execute("begin immediate")
         try:
             linha = c.execute(
-                "select estado, operario, lease_ate from trabalho where id=?",
+                "select estado, operario, tentativa, lease_ate from trabalho"
+                " where id=?",
                 (trabalho_id,),
             ).fetchone()
             if linha is None:
@@ -643,6 +670,11 @@ class DepositoDeTrabalhos:
             de = EstadoDoTrabalho(linha["estado"])
             # ⚠️ Quem perdeu o lease nao escreve por cima de quem o tem.
             if exigir_operario is not None and linha["operario"] != exigir_operario:
+                c.execute("rollback")
+                raise TransicaoProibida(de, para)
+            # ⚠️ ACHADO_FENCING. O nome sozinho NAO e cerca: ver a nota no topo
+            # do modulo. A tentativa e a metade que diz QUAL VEZ.
+            if exigir_tentativa is not None and linha["tentativa"] != exigir_tentativa:
                 c.execute("rollback")
                 raise TransicaoProibida(de, para)
             if not pode_ir(de, para):

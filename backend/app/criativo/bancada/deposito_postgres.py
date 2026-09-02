@@ -273,12 +273,13 @@ class DepositoPostgres:
         falha: dict[str, Any] | None = None,
         recibo: dict[str, Any] | None = None,
         exigir_operario: str | None = None,
+        exigir_tentativa: int | None = None,
     ) -> Trabalho:
         con = self._con()
         with con.cursor() as cur:
             cur.execute(
-                "select estado, owner, lease_ate from public.criativo_render_job"
-                " where id=%s for update",
+                "select estado, owner, tentativa, lease_ate"
+                " from public.criativo_render_job where id=%s for update",
                 (trabalho_id,),
             )
             linha = cur.fetchone()
@@ -286,6 +287,11 @@ class DepositoPostgres:
                 raise KeyError(trabalho_id)
             de = EstadoDoTrabalho(linha["estado"])
             if exigir_operario is not None and linha["owner"] != exigir_operario:
+                raise TransicaoProibida(de, para)
+            # ⚠️ ACHADO_FENCING (ver a nota no topo de `deposito.py`). O nome
+            # sozinho nao cerca: `worker-<pid>` repete entre containers, e o
+            # zumbi de uma reivindicacao vencida reconhece o proprio nome.
+            if exigir_tentativa is not None and linha["tentativa"] != exigir_tentativa:
                 raise TransicaoProibida(de, para)
             if para is EstadoDoTrabalho.RENDERED and not recibo:
                 raise ValueError("nao se conclui um trabalho sem recibo")
