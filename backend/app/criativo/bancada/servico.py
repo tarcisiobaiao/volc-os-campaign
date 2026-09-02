@@ -23,6 +23,7 @@ from typing import Any
 from volc_ads.criativo.contrato import NaturezaDaProcedencia
 
 from .adaptadores.png_local import MotorPngLocal
+from .adaptadores.remotion import MotorRemotion
 from .adaptadores.tipografico import MotorTipografico
 from . import fronteira_publica
 from .contrato import FalhaDoMotor
@@ -77,10 +78,45 @@ def montar() -> tuple[Deposito, Operario, DespachanteLocal]:
         # nao condicao de maquina — e silencia-lo apagaria justamente o unico
         # motor que garante que esta bancada consegue produzir alguma coisa.
         motores[MotorPngLocal.slug] = MotorPngLocal()
+        # ⚠️ O motor de VIDEO fica dentro do `try` pelo mesmo motivo que o
+        # tipografico: ele tem pre-requisitos que nem toda maquina cumpre —
+        # `node`, o runtime Remotion instalado e a fonte licenciada no
+        # repositorio. Se algum faltar, ele NAO se registra, e um pedido de video
+        # falha com `motor_desconhecido`, que e legivel. Registrar um motor que
+        # nao consegue nascer faria a falha aparecer no meio do render.
+        try:
+            motores[MotorRemotion.slug] = MotorRemotion()
+        except FalhaDoMotor:
+            pass
 
-        operario = Operario(deposito, motores, raiz / "trabalhos")
+        operario = Operario(
+            deposito, motores, raiz / "trabalhos", loja=_loja_da_bancada()
+        )
         _BANCADA = (deposito, operario, DespachanteLocal(operario))
         return _BANCADA
+
+
+def _loja_da_bancada() -> Any | None:
+    """O armazenamento que o operario usa para publicar e RELER.
+
+    ⚠️ Antes desta fatia o operario nao publicava em lugar nenhum: gravava no
+    disco do proprio processo e pronto. A consequencia estava escrita no
+    inventario e ninguem tinha fechado — um worker em OUTRA maquina produzia
+    pecas que a web classificava como perdidas, porque a leitura web faz
+    `Path(caminho).read_bytes()` sobre um caminho que so existe no disco de quem
+    produziu.
+
+    `None` quando o armazenamento nao pode ser construido. Isso NAO derruba a
+    bancada e tambem nao e silenciado: o recibo registra cada artefato como
+    `NAO_PUBLICADO`, com nome, em vez de deixar o campo vazio parecendo que
+    ninguem perguntou.
+    """
+    from app.criativo.armazenamento import armazenamento_padrao  # noqa: PLC0415
+
+    try:
+        return armazenamento_padrao()
+    except Exception:  # noqa: BLE001 — ambiente sem storage configurado
+        return None
 
 
 def iniciar_reaper(*, intervalo_s: float = 10.0) -> Reaper:

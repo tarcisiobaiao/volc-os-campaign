@@ -58,6 +58,14 @@ def _artefato_dto(a: dict[str, Any]) -> dict[str, Any]:
         "largura": a.get("largura"),
         "altura": a.get("altura"),
         "duracaoS": a.get("duracao_s"),
+        # Medida TECNICA lida do arquivo. Sai porque a tela precisa dizer
+        # "h264, 30 fps, 90 quadros" em vez de "um video"; nao carrega nada do
+        # briefing.
+        "video": a.get("video"),
+        # Dimensao NATIVA ao lado da ALVO. Sem isto, `1080x1920` significa a
+        # mesma coisa quando o motor desenhou nesse tamanho e quando alguem
+        # esticou uma peca menor.
+        "enquadramento": a.get("enquadramento"),
     }
 
 
@@ -92,6 +100,44 @@ def _recibo_dto(r: dict[str, Any] | None) -> dict[str, Any] | None:
         "custoEstimadoUsd": r.get("custo_estimado_usd"),
         "custoRealUsd": r.get("custo_real_usd"),
         "assinaturaDeterminista": r.get("assinatura_determinista"),
+        # ── o contrato produtivo ────────────────────────────────────────────
+        # Estes campos existem no recibo INTERNO desde esta fatia. Sair pela API
+        # e uma decisao por campo, e nao um `**recibo` que exporia o proximo
+        # campo que alguem acrescentar sem ninguem decidir nada.
+        "procedencia": r.get("procedencia"),
+        # ⚠️ `insumo` sai SEM o campo `texto`. O texto sanitizado continua sendo
+        # conteudo do cliente: ele existe para um auditor da casa ler no recibo
+        # interno, nao para qualquer consumidor da API. `fronteira_publica` ja
+        # escreveu a regra — texto livre nao sai, "nem truncado: um prefixo de
+        # briefing ainda e briefing" — e sanitizar nao muda a categoria.
+        "insumo": _insumo_publico(r.get("insumo")),
+        "hashesDeEntrada": r.get("hashes_de_entrada"),
+        "tentativa": r.get("tentativa"),
+        "custo": r.get("custo"),
+        "duracaoDoTrabalhoS": r.get("duracao_do_trabalho_s"),
+        "storage": r.get("storage"),
+        "destinos": r.get("destinos"),
+        "aprovacao": r.get("aprovacao"),
+        "audioAusentePorque": r.get("audio_ausente_porque"),
+        "videoAusentePorque": r.get("video_ausente_porque"),
+    }
+
+
+def _insumo_publico(i: dict[str, Any] | None) -> dict[str, Any] | None:
+    """O insumo sem o texto: estado, impressao digital e o que foi substituido.
+
+    ⚠️ O que sai daqui responde "e o mesmo briefing?" e "o que foi retirado?" sem
+    responder "o que estava escrito". As tres perguntas sao diferentes, e so as
+    duas primeiras sao da API.
+    """
+    if i is None:
+        return None
+    return {
+        "estado": i.get("estado"),
+        "hashDoCompleto": i.get("hash_do_completo"),
+        "substituicoes": i.get("substituicoes"),
+        "versaoDoSanitizador": i.get("versao_do_sanitizador"),
+        "truncado": i.get("truncado"),
     }
 
 

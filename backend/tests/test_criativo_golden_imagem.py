@@ -189,7 +189,7 @@ def _encomenda(*, seed: int, titulo: str | None = None) -> Encomenda:
                 midia="imagem",
                 mime="image/png",
             )
-            for e in D.ENVELOPES
+            for e in D.ENVELOPES_DE_IMAGEM
         ),
         parametros=parametros,
     )
@@ -287,7 +287,7 @@ def test_o_recibo_carrega_o_que_permite_repetir(travessia):
     assert r["motor_versao"]
     assert set(r["versoes"]) >= {"adaptador", "pillow", "fonte_arquivo", "fonte_sha256"}
     assert r["assinatura_determinista"]
-    assert len(r["artefatos"]) == len(D.ENVELOPES)
+    assert len(r["artefatos"]) == len(D.ENVELOPES_DE_IMAGEM)
 
 
 def test_cada_envelope_saiu_na_medida_com_mime_lido_do_magic_byte(travessia):
@@ -297,7 +297,7 @@ def test_cada_envelope_saiu_na_medida_com_mime_lido_do_magic_byte(travessia):
     extensão `.png` que o motor escolheu não é evidência de nada: quem escolhe o
     nome do arquivo é quem produziu, e é exatamente ele que está sendo auditado.
     """
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         dados = travessia.bytes_por_slot[envelope.slot]
         medida = medir_imagem.medir(dados)
         assert medida.mime == "image/png", envelope.slug
@@ -310,7 +310,7 @@ def test_cada_envelope_saiu_na_medida_com_mime_lido_do_magic_byte(travessia):
         ), envelope.slug
 
     por_slot = {a["slot"]: a for a in travessia.recibo["artefatos"]}
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         artefato = por_slot[envelope.slot]
         dados = travessia.bytes_por_slot[envelope.slot]
         assert artefato["sha256"] == hashlib.sha256(dados).hexdigest()
@@ -328,9 +328,9 @@ def test_o_gate_de_dimensao_do_operario_aprovou_cada_envelope(travessia):
     dimensoes = [
         v for v in travessia.recibo["validacoes"] if v["gate"] == "dimensao"
     ]
-    assert len(dimensoes) == len(D.ENVELOPES)
+    assert len(dimensoes) == len(D.ENVELOPES_DE_IMAGEM)
     pedidos = {tuple(v["detalhe"]["pedido"]) for v in dimensoes}
-    assert pedidos == {(e.largura, e.altura) for e in D.ENVELOPES}
+    assert pedidos == {(e.largura, e.altura) for e in D.ENVELOPES_DE_IMAGEM}
     for v in dimensoes:
         assert v["resultado"] == "PASS"
         assert v["bloqueante"] is True
@@ -363,8 +363,8 @@ def test_cada_variante_por_destino_e_recomposicao_medida_e_nao_recorte(travessia
     segmento fundo→tinta. Compor de novo, não. `fora_da_rampa == 0` em todas as
     variantes é a prova de que cada canvas foi DESENHADO, não esticado.
     """
-    mestre = travessia.bytes_por_slot[D.ENVELOPES[0].slot]
-    for envelope in D.ENVELOPES[1:]:
+    mestre = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot]
+    for envelope in D.ENVELOPES_DE_IMAGEM[1:]:
         veredito = D.classificar_adaptacao(
             mestre, travessia.bytes_por_slot[envelope.slot]
         )
@@ -380,8 +380,8 @@ def test_o_mesmo_png_recortado_e_classificado_como_recorte(travessia):
     Aqui o MESMO mestre é levado a cada envelope por `enquadrar`, que é o
     caminho de recorte real do repositório, e o veredito tem de virar.
     """
-    mestre = travessia.bytes_por_slot[D.ENVELOPES[0].slot]
-    for envelope in D.ENVELOPES[1:]:
+    mestre = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot]
+    for envelope in D.ENVELOPES_DE_IMAGEM[1:]:
         recortada = enquadrar(mestre, envelope.largura, envelope.altura)
         # `cover_crop` quando a proporção muda; `resize` quando só a escala muda
         # (o logo 1200x1200 é 1:1 como o mestre). As duas são reamostragem, e é
@@ -405,7 +405,7 @@ def test_o_recorte_come_a_margem_que_a_recomposicao_preserva(travessia):
     laterais: a tinta passa a encostar na borda, ou seja, letra cortada. A
     recomposição mantém a margem que o motor calcula a partir do canvas.
     """
-    mestre = travessia.bytes_por_slot[D.ENVELOPES[0].slot]
+    mestre = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot]
     perfil_mestre = D.perfilar(mestre)
     assert perfil_mestre.toca_a_borda() is False
     assert perfil_mestre.margem_esquerda is not None
@@ -438,7 +438,7 @@ def test_a_largura_diferente_muda_o_corpo_da_fonte_e_nao_so_o_recorte(travessia)
     pelo cover. Aqui ele é o que o canvas de 1200 pede — margem e corpo saem da
     largura, não de um fator de escala.
     """
-    mestre = D.perfilar(travessia.bytes_por_slot[D.ENVELOPES[0].slot])
+    mestre = D.perfilar(travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot])
     largo = D.perfilar(
         travessia.bytes_por_slot[D.envelope_de("google-display-191x1").slot]
     )
@@ -450,8 +450,8 @@ def test_a_largura_diferente_muda_o_corpo_da_fonte_e_nao_so_o_recorte(travessia)
 def test_sem_medir_pixel_nao_ha_veredito_de_adaptacao(travessia, monkeypatch):
     """Ausência de Pillow vira recusa nomeada, nunca "recomposicao" por omissão."""
     monkeypatch.setattr(D, "_pillow", lambda: None)
-    mestre = travessia.bytes_por_slot[D.ENVELOPES[0].slot]
-    outra = travessia.bytes_por_slot[D.ENVELOPES[1].slot]
+    mestre = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot]
+    outra = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[1].slot]
     with pytest.raises(D.MedicaoDePixelsIndisponivel):
         D.classificar_adaptacao(mestre, outra)
 
@@ -477,7 +477,7 @@ def test_mesma_semente_mesma_assinatura_e_mesmos_sha256(tmp_path):
         == dois.recibo["assinatura_determinista"]
     )
     assert um.recibo["chave_de_idempotencia"] == dois.recibo["chave_de_idempotencia"]
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         assert (
             hashlib.sha256(um.bytes_por_slot[envelope.slot]).hexdigest()
             == hashlib.sha256(dois.bytes_por_slot[envelope.slot]).hexdigest()
@@ -503,7 +503,7 @@ def test_semente_diferente_muda_assinatura_e_pixel(tmp_path):
     )
     assert um.recibo["chave_de_idempotencia"] != outro.recibo["chave_de_idempotencia"]
     # A semente escolhe a paleta: os bytes têm de mudar em todas as saídas.
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         assert (
             um.bytes_por_slot[envelope.slot] != outro.bytes_por_slot[envelope.slot]
         ), envelope.slug
@@ -522,7 +522,7 @@ def test_briefing_diferente_muda_o_pixel_e_a_assinatura(tmp_path):
         um.recibo["assinatura_determinista"]
         != outro.recibo["assinatura_determinista"]
     )
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         assert um.bytes_por_slot[envelope.slot] != outro.bytes_por_slot[envelope.slot]
 
 
@@ -559,7 +559,7 @@ def test_custo_nao_apurado_nao_e_custo_zero(travessia):
 def _publicar(travessia: Travessia, raiz: Path) -> dict[str, armazem.Publicacao]:
     loja = ArmazenamentoLocal(raiz)
     saida: dict[str, armazem.Publicacao] = {}
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         dados = travessia.bytes_por_slot[envelope.slot]
         chave = armazem.chave_canonica(
             TENANT,
@@ -576,7 +576,7 @@ def _publicar(travessia: Travessia, raiz: Path) -> dict[str, armazem.Publicacao]
 
 def test_o_armazenamento_e_verificado_relendo_os_bytes(travessia, tmp_path):
     publicacoes = _publicar(travessia, tmp_path / "storage")
-    assert set(publicacoes) == {e.slug for e in D.ENVELOPES}
+    assert set(publicacoes) == {e.slug for e in D.ENVELOPES_DE_IMAGEM}
     for slug, pub in publicacoes.items():
         assert pub.estado is armazem.EstadoDoArmazenamento.VERIFIED_OK, slug
         assert pub.verificado is True
@@ -596,7 +596,7 @@ def test_bytes_corrompidos_no_disco_derrubam_a_verificacao(travessia, tmp_path):
     """
     raiz = tmp_path / "storage"
     loja = ArmazenamentoLocal(raiz)
-    envelope = D.ENVELOPES[0]
+    envelope = D.ENVELOPES_DE_IMAGEM[0]
     dados = travessia.bytes_por_slot[envelope.slot]
     chave = armazem.chave_canonica(
         TENANT, travessia.trabalho_id, envelope.slot, armazem.sha256_de(dados), "png"
@@ -640,7 +640,7 @@ def _assets(travessia: Travessia) -> tuple[Asset, ...]:
     """
     quando = datetime.fromisoformat(travessia.recibo["terminado_em"])
     assets = []
-    for envelope in D.ENVELOPES:
+    for envelope in D.ENVELOPES_DE_IMAGEM:
         dados = travessia.bytes_por_slot[envelope.slot]
         medida = medir_imagem.medir(dados)
         assets.append(
@@ -675,17 +675,17 @@ def test_a_biblioteca_registra_cada_peca_uma_vez_e_dedup_por_conteudo(travessia)
     for asset in assets:
         registro = catalogo.registrar(asset)
         assert registro.novo is True
-    assert len(catalogo) == len(D.ENVELOPES)
+    assert len(catalogo) == len(D.ENVELOPES_DE_IMAGEM)
 
     # Registrar de novo não cria segunda linha: replay de lote não duplica peça.
     for asset in assets:
         assert catalogo.registrar(asset).novo is False
-    assert len(catalogo) == len(D.ENVELOPES)
+    assert len(catalogo) == len(D.ENVELOPES_DE_IMAGEM)
 
     # E cinco peças distintas têm cinco hashes distintos — se o motor tivesse
     # entregado o mesmo PNG cinco vezes, o catálogo teria colapsado para 1 e
     # este é o teste que veria.
-    assert len({a.conteudo_hash for a in assets}) == len(D.ENVELOPES)
+    assert len({a.conteudo_hash for a in assets}) == len(D.ENVELOPES_DE_IMAGEM)
 
 
 def test_a_aprovacao_de_destino_passa_em_ensaio_e_recusa_producao(travessia):
@@ -698,7 +698,7 @@ def test_a_aprovacao_de_destino_passa_em_ensaio_e_recusa_producao(travessia):
     assets = _assets(travessia)
     conteudo = {
         a.identidade: travessia.bytes_por_slot[e.slot]
-        for a, e in zip(assets, D.ENVELOPES)
+        for a, e in zip(assets, D.ENVELOPES_DE_IMAGEM)
     }
     lote = LoteDeAssets(canal=CANAL, assets=assets, intencao=INTENCAO)
 
@@ -706,12 +706,12 @@ def test_a_aprovacao_de_destino_passa_em_ensaio_e_recusa_producao(travessia):
         lote, conteudo, destino=ponte.Destino.ENSAIO
     )
     assert ensaio.veredito.ok is True
-    assert len(ensaio.veredito.aprovados) == len(D.ENVELOPES)
+    assert len(ensaio.veredito.aprovados) == len(D.ENVELOPES_DE_IMAGEM)
     assert ensaio.veredito.reprovados == ()
     assert ensaio.ok is True
     assert ensaio.recusas == ()
     # Linhagem por peça, com o hash conferido contra os bytes.
-    assert len(ensaio.linhagem) == len(D.ENVELOPES)
+    assert len(ensaio.linhagem) == len(D.ENVELOPES_DE_IMAGEM)
     for linha in ensaio.linhagem:
         assert linha.conteudo_hash.startswith("sha256:")
         assert linha.custo_usd is None
@@ -755,8 +755,8 @@ def _pacotes(travessia: Travessia, raiz: Path | None = None):
     """
     publicacoes = _publicar(travessia, raiz) if raiz is not None else {}
     variantes = []
-    mestre = travessia.bytes_por_slot[D.ENVELOPES[0].slot]
-    for indice, envelope in enumerate(D.ENVELOPES):
+    mestre = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot]
+    for indice, envelope in enumerate(D.ENVELOPES_DE_IMAGEM):
         dados = travessia.bytes_por_slot[envelope.slot]
         medida = medir_imagem.medir(dados)
         if indice == 0:
@@ -788,9 +788,24 @@ def test_os_pacotes_por_destino_ficam_completos_verificados_e_nao_publicaveis(
     pacotes = {p.destino: p for p in _pacotes(travessia, tmp_path / "storage")}
     assert set(pacotes) == set(D.DESTINOS)
 
+    # ⚠️ ATUALIZADO quando o catálogo ganhou o primeiro envelope de VÍDEO
+    # (`organico-reels-video-9x16`). Esta travessia produz IMAGEM, e uma imagem
+    # não preenche um envelope de vídeo — então o pacote do `organico` fica, com
+    # razão, INCOMPLETO, e o que falta é nomeado.
+    #
+    # A alternativa seria fazer o pacote se dizer completo sem o vídeo, e ela é
+    # pior: `completo` passaria a significar "completo para as mídias que este
+    # teste produz", que é uma pergunta que ninguém faz.
+    faltando_esperado = {
+        D.META: (),
+        D.GOOGLE: (),
+        D.ORGANICO: ("organico-reels-video-9x16",),
+    }
     for destino, pacote in pacotes.items():
-        assert pacote.faltando == (), destino
-        assert pacote.completo is True, destino
+        assert pacote.faltando == faltando_esperado[destino], destino
+        assert pacote.completo is (faltando_esperado[destino] == ()), destino
+        # `verificado` é sobre RELEITURA das variantes que existem, e não sobre
+        # completude: as duas perguntas são independentes de propósito.
         assert pacote.verificado is True, destino
         # A peça é de motor local: ela não vira anúncio, e o pacote diz isso.
         assert pacote.publicavel is False, destino
@@ -798,6 +813,11 @@ def test_os_pacotes_por_destino_ficam_completos_verificados_e_nao_publicaveis(
             assert variante.na_medida is True
             assert variante.armazenamento_verificado is True
             assert variante.adaptacao in (D.MESTRE, D.RECOMPOSICAO)
+
+    # E a consequência que importa: faltando o vídeo, o orgânico não é publicável
+    # nem se a natureza permitisse. `completo` é uma das três perguntas de
+    # `publicavel`, e é ela que reprova aqui.
+    assert pacotes[D.ORGANICO].completo is False
 
     assert {v.envelope_slug for v in pacotes[D.META].variantes} == {
         "meta-feed-1x1",
@@ -845,9 +865,9 @@ def _projecao(travessia: Travessia, pacotes) -> dict:
         if v["gate"] == "dimensao":
             por_gate[tuple(v["detalhe"]["pedido"])] = v["resultado"]
 
-    mestre = travessia.bytes_por_slot[D.ENVELOPES[0].slot]
+    mestre = travessia.bytes_por_slot[D.ENVELOPES_DE_IMAGEM[0].slot]
     envelopes = []
-    for indice, envelope in enumerate(D.ENVELOPES):
+    for indice, envelope in enumerate(D.ENVELOPES_DE_IMAGEM):
         dados = travessia.bytes_por_slot[envelope.slot]
         medida = medir_imagem.medir(dados)
         if indice == 0:
@@ -1077,7 +1097,7 @@ def test_o_motor_tipografico_declara_natureza_local(travessia):
     assets = _assets(travessia)
     conteudo = {
         a.identidade: travessia.bytes_por_slot[e.slot]
-        for a, e in zip(assets, D.ENVELOPES)
+        for a, e in zip(assets, D.ENVELOPES_DE_IMAGEM)
     }
     lote = LoteDeAssets(canal=CANAL, assets=assets, intencao=INTENCAO)
     producao = ponte.imagens_de_demand_gen(
@@ -1107,10 +1127,10 @@ def test_o_motor_tipografico_declara_natureza_local(travessia):
     lote_local = LoteDeAssets(canal=CANAL, assets=declarados, intencao=INTENCAO)
     conteudo_local = {
         a.identidade: travessia.bytes_por_slot[e.slot]
-        for a, e in zip(declarados, D.ENVELOPES)
+        for a, e in zip(declarados, D.ENVELOPES_DE_IMAGEM)
     }
     recusado = ponte.imagens_de_demand_gen(
         lote_local, conteudo_local, destino=ponte.Destino.PRODUCAO
     )
     assert recusado.ok is False
-    assert len(recusado.recusas) >= len(D.ENVELOPES)
+    assert len(recusado.recusas) >= len(D.ENVELOPES_DE_IMAGEM)

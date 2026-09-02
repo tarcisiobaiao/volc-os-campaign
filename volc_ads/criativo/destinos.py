@@ -222,9 +222,53 @@ ENVELOPES: tuple[Envelope, ...] = (
         proporcao="9:16",
         fonte="Meta e YouTube Shorts, tela cheia 9:16 recomendada 1080x1920",
     ),
+    # ⚠️ ACRESCENTADO NO FIM, e a posicao importa: `Envelope.slot` deriva de
+    # `ENVELOPES.index(self)`. Inserir no meio renumeraria os slots dos
+    # envelopes existentes, e um slot renumerado e um arquivo com outro nome —
+    # goldens congelados e chaves de armazenamento ja gravadas deixariam de
+    # casar sem que nada acusasse.
+    #
+    # Este e o PRIMEIRO envelope de video do catalogo. `TipoDeAsset.VIDEO` ja
+    # existia no enum desde a v11 e nao tinha nenhum envelope: o tipo estava
+    # declarado e o formato, nao. Enquanto isso, uma peca de video nao tinha
+    # destino contra o qual ser validada — e "validacao por destino" de video
+    # respondia sempre `nao_avaliado`, por ausencia de alvo e nao por decisao.
+    Envelope(
+        slug="organico-reels-video-9x16",
+        destino=ORGANICO,
+        superficie="Reels e Shorts — video",
+        tipo=TipoDeAsset.VIDEO,
+        largura=1080,
+        altura=1920,
+        proporcao="9:16",
+        fonte=(
+            "Meta Reels e YouTube Shorts, video vertical de tela cheia 9:16 "
+            "recomendado 1080x1920. Mesma geometria do envelope de imagem "
+            "`organico-reels-9x16`, e envelope SEPARADO de proposito: a "
+            "superficie aceita as duas midias e um pacote precisa saber qual "
+            "das duas falta."
+        ),
+    ),
 )
 
 _POR_SLUG: dict[str, Envelope] = {e.slug: e for e in ENVELOPES}
+
+
+#: Os envelopes por MIDIA. Existem porque geometria igual nao basta para decidir
+#: o que preenche o que: `organico-reels-9x16` e `organico-reels-video-9x16` tem
+#: os mesmos 1080x1920, e um consumidor que itere `ENVELOPES` sem filtrar produz
+#: um PNG "cumprindo" o envelope de video — que nenhum destino aceita.
+#:
+#: ⚠️ Isto foi medido, nao imaginado: quando o envelope de video entrou no
+#: catalogo, a travessia golden de imagem passou a gerar uma peca a mais e a
+#: catalogar o MESMO conteudo sob dois papeis. O defeito era da iteracao sem
+#: filtro e ja existia; o envelope novo so o tornou visivel.
+ENVELOPES_DE_VIDEO: tuple[Envelope, ...] = tuple(
+    e for e in ENVELOPES if e.tipo is TipoDeAsset.VIDEO
+)
+ENVELOPES_DE_IMAGEM: tuple[Envelope, ...] = tuple(
+    e for e in ENVELOPES if e.tipo is not TipoDeAsset.VIDEO
+)
 
 
 class EnvelopeDesconhecido(KeyError):

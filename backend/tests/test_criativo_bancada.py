@@ -956,20 +956,57 @@ def test_a_assinatura_muda_quando_o_insumo_muda(bancada, tmp_path):
     """`test_o_recibo_congela_a_versao_da_fonte` provava que o sha256 da fonte
     ESTÁ no recibo, não que a assinatura MUDA quando a fonte muda — e essa é a
     metade que serve para alguma coisa."""
-    from app.criativo.bancada.contrato import Recibo
+    from app.criativo.bancada.contrato import (
+        Aprovacao,
+        Ausencia,
+        Custo,
+        Declarado,
+        InsumoSanitizado,
+        Procedencia,
+        Recibo,
+    )
 
-    def recibo_com(versoes: dict[str, str]) -> Recibo:
+    def recibo_com(
+        versoes: dict[str, str], hashes: dict[str, str] | None = None
+    ) -> Recibo:
+        ausente = Declarado(ausencia=Ausencia.NAO_APLICAVEL)
         return Recibo(
             trabalho_id="t", chave_de_idempotencia="k", produzido_por="op",
             motor_slug="m", motor_versao="1", seed=7, versoes=versoes,
             parametros={"titulo": "x"}, artefatos=(), validacoes=(), audio=None,
             iniciado_em="a", terminado_em="b", custo_estimado_usd=None,
             custo_real_usd=None,
+            procedencia=Procedencia(
+                receita_id="r", tenant_id="t", modo_slug="m", finalidade_slug="f",
+                natureza="local", provider=ausente, modelo=ausente,
+                licenca=ausente, disclosure=ausente, brand_pack=ausente,
+            ),
+            insumo=InsumoSanitizado("ausente", None, None, {}, "1", False),
+            hashes_de_entrada=hashes or {},
+            tentativa=1,
+            custo=Custo(estimado_usd=ausente, real_usd=ausente),
+            duracao_do_trabalho_s=0.0,
+            storage=(), destinos=(),
+            aprovacao=Aprovacao(estado="aguardando"),
+            audio_ausente_porque=Ausencia.NAO_APLICAVEL,
+            video_ausente_porque=Ausencia.NAO_APLICAVEL,
         )
 
     a = recibo_com({"fonte_sha256": "a" * 64}).assinatura_determinista()
     b = recibo_com({"fonte_sha256": "b" * 64}).assinatura_determinista()
     assert a != b, "trocar a fonte não mudou a assinatura"
+
+    # ⚠️ ACRESCENTADO NESTA FATIA. A assinatura respondia "o motor repetiu?"
+    # olhando so para pedido e versoes DECLARADAS. Uma fonte trocada no disco
+    # muda o pixel sem mudar nenhuma das duas — o proprio ADR registra o caso:
+    # vendorizar uma familia sem o eixo italico faz o Chrome inclinar o romano, e
+    # "a assinatura determinista nao acusaria". Os hashes de entrada fecham isso,
+    # e este par prova que fecham.
+    mesmas = {"fonte_sha256": "a" * 64}
+    c = recibo_com(mesmas, {"fonte:Inter.ttf": "c" * 64}).assinatura_determinista()
+    d = recibo_com(mesmas, {"fonte:Inter.ttf": "d" * 64}).assinatura_determinista()
+    assert c != d, "trocar o hash de um insumo de entrada nao mudou a assinatura"
+    assert c != a, "acrescentar hashes de entrada nao mudou a assinatura"
 
 
 def test_a_mensagem_de_falha_nao_leva_caminho_de_disco_para_a_tela(bancada, tmp_path):

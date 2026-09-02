@@ -38,6 +38,7 @@ import { useCriativosAsset, useDecidirAprovacao } from '@/hooks/useCriativosBibl
 import { codigoDaFalha, mensagemDaFalha } from '@/lib/criativosApi';
 import { ROTULO_DA_APROVACAO } from '@/types/criativos';
 import { useParams } from 'react-router-dom';
+import { pecaEDecidivel } from '@/components/criativos/aprovacoes/regras';
 
 const AtivoPage: React.FC = () => {
   const { assetId } = useParams<{ assetId: string }>();
@@ -288,7 +289,7 @@ const AtivoPage: React.FC = () => {
 
           <FormularioDeDecisao
             prefixo={`ativo-${asset.id}`}
-            aprovavel
+            aprovavel={pecaEDecidivel(asset)}
             enviando={decidir.isPending}
             erro={decidir.isError ? decidir.error : null}
             aoDecidir={(pedido) => decidir.mutate(pedido)}

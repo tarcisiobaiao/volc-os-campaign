@@ -260,7 +260,21 @@ def chave_canonica(tenant_id: str, job_id: str, slot: str, sha256: str,
     tenant = _segmento("tenant_id", tenant_id)
     job = _segmento("job_id", job_id)
     peca = _segmento("slot", slot)
-    return conferir_chave(f"criativos/{tenant}/{job}/{peca}_{curto}.{ext}")
+    # ⚠️ DOIS underscores, e o delimitador NAO e estetica. `criativo_storage_chave`
+    # e `criativo_storage_chave_valida` (v11_03, ~:661 e ~:672) montam e conferem
+    # `criativos/<tenant>/<job>/<slot>__<sufixo>`, e o comentario da propria funcao
+    # SQL explica o porque: com UM underscore o prefixo `criativos/T/J/1x1` casa
+    # tambem com `criativos/T/J/1x1-malicioso.png`, e a chave de um slot passaria a
+    # apontar para o objeto de outro.
+    #
+    # Este arquivo emitia UM. Enquanto a v11_03 nao esta aplicada, a divergencia e
+    # latente; no dia da aplicacao o gatilho `criativo_render_storage_do_dono`
+    # recusaria TODA escrita de artefato com chave — a fabrica inteira pararia na
+    # migration, e o sintoma apareceria longe da causa.
+    #
+    # O SQL esta certo e o Python o segue: quem constroi a chave em dois lugares
+    # tem duas chances de divergir, e ja divergiu uma vez.
+    return conferir_chave(f"criativos/{tenant}/{job}/{peca}__{curto}.{ext}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

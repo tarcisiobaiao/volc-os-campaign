@@ -162,6 +162,12 @@ def montar_operario(
         base / "trabalhos",
         nome=nome or f"worker-{os.getpid()}",
         lease_s=lease_s,
+        # ⚠️ A loja vem do operario que `servico.montar()` ja construiu, pelo
+        # MESMO motivo que os motores vem: duas listas de motores seriam duas
+        # verdades, e duas decisoes de armazenamento tambem. Sem esta linha o
+        # worker — que e justamente quem PRODUZ — seria o unico operario da casa
+        # sem loja, e a peca ficaria no disco de um processo que ja saiu.
+        loja=operario_local.loja,
     )
     return deposito, operario
 

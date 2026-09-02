@@ -189,3 +189,20 @@ export function enquadramentoLegivel(
     }
   );
 }
+
+/**
+ * Uma contagem que o servidor pode não ter enviado.
+ *
+ * ⚠️ Fecha o último `?? 0` da fatia. `EstudioHomePage` escrevia
+ * `{resumo.contagemPorEstado[estado] ?? 0}`: se o servidor omitisse a chave de
+ * um estado, a tela AFIRMAVA zero. "Nenhum job falhou" e "ninguém contou os que
+ * falharam" levam a ações opostas, e a segunda estava escondida atrás da
+ * primeira.
+ *
+ * Hoje o backend emite os sete estados sempre, então isso era risco latente e
+ * não defeito vivo. Um `??` latente é justamente o que vira defeito no dia em
+ * que o produtor muda, sem que ninguém ligue uma coisa à outra.
+ */
+export function contagemLegivel(n: number | undefined | null): string {
+  return typeof n === 'number' ? String(n) : 'não contado';
+}
