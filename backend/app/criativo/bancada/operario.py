@@ -767,11 +767,40 @@ class Operario:
                 ))
                 log.warning("chave recusada para o slot %s: %s", a.slot, exc)
                 continue
+            # ⚠️ ACHADO ADVERSARIAL, e era bloqueante. A versão anterior lia o
+            # arquivo AQUI, depois da validação, e mandava esses bytes para o
+            # armazenamento sem reconferi-los contra `a.sha256`. O gate tinha
+            # conferido o disco num instante; o upload lia noutro. Reproduzido
+            # pelo revisor: trocando o arquivo entre os dois momentos, o storage
+            # saía `VERIFIED_OK` com `sha256_relido` diferente do `sha256` do
+            # artefato — e a chave, que é content-addressed, continuava montada
+            # com o hash ANTIGO. Um endereço passava a servir conteúdo que ele não
+            # descreve.
+            #
+            # A releitura de `publicar_artefato` prova que o armazenamento devolve
+            # o que recebeu. Ela não prova, e não pode provar, que o que recebeu é
+            # o que o gate aprovou. Essa é a conferência que faltava.
+            dados = Path(a.caminho).read_bytes()
+            sha_do_upload = hashlib.sha256(dados).hexdigest()
+            if sha_do_upload != a.sha256:
+                registros.append(RegistroDeStorage(
+                    slot=a.slot,
+                    chave=Declarado(valor=chave),
+                    estado="MISMATCH_LOCAL",
+                    sha256_relido=Declarado(ausencia=Ausencia.MISMATCH),
+                    bytes_relidos=Declarado(ausencia=Ausencia.MISMATCH),
+                    lido_em=None,
+                ))
+                log.error(
+                    "o arquivo do slot %s mudou entre a validacao e o upload; "
+                    "nada foi enviado", a.slot,
+                )
+                continue
             try:
                 publicacao = publicar_artefato(
                     self.loja,
                     chave=chave,
-                    dados=Path(a.caminho).read_bytes(),
+                    dados=dados,
                     mime=a.mime,
                 )
             except BucketAusente:

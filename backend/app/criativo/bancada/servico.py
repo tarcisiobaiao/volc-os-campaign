@@ -154,7 +154,15 @@ def motores_disponiveis() -> list[dict[str, Any]]:
                 "slug": slug,
                 "versao": getattr(motor, "versao", None),
                 "versoes": motor.versoes_congeladas(),
-                "produz": ["imagem"],
+                # ⚠️ ACHADO ADVERSARIAL. Isto era o literal `["imagem"]` para
+                # TODOS os motores, e nasceu correto — a bancada só tinha motores
+                # de imagem. Com o motor de vídeo registrado, o catálogo passou a
+                # AFIRMAR que `remotion-local` produz imagem, que é falso, e a
+                # tela decidiria botão a partir disso.
+                #
+                # Quem sabe o que um motor produz é o motor. Ausência de
+                # declaração vale `nao_declarada` — nunca um chute pelo slug.
+                "produz": midias_do_motor(motor),
                 # ⚠️ A tela precisa dos dois. Um motor cuja saida NAO e
                 # publicavel nao pode oferecer botao de publicar, e derivar isso
                 # do slug ("parece nome de motor local") seria uma heuristica
@@ -164,6 +172,19 @@ def motores_disponiveis() -> list[dict[str, Any]]:
             }
         )
     return saida
+
+
+def midias_do_motor(motor: Any) -> list[str]:
+    """As mídias que o motor declara produzir.
+
+    `["nao_declarada"]` quando ele não declara: um motor mudo não é um motor de
+    imagem, e assumir a mídia mais comum é a mesma heurística que
+    `natureza_do_motor` já recusa para publicabilidade.
+    """
+    declarado = getattr(motor, "midias", None)
+    if not declarado:
+        return ["nao_declarada"]
+    return sorted(str(m) for m in declarado)
 
 
 def natureza_do_motor(motor: Any) -> NaturezaDaProcedencia:

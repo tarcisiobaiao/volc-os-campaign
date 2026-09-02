@@ -1,6 +1,10 @@
 # Creative worker — o que um render hermético exigiria
 
-**Data:** 01/09/2026 · **Estado:** requisito levantado, **nada implantado**
+**Data:** 01/09/2026 · **Estado em 02/09/2026:** parcialmente CUMPRIDO — ver adendo no fim
+
+⚠️ Este documento foi escrito antes de existir runtime neste diretório, e o
+"nada implantado" do cabeçalho original deixou de ser verdade. O texto abaixo
+permanece como foi medido; o adendo diz o que mudou.
 **Medição de origem:** `docs/architecture/REMOTION-HERMETICO-P17-T07.md` e `docs/architecture/remotion-hermetico.json`
 
 O `README.md` deste diretório diz que ele é território reservado e que nada aqui
@@ -151,3 +155,31 @@ READ-ONLY. **Nenhum render foi executado.** Renderizar exigiria escrever no parq
 Portanto: **o hermetismo está medido e não está provado.** Este diretório continua
 sem imagem, sem manifesto e sem processo implantável, exatamente como o `README.md`
 declara.
+
+
+---
+
+# Adendo de 02/09/2026 — o que passou a existir
+
+`deploy/creative-worker/remotion-runtime/` é um runtime Remotion **do VOLC O.S.**,
+e não a fábrica externa. A diferença é o custo do hermetismo: a fábrica tem 15
+composições e 11 famílias de fonte não licenciadas aqui; este runtime tem UMA
+composição e UMA família — a Inter, já versionada sob OFL 1.1.
+
+| Requisito deste documento | Estado |
+|---|---|
+| fontes locais, licenciadas e mínimas | **cumprido** — Inter (OFL 1.1), sha256 no recibo |
+| nenhuma conexão externa durante o render | **cumprido e PROVADO** — `sandbox-exec` com `(deny network-outbound)`; o kernel devolve `EPERM`, e a sonda que confirma isso roda dentro do processo do render |
+| versões em lockstep | **cumprido** — 16 pacotes `@remotion/*` em 4.0.479 exatos, lidos do lockfile |
+| isolamento por processo e diretório | **cumprido** — diretório exclusivo por reivindicação, grupo de processos próprio, `killpg` no timeout |
+| hash reprodutível | **cumprido** — 4 execuções do mesmo pedido dão o mesmo sha256 do container (`scripts/provar-render-hermetico.sh`) |
+| orçamento de timeout | **cumprido** — `CRIATIVO_REMOTION_TIMEOUT_S`, com a árvore de processos derrubada |
+| bloqueio de rede por infraestrutura | **cumprido em macOS**; em Linux exige container sem egresso ou netns, e o gate REPROVA sem prova de bloqueio |
+| imagem / manifesto / processo implantável | **NÃO cumprido** |
+| equivalência de pixel macOS ↔ Linux | **NÃO PROVADA** |
+| decisão de licença do Remotion | **pendente, e do dono** |
+
+⚠️ A propriedade "sem a fonte o render falha duro e não deixa artefato" continua
+valendo para 4.0.479 e é reconferida a cada execução do script (DEGRAU 6). Se uma
+versão futura adotar fallback tolerante, o hermetismo deixa de ser garantia e
+passa a ser esperança — re-testar a cada bump maior.

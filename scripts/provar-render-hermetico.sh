@@ -34,6 +34,7 @@ RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME="$RAIZ/deploy/creative-worker/remotion-runtime"
 FONTE="$RAIZ/backend/app/criativo/bancada/fontes/Inter-Variable.ttf"
 PERFIL="$RAIZ/deploy/creative-worker/sem-rede.sb"
+REPETICOES="${CRIATIVO_REPETICOES_DETERMINISMO:-4}"
 TRABALHO="$(mktemp -d "${TMPDIR:-/private/tmp}/volc-hermetico-XXXXXX")"
 trap 'rm -rf "$TRABALHO"' EXIT
 
@@ -132,22 +133,38 @@ echo "       codec=$codec_v/$codec_a  ${larg}x${alt}  fps=$fps  quadros=$nq  dur
 [ "$fps" = "30/1" ] && ok "30 fps" || nok "fps inesperado: $fps"
 [ "$nq" = "90" ] && ok "90 quadros CONTADOS (render integral, nao um still)" || nok "quadros contados: $nq"
 
-secao "3 — determinismo: mesmo pedido, outro processo"
-montar "$TRABALHO/r2" 20260902 '"leito.wav"'
-render_sem_rede "$TRABALHO/r2" || true
-pxa="$(px "$TRABALHO/r1/peca.mp4")"; pxb="$(px "$TRABALHO/r2/peca.mp4")"
-aua="$(au "$TRABALHO/r1/peca.mp4")"; aub="$(au "$TRABALHO/r2/peca.mp4")"
+secao "3 — determinismo: $REPETICOES execucoes do mesmo pedido"
+# ⚠️ ACHADO ADVERSARIAL. A versao anterior fazia DOIS renders e a mensagem de
+# entrega falava em seis — o numero maior existia so num comentario. Duas
+# execucoes tambem sao um n pequeno demais para o defeito que este degrau existe
+# para pegar: a divergencia medida (8 pixels na borda inferior) aparecia em
+# ALGUMAS execucoes, nao em todas, e um par podia sair identico por sorte.
+#
+# `CRIATIVO_REPETICOES_DETERMINISMO` permite subir o n numa investigacao.
+pxa="$(px "$TRABALHO/r1/peca.mp4")"
+aua="$(au "$TRABALHO/r1/peca.mp4")"
 mpa="$(shasum -a 256 < "$TRABALHO/r1/peca.mp4" | cut -d' ' -f1)"
-mpb="$(shasum -a 256 < "$TRABALHO/r2/peca.mp4" | cut -d' ' -f1)"
-{ [ -n "$pxa" ] && [ "$pxa" = "$pxb" ]; } && ok "quadros decodificados identicos (sha256 ${pxa:0:16}…)" \
-                    || nok "os quadros diferem entre duas execucoes"
-{ [ -n "$aua" ] && [ "$aua" = "$aub" ]; } && ok "audio decodificado identico (sha256 ${aua:0:16}…)" \
-                    || nok "o audio difere entre duas execucoes"
-if [ "$mpa" = "$mpb" ]; then
-  ok "o CONTAINER tambem e byte-identico (sha256 ${mpa:0:16}…)"
+px_distintos=1; au_distintos=1; mp_distintos=1
+for n in $(seq 2 "$REPETICOES"); do
+  montar "$TRABALHO/r$n" 20260902 '"leito.wav"'
+  render_sem_rede "$TRABALHO/r$n" || true
+  [ "$(px "$TRABALHO/r$n/peca.mp4")" = "$pxa" ] || px_distintos=$((px_distintos+1))
+  [ "$(au "$TRABALHO/r$n/peca.mp4")" = "$aua" ] || au_distintos=$((au_distintos+1))
+  [ "$(shasum -a 256 < "$TRABALHO/r$n/peca.mp4" | cut -d' ' -f1)" = "$mpa" ] \
+    || mp_distintos=$((mp_distintos+1))
+done
+echo "       $REPETICOES execucoes · hashes de pixel distintos: $px_distintos"
+{ [ -n "$pxa" ] && [ "$px_distintos" -eq 1 ]; } \
+  && ok "as $REPETICOES execucoes dao os MESMOS quadros (sha256 ${pxa:0:16}…)" \
+  || nok "os quadros divergiram: $px_distintos hashes distintos em $REPETICOES execucoes"
+{ [ -n "$aua" ] && [ "$au_distintos" -eq 1 ]; } \
+  && ok "as $REPETICOES execucoes dao o MESMO audio (sha256 ${aua:0:16}…)" \
+  || nok "o audio divergiu: $au_distintos hashes distintos"
+if [ "$mp_distintos" -eq 1 ]; then
+  ok "o CONTAINER tambem e byte-identico nas $REPETICOES (sha256 ${mpa:0:16}…)"
 else
-  nota "o container difere entre execucoes — o muxer carimba metadado."
-  nota "O que decide determinismo e o PIXEL e o AUDIO acima, e os dois batem."
+  nota "o container difere entre execucoes ($mp_distintos hashes) — o muxer carimba"
+  nota "metadado. O que decide determinismo e o PIXEL e o AUDIO acima."
 fi
 
 secao "4 — calibracao: o proprio sandbox recusa saida externa"
@@ -164,32 +181,47 @@ echo "       fora do sandbox: $fora · dentro do sandbox: $dentro"
 if [ "$fora" = "CONECTOU" ]; then
   ok "fora do sandbox a MESMA tentativa conecta — o teste nao e vacuo"
 else
-  nota "fora do sandbox tambem nao conectou ($fora): a maquina pode estar sem rede,"
-  nota "e nesse caso o DEGRAU 1 nao distingue hermetismo de ausencia de rede."
+  # ⚠️ Isto era `nota`, isto e, nao contava. Mas sem esta metade a prova inteira
+  # perde o sentido: numa maquina sem rede, o DEGRAU 1 fica verde por ausencia de
+  # rede e nao por hermetismo, e o relatorio afirmaria a segunda coisa.
+  nok "fora do sandbox a mesma tentativa TAMBEM nao conectou ($fora): esta maquina nao"
+  echo "       tem rede alcancavel, entao este script nao consegue distinguir"
+  echo "       hermetismo de ausencia de rede. Rode com rede para provar."
 fi
-if [ "${dentro%%:*}" = "RECUSADO" ]; then
-  ok "dentro do sandbox o kernel RECUSA a saida (${dentro#*:}) — o bloqueio e real"
-else
-  nok "dentro do sandbox a saida NAO foi recusada ($dentro) — o verde do DEGRAU 1 nao vale"
-fi
+# ⚠️ ACHADO ADVERSARIAL. A versao anterior aceitava QUALQUER erro prefixado
+# `RECUSADO` — inclusive `ENETUNREACH` e `ECONNREFUSED`, que uma maquina sem rede
+# produz sozinha. Provar hermetismo com ausencia de rede prova outra coisa.
+# `EPERM`/`EACCES` sao o kernel dizendo "voce nao tem permissao", que e o que o
+# sandbox faz e o que so ele faz.
+codigo_dentro="${dentro#*:}"
+case "$codigo_dentro" in
+  EPERM|EACCES)
+    ok "dentro do sandbox o kernel RECUSA a saida ($codigo_dentro) — o bloqueio e real" ;;
+  *)
+    nok "dentro do sandbox a resposta foi '$dentro', e nao EPERM/EACCES — nao ha prova de bloqueio" ;;
+esac
 
 secao "5 — a seed atravessa ate o pixel"
-montar "$TRABALHO/r3" 777 '"leito.wav"'
-render_sem_rede "$TRABALHO/r3" || true
-pxc="$(px "$TRABALHO/r3/peca.mp4")"
+montar "$TRABALHO/seed" 777 '"leito.wav"'
+render_sem_rede "$TRABALHO/seed" || true
+pxc="$(px "$TRABALHO/seed/peca.mp4")"
 { [ -n "$pxc" ] && [ "$pxc" != "$pxa" ]; } \
   && ok "outra seed produz outros quadros — a seed nao e enfeite de recibo" \
   || nok "duas seeds diferentes deram o mesmo pixel"
 
 secao "6 — sem a fonte local, o render FALHA e nao deixa artefato"
-montar "$TRABALHO/r4" 20260902 '"leito.wav"'
-rm -f "$TRABALHO/r4/public/Inter-Variable.ttf"
-if render_sem_rede "$TRABALHO/r4"; then
+# ⚠️ Diretorio de nome PROPRIO. Ele era `r4`, e o laco de determinismo do
+# DEGRAU 3 passou a ocupar r2..rN: o degrau reusava um diretorio que ja
+# tinha bundle e peca.mp4, e a prova ficava verde-falso nos dois sentidos.
+# Defeito do arranjo, pego pelo proprio gate.
+montar "$TRABALHO/sem-fonte" 20260902 '"leito.wav"'
+rm -f "$TRABALHO/sem-fonte/public/Inter-Variable.ttf"
+if render_sem_rede "$TRABALHO/sem-fonte"; then
   nok "o render SAIU sem a fonte local — houve fallback silencioso e o pixel mentiria"
 else
   ok "o render falhou sem a fonte local (falha dura, decisao 5 do ADR)"
 fi
-[ -s "$TRABALHO/r4/peca.mp4" ] \
+[ -s "$TRABALHO/sem-fonte/peca.mp4" ] \
   && nok "sobrou artefato de um render que falhou" \
   || ok "nenhum artefato foi deixado para tras"
 

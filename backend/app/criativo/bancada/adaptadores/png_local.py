@@ -70,6 +70,8 @@ class MotorPngLocal:
     slug = SLUG
     versao = VERSAO_DO_ADAPTADOR
     natureza = NaturezaDaProcedencia.LOCAL
+    #: O que este motor produz. O catalogo pergunta; ele nao chuta.
+    midias = ("imagem",)
 
     def versoes_congeladas(self) -> dict[str, str]:
         import zlib  # noqa: PLC0415 — só para ler a versão

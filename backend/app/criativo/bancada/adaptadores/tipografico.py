@@ -190,6 +190,8 @@ class MotorTipografico:
     #: aviso, enquanto a do `png-local` — que declara corretamente — recebia
     #: recusa. O incentivo estava invertido: nao declarar valia mais que declarar.
     natureza = NaturezaDaProcedencia.LOCAL
+    #: O que este motor produz. O catalogo pergunta; ele nao chuta.
+    midias = ("imagem",)
 
     def __init__(self) -> None:
         self._fonte = _escolher_fonte()

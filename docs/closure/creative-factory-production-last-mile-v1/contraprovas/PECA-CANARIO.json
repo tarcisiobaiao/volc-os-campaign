@@ -2,15 +2,15 @@
   "_leia": "Peca canario produzida pela espinha produtiva inteira, em diretorio descartavel. Nenhum ato externo: armazenamento LOCAL, sem provider pago, sem Supabase, sem publicacao. O texto do briefing NAO esta aqui — so o estado e a impressao digital dele.",
   "pecas": {
     "imagem": {
-      "trabalho_id": "6cc5d1af-1a0c-430d-9faf-99e02ec788e5",
+      "trabalho_id": "94931896-3fce-45cf-940d-ed2b77cfb8ba",
       "estado": "rendered",
       "tentativa": 1,
-      "produzido_por": "operario-f4fccc72",
+      "produzido_por": "operario-ecb32733",
       "motor": "tipografico-local@1.0.0",
       "seed": 20260902,
       "chave_de_idempotencia": "79976b5a406f1458ff0b602b7eb7358cfb0610053169ef25b8262282ad47b766",
       "assinatura_determinista": "bcfc7518afdffb151dbcd44f42e472cd44288d11e41ef39a1a5f28655056f19c",
-      "duracao_do_trabalho_s": 0.109757,
+      "duracao_do_trabalho_s": 0.769352,
       "artefato": {
         "slot": "2-imagem_marketing",
         "mime": "image/png",
@@ -74,10 +74,10 @@
       "hashes_de_entrada": {},
       "storage": {
         "estado": "VERIFIED_OK",
-        "chave": "criativos/positivo/6cc5d1af-1a0c-430d-9faf-99e02ec788e5/2-imagem_marketing__31dbc13fa0f54399e45999c80dc861b1.png",
+        "chave": "criativos/positivo/94931896-3fce-45cf-940d-ed2b77cfb8ba/2-imagem_marketing__31dbc13fa0f54399e45999c80dc861b1.png",
         "sha256_relido": "31dbc13fa0f54399e45999c80dc861b164afabb8ec679ec91fe7cda32b34be54",
         "bytes_relidos": 27568,
-        "lido_em": "2026-09-02T11:35:38.512773+00:00",
+        "lido_em": "2026-09-02T12:06:55.424730+00:00",
         "objeto_existe_no_disco": true,
         "hash_do_artefato_bate_com_o_relido": true
       },
@@ -134,15 +134,15 @@
       ]
     },
     "video": {
-      "trabalho_id": "c9c90e5a-6121-4d15-85fd-1b1a7139c812",
+      "trabalho_id": "1871d60a-d989-46c1-b5a7-6c107a45e27b",
       "estado": "rendered",
       "tentativa": 1,
-      "produzido_por": "operario-f4fccc72",
+      "produzido_por": "operario-ecb32733",
       "motor": "remotion-local@1",
       "seed": 20260902,
       "chave_de_idempotencia": "3bfeff28d9a416911e64dcb5d7f68e5970a3f60828fa9824f0f8f7416595069e",
-      "assinatura_determinista": "4d41909ca4b79d6ff1fe75868b57a499de3494b27dd40662797dc843f3ef125a",
-      "duracao_do_trabalho_s": 17.307561,
+      "assinatura_determinista": "8ae502465630eb38f6a466ba411361291628afe2400c5bae44967d22dfe2979e",
+      "duracao_do_trabalho_s": 31.732647,
       "artefato": {
         "slot": "5-video",
         "mime": "video/mp4",
@@ -233,10 +233,10 @@
       },
       "storage": {
         "estado": "VERIFIED_OK",
-        "chave": "criativos/positivo/c9c90e5a-6121-4d15-85fd-1b1a7139c812/5-video__3e5ae27082f61c8456172c1a7726229b.mp4",
+        "chave": "criativos/positivo/1871d60a-d989-46c1-b5a7-6c107a45e27b/5-video__3e5ae27082f61c8456172c1a7726229b.mp4",
         "sha256_relido": "3e5ae27082f61c8456172c1a7726229b72db8469a2f632cb8aaa3fd97d5e7164",
         "bytes_relidos": 448196,
-        "lido_em": "2026-09-02T11:35:55.763033+00:00",
+        "lido_em": "2026-09-02T12:07:26.804513+00:00",
         "objeto_existe_no_disco": true,
         "hash_do_artefato_bate_com_o_relido": true
       },
@@ -307,7 +307,7 @@
         },
         {
           "gate": "safe_zone",
-          "resultado": "PASS",
+          "resultado": "SKIPPED",
           "bloqueante": false
         }
       ]

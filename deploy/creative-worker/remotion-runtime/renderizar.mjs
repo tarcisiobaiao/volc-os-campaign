@@ -20,6 +20,7 @@
  * webpack NAO invalida quando so `node_modules` muda, e um cache reaproveitado
  * mascararia exatamente a regressao que a prova de determinismo procura.
  */
+import net from 'node:net';
 import {bundle} from '@remotion/bundler';
 import {renderMedia, selectComposition} from '@remotion/renderer';
 import {createRequire} from 'node:module';
@@ -39,6 +40,37 @@ function versoesCongeladas() {
   return saida;
 }
 
+/**
+ * Tenta UMA conexao externa e relata o que o kernel respondeu.
+ *
+ * ⚠️ Esta sonda existe porque a versao anterior marcava o gate `render_sem_rede`
+ * como PASS pela mera EXISTENCIA de `/usr/bin/sandbox-exec` e do perfil. Isso
+ * afirma que o sandbox foi aplicado a partir de dois arquivos estarem no disco —
+ * e um `sandbox-exec` que silenciosamente nao se aplicasse produziria um verde
+ * que nao significa nada. Aqui quem responde e o kernel, DE DENTRO do mesmo
+ * processo que vai renderizar.
+ *
+ * Nao envia byte nenhum: abre, le o codigo de erro e fecha. O destino e um
+ * resolvedor publico anycast, escolhido por ser um IP literal — resolver DNS
+ * seria outra pergunta.
+ */
+function sondarRede() {
+  return new Promise((resolve) => {
+    let respondeu = false;
+    const responder = (r) => { if (!respondeu) { respondeu = true; resolve(r); } };
+    let s;
+    try {
+      s = net.connect({host: '1.1.1.1', port: 443});
+    } catch (e) {
+      return responder({saiu: false, codigo: String(e && e.code || 'erro-sincrono')});
+    }
+    s.setTimeout(2500);
+    s.on('connect', () => { s.destroy(); responder({saiu: true, codigo: 'CONECTOU'}); });
+    s.on('error', (e) => { s.destroy(); responder({saiu: false, codigo: String(e && e.code || 'erro')}); });
+    s.on('timeout', () => { s.destroy(); responder({saiu: null, codigo: 'TIMEOUT'}); });
+  });
+}
+
 async function principal() {
   const caminhoDoPedido = process.argv[2];
   if (!caminhoDoPedido) {
@@ -46,6 +78,10 @@ async function principal() {
   }
   const pedido = JSON.parse(readFileSync(caminhoDoPedido, 'utf8'));
   const {props, saida, publicDir, outDirDoBundle, codec, crf, x264Preset, audioCodec} = pedido;
+
+  // A sonda roda ANTES do bundle: se o render for demorar, o operador ja sabe
+  // desde a primeira linha do relatorio se ha rede alcancavel deste processo.
+  const sonda = await sondarRede();
 
   const iniciouBundle = process.hrtime.bigint();
   const serveUrl = await bundle({
@@ -86,6 +122,10 @@ async function principal() {
 
   const relatorio = {
     ok: true,
+    // `saiu: false` com `codigo: 'EPERM'` e o kernel RECUSANDO — que e o que o
+    // sandbox faz. `TIMEOUT` (`saiu: null`) NAO e prova de bloqueio: pode ser
+    // maquina sem rede, e as duas coisas levam a conclusoes diferentes.
+    rede: sonda,
     composicao: {
       id: composicao.id,
       largura: composicao.width,

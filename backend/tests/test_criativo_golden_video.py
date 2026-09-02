@@ -213,17 +213,83 @@ def test_os_gates_do_motor_entraram_no_recibo(travessia):
     assert "safe_zone" in gates
 
 
-def test_o_render_foi_hermetico_ou_a_ausencia_esta_nomeada(travessia):
-    """`PASS` quando o sandbox bloqueou de verdade; `SKIPPED` com motivo quando a
-    máquina não tem `sandbox-exec`. Não existe terceiro caminho — e não existe
-    caminho em que a ausência de bloqueio vire aprovação silenciosa."""
+def test_o_render_foi_hermetico_e_quem_disse_isso_foi_o_kernel(travessia):
+    """⚠️ REESCRITO depois da revisão adversarial, e a versão anterior era um
+    falso verde de dois jeitos.
+
+    Primeiro: o gate saía `PASS` porque `/usr/bin/sandbox-exec` e o perfil
+    EXISTEM no disco — afirmando que o sandbox foi APLICADO a partir de dois
+    arquivos estarem lá. E este teste conferia a MESMA condição usada para
+    produzir o gate, o que torna a asserção circular.
+
+    Segundo: onde o sandbox não existe, o gate saía `SKIPPED` não-bloqueante e o
+    trabalho chegava a `rendered` com rede liberada. Hermetismo deixava de ser
+    invariante do motor para virar propriedade do sistema operacional de quem
+    rodou.
+
+    Agora o veredito vem do KERNEL, respondendo dentro do processo que
+    renderizou, e o gate é BLOQUEANTE: sem prova de bloqueio o trabalho falha,
+    a menos que alguém dispense o hermetismo por variável nomeada.
+    """
     gate = {v["gate"]: v for v in travessia.recibo["validacoes"]}["render_sem_rede"]
-    if Path("/usr/bin/sandbox-exec").is_file():
-        assert gate["resultado"] == "PASS"
-        assert "sandbox-exec" in gate["detalhe"]["instrumento"]
-    else:
-        assert gate["resultado"] == "SKIPPED"
-        assert gate["detalhe"]["motivo"]
+    assert gate["resultado"] == "PASS", gate
+    assert gate["bloqueante"] is True
+    # `EPERM`/`EACCES` é o kernel dizendo "sem permissão". `ENETUNREACH` e
+    # `ECONNREFUSED` uma máquina sem rede também produz, e provar hermetismo com
+    # ausência de rede prova outra coisa.
+    assert gate["detalhe"]["resposta_do_kernel"] in ("EPERM", "EACCES"), gate
+
+
+def test_o_gate_de_hermetismo_reprova_quando_nao_ha_prova_de_bloqueio():
+    """CONTRAPROVA VERMELHA do teste acima, e ela não precisa de render.
+
+    Um relatório sem sonda — que é exatamente o que uma máquina sem
+    `sandbox-exec` produz — tem de FALHAR o gate bloqueante, e não virar
+    `SKIPPED`."""
+    import json as _json
+    import tempfile
+
+    motor = adaptador_remotion.MotorRemotion()
+    with tempfile.TemporaryDirectory() as d:
+        Path(d, adaptador_remotion.RELATORIO).write_text(
+            _json.dumps({"sandbox": False, "rede": None, "por_slot": {}}), "utf-8"
+        )
+        gates = {g.gate: g for g in motor.gates(_encomenda(), d)}
+    assert gates["render_sem_rede"].resultado == "FAIL"
+    assert gates["render_sem_rede"].bloqueante is True
+
+    # E o escape existe, é explícito e fica NO RECIBO — não é um silêncio.
+    with tempfile.TemporaryDirectory() as d:
+        Path(d, adaptador_remotion.RELATORIO).write_text(
+            _json.dumps({"sandbox": False,
+                         "rede": {"saiu": True, "codigo": "CONECTOU"},
+                         "por_slot": {}}), "utf-8"
+        )
+        os.environ["CRIATIVO_PERMITIR_RENDER_COM_REDE"] = "1"
+        try:
+            gates = {g.gate: g for g in motor.gates(_encomenda(), d)}
+        finally:
+            os.environ.pop("CRIATIVO_PERMITIR_RENDER_COM_REDE", None)
+    assert gates["render_sem_rede"].resultado == "WARN"
+    assert gates["render_sem_rede"].bloqueante is False
+    assert "CRIATIVO_PERMITIR_RENDER_COM_REDE" in gates["render_sem_rede"].detalhe["motivo"]
+
+
+def test_um_erro_de_rede_qualquer_nao_prova_bloqueio():
+    """`ENETUNREACH` é o que uma máquina sem rede devolve. Aceitá-lo como prova
+    de sandbox faria toda máquina offline parecer hermética."""
+    import json as _json
+    import tempfile
+
+    motor = adaptador_remotion.MotorRemotion()
+    with tempfile.TemporaryDirectory() as d:
+        Path(d, adaptador_remotion.RELATORIO).write_text(
+            _json.dumps({"sandbox": True,
+                         "rede": {"saiu": False, "codigo": "ENETUNREACH"},
+                         "por_slot": {}}), "utf-8"
+        )
+        gates = {g.gate: g for g in motor.gates(_encomenda(), d)}
+    assert gates["render_sem_rede"].resultado == "FAIL", gates["render_sem_rede"]
 
 
 # ── o recibo ─────────────────────────────────────────────────────────────────

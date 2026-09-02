@@ -17,10 +17,22 @@ nao sai, nem truncado". Este arquivo decide o que o recibo INTERNO guarda, e a
 resposta e outra: guarda, legivel, sem os identificadores. Juntar os dois faria a
 proxima pessoa achar que o texto sanitizado tambem e publico.
 
-⚠️ Sanitizar NAO e anonimizar. Um briefing sem e-mail, sem telefone e sem valor
-ainda pode identificar um cliente pelo assunto. O que este modulo promete e
-menor e verdadeiro: os identificadores de contato e os numeros saem, o texto
-continua auditavel, e o hash do original continua respondendo pela identidade.
+⚠️ Sanitizar NAO e anonimizar, e a promessa aqui e ESTREITA de proposito. Um
+briefing sem e-mail, sem telefone e sem valor ainda identifica um cliente pelo
+assunto — e nada neste modulo tenta resolver isso.
+
+O que ele promete, e so isto: as classes de identificador LISTADAS em
+`_REGRAS_DE_SANITIZACAO` saem, `substituicoes` diz quais casaram e quantas
+vezes, o texto continua legivel por um auditor, e o hash do original continua
+respondendo pela identidade.
+
+⚠️ A lista e uma ALLOWLIST INVERTIDA, e por isso e incompleta por construcao: ela
+remove o que reconhece, e reconhece o que alguem escreveu. Uma revisao
+adversarial apontou `@perfil`, `www.` sem esquema, placa e passaporte passando
+inteiros — as quatro entraram, e a proxima classe que ninguem pensou tambem vai
+passar. Quem depender deste modulo para uma garantia mais forte que "os padroes
+listados saem" vai se decepcionar, e a decepcao seria com a leitura, nao com o
+codigo: e por isso que a fronteira publica NAO devolve este texto.
 """
 
 from __future__ import annotations
@@ -36,7 +48,17 @@ from .contrato import InsumoSanitizado
 _REGRAS_DE_SANITIZACAO: tuple[tuple[str, str], ...] = (
     (r"[\w.+-]+@[\w-]+\.[\w.-]+", "<email>"),
     (r"https?://\S+", "<url>"),
+    # ⚠️ ACRESCENTADA. `https?://` deixava passar `www.exemplo.com` e
+    # `exemplo.com.br/promo` — o mesmo endereco, sem o esquema.
+    (r"\b(?:www\.)[\w-]+(?:\.[\w-]+)+(?:/\S*)?", "<url>"),
+    # ⚠️ ACRESCENTADA. `@joao` e identificador de rede social, e sobrevivia
+    # inteiro porque a regra de e-mail exige um dominio depois do `@`.
+    (r"(?<![\w.])@[A-Za-z][\w.]{2,}", "<perfil>"),
     (r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", "<documento>"),
+    # ⚠️ ACRESCENTADA. Documento com letras — passaporte, RG com digito, placa
+    # Mercosul — nao casava nenhuma regra numerica.
+    (r"\b[A-Z]{2,3}\d{4,8}\b", "<documento>"),
+    (r"\b[A-Z]{3}\d[A-Z]\d{2}\b", "<placa>"),
     (r"\(?\d{2}\)?\s?9?\d{4}[-\s]?\d{4}", "<telefone>"),
     (r"R\$\s?[\d.,]+", "<valor>"),
     (r"\b\d{3,}\b", "<numero>"),
