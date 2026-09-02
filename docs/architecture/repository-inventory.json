@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T21:02:52-03:00",
+  "generated_at": "2026-09-01T21:31:37-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 492,
-    "markdown": 333,
-    "sql": 159,
-    "tracked": 492,
+    "files": 500,
+    "markdown": 338,
+    "sql": 162,
+    "tracked": 500,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 22,
-      "documentation": 192,
+      "audit": 23,
+      "documentation": 196,
       "generated": 2,
       "module-guide": 32,
       "product-document": 21,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 46,
+      "sql-needs-review": 49,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 98,
+      "high": 101,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -1027,9 +1027,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 18834,
-      "lines": 263,
-      "sha256": "5af15f094a31710a237f58edd7e0002c20e4f842367ddcf0b2979438505d9d8f",
+      "bytes": 19304,
+      "lines": 268,
+      "sha256": "aee5ba98f476ab8f37c9b7e2f122180308bbd8d8b89b92dfb2d8e8bd281f2eec",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2211,6 +2211,66 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/ADR-N8N-AUTORIDADE-DE-AGENDA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6624,
+      "lines": 120,
+      "sha256": "3e8e577ad28beb2b5f9cdfefb21a70f6e0932a2b930db77459e898149b02cb7e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/AUTORIZACAO-ATIVACAO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 12434,
+      "lines": 282,
+      "sha256": "c628f51db5809b6887e05cbf87230a9b79ae6b0db5690a0b6658e5afc99a2058",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 10861,
+      "lines": 244,
+      "sha256": "a4ab835086d201b0921531d3061c835badca1dfb0d18653e8c805fbac2515d83",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 14653,
+      "lines": 250,
+      "sha256": "f1fa432611c6144af092ec1493e560cde3a9b656851c472347870f57aa50a769",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/REVISAO-FOCAL.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 3772,
+      "lines": 53,
+      "sha256": "26a23a85738d25857902c8b4743b508fdb4c7b634e4e9ce485cee2652211bb2f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/search-measurement-operational-v1/APLICACAO-V12-02.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3247,9 +3307,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 1712,
+      "bytes": 1713,
       "lines": 32,
-      "sha256": "5366af1f5156957a79fa4e1f03b62e23b62a5a1a6ae0388cdff1541daf7920da",
+      "sha256": "4d73bf09a751f0e6cbdd0ea76f36028a9e5d946d4893ceac2078e661ae83afcc",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3612,6 +3672,18 @@
       "sha256": "2f7c7550c37cdfe09c81c4693ffb58829546207c146a546af416e673ad86ec90",
       "graph_nodes": 3,
       "graph_degree": 4,
+      "sql_risk": "high"
+    },
+    {
+      "path": "scripts/provas-v12_04.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 31971,
+      "lines": 700,
+      "sha256": "ab2a12ef7d3649166bd019eb01e2c707d3120a6b35ca8c5da5a8d85d2a7ccf83",
+      "graph_nodes": 6,
+      "graph_degree": 12,
       "sql_risk": "high"
     },
     {
@@ -5215,9 +5287,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 64726,
-      "lines": 1140,
-      "sha256": "fdb57b24de17f7a3a85ed0fb0b2101e08386d196debd6d0d153c5a9d23abcc08",
+      "bytes": 68956,
+      "lines": 1222,
+      "sha256": "0da45ade141895dad3cd8172f23a8db20c95633333d82423c22444e19ed1aab5",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5434,6 +5506,30 @@
       "bytes": 4042,
       "lines": 92,
       "sha256": "f95da19eef129570432d5b226707893a5ecaa319b4cccc37f492e7cb94b5b79d",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 51769,
+      "lines": 1075,
+      "sha256": "f19ed662c596f863806a05047b67808fe2b10660f2ed286866ec88816ccda713",
+      "graph_nodes": 9,
+      "graph_degree": 29,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v12_04_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3203,
+      "lines": 81,
+      "sha256": "583a2f7189db739feeed944cb3bd51e4a333a878cadbaa366ec9511cb95cbee3",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"

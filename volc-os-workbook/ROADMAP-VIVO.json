@@ -1342,10 +1342,10 @@
         {
           "id": "P10-T16",
           "title": "Adaptar os workflows n8n Google Ads ao ledger v12 e decidir a autoridade de agenda",
-          "status": "todo",
+          "status": "partial",
           "priority": 1,
-          "proof": "O coletor Python v3 e o ledger v12 estão provados no Supabase oficial, mas nenhuma rotina contínua está ativa. A operação vigente usa n8n para ingestão Google Ads; os workflows D0/D-1 ainda escrevem no contrato legado e o pacote systemd permanece apenas como alternativa não instalada.",
-          "explanation": "Preservar o n8n como plano de orquestração se ele continuar sendo a escolha operacional, fazendo-o chamar o coletor/RPC canônico em vez de manter uma segunda verdade de dados ou concorrer com timers systemd.",
+          "proof": "2026-09-01 · Integrado candidato inativo em 75220271fb24c6c225c2af22be2d59214a115c15: N8N_IS_SCHEDULE_AUTHORITY registrado; v12_04 entrega trafego_coleta_execucao, google_ads_campanha_dia e RPC única; workflows n8n D0/D-1 gerados e active:false; validações locais verdes no resultado integrado (ciclo 107/0, ponta a ponta 12/0, workflow 339/0/0, simulador 65/0, agenda única 14/0/1, pytest focal 18 passed). Permanece partial: migration oficial, canário, leitura real Google Ads/n8n, heartbeat e ativação não executados.",
+          "explanation": "A decisão operacional deixou de estar em aberto: n8n é a única autoridade de agenda; o coletor Python permanece biblioteca/one-shot/fallback/diagnóstico; systemd/timers ficam desinstalados. Antes da migration oficial ainda falta fechar a concorrência atômica da RPC v12_04 e executar o pacote de autorização.",
           "acceptance": "Inventariar IDs e versões dos workflows VOLC D0/D-1; decidir n8n versus worker e registrar ADR; adaptar em cópia inativa; usar credencial n8n, paginação/lotes, retry com backoff, idempotência v12 e estados semânticos; validar workflow e nodes; canário manual; reconciliar recibos; ativar uma única agenda; heartbeat/deadman; rollback; provar que systemd e agenda duplicada estão inativos.",
           "dependencies": [
             "P06-T08",
@@ -1356,6 +1356,22 @@
             "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md",
             "docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md",
             "deploy/google-intelligence/README.md"
+          ]
+        },
+        {
+          "id": "P10-T17",
+          "title": "Fechar concorrência atômica da RPC v12_04 antes da migration oficial",
+          "status": "todo",
+          "priority": 1,
+          "proof": "Criada na integração P10-T16 após revisão focal: a entrega inativa é aceita, mas a aplicação oficial exige contraprova concorrente real em PostgreSQL.",
+          "explanation": "Transformar o risco de corrida da RPC v12_04 em contrato provado antes de qualquer migration oficial: duas sessões simultâneas não podem rebaixar D-1/backfill, duplicar recibo, perder idempotência ou fechar recibo contra estado transferido por outra execução.",
+          "acceptance": "Rodar contraprova concorrente real em PostgreSQL com duas conexões/sessões simultâneas, cobrindo D0 < D-1 < backfill, empate por colhida_em, mesma chave idempotente repetida, mesma chave com payload divergente, fechamento depois da escrita, duas execuções concorrendo pela mesma chave de fato e preservação do recibo. O aceite exige teste automatizado vermelho antes da correção, verde depois, ciclo apply→operate→rollback→reapply verde e documentação da semântica antes de aplicar v12_04 em produção.",
+          "dependencies": [
+            "P10-T16"
+          ],
+          "links": [
+            "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/REVISAO-FOCAL.md",
+            "supabase/migrations/v12_04_gads_fato_canonico_dia.sql"
           ]
         }
       ]

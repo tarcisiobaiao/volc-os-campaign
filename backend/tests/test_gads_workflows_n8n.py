@@ -230,11 +230,13 @@ def test_a_projecao_legada_nao_encosta_em_receita_nem_orientacao():
 
 
 def test_a_migration_nao_toca_a_serie_reservada_a_outra_lane():
-    """v13_01 é da lane M-W2-02 e v12_03 é do PMax; nenhuma pode ser criada aqui."""
-    versionados = subprocess.run(["git", "ls-files", "supabase/migrations"],
-                                 cwd=RAIZ, capture_output=True, text=True,
-                                 check=True).stdout.split()
-    assert not [v for v in versionados if "v13_" in v]
-    assert not [v for v in versionados if "v12_03" in v]
+    """Esta lane não introduz v13/v12_03; outras lanes já integradas podem existir."""
+    base = subprocess.run(["git", "merge-base", "HEAD", "origin/volc-os-v2"],
+                          cwd=RAIZ, capture_output=True, text=True, check=True).stdout.strip()
+    tocados = subprocess.run(["git", "diff", "--name-only", f"{base}...HEAD", "--", "supabase/migrations"],
+                             cwd=RAIZ, capture_output=True, text=True,
+                             check=True).stdout.split()
+    assert not [v for v in tocados if "v13_" in v]
+    assert not [v for v in tocados if "v12_03" in v]
     # E a guarda de colisão está escrita na própria migration.
     assert "v13_01" in MIGRATION.read_text(encoding="utf-8")

@@ -1,23 +1,23 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T21:02:52-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T21:31:37-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 492 arquivos: 333 Markdown e 159 SQL;
-- 492 versionados e 0 ainda não versionados;
+- 500 arquivos: 338 Markdown e 162 SQL;
+- 500 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 98 SQL com palavras de mutação de alto risco.
+- 101 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 22 |
-| `documentation` | 192 |
+| `audit` | 23 |
+| `documentation` | 196 |
 | `generated` | 2 |
 | `module-guide` | 32 |
 | `product-document` | 21 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-01T21:02:52-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 46 |
+| `sql-needs-review` | 49 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -44,6 +44,7 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | 3 | 4 |
 | `scripts/provas-v12_02.sql` | `sql-needs-review` | 3 | 4 |
+| `scripts/provas-v12_04.sql` | `sql-needs-review` | 6 | 12 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 7 |
 | `sql/archive/campaign-highlights/APLICAR_NO_SUPABASE.sql` | `archived` | 0 | 0 |
@@ -126,6 +127,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | `sql-needs-review` | 9 | 29 |
+| `supabase/migrations/v12_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | 41 | 126 |
 | `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
@@ -164,11 +167,13 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/motor-pautas/REVISAO-CODEX.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/REVISAO-EXTERNA.md` | `audit` | — | 0 | 0 |
 | `docs/closure/asset-vault-onepassword-production-v1/REVISAO-ADVERSARIAL.md` | `audit` | — | 0 | 0 |
+| `docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/REVISAO-FOCAL.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | high | 3 | 4 |
 | `scripts/provas-v12_02.sql` | `sql-needs-review` | high | 3 | 4 |
+| `scripts/provas-v12_04.sql` | `sql-needs-review` | high | 6 | 12 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | high | 2 | 7 |
 | `sql/fix_marliseac_password_final.sql` | `sql-needs-review` | medium | 1 | 0 |
@@ -245,6 +250,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | `sql-needs-review` | high | 9 | 29 |
+| `supabase/migrations/v12_04_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | high | 41 | 126 |
 | `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
@@ -260,8 +267,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v9_03_historico_e_ordem_operacional.sql` | `sql-needs-review` | high | 2 | 6 |
 | `supabase/migrations/v9_03_rollback.sql` | `sql-needs-review` | high | 2 | 6 |
 | `supabase/migrations/v9_04_rollback.sql` | `sql-needs-review` | medium | 2 | 4 |
-| `supabase/migrations/v9_04_url_final_preservada.sql` | `sql-needs-review` | medium | 2 | 4 |
-| `supabase/migrations/v9_99_trafego_inventario_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

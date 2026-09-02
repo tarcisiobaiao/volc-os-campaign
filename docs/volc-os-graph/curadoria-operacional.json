@@ -80,7 +80,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Atualiza campanha, gasto, leilão, conversões e placements.",
-      "evidence": "Em 28/08/2026, os workflows VOLC D0 e D-1 foram corrigidos diretamente no n8n para API v25 e database.agenciavolc.com.br: customer_id real no RPC, cost_per_conversion observado, dedupe conta+campanha e duas gravações sincronizadas. Permanecem inativos. daily_campaign_metrics ainda não carrega conta, execução, moeda ou frescor, e por isso a ingestão canônica continua parcial."
+      "evidence": "Em 28/08/2026, os workflows VOLC D0 e D-1 foram corrigidos diretamente no n8n para API v25 e database.agenciavolc.com.br: customer_id real no RPC, cost_per_conversion observado, dedupe conta+campanha e duas gravações sincronizadas. Permanecem inativos. daily_campaign_metrics ainda não carrega conta, execução, moeda ou frescor, e por isso a ingestão canônica continua parcial. Em 01/09/2026, P10-T16 integrou candidato inativo: N8N_IS_SCHEDULE_AUTHORITY, v12_04 com fato canônico campanha-dia + ledger + RPC única, workflows D0/D-1 active:false, validação n8n 339/0/0, simulador 65/0, ciclo SQL 107/0 e ponta a ponta 12/0. Permanece partial: concorrência atômica da RPC v12_04, REAL_N8N_READ_NOT_PROVEN, REAL_GOOGLE_ADS_READ_NOT_PROVEN no workflow, credencial/developer-token não exercitados no n8n, retry real não exercitado, agenda viva ainda não inventariada, migration oficial/canário/heartbeat/ativação não executados."
     },
     {
       "id": "cap_revenue_ingestion",
@@ -1338,7 +1338,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Separa recibo, item e métrica da inteligência Google Ads por conta, campanha, fonte, janela, versão e frescor sem colapsar zero, ausência, inelegibilidade, vazio confirmado e falha.",
-      "evidence": "A v12_01 foi aplicada no Supabase oficial em 29/08/2026. A coleta completa v3 da Crédito Up registrou 10 recibos reais sem falha: diagnósticos com 12/83 itens, forecasts com 4/3 cenários e recomendações/simulações vazias confirmadas com quantidade zero. Falha e retry bem-sucedido possuem identidades distintas. O agendamento contínuo ainda não foi ativado; a decisão pendente é adaptar os workflows n8n existentes ao ledger v12 ou adotar o worker, nunca manter ambos concorrendo."
+      "evidence": "A v12_01 foi aplicada no Supabase oficial em 29/08/2026. A coleta completa v3 da Crédito Up registrou 10 recibos reais sem falha: diagnósticos com 12/83 itens, forecasts com 4/3 cenários e recomendações/simulações vazias confirmadas com quantidade zero. Falha e retry bem-sucedido possuem identidades distintas. O agendamento contínuo ainda não foi ativado; a decisão pendente é adaptar os workflows n8n existentes ao ledger v12 ou adotar o worker, nunca manter ambos concorrendo. P10-T16 adicionou, sem aplicar oficialmente, o fato canônico campanha-dia v12_04: customer_id+campaign_id+metric_date+segments_hash, NULL≠0, dinheiro em micros+moeda, precedência D0<D-1<backfill, recibo por execução, projeção compatível de daily_campaign_metrics e workflows n8n D0/D-1 inativos. O conceito permanece partial pelos bloqueadores de ativação e pela tarefa P10-T17 de concorrência atômica."
     },
     {
       "id": "concept:execution-receipt",
@@ -1427,6 +1427,62 @@
       "state": "partial",
       "summary": "Lê os manifestos versionados dos parques criativos e emite payloads para cofre_cadastrar_ativo, marcando cada campo como FONTE, DERIVADO, DECLARADO ou AUSENTE.",
       "evidence": "scripts/importar_engines_no_cofre.py, 1047 linhas; 7 engines emitidos e 248 asserções no autoteste em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Não escreve no banco e não faz rede; roda duas vezes com bytes idênticos. A sanitização de caminho do Google Drive LEVANTA se /Users/, CloudStorage, GoogleDrive ou @ sobreviverem, porque sanitização que falha calada publica com ar de segurança. Nenhum engine recebe estado 'integrado'."
+    },
+    {
+      "id": "concept:schedule_authority",
+      "label": "Autoridade única de agenda Google Ads",
+      "cluster": "platform",
+      "state": "decision",
+      "summary": "N8N_IS_SCHEDULE_AUTHORITY: n8n é a única autoridade de agenda da ingestão contínua Google Ads; Python fica biblioteca/one-shot/fallback/diagnóstico; systemd/timers ficam desinstalados.",
+      "evidence": "ADR-N8N-AUTORIDADE-DE-AGENDA.md integrada em P10-T16. Gate de agenda única no resultado integrado: 14 provas, 0 falhas, 1 pulado declarado (REAL_N8N_READ_NOT_PROVEN). Ativação real depende de inventariar/desligar agendas vivas conflitantes e executar AUTORIZACAO-ATIVACAO.md."
+    },
+    {
+      "id": "gads-fato-campanha-dia",
+      "label": "Fato canônico Google Ads campanha-dia v12_04",
+      "cluster": "measurement",
+      "state": "partial",
+      "summary": "Schema/RPC de campanha-dia para D0/D-1 com ledger de execução, idempotência e projeção compatível legada.",
+      "evidence": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql integrado mas não aplicado oficialmente; ciclo descartável 107/0 e ponta a ponta 12/0."
+    },
+    {
+      "id": "n8n-gads-campanha-dia-d0",
+      "label": "n8n Google Ads campanha-dia D0",
+      "cluster": "platform",
+      "state": "inactive",
+      "summary": "Workflow D0 gerado, importável e active:false, com agenda proposta 06/12/18/23 America/Sao_Paulo.",
+      "evidence": "n8n/volc_gads_campanha_dia_d0.json validado nó a nó; não importado nem ativado."
+    },
+    {
+      "id": "n8n-gads-campanha-dia-d1",
+      "label": "n8n Google Ads campanha-dia D-1",
+      "cluster": "platform",
+      "state": "inactive",
+      "summary": "Workflow D-1 gerado, importável e active:false, com agenda proposta 06:00 America/Sao_Paulo.",
+      "evidence": "n8n/volc_gads_campanha_dia_d1.json validado nó a nó; não importado nem ativado."
+    },
+    {
+      "id": "gate-workflows-n8n-gads",
+      "label": "Gate de validação n8n Google Ads",
+      "cluster": "governance",
+      "state": "implemented",
+      "summary": "Valida workflows D0/D-1 nó a nó, expressões, topologia, round trip e varreduras.",
+      "evidence": "scripts/validar_workflows_n8n_gads.py: 339 provas, 0 falhas, 0 pulados."
+    },
+    {
+      "id": "simulador-gads-ledger-v12",
+      "label": "Simulador offline Google Ads ledger v12",
+      "cluster": "governance",
+      "state": "implemented",
+      "summary": "Executa JavaScript real dos Code nodes com relógio e runtime n8n dublados, zero rede.",
+      "evidence": "scripts/simular_gads_ledger_v12.mjs: 65 provas, 0 falhas."
+    },
+    {
+      "id": "gate-agenda-unica-gads",
+      "label": "Gate de agenda única Google Ads",
+      "cluster": "governance",
+      "state": "implemented",
+      "summary": "Confere artefatos de agenda/systemd e workflows active:false; declara lacuna da instância n8n viva.",
+      "evidence": "scripts/gate_agenda_unica_gads.py: 14 provas, 0 falhas, 1 pulado REAL_N8N_READ_NOT_PROVEN."
     }
   ],
   "documents": [
@@ -3697,6 +3753,66 @@
       "source": "concept:facebook_page_monetized",
       "target": "cap_asset_vault",
       "relation": "aguarda_novos_insumos_em"
+    },
+    {
+      "source": "n8n-gads-campanha-dia-d0",
+      "target": "gads-fato-campanha-dia",
+      "relation": "escreve_por_rpc"
+    },
+    {
+      "source": "n8n-gads-campanha-dia-d1",
+      "target": "gads-fato-campanha-dia",
+      "relation": "escreve_por_rpc"
+    },
+    {
+      "source": "n8n-gads-campanha-dia-d0",
+      "target": "concept:schedule_authority",
+      "relation": "implementa"
+    },
+    {
+      "source": "n8n-gads-campanha-dia-d1",
+      "target": "concept:schedule_authority",
+      "relation": "implementa"
+    },
+    {
+      "source": "gads-fato-campanha-dia",
+      "target": "cap_cost_ingestion",
+      "relation": "materializa"
+    },
+    {
+      "source": "gads-fato-campanha-dia",
+      "target": "concept:google_ads_collection_ledger",
+      "relation": "implementa"
+    },
+    {
+      "source": "gate-workflows-n8n-gads",
+      "target": "n8n-gads-campanha-dia-d0",
+      "relation": "valida"
+    },
+    {
+      "source": "gate-workflows-n8n-gads",
+      "target": "n8n-gads-campanha-dia-d1",
+      "relation": "valida"
+    },
+    {
+      "source": "simulador-gads-ledger-v12",
+      "target": "n8n-gads-campanha-dia-d0",
+      "relation": "prova_comportamento"
+    },
+    {
+      "source": "simulador-gads-ledger-v12",
+      "target": "n8n-gads-campanha-dia-d1",
+      "relation": "prova_comportamento"
+    },
+    {
+      "source": "gate-agenda-unica-gads",
+      "target": "concept:schedule_authority",
+      "relation": "mede"
+    },
+    {
+      "source": "concept:schedule_authority",
+      "target": "cap_workflows",
+      "relation": "governa"
     }
   ],
   "priorities": [
@@ -3779,16 +3895,20 @@
     {
       "rank": 6,
       "title": "Restabelecer frescor e reconciliação de custo/receita",
-      "state": "PIPELINE PARCIAL",
+      "state": "PIPELINE PARCIAL · CANDIDATO INATIVO INTEGRADO",
       "why": "Projeto chegou a 22/08, campanha terminou em 19/08; fontes GAM/JoinAds estão vazias e AdSense é histórica.",
-      "proof": "Cada fonte declara última atualização, janela provisória/fechada, moeda, linhas aceitas/descartadas e divergência.",
+      "proof": "P10-T16 integrou v12_04, RPC única e workflows n8n D0/D-1 active:false com gates locais verdes; continua partial por P10-T17 e atos reais não autorizados.",
       "nodes": [
         "cap_cost_ingestion",
         "cap_revenue_ingestion",
         "cap_health",
         "cap_finance",
         "concept:ads_health_monitor",
-        "concept:tracking_control_plane"
+        "concept:tracking_control_plane",
+        "gads-fato-campanha-dia",
+        "concept:schedule_authority",
+        "n8n-gads-campanha-dia-d0",
+        "n8n-gads-campanha-dia-d1"
       ]
     },
     {
