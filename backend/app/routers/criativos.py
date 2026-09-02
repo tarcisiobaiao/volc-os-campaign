@@ -253,16 +253,25 @@ async def brand_packs(
 
 @router.get("/resumo")
 async def resumo(
-    _: Identidade = Depends(exigir_usuario),
+    identidade: Identidade = Depends(exigir_usuario),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
 ) -> dict[str, Any]:
-    em_andamento = await _ou_503(repo.listar_jobs(estados=["queued", "running"], limite=8))
-    falhas = await _ou_503(repo.listar_jobs(estados=["failed", "partial"], limite=8))
-    aguardando = await _ou_503(repo.masters_aguardando_revisao(limite=8))
-    aprovados = await _ou_503(repo.masters_aprovados_recentes(limite=6))
-    contagem = await _ou_503(repo.contar_jobs_por_estado())
-    total = await _ou_503(repo.contar_assets())
+    # ⚠️ VAZAMENTO DE CONTAGEM, FECHADO. Todas as seis leituras eram globais: a
+    # tela dizia "a biblioteca tem N ativos" e listava jobs em andamento e falhas
+    # de OUTRAS pessoas. Vazamento de contagem e menos obvio que vazamento de
+    # linha e igualmente real — e aqui vazava linha tambem.
+    dono = identidade.sub
+    em_andamento = await _ou_503(
+        repo.listar_jobs(estados=["queued", "running"], limite=8, criado_por=dono)
+    )
+    falhas = await _ou_503(
+        repo.listar_jobs(estados=["failed", "partial"], limite=8, criado_por=dono)
+    )
+    aguardando = await _ou_503(repo.masters_aguardando_revisao(limite=8, criado_por=dono))
+    aprovados = await _ou_503(repo.masters_aprovados_recentes(limite=6, criado_por=dono))
+    contagem = await _ou_503(repo.contar_jobs_por_estado(criado_por=dono))
+    total = await _ou_503(repo.contar_assets(criado_por=dono))
     packs = await _ou_503(repo.listar_brand_packs())
 
     # ⚠️ A decisão vigente viaja junto, e isso é conserto de uma tela que mentia.
@@ -487,7 +496,7 @@ async def cancelar(
 async def eventos(
     job_id: str,
     request: Request,
-    _: Identidade = Depends(exigir_usuario),
+    identidade: Identidade = Depends(exigir_usuario),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
     desde: int = Query(default=0, ge=0),
@@ -499,7 +508,11 @@ async def eventos(
     tempo não conseguiria a mesma coisa, porque dois eventos no mesmo
     milissegundo empatam e a ordem entre eles deixa de ser total.
     """
-    job = await _ou_503(repo.buscar_job(_uuid_ou_404(job_id, "job")))
+    # ⚠️ MESMA chamada que `obter_job` fazia, e o mesmo vazamento: a rota de
+    # eventos entregava a trilha do job de outro dono por UUID.
+    job = await _ou_503(
+        repo.buscar_job(_uuid_ou_404(job_id, "job"), criado_por=identidade.sub)
+    )
     if job is None:
         raise _falha("ESTUDIO.job_inexistente", "Este trabalho não existe.", 404)
 
@@ -567,7 +580,7 @@ def _sse(evento: str, dados: dict[str, Any]) -> str:
 
 @router.get("/assets")
 async def listar_assets(
-    _: Identidade = Depends(exigir_usuario),
+    identidade: Identidade = Depends(exigir_usuario),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
     busca: Optional[str] = None,
@@ -596,7 +609,8 @@ async def listar_assets(
             400,
         )
     linhas, total, universo = await _ou_503(
-        repo.listar_masters(
+        repo.listar_masters_do_dono(
+            criado_por=identidade.sub,
             busca=busca, kind=kind, brand_pack_id=brandPack,
             desde=desde, ate=ate,
             # O filtro por estado é aplicado DEPOIS da leitura, porque a decisão
@@ -652,20 +666,34 @@ async def listar_assets(
 @router.get("/assets/{asset_id}")
 async def obter_asset(
     asset_id: str,
-    _: Identidade = Depends(exigir_usuario),
+    identidade: Identidade = Depends(exigir_usuario),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
 ) -> dict[str, Any]:
+    """⚠️ VAZAMENTO ENTRE INQUILINOS, FECHADO. A identidade era ligada a `_`.
+
+    Quatro coisas atravessavam o dono neste DTO, e nao uma: o master, as VERSOES,
+    as APROVACOES e o JOB — com a procedencia de execucao junto. Fechar so o
+    master deixaria as outras tres passando pela mesma porta.
+
+    O 404 e o MESMO de "nao existe": responder diferente confirmaria a existencia
+    de ativo alheio, e o UUID nao e autorizacao."""
     asset_id = _uuid_ou_404(asset_id, "asset")
-    master = await _ou_503(repo.buscar_master(asset_id))
+    master = await _ou_503(
+        repo.buscar_master_do_dono(asset_id, criado_por=identidade.sub)
+    )
     if master is None:
         raise _falha("ESTUDIO.asset_inexistente", "Este ativo não existe.", 404)
 
     aprovacoes = await _ou_503(repo.aprovacoes_de("master", asset_id))
     vigente = next((a for a in aprovacoes if not a.get("revogada_em")), None)
     raiz = str(master.get("raiz_id") or master["id"])
-    versoes = await _ou_503(repo.versoes_do_master(raiz))
-    job = await _ou_503(repo.buscar_job(str(master["job_id"])))
+    versoes = await _ou_503(
+        repo.versoes_do_master_do_dono(raiz, criado_por=identidade.sub)
+    )
+    job = await _ou_503(
+        repo.buscar_job(str(master["job_id"]), criado_por=identidade.sub)
+    )
 
     return {
         "asset": apresentacao.master_dto(

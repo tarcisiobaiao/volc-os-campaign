@@ -611,3 +611,190 @@ def test_listar_jobs_nao_devolve_os_de_outro_dono() -> None:
     )
     assert len(saida["jobs"]) == 1, "a listagem atravessou inquilino"
     assert saida["jobs"][0]["id"] == repo.JOB_B
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Isolamento dos ASSETS (bloqueador 1 da rodada corretiva)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _RepoDeAssetsDeDoisDonos:
+    """Espelha o `!inner` do PostgREST: sem o dono casando, a linha SOME.
+
+    ⚠️ Não é um duplo permissivo. Ele reproduz a semântica que a correção usa —
+    embed obrigatório `criativo_job!inner(criado_por)` — porque um duplo mais
+    frouxo que a produção deixaria a prova passar sobre um filtro que o banco
+    real não aplicaria.
+    """
+
+    JOB_A, JOB_B = "aaaaaaaa-1111-4111-8111-111111111111", "bbbbbbbb-2222-4222-8222-222222222222"
+    ASSET_A, ASSET_B = "a5e7a000-1111-4111-8111-111111111111", "b5e7b000-2222-4222-8222-222222222222"
+
+    def __init__(self) -> None:
+        self.jobs = {
+            self.JOB_A: {"id": self.JOB_A, "briefing_id": "b-a", "motor": "gemini",
+                         "motor_versao": "1", "estado": "succeeded",
+                         "criado_por": "usuario-A", "criado_em": "2026-09-01",
+                         "procedencia_execucao": "SEGREDO-DE-PROCEDENCIA-DE-A"},
+            self.JOB_B: {"id": self.JOB_B, "briefing_id": "b-b", "motor": "gemini",
+                         "motor_versao": "1", "estado": "succeeded",
+                         "criado_por": "usuario-B", "criado_em": "2026-09-01",
+                         "procedencia_execucao": "proc-de-B"},
+        }
+        self.masters = {
+            self.ASSET_A: self._master(self.ASSET_A, self.JOB_A, "1x1"),
+            self.ASSET_B: self._master(self.ASSET_B, self.JOB_B, "4x5"),
+        }
+
+    @staticmethod
+    def _master(mid: str, job_id: str, slot: str) -> dict:
+        return {"id": mid, "job_id": job_id, "projeto_id": "p", "slot": slot,
+                "kind": "imagem", "versao": 1, "raiz_id": None,
+                "storage_chave": f"criativos/p/{job_id}/{slot}_x.png",
+                "content_hash": "sha256:" + "c" * 64, "mime": "image/png",
+                "bytes_totais": 100, "largura": 10, "altura": 10,
+                "motor": "gemini", "motor_versao": "1",
+                "insumo_hash": "sha256:" + "d" * 64, "insumo_sanitizado": None,
+                "criado_em": "2026-09-01", "arquivado_em": None}
+
+    def _dono(self, master: dict) -> str:
+        return self.jobs[master["job_id"]]["criado_por"]
+
+    async def buscar_master_do_dono(self, master_id: str, *, criado_por: str):
+        m = self.masters.get(master_id)
+        return m if m is not None and self._dono(m) == criado_por else None
+
+    async def versoes_do_master_do_dono(self, raiz_id: str, *, criado_por: str):
+        return [m for m in self.masters.values()
+                if (m["id"] == raiz_id or m.get("raiz_id") == raiz_id)
+                and self._dono(m) == criado_por]
+
+    async def listar_masters_do_dono(self, *, criado_por: str, **_kw):
+        linhas = [m for m in self.masters.values() if self._dono(m) == criado_por]
+        return linhas, len(linhas), len(linhas)
+
+    async def buscar_job(self, job_id, *, criado_por=None):
+        j = self.jobs.get(job_id)
+        return j if j is not None and (criado_por is None or j["criado_por"] == criado_por) else None
+
+    async def aprovacoes_de(self, tipo, alvo_id):
+        return []
+
+    async def aprovacoes_vigentes_de(self, ids):
+        return {}
+
+    async def procedencia_dos_jobs(self, ids):
+        # ⚠️ Só responde pelos jobs pedidos. A listagem já foi filtrada pelo dono,
+        # então este mapa nunca vê job alheio — e o teste prova isso.
+        return {i: self.jobs[i]["procedencia_execucao"] for i in ids if i in self.jobs}
+
+    async def renditions_do_job(self, job_id):
+        return []
+
+    async def ultimo_seq(self, job_id):
+        return 0
+
+    async def buscar_briefing(self, briefing_id):
+        return {"projeto_id": "p", "tipo": "imagem", "modo": "full_llm"}
+
+    async def buscar_projeto(self, projeto_id):
+        return {"titulo": "PROJETO"}
+
+
+def test_asset_de_outro_dono_devolve_o_mesmo_404_de_asset_inexistente() -> None:
+    """⚠️ Bloqueador 1. `obter_asset` ligava a identidade a `_`.
+
+    Quatro coisas atravessavam o dono no mesmo DTO — master, versões, aprovações
+    e o job com a procedência de execução. O 404 é o MESMO de "não existe":
+    responder diferente confirmaria a existência de ativo alheio.
+    """
+    import asyncio
+
+    from fastapi import HTTPException
+
+    from app.criativo.armazenamento import Assinador
+    from app.routers.criativos import obter_asset
+
+    repo, ass = _RepoDeAssetsDeDoisDonos(), Assinador("s" * 32)
+
+    with pytest.raises(HTTPException) as erro:
+        asyncio.run(obter_asset(repo.ASSET_A, _identidade("usuario-B"), repo, ass))
+    assert erro.value.status_code == 404
+    assert erro.value.detail["codigo"] == "ESTUDIO.asset_inexistente"
+
+    # E um id que NÃO existe dá exatamente a mesma resposta.
+    with pytest.raises(HTTPException) as inexistente:
+        asyncio.run(obter_asset("cccccccc-3333-4333-8333-333333333333",
+                                _identidade("usuario-B"), repo, ass))
+    assert inexistente.value.detail == erro.value.detail, (
+        "a resposta distingue 'não é seu' de 'não existe' e confirma a existência"
+    )
+
+
+def test_o_dono_continua_lendo_o_proprio_asset_com_versoes_e_job() -> None:
+    """A correção não pode fechar a porta para quem é dono."""
+    import asyncio
+
+    from app.criativo.armazenamento import Assinador
+    from app.routers.criativos import obter_asset
+
+    repo, ass = _RepoDeAssetsDeDoisDonos(), Assinador("s" * 32)
+    saida = asyncio.run(obter_asset(repo.ASSET_A, _identidade("usuario-A"), repo, ass))
+    assert saida["asset"]["id"] == repo.ASSET_A
+    assert saida["job"] is not None and saida["job"]["id"] == repo.JOB_A
+    assert len(saida["versoes"]) == 1
+
+
+def test_nem_versoes_nem_job_nem_procedencia_de_outro_dono_entram_no_dto() -> None:
+    """Fechar só o master deixaria as outras três passando pela mesma porta.
+
+    A sentinela é a procedência de execução do job de A: ela não pode aparecer em
+    NENHUM lugar do JSON que B recebe.
+    """
+    import asyncio
+    import json
+
+    from app.criativo.armazenamento import Assinador
+    from app.routers.criativos import obter_asset
+
+    repo, ass = _RepoDeAssetsDeDoisDonos(), Assinador("s" * 32)
+    saida = asyncio.run(obter_asset(repo.ASSET_B, _identidade("usuario-B"), repo, ass))
+    cru = json.dumps(saida, default=str, ensure_ascii=False)
+    assert "SEGREDO-DE-PROCEDENCIA-DE-A" not in cru
+    assert repo.ASSET_A not in cru and repo.JOB_A not in cru
+    assert all(v["id"] != repo.ASSET_A for v in saida["versoes"])
+
+
+def test_listar_assets_nao_devolve_nem_conta_os_de_outro_dono() -> None:
+    """A contagem também é vazamento: `universo` global diria quantos ativos as
+    outras pessoas têm."""
+    import asyncio
+
+    from app.criativo.armazenamento import Assinador
+    from app.routers.criativos import listar_assets
+
+    repo, ass = _RepoDeAssetsDeDoisDonos(), Assinador("s" * 32)
+    saida = asyncio.run(
+        listar_assets(identidade=_identidade("usuario-B"), repo=repo, assinador=ass,
+                      busca=None, kind=None, estado=None, destino=None,
+                      brandPack=None, desde=None, ate=None, limite=60, offset=0)
+    )
+    ids = [a["id"] for a in saida["assets"]]
+    assert ids == [repo.ASSET_B], f"a listagem atravessou inquilino: {ids}"
+    assert saida["universo"] == 1, "o universo contou a biblioteca de outra pessoa"
+
+
+def test_a_porta_do_repositorio_exige_o_dono_no_proprio_contrato() -> None:
+    """Não basta filtrar na rota: uma porta que aceita ser chamada sem dono acaba
+    sendo chamada sem dono — foi assim que este vazamento nasceu."""
+    import inspect
+
+    from app.criativo.persistencia import Repositorio
+
+    for nome in ("buscar_master_do_dono", "versoes_do_master_do_dono",
+                 "listar_masters_do_dono"):
+        p = inspect.signature(getattr(Repositorio, nome)).parameters["criado_por"]
+        assert p.default is inspect.Parameter.empty, (
+            f"{nome} aceita ser chamado sem dono"
+        )
+        assert p.kind is inspect.Parameter.KEYWORD_ONLY
