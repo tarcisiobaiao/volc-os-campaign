@@ -24,12 +24,13 @@ from volc_ads.criativo.contrato import NaturezaDaProcedencia
 
 from .adaptadores.png_local import MotorPngLocal
 from .adaptadores.tipografico import MotorTipografico
+from . import fronteira_publica
 from .contrato import FalhaDoMotor
-from .deposito import DepositoDeTrabalhos
 from .operario import DespachanteLocal, Operario, Reaper
+from .porta import Deposito, escolher_deposito
 
 _TRAVA = threading.Lock()
-_BANCADA: tuple[DepositoDeTrabalhos, Operario, DespachanteLocal] | None = None
+_BANCADA: tuple[Deposito, Operario, DespachanteLocal] | None = None
 _REAPER: Reaper | None = None
 
 
@@ -46,14 +47,20 @@ def raiz_da_bancada() -> Path:
     return Path.home() / ".volc-os" / "bancada"
 
 
-def montar() -> tuple[DepositoDeTrabalhos, Operario, DespachanteLocal]:
+def montar() -> tuple[Deposito, Operario, DespachanteLocal]:
     global _BANCADA
     with _TRAVA:
         if _BANCADA is not None:
             return _BANCADA
         raiz = raiz_da_bancada()
         raiz.mkdir(parents=True, exist_ok=True)
-        deposito = DepositoDeTrabalhos(raiz / "fila.db")
+        # ⚠️ Pela PORTA, e nao pela classe. `escolher_deposito` le
+        # `CRIATIVO_DEPOSITO` e devolve o adapter do ambiente; ausencia e
+        # `sqlite`, que e o unico que sobe sem infraestrutura, e pedir
+        # `postgres` sem DSN LEVANTA em vez de cair aqui em silencio. Instanciar
+        # `DepositoDeTrabalhos` direto — como era — significava que o processo
+        # web tinha uma fila e o worker podia ter outra.
+        deposito = escolher_deposito(caminho_sqlite=raiz / "fila.db")
 
         motores: dict[str, Any] = {}
         # ⚠️ Um motor que nao consegue nascer NAO derruba a bancada, e tambem nao
@@ -488,7 +495,9 @@ def _envelope(trabalho, operario, *, destino: str) -> dict[str, Any]:
         "receita_id": trabalho.encomenda.receita_id,
         "canal": canal or None,
         "intencao": parametros.get("intencao") or None,
-        "insumo": parametros.get("insumo") or None,
+        # ⚠️ O texto do briefing NAO sai pelo envelope. Estado e impressao
+        # digital bastam para a tela dizer "houve insumo" sem devolve-lo.
+        "insumo": fronteira_publica.resumo_do_insumo(parametros.get("insumo")),
         "seed": trabalho.encomenda.seed,
         "chave_de_idempotencia": trabalho.chave_idempotencia,
         "estado": trabalho.estado.value,
@@ -550,7 +559,9 @@ def _asset_para_json(asset: _Asset, canal: str) -> dict[str, Any]:
         "procedencia": {
             "motor": p.motor,
             "versao_do_motor": p.versao_do_motor,
-            "insumo": p.insumo,
+            # Mesma fronteira da linha do envelope: a procedencia identifica
+            # o insumo, nao o transcreve.
+            "insumo": fronteira_publica.resumo_do_insumo(p.insumo),
             "insumo_hash": p.insumo_hash,
             "pedido": p.pedido,
             "quando": p.quando.isoformat(),

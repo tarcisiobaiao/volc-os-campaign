@@ -1,0 +1,206 @@
+{
+  "_sobre": "Medição executada de P17-T07 sobre o parque READ-ONLY /Users/mac/volc-factory/remotion. Gerado à mão a partir de execução, não de leitura do ADR. Onde a medição não alcançou, o campo diz 'nao_provado' e nomeia a fronteira.",
+  "data_da_medicao": "2026-09-01",
+  "parque_medido": "/Users/mac/volc-factory/remotion",
+  "parque_mutado": false,
+  "adr_de_referencia": "docs/architecture/ADR-REMOTION-RUNTIME-STORAGE.md",
+
+  "lockstep": {
+    "em_lockstep": true,
+    "versao_unica": "4.0.479",
+    "pacotes_conferidos": 21,
+    "metodo": "leitura de node_modules/<pacote>/package.json de cada pacote instalado",
+    "declaracao_no_package_json": "^4.0.0 para os 6 pacotes declarados",
+    "risco": "O lockstep é sustentado pelo package-lock.json, não pela declaração. `^4.0.0` flutua para o latest em qualquer instalação sem lock, e um upgrade parcial mistura versões. O ADR já pedia pin exato; a medição confirma e amplia: são 21 pacotes a pinar, não 6.",
+    "versoes": [
+      {"pacote": "remotion", "versao": "4.0.479", "declarado": "^4.0.0"},
+      {"pacote": "@remotion/cli", "versao": "4.0.479", "declarado": "^4.0.0"},
+      {"pacote": "@remotion/transitions", "versao": "4.0.479", "declarado": "^4.0.0"},
+      {"pacote": "@remotion/google-fonts", "versao": "4.0.479", "declarado": "^4.0.0"},
+      {"pacote": "@remotion/renderer", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/bundler", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/player", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/studio", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/studio-server", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/studio-shared", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/media-utils", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/media-parser", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/paths", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/shapes", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/zod-types", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/licensing", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/streaming", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/timeline-utils", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/canvas-capture", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/web-renderer", "versao": "4.0.479", "declarado": "transitivo"},
+      {"pacote": "@remotion/compositor-darwin-arm64", "versao": "4.0.479", "declarado": "optionalDependency de plataforma"}
+    ],
+    "ausentes_e_necessarios_para_o_plano_do_adr": [
+      {"pacote": "@remotion/fonts", "motivo": "é o pacote que substitui loadFont() do google-fonts por arquivo local; sem ele não há hermetismo"},
+      {"pacote": "@remotion/rough-notation", "motivo": "exige >= 4.0.490; a fábrica está em 4.0.479"}
+    ]
+  },
+
+  "binario_do_navegador": {
+    "_por_que_importa": "O ADR trata hermetismo como problema de fonte. A dependência de rede maior não é fonte: é o Chrome Headless Shell, que não está no package-lock.json e é baixado no primeiro render.",
+    "caminho": "node_modules/.remotion/chrome-headless-shell/mac-arm64/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+    "versao": "149.0.7790.0",
+    "bytes": 159972320,
+    "diretorio_total_bytes_aprox": "193 MB",
+    "coberto_pelo_package_lock": false,
+    "versao_fixada_pela_versao_do_remotion": true,
+    "onde_a_versao_e_fixada": "@remotion/renderer@4.0.479/dist/browser/get-chrome-download-url.js:41 — TESTED_VERSION = '149.0.7790.0'",
+    "consequencia_boa": "Pinar @remotion/renderer exato pina o navegador. O binário não flutua sozinho; determinismo entre máquinas com a mesma versão de renderer é sustentável.",
+    "consequencia_ruim": "Container frio sem o binário pré-assado baixa 193 MB de rede antes do primeiro quadro. Um worker 'hermético' que só embute fontes continua fazendo egresso.",
+    "hosts_de_download": ["https://remotion.media", "https://storage.googleapis.com", "https://playwright.azureedge.net"],
+    "glibc_minimo_para_binarios_remotion_media": "2.35 (comentário e constante MINIMUM_GLIBC_FOR_REMOTION_MEDIA em get-chrome-download-url.js:58-59)",
+    "compositor_e_por_plataforma": {
+      "instalado_aqui": "@remotion/compositor-darwin-arm64 (17 MB)",
+      "necessario_no_worker_linux": "@remotion/compositor-linux-x64-gnu ou -musl, resolvido por optionalDependencies",
+      "consequencia": "npm ci em Linux traz binário diferente do desta máquina. Equivalência de pixel entre macOS e Linux é NAO_PROVADA."
+    }
+  },
+
+  "fontes": {
+    "google_fonts_em_runtime": true,
+    "arquivos_de_fonte_em_public": 0,
+    "metodo": "getInfo() de cada módulo @remotion/google-fonts/dist/cjs/<Familia>.js, contando style x weight x subset",
+    "chamadas_loadfont_no_bundle": 32,
+    "chamadas_loadfont_incluindo_bak": 34,
+    "nota_sobre_34_vs_32": "O ADR conta 34. Duas delas estão em src/Holerite.tsx.bak, que Root.tsx não importa e o webpack não empacota. O custo real do bundle é 32 chamadas em 11 famílias.",
+    "familias_realmente_usadas": ["Limelight","Oswald","SpecialElite","Anton","Creepster","VT323","Cinzel","ArchivoBlack","Archivo","IBMPlexMono","CormorantGaramond"],
+    "familias_baixadas_runtime": ["Limelight","Oswald","SpecialElite","Anton","Creepster","VT323","Cinzel","ArchivoBlack","Archivo","IBMPlexMono","CormorantGaramond"],
+    "usadas_igual_baixadas_por_que": "Root.tsx importa as 15 composições no topo e cada módulo chama loadFont() no topo. Toda composição paga o custo das 11 famílias, mesmo usando 1. Não há família baixada e não usada por ninguém; há família baixada por quem não a usa.",
+    "faces_registradas_no_default": 229,
+    "urls_distintas_no_default": 106,
+    "nota_sobre_290_requisicoes": "O ADR lê ~290 do log. O log imprime duas linhas por família que tem itálico e romano (Archivo 27 e 54; IBMPlexMono 35 e 70; CormorantGaramond 25 e 50 — a primeira é metade da segunda), e uma linha só para família sem itálico (Oswald 30). Somar as duas linhas conta a mesma família duas vezes. O teto medido nos metadados do pacote é 229 faces / 106 URLs distintas, não 290.",
+    "faces_no_conjunto_minimo_hermetico": 33,
+    "reducao_possivel": "229 -> 33 faces (-85,6%) declarando peso, subset e estilo realmente usados",
+    "argumentos_weights_ou_subsets_passados": 0,
+    "por_familia": [
+      {"familia": "Limelight", "pesos_publicados": ["400"], "subsets_publicados": ["latin","latin-ext"], "estilos": ["normal"], "faces_default": 2, "urls_default": 2, "pesos_usados_no_codigo": ["400"], "italico_usado": false, "faces_minimas": 2},
+      {"familia": "Oswald", "pesos_publicados": ["200","300","400","500","600","700"], "subsets_publicados": ["cyrillic","cyrillic-ext","latin","latin-ext","vietnamese"], "estilos": ["normal"], "faces_default": 30, "urls_default": 5, "pesos_usados_no_codigo": ["400","700","800","900"], "italico_usado": false, "faces_minimas": 4, "defeito": "O código pede fontWeight 800 e 900 (CausaFamilia, RelatoProibido, Lendas, TribunalZap, CartasPerdidas, Corta). Google publica Oswald só até 700. O 800/900 de hoje é negrito sintetizado pelo Chrome sobre o 700. Vendorizar um 700 estático não reproduz automaticamente esse pixel: tem de ser conferido por hash, não assumido."},
+      {"familia": "SpecialElite", "pesos_publicados": ["400"], "subsets_publicados": ["latin","latin-ext"], "estilos": ["normal"], "faces_default": 2, "urls_default": 2, "pesos_usados_no_codigo": ["400"], "italico_usado": false, "faces_minimas": 2},
+      {"familia": "Anton", "pesos_publicados": ["400"], "subsets_publicados": ["latin","latin-ext","vietnamese"], "estilos": ["normal"], "faces_default": 3, "urls_default": 3, "pesos_usados_no_codigo": ["400"], "italico_usado": false, "faces_minimas": 2},
+      {"familia": "Creepster", "pesos_publicados": ["400"], "subsets_publicados": ["latin"], "estilos": ["normal"], "faces_default": 1, "urls_default": 1, "pesos_usados_no_codigo": ["400"], "italico_usado": false, "faces_minimas": 1},
+      {"familia": "VT323", "pesos_publicados": ["400"], "subsets_publicados": ["latin","latin-ext","vietnamese"], "estilos": ["normal"], "faces_default": 3, "urls_default": 3, "pesos_usados_no_codigo": ["400"], "italico_usado": false, "faces_minimas": 2},
+      {"familia": "Cinzel", "pesos_publicados": ["400","500","600","700","800","900"], "subsets_publicados": ["latin","latin-ext"], "estilos": ["normal"], "faces_default": 12, "urls_default": 2, "pesos_usados_no_codigo": ["400","700"], "italico_usado": false, "faces_minimas": 4},
+      {"familia": "ArchivoBlack", "pesos_publicados": ["400"], "subsets_publicados": ["latin","latin-ext"], "estilos": ["normal"], "faces_default": 2, "urls_default": 2, "pesos_usados_no_codigo": ["400"], "italico_usado": false, "faces_minimas": 2},
+      {"familia": "Archivo", "pesos_publicados": ["100","200","300","400","500","600","700","800","900"], "subsets_publicados": ["latin","latin-ext","vietnamese"], "estilos": ["normal","italic"], "faces_default": 54, "urls_default": 6, "pesos_usados_no_codigo": ["400","700","800"], "italico_usado": false, "faces_minimas": 6},
+      {"familia": "IBMPlexMono", "pesos_publicados": ["100","200","300","400","500","600","700"], "subsets_publicados": ["cyrillic","cyrillic-ext","latin","latin-ext","vietnamese"], "estilos": ["normal","italic"], "faces_default": 70, "urls_default": 70, "pesos_usados_no_codigo": ["400","700"], "italico_usado": false, "faces_minimas": 4},
+      {"familia": "CormorantGaramond", "pesos_publicados": ["300","400","500","600","700"], "subsets_publicados": ["cyrillic","cyrillic-ext","latin","latin-ext","vietnamese"], "estilos": ["normal","italic"], "faces_default": 50, "urls_default": 10, "pesos_usados_no_codigo": ["400"], "italico_usado": true, "onde_o_italico": "src/Esoterico.tsx:180 — fontStyle: 'italic'", "faces_minimas": 4}
+    ],
+    "evidencia": "Nenhuma das 32 chamadas passa {weights, subsets}. Confirmado por `rg -n 'weights|subsets' src/*.tsx` (zero acertos fora de fontWeight de CSS). O default do @remotion/google-fonts registra todos os pesos, estilos e subsets publicados: 229 @font-face para 11 famílias, incluindo cirílico e vietnamita em peça de língua portuguesa.",
+
+    "vendorizaveis": [
+      {"nome": "Archivo", "arquivo": "/Users/mac/Desktop/Volc Mídia Global/motor-imagem/compartilhado/prensa-poc/fonts/Archivo-Variable.ttf", "sha256": "0e094a7d3c7c4c25cf1310c4b30014f1dae9332220b1c2c88f4fa996f0b05053", "bytes": 658596, "licenca": "SIL Open Font License 1.1 (lida da tabela name do próprio arquivo: 'This Font Software is licensed under the SIL Open Font License, Version 1.1', url http://scripts.sil.org/OFL)", "versao_da_fonte": "Version 2.001", "eixos": "wght 100-900 (default 600), wdth 62-125", "estado_factual": "presente_na_maquina_cobertura_completa", "detalhe": "O eixo wght cobre os pesos 400, 700 e 800 que o código usa. Sem eixo itálico, e o código não pede itálico para Archivo."},
+      {"nome": "CormorantGaramond", "arquivo": "/Users/mac/Desktop/Volc Mídia Global/motor-imagem/compartilhado/prensa-poc/fonts/CormorantGaramond-Variable.ttf", "sha256": "b20b7d9626dd956b2c5e558692ad328b1f19e3275e2782db4fa07670d83f35e0", "bytes": 1195560, "licenca": "SIL Open Font License 1.1 (lida da tabela name do arquivo, url https://openfontlicense.org)", "versao_da_fonte": "Version 4.001", "eixos": "wght 300-700 (default 300), SEM eixo ital/slnt", "estado_factual": "presente_na_maquina_cobertura_parcial", "detalhe": "Cobre o peso 400 usado. NÃO cobre o itálico que src/Esoterico.tsx:180 pede: o arquivo é só romano (fsSelection italic = false, nenhum eixo ital). Vendorizar este arquivo faz o Chrome inclinar o romano por transformação. Isso é outro pixel, não o mesmo — e a assinatura determinista não acusaria porque o sha256 do arquivo continuaria estável. É exatamente o colapso 'documentado != verificado' que o protocolo proíbe."},
+      {"nome": "IBMPlexMono", "arquivo": "/Users/mac/Desktop/Volc Mídia Global/motor-imagem/compartilhado/prensa-poc/fonts/IBMPlexMono-Bold.ttf", "sha256": "ac27abd6450a64dd94467580a02fe6235156d5b92f2926ebbc8e7489df64e0be", "bytes": 137784, "licenca": "SIL Open Font License 1.1 (lida da tabela name do arquivo)", "versao_da_fonte": "Version 2.3", "eixos": "estático, OS/2 usWeightClass 700", "estado_factual": "presente_na_maquina_cobertura_parcial", "detalhe": "Cobre o peso 700 usado em Holerite. O peso 400 Regular, também usado, NÃO existe nesta máquina: o outro arquivo da PRENSA é IBMPlexMono-Light.ttf (usWeightClass 300, sha256 780bcf65509d72a35ec114b57bcbe220dc6b77d8ea2e9b25e294be3c570c5025), e 300 não é 400. Trocar 400 por 300 muda o pixel."},
+      {"nome": "Limelight", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine"},
+      {"nome": "Oswald", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine", "detalhe": "É a segunda família mais usada do parque (6 composições) e é a que tem o defeito de peso 800/900 sintetizado."},
+      {"nome": "SpecialElite", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine", "detalhe": "É a família mais usada do parque: 7 composições."},
+      {"nome": "Anton", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine", "detalhe": "5 composições."},
+      {"nome": "Creepster", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine"},
+      {"nome": "VT323", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine"},
+      {"nome": "Cinzel", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine"},
+      {"nome": "ArchivoBlack", "arquivo": null, "sha256": null, "licenca": "nao_verificada_arquivo_ausente", "estado_factual": "unavailable_on_machine", "detalhe": "Archivo Black é família própria, não o peso 900 do Archivo variável. O Archivo-Variable.ttf presente NÃO a substitui."}
+    ],
+    "busca_das_ausentes": "find em /Users/mac/Library/Fonts, /System/Library/Fonts, /Library/Fonts, /Users/mac/Desktop e /Users/mac/volc-factory (excluindo node_modules) por *.ttf/*.otf/*.woff2 das 8 famílias: zero resultados.",
+    "precedente_seguido": "backend/app/criativo/bancada/fontes/PROCEDENCIA.md",
+    "nota_do_precedente": "O Inter-Variable.ttf já versionado em backend/app/criativo/bancada/fontes/ tem sha256 29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031, byte a byte idêntico ao Inter-Variable.ttf da PRENSA. O precedente copiou bytes com fidelidade; é a forma a replicar."
+  },
+
+  "composicoes": {
+    "_metodo": "leitura de src/Root.tsx e das assinaturas React.FC<Props> de cada módulo, cruzadas com as chaves de props.json",
+    "total": 15,
+    "nota_sobre_a_contagem": "A missão fala em 12 composições (Corta + 11). Root.tsx declara 15. O que ficou NÃO CONFERIDO por hash no upgrade 4.0.479 -> 4.0.518 são 14, não 11.",
+    "zod_em_alguma": false,
+    "evidencia_zod": "Nenhuma <Composition> declara `schema`. Todas passam `component={X as any}` e `calculateMetadata={meta as any}`. `@remotion/zod-types` está instalado mas não é importado por nenhum arquivo de src/.",
+    "defaultprops_compartilhados": "As 15 recebem defaultProps={P}, com P = ../props.json — o MESMO objeto para todas. props.json é a união parcial das peças, não o contrato de nenhuma.",
+    "dimensao_fixa_no_codigo": "width=1080 height=1920 literais nas 15",
+    "duracao_e_fps": "durationInFrames={P.durationInFrames} fps={P.fps}, hoje 690 e 30 (23,000 s). calculateMetadata devolve props.durationInFrames/props.fps, então em runtime quem manda é --props.",
+    "lista": [
+      {"id": "Main", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["quoteCard","versus"], "severidade": "degradado — os ausentes são lidos sob guarda ternária, não quebram"},
+      {"id": "Gossip", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["logoBigEnd","duelo","polaroids"], "severidade": "degradado"},
+      {"id": "Copa", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": true, "faltando_em_props_json": [], "severidade": "completo"},
+      {"id": "Esoterico", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": true, "faltando_em_props_json": [], "severidade": "completo"},
+      {"id": "Achadinhos", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["cta"], "severidade": "degradado"},
+      {"id": "Promo", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["name","de","por","off","bf","frete","hookEnd","price","cta","handle"], "severidade": "degradado — 10 de 15 props obrigatórias ausentes; é a composição mais distante do próprio default"},
+      {"id": "Lendas", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["ficha","vulto","endCard"], "severidade": "degradado"},
+      {"id": "TribunalZap", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["subtitle","caseId","chats","evidence","meter","poll"], "severidade": "quebra — deref sem guarda de evidence.some e poll.t"},
+      {"id": "RelatoProibido", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["caseId","evidence","endChoice"], "severidade": "quebra — deref sem guarda de endChoice.t"},
+      {"id": "CartasPerdidas", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["caseId","letters","endChoice","kw"], "severidade": "quebra — deref sem guarda de endChoice.t"},
+      {"id": "CausaFamilia", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["caseId","proofs","endChoice"], "severidade": "quebra — deref sem guarda de endChoice.t"},
+      {"id": "Arquivo", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["ficha","counter","loupe","colorize","carimbo"], "severidade": "degradado"},
+      {"id": "Holerite", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": true, "faltando_em_props_json": [], "severidade": "completo"},
+      {"id": "BrigaEstado", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["mapa","placar","proxima","fonteStamp","times","mapa_uf","placarVals"], "severidade": "quebra — deref sem guarda de times.map"},
+      {"id": "Corta", "largura": 1080, "altura": 1920, "fps": 30, "duracao": "690 frames = 23,000 s", "zod": false, "default_props_validos": false, "faltando_em_props_json": ["claquete","counter","cortaSlam","endCard"], "severidade": "degradado"}
+    ],
+    "resumo": {"completos": 3, "degradados": 7, "quebram": 5},
+    "limite_do_metodo": "Classificação por varredura estática do corpo do componente, não por preview executado. Executar o preview esbarra na mesma fronteira que bloqueia o render (ver hermetismo.fronteira_que_impede). 'quebra' significa deref sem guarda encontrado; 'degradado' significa ausente porém lido sob guarda."
+  },
+
+  "licenca": {
+    "data_da_consulta": "2026-09-01",
+    "fontes_consultadas": [
+      "https://www.remotion.dev/license (307 -> https://github.com/remotion-dev/remotion/blob/main/LICENSE.md)",
+      "https://www.remotion.pro/license",
+      "https://www.remotion.dev/docs/license/faq"
+    ],
+    "limiar_organizacao": "Licença gratuita para indivíduo, organização sem fins lucrativos, ou 'organização ou time de indivíduos com até 3 pessoas'. A partir de 4 pessoas exige Company License paga.",
+    "agregacao_de_contratados": "A FAQ oficial diz que, quando uma agência contrata terceiros ou outros estúdios para o mesmo projeto, a headcount deles SOMA com a sua para o limiar de 4 pessoas. Isso é novo em relação ao ADR e é o ponto que mais atinge a VOLC, que é agência.",
+    "precos": {
+      "estado": "confirmado_hoje_em_remotion_pro",
+      "remotion_for_automators": "US$ 0,01 por render, mínimo US$ 100/mês, cobrado em incrementos de 1000 renders (US$ 10)",
+      "remotion_for_creators": "US$ 25/mês por assento (1 assento por usuário)",
+      "enterprise": "a partir de US$ 500/mês — NAO_CORROBORADO: apareceu em uma leitura de remotion.pro/license e não se repetiu na segunda; tratar como indício, não como preço"
+    },
+    "o_que_conta_como_render": "'1 Render é a geração bem-sucedida de um vídeo, áudio, GIF, PDF ou imagem estática.' Previews no Studio e no Player NÃO contam como render.",
+    "divergencia_com_o_adr": "O ADR registra os preços como NÃO CONFIRMADOS porque /docs/license/pricing renderiza por componente e não devolveu valores — isso continua verdade hoje, a página segue sem números no HTML servido. Os valores vieram de remotion.pro/license, que o ADR não citou. Segunda divergência, mais grave: o ADR conclui na Decisão 4 que o <Player> cabe no app Vercel 'sem tocar em backend' e no Risco 1 que 'preview no Player e no Studio não conta'. A primeira metade continua certa (preview não é render); a segunda não fecha a conta — a FAQ oficial classifica EMBUTIR o Player num site como automação, o que exige Company License na opção Automators, no mínimo de US$ 100/mês. Ou seja: o Player não gera custo por render, mas gera obrigação de licença paga.",
+    "o_que_a_volc_precisa_decidir": [
+      "Quantas pessoas a VOLC tem para efeito da licença, contando contratados e estúdios parceiros do mesmo projeto. Acima de 3, a Free License não se aplica e nada disso é opcional.",
+      "Se o <Player> vai ao app: pela FAQ isso já é automação e puxa Automators com mínimo de US$ 100/mês, mesmo que nenhum vídeo seja renderizado no mês.",
+      "Qual das duas opções cobre o desenho da fábrica: Automators (US$ 0,01/render, mínimo US$ 100/mês) é a que casa com pipeline automatizada; Creators (US$ 25/assento) é para operador humano no Studio.",
+      "Registrar a decisão ANTES de faturar vídeo para cliente, que é o aceite de P17-T07."
+    ],
+    "achado_colateral": "O pacote npm `remotion` declara \"license\": \"SEE LICENSE IN LICENSE.md\" e NÃO publica o LICENSE.md no tarball — o arquivo não existe em node_modules/remotion/. O README aponta para ele e o link não resolve localmente. Os termos que obrigam a empresa não estão no artefato que a empresa instala. @remotion/paths, @remotion/shapes e @remotion/media-utils, por serem MIT, publicam o seu. Conclusão prática: a licença só pode ser conferida na web, com data — memória e node_modules não servem."
+  },
+
+  "hermetismo": {
+    "estado_factual": "nao_provado_nesta_maquina",
+    "o_que_foi_provado": [
+      "Falha fechada: @remotion/google-fonts@4.0.479 abre delayRender(label, {timeoutInMilliseconds: 60000}) por face (dist/cjs/base.js:96) e, no catch, após 2 tentativas faz `throw err` SEM chamar continueRender(handle) (base.js:117-123). O handle nunca é liberado. Sem rede o render trava e aborta; não troca de fonte silenciosamente. Confirma o adendo de 29/08 do ADR, agora lendo o código instalado.",
+      "Custo do timeout: cada tentativa espera 18000 ms (base.js:22, apesar do nome loadFontFaceOrTimeoutAfter20Seconds) e são 2 tentativas, dentro de um handle de 60 s. Blackhole de rede não falha rápido: estaciona ~36-60 s antes de abortar. É orçamento de timeout do worker, não erro instantâneo.",
+      "Bloqueio por proxy é inerte: @remotion/renderer@4.0.479/dist/browser/open-browser.js:103-105 lança o Chromium com --no-proxy-server, --proxy-server='direct://' e --proxy-bypass-list=*. Não existe --offline em renderer nem em cli. Confirma o ADR: HTTP_PROXY/HTTPS_PROXY não bloqueiam nada.",
+      "Nenhum arquivo de fonte em remotion/public (0 .ttf/.otf/.woff/.woff2). Não existe hoje caminho local a apontar.",
+      "O alvo a eliminar é mensurável: 229 faces / 106 URLs distintas em fonts.gstatic.com, mais o download do Chrome Headless Shell em container frio."
+    ],
+    "provado_como": "leitura e medição do código instalado no parque (read-only), parsing dos metadados de @remotion/google-fonts via getInfo(), parsing das tabelas sfnt name/fvar/OS-2 das fontes candidatas, e consulta datada à licença oficial. Nenhum render executado.",
+    "fronteira_que_impede": "Provar hermetismo exige EXECUTAR um render com rede desligada e comparar hash. As três formas de chegar lá estão fechadas: (a) renderizar no parque exige `npx remotion still` dentro de /Users/mac/volc-factory/remotion, que grava bundle e saída no parque — proibido, o parque é READ-ONLY; (b) renderizar na worktree exige `npm install remotion@4.0.479 @remotion/cli @remotion/google-fonts @remotion/fonts` — proibido pela regra 5 (não instalar dependências), e não há node_modules de remotion aqui; (c) copiar os 624 MB de node_modules do parque para a worktree é instalação por outro nome, e ainda assim o primeiro render baixaria ou copiaria os 193 MB do Chrome Headless Shell. Além disso, desligar a rede de verdade não se faz com variável de ambiente (ver prova do --no-proxy-server): exigiria pf/firewall com sudo, ou um namespace de rede, que macOS não oferece como Linux.",
+    "autorizacao_necessaria": "Para fechar o aceite são precisas três autorizações que esta lane não tem: (1) escrever numa CÓPIA do parque fora dele (ex.: /private/tmp/remotion-hermetico-poc) com permissão de rodar `npm install --save-exact` das 21 versões mais @remotion/fonts; (2) obter e versionar as 8 famílias ausentes com licença conferida; (3) sudo para pf/pfctl, ou um Linux com netns, para provar 'zero conexão externa' por bloqueio real e não por monitor de amostragem. Sem (2), o render hermético nem sobe — 8 das 11 famílias não existem nesta máquina."
+  },
+
+  "onde_confirmo_contradigo_ou_atualizo_o_adr": {
+    "confirmo": [
+      "Lockstep íntegro em 4.0.479 sustentado pelo lockfile, não pela declaração ^4.0.0.",
+      "Falha de fonte é dura e sem artefato, pelo throw sem continueRender.",
+      "Proxy por variável de ambiente não bloqueia o Chromium do Remotion.",
+      "As fontes da PRENSA não cobrem as 11 famílias.",
+      "/docs/license/pricing continua sem números no HTML servido.",
+      "Nenhuma composição tem schema Zod."
+    ],
+    "atualizo": [
+      "São 21 pacotes @remotion em lockstep, não 6. Pinar 6 deixa 15 flutuando por resolução transitiva.",
+      "São 32 chamadas loadFont no bundle, não 34: duas vivem em Holerite.tsx.bak, que ninguém importa.",
+      "O teto de rede é 229 faces / 106 URLs, não ~290 requisições. O ~290 soma duas vezes as três famílias que têm itálico e romano.",
+      "'Todos os pesos e os 5 subsets' vale para 3 famílias das 11 (Oswald, IBMPlexMono, CormorantGaramond). As outras 8 publicam 1 a 3 subsets.",
+      "São 15 composições e 14 não conferidas por hash no upgrade, não 11."
+    ],
+    "contradigo": [
+      "O ADR diz que as 10 fontes da PRENSA 'não têm par' com as 11 famílias. Têm par parcial: Archivo cobre por inteiro os pesos usados; CormorantGaramond cobre o peso mas não o itálico que Esoterico.tsx:180 pede; IBMPlexMono cobre o 700 mas não o 400. O saldo é 8 famílias sem nenhum arquivo, 1 coberta, 2 parciais — e as parciais são a armadilha, porque parecem resolvidas.",
+      "O ADR trata hermetismo como problema de fonte. A maior dependência de rede do render é o Chrome Headless Shell 149.0.7790.0, 193 MB, fora do package-lock.json, baixado de remotion.media/googleapis/playwright no primeiro render. Embutir as 11 fontes e esquecer o navegador não produz worker hermético.",
+      "O Risco 1 do ADR diz 'preview no Player e no Studio não conta'. Verdade para contagem de render, insuficiente como conclusão: a FAQ oficial de hoje classifica embutir o Player num site como automação, exigindo Company License na opção Automators com mínimo de US$ 100/mês. A Decisão 4 do ADR ('Player sim no app') tem, portanto, preço de tabela — que o ADR não atribuiu a ela.",
+      "A Decisão 3 do ADR propõe adotar schema Zod porque 'a incompatibilidade vira erro de build'. Medido: hoje 12 das 15 composições têm props obrigatórias ausentes de defaultProps. Declarar Zod não é adição barata: quebra o build de 12 composições no primeiro dia, até alguém escrever defaultProps de verdade para cada uma. Isso é bom — é o erro aparecendo cedo — mas precisa ser orçado como trabalho, não como configuração."
+    ]
+  }
+}

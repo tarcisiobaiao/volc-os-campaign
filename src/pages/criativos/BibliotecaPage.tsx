@@ -29,7 +29,7 @@ import { Grade } from '@/components/criativos/biblioteca/Grade';
 import { useDensidade } from '@/components/criativos/biblioteca/densidade';
 import {
   FILTROS_VAZIOS,
-  contagemLegivel,
+  fraseDaContagem,
   temFiltro,
   type FiltrosDaBiblioteca,
 } from '@/components/criativos/biblioteca/filtros';
@@ -46,7 +46,9 @@ const BibliotecaPage: React.FC = () => {
 
   const consulta = useCriativosBiblioteca(filtros, offset);
   const assets = consulta.data?.assets ?? [];
-  const total = consulta.data?.total ?? 0;
+  // ⚠️ `null`, e nao `?? 0`. Leitura que nao chegou nao sabe se ha zero ou mil,
+  // e a frase da contagem precisa poder dizer isso em vez de afirmar zero.
+  const total = consulta.data?.total ?? null;
   const universo = consulta.data?.universo ?? null;
   const comFiltro = temFiltro(filtros);
 
@@ -103,13 +105,13 @@ const BibliotecaPage: React.FC = () => {
             aoMudar={mudarFiltros}
             brandPacks={brandPacks}
             nomeDoPack={nomeDoPack}
-            contagem={
-              consulta.isLoading
-                ? 'Contagem ainda não lida.'
-                : universo === null
-                  ? `${total} ${total === 1 ? 'ativo neste recorte' : 'ativos neste recorte'}. O total da biblioteca não foi informado.`
-                  : contagemLegivel(total, universo, comFiltro)
-            }
+            contagem={fraseDaContagem({
+              carregando: consulta.isLoading,
+              erro: consulta.isError,
+              total,
+              universo,
+              comFiltro,
+            })}
           />
         </Secao>
 
@@ -135,7 +137,9 @@ const BibliotecaPage: React.FC = () => {
 
         {estado === 'vazio_apos_filtro' && (
           <VazioAposFiltro
-            universo={universo ?? 0}
+            /* `universo` cru: `?? 0` fazia a caixa afirmar "A biblioteca tem 0
+               ativos" quando o servidor simplesmente nao informou o total. */
+            universo={universo}
             aoLimpar={() => mudarFiltros(FILTROS_VAZIOS)}
           />
         )}
@@ -143,7 +147,7 @@ const BibliotecaPage: React.FC = () => {
         {estado === 'com_dados' && (
           <>
             <Grade assets={assets} densidade={densidade} aoRenovar={renovar} />
-            {(offset > 0 || total > offset + assets.length) && (
+            {(offset > 0 || (total !== null && total > offset + assets.length)) && (
               <div className="flex items-center justify-between gap-3">
                 <Button
                   variant="outline"
@@ -153,12 +157,13 @@ const BibliotecaPage: React.FC = () => {
                   Página anterior
                 </Button>
                 <p className="text-[12px] text-muted-foreground" role="status">
-                  Mostrando {offset + 1} a {offset + assets.length} de {total} neste recorte.
+                  Mostrando {offset + 1} a {offset + assets.length}
+                  {total === null ? ' neste recorte; o total não foi informado.' : ` de ${total} neste recorte.`}
                 </p>
                 <Button
                   variant="outline"
                   onClick={() => setOffset(offset + PAGINA)}
-                  disabled={offset + assets.length >= total}
+                  disabled={total === null || offset + assets.length >= total}
                 >
                   Próxima página
                 </Button>

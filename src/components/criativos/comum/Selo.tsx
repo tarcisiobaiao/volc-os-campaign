@@ -208,12 +208,37 @@ export const SeloDaAprovacao: React.FC<{
  * ⚠️ `observado` não é sucesso e não é falha: é o VOLC O.S. declarando que LEU
  * um build que já existia. Este é o selo mais importante desta área, porque é a
  * mentira mais fácil de cometer nesta fatia.
+ *
+ * ⚠️⚠️ `null` é um TERCEIRO valor, e não um sinônimo de `volc_os`.
+ * `AssetMaster.procedenciaExecucao` é `ProcedenciaDeExecucao | null`, e o
+ * comentário do contrato diz por quê: `null` significa **não apurada** — o
+ * servidor não leu o job desta peça. A versão anterior deste componente
+ * ramificava `=== 'observado' ? A : B`, então o `null` caía no `else` e o selo
+ * afirmava "Produzido aqui" para um ativo cuja autoria ninguém verificou
+ * (defeito D1 da auditoria P17). Com `strict: false` no `tsconfig.app.json` o
+ * compilador não reclama de `null` numa prop não-nula, então a guarda tem de
+ * ser esta, em runtime.
+ *
+ * O tom é `atencao` porque ausência de procedência num patrimônio criativo é
+ * uma pendência, não um estado neutro de operação: publicar sem saber quem
+ * produziu é exatamente o risco que a coluna existe para conter.
  */
 export const SeloDeProcedencia: React.FC<{
-  procedencia: ProcedenciaDeExecucao;
+  procedencia: ProcedenciaDeExecucao | null;
   className?: string;
-}> = ({ procedencia, className }) =>
-  procedencia === 'observado' ? (
+}> = ({ procedencia, className }) => {
+  if (!procedencia) {
+    return (
+      <Selo
+        glifo={CircleDashed}
+        palavra="Procedência não apurada"
+        descricao="O servidor não informou quem executou este trabalho. Isso não é o mesmo que dizer que o VOLC O.S. o produziu."
+        tom="atencao"
+        className={className}
+      />
+    );
+  }
+  return procedencia === 'observado' ? (
     <Selo
       glifo={CircleDot}
       palavra="Observado"
@@ -230,6 +255,7 @@ export const SeloDeProcedencia: React.FC<{
       className={className}
     />
   );
+};
 
 /**
  * O veredito do gate em palavra de operação.

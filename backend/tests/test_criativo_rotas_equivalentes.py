@@ -12,6 +12,7 @@ import copy
 import difflib
 import hashlib
 import json
+import os
 import zlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -208,8 +209,29 @@ def _assert_headers_golden(resposta, golden: _GoldenHTTP) -> None:
         assert atuais[chave], f"header volátil {chave!r} veio vazio"
 
 
+def _regravar(resposta) -> None:
+    """Imprime o golden ATUAL, para uma mudança DELIBERADA de contrato.
+
+    ⚠️ Ele não regrava sozinho, e isso é a metade importante: um golden que se
+    conserta a si mesmo no primeiro `pytest` deixa de ser golden. Com
+    `CRIATIVO_MOSTRAR_GOLDEN=1` ele imprime os bytes e o `content-length` novos, e
+    quem muda o contrato cola o literal — declarando a mudança no diff, que é
+    onde ela precisa aparecer.
+
+    Existia como lacuna: os goldens dos aceites 1 e 2 foram capturados à mão e
+    não tinham caminho de regeneração escrito.
+    """
+    if os.environ.get("CRIATIVO_MOSTRAR_GOLDEN") != "1":
+        return
+    print("\n--- GOLDEN ATUAL ---")
+    print("status =", resposta.status_code)
+    print("content-length =", resposta.headers.get("content-length"))
+    print("body =", repr(resposta.content))
+
+
 def _assert_resposta_golden(resposta, golden: _GoldenHTTP) -> None:
     assert resposta.status_code == golden.status, resposta.text
+    _regravar(resposta)
     assert resposta.content == golden.body
     _assert_headers_golden(resposta, golden)
     if golden.json_tipado:
@@ -505,6 +527,15 @@ def _cliente(monkeypatch, trabalho) -> TestClient:
     return TestClient(app)
 
 
+#: Baseline do payload de leitura, congelado em bytes.
+#:
+#: ⚠️ Regravado em 01/09/2026 pela mudança DELIBERADA da fronteira pública:
+#: `parametros` deixou de sair cru e passou a ser hash + campos allowlisted +
+#: motivos de retenção. Vide `bancada/fronteira_publica.py`. Para regravar,
+#: `CRIATIVO_MOSTRAR_GOLDEN=1 pytest -s` imprime o corpo atual.
+_BASELINE_LEITURA = b'{"id":"t-1","estado":"rendered","tentativa":1,"maxTentativas":3,"operario":null,"leaseAte":null,"batimentoEm":null,"vivo":false,"falha":null,"recibo":{"trabalhoId":"t-1","produzidoPor":"worker-1","motorSlug":"tipografico-local","motorVersao":"1","seed":7,"versoes":{"fonte_sha256":"abc"},"parametros":{"hash":"sha256:547ec5543c6e03ee6b53c2e691fbcb7e9acb9e8261706bb4d2d41e6c2a6aba0d","campos":{},"retidos":{"titulo":"retido_texto_livre"}},"artefatos":[{"slot":"1x1","mime":"image/png","bytes":123,"sha256":"def","largura":1080,"altura":1080,"duracaoS":null}],"validacoes":[{"gate":"dimensao","resultado":"PASS","detalhe":null,"bloqueante":true}],"audio":null,"iniciadoEm":"2026-08-29T16:00:00+00:00","terminadoEm":"2026-08-29T16:00:01+00:00","custoEstimadoUsd":null,"custoRealUsd":null,"assinaturaDeterminista":"sig"},"retomaDe":null,"retomadaN":0,"canceladoPor":null,"canceladoMotivo":null,"criadoEm":"2026-08-29T16:00:00+00:00","podeRetomar":false,"podeCancelar":false}'
+
+
 def test_payload_de_leitura_e_byte_equivalente_ao_baseline(monkeypatch):
     instante = datetime(2026, 8, 29, 16, 0, tzinfo=timezone.utc)
     trabalho = SimpleNamespace(
@@ -562,22 +593,8 @@ def test_payload_de_leitura_e_byte_equivalente_ao_baseline(monkeypatch):
         "/api/criativos/bancada/trabalhos/t-1"
     )
     assert resposta.status_code == 200
-    assert resposta.content == (
-        b'{"id":"t-1","estado":"rendered","tentativa":1,"maxTentativas":3,'
-        b'"operario":null,"leaseAte":null,"batimentoEm":null,"vivo":false,'
-        b'"falha":null,"recibo":{"trabalhoId":"t-1","produzidoPor":"worker-1",'
-        b'"motorSlug":"tipografico-local","motorVersao":"1","seed":7,'
-        b'"versoes":{"fonte_sha256":"abc"},"parametros":{"titulo":"Pe\xc3\xa7a"},'
-        b'"artefatos":[{"slot":"1x1","mime":"image/png","bytes":123,'
-        b'"sha256":"def","largura":1080,"altura":1080,"duracaoS":null}],'
-        b'"validacoes":[{"gate":"dimensao","resultado":"PASS","detalhe":null,'
-        b'"bloqueante":true}],"audio":null,"iniciadoEm":"2026-08-29T16:00:00+00:00",'
-        b'"terminadoEm":"2026-08-29T16:00:01+00:00","custoEstimadoUsd":null,'
-        b'"custoRealUsd":null,"assinaturaDeterminista":"sig"},"retomaDe":null,'
-        b'"retomadaN":0,"canceladoPor":null,"canceladoMotivo":null,'
-        b'"criadoEm":"2026-08-29T16:00:00+00:00","podeRetomar":false,'
-        b'"podeCancelar":false}'
-    )
+    _regravar(resposta)
+    assert resposta.content == _BASELINE_LEITURA
     assert b"caminho" not in resposta.content
 
 
@@ -793,141 +810,33 @@ _GOLDEN_MOTORES = _GoldenHTTP(
 
 _GOLDEN_CRIACAO_INICIAL = _GoldenHTTP(
     status=201,
-    headers=(("content-type", "application/json"), ("content-length", "1260")),
+    headers=(("content-type", "application/json"), ("content-length", "1412")),
     absent_headers=("x-criativo-idempotente",),
-    body=(
-        '{"id":"t-criado","estado":"rendered","tentativa":2,'
-        '"maxTentativas":4,"operario":null,"leaseAte":null,'
-        '"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,'
-        '"falha":null,"recibo":{"trabalhoId":"t-criado",'
-        '"produzidoPor":"worker-α","motorSlug":"tipografico-local",'
-        '"motorVersao":"1.2.3","seed":7,'
-        '"versoes":{"adaptador":"2","fonte_sha256":"abc123"},'
-        '"parametros":{"titulo":"Peça de prova","apoio":"Linha de apoio",'
-        '"escala":1.25,"rascunho":false},"artefatos":[{"slot":"1x1",'
-        '"mime":"image/png","bytes":123,"sha256":"def456","largura":1080,'
-        '"altura":1080,"duracaoS":null},{"slot":"video-9x16",'
-        '"mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,'
-        '"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao",'
-        '"resultado":"PASS","detalhe":{"esperado":[1080,1080],'
-        '"medido":[1080,1080]},"bloqueante":true},{"gate":"audio",'
-        '"resultado":"SKIPPED","detalhe":null,"bloqueante":false}],'
-        '"audio":{"codec":"aac","canais":2,"normalizado":true},'
-        '"iniciadoEm":"2026-08-29T16:00:00+00:00",'
-        '"terminadoEm":"2026-08-29T16:00:02+00:00",'
-        '"custoEstimadoUsd":0.75,"custoRealUsd":0.625,'
-        '"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original",'
-        '"retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,'
-        '"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,'
-        '"podeCancelar":false}'
-    ).encode("utf-8"),
+    body=b'{"id":"t-criado","estado":"rendered","tentativa":2,"maxTentativas":4,"operario":null,"leaseAte":null,"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,"falha":null,"recibo":{"trabalhoId":"t-criado","produzidoPor":"worker-\xce\xb1","motorSlug":"tipografico-local","motorVersao":"1.2.3","seed":7,"versoes":{"adaptador":"2","fonte_sha256":"abc123"},"parametros":{"hash":"sha256:667ae94c6cb5cd229fc7e15b44947837cef639bb54984b2f8402bdc56addb12b","campos":{},"retidos":{"apoio":"retido_texto_livre","escala":"retido_nao_allowlisted","rascunho":"retido_nao_allowlisted","titulo":"retido_texto_livre"}},"artefatos":[{"slot":"1x1","mime":"image/png","bytes":123,"sha256":"def456","largura":1080,"altura":1080,"duracaoS":null},{"slot":"video-9x16","mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao","resultado":"PASS","detalhe":{"esperado":[1080,1080],"medido":[1080,1080]},"bloqueante":true},{"gate":"audio","resultado":"SKIPPED","detalhe":null,"bloqueante":false}],"audio":{"codec":"aac","canais":2,"normalizado":true},"iniciadoEm":"2026-08-29T16:00:00+00:00","terminadoEm":"2026-08-29T16:00:02+00:00","custoEstimadoUsd":0.75,"custoRealUsd":0.625,"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original","retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,"podeCancelar":false}',
 )
 
 _GOLDEN_CRIACAO_REPLAY = _GoldenHTTP(
     status=200,
     headers=(
         ("content-type", "application/json"),
-        ("content-length", "1260"),
+        ("content-length", "1412"),
         ("x-criativo-idempotente", "replay"),
     ),
-    body=(
-        '{"id":"t-replay","estado":"rendered","tentativa":2,'
-        '"maxTentativas":4,"operario":null,"leaseAte":null,'
-        '"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,'
-        '"falha":null,"recibo":{"trabalhoId":"t-replay",'
-        '"produzidoPor":"worker-α","motorSlug":"tipografico-local",'
-        '"motorVersao":"1.2.3","seed":7,'
-        '"versoes":{"adaptador":"2","fonte_sha256":"abc123"},'
-        '"parametros":{"titulo":"Peça de prova","apoio":"Linha de apoio",'
-        '"escala":1.25,"rascunho":false},"artefatos":[{"slot":"1x1",'
-        '"mime":"image/png","bytes":123,"sha256":"def456","largura":1080,'
-        '"altura":1080,"duracaoS":null},{"slot":"video-9x16",'
-        '"mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,'
-        '"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao",'
-        '"resultado":"PASS","detalhe":{"esperado":[1080,1080],'
-        '"medido":[1080,1080]},"bloqueante":true},{"gate":"audio",'
-        '"resultado":"SKIPPED","detalhe":null,"bloqueante":false}],'
-        '"audio":{"codec":"aac","canais":2,"normalizado":true},'
-        '"iniciadoEm":"2026-08-29T16:00:00+00:00",'
-        '"terminadoEm":"2026-08-29T16:00:02+00:00",'
-        '"custoEstimadoUsd":0.75,"custoRealUsd":0.625,'
-        '"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original",'
-        '"retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,'
-        '"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,'
-        '"podeCancelar":false}'
-    ).encode("utf-8"),
+    body=b'{"id":"t-replay","estado":"rendered","tentativa":2,"maxTentativas":4,"operario":null,"leaseAte":null,"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,"falha":null,"recibo":{"trabalhoId":"t-replay","produzidoPor":"worker-\xce\xb1","motorSlug":"tipografico-local","motorVersao":"1.2.3","seed":7,"versoes":{"adaptador":"2","fonte_sha256":"abc123"},"parametros":{"hash":"sha256:667ae94c6cb5cd229fc7e15b44947837cef639bb54984b2f8402bdc56addb12b","campos":{},"retidos":{"apoio":"retido_texto_livre","escala":"retido_nao_allowlisted","rascunho":"retido_nao_allowlisted","titulo":"retido_texto_livre"}},"artefatos":[{"slot":"1x1","mime":"image/png","bytes":123,"sha256":"def456","largura":1080,"altura":1080,"duracaoS":null},{"slot":"video-9x16","mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao","resultado":"PASS","detalhe":{"esperado":[1080,1080],"medido":[1080,1080]},"bloqueante":true},{"gate":"audio","resultado":"SKIPPED","detalhe":null,"bloqueante":false}],"audio":{"codec":"aac","canais":2,"normalizado":true},"iniciadoEm":"2026-08-29T16:00:00+00:00","terminadoEm":"2026-08-29T16:00:02+00:00","custoEstimadoUsd":0.75,"custoRealUsd":0.625,"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original","retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,"podeCancelar":false}',
 )
 
 _GOLDEN_LISTAGEM = _GoldenHTTP(
     status=200,
-    headers=(("content-type", "application/json"), ("content-length", "1718")),
+    headers=(("content-type", "application/json"), ("content-length", "1870")),
     absent_headers=("x-criativo-idempotente",),
-    body=(
-        '{"trabalhos":[{"id":"t-running","estado":"running","tentativa":1,'
-        '"maxTentativas":3,"operario":"worker-live",'
-        '"leaseAte":"2026-08-29T16:05:00+00:00",'
-        '"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":true,'
-        '"falha":{"codigo":"tentativa_anterior","permanente":false,'
-        '"detalhes":["timeout",2]},"recibo":null,"retomaDe":null,'
-        '"retomadaN":0,"canceladoPor":null,"canceladoMotivo":null,'
-        '"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,'
-        '"podeCancelar":true},{"id":"t-rendered","estado":"rendered",'
-        '"tentativa":2,"maxTentativas":4,"operario":null,"leaseAte":null,'
-        '"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,'
-        '"falha":null,"recibo":{"trabalhoId":"t-rendered",'
-        '"produzidoPor":"worker-α","motorSlug":"tipografico-local",'
-        '"motorVersao":"1.2.3","seed":7,'
-        '"versoes":{"adaptador":"2","fonte_sha256":"abc123"},'
-        '"parametros":{"titulo":"Peça de prova","apoio":"Linha de apoio",'
-        '"escala":1.25,"rascunho":false},"artefatos":[{"slot":"1x1",'
-        '"mime":"image/png","bytes":123,"sha256":"def456","largura":1080,'
-        '"altura":1080,"duracaoS":null},{"slot":"video-9x16",'
-        '"mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,'
-        '"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao",'
-        '"resultado":"PASS","detalhe":{"esperado":[1080,1080],'
-        '"medido":[1080,1080]},"bloqueante":true},{"gate":"audio",'
-        '"resultado":"SKIPPED","detalhe":null,"bloqueante":false}],'
-        '"audio":{"codec":"aac","canais":2,"normalizado":true},'
-        '"iniciadoEm":"2026-08-29T16:00:00+00:00",'
-        '"terminadoEm":"2026-08-29T16:00:02+00:00",'
-        '"custoEstimadoUsd":0.75,"custoRealUsd":0.625,'
-        '"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original",'
-        '"retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,'
-        '"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,'
-        '"podeCancelar":false}]}'
-    ).encode("utf-8"),
+    body=b'{"trabalhos":[{"id":"t-running","estado":"running","tentativa":1,"maxTentativas":3,"operario":"worker-live","leaseAte":"2026-08-29T16:05:00+00:00","batimentoEm":"2026-08-29T16:04:00+00:00","vivo":true,"falha":{"codigo":"tentativa_anterior","permanente":false,"detalhes":["timeout",2]},"recibo":null,"retomaDe":null,"retomadaN":0,"canceladoPor":null,"canceladoMotivo":null,"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,"podeCancelar":true},{"id":"t-rendered","estado":"rendered","tentativa":2,"maxTentativas":4,"operario":null,"leaseAte":null,"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,"falha":null,"recibo":{"trabalhoId":"t-rendered","produzidoPor":"worker-\xce\xb1","motorSlug":"tipografico-local","motorVersao":"1.2.3","seed":7,"versoes":{"adaptador":"2","fonte_sha256":"abc123"},"parametros":{"hash":"sha256:667ae94c6cb5cd229fc7e15b44947837cef639bb54984b2f8402bdc56addb12b","campos":{},"retidos":{"apoio":"retido_texto_livre","escala":"retido_nao_allowlisted","rascunho":"retido_nao_allowlisted","titulo":"retido_texto_livre"}},"artefatos":[{"slot":"1x1","mime":"image/png","bytes":123,"sha256":"def456","largura":1080,"altura":1080,"duracaoS":null},{"slot":"video-9x16","mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao","resultado":"PASS","detalhe":{"esperado":[1080,1080],"medido":[1080,1080]},"bloqueante":true},{"gate":"audio","resultado":"SKIPPED","detalhe":null,"bloqueante":false}],"audio":{"codec":"aac","canais":2,"normalizado":true},"iniciadoEm":"2026-08-29T16:00:00+00:00","terminadoEm":"2026-08-29T16:00:02+00:00","custoEstimadoUsd":0.75,"custoRealUsd":0.625,"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original","retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,"podeCancelar":false}]}',
 )
 
 _GOLDEN_LEITURA = _GoldenHTTP(
     status=200,
-    headers=(("content-type", "application/json"), ("content-length", "1256")),
+    headers=(("content-type", "application/json"), ("content-length", "1408")),
     absent_headers=("x-criativo-idempotente",),
-    body=(
-        '{"id":"t-rico","estado":"rendered","tentativa":2,'
-        '"maxTentativas":4,"operario":null,"leaseAte":null,'
-        '"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,'
-        '"falha":null,"recibo":{"trabalhoId":"t-rico",'
-        '"produzidoPor":"worker-α","motorSlug":"tipografico-local",'
-        '"motorVersao":"1.2.3","seed":7,'
-        '"versoes":{"adaptador":"2","fonte_sha256":"abc123"},'
-        '"parametros":{"titulo":"Peça de prova","apoio":"Linha de apoio",'
-        '"escala":1.25,"rascunho":false},"artefatos":[{"slot":"1x1",'
-        '"mime":"image/png","bytes":123,"sha256":"def456","largura":1080,'
-        '"altura":1080,"duracaoS":null},{"slot":"video-9x16",'
-        '"mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,'
-        '"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao",'
-        '"resultado":"PASS","detalhe":{"esperado":[1080,1080],'
-        '"medido":[1080,1080]},"bloqueante":true},{"gate":"audio",'
-        '"resultado":"SKIPPED","detalhe":null,"bloqueante":false}],'
-        '"audio":{"codec":"aac","canais":2,"normalizado":true},'
-        '"iniciadoEm":"2026-08-29T16:00:00+00:00",'
-        '"terminadoEm":"2026-08-29T16:00:02+00:00",'
-        '"custoEstimadoUsd":0.75,"custoRealUsd":0.625,'
-        '"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original",'
-        '"retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,'
-        '"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,'
-        '"podeCancelar":false}'
-    ).encode("utf-8"),
+    body=b'{"id":"t-rico","estado":"rendered","tentativa":2,"maxTentativas":4,"operario":null,"leaseAte":null,"batimentoEm":"2026-08-29T16:04:00+00:00","vivo":false,"falha":null,"recibo":{"trabalhoId":"t-rico","produzidoPor":"worker-\xce\xb1","motorSlug":"tipografico-local","motorVersao":"1.2.3","seed":7,"versoes":{"adaptador":"2","fonte_sha256":"abc123"},"parametros":{"hash":"sha256:667ae94c6cb5cd229fc7e15b44947837cef639bb54984b2f8402bdc56addb12b","campos":{},"retidos":{"apoio":"retido_texto_livre","escala":"retido_nao_allowlisted","rascunho":"retido_nao_allowlisted","titulo":"retido_texto_livre"}},"artefatos":[{"slot":"1x1","mime":"image/png","bytes":123,"sha256":"def456","largura":1080,"altura":1080,"duracaoS":null},{"slot":"video-9x16","mime":"video/mp4","bytes":456,"sha256":"ghi789","largura":1080,"altura":1920,"duracaoS":2.5}],"validacoes":[{"gate":"dimensao","resultado":"PASS","detalhe":{"esperado":[1080,1080],"medido":[1080,1080]},"bloqueante":true},{"gate":"audio","resultado":"SKIPPED","detalhe":null,"bloqueante":false}],"audio":{"codec":"aac","canais":2,"normalizado":true},"iniciadoEm":"2026-08-29T16:00:00+00:00","terminadoEm":"2026-08-29T16:00:02+00:00","custoEstimadoUsd":0.75,"custoRealUsd":0.625,"assinaturaDeterminista":"sig-123"},"retomaDe":"t-original","retomadaN":1,"canceladoPor":null,"canceladoMotivo":null,"criadoEm":"2026-08-29T15:59:00+00:00","podeRetomar":false,"podeCancelar":false}',
 )
 
 _GOLDEN_CANCELAMENTO = _GoldenHTTP(

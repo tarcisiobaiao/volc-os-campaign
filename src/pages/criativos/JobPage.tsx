@@ -29,9 +29,15 @@ import { CabecalhoDoEstudio, Corpo, Secao } from '@/components/criativos/comum/P
 import { Carregando, ErroDeLeitura, Indisponivel } from '@/components/criativos/comum/Estados';
 import { SeloDoJob, SeloDeProcedencia } from '@/components/criativos/comum/Selo';
 import { PainelDeFase, PecaDoJob } from '@/components/criativos/job/Acompanhamento';
-import { frasePecas, ofertaDeCancelamento, ofertaDeRetry, resumirPecas } from '@/components/criativos/job/pecas';
+import {
+  estadoDoCancelamento,
+  frasePecas,
+  ofertaDeCancelamento,
+  ofertaDeRetry,
+  resumirPecas,
+} from '@/components/criativos/job/pecas';
 import { LeituraDeVideo } from '@/components/criativos/video/LeituraDeVideo';
-import { custoLegivel, instante } from '@/components/criativos/comum/formato';
+import { custoDoJobLegivel, instante } from '@/components/criativos/comum/formato';
 import { chaveDoJob, useAcoesDoJob, useCriativosJob } from '@/hooks/useCriativosJob';
 import { useCriativosEventos } from '@/hooks/useCriativosEventos';
 import { useCriativosVideo } from '@/hooks/useCriativosVideo';
@@ -121,6 +127,8 @@ const JobPage: React.FC = () => {
   const resumo = resumirPecas(job.renditions);
   const retry = ofertaDeRetry(job);
   const cancelamento = ofertaDeCancelamento(job);
+  // "Pedi para parar" e "parou" nao sao a mesma noticia para quem olha o custo.
+  const parada = estadoDoCancelamento(job);
 
   return (
     <Layout>
@@ -138,8 +146,12 @@ const JobPage: React.FC = () => {
             <SeloDoJob estado={job.estado} />
             <SeloDeProcedencia procedencia={job.procedenciaExecucao} />
             <span className="text-[12px] text-muted-foreground">
+              {/* ⚠️ `custoDoJobLegivel`, e nao `custoLegivel(real ?? estimado)`.
+                  O `??` fundia dois campos que o contrato guarda separados, e a
+                  frase resultante era lida como gasto realizado num job que
+                  ainda estava rodando. */}
               Motor {job.motor} {job.motorVersao}. Tentativa {job.tentativa}.{' '}
-              {custoLegivel(job.custoRealUsd ?? job.custoEstimadoUsd)}. Criado em{' '}
+              {custoDoJobLegivel(job.custoRealUsd, job.custoEstimadoUsd)}. Criado em{' '}
               {instante(job.criadoEm)}.
             </span>
           </div>
@@ -155,6 +167,21 @@ const JobPage: React.FC = () => {
             Este pedido já existia. O servidor reconheceu o reenvio do mesmo formulário e devolveu o
             trabalho que já estava registrado: nenhuma peça nova foi produzida e nada foi cobrado de
             novo.
+          </div>
+        )}
+
+        {parada && (
+          <div
+            role="status"
+            className={
+              parada.confirmado
+                ? 'rounded-md border border-border bg-muted/50 px-4 py-3 text-[13px] leading-relaxed text-foreground'
+                : 'rounded-md border border-warning/55 bg-warning/[0.08] px-4 py-3 text-[13px] leading-relaxed text-foreground'
+            }
+          >
+            {parada.frase}{' '}
+            {parada.pedidoEm && <>Pedido em {instante(parada.pedidoEm)}.</>}{' '}
+            {parada.confirmadoEm && <>Parada confirmada em {instante(parada.confirmadoEm)}.</>}
           </div>
         )}
 

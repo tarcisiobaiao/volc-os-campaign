@@ -50,7 +50,7 @@ import time
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Protocol
+from typing import Any, BinaryIO, Literal, Protocol
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Política de arquivo
@@ -75,7 +75,50 @@ class ArquivoRecusado(ValueError):
 
 
 class ObjetoNaoEncontrado(KeyError):
-    """Chave que não existe no armazenamento."""
+    """Chave que não existe no armazenamento.
+
+    ⚠️ É uma RESPOSTA: o armazenamento foi consultado e disse que não tem. Não
+    confundir com `ArmazenamentoIndisponivel`, que é a ausência de resposta.
+    """
+
+
+class ArmazenamentoIndisponivel(RuntimeError):
+    """O armazenamento não respondeu — ou respondeu que não pode responder.
+
+    ⚠️ Este tipo existe para NÃO ser `ObjetoNaoEncontrado`. Rede caída, DNS que
+    não resolve, 5xx do gateway e timeout têm uma coisa em comum: ninguém sabe
+    se o objeto está lá. O `except (ObjetoNaoEncontrado, Exception): return
+    False` que estava em `ArmazenamentoSupabase.existe()` transformava as quatro
+    em "não existe" — e um `existe()` falso-negativo é upload duplicado no
+    melhor caso e "o artefato sumiu" no pior, com o armazenamento intacto o
+    tempo todo.
+
+    Ausência é uma resposta. Falha é a ausência de resposta. São estados
+    diferentes e o produto age diferente em cada um: um manda seguir, o outro
+    manda parar e tentar de novo.
+    """
+
+
+class BucketAusente(ArmazenamentoIndisponivel):
+    """O bucket não existe. Recusa fechada, nunca queda silenciosa para local.
+
+    Medido em 27/08/2026: `select * from storage.buckets` em
+    `database.agenciavolc.com.br` devolveu ZERO linhas. Um adaptador que
+    descobre isso no meio de um upload e cai para disco local grava o artefato
+    num lugar que ninguém vai ler de volta — e o job termina verde, apontando
+    para um endereço remoto que nunca existiu.
+    """
+
+
+def sha256_de(dados: bytes) -> str:
+    """`sha256:` prefixado — mesmo formato de `dominio.hash_de_conteudo`.
+
+    Replicado aqui, e não importado, pela mesma razão declarada lá: a camada de
+    I/O não importa o domínio por uma linha. A igualdade entre os dois é
+    exercida em `test_criativo_storage_verificado.py`, para que a duplicação não
+    vire divergência silenciosa.
+    """
+    return "sha256:" + hashlib.sha256(dados).hexdigest()
 
 
 def conferir_upload(dados: bytes, mime: str, *, teto: int = TETO_DE_IMAGEM_BYTES) -> None:
@@ -140,6 +183,38 @@ def chave_de_asset(projeto_id: str, job_id: str, slot: str, content_hash: str,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# O que uma escrita prova, e o que ela não prova
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class EscritaNaoConferida:
+    """O retorno de `guardar()` — e ele afirma menos do que se costuma ler nele.
+
+    ⚠️ ESTE TIPO É O RECADO, e por isso ele existe em vez de um comentário.
+    `guardar()` devolvia `None`, e "voltou sem exceção" era lido como "o objeto
+    está lá, íntegro". Não está: um 200 prova que o servidor ACEITOU os bytes,
+    não que os guardou inteiros, nem que a próxima leitura devolve os mesmos.
+    Entre o `write` e o `fsync` do outro lado cabe um disco cheio, um proxy que
+    trunca e um retry que grava metade.
+
+    Quem quiser dizer VERIFIED tem de ler de volta e comparar — é o que
+    `bancada.armazenamento_verificado.publicar_artefato` faz. `conferido` é
+    propriedade e não campo de propósito: não existe construtor deste tipo capaz
+    de afirmar conferência.
+    """
+
+    chave: str
+    mime: str
+    bytes_escritos: int
+    sha256_local: str
+
+    @property
+    def conferido(self) -> Literal[False]:
+        return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # A porta
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -147,7 +222,8 @@ def chave_de_asset(projeto_id: str, job_id: str, slot: str, content_hash: str,
 class ArmazenamentoDeObjetos(Protocol):
     nome: str
 
-    def guardar(self, chave: str, dados: bytes, mime: str) -> None: ...
+    def conferir_bucket(self) -> None: ...
+    def guardar(self, chave: str, dados: bytes, mime: str) -> EscritaNaoConferida: ...
     def ler(self, chave: str) -> bytes: ...
     def abrir(self, chave: str) -> BinaryIO: ...
     def tamanho(self, chave: str) -> int: ...
@@ -189,7 +265,22 @@ class ArmazenamentoLocal:
             raise ArquivoRecusado("chave de armazenamento inválida")
         return alvo
 
-    def guardar(self, chave: str, dados: bytes, mime: str) -> None:
+    def conferir_bucket(self) -> None:
+        """O preflight local: o diretório raiz existe e aceita escrita?
+
+        Mesmo contrato do remoto, de propósito. Se só o adaptador do Supabase
+        tivesse preflight, o teste que prova a recusa fechada só rodaria contra
+        o adaptador que ninguém executa hoje — e o caminho realmente exercido
+        continuaria sem prova.
+        """
+        if not self.raiz.is_dir():
+            raise BucketAusente(f"diretório de armazenamento não existe: {self.raiz}")
+        if not os.access(self.raiz, os.W_OK):
+            raise ArmazenamentoIndisponivel(
+                f"sem permissão de escrita em {self.raiz}"
+            )
+
+    def guardar(self, chave: str, dados: bytes, mime: str) -> EscritaNaoConferida:
         conferir_upload(dados, mime)
         alvo = self._caminho(chave)
         alvo.parent.mkdir(parents=True, exist_ok=True)
@@ -198,6 +289,9 @@ class ArmazenamentoLocal:
         parcial = alvo.with_suffix(alvo.suffix + ".parcial")
         parcial.write_bytes(dados)
         parcial.replace(alvo)
+        # ⚠️ Nem aqui, com o arquivo a um `read_bytes()` de distância, esta função
+        # afirma conferência. Quem confere é quem lê de volta.
+        return EscritaNaoConferida(chave, mime, len(dados), sha256_de(dados))
 
     def ler(self, chave: str) -> bytes:
         alvo = self._caminho(chave)
@@ -225,32 +319,99 @@ class ArmazenamentoLocal:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Adaptador Supabase (produção — escrito, NÃO ativado)
+# O transporte, como porta
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class RespostaHTTP:
+    """O mínimo que o adaptador precisa saber de uma resposta: código e corpo."""
+
+    status: int
+    corpo: bytes = b""
+
+
+class FalhaDeTransporte(ArmazenamentoIndisponivel):
+    """A requisição não chegou, ou não voltou.
+
+    Não diz nada sobre o objeto — e é exatamente por isso que não é
+    `ObjetoNaoEncontrado`.
+    """
+
+
+class TransporteHTTP(Protocol):
+    """A fronteira que torna o adaptador remoto PROVÁVEL sem rede.
+
+    Sem ela, a única forma de exercer o adaptador do Supabase seria contra o
+    Supabase — que é produção, e cujo bucket não existe. O resultado prático era
+    um adaptador escrito e nunca executado, com quatro caminhos de erro que
+    ninguém jamais viu rodar: bucket ausente, objeto ausente, rede caída e
+    releitura divergente.
+    """
+
+    def requisitar(self, metodo: str, url: str, *, headers: dict[str, str],
+                   corpo: bytes | None = None, timeout_s: float) -> RespostaHTTP: ...
+
+
+class TransporteHttpx:
+    """O transporte real. Traduz falha de rede em `FalhaDeTransporte`.
+
+    ⚠️ A tradução é o ponto: `httpx` levanta `ConnectError`, `ReadTimeout` e
+    parentes, e a versão anterior deste módulo capturava tudo isso com
+    `except Exception` dentro de `existe()` e devolvia `False`. Aqui a exceção
+    sobe com um tipo que ninguém consegue confundir com ausência.
+    """
+
+    def requisitar(self, metodo: str, url: str, *, headers: dict[str, str],
+                   corpo: bytes | None = None, timeout_s: float) -> RespostaHTTP:
+        import httpx  # noqa: PLC0415
+
+        try:
+            r = httpx.request(
+                metodo, url, content=corpo, headers=headers, timeout=timeout_s
+            )
+        except (httpx.HTTPError, OSError) as erro:
+            raise FalhaDeTransporte(
+                f"{metodo} {url} falhou: {type(erro).__name__}: {erro}"
+            ) from erro
+        return RespostaHTTP(r.status_code, r.content)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Adaptador Supabase (produção — implementado e DESARMADO)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class ArmazenamentoSupabase:
     """Storage do Supabase oficial, via API do backend com `service_role`.
 
-    ⚠️ **NÃO ATIVADO.** O bucket `criativos` não existe em
+    ⚠️ **IMPLEMENTADO E DESARMADO.** O bucket `criativos` não existe em
     `database.agenciavolc.com.br`: `select * from storage.buckets` devolveu zero
     linhas em 27/08/2026. Criar bucket é mudança de infraestrutura em produção e
     exige autorização explícita, que esta rodada não tem.
 
-    Está aqui porque a fronteira precisa existir antes do bucket: escrever o
-    adaptador depois obrigaria a mexer em quem chama, e é aí que "provisório"
-    vira permanente. Quando o bucket for criado, ativar é trocar a instância em
-    `armazenamento_padrao()`.
+    Desarmado NÃO quer dizer não exercido. Todo caminho aqui — preflight,
+    upload, leitura, ausência de objeto, ausência de bucket e queda de rede — é
+    executado em `test_criativo_storage_verificado.py` contra um `TransporteHTTP`
+    de mentira em memória. O que continua sem prova, e está declarado como tal, é
+    o comportamento do Supabase real: nenhum teste desta casa fala com ele.
+
+    Quando o bucket for criado, ativar é trocar a instância em
+    `armazenamento_padrao()` — e rodar de novo o preflight, que é a única coisa
+    capaz de dizer que o bucket passou a existir.
     """
 
     nome = "supabase"
 
     def __init__(self, base: str, chave: str, bucket: str = "criativos",
-                 *, timeout_s: float = 30.0) -> None:
+                 *, timeout_s: float = 30.0,
+                 transporte: TransporteHTTP | None = None) -> None:
         self.base = (base or "").rstrip("/")
         self._chave = chave or ""
         self.bucket = bucket
         self.timeout_s = timeout_s
+        self._transporte: TransporteHTTP = transporte or TransporteHttpx()
+        self._bucket_conferido = False
 
     @property
     def habilitado(self) -> bool:
@@ -262,33 +423,103 @@ class ArmazenamentoSupabase:
             "Authorization": f"Bearer {self._chave}",
         }
 
-    def guardar(self, chave: str, dados: bytes, mime: str) -> None:
-        import httpx  # noqa: PLC0415
+    def _url_objeto(self, chave: str) -> str:
+        return f"{self.base}/storage/v1/object/{self.bucket}/{chave}"
 
+    def _erro_de_404(self, r: RespostaHTTP, chave: str) -> Exception:
+        """Desempata os DOIS 404 diferentes que o Storage devolve.
+
+        ⚠️ Esta é a armadilha do adaptador remoto. O Supabase responde 404 tanto
+        para `{"error":"Bucket not found"}` quanto para
+        `{"error":"Object not found"}`, e ler o primeiro como "o objeto não
+        existe" é a queda silenciosa vestida de resposta normal: o produto
+        concluiria "ainda não subiu" e tentaria de novo, para sempre, contra um
+        bucket que nunca existiu.
+        """
+        texto = r.corpo.decode("utf-8", "replace").lower()
+        if "bucket" in texto:
+            self._bucket_conferido = False
+            return BucketAusente(
+                f"bucket '{self.bucket}' não existe em {self.base} "
+                f"(o armazenamento respondeu 404 de BUCKET, não de objeto)"
+            )
+        return ObjetoNaoEncontrado(chave)
+
+    def conferir_bucket(self) -> None:
+        """Preflight: o bucket existe? Recusa fechada quando não existe.
+
+        Só o SUCESSO é memorizado. Memorizar o fracasso faria o processo recusar
+        para sempre um bucket criado um minuto depois; memorizar o sucesso é
+        seguro porque bucket apagado reaparece como 404 no próprio upload, e o
+        `_erro_de_404` derruba a memória quando isso acontece.
+        """
+        if self._bucket_conferido:
+            return
+        if not self.habilitado:
+            raise ArmazenamentoIndisponivel(
+                "armazenamento remoto sem base ou sem credencial: não dá para "
+                "afirmar nem que o bucket existe nem que não existe"
+            )
+        r = self._transporte.requisitar(
+            "GET",
+            f"{self.base}/storage/v1/bucket/{self.bucket}",
+            headers=self._headers(),
+            timeout_s=self.timeout_s,
+        )
+        if r.status == 404:
+            raise BucketAusente(
+                f"bucket '{self.bucket}' não existe em {self.base}; "
+                "criar bucket é mudança de infraestrutura e precisa de "
+                "autorização explícita"
+            )
+        if r.status >= 400:
+            raise ArmazenamentoIndisponivel(
+                f"preflight do bucket '{self.bucket}' respondeu {r.status}"
+            )
+        self._bucket_conferido = True
+
+    def guardar(self, chave: str, dados: bytes, mime: str) -> EscritaNaoConferida:
         conferir_upload(dados, mime)
         conferir_chave(chave)
-        r = httpx.post(
-            f"{self.base}/storage/v1/object/{self.bucket}/{chave}",
-            content=dados,
+        self.conferir_bucket()
+        r = self._transporte.requisitar(
+            "POST",
+            self._url_objeto(chave),
             headers={**self._headers(), "Content-Type": mime, "x-upsert": "true"},
-            timeout=self.timeout_s,
+            corpo=dados,
+            timeout_s=self.timeout_s,
         )
-        if r.status_code >= 400:
-            raise ArquivoRecusado("o armazenamento recusou o arquivo")
+        if r.status == 404:
+            raise self._erro_de_404(r, chave)
+        if r.status >= 500:
+            # ⚠️ 5xx NÃO é `ArquivoRecusado`. A versão anterior devolvia "o
+            # armazenamento recusou o arquivo" para qualquer status >= 400, o que
+            # virava um 400 para o operador: o produto acusava o arquivo dele por
+            # uma falha do servidor, e o retry — que resolveria — nunca acontecia.
+            raise ArmazenamentoIndisponivel(
+                f"o armazenamento respondeu {r.status} ao gravar {chave}"
+            )
+        if r.status >= 400:
+            raise ArquivoRecusado(
+                f"o armazenamento recusou o arquivo (status {r.status})"
+            )
+        return EscritaNaoConferida(chave, mime, len(dados), sha256_de(dados))
 
     def ler(self, chave: str) -> bytes:
-        import httpx  # noqa: PLC0415
-
         conferir_chave(chave)
-        r = httpx.get(
-            f"{self.base}/storage/v1/object/{self.bucket}/{chave}",
+        r = self._transporte.requisitar(
+            "GET",
+            self._url_objeto(chave),
             headers=self._headers(),
-            timeout=self.timeout_s,
+            timeout_s=self.timeout_s,
         )
-        if r.status_code == 404:
-            raise ObjetoNaoEncontrado(chave)
-        r.raise_for_status()
-        return r.content
+        if r.status == 404:
+            raise self._erro_de_404(r, chave)
+        if r.status >= 400:
+            raise ArmazenamentoIndisponivel(
+                f"a leitura de {chave} respondeu {r.status}"
+            )
+        return r.corpo
 
     def abrir(self, chave: str) -> BinaryIO:
         import io  # noqa: PLC0415
@@ -299,11 +530,28 @@ class ArmazenamentoSupabase:
         return len(self.ler(chave))
 
     def existe(self, chave: str) -> bool:
+        """Só devolve `False` quando o armazenamento DISSE que não tem.
+
+        ⚠️ CONTRAPROVA VERMELHA (registrada em 01/09/2026, antes desta correção):
+        com `httpx.get` levantando `ConnectError`, o `existe()` anterior —
+        `except (ObjetoNaoEncontrado, Exception): return False` — devolvia
+        `False` com a rede caída. A cláusula era, além de perigosa, inerte:
+        `Exception` já cobre `ObjetoNaoEncontrado`, então o primeiro nome do
+        `except` só servia para fazer o colapso parecer intencional e revisado.
+
+        `ArmazenamentoIndisponivel` e `BucketAusente` sobem. Quem chama decide
+        entre tentar de novo e parar — decisão que ninguém pode tomar quando a
+        resposta chega como um `False` indistinguível de ausência real.
+        """
         try:
             self.ler(chave)
-            return True
-        except (ObjetoNaoEncontrado, Exception):  # noqa: BLE001
+        except ObjetoNaoEncontrado:
             return False
+        except ArquivoRecusado:
+            # Chave que a própria política recusa não existe em lugar nenhum:
+            # não há consulta a fazer, e isto não esconde falha de infraestrutura.
+            return False
+        return True
 
 
 # ─────────────────────────────────────────────────────────────────────────────

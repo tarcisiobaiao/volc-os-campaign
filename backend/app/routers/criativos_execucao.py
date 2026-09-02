@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from app.criativo import dominio
 from app.criativo.bancada import SaidaPedida
 from app.criativo.bancada import Encomenda as EncomendaDaBancada
+from app.criativo.bancada import fronteira_publica
 from app.criativo.bancada import servico as bancada_servico
 from app.seguranca.identidade import Identidade, exigir_usuario
 
@@ -70,7 +71,11 @@ def _recibo_dto(r: dict[str, Any] | None) -> dict[str, Any] | None:
         "motorVersao": r.get("motor_versao"),
         "seed": r.get("seed"),
         "versoes": r.get("versoes"),
-        "parametros": r.get("parametros"),
+        # ⚠️ NAO `r.get("parametros")`. O insumo do briefing viajava aqui inteiro
+        # — nome de cliente, oferta, o que o operador digitou — para qualquer
+        # consumidor da API que conseguisse ler o trabalho. Vide
+        # `bancada/fronteira_publica.py`.
+        "parametros": fronteira_publica.resumo_publico(r.get("parametros")),
         "artefatos": [_artefato_dto(a) for a in r.get("artefatos") or []],
         "validacoes": [
             {
@@ -140,6 +145,51 @@ def _tenant(identidade: Identidade) -> str:
     return str(getattr(identidade, "sub", "") or "anonimo")
 
 
+async def _despachar(despachante: Any, trabalho_id: str) -> None:
+    """Despacha SEM segurar a thread do event loop, e pela fronteira certa.
+
+    ## Os dois defeitos que esta função fecha
+
+    1. **Fronteira contornada.** As rotas da bancada pegavam o `DespachanteLocal`
+       direto do singleton (`bancada_servico.montar()`) e chamavam
+       `despachar(...)`. `escolher_despachante()` — a porta fail-closed que
+       recusa produção em ambiente sem processo de vida longa — não aparecia em
+       lugar nenhum de `backend/app/routers/`. Ou seja: a mesma casa aplicava a
+       fronteira no caminho do Estúdio e a ignorava no caminho da bancada, e na
+       Vercel o render rodava dentro do request gravando num SQLite que a
+       plataforma evapora.
+
+    2. **Loop travado.** `bancada_criar` é `async def`, então roda NA THREAD DO
+       EVENT LOOP; `DespachanteLocal.despachar` é inteiramente síncrono
+       (`begin immediate`, `motor.produzir`, sha256 por artefato, `rmtree`).
+       Durante todo o render, NENHUMA outra requisição do processo era atendida
+       — /health, listagem, login, tudo enfileirado atrás. Não é lentidão da
+       rota: é parada do servidor. `asyncio.to_thread` é o caminho que o próprio
+       Estúdio já usava.
+    """
+    import asyncio  # noqa: PLC0415
+
+    from app.criativo.bancada.despacho import (  # noqa: PLC0415
+        DespachoIndisponivel,
+        escolher_despachante,
+    )
+
+    try:
+        escolhido = escolher_despachante()
+    except DespachoIndisponivel as e:
+        # ⚠️ 503 e NÃO 201. O trabalho fica `queued` — durável e visível — e a
+        # resposta diz que ninguém vai executá-lo aqui. Um 201 sobre produção
+        # que a plataforma vai congelar é a mentira que esta porta existe para
+        # impedir.
+        raise _falha("ESTUDIO.despacho_indisponivel", e.motivo, 503) from e
+
+    if not escolhido.sincrono:
+        # Modo fila: o worker externo reivindica. O request só devolve o id.
+        return None
+    await asyncio.to_thread(despachante.despachar, trabalho_id)
+    return None
+
+
 @router.post("/bancada/trabalhos", status_code=201)
 async def bancada_criar(
     pedido: PedidoDeProducao,
@@ -181,7 +231,7 @@ async def bancada_criar(
         resposta.headers["X-Criativo-Idempotente"] = "replay"
         return _trabalho_dto(trabalho)
 
-    despachante.despachar(trabalho.id)
+    await _despachar(despachante, trabalho.id)
     # A leitura pós-despacho continua dentro da mesma fronteira de tenant da
     # criação. O UUID não é autorização: buscar sem o filtro faria esta rota
     # diferir das rotas de leitura/listagem e permitiria ao depósito devolver
@@ -279,7 +329,7 @@ async def bancada_retomar(
         resposta.status_code = 200
         resposta.headers["X-Criativo-Idempotente"] = "replay"
         return _trabalho_dto(novo)
-    despachante.despachar(novo.id)
+    await _despachar(despachante, novo.id)
     # A retomada cria outro trabalho, mas não cria outra fronteira de acesso.
     # O recibo final só pode ser relido sob o tenant que autorizou a retomada.
     final = deposito.por_id(novo.id, tenant_id=_tenant(identidade))

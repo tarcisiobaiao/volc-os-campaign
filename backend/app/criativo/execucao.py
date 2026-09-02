@@ -47,6 +47,10 @@ from volc_ads.criativo.porta import (
 )
 
 from . import dominio
+from .bancada.armazenamento_verificado import (
+    EstadoDoArmazenamento,
+    publicar_artefato,
+)
 from .armazenamento import (
     ArmazenamentoDeObjetos,
     Assinador,
@@ -351,15 +355,27 @@ class Executor:
                 },
             )
 
-        try:
-            anyio.from_thread.run(marcar)
-        except Exception as e:  # noqa: BLE001
-            # ⚠️ `anyio` levanta `NoEventLoopError`, que NÃO é `RuntimeError` — a
-            # primeira versão desta correção capturava só `RuntimeError` e o teste
-            # pegou. Fora de uma worker thread do anyio, rodamos um loop próprio.
-            if type(e).__name__ not in ("NoEventLoopError", "RuntimeError"):
-                raise
-            anyio.run(marcar)
+        # ⚠️ DEFEITO CRITICO MEDIDO E FECHADO. A versão anterior tentava
+        # `anyio.from_thread.run` e caía para `anyio.run` — e os DOIS estouram
+        # quando chamados da thread do event loop, que é exatamente de onde a
+        # rota `async def criar_job` chama:
+        #
+        #     anyio.from_thread.run  -> NoEventLoopError
+        #     anyio.run              -> RuntimeError: Already running asyncio
+        #
+        # Consequência medida: o job NÃO virava `failed`, não recebia
+        # `ESTUDIO.despacho_indisponivel`, não recebia carimbo terminal, e a rota
+        # devolvia 500 sobre um job órfão em `queued`. O fail-closed existia para
+        # impedir precisamente isso e falhava aberto.
+        #
+        # Uma thread nova nunca tem loop; ali `anyio.run` sempre vale. A exceção
+        # sobe, que é o contrato: se nem marcar a falha der certo, a rota vira
+        # 503, que é a verdade.
+        from app.criativo.bancada.despacho import (  # noqa: PLC0415
+            _rodar_corrotina_em_thread,
+        )
+
+        _rodar_corrotina_em_thread(marcar)
 
     async def _executar_protegido(self, job_id: str) -> None:
         async with self._trava:
@@ -469,12 +485,42 @@ class Executor:
             str(briefing["projeto_id"]), str(job_id), slot, content_hash, extensao
         )
 
+        # ⚠️ ACHADO DO REVISOR ADVERSARIAL. Isto era `guardar(...)` e mais nada:
+        # o Executor subia os bytes e, algumas linhas abaixo, marcava a peça
+        # `pronta` e o job `succeeded` — com ZERO leituras de volta. "Voltou sem
+        # exceção" virava "está lá, íntegro", que é o colapso de
+        # `arquivo escrito` em `arquivo verificado` que este projeto proíbe.
+        # Um 200 prova que o servidor ACEITOU os bytes, não que os guardou
+        # inteiros nem que a próxima leitura devolve os mesmos.
+        #
+        # `publicar_artefato` sobe E relê, e só chama de verificado depois de
+        # comparar bytes e sha256. Divergência é terminal e vira falha da peça —
+        # não um `pronta` sobre arquivo que ninguém conferiu.
         try:
-            self.armazenamento.guardar(chave, dados, mime)
+            publicacao = publicar_artefato(
+                self.armazenamento, chave=chave, dados=dados, mime=mime
+            )
         except Exception as erro:  # noqa: BLE001
             log.exception("armazenamento recusou a peça %s", slot)
             await self._marcar_falha_da_peca(
                 job_id, slot, _erro_generico(f"não foi possível guardar a peça: {erro}")
+            )
+            return
+        if publicacao.estado is not EstadoDoArmazenamento.VERIFIED_OK:
+            # ⚠️ `UPLOADED_UNVERIFIED` (a releitura não concluiu) e
+            # `VERIFIED_MISMATCH` (os bytes voltaram diferentes) são desfechos
+            # DIFERENTES, e nenhum dos dois é "pronta". O motivo vai junto,
+            # porque um estado ruim sem motivo obriga quem lê a adivinhar.
+            log.error(
+                "peça %s não ficou verificada no armazenamento: %s · %s",
+                slot, publicacao.estado.value, publicacao.motivo,
+            )
+            await self._marcar_falha_da_peca(
+                job_id, slot,
+                _erro_generico(
+                    "a peça subiu mas não passou na conferência de bytes "
+                    f"({publicacao.estado.value})"
+                ),
             )
             return
 

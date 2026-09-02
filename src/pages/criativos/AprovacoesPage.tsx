@@ -25,6 +25,7 @@ import { Carregando, ErroDeLeitura, Vazio } from '@/components/criativos/comum/E
 import { Preview } from '@/components/criativos/comum/Preview';
 import { SeloDaAprovacao, SeloDeProcedencia } from '@/components/criativos/comum/Selo';
 import { FormularioDeDecisao } from '@/components/criativos/aprovacoes/Decisao';
+import { fraseDaFila } from '@/components/criativos/aprovacoes/regras';
 import { custoLegivel, dimensoes, instante, kindLegivel } from '@/components/criativos/comum/formato';
 import { FILTROS_VAZIOS } from '@/components/criativos/biblioteca/filtros';
 import { useCriativosBiblioteca, useDecidirAprovacao } from '@/hooks/useCriativosBiblioteca';
@@ -128,11 +129,15 @@ const AprovacoesPage: React.FC = () => {
       <Corpo>
         <Secao
           titulo="Aguardando revisão"
-          descricao={
-            consulta.isLoading
-              ? 'Lendo a fila.'
-              : `${consulta.data?.total ?? 0} ${(consulta.data?.total ?? 0) === 1 ? 'peça aguarda' : 'peças aguardam'} decisão.`
-          }
+          /* ⚠️ `fraseDaFila`, e nao `data?.total ?? 0`. Com a leitura falhada
+             esta descricao afirmava "0 pecas aguardam decisao" logo acima do
+             proprio alerta de erro: fila vazia e fila nao lida levam a acoes
+             opostas. */
+          descricao={fraseDaFila({
+            carregando: consulta.isLoading,
+            erro: consulta.isError,
+            total: consulta.data?.total ?? null,
+          })}
         >
           {consulta.isLoading ? (
             <Carregando rotulo="Lendo a fila de aprovação" linhas={3} altura="h-28" />

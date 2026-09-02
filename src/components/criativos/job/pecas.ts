@@ -98,6 +98,77 @@ export function ofertaDeRetry(job: CreativeJob): OfertaDeAcao {
   };
 }
 
+/**
+ * A peça saiu na dimensão pedida?
+ *
+ * ⚠️ Só responde quando HÁ medida. `largura: null` é "ninguém mediu", e é
+ * diferente de `1080` em qualquer comparação — dizer "a peça saiu fora da
+ * dimensão" por causa de uma ausência inventaria uma reprovação. Ausência não é
+ * divergência; ela já tem representação própria ("não medido").
+ *
+ * A comparação é contra o que foi PEDIDO, não contra o que o motor entregou
+ * antes da normalização (`nativoLargura`/`nativoAltura`): entregar 1024 e
+ * normalizar para 1080 é o trabalho funcionando, não um defeito.
+ */
+export interface DivergenciaDeDimensao {
+  pedida: string;
+  medida: string;
+  frase: string;
+}
+
+export function divergenciaDeDimensao(peca: Rendition): DivergenciaDeDimensao | null {
+  if (peca.largura === null || peca.altura === null) return null;
+  if (peca.largura === peca.larguraPedida && peca.altura === peca.alturaPedida) return null;
+  const pedida = `${peca.larguraPedida} x ${peca.alturaPedida} px`;
+  const medida = `${peca.largura} x ${peca.altura} px`;
+  return {
+    pedida,
+    medida,
+    frase: `O arquivo não bate com a dimensão pedida: pedido ${pedida}, medido ${medida}.`,
+  };
+}
+
+/**
+ * Pedido de cancelamento e cancelamento confirmado são notícias diferentes.
+ *
+ * ⚠️ O contrato guarda `canceladoPedidoEm` e `canceladoEm` separados, com a
+ * SPEC §16 citada no próprio campo, e nenhum componente lia o primeiro
+ * (defeito D6 da auditoria P17). Um job `running` com cancelamento já pedido
+ * aparecia como "Em execução — o motor está produzindo", com o botão
+ * Interromper intacto. Para quem olha o custo isso é grave: entre o pedido e a
+ * confirmação pode haver peça em voo que o provider já vai cobrar.
+ *
+ * Devolve `null` quando ninguém pediu nada — a tela não deve inventar um aviso.
+ */
+export interface EstadoDoCancelamento {
+  confirmado: boolean;
+  pedidoEm: string | null;
+  confirmadoEm: string | null;
+  frase: string;
+}
+
+export function estadoDoCancelamento(job: CreativeJob): EstadoDoCancelamento | null {
+  if (job.canceladoEm) {
+    return {
+      confirmado: true,
+      pedidoEm: job.canceladoPedidoEm,
+      confirmadoEm: job.canceladoEm,
+      frase:
+        'O servidor confirmou que o trabalho parou. As peças já prontas continuam prontas.',
+    };
+  }
+  if (job.canceladoPedidoEm) {
+    return {
+      confirmado: false,
+      pedidoEm: job.canceladoPedidoEm,
+      confirmadoEm: null,
+      frase:
+        'O cancelamento foi pedido e o servidor ainda não confirmou a parada. Uma peça em voo pode continuar sendo cobrada até a confirmação chegar.',
+    };
+  }
+  return null;
+}
+
 export function ofertaDeCancelamento(job: CreativeJob): OfertaDeAcao {
   if (job.procedenciaExecucao === 'observado') {
     return {

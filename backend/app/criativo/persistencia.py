@@ -63,6 +63,21 @@ def agora() -> str:
 # caminho e tem teste.
 
 
+def _sem_embed(linha: dict[str, Any]) -> dict[str, Any]:
+    """Tira o embed de posse antes de a linha subir para a apresentacao.
+
+    ⚠️ O embed `criativo_job(criado_por)` existe para FILTRAR no servidor, nao
+    para ser devolvido. Deixa-lo passar acrescentaria o identificador do dono a
+    todo DTO de ativo — informacao que a tela nao pede e que so aumenta a
+    superficie do que vaza se algo mais der errado.
+    """
+    if "criativo_job" not in linha:
+        return linha
+    limpa = dict(linha)
+    limpa.pop("criativo_job", None)
+    return limpa
+
+
 class ErroDePersistencia(RuntimeError):
     """Falha de transporte ou do banco, já sem detalhe interno."""
 
@@ -299,20 +314,30 @@ class Repositorio:
         )
         return linhas[0] if linhas else None
 
-    async def buscar_job(self, job_id: str) -> dict[str, Any] | None:
-        linhas = await self._get(
-            _TABELA_JOB, {"id": f"eq.{job_id}", "select": "*", "limit": 1}
-        )
+    async def buscar_job(
+        self, job_id: str, *, criado_por: str | None = None
+    ) -> dict[str, Any] | None:
+        """⚠️ `criado_por` NAO e opcional por conveniencia — e opcional porque o
+        executor, que ja tem o job na mao, nao precisa reprovar posse a cada
+        transicao. Toda leitura vinda de HTTP passa o dono, e a rota nunca chama
+        sem ele. E a mesma regra que `bancada.deposito.por_id` ja escrevia."""
+        params: dict[str, Any] = {"id": f"eq.{job_id}", "select": "*", "limit": 1}
+        if criado_por is not None:
+            params["criado_por"] = f"eq.{criado_por}"
+        linhas = await self._get(_TABELA_JOB, params)
         return linhas[0] if linhas else None
 
     async def listar_jobs(
-        self, *, estados: list[str] | None = None, limite: int = 20
+        self, *, estados: list[str] | None = None, limite: int = 20,
+        criado_por: str | None = None,
     ) -> list[dict[str, Any]]:
         params: dict[str, Any] = {
             "select": "*",
             "order": "criado_em.desc",
             "limit": limite,
         }
+        if criado_por is not None:
+            params["criado_por"] = f"eq.{criado_por}"
         if estados:
             params["estado"] = f"in.({','.join(estados)})"
         return await self._get(_TABELA_JOB, params)
@@ -321,7 +346,9 @@ class Repositorio:
         linhas = await self._atualizar(_TABELA_JOB, {"id": f"eq.{job_id}"}, campos)
         return linhas[0] if linhas else None
 
-    async def contar_jobs_por_estado(self) -> dict[str, int]:
+    async def contar_jobs_por_estado(
+        self, *, criado_por: str | None = None
+    ) -> dict[str, int]:
         """Contagem por estado, uma consulta por estado.
 
         Sem `group by` porque o PostgREST não expõe agregação sem uma view, e
@@ -332,9 +359,12 @@ class Repositorio:
             "draft", "queued", "running", "partial",
             "succeeded", "failed", "cancelled",
         )
+        base: dict[str, Any] = {}
+        if criado_por:
+            base["criado_por"] = f"eq.{criado_por}"
         saida: dict[str, int] = {}
         for e in estados:
-            saida[e] = await self._contar(_TABELA_JOB, {"estado": f"eq.{e}"})
+            saida[e] = await self._contar(_TABELA_JOB, {**base, "estado": f"eq.{e}"})
         return saida
 
     # ── eventos ──────────────────────────────────────────────────────────────
@@ -403,6 +433,63 @@ class Repositorio:
     async def criar_master(self, linha: dict[str, Any]) -> dict[str, Any]:
         return await self._inserir(_TABELA_MASTER, linha)
 
+    #: O embed que amarra o master ao dono do job, numa consulta só.
+    #:
+    #: ⚠️ `!inner` e nao embed comum. Sem o `!inner`, o PostgREST devolve a linha
+    #: do master com o embed NULO quando o filtro nao casa — isto e, devolve o
+    #: ativo alheio com o dono em branco, que e pior que o vazamento original
+    #: porque parece filtrado. Com `!inner` a linha some da resposta.
+    #:
+    #: E o filtro vai no SERVIDOR: filtrar em memoria depois de ler tudo faz o
+    #: `limit`/`offset` pagina sobre o conjunto errado, e a contagem mente.
+    _EMBED_DONO = "*,criativo_job!inner(criado_por)"
+
+    async def buscar_master_do_dono(
+        self, master_id: str, *, criado_por: str
+    ) -> dict[str, Any] | None:
+        """Um master, e só se o job dele for do `criado_por`.
+
+        ⚠️ `criado_por` e OBRIGATORIO no contrato, e nao um filtro opcional que a
+        rota lembra de passar. A versao anterior — `buscar_master(master_id)` —
+        nao tinha por onde exigir posse, e as rotas ligavam a identidade a `_`.
+        Uma porta que aceita ser chamada sem dono acaba sendo chamada sem dono.
+
+        `criativo_master.job_id` e `not null` e aponta para `criativo_job`, onde
+        `criado_por` vive: a posse do ativo SEMPRE resolve pelo job, e nao ha
+        ativo orfao para escapar por essa fresta.
+        """
+        linhas = await self._get(
+            _TABELA_MASTER,
+            {
+                "id": f"eq.{master_id}",
+                "select": self._EMBED_DONO,
+                "criativo_job.criado_por": f"eq.{criado_por}",
+                "limit": 1,
+            },
+        )
+        return _sem_embed(linhas[0]) if linhas else None
+
+    async def versoes_do_master_do_dono(
+        self, raiz_id: str, *, criado_por: str
+    ) -> list[dict[str, Any]]:
+        """A cadeia de versoes, sem atravessar o dono.
+
+        ⚠️ Conferir so o master pedido nao basta: as VERSOES vao para o mesmo DTO,
+        e uma raiz compartilhada entregaria a versao de outro dono junto.
+        """
+        return [
+            _sem_embed(l)
+            for l in await self._get(
+                _TABELA_MASTER,
+                {
+                    "or": f"(id.eq.{raiz_id},raiz_id.eq.{raiz_id})",
+                    "select": self._EMBED_DONO,
+                    "criativo_job.criado_por": f"eq.{criado_por}",
+                    "order": "versao.desc",
+                },
+            )
+        ]
+
     async def buscar_master(self, master_id: str) -> dict[str, Any] | None:
         linhas = await self._get(
             _TABELA_MASTER, {"id": f"eq.{master_id}", "select": "*", "limit": 1}
@@ -441,9 +528,21 @@ class Repositorio:
             },
         )
 
+    async def listar_masters_do_dono(
+        self, *, criado_por: str, **filtros: Any
+    ) -> tuple[list[dict[str, Any]], int, int]:
+        """A biblioteca do dono. `criado_por` obrigatorio, e o filtro e do SERVIDOR.
+
+        ⚠️ O `universo` tambem passa a ser do dono. Um universo global faria a
+        tela dizer "a biblioteca tem N ativos" contando os de outras pessoas —
+        vazamento de CONTAGEM, que e menos obvio e igualmente real.
+        """
+        return await self.listar_masters(criado_por=criado_por, **filtros)
+
     async def listar_masters(
         self,
         *,
+        criado_por: str | None = None,
         busca: str | None = None,
         kind: str | None = None,
         brand_pack_id: str | None = None,
@@ -460,13 +559,18 @@ class Repositorio:
         duas telas precisam ser diferentes.
         """
         params: dict[str, Any] = {
-            "select": "*",
+            "select": self._EMBED_DONO if criado_por else "*",
             "order": "criado_em.desc",
             "limit": limite,
             "offset": offset,
             "arquivado_em": "is.null",
         }
         filtro: dict[str, Any] = {"arquivado_em": "is.null"}
+        if criado_por:
+            params["criativo_job.criado_por"] = f"eq.{criado_por}"
+            params["select"] = self._EMBED_DONO
+            filtro["select"] = self._EMBED_DONO
+            filtro["criativo_job.criado_por"] = f"eq.{criado_por}"
         if kind:
             params["kind"] = filtro["kind"] = f"eq.{kind}"
         if brand_pack_id:
@@ -497,9 +601,13 @@ class Repositorio:
                 expr = f"(slot.ilike.{termo},motor.ilike.{termo},content_hash.ilike.{termo})"
                 params["or"] = filtro["or"] = expr
 
-        linhas = await self._get(_TABELA_MASTER, params)
+        linhas = [_sem_embed(l) for l in await self._get(_TABELA_MASTER, params)]
         total = await self._contar(_TABELA_MASTER, filtro)
-        universo = await self._contar(_TABELA_MASTER, {"arquivado_em": "is.null"})
+        universo_filtro: dict[str, Any] = {"arquivado_em": "is.null"}
+        if criado_por:
+            universo_filtro["select"] = self._EMBED_DONO
+            universo_filtro["criativo_job.criado_por"] = f"eq.{criado_por}"
+        universo = await self._contar(_TABELA_MASTER, universo_filtro)
         return linhas, total, universo
 
     # ── aprovação ────────────────────────────────────────────────────────────
@@ -556,7 +664,9 @@ class Repositorio:
             saida.setdefault(str(linha["subject_id"]), linha)
         return saida
 
-    async def masters_aguardando_revisao(self, limite: int = 12) -> list[dict[str, Any]]:
+    async def masters_aguardando_revisao(
+        self, limite: int = 12, *, criado_por: str | None = None
+    ) -> list[dict[str, Any]]:
         """Masters sem decisão vigente.
 
         Feito em duas consultas e um `set` em Python, e não com `not.in`
@@ -567,7 +677,8 @@ class Repositorio:
         candidatos = await self._get(
             _TABELA_MASTER,
             {
-                "select": "*",
+                "select": self._EMBED_DONO if criado_por else "*",
+                **({"criativo_job.criado_por": f"eq.{criado_por}"} if criado_por else {}),
                 "arquivado_em": "is.null",
                 "order": "criado_em.desc",
                 "limit": max(limite * 4, 40),
@@ -578,7 +689,9 @@ class Repositorio:
         vigentes = await self.aprovacoes_vigentes_de([str(m["id"]) for m in candidatos])
         return [m for m in candidatos if str(m["id"]) not in vigentes][:limite]
 
-    async def masters_aprovados_recentes(self, limite: int = 6) -> list[dict[str, Any]]:
+    async def masters_aprovados_recentes(
+        self, limite: int = 6, *, criado_por: str | None = None
+    ) -> list[dict[str, Any]]:
         aprovacoes = await self._get(
             _TABELA_APROVACAO,
             {
@@ -594,7 +707,12 @@ class Repositorio:
         if not ids:
             return []
         linhas = await self._get(
-            _TABELA_MASTER, {"id": f"in.({','.join(ids)})", "select": "*"}
+            _TABELA_MASTER,
+            {
+                "id": f"in.({','.join(ids)})",
+                "select": self._EMBED_DONO if criado_por else "*",
+                **({"criativo_job.criado_por": f"eq.{criado_por}"} if criado_por else {}),
+            },
         )
         ordem = {mid: i for i, mid in enumerate(ids)}
         return sorted(linhas, key=lambda m: ordem.get(str(m["id"]), 999))
@@ -607,5 +725,13 @@ class Repositorio:
             {"select": "*", "ativo": "is.true", "order": "slug.asc,versao.desc"},
         )
 
-    async def contar_assets(self) -> int:
-        return await self._contar(_TABELA_MASTER, {"arquivado_em": "is.null"})
+    async def contar_assets(self, *, criado_por: str | None = None) -> int:
+        """⚠️ `criado_por` chega aqui porque `/resumo` contava a biblioteca de
+        TODO MUNDO. Vazamento de CONTAGEM e menos obvio que vazamento de linha e
+        igualmente real: a tela dizia "a biblioteca tem N ativos" somando os de
+        outras pessoas."""
+        filtro: dict[str, Any] = {"arquivado_em": "is.null"}
+        if criado_por:
+            filtro["select"] = self._EMBED_DONO
+            filtro["criativo_job.criado_por"] = f"eq.{criado_por}"
+        return await self._contar(_TABELA_MASTER, filtro)

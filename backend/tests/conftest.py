@@ -140,6 +140,51 @@ def pytest_configure(config):
         "identidade_real: não instala o dublê de identidade — a rota é exercitada "
         "com o portão real, para provar que ele recusa.",
     )
+    config.addinivalue_line(
+        "markers",
+        "sem_env_file: desliga `env_file` em `Settings` durante o teste — para "
+        "provar hermetismo contra um `.env` presente no diretório corrente.",
+    )
+
+
+@pytest.fixture(autouse=True)
+def settings_sem_env_file(request):
+    """Desliga a leitura de `.env` nos testes marcados com `sem_env_file`.
+
+    ## Por que existe
+
+    `Settings.model_config["env_file"]` inclui `".env"` e `".env.local"`, que são
+    RELATIVOS ao diretório corrente. Um teste que faz `chdir` para um `tmp_path`
+    com um `.env` dentro passa a ler aquele arquivo — e é assim que se prova que
+    a regressão de autenticação depende do disco de quem a roda. Com o marcador,
+    `Settings()` responde `None` e o teste mede o portão, não o ambiente.
+
+    ## Por que é POR TESTE, e não para a suíte inteira
+
+    ⚠️ Uma das tentativas anteriores aplicou `env_file=()` globalmente, no import
+    do conftest, e teve de APAGAR `backend/tests/test_config_env_server.py` para
+    a suíte ficar verde — o teste que confere justamente qual `env_file` o
+    FastAPI usa para não subir o QG sem a configuração que o launcher validou.
+    Um hermetismo que se compra deletando a prova incômoda não é hermetismo.
+
+    Aqui a troca vale só enquanto o teste marcado roda, e o `finally` devolve o
+    `model_config` inteiro — não só a chave — porque `get_settings` é
+    `lru_cache` e um Settings montado sob a troca sobreviveria a ela.
+    """
+    if not request.node.get_closest_marker("sem_env_file"):
+        yield
+        return
+
+    from app.config import Settings, get_settings
+
+    antes = dict(Settings.model_config)
+    Settings.model_config = {**antes, "env_file": ()}
+    get_settings.cache_clear()
+    try:
+        yield
+    finally:
+        Settings.model_config = antes
+        get_settings.cache_clear()
 
 
 def _dublê_de_identidade():

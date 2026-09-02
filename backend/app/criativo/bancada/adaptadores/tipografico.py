@@ -53,6 +53,8 @@ import random
 from pathlib import Path
 from typing import Any
 
+from volc_ads.criativo.contrato import NaturezaDaProcedencia
+
 from ..contrato import Artefato, Encomenda, FalhaDoMotor
 
 VERSAO_DO_ADAPTADOR = "1.0.0"
@@ -180,6 +182,14 @@ class MotorTipografico:
 
     slug = "tipografico-local"
     versao = VERSAO_DO_ADAPTADOR
+    #: ⚠️ ACHADO DESTA RODADA. Sem este atributo, `servico.natureza_do_motor`
+    #: devolvia `NAO_DECLARADA` — resposta CORRETA da funcao e ERRADA para este
+    #: motor, que e tao local quanto o `png-local`. E o custo aparecia no portao:
+    #: `NATUREZAS_ACEITAS[Destino.PRODUCAO]` aceita `NAO_DECLARADA` como divida
+    #: declarada, entao a peca de um motor 100% local PASSAVA em producao com
+    #: aviso, enquanto a do `png-local` — que declara corretamente — recebia
+    #: recusa. O incentivo estava invertido: nao declarar valia mais que declarar.
+    natureza = NaturezaDaProcedencia.LOCAL
 
     def __init__(self) -> None:
         self._fonte = _escolher_fonte()

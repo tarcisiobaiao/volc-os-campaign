@@ -674,6 +674,28 @@ export const ROTULO_DO_JOB: Record<EstadoDoJob, RotuloDeEstado> = {
   },
 };
 
+/**
+ * O rótulo do estado do job, tolerante a valor que esta versão não conhece.
+ *
+ * ⚠️ `ROTULO_DO_JOB[estado]` cru devolve `undefined` para um oitavo estado, e
+ * quem lesse `.palavra` em seguida lançaria `TypeError` — trocando a tela de
+ * acompanhamento por tela branca, que é a pior representação possível de "não
+ * sei" (defeito D3 da auditoria P17). `Selo.tsx` já tinha essa guarda para os
+ * selos; `job/Acompanhamento.tsx` tinha ficado de fora. A guarda vive aqui,
+ * junto do mapa, para não haver duas versões dela.
+ */
+export const ESTADO_DO_JOB_DESCONHECIDO: RotuloDeEstado = {
+  palavra: 'Estado não reconhecido',
+  descricao: 'O servidor informou um estado que esta versão da tela não conhece.',
+  tom: 'atencao',
+};
+
+export function rotuloDoJob(estado: EstadoDoJob | string): RotuloDeEstado {
+  return (
+    (ROTULO_DO_JOB as Record<string, RotuloDeEstado>)[estado] ?? ESTADO_DO_JOB_DESCONHECIDO
+  );
+}
+
 export const ROTULO_DA_RENDITION: Record<EstadoDaRendition, RotuloDeEstado> = {
   pendente: {
     palavra: 'Aguardando',

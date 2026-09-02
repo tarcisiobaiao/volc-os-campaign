@@ -18,6 +18,7 @@ criação**, em vez de cair em silêncio no SQLite ou no render longo.
 from __future__ import annotations
 
 import os
+import threading
 from typing import Any, Protocol
 
 
@@ -58,9 +59,114 @@ class DespachoSincronoLocal:
     sincrono = True
 
     def despachar_job_do_estudio(self, job_id: str, executor: Any) -> None:
-        import anyio  # noqa: PLC0415
+        """⚠️ DEFEITO CRITICO MEDIDO E FECHADO. Isto era
+        `anyio.from_thread.run(...)`, que so funciona DENTRO de uma worker thread
+        do anyio. Quem chama esta funcao e `execucao.disparar`, chamado por
+        `criativos.py:386` de dentro de `async def criar_job` — ou seja, da
+        THREAD DO EVENT LOOP. Reproduzido nesta rodada:
 
-        anyio.from_thread.run(executor._executar_protegido, job_id)  # noqa: SLF001
+            NoEventLoopError: Not running inside an AnyIO worker thread
+
+        A excecao subia sem tratamento, a rota devolvia 500, e o job — ja gravado
+        como `queued` — nunca era executado por ninguem. Um pedido que a tela
+        mostra na fila e que nao tem executor e pior que um erro: e um erro
+        invisivel.
+
+        `anyio.from_thread.run_sync`? Nao: o alvo e corrotina. `anyio.run`? Nao:
+        de dentro de um loop ele levanta `Already running asyncio in this thread`
+        — foi o segundo defeito, no fallback do fail-closed. A resposta e rodar
+        a corrotina num loop PROPRIO, numa thread PROPRIA, e esperar por ela.
+        Continua sincrono do ponto de vista de quem chama (o request espera),
+        que e o contrato declarado desta implementacao — mas para de estourar.
+        """
+        _rodar_corrotina_em_thread(executor._executar_protegido, job_id)  # noqa: SLF001
+
+
+class _LoopDeExecucao:
+    """UM loop de fundo, para a vida do processo. Nao um loop por chamada.
+
+    ## Por que um so, e nao um por despacho
+
+    ⚠️ A primeira versao desta correcao abria uma thread e um loop NOVOS a cada
+    despacho. Ela consertava os dois estouros — e criava um terceiro defeito,
+    mais dificil de ver, que so aparece com CONCORRENCIA.
+
+    `Executor.__init__` cria `self._trava = asyncio.Lock()`, e o executor e
+    reusado entre requisicoes. Desde o 3.10 o `Lock` nao se liga a loop nenhum na
+    construcao: ele se liga na PRIMEIRA DISPUTA. A aquisicao sem disputa passa por
+    um atalho que nem consulta o loop — foi por isso que a primeira medicao, com
+    um uso de cada vez, deu tudo verde. Com dois despachos concorrentes, cada um
+    no seu loop, o segundo espera num future que pertence ao loop do primeiro, e
+    ninguem o acorda. E o mesmo vale para qualquer `httpx.AsyncClient` que o
+    repositorio mantenha entre chamadas.
+
+    E a thread era `daemon=False`: uma que pendurasse impedia o processo INTEIRO
+    de sair. Medido: o processo de prova ficou vivo depois de imprimir o
+    resultado, e precisou de `pkill`.
+
+    Um loop unico resolve os dois de uma vez. Todo `Lock`, todo cliente HTTP e
+    todo future vivem no MESMO loop, que e exatamente a premissa que eles tem
+    dentro de um servidor. A thread e daemon: se o processo quiser morrer, ele
+    morre.
+    """
+
+    def __init__(self) -> None:
+        self._trava = threading.Lock()
+        self._loop: Any = None
+        self._thread: threading.Thread | None = None
+
+    def _garantir(self) -> Any:
+        import asyncio  # noqa: PLC0415
+
+        with self._trava:
+            if self._loop is not None and self._thread is not None and self._thread.is_alive():
+                return self._loop
+            pronto = threading.Event()
+
+            def girar() -> None:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._loop = loop
+                pronto.set()
+                loop.run_forever()
+
+            self._thread = threading.Thread(
+                target=girar, name="despacho-criativo", daemon=True
+            )
+            self._thread.start()
+            pronto.wait(10)
+            if self._loop is None:
+                raise RuntimeError("o loop de despacho nao subiu")
+            return self._loop
+
+    def rodar(self, corrotina: Any, *args: Any, prazo_s: float | None = None) -> Any:
+        """Submete e ESPERA. A excecao do trabalho sobe para quem chamou.
+
+        Engoli-la faria a rota responder 201 sobre producao que falhou.
+        """
+        import asyncio  # noqa: PLC0415
+
+        futuro = asyncio.run_coroutine_threadsafe(corrotina(*args), self._garantir())
+        return futuro.result(timeout=prazo_s)
+
+
+_LOOP = _LoopDeExecucao()
+
+
+def _rodar_corrotina_em_thread(corrotina: Any, *args: Any) -> None:
+    """Roda uma corrotina ate o fim, haja ou nao um loop nesta thread.
+
+    ⚠️ Existe porque `anyio.from_thread.run` e `anyio.run` falham nos DOIS lados
+    da mesma moeda: o primeiro exige estar numa worker thread do anyio, o segundo
+    exige NAO haver loop rodando. Chamado da thread do event loop — que e de onde
+    a rota `async def` chama — os dois estouram, e foi assim que dois defeitos
+    criticos coexistiram nesta casa.
+
+    O nome ficou pelo que ele resolve; o mecanismo e o loop unico de
+    `_LoopDeExecucao`, e o docstring de la explica por que um por chamada nao
+    serve.
+    """
+    _LOOP.rodar(corrotina, *args)
 
 
 def ambiente_atual() -> str:
@@ -75,6 +181,57 @@ def ambiente_atual() -> str:
     if os.environ.get("VERCEL"):
         return "vercel"
     return "local"
+
+
+class DespachoDeFila:
+    """Nao executa: deixa o trabalho na fila para o worker externo pegar.
+
+    ⚠️ Este e o unico despachante que sobrevive a morte do processo web, e por
+    isso o unico aceitavel em ambiente sem processo de vida longa. Ele nao e
+    "nao fazer nada": o trabalho JA esta gravado e durável no deposito quando
+    este despachante e chamado, e `python -m app.criativo.bancada.worker` o
+    reivindica. A diferenca com o sincrono e onde o render acontece, nao se ele
+    acontece.
+
+    `sincrono = False` e o que a tela precisa saber: a resposta traz o id e o
+    estado `queued`, e afirmar "pronto" ali seria mentira. Um 201 que diz
+    `rendered` sem ter renderizado e o defeito que esta fronteira inteira existe
+    para impedir.
+    """
+
+    nome = "fila"
+    duravel = True
+    sincrono = False
+
+    def despachar_job_do_estudio(self, job_id: str, executor: Any) -> None:
+        """⚠️ RECUSA, e nao no-op. Achado do revisor adversarial, e o defeito era
+        meu: eu tinha feito este metodo devolver `None`.
+
+        O worker (`app.criativo.bancada.worker`) reivindica do deposito da
+        BANCADA — `fila.db` no local, `criativo_render_job` no Postgres. O job do
+        Estudio vive em `criativo_job`, que e outra tabela e nao tem consumidor
+        nenhum. Devolver `None` aqui fazia a rota responder 201 sobre um job que
+        ficaria `queued` para sempre — exatamente o "erro invisivel" que os dois
+        criticos anteriores produziam, agora por caminho novo e em silencio.
+
+        A ponte entre `criativo_job` e `criativo_render_job` e o que o
+        `ORDEM-INTEGRACAO-P17.md` registra como nao implementada. Enquanto ela
+        nao existir, `fila` NAO serve ao Estudio, e dizer isso e melhor que
+        enfileirar no vazio.
+        """
+        raise DespachoIndisponivel(
+            ambiente_atual(),
+            "O modo `fila` serve a bancada, cujo worker reivindica de "
+            "`criativo_render_job`. O job do Estudio vive em `criativo_job`, que "
+            "nenhum worker consome hoje — a ponte entre as duas filas ainda nao "
+            "existe. Use CRIATIVO_DESPACHO=inline num ambiente com processo de "
+            "vida longa, ou implante a ponte antes de ligar a fila.",
+        )
+
+    def despachar(self, trabalho_id: str) -> None:
+        """Aqui o no-op E o certo: o trabalho ja esta durável no deposito da
+        bancada quando este metodo e chamado, e o worker o reivindica de la."""
+        return None
 
 
 #: Ambientes em que executar dentro do request é inaceitável.
@@ -94,6 +251,11 @@ def escolher_despachante() -> DespachanteCriativo:
     existe para impedir.
     """
     amb = ambiente_atual()
+    modo = modo_de_despacho()
+    if modo == "fila":
+        # A fila e durável em qualquer ambiente: o trabalho ja esta gravado e
+        # quem o executa e um processo que nao e este.
+        return DespachoDeFila()
     if amb in _SEM_PROCESSO_LONGO:
         raise DespachoIndisponivel(
             amb,
@@ -101,3 +263,19 @@ def escolher_despachante() -> DespachanteCriativo:
             "durável configurado. A produção seria congelada no meio.",
         )
     return DespachoSincronoLocal()
+
+
+def modo_de_despacho() -> str:
+    """`inline` ou `fila`. Ausência é `inline`, e a razão está declarada.
+
+    ⚠️ O padrão é `inline` porque é o que a máquina de desenvolvimento consegue
+    fazer sozinha: sem worker rodando, `fila` deixaria todo pedido em `queued`
+    para sempre e pareceria travamento. Quem tem worker liga `fila`, e ai o
+    request devolve o id sem esperar o render — que e o comportamento de
+    produção.
+
+    Não é fallback silencioso: `inline` continua sendo RECUSADO em ambiente sem
+    processo de vida longa, pelo `escolher_despachante`.
+    """
+    escolha = (os.environ.get("CRIATIVO_DESPACHO") or "").strip().lower()
+    return escolha if escolha in {"inline", "fila"} else "inline"

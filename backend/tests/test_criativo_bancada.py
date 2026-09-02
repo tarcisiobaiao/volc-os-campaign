@@ -35,6 +35,23 @@ from app.criativo.bancada.deposito import DepositoDeTrabalhos
 from app.criativo.bancada.operario import Operario
 
 
+
+def _png_real(largura: int, altura: int) -> bytes:
+    """Um PNG de verdade, na medida pedida.
+
+    ⚠️ Estes testes gravavam `b"\\x89PNG\\r\\n\\x1a\\n" + b"0" * 64`: a
+    ASSINATURA de um PNG seguida de lixo, sem IHDR. Isso bastava enquanto o gate
+    de dimensao julgava a DECLARACAO do motor. Agora ele abre o arquivo — e
+    "declarou image/png e os bytes nao abrem como PNG" e reprovacao, nao formato
+    desconhecido. As fixtures passaram a produzir a coisa que dizem produzir,
+    pelo MESMO escritor que o motor de producao usa.
+    """
+    from volc_ads.criativo.adaptadores.png_local import escrever_png_paletado
+
+    linhas = [bytearray(b"\x00" * largura) for _ in range(altura)]
+    return escrever_png_paletado(largura, altura, ((255, 255, 255),), linhas)
+
+
 def encomenda(seed: int = 7, titulo: str = "Inscrições abertas", **extra: Any) -> Encomenda:
     return Encomenda(
         receita_id=extra.pop("receita_id", "receita-1"),
@@ -405,7 +422,7 @@ def test_motor_que_nao_mede_contraste_marca_SKIPPED_e_nao_PASS(bancada, tmp_path
             import hashlib
 
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             # ⚠️ hash REAL. A primeira versão deste dublê declarava `"0"*64`, e o
             # teste passava — porque o executor acreditava no que o motor dizia.
@@ -790,7 +807,7 @@ class MotorQueMenteOHash:
 
     def produzir(self, e: Encomenda, d: str) -> tuple[Artefato, ...]:
         p = Path(d) / "x.png"
-        dados = b"\x89PNG\r\n\x1a\n" + b"z" * 200
+        dados = _png_real(1080, 1080)
         p.write_bytes(dados)
         return (Artefato("1x1", str(p), "image/png", len(dados), "f" * 64, 1080, 1080),)
 
@@ -881,7 +898,15 @@ def test_quem_nao_e_dono_nao_bate_o_coracao(bancada):
 def test_trabalho_que_volta_para_a_fila_solta_o_lease_e_guarda_o_motivo(bancada):
     """`transicionar` nunca limpava `operario` nem `lease_ate`: um trabalho
     `queued` ficava com lease no futuro e `vivo` dizia True para algo que ninguém
-    estava fazendo. E o motivo da tentativa 1 era apagado antes da tentativa 2."""
+    estava fazendo. E o motivo da tentativa 1 era apagado antes da tentativa 2.
+
+    ⚠️ O MOTIVO MUDOU DE LUGAR, não sumiu. O CHECK `falha_coerente` da v11_03 diz
+    `(estado='failed') = (falha_codigo is not null)`: um trabalho devolvido à fila
+    não falhou — vai ser tentado de novo — e por isso não carrega motivo de falha
+    na própria linha. Guardá-lo ali resolvia mal o problema certo: o campo é único
+    e a segunda devolução apagava a primeira. A trilha guarda TODAS, uma por
+    passagem, com autor. A asserção passou a ser sobre ela.
+    """
     deposito, _ = bancada
     deposito.enfileirar(encomenda())
     t = deposito.reivindicar("op")
@@ -895,7 +920,12 @@ def test_trabalho_que_volta_para_a_fila_solta_o_lease_e_guarda_o_motivo(bancada)
     assert de_novo.operario is None
     assert de_novo.lease_ate is None
     assert de_novo.vivo is False
-    assert de_novo.falha["codigo"] == "transitoria"
+    assert de_novo.falha is None, "trabalho na fila não falhou; ele vai ser tentado"
+
+    (_claim, devolucao) = deposito.trilha(t.id)
+    assert (devolucao["de"], devolucao["para"]) == ("claimed", "queued")
+    assert devolucao["motivo"] == "transitoria", "o motivo da tentativa 1 se perdeu"
+    assert devolucao["por"] == "op"
 
 
 def test_trabalho_terminal_solta_o_lease(bancada):
@@ -1101,7 +1131,7 @@ def test_operario_cancelado_no_meio_nao_conclui(bancada, tmp_path):
             pronto_para_cancelar.set()
             pode_terminar.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"q" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -1334,7 +1364,7 @@ def test_bytes_declarados_diferentes_do_arquivo_reprovam(bancada, tmp_path):
 
         def produzir(self, e: Encomenda, d: str) -> tuple[Artefato, ...]:
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"k" * 300
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             # hash CERTO, tamanho ERRADO: só o gate de bytes pode pegar.
             return (Artefato("1x1", str(p), "image/png", 999999,
@@ -1368,14 +1398,14 @@ def test_o_OPERARIO_que_perdeu_o_lease_nao_conclui(bancada, tmp_path):
             comecou.set()
             pode_seguir.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"w" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
 
     deposito, _ = bancada
     op_a = Operario(deposito, {"lentissimo": MotorLentissimo()}, tmp_path / "la",
-                    nome="op-A", lease_s=-1)
+                    nome="op-A", lease_s=60)
     t, _ = deposito.enfileirar(encomenda(motor_slug="lentissimo"))
 
     resultado: list[Any] = []
@@ -1383,7 +1413,11 @@ def test_o_OPERARIO_que_perdeu_o_lease_nao_conclui(bancada, tmp_path):
     fio.start()
     assert comecou.wait(timeout=5)
 
-    # o lease de A já nasceu vencido: B reivindica o mesmo trabalho
+    # A está produzindo com lease válido; o prazo vence e B reivindica o mesmo
+    # trabalho. (`lease_s=-1` não serve mais: o depósito recusa `claimed ->
+    # running` com lease vencido, como o Postgres sempre fez, e o motor nem
+    # chegaria a produzir.)
+    _vencer_o_lease(deposito, t.id)
     deposito.devolver_vencidos()
     b = deposito.reivindicar("op-B")
     assert b is not None and b.id == t.id
@@ -1420,7 +1454,7 @@ def test_trabalho_cancelado_tem_o_diretorio_limpo(bancada, tmp_path):
             comecou.set()
             pode_seguir.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"c" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -1569,18 +1603,19 @@ def test_render_que_perde_a_posse_nao_deixa_arquivo_no_disco(bancada, tmp_path):
             comecou.set()
             segue.wait(timeout=5)
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"p" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
 
     deposito, _ = bancada
     op = Operario(deposito, {"lento2": MotorLento()}, tmp_path / "l2",
-                  nome="op-A", lease_s=-1)
+                  nome="op-A", lease_s=60)
     t, _ = deposito.enfileirar(encomenda(motor_slug="lento2"))
     fio = threading.Thread(target=op.trabalhar_uma_vez)
     fio.start()
     assert comecou.wait(timeout=5)
+    _vencer_o_lease(deposito, t.id)
     deposito.devolver_vencidos()
     deposito.reivindicar("op-B")
     segue.set()
@@ -1777,16 +1812,45 @@ class MotorQueTrava:
         )
 
 
+def _vencer_o_lease(deposito: Any, trabalho_id: str) -> None:
+    """Faz o lease deste trabalho vencer, sem esperar o relógio.
+
+    ⚠️ Escreve direto no arquivo da fila DE PROPÓSITO. O que se simula aqui é a
+    PASSAGEM DO TEMPO, e não existe — nem deve existir — API de produção para
+    vencer o lease de outro operário.
+
+    `lease_s=-1` fazia esse papel antes e deixou de servir quando o depósito
+    passou a recusar `claimed -> running` com lease vencido, que é o que o
+    gatilho `criativo_render_transicao_valida` da v11_03 sempre fez. Com o lease
+    já vencido no claim, o motor nem chega a produzir: a prova passaria sem
+    exercitar um só dos checkpoints de posse do operário, virando tautologia.
+    Agora A reivindica com lease VÁLIDO, começa a produzir de verdade, e só então
+    o prazo vence — que é o cenário real.
+    """
+    import sqlite3 as _sqlite3
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    con = _sqlite3.connect(deposito.caminho)
+    try:
+        con.execute(
+            "update trabalho set lease_ate=? where id=?",
+            ((_dt.now(_tz.utc) - _td(seconds=5)).isoformat(), trabalho_id),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+
 def _cenario_de_perda(tmp_path: Path):
-    """A reivindica com lease vencido, B assume, e A ainda está produzindo."""
+    """A reivindica com lease VÁLIDO, começa a produzir, o lease vence e B assume."""
     import threading
 
     deposito = DepositoDeTrabalhos(tmp_path / "fila.db")
     motor = MotorQueTrava()
     raiz = tmp_path / "trabalhos"  # A e B compartilham a raiz, como em produção
-    a = Operario(deposito, {"trava": motor}, raiz, nome="op-A", lease_s=-1)
+    a = Operario(deposito, {"trava": motor}, raiz, nome="op-A", lease_s=60)
     deposito.enfileirar(encomenda(motor_slug="trava"))
-    pego = deposito.reivindicar("op-A", lease_s=-1)
+    pego = deposito.reivindicar("op-A", lease_s=60)
     assert pego is not None
 
     saida: dict[str, Any] = {}
@@ -1795,6 +1859,7 @@ def _cenario_de_perda(tmp_path: Path):
     assert motor.entrou.wait(timeout=10), "o motor nem começou"
 
     # Enquanto A produz, o lease vence e B assume.
+    _vencer_o_lease(deposito, pego.id)
     deposito.devolver_vencidos()
     b = deposito.reivindicar("op-B")
     assert b is not None and b.id == pego.id
@@ -1953,7 +2018,7 @@ def test_a_perda_entre_a_validacao_e_o_recibo_e_barrada_antes_de_gravar(tmp_path
             import hashlib
 
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"r" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
@@ -1994,7 +2059,7 @@ def test_zumbi_nao_reprova_o_trabalho_do_novo_dono(tmp_path, monkeypatch):
             import hashlib
 
             p = Path(d) / "x.png"
-            dados = b"\x89PNG\r\n\x1a\n" + b"z" * 128
+            dados = _png_real(1080, 1080)
             p.write_bytes(dados)
             return (Artefato("1x1", str(p), "image/png", len(dados),
                              hashlib.sha256(dados).hexdigest(), 1080, 1080),)
