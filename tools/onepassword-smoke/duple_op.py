@@ -142,6 +142,11 @@ def main(argv: list[str]) -> int:
         # Ausência é ausência explícita: sem valor de teste o duplê recusa em vez
         # de fabricar um segredo.
         return morrer("duple: VOLC_DUPLE_VALOR ausente; o duple nao inventa segredo", 3)
+    # O smoke chama `op --cache=false <subcomando>`: flags globais vem ANTES do
+    # subcomando. O duple ignora as que nao imita, em vez de confundi-las com
+    # subcomando — mas continua recusando --no-masking mais abaixo.
+    while argv and argv[0].startswith("--") and argv[0] not in ("--version", "--no-masking"):
+        argv = argv[1:]
     if not argv:
         return morrer("duple: nenhum subcomando", 2)
     if argv[0] in ("--version", "-v", "version"):

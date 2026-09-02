@@ -129,6 +129,25 @@ def classificar_erro(texto: str) -> str:
 # ---------------------------------------------------------------------------
 # Execução
 # ---------------------------------------------------------------------------
+def comando_op(caminho_op: str, *args: str) -> list[str]:
+    """Monta uma invocacao do `op` com o CACHE DESLIGADO.
+
+    ⚠️ MEDIDO EM 01/09/2026, com o 1Password TRANCADO:
+
+        op vault list                 -> respondeu, sem pedir nada
+        op --cache=false vault list   -> "authorization prompt dismissed"
+
+    `--cache` vem ligado por padrao em sistemas UNIX (`op --help`). Uma prova de
+    revogacao que um cache quente satisfaz nao e prova: ela mede o cache, nao o
+    acesso. O segredo em si nunca veio do cache — `op run` falhou com e sem ele —
+    mas o metadado vinha, e era o bastante para a prova dizer "listei os cofres"
+    depois de o cofre ter sido trancado.
+
+    Desligar o cache nao endurece o 1Password; endurece a MEDICAO.
+    """
+    return [caminho_op, "--cache=false", *args]
+
+
 def executar(cmd: list[str], env: dict[str, str]) -> tuple[int, str, str]:
     """Roda um comando com limite de tempo do Python (não existe `timeout` aqui)."""
     try:
@@ -387,7 +406,7 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
     evidencia["op_no_path"] = True
     verificado.append("CLI `op` encontrado no PATH")
 
-    rc, out, err = executar([caminho_op, "--version"], env)
+    rc, out, err = executar(comando_op(caminho_op, "--version"), env)
     evidencia["op_version_rc"] = rc
     evidencia["op_version"] = sanitizar_nome(out.strip()) if rc == 0 else None
     humano.append(f"op --version -> rc={rc} {sanitizar_nome(out.strip())}")
@@ -424,7 +443,7 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
             )
         verificado.append("app do 1Password presente no caminho verificado")
 
-    rc, out, err = executar([caminho_op, "account", "list", "--format=json"], env)
+    rc, out, err = executar(comando_op(caminho_op, "account", "list", "--format=json"), env)
     # Varre stdout também: nem todo CLI manda erro só para stderr, e um erro
     # documentado lido no lugar errado viraria um falso "sessão viva".
     etiqueta = classificar_erro(err + "\n" + out)
@@ -457,7 +476,7 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
         )
     verificado.append("sessão viva: `op account list` respondeu com pelo menos uma conta")
 
-    rc, out, err = executar([caminho_op, "vault", "list", "--format=json"], env)
+    rc, out, err = executar(comando_op(caminho_op, "vault", "list", "--format=json"), env)
     if rc != 0:
         evidencia["vault_list_classificacao"] = classificar_erro(err)
         nao_verificado.append("injeção em processo descartável")
@@ -505,7 +524,7 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
         )
 
     rc, out, err = executar(
-        [caminho_op, "item", "list", "--vault", cofre_alvo, "--format=json"], env
+        comando_op(caminho_op, "item", "list", "--vault", cofre_alvo, "--format=json"), env
     )
     if rc == 0:
         try:
@@ -532,7 +551,7 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
         env_injecao = dict(env)
         env_injecao[args.nome_var] = args.referencia
         alvo = [
-            caminho_op,
+            *comando_op(caminho_op),
             "run",
             "--",
             sys.executable,
@@ -564,7 +583,7 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
         )
         os.chmod(arquivo_varredura, 0o600)
         alvo_varredura = [
-            caminho_op,
+            *comando_op(caminho_op),
             "run",
             "--",
             sys.executable,
