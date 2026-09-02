@@ -287,6 +287,56 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
     evidencia: dict = {}
     run_id = calcular_run_id(argv)
 
+    # ⚠️ O LOCALIZADOR FORA DE argv. Este repositorio trata o `op://` como
+    # sensivel em todo lugar: recusa ele em campo de prosa
+    # (backend/app/asset_vault/dominio.py:163), descarta mensagem do banco que o
+    # carregue (infraestrutura.py:94), e nenhuma rota de leitura o devolve. A
+    # unica excecao era a linha de comando DESTE arquivo: passado por
+    # `--referencia`, o endereco fica visivel em `ps` para qualquer processo
+    # local enquanto a prova roda. `calcular_run_id` so protegia o recibo.
+    #
+    # `--referencia-arquivo` fecha essa fresta: argv passa a carregar um CAMINHO,
+    # e o endereco entra por um arquivo que so o dono le. A flag antiga continua
+    # valendo — quebrar quem ja a usa nao melhora nada — mas o recibo passa a
+    # dizer por onde a referencia entrou, para que uma prova nao possa alegar
+    # discricao que nao teve.
+    origem_referencia = "argv" if args.referencia else "ausente"
+    caminho_ref = getattr(args, "referencia_arquivo", None)
+    if caminho_ref:
+        alvo_ref = Path(caminho_ref)
+        if not alvo_ref.is_file():
+            humano.append(f"--referencia-arquivo: nao e um arquivo: {caminho_ref}")
+            evidencia["referencia_arquivo_erro"] = "inexistente"
+            return (
+                montar_recibo(
+                    run_id=run_id, estado="falha/preflight",
+                    exit_code=ESTADOS["falha/preflight"], duple_em_uso=bool(args.duple),
+                    duple_caminho=args.duple, plataforma=platform.system(),
+                    referencia={"presente": False}, verificado=[],
+                    nao_verificado=["nada foi executado"], evidencia=evidencia,
+                    proximo_ato="aponte --referencia-arquivo para um arquivo existente",
+                ),
+                humano,
+            )
+        modo = alvo_ref.stat().st_mode & 0o077
+        if modo:
+            humano.append("--referencia-arquivo: o arquivo esta legivel por grupo/outros; use chmod 600")
+            evidencia["referencia_arquivo_erro"] = "permissao_frouxa"
+            return (
+                montar_recibo(
+                    run_id=run_id, estado="falha/preflight",
+                    exit_code=ESTADOS["falha/preflight"], duple_em_uso=bool(args.duple),
+                    duple_caminho=args.duple, plataforma=platform.system(),
+                    referencia={"presente": False}, verificado=[],
+                    nao_verificado=["nada foi executado"], evidencia=evidencia,
+                    proximo_ato="chmod 600 no arquivo da referencia e rode de novo",
+                ),
+                humano,
+            )
+        args.referencia = alvo_ref.read_text(encoding="utf-8").strip()
+        origem_referencia = "arquivo"
+    evidencia["origem_da_referencia"] = origem_referencia
+
     def recibo(estado: str, proximo_ato: str) -> dict:
         return montar_recibo(
             run_id=run_id,
@@ -476,6 +526,8 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
     # --- injeção em processo descartável -----------------------------------
     trabalho = tempfile.mkdtemp(prefix="volc-1p-smoke-")
     os.chmod(trabalho, 0o700)
+    rc = rc_v = None
+    suspeito_1 = suspeito_2 = False
     try:
         env_injecao = dict(env)
         env_injecao[args.nome_var] = args.referencia
@@ -536,13 +588,36 @@ def rodar_smoke(args, argv: list[str]) -> tuple[dict, list[str]]:
         # O arquivo capturado pode conter o eco de um segredo. Ele morre aqui.
         shutil.rmtree(trabalho, ignore_errors=True)
 
-    if veredito_eco == "true" or suspeito_1 or suspeito_2:
+    # ⚠️ A ORDEM AQUI E A CORRECAO. A versao anterior perguntava "houve eco
+    # suspeito?" ANTES de "o `op run` sequer funcionou?" — e `varrer_saida_filho`
+    # devolve suspeito para QUALQUER saida fora da linha canonica. Quando o
+    # `op run` falha, o filho nem chega a rodar: stdout vem vazio e stderr traz o
+    # erro do proprio `op`. Isso e sempre suspeito. Consequencias medidas:
+    #
+    #   * a classificacao por rc logo abaixo era CODIGO MORTO;
+    #   * `blocked/sem_sessao` (12) e `blocked/aprovacao_negada` (13) eram
+    #     inalcancaveis — e sao exatamente os dois estados que a prova de
+    #     revogacao precisa ler;
+    #   * TRAVAR o 1Password, que e o comportamento seguro esperado, era
+    #     reportado como `falha/vazamento` — um alarme de vazamento onde nao
+    #     houve vazamento nenhum, no unico sinal que ninguem pode aprender a
+    #     ignorar.
+    #
+    # A postura conservadora do docstring de `varrer_saida_filho` ("preferimos um
+    # falso vazamento a um falso ok") continua valendo onde ela informa: se a
+    # injecao ACONTECEU (rc 0) e ainda assim a saida fugiu da linha canonica,
+    # isso e eco. O veredito da varredura interna — a unica camada que de fato
+    # procura o valor, porque roda dentro do `op run` onde ele existe — vale
+    # sempre, com rc qualquer.
+    eco_confirmado = veredito_eco == "true"
+    eco_por_saida = (rc == 0 and suspeito_1) or (rc_v == 0 and suspeito_2)
+    if eco_confirmado or eco_por_saida:
         motivos = []
-        if veredito_eco == "true":
+        if eco_confirmado:
             motivos.append("valor encontrado na saída capturada (varredura interna)")
-        if suspeito_1:
+        if rc == 0 and suspeito_1:
             motivos.append("saída inesperada do filho de presença")
-        if suspeito_2:
+        if rc_v == 0 and suspeito_2:
             motivos.append("saída inesperada do filho de varredura")
         evidencia["motivos_vazamento"] = motivos
         nao_verificado.append("injeção NÃO pode ser declarada boa: houve eco suspeito")
@@ -631,6 +706,9 @@ def autoteste() -> int:
     logs = base / "logs"
     logs.mkdir()
     referencia = "op://duple-vault/duple-item/credencial"
+    arquivo_referencia = base / "referencia.txt"
+    arquivo_referencia.write_text(referencia, encoding="utf-8")
+    os.chmod(arquivo_referencia, 0o600)
     # O último campo é a classificação EXIGIDA de `op account list`. Sem ele,
     # uma prova de teste-mutante mostrou que c e d passavam mesmo com os padrões
     # documentados quebrados: qualquer rc != 0 já cai em blocked/sem_sessao.
@@ -641,6 +719,17 @@ def autoteste() -> int:
         ("c", "app bloqueado (LostConnectionToApp)", ["--referencia", referencia], "app_bloqueado", "blocked/sem_sessao", "documentado:lostconnectiontoapp"),
         ("d", "No accounts configured", ["--referencia", referencia], "sem_contas", "blocked/sem_sessao", "documentado:no accounts configured"),
         ("e", "--no-masking recusado", ["--referencia", referencia, "--no-masking"], "feliz", "falha/preflight", None),
+        # ⚠️ PROVA g — a regressao do defeito que tornava a revogacao ilegivel.
+        # Antes da correcao, QUALQUER falha do `op run` casava a varredura de eco
+        # (stdout vazio nao e a linha canonica) e voltava `falha/vazamento`/20,
+        # tornando `blocked/aprovacao_negada`/13 codigo morto. Travar o
+        # 1Password — o comportamento seguro — era reportado como vazamento.
+        ("g", "aprovacao negada vira blocked/13, nao vazamento/20",
+         ["--referencia", referencia], "aprovacao_negada", "blocked/aprovacao_negada",
+         "heuristica_aprovacao:authorization"),
+        # ⚠️ PROVA h — o localizador entra por arquivo 0600 e nao por argv.
+        ("h", "referencia por arquivo 0600 (fora de argv)",
+         ["--referencia-arquivo", str(arquivo_referencia)], "feliz", "ok", None),
     ]
     falhas = 0
     for chave, titulo, extra, modo, esperado, classificacao_esperada in provas:
@@ -683,6 +772,20 @@ def autoteste() -> int:
             obtida = rec.get("evidencia", {}).get("account_list_classificacao")
             ok_extra = obtido != "ok" and obtida == classificacao_esperada
             detalhe = f" classificacao={obtida} (exigida {classificacao_esperada})"
+        elif chave == "g":
+            # Nao basta o estado: a etiqueta tem de provar que a recusa foi
+            # RECONHECIDA como aprovacao negada, e nao que qualquer rc!=0 caiu
+            # aqui por acidente.
+            obtida = rec.get("evidencia", {}).get("op_run_classificacao")
+            ok_extra = obtido != "ok" and obtida == classificacao_esperada
+            detalhe = f" classificacao={obtida} (exigida {classificacao_esperada})"
+        elif chave == "h":
+            origem = rec.get("evidencia", {}).get("origem_da_referencia")
+            ok_extra = (
+                origem == "arquivo"
+                and rec.get("evidencia", {}).get("presenca_confirmada") is True
+            )
+            detalhe = f" origem_da_referencia={origem}"
         else:
             ok_extra = obtido != "ok"
         passou = ok_estado and ok_exit and ok_extra
@@ -717,6 +820,10 @@ def principal(argv: list[str]) -> int:
         allow_abbrev=False,
     )
     p.add_argument("--referencia", help="op://<vault>/<item>/[secao/]<campo>")
+    p.add_argument(
+        "--referencia-arquivo",
+        help="arquivo 0600 contendo SO a referencia op://; mantem o localizador fora de argv",
+    )
     p.add_argument("--nome-var", default=NOME_VAR_PADRAO)
     p.add_argument("--duple", help="diretório do duplê; SEM esta flag o smoke usa o `op` real")
     p.add_argument("--caminho-app", help="caminho do 1Password.app (padrão /Applications no macOS)")

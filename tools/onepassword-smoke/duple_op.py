@@ -23,6 +23,11 @@ MODOS (via VOLC_DUPLE_MODO):
   vazamento     -> mascaramento QUEBRADO: ecoa o segredo em stderr
   app_bloqueado -> `account list` falha com LostConnectionToApp
   sem_contas    -> `account list` falha com "No accounts configured..."
+  aprovacao_negada -> conta e cofres OK, mas `op run` e recusado por falta de
+                      aprovacao do Environment. E o modo que prova que uma
+                      recusa de aprovacao vira `blocked/aprovacao_negada` (13)
+                      e NAO `falha/vazamento` (20): quando o `op run` falha o
+                      filho nem roda, e a saida vazia nao pode ser lida como eco.
 """
 
 from __future__ import annotations
@@ -93,6 +98,11 @@ def cmd_item_list() -> int:
 
 def cmd_run(argumentos: list[str]) -> int:
     """Resolve referências `op://` do ambiente e roda o comando depois de `--`."""
+    if MODO == "aprovacao_negada":
+        # A aprovação por Environment vale "até o 1Password travar"
+        # (www.1password.dev/environments/mcp-server). Quando ela não vale mais,
+        # quem falha é o `op run` — e o filho não chega a existir.
+        return morrer("authorization denied for environment: user did not approve the request", 1)
     if "--no-masking" in argumentos:
         # Nem o duplê aceita: o preflight do smoke deve barrar antes de chegar aqui.
         return morrer("duple: --no-masking e proibido neste smoke", 2)

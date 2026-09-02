@@ -34,15 +34,30 @@ Consequências diretas no código:
 ```bash
 python3 tools/onepassword-smoke/run.py                 # smoke real (hoje: blocked/cli_ausente)
 python3 tools/onepassword-smoke/run.py --json          # só o recibo JSON
-python3 tools/onepassword-smoke/run.py --autoteste     # as 6 provas com o duplê; sai 0 ou 1
+python3 tools/onepassword-smoke/run.py --autoteste     # as 8 provas com o duplê; sai 0 ou 1
 
-# com um ambiente real, depois de instalar e aprovar:
-python3 tools/onepassword-smoke/run.py --referencia 'op://<vault>/<item>/<campo>'
+# com um ambiente real, depois de instalar e aprovar.
+# PREFIRA o arquivo: `--referencia` deixa o localizador visível em `ps`.
+printf 'op://<vault>/<item>/<campo>' > ~/.volc-ref && chmod 600 ~/.volc-ref
+python3 tools/onepassword-smoke/run.py --referencia-arquivo ~/.volc-ref
 ```
 
-Flags: `--referencia` (`op://<vault>/<item>/[secao/]<campo>`), `--nome-var`
-(padrão `VOLC_SMOKE_SEGREDO`), `--caminho-app` (padrão `/Applications/1Password.app`
-no macOS), `--permitir-service-account`, `--duple <dir>`.
+Flags: `--referencia` (`op://<vault>/<item>/[secao/]<campo>`),
+`--referencia-arquivo <caminho>`, `--nome-var` (padrão `VOLC_SMOKE_SEGREDO`),
+`--caminho-app` (padrão `/Applications/1Password.app` no macOS),
+`--permitir-service-account`, `--duple <dir>`.
+
+### Por que `--referencia-arquivo`
+
+Este repositório trata o `op://` como sensível em todo lugar: recusa ele em campo
+de prosa (`backend/app/asset_vault/dominio.py:163`), descarta mensagem do banco
+que o carregue (`infraestrutura.py:94`) e nenhuma rota de leitura o devolve. A
+linha de comando deste arquivo era a única exceção — passado por `--referencia`,
+o endereço fica visível em `ps` para qualquer processo local enquanto a prova
+roda. `--referencia-arquivo` põe no argv um **caminho** e deixa o endereço num
+arquivo que só o dono lê; o smoke recusa o arquivo se ele estiver legível por
+grupo ou outros. O recibo passa a trazer `origem_da_referencia`, para que uma
+prova não possa alegar discrição que não teve. `--referencia` continua válida.
 
 ## Estados de saída
 
@@ -169,7 +184,9 @@ ausência é ausência explícita, ele não inventa segredo nem adivinha modo. A
 que ele reporta é `0.0.0-duple` — sintética de propósito, para não parecer real.
 
 Modos: `feliz`, `vazamento` (mascaramento quebrado: ecoa o segredo em stderr),
-`app_bloqueado` (`LostConnectionToApp`), `sem_contas` (`No accounts configured…`).
+`app_bloqueado` (`LostConnectionToApp`), `sem_contas` (`No accounts configured…`),
+`aprovacao_negada` (conta e cofres OK, mas o `op run` é recusado por falta de
+aprovação do Environment).
 
 ## As 6 provas do `--autoteste`
 
