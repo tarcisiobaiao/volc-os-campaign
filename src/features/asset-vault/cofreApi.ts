@@ -25,6 +25,9 @@
  * está no backend, não aqui — e há teste dos dois lados.
  */
 import { supabase } from '@/lib/supabase';
+import type { ProntidaoDoAtivo } from './prontidao';
+
+export type { ProntidaoDoAtivo } from './prontidao';
 
 const RAW_BASE = (import.meta.env.VITE_PAUTADOR_API_URL || '').trim();
 const API_BASE = RAW_BASE.replace(/\/$/, '');
@@ -310,6 +313,19 @@ export function posturaDeCredencial(ativoId: string): Promise<{ credenciais: Pos
 
 export function engines(): Promise<{ engines: EngineDisponivel[] }> {
   return pedir('/engines');
+}
+
+/**
+ * As nove respostas de operação sobre um ativo — e nenhuma delas publica.
+ *
+ * ⚠️ Ela também **não** traz o localizador, pela mesma razão do handoff: quem
+ * resolve `op://` é o broker, no host isolado. E duas das oito perguntas voltam
+ * como `desconhecido` de propósito — disponibilidade de perfil só é observável
+ * de dentro do host do AdsPower, e um `não` inventado aqui mandaria alguém
+ * cadastrar um perfil que já existe.
+ */
+export function prontidao(ativoId: string): Promise<ProntidaoDoAtivo> {
+  return pedir<ProntidaoDoAtivo>(`/ativos/${encodeURIComponent(ativoId)}/prontidao`);
 }
 
 // ── escrita ─────────────────────────────────────────────────────────────────
