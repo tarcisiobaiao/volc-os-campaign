@@ -213,6 +213,16 @@ def _bool_ou_none(mensagem: Any, campo: str) -> Optional[bool]:
     return bool(getattr(mensagem, campo))
 
 
+#: O MESMO leitor de presence, com nome público.
+#:
+#: ⚠️ Ele existe porque `contas.meta_de_conversao` — o leitor legado que ainda
+#: alimenta o cockpit — lia `bool(a.primary_for_goal)` e colapsava presence,
+#: exatamente o defeito que este módulo consertou. Duplicar a regra lá foi o que
+#: fez os dois leitores divergirem; reusar esta função é o que impede que eles
+#: divirjam de novo.
+bool_ou_none = _bool_ou_none
+
+
 def _int_ou_none(mensagem: Any, campo: str) -> Optional[str]:
     """Um int64 com *presence*, como texto — ou `None` quando não veio.
 

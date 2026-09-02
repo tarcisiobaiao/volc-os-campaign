@@ -24,7 +24,7 @@ falta de evidência contrária. Ausência de prova é `INDETERMINADO`, não perm
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from app.trafego import perfil_de_mensuracao as pdm
 from app.trafego import plano_mensuracao as pm
@@ -40,6 +40,184 @@ INDETERMINADO = "INDETERMINADO"
 NAO_APLICAVEL = "NAO_APLICAVEL"
 
 ESTADOS = (PRONTO, PARCIAL, NAO_PRONTO, INDETERMINADO, NAO_APLICAVEL)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# EVIDÊNCIA DE SINAL — o que um chamador precisa TRAZER para dizer "observei"
+# ════════════════════════════════════════════════════════════════════════════
+
+
+class AfirmacaoSemEvidencia(ValueError):
+    """Alguém disse "observei sinal" e não trouxe o que prova a observação.
+
+    ⚠️ É EXCEÇÃO, e não um descarte silencioso. Ignorar a afirmação em
+    silêncio produziria a segunda mentira — o chamador acreditaria que sua
+    fonte entrou no veredito. Recusar em voz alta é a única resposta que não
+    engana ninguém.
+    """
+
+
+@dataclass(frozen=True)
+class SinalObservado:
+    """Uma conversão que alguém VIU, com o que permite conferir que viu.
+
+    ## O buraco que este tipo fecha
+
+    Até 02/09/2026 `avaliar(fontes_de_sinal_observadas=[...])` aceitava
+    **qualquer lista não vazia de strings** e a tratava como sinal COMPROVADO.
+    A string `"google_tag"` — que é o nome de uma CAPACIDADE, não de um evento
+    — bastava para `conversion_signal_status=PRONTO`, e daí para
+    `measurement_readiness=PRONTO`. O próprio comentário do campo admitia:
+    "quem o passa está AFIRMANDO ter observado algo que este módulo não tem
+    como conferir". Um campo que transforma alegação em verde é exatamente a
+    forma de falso verde que o módulo inteiro existe para impedir — e o resto
+    do módulo já exigia prova para a MESMA afirmação vinda do plano.
+
+    ## A prova exigida é a MESMA de `pm.Frescor.comprovado`
+
+    Não uma segunda régua, mais frouxa, para quem chega por fora:
+
+    1. **uma data de última conversão** — ISO, parseável, não no futuro;
+    2. **uma contagem observada finita e positiva** — `0` é zero medido, e zero
+       medido é a conclusão de que nada chegou;
+    3. **a data contra a qual a recência foi medida** (`observado_em`), que
+       é o HOJE no fuso da CONTA — ver `metas_efetivas.hoje_na_conta`.
+
+    ⚠️ `dias_desde_a_ultima` é **calculado aqui**, nunca recebido. Se o
+    chamador pudesse informar os dias, ele poderia afirmar recência sem que
+    nada a conferisse — que é o defeito original com outra roupa.
+
+    ⚠️ Nada disto torna a forja impossível: quem chama em processo pode inventar
+    uma data. O que muda é que a afirmação passa a ter **forma conferível** e a
+    ser conferida — uma data velha, uma contagem zero ou uma data no futuro
+    param de virar verde, e passavam antes.
+    """
+
+    #: Por onde a conversão chegou (tag do Google, importação GA4, upload
+    #: offline, Data Manager). ⚠️ Isto é RÓTULO, e não prova: o que prova são
+    #: os três campos abaixo.
+    fonte: str
+    #: `YYYY-MM-DD` — a data da última conversão, no fuso da CONTA.
+    ultima_conversao_em: str
+    #: Quantas conversões foram observadas. Precisa ser > 0.
+    conversoes_observadas: float
+    #: `YYYY-MM-DD` — o HOJE contra o qual a recência é medida.
+    observado_em: str
+
+    def __post_init__(self) -> None:
+        import math  # noqa: PLC0415
+        from datetime import date  # noqa: PLC0415
+
+        fonte = str(self.fonte or "").strip()
+        if not fonte:
+            raise AfirmacaoSemEvidencia(
+                "fonte de sinal sem nome. Uma fonte anônima não pode ser "
+                "conferida nem contestada por ninguém.")
+        try:
+            quando = date.fromisoformat(str(self.ultima_conversao_em).strip())
+        except (TypeError, ValueError) as exc:
+            raise AfirmacaoSemEvidencia(
+                f"{fonte!r} não trouxe data de última conversão legível "
+                f"({self.ultima_conversao_em!r}). Sem data não há como saber se "
+                "a conversão é de ontem ou de 2019 — e não saber nunca é "
+                "permissão.") from exc
+        try:
+            hoje = date.fromisoformat(str(self.observado_em).strip())
+        except (TypeError, ValueError) as exc:
+            raise AfirmacaoSemEvidencia(
+                f"{fonte!r} não trouxe `observado_em` legível "
+                f"({self.observado_em!r}). É contra ESSA data que a recência é "
+                "medida, e ela é o hoje no fuso da CONTA — o relógio do "
+                "servidor comparia dois fusos como se fossem um.") from exc
+        try:
+            quantas = float(self.conversoes_observadas)
+        except (TypeError, ValueError) as exc:
+            raise AfirmacaoSemEvidencia(
+                f"{fonte!r} trouxe contagem não numérica "
+                f"({self.conversoes_observadas!r}).") from exc
+        if not math.isfinite(quantas) or quantas <= 0:
+            raise AfirmacaoSemEvidencia(
+                f"{fonte!r} declara {quantas!r} conversão observada. Zero "
+                "medido é a conclusão de que NADA chegou, e ele não prova "
+                "sinal — prova o contrário.")
+        if quando > hoje:
+            raise AfirmacaoSemEvidencia(
+                f"{fonte!r} declara última conversão em {quando.isoformat()}, "
+                f"depois de {hoje.isoformat()}. Uma conversão no futuro não "
+                "é observação: é um erro de leitura ou de fuso.")
+        object.__setattr__(self, "fonte", fonte)
+        object.__setattr__(self, "ultima_conversao_em", quando.isoformat())
+        object.__setattr__(self, "observado_em", hoje.isoformat())
+        object.__setattr__(self, "conversoes_observadas", quantas)
+
+    @property
+    def dias_desde_a_ultima(self) -> int:
+        """Calculado, nunca recebido. Ver a docstring da classe."""
+        from datetime import date  # noqa: PLC0415
+
+        return (date.fromisoformat(self.observado_em)
+                - date.fromisoformat(self.ultima_conversao_em)).days
+
+    @property
+    def comprovado(self) -> bool:
+        """A mesma terceira exigência de `pm.Frescor.comprovado`: recência.
+
+        ⚠️ Uma observação real e VELHA continua sendo uma observação real — por
+        isso ela não levanta no construtor. Ela simplesmente não prova que o
+        sinal chega HOJE, que é a única pergunta que decide o lance. Ela sai em
+        `signal_paths`, com o motivo, e nunca em `signal_sources`.
+        """
+        return self.dias_desde_a_ultima <= pm.JANELA_DE_RECENCIA_DIAS
+
+    def descricao(self) -> str:
+        """A frase que vai para `signal_sources` — com a prova junto.
+
+        ⚠️ O contrato de saída continua sendo uma lista de STRINGS (a tela lê
+        `signal_sources: string[]`). O que mudou é que a string agora carrega o
+        que a sustenta, em vez de ser um rótulo solto.
+        """
+        quantas = self.conversoes_observadas
+        n = int(quantas) if float(quantas).is_integer() else quantas
+        return (f"{self.fonte}: {n} conversão(ões) observada(s), "
+                f"última em {self.ultima_conversao_em} "
+                f"(há {self.dias_desde_a_ultima} dia(s), medido contra "
+                f"{self.observado_em})")
+
+
+#: Os campos que uma evidência precisa trazer quando chega como dicionário.
+_CAMPOS_DA_EVIDENCIA = (
+    "fonte", "ultima_conversao_em", "conversoes_observadas", "observado_em")
+
+
+def evidencia_de_sinal(valor: Any) -> SinalObservado:
+    """Normaliza o que o chamador passou — ou RECUSA, nomeando o que falta.
+
+    ⚠️ Uma string nua é recusada, e este é o ponto inteiro da mudança. Ela
+    não é "quase uma evidência": ela é o rótulo sem o fato.
+    """
+    if isinstance(valor, SinalObservado):
+        return valor
+    if isinstance(valor, Mapping):
+        faltando = [c for c in _CAMPOS_DA_EVIDENCIA if c not in valor]
+        if faltando:
+            raise AfirmacaoSemEvidencia(
+                "evidência de sinal sem " + ", ".join(faltando)
+                + ". Uma fonte só conta como observada com data da última "
+                "conversão, contagem observada e a data contra a qual a "
+                "recência foi medida — a mesma prova que "
+                "`pm.Frescor.comprovado` exige do plano.")
+        return SinalObservado(
+            fonte=valor["fonte"],
+            ultima_conversao_em=valor["ultima_conversao_em"],
+            conversoes_observadas=valor["conversoes_observadas"],
+            observado_em=valor["observado_em"])
+    raise AfirmacaoSemEvidencia(
+        f"{valor!r} é uma AFIRMAÇÃO, e não uma observação. "
+        "`fontes_de_sinal_observadas` aceitava qualquer lista não vazia e a "
+        "tratava como sinal COMPROVADO: a string 'google_tag' — nome de uma "
+        "CAPACIDADE — abria `measurement_readiness=PRONTO` sem que nada "
+        "tivesse sido medido. Passe `SinalObservado` (ou o dicionário "
+        "equivalente) com " + ", ".join(_CAMPOS_DA_EVIDENCIA) + ".")
 
 
 @dataclass(frozen=True)
@@ -306,7 +484,8 @@ def avaliar(
     plano_valido: bool = False,
     recibo_registrado: bool,
     metas_da_conta: Optional[Dict[str, Any]],
-    fontes_de_sinal_observadas: Optional[List[str]] = None,
+    fontes_de_sinal_observadas: Optional[
+        Sequence[Any]] = None,
     data_manager_operante: bool = False,
     coleta_pos_criacao_provada: bool = False,
     estrategia_lance: str = "MANUAL_CPC",
@@ -321,6 +500,15 @@ def avaliar(
     meta". Os dois viram estados diferentes de propósito: colapsá-los faria uma
     falha de leitura parecer uma conta sem meta, e uma conta sem meta parecer
     uma falha de leitura. As duas confusões levam a decisões opostas.
+
+    ⚠️ `fontes_de_sinal_observadas` NÃO ACEITA MAIS UMA LISTA DE STRINGS.
+    Cada item precisa ser um `SinalObservado` (ou o dicionário equivalente) com
+    data da última conversão, contagem observada e `observado_em` — a mesma
+    prova que `pm.Frescor.comprovado` exige do plano. Uma string nua levanta
+    `AfirmacaoSemEvidencia`, e uma observação fora da janela de
+    `pm.JANELA_DE_RECENCIA_DIAS` dias sai em `signal_paths`, nunca em
+    `signal_sources`. Ver a docstring de `SinalObservado` para o defeito que
+    isso conserta.
 
     ⚠️ `plano_de_mensuracao` é o que torna `PRONTO` ALCANÇÁVEL — e isso não é
     conveniência, é o que faz o portão poder ser provado. Enquanto o ramo
@@ -443,8 +631,15 @@ def avaliar(
         # Medido na Portal Mundo Mais em 01/09/2026: NOVE ações ENABLED, OITO
         # com `primary_for_goal=true`. Dizer "a ação primária" no singular
         # apagaria sete delas. `PARCIAL` diz o que se sabe sem inventar o resto.
+        # ⚠️ `primaria_efetiva` QUANDO ELE VEIO, e `primaria` só como recuo.
+        # `contas.meta_de_conversao` lia `bool(primary_for_goal)` e devolvia
+        # `False` para o campo AUSENTE, que o Google trata como primário —
+        # contar por `primaria` aqui herdava o veredito invertido. O recuo
+        # existe para os chamadores que montam o dicionário à mão (testes e o
+        # dossiê), em que "efetiva" não foi calculada por ninguém.
         primarias = [a for a in (metas_da_conta.get("acoes") or ())
-                     if a.get("primaria")]
+                     if (a["primaria_efetiva"] if "primaria_efetiva" in a
+                         else a.get("primaria"))]
         meta_status = PARCIAL
         # ⚠️ `len(primarias)`, e não `len(primarias) or 1`. O `or 1` fazia a
         # frase afirmar "1 ação" quando `metas_da_conta` traz `primaria` e não
@@ -479,7 +674,25 @@ def avaliar(
     # errado em conta que converte por tag do Google ou importação GA4: ela tem
     # sinal chegando e seria declarada despreparada por não usar uma via que
     # não precisa. Data Manager é UMA fonte, e a que ainda não existe aqui.
-    fontes = list(fontes_de_sinal_observadas or ())
+    # ⚠️ AQUI ESTAVA O BURACO. `fontes = list(fontes_de_sinal_observadas or
+    # ())` aceitava QUALQUER lista não vazia — inclusive `["google_tag"]`, que
+    # nomeia uma capacidade e não um evento — e a tratava como sinal
+    # COMPROVADO, abrindo `measurement_readiness=PRONTO`. Zero chamadores de
+    # produção passavam o campo, e era só isso que separava o módulo do falso
+    # verde que ele existe para impedir.
+    #
+    # Agora cada item precisa TRAZER a prova, e ela é conferida com a mesma
+    # régua de `pm.Frescor.comprovado`. O que não tem forma de evidência
+    # levanta `AfirmacaoSemEvidencia` — em voz alta, porque descartá-lo em
+    # silêncio faria o chamador acreditar que sua fonte entrou no veredito.
+    evidencias = [evidencia_de_sinal(e)
+                  for e in (fontes_de_sinal_observadas or ())]
+    # ⚠️ Observação VELHA é observação — e não é prova de que o sinal chega
+    # HOJE. Ela desce para `signal_paths` com o motivo, e não suprime mais a
+    # derivação do plano: antes, uma lista não vazia vencia o plano sempre.
+    fora_da_janela = [e for e in evidencias if not e.comprovado]
+    fontes = [e.descricao() for e in evidencias if e.comprovado]
+    evidencias_do_plano = False
     caminhos: List[str] = []
     if plano_de_mensuracao is not None:
         # ⚠️ CAPACIDADE E PROVA SAEM SEPARADAS, e é essa separação que conserta
@@ -491,11 +704,63 @@ def avaliar(
         # que dizia que nenhuma conversão chegou.
         caminhos = list(pm.caminhos_de_sinal_declarados(plano_de_mensuracao))
         if not fontes:
-            # `fontes_de_sinal_observadas` explícito continua tendo precedência:
-            # quem o passa está AFIRMANDO ter observado algo que este módulo não
-            # tem como conferir.
+            # ⚠️ A precedência agora é de EVIDÊNCIA sobre evidência, e não de
+            # afirmação sobre evidência. Quem passa `fontes_de_sinal_observadas`
+            # traz uma observação COMPROVADA nos mesmos termos que o plano
+            # traria — data, contagem e recência —, e por isso ela pode
+            # dispensar a derivação do plano. Lista vazia, ou só com evidência
+            # fora da janela, deixa o plano falar.
             fontes = list(pm.fontes_de_sinal_observadas(plano_de_mensuracao))
-    if fontes:
+            # Marcador de PROCEDÊNCIA: daqui em diante é preciso saber se
+            # `fontes` veio da leitura do plano ou da alegação do chamador. As
+            # duas têm o mesmo formato e peso muito diferente.
+            evidencias_do_plano = bool(fontes)
+    for _e in fora_da_janela:
+        caminhos.append(
+            f"{_e.fonte}: última conversão observada em "
+            f"{_e.ultima_conversao_em}, há {_e.dias_desde_a_ultima} dias — "
+            f"fora da janela de {pm.JANELA_DE_RECENCIA_DIAS} dias. A via já "
+            "trouxe evento um dia; ela não prova que traz HOJE.")
+    # ⚠️ ALEGAÇÃO NÃO DERRUBA LEITURA QUE CONCLUIU.
+    #
+    # `SinalObservado` confere FORMA — data legível, contagem > 0, não-futuro,
+    # recência —, e forma não é procedência: nada aqui pergunta à conta se a
+    # conversão existiu. Enquanto a evidência do chamador só PREENCHIA um vazio,
+    # isso era aceitável: ele traz o que o plano não tinha.
+    #
+    # O que não é aceitável é ela VENCER uma leitura que concluiu o contrário.
+    # `frescor.estado == vazio_confirmado` é o fato mais caro que existe neste
+    # domínio: a ação existe, a janela FOI consultada, e nada chegou. Quando o
+    # chamador afirma "eu vi conversão" contra isso, o que se tem é uma
+    # CONTRADIÇÃO entre uma alegação inconferível e uma medição — e o desfecho
+    # honesto de uma contradição não é escolher a alegação. É dizer que não se
+    # sabe, com as duas versões na mesa.
+    #
+    # Sem esta guarda, uma `SinalObservado` inteiramente inventada em processo
+    # levava `conversion_signal` e `measurement_readiness` a PRONTO numa conta
+    # cuja leitura real tinha visto ZERO — exatamente o falso verde que a
+    # separação entre capacidade e prova existe para impedir, entrando pela
+    # porta de trás.
+    leitura_concluiu_que_nao_ha = (
+        plano_de_mensuracao is not None
+        and plano_de_mensuracao.frescor.estado == pm.VAZIO_CONFIRMADO
+        and not pm.fontes_de_sinal_observadas(plano_de_mensuracao)
+    )
+    if fontes and leitura_concluiu_que_nao_ha and not evidencias_do_plano:
+        sinal = INDETERMINADO
+        notas["conversion_signal"] = (
+            "CONTRADIÇÃO não resolvida: a leitura da conta consultou a janela e "
+            "não encontrou conversão (vazio confirmado), e a evidência recebida "
+            "afirma o contrário — " + ", ".join(fontes) + ". A evidência recebida "
+            "confere forma, não procedência: nada aqui pergunta à conta se ela "
+            "existiu. Uma alegação não derruba uma medição, e por isso o sinal "
+            "fica INDETERMINADO em vez de PRONTO. Resolva pela conta: reconsulte "
+            "a janela, ou diga de onde veio a observação.")
+        _bloquear(
+            "a evidência de sinal recebida contradiz a leitura da conta, que "
+            "consultou a janela e não encontrou conversão. Enquanto a "
+            "contradição existir, o sinal não pode ser dado como comprovado.")
+    elif fontes:
         sinal = PRONTO
         notas["conversion_signal"] = (
             "sinal COMPROVADO: " + ", ".join(fontes))
@@ -505,7 +770,26 @@ def avaliar(
         # opostas: caminho declarado e sem conversão é problema de
         # instrumentação — a tag está lá e não dispara; nenhum caminho e nenhuma
         # conversão é problema anterior, não há por onde medir.
-        if caminhos:
+        if fora_da_janela:
+            # ⚠️ TERCEIRO DESFECHO, e ele não é nenhum dos dois anteriores.
+            # "Nunca chegou nada" e "chegou, e faz mais de
+            # JANELA_DE_RECENCIA_DIAS" pedem conversas diferentes: a primeira é
+            # instrumentação que nunca funcionou; a segunda é uma via que
+            # funcionava e PAROU. Dizer "NENHUMA conversão observada" sobre a
+            # segunda apagaria o fato mais informativo que se tem.
+            _velha = min(_e.dias_desde_a_ultima for _e in fora_da_janela)
+            notas["conversion_signal"] = (
+                "houve conversão observada, e ela está FORA da janela de "
+                f"{pm.JANELA_DE_RECENCIA_DIAS} dias (a mais recente há "
+                f"{_velha} dias): " + ", ".join(caminhos)
+                + ". Uma conversão antiga prova que a via já mediu; ela não "
+                "prova que o sinal chega HOJE, que é o que decide o lance.")
+            _bloquear(
+                "a última conversão observada está fora da janela de "
+                f"{pm.JANELA_DE_RECENCIA_DIAS} dias (há {_velha} dias). A via "
+                "já trouxe evento e parou de trazer — é sinal interrompido, "
+                "não instrumentação inexistente.")
+        elif caminhos:
             notas["conversion_signal"] = (
                 "há caminho declarado para o sinal (" + ", ".join(caminhos)
                 + ") e NENHUMA conversão observada. Caminho não é tráfego: o "

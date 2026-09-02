@@ -148,17 +148,32 @@ def test_sinal_de_conversao_nao_e_data_manager():
     """Conta que converte por tag tem sinal, e não usa Data Manager.
 
     Exigir Data Manager para declarar medição diria despreparo onde não há.
+
+    ⚠️ ESTE TESTE MUDOU EM 02/09/2026, e a mudança é o conserto de um defeito
+    que ele mesmo documentava sem perceber. Ele passava a string `"google_tag"`
+    — o nome de uma CAPACIDADE, não de um evento — e obtinha
+    `conversion_signal_status=PRONTO`. Era a prova de que
+    `fontes_de_sinal_observadas` aceitava alegação como observação; ver
+    `test_trafego_sinal_com_evidencia.py`.
+    O que ele existe para provar (sinal ≠ Data Manager) continua idêntico: o
+    que mudou é que a fonte agora chega com data, contagem e recência.
     """
     por_tag = pr.avaliar(recibo_registrado=True,
                          metas_da_conta={"primaria": {"id": "1"}},
-                         fontes_de_sinal_observadas=["google_tag"],
+                         fontes_de_sinal_observadas=[pr.SinalObservado(
+                             fonte="tag do Google no site",
+                             ultima_conversao_em="2026-08-31",
+                             conversoes_observadas=4,
+                             observado_em="2026-09-02")],
                          data_manager_operante=False)
     assert por_tag.conversion_signal_status == pr.PRONTO
     assert por_tag.data_manager_status == pr.NAO_PRONTO
     # ⚠️ TUPLA. `Prontidao` congela as coleções em `__post_init__`: `frozen`
     # sozinho impedia rebind e não impedia `r.activation_blockers.append(...)`
     # num veredito já apresentado. `para_json` segue emitindo lista.
-    assert por_tag.signal_sources == ("google_tag",)
+    assert len(por_tag.signal_sources) == 1
+    assert "tag do Google no site" in por_tag.signal_sources[0]
+    assert "2026-08-31" in por_tag.signal_sources[0]
     # Data Manager ausente não entra em activation_blockers por si só.
     assert not any("Data Manager" in b for b in por_tag.activation_blockers)
 
