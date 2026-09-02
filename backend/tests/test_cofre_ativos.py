@@ -928,6 +928,7 @@ def test_prontidao_separa_receber_de_publicar_quando_p12_t09_nao_existe():
         "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
         "verificacao_estado": "verified", "verificado_em": "2026-09-01T10:00:00Z"},
     ])).get(PRONTIDAO).json()
+    assert len(corpo["bloqueios"]) == len(set(corpo["bloqueios"]))
     assert corpo["pronto_para_receber_peca"] is True
     assert corpo["perguntas"]["peca_roteavel"]["valor"] == "sim"
     assert corpo["pronto_para_publicar"] is False
@@ -941,6 +942,20 @@ def test_prontidao_publicacao_continua_falsa_mesmo_com_recebimento_verde():
     assert corpo["pronto_para_publicar"] is False
     assert corpo["publica"] is False
     assert any("autorizacao de ato de publicacao" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+
+
+def test_prontidao_bloqueios_global_sem_duplicatas():
+    """Publicacao depende de recebimento/acesso, mas o resumo global nao pode
+    repetir a mesma frase: duplicar confunde operador e cria chaves React iguais."""
+    corpo = montar(_repo_para_handoff(credencial=[{
+        "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+        "verificacao_estado": "unverified", "verificado_em": None},
+    ], relacoes=[])).get(PRONTIDAO).json()
+    assert len(corpo["bloqueios"]) == len(set(corpo["bloqueios"]))
+    assert not any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["recebimento"])
+    assert any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+    assert corpo["pronto_para_publicar"] is False
+    assert corpo["publica"] is False
 
 
 def test_prontidao_broker_local_provado_nao_vira_live_read():

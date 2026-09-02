@@ -4,36 +4,10 @@
   "_branch": "sprint/hermes-asset-vault-organic-access-v1",
   "_base_sha": "c8ca8628e83742dd7da5242f0a015f76292aafe7",
   "_head_medido": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso",
-  "_commits": [
-    {
-      "sha": "c1fd42e",
-      "subject": "fix(cofre): reconcile readiness gates and closure provenance"
-    },
-    {
-      "sha": "67ac4ac",
-      "subject": "docs(closure): record asset vault organic access checkpoint"
-    },
-    {
-      "sha": "82a37b1",
-      "subject": "feat(cofre): show readiness blockers in asset vault UI"
-    },
-    {
-      "sha": "a68f047",
-      "subject": "test(cofre): prove broker secrecy and readiness semantics"
-    },
-    {
-      "sha": "8393662",
-      "subject": "feat(cofre): expose organic readiness without publishing"
-    },
-    {
-      "sha": "bf4d345",
-      "subject": "feat(cofre): add read-only AdsPower broker boundary"
-    }
-  ],
   "_medido_em": "2026-09-02",
   "_sessao_claude": "553b5b9d-aa0e-4e87-9981-766952b591c7",
   "_aviso_que_vem_antes_de_tudo": "Claude Code nao conseguiu rodar interpretadores/git por bloqueio da camada de permissao, mas Hermes/Bia executou os gates apos o encerramento do executor. Ver GATES.md: testes focais backend/Cofre/broker passaram, frontend Asset Vault passou, build passou, TypeScript manteve baseline herdado sem erro em asset-vault; backend completo falha apenas em criativo fora do ownership.",
-  "_commits_observacao": "Cinco commits atomicos ja foram criados e publicados na feature branch; esta microcorrecao atualiza apenas fatos finais/documentacao e contrato de prontidao.",
+  "_commits_observacao": "A branch possui seis commits desde a base: cinco commits anteriores ao artefato listados em _commits_anteriores_ao_artefato e o commit corrente desta microcorrecao, cujo SHA nao pode ser embutido sem alterar o proprio SHA.",
   "_pre_condicao_do_integrador": "A branch nao esta mesclada e foi publicada na feature branch. Trabalho que so existe numa worktree nao pode marcar a fonte compartilhada como concluido — CLAUDE.md e AGENTS.md sao explicitos. Alem disso, nenhuma escrita foi feita no Supabase oficial, entao nenhum ativo real existe no Cofre em producao.",
   "_nenhuma_tarefa_vira_done": "Nenhuma das sete propostas pede 'done'. Codigo revisado em worktree nao e operacao provada, e 'done' significa 'concluido e provado' neste roadmap.",
   "_frescor_do_mapa_vivo": "DEFASADO e NAO CONSERTADO por instrucao explicita do Hermes. `python3 scripts/atualizar_grafo_volc_os.py --check` falhou no preflight porque graphify-out/UPDATE_STATUS.json esta ausente; confirmado por leitura nesta sessao que o diretorio graphify-out/ nao existe nesta worktree. Nenhum arquivo de grafo foi criado, editado ou regenerado.",
@@ -121,7 +95,7 @@
       "titulo": "Criar a porta VOLC para draft, agenda e publicacao",
       "estado_atual": "todo",
       "estado_proposto": "todo",
-      "prova": "Sem mudanca de estado e SEM implementacao — esta missao nao tocou publicacao. A evidencia nova e que a ausencia dela virou um BLOQUEIO NOMEADO no corpo de uma rota: prontidao responde peca_roteavel='nao' para toda pagina do Cofre e diz por que ('nao existe porta de publicacao no VOLC (P12-T09): nenhuma peca aprovada tem por onde sair'). A lista de componentes seguintes passou a ter FONTE UNICA (prontidao.COMPONENTES_SEGUINTES), importada tambem pelo handoff, com teste que exige que as duas rotas nao divirjam sobre o que existe.",
+      "prova": "Sem mudanca de estado e SEM implementacao — esta missao nao tocou publicacao. O contrato de prontidao agora separa explicitamente os portoes: uma peca pode ser recebida/associada quando ativo, destino e owner estao identificados, e isso e expresso por pronto_para_receber_peca. A ausencia de P12-T09 permanece como bloqueio somente no portao publicacao e mantem pronto_para_publicar=false. A rota continua estritamente read-only, com publica=false: ela nao cria job, nao abre navegador, nao publica e nao autoriza ato de publicacao.",
       "lacunas_restantes": [
         "nao existe PublicationJob, adapter, idempotencia nem reconciliacao",
         "publicacao continua sendo um ato separado e explicito, e nada nesta missao a dispara"
@@ -147,5 +121,29 @@
   "_estado_publicacao": "publicada na feature branch, ainda nao integrada em volc-os-v2",
   "_arvore_limpa": "verificada por Hermes apos commit/push final",
   "_zero_escrita_externa": "zero Supabase write, zero AdsPower real, zero publicacao, zero migration, zero deploy",
-  "_sha_remoto_publicado_apos_microcorrecao": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso"
+  "_sha_remoto_publicado_apos_microcorrecao": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso",
+  "_commits_anteriores_ao_artefato": [
+    {
+      "sha": "bf4d345",
+      "subject": "feat(cofre): add read-only AdsPower broker boundary"
+    },
+    {
+      "sha": "8393662",
+      "subject": "feat(cofre): expose organic readiness without publishing"
+    },
+    {
+      "sha": "a68f047",
+      "subject": "test(cofre): prove broker secrecy and readiness semantics"
+    },
+    {
+      "sha": "82a37b1",
+      "subject": "feat(cofre): show readiness blockers in asset vault UI"
+    },
+    {
+      "sha": "67ac4ac",
+      "subject": "docs(closure): record asset vault organic access checkpoint"
+    }
+  ],
+  "_commit_desta_microcorrecao": "self_unavailable_by_construction",
+  "_sha_final_verificado_externamente": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_no_artefato_para_evitar_sha_auto_referencial_falso"
 }

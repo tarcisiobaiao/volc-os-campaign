@@ -66,6 +66,23 @@ def _resposta(valor: str, motivo: str, procedencia: str = "registro") -> dict[st
     return {"valor": valor, "motivo": motivo, "procedencia": procedencia}
 
 
+def _sem_duplicatas(partes: list[str]) -> list[str]:
+    """Lista global deterministica: preserva a primeira ocorrencia, sem esconder nada.
+
+    `bloqueios_publicacao` carrega tambem bloqueios de recebimento/acesso porque
+    publicar depende dos dois. O resumo global nao pode concatena-los de novo,
+    senao o React recebe chaves duplicadas e o operador le o mesmo impedimento
+    duas vezes.
+    """
+    vistos: set[str] = set()
+    saida: list[str] = []
+    for bloqueio in partes:
+        if bloqueio not in vistos:
+            vistos.add(bloqueio)
+            saida.append(bloqueio)
+    return saida
+
+
 #: Como o estado de verificacao de uma REFERENCIA vira resposta sobre "da para
 #: resolver isto em runtime?". Os seis estados nao sao sinonimos, e o mapa
 #: preserva a diferenca que o schema criou para preservar.
@@ -223,7 +240,7 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
     bloqueios_publicacao.extend(bloqueios_acesso)
     bloqueios_publicacao.append("nenhuma autorizacao de ato de publicacao foi concedida nesta rota")
 
-    bloqueios = bloqueios_recebimento + bloqueios_acesso + bloqueios_publicacao
+    bloqueios = _sem_duplicatas(bloqueios_recebimento + bloqueios_acesso + bloqueios_publicacao)
     pronto_para_receber_peca = not bloqueios_recebimento
     pronto_para_operar_acesso = not bloqueios_acesso
     pronto_para_publicar = False
