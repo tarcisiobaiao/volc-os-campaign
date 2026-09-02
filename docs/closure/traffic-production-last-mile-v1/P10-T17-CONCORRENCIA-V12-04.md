@@ -9,9 +9,9 @@
 |---|---|
 | Branch | `sprint/traffic-production-last-mile-v1` |
 | Base | `c8ca8628e83742dd7da5242f0a015f76292aafe7` (`origin/volc-os-v2`) |
-| Commits | `48d9fc0` (precedência, idempotência, recibo) · `79770a5` (projeção legada) |
+| Commits | `48d9fc0` (precedência, idempotência, recibo) · `79770a5` (projeção legada) · `c299274` (espera circular da trava) |
 | Arquivo | `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` |
-| sha256 depois | `2934b1a2eb5c8c49299fb197215041ac810bacf83e29a6ab8ca3fb0fdfd5b0f2` |
+| sha256 depois | `daad5a56d571521e5a4d690ecd1786d7ab4a04b3dd13ad0851ac0fc588911008` |
 | Rollback | `supabase/migrations/v12_04_rollback.sql` · `583a2f7189db739feeed944cb3bd51e4a333a878cadbaa366ec9511cb95cbee3` |
 | Aplicada no Supabase oficial? | **NÃO.** Medido em leitura read-only: 0 de 3 relações e 0 de 4 funções existem |
 
@@ -50,7 +50,9 @@ com `database.agenciavolc.com.br`.**
 
 ## O vermelho, medido
 
-Contra o código de `c8ca862`: **16 de 23 degraus falharam.**
+Contra o código de `c8ca862`: **16 de 23 degraus falharam.** (O roster cresceu para 35
+degraus ao longo da missão: C8/C9 vieram de uma revisão adversarial do preflight, e
+C10 de revisar a correção de C8.)
 
 Os 7 que passaram importam tanto quanto os 16: eles provam que o harness mede
 estado real e não reprova tudo por construção. Uma prova que fica vermelha em
@@ -247,10 +249,39 @@ seria cega — e nesse caso a projeção deve ser desligada
 
 ---
 
+### C10 · a trava do C8 podia travar duas execuções uma na outra
+
+Defeito **introduzido pela própria correção do C8**, e encontrado ao revisá-la.
+A trava consultiva é tomada DENTRO de um laço, uma por linha legada — por
+`(campaign_id, metric_date)`. Trava dentro de laço só é segura se todas as
+transações a adquirirem na MESMA ordem global, e o laço ordenava por
+`(customer_id, campaign_id)`. As duas ordens não coincidem: bastam duas execuções
+com contas diferentes tocando as mesmas campanhas.
+
+```
+FALHOU  C10.1 nenhuma projeção falhou por espera circular (40P01) — obtido [1], esperado [0]
+```
+
+A corrida não é sorteada: uma terceira sessão segura a linha legada da campanha
+maior, prendendo a primeira execução DEPOIS de ela já ter a trava dessa campanha;
+só então a segunda pega a menor e vai buscar a maior. Quando a terceira solta, o
+ciclo se fecha.
+
+O sintoma não é travar para sempre — o Postgres detecta, aborta uma, e o
+`EXCEPTION` da projeção vira `projecao_estado='falhou'`,
+`projecao_erro_codigo='40P01'`. O fato canônico sobrevive, e a contenção funciona.
+Mas a projeção falharia de forma **intermitente**, que é pior de diagnosticar que
+um erro constante, porque some quando alguém vai olhar.
+
+**Correção:** ordenar o laço pela própria chave da trava —
+`ORDER BY g.campaign_id, g.metric_date, g.customer_id, g.segments_hash`.
+
+---
+
 ## O verde, medido
 
 ```
-concorrência v12_04:  32 ok   0 falharam        (scripts/provar-concorrencia-v12_04.sh)
+concorrência v12_04:  35 ok   0 falharam        (scripts/provar-concorrencia-v12_04.sh)
 ciclo serial       :  107 ok   0 falharam       (scripts/provar-ciclo-v12_04.sh)
   incluindo CP-19a/b/c/d, intactas
   CICLO v12_04 COMPLETO: aplicar → operar → reverter → reaplicar
@@ -277,6 +308,7 @@ a v9_01 fica intacta, `daily_campaign_metrics` sobrevive, e a terceira aplicaç�
 | ciclo apply→operate→rollback→reapply | 107/0 | ✅ |
 | documentação da semântica | este documento | ✅ |
 | _(além do aceite)_ projeção legada sob corrida | C8, C9 | ✅ |
+| _(além do aceite)_ ausência de espera circular na trava | C10 | ✅ |
 
 ## O que este trabalho NÃO faz
 

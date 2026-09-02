@@ -1,6 +1,5 @@
 {
   "_nota": "DELTA PROPOSTO pela missão traffic-production-last-mile-v1. NÃO é o arquivo de curadoria; é o que o integrador único deve aplicar em docs/volc-os-graph/curadoria-operacional.json e volc-os-workbook/ROADMAP-VIVO.json depois do merge, reconstruindo o Mapa Vivo UMA vez. Trabalho em branch/worktree não fecha fonte compartilhada.",
-
   "_origem": {
     "missao": "VOLC O.S. — Traffic Production Last Mile V1",
     "branch": "sprint/traffic-production-last-mile-v1",
@@ -14,10 +13,11 @@
       "584d82e docs(closure): a semântica de concorrência da v12_04, que o aceite exige por escrito",
       "d5eaa1a fix(mensuracao): o campo que transformava alegação em verde, e a porta dos fundos que sobrou",
       "5817eb2 fix(trafego/ui): onze lugares onde não conseguir ler virava \"está tudo bem\"",
-      "97df0ee fix(canario): um retrato de ontem estava bloqueando hoje, com cara de medição"
+      "97df0ee fix(canario): um retrato de ontem estava bloqueando hoje, com cara de medição",
+      "c299274 fix(v12_04): a trava que consertou a projeção podia travar duas execuções uma na outra"
     ],
     "gates": {
-      "concorrencia_v12_04": "scripts/provar-concorrencia-v12_04.sh → 32 ok / 0 falharam (contra o código base: 16 de 23 FALHAVAM)",
+      "concorrencia_v12_04": "scripts/provar-concorrencia-v12_04.sh → 35 ok / 0 falharam (contra o código base: 16 de 23 FALHAVAM; o roster cresceu de 23 para 35 degraus durante a missão)",
       "ciclo_v12_04": "scripts/provar-ciclo-v12_04.sh → 107 ok / 0 falharam · aplicar→operar→reverter→reaplicar",
       "pytest_backend": "2648 passed, 0 failed, 87 skipped (baseline medido no SHA base: 2592 passed, 0 failed)",
       "pytest_volc_ads": "732 passed, 0 failed",
@@ -32,7 +32,6 @@
     },
     "interpretador_dos_gates": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python (toolchain fixada: pytest 9.1.1, fastapi 0.115.6, google-ads 31.3.0). ⚠️ Outros pythons da máquina produzem 6 falhas FALSAS em test_openapi_golden/test_criativo_rotas_equivalentes, porque o golden é fixado byte a byte em fastapi 0.115.6."
   },
-
   "roadmap": [
     {
       "id": "P10-T17",
@@ -40,7 +39,7 @@
       "status_atual": "todo",
       "status_proposto": "done",
       "_por_que_done": "O acceptance pede sete cenários concorrentes, mais vermelho-antes/verde-depois, mais ciclo apply→operate→rollback→reapply, mais documentação da semântica. Os quatro foram executados e estão versionados. O vermelho é literal e reproduzível: 16 de 23 degraus falharam contra o código de c8ca862, e os 7 que passaram provam que o harness mede estado real. A tarefa NÃO pede a aplicação da migration — ela pede o contrato provado ANTES da aplicação, e é isso que existe.",
-      "evidencia_a_acrescentar": "2026-09-02 · 48d9fc0/79770a5: a concorrência da RPC v12_04 foi reproduzida com DUAS sessões psql reais (FIFO, com o bloqueio observado em pg_stat_activity — não sleep), e quatro invariantes que o schema declarava defender não existiam. (1) A precedência era decidida por um SELECT e aplicada por um ON CONFLICT DO UPDATE SEM WHERE: um D0 intradia sobrescrevia um D-1 de janela FECHADA, janela_fechada voltava a false, e a degradação era contada como linhas_aceitas. (2) A idempotência morava num SELECT no topo: duas sessões de mesma chave o atravessavam antes de qualquer commit e a segunda recebia 'duplicate key value violates unique constraint' — sem o nome do contrato, e no caso divergente a recusa CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE chegava disfarçada de erro de banco. (3) O fechamento comparava alegação histórica contra estado vivo e explodia com RECIBO_NAO_RESOLVE_FATOS quando uma execução de posto maior legitimamente superava a linha — a execução superada nunca mais fechava e o deadman via corrida eternamente aberta. (4) Uma revisão adversarial do preflight encontrou o único caminho de escrita cujo dano é PERMANENTE (o rollback não desfaz projeção): a projeção legada media ambiguidade por EXISTS num snapshot, e ignorava segments_hash. Sob corrida, dois recibos diziam 'aplicada' para a MESMA linha legada; em série, dois segmentos da mesma conta se sobrescreviam e o recibo contava duas aplicadas numa tabela de uma linha. Correções: precedência atômica no WHERE do ON CONFLICT com contagem por ROW_COUNT; colisão de chave tratada e respondida pelo contrato; supersessão fecha como 'parcial' com motivo nomeado; projeção trava pela chave legada antes de olhar e considera segments_hash. Prova: scripts/provar-concorrencia-v12_04.sh 32/0, ciclo 107/0. Semântica documentada em docs/closure/traffic-production-last-mile-v1/P10-T17-CONCORRENCIA-V12-04.md.",
+      "evidencia_a_acrescentar": "2026-09-02 · 48d9fc0/79770a5: a concorrência da RPC v12_04 foi reproduzida com DUAS sessões psql reais (FIFO, com o bloqueio observado em pg_stat_activity — não sleep), e quatro invariantes que o schema declarava defender não existiam. (1) A precedência era decidida por um SELECT e aplicada por um ON CONFLICT DO UPDATE SEM WHERE: um D0 intradia sobrescrevia um D-1 de janela FECHADA, janela_fechada voltava a false, e a degradação era contada como linhas_aceitas. (2) A idempotência morava num SELECT no topo: duas sessões de mesma chave o atravessavam antes de qualquer commit e a segunda recebia 'duplicate key value violates unique constraint' — sem o nome do contrato, e no caso divergente a recusa CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE chegava disfarçada de erro de banco. (3) O fechamento comparava alegação histórica contra estado vivo e explodia com RECIBO_NAO_RESOLVE_FATOS quando uma execução de posto maior legitimamente superava a linha — a execução superada nunca mais fechava e o deadman via corrida eternamente aberta. (4) Uma revisão adversarial do preflight encontrou o único caminho de escrita cujo dano é PERMANENTE (o rollback não desfaz projeção): a projeção legada media ambiguidade por EXISTS num snapshot, e ignorava segments_hash. Sob corrida, dois recibos diziam 'aplicada' para a MESMA linha legada; em série, dois segmentos da mesma conta se sobrescreviam e o recibo contava duas aplicadas numa tabela de uma linha. Correções: precedência atômica no WHERE do ON CONFLICT com contagem por ROW_COUNT; colisão de chave tratada e respondida pelo contrato; supersessão fecha como 'parcial' com motivo nomeado; projeção trava pela chave legada antes de olhar e considera segments_hash. Prova: scripts/provar-concorrencia-v12_04.sh 32/0, ciclo 107/0. Semântica documentada em docs/closure/traffic-production-last-mile-v1/P10-T17-CONCORRENCIA-V12-04.md. · c299274: revisando a própria correção do C8, encontrei um defeito que ELA introduziu — a trava consultiva é tomada dentro de um laço, e o laço ordenava por (customer_id, campaign_id) enquanto a trava é por (campaign_id, metric_date). Duas execuções com contas diferentes tocando as mesmas campanhas adquiriam as travas em ordem invertida e esperavam uma pela outra. Reproduzido deterministicamente na corrida C10 (projecao_erro_codigo=40P01), com uma terceira sessão segurando a linha legada para encenar o ciclo. O fato canônico sobrevivia — a contenção funciona —, mas a projeção passaria a falhar de forma intermitente. Corrigido ordenando o laço pela própria chave da trava.",
       "_ressalva_obrigatoria": "A v12_04 SEGUE NÃO APLICADA no Supabase oficial (medido read-only: 0 de 3 relações, 0 de 4 funções). 'Concorrência provada' não é 'migration aplicada', e o acceptance separa as duas — a documentação da semântica é exigida ANTES de aplicar."
     },
     {
@@ -88,7 +87,6 @@
       "_defeito_de_registro": "A tarefa não tem campo `acceptance`, `priority`, `dependencies` nem `links`. Sem critério formal de aceite ela é infalsificável — não há como provar que terminou. E o terceiro bloqueador citado no `proof` ('PMax sair de fora do executor') é hoje uma DECISÃO fechada (DECISAO-PMAX-FORA-DO-EXECUTOR.md), não uma pendência: enquanto a decisão valer, `done` é inalcançável por construção. Recomendo ao dono: ou escrever o acceptance, ou marcar a tarefa como `reserved`."
     }
   ],
-
   "_correcoes_de_registro_no_roadmap": [
     {
       "onde": "P05-T12 · evidencia[2]",
@@ -109,7 +107,6 @@
       "perigo": "referência quebrada num campo de prova"
     }
   ],
-
   "_avisos_ao_integrador": [
     "NÃO apliquei v12_03 nem v12_04 no Supabase oficial. NÃO importei nem ativei workflow n8n. NÃO escrevi no Data Manager. NÃO criei, alterei nem removi campanha, orçamento, anúncio, meta ou ConversionAction. NÃO ativei campanha. NÃO instalei systemd/timer. NÃO fiz deploy, merge ou push.",
     "A única escrita externa desta missão foi ZERO. As leituras externas foram: (a) SELECT e catálogo no Supabase oficial via ssh+docker exec psql; (b) GAQL somente-SELECT na conta Google Ads, com modo.escrita_permitida() asserido False antes da chamada.",
