@@ -229,14 +229,23 @@ def test_a_projecao_legada_nao_encosta_em_receita_nem_orientacao():
     assert "INSERT INTO public.daily_campaign_metrics" not in sql
 
 
-def test_a_migration_nao_toca_a_serie_reservada_a_outra_lane():
-    """Esta lane não introduz v13/v12_03; outras lanes já integradas podem existir."""
-    base = subprocess.run(["git", "merge-base", "HEAD", "origin/volc-os-v2"],
-                          cwd=RAIZ, capture_output=True, text=True, check=True).stdout.strip()
-    tocados = subprocess.run(["git", "diff", "--name-only", f"{base}...HEAD", "--", "supabase/migrations"],
-                             cwd=RAIZ, capture_output=True, text=True,
-                             check=True).stdout.split()
-    assert not [v for v in tocados if "v13_" in v]
-    assert not [v for v in tocados if "v12_03" in v]
-    # E a guarda de colisão está escrita na própria migration.
-    assert "v13_01" in MIGRATION.read_text(encoding="utf-8")
+def test_a_migration_nao_toca_objetos_do_ledger_pmax_nem_do_cofre():
+    """A fronteira é medida no SQL, não por um diff contra a branch remota.
+
+    O gate antigo calculava ``merge-base(HEAD, origin/volc-os-v2)``. Antes do
+    push ele acusava migrations legítimas integradas de outras lanes; depois do
+    push o intervalo ficava vazio e a prova passava sem observar arquivo algum.
+    Aqui verificamos a propriedade material que precisa sobreviver a qualquer
+    topologia Git: a v12_04 não escreve nos objetos pertencentes ao ledger PMax
+    (v12_03) nem no Cofre (v13).
+    """
+    sql = MIGRATION.read_text(encoding="utf-8")
+    executavel = "\n".join(
+        linha for linha in sql.splitlines()
+        if not linha.lstrip().startswith("--")
+    )
+
+    assert "trafego_google_inteligencia_" not in executavel
+    assert not re.search(r"\bcofre_[a-z0-9_]+\b", executavel, re.I)
+    assert "CREATE TABLE public.trafego_coleta_execucao" in executavel
+    assert "CREATE TABLE public.google_ads_campanha_dia" in executavel
