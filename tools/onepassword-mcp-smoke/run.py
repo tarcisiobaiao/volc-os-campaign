@@ -200,6 +200,38 @@ def suspeitos(textos: list[str], permitidos: set[str]) -> list[str]:
     return achados
 
 
+def ler_resposta(r: dict) -> tuple[bool, str, str]:
+    """Separa sucesso de erro SEM confundir erro com resposta vazia.
+
+    ⚠️ Este helper existe por causa de um falso verde deste proprio arquivo. A
+    primeira versao fazia `r.get("result", {})` e seguia em frente: um erro
+    JSON-RPC (`{"error": …}`) virava `{}`, dois bytes, lidos como "listou e nao
+    havia nada". O smoke chegou a devolver `ok` sem ter listado coisa alguma,
+    porque nao passava o `accountId` obrigatorio. Erro e erro; vazio e vazio.
+    """
+    if "error" in r:
+        return False, str(r["error"].get("message", ""))[:300], "jsonrpc"
+    resultado = r.get("result")
+    if not isinstance(resultado, dict):
+        return False, "resposta sem result", "sem_result"
+    conteudo = resultado.get("content") or []
+    texto = ""
+    if conteudo and isinstance(conteudo[0], dict):
+        texto = conteudo[0].get("text", "") or ""
+    if resultado.get("isError"):
+        return False, texto[:300], "tool"
+    return True, texto, ""
+
+
+def classificar(mensagem: str) -> str:
+    baixo = (mensagem or "").lower()
+    if any(t in baixo for t in ("scope", "approve", "authoriz", "denied", "declined")):
+        return "aprovacao"
+    if any(t in baixo for t in ("lock", "unlock", "not signed", "no account")):
+        return "sem_sessao"
+    return "nao_classificado"
+
+
 def principal(argv: list[str]) -> int:
     p = argparse.ArgumentParser(description="Smoke do 1Password MCP (P03-T09).", allow_abbrev=False)
     p.add_argument("--caminho", default=CAMINHO_PADRAO)
@@ -280,72 +312,134 @@ def principal(argv: list[str]) -> int:
         verificado.append("as ferramentas de leitura documentadas existem")
 
         # --- autenticar ------------------------------------------------------
+        # ⚠️ `authenticate` NAO e so um aperto de mao: e ele que devolve o
+        # `account_id`, e TODA ferramenta de leitura o exige. Sem ele o servidor
+        # responde `-32602 missing field accountId`. Alem disso o escopo e por
+        # conta: com um id errado a resposta e "Missing required scope:
+        # environments:list. Call the authenticate tool first."
         r = srv.pedir("tools/call", {"name": "authenticate", "arguments": {}})
-        texto_auth: list[str] = []
-        colher_textos(r, texto_auth)
-        erro_auth = r.get("result", {}).get("isError") or "error" in r
-        evidencia["authenticate_erro"] = bool(erro_auth)
-        if erro_auth:
-            junto = " ".join(texto_auth).lower()
-            evidencia["authenticate_classificacao"] = (
-                "aprovacao" if any(t in junto for t in ("approve", "authoriz", "denied", "declined"))
-                else "sem_sessao" if any(t in junto for t in ("lock", "unlock", "not signed", "no account"))
-                else "nao_classificado"
-            )
+        ok_auth, texto_auth, etiqueta_auth = ler_resposta(r)
+        evidencia["authenticate_erro"] = not ok_auth
+        if not ok_auth:
+            evidencia["authenticate_classificacao"] = classificar(texto_auth)
             nao_verificado.append("autenticacao do MCP com o app")
             humano.append(f"authenticate falhou ({evidencia['authenticate_classificacao']})")
             estado = ("blocked/aprovacao_negada"
                       if evidencia["authenticate_classificacao"] == "aprovacao"
                       else "blocked/nao_autenticado")
             return sair(estado, "destranque o 1Password e aprove o pedido do cliente MCP")
-        verificado.append("authenticate aceito pelo app")
+        try:
+            conta = json.loads(texto_auth)["account_id"]
+        except Exception:
+            evidencia["authenticate_sem_account_id"] = True
+            nao_verificado.append("account_id na resposta de authenticate")
+            return sair("falha/interna", "o authenticate respondeu sem account_id; rode com --json")
+        # O id da conta e identificador, nao segredo — mas nao ha razao para
+        # imprimi-lo: guardamos so o tamanho, para provar que veio preenchido.
+        evidencia["account_id_presente"] = len(conta) > 0
+        verificado.append("authenticate aceito pelo app e devolveu account_id")
 
         # --- environments (NOMES) -------------------------------------------
-        r = srv.pedir("tools/call", {"name": "list_environments", "arguments": {}})
-        textos_env: list[str] = []
-        colher_textos(r.get("result", {}), textos_env)
-        evidencia["environments_resposta_bytes"] = len(json.dumps(r.get("result", {})))
-        achou_env = bool(args.environment) and any(args.environment in t for t in textos_env)
-        evidencia["environment_esperado_encontrado"] = achou_env if args.environment else None
-        if args.environment and not achou_env:
-            nao_verificado.append(f"Environment '{args.environment}' nao apareceu na listagem")
-            humano.append(f"o Environment '{args.environment}' nao foi listado.")
-            return sair("blocked/sem_environment",
-                        "crie o Environment no app: Developer > View Environments > New environment")
-        verificado.append("list_environments respondeu")
+        r = srv.pedir("tools/call", {"name": "list_environments", "arguments": {"accountId": conta}})
+        ok_env, texto_env, _ = ler_resposta(r)
+        if not ok_env:
+            evidencia["list_environments_erro"] = classificar(texto_env)
+            nao_verificado.append("listagem de Environments")
+            estado = ("blocked/aprovacao_negada"
+                      if evidencia["list_environments_erro"] == "aprovacao"
+                      else "falha/interna")
+            return sair(estado, "aprove o escopo environments:list no app do 1Password")
+        try:
+            ambientes = json.loads(texto_env).get("environments", [])
+        except Exception:
+            ambientes = []
+        nomes_env = [a.get("name") for a in ambientes if isinstance(a, dict)]
+        evidencia["environments_encontrados"] = len(ambientes)
+        evidencia["environments_nomes"] = sorted(n for n in nomes_env if n)
+        verificado.append(f"list_environments respondeu ({len(ambientes)} Environment(s))")
+        humano.append("environments: " + (", ".join(evidencia["environments_nomes"]) or "(nenhum)"))
+
+        alvo_id = None
+        if args.environment:
+            for a in ambientes:
+                if isinstance(a, dict) and a.get("name") == args.environment:
+                    alvo_id = a.get("environmentId")
+                    break
+            evidencia["environment_esperado_encontrado"] = alvo_id is not None
+            if alvo_id is None:
+                nao_verificado.append(f"Environment '{args.environment}' nao aparece na listagem")
+                humano.append(f"o Environment '{args.environment}' nao foi listado.")
+                return sair("blocked/sem_environment",
+                            "crie o Environment: janela principal > Desenvolvedor > Ver Environments")
 
         # --- variaveis (NOMES) ----------------------------------------------
-        alvo = {}
-        if args.environment:
-            alvo = {"environment": args.environment}
-        r = srv.pedir("tools/call", {"name": "list_variables", "arguments": alvo})
-        textos_var: list[str] = []
-        colher_textos(r.get("result", {}), textos_var)
-        evidencia["variaveis_resposta_bytes"] = len(json.dumps(r.get("result", {})))
-        achou_var = bool(args.variavel) and any(args.variavel in t for t in textos_var)
-        evidencia["variavel_esperada_encontrada"] = achou_var if args.variavel else None
-        verificado.append("list_variables respondeu")
+        nomes_var: list[str] = []
+        if alvo_id:
+            r = srv.pedir("tools/call", {"name": "list_variables",
+                                         "arguments": {"accountId": conta, "environmentId": alvo_id}})
+            ok_var, texto_var, _ = ler_resposta(r)
+            if not ok_var:
+                evidencia["list_variables_erro"] = classificar(texto_var)
+                nao_verificado.append("listagem de variaveis")
+                estado = ("blocked/aprovacao_negada"
+                          if evidencia["list_variables_erro"] == "aprovacao"
+                          else "falha/interna")
+                return sair(estado, "aprove o escopo de leitura de variaveis no app")
+            try:
+                nomes_var = list(json.loads(texto_var).get("variableNames", []))
+            except Exception:
+                nomes_var = []
+            evidencia["variaveis_encontradas"] = len(nomes_var)
+            evidencia["variaveis_nomes"] = sorted(nomes_var)
+            verificado.append(f"list_variables respondeu ({len(nomes_var)} nome(s))")
+            humano.append("variaveis: " + (", ".join(sorted(nomes_var)) or "(nenhuma)"))
+        else:
+            nao_verificado.append("listagem de variaveis: nenhum Environment alvo informado")
 
         # --- ⚠️ A PROVA CENTRAL: nenhum valor atravessou ---------------------
+        # O contrato publicado e que a resposta traz `variableNames` — NOMES. A
+        # lista-branca confere isso byte a byte: so os nomes que o proprio
+        # operador declarou, os nomes de Environment e a estrutura podem passar.
         permitidos = set(CHAVES_ESTRUTURAIS)
+        permitidos |= {n for n in evidencia.get("environments_nomes", [])}
+        permitidos |= set(nomes_var)
+        permitidos |= set(evidencia["ferramentas"])
+        # ⚠️ Os IDs de Environment sao identificadores de 26 caracteres, do mesmo
+        # formato que o smoke da CLI ja sanitiza. Eles TEM de voltar, senao a API
+        # e inutil — `list_variables` os exige. Mas nao afrouxamos a regra para
+        # "qualquer token de 26 caracteres": liberamos exatamente os ids que
+        # saíram do campo `environmentId` da estrutura que acabamos de ler. Um
+        # token opaco que apareca em qualquer outro lugar continua derrubando a
+        # prova.
+        permitidos |= {
+            a.get("environmentId") for a in ambientes
+            if isinstance(a, dict) and a.get("environmentId")
+        }
         for nome in (args.environment, args.variavel):
             if nome:
                 permitidos.add(nome)
-        permitidos |= {n for n in evidencia["ferramentas"]}
-        achados = suspeitos(textos_env + textos_var, permitidos)
+        textos: list[str] = []
+        colher_textos(json.loads(texto_env) if ok_env else {}, textos)
+        if alvo_id and nomes_var:
+            textos.extend(nomes_var)
+        achados = suspeitos(textos, permitidos)
         evidencia["suspeitos_de_valor"] = achados
         if achados:
             nao_verificado.append("ausencia de valor secreto na resposta do MCP")
-            humano.append("VALOR EXPOSTO: a resposta trouxe texto opaco nao declarado: " + ", ".join(achados))
+            humano.append("VALOR EXPOSTO: texto opaco nao declarado: " + ", ".join(achados))
             return sair("falha/valor_exposto",
                         "nao use este MCP para segredos ate a origem do texto opaco ser explicada")
         verificado.append("nenhum valor secreto na resposta: so nomes e estrutura")
         humano.append("nenhum valor secreto atravessou o MCP (lista-branca estrita)")
 
-        if args.variavel and not achou_var:
-            nao_verificado.append(f"a variavel '{args.variavel}' nao apareceu")
-            return sair("blocked/sem_environment",
-                        f"crie a variavel {args.variavel} no Environment, pela interface do 1Password")
+        if args.variavel:
+            achou = args.variavel in nomes_var
+            evidencia["variavel_esperada_encontrada"] = achou
+            if not achou:
+                nao_verificado.append(f"a variavel '{args.variavel}' nao aparece no Environment")
+                return sair("blocked/sem_environment",
+                            f"crie a variavel {args.variavel} pela interface do 1Password")
+            verificado.append(f"a variavel '{args.variavel}' existe — por NOME, sem valor")
 
         return sair("ok", "prova do MCP concluida; nenhum valor foi lido nem pedido")
     except Exception as exc:  # noqa: BLE001
