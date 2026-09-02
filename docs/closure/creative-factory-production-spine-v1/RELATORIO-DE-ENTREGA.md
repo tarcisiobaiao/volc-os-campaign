@@ -21,13 +21,23 @@ em `AUTORIZACAO-EXTERNA.md`.
 | Gate | Baseline (medido no SHA base) | Final |
 |---|---|---|
 | `pytest backend/tests volc_ads` | 2972 passed · 53 skipped | **3195 passed · 53 skipped** |
-| `vitest run` | 1208 passed · 5 skipped | **1243 passed · 3 skipped** |
+| `vitest run` | 1208 passed · 5 skipped | **1243 passed · 3 skipped** ² |
 | `tsc --noEmit -p tsconfig.app.json` | 76 erros herdados | 76 |
 | `vite build` | verde | verde |
 | `scripts/provar-ciclo-v11_03.sh` | 129 passaram · 0 falharam | 129 · 0 |
 | contrato do depósito (novo) | — | **71** (36 SQLite + 35 Postgres) |
 
-Medidos em série, num único HEAD (`2733715`), árvore limpa.
+Medidos no HEAD final `f6d9769`, árvore limpa. Backend: **3200 passed · 53
+skipped**.
+
+² **Um flake honesto, e ele fica registrado.** Numa das três execuções do
+frontend — a que rodou com a máquina carregada, e o `vite build` daquela rodada
+levou 25,96 s contra os ~7 s habituais — apareceu **1 teste falho de 1246**. As
+duas execuções isoladas seguintes deram 1243 passed, 0 failed. Não capturei o
+nome do teste naquela saída, então **não sei qual foi** — e isso é limitação
+minha, não prova de que era flake. O que sei: não reproduz isolado em duas
+tentativas, e a missão avisa para não classificar flake de contenção como
+defeito. Fica como pendência factual, não como gate verde.
 
 ⚠️ **Correção de um baseline herdado.** O handoff da bancada registrava
 "Frontend completo 902 (7 arq./2 testes falhos)" e tratava as falhas como
@@ -208,3 +218,40 @@ que esta missão flagrou como risco R1/R2 no parque externo**. O eixo factual fo
 coberto por um segundo passe do Codex, que continua sendo revisor de outro
 modelo, e isso está declarado em vez de a entrega afirmar uma revisão Gemini que
 não houve.
+
+
+## 8. O que as revisões acharam depois do relatório
+
+Duas revisões por Codex `gpt-5.6-sol` sobre o SHA integrado: uma adversarial e
+uma factual. As duas anotaram, por conta própria, que a árvore avançou durante o
+passe e ancoraram o parecer no último SHA que leram inteiro — o que é a leitura
+honesta e está registrado aqui.
+
+⚠️ **Nenhuma das duas escreveu o arquivo `-o` que eu pedi.** O sandbox
+`read-only` bloqueia a escrita fora do workspace, então os pareceres ficaram no
+stdout. Foram lidos de lá. A adversarial também foi desviada por um skill
+`adversarial-review` instalado na máquina, que manda spawnar revisores via a CLI
+oposta — ela recusou corretamente (seria API paga, contra a regra da missão) e
+seguiu com as próprias lentes, mas o formato de veredito estruturado se perdeu.
+
+### Três achados adversariais, dois deles do próprio conserto desta missão
+
+1. Leitura cruzada entre inquilinos — descrito acima, fechado.
+2. **O modo `fila` era um no-op silencioso no caminho do Estúdio.** Defeito meu.
+   O worker reivindica da fila da bancada; o job do Estúdio vive em
+   `criativo_job`, sem consumidor. A rota respondia 201 sobre trabalho que
+   ninguém executaria. Agora recusa, com o motivo escrito.
+3. **O Estúdio dizia `pronta` sobre bytes que ninguém releu** — e a máquina de
+   verificação construída nesta mesma missão estava ali, sem consumidor.
+
+### Dez discrepâncias factuais, e cinco têm a mesma causa
+
+A `CAPABILITY-MATRIX` foi commitada em `f2d9533`, **antes** de as lanes de
+P17-T06 e P17-T08 landarem. Ela descrevia com honestidade o estado que leu, e os
+commits seguintes o superaram. Envelhecimento de artefato de fechamento é um modo
+de falha próprio; as correções e as duas recomendações **aceitas e não
+aplicadas** estão em `_correcoes_da_revisao_factual`, dentro da própria matriz.
+
+Uma delas era defeito de código, não de documento: o envelope de logo do Demand
+Gen citava mínimo 128×128, e `requisitos.yaml:185` — a fonte deste repositório —
+diz 144×144.
