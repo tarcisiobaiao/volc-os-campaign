@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T23:01:01-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T23:28:39-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 506 arquivos: 343 Markdown e 163 SQL;
-- 506 versionados e 0 ainda não versionados;
+- 519 arquivos: 353 Markdown e 166 SQL;
+- 519 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 102 SQL com palavras de mutação de alto risco.
+- 105 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-01T23:01:01-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 23 |
-| `documentation` | 201 |
+| `documentation` | 211 |
 | `generated` | 2 |
 | `module-guide` | 32 |
 | `product-document` | 21 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-01T23:01:01-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 50 |
+| `sql-needs-review` | 53 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -41,6 +41,7 @@ estejam errados, mas impede aplicação automática.
 
 | Path | Classe | Nós no grafo | Grau |
 |---|---|---:|---:|
+| `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | 6 | 12 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | 3 | 4 |
 | `scripts/provas-v12_02.sql` | `sql-needs-review` | 3 | 4 |
@@ -127,6 +128,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v12_03_pmax_observability_ledger.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v12_03_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | `sql-needs-review` | 9 | 29 |
 | `supabase/migrations/v12_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | 41 | 126 |
@@ -171,6 +174,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/REVISAO-FOCAL.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
+| `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | high | 6 | 12 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | high | 3 | 4 |
 | `scripts/provas-v12_02.sql` | `sql-needs-review` | high | 3 | 4 |
@@ -251,6 +255,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v12_03_pmax_observability_ledger.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v12_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | `sql-needs-review` | high | 9 | 29 |
 | `supabase/migrations/v12_04_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | high | 41 | 126 |
@@ -265,9 +271,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v8_07_default_privileges_hardening.OPCIONAL.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_99_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v9_01_trafego_inventario.sql` | `sql-needs-review` | high | 11 | 33 |
-| `supabase/migrations/v9_02_atencao_sem_removida.sql` | `sql-needs-review` | medium | 2 | 6 |
-| `supabase/migrations/v9_03_historico_e_ordem_operacional.sql` | `sql-needs-review` | high | 2 | 6 |
-| `supabase/migrations/v9_03_rollback.sql` | `sql-needs-review` | high | 2 | 6 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

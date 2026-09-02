@@ -475,7 +475,7 @@
           "title": "Implementar builder e validate_only do primeiro canal",
           "status": "done",
           "proof": "Construtor completo em volc_ads/campanha/display.py: budget → campanha → geo → idioma → ad group → responsive display ad, num mutate. Desde 3eeafbc/07dfe3c o grafo também carrega o asset de imagem, emitido como asset_operation na MESMA requisição atômica. 62 testes próprios no arquivo em db39f0b (eram 51 em 07dfe3c); volc_ads 223 → 354 → 458. O caminho de validate_only está implementado e testado com cliente falso; FALTA a prova contra a conta real, que exige autorização — e é só ela que separa esta tarefa de `done`.",
-          "evidencia": [
+    "evidencia": [
             "2026-09-01 · sprint/traffic-creative-operational-closure-v1: builders dos quatro canais com entrada uniforme planejar(cid, brief, *, login_customer_id) e despacho por perfil.planejar; volc_ads/campanha/plano.py (906 linhas, dataclasses puras sem SDK) permite ao backend importar tipos sem o SDK. NÃO AVANÇA de partial: a lacuna declarada desta tarefa é \"a prova contra a conta real\", e nenhum validate_only foi executado nesta missão. O Gemini afirmou que o payload de Display está \"100% completo para validate_only em produção real\" — DESCARTADO pelo lead como afirmação sem prova com a forma de prova.",
             "2026-09-01 · 2b6392f + 134083a (sprint/traffic-creative-operational-closure-v1): A LACUNA LITERAL DESTA TAREFA — 'a prova contra a conta real' — FOI FECHADA. validate_only=True executado na conta 547-809-6539 via MCC 601-673-9364: display.validar APROVADO com 9 operacoes; demand_gen.validar APROVADO com 9 operacoes (budget >= R$ 25,40/dia). Zero mutate em conta nenhuma; FORGE_PERMITIR_ESCRITA e modo.destravar nao tocados. A chamada real expos um defeito que a suite offline nao pegava: Display emitia dois asset_operation.create com OS MESMOS BYTES em papeis diferentes, recusado com asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE mais tres mutate_error.RESOURCE_NOT_FOUND em cascata — o Google identifica asset por CONTEUDO. Demand Gen ja tinha a guarda; Display nao. Corrigido e provado. Evidencia completa em docs/closure/traffic-creative-operational-closure-v1/verificacao/VALIDATE-ONLY-CANAIS.md."
           ]
@@ -500,12 +500,13 @@
           "id": "P04-T07",
           "title": "Definir observabilidade PMax antes de autorizar criação",
           "status": "partial",
-          "proof": "pMaximizer foi aceito como referência de consultas, cobertura de asset groups e qualidade de assets; não existe coleta PMax nem painel VOLC específico",
+          "proof": "Coletor produtivo e leitura real v25 cobrem sete famílias PMax; a linha oficial agora contém a migration v12_03, persistência e releitura tipada com identidade completa. Continua partial porque v12_03 não foi aplicada no Supabase oficial, nenhuma fotografia real foi persistida/relida ali e PMax permanece fora do executor.",
           "evidencia": [
             "2026-09-01 · 73e15fa + 8270d48 (sprint/traffic-creative-operational-closure-v1): volc_ads/campanha/pmax.py (1172 linhas) reusa PMAX_FIELD_REQUIREMENTS e evaluate_asset_group_coverage de volc_ads/observabilidade_pmax (que já existia antes desta missão — o delta desta missão é o PORTÃO, não a observabilidade). 50 provas em testes_pmax.py, das quais duas decidem esta tarefa: test_mensuracao_inadequada_bloqueia_mesmo_com_canal_habilitado prova que o bloqueio de criação vem da MENSURAÇÃO e não do construtor None (PMax está bloqueado por dois motivos empilhados; só um é o que esta tarefa pede), e test_sdk_v25_real_instancia_e_serializa_o_grafo_pmax instancia e serializa os protos v25 reais offline. Também: test_recibo_de_mensuracao_autoatestado_nao_e_leitura mata a linhagem autoatestável. PARTIAL e não done: PMax permanece fora do executor por decisão registrada em docs/closure/traffic-creative-operational-closure-v1/DECISAO-PMAX-FORA-DO-EXECUTOR.md.",
             "2026-09-01 · 134083a (sprint/traffic-creative-operational-closure-v1): o portao de mensuracao disparou contra a CONTA REAL, nao contra fixture. pmax.ler_mensuracao leu 10 acoes de conversao na Portal Mundo Mais, TODAS com include_in_conversions_metric=False — nenhuma valida para lance. pmax.validar recusou LOCALMENTE com MENSURACAO_INADEQUADA e nao chegou a API. E' a prova de que o bloqueio vem da mensuracao lida e nao do construtor None.",
             "2026-09-01 · 09e70e1 + d80b17d (sprint/campaign-birth-readiness-v1): `criavel_pausada` de PERFORMANCE_MAX passou a carregar o bloqueador `pmax_observabilidade_nao_provada` independentemente de `PMAX_FORA_DO_EXECUTOR`. A mutação que remove a ligação mata três testes; o bloqueador sobrevive ao futuro registro do construtor e não atinge Search, Display ou Demand Gen. Continua partial: as seis consultas do kernel PMax ainda não possuem coletor produtivo nem leitura real de asset groups/assets/cobertura.",
-            "2026-09-01 · 2d1895d (sprint/hermes-p04-t07-pmax-real-read-v1): a observabilidade PMax ganhou coletor produtivo e leitura real, somente leitura, na Google Ads API v25. A topologia correta consultou diretamente 13/13 contas acessíveis sem forçar login_customer_id: 12 ficaram vazio_confirmado e uma expôs 12 campanhas PMax; um alvo PAUSED foi escolhido de modo determinístico. As sete famílias retornaram campanha=1, asset groups=4, vínculos=137, assets=123, desempenho por asset group=4, sinais=4 e recomendações de força=vazio_confirmado(0). FieldService e GAQL reais derrubaram campos incompatíveis da v25 e confirmaram asset_group_asset.performance_label como NOT_SUPPORTED_IN_V25; dependência upstream falha não colapsa mais em vazio. Zero mutate. SEGUE PARTIAL: a v12_03 ainda não existe, seis famílias estruturais não cabem no CHECK do ledger v12_01 e não houve persistência/releitura dessas famílias no Supabase oficial."
+      "2026-09-01 · 2d1895d (sprint/hermes-p04-t07-pmax-real-read-v1): a observabilidade PMax ganhou coletor produtivo e leitura real, somente leitura, na Google Ads API v25. A topologia correta consultou diretamente 13/13 contas acessíveis sem forçar login_customer_id: 12 ficaram vazio_confirmado e uma expôs 12 campanhas PMax; um alvo PAUSED foi escolhido de modo determinístico. As sete famílias retornaram campanha=1, asset groups=4, vínculos=137, assets=123, desempenho por asset group=4, sinais=4 e recomendações de força=vazio_confirmado(0). FieldService e GAQL reais derrubaram campos incompatíveis da v25 e confirmaram asset_group_asset.performance_label como NOT_SUPPORTED_IN_V25; dependência upstream falha não colapsa mais em vazio. Zero mutate.",
+      "2026-09-02 · 14f4101 integrado na convergência: a v12_03, rollback, releitura tipada e contrato de canal entraram na linha oficial. O ciclo hermético aplicar→provar→reverter→reaplicar passou 171/171; 463 provas focais Python passaram na árvore convergida. A releitura exige identidade completa, detecta truncamento por limite+1 e só aceita linhagem releitura_do_ledger. SEGUE PARTIAL: a migration v12_03 não foi aplicada no Supabase oficial, nenhuma fotografia PMax real foi persistida/relida ali e PMax continua fora do executor."
           ]
         },
         {
@@ -1945,70 +1946,70 @@
             "P02-T05"
           ]
         },
-        {
-          "id": "P17-T04",
-          "title": "Unificar a fila local e o writer Postgres",
-          "status": "todo",
-          "priority": 3,
-          "proof": "O runtime ativo persiste em fila.db; a v11_03 ainda não possui writer. Segurança do SQLite e segurança do Postgres foram provadas separadamente.",
+  {
+    "id": "P17-T04",
+    "title": "Unificar a fila local e o writer Postgres",
+    "status": "done",
+    "priority": 3,
+    "proof": "6caaece integrado na convergência: uma única porta escolhe SQLite ou Postgres por ambiente; 36 asserções idênticas cobrem os dois depósitos, incluindo claim, lease, heartbeat, idempotência, transições, trilha e recibo. O ciclo v11_03 passou 129/129. A aplicação da v11_03 no Supabase oficial permanece separada em P17-T03 e não reabre o contrato da porta.",
           "acceptance": "Uma única porta escolhe o depósito por ambiente; o mesmo contrato de claim, lease, heartbeat, idempotência, transição e recibo passa nos dois adapters sem dupla verdade.",
           "dependencies": [
             "P17-T03"
           ]
         },
-        {
-          "id": "P17-T05",
-          "title": "Executar imagem e vídeo fora do processo web",
-          "status": "todo",
-          "priority": 3,
-          "proof": "Ambiente local funciona; Vercel/Lambda/Cloudflare falham fechado e nenhum worker remoto foi implantado.",
+  {
+    "id": "P17-T05",
+    "title": "Executar imagem e vídeo fora do processo web",
+    "status": "partial",
+    "priority": 3,
+    "proof": "6caaece integrado na convergência: `python -m app.criativo.bancada.worker` executa imagem em processo separado, sem importar app.main nem abrir porta. Provas em subprocesso cobrem múltiplos workers, claim único, SIGTERM, SIGKILL, lease vencido, retomada e tentativa=2 sem duplicar trabalho. Continua partial: vídeo depende de P17-T07 e o local de execução do worker em produção ainda é decisão externa.",
           "acceptance": "Worker isolado reivindica jobs, renova lease, mede artefato no disco/storage, registra custo e recibo e pode ser interrompido sem perder ou duplicar trabalho.",
           "dependencies": [
             "P17-T04"
           ]
         },
-        {
-          "id": "P17-T06",
-          "title": "Fechar storage remoto e verificação de bytes",
-          "status": "todo",
-          "priority": 4,
-          "proof": "A máquina LOCAL→UPLOADED_UNVERIFIED→VERIFIED_* está provada; bucket, uploader e reconciliação remotos não existem.",
+  {
+    "id": "P17-T06",
+    "title": "Fechar storage remoto e verificação de bytes",
+    "status": "partial",
+    "priority": 4,
+    "proof": "6caaece integrado na convergência: armazenamento_verificado.py implementa a máquina LOCAL→UPLOADED_UNVERIFIED→VERIFIED_OK|VERIFIED_MISMATCH, chave canônica, releitura, bytes e sha256, distinguindo objeto ausente, bucket ausente e falha de rede. Continua partial: bucket, uploader e reconciliação remotos não foram autorizados nem provados.",
           "acceptance": "Objeto usa chave canônica por tenant/job/slot, bytes e sha256 são reconferidos, divergência é terminal e nenhum artefato é apresentado como verificado antes da leitura de volta.",
           "dependencies": [
             "P17-T03",
             "P17-T05"
           ]
         },
-        {
-          "id": "P17-T07",
-          "title": "Tornar o Remotion hermético e decidir licença",
-          "status": "todo",
-          "priority": 5,
-          "proof": "Medição encontrou downloads de 11 famílias e até 15 composições; offline falha duro. Fontes locais são viáveis, mas não foram incorporadas e o custo/licença não foi decidido.",
+  {
+    "id": "P17-T07",
+    "title": "Tornar o Remotion hermético e decidir licença",
+    "status": "partial",
+    "priority": 5,
+    "proof": "6caaece integrou a decisão e o inventário em deploy/creative-worker/REMOTION-HERMETICO.md e docs/architecture/REMOTION-HERMETICO-P17-T07.md. A licença foi confirmada na fonte oficial, mas nenhum render hermético offline reproduziu hash aprovado; fontes/runtime e operação de vídeo continuam pendentes.",
           "acceptance": "Render offline reproduz hash aprovado, não abre conexão externa, carrega somente fontes necessárias e possui decisão de licença registrada antes de faturar vídeo.",
           "dependencies": [
             "P17-T05"
           ]
         },
-        {
-          "id": "P17-T08",
-          "title": "Provar uma peça real por destino com aprovação humana",
-          "status": "todo",
-          "priority": 4,
-          "proof": "Laboratório e fixtures estão integrados; nenhuma peça real atravessou produção, aprovação, biblioteca e destino pelo contrato novo.",
+  {
+    "id": "P17-T08",
+    "title": "Provar uma peça real por destino com aprovação humana",
+    "status": "partial",
+    "priority": 4,
+    "proof": "6caaece integrou contrato de destinos, golden de imagem, procedência e envelopes que atravessam 11 elos até aprovação/biblioteca, com validação por destino. Continua partial: nenhuma peça atravessou storage remoto verificado e publicação real; aprovação humana no Supabase oficial depende de P17-T03/P17-T06.",
           "acceptance": "Uma peça aprovada para Google/Meta ou orgânico possui briefing, versão do motor, seed, hashes, validações, custo, recibo, armazenamento verificado e vínculo ao destino, sem publicação automática.",
           "dependencies": [
             "P17-T05",
             "P17-T06"
           ]
         },
-        {
-          "id": "P17-T09",
-          "title": "Fechar contratos HTTP e ownership da fronteira criativa S0",
-          "status": "partial",
+  {
+    "id": "P17-T09",
+    "title": "Fechar contratos HTTP e ownership da fronteira criativa S0",
+    "status": "done",
           "priority": 1,
           "explanation": "Tornar observável e mutável por prova qualquer divergência nas oito rotas extraídas e impedir que dois pacotes sejam donos do mesmo diretório do worker.",
-          "proof": "Os candidatos 7174f1f/7bf4ecf estão na branch de integração. A revisão aceitou a extração, mas demonstrou que mutações de payload podiam escapar e que P17-T05/P17-T07 sobrepunham ownership.",
+    "proof": "6caaece integrado na convergência fecha os cinco aceites: propriedades externas matam mutações de resposta; retomada/replay têm status e header; ownership de arquivos é único; golden OpenAPI é reproduzível em checkout limpo com diagnóstico por rota; regressão de autenticação escreve apenas em tmp_path. A rodada final também fechou leitura cruzada de jobs/assets/eventos/resumo por identidade e removeu insumo cru da API pública.",
           "acceptance": [
             "Mudar chave, tipo, forma ou conteúdo observável das oito respostas quebra teste",
             "Retomar inicial e replay idempotente possuem status e header comprovados",
@@ -2020,7 +2021,8 @@
             "P17-T02"
           ],
           "evidencia": [
-            "2026-08-30 · eec859e (commit eec859e): oito mutacoes observaveis das respostas da bancada morrem por propriedade externa. Aceite 1 PROVADO: mudar chave, tipo, forma ou conteudo observavel quebra o teste; os oraculos passaram a ser goldens _GoldenHTTP congelados, com bytes serializados e headers fixos, capturados do baseline e independentes de qualquer helper que replique a rota; a mutacao e aplicada no handler de producao ANTES da requisicao. Aceite 2 PROVADO: retomada inicial e replay idempotente com status e header X-Criativo-Idempotente comprovados. O contrato de headers virou allowlist fechada, que matou a ultima mutacao sobrevivente — adicionar Cache-Control: public, max-age=3600 a uma leitura autenticada. Gates: focal 255 passed; backend completo 1619 passed, 53 skipped. Revisores: Codex gpt-5.6-sol accept, Gemini 3.7 Flash accept. PENDENTE: aceites 3 (um owner por caminho por instante), 4 (golden OpenAPI reproduzivel em checkout limpo) e 5 (regressao de autenticacao nao escreve fora de diretorio temporario) nao foram exercitados."
+            "2026-08-30 · eec859e (commit eec859e): oito mutacoes observaveis das respostas da bancada morrem por propriedade externa. Aceite 1 PROVADO: mudar chave, tipo, forma ou conteudo observavel quebra o teste; os oraculos passaram a ser goldens _GoldenHTTP congelados, com bytes serializados e headers fixos, capturados do baseline e independentes de qualquer helper que replique a rota; a mutacao e aplicada no handler de producao ANTES da requisicao. Aceite 2 PROVADO: retomada inicial e replay idempotente com status e header X-Criativo-Idempotente comprovados. O contrato de headers virou allowlist fechada, que matou a ultima mutacao sobrevivente — adicionar Cache-Control: public, max-age=3600 a uma leitura autenticada. Gates: focal 255 passed; backend completo 1619 passed, 53 skipped. Revisores: Codex gpt-5.6-sol accept, Gemini 3.7 Flash accept. Esta era a medição histórica antes dos aceites 3–5.",
+            "2026-09-02 · 6caaece integrado na convergência: aceites 3, 4 e 5 provados por ownership sem sobreposição, golden OpenAPI reproduzível com diagnóstico útil e regressão de autenticação confinada a tmp_path. A revisão final fechou ainda vazamento entre identidades em jobs, assets, eventos e resumo, e sanitizou o insumo público sem alterar idempotência. P17-T09 passa a done; isso não promove a fábrica inteira, que continua limitada por P17-T03 e P17-T05–T08."
           ]
         }
       ]

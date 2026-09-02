@@ -1027,8 +1027,8 @@ decisão ser tomada em separado.
 |---|---|---|
 | `v11_03_execucao_criativa.sql` | **não aplicada** | cluster descartável, ciclo completo |
 | `v11_03_rollback.sql` | **não executada em produção** | idem, executada a cada rodada |
-| `scripts/provas-v11_03.sql` | — | 42 provas de comportamento |
-| `scripts/provar-ciclo-v11_03.sh` | — | **53 provas, 0 falhas** |
+| `scripts/provas-v11_03.sql` | — | comportamento incluído no ciclo completo |
+| `scripts/provar-ciclo-v11_03.sh` | — | **129 provas, 0 falhas** |
 
 ### O que ela persiste
 

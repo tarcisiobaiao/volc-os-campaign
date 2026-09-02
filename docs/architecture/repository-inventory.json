@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T23:01:01-03:00",
+  "generated_at": "2026-09-01T23:28:39-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 506,
-    "markdown": 343,
-    "sql": 163,
-    "tracked": 506,
+    "files": 519,
+    "markdown": 353,
+    "sql": 166,
+    "tracked": 519,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 23,
-      "documentation": 201,
+      "documentation": 211,
       "generated": 2,
       "module-guide": 32,
       "product-document": 21,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 50,
+      "sql-needs-review": 53,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 102,
+      "high": 105,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -406,6 +406,18 @@
       "bytes": 408,
       "lines": 9,
       "sha256": "208b24edff2ce10474412803be2babe61ef61c8b8c9f7fd6d4dc2c596e780692",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "deploy/creative-worker/REMOTION-HERMETICO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 8199,
+      "lines": 154,
+      "sha256": "360523115383cf6eefff9663c324a5714b398ce4068721a669171f84bd4384db",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -843,6 +855,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/GOLDEN-IMAGEM-P17-T08.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 14864,
+      "lines": 277,
+      "sha256": "5cccc689f50de4c06b27ee41b545440528024b7bf56d87ab73951d8be293b7b3",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/HANDOFF-CLAUDE-U0-H0.md",
       "extension": ".md",
       "classification": "documentation",
@@ -927,6 +951,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/OPENAPI-CRIATIVOS-BANCADA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4661,
+      "lines": 101,
+      "sha256": "29e6b5f02d382c37ac3992b41899fb51959a3bd7910bbf8cccc73640f0a22538",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/ORAKUL-PREDICTIVE-CORE-V1.md",
       "extension": ".md",
       "classification": "documentation",
@@ -999,6 +1035,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/REMOTION-HERMETICO-P17-T07.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 25080,
+      "lines": 463,
+      "sha256": "7c8e71f79cf8c078d9701af40b16289348279ad4bc7b665508d52427ba7cfd66",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1027,9 +1075,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 19678,
-      "lines": 273,
-      "sha256": "f5cfc89e941829355fdb7876fb1bdaab06486fa0e03698c24c82edec3ea23d92",
+      "bytes": 19792,
+      "lines": 274,
+      "sha256": "0bfbf996c76fa0cdebf50557b3a71b436f18ffc971385b12e4cd48ef55735eba",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1114,6 +1162,30 @@
       "bytes": 10756,
       "lines": 201,
       "sha256": "826000861fb4d54173dfc7040cb27952eebdb34ee8c983c956f0fc86e61a449e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/STORAGE-VERIFICADO-P17-T06.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 12026,
+      "lines": 258,
+      "sha256": "f10bca4dfb9798b921eabaf426daae9ee99dd86dd59e2b04d1fa20b709bfff50",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/UI-ESTADOS-HONESTOS-P17.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 12662,
+      "lines": 208,
+      "sha256": "3d9a306d42afee830727982c2b2e966e26e618c2f1f06a10d2dc0616a39b18aa",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1671,6 +1743,42 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/creative-factory-production-spine-v1/AUTORIZACAO-EXTERNA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6611,
+      "lines": 143,
+      "sha256": "67911a0b6eee37ed6f440b354d3edabaebc55efeda687d4a910baea8cce67817",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/creative-factory-production-spine-v1/PREFLIGHT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2844,
+      "lines": 54,
+      "sha256": "4bc1d9d5b98e40024052d1ef54b4f7c2fe19d4beb48e12a479075187c9456541",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/creative-factory-production-spine-v1/RELATORIO-DE-ENTREGA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 16490,
+      "lines": 306,
+      "sha256": "534344859c7a33bd84f3c1101a80a084973ec4b151d22683d4de5894c2e14a67",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/fable-global-v1/ADDENDUM-V1.1.md",
       "extension": ".md",
       "classification": "documentation",
@@ -2146,6 +2254,18 @@
       "bytes": 1100,
       "lines": 22,
       "sha256": "6e0622060e7b7e7db33d5060020e076dc422557b760eb4736f708e3be45829dc",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/hermes-p04-t07-pmax-ledger-v12-03-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4025,
+      "lines": 79,
+      "sha256": "8bdf5467b373d51caf6d0e3023032d4b0f3c8d16cd467b356257a63a14d5687d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3697,6 +3817,18 @@
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
+    },
+    {
+      "path": "scripts/provar-google-inteligencia-v12_03.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 17379,
+      "lines": 408,
+      "sha256": "a0f350b5d14bb3cb204d5fe8a9c7e8bc5b06b82b71d264ddf1ad7375d311a4d2",
+      "graph_nodes": 6,
+      "graph_degree": 12,
+      "sql_risk": "high"
     },
     {
       "path": "scripts/provas-papeis-v11_03.sql",
@@ -5347,9 +5479,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 68956,
+      "bytes": 68972,
       "lines": 1222,
-      "sha256": "0da45ade141895dad3cd8172f23a8db20c95633333d82423c22444e19ed1aab5",
+      "sha256": "594fc989829a0d15827c38cbad7afac738e2905129b8dd00ff3cc8eb93b5584a",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5566,6 +5698,30 @@
       "bytes": 4042,
       "lines": 92,
       "sha256": "f95da19eef129570432d5b226707893a5ecaa319b4cccc37f492e7cb94b5b79d",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v12_03_pmax_observability_ledger.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4978,
+      "lines": 117,
+      "sha256": "f31dd1daf921de5c172f4a7d383476598c464181c4020a18f2d9d7289d6769c6",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v12_03_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3433,
+      "lines": 93,
+      "sha256": "e92d0d794c5ffe9349854bb10632d8af04031163a4088bc8a8269adbc647e607",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"

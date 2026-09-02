@@ -328,7 +328,7 @@
       "cluster": "production",
       "state": "partial",
       "summary": "Executa trabalhos tipados de imagem e vídeo com reivindicação, lease, retomada, cancelamento, validação, artefato e recibo sem acoplar a fábrica ao processo web.",
-      "evidence": "A convergência 4da6a26 integrou o Template Lab e a bancada local: 234 provas backend, 226 provas frontend e ciclo v11_03 com 129/129. O runtime ativo ainda usa SQLite local; v11_03 não foi aplicada no Supabase oficial, não há writer Postgres, worker remoto nem storage remoto verificado."
+      "evidence": "A convergência de 02/09/2026 integrou 6caaece: uma única porta escolhe SQLite ou Postgres, 36 asserções idênticas cobrem os dois depósitos e o ciclo v11_03 passou 129/129. Um worker de imagem em processo próprio foi provado com múltiplos workers, SIGTERM, SIGKILL, lease vencido e retomada sem duplicação. Continua partial: v11_03 não foi aplicada no Supabase oficial, vídeo depende do Remotion hermético e não há worker/bucket remoto operando."
     }
   ],
   "concepts": [
@@ -786,7 +786,7 @@
       "cluster": "production",
       "state": "partial",
       "summary": "Envelope versionado de briefing, brand pack, assets, destinos, variantes, gates, custo, aprovação e vínculo com campanha ou publicação.",
-      "evidence": "O núcleo Asset/Procedencia/Exigencia/Violacao/Falha/Lote e a porta MotorDeCriativo foram implementados em volc_ads/criativo no commit 6eed77f. Briefing, brand pack, gates PRENSA, aprovação humana e vínculo posterior ainda não fecham o envelope completo."
+      "evidence": "O núcleo Asset/Procedencia/Exigencia/Violacao/Falha/Lote e a porta MotorDeCriativo nasceram em 6eed77f. Em 6caaece entraram contrato por destino, golden de imagem, ownership HTTP, procedência pública sanitizada e envelopes que atravessam 11 elos até aprovação/biblioteca. Continua partial: onze campos do recibo ainda não têm produtor completo, vídeo não foi provado e storage/publicação reais permanecem fora da integração."
     },
     {
       "id": "concept:deterministic-creative-render",
@@ -906,7 +906,7 @@
       "cluster": "production",
       "state": "partial",
       "summary": "O único lugar que conhece os dois lados: valida o lote pela régua do canal antes de existir payload, reconfere o sha256 dos bytes contra o hash declarado, e projeta a procedência numa linhagem que viaja até o recibo. Nenhum dos dois pacotes importa o outro.",
-      "evidence": "volc_ads/criativo_ponte.py em db39f0b, com testes próprios em volc_ads/testes_criativo_ponte.py. Ela existe porque criativo/__init__.py e campanha/brief.py declaram, cada um, que não importam o outro — logo quem conhece os dois não pode ser nenhum dos dois; é o mesmo lugar que volc_ads/pautador_ponte.py ocupa do lado da mineração. Lote reprovado NÃO produz `ImagensDisplay`: a garantia de que lote inválido não avança é estrutural, não disciplinar. Um papel obrigatório que esvazia por falta de BYTES derruba a entrega separadamente, porque `validar_lote` julga assets e não sabe se os arquivos estão em mãos. Fica `partial` por dois motivos nomeados: nenhum caminho HTTP a alcança — `ProvarEntrada` não tem campo de imagem — e nenhum módulo de produção a importa; o consumidor é o CLI `python -m volc_ads.criativo_ponte`, offline, que não importa `gads`."
+      "evidence": "volc_ads/criativo_ponte.py em db39f0b valida antes do payload, e 6caaece acrescenta destinos tipados, goldens e procedência sanitizada sem acoplar os pacotes. Lote reprovado não produz ImagensDisplay; hash, MIME e dimensão são reconferidos contra os bytes. Fica partial porque o contrato HTTP de lançamento ainda não recebe a imagem por essa fronteira e nenhuma peça atravessou publicação real."
     },
     {
       "id": "concept:asset_lineage",
@@ -1066,7 +1066,7 @@
       "cluster": "acquisition",
       "state": "partial",
       "summary": "Leitura de asset groups, cobertura e qualidade de assets, resultados e riscos de PMax antes de liberar criação ou atuação.",
-      "evidence": "O kernel, o portão independente `pmax_observabilidade_nao_provada` e o coletor produtivo existem. Em 2d1895d, uma leitura real somente leitura na Google Ads API v25 corrigiu a topologia de login, consultou 13/13 contas acessíveis, encontrou 12 campanhas PMax em uma conta e escolheu um alvo PAUSED. As sete famílias foram medidas separadamente: campanha=1, asset groups=4, vínculos=137, assets=123, desempenho=4, sinais=4 e recomendações de força=vazio_confirmado(0). FieldService + GAQL removeram campos incompatíveis e adjudicaram `asset_group_asset.performance_label` como NOT_SUPPORTED_IN_V25. Continua partial: a v12_03 ainda não amplia o CHECK do ledger v12_01 para seis famílias estruturais, portanto não há fotografia PMax completa persistida e relida no Supabase oficial; o portão permanece fechado por evidência, não por ausência de código."
+      "evidence": "O kernel, o portão independente e o coletor produtivo existem. Em 2d1895d, leitura real v25 consultou 13/13 contas, encontrou 12 campanhas PMax e mediu sete famílias separadamente; FieldService + GAQL removeram campos incompatíveis e confirmaram performance_label como NOT_SUPPORTED_IN_V25. Em 14f4101, integrado em 02/09/2026, entraram v12_03, persistência e releitura com identidade completa e detecção de truncamento; o ciclo hermético passou 171/171. Continua partial porque v12_03 não foi aplicada no Supabase oficial, nenhuma fotografia real foi persistida/relida e o portão permanece fechado."
     },
     {
       "id": "system:google-ads-monitor-reference",
@@ -1346,7 +1346,7 @@
       "cluster": "governance",
       "state": "partial",
       "summary": "Prova append-only que liga intenção, reivindicação, executor, artefato, validação, custo e desfecho sem permitir que um resultado concluído seja reescrito.",
-      "evidence": "A bancada local e a migration v11_03 barram troca de dono e forja do recibo em provas adversariais. A garantia produtiva permanece parcial porque o runtime SQLite e o schema Postgres ainda são duas implementações separadas e v11_03 não está aplicada."
+      "evidence": "A bancada local e a migration v11_03 barram troca de dono e forja do recibo em provas adversariais. Em 6caaece, uma porta única e 36 asserções idênticas fecharam a divergência entre SQLite e Postgres; worker de imagem, lease e retomada também foram provados. A garantia produtiva permanece partial porque v11_03 não está aplicada no Supabase oficial, vídeo e storage remoto seguem abertos e onze campos do recibo ainda não possuem produtor completo."
     },
     {
       "id": "concept:asset-provenance",
@@ -1370,7 +1370,7 @@
       "cluster": "production",
       "state": "partial",
       "summary": "Move um artefato de local para enviado e verificado, preservando chave canônica, bytes e hash e tornando divergência terminal.",
-      "evidence": "A máquina LOCAL → UPLOADED_UNVERIFIED → VERIFIED_OK|VERIFIED_MISMATCH possui 17 provas negativas. Bucket, uploader e reconciliação remotos ainda não existem."
+      "evidence": "Em 6caaece, armazenamento_verificado.py implementa e prova LOCAL → UPLOADED_UNVERIFIED → VERIFIED_OK|VERIFIED_MISMATCH com chave canônica, releitura, bytes e sha256; objeto ausente, bucket ausente e falha de rede não colapsam no mesmo estado. Continua partial: bucket, uploader e reconciliação remotos não foram autorizados nem provados."
     },
     {
       "id": "risk:remotion-network-fonts",
@@ -1804,7 +1804,7 @@
       "cluster": "production",
       "documenta": "cap_bancada_criativa",
       "summary": "Separa o que está integrado localmente do que ainda depende de Postgres, worker, storage e render hermético.",
-      "evidence": "docs/architecture/HANDOFF-CURADORIA-ESTUDIO-CRIATIVO.md e commits integrados até 4da6a26."
+      "evidence": "docs/architecture/HANDOFF-CURADORIA-BANCADA-10-13-15-16.md, docs/closure/creative-factory-production-spine-v1/RELATORIO-DE-ENTREGA.md e commits integrados até 6caaece."
     }
   ],
   "edges": [
