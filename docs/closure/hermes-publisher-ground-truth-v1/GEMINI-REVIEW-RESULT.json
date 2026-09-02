@@ -1,0 +1,18 @@
+{
+  "blocking_findings": [],
+  "model": "gemini-3.7-flash",
+  "non_blocking_notes": [
+    "Static regex inspection of inline <script> tags for dataLayer.push and googletag.defineSlot is limited to literal syntax patterns and will not detect dynamically generated slots or pushes executed in external script bundles.",
+    "Slot space reservation detection via inline style min-height extraction does not resolve external or class-based CSS stylesheets; this is an acceptable heuristic limitation for static HTML artifact scanning."
+  ],
+  "official_sources_used": [
+    "https://developers.google.com/publisher-tag/guides/get-started",
+    "https://developers.google.com/publisher-tag/guides/control-ad-loading",
+    "https://developers.google.com/publisher-tag/guides/minimize-layout-shift",
+    "https://developers.google.com/tag-platform/tag-manager/datalayer",
+    "https://web.dev/articles/vitals",
+    "https://support.google.com/analytics/answer/9267744",
+    "https://developers.google.com/analytics/devguides/collection/ga4/event-parameters"
+  ],
+  "verdict": "pass"
+}
