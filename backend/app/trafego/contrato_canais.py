@@ -1250,6 +1250,15 @@ CANARIO_PRIMARY_STATUS = "PAUSED"
 #: Google ainda não decidiu. Pintá-lo de verde afirmaria uma aprovação que não
 #: houve; pintá-lo de vermelho afirmaria uma reprovação que também não houve. É
 #: o terceiro estado, e ele precisa aparecer com esse nome.
+#: ⚠️ ERA UMA LISTA DE DUAS RAZÕES, E A SEGUNDA DEIXOU DE SER VERDADE.
+#:
+#: Em 01/09 a conta respondia `['CAMPAIGN_PAUSED', 'MOST_ADS_UNDER_REVIEW']`.
+#: Em 02/09, relida, ela responde `['CAMPAIGN_PAUSED']` — uma só. O veredito
+#: que o canário existia para colher CHEGOU, e a constante continuava
+#: anunciando que ele não tinha chegado. Um retrato congelado apresentado como
+#: o estado de agora é a mesma classe de defeito que esta missão persegue nas
+#: telas: configuração contradizendo observação — só que aqui a configuração
+#: era uma observação VELHA, que é pior, porque parece medição.
 CANARIO_RAZOES_DO_ESTADO: Tuple[Dict[str, str], ...] = (
     {
         "codigo": "CAMPAIGN_PAUSED",
@@ -1258,20 +1267,34 @@ CANARIO_RAZOES_DO_ESTADO: Tuple[Dict[str, str], ...] = (
                   "autorizada cria pausada e nada além — pausada ela não entra "
                   "em leilão, não veicula e não gasta."),
     },
-    {
-        "codigo": "MOST_ADS_UNDER_REVIEW",
-        "natureza": "em_revisao",
-        "texto": ("a maior parte dos anúncios ainda está em revisão pelo "
-                  "Google. Isto não é aprovação nem reprovação: é o veredito "
-                  "que o canário existe para colher, e ele ainda não chegou."),
-    },
 )
+
+#: O veredito de política POR ANÚNCIO, que é o que o canário existia para colher.
+#:
+#: Lido em 02/09/2026 por GAQL read-only, com a trava de escrita conferida
+#: fechada antes da chamada:
+#:   SELECT ad_group_ad.ad.id, ad_group_ad.status,
+#:          ad_group_ad.policy_summary.approval_status,
+#:          ad_group_ad.policy_summary.review_status
+#:     FROM ad_group_ad WHERE campaign.id = 24195821946
+#: → 1 linha: status=ENABLED approval=APPROVED review=REVIEWED
+#:
+#: ⚠️ `em_revisao` continua existindo no vocabulário — o que mudou é que ele
+#: deixou de ser o estado DESTE canário. O próximo nasce em revisão de novo.
+CANARIO_ANUNCIOS_VEREDITO = "APPROVED"
+CANARIO_ANUNCIOS_REVISAO = "REVIEWED"
 
 #: A leitura acima foi feita neste dia. Ela envelhece, e a tela precisa poder
 #: dizer isso em vez de apresentá-la como o estado de agora.
-CANARIO_OBSERVADO_EM = "2026-09-01"
+CANARIO_OBSERVADO_EM = "2026-09-02"
 
 #: O bloqueio de ativação que sai da leitura de campo, e não de uma regra.
+#:
+#: ⚠️ ELE NÃO É MAIS ARMADO INCONDICIONALMENTE. Enquanto era, ele bloqueava
+#: hoje por um fato de ontem: os anúncios foram APROVADOS, e o bloqueio seguia
+#: dizendo que estavam em revisão. Bloqueio que envelhece em silêncio treina
+#: gente a ignorar bloqueio — e o comentário de `_bloqueios_medidos` já dizia
+#: exatamente isso sobre o bloqueio de meta, sem valer para este.
 BLOQUEIO_ANUNCIOS_EM_REVISAO = Bloqueador(
     codigo="anuncios_em_revisao",
     causa=(
@@ -1282,6 +1305,21 @@ BLOQUEIO_ANUNCIOS_EM_REVISAO = Bloqueador(
     observado_em=CANARIO_OBSERVADO_EM,
     revalidacao="o veredito por anúncio é lido pela consulta de política",
 )
+
+
+def _dias_desde(data_iso: str) -> Optional[int]:
+    """Quantos dias tem a observação. `None` quando a data não é legível.
+
+    ⚠️ `None` nunca vira 0. "Não sei quantos dias" e "foi hoje" são coisas
+    diferentes, e um 0 no lugar do desconhecido faria a tela apresentar um
+    retrato antigo como recém-lido.
+    """
+    from datetime import date  # noqa: PLC0415
+    try:
+        quando = date.fromisoformat(str(data_iso).strip())
+    except (TypeError, ValueError):
+        return None
+    return max(0, (date.today() - quando).days)
 
 
 def leitura_de_campo_do_canario() -> Dict[str, Any]:
@@ -1301,6 +1339,21 @@ def leitura_de_campo_do_canario() -> Dict[str, Any]:
         },
         "primary_status": CANARIO_PRIMARY_STATUS,
         "primary_status_reasons": [dict(r) for r in CANARIO_RAZOES_DO_ESTADO],
+        "anuncios": {
+            "approval_status": CANARIO_ANUNCIOS_VEREDITO,
+            "review_status": CANARIO_ANUNCIOS_REVISAO,
+            "por_que_importa": (
+                "é o veredito que o canário existe para colher. Aprovado "
+                "significa que o Google aceitou o anúncio — e não que a "
+                "campanha pode ser ligada, que depende de medição."),
+        },
+        # ⚠️ A IDADE É PARTE DA LEITURA, e não um detalhe de apresentação.
+        # Sem ela, um retrato de semanas atrás chega à tela com a mesma cara de
+        # um lido agora, e quem olha não tem como saber a diferença. O contrato
+        # já dizia "ela envelhece, e a tela precisa poder dizer isso" — e não
+        # dava à tela nada com que dizer.
+        "dias_desde_a_observacao": _dias_desde(CANARIO_OBSERVADO_EM),
+        "e_retrato": True,
     }
 
 
@@ -1521,16 +1574,21 @@ def _bloqueios_medidos(canal: str, medicao: Mensuracao) -> Tuple[Bloqueador, ...
     # está resolvida, o bloqueio medido sai. Ele descreve um instante, não uma
     # lei — e mantê-lo depois de a leitura discordar seria justamente o
     # bloqueio que envelhece em silêncio.
+    # ⚠️ O bloqueio de revisão sai da LEITURA, e a leitura mudou. Enquanto ele
+    # era incondicional, bloqueava hoje por um fato de ontem: em 02/09 o
+    # anúncio está APPROVED/REVIEWED, e o bloqueio seguia dizendo "em revisão".
+    # A revisão dos anúncios continua sendo um bloqueio INDEPENDENTE da meta —
+    # é só que, neste canário, ele já foi resolvido pelo Google.
+    em_revisao = (
+        (BLOQUEIO_ANUNCIOS_EM_REVISAO,)
+        if CANARIO_ANUNCIOS_VEREDITO != "APPROVED"
+        else ()
+    )
     if medicao.lida and medicao.conversion_goal_status == pr.PRONTO:
-        # ⚠️ A revisão dos anúncios NÃO sai junto com a meta. São bloqueios
-        # independentes, e fechar um não abre o portão — foi por isso que eles
-        # nasceram nomeados em vez de a primeira razão encerrar a lista.
-        return (BLOQUEIO_ANUNCIOS_EM_REVISAO,)
+        return em_revisao
     if medicao.lida and medicao.conversion_goal_status == pr.PARCIAL:
-        return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA,
-                BLOQUEIO_ANUNCIOS_EM_REVISAO)
-    return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA,
-            BLOQUEIO_ANUNCIOS_EM_REVISAO)
+        return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA) + em_revisao
+    return (BLOQUEIO_META_EFETIVA, BLOQUEIO_META_NAO_EFETIVA) + em_revisao
 
 
 #: O código do bloqueio de observabilidade de Performance Max na CRIAÇÃO.
