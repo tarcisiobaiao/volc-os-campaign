@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from app.asset_vault import dominio as dom
+from app.asset_vault import prontidao as pron
 
 
 class CofreIndisponivel(RuntimeError):
@@ -176,15 +177,31 @@ class CasosDeUso:
             # Nao e uma promessa de que o componente existe: e o nome do que
             # PRECISA existir. Os tres estao em `todo` no Roadmap, e dizer isso
             # aqui evita que alguem chame uma rota que nao nasceu.
-            "proximo_componente": {
-                "producao_criativa": {"tarefa": "P17", "estado": "fora desta missao"},
-                "broker_de_acesso": {"tarefa": "P03-T11", "estado": "todo"},
-                "porta_de_publicacao": {"tarefa": "P12-T09", "estado": "todo"},
-                "qa_visual": {"tarefa": "P12-T11", "estado": "todo"},
-            },
+            #
+            # ⚠️ A lista mora em `prontidao.COMPONENTES_SEGUINTES` porque as duas
+            # rotas a publicam. Duas copias divergiriam, e a divergencia
+            # apareceria como uma rota afirmando que o broker existe enquanto a
+            # outra afirma que nao.
+            "proximo_componente": pron.COMPONENTES_SEGUINTES,
             "pronto_para_handoff": not bloqueios,
             "bloqueios": bloqueios,
         }
+
+    async def prontidao(self, ativo_id: str) -> dict[str, Any]:
+        """As nove respostas de operacao — oito perguntas e os bloqueios — pelo REGISTRO.
+
+        Diferenca de fronteira com `handoff`, e ela importa: `handoff` fala com
+        o proximo componente, `prontidao` fala com quem opera. Nenhuma das duas
+        executa — nem cria job, nem abre navegador, nem publica.
+
+        ⚠️ Esta rota NAO sonda o AdsPower e NAO resolve `op://`. A Local API
+        escuta em loopback no host isolado, fora do alcance desta API; as duas
+        perguntas que so a sonda responde saem como `desconhecido`, com a
+        procedencia dizendo de quem a resposta viria.
+        """
+        detalhe = await self.detalhe(ativo_id)
+        engines = await self._repo.engines()
+        return pron.avaliar(detalhe, engines, sonda=None)
 
     # ── escrita ──────────────────────────────────────────────────────────────
 

@@ -369,6 +369,29 @@ async def handoff(ativo_id: str, casos: Casos) -> dict[str, Any]:
         raise _traduzir(exc) from exc
 
 
+@router.get("/ativos/{ativo_id}/prontidao")
+async def prontidao(ativo_id: str, casos: Casos) -> dict[str, Any]:
+    """As nove respostas de operacao sobre um ativo — e nada que publique.
+
+    Responde: qual e a pagina de destino, quem responde por ela, o que esta
+    relacionado, qual perfil de navegador a autentica, ONDE a credencial mora
+    (provider e nome logico, jamais o endereco), se a referencia ja foi
+    resolvida alguma vez, se o perfil esta disponivel, se uma peca aprovada
+    pode ser roteada para ca, e qual bloqueio impede a publicacao.
+
+    ⚠️ Duas dessas perguntas so tem resposta ao vivo, e esta API nao alcanca o
+    host isolado. Elas voltam como `desconhecido`, com `procedencia` dizendo
+    que a resposta viria do broker (P03-T11) — nunca como um `nao` inventado.
+
+    `publica: false` esta no corpo de proposito: publicacao continua sendo um
+    ato separado e explicito, e nenhuma leitura do Cofre a dispara.
+    """
+    try:
+        return await casos.prontidao(ativo_id)
+    except Exception as exc:  # noqa: BLE001
+        raise _traduzir(exc) from exc
+
+
 @router.get("/engines")
 async def listar_engines(casos: Casos) -> dict[str, Any]:
     """A ponte para producao criativa: quem existe, o que produz, para onde.
