@@ -177,6 +177,11 @@ CREATE TABLE public.trafego_coleta_execucao (
       (resultado = 'ok' AND motivo IS NULL)
       OR (resultado IN ('parcial', 'falhou') AND btrim(coalesce(motivo, '')) <> '')
     ),
+  CONSTRAINT trafego_coleta_execucao_ok_sem_recusa
+    CHECK (
+      resultado <> 'ok'
+      OR (linhas_rejeitadas = 0 AND jsonb_array_length(contas_recusadas) = 0)
+    ),
   -- 'falhou' e "nada aproveitavel". Se alguma linha entrou, o desfecho honesto
   -- e 'parcial' — e a linha verde continua verde (contraprova 8).
   CONSTRAINT trafego_coleta_execucao_falha_sem_linha
@@ -687,9 +692,10 @@ BEGIN
 
     -- Duplicata dentro do proprio lote e defeito de paginacao, nao dado.
     IF (SELECT count(*) FROM jsonb_array_elements(v_linhas) x)
-       <> (SELECT count(DISTINCT (x->>'customer_id') || '|' || (x->>'campaign_id')
-                                 || '|' || (x->>'metric_date')
-                                 || '|' || coalesce((x->'segmentos')::text, '{}'))
+       <> (SELECT count(DISTINCT coalesce(x->>'customer_id', '') || '|'
+                                 || coalesce(x->>'campaign_id', '') || '|'
+                                 || coalesce(x->>'metric_date', '') || '|'
+                                 || coalesce((x->'segmentos')::text, '{}'))
              FROM jsonb_array_elements(v_linhas) x) THEN
       RAISE EXCEPTION USING ERRCODE = '22023',
         MESSAGE = 'LINHAS_DUPLICADAS_NO_LOTE: a mesma chave de fato aparece duas vezes no lote';
@@ -867,14 +873,25 @@ BEGIN
       v_aceitas := v_aceitas + 1;
     END LOOP;
 
-    -- projecao: fault-isolated, com desfecho nomeado no recibo
-    v_projetar := coalesce((documento->>'projetar_compat')::boolean, true);
+    -- projecao: fault-isolated, com desfecho nomeado no recibo.
+    -- Default fechado: o workflow novo pede explicitamente `true`, mas um
+    -- documento manual incompleto não projeta por acidente.
+    v_projetar := coalesce((documento->>'projetar_compat')::boolean, false);
+    IF v_rejeitadas > 0 AND v_resultado = 'ok' THEN
+      v_resultado := CASE WHEN v_aceitas > 0 OR v_preteridas > 0 THEN 'parcial' ELSE 'falhou' END;
+      IF v_resultado = 'parcial' THEN
+        documento := jsonb_set(documento, '{motivo}', to_jsonb((v_rejeitadas::text || ' linhas rejeitadas pela RPC')::text), true);
+      ELSE
+        documento := jsonb_set(documento, '{motivo}', to_jsonb('todas as linhas foram rejeitadas pela RPC'::text), true);
+      END IF;
+    END IF;
+
     IF v_projetar AND v_aceitas > 0 THEN
       SELECT p.linhas, p.estado, p.erro_codigo
         INTO v_proj_linhas, v_proj_estado, v_proj_erro
         FROM public.volc_gads_projetar_daily_compat(v_exec_id) p;
     ELSIF v_projetar THEN
-      v_proj_estado := 'aplicada';
+      v_proj_estado := 'nao_solicitada';
       v_proj_linhas := 0;
     END IF;
 

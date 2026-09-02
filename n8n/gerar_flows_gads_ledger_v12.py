@@ -658,6 +658,7 @@ JS_CLASSIFICAR_ERRO = r"""
 const ctx = $input.first().json || {};
 const bruto = ctx;
 
+const erroComoTexto = bruto.error === null || bruto.error === undefined ? '' : String(bruto.error);
 const alvo = bruto.error && typeof bruto.error === 'object' ? bruto.error : bruto;
 let codigo = null;
 for (const chave of ['httpCode', 'status', 'statusCode', 'code']) {
@@ -668,7 +669,7 @@ for (const chave of ['httpCode', 'status', 'statusCode', 'code']) {
   }
 }
 if (codigo === null) {
-  const m = String(alvo.message || '').match(/\b(4[0-9]{2}|5[0-9]{2})\b/);
+  const m = `${String(alvo.message || '')} ${erroComoTexto}`.match(/\b(4[0-9]{2}|5[0-9]{2})\b/);
   if (m) codigo = Number(m[1]);
 }
 
@@ -759,15 +760,18 @@ for (const it of itens) {
 // Uma falha de conta nao pode virar vazio nem sumir. Ela decide o desfecho.
 let resultado;
 let motivo = null;
-if (contasRecusadas.length === 0) {
+if (contasRecusadas.length === 0 && rejeitadas === 0) {
   resultado = 'ok';
-} else if (contasAceitas.length > 0) {
+} else if (contasRecusadas.length === 0) {
+  resultado = aceitas > 0 ? 'parcial' : 'falhou';
+  motivo = `${rejeitadas} linhas rejeitadas semanticamente; nenhuma recusa pode virar ok`;
+} else if (contasAceitas.length > 0 || aceitas > 0) {
   resultado = 'parcial';
-  motivo = `${contasRecusadas.length} de ${itens.length} contas falharam: `
+  motivo = `${contasRecusadas.length} de ${itens.length} contas falharam; ${rejeitadas} linhas rejeitadas: `
     + contasRecusadas.map((c) => `${c.customer_id}/${c.classe}`).join(', ');
 } else {
   resultado = 'falhou';
-  motivo = `todas as ${contasRecusadas.length} contas falharam: `
+  motivo = `todas as ${contasRecusadas.length} contas falharam; ${rejeitadas} linhas rejeitadas: `
     + contasRecusadas.map((c) => `${c.customer_id}/${c.classe}`).join(', ');
 }
 
@@ -1000,7 +1004,8 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 {"name": "Accept", "value": "application/json"},
             ]},
             "options": {"timeout": 30000, "response": {"response": {"neverError": False}}},
-        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000),
+        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000,
+            alwaysOutputData=True),
         _code("Selecionar contas", [220, -20], JS_SELECIONAR_CONTAS),
         _no("Campanhas conhecidas", "n8n-nodes-base.httpRequest", 4.2, [440, -20], {
             "url": "={{ $json.url_campanhas }}",
@@ -1011,7 +1016,8 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 {"name": "Accept", "value": "application/json"},
             ]},
             "options": {"timeout": 60000, "response": {"response": {"neverError": False}}},
-        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000),
+        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000,
+            alwaysOutputData=True),
         _code("Identidade VOLC por conta", [660, -20], JS_MAPA_IDENTIDADE),
         # ⚠️ batchSize 1: ver o comentario de "Pagina: preparar pedido".
         _no("Lote de contas", "n8n-nodes-base.splitInBatches", 3, [880, -20],
@@ -1026,8 +1032,9 @@ def construir(papel: str, contrato_sha: str) -> dict:
             "headerParameters": {"parameters": [
                 {"name": "Content-Type", "value": "application/json"},
                 {"name": "Accept", "value": "application/json"},
-                # ⚠️ Segredo NUNCA literal: sai da credencial em tempo de execucao.
-                {"name": "developer-token", "value": "={{ $credentials.developerToken }}"},
+                # ⚠️ OAuth e developer-token saem da credencial Google Ads.
+                # n8n não expõe $credentials em expressões de workflow; portanto
+                # o JSON nunca tenta ler segredo para montar header manual.
                 {"name": "login-customer-id", "value": "={{ $json.login_customer_id }}"},
             ]},
             "sendBody": True,

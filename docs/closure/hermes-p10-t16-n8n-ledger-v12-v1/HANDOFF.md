@@ -75,7 +75,7 @@ a única descrição de como os fluxos antigos foram corrigidos em 28/08.
 | `scripts/simular_gads_ledger_v12.mjs` | **NOVO.** Executa o JavaScript real num `vm`, relógio injetado, zero rede |
 | `scripts/gate_agenda_unica_gads.py` | **NOVO.** systemd desta máquina + artefatos capazes de agendar + inventário vivo |
 | `backend/tests/test_gads_workflows_n8n.py` | **NOVO.** 18 contraprovas; roda os gates dentro da suíte |
-| `docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/**` | ADR, autorização, matriz, gates, handoff, delta de curadoria |
+| `docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/**` | ADR, autorização, matriz, gates, handoff, revisão focal, delta de curadoria |
 
 Commits atômicos locais:
 

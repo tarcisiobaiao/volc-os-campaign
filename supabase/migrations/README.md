@@ -1146,7 +1146,7 @@ exigem autorização explícita do dono.
 
 | Arquivo | Estado | SHA-256 |
 |---|---|---|
-| `v12_04_gads_fato_canonico_dia.sql` | **não aplicada** em produção | `d1a5df28b2a27ad9a9c243f55ea1bf1f56170d813111ed95c18a8689aae68b14` |
+| `v12_04_gads_fato_canonico_dia.sql` | **não aplicada** em produção | `f19ed662c596f863806a05047b67808fe2b10660f2ed286866ec88816ccda713` |
 | `v12_04_rollback.sql` | executado só no descartável | `583a2f7189db739feeed944cb3bd51e4a333a878cadbaa366ec9511cb95cbee3` |
 | `../../scripts/provas-v12_04.sql` | 65 provas de comportamento | `ab2a12ef7d3649166bd019eb01e2c707d3120a6b35ca8c5da5a8d85d2a7ccf83` |
 | `../../scripts/provar-ciclo-v12_04.sh` | ciclo completo | `e1f27d04471a94bcad5f7a06f15930b662fc29e0dcbb61511ea79a8816f89689` |
