@@ -114,7 +114,15 @@ def validar_asset(asset: Asset, spec: EspecificacaoDeAsset) -> tuple[Violacao, .
                 # Cortar o fim é local e barato; regerar é chamada paga.
                 erro("T2.duracao_longa", Classe.SANEAVEL_EM_CODIGO,
                      f"{asset.duracao_s:.1f}s > máximo {spec.duracao_maxima_s:.1f}s")
-        return tuple(achados)
+        # ⚠️ ACHADO ADVERSARIAL (02/09/2026). Aqui havia um `return`, e ele fazia
+        # o vídeo sair da função ANTES do bloco de geometria: um vídeo de
+        # 100×100 num envelope 1080×1920 não recebia achado nenhum. Duração era
+        # tudo que se julgava de vídeo, e a proporção — que é o que decide se a
+        # peça serve a Reels ou Shorts — não era julgada.
+        #
+        # O bloco abaixo já trata medida ausente (`M1.sem_medida`) e já é
+        # condicional à spec pedir dimensão, então cair nele é correto para
+        # vídeo pelo mesmo motivo que é correto para imagem.
 
     exige_dimensao = (
         spec.largura_minima is not None

@@ -83,9 +83,15 @@ conexão externa dentro do mesmo sandbox, e a prova exige que ela seja recusada 
 e exige também que a mesma tentativa **conecte** fora dele. Sem essa calibração,
 um sandbox que silenciosamente não se aplicasse produziria um verde vazio.
 
-⚠️ Onde `sandbox-exec` não existe (não-macOS), o motor **produz assim mesmo** e o
-gate `render_sem_rede` sai `SKIPPED` **com o motivo**. Recusar trocaria uma
-garantia por indisponibilidade; fingir `PASS` seria pior que as duas.
+⚠️ **Corrigido na integração de 02/09/2026: este parágrafo descrevia o desenho
+ANTERIOR.** Ele dizia que sem `sandbox-exec` o gate sai `SKIPPED`. A própria
+revisão adversarial relatada na seção 11 (Bloqueante 1) derrubou esse desenho e
+o código mudou; este texto não acompanhou. `render_sem_rede` **nunca emite
+`SKIPPED`**: sai `PASS` (bloqueante, respondido pelo kernel), `WARN`
+(não-bloqueante, e só com `CRIATIVO_PERMITIR_RENDER_COM_REDE`, com o nome da
+variável no recibo) ou `FAIL` (bloqueante, e é o padrão onde não há sandbox).
+Onde não há `sandbox-exec`, o trabalho **não chega a `rendered`** sem dispensa
+explícita.
 
 ## 5. Determinismo: um defeito medido, e o que ele custou
 

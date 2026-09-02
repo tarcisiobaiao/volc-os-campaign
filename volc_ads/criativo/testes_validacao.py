@@ -322,3 +322,73 @@ def test_a_cascata_consulta_por_classe_e_nao_por_codigo():
     assert r.por_classe(Classe.SANEAVEL_EM_CODIGO)
     assert r.por_classe(Classe.REESCREVER_TEXTO)
     assert not r.por_classe(Classe.ESTRUTURA)
+
+
+# ── vídeo também tem geometria ──────────────────────────────────────────────
+
+
+def _video(*, largura=None, altura=None, duracao=15.0, semente="v") -> Asset:
+    return Asset(
+        tipo=TipoDeAsset.VIDEO, procedencia=_procedencia(semente),
+        conteudo_hash=hash_de_conteudo(f"video|{semente}"), mime="video/mp4",
+        bytes_totais=4096, duracao_s=duracao, largura=largura, altura=altura,
+    )
+
+
+def _spec_de_video_com_geometria():
+    """A spec de vídeo do PMAX, com dimensão exigida.
+
+    A spec entregue não pede dimensão de vídeo (é ausência declarada, não
+    esquecimento), então exercitar o bloco de geometria exige pedi-la aqui.
+
+    A duração de `_video` fica DENTRO da faixa do PMAX (mínimo 10s) de
+    propósito: um achado de duração poluiria a lista e faria estes testes
+    passarem por acidente, provando duração onde querem provar geometria.
+    """
+    import dataclasses
+
+    return dataclasses.replace(
+        PMAX.de(TipoDeAsset.VIDEO),
+        largura_minima=1080, altura_minima=1920, proporcao_alvo=(9, 16),
+    )
+
+
+def test_video_fora_do_envelope_e_acusado_por_geometria():
+    """O `return` que existia aqui deixava vídeo sem julgamento de dimensão.
+
+    Achado adversarial de 02/09/2026, reproduzido: `validar_asset` tratava
+    duração e saía ANTES do bloco de geometria, então um vídeo 100×100 num
+    envelope 1080×1920 não recebia achado nenhum. Duração era tudo que se
+    julgava de vídeo — e a proporção é justamente o que decide se a peça serve
+    a Reels ou a Shorts.
+    """
+    achados = validacao.validar_asset(_video(largura=100, altura=100),
+                                      _spec_de_video_com_geometria())
+    assert achados, "vídeo 100x100 num envelope 1080x1920 não recebeu achado nenhum"
+
+
+def test_video_dentro_do_envelope_continua_limpo():
+    """A correção não pode ter passado a reprovar vídeo correto."""
+    assert validacao.validar_asset(_video(largura=1080, altura=1920),
+                                   _spec_de_video_com_geometria()) == ()
+
+
+def test_video_sem_medida_pede_medida_e_nao_reprova_geometria():
+    """Ausência de medida continua `MEDIR_ANTES`, nunca reprovação."""
+    achados = validacao.validar_asset(_video(), _spec_de_video_com_geometria())
+    assert [a.codigo for a in achados] == ["M1.sem_medida"], achados
+    assert achados[0].classe is Classe.MEDIR_ANTES
+
+
+def test_a_spec_entregue_de_video_continua_sem_exigir_dimensao():
+    """Ausência declarada, e o teste existe para ela não virar exigência por acidente.
+
+    Se um dia a spec do PMAX passar a pedir dimensão de vídeo, este teste fica
+    vermelho — e é o momento certo para reler
+    `test_video_curto_demais_pede_regeracao_e_video_sem_duracao_pede_medida`,
+    que hoje afirma exatamente um achado.
+    """
+    spec = PMAX.de(TipoDeAsset.VIDEO)
+    assert spec.largura_minima is None
+    assert spec.altura_minima is None
+    assert spec.proporcao_alvo is None

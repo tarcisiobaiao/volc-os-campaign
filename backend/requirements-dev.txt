@@ -34,3 +34,24 @@ google-ads>=25.0
 #
 # `asyncio_mode = auto` fica em `backend/pytest.ini`.
 pytest-asyncio>=0.24
+
+# ⚠️ DEPENDÊNCIA DA SUÍTE, e ela faltava aqui — pela TERCEIRA vez, e o arquivo
+# já conta as outras duas logo acima.
+#
+# `tests/test_criativo_deposito_contrato.py` é a suíte de CONTRATO do depósito:
+# ela roda a mesma bateria contra os dois adapters, e o de produção é o
+# `DepositoPostgres`. Sem `psycopg`, `conftest_postgres._faltando()` devolve
+# "driver `psycopg` ausente neste interpretador" e a parametrização `[postgres]`
+# inteira sai como SKIP.
+#
+# Medido em 02/09/2026: com o interpretador que `scripts/gates-backend.sh`
+# escolhe (`backend/.venv`), a suíte dá `40 passed · 37 skipped`; com um
+# interpretador que tem o driver e `VOLC_EXIGIR_POSTGRES=1`, dá
+# `77 passed · 0 skipped`. Os 37 que somem são exatamente o adapter que serve a
+# produção — e a fila local (SQLite) já divergiu do Postgres uma vez, no
+# P17-T04, justamente por essa cobertura assimétrica.
+#
+# `VOLC_EXIGIR_POSTGRES=1` transforma o skip em falha, mas ele não pode fazer
+# nada se o driver não existir no interpretador do gate. Declarar aqui é o que
+# faz o gate oficial cobrir o adapter de produção.
+psycopg[binary]>=3.1

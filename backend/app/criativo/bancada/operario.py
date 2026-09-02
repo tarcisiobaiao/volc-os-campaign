@@ -137,6 +137,35 @@ def _medir_dimensao_de_video(caminho: Path) -> tuple[int, int] | None:
     return (m.largura, m.altura)
 
 
+def _mime_medido(caminho: Path) -> str | None:
+    """O MIME lido da ASSINATURA do arquivo. `None` quando nao da para saber.
+
+    ⚠️ ACHADO ADVERSARIAL (02/09/2026), reproduzido por execucao. O MIME
+    percorria o sistema inteiro DECLARADO pelo motor e nunca era medido, com o
+    medidor pronto ao lado: `medir_imagem.mime_de` ja le a assinatura, e o
+    proprio `Medida.mime` ja vinha preenchido e era descartado.
+
+    Contraprova: um motor que grava PNG e declara `image/jpeg` chegava a
+    `rendered` com o gate `dimensao` PASS — porque `_dimensao_do_artefato`
+    escolhe o medidor pelo MIME declarado, e um PNG declarado como JPEG cai no
+    leitor de imagem, que le PNG. O recibo saia dizendo `image/jpeg`, a chave de
+    storage terminava em `.jpg`, o `Content-Type` do upload ia `image/jpeg`, e o
+    storage dizia `VERIFIED_OK` — porque a releitura confere BYTES, e os bytes
+    estavam certos. Tudo verde sobre um arquivo cujo tipo o sistema inteiro
+    descrevia errado.
+
+    O dano nao e interno: um endereco `.jpg` servido com `Content-Type:
+    image/jpeg` sobre bytes PNG e o que chega ao navegador do cliente e ao
+    upload para o destino.
+    """
+    try:
+        from volc_ads.criativo.adaptadores.medir_imagem import mime_de  # noqa: PLC0415
+
+        return mime_de(caminho.read_bytes())
+    except Exception:  # noqa: BLE001 — medidor ausente ou arquivo ilegivel
+        return None
+
+
 def _dimensao_do_artefato(a: Artefato, caminho: Path) -> tuple[int, int] | None:
     """Escolhe o medidor pelo MIME DECLARADO, e mede o ARQUIVO.
 
@@ -661,6 +690,27 @@ class Operario:
                         detalhe={"slot": a.slot, "declarado": [a.largura, a.altura],
                                  "medido": [medida[0], medida[1]]},
                         bloqueante=True))
+            # ⚠️ O MIME tambem e afirmacao do motor, e ate aqui ninguem a
+            # conferia. Mesmo formato do gate de dimensao, e pelo mesmo motivo:
+            # o que o motor DIZ e o que o arquivo E sao perguntas diferentes.
+            medido = _mime_medido(caminho)
+            if medido is None:
+                # Ausencia de medicao nao e aprovacao nem reprovacao. `mime_de`
+                # so conhece assinaturas de imagem; um mp4 legitimo cai aqui, e
+                # reprovar por isso seria recusar a midia que o sistema produz.
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere", resultado="SKIPPED",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "motivo": "nao sei ler a assinatura deste formato"},
+                    bloqueante=False))
+            else:
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere",
+                    resultado="PASS" if medido == a.mime else "FAIL",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "medido": medido},
+                    bloqueante=True))
+
             validacoes.append(Validacao(
                 gate="arquivo_nao_vazio",
                 resultado="PASS" if a.bytes_ > 0 else "FAIL",

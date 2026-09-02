@@ -30,9 +30,23 @@ Loopback fica liberado porque o bundler do Remotion sobe um servidor estático e
 `127.0.0.1` e o Chromium precisa alcançá-lo. Bloqueá-lo não provaria hermetismo;
 só impediria o render.
 
-⚠️ Quando `sandbox-exec` não existe (não-macOS), o motor **produz assim mesmo** e
-o gate `render_sem_rede` sai `SKIPPED` com o motivo. Recusar seria trocar uma
-garantia por indisponibilidade; fingir `PASS` seria pior que as duas.
+⚠️ **Este parágrafo já foi falso, e é por isso que ele está aqui.** Ele dizia que
+sem `sandbox-exec` (não-macOS) o motor "produz assim mesmo" e o gate sai
+`SKIPPED`. A revisão adversarial derrubou esse desenho, o código mudou — e o
+texto ficou. `render_sem_rede` **nunca emite `SKIPPED`**; ele tem três saídas, e
+todas são afirmação de alguém:
+
+  · `PASS`  — bloqueante, e quem responde é o KERNEL, por uma sonda que roda
+              dentro do próprio processo do render. Existir `sandbox-exec` no
+              disco não é prova de nada.
+  · `WARN`  — não-bloqueante, e é a ÚNICA forma de uma peça sair sem hermetismo
+              provado. Exige `CRIATIVO_PERMITIR_RENDER_COM_REDE`, e o nome da
+              variável fica no recibo: alguém dispensou, e está dito quem.
+  · `FAIL`  — bloqueante, e é o padrão onde não há sandbox. Sem prova de que a
+              rede não foi alcançada, o trabalho NÃO chega a `rendered`.
+
+Um contrato publicado que descreve o comportamento anterior é pior que nenhum:
+quem lê planeja o deploy em Linux contando com um `SKIPPED` que não existe.
 
 ## Determinismo, e o que custou
 
