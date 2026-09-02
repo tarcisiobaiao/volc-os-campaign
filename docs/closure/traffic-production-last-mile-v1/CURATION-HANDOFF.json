@@ -1,0 +1,122 @@
+{
+  "_nota": "DELTA PROPOSTO pela missão traffic-production-last-mile-v1. NÃO é o arquivo de curadoria; é o que o integrador único deve aplicar em docs/volc-os-graph/curadoria-operacional.json e volc-os-workbook/ROADMAP-VIVO.json depois do merge, reconstruindo o Mapa Vivo UMA vez. Trabalho em branch/worktree não fecha fonte compartilhada.",
+
+  "_origem": {
+    "missao": "VOLC O.S. — Traffic Production Last Mile V1",
+    "branch": "sprint/traffic-production-last-mile-v1",
+    "base": "c8ca8628e83742dd7da5242f0a015f76292aafe7 (origin/volc-os-v2, SHA confirmado por git ls-remote)",
+    "worktree": "/private/tmp/volc-traffic-production-last-mile-v1",
+    "commits": [
+      "48d9fc0 fix(v12_04): a precedência não existia sob concorrência, e três invariantes caíram junto",
+      "79770a5 fix(v12_04): a projeção legada escolhia um número quando devia recusar",
+      "0e34731 fix(n8n): uma recusa local impedia a execução de fechar — e de avisar que não fechou",
+      "5ac4d81 feat(trafego): o deadman que faltava — um workflow que não roda não alerta",
+      "584d82e docs(closure): a semântica de concorrência da v12_04, que o aceite exige por escrito",
+      "d5eaa1a fix(mensuracao): o campo que transformava alegação em verde, e a porta dos fundos que sobrou",
+      "5817eb2 fix(trafego/ui): onze lugares onde não conseguir ler virava \"está tudo bem\"",
+      "97df0ee fix(canario): um retrato de ontem estava bloqueando hoje, com cara de medição"
+    ],
+    "gates": {
+      "concorrencia_v12_04": "scripts/provar-concorrencia-v12_04.sh → 32 ok / 0 falharam (contra o código base: 16 de 23 FALHAVAM)",
+      "ciclo_v12_04": "scripts/provar-ciclo-v12_04.sh → 107 ok / 0 falharam · aplicar→operar→reverter→reaplicar",
+      "pytest_backend": "2648 passed, 0 failed, 87 skipped (baseline medido no SHA base: 2592 passed, 0 failed)",
+      "pytest_volc_ads": "732 passed, 0 failed",
+      "vitest": "1308 passed, 0 failed, 97 arquivos (com VITE_SUPABASE_URL/ANON_KEY presentes)",
+      "typescript": "npx tsc --noEmit -p tsconfig.app.json → 76 erros, IDÊNTICO ao baseline herdado; TS2688 = 0",
+      "build": "npm run build → ok",
+      "n8n_validador": "scripts/validar_workflows_n8n_gads.py → 339 / 0 / 0",
+      "n8n_agenda_unica": "scripts/gate_agenda_unica_gads.py → 10 ok / 0 falharam / 2 pulados",
+      "n8n_simulador_fake": "node scripts/simular_gads_ledger_v12.mjs → 66 / 0",
+      "n8n_ponta_a_ponta_rpc_real": "scripts/provar-ponta-a-ponta-gads.sh → 17 / 0 (5 asserções novas do caminho de recusa local)",
+      "higiene": "git diff --check → limpo; scanner de segredos no diff → zero"
+    },
+    "interpretador_dos_gates": "/Users/mac/Desktop/VOLC-OS-CAMPAIGN/volc-os-campaign/backend/.venv/bin/python (toolchain fixada: pytest 9.1.1, fastapi 0.115.6, google-ads 31.3.0). ⚠️ Outros pythons da máquina produzem 6 falhas FALSAS em test_openapi_golden/test_criativo_rotas_equivalentes, porque o golden é fixado byte a byte em fastapi 0.115.6."
+  },
+
+  "roadmap": [
+    {
+      "id": "P10-T17",
+      "acao": "promover",
+      "status_atual": "todo",
+      "status_proposto": "done",
+      "_por_que_done": "O acceptance pede sete cenários concorrentes, mais vermelho-antes/verde-depois, mais ciclo apply→operate→rollback→reapply, mais documentação da semântica. Os quatro foram executados e estão versionados. O vermelho é literal e reproduzível: 16 de 23 degraus falharam contra o código de c8ca862, e os 7 que passaram provam que o harness mede estado real. A tarefa NÃO pede a aplicação da migration — ela pede o contrato provado ANTES da aplicação, e é isso que existe.",
+      "evidencia_a_acrescentar": "2026-09-02 · 48d9fc0/79770a5: a concorrência da RPC v12_04 foi reproduzida com DUAS sessões psql reais (FIFO, com o bloqueio observado em pg_stat_activity — não sleep), e quatro invariantes que o schema declarava defender não existiam. (1) A precedência era decidida por um SELECT e aplicada por um ON CONFLICT DO UPDATE SEM WHERE: um D0 intradia sobrescrevia um D-1 de janela FECHADA, janela_fechada voltava a false, e a degradação era contada como linhas_aceitas. (2) A idempotência morava num SELECT no topo: duas sessões de mesma chave o atravessavam antes de qualquer commit e a segunda recebia 'duplicate key value violates unique constraint' — sem o nome do contrato, e no caso divergente a recusa CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE chegava disfarçada de erro de banco. (3) O fechamento comparava alegação histórica contra estado vivo e explodia com RECIBO_NAO_RESOLVE_FATOS quando uma execução de posto maior legitimamente superava a linha — a execução superada nunca mais fechava e o deadman via corrida eternamente aberta. (4) Uma revisão adversarial do preflight encontrou o único caminho de escrita cujo dano é PERMANENTE (o rollback não desfaz projeção): a projeção legada media ambiguidade por EXISTS num snapshot, e ignorava segments_hash. Sob corrida, dois recibos diziam 'aplicada' para a MESMA linha legada; em série, dois segmentos da mesma conta se sobrescreviam e o recibo contava duas aplicadas numa tabela de uma linha. Correções: precedência atômica no WHERE do ON CONFLICT com contagem por ROW_COUNT; colisão de chave tratada e respondida pelo contrato; supersessão fecha como 'parcial' com motivo nomeado; projeção trava pela chave legada antes de olhar e considera segments_hash. Prova: scripts/provar-concorrencia-v12_04.sh 32/0, ciclo 107/0. Semântica documentada em docs/closure/traffic-production-last-mile-v1/P10-T17-CONCORRENCIA-V12-04.md.",
+      "_ressalva_obrigatoria": "A v12_04 SEGUE NÃO APLICADA no Supabase oficial (medido read-only: 0 de 3 relações, 0 de 4 funções). 'Concorrência provada' não é 'migration aplicada', e o acceptance separa as duas — a documentação da semântica é exigida ANTES de aplicar."
+    },
+    {
+      "id": "P10-T16",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_por_que_continua_partial": "Migration oficial, importação do workflow, ativação da agenda e leitura real do n8n continuam não executados — todos exigem autorização externa. O que mudou é que dois defeitos que impediriam a operação foram encontrados e corrigidos, e o ciclo de dependência declarado com P10-T17 se resolve: P10-T17 fecha primeiro.",
+      "evidencia_a_acrescentar": "2026-09-02 · 0e34731: defeito BLOQUEANTE encontrado e provado contra a RPC v12_04 REAL. `Validar semanticamente` descarta linhas antes do envio; o acumulador as somava em linhas_rejeitadas; o fechamento declarava esse total; e a RPC conta em linhas_rejeitadas só o que ela mesma recusou. Resultado literal: 'RECONCILIACAO_DIVERGENTE: declarado 1/0/1 e o ledger soma 1/0/0'. E como `RPC: fechar recibo` não tem onError continue, a execução abortava ali — os nós seguintes nunca rodavam e o alerta nunca era gravado. Qualquer execução com UMA recusa local ficava sem fechar E sem avisar. Nenhum gate pegava porque o cenário de recusa local só rodava com --rpc=fake, e em fake o documento de fechamento nem chega à RPC. Segundo defeito: `Releitura do recibo` sem alwaysOutputData — o PostgREST devolve [] quando o recibo não pousou, [] faz o nó emitir zero itens, e o n8n pula o `Batimento e saúde` inteiro; o ramo lido===null → INDETERMINADO + alerta nunca rodava exatamente no caso que existe para pegar. Terceiro: a chave do alerta duplicava o prefixo. E o nó de alerta era o único do fluxo sem retry. active:false preservado nos dois workflows.",
+      "_lacuna_nomeada_para_o_dono": "O acceptance pede 'retry com backoff'. O `retryOnFail` do n8n é de espera FIXA, e o desenho do fluxo PROÍBE deliberadamente o loopback de erro ('a saída de erro NUNCA volta para o nó de requisição... por isso 401/403 não tem como girar'). Implementar backoff por laço contradiria uma decisão documentada, e não há instância n8n disponível para provar a mudança. Decisão do dono: (a) aceitar espera fixa e ajustar o acceptance, ou (b) autorizar a mudança estrutural com uma instância para provar."
+    },
+    {
+      "id": "P09-T14",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_por_que_continua_partial": "A janela automática continua sem rodar (agenda inativa por contrato) e a coleta contínua não foi exercida. O deadman agora EXISTE e está provado, mas não está operante: a fonte de evidência que ele lê é a view da v12_04, que não está no banco.",
+      "evidencia_a_acrescentar": "2026-09-02 · 5ac4d81: o deadman da coleta D0/D-1 passou a existir (backend/app/trafego/deadman_coleta.py, 18 provas). O contrato (docs/contracts/HEALTH-DEADMAN-GOOGLE-INTELLIGENCE.md) e o classificador (volc_ads/inteligencia_google/saude.projetar_saude_coletor) já existiam e estavam provados; o classificador tinha ZERO consumidores de produção. O adaptador traduz e delega — não decide sozinho. Expectativa sai do PRÓPRIO workflow versionado (cron + active), porque derivá-la de outro lugar criaria uma segunda verdade sobre a agenda; consequência desejada: com active:false o estado é DESABILITADO e não ATRASADO. O intervalo é o MAIOR salto entre passadas (7h para D0, a virada 23h→06h), não o menor — esperar 5h faria toda passada das 23h nascer atrasada às 04h. Se o cron e PASSOS divergirem, recusa com AGENDA_AMBIGUA em vez de escolher. Ausência de FONTE devolve INDETERMINADO com motivo próprio, nunca NUNCA_EXECUTADO nem SAUDAVEL. Não instala agenda: n8n é a autoridade única. Estado honesto medido hoje: os dois jobs respondem INDETERMINADO, porque a v12_04 não está no banco.",
+      "_lacuna_nomeada": "Nenhum consumidor de produção do deadman ainda: falta a rota/tela que o consulta. Sem isso ele é capacidade provada e não observabilidade operante."
+    },
+    {
+      "id": "P05-T12",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_por_que_continua_partial": "O primeiro critério de aceite é 'persistido no Supabase oficial', e ele continua não atendido — agora por ausência de LINHA, não de TABELA.",
+      "evidencia_a_acrescentar": "2026-09-02 · leitura read-only do Supabase oficial: a v12_02 ESTÁ APLICADA (tabela trafego_campanha_plano_de_mensuracao + 43 colunas + 6 índices + trigger append-only + 1 RPC SECURITY DEFINER + 28 CHECKs + RLS habilitada e forçada) e tem ZERO linhas, contra 85 campanhas em trafego_campanha. O campo `evidencia[2]` do Roadmap afirma que ela está AUSENTE do oficial — isso está factualmente errado e precisa ser corrigido. O caminho /subir → registrar_plano → mutate foi provado apenas contra dublê em memória e cluster descartável; nunca correu em produção. · d5eaa1a: `fontes_de_sinal_observadas` aceitava qualquer lista de strings e a tratava como sinal comprovado — a string 'google_tag', que é o nome de uma CAPACIDADE, bastava para measurement_readiness=PRONTO. Passou a exigir SinalObservado com a mesma régua de Frescor.comprovado. E a porta dos fundos que a revisão adversarial encontrou: uma evidência bem-formada e inventada em processo VENCIA uma leitura real que tinha visto zero, porque a precedência era 'se o chamador trouxe algo, o plano nem é consultado'. Agora, contra frescor.estado == vazio_confirmado, a contradição vira INDETERMINADO com bloqueador — nunca PRONTO."
+    },
+    {
+      "id": "P05-T11",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_por_que_continua_partial": "Os aceites 1, 5 e 6 continuam não satisfeitos: trafego_vinculo=0, trafego_verificacao=0, e o canário não está em trafego_campanha_espelho — nunca foi relido pelo caminho de reconciliação. O que mudou é que o aceite do PAUSED deixou de ser declaração e virou leitura.",
+      "evidencia_a_acrescentar": "2026-09-02 · 97df0ee: o estado PAUSED do canário foi PROVADO por leitura real da API Google Ads (GAQL somente-SELECT, com modo.escrita_permitida() asserido False antes da chamada). Resposta: status=PAUSED, serving_status=SERVING, primary_status=PAUSED, primary_status_reasons=['CAMPAIGN_PAUSED'], channel=SEARCH, bidding=MANUAL_CPC. Isto não é o recibo se auto-declarando: serving_status, primary_status e primary_status_reasons são derivados pelo Google e não constam do payload enviado. Métricas em LAST_30_DAYS: impressões/cliques/custo/conversões todos 0, com LINHA PRESENTE — zero medido, não ausência de leitura. E a leitura derrubou duas constantes: CANARIO_RAZOES_DO_ESTADO congelava DUAS razões, incluindo MOST_ADS_UNDER_REVIEW, e a conta hoje responde uma — o veredito CHEGOU e é APPROVED/REVIEWED. BLOQUEIO_ANUNCIOS_EM_REVISAO era armado incondicionalmente sobre observado_em=2026-09-01 e bloqueava hoje por um fato de ontem. As duas foram reconciliadas, o bloqueio passou a seguir o veredito lido, e a leitura de campo passou a carregar a IDADE além da data.",
+      "_achado_novo_e_material": "TERCEIRO BLOQUEADOR DE SMART BIDDING, lido e não inferido: as 10 ações de conversão da conta têm include_in_conversions_metric = False com presence=True — está EXPLICITAMENTE desligado, não é default nem leitura ausente. Consequência: mesmo que uma conversão dispare, ela não entra em metrics.conversions. O conv=0.0 do canário tem DUAS causas independentes (campanha pausada E ação fora da métrica), e resolver só a primeira não produziria número. Isto não estava registrado em lugar nenhum."
+    },
+    {
+      "id": "P04-T07",
+      "acao": "atualizar_evidencia",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "_por_que_continua_partial": "A v12_03 continua NÃO APLICADA no Supabase oficial. Medido read-only: o CHECK trafego_google_coleta_tipo ainda tem só os 6 valores da v12_01, sem nenhum PMAX_*; e as 30 coletas reais não têm nenhuma linha PMAX_*.",
+      "evidencia_a_acrescentar": "2026-09-02 · leitura read-only confirmou que a v12_03 não está no banco oficial. Esta missão NÃO a tocou.",
+      "_defeito_de_registro": "A tarefa não tem campo `acceptance`, `priority`, `dependencies` nem `links`. Sem critério formal de aceite ela é infalsificável — não há como provar que terminou. E o terceiro bloqueador citado no `proof` ('PMax sair de fora do executor') é hoje uma DECISÃO fechada (DECISAO-PMAX-FORA-DO-EXECUTOR.md), não uma pendência: enquanto a decisão valer, `done` é inalcançável por construção. Recomendo ao dono: ou escrever o acceptance, ou marcar a tarefa como `reserved`."
+    }
+  ],
+
+  "_correcoes_de_registro_no_roadmap": [
+    {
+      "onde": "P05-T12 · evidencia[2]",
+      "diz": "que a v12_02 está AUSENTE do Supabase oficial",
+      "realidade": "ela está APLICADA desde 2026-09-01T18:32:16Z, com 0 linhas",
+      "perigo": "o perigo não é alguém reaplicar (abortaria com 42P07, desfecho benigno) — é alguém concluir que a persistência não existe e reconstruí-la"
+    },
+    {
+      "onde": "P05-T11 · proof (14.374 chars, 11 segmentos, sem campo `evidencia`)",
+      "diz": "os segmentos 2, 3, 5 e 6 afirmam 'nenhum mutate foi executado, nenhum recibo existe'; o segmento 7 afirma 'O CANÁRIO FOI CRIADO'",
+      "realidade": "o canário existe (recibo de sucesso, item criada_pausada, trafego_campanha procedencia=volc_os n=1, criada 2026-09-01 06:37:38) e hoje foi relido por API",
+      "perigo": "o campo é um log append que INVERTE o veredito conforme onde se para de ler. Quem parar no segmento 6 conclui o oposto do estado real. Recomendo separar `proof` (narrativa) de `evidencia` (fatos datados), como as outras tarefas fazem"
+    },
+    {
+      "onde": "P09-T14 · proof segmento 2",
+      "diz": "inteligencia_google/persistencia.py:64-65",
+      "realidade": "o caminho é volc_ads/inteligencia_google/persistencia.py:87",
+      "perigo": "referência quebrada num campo de prova"
+    }
+  ],
+
+  "_avisos_ao_integrador": [
+    "NÃO apliquei v12_03 nem v12_04 no Supabase oficial. NÃO importei nem ativei workflow n8n. NÃO escrevi no Data Manager. NÃO criei, alterei nem removi campanha, orçamento, anúncio, meta ou ConversionAction. NÃO ativei campanha. NÃO instalei systemd/timer. NÃO fiz deploy, merge ou push.",
+    "A única escrita externa desta missão foi ZERO. As leituras externas foram: (a) SELECT e catálogo no Supabase oficial via ssh+docker exec psql; (b) GAQL somente-SELECT na conta Google Ads, com modo.escrita_permitida() asserido False antes da chamada.",
+    "Uma terceira fonte afirma que a v12_02 não está aplicada e eu NÃO a corrigi, de propósito: docs/closure/campaign-birth-readiness-v1/delta-curadoria-campaign-birth-readiness.json:49. É um delta de curadoria de OUTRA missão, ainda pendente de integração — reescrevê-lo atropelaria o handoff deles. O integrador precisa reconciliar os dois deltas antes de aplicar qualquer um.",
+    "Reverti uma edição minha em supabase/migrations/v12_02_plano_de_mensuracao.sql. Eu havia autorizado corrigir o comentário de cabeçalho sem ver que o sha256 daquele arquivo é um gate documentado: APLICACAO-V12-02.md:22-23 manda rodar shasum e diz 'Não bateu: PARE'. O arquivo está de volta em 6ea4da62… e 581 linhas.",
+    "O grafo (graphify-out/) é artefato NÃO VERSIONADO e não existe nesta worktree. No repositório principal ele foi construído em a539dbd (2026-08-29), que não está na linha de origin/volc-os-v2. `--check` responde current:false. O Mapa Vivo precisa ser reconstruído pelo integrador APÓS o merge, uma vez.",
+    "Gemini 3.7 Flash estava INDISPONÍVEL (sem método de auth configurado: 'Please set an Auth method in /Users/mac/.gemini/settings.json'). Registrado e seguido, conforme a missão manda. A validação de contratos Google Ads/GAQL foi feita por leitura real da API em vez de opinião estática — executável vence opinião.",
+    "Os customer_id de teste (5478096539, 6016739364, 7466919994, 8017851692) aparecem sem máscara nos arquivos de teste novos. Não é exposição nova: os mesmos ids já estão em ~40 arquivos versionados de backend/, e os testes seguem a convenção existente. Nenhum segredo, token ou chave no diff."
+  ]
+}
