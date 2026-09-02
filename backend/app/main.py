@@ -14,6 +14,7 @@ from app.config import get_settings
 # O Cofre e um modulo coeso proprio (dominio/aplicacao/infraestrutura/rotas),
 # e nao mais um arquivo em `app/routers/`. O router mora dentro dele.
 from app.asset_vault import rotas as cofre_ativos
+from app.publicacao_organica import rotas as publicacao_organica
 from app.routers import (
     criativos,
     criativos_execucao,
@@ -195,6 +196,12 @@ app.include_router(criativos_execucao.router)
 # aberta por esquecimento — que e o defeito que a camada de identidade veio
 # consertar em 24/08/2026.
 app.include_router(cofre_ativos.router)
+# Publicacao organica (P12-T09). Mesma disciplina do Cofre: `exigir_admin` no
+# nivel do APIRouter, entao uma rota nova nao nasce aberta por esquecimento.
+# ⚠️ Este router NAO publica sozinho: `POST /jobs` cria a intencao e nada sai
+# daqui ate alguem chamar `/despachar`. A separacao e o contrato — gerar nao e
+# aprovar, e aprovar nao e publicar.
+app.include_router(publicacao_organica.router)
 
 
 @app.get("/health")
