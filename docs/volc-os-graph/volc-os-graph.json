@@ -917,7 +917,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Registro operacional de páginas, perfis, contas, domínios, propriedades monetizadas, integrações, engines e referências seguras de credencial, com dono, estado, evidência, relações e próximo uso.",
-      "evidence": "Contrato público v1 e rota administrativa /settings/cofre-ativos implementados em 27/08/2026. A interface organiza o patrimônio em sete gavetas operacionais, mantém relações como lente secundária e recusa campos sensíveis e URLs não HTTP(S). O retrato atual é editorial: schema privado, API, cadastro persistido, importadores e escrita de correspondências no grafo ainda não existem.",
+      "evidence": "Deixou de ser retrato editorial em 033e1620 (merge 4afc128): a tela le /api/cofre sobre nove tabelas cofre_* persistidas, com 13 rotas sob exigir_admin, cadastro, revisao, relacao, verificacao, aposentadoria e reativacao pela interface, e a fixture fora do caminho de producao (ha teste que exige que nenhum dos oito nomes dela apareca quando a API falha). 92 provas SQL, 67 testes de backend, 24 de frontend. LACUNAS: a migration NAO foi aplicada em producao (0 tabelas cofre_ em database.agenciavolc.com.br), nenhum ativo real foi cadastrado, e a ligacao ao grafo continua aberta — o Cofre nao escreve no Mapa Vivo nem le dele.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1030,11 +1030,11 @@
       "type": "concept",
       "cluster": "governance",
       "cluster_label": "Governança & operação",
-      "state": "decision",
-      "state_label": "Decisão aberta",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "1Password guarda valores; Supabase oficial, Cofre, grafo e Roadmap guardam somente referências, propósito, owner, validade e auditoria sanitizada.",
-      "evidence": "Decisão formalizada em 28/08/2026 no ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md. Schema privado, API, MCP e broker ainda não foram implementados.",
+      "evidence": "A fronteira saiu do papel em 033e1620 (merge 4afc128), com tres mecanismos e nao com uma politica: gramatica por provider no localizador (op:// entra, texto sem forma de endereco nao), varredura recursiva de chave NORMALIZADA (accessToken, ACCESS-TOKEN e access_token colapsam) e superficie — nenhuma funcao de leitura projeta o localizador. Quatro vazamentos foram medidos e fechados no caminho: o DETAIL do Postgres, o campo input do 422 do FastAPI, a chave ecoada no conflito de idempotencia e a prosa limpa cobrindo os campos errados. LIMITE DECLARADO: sintaxe nao alcanca semantica — op://Vault/Item/password tem forma de endereco e pode ser a senha escolhida por alguem. O broker que resolve o endereco (P03-T11) nao existe.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1048,6 +1048,19 @@
       "tier": 1,
       "summary": "Obriga Codex, Claude, Grok e workers ADK a devolver tarefa, nós, evidência, lacunas e estado honesto para um curador único após a integração.",
       "evidence": "AGENTS.md, CLAUDE.md, PROTOCOLO-FECHAMENTO-AGENTES.md e o schema writer-result exigem curation_handoff. Ainda falta o curador automático pós-merge e o recibo correspondente no QG.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
+      "id": "concept:cofre-handoff",
+      "label": "Handoff do Cofre para produção e publicação",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "GET /api/cofre/ativos/{id}/handoff RESPONDE quais engines existem, qual ativo recebe a peça, qual referência será resolvida e qual perfil de navegador está relacionado — e NÃO EXECUTA nada.",
+      "evidence": "Contrato em docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md, 01/09/2026. A assimetria é deliberada: traz provider e NOME LÓGICO, nunca o localizador, porque um handoff com endereço resolvido transformaria a rota na porta do cofre — uma sessão ADMIN comprometida enumeraria todos os endereços de uma vez. 'pronto_para_handoff' e 'bloqueios' fazem de 'faltou registrar a referência' um FATO no corpo, e não um 200 que parece sucesso. Quatro bloqueios provados por teste. O broker que resolveria op:// no host isolado NÃO existe.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1155,6 +1168,19 @@
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
+      "id": "system:cofre-schema-v13-01",
+      "label": "Schema privado do Cofre (v13_01)",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Nove tabelas cofre_* em public com escrita só por função SECURITY DEFINER, allowlist de campo, blocklist de chave sensível normalizada, idempotência por chave derivada do ato e trilha append-only.",
+      "evidence": "Escrita em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128) (supabase/migrations/v13_01_cofre_de_ativos.sql, o arquivo versionado), com rollback em v13_99. Provada por scripts/provar-ciclo-v13_01.sh: 92 provas num PostgreSQL 15.19 descartável, ciclo aplicar → operar → reverter → reaplicar, mesma major da produção medida em 15.8. As provas de acesso TENTAM em vez de inspecionar catálogo, porque service_role tem BYPASSRLS e quem o contém é o REVOKE. Não há view no schema: a única que existia saiu por não ter consumidor. NÃO APLICADA EM PRODUÇÃO: 0 tabelas cofre_* em database.agenciavolc.com.br em 01/09/2026.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
       "id": "risk:supabase_demo_jwt_secret",
       "label": "Segredo JWT do Supabase igual ao exemplo público",
       "type": "concept",
@@ -1165,6 +1191,19 @@
       "tier": 1,
       "summary": "A configuração viva foi comparada por hash com o exemplo publicado e permanece sob aceite temporário de risco; a rotação é gate pré-lançamento.",
       "evidence": "Auditoria sanitizada em docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json e REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md. O grafo registra somente classe, comparação e owner P02-T05; nunca o valor.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
+      "id": "tool:onepassword-smoke",
+      "label": "Smoke seguro do 1Password local",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Prova, num processo descartável, a cadeia CLI → app → sessão → injeção do 1Password, sem revelar, medir ou derivar o valor do segredo; nove estados tipados com exit code próprio e nenhum caminho de falso sucesso.",
+      "evidence": "tools/onepassword-smoke/, 907 linhas, autoteste com 0 falhas em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Nesta máquina o smoke real sai blocked/cli_ausente (exit 10), que é o estado honesto: não há app, CLI op, 1password-mcp, variável OP_* nem MCP configurado — os cinco medidos. A lógica é provada por dublê atrás de flag explícita (--duple). NÃO cobre o servidor MCP do 1Password, só o CLI.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1437,7 +1476,20 @@
       "state_label": "Planejado",
       "tier": 1,
       "summary": "Autoridade local de segredos para agentes e ferramentas de desenvolvimento, capaz de montar variáveis sem revelar o valor ao modelo ou gravá-lo no repositório.",
-      "evidence": "Documentação oficial consultada em 28/08/2026 confirma servidor stdio no app desktop, aprovação por ambiente e visibilidade apenas de nomes. Nenhuma instalação, autorização ou chamada VOLC foi executada; processos remotos exigirão mecanismo de runtime separado.",
+      "evidence": "Continua 'todo', e a distincao e o ponto: o que existe em 033e1620 (merge 4afc128) e um smoke de CLI, nao a prova do MCP. tools/onepassword-smoke/ tem dez estados tipados, confirma presenca booleana sem imprimir valor, comprimento ou hash, e recusa --no-masking no preflight; a logica e provada por duble controlado. O smoke real sai blocked/cli_ausente com exit 10 — correto, porque nao ha app, CLI 'op' nem binario 1password-mcp nesta maquina. Aprovacao por ambiente e revogacao pelo lock nao foram exercitadas contra o MCP oficial.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
+      "id": "system:cofre-api-administrativa",
+      "label": "API administrativa do Cofre",
+      "type": "concept",
+      "cluster": "platform",
+      "cluster_label": "Plataforma & integrações",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Treze rotas sob /api/cofre em quatro camadas (domínio, aplicação, infraestrutura, rotas), todas com exigir_admin no nível do router, sem caminho de INSERT direto em tabela; inclui o handoff que responde para produção e publicação sem entregar o endereço do segredo.",
+      "evidence": "backend/app/asset_vault/, quatro camadas, 67 testes herméticos verdes em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Falha de banco vira 503 e nunca lista vazia; resposta em forma inesperada também. A mensagem do Postgres não é repassada: details e hint morrem no adapter e message só passa quando casa uma frase auditada deste projeto. Lê o corpo cru e valida à mão porque o 422 padrão do FastAPI devolve o valor recusado no campo input — defeito medido e provado em oito rotas. Nunca chamada contra o Supabase oficial, porque a v13_01 não está lá.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1932,6 +1984,19 @@
       "tier": 1,
       "summary": "Recrafting de vídeo ads com IA para formatos, orientações e durações diferentes.",
       "evidence": "Repo ativo, Apache-2.0. Gap analysis com Motor de Vídeo; não será novo core de vídeo.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
+      "id": "tool:importador-engines-cofre",
+      "label": "Importador de engines para o Cofre",
+      "type": "concept",
+      "cluster": "production",
+      "cluster_label": "Conteúdo & publicação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Lê os manifestos versionados dos parques criativos e emite payloads para cofre_cadastrar_ativo, marcando cada campo como FONTE, DERIVADO, DECLARADO ou AUSENTE.",
+      "evidence": "scripts/importar_engines_no_cofre.py, 1047 linhas; 7 engines emitidos e 248 asserções no autoteste em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Não escreve no banco e não faz rede; roda duas vezes com bytes idênticos. A sanitização de caminho do Google Drive LEVANTA se /Users/, CloudStorage, GoogleDrive ou @ sobreviverem, porque sanitização que falha calada publica com ar de segurança. Nenhum engine recebe estado 'integrado'.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -7895,6 +7960,20 @@
       "confidence": "curated"
     },
     {
+      "source": "cap_asset_vault",
+      "target": "system:cofre-api-administrativa",
+      "relation": "exposto_por",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "cap_asset_vault",
+      "target": "system:cofre-schema-v13-01",
+      "relation": "persiste_apenas_referencias_em",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
       "source": "cap_attribution",
       "target": "cap_campaign_cockpit",
       "relation": "alimenta",
@@ -9897,6 +9976,13 @@
       "confidence": "curated"
     },
     {
+      "source": "concept:cofre-handoff",
+      "target": "cap_creative_engines",
+      "relation": "informa_sem_autorizar",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
       "source": "concept:contencao_1a",
       "target": "cap_source_truth",
       "relation": "governa",
@@ -10033,6 +10119,13 @@
       "source": "concept:execution-receipt",
       "target": "concept:asset-provenance",
       "relation": "prova",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:facebook_page_monetized",
+      "target": "cap_asset_vault",
+      "relation": "aguarda_novos_insumos_em",
       "evidence": "",
       "confidence": "curated"
     },
@@ -10586,6 +10679,13 @@
       "source": "concept:secret-reference-boundary",
       "target": "external:supabase-self",
       "relation": "persiste_apenas_referencias_em",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:secret-reference-boundary",
+      "target": "system:cofre-schema-v13-01",
+      "relation": "materializa_em",
       "evidence": "",
       "confidence": "curated"
     },
@@ -11948,6 +12048,20 @@
       "confidence": "curated"
     },
     {
+      "source": "system:cofre-api-administrativa",
+      "target": "concept:cofre-handoff",
+      "relation": "emite_handoff_para",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "system:cofre-api-administrativa",
+      "target": "system:cofre-schema-v13-01",
+      "relation": "depende_de_porta_governada",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
       "source": "system:deepseek-v4-flash",
       "target": "concept:agentic-recovery-runtime",
       "relation": "pode_servir_como_modelo",
@@ -12309,6 +12423,27 @@
       "target": "concept:creative_channel_boundary",
       "relation": "alimenta",
       "evidence": "criativo_ponte importa criativo.{requisitos,validacao,contrato,adaptadores.medir_imagem}; nada em criativo/ importa a ponte — sem ciclo.",
+      "confidence": "curated"
+    },
+    {
+      "source": "tool:importador-engines-cofre",
+      "target": "cap_asset_vault",
+      "relation": "emite_handoff_para",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "tool:importador-engines-cofre",
+      "target": "cap_creative_engines",
+      "relation": "le_de",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "tool:onepassword-smoke",
+      "target": "system:onepassword-mcp",
+      "relation": "nao_comprova_operacao_de",
+      "evidence": "",
       "confidence": "curated"
     },
     {

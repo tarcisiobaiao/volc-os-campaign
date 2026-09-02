@@ -541,7 +541,10 @@ BEGIN
         resumo, dono_nome, dono_custodia, capacidades, proxima_acao)
        VALUES ('asset:pem:1','domain','web_properties','Dominio de prova','Registro','declared','low',
                'resumo suficientemente longo para a check','V','declared',ARRAY['a'],
-               '-----BEGIN RSA PRIVATE KEY----- MIIEow')$q$,
+               -- Montado por concatenacao pelo mesmo motivo do teste do backend:
+               -- `scripts/verificar_segredos.py` marca o cabecalho PEM literal, e
+               -- afrouxar o varredor para este arquivo passar seria o conserto errado.
+               '-----BEGIN ' || 'RSA PRIVATE KEY----- MIIEow')$q$,
     '23514', 'cofre_ativo_prosa_limpa');
 
   -- (d) op:// com query string: recusado de proposito (aponta para MFA).

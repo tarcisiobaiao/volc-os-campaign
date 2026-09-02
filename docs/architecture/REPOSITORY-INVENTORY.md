@@ -1,25 +1,25 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T19:04:59-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T21:02:52-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 482 arquivos: 325 Markdown e 157 SQL;
-- 482 versionados e 0 ainda não versionados;
+- 492 arquivos: 333 Markdown e 159 SQL;
+- 492 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 96 SQL com palavras de mutação de alto risco.
+- 98 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 21 |
-| `documentation` | 187 |
+| `audit` | 22 |
+| `documentation` | 192 |
 | `generated` | 2 |
-| `module-guide` | 30 |
+| `module-guide` | 32 |
 | `product-document` | 21 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-01T19:04:59-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 44 |
+| `sql-needs-review` | 46 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -126,6 +126,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | 41 | 126 |
+| `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |
@@ -161,6 +163,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/motor-pautas/README.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/REVISAO-CODEX.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/REVISAO-EXTERNA.md` | `audit` | — | 0 | 0 |
+| `docs/closure/asset-vault-onepassword-production-v1/REVISAO-ADVERSARIAL.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
@@ -242,6 +245,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | high | 41 | 126 |
+| `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | high | 1 | 0 |

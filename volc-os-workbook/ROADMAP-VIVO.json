@@ -331,7 +331,7 @@
           "id": "P03-T02",
           "title": "Cadastrar a página Facebook monetizada",
           "status": "todo",
-          "proof": "existência declarada; identidade e propriedade não inventariadas"
+          "proof": "Continua sem UM dado real da pagina: nem ID, nem URL, nem Business Portfolio, nem nome. A unica evidencia segue sendo a declaracao do dono de 26/08/2026. O que passou a existir e o CAMINHO ate o cadastro (033e1620): scripts/onboarding_pagina_facebook.py (56/56 no autoteste) emite os seis payloads a partir de uma ficha preenchida, recusa placeholder, recusa segredo em qualquer campo, sanitiza o ID da pagina para os 4 ultimos digitos e recusa referencia com query string. Ficha modelo e pedido objetivo ao operador em docs/closure/asset-vault-onepassword-production-v1/. Ferramenta pronta nao e ativo cadastrado."
         },
         {
           "id": "P03-T03",
@@ -355,13 +355,13 @@
           "id": "P03-T06",
           "title": "Criar a tela Cofre de Ativos e ligá-la ao grafo",
           "status": "partial",
-          "proof": "rota administrativa /settings/cofre-ativos implementada com inventário por sete gavetas, filtros, detalhe, revisões, relações e catálogo de tipos; usa retrato editorial validado e ainda não persiste nem escreve correspondências no grafo"
+          "proof": "A tela existe desde antes; o que mudou em 033e1620 e a FONTE. Ela le /api/cofre (13 rotas sob exigir_admin no nivel do router) sobre nove tabelas cofre_* persistidas, e a fixture deixou de ser fonte de producao — ha teste que percorre os oito nomes dela e exige que nenhum apareca quando a API falha. Seis estados distinguidos, incluindo indisponivel separado de vazio. Cadastro, revisao, relacao, verificacao, aposentadoria e reativacao pela interface. 24 testes de frontend. LACUNA QUE MANTEM 'partial': a ligacao ao GRAFO continua aberta — o Cofre nao escreve no Mapa Vivo e nao le dele; a correspondencia com projetos e campanhas segue sendo texto declarado, nao aresta."
         },
         {
           "id": "P03-T07",
           "title": "Inventariar perfis AdsPower sem copiar segredos",
           "status": "todo",
-          "proof": "AdsPower foi escolhido como executor isolado do QA visual; perfil, owner, ativo, proxy de referência e próximo uso ainda não estão no Cofre",
+          "proof": "O tipo 'browser_profile' passou a existir no catalogo (cofre_tipo, dominio.py e contract.ts concordam, com teste que le a migration), e o onboarding emite o perfil como ativo relacionado a pagina por 'authenticates_through' quando a ficha declarar um. Mas NENHUM perfil real foi inventariado: nao ha ID de referencia, owner, proxy nem proximo uso de perfil nenhum no Cofre, porque nao ha instancia AdsPower conferida. Tipo no catalogo nao e perfil no inventario.",
           "explanation": "Registrar qual perfil de navegador pertence a cada ativo e para que ele pode ser usado, sem guardar cookie, senha ou chave da Local API no catálogo público.",
           "acceptance": "Um perfil do piloto possui ID de referência, owner, ativo relacionado, estado, finalidade, última revisão e referência segura de credencial; nenhum segredo bruto aparece na API ou no grafo.",
           "dependencies": [
@@ -389,7 +389,7 @@
           "id": "P03-T09",
           "title": "Provar 1Password MCP no ambiente local controlado",
           "status": "todo",
-          "proof": "MCP oficial foi verificado na documentação; não foi instalado, autorizado nem chamado no ambiente VOLC.",
+          "proof": "Continua 'todo', e a distincao importa: o que existe e um smoke de CLI, nao a prova do MCP. tools/onepassword-smoke/ (033e1620) tem dez estados tipados, confirma presenca booleana sem imprimir valor, comprimento ou hash, varre stdout/stderr atras de eco e recusa --no-masking no preflight; a logica e provada por duble controlado (6 provas). O SMOKE REAL SAI blocked/cli_ausente, exit 10 — o resultado correto, porque nao ha app, CLI 'op' nem binario 1password-mcp nesta maquina. O aceite pede aprovacao por ambiente e revogacao pelo lock do 1Password, e nenhuma das duas foi exercitada contra o MCP oficial. Nada instalado, nada autorizado, nada chamado.",
           "explanation": "Confirmar que um agente local encontra o ambiente e os nomes necessários e recebe um mount efêmero, sem ver o valor do segredo nem gravá-lo no repositório.",
           "acceptance": "Smoke lista somente nomes, exige aprovação do ambiente, injeta uma variável numa aplicação de teste, não imprime valor e deixa trilha de auditoria; lock do 1Password revoga o acesso.",
           "dependencies": [
@@ -403,8 +403,8 @@
         {
           "id": "P03-T10",
           "title": "Persistir referências de credencial no Cofre sem duplicar segredo",
-          "status": "todo",
-          "proof": "Contrato público recusa campos sensíveis; schema privado, RLS, API e cadastro persistido ainda não existem.",
+          "status": "partial",
+          "proof": "Schema privado e API existem e estao provados em laboratorio (033e1620), NAO em producao. supabase/migrations/v13_01: nove tabelas cofre_* com RLS forcada, zero policy, ALL revogado nominalmente de PUBLIC/anon/authenticated E service_role, escrita so por SECURITY DEFINER com allowlist de campo e blocklist de chave normalizada, trilha append-only e idempotencia com recibo. A referencia tem gramatica por provider: o localizador op:// entra, texto sem forma de endereco nao. Nenhuma funcao de leitura projeta o localizador. 92 provas no ciclo aplicar->operar->reverter->reaplicar em postgres:15 (mesma major da producao, medida em 15.8), com acesso negativo por SET ROLE real; 67 testes de backend. LACUNAS QUE MANTEM 'partial': a migration NAO foi aplicada no Supabase oficial (consulta somente leitura devolveu 0 tabelas cofre_) e NENHUMA referencia real foi cadastrada. Codigo provado em laboratorio nao e persistencia em operacao.",
           "explanation": "Guardar no Supabase oficial apenas provider, referência, nome lógico, owner, finalidade, validade e última verificação, ligando isso ao ativo certo.",
           "acceptance": "Schema privado e API administrativa possuem RLS forçada, zero grant anon/authenticated, auditam mudança e rejeitam payload com valor bruto de senha, token, cookie ou chave.",
           "dependencies": [
@@ -1438,7 +1438,7 @@
           "id": "P12-T02",
           "title": "Onboard da página real no Cofre",
           "status": "todo",
-          "proof": "pré-requisito do piloto"
+          "proof": "Pre-requisito do piloto, e ele continua faltando pelo mesmo motivo de P03-T02: nao existe dado real da pagina. O fluxo de onboarding, a ficha modelo e o pedido ao operador estao prontos em 033e1620; falta o input humano e o cadastro."
         },
         {
           "id": "P12-T03",
