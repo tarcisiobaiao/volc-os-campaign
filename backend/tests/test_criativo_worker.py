@@ -513,3 +513,45 @@ def test_a_rota_do_estudio_nao_congela_o_event_loop_durante_o_render() -> None:
         f"o event loop ficou preso durante o disparo: a requisição vizinha "
         f"avançou {quantos} vezes de 20"
     )
+
+
+def test_o_modo_fila_recusa_o_estudio_antes_de_criar_trabalho_orfao() -> None:
+    """A recusa vem ANTES, e o worker não finge consumir `criativo_job`.
+
+    ⚠️ Este método já devolveu `None`, e a rota respondia 201 sobre um job que
+    nenhum worker executaria. O worker reivindica do depósito da BANCADA
+    (`fila.db` / `criativo_render_job`); o job do Estúdio vive em `criativo_job`,
+    que é outra tabela e não tem consumidor. A ponte entre as duas é o que o
+    `ORDEM-INTEGRACAO-P17.md` registra como não implementada.
+
+    Três coisas, e as três importam:
+    """
+    import inspect
+
+    from app.criativo.bancada import worker as mod_worker
+    from app.criativo.bancada.despacho import DespachoDeFila, DespachoIndisponivel
+
+    fila = DespachoDeFila()
+
+    # 1. nunca um 201 sobre job que ninguém consumirá.
+    with pytest.raises(DespachoIndisponivel) as erro:
+        fila.despachar_job_do_estudio("job-1", executor=None)
+    assert "criativo_render_job" in erro.value.motivo
+    assert "criativo_job" in erro.value.motivo
+
+    # 2. a recusa é ANTERIOR a qualquer trabalho: o executor recebido é `None` e
+    #    nada foi chamado nele. Um método que tocasse o executor antes de recusar
+    #    deixaria estado pela metade.
+    class ExecutorQueAcusa:
+        def __getattr__(self, nome):
+            raise AssertionError(f"o despacho tocou o executor ({nome}) antes de recusar")
+
+    with pytest.raises(DespachoIndisponivel):
+        fila.despachar_job_do_estudio("job-2", executor=ExecutorQueAcusa())
+
+    # 3. o caminho da BANCADA continua sendo no-op legítimo — ali o trabalho já
+    #    está durável e o worker o reivindica.
+    assert fila.despachar("trabalho-1") is None
+    assert "criativo_job" not in inspect.getsource(mod_worker), (
+        "o worker da bancada passou a fingir que consome a fila do Estúdio"
+    )

@@ -18,6 +18,8 @@ pergunta que a tela faz.
 
 from __future__ import annotations
 
+import hashlib
+
 import json
 
 import pytest
@@ -120,7 +122,15 @@ def test_uma_receita_produz_asset_real_com_recibo_e_atravessa_a_ponte(
         assert asset["publicavel"] is False
         proc = asset["procedencia"]
         assert proc["motor"] == "png-local"
-        assert proc["insumo"] == INSUMO
+        # ⚠️ MUDANÇA DELIBERADA DE CONTRATO (01/09/2026). A procedência
+        # identificava o insumo TRANSCREVENDO-O: o texto do briefing — nome de
+        # cliente, oferta, o que o operador digitou — saía inteiro por aqui. Ela
+        # agora identifica sem revelar. Vide `bancada/fronteira_publica.py`.
+        assert proc["insumo"] == {
+            "estado": "retido",
+            "hash": "sha256:" + hashlib.sha256(INSUMO.encode("utf-8")).hexdigest(),
+        }
+        assert INSUMO not in json.dumps(proc, default=str, ensure_ascii=False)
         assert proc["pedido"] == envelope["trabalho_id"]
         assert proc["quando"]
         # `0.0` seria a afirmação de que a peça saiu de graça, e um COGS que

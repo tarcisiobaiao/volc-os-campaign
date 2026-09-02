@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from app.criativo import dominio
 from app.criativo.bancada import SaidaPedida
 from app.criativo.bancada import Encomenda as EncomendaDaBancada
+from app.criativo.bancada import fronteira_publica
 from app.criativo.bancada import servico as bancada_servico
 from app.seguranca.identidade import Identidade, exigir_usuario
 
@@ -70,7 +71,11 @@ def _recibo_dto(r: dict[str, Any] | None) -> dict[str, Any] | None:
         "motorVersao": r.get("motor_versao"),
         "seed": r.get("seed"),
         "versoes": r.get("versoes"),
-        "parametros": r.get("parametros"),
+        # ⚠️ NAO `r.get("parametros")`. O insumo do briefing viajava aqui inteiro
+        # — nome de cliente, oferta, o que o operador digitou — para qualquer
+        # consumidor da API que conseguisse ler o trabalho. Vide
+        # `bancada/fronteira_publica.py`.
+        "parametros": fronteira_publica.resumo_publico(r.get("parametros")),
         "artefatos": [_artefato_dto(a) for a in r.get("artefatos") or []],
         "validacoes": [
             {

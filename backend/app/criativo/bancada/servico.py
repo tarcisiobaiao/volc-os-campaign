@@ -24,6 +24,7 @@ from volc_ads.criativo.contrato import NaturezaDaProcedencia
 
 from .adaptadores.png_local import MotorPngLocal
 from .adaptadores.tipografico import MotorTipografico
+from . import fronteira_publica
 from .contrato import FalhaDoMotor
 from .operario import DespachanteLocal, Operario, Reaper
 from .porta import Deposito, escolher_deposito
@@ -494,7 +495,9 @@ def _envelope(trabalho, operario, *, destino: str) -> dict[str, Any]:
         "receita_id": trabalho.encomenda.receita_id,
         "canal": canal or None,
         "intencao": parametros.get("intencao") or None,
-        "insumo": parametros.get("insumo") or None,
+        # ⚠️ O texto do briefing NAO sai pelo envelope. Estado e impressao
+        # digital bastam para a tela dizer "houve insumo" sem devolve-lo.
+        "insumo": fronteira_publica.resumo_do_insumo(parametros.get("insumo")),
         "seed": trabalho.encomenda.seed,
         "chave_de_idempotencia": trabalho.chave_idempotencia,
         "estado": trabalho.estado.value,
@@ -556,7 +559,9 @@ def _asset_para_json(asset: _Asset, canal: str) -> dict[str, Any]:
         "procedencia": {
             "motor": p.motor,
             "versao_do_motor": p.versao_do_motor,
-            "insumo": p.insumo,
+            # Mesma fronteira da linha do envelope: a procedencia identifica
+            # o insumo, nao o transcreve.
+            "insumo": fronteira_publica.resumo_do_insumo(p.insumo),
             "insumo_hash": p.insumo_hash,
             "pedido": p.pedido,
             "quando": p.quando.isoformat(),

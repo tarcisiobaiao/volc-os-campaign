@@ -28,6 +28,8 @@ lê de verdade sobrevive aos dois.
 
 from __future__ import annotations
 
+import json
+
 import dataclasses
 import os
 from datetime import datetime, timezone
@@ -758,3 +760,111 @@ def test_uma_loja_que_devolve_bytes_diferentes_impede_o_pronta(tmp_path) -> None
     assert pub.estado is EstadoDoArmazenamento.VERIFIED_MISMATCH
     assert pub.sha256_remoto is not None and pub.sha256_remoto != pub.sha256_local
     assert pub.motivo, "um estado ruim sem motivo obriga quem lê a adivinhar"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# A fronteira pública: o insumo cru não sai (bloqueador 2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SENTINELA = "SEGREDO-DO-CLIENTE-QUE-NAO-PODE-SAIR-7f3a"
+
+
+def test_a_sentinela_atravessa_a_producao_e_some_de_todo_json_publico(tmp_path) -> None:
+    """⚠️ Bloqueador 2. `parametros` e `insumo` saíam CRUS pelo recibo público.
+
+    A prova não olha campo por campo: ela põe uma sentinela no briefing, deixa a
+    produção acontecer de verdade, e depois procura a sentinela no JSON
+    serializado INTEIRO. Conferir campos nomeados deixaria passar o campo que
+    ninguém lembrou de nomear.
+
+    E ela exige as duas metades: a sentinela tem de estar DENTRO (senão a prova
+    passaria porque o material nunca chegou lá) e FORA (que é o que se quer).
+    """
+    import hashlib
+    import json
+
+    from app.criativo.bancada.contrato import Encomenda, EstadoDoTrabalho, SaidaPedida
+    from app.criativo.bancada.deposito import DepositoDeTrabalhos
+    from app.criativo.bancada.operario import Operario
+    from app.criativo.bancada.adaptadores.png_local import MotorPngLocal
+    from app.routers.criativos_execucao import _recibo_dto, _trabalho_dto
+
+    deposito = DepositoDeTrabalhos(tmp_path / "fila.db")
+    encomenda = Encomenda(
+        receita_id="r", tenant_id="t", motor_slug=MotorPngLocal.slug,
+        modo_slug="ensaio-local", finalidade_slug="google_display", seed=3,
+        saidas=(SaidaPedida("1x1", 64, 64, "imagem", "image/png"),),
+        parametros={"insumo": _SENTINELA, "titulo": _SENTINELA, "canal": "meta"},
+    )
+    deposito.enfileirar(encomenda)
+    op = Operario(deposito, {MotorPngLocal.slug: MotorPngLocal()},
+                  tmp_path / "t", nome="op-sentinela")
+    final = op.trabalhar_uma_vez()
+    assert final.estado is EstadoDoTrabalho.RENDERED, final.falha
+
+    # METADE 1 — a sentinela ATRAVESSOU a produção. Sem isto, o resto é vazio.
+    assert _SENTINELA in json.dumps(final.recibo, default=str), (
+        "a sentinela nem chegou ao recibo interno: a prova não prova nada"
+    )
+    assert final.encomenda.parametros["insumo"] == _SENTINELA
+
+    # METADE 2 — e some de todo JSON público.
+    publico = json.dumps(
+        {"trabalho": _trabalho_dto(final), "recibo": _recibo_dto(final.recibo)},
+        default=str, ensure_ascii=False,
+    )
+    assert _SENTINELA not in publico, "o insumo cru saiu pela API"
+
+    # E o que saiu no lugar identifica sem revelar.
+    dto = _recibo_dto(final.recibo)
+    assert dto["parametros"]["hash"].startswith("sha256:")
+    assert dto["parametros"]["campos"] == {"canal": "meta"}
+    assert dto["parametros"]["retidos"]["insumo"] == "retido_texto_livre"
+    assert dto["parametros"]["retidos"]["titulo"] == "retido_texto_livre"
+
+
+def test_a_idempotencia_e_a_assinatura_nao_mudam_com_a_fronteira(tmp_path) -> None:
+    """A sanitização é da SAÍDA. Ela não pode tocar a identidade do trabalho.
+
+    Se o hash público fosse calculado de um dicionário já podado, dois pedidos
+    diferentes colidiriam; e se a assinatura determinista visse o resumo em vez
+    dos parâmetros, ela deixaria de responder "o motor repetiu?".
+    """
+    from app.criativo.bancada.contrato import Encomenda, SaidaPedida
+    from app.criativo.bancada.fronteira_publica import hash_dos_parametros
+
+    def pedido(insumo: str) -> Encomenda:
+        return Encomenda(
+            receita_id="r", tenant_id="t", motor_slug="m", modo_slug="mo",
+            finalidade_slug="f", seed=1,
+            saidas=(SaidaPedida("1x1", 10, 10, "imagem", "image/png"),),
+            parametros={"insumo": insumo, "canal": "meta"},
+        )
+
+    a, b = pedido("briefing A"), pedido("briefing B")
+    # A identidade interna continua distinguindo os dois.
+    assert a.chave_de_idempotencia() != b.chave_de_idempotencia()
+    # E o hash público também — ele deriva do pedido INTEIRO, não do resumo.
+    assert hash_dos_parametros(a.parametros) != hash_dos_parametros(b.parametros)
+    # Mesmo pedido, mesmo hash: ele identifica.
+    assert hash_dos_parametros(a.parametros) == hash_dos_parametros(pedido("briefing A").parametros)
+
+
+def test_ausencia_nao_vira_string_vazia_nem_hash_vira_prompt_sanitizado() -> None:
+    """Três estados de ausência, e eles não se confundem."""
+    from app.criativo.bancada.fronteira_publica import resumo_do_insumo, resumo_publico
+
+    assert resumo_do_insumo(None) == {"estado": "ausente", "hash": None}
+    assert resumo_do_insumo("   ") == {"estado": "vazio", "hash": None}
+    retido = resumo_do_insumo("tem conteudo")
+    assert retido["estado"] == "retido" and retido["hash"].startswith("sha256:")
+    # Nenhum dos três devolve string vazia fingindo de texto.
+    assert all(r.get("texto") is None for r in
+               (resumo_do_insumo(None), resumo_do_insumo(""), retido))
+
+    r = resumo_publico({"insumo": "x", "titulo": "", "apoio": None, "canal": "meta"})
+    assert r["retidos"] == {
+        "apoio": "ausente", "insumo": "retido_texto_livre", "titulo": "vazio",
+    }
+    # O hash não se chama "prompt sanitizado" nem finge ser legível.
+    assert "prompt" not in json.dumps(r) and "sanitizado" not in json.dumps(r)
