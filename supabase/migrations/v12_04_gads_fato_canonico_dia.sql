@@ -507,11 +507,29 @@ BEGIN
   END IF;
 
   BEGIN
+    -- ⚠️ A ORDEM DESTE `ORDER BY` E UMA GUARDA DE DEADLOCK, e nao estetica.
+    --
+    -- A trava consultiva logo abaixo e tomada DENTRO deste laco, uma por linha
+    -- LEGADA — ou seja, por `(campaign_id, metric_date)`. Trava dentro de laco
+    -- so e segura se TODAS as transacoes a adquirirem na MESMA ordem global.
+    --
+    -- A ordem anterior era `(customer_id, campaign_id)`, e ela NAO coincide com
+    -- a chave da trava: bastam duas execucoes com CONTAS diferentes tocando as
+    -- MESMAS campanhas para as travas saírem em ordem invertida, e aí uma
+    -- espera pela outra. Medido na corrida C10: `projecao_erro_codigo = 40P01`.
+    -- O sintoma nao e travar para sempre — o Postgres detecta e aborta uma —,
+    -- e a projecao falhar de forma INTERMITENTE, que e pior de diagnosticar que
+    -- um erro constante, porque some quando alguem vai olhar.
+    --
+    -- Ordenar pela propria chave da trava faz todo mundo pegar as travas em
+    -- ordem crescente de `(campaign_id, metric_date)`, e ciclo nao se forma.
+    -- `customer_id` e `segments_hash` entram depois so para a ordem ser total e
+    -- o resultado, determinístico.
     FOR f IN
       SELECT g.*
         FROM public.google_ads_campanha_dia g
        WHERE g.execucao_id = p_execucao_id
-       ORDER BY g.customer_id, g.campaign_id
+       ORDER BY g.campaign_id, g.metric_date, g.customer_id, g.segments_hash
     LOOP
       -- ⚠️ A ORDEM AQUI E O CONTRATO: TRAVA, DEPOIS OLHA, DEPOIS ESCREVE.
       --

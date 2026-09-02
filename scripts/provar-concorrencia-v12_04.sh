@@ -214,7 +214,8 @@ SQL
 
 abrir 3 s1
 abrir 4 s2
-echo "duas sessões abertas (s1, s2)"
+abrir 5 s3
+echo "três sessões abertas (s1, s2 e a auxiliar s3)"
 
 # ══════════════════════════════════════════════════════════════════════════════
 echo
@@ -436,6 +437,70 @@ igual "C9.3 a projeção recusa por ambiguidade em vez de escolher um segmento" 
   "$(q "select projecao_estado from public.trafego_coleta_execucao where chave_idempotencia='c9|seg|1'")" "recusada_ambigua"
 igual "C9.4 a legada NÃO recebeu o número de um segmento arbitrário" \
   "$(q "select coalesce(impressions::text,'NULO') from public.daily_campaign_metrics where campaign_id='4900000009' and date='2026-08-30'")" "NULO"
+
+# ══════════════════════════════════════════════════════════════════════════════
+echo
+echo "C10 — A TRAVA DA PROJEÇÃO NÃO PODE PRODUZIR ESPERA CIRCULAR"
+# A trava consultiva que consertou C8 é tomada DENTRO de um laço, uma por linha
+# legada. Trava dentro de laço só é segura se TODAS as transações a adquirirem
+# na MESMA ordem global — senão duas execuções que tocam as mesmas campanhas em
+# ordens opostas esperam uma pela outra.
+#
+# O laço ordenava por `(customer_id, campaign_id)` e travava por
+# `(campaign_id, metric_date)`. As duas ordens não coincidem: basta que as
+# execuções tenham CONTAS diferentes para as mesmas campanhas saírem em ordem
+# invertida. O sintoma não é travar para sempre — o Postgres detecta e aborta
+# uma —, é a projeção falhar com 40P01 de forma intermitente, o que é pior de
+# diagnosticar do que um erro constante.
+#
+# A corrida é encenada, não sorteada: uma terceira sessão segura a linha legada
+# de BBB, o que prende s1 depois de ela já ter a trava de BBB. Só então s2 pega
+# AAA e vai buscar BBB. Quando s3 solta, o ciclo se fecha.
+CAMPA=1111111111   # "AAA" — menor campaign_id
+CAMPB=8888888888   # "BBB" — maior campaign_id
+q "insert into public.daily_campaign_metrics (campaign_id, date, revenue) values ('$CAMPA','2026-08-30',10.0),('$CAMPB','2026-08-30',20.0) on conflict do nothing" >/dev/null
+
+# s3 segura a linha legada de BBB
+mandar 5 s3 "begin;"
+mandar 5 s3 "update public.daily_campaign_metrics set revenue = revenue where campaign_id='$CAMPB' and date='2026-08-30';"
+
+# T1: contas 1000000xx -> ordenado por conta, BBB vem ANTES de AAA
+mandar 3 s1 "begin;"
+mandar_async 3 s1 "select jsonb_set(jsonb_set(conc.doc(p_chave=>'c10|t1|1',p_exec=>'c10|t1',p_origem=>'D-1',p_data=>'2026-08-30',p_colhida=>'2026-08-30T10:00:00Z',p_campanha=>'$CAMPB'),'{projetar_compat}','true'),'{linhas}',
+  jsonb_build_array(
+    jsonb_build_object('customer_id','100000001','campaign_id','$CAMPB','metric_date','2026-08-30','colhida_em','2026-08-30T10:00:00Z'::timestamptz,'currency_code','BRL','impressoes',11),
+    jsonb_build_object('customer_id','100000002','campaign_id','$CAMPA','metric_date','2026-08-30','colhida_em','2026-08-30T10:00:00Z'::timestamptz,'currency_code','BRL','impressoes',12))) as d \\gset
+select public.volc_registrar_gads_campanha_dia(:'d'::jsonb);"
+S_T1="$ULTIMA_SENTINELA"
+esperar_bloqueio s1
+
+# T2: contas 2000000xx -> ordenado por conta, AAA vem ANTES de BBB
+mandar 4 s2 "begin;"
+mandar_async 4 s2 "select jsonb_set(jsonb_set(conc.doc(p_chave=>'c10|t2|1',p_exec=>'c10|t2',p_origem=>'D-1',p_data=>'2026-08-30',p_colhida=>'2026-08-30T11:00:00Z',p_campanha=>'$CAMPA'),'{projetar_compat}','true'),'{linhas}',
+  jsonb_build_array(
+    jsonb_build_object('customer_id','200000001','campaign_id','$CAMPA','metric_date','2026-08-30','colhida_em','2026-08-30T11:00:00Z'::timestamptz,'currency_code','BRL','impressoes',21),
+    jsonb_build_object('customer_id','200000002','campaign_id','$CAMPB','metric_date','2026-08-30','colhida_em','2026-08-30T11:00:00Z'::timestamptz,'currency_code','BRL','impressoes',22))) as d \\gset
+select public.volc_registrar_gads_campanha_dia(:'d'::jsonb);"
+S_T2="$ULTIMA_SENTINELA"
+esperar_bloqueio s2
+
+# solta a linha legada: o ciclo se fecha aqui, se ele existir
+mandar 5 s3 "commit;"
+esperar_sentinela s1 "$S_T1"
+# ⚠️ COMMIT DE s1 ANTES de esperar s2, e a ordem importa: com a correção, s2 fica
+# esperando a trava consultiva de AAA, que é de TRANSAÇÃO e só solta no commit.
+# Esperar a sentinela de s2 antes de commitar s1 seria esperar por algo que eu
+# mesmo estou segurando — o teste travaria por desenho do teste, não do código.
+mandar 3 s1 "commit;"
+esperar_sentinela s2 "$S_T2"
+mandar 4 s2 "commit;"
+
+igual "C10.1 nenhuma projeção falhou por espera circular (40P01)" \
+  "$(q "select count(*) from public.trafego_coleta_execucao where projecao_erro_codigo = '40P01'")" "0"
+igual "C10.2 as duas execuções fecharam seus lotes" \
+  "$(q "select count(*) from public.trafego_coleta_execucao where chave_idempotencia in ('c10|t1|1','c10|t2|1')")" "2"
+igual "C10.3 os quatro fatos canônicos entraram" \
+  "$(q "select count(*) from public.google_ads_campanha_dia where campaign_id in ('$CAMPA','$CAMPB')")" "4"
 
 # ══════════════════════════════════════════════════════════════════════════════
 echo
