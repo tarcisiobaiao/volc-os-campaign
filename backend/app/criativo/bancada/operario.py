@@ -67,11 +67,6 @@ def _agora() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _hash_puro(valor: str | None) -> str | None:
-    """`sha256:<hex>` ou `<hex>` viram sempre `<hex>`. `None` continua `None`."""
-    return None if valor is None else valor.removeprefix("sha256:")
-
-
 def _intervalo_s(inicio: str, fim: str) -> float:
     """Segundos entre dois carimbos ISO. `0.0` so quando eles sao iguais.
 
@@ -734,6 +729,7 @@ class Operario:
         )
         from .armazenamento_verificado import (  # noqa: PLC0415
             chave_canonica,
+            hash_puro,
             publicar_artefato,
         )
 
@@ -821,10 +817,15 @@ class Operario:
                 # as duas formas conviverem no MESMO recibo faria a pergunta que
                 # mais importa — "o que voltou e o que subiu?" — depender de
                 # lembrar qual campo carrega prefixo. O CHECK `hash_forma` da
-                # v11_03 (`^[0-9a-f]{64}$`) tambem quer a forma pura, entao
-                # normalizar aqui e o que faz o recibo caber no banco.
+                # v11_03 (`^[0-9a-f]{64}$`) tambem quer a forma pura.
+                #
+                # ⚠️ O normalizador e o de `armazenamento_verificado`, e nao uma
+                # copia local. Havia duas copias, e uma delas nao existia:
+                # `Publicacao.para_registro` escrevia na MESMA coluna sem
+                # normalizar, e a v11_03 recusava a linha. Uma normalizacao que
+                # vale para um dos caminhos nao e normalizacao.
                 sha256_relido=Declarado.de(
-                    _hash_puro(publicacao.sha256_remoto), Ausencia.NAO_MEDIDO
+                    hash_puro(publicacao.sha256_remoto), Ausencia.NAO_MEDIDO
                 ),
                 bytes_relidos=Declarado.de(
                     publicacao.bytes_remoto, Ausencia.NAO_MEDIDO

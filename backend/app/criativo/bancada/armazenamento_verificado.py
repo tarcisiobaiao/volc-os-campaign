@@ -219,7 +219,18 @@ def estado_de(
             "alguem releu e nao registrou o que concluiu"
         )
     if storage_sha256_remoto is not None:
-        bate = storage_sha256_remoto == sha256_do_artefato
+        # ⚠️ `hash_puro` nos DOIS lados, e nenhum dos dois pode ser dispensado.
+        # A coluna do banco guarda `<hex>` (é o que o CHECK `hash_forma` aceita)
+        # e a máquina de armazenamento fala `sha256:<hex>`; um par misto — uma
+        # metade lida do banco, a outra vinda da publicação em memória — fazia
+        # esta comparação dar `False` com o veredito `True`, e a linha correta
+        # LEVANTAVA "veredito contradiz o hash remoto". Um leitor que recusa a
+        # linha certa é pior que um que aceita a errada: a forense de um
+        # mismatch real começa por conseguir ler a linha.
+        #
+        # Normalizar é idempotente, então quem já manda a forma pura — o caso do
+        # banco, que é o de produção — não muda de comportamento.
+        bate = hash_puro(storage_sha256_remoto) == hash_puro(sha256_do_artefato)
         if bate is not storage_hash_conferido:
             raise ValueError(
                 "veredito contradiz o hash remoto: os dois campos contam "
@@ -253,6 +264,21 @@ def _segmento(nome: str, valor: str) -> str:
             f"{nome} invalido para chave de armazenamento: {valor!r}"
         )
     return valor
+
+
+def hash_puro(valor: str | None) -> str | None:
+    """`sha256:<hex>` ou `<hex>` viram sempre `<hex>`. `None` continua `None`.
+
+    A máquina de armazenamento fala `sha256:<hex>` (é o que `sha256_de` devolve)
+    e o banco fala `<hex>`: o CHECK `criativo_render_artefato_hash_remoto_forma`
+    da v11_03 exige `^[0-9a-f]{64}$`. Este é o único tradutor entre as duas
+    linguagens, e ele mora aqui — na fronteira em que o valor sai — porque duas
+    cópias da mesma normalização já divergiram uma vez: o recibo normalizava e
+    `Publicacao.para_registro` não, e a coluna era a mesma.
+
+    Idempotente de propósito: chamar duas vezes não estraga um valor já puro.
+    """
+    return None if valor is None else valor.removeprefix("sha256:")
 
 
 def chave_canonica(tenant_id: str, job_id: str, slot: str, sha256: str,
@@ -380,6 +406,30 @@ class Publicacao:
         Um booleano perde a segunda resposta para sempre, e um mismatch é
         exatamente quando ela importa. Um CHECK impede que os dois se
         contradigam.
+
+        ⚠️ SEGUNDA DIVERGÊNCIA FECHADA, e ela é da mesma família da primeira.
+        `sha256_de` devolve `sha256:<hex>`, e este método emitia esse valor
+        direto na coluna. O CHECK `criativo_render_artefato_hash_remoto_forma`
+        exige `^[0-9a-f]{64}$` — a forma PURA. Contraprova executada em
+        PostgreSQL 17 com a v11_03 aplicada: o valor que este método emitia
+        recebia `ERROR: violates check constraint
+        criativo_render_artefato_hash_remoto_forma`; o mesmo valor sem o prefixo
+        entrou. Ou seja, no dia da aplicação da v11_03 toda gravação de artefato
+        com hash remoto conferido seria recusada — o mesmo formato de defeito
+        que a chave canônica de UM underscore tinha, e pelo mesmo motivo: duas
+        metades da máquina descrevendo o mesmo valor de dois jeitos.
+
+        O operário já normalizava, mas só no caminho do RECIBO
+        (`operario._hash_puro`), e o comentário lá já citava este CHECK. Este
+        método é o OUTRO caminho para a MESMA coluna, e não normalizava. Uma
+        normalização que vale para um dos dois caminhos não é normalização; é
+        coincidência. Ela passa a morar aqui, na fronteira em que o valor sai
+        para o banco, para que os dois caminhos não possam mais divergir.
+
+        `storage_hash_conferido` continua comparando as formas INTERNAS
+        (`sha256_remoto == sha256_local`), que carregam as duas o mesmo prefixo:
+        a resposta "bateu?" não muda, e comparar depois de normalizar só um dos
+        lados é que inverteria o veredito.
         """
         conferiu = self.estado in TERMINAIS
         return {
@@ -390,7 +440,7 @@ class Publicacao:
                 None if not conferiu
                 else self.sha256_remoto == self.sha256_local
             ),
-            "storage_sha256_remoto": self.sha256_remoto if conferiu else None,
+            "storage_sha256_remoto": hash_puro(self.sha256_remoto) if conferiu else None,
         }
 
 
