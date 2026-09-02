@@ -35,12 +35,20 @@
 --  3. D0 E D-1 NAO DISPUTAM A CHAVE. Elas COMPARTILHAM a chave e a precedencia e
 --     TOTAL e declarada: backfill(3) > D-1(2) > D0(1). Janela fechada nunca e
 --     rebaixada por leitura intradia. Empate de posto decide por `colhida_em`.
+--     A regra vive no WHERE do ON CONFLICT, avaliada CONTRA A LINHA QUE ESTA LA
+--     no instante da escrita — nao num SELECT anterior, que sob concorrencia ja
+--     descreve um banco que deixou de existir.
 --  4. IDEMPOTENCIA COM MEMORIA. Mesma `chave_idempotencia` + mesmo conteudo
 --     devolve o recibo guardado e NAO escreve. Mesma chave com conteudo
 --     DIFERENTE e RECUSADA — aceitar seria deixar um retry reescrever historia.
+--     Vale TAMBEM quando as duas chegam ao mesmo tempo: a colisao no unique e
+--     tratada e responde pelo contrato, nunca com a violacao crua do indice.
 --  5. RECIBO RESOLVE EXATAMENTE. O fechamento reconcilia o que o chamador
 --     declarou contra o que o banco realmente persistiu, e recusa fechar quando
 --     divergem, quando falta um lote na sequencia ou quando nada foi escrito.
+--     Linha aceita que uma execucao concorrente de posto maior superou depois
+--     nao e perda: fecha como 'parcial' com motivo nomeado, porque uma execucao
+--     que nao consegue fechar vira alarme falso no deadman.
 --  6. FECHAMENTO DEPOIS DA ESCRITA. A FK do fato para o ledger e DEFERRABLE
 --     INITIALLY DEFERRED: o fato e escrito antes, o recibo depois, na mesma
 --     transacao. Fato sem recibo nao sobrevive ao COMMIT.
@@ -611,6 +619,9 @@ DECLARE
   v_fatos        integer;
   v_resultado    text;
   v_projetar     boolean;
+  v_escritas     integer;
+  v_gravou       integer;
+  v_superadas    integer;
 BEGIN
   IF jsonb_typeof(documento) <> 'object' THEN
     RAISE EXCEPTION USING ERRCODE = '22023',
@@ -768,28 +779,41 @@ BEGIN
          AND g.segments_hash = v_seg_hash;
 
       IF FOUND THEN
-        -- A mesma execucao nao pode escrever o mesmo fato duas vezes: se
-        -- pudesse, `linhas_aceitas` deixaria de resolver as linhas persistidas
-        -- e a reconciliacao do fechamento viraria decoracao.
-        IF EXISTS (
+        -- OUTRO lote da MESMA execucao ja escreveu este fato: se passasse,
+        -- `linhas_aceitas` deixaria de resolver as linhas persistidas e a
+        -- reconciliacao do fechamento viraria decoracao.
+        --
+        -- ⚠️ `v_atual.execucao_id = v_exec_id` NAO entra aqui, e a diferenca e
+        -- material: exec_id e derivado da chave_idempotencia, entao igualdade
+        -- significa que a MESMA CHAVE ja escreveu — ou seja, um retry idempotente
+        -- cuja corrida passou por baixo da checagem do topo (o ledger do outro
+        -- ainda nao estava commitado quando a lemos, e ja estava quando lemos o
+        -- fato). Retry legitimo devolve recibo; nao e duplicata de execucao.
+        -- Quem resolve esse caso e o tratador de unique_violation do ledger.
+        IF v_atual.execucao_id <> v_exec_id AND EXISTS (
           SELECT 1 FROM public.trafego_coleta_execucao e
            WHERE e.execucao_id = v_atual.execucao_id
              AND e.execucao_chave = v_exec_chave
-        ) OR v_atual.execucao_id = v_exec_id THEN
+        ) THEN
           RAISE EXCEPTION USING ERRCODE = '22023',
             MESSAGE = 'FATO_DUPLICADO_NA_EXECUCAO: '
                       || (v_linha->>'customer_id') || '/' || (v_linha->>'campaign_id')
                       || '/' || (v_linha->>'metric_date');
         END IF;
-
-        -- precedencia total e declarada
-        IF v_precedencia < v_atual.precedencia
-           OR (v_precedencia = v_atual.precedencia
-               AND (v_linha->>'colhida_em')::timestamptz < v_atual.colhida_em) THEN
-          v_preteridas := v_preteridas + 1;
-          CONTINUE;
-        END IF;
       END IF;
+
+      -- ⚠️ A PRECEDENCIA NAO E DECIDIDA AQUI, e isto foi MEDIDO.
+      -- Ate a v12_04 original, a decisao morava num IF sobre o SELECT acima e a
+      -- escrita vinha depois, com `ON CONFLICT DO UPDATE` SEM guarda. Em serie
+      -- funciona; com duas sessoes, nao: as duas leem "a linha nao existe", as
+      -- duas decidem gravar, a primeira commita e o ON CONFLICT da segunda
+      -- resolve — aplicando uma decisao tomada num snapshot que ja morreu.
+      -- Media na corrida C1 de scripts/provar-concorrencia-v12_04.sh: um D0
+      -- intradia sobrescrevia um D-1 de janela FECHADA, e ainda contava a
+      -- degradacao como `linhas_aceitas`. A precedencia so existe se ela for
+      -- avaliada NO MOMENTO DA ESCRITA, contra a linha que esta la — por isso
+      -- ela desceu para o WHERE do DO UPDATE, e a contagem passou a vir do
+      -- ROW_COUNT real em vez de uma suposicao.
 
       INSERT INTO public.google_ads_campanha_dia AS g (
         customer_id, campaign_id, metric_date, segments_hash, segmentos,
@@ -868,9 +892,25 @@ BEGIN
         top_impression_percentage = EXCLUDED.top_impression_percentage,
         absolute_top_impression_percentage = EXCLUDED.absolute_top_impression_percentage,
         metricas_extras = EXCLUDED.metricas_extras,
-        atualizada_em = now();
+        atualizada_em = now()
+      -- A precedencia total, agora atomica com a escrita. E a negacao exata da
+      -- regra antiga: pretere quando o posto e menor, ou quando empata no posto
+      -- e a colheita e mais velha. Empate exato de posto E de relogio continua
+      -- escrevendo, como antes — releitura identica nao e rebaixamento.
+      WHERE EXCLUDED.precedencia > g.precedencia
+         OR (EXCLUDED.precedencia = g.precedencia
+             AND EXCLUDED.colhida_em >= g.colhida_em);
 
-      v_aceitas := v_aceitas + 1;
+    -- ROW_COUNT e o que o banco REALMENTE escreveu. Quando a guarda do DO UPDATE
+    -- e falsa, a instrucao afeta zero linhas — e a linha foi preterida, nao
+    -- aceita. Contar antes de escrever era exatamente como a degradacao
+    -- silenciosa entrava no recibo como sucesso.
+      GET DIAGNOSTICS v_escritas = ROW_COUNT;
+      IF v_escritas = 0 THEN
+        v_preteridas := v_preteridas + 1;
+      ELSE
+        v_aceitas := v_aceitas + 1;
+      END IF;
     END LOOP;
 
     -- projecao: fault-isolated, com desfecho nomeado no recibo.
@@ -945,10 +985,38 @@ BEGIN
      WHERE e.execucao_chave = v_exec_chave
        AND e.tipo_lote = 'contas';
 
-    IF v_fatos <> v_soma.aceitas THEN
+    -- ⚠️ MAIS fatos que linhas aceitas e impossivel por construcao: a unica porta
+    -- de escrita e esta RPC e ela conta pelo ROW_COUNT. Se acontecer, e corrupcao
+    -- e o fechamento recusa.
+    IF v_fatos > v_soma.aceitas THEN
       RAISE EXCEPTION USING ERRCODE = '22023',
         MESSAGE = 'RECIBO_NAO_RESOLVE_FATOS: ledger diz ' || v_soma.aceitas
                   || ' aceitas e a tabela tem ' || v_fatos || ' linhas desta execucao';
+    END IF;
+
+    -- ⚠️ MENOS fatos que linhas aceitas NAO e perda, e SUPERSESSAO — e isto foi
+    -- medido na corrida C6. Uma execucao D0 aceita e persiste a linha; uma D-1
+    -- concorrente, com precedencia maior, legitimamente toma a posse do fato
+    -- ANTES de a D0 fechar. A checagem original comparava uma alegacao HISTORICA
+    -- ("eu aceitei 1") contra o estado VIVO ("hoje voce nao possui nenhuma") e
+    -- explodia com RECIBO_NAO_RESOLVE_FATOS: a execucao superada nunca mais
+    -- conseguia fechar, e o deadman ficava olhando uma corrida eternamente
+    -- aberta — um alarme falso nascido de um sucesso.
+    --
+    -- Nao vira 'ok' silencioso. Vira 'parcial' com motivo NOMEADO, contando
+    -- exatamente quantas linhas foram superadas. E nao abre porta para mentira:
+    -- `v_soma.aceitas` nao vem do chamador, vem do ROW_COUNT que esta propria
+    -- RPC gravou lote a lote, e nada alem dela escreve no fato.
+    v_superadas := v_soma.aceitas - v_fatos;
+    IF v_superadas > 0 THEN
+      v_resultado := 'parcial';
+      documento := jsonb_set(
+        documento, '{motivo}',
+        to_jsonb(('LINHAS_SUPERADAS_POR_PRECEDENCIA: ' || v_superadas
+                  || ' de ' || v_soma.aceitas
+                  || ' linhas aceitas foram superadas por execucao concorrente '
+                  || 'de precedencia maior ou igual')::text),
+        true);
     END IF;
 
     IF v_proj_linhas <> v_soma.projetadas THEN
@@ -993,7 +1061,53 @@ BEGIN
     v_aceitas, v_preteridas, v_rejeitadas, v_rejeicoes,
     v_proj_estado, v_proj_linhas, v_proj_erro,
     v_payload
-  );
+  )
+  -- ⚠️ A CHECAGEM DE IDEMPOTENCIA DO TOPO NAO SOBREVIVE A UMA CORRIDA, e isto
+  -- foi medido nas corridas C3 e C4. Duas sessoes com a MESMA chave leem o
+  -- ledger antes de qualquer uma commitar, as duas concluem "nunca vi essa
+  -- chave", e a segunda so descobre a verdade AQUI. Sem tratador, o chamador
+  -- recebia `duplicate key value violates unique constraint ..._pkey` — uma
+  -- violacao crua, sem o nome do contrato, que um retry de n8n le como falha de
+  -- infraestrutura. Pior no caso divergente: a recusa que devia se chamar
+  -- CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE chegava disfarcada de erro de banco.
+  --
+  -- `DO NOTHING` arbitra pela chave_idempotencia; a PK (execucao_id) e derivada
+  -- dela por volc_gads_uuid_da_chave, entao as duas colidem juntas e a mesma
+  -- guarda cobre as duas.
+  ON CONFLICT (chave_idempotencia) DO NOTHING;
+
+  GET DIAGNOSTICS v_gravou = ROW_COUNT;
+  IF v_gravou = 0 THEN
+    -- A outra sessao ja commitou esta chave. Reler agora enxerga o recibo dela
+    -- (READ COMMITTED da um snapshot novo por instrucao) e a regra e a MESMA do
+    -- topo: conteudo igual devolve o recibo guardado, conteudo diferente e
+    -- recusado pelo nome. O RAISE derruba a transacao inteira, entao o fato que
+    -- este lote escreveu antes tambem volta — que e exatamente o certo: payload
+    -- divergente nao deixa rastro.
+    SELECT * INTO v_existente
+      FROM public.trafego_coleta_execucao
+     WHERE chave_idempotencia = v_chave;
+
+    IF NOT FOUND OR v_existente.payload_sha256 <> v_payload THEN
+      RAISE EXCEPTION USING ERRCODE = '22023',
+        MESSAGE = 'CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE: a chave '
+                  || v_chave || ' ja existe com outro conteudo';
+    END IF;
+
+    RETURN jsonb_build_object(
+      'execucao_id',        v_existente.execucao_id,
+      'chave_idempotencia', v_existente.chave_idempotencia,
+      'repetida',           true,
+      'linhas_lidas',       v_existente.linhas_lidas,
+      'linhas_aceitas',     v_existente.linhas_aceitas,
+      'linhas_preteridas',  v_existente.linhas_preteridas,
+      'linhas_rejeitadas',  v_existente.linhas_rejeitadas,
+      'rejeicoes',          v_existente.rejeicoes,
+      'projecao_estado',    v_existente.projecao_estado,
+      'projecao_linhas',    v_existente.projecao_linhas,
+      'resultado',          v_existente.resultado
+    );
+  END IF;
 
   RETURN jsonb_build_object(
     'execucao_id',        v_exec_id,
@@ -1013,7 +1127,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.volc_registrar_gads_campanha_dia(jsonb) IS
-  'Unica porta de ingestao do fato campanha-dia. Idempotente pela chave, recusa a mesma chave com outro conteudo, aplica precedencia D0<D-1<backfill, projeta compatibilidade em bloco isolado e so fecha a execucao depois de reconciliar contra o que foi persistido.';
+  'Unica porta de ingestao do fato campanha-dia. Idempotente pela chave SOB CONCORRENCIA (a colisao de chave e tratada e devolve o recibo guardado, ou recusa pelo nome quando o conteudo diverge), aplica precedencia D0<D-1<backfill ATOMICAMENTE na propria escrita (guarda no ON CONFLICT, contagem pelo ROW_COUNT), projeta compatibilidade em bloco isolado, e so fecha a execucao depois de reconciliar contra o que foi persistido — fechando como parcial, com motivo nomeado, quando linhas aceitas foram superadas por execucao concorrente de precedencia maior.';
 
 
 -- ─────────────────────────────────────────────── leitura de saude / deadman ──
