@@ -1029,7 +1029,7 @@ decisão ser tomada em separado.
 | `v11_03_rollback.sql` | **não executada em produção** | idem, executada a cada rodada |
 | `scripts/provas-v11_03.sql` | — | comportamento incluído no ciclo completo |
 | `scripts/provas-papeis-v11_03.sql` | — | segurança sob papéis: 34 provas, incluídas no ciclo (DEGRAU 2b) |
-| `scripts/provar-ciclo-v11_03.sh` | — | **166 provas, 0 falhas** |
+| `scripts/provar-ciclo-v11_03.sh` | — | **178 provas, 0 falhas** |
 | `scripts/preflight-v11_03.sh` | — | somente leitura; não aplica nada |
 | `scripts/v11_03-provar-preflight.sh` | — | **30 provas, 0 falhas** |
 | `scripts/v11_03-provar-plano.sh` | — | **12 provas, 0 falhas** |

@@ -30,7 +30,7 @@ shasum -a 256 supabase/migrations/v11_03_execucao_criativa.sql \
 
 | Arquivo | Linhas | sha256 |
 |---|---|---|
-| `supabase/migrations/v11_03_execucao_criativa.sql` | 876 | `33b55c527b5214fb56a61ec1c056d62e5716fcf17c119f303ab4660831f53a67` |
+| `supabase/migrations/v11_03_execucao_criativa.sql` | 905 | `3aa77687f27d77c598fd88c827079f7f8f538d3e9b364fb0734306406d80db80` |
 | `supabase/migrations/v11_03_rollback.sql` | 209 | `861ead45e024ccb8aa1fbd5bdec420b5fbaf9563bbfbee289a583c20399da07b` |
 
 Apoio (não são aplicados no banco, mas fazem parte do pacote):
@@ -39,7 +39,7 @@ Apoio (não são aplicados no banco, mas fazem parte do pacote):
 |---|---|---|
 | `scripts/preflight-v11_03.sh` | 358 | `8d6d4d1f7c3b146f03df44a17e71e2f5b9fbd7f5b9489edd15d3c834ba767539` |
 | `scripts/provar-ciclo-v11_03.sh` | 303 | `9b09a94fd9f59470e9d183317b5caf30206a03e2e5cb6a034af4c54a0d2377dc` |
-| `scripts/provas-v11_03.sql` | 580 | `7a48fbea5226070b80b55f03933bb998ea3bd4a3b0d5c4d5043dabe086f42ba4` |
+| `scripts/provas-v11_03.sql` | 662 | `5cae318a0ad6212734a03141dbcc9708e10ea6a3cce762ead83fbf0e26215a57` |
 | `scripts/provas-papeis-v11_03.sql` | 347 | `4ebaa7066a4400b61ad38b53ad717c6e1916693ac1859f2db3be569941a15f02` |
 | `scripts/v11_03-provar-preflight.sh` | 165 | `e431a4a89c0dd89ada12098093f8b46daeeb501dd73458a09a96394fded57271` |
 | `scripts/v11_03-provar-plano.sh` | 76 | `64fb5291785288598d7b45071af4c9e98fa48ad30e2d12e6a3c92e7f8d7a0245` |
@@ -72,7 +72,7 @@ bash scripts/v11_03-provar-plano.sh
 Esperado, literalmente:
 
 ```
-  passaram 166 · falharam 0
+  passaram 178 · falharam 0
   CICLO v11_03 COMPLETO: aplicar → operar → reverter → reaplicar
 ```
 ```
@@ -381,5 +381,5 @@ tudo que aconteceu no banco depois da aplicação.
 
 Fora do escopo já **não** está o README: a tabela de estado da série v11_03 em
 `supabase/migrations/README.md` dizia "129 provas" e foi corrigida nesta rodada
-para os números medidos em 02/09/2026 — **166** no ciclo, **30** no
+para os números medidos em 02/09/2026 — **178** no ciclo, **30** no
 `v11_03-provar-preflight.sh`, **12** no `v11_03-provar-plano.sh` (achado A4-ii).
