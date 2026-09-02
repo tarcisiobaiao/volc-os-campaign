@@ -39,6 +39,7 @@ import { SeletorDeCriacao } from '@/components/criativos/home/SeletorDeCriacao';
 import { useCriativosResumo } from '@/hooks/useCriativosResumo';
 import { codigoDaFalha, mensagemDaFalha } from '@/lib/criativosApi';
 import { ROTULO_DO_JOB, type EstadoDoJob } from '@/types/criativos';
+import { contagemLegivel } from '@/components/criativos/comum/formato';
 
 const ORDEM_DOS_ESTADOS: EstadoDoJob[] = [
   'running',
@@ -235,7 +236,7 @@ const EstudioHomePage: React.FC<PropsDaHome> = ({ abrirSeletor = false }) => {
                         </span>
                       </dt>
                       <dd className="shrink-0 font-display text-sm font-semibold tabular-nums text-foreground">
-                        {resumo.contagemPorEstado[estado] ?? 0}
+                        {contagemLegivel(resumo.contagemPorEstado[estado])}
                       </dd>
                     </div>
                   ))}

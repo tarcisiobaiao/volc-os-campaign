@@ -1028,7 +1028,16 @@ decisão ser tomada em separado.
 | `v11_03_execucao_criativa.sql` | **não aplicada** | cluster descartável, ciclo completo |
 | `v11_03_rollback.sql` | **não executada em produção** | idem, executada a cada rodada |
 | `scripts/provas-v11_03.sql` | — | comportamento incluído no ciclo completo |
-| `scripts/provar-ciclo-v11_03.sh` | — | **129 provas, 0 falhas** |
+| `scripts/provas-papeis-v11_03.sql` | — | segurança sob papéis: 34 provas, incluídas no ciclo (DEGRAU 2b) |
+| `scripts/provar-ciclo-v11_03.sh` | — | **166 provas, 0 falhas** |
+| `scripts/preflight-v11_03.sh` | — | somente leitura; não aplica nada |
+| `scripts/v11_03-provar-preflight.sh` | — | **30 provas, 0 falhas** |
+| `scripts/v11_03-provar-plano.sh` | — | **12 provas, 0 falhas** |
+
+⚠️ Este número **129 já esteve errado aqui**: ficou parado enquanto o ciclo
+crescia. Os quatro valores acima foram medidos em 02/09/2026, nesta máquina,
+rodando os três scripts — não são de memória. Quem acrescentar prova ao ciclo
+atualiza esta linha na mesma entrega, ou ela volta a mentir.
 
 ### O que ela persiste
 

@@ -1,0 +1,16 @@
+;; Perfil de sandbox do render hermetico do VOLC O.S.
+;;
+;; `(deny network-outbound)` faz o kernel recusar `connect()` para qualquer
+;; destino. A excecao de loopback existe porque o bundler do Remotion sobe um
+;; servidor estatico em 127.0.0.1 e o Chromium precisa alcanca-lo: bloquear isso
+;; nao provaria hermetismo, so impediria o render.
+;;
+;; `unix-socket` fica liberado porque o Chromium fala com o processo pai por
+;; socket de dominio unix; ele nao alcanca a rede por ai.
+;;
+;; A ordem importa: a ultima regra que casa vence.
+(version 1)
+(allow default)
+(deny network-outbound)
+(allow network-outbound (remote unix-socket))
+(allow network-outbound (remote ip "localhost:*"))

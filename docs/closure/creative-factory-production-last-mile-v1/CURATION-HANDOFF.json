@@ -1,0 +1,213 @@
+{
+ "schema_version": 1,
+ "missao": "creative-factory-production-last-mile-v1",
+ "branch": "sprint/creative-factory-production-last-mile-v1",
+ "base_sha": "c8ca8628e83742dd7da5242f0a015f76292aafe7",
+ "head_sha": "fb0e2277",
+ "natureza": "PROPOSTA. Nada aqui foi escrito no ROADMAP-VIVO.json nem na curadoria humana. O integrador oficial aplica uma vez, depois do merge, conforme o protocolo do AGENTS.md. Trabalho que so existe numa branch nao pode marcar a fonte compartilhada como concluida.",
+ "frescor_do_mapa_vivo": {
+  "estado_factual": "inexistente_nesta_linhagem",
+  "o_que_foi_medido": "python3 scripts/atualizar_grafo_volc_os.py --check devolve {\"current\": false, \"reason\": \"UPDATE_STATUS.json ausente\"}. Alem disso `git ls-files | grep -c '^graphify-out/'` devolve 0: o diretorio nao e rastreado em origin/volc-os-v2 e nao existe na worktree.",
+  "achado_herdado_e_reconfirmado": "A missao anterior mediu que `git merge-base` entre `main` e `volc-os-v2` e VAZIO — duas raizes distintas. Portanto o Mapa Vivo publicado descreve OUTRA arvore, e reconstrui-lo daqui nao e possivel nem correto.",
+  "acao_do_integrador": "Reconstruir o Mapa Vivo pelo pipeline VOLC uma unica vez, APOS o merge em volc-os-v2, e rodar --check. Antes disso nao ha grafo desta linhagem a atualizar."
+ },
+ "delta_de_roadmap_proposto": [
+  {
+   "id": "P17-T03",
+   "estado_atual": "todo",
+   "estado_proposto": "partial",
+   "por_que_nao_done": "A migration continua NAO APLICADA no Supabase oficial, e aplicar exige autorizacao literal. `done` afirmaria persistencia que nao existe.",
+   "o_que_mudou": "O ciclo aplicar->operar->reverter->reaplicar passou de 129 para 178 provas, 0 falhas. Quatro defeitos fechados com contraprova vermelha (rollback cego para 2 das 9 funcoes; verificacao aceitando 6 gatilhos onde cria 7; rollback acoplado a uma contagem de 21 tabelas; tolerancia_lufs sem coluna) mais dois achados adversariais reproduzidos (preflight fail-open com VIEW ocupando o nome; sessao read-only sobreponivel por DSN). Entrou `storage_sha256_remoto`, que fecha a divergencia de tipo entre o boolean do SQL e a string sha256 do Python. Preflight e pacote unico de aplicacao passaram a existir (30 e 12 provas proprias).",
+   "evidencia": [
+    "scripts/provar-ciclo-v11_03.sh -> 178 provas, 0 falhas",
+    "scripts/v11_03-provar-preflight.sh -> 30 provas, 0 falhas",
+    "scripts/v11_03-provar-plano.sh -> 12 provas, 0 falhas",
+    "docs/closure/creative-factory-production-last-mile-v1/braco-a/PACOTE-v11_03.md"
+   ],
+   "bloqueio": "autorizacao literal do dono (D6 de OPEN-DECISIONS.md)"
+  },
+  {
+   "id": "P17-T05",
+   "estado_atual": "partial",
+   "estado_proposto": "partial",
+   "por_que_nao_done": "VIDEO passou a atravessar o worker fora do processo web, o que era a metade que faltava do aceite. O que impede `done` nao e mais o codigo: e que NAO existe imagem, manifesto nem processo implantavel — fora do teste, ninguem executa este worker em producao. E `criativo_job` (Estudio) continua sendo uma segunda fila sem consumidor.",
+   "o_que_mudou": "Motor `remotion-local` criado e registrado; video e imagem atravessam a MESMA porta canonica. O worker herda a loja da bancada — antes ele construia um operario sem armazenamento, e a peca ficava no disco de um processo que ja saiu. Custo e duracao ganharam produtor e razao nomeada.",
+   "evidencia": [
+    "backend/tests/test_criativo_golden_video.py -> 20 provas; o recibo e assinado por worker-<pid> e ha assercao de que o pid NAO e o do processo de teste",
+    "backend/app/criativo/bancada/adaptadores/remotion.py"
+   ],
+   "bloqueio": "decisao de executor (Decisao 5 do ADR-REMOTION-RUNTIME-STORAGE)"
+  },
+  {
+   "id": "P17-T06",
+   "estado_atual": "partial",
+   "estado_proposto": "partial",
+   "por_que_nao_done": "O bucket remoto continua inexistente e o adaptador Supabase continua desarmado. Reconciliacao de artefato em UPLOADED_UNVERIFIED nao existe, e o veredito de storage nao e persistido em `criativo_master` — a tabela que o Executor do Estudio de fato usa nao tem essas colunas.",
+   "o_que_mudou": "A maquina de verificacao ganhou CONSUMIDOR DE PRODUCAO: o operario publica e RELE, e VERIFIED_OK so existe depois da releitura conferir bytes e sha256. Duas pecas reais (imagem e video) atravessaram com sha256_relido igual ao do artefato. A chave canonica passou a emitir `<slot>__<hash>` — com UM underscore, o gatilho criativo_storage_chave_valida da v11_03 recusaria TODA escrita de artefato no dia da aplicacao.",
+   "evidencia": [
+    "docs/closure/creative-factory-production-last-mile-v1/contraprovas/PECA-CANARIO.json",
+    "backend/tests/test_criativo_golden_video.py::test_o_artefato_subiu_e_foi_RELIDO_do_armazenamento",
+    "backend/tests/test_criativo_storage_verificado.py -> 65 provas"
+   ],
+   "bloqueio": "criar bucket privado e ligar o adaptador por configuracao"
+  },
+  {
+   "id": "P17-T07",
+   "estado_atual": "partial",
+   "estado_proposto": "partial",
+   "por_que_nao_done": "Duas coisas, e nenhuma e codigo. (1) A decisao de licenca do Remotion continua do dono, e agora e mais urgente porque o runtime entrou no repositorio. (2) Equivalencia de pixel macOS <-> Linux e NAO PROVADA: o determinismo provado e na mesma maquina, com Chrome Headless Shell mac-arm64 e compositor darwin-arm64.",
+   "o_que_mudou": "O hermetismo deixou de ser 'medido e nao provado'. Um runtime Remotion MINIMO entrou no repositorio (4.0.479 em lockstep pelo lockfile, uma composicao, a fonte Inter ja versionada sob OFL 1.1), e o render roda em sandbox-exec com (deny network-outbound): o kernel recusa connect(). Isso e impossibilidade, nao amostragem de lsof — e o proprio script calibra o instrumento. Determinismo: seis renders do mesmo pedido dao o mesmo sha256 do container inteiro, depois de um defeito real ser medido e fechado.",
+   "defeito_medido_e_fechado": "Duas execucoes do mesmo pedido divergiam em 17 dos 90 quadros; o diff no quadro 80 era de 8 pixels em 2.073.600, todos na faixa y 1918-1920. Causa: uma particula centrada perto da borda inferior, metade fora do quadro, cujo recorte sub-pixel o Chromium rasteriza de dois jeitos. Fechado por posicionamento em pixel inteiro e faixa que nao encosta na borda.",
+   "evidencia": [
+    "scripts/provar-render-hermetico.sh -> 17 provas, 0 falhas",
+    "deploy/creative-worker/sem-rede.sb",
+    "deploy/creative-worker/remotion-runtime/ (16 pacotes @remotion/* em 4.0.479)"
+   ],
+   "bloqueio": "decisao de licenca do dono; e prova de equivalencia em Linux"
+  },
+  {
+   "id": "P17-T08",
+   "estado_atual": "partial",
+   "estado_proposto": "partial",
+   "por_que_nao_done": "Nao existe superficie de pacote por destino no frontend nem endpoint HTTP. A maquina de pacote existe e e provada com peca real, chave de storage e hash relido — mas o ciclo pela UI termina em 'peca aprovada'. E a aprovacao humana REAL nao foi executada, por decisao: aprovar em nome do dono e ato externo.",
+   "o_que_mudou": "Os onze campos ausentes do recibo entraram, TODOS sem default. Ausencia ganhou vocabulario nomeado (`Ausencia`, `Declarado`). O insumo passou a ser sanitizado e auditavel no recibo interno, e a API publica devolve estado e impressao digital, sem o texto. Primeiro envelope de VIDEO do catalogo (`organico-reels-video-9x16`): TipoDeAsset.VIDEO existia desde a v11 e nao tinha formato, entao validacao por destino de video respondia sempre nao_avaliado por AUSENCIA de alvo. A validacao casa por MIDIA e MEDIDA — geometria igual nao basta.",
+   "evidencia": [
+    "backend/tests/test_criativo_golden_video.py -> 20 provas",
+    "docs/closure/creative-factory-production-last-mile-v1/CAPABILITY-MATRIX.json"
+   ],
+   "bloqueio": "superficie de pacote/entrega (UI + endpoint) e aprovacao humana real"
+  }
+ ],
+ "nao_reabrir": {
+  "P17-T01": "consolidado; nada nesta missao o contradiz",
+  "P17-T02": "consolidado",
+  "P17-T04": "consolidado; a porta unica de deposito continua sendo a unica",
+  "P17-T09": "consolidado; a fronteira publica foi ESTENDIDA, nao afrouxada — o DTO cresceu por decisao campo a campo e o texto do insumo NAO sai"
+ },
+ "defeitos_fechados_com_contraprova": [
+  {
+   "onde": "backend/app/criativo/bancada/armazenamento_verificado.py",
+   "o_que": "chave canonica emitia UM underscore; o gatilho da v11_03 exige DOIS. No dia da aplicacao, toda escrita de artefato com chave seria recusada.",
+   "gravidade": "alto (latente)"
+  },
+  {
+   "onde": "backend/app/criativo/bancada/operario.py",
+   "o_que": "video/mp4 fora de _MIMES_MENSURAVEIS: um mp4 caia em SKIPPED nao-bloqueante e chegava a rendered sem que ninguem abrisse o arquivo.",
+   "gravidade": "alto"
+  },
+  {
+   "onde": "backend/app/criativo/bancada/worker.py",
+   "o_que": "montar_operario construia um Operario SEM loja — o processo que produz seria o unico sem armazenamento.",
+   "gravidade": "alto"
+  },
+  {
+   "onde": "deploy/creative-worker/remotion-runtime/src/Composicao.tsx",
+   "o_que": "render nao determinista: 17/90 quadros, 8 pixels na borda inferior.",
+   "gravidade": "alto"
+  },
+  {
+   "onde": "volc_ads/criativo/destinos.py e backend/tests/test_criativo_golden_imagem.py",
+   "o_que": "a travessia golden iterava ENVELOPES sem filtrar midia; com o envelope de video no catalogo, um PNG passava a cumprir o envelope de video.",
+   "gravidade": "medio"
+  },
+  {
+   "onde": "src/pages/criativos/AprovacoesPage.tsx e AtivoPage.tsx",
+   "o_que": "`aprovavel` chegava true literal nos DOIS chamadores: a guarda existia, tinha mensagem pronta e nunca podia disparar.",
+   "gravidade": "medio"
+  },
+  {
+   "onde": "src/pages/criativos/EstudioHomePage.tsx",
+   "o_que": "ultimo `?? 0` da fatia: contagem por estado afirmava zero onde ninguem contou.",
+   "gravidade": "baixo (latente)"
+  },
+  {
+   "onde": "backend/app/criativo/bancada/operario.py",
+   "o_que": "sha256_relido vinha com prefixo `sha256:` e Artefato.sha256 sem — duas representacoes do mesmo hash no mesmo recibo.",
+   "gravidade": "baixo"
+  }
+ ],
+ "achados_registrados_e_nao_corrigidos": [
+  "Nao existe superficie de pacote por destino: nem UI, nem endpoint, nem servico. As tabelas criativo_pacote e criativo_entrega existem com gatilhos e nada as escreve.",
+  "Reconciliacao de storage nao existe: nada reconfere um UPLOADED_UNVERIFIED.",
+  "O veredito de storage nao e persistido em criativo_master, que e a tabela que o Executor do Estudio usa; ela nao tem storage_conferido_em nem storage_hash_conferido.",
+  "criativo_job (Estudio) continua sendo uma segunda fila sem consumidor; o modo `fila` recusa servi-la, com o motivo escrito.",
+  "Revogar aprovacao nao tem caminho pelo navegador: o endpoint existe, a UI nao.",
+  "A peca pronta na tela do job nao leva ao ativo (Rendition.masterId sem leitor).",
+  "requisitos.yaml cobre SO canais do Google Ads; Meta e organico vivem em destinos.py. Nenhuma das duas fontes e superset da outra.",
+  "criativo_formato declara 7 slots no banco; 16x9 e 3x4 nao tem produtor.",
+  "Equivalencia de pixel macOS <-> Linux e NAO PROVADA.",
+  "A revisao factual do Gemini NAO aconteceu: o CLI nao tem metodo de auth nesta maquina, e buscar a chave dentro de .env de projeto e o padrao de risco que a missao anterior flagrou. Declarado em vez de simulado."
+ ],
+ "gates": {
+  "pytest_backend_e_volc_ads": {
+   "baseline": "3358 passed / 53 skipped",
+   "final": "3396 passed / 53 skipped"
+  },
+  "vitest_completo": {
+   "baseline": "1256 passed / 5 skipped",
+   "final": "1262 passed / 5 skipped",
+   "nota": "Uma execucao com a maquina carregada acusou 3 falhas em 1267; tres execucoes isoladas em seguida deram 1262 passed / 5 skipped, exit 0. Os NOMES nao foram capturados — erro de medicao meu: filtrei a saida e joguei fora as linhas de falha."
+  },
+  "tsc_noEmit_p_tsconfig_app": {
+   "baseline": "76 erros herdados",
+   "final": "76"
+  },
+  "ciclo_v11_03": {
+   "baseline": "129 provas / 0 falhas",
+   "final": "178 / 0"
+  },
+  "preflight_v11_03": {
+   "baseline": "nao existia",
+   "final": "30 / 0"
+  },
+  "plano_v11_03": {
+   "baseline": "nao existia",
+   "final": "12 / 0"
+  },
+  "render_hermetico": {
+   "baseline": "nao existia",
+   "final": "17 / 0"
+  },
+  "golden_video": {
+   "baseline": "nao existia",
+   "final": "22 / 0"
+  },
+  "scanner_de_segredos": {
+   "final": "nenhum padrao forte no working tree"
+  },
+  "git_diff_check": {
+   "final": "limpo"
+  },
+  "contrato_do_runtime_remotion": {
+   "baseline": "nao existia",
+   "final": "13 / 0 — e NAO pula: sem node, 9 continuam correndo"
+  }
+ },
+ "atos_externos": {
+  "migration_aplicada": 0,
+  "escrita_supabase": 0,
+  "leitura_supabase": 0,
+  "bucket_criado": 0,
+  "provider_pago": 0,
+  "publicacao": 0,
+  "aprovacao_humana": 0,
+  "push": 0,
+  "deploy": 0,
+  "merge": 0,
+  "alteracao_de_main": 0,
+  "escrita_no_parque_externo": 0
+ },
+ "revisao_adversarial": {
+  "revisor": "Codex gpt-5.6-sol, esforco high, sandbox read-only",
+  "veredito_inicial": "REJEITADA",
+  "achados": 11,
+  "reproduzidos": 8,
+  "bloqueantes": 3,
+  "todos_os_bloqueantes_fechados": true,
+  "rodada_corretiva": "fb0e227 (unica)",
+  "nao_corrigido": [
+   "Item 11 (protocolo de conclusao): ROADMAP e curadoria sao explicitamente proibidos a este braco pela propria missao; o delta vai neste handoff."
+  ],
+  "gemini": "NAO EXECUTADA — CLI 0.57.0 presente e sem metodo de auth nesta maquina. Buscar a chave em .env de projeto e o padrao de risco R1/R2 flagrado no parque."
+ }
+}
