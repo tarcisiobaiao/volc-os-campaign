@@ -513,14 +513,45 @@ BEGIN
        WHERE g.execucao_id = p_execucao_id
        ORDER BY g.customer_id, g.campaign_id
     LOOP
-      -- Ambiguidade e medida no FATO, nao suposta: existe outra conta com o
-      -- mesmo campaign_id na mesma data?
+      -- ⚠️ A ORDEM AQUI E O CONTRATO: TRAVA, DEPOIS OLHA, DEPOIS ESCREVE.
+      --
+      -- A legada e endereçada por (campaign_id, date) e mais nada. A chave
+      -- canonica tem quatro partes. Entao a projecao e uma reducao com perda, e
+      -- a unica saida honesta quando duas linhas canonicas caem na mesma linha
+      -- legada e RECUSAR — nunca escolher uma.
+      --
+      -- A trava consultiva existe porque a ambiguidade era medida por um EXISTS
+      -- num snapshot. Em serie o EXISTS sempre enxerga a linha anterior — e por
+      -- isso a contraprova CP-19 passava. Com duas transacoes abertas, nenhuma
+      -- enxerga a outra: as chaves canonicas sao DIFERENTES, entao elas nao
+      -- bloqueiam uma a outra em lugar nenhum do fato, e as duas escreviam na
+      -- mesma linha legada. Medido na corrida C8: dois recibos dizendo
+      -- 'aplicada' para a mesma linha, zero 'recusada_ambigua', e o dano e
+      -- permanente porque o rollback da v12_04 nao desfaz projecao.
+      --
+      -- Travar pela CHAVE LEGADA serializa exatamente onde a colisao acontece, e
+      -- faz o caso concorrente terminar igual ao caso serial — que e a definicao
+      -- de correcao aqui. A trava e de transacao: solta sozinha no COMMIT.
+      -- (Pressupoe READ COMMITTED, o default do PostgREST: e ele que da snapshot
+      -- novo a cada instrucao, permitindo que o segundo enxergue o primeiro.)
+      PERFORM pg_advisory_xact_lock(
+        hashtext(f.campaign_id || '|' || f.metric_date::text)::bigint);
+
+      -- ⚠️ E `segments_hash` TAMBEM, nao so a conta. A guarda antiga comparava
+      -- apenas `customer_id`, entao duas linhas legitimas da MESMA conta com
+      -- segmentos diferentes passavam as duas: a segunda sobrescrevia a primeira
+      -- e o recibo contava DUAS aplicadas numa tabela que tem UMA linha.
+      -- Medido na corrida C9 — e esse nem precisa de concorrencia, falha em
+      -- serie; passou despercebido porque nenhuma contraprova enviava dois
+      -- segmentos. Ambiguo e "outra linha canonica cai nesta linha legada",
+      -- venha ela de outra conta ou de outro segmento.
       IF EXISTS (
         SELECT 1
           FROM public.google_ads_campanha_dia o
          WHERE o.campaign_id = f.campaign_id
            AND o.metric_date = f.metric_date
-           AND o.customer_id <> f.customer_id
+           AND (o.customer_id   <> f.customer_id
+             OR o.segments_hash <> f.segments_hash)
       ) THEN
         ambiguas := ambiguas + 1;
         CONTINUE;

@@ -192,6 +192,26 @@ create or replace function conc.fechamento(
 $$;
 SQL
 
+# ── a tabela legada, como o arranjo de provas-v12_04.sql a monta ────────────
+# A v12_04 NAO cria nem altera `daily_campaign_metrics`. Ela existe aqui porque
+# a projecao de compatibilidade so tem sentido quando o alvo existe — e e
+# exatamente o alvo que as corridas C8/C9 disputam.
+f <<'SQL'
+create table if not exists public.daily_campaign_metrics (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id text not null,
+  date date not null,
+  impressions numeric, clicks numeric, spend numeric, conversions numeric,
+  ctr numeric, cpc numeric, cost_per_conversion numeric,
+  search_impression_share numeric,
+  lost_impression_share_budget numeric, lost_impression_share_rank numeric,
+  top_impression_percentage numeric, absolute_top_impression_percentage numeric,
+  search_click_share numeric, search_exact_match_impression_share numeric,
+  revenue numeric, updated_at timestamptz, created_at timestamptz default now(),
+  unique (campaign_id, date)
+);
+SQL
+
 abrir 3 s1
 abrir 4 s2
 echo "duas sessões abertas (s1, s2)"
@@ -358,6 +378,64 @@ igual "C7.1 o backfill sobreviveu (impressoes=555)" \
   "$(q "select impressoes from public.google_ads_campanha_dia where campaign_id='111007'")" "555"
 igual "C7.2 a precedência final é 3 (backfill)" \
   "$(q "select precedencia from public.google_ads_campanha_dia where campaign_id='111007'")" "3"
+
+# ══════════════════════════════════════════════════════════════════════════════
+echo
+echo "C8 — PROJEÇÃO LEGADA: ambiguidade entre CONTAS tem de ser vista sob corrida"
+# A legada é endereçada por (campaign_id, date) — sem conta. Duas contas com o
+# MESMO campaign_id colidem nela, e a v12_04 trata isso recusando por
+# ambiguidade. Mas a ambiguidade é medida por um EXISTS num snapshot: em série o
+# EXISTS sempre enxerga a linha anterior (é o que CP-19 mede); com as duas
+# transações abertas, nenhuma enxerga a outra — as chaves canônicas são
+# DIFERENTES, então elas nem sequer bloqueiam uma à outra no fato.
+q "insert into public.daily_campaign_metrics (campaign_id, date, revenue) values ('4900000008','2026-08-30', 99.0) on conflict do nothing" >/dev/null
+mandar 3 s1 "begin;"
+mandar 3 s1 "select jsonb_set(conc.doc(p_chave=>'c8|a|1',p_exec=>'c8|a',p_origem=>'D-1',p_data=>'2026-08-30',p_colhida=>'2026-08-30T10:00:00Z',p_campanha=>'4900000008',p_conta=>'8017851692',p_impressoes=>111),'{projetar_compat}','true') as d \\gset
+select public.volc_registrar_gads_campanha_dia(:'d'::jsonb);"
+mandar 4 s2 "begin;"
+mandar_async 4 s2 "select jsonb_set(conc.doc(p_chave=>'c8|b|1',p_exec=>'c8|b',p_origem=>'D-1',p_data=>'2026-08-30',p_colhida=>'2026-08-30T10:00:00Z',p_campanha=>'4900000008',p_conta=>'7788990011',p_impressoes=>222),'{projetar_compat}','true') as d \\gset
+select public.volc_registrar_gads_campanha_dia(:'d'::jsonb);"
+S_C8="$ULTIMA_SENTINELA"
+esperar_bloqueio s2
+mandar 3 s1 "commit;"
+esperar_sentinela s2 "$S_C8"
+mandar 4 s2 "commit;"
+
+igual "C8.1 o fato canônico das DUAS contas está íntegro" \
+  "$(q "select count(*) from public.google_ads_campanha_dia where campaign_id='4900000008'")" "2"
+igual "C8.2 ao menos um recibo recusou a projeção por ambiguidade" \
+  "$(q "select count(*) from public.trafego_coleta_execucao where chave_idempotencia in ('c8|a|1','c8|b|1') and projecao_estado='recusada_ambigua'")" "1"
+igual "C8.3 NÃO existem dois recibos dizendo 'aplicada' para a mesma linha legada" \
+  "$(q "select count(*) from public.trafego_coleta_execucao where chave_idempotencia in ('c8|a|1','c8|b|1') and projecao_estado='aplicada'")" "1"
+igual "C8.4 a receita da legada continua intacta (a projeção nunca a toca)" \
+  "$(q "select revenue from public.daily_campaign_metrics where campaign_id='4900000008' and date='2026-08-30'")" "99.0"
+
+# ══════════════════════════════════════════════════════════════════════════════
+echo
+echo "C9 — PROJEÇÃO LEGADA: dois segmentos do mesmo fato não podem se sobrescrever calados"
+# A chave canônica inclui `segments_hash`; a legada não tem esse conceito. Duas
+# linhas legítimas do MESMO (conta, campanha, dia) com segmentos diferentes
+# mapeiam na MESMA linha legada. O EXISTS de ambiguidade compara só a CONTA —
+# não olha segmento — então as duas projetam, a segunda sobrescreve a primeira,
+# e o recibo conta as duas como aplicadas. Isto não precisa de corrida: falha em
+# série, e passou despercebido porque nenhuma contraprova envia dois segmentos.
+q "insert into public.daily_campaign_metrics (campaign_id, date, revenue) values ('4900000009','2026-08-30', 55.0) on conflict do nothing" >/dev/null
+mandar 3 s1 "select jsonb_set(jsonb_set(conc.doc(p_chave=>'c9|seg|1',p_exec=>'c9|seg',p_origem=>'D-1',p_data=>'2026-08-30',p_colhida=>'2026-08-30T10:00:00Z',p_campanha=>'4900000009',p_impressoes=>10),'{projetar_compat}','true'),'{linhas}',
+  (select jsonb_agg(l) from (
+     select jsonb_build_object('customer_id','8017851692','campaign_id','4900000009','metric_date','2026-08-30','colhida_em','2026-08-30T10:00:00Z'::timestamptz,'currency_code','BRL','impressoes',10,'segmentos',jsonb_build_object('device','MOBILE')) as l
+     union all
+     select jsonb_build_object('customer_id','8017851692','campaign_id','4900000009','metric_date','2026-08-30','colhida_em','2026-08-30T10:00:00Z'::timestamptz,'currency_code','BRL','impressoes',20,'segmentos',jsonb_build_object('device','DESKTOP')) as l
+  ) x)) as d \\gset
+select public.volc_registrar_gads_campanha_dia(:'d'::jsonb);"
+
+igual "C9.1 as duas linhas segmentadas viraram DOIS fatos canônicos" \
+  "$(q "select count(*) from public.google_ads_campanha_dia where campaign_id='4900000009'")" "2"
+igual "C9.2 a projeção NÃO declara ter aplicado duas linhas na mesma linha legada" \
+  "$(q "select projecao_linhas from public.trafego_coleta_execucao where chave_idempotencia='c9|seg|1'")" "0"
+igual "C9.3 a projeção recusa por ambiguidade em vez de escolher um segmento" \
+  "$(q "select projecao_estado from public.trafego_coleta_execucao where chave_idempotencia='c9|seg|1'")" "recusada_ambigua"
+igual "C9.4 a legada NÃO recebeu o número de um segmento arbitrário" \
+  "$(q "select coalesce(impressions::text,'NULO') from public.daily_campaign_metrics where campaign_id='4900000009' and date='2026-08-30'")" "NULO"
 
 # ══════════════════════════════════════════════════════════════════════════════
 echo
