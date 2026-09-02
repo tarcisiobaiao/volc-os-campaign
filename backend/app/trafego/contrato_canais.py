@@ -1070,11 +1070,87 @@ def mensuracao_do_canal(canal: str, *,
 #: `nao_encontrada`.
 COLETOR_DO_HUB = "varredura do Hub de Tráfego"
 
+#: Quem lê a ESTRUTURA interna de uma campanha Performance Max de volta — grupos
+#: de recursos, assets, sinais e desempenho por grupo. É outro coletor que o do
+#: espelho, e ele grava no ledger de inteligência Google (v12_01 + v12_03).
+COLETOR_PMAX = "releitura do ledger de inteligência Google Ads"
+
+#: ⚠️ A ÚNICA linhagem que abre o portão de observabilidade de Performance Max.
+#:
+#: `volc_ads.inteligencia_google.pmax` calcula o mesmo veredito nos dois
+#: caminhos — sobre o resultado da própria execução e sobre recibos relidos do
+#: banco — e a etiqueta é o que os separa. Um veredito `execucao_local` descreve
+#: o que o processo ACHA que gravou: quem afirma que persistiu é quem persistiu.
+#: A linhagem autoatestável já derrubou uma entrega neste repositório, no plano
+#: de mensuração, e é por isso que aqui ela não é aceita nem com `provada=True`.
+#:
+#: O valor é repetido, e não importado, para não arrastar `volc_ads` para dentro
+#: do contrato de canais. `test_a_linhagem_exigida_e_a_do_dominio` amarra os dois
+#: — a mesma técnica que já ata `CODIGO_PMAX_FORA_DO_EXECUTOR` ao engine.
+LINHAGEM_RELEITURA_DO_LEDGER = "releitura_do_ledger"
+
+_PMAX_SEM_RELEITURA = (
+    "Performance Max é inventariado como qualquer campanha da conta, e a "
+    "estrutura interna dele — grupos de recursos e seus assets — só é relida "
+    "quando alguém fotografa a campanha e a fotografia volta do ledger. "
+    "Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é "
+    "o nível da campanha, e só.")
+
+
+def _observabilidade_de_pmax(
+        prontidao_pmax: Optional[Mapping[str, Any]],
+        campanhas_no_espelho: Optional[int],
+        contagem_truncada: bool) -> Observabilidade:
+    """O veredito de Performance Max, e as quatro maneiras de ele não abrir.
+
+    ⚠️ Nenhum ramo aqui produz `BLOQUEADO`. Não conseguir reler não é "medi e a
+    resposta é não" — é `INDETERMINADO`, e as duas pedem coisas opostas:
+    `BLOQUEADO` pede conserto, `INDETERMINADO` pede leitura. Quem fecha o portão
+    de criação é `_bloqueios_de_observabilidade_na_criacao`, que trata qualquer
+    coisa diferente de `PERMITIDO` como razão para não criar.
+    """
+    def indeterminado(causa: str) -> Observabilidade:
+        return Observabilidade(
+            estado=INDETERMINADO, coletor=COLETOR_PMAX,
+            campanhas_no_espelho=campanhas_no_espelho,
+            contagem_truncada=contagem_truncada, causa=causa)
+
+    if prontidao_pmax is None:
+        return indeterminado(_PMAX_SEM_RELEITURA)
+    if not isinstance(prontidao_pmax, Mapping):
+        return indeterminado(
+            "o veredito de observabilidade de Performance Max chegou num "
+            "formato que esta tela não sabe ler; sem conseguir lê-lo, ela não "
+            "tem como afirmar que a releitura aconteceu.")
+
+    linhagem = str(prontidao_pmax.get("linhagem") or "").strip()
+    if linhagem != LINHAGEM_RELEITURA_DO_LEDGER:
+        # Inclui o caso `execucao_local`: a própria coleta dizendo que gravou.
+        return indeterminado(
+            f"o veredito disponível tem linhagem {linhagem or 'não declarada'!r}, "
+            f"e não {LINHAGEM_RELEITURA_DO_LEDGER!r}. Um veredito autoatestado "
+            f"pela execução descreve o que o processo acha que gravou, não o que "
+            f"o ledger devolveu quando alguém perguntou de volta.")
+
+    if prontidao_pmax.get("provada") is not True:
+        faltando = [str(f) for f in (prontidao_pmax.get("faltando") or ())]
+        motivos = [str(m) for m in (prontidao_pmax.get("motivos") or ())]
+        detalhe = "; ".join(motivos[:7]) or ", ".join(faltando) or "sem detalhe"
+        return indeterminado(
+            f"a releitura do ledger não fechou a fotografia das sete famílias "
+            f"de Performance Max: {detalhe}.")
+
+    return Observabilidade(
+        estado=PERMITIDO, coletor=COLETOR_PMAX,
+        campanhas_no_espelho=campanhas_no_espelho,
+        contagem_truncada=contagem_truncada)
+
 
 def observabilidade_do_canal(
         canal: str, *,
         campanhas_no_espelho: Optional[int] = None,
-        contagem_truncada: bool = False) -> Observabilidade:
+        contagem_truncada: bool = False,
+        prontidao_pmax: Optional[Mapping[str, Any]] = None) -> Observabilidade:
     """Conseguimos reler campanhas deste canal?
 
     ⚠️ `campanhas_no_espelho=0` NÃO vira `BLOQUEADO`. Zero campanhas de um canal
@@ -1083,24 +1159,16 @@ def observabilidade_do_canal(
     escolher uma delas seria afirmar o que não se olhou. `None` — ninguém
     contou — e `0` — contei e não achei — continuam sendo estados diferentes na
     resposta.
+
+    ⚠️ `prontidao_pmax` é o veredito serializado de
+    `volc_ads.inteligencia_google.pmax.ProntidaoPMax`, e ele só vale para
+    Performance Max. Ausente — o caso normal do cockpit, que não faz leitura
+    viva — o canal continua `INDETERMINADO`, como sempre esteve.
     """
     alvo = str(canal or "").strip().upper()
     if alvo == "PERFORMANCE_MAX":
-        # ⚠️ COSTURA para a frente de canais. Quando o contrato de
-        # observabilidade de Performance Max for publicado, é aqui que ele
-        # entra — e até lá o cockpit diz que não sabe, em vez de herdar o
-        # veredito de outro canal por simetria.
-        return Observabilidade(
-            estado=INDETERMINADO,
-            coletor=COLETOR_DO_HUB,
-            campanhas_no_espelho=campanhas_no_espelho,
-            contagem_truncada=contagem_truncada,
-            causa=(
-                "Performance Max é inventariado como qualquer campanha da "
-                "conta, e o sistema ainda não sabe reler a estrutura interna "
-                "dele — grupos de recursos e seus assets. O que a tela mostra "
-                "deste canal é o nível da campanha, e só."),
-        )
+        return _observabilidade_de_pmax(
+            prontidao_pmax, campanhas_no_espelho, contagem_truncada)
     if campanhas_no_espelho is None:
         return Observabilidade(
             estado=INDETERMINADO,
@@ -1521,7 +1589,8 @@ def contrato(canal: str, *, capacidades: cap.Capacidades,
              politica: Optional[can.Politica] = None,
              prontidao: Optional[pr.Prontidao] = None,
              espelho: Optional[ContagemDoEspelho] = None,
-             operacional: Optional[Mapping[str, Any]] = None) -> ContratoDeCanal:
+             operacional: Optional[Mapping[str, Any]] = None,
+             prontidao_pmax: Optional[Mapping[str, Any]] = None) -> ContratoDeCanal:
     """O contrato de UM canal, decidido no servidor.
 
     Todos os argumentos que descrevem o mundo — `prontidao`,
@@ -1539,7 +1608,8 @@ def contrato(canal: str, *, capacidades: cap.Capacidades,
     observacao = observabilidade_do_canal(
         m.canal,
         campanhas_no_espelho=espelho.total if espelho else None,
-        contagem_truncada=bool(espelho and espelho.truncada))
+        contagem_truncada=bool(espelho and espelho.truncada),
+        prontidao_pmax=prontidao_pmax)
 
     planejavel = _portao_planejavel(m, capacidades, planeja_offline(m.canal))
     validavel = _portao_validavel(m, capacidades)
@@ -1569,6 +1639,7 @@ def contrato_dos_canais(
         prontidao_por_canal: Optional[Mapping[str, pr.Prontidao]] = None,
         espelho_por_canal: Optional[Mapping[str, ContagemDoEspelho]] = None,
         operacional_por_canal: Optional[Mapping[str, Mapping[str, Any]]] = None,
+        prontidao_pmax: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[ContratoDeCanal, ...]:
     """Os quatro canais, na ordem da tela.
 
@@ -1583,7 +1654,12 @@ def contrato_dos_canais(
     return tuple(
         contrato(c, capacidades=capacidades, politica=politica,
                  prontidao=pron.get(c), espelho=esp.get(c),
-                 operacional=oper.get(c))
+                 operacional=oper.get(c),
+                 # Só Performance Max tem releitura de estrutura; passá-la aos
+                 # quatro faria os outros herdarem um veredito de outro canal —
+                 # e `observabilidade_do_canal` a ignora fora de PMax de
+                 # qualquer forma, mas a intenção fica dita aqui.
+                 prontidao_pmax=(prontidao_pmax if c == "PERFORMANCE_MAX" else None))
         for c in CANAIS
     )
 

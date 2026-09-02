@@ -1,0 +1,171 @@
+{
+  "missao": "P04-T07 PMAX OBSERVABILITY LEDGER CLOSURE V12_03",
+  "data": "2026-09-01",
+  "branch": "sprint/hermes-p04-t07-pmax-ledger-v12-03-v1",
+  "base": "36bec04ee1cc9f85c2db6d0d082be6a39350a421",
+  "estado_de_execucao": "EXECUTADO_E_PROVADO",
+  "motivo_do_estado": "contraprovas A-M executadas em Postgres descartavel e pytest hermetico; gates essenciais verdes; achado bloqueante de revisão B1 corrigido com sentinela limite+1 contra truncamento",
+  "contraprovas": [
+    {
+      "id": "A",
+      "recusa": "que a v12_01 aceite qualquer um dos seis tipo_sinal PMax",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql",
+      "prova": "bloco 'A / v12_03' na fase v12_01: cada um dos seis e enviado a RPC e precisa ser recusado por check_violation com constraint_name = trafego_google_coleta_tipo",
+      "correcao": "nenhuma: e o estado de partida que a v12_03 muda",
+      "executado": true
+    },
+    {
+      "id": "B",
+      "recusa": "que a v12_03 apague ou deixe de aceitar algum dos seis tipos da v12_01",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql, backend/tests/test_google_inteligencia_pmax.py",
+      "prova": "bloco B roda nas TRES fases; test_a_v12_03_amplia_sem_apagar_nenhum_valor_da_v12_01 le o CHECK dos dois arquivos",
+      "correcao": "guarda no DO block da v12_03: se o CHECK encontrado nao contiver os seis, a migration aborta com os que faltam ditos por nome",
+      "executado": true
+    },
+    {
+      "id": "C",
+      "recusa": "que um tipo_sinal fora do vocabulario entre",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql",
+      "prova": "bloco C, quatro valores incluindo PMAX_RECOMENDACOES_FORCA e 'pmax_campanha' minusculo, nas tres fases",
+      "correcao": "o CHECK e lista fechada; a v12_03 amplia sem afrouxar",
+      "executado": true
+    },
+    {
+      "id": "D",
+      "recusa": "que o ciclo aplicar-reverter-reaplicar perca linha ou invariante",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sh degraus 2 a 7",
+      "prova": "os recibos da fase v12_01 sao contados depois do rollback e depois da reaplicacao; RLS forcada, RPC, gatilhos e tabelas conferidos em cada degrau",
+      "correcao": "rollback que RECUSA rodar com recibo PMax gravado, em vez de apagar para caber no CHECK antigo",
+      "executado": true
+    },
+    {
+      "id": "E",
+      "recusa": "que a setima familia ganhe tipo_sinal proprio ou se confunda com a varredura de conta",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql, backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "bloco E prova que o recorte exige campaign_id + payload.familia e que filtrar so por tipo_sinal + customer_id mistura; test_e_varredura_de_conta_no_mesmo_tipo_sinal_nao_vira_familia_pmax e test_e_recibo_de_outra_pergunta_com_familia_forjada_nao_conta",
+      "correcao": "releitura.familia_da_linha confere tipo_sinal CONTRA a familia declarada",
+      "executado": true
+    },
+    {
+      "id": "F",
+      "recusa": "que repetir a mesma chave crie duas coletas",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql bloco F",
+      "prova": "mesma chave enviada duas vezes: mesmo coleta_id devolvido e exatamente uma linha",
+      "correcao": "nenhuma: a RPC da v12_01 ja e idempotente e a v12_03 nao a toca",
+      "executado": true
+    },
+    {
+      "id": "G",
+      "recusa": "que o coleta_id devolvido resolva zero ou mais de uma linha",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql bloco G, backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "coleta com item e metrica: o id resolve uma coleta, um item e uma metrica medida com valor zero; test_g_linha_sem_coleta_id_nao_prova_gravacao e test_g_persistido_nao_vem_de_alguem_afirmando_que_gravou",
+      "correcao": "persistido na releitura deriva de coleta_id devolvido pelo banco, nunca de uma afirmacao na linha",
+      "executado": true
+    },
+    {
+      "id": "H",
+      "recusa": "que ausencia, falha, parcial, inelegivel, nao suportado ou stale abram o portao",
+      "onde": "scripts/provar-google-inteligencia-v12_03.sql bloco H, backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "sete casos SQL de semantica de quantidade e erro; test_h_ledger_sem_linha_mantem_o_portao_fechado, test_h_estado_que_nao_concluiu_leitura_nao_e_familia_verde (4 estados), test_h_fotografia_velha_nao_abre_o_portao, test_h_instante_ilegivel_nao_vira_recente, test_h_falha_de_leitura_do_ledger_nunca_vira_fotografia_vazia",
+      "correcao": "coletas_por_identidade levanta ErroReleitura quando o PostgREST nao devolve corpo ou devolve algo que nao e lista",
+      "executado": true
+    },
+    {
+      "id": "I",
+      "recusa": "que mistura de conta, MCC, campanha, canal, bucket, origem ou versao de API forme fotografia verde",
+      "onde": "backend/tests/test_google_inteligencia_v12_03_releitura.py, scripts/provar-google-inteligencia-v12_03.sql bloco I",
+      "prova": "oito componentes parametrizados, mais test_i_a_mesma_campanha_em_duas_contas_nao_se_mistura, test_i_duas_fotografias_do_mesmo_dia_nao_se_completam, test_i_duas_coletas_para_a_mesma_familia_e_ambiguidade_e_nao_desempate e test_i_o_filtro_do_postgrest_carrega_a_identidade_inteira",
+      "correcao": "releitura.divergencia compara os oito componentes e nomeia o primeiro que discorda; bucket passou a viajar no payload porque o ledger nao tem coluna para ele",
+      "executado": true
+    },
+    {
+      "id": "J",
+      "recusa": "que seis familias verdes e uma ausente bastem",
+      "onde": "backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "test_j_seis_verdes_e_uma_ausente_nao_bastam parametrizado nas sete familias",
+      "correcao": "nenhuma: avaliar_prontidao_pmax ja exigia as sete; a releitura entrega a fotografia no mesmo formato",
+      "executado": true
+    },
+    {
+      "id": "K",
+      "recusa": "que o veredito autoatestado da propria execucao abra o portao",
+      "onde": "backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "test_k_veredito_autoatestado_da_propria_execucao_nao_abre, test_k_veredito_sem_linhagem_declarada_nao_abre, test_k_veredito_em_formato_ilegivel_nao_abre, test_k_sem_releitura_o_canal_continua_como_estava",
+      "correcao": "contrato_canais exige linhagem == releitura_do_ledger ANTES de olhar para provada; a constante e amarrada a do dominio por test_a_linhagem_exigida_pelo_contrato_e_a_do_dominio",
+      "executado": true
+    },
+    {
+      "id": "L",
+      "recusa": "que a prova de observabilidade remova mais que o bloqueador de observabilidade",
+      "onde": "backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "test_l_a_prova_remove_SOMENTE_o_bloqueador_de_observabilidade compara os conjuntos de codigos antes e depois; test_l_nenhuma_campanha_pmax_passa_a_ser_criavel; test_l_a_prova_de_pmax_nao_vaza_para_os_outros_canais",
+      "correcao": "prontidao_pmax so e repassada ao canal PERFORMANCE_MAX em contrato_dos_canais",
+      "executado": true
+    },
+    {
+      "id": "M",
+      "recusa": "que alguma funcao de mutate do Google Ads seja alcancavel",
+      "onde": "backend/tests/test_google_inteligencia_v12_03_releitura.py",
+      "prova": "test_m_a_releitura_nao_importa_google_ads (AST), test_m_nenhum_artefato_desta_lane_contem_mutacao_google (5 artefatos), test_m_a_releitura_nao_alcanca_o_coletor_do_google (atributos usados)",
+      "correcao": "o caminho de releitura nao constroi cliente Google, nao le credencial e nao emite GAQL",
+      "executado": true
+    }
+  ],
+  "hashes_sha256": {
+    "supabase/migrations/v12_03_pmax_observability_ledger.sql": "f31dd1daf921de5c172f4a7d383476598c464181c4020a18f2d9d7289d6769c6",
+    "supabase/migrations/v12_03_rollback.sql": "e92d0d794c5ffe9349854bb10632d8af04031163a4088bc8a8269adbc647e607",
+    "scripts/provar-google-inteligencia-v12_03.sql": "a0f350b5d14bb3cb204d5fe8a9c7e8bc5b06b82b71d264ddf1ad7375d311a4d2",
+    "scripts/provar-google-inteligencia-v12_03.sh": "5c3ddad93fe8cabea3132f607d6afde80c9694d280bb5d5a3180c61f299393c6",
+    "volc_ads/inteligencia_google/releitura.py": "91ccadb461152a05e4d06fd7a724ed997938d50b9ae84ae83cafe2e5260ae39c",
+    "backend/app/trafego/contrato_canais.py": "ef91348863995891d81bb0e649c0cf54a7c814de139c04220c38eec7bb6ae581",
+    "backend/tests/test_google_inteligencia_v12_03_releitura.py": "ba87ab9d4932a7ea3ac1f57207f80d99dfb29be18deddb4469927d5ba9bcb6d0",
+    "backend/tests/test_google_inteligencia_pmax.py": "0b7aa5e531ebda208e8daaf6004a78ad939ca94215722a11dffc3a0cec4370ca"
+  },
+  "gates": {
+    "sql_ciclo": {
+      "comando": "bash scripts/provar-google-inteligencia-v12_03.sh",
+      "resultado": "171 ok / 0 falhas"
+    },
+    "focais": {
+      "comando": "python3 -m pytest backend/tests/test_google_inteligencia_pmax.py backend/tests/test_google_inteligencia_persistente.py backend/tests/test_trafego_contrato_canais.py backend/tests/test_google_inteligencia_v12_03_releitura.py -q -p no:randomly",
+      "resultado": "257 passed / 0 failed"
+    },
+    "backend_tests": {
+      "comando": "python -m pytest backend/tests -q -p no:randomly em .venv-p04-t07",
+      "resultado": "2136 passed / 101 skipped / 0 failed"
+    },
+    "volc_ads": {
+      "comando": "python -m pytest volc_ads -q -p no:randomly em .venv-p04-t07",
+      "resultado": "706 passed / 0 failed"
+    },
+    "diff_check": {
+      "comando": "git diff --check",
+      "resultado": "exit 0"
+    },
+    "compileall": {
+      "comando": "python3 -m compileall -q ...",
+      "resultado": "exit 0"
+    },
+    "json": {
+      "comando": "python3 -m json.tool ...",
+      "resultado": "exit 0"
+    },
+    "segredos": {
+      "resultado": "sem segredo real; somente literais de teste/senha descartavel de container"
+    },
+    "google_ads_mutate": {
+      "resultado": "sem superficie de mutate alcancavel na releitura; hits sao comentarios/testes/capacidades pre-existentes"
+    }
+  },
+  "review": {
+    "reviewer": "Claude Code Opus fallback fresco",
+    "session_id": "98c6cb93-5b8a-4864-8824-11583543a672",
+    "bloqueante_reproduzido": "B1: releitura truncada indistinguivel de completa",
+    "correcao": "coletas_por_identidade pede limite+1 e levanta ErroReleitura se vier sentinela; teste test_i_releitura_truncada_nao_vira_fotografia_completa adicionado",
+    "nao_bloqueantes": [
+      "N1: rollout do código pressupõe v12_03 aplicada; seguro para portão, mas mensagem pode ser crua se banco defasado",
+      "N2: teste de schema tem redundância",
+      "N3: contrato recebe veredito PMax sem identidade explícita na assinatura atual"
+    ]
+  }
+}

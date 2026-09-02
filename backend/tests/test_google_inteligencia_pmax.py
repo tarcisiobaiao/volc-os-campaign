@@ -33,6 +33,8 @@ from test_google_inteligencia_persistente import PersistenciaDuble
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "supabase/migrations/v12_01_google_inteligencia_coletas.sql"
+MIGRATION_V12_03 = ROOT / "supabase/migrations/v12_03_pmax_observability_ledger.sql"
+ROLLBACK_V12_03 = ROOT / "supabase/migrations/v12_03_rollback.sql"
 
 CONTA = "8017851692"
 OUTRA_CONTA = "7016739360"
@@ -1237,36 +1239,120 @@ def test_k_pmax_nao_importa_agenda_nem_superficie_de_escrita():
 # ---------------------------------------------------------------------------
 
 
-def test_vocabulario_do_ledger_e_o_da_migration_aplicada():
+def _valores_do_check(caminho):
+    sql = caminho.read_text()
+    bloco = sql.split("CHECK (tipo_sinal IN (")[1].split("))")[0]
+    return frozenset(re.findall(r"'([A-Z_]+)'", bloco))
+
+
+def test_vocabulario_do_ledger_e_o_das_migrations_aplicadas():
     """A lista local NAO pode divergir do CHECK que esta no banco.
 
-    Se alguem ampliar o CHECK sem atualizar aqui (ou o contrario), a coleta
-    tentaria gravar um `tipo_sinal` que o Postgres recusa — ou recusaria em
-    memoria algo que o banco ja aceita.
+    Agora sao DUAS migrations, e a prova le as duas: a v12_01 define os seis
+    originais, a v12_03 reescreve o CHECK inteiro com doze. Se alguem ampliar
+    uma sem a outra — ou ampliar o CHECK sem tocar no codigo — a coleta tentaria
+    gravar um `tipo_sinal` que o Postgres recusa, ou recusaria em memoria algo
+    que o banco ja aceita.
     """
 
-    sql = MIGRATION.read_text()
-    bloco = sql.split("CHECK (tipo_sinal IN (")[1].split("))")[0]
-    do_banco = frozenset(re.findall(r"'([A-Z_]+)'", bloco))
-    assert do_banco == pmax.TIPOS_SINAL_ACEITOS_PELO_LEDGER
+    assert _valores_do_check(MIGRATION) == pmax.TIPOS_SINAL_DA_V12_01
+    assert _valores_do_check(MIGRATION_V12_03) == pmax.TIPOS_SINAL_ACEITOS_PELO_LEDGER
+    assert (
+        pmax.TIPOS_SINAL_DA_V12_01 | pmax.TIPOS_SINAL_DA_V12_03
+        == pmax.TIPOS_SINAL_ACEITOS_PELO_LEDGER
+    )
+
+
+def test_a_v12_03_amplia_sem_apagar_nenhum_valor_da_v12_01():
+    """Ampliar e acrescentar. Um valor que sumisse levaria junto um consumidor."""
+
+    assert pmax.TIPOS_SINAL_DA_V12_01 <= _valores_do_check(MIGRATION_V12_03)
+    assert not (pmax.TIPOS_SINAL_DA_V12_01 & pmax.TIPOS_SINAL_DA_V12_03)
+    assert len(pmax.TIPOS_SINAL_ACEITOS_PELO_LEDGER) == 12
+
+
+def test_a_setima_familia_nao_ganhou_tipo_sinal_proprio():
+    """`PMAX_RECOMENDACOES_FORCA` NAO esta no CHECK, e a ausencia e a decisao.
+
+    Ela e uma leitura de `recommendation` e continua em
+    `RECOMENDACOES_ARMAZENADAS`. Dar-lhe valor proprio criaria duas respostas
+    para a mesma pergunta — e quebraria os consumidores que hoje leem a
+    varredura de conta.
+    """
+
+    assert pmax.FAMILIA_RECOMENDACOES not in _valores_do_check(MIGRATION_V12_03)
+    assert pmax.TIPO_SINAL_POR_FAMILIA[pmax.FAMILIA_RECOMENDACOES] == (
+        "RECOMENDACOES_ARMAZENADAS"
+    )
+    assert "RECOMENDACOES_ARMAZENADAS" in pmax.TIPOS_SINAL_DA_V12_01
+
+
+def test_o_rollback_da_v12_03_devolve_exatamente_os_seis_da_v12_01():
+    assert _valores_do_check(ROLLBACK_V12_03) == pmax.TIPOS_SINAL_DA_V12_01
+
+
+def test_a_v12_03_nao_cria_coluna_nem_tabela():
+    """Ela amplia VOCABULARIO. Schema novo aqui seria outra migration."""
+
+    sql = MIGRATION_V12_03.read_text().upper()
+    for proibido in ("CREATE TABLE", "ADD COLUMN", "DROP COLUMN", "CREATE INDEX"):
+        assert proibido not in sql, proibido
+    # E nenhum dos nove campos que a v25 REAL recusou pode virar schema. O
+    # vocabulario permitido contem nomes como PMAX_ASSET_GROUPS; isso nao e
+    # coluna. A contraprova aqui mira schema de verdade: ADD COLUMN / COMMENT /
+    # INDEX citando o campo recusado, ou a query GAQL completa ressuscitada.
+    for campo in pmax.CAMPOS_RECUSADOS_PELA_API_V25:
+        assert campo.upper() not in sql, campo
+        ultimo = campo.split(".")[-1].upper()
+        for padrao in (f"ADD COLUMN {ultimo}", f"COMMENT ON COLUMN", f"CREATE INDEX"):
+            if padrao == "COMMENT ON COLUMN":
+                assert f"COMMENT ON COLUMN" not in sql or ultimo not in sql, campo
+            else:
+                assert padrao not in sql, campo
 
 
 def test_familia_sem_lugar_no_ledger_para_a_persistencia_e_nomeia_a_lacuna():
-    motor, persistencia, _ = coletor()
+    """Contra um banco SEM a v12_03, a recusa nomeada continua de pe.
+
+    Este teste deixou de descrever o estado normal e passou a descrever um
+    ledger defasado — que continua existindo enquanto a migration nao for
+    aplicada em todo ambiente. O coletor precisa dizer a verdade sobre o banco
+    que esta na frente dele, e nao sobre o arquivo de migration que existe no
+    repositorio.
+    """
+
+    motor, persistencia, _ = coletor(
+        tipos_sinal_do_ledger=pmax.TIPOS_SINAL_DA_V12_01,
+    )
     resultado = motor.executar_alvo_pmax(_alvo())
 
     recusadas = [c for c in resultado["coletas"] if not c["persistido"]]
-    assert recusadas, "nenhuma familia recusada: o vocabulario mudou?"
+    assert {c["familia"] for c in recusadas} == set(pmax.TIPOS_SINAL_DA_V12_03)
     for coleta in recusadas:
         recusa = coleta["recusa_de_persistencia"]
         assert recusa["tipo_sinal"] == coleta["tipo_sinal"]
-        assert recusa["migration_necessaria"]
+        assert "v12_03" in recusa["migration_necessaria"]
         assert coleta["coleta_id"] is None
     assert resultado["lacunas"]
 
     # O que foi recusado NAO chegou ao banco, e o que foi aceito chegou.
     tipos_gravados = {d["tipo_sinal"] for d in persistencia.enviados}
-    assert tipos_gravados <= pmax.TIPOS_SINAL_ACEITOS_PELO_LEDGER
+    assert tipos_gravados <= pmax.TIPOS_SINAL_DA_V12_01
+
+
+def test_com_a_v12_03_as_sete_familias_atravessam_sem_lacuna():
+    """O estado normal depois desta lane: nenhuma recusa, nenhuma lacuna."""
+
+    motor, persistencia, _ = coletor()
+    resultado = motor.executar_alvo_pmax(_alvo())
+
+    assert all(c["persistido"] for c in resultado["coletas"])
+    assert [c["coleta_id"] for c in resultado["coletas"]].count(None) == 0
+    assert resultado["lacunas"] == []
+    assert len(persistencia.documentos) == len(pmax.FAMILIAS_PMAX)
+    assert {d["tipo_sinal"] for d in persistencia.documentos} <= (
+        pmax.TIPOS_SINAL_ACEITOS_PELO_LEDGER
+    )
 
 
 def test_familia_com_lugar_no_ledger_e_persistida_de_verdade():
@@ -1342,7 +1428,15 @@ def test_l_impressions_positivas_nao_provam_prontidao():
 
 
 def test_l_familia_lida_mas_nao_persistida_nao_prova_prontidao():
-    motor, _, _ = coletor()
+    """Contra um ledger sem a v12_03: leitura verde, recibo nenhum, portao fechado.
+
+    ⚠️ O vocabulario e passado EXPLICITAMENTE. Antes desta lane ele era o
+    padrao, e o teste passava por acidente do ambiente; agora o padrao aceita as
+    sete familias, e a propriedade sob ataque — "lida nao e gravada" — precisa
+    do banco defasado dito por nome para continuar sendo exercida.
+    """
+
+    motor, _, _ = coletor(tipos_sinal_do_ledger=pmax.TIPOS_SINAL_DA_V12_01)
     resultado = motor.executar_alvo_pmax(_alvo())
     prontidao = _fotografia(resultado)
 

@@ -12,8 +12,18 @@ from urllib.request import Request, urlopen
 
 from .alvo import AlvoColeta, ErroAlvoDivergente, conferir_identidade_devolvida
 from .modelo import DocumentoColeta
+from .releitura import (
+    CAMPOS_DA_RELEITURA, TIPOS_SINAL_DA_FOTOGRAFIA, ErroReleitura,
+    IdentidadeDaFotografia,
+)
 
 CAMPOS_INVENTARIO = "volc_campaign_id,campaign_id,customer_id,nome,canal,estado_externo"
+
+#: Teto da releitura. Uma fotografia tem SETE familias; qualquer numero muito
+#: acima disso ja e outra coisa — varias rodadas, ou uma identidade frouxa. O
+#: teto e alto o bastante para nao cortar uma resposta legitima e baixo o
+#: bastante para que cortar signifique alguma coisa.
+TETO_DA_RELEITURA = 100
 
 
 class ErroPersistenciaGoogle(RuntimeError):
@@ -140,6 +150,66 @@ class SupabaseGoogleIntelligence:
             canal=canal,
             estado_externo=None if estado_externo is None else str(estado_externo),
         )
+
+    def coletas_por_identidade(
+        self, identidade: IdentidadeDaFotografia, *,
+        limite: int = TETO_DA_RELEITURA,
+    ) -> list[dict[str, Any]]:
+        """As coletas do ledger que PODEM compor a fotografia desta identidade.
+
+        Filtra no servidor tudo o que e coluna — conta, MCC, identidade interna e
+        externa da campanha, versao de API e o vocabulario de `tipo_sinal` da
+        fotografia. Canal, familia, bucket e origem moram no `payload` e sao
+        conferidos no dominio (`releitura.divergencia`), porque empurrar filtro
+        de JSONB pelo PostgREST aqui trocaria uma comparacao exata e testavel por
+        codificacao de URL.
+
+        ⚠️ NAO ordena por `coletada_em` para "pegar a mais recente". Ela ordena
+        so para que a resposta seja estavel; quem decide o que entra e a
+        identidade inteira, e duas linhas materiais para a mesma familia sao
+        ambiguidade, nao uma disputa que a data resolve.
+
+        ⚠️ Resposta ausente NAO vira lista vazia. Um `None` do PostgREST e uma
+        leitura que nao concluiu, e devolve-lo como `[]` faria a camada de cima
+        concluir "esta campanha nao tem recibo" — que e a mentira exata que este
+        ledger inteiro existe para nao contar.
+        """
+
+        if not isinstance(identidade, IdentidadeDaFotografia):
+            raise ErroReleitura("identidade precisa ser IdentidadeDaFotografia")
+        parametros = {
+            "select": CAMPOS_DA_RELEITURA,
+            "customer_id": f"eq.{identidade.customer_id}",
+            "login_customer_id": f"eq.{identidade.login_customer_id}",
+            "volc_campaign_id": f"eq.{identidade.volc_campaign_id}",
+            "campaign_id": f"eq.{identidade.campaign_id}",
+            "api_versao": f"eq.{identidade.api_versao}",
+            "tipo_sinal": "in.(" + ",".join(sorted(TIPOS_SINAL_DA_FOTOGRAFIA)) + ")",
+            "order": "coletada_em.desc",
+            # Pede um a mais que o teto permitido. Se esse sentinela vier, a
+            # resposta foi truncada e NAO pode virar fotografia completa.
+            "limit": str(limite + 1),
+        }
+        linhas = self._request(
+            "trafego_google_inteligencia_coleta?" + urlencode(parametros, safe=".,")
+        )
+        if linhas is None:
+            raise ErroReleitura(
+                "PostgREST nao devolveu corpo na releitura; leitura sem "
+                "conclusao nao e fotografia vazia"
+            )
+        if not isinstance(linhas, list):
+            raise ErroReleitura(
+                f"releitura esperava lista de coletas e recebeu {type(linhas).__name__}"
+            )
+        if len(linhas) > limite:
+            raise ErroReleitura(
+                f"releitura truncada: o PostgREST devolveu mais de {limite} "
+                "coletas candidatas para a mesma identidade. Escolher as mais "
+                "recentes apagaria ambiguidades; refaça com uma fronteira mais "
+                "estreita ou trate a ambiguidade explicitamente."
+            )
+        return [linha for linha in linhas if isinstance(linha, dict)]
 
     def registrar(self, documento: DocumentoColeta) -> str:
         resposta = self._request(
