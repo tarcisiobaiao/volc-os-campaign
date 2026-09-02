@@ -1,0 +1,56 @@
+{
+  "instrumento": "onepassword-mcp-smoke",
+  "momento": "2026-09-02T01:30:22Z",
+  "estado": "ok",
+  "exit_code": 0,
+  "plataforma": "Darwin",
+  "verificado": [
+    "binario 1password-mcp presente",
+    "handshake MCP concluido",
+    "as ferramentas de leitura documentadas existem",
+    "authenticate aceito pelo app e devolveu account_id",
+    "list_environments respondeu (1 Environment(s))",
+    "list_variables respondeu (1 nome(s))",
+    "nenhum valor secreto na resposta: so nomes e estrutura",
+    "a variavel 'VOLC_SMOKE_SEGREDO' existe — por NOME, sem valor"
+  ],
+  "nao_verificado": [],
+  "evidencia": {
+    "binario": true,
+    "servidor": {
+      "nome": "rmcp",
+      "versao": "1.1.0"
+    },
+    "protocolo": "2024-11-05",
+    "ferramentas": [
+      "append_variables",
+      "authenticate",
+      "create_environment",
+      "create_local_env_file",
+      "list_environments",
+      "list_local_env_files",
+      "list_variables",
+      "rename_environment"
+    ],
+    "ferramentas_de_escrita_expostas": [
+      "append_variables",
+      "create_environment",
+      "create_local_env_file",
+      "rename_environment"
+    ],
+    "authenticate_erro": false,
+    "account_id_presente": true,
+    "environments_encontrados": 1,
+    "environments_nomes": [
+      "VOLC_OS_LOCAL"
+    ],
+    "environment_esperado_encontrado": true,
+    "variaveis_encontradas": 1,
+    "variaveis_nomes": [
+      "VOLC_SMOKE_SEGREDO"
+    ],
+    "suspeitos_de_valor": [],
+    "variavel_esperada_encontrada": true
+  },
+  "proximo_ato": "prova do MCP concluida; nenhum valor foi lido nem pedido"
+}

@@ -63,14 +63,44 @@ if [[ $LOCAL -eq 0 ]] && command -v docker >/dev/null 2>&1 && docker info >/dev/
   # menos util possivel: ela nao distingue "a imagem esta baixando", "a porta
   # esta ocupada" e "o container morreu no initdb". Sob carga (varios agentes
   # rodando em paralelo nesta maquina) o primeiro caso acontece de verdade.
-  PRONTO=0
-  for _ in $(seq 1 180); do
-    if docker exec "$CID" pg_isready -U postgres -q 2>/dev/null; then PRONTO=1; break; fi
+  # ⚠️ pg_isready SOZINHO NAO SERVE COMO LARGADA. A imagem oficial do postgres
+  # sobe um servidor TEMPORARIO durante o initdb (so socket unix, sem TCP), roda
+  # os scripts de inicializacao, DERRUBA esse servidor e so entao sobe o
+  # definitivo. Um pg_isready disparado na janela do temporario responde
+  # "accepting connections", o loop saia cedo, e o primeiro psql caia no
+  # intervalo entre os dois servidores morrendo com
+  #   connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed
+  # Sob carga (varios agentes nesta maquina) essa janela e larga e a falha deixa
+  # de ser rara. Por isso esperamos primeiro o FIM do init, pelo marcador que a
+  # propria imagem imprime, e so depois aceitamos a prontidao.
+  vivo_ou_morra() {
     if ! docker inspect -f '{{.State.Running}}' "$CID" 2>/dev/null | grep -q true; then
       echo "ERRO: o container morreu antes de aceitar conexao. Log:" >&2
       docker logs "$CID" 2>&1 | tail -20 >&2
       exit 1
     fi
+  }
+
+  INICIALIZOU=0
+  for _ in $(seq 1 360); do
+    if docker logs "$CID" 2>&1 | grep -qE 'PostgreSQL init process complete|Skipping initialization'; then
+      INICIALIZOU=1; break
+    fi
+    vivo_ou_morra
+    sleep 0.5
+  done
+  if [[ $INICIALIZOU -ne 1 ]]; then
+    echo "ERRO: o initdb da imagem nao terminou em 180s. Log do container:" >&2
+    docker logs "$CID" 2>&1 | tail -20 >&2
+    exit 1
+  fi
+
+  # Agora sim o servidor definitivo. A largada e uma consulta de verdade, nao um
+  # pg_isready: e a consulta que o resto da prova vai fazer.
+  PRONTO=0
+  for _ in $(seq 1 180); do
+    if docker exec "$CID" psql -U postgres -X -q -t -A -c 'select 1' >/dev/null 2>&1; then PRONTO=1; break; fi
+    vivo_ou_morra
     sleep 0.5
   done
   if [[ $PRONTO -ne 1 ]]; then

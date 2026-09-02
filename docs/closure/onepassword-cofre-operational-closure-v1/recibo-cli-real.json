@@ -1,0 +1,56 @@
+{
+  "ferramenta": "onepassword-smoke",
+  "tarefa": "P03-T09",
+  "contrato_verificado_em": "2026-09-01 (www.1password.dev)",
+  "gerado_em": "2026-09-02T01:30:17+00:00",
+  "run_id": "388cba76487e2a58",
+  "estado": "ok",
+  "exit_code": 0,
+  "duple_em_uso": false,
+  "duple_caminho": null,
+  "plataforma": "Darwin",
+  "referencia": {
+    "presente": true,
+    "esquema_op": true,
+    "segmentos": 3,
+    "tem_secao": false,
+    "query_param": null
+  },
+  "verificado": [
+    "preflight: sem --no-masking e sem service account implícito",
+    "CLI `op` encontrado no PATH",
+    "app do 1Password presente no caminho verificado",
+    "sessão viva: `op account list` respondeu com pelo menos uma conta",
+    "nomes de cofres listados (só nomes, saída sanitizada)",
+    "nomes de itens listados (só nomes, saída sanitizada)",
+    "injeção confirmada por presença booleana em processo descartável",
+    "varredura interna não achou eco do valor na saída capturada"
+  ],
+  "nao_verificado": [
+    "corretude do valor injetado (o smoke não lê o segredo, de propósito)",
+    "comprimento e hash do valor (proibidos: vazam entropia e confirmam palpite)",
+    "durabilidade da aprovação (a documentação diz que vale até o 1Password travar)"
+  ],
+  "evidencia": {
+    "origem_da_referencia": "arquivo",
+    "variaveis_op_no_ambiente": [],
+    "op_no_path": true,
+    "op_version_rc": 0,
+    "op_version": "2.39.0",
+    "caminho_app_verificado": "/Applications/1Password.app",
+    "account_list_rc": 0,
+    "account_list_classificacao": "sem_erro",
+    "contas_encontradas": 1,
+    "cofres_listados": 1,
+    "cofre_da_referencia_na_lista": true,
+    "itens_listados": 3,
+    "op_run_rc": 0,
+    "op_run_classificacao": "sem_stderr",
+    "bytes_inesperados_filho_presenca": 0,
+    "bytes_inesperados_filho_varredura": 0,
+    "varredura_por_valor": "false",
+    "op_run_varredura_rc": 0,
+    "presenca_confirmada": true
+  },
+  "proximo_ato": "nenhum: a cadeia foi provada nesta execução"
+}
