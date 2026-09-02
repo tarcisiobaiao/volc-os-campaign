@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-01T21:31:37-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-01T23:01:01-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 500 arquivos: 338 Markdown e 162 SQL;
-- 500 versionados e 0 ainda não versionados;
+- 506 arquivos: 343 Markdown e 163 SQL;
+- 506 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 101 SQL com palavras de mutação de alto risco.
+- 102 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-01T21:31:37-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 23 |
-| `documentation` | 196 |
+| `documentation` | 201 |
 | `generated` | 2 |
 | `module-guide` | 32 |
 | `product-document` | 21 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-01T21:31:37-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 49 |
+| `sql-needs-review` | 50 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -130,6 +130,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | `sql-needs-review` | 9 | 29 |
 | `supabase/migrations/v12_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | 41 | 126 |
+| `supabase/migrations/v13_02_cofre_recusa_sem_vazar_linha.sql` | `sql-needs-review` | 2 | 4 |
 | `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
@@ -253,6 +254,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v12_04_gads_fato_canonico_dia.sql` | `sql-needs-review` | high | 9 | 29 |
 | `supabase/migrations/v12_04_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v13_01_cofre_de_ativos.sql` | `sql-needs-review` | high | 41 | 126 |
+| `supabase/migrations/v13_02_cofre_recusa_sem_vazar_linha.sql` | `sql-needs-review` | high | 2 | 4 |
 | `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | high | 1 | 0 |
@@ -266,7 +268,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v9_02_atencao_sem_removida.sql` | `sql-needs-review` | medium | 2 | 6 |
 | `supabase/migrations/v9_03_historico_e_ordem_operacional.sql` | `sql-needs-review` | high | 2 | 6 |
 | `supabase/migrations/v9_03_rollback.sql` | `sql-needs-review` | high | 2 | 6 |
-| `supabase/migrations/v9_04_rollback.sql` | `sql-needs-review` | medium | 2 | 4 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

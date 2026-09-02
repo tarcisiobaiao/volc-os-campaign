@@ -1077,6 +1077,19 @@
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
+      "id": "system:cofre-schema-v13-02",
+      "label": "Guarda de recusa sem vazamento (v13_02)",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "live",
+      "state_label": "Vivo agora",
+      "tier": 1,
+      "summary": "Gatilho BEFORE INSERT/UPDATE em cofre_credencial_referencia que recusa referência incompleta citando o NOME do campo ausente, para que a NOT NULL não dispare e anexe a linha inteira — que carrega o localizador op://.",
+      "evidence": "Defeito reproduzido no Supabase oficial em 02/09/2026, transacionalmente, com localizador sintetico: uma ficha sem owner_nome deixava a NOT NULL disparar e o `DETAIL: Failing row contains (...)` levava o op:// junto. A v13_01 ja guardava esse risco no caminho da CHECK do localizador (1888-1895), mas nao nos demais campos obrigatorios. ALCANCE HONESTO: backend/app/asset_vault/infraestrutura.py:94 ja descarta mensagem do banco com DETAIL/Failing row/op://, entao pela API isto nao chegava ao browser; sobrava o LOG do Postgres e qualquer consumidor futuro que fale com o banco sem passar por aquele adapter. A v13_01 nao foi editada — migration aplicada nao se reescreve. Backup previo com sha256 conferido e pg_restore -l com 2.422 itens. Nove contraprovas transacionais verdes: a recusa nomeia owner_nome, nao ecoa op:// nem 'Failing row', o UPDATE que apaga campo obrigatorio tambem e recusado, e os 7 engines seguem intactos.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
       "id": "concept:cofre-handoff",
       "label": "Handoff do Cofre para produção e publicação",
       "type": "concept",
@@ -1199,11 +1212,11 @@
       "type": "concept",
       "cluster": "governance",
       "cluster_label": "Governança & operação",
-      "state": "partial",
-      "state_label": "Parcial / elo incompleto",
+      "state": "live",
+      "state_label": "Vivo agora",
       "tier": 1,
       "summary": "Nove tabelas cofre_* em public com escrita só por função SECURITY DEFINER, allowlist de campo, blocklist de chave sensível normalizada, idempotência por chave derivada do ato e trilha append-only.",
-      "evidence": "Escrita em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128) (supabase/migrations/v13_01_cofre_de_ativos.sql, o arquivo versionado), com rollback em v13_99. Provada por scripts/provar-ciclo-v13_01.sh: 92 provas num PostgreSQL 15.19 descartável, ciclo aplicar → operar → reverter → reaplicar, mesma major da produção medida em 15.8. As provas de acesso TENTAM em vez de inspecionar catálogo, porque service_role tem BYPASSRLS e quem o contém é o REVOKE. Não há view no schema: a única que existia saiu por não ter consumidor. NÃO APLICADA EM PRODUÇÃO: 0 tabelas cofre_* em database.agenciavolc.com.br em 01/09/2026.",
+      "evidence": "APLICADA no Supabase oficial (database.agenciavolc.com.br, PostgreSQL 15.8) em 02/09/2026, depois de backup pg_dump -Fc verificado por sha256 e por pg_restore -l legivel. Contraprovas medidas no catalogo do proprio Postgres, nao presumidas da NOTICE da migration: 9 tabelas, RLS habilitada E forcada nas 9, 0 policies, 0 grant de tabela a PUBLIC/anon/authenticated/service_role (so postgres), 29 funcoes todas com search_path fixo e ZERO SECURITY DEFINER sem ele, EXECUTE so para postgres e 12 RPCs governadas a service_role, 0 EXECUTE a PUBLIC, 9 gatilhos de append-only e anti-segredo. Comportamento em transacao com ROLLBACK: escrita e leitura diretas por service_role recusadas (42501), anon/authenticated sem EXECUTE, os sete tipos de segredo recusados SEM eco do valor, trilha append-only, idempotencia por chave+autor, e nenhuma funcao de leitura devolve op:// — com o localizador comprovadamente persistido, para a prova nao ser vacua. Zero fixture residual. O ciclo descartavel segue com 92 provas; um defeito foi corrigido nele: a espera largava no servidor TEMPORARIO do initdb e o primeiro psql caia no intervalo entre os dois servidores.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1233,16 +1246,29 @@
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
+      "id": "tool:onepassword-mcp-smoke",
+      "label": "Smoke do 1Password MCP",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "implemented",
+      "state_label": "Implementado",
+      "tier": 1,
+      "summary": "Fala o protocolo MCP direto com o binário do app, por stdio, e prova que a resposta traz apenas nomes de Environment e de variável — nunca valores.",
+      "evidence": "Criado nesta missao porque P03-T09 fala em MCP e o instrumento anterior so cobria a CLI. Prova handshake, tools/list, authenticate, list_environments e list_variables contra o servidor real (rmcp 1.1.0). A ausencia de valor e provada pela mesma inversao do smoke da CLI: o pai nao pode procurar pelo segredo, porque procurar exigiria possui-lo — entao vale lista-branca estrita, e qualquer token opaco de 24+ caracteres nao declarado derruba a prova; o achado sai como token_opaco[<tamanho>], nunca o texto. Nenhuma ferramenta de escrita e chamada. Um falso verde PROPRIO foi encontrado e corrigido: list_environments e list_variables EXIGEM accountId, o instrumento chamava sem, e o erro JSON-RPC virava {} — dois bytes lidos como 'listou e nao havia nada'. O recibo saia ok sem ter listado nada.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
       "id": "tool:onepassword-smoke",
       "label": "Smoke seguro do 1Password local",
       "type": "concept",
       "cluster": "governance",
       "cluster_label": "Governança & operação",
-      "state": "partial",
-      "state_label": "Parcial / elo incompleto",
+      "state": "implemented",
+      "state_label": "Implementado",
       "tier": 1,
-      "summary": "Prova, num processo descartável, a cadeia CLI → app → sessão → injeção do 1Password, sem revelar, medir ou derivar o valor do segredo; nove estados tipados com exit code próprio e nenhum caminho de falso sucesso.",
-      "evidence": "tools/onepassword-smoke/, 907 linhas, autoteste com 0 falhas em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Nesta máquina o smoke real sai blocked/cli_ausente (exit 10), que é o estado honesto: não há app, CLI op, 1password-mcp, variável OP_* nem MCP configurado — os cinco medidos. A lógica é provada por dublê atrás de flag explícita (--duple). NÃO cobre o servidor MCP do 1Password, só o CLI.",
+      "summary": "Prova, num processo descartável, a cadeia CLI → app → sessão → injeção do 1Password, sem revelar, medir ou derivar o valor do segredo; DEZ estados tipados com exit code próprio e nenhum caminho de falso sucesso.",
+      "evidence": "Exercitado contra o 1Password REAL em 01-02/09/2026: ok, exit 0, injecao confirmada por presenca booleana em processo descartavel, varredura interna sem eco, zero bytes inesperados nos dois filhos. Percorreu toda a escada no caminho: cli_ausente (10) -> sem_sessao (12) -> referencia_ausente (14) -> ok (0). Autoteste: 8 provas, 0 falhas. Dois defeitos corrigidos: (a) o veredito de eco vinha ANTES da classificacao por rc, e como qualquer saida fora da linha canonica conta como suspeita, toda falha do `op run` caia em falha/vazamento — os estados 12 e 13 eram CODIGO MORTO e travar o cofre saia como VAZAMENTO (teste mutante confirma); (b) o cache do `op` vem ligado por padrao e satisfazia os degraus de listagem depois do lock, entao a prova de revogacao media o cache, nao o acesso — agora todas as invocacoes usam --cache=false. Terceira melhoria: --referencia-arquivo tira o localizador op:// do argv, onde ficava visivel em `ps`; o recibo declara origem_da_referencia. O contador 'nove estados' desta curadoria estava errado: sao DEZ, e o erro sobreviveria ao proximo rebuild. NAO cobre o MCP — isso e tool:onepassword-mcp-smoke.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1524,11 +1550,11 @@
       "type": "concept",
       "cluster": "platform",
       "cluster_label": "Plataforma & integrações",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "implemented",
+      "state_label": "Implementado",
       "tier": 1,
       "summary": "Autoridade local de segredos para agentes e ferramentas de desenvolvimento, capaz de montar variáveis sem revelar o valor ao modelo ou gravá-lo no repositório.",
-      "evidence": "Continua 'todo', e a distincao e o ponto: o que existe em 033e1620 (merge 4afc128) e um smoke de CLI, nao a prova do MCP. tools/onepassword-smoke/ tem dez estados tipados, confirma presenca booleana sem imprimir valor, comprimento ou hash, e recusa --no-masking no preflight; a logica e provada por duble controlado. O smoke real sai blocked/cli_ausente com exit 10 — correto, porque nao ha app, CLI 'op' nem binario 1password-mcp nesta maquina. Aprovacao por ambiente e revogacao pelo lock nao foram exercitadas contra o MCP oficial.",
+      "evidence": "Provado em 01-02/09/2026 contra o servidor REAL do app, nao mais ausente. 1Password 8.12.34 e op 2.39.0 instalados (AgileBits, notarizados); o binario 1password-mcp vive DENTRO do bundle, nao no PATH. Handshake concluido (rmcp 1.1.0, protocolo 2024-11-05), as 8 ferramentas documentadas presentes, authenticate aceito e devolvendo o account_id que toda leitura exige. O escopo e por conta: com id errado o servidor responde 'Missing required scope: environments:list'. list_variables devolve o campo `variableNames` — NOMES: a garantia publicada ('never returns the secrets') deixou de ser citacao e virou medicao. Environment VOLC_OS_LOCAL criado pelo proprio MCP; nenhum valor escrito por ferramenta (append_variables nunca e chamada). Revogacao pelo lock medida como ciclo fechado: destrancado ok, TRANCADO blocked/aprovacao_negada (13), reautorizado ok. Instrumento: tools/onepassword-mcp-smoke/run.py. Evidencia: docs/closure/onepassword-cofre-operational-closure-v1/PROVA-REVOGACAO.md.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {

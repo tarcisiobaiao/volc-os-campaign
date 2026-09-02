@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-01T21:31:37-03:00",
+  "generated_at": "2026-09-01T23:01:01-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 500,
-    "markdown": 338,
-    "sql": 162,
-    "tracked": 500,
+    "files": 506,
+    "markdown": 343,
+    "sql": 163,
+    "tracked": 506,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 23,
-      "documentation": 196,
+      "documentation": 201,
       "generated": 2,
       "module-guide": 32,
       "product-document": 21,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 49,
+      "sql-needs-review": 50,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 101,
+      "high": 102,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -1027,9 +1027,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 19304,
-      "lines": 268,
-      "sha256": "aee5ba98f476ab8f37c9b7e2f122180308bbd8d8b89b92dfb2d8e8bd281f2eec",
+      "bytes": 19678,
+      "lines": 273,
+      "sha256": "f5cfc89e941829355fdb7876fb1bdaab06486fa0e03698c24c82edec3ea23d92",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2271,6 +2271,66 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/onepassword-cofre-operational-closure-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 8722,
+      "lines": 158,
+      "sha256": "2d6822b164dbba299390d90e058c9bf1b98f725d29bbf1cf8d2ffa1710231233",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/onepassword-cofre-operational-closure-v1/PROVA-API-FRONTEND.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3519,
+      "lines": 79,
+      "sha256": "ff9e3d553a574d169b73843fe2827eb6dd35d27157540265b62154fa3659177a",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/onepassword-cofre-operational-closure-v1/PROVA-ENGINES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2375,
+      "lines": 52,
+      "sha256": "838343365c6f24c4089d6743f2d4d83a24ab6c96005bff955a413d5202a6e2a0",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/onepassword-cofre-operational-closure-v1/PROVA-REVOGACAO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3301,
+      "lines": 69,
+      "sha256": "a7842c60f3ab8c13ac8c59a0894ae62f2387ad1e45c2965612f2e23f2e51441d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/onepassword-cofre-operational-closure-v1/RECIBO-v13_02.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3408,
+      "lines": 88,
+      "sha256": "d3c92e89a648b28d1533db202d7249a0e8c88fa732bea62c77cf559266ec12ed",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/search-measurement-operational-v1/APLICACAO-V12-02.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3309,7 +3369,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "4d73bf09a751f0e6cbdd0ea76f36028a9e5d946d4893ceac2078e661ae83afcc",
+      "sha256": "1e7e0cc9c9718a52c767f461846e5e757d090daa62fa78b9fda48252dbe0d3b0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5547,6 +5607,18 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/v13_02_cofre_recusa_sem_vazar_linha.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 5283,
+      "lines": 111,
+      "sha256": "06c7b804119d1d66a25b01f622d3bc166db201935ada6601f2ac04291fd4aea7",
+      "graph_nodes": 2,
+      "graph_degree": 4,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/v13_99_cofre_de_ativos_rollback.sql",
       "extension": ".sql",
       "classification": "sql-needs-review",
@@ -5815,9 +5887,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 11787,
-      "lines": 211,
-      "sha256": "dc009633eb52831c59fad54390ce7fb8869b7f339c85f381a4d94bf7e1ea0413",
+      "bytes": 12839,
+      "lines": 228,
+      "sha256": "2687564ce28da4ac215a4c252b08bfb50c3a303732af111046052b5556e78de9",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

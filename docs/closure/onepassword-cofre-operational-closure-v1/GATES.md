@@ -1,9 +1,18 @@
 # GATES — onepassword-cofre-operational-closure-v1
 
-**Estado deste documento:** PARCIAL. Fecha as fases 0–3. As fases 2 (prova real
-do 1Password), 4 (engines em produção), 5 (página real) e 6 (API/frontend) estão
-BLOQUEADAS aguardando o operador e uma permissão de escrita. Nada aqui foi
-promovido a `done` por existir código.
+**Estado deste documento:** as fases 0–4, 6 e 7 estão fechadas. A fase 5 (página
+real / perfil AdsPower) segue BLOQUEADA por falta de dado real — e é a única
+coisa que separa "infraestrutura operacional" de "Cofre povoado". Nada aqui foi
+promovido por existir código.
+
+**Veredito:** `COFRE_INFRASTRUCTURE_INTEGRATED`
+
+| Sinal | Valor |
+|---|---|
+| `COFRE_INFRASTRUCTURE_OPERATIONAL` | **true** |
+| `ONEPASSWORD_ACCESS_AND_REVOCATION_PROVEN` | **true** |
+| `REAL_REFERENCE_PERSISTED_AND_RESOLVED` | **false** |
+| `PAGE_PUBLICATION_READY` | **false** |
 
 - **Branch:** `sprint/onepassword-cofre-operational-closure-v1`
 - **Base:** `origin/volc-os-v2 @ 45430e4f705d84ebd1d09f6c140e3f7d85c1b139`
@@ -28,7 +37,7 @@ promovido a `done` por existir código.
 |---|---|---|
 | Ciclo descartável v13_01 | `./scripts/provar-ciclo-v13_01.sh` | **92 provas**, PostgreSQL 15.19 |
 | Testes backend do Cofre | `pytest backend/tests/test_cofre_ativos.py` | **67 passed** |
-| Suíte backend inteira | `pytest backend/tests` | **2333 passed, 53 skipped** |
+| Suíte backend inteira | `pytest backend/tests` | **2356 passed, 30 skipped** |
 | Testes frontend do Cofre | `vitest run src/features/asset-vault` | **24 passed** (2 arquivos) |
 | TypeScript | `tsc --noEmit -p tsconfig.app.json` | **76 erros** — o baseline herdado do webgo; **0 na autoria desta entrega** |
 | Build | `npm run build` | ✓ em 8.03s |
@@ -73,7 +82,9 @@ aplicação parcial. Autoridade reconfirmada imediatamente antes.
 109.824 bytes), via `psql -v ON_ERROR_STOP=1`. Nenhuma outra migration.
 **v13_99 não foi executada.**
 
-**NÃO aplicada:** `v13_02` — o classificador de permissão recusou a escrita.
+**Aplicada em seguida:** `v13_02` (sha256 `06c7b804…4aea7`), com backup próprio —
+`/root/backups/pre-v13_02-20260902T015026Z.dump`, 2.514.218 bytes, sha256
+`fb779be4…72ec1`, `pg_restore -l` legível com 2.422 itens. Ver `RECIBO-v13_02.md`.
 
 ## Contraprovas pós-migration — medidas, não presumidas
 
@@ -131,13 +142,16 @@ como sensível em todo lugar menos ali. Agora o argv carrega um **caminho**, e o
 endereço mora num arquivo `0600` que o smoke recusa se estiver legível por grupo
 ou outros. O recibo passa a trazer `origem_da_referencia`.
 
-## O que NÃO foi feito
+## O que NÃO foi feito — e continua não feito
 
-- v13_02 **não aplicada** em produção (permissão recusada)
-- 1Password: sem conta, sem sessão, sem Environment, sem aprovação — **sem prova
-  de lock/revogação**
-- engines **não** importados em produção
-- página Facebook e perfil AdsPower **não** cadastrados: não há dado real
-- API/frontend não exercitados contra o Cofre povoado
-- sem deploy, sem merge em `main`, sem force push
-- Roadmap e curadoria **não** editados nesta branch
+- **página Facebook e perfil AdsPower não cadastrados**: não há dado real, e
+  inventar um seria pior que Cofre vazio. `P03-T02`, `P12-T02` e `P03-T07`
+  seguem `todo`.
+- **nenhuma referência real de credencial persistida nem resolvida.** O broker
+  que resolve `op://` (P03-T11) continua inexistente, de propósito.
+- **a visita autenticada pela tela não aconteceu**: a extensão do Chrome não
+  está conectada nesta máquina. Os estados da tela seguem cobertos apenas pelos
+  24 testes de frontend. Ver `PROVA-API-FRONTEND.md`.
+- sem deploy, sem merge em `main`, sem force push, sem rebase
+- sem Google Ads, sem Data Manager, sem GTM, sem n8n
+- `v13_99` **não** executada
