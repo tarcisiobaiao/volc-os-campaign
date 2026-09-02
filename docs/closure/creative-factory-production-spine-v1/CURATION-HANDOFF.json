@@ -123,5 +123,30 @@
   "o_que_entrou": "A lane do Cofre foi integrada em volc-os-v2 durante esta missao: 12 commits, de 2c4a6b6 a 45430e4, tocando 37 arquivos — asset_vault, test_cofre_ativos, o pacote de fechamento do Cofre, os scripts dele, e backend/app/main.py, curadoria-operacional.json e volc-os-graph.json.",
   "sobreposicao_com_esta_missao": "NENHUMA. `comm -12` entre os dois conjuntos de arquivos alterados devolve vazio, e `git merge-tree --write-tree` entre origin/volc-os-v2 e esta branch fecha LIMPO. A decisao de nao tocar backend/app/main.py — tomada por causa da tentativa a1 do P17-T09, que foi barrada por inventar um exception_handler la — evitou o unico conflito provavel.",
   "consequencia_para_o_integrador": "Rebase ou merge sobre 45430e4 sem conflito esperado. Mas curadoria-operacional.json e volc-os-graph.json ANDARAM: o delta desta missao precisa ser aplicado sobre a versao nova, e o Mapa Vivo reconstruido UMA vez depois disso."
+ },
+ "rodada_corretiva_final": {
+  "head": "4e351cb",
+  "bloqueador_1_isolamento_de_assets": {
+   "estado": "FECHADO",
+   "o_que_era": "`listar_assets` e `obter_asset` descartavam a identidade. Quatro coisas atravessavam o dono no mesmo DTO: master, versoes, aprovacoes e o job com a procedencia de execucao.",
+   "como": "Porta de repositorio com `criado_por` keyword OBRIGATORIA, filtro no SERVIDOR por embed `criativo_job!inner(criado_por)` — uma consulta, sem N+1 e sem filtragem em memoria. 404 identico ao de asset inexistente.",
+   "auditoria_das_demais_rotas_get": "Seis descartavam identidade; DUAS eram vazamento equivalente e foram fechadas (`/jobs/{id}/eventos` e `/resumo`, este ultimo global nas seis leituras, incluindo contagem). `/parque`, `/brand-packs` e `/video/{slug}` leem catalogo/parque e ficaram como estao. As rotas de `exigir_admin` tem decisao explicita preexistente — nao inventei nem removi bypass."
+  },
+  "bloqueador_2_insumo_publico": {
+   "estado": "FECHADO",
+   "como": "`bancada/fronteira_publica.py`: hash canonico (mesmo `canonizar` da idempotencia), resumo por allowlist de campos categoricos, e quatro estados de retencao distintos. Ausencia nunca vira string vazia; hash nao e chamado de prompt sanitizado.",
+   "prova": "Sentinela secreta que atravessa a producao real e some do JSON publico inteiro, exigindo as duas metades. Idempotencia e assinatura determinista inalteradas, com prova.",
+   "efeito_colateral_declarado": "Quatro goldens dos aceites 1 e 2 quebraram e foram REGRAVADOS — mudanca deliberada de contrato publico, visivel no diff. Ficou o caminho de regeneracao `CRIATIVO_MOSTRAR_GOLDEN=1`, que nao regrava sozinho."
+  },
+  "o_que_continua_ausente": "Os onze campos do recibo seguem ausentes. E a fabrica NAO e producao enquanto P17-T05, T06, T07 e T08 forem `partial`.",
+  "gates": {
+   "backend": "3209 passed / 53 skipped",
+   "vitest": "1243 passed / 3 skipped, exit 0",
+   "tsc": "76 (baseline 76)",
+   "build": "verde",
+   "v11_03": "129 passaram / 0 falharam",
+   "diff_check": "limpo",
+   "varredura_de_segredo": "0 ocorrencias"
+  }
  }
 }

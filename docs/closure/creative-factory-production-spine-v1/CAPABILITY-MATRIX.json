@@ -1755,5 +1755,11 @@
    "Catalogar gpt-image-1, gemini-2.5-flash-image e um provider proprio de Gemini TTS (gemini-3.1-flash-tts-preview -> gemini-2.5-flash-preview-tts). Sao capacidades reais do parque que a matriz mencionou so de passagem. Ficam como lacuna declarada: acrescentar linha de capacidade exige a mesma investigacao de procedencia que as outras 37 tiveram, e inventa-las agora seria repetir o defeito que esta correcao conserta.",
    "Separar 'adaptador integrado ao contrato' de 'gerador/runtime nao integrado' no FunnelForge — o revisor propoe um estado `implemented_unwired` que a taxonomia da missao nao tem. Registrado como proposta de taxonomia, nao aplicado por conta propria."
   ]
+ },
+ "_rodada_corretiva_final": {
+  "head": "4e351cb",
+  "isolamento_de_assets": "FECHADO — leitura regular de assets nao atravessa inquilino.",
+  "insumo_publico": "FECHADO — `parametros` e `insumo` deixaram de sair crus; a API devolve hash canonico, campos allowlisted e estados de retencao.",
+  "aviso": "Isto NAO promove nenhuma capacidade. A fabrica continua nao sendo producao enquanto P17-T05, T06, T07 e T08 forem `partial`, e os onze campos ausentes do recibo continuam ausentes."
  }
 }

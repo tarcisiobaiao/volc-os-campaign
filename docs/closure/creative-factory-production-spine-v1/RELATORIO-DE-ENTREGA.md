@@ -21,7 +21,7 @@ em `AUTORIZACAO-EXTERNA.md`.
 | Gate | Baseline (medido no SHA base) | Final |
 |---|---|---|
 | `pytest backend/tests volc_ads` | 2972 passed · 53 skipped | **3195 passed · 53 skipped** |
-| `vitest run` | 1208 passed · 5 skipped | **1243 passed · 3 skipped** ² |
+| `vitest run` | 1208 passed · 5 skipped | **1243 passed · 3 skipped** · exit 0 |
 | `tsc --noEmit -p tsconfig.app.json` | 76 erros herdados | 76 |
 | `vite build` | verde | verde |
 | `scripts/provar-ciclo-v11_03.sh` | 129 passaram · 0 falharam | 129 · 0 |
@@ -30,14 +30,12 @@ em `AUTORIZACAO-EXTERNA.md`.
 Medidos no HEAD final `f6d9769`, árvore limpa. Backend: **3200 passed · 53
 skipped**.
 
-² **Um flake honesto, e ele fica registrado.** Numa das três execuções do
-frontend — a que rodou com a máquina carregada, e o `vite build` daquela rodada
-levou 25,96 s contra os ~7 s habituais — apareceu **1 teste falho de 1246**. As
-duas execuções isoladas seguintes deram 1243 passed, 0 failed. Não capturei o
-nome do teste naquela saída, então **não sei qual foi** — e isso é limitação
-minha, não prova de que era flake. O que sei: não reproduz isolado em duas
-tentativas, e a missão avisa para não classificar flake de contenção como
-defeito. Fica como pendência factual, não como gate verde.
+² **O flake da rodada anterior não reapareceu.** Naquela medição uma execução
+acusou 1 falha em 1246 com a máquina carregada, e eu não capturei o nome. Nesta
+rodada o Vitest completo rodou isolado, com as mesmas variáveis placeholder
+não-secretas do baseline, e deu **exit 0, 1243 passed, 0 failed, nenhum nome de
+falha para registrar**. Continua sendo verdade que eu não sei o que falhou
+naquela vez.
 
 ⚠️ **Correção de um baseline herdado.** O handoff da bancada registrava
 "Frontend completo 902 (7 arq./2 testes falhos)" e tratava as falhas como
@@ -255,3 +253,53 @@ aplicadas** estão em `_correcoes_da_revisao_factual`, dentro da própria matriz
 Uma delas era defeito de código, não de documento: o envelope de logo do Demand
 Gen citava mínimo 128×128, e `requisitos.yaml:185` — a fonte deste repositório —
 diz 144×144.
+
+
+## 9. Rodada corretiva final — os dois bloqueadores
+
+**HEAD:** `4e351cb` · gates medidos em série, árvore limpa.
+
+### Bloqueador 1 — isolamento dos assets · FECHADO
+
+`listar_assets` e `obter_asset` ligavam a identidade a `_`. **Quatro coisas**
+atravessavam o dono no mesmo DTO — master, versões, aprovações e o job com a
+`procedencia_execucao`. A posse resolve pelo job (`criativo_master.job_id` é
+`not null`), com embed `criativo_job!inner(criado_por)` **no servidor**: uma
+consulta por leitura, sem N+1 e sem filtrar em memória. `!inner` importa — sem
+ele o PostgREST devolveria a linha alheia com o dono em branco, que parece
+filtrado e não está.
+
+A porta do repositório exige o dono no **contrato**: `criado_por` é keyword
+obrigatória em `buscar_master_do_dono`, `versoes_do_master_do_dono` e
+`listar_masters_do_dono`, e há prova que lê a assinatura por `inspect`.
+
+Auditoria das demais rotas GET do router: seis descartavam a identidade, **duas
+eram vazamento equivalente e reproduzido** — `GET /jobs/{id}/eventos` (mesma
+chamada que `obter_job` fazia) e `GET /resumo` (global nas seis leituras,
+incluindo a contagem da biblioteca). Ambas fechadas. `/parque`, `/brand-packs` e
+`/video/{slug}` leem catálogo e parque: auditadas e **deixadas como estão**.
+`POST /retry`, `/cancel` e as rotas de aprovação usam `exigir_admin` — decisão
+explícita preexistente, **não inventei bypass nem o removi**.
+
+### Bloqueador 2 — insumo cru na API · FECHADO
+
+`parametros` público virou hash canônico + campos allowlisted + **quatro estados
+de retenção distintos** (`ausente`, `vazio`, `retido_texto_livre`,
+`retido_nao_allowlisted`). Nenhum vira string vazia, e o hash não se chama
+"prompt sanitizado".
+
+A prova central é uma **sentinela secreta**: ela atravessa a produção real e o
+teste exige as duas metades — presente no recibo interno (senão a prova seria
+vazia) e ausente do JSON público inteiro. Idempotência e assinatura determinista
+seguem vendo os parâmetros completos, com prova.
+
+Quatro goldens congelados dos aceites 1 e 2 quebraram — **o sistema funcionando**
+— e foram regravados. Ficou também o caminho de regeneração que não existia:
+`CRIATIVO_MOSTRAR_GOLDEN=1` imprime o corpo atual e **não** regrava sozinho.
+
+### O que continua ausente
+
+Os **onze campos do recibo** listados na seção 6 continuam ausentes — esta rodada
+não os acrescentou, e o `insumo` sair sanitizado não é o mesmo que existir um
+campo `prompt sanitizado`. E a fábrica **não** é produção enquanto P17-T05, T06,
+T07 e T08 forem `partial`.
