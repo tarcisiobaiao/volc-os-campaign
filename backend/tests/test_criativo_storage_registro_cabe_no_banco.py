@@ -54,9 +54,21 @@ MIGRATION = RAIZ / "supabase/migrations/v11_03_execucao_criativa.sql"
 BYTES = b"peca-canario-bytes"
 
 
+def _sem_comentarios(sql: str) -> str:
+    """Tira `--` ate o fim da linha e blocos de comentario.
+
+    ⚠️ ACHADO ADVERSARIAL (Codex, 02/09/2026). Sem isto, um CHECK COMENTADO —
+    isto e, uma protecao que o banco NAO aplica mais — continuava a ser lido, e
+    esta suite seguia verde afirmando uma garantia que nao existe. Um leitor que
+    aceita codigo morto como contrato mede o documento, nao o banco.
+    """
+    sem_bloco = re.sub(r"/\*.*?\*/", " ", sql, flags=re.DOTALL)
+    return "\n".join(re.sub(r"--.*$", "", linha) for linha in sem_bloco.splitlines())
+
+
 def _check_da_migration(nome_do_check: str) -> str:
-    """A regex que o CHECK exige, lida do SQL — nunca copiada para ca."""
-    sql = MIGRATION.read_text("utf-8")
+    """A regex do CHECK, lida do SQL VIVO — nunca copiada, nunca comentada."""
+    sql = _sem_comentarios(MIGRATION.read_text("utf-8"))
     achado = re.search(
         rf"constraint\s+{nome_do_check}\s+check\s*\((.*?)\)\s*,?\s*\n",
         sql, re.IGNORECASE | re.DOTALL,
@@ -214,3 +226,20 @@ def test_o_leitor_continua_acusando_contradicao_de_verdade() -> None:
             storage_sha256_remoto=hash_puro(sha256_de(b"uma coisa")),
             sha256_do_artefato=hash_puro(sha256_de(b"outra coisa")),
         )
+
+
+def test_um_check_comentado_nao_conta_como_protecao() -> None:
+    """Codigo morto no SQL nao pode sustentar um teste verde."""
+    vivo = "constraint c check (x ~ '^[0-9a-f]{64}$')"
+    assert "c check" in _sem_comentarios(vivo)
+    assert "c check" not in _sem_comentarios("-- " + vivo)
+    assert "c check" not in _sem_comentarios("/* " + vivo + " */")
+
+
+def test_o_check_que_este_arquivo_afirma_existe_de_verdade_no_sql() -> None:
+    """Se o CHECK sumir da migration, esta suite fica vermelha em vez de vacua."""
+    padrao = _check_da_migration("criativo_render_artefato_hash_remoto_forma")
+    assert padrao == "^[0-9a-f]{64}$", (
+        f"o CHECK mudou de forma: {padrao!r}. Releia este arquivo antes de "
+        f"ajustar o valor esperado."
+    )

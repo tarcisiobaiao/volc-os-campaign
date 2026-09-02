@@ -240,7 +240,8 @@ class DepositoPostgres:
             return self._devolver_vencidos(cur)
 
     def bater(
-        self, trabalho_id: str, *, lease_s: int = 60, operario: str | None = None
+        self, trabalho_id: str, *, lease_s: int = 60, operario: str | None = None,
+        tentativa: int | None = None,
     ) -> bool:
         """Renova o lease. So do dono, e so lease que AINDA VALE.
 
@@ -260,6 +261,13 @@ class DepositoPostgres:
         if operario:
             sql += " and owner=%s"
             args.append(operario)
+        if tentativa is not None:
+            # ⚠️ ACHADO_FENCING, segunda metade (ver a nota no topo de
+            # `deposito.py`). Sem a tentativa, o zumbi homonimo renova o lease do
+            # dono vivo — e o batimento e exatamente o sinal de "ainda estou
+            # produzindo" que impede o recolhedor de agir.
+            sql += " and tentativa=%s"
+            args.append(tentativa)
         con = self._con()
         with con.cursor() as cur:
             cur.execute(sql, tuple(args))
@@ -276,7 +284,29 @@ class DepositoPostgres:
         exigir_tentativa: int | None = None,
     ) -> Trabalho:
         con = self._con()
-        with con.cursor() as cur:
+        # ⚠️ ACHADO ADVERSARIAL (Codex, 02/09/2026), reproduzido em PostgreSQL 17.
+        # A transacao precisa comecar ANTES do `select ... for update`, e nao so
+        # em volta do UPDATE.
+        #
+        # A conexao e `autocommit=True`. Nesse modo o `select ... for update`
+        # roda na sua propria transacao implicita e ela FECHA ao terminar — o
+        # lock cai junto. Medido, com duas conexoes:
+        #
+        #   c1: select ... for update            (autocommit)
+        #   c2: select ... for update NOWAIT     -> SUCESSO
+        #   -> o lock de c1 ja tinha sido solto
+        #   dentro de `with con.transaction()`:  c2 -> LockNotAvailable
+        #
+        # Com o lock solto entre a leitura e a escrita, as guardas de posse
+        # viravam check-then-act: `exigir_operario`/`exigir_tentativa` eram
+        # conferidos sobre uma linha que podia mudar antes do UPDATE — e o UPDATE
+        # nao repete a condicao no `where`. O SQLite nao tinha o problema porque
+        # `begin immediate` cobre a operacao inteira; era mais uma divergencia
+        # SQLite/Postgres, a mesma familia que o P17-T04 fechou no lease.
+        #
+        # A transacao unica cobre leitura, guardas e escrita — e o `for update`
+        # passa a segurar a linha durante todas as tres.
+        with con.transaction(), con.cursor() as cur:
             cur.execute(
                 "select estado, owner, tentativa, lease_ate"
                 " from public.criativo_render_job where id=%s for update",
@@ -309,6 +339,9 @@ class DepositoPostgres:
             # linha. Aqui o CHECK `falha_coerente` obriga; la, a paridade.
             falha_na_linha = falha if para is not EstadoDoTrabalho.QUEUED else None
             try:
+                # Bloco aninhado = SAVEPOINT dentro da transacao de fora. Ele
+                # existe para `_traduzir` poder converter a guarda do banco no
+                # erro tipado sem abortar a transacao inteira antes da traducao.
                 with con.transaction():
                     if recibo:
                         self._gravar_recibo(cur, trabalho_id, recibo)
@@ -335,6 +368,8 @@ class DepositoPostgres:
             except Exception as e:  # noqa: BLE001
                 self._traduzir(e, de, para, trabalho_id, linha["lease_ate"])
                 raise
+        # ⚠️ FORA da transacao: reler depois do commit e o que garante que o
+        # chamador recebe o estado que ficou visivel para todo mundo.
         achado = self.por_id(trabalho_id)
         assert achado is not None
         return achado

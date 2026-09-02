@@ -61,6 +61,31 @@ def _declaracoes(documento: Path) -> list[tuple[str, str | None, str]]:
             for m in LINHA_COM_SHA.finditer(documento.read_text("utf-8"))]
 
 
+#: Quantas linhas com sha256 CADA documento precisa ter. Sem este piso, uma
+#: linha malformada — um espaco a mais, uma crase perdida — sai do casamento da
+#: regex e simplesmente DESAPARECE, enquanto as outras mantem o teste verde.
+#: Foi o achado adversarial do Codex (02/09/2026): o guard baseado em regex
+#: ignorava entradas em silencio, que e exatamente o modo de falha que este
+#: arquivo existe para impedir. Contar e o que transforma "sumiu" em vermelho.
+_MINIMO_DE_DECLARACOES = {"PACOTE-v11_03.md": 8, "AUTORIZACAO-EXTERNA.md": 6}
+
+
+@pytest.mark.parametrize("documento", [PACOTE, AUTORIZACAO],
+                         ids=lambda p: p.name)
+def test_o_documento_declara_o_numero_de_identidades_que_prometeu(
+    documento: Path,
+) -> None:
+    """Uma linha que a regex nao casa some sem deixar rastro. O piso e o rastro."""
+    lidas = len(_declaracoes(documento))
+    esperado = _MINIMO_DE_DECLARACOES[documento.name]
+    assert lidas >= esperado, (
+        f"{documento.name}: a regex leu {lidas} declaracoes e o documento promete "
+        f"{esperado}. Ou uma linha foi removida, ou esta malformada e o casamento "
+        f"a ignorou — nos dois casos a guarda parou de guardar essa linha, em "
+        f"silencio."
+    )
+
+
 @pytest.mark.parametrize("documento", [PACOTE, AUTORIZACAO],
                          ids=lambda p: p.name)
 def test_o_documento_declara_o_sha_do_arquivo_que_existe(documento: Path) -> None:

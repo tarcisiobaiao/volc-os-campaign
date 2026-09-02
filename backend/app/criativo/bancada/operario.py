@@ -105,6 +105,13 @@ _MIMES_MENSURAVEIS = frozenset({"image/png", "image/jpeg", "image/gif", "video/m
 #: MIMEs medidos por `ffprobe` e nao pelo leitor de cabecalho de imagem.
 _MIMES_DE_VIDEO = frozenset({"video/mp4"})
 
+#: MIMEs cuja assinatura `mime_de` NAO le, e que mesmo assim sao verificados —
+#: por outro instrumento, no gate `dimensao`. Esta e a UNICA lista que autoriza
+#: `mime_declarado_confere` a sair `SKIPPED`; tudo que nao esta aqui e nao e
+#: confirmado pela assinatura sai `FAIL`. Manter as duas coisas ligadas e o que
+#: impede dois SKIPPED nao-bloqueantes de somarem um caminho verde sem leitura.
+_MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO = _MIMES_DE_VIDEO & _MIMES_MENSURAVEIS
+
 
 def _medir_dimensao(caminho: Path) -> tuple[int, int] | None:
     """Largura e altura LIDAS DO ARQUIVO. `None` quando nao da para saber.
@@ -194,8 +201,11 @@ class Batimento:
 
     def __init__(self, deposito: DepositoDeTrabalhos, trabalho_id: str,
                  *, operario: str, intervalo_s: float | None = None,
-                 lease_s: int = 60) -> None:
+                 lease_s: int = 60, tentativa: int | None = None) -> None:
         self._d, self._id, self._operario = deposito, trabalho_id, operario
+        # ⚠️ A tentativa e a outra metade da cerca. Sem ela, um zumbi homonimo
+        # renova o lease do dono vivo e o recolhedor nunca age.
+        self._tentativa = tentativa
         # ⚠️ O intervalo era FIXO em 5s enquanto `lease_s` era parametro:
         # qualquer `Operario(lease_s<=5)` era, por construcao, uma configuracao
         # SEM batimento — e nada avisava. Agora ele acompanha o lease.
@@ -211,7 +221,9 @@ class Batimento:
     def __enter__(self) -> Batimento:
         def laco() -> None:
             while not self._parar.wait(self._intervalo):
-                if self._d.bater(self._id, lease_s=self._lease, operario=self._operario):
+                if self._d.bater(self._id, lease_s=self._lease,
+                                 operario=self._operario,
+                                 tentativa=self._tentativa):
                     self.batidas += 1
                 else:
                     self.perdeu_o_trabalho = True
@@ -267,18 +279,37 @@ class Operario:
     def executar(self, trabalho: Trabalho) -> Trabalho:
         motor = self.motores.get(trabalho.encomenda.motor_slug)
         if motor is None:
-            return self.deposito.transicionar(
-                trabalho.id,
-                EstadoDoTrabalho.FAILED,
-                falha={
-                    "codigo": "motor_desconhecido",
-                    "mensagem": (
-                        f"nenhum motor registrado com o slug "
-                        f"`{trabalho.encomenda.motor_slug}`"
-                    ),
-                    "permanente": True,
-                },
-            )
+            # ⚠️ ACHADO ADVERSARIAL (Codex, 02/09/2026). Esta escrita era a UNICA
+            # do operario sem a cerca, e e a mais facil de disparar: basta o
+            # trabalho pedir um motor que ESTE processo nao tem. Um zumbi
+            # homonimo cujo container nao registra o motor matava, com
+            # `permanente: True`, o trabalho que o dono vivo estava produzindo —
+            # e `permanente` nao volta para a fila.
+            try:
+                return self.deposito.transicionar(
+                    trabalho.id,
+                    EstadoDoTrabalho.FAILED,
+                    falha={
+                        "codigo": "motor_desconhecido",
+                        "mensagem": (
+                            f"nenhum motor registrado com o slug "
+                            f"`{trabalho.encomenda.motor_slug}`"
+                        ),
+                        "permanente": True,
+                    },
+                    exigir_operario=self.nome,
+                    exigir_tentativa=trabalho.tentativa,
+                )
+            except TransicaoProibida:
+                # Quem perdeu a posse sai calado, como em `_falhar` e `_largar`.
+                # Deixar a excecao subir mataria o LACO DO WORKER — e derrubar o
+                # processo vivo por causa de um zumbi seria trocar um dano por
+                # outro maior.
+                log.warning(
+                    "trabalho %s: motor `%s` ausente, e a posse ja nao e nossa",
+                    trabalho.id, trabalho.encomenda.motor_slug,
+                )
+                return self.deposito.por_id(trabalho.id) or trabalho
 
         # Diretorio exclusivo POR REIVINDICACAO, nao por trabalho.
         #
@@ -296,7 +327,8 @@ class Operario:
         iniciado = _agora()
 
         with Batimento(self.deposito, trabalho.id, operario=self.nome,
-                       lease_s=self.lease_s) as batimento:
+                       lease_s=self.lease_s,
+                       tentativa=trabalho.tentativa) as batimento:
             try:
                 self.deposito.transicionar(
                     trabalho.id, EstadoDoTrabalho.RUNNING,
@@ -693,22 +725,51 @@ class Operario:
             # ⚠️ O MIME tambem e afirmacao do motor, e ate aqui ninguem a
             # conferia. Mesmo formato do gate de dimensao, e pelo mesmo motivo:
             # o que o motor DIZ e o que o arquivo E sao perguntas diferentes.
+            #
+            # ⚠️ ACHADO ADVERSARIAL (Codex, 02/09/2026). A PRIMEIRA versao deste
+            # gate mandava todo `medido is None` para `SKIPPED` nao-bloqueante —
+            # e com isso um motor que apontasse para bytes arbitrarios (um
+            # binario Mach-O, no caso reproduzido) declarando `image/webp`
+            # chegava a `rendered` com `VERIFIED_OK`: `dimensao` tambem sai
+            # SKIPPED, porque webp nao esta em `_MIMES_MENSURAVEIS`. Dois
+            # SKIPPED nao-bloqueantes somam um caminho verde sem ninguem ter
+            # aberto o arquivo.
+            #
+            # E o MESMO erro que o gate de dimensao ja tinha cometido e
+            # registrado tres blocos acima — "consertar um buraco abrindo
+            # outro" —, e o proprio medidor avisa, em
+            # `medir_imagem.FORMATOS_RECONHECIDOS`: `mime_de` devolver `None`
+            # para um dos tres NAO e "nao apurei", e sim "olhei a assinatura e
+            # nao e nenhum deles". Tratar refutacao como ausencia deixa passar a
+            # declaracao falsa.
+            #
+            # A regra passa a ser fail-closed: so e SKIPPED o formato que ESTE
+            # sistema sabe verificar por OUTRO instrumento — hoje, `video/mp4`,
+            # que o gate `dimensao` abre com ffprobe. Qualquer outro MIME
+            # declarado que a assinatura nao confirme e FAIL.
             medido = _mime_medido(caminho)
-            if medido is None:
-                # Ausencia de medicao nao e aprovacao nem reprovacao. `mime_de`
-                # so conhece assinaturas de imagem; um mp4 legitimo cai aqui, e
-                # reprovar por isso seria recusar a midia que o sistema produz.
-                validacoes.append(Validacao(
-                    gate="mime_declarado_confere", resultado="SKIPPED",
-                    detalhe={"slot": a.slot, "declarado": a.mime,
-                             "motivo": "nao sei ler a assinatura deste formato"},
-                    bloqueante=False))
-            else:
+            if medido is not None:
                 validacoes.append(Validacao(
                     gate="mime_declarado_confere",
                     resultado="PASS" if medido == a.mime else "FAIL",
                     detalhe={"slot": a.slot, "declarado": a.mime,
                              "medido": medido},
+                    bloqueante=True))
+            elif a.mime in _MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO:
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere", resultado="SKIPPED",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "motivo": "assinatura nao legivel aqui; o formato e"
+                                       " aberto pelo gate `dimensao` (ffprobe)"},
+                    bloqueante=False))
+            else:
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere", resultado="FAIL",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "medido": None,
+                             "motivo": "a assinatura do arquivo nao confirma o"
+                                       " MIME declarado, e este sistema nao tem"
+                                       " outro instrumento para verifica-lo"},
                     bloqueante=True))
 
             validacoes.append(Validacao(

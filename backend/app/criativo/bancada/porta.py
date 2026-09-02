@@ -79,7 +79,8 @@ class Deposito(Protocol):
     ) -> Trabalho: ...
 
     def bater(
-        self, trabalho_id: str, *, lease_s: int = 60, operario: str | None = None
+        self, trabalho_id: str, *, lease_s: int = 60, operario: str | None = None,
+        tentativa: int | None = None,
     ) -> bool: ...
 
     def transicionar(

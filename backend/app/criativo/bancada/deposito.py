@@ -611,7 +611,7 @@ class DepositoDeTrabalhos:
         return n
 
     def bater(self, trabalho_id: str, *, lease_s: int = 60,
-              operario: str | None = None) -> bool:
+              operario: str | None = None, tentativa: int | None = None) -> bool:
         """Renova o lease. `False` quando o trabalho ja saiu das maos deste operario."""
         agora = _agora()
         c = self._con()
@@ -631,7 +631,13 @@ class DepositoDeTrabalhos:
             "update trabalho set batimento_em=?, lease_ate=?, atualizado_em=?"
             " where id=? and estado in (?,?,?)"
             " and lease_ate is not null and lease_ate > ?"
-            + (" and operario=?" if operario else ""),
+            + (" and operario=?" if operario else "")
+            # ⚠️ ACHADO_FENCING, segunda metade. Filtrar so por `operario` deixava
+            # o zumbi HOMONIMO renovar o lease do dono vivo: `worker-<pid>` repete
+            # entre containers, e o batimento e justamente o que diz "ainda estou
+            # produzindo". Um zumbi que mantem vivo o trabalho de outro impede o
+            # recolhedor de agir quando o dono REAL morre.
+            + (" and tentativa=?" if tentativa is not None else ""),
             (
                 _iso(agora),
                 _iso(agora + timedelta(seconds=lease_s)),
@@ -642,7 +648,8 @@ class DepositoDeTrabalhos:
                 EstadoDoTrabalho.VALIDATING.value,
                 _iso(agora),
             )
-            + ((operario,) if operario else ()),
+            + ((operario,) if operario else ())
+            + ((tentativa,) if tentativa is not None else ()),
         )
         return (cur.rowcount or 0) > 0
 
