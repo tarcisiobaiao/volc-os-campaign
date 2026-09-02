@@ -438,6 +438,80 @@ if (modoRpc === 'psql') {
     "select count(*) from public.google_ads_campanha_dia where metric_date = '2026-08-31'");
   prova('depois da repetição o banco continua com três linhas', aindaTres === '3', aindaTres);
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // RECUSA LOCAL CONTRA A RPC REAL
+  //
+  // ⚠️ ESTE CAMINHO NUNCA TINHA TOCADO O BANCO, e era exatamente onde o defeito
+  // morava. O cenario de recusa local so rodava com `--rpc=fake`, e em `fake` o
+  // documento de FECHAMENTO nem chega a RPC: ele e fabricado localmente
+  // (`cenario.rpcFechamento` ausente). Entao a unica coisa que a prova media era
+  // o fluxo concordando consigo mesmo.
+  //
+  // `Validar semanticamente` descarta linhas ANTES do envio. Elas nunca chegam
+  // a RPC. Enquanto o acumulado as somava em `linhas_rejeitadas`, o fechamento
+  // declarava mais rejeicoes do que o ledger tinha visto, e a v12_04 respondia
+  // RECONCILIACAO_DIVERGENTE. Como `RPC: fechar recibo` nao tem onError
+  // continue, a execucao abortava ali — sem fechar E sem alertar.
+  console.log('\n── RECUSA LOCAL CONTRA A RPC REAL (o caminho que nunca foi medido)');
+
+  const boa = resultadoGoogle({
+    customerId: '8017851692', campaignId: '24199990001', date: '2026-09-01',
+    metricas: { impressions: '77', clicks: '4', costMicros: '900000', conversions: 1, ctr: 0.05 },
+  });
+  // Moeda ausente: recusada LOCALMENTE, antes de qualquer envio.
+  const ruim = resultadoGoogle({
+    customerId: '8017851692', campaignId: '24199990002', date: '2026-09-01',
+    metricas: { impressions: '5' },
+  });
+  delete ruim.customer.currencyCode;
+
+  const rl = executarFluxo('D-1', {
+    // ⚠️ Janela PROPRIA de proposito. Com a mesma data do cenario anterior, a
+    // `execucao_chave` seria a MESMA (`job:modo:janela:passo`) e a RPC recusaria
+    // com CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE — corretamente, mas medindo a
+    // idempotencia em vez da reconciliacao.
+    agora: new Date('2026-09-02T13:30:00.000Z'),
+    contasInventario: [{ customer_id: '8017851692', nome: 'A' }],
+    campanhasInventario: CAMPANHAS,
+    google: () => ({ corpo: { results: [boa, ruim] } }),
+    rpcFechamento: (doc) => rpcPsql(doc),
+    releitura: (doc) => {
+      const bruto = consultarPsql(
+        'select coalesce(json_agg(row_to_json(s)), \'[]\')::text from '
+        + `public.trafego_coleta_execucao_saude s where s.execucao_chave = '${doc.execucao_chave}'`);
+      return JSON.parse(bruto);
+    },
+  });
+
+  const docRL = rl.documentosEnviados[0];
+  prova('a linha ruim foi recusada localmente e nao viajou',
+    docRL.linhas.length === 1 && docRL.linhas[0].campaign_id === '24199990001',
+    String(docRL.linhas.length));
+
+  const fechRL = rl.saude;
+  // A releitura vem do BANCO (view de saude), nao da memoria do fluxo. Se a RPC
+  // tivesse recusado o fechamento, `rpcPsql` teria explodido antes daqui; e se o
+  // recibo nao tivesse pousado, `releitura_encontrada` seria false.
+  prova('o fechamento com recusa local FOI ACEITO e o recibo POUSOU no banco',
+    fechRL.releitura_encontrada === true && Boolean(fechRL.batimento_em),
+    `${fechRL.estado_saude} / ${fechRL.motivo_alerta || ''}`);
+
+  const reciboRL = consultarPsql(
+    "select linhas_aceitas || '/' || linhas_preteridas || '/' || linhas_rejeitadas "
+    + "|| '/' || resultado from public.trafego_coleta_execucao "
+    + `where tipo_lote = 'fechamento' and execucao_chave = '${docRL.execucao_chave}'`);
+  prova('o triplo declarado bate com o que o banco viu — 1 aceita, 0 rejeitadas',
+    reciboRL === '1/0/0/parcial', reciboRL);
+
+  const motivoRL = consultarPsql(
+    "select coalesce(motivo,'(nulo)') from public.trafego_coleta_execucao "
+    + `where tipo_lote = 'fechamento' and execucao_chave = '${docRL.execucao_chave}'`);
+  prova('a recusa local NAO sumiu: ela esta nomeada no motivo do recibo',
+    /recusadas na validacao local/.test(motivoRL), motivoRL);
+
+  prova('o desfecho nao e ok: linha descartada antes do envio nao vira sucesso',
+    reciboRL.endsWith('/parcial'), reciboRL);
+
   console.log('\n════════════════════════════════════════════════════════');
   console.log(`  passaram ${ok} · falharam ${falhas.length}`);
   if (falhas.length) {
@@ -606,8 +680,21 @@ console.log('\n── VALIDAÇÃO, PARCIAL E LINHA VERDE');
     motivos.includes('MOEDA_AUSENTE_OU_INVALIDA')
     && motivos.includes('DATA_FORA_DA_JANELA')
     && motivos.some((m) => m.startsWith('TAXA_FORA_DE_0_1')), motivos.join(','));
-  prova('a recusa local entra no acumulado como rejeitada, não some',
-    r.done[0].acumulado.linhas_rejeitadas === 3, String(r.done[0].acumulado.linhas_rejeitadas));
+  // ⚠️ ESTA PROVA AFIRMAVA O DEFEITO. Ela exigia que a recusa LOCAL entrasse em
+  // `linhas_rejeitadas` — o mesmo campo que o fechamento declara e que a RPC
+  // reconcilia contra o proprio ledger. Mas essas linhas nunca chegaram a RPC,
+  // entao o fechamento declarava mais rejeicoes do que o banco viu e a v12_04
+  // respondia RECONCILIACAO_DIVERGENTE. Como `RPC: fechar recibo` nao tem
+  // onError continue, a execucao abortava ali e o alerta nunca era gravado:
+  // qualquer execucao com UMA recusa local ficava sem fechar e sem avisar.
+  //
+  // A intencao da prova estava certa — recusa local NAO PODE SUMIR. O que
+  // mudou e onde ela mora: campo proprio, que o fechamento leva para o motivo.
+  prova('a recusa local NAO entra em linhas_rejeitadas (o banco nunca a viu)',
+    r.done[0].acumulado.linhas_rejeitadas === 0, String(r.done[0].acumulado.linhas_rejeitadas));
+  prova('a recusa local nao some: fica em campo proprio, contada',
+    r.done[0].acumulado.linhas_recusadas_localmente === 3,
+    String(r.done[0].acumulado.linhas_recusadas_localmente));
 }
 
 console.log('\n── PAGINAÇÃO, LOTES E ACUMULADO');
