@@ -1,0 +1,386 @@
+{
+  "_leia": "Matriz de capacidade REAL da fabrica criativa, medida na worktree sprint/creative-factory-production-go-live-v1 (HEAD nos GATES.md). Cada classe foi decidida por EXECUCAO, nao por leitura de catalogo. Onde nao ha alvo, a classe diz NOT_APPLICABLE por ausencia de alvo — nunca por reprovacao.",
+  "_legenda": {
+    "SUPPORTED": "envelope existe, validacao existe e ha teste que exerce o caminho",
+    "PARTIAL": "existe parcialmente; o campo `o_que_falta` diz exatamente o que",
+    "BLOCKED": "existe e nao pode ser exercitado sem autorizacao externa, ou o caminho de entrega nao existe",
+    "NOT_APPLICABLE": "a combinacao nao faz sentido neste sistema, ou nao ha alvo modelado"
+  },
+  "_envelope_de_atos_externos_desta_lane": {
+    "migration_aplicada_em_supabase_oficial": 0,
+    "escrita_no_supabase_oficial": 0,
+    "leitura_do_supabase_oficial": 0,
+    "bucket_criado_ou_configurado": 0,
+    "provider_pago_chamado": 0,
+    "publicacao_em_qualquer_plataforma": 0,
+    "aprovacao_de_peca_em_nome_do_usuario": 0,
+    "deploy_de_worker": 0,
+    "push_merge_ou_alteracao_de_main": 0,
+    "_rede_que_HOUVE_e_esta_declarada": [
+      "npm ci em deploy/creative-worker/remotion-runtime (registro publico do npm, lockfile proprio, grava so em node_modules ignorado pelo git)",
+      "download do Chrome Headless Shell pelo Remotion na primeira execucao (~/.cache/puppeteer)",
+      "2 tentativas de conexao a endpoint OAuth do Google, disparadas por backend/tests/test_trafego_canario.py durante a auditoria; teste PRE-EXISTENTE na linha oficial, nao introduzido por esta lane"
+    ],
+    "_nota": "Postgres tocado: apenas clusters que initdb cria e pg_ctl destroi dentro de mktemp -d, na propria sessao."
+  },
+  "espinha_produtiva": [
+    {
+      "elo": "pedido persistido",
+      "estado": "executed_integrated",
+      "evidencia": "canario go-live: trabalho existe no deposito antes do worker subir"
+    },
+    {
+      "elo": "idempotencia por conteudo",
+      "estado": "executed_integrated",
+      "evidencia": "canario: mesmo pedido enfileirado 2x -> mesmo id, criado=False no 2o"
+    },
+    {
+      "elo": "claim atomico",
+      "estado": "executed_integrated",
+      "evidencia": "FOR UPDATE SKIP LOCKED (Postgres) e BEGIN IMMEDIATE (SQLite); 77 provas de contrato com VOLC_EXIGIR_POSTGRES=1"
+    },
+    {
+      "elo": "lease, heartbeat e recolhedor",
+      "estado": "executed_integrated",
+      "evidencia": "contrato do deposito; recolhedor roda no processo do worker"
+    },
+    {
+      "elo": "fencing contra worker antigo",
+      "estado": "executed_integrated",
+      "evidencia": "CORRIGIDO nesta lane (dbf55ad): o token (operario, tentativa) desceu para o portao; 3 provas no contrato compartilhado"
+    },
+    {
+      "elo": "worker fora do processo web",
+      "estado": "executed_integrated",
+      "evidencia": "canario go-live: produzido_por=worker-<pid>, pid != o do processo que enfileirou"
+    },
+    {
+      "elo": "motor produz bytes reais",
+      "estado": "executed_integrated",
+      "evidencia": "imagem 27568 B e video 448196 B, hashes reproduzidos identicos entre worktrees"
+    },
+    {
+      "elo": "sha256 sobre o ARQUIVO",
+      "estado": "executed_integrated",
+      "evidencia": "canario recalcula o hash de forma independente e confere contra o recibo"
+    },
+    {
+      "elo": "MIME medido da assinatura",
+      "estado": "executed_integrated",
+      "evidencia": "NOVO nesta lane (d15b4ca): gate mime_declarado_confere, bloqueante; antes era declarado pelo motor"
+    },
+    {
+      "elo": "dimensao/duracao medidas do arquivo",
+      "estado": "executed_integrated",
+      "evidencia": "gate dimensao le o arquivo; contraprova de motor que declara errado"
+    },
+    {
+      "elo": "custo conhecido ou nomeadamente ausente",
+      "estado": "executed_integrated",
+      "evidencia": "Declarado/Ausencia recusam valor+ausencia juntos e recusam nenhum dos dois"
+    },
+    {
+      "elo": "storage verificado por releitura",
+      "estado": "executed_integrated",
+      "evidencia": "VERIFIED_OK so depois de reler e conferir bytes E hash; canario confere contra medicao independente"
+    },
+    {
+      "elo": "registro de storage cabe na v11_03",
+      "estado": "executed_integrated",
+      "evidencia": "CORRIGIDO nesta lane (2ffaf5d): contraprova em PostgreSQL 17 com a migration aplicada"
+    },
+    {
+      "elo": "validacao por destino",
+      "estado": "executed_integrated",
+      "evidencia": "veredito no recibo; serve / serve_parcialmente / completo distintos"
+    },
+    {
+      "elo": "recibo completo",
+      "estado": "executed_integrated",
+      "evidencia": "procedencia, custo, insumo sanitizado, hashes de entrada, storage, destinos, aprovacao"
+    },
+    {
+      "elo": "aprovacao humana nasce aguardando",
+      "estado": "executed_integrated",
+      "evidencia": "canario: aguardando_aprovacao=True nas duas pecas; nenhuma aprovada"
+    },
+    {
+      "elo": "zero publicacao",
+      "estado": "executed_integrated",
+      "evidencia": "varredura por URL de plataforma no recibo: zero"
+    },
+    {
+      "elo": "biblioteca / entrega ao destino",
+      "estado": "blocked",
+      "evidencia": "nao ha superficie de pacote por destino: nem UI, nem endpoint, nem servico. Declarado desde o last-mile."
+    }
+  ],
+  "engines": [
+    {
+      "slug": "tipografico-local",
+      "midia": "imagem",
+      "porta": "bancada",
+      "local_sem_rede": true,
+      "custo_externo": "sem_custo_de_provider",
+      "estado": "executed_integrated",
+      "evidencia": "canario go-live produziu a peca de imagem por worker separado"
+    },
+    {
+      "slug": "png-local",
+      "midia": "imagem",
+      "porta": "bancada",
+      "local_sem_rede": true,
+      "custo_externo": "sem_custo_de_provider",
+      "estado": "executed_integrated",
+      "evidencia": "golden de imagem"
+    },
+    {
+      "slug": "remotion-local",
+      "midia": "video",
+      "porta": "bancada",
+      "local_sem_rede": true,
+      "custo_externo": "sem_custo_de_provider",
+      "estado": "executed_integrated",
+      "evidencia": "canario go-live produziu 1080x1920 h264/aac, 448196 B; hermetico 17/0; golden video 22/0",
+      "ressalva_operacional": "a PRIMEIRA execucao de uma maquina nova NAO e hermetica: o Remotion baixa o Chrome Headless Shell. Sob o sandbox `deny network-outbound` o primeiro trabalho FALHA com a mensagem 'Node.js v26.5.0', que nao diz por que. Medido: o cache ~/.cache/puppeteer/chrome-headless-shell nasceu durante a execucao que deu 20 errors. Pre-aquecer e obrigatorio no deploy."
+    },
+    {
+      "slug": "(adaptadores de volc_ads)",
+      "midia": "imagem",
+      "porta": "estudio",
+      "local_sem_rede": null,
+      "custo_externo": "varia",
+      "estado": "documented_only",
+      "evidencia": "falso.py, funnelforge_imagem.py e o MotorLocalDePNG de volc_ads NAO estao registrados em nenhum caminho de producao — so em teste"
+    }
+  ],
+  "formatos_e_destinos": [
+    {
+      "destino": "google",
+      "superficie": "Search / RSA",
+      "midia": "texto",
+      "formato": "headline 30ch / description 90ch",
+      "envelope": "nao existe",
+      "classe": "NOT_APPLICABLE",
+      "o_que_falta": "nenhum motor da fabrica produz texto: os tres registrados declaram midia imagem ou video. O limite de caracteres existe e e cobrado em campanha/limites.yaml, que e outra camada.",
+      "evidencia": "exigencia_de('SEARCH') levanta nomeando o dono; testes_requisitos"
+    },
+    {
+      "destino": "google",
+      "superficie": "Search",
+      "midia": "imagem/video",
+      "formato": "-",
+      "envelope": "nao existe",
+      "classe": "NOT_APPLICABLE",
+      "o_que_falta": "Search nao aceita asset binario; declarado em requisitos.yaml sem_exigencia_de_criativo.",
+      "evidencia": ""
+    },
+    {
+      "destino": "google",
+      "superficie": "Display",
+      "midia": "imagem",
+      "formato": "1.91:1 1200x628",
+      "envelope": "google-display-191x1 (slot 2)",
+      "classe": "PARTIAL",
+      "o_que_falta": "o golden valida contra DEMAND_GEN, nao contra a regua do DISPLAY; e a unica receita de DISPLAY entregue produz 600x314, que nao casa este envelope.",
+      "evidencia": "golden imagem 23/0"
+    },
+    {
+      "destino": "google",
+      "superficie": "Display",
+      "midia": "imagem",
+      "formato": "1:1 quadrada",
+      "envelope": "NAO EXISTE sob google",
+      "classe": "PARTIAL",
+      "o_que_falta": "o DISPLAY exige 1 imagem quadrada e o catalogo do destino google nao tem envelope 1:1 de marketing; PacoteDeDestino(google).completo diz True sem ela.",
+      "evidencia": ""
+    },
+    {
+      "destino": "google",
+      "superficie": "Display / Demand Gen",
+      "midia": "imagem",
+      "formato": "logo 1:1 1200x1200",
+      "envelope": "google-logo-1x1 (slot 3)",
+      "classe": "SUPPORTED",
+      "o_que_falta": "-",
+      "evidencia": "golden imagem"
+    },
+    {
+      "destino": "google",
+      "superficie": "Display",
+      "midia": "imagem",
+      "formato": "logo paisagem 4:1",
+      "envelope": "NAO EXISTE",
+      "classe": "PARTIAL",
+      "o_que_falta": "sem envelope e sem produtor: nenhum motor gera 4:1.",
+      "evidencia": ""
+    },
+    {
+      "destino": "google",
+      "superficie": "Demand Gen",
+      "midia": "imagem",
+      "formato": "1.91:1 1200x628",
+      "envelope": "google-display-191x1",
+      "classe": "SUPPORTED",
+      "o_que_falta": "-",
+      "evidencia": "golden imagem + ponte.imagens_de_demand_gen"
+    },
+    {
+      "destino": "google",
+      "superficie": "Demand Gen",
+      "midia": "imagem",
+      "formato": "1:1 / 4:5 / 9:16",
+      "envelope": "envelopes catalogados sob meta e organico",
+      "classe": "PARTIAL",
+      "o_que_falta": "a regua do Demand Gen aceita, mas os envelopes estao catalogados sob OUTROS destinos; nao ha envelope desses formatos sob `google`.",
+      "evidencia": "golden imagem"
+    },
+    {
+      "destino": "google",
+      "superficie": "Performance Max",
+      "midia": "imagem",
+      "formato": "tabela completa",
+      "envelope": "reaproveita os envelopes acima",
+      "classe": "BLOCKED",
+      "o_que_falta": "a regua existe e o CAMINHO nao: _PORTA_DA_PONTE e ['DEMAND_GEN','DISPLAY'] e criativo_ponte so expoe imagens_de_display / imagens_de_demand_gen. Nenhuma receita, nenhum construtor de payload.",
+      "evidencia": "testes_validacao"
+    },
+    {
+      "destino": "google",
+      "superficie": "Video",
+      "midia": "video",
+      "formato": "-",
+      "envelope": "NAO EXISTE sob google",
+      "classe": "PARTIAL",
+      "o_que_falta": "canal declarado provisorio=True: duracao, dimensao e peso todos nulos. O canal existe para nao mentir, e diz que nao sabe.",
+      "evidencia": ""
+    },
+    {
+      "destino": "google",
+      "superficie": "Demand Gen / PMax",
+      "midia": "video",
+      "formato": "-",
+      "envelope": "NAO EXISTE sob google",
+      "classe": "PARTIAL",
+      "o_que_falta": "a spec cobra duracao e contagem; a geometria NAO era cobrada (corrigido nesta lane: validar_asset deixou de sair antes do bloco de dimensao). Continua sem envelope sob google.",
+      "evidencia": "d15b4ca"
+    },
+    {
+      "destino": "meta",
+      "superficie": "Feed",
+      "midia": "imagem",
+      "formato": "1:1 1080x1080",
+      "envelope": "meta-feed-1x1 (slot 0)",
+      "classe": "SUPPORTED",
+      "o_que_falta": "PRODUCAO suportada. ENTREGA bloqueada: destino.py e stub e publicacao_automatica e ClassVar fixo em False.",
+      "evidencia": "golden imagem: produzido, armazenado, relido, pacote completo e verificado"
+    },
+    {
+      "destino": "meta",
+      "superficie": "Feed vertical",
+      "midia": "imagem",
+      "formato": "4:5 1080x1350",
+      "envelope": "meta-feed-4x5 (slot 1)",
+      "classe": "SUPPORTED",
+      "o_que_falta": "idem: producao sim, entrega nao.",
+      "evidencia": "golden imagem"
+    },
+    {
+      "destino": "meta",
+      "superficie": "Feed",
+      "midia": "imagem",
+      "formato": "1.91:1 link ad",
+      "envelope": "NAO EXISTE sob meta",
+      "classe": "NOT_APPLICABLE",
+      "o_que_falta": "o 1200x628 esta catalogado sob google; a fonte do envelope menciona servir Meta em link ads, mas nao ha envelope meta.",
+      "evidencia": ""
+    },
+    {
+      "destino": "meta",
+      "superficie": "Stories / Reels",
+      "midia": "imagem",
+      "formato": "9:16 1080x1920",
+      "envelope": "organico-reels-9x16, catalogado sob ORGANICO",
+      "classe": "PARTIAL",
+      "o_que_falta": "'Meta stories/reels' nao e destino do catalogo: o 9:16 foi classificado como `organico`. O frontend tem `meta_stories_reels` e o backend nao.",
+      "evidencia": "golden imagem"
+    },
+    {
+      "destino": "meta",
+      "superficie": "Reels",
+      "midia": "video",
+      "formato": "9:16 1080x1920",
+      "envelope": "organico-reels-video-9x16, sob ORGANICO",
+      "classe": "PARTIAL",
+      "o_que_falta": "idem — o destino modelado e `organico`.",
+      "evidencia": "golden video 22/0"
+    },
+    {
+      "destino": "meta",
+      "superficie": "Feed",
+      "midia": "video",
+      "formato": "-",
+      "envelope": "NAO EXISTE",
+      "classe": "NOT_APPLICABLE",
+      "o_que_falta": "nenhum envelope de video sob o destino meta.",
+      "evidencia": ""
+    },
+    {
+      "destino": "organico",
+      "superficie": "Stories / Reels / Shorts",
+      "midia": "imagem",
+      "formato": "9:16 1080x1920",
+      "envelope": "organico-reels-9x16 (slot 4)",
+      "classe": "SUPPORTED",
+      "o_que_falta": "-",
+      "evidencia": "golden imagem"
+    },
+    {
+      "destino": "organico",
+      "superficie": "Reels / Shorts",
+      "midia": "video",
+      "formato": "9:16 1080x1920",
+      "envelope": "organico-reels-video-9x16 (slot 5)",
+      "classe": "SUPPORTED",
+      "o_que_falta": "ressalva OPERACIONAL, nao de codigo: exige Chrome Headless Shell ja em cache. Ver `engines[remotion-local].ressalva_operacional`.",
+      "evidencia": "golden video 22/0; canario go-live; hermetico 17/0"
+    },
+    {
+      "destino": "organico",
+      "superficie": "Postiz",
+      "midia": "qualquer",
+      "formato": "-",
+      "envelope": "nao existe",
+      "classe": "BLOCKED",
+      "o_que_falta": "zero implementacao: 'postiz' aparece 2x no repo — um comentario dizendo que e outra missao, e a lista de plataformas PROIBIDAS do canario.",
+      "evidencia": ""
+    },
+    {
+      "destino": "biblioteca-interna",
+      "superficie": "Cofre / exportacao",
+      "midia": "qualquer",
+      "formato": "-",
+      "envelope": "nao existe envelope",
+      "classe": "NOT_APPLICABLE",
+      "o_que_falta": "a biblioteca lista o cofre com vocabulario proprio (google_display, meta_feed, instagram_organic, youtube_shorts, manual) cuja intersecao com DESTINOS e VAZIA. Nao e destino de envelope.",
+      "evidencia": ""
+    }
+  ],
+  "leitura_transversal": [
+    {
+      "o_que": "recibo.destinos chega ao produto",
+      "classe": "PARTIAL",
+      "detalhe": "o veredito e produzido e vai no DTO, mas `interface Recibo` (src/types/parqueCriativo.ts) nao declara `destinos`, nenhum componente o le, e `destinoLegivel` desconhece google/meta/organico."
+    },
+    {
+      "o_que": "PacoteDeDestino em producao",
+      "classe": "PARTIAL",
+      "detalhe": "montar_pacotes e publicavel nunca sao calculados no sistema rodando; so em golden."
+    },
+    {
+      "o_que": "adapter Postgres no gate oficial",
+      "classe": "PARTIAL",
+      "detalhe": "psycopg foi DECLARADO em requirements-dev.txt nesta lane, e nao instalado em backend/.venv (venv compartilhado, fora do ownership desta lane). Enquanto nao for instalado, o gate oficial roda 40 passed / 37 skipped em vez de 77 / 0."
+    }
+  ]
+}
