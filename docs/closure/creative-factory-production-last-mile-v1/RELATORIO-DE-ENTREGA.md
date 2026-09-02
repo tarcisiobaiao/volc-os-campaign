@@ -15,23 +15,24 @@ autorização externa e está no pacote único em `AUTORIZACAO-EXTERNA.md`.
 | Base SHA | `c8ca8628e83742dd7da5242f0a015f76292aafe7` (`origin/volc-os-v2`) — **igual ao esperado pelo prompt, sem divergência** |
 | Branch | `sprint/creative-factory-production-last-mile-v1` |
 | Worktree | `/private/tmp/volc-creative-factory-production-last-mile-v1` |
-| Commits | `00cd4ea` (espinha produtiva) · `e273103` (v11_03 e storage) |
+| Commits | `00cd4ea` (espinha produtiva) · `e273103` (v11_03 e storage) · `fb0e227` (rodada corretiva) |
 | Árvore | limpa na criação e na entrega |
 
-**45 arquivos, 8 614 inserções, 171 remoções.**
+**48 arquivos.**
 
 ## 2. Gates
 
 | Gate | Baseline (medido no SHA base) | Final |
 |---|---|---|
-| `pytest backend/tests volc_ads -q` | 3358 passed · 53 skipped | **3381 passed · 53 skipped** |
+| `pytest backend/tests volc_ads -q` | 3358 passed · 53 skipped | **3396 passed · 53 skipped** |
 | `vitest run` (completo) | 1256 passed · 5 skipped | **1262 passed · 5 skipped** |
 | `tsc --noEmit -p tsconfig.app.json` | 76 erros herdados | **76** |
 | `scripts/provar-ciclo-v11_03.sh` | 129 passaram · 0 falharam | **178 · 0** |
 | `scripts/v11_03-provar-preflight.sh` | não existia | **30 · 0** |
 | `scripts/v11_03-provar-plano.sh` | não existia | **12 · 0** |
 | `scripts/provar-render-hermetico.sh` | não existia | **17 · 0** |
-| `backend/tests/test_criativo_golden_video.py` | não existia | **20 · 0** |
+| `backend/tests/test_criativo_golden_video.py` | não existia | **22 · 0** |
+| `backend/tests/test_criativo_runtime_remotion.py` | não existia | **13 · 0** — e **não pula**: sem `node`, 9 continuam correndo |
 | `git diff --check` | — | limpo |
 | `scripts/verificar_segredos.py` | — | nenhum padrão forte |
 
@@ -278,4 +279,65 @@ ambiente. A chave existe dentro de arquivos `.env` de projeto, e ler segredo de
 arquivo para alimentar um CLI é **exatamente o padrão que a missão anterior
 flagrou como risco R1/R2 no parque externo**. Declarado em vez de simulado.
 
-A revisão adversarial do Codex `gpt-5.6-sol` está registrada na seção seguinte.
+### A revisão do Codex `gpt-5.6-sol` — veredito REJEITADA, e ela estava certa
+
+Onze achados, oito reproduzidos por execução. **Três bloqueantes**, e os três
+atingiam exatamente as afirmações centrais desta entrega. Todos foram fechados na
+rodada corretiva única (`fb0e227`).
+
+**Bloqueante 1 — o hermetismo não era invariante do motor.** O gate saía `PASS`
+porque `/usr/bin/sandbox-exec` e o perfil **existem no disco**: afirmava que o
+sandbox foi *aplicado* a partir de dois arquivos estarem lá. E onde eles não
+existem saía `SKIPPED` não-bloqueante, então em Linux o trabalho chegava a
+`rendered` com rede liberada.
+
+Meu raciocínio ao escrever isso foi "recusar trocaria uma garantia por
+indisponibilidade". O revisor mostrou que o custo real era outro: a garantia
+deixava de existir e nada dizia isso. Agora quem responde é o kernel, de dentro
+do processo que renderizou, o gate é **bloqueante**, e a dispensa é uma variável
+nomeada que fica no recibo.
+
+**Bloqueante 2 — `VERIFIED_OK` podia certificar bytes diferentes do artefato.**
+`_publicar` lia o arquivo depois da validação e o enviava sem reconferi-lo contra
+`a.sha256`. O revisor reproduziu trocando o arquivo entre os dois momentos:
+`VERIFIED_OK`, `sha256_relido` diferente, e a chave — que é content-addressed —
+montada com o hash antigo. Um endereço servindo conteúdo que ele não descreve.
+
+Este é o achado que mais me interessa, porque a releitura estava lá e eu a tratei
+como suficiente. Ela prova que o armazenamento devolve o que recebeu; não prova,
+e não pode provar, que o que recebeu é o que o gate aprovou.
+
+**Bloqueante 3 — a suíte de vídeo ficava verde sem executar vídeo.** O `skipif` é
+de módulo: sem `node`, `20 skipped` e **exit 0**. E `node_modules` não é
+versionado. Um CI reportaria sucesso sobre um motor que nunca rodou.
+
+**Cinco altos e quatro médios**, todos fechados: o gate `fps` não comparava com o
+pedido; `safe_zone` era `PASS` fixo sem abrir o arquivo; o catálogo afirmava que
+o motor de vídeo produz imagem; `versoes_congeladas` gravava o basename `ffmpeg`;
+o script provava determinismo com dois renders enquanto eu falava em seis; a
+calibração aceitava qualquer erro de rede como prova de bloqueio; ausência virava
+valor em `fps`/`duracao`/`com_audio` e na medida incompleta do ffprobe; o
+sanitizador deixava passar `@perfil`, `www.` sem esquema, placa e passaporte; o
+timeout matava o `node` e deixava o Chromium órfão.
+
+**O que a revisão apontou e NÃO foi corrigido, com o motivo:** o item 11 diz que
+"o protocolo obrigatório de conclusão não foi cumprido" porque ROADMAP e curadoria
+não foram tocados. Isso é **restrição desta missão**, não defeito: os dois estão
+na lista explícita do que este braço não pode editar, e o delta vai em
+`CURATION-HANDOFF.json` para o integrador único aplicar uma vez após o merge.
+
+### Um defeito do próprio gate, pego pelo próprio gate
+
+Ao subir o determinismo de 2 para 4 execuções, os degraus 5 e 6 passaram a
+reusar `r3` e `r4`, que o laço agora ocupa. O degrau "sem a fonte o render falha"
+encontrava bundle e `peca.mp4` de uma execução anterior e ficava **verde-falso nos
+dois sentidos**. Diretórios ganharam nome próprio.
+
+### Um flake que eu não capturei
+
+Numa execução do Vitest com a máquina carregada, `1267` acusou **3 falhas**. Três
+execuções isoladas em seguida deram `1262 passed / 5 skipped`, exit 0, sem
+nenhuma falha. **Não sei quais foram**, e a culpa é de medição minha: naquele
+comando eu filtrei a saída por `Test Files|Tests` e joguei fora as linhas com os
+nomes. A missão anterior registrou exatamente o mesmo modo de falha, e eu o
+repeti.
