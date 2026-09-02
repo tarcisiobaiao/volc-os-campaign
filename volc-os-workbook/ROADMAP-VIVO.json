@@ -1860,6 +1860,7 @@
         "concept:volc-gold-site-factory",
         "cap_asset_vault",
         "cap_creative_engines",
+        "cap_publisher_quality",
         "system:google-ga4-gtm-utilities-reference"
       ],
       "tasks": [
@@ -1898,6 +1899,12 @@
           "title": "Executar golden path com QA visual e rollback",
           "status": "reserved",
           "proof": "Depende dos cinco contratos anteriores e de um alvo descartável."
+        },
+        {
+          "id": "P16-T07",
+          "title": "Criar ground truth read-only da superfície Publisher",
+          "status": "partial",
+          "proof": "PublisherSurfaceSnapshot v1 integrado a partir de 307a3d5: inventário determinístico de página, slots, GPT, dataLayer sanitizado e divergência AdManifest × DOM; 33 testes passaram na integração (8 focais + 25 FunnelForge). A integração fechou falsos slots em divs comuns, DNS não comprovado/multicast na guarda SSRF e serialização de valores crus do dataLayer. Continua parcial: nenhum alvo VOLC real, DOM renderizado, CSS externo, RUM/CWV ou receita foram observados."
         }
       ]
     },

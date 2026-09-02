@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import socket
 
 import pytest
 
@@ -69,7 +70,7 @@ def _fixture_payload() -> dict:
 def test_snapshot_preserves_absence_statuses_and_never_collapses_to_zero_false_or_empty_list():
     payload = _fixture_payload()
     payload.pop("content_category")
-    payload["html"] = "<html><head></head><body><div id='ad-without-size'></div></body></html>"
+    payload["html"] = "<html><head></head><body><div id='ad-without-size' data-ad-slot='slot-no-size'></div></body></html>"
 
     snapshot = build_publisher_surface_snapshot(SnapshotInput.from_mapping(payload))
 
@@ -109,6 +110,31 @@ def test_snapshot_json_is_deterministic(tmp_path: Path):
     assert parsed["schema"] == "PublisherSurfaceSnapshot"
 
 
+def test_snapshot_does_not_turn_regular_divs_into_ad_slots():
+    payload = _fixture_payload()
+    payload["html"] = """
+        <html><body>
+          <div id="header"></div>
+          <div id="article-body"></div>
+          <div id="div-gpt-real" data-ad-slot="real"></div>
+        </body></html>
+    """
+    payload["ad_manifest"] = None
+
+    snapshot = build_publisher_surface_snapshot(SnapshotInput.from_mapping(payload))
+
+    assert [slot["div_id"]["value"] for slot in snapshot["slots"]] == ["div-gpt-real"]
+
+
+def test_snapshot_never_serializes_raw_datalayer_values():
+    snapshot = build_publisher_surface_snapshot(SnapshotInput.from_mapping(_fixture_payload()))
+    serialized = deterministic_json(snapshot)
+
+    assert "reader@example.com" not in serialized
+    assert snapshot["dataLayer"]["value"]["push_count"] == 1
+    assert "email" in snapshot["dataLayer"]["value"]["keys"]
+
+
 def test_public_https_target_validation_fails_closed_for_ssrf_vectors():
     bad_urls = [
         "http://example.com/",
@@ -117,12 +143,28 @@ def test_public_https_target_validation_fails_closed_for_ssrf_vectors():
         "https://10.0.0.5/",
         "https://169.254.169.254/latest/meta-data/",
         "https://[::1]/",
+        "https://224.0.0.1/",
     ]
     for url in bad_urls:
         with pytest.raises(ValueError):
             validate_public_https_target(url)
 
 
-def test_public_https_target_validation_accepts_public_https_without_fetching():
+def test_public_https_target_validation_fails_closed_when_dns_cannot_be_proven(monkeypatch):
+    def unresolved(*_args, **_kwargs):
+        raise socket.gaierror("unresolved")
+
+    monkeypatch.setattr(socket, "getaddrinfo", unresolved)
+
+    with pytest.raises(ValueError):
+        validate_public_https_target("https://unresolved.invalid/")
+
+
+def test_public_https_target_validation_accepts_public_https_without_fetching(monkeypatch):
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))],
+    )
     result = validate_public_https_target("https://example.com/news?utm_source=x#frag")
     assert result == "https://example.com/news"

@@ -2,7 +2,7 @@
 
 ## Status
 
-`IMPLEMENTATION_COMPLETE_GEMINI_REVIEW_PENDING` até revisão factual Gemini 3.7 Flash.
+`IMPLEMENTATION_COMPLETE_GEMINI_REVIEW_PASSED_INTEGRATION_HARDENED`.
 
 ## Base
 
@@ -46,7 +46,7 @@ Fonte consultada: `funnelforge-migracao/engine/src/funnelforge/pipeline/admanife
 
 ## Contratos Google usados como base factual local
 
-A revisão Gemini ainda é obrigatória. Antes dela, a implementação só codifica observações conservadoras compatíveis com documentação oficial:
+A revisão Gemini 3.7 Flash foi concluída com veredito `pass`, sem achados bloqueantes. A implementação codifica observações conservadoras compatíveis com documentação oficial:
 
 - GPT carrega a biblioteca `https://securepubads.g.doubleclick.net/tag/js/gpt.js`, define slots com `googletag.defineSlot(adUnitPath, size, divId)` e renderiza em um `div` correspondente.
 - GPT permite separar registro/carregamento com `disableInitialLoad` e `refresh`; refresh sem política observável é risco, não conclusão de violação.
@@ -80,3 +80,16 @@ Foram encontrados URLs públicos no repositório, mas nenhum alvo rastreado foi 
 - Sem Google Ads mutate.
 - Sem deploy, merge ou main.
 
+## Endurecimento na integração
+
+A integração na linha oficial acrescentou contraprovas e correções para três
+lacunas que não apareceram na revisão original:
+
+- host sem resolução comprovada e IP multicast agora falham fechado na guarda SSRF;
+- `div` comum com `id` não é mais classificado como slot de anúncio;
+- valores crus do `dataLayer` não são serializados no snapshot; permanecem apenas
+  contagem e nomes de chaves, suficientes para o contrato estrutural.
+
+O fetch público ainda não é uma sandbox nem elimina sozinho toda janela de DNS
+rebinding. A capacidade continua `partial` e uma leitura real futura deve usar
+alvo explicitamente autorizado e ambiente contido.

@@ -1,6 +1,6 @@
 # Gemini 3.7 Flash review package — Publisher Ground Truth V1
 
-Status: `REVIEW_PENDING`.
+Status: `REVIEW_PASSED` — resultado factual preservado em `GEMINI-REVIEW-RESULT.json`.
 
 Use Gemini 3.7 Flash via API only when `GEMINI_API_KEY` is injected in a secure process environment. Do not persist or print the key.
 

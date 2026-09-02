@@ -29,7 +29,7 @@ A capacidade encaixa nas frentes existentes acima. Não há necessidade de criar
 
 ## Limitações honestas
 
-- Revisão factual Gemini 3.7 Flash ainda pendente.
+- Revisão factual Gemini 3.7 Flash concluída com veredito `pass` e sem bloqueantes.
 - Sem leitura real de ativo VOLC por falta de alvo rastreado seguro.
 - Sem Core Web Vitals em campo, CrUX, RUM ou receita.
 - Sem dashboard paralelo.

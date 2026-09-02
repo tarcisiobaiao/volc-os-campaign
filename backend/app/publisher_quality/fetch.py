@@ -8,22 +8,33 @@ from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHand
 _PRIVATE_HOSTS = {"localhost", "localhost.localdomain"}
 
 
+def _ip_is_public(address: str) -> bool:
+    ip = ipaddress.ip_address(address)
+    return bool(
+        ip.is_global
+        and not ip.is_multicast
+        and not ip.is_reserved
+        and not ip.is_unspecified
+    )
+
+
 def _host_is_private(host: str) -> bool:
     host = (host or "").strip().strip("[]").lower()
     if not host or host in _PRIVATE_HOSTS:
         return True
     try:
-        return ipaddress.ip_address(host).is_private or ipaddress.ip_address(host).is_loopback or ipaddress.ip_address(host).is_link_local
+        return not _ip_is_public(host)
     except ValueError:
         pass
     try:
         infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
-        return False
+        return True
+    if not infos:
+        return True
     for info in infos:
         addr = info[4][0]
-        ip = ipaddress.ip_address(addr)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
+        if not _ip_is_public(addr):
             return True
     return False
 

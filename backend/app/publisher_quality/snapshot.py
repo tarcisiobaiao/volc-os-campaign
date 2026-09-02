@@ -216,6 +216,14 @@ def _data_layer_findings(data_layer: list[dict[str, Any]]) -> list[dict[str, Any
     return findings
 
 
+def _data_layer_contract(data_layer: list[dict[str, Any]]) -> dict[str, Any]:
+    """Keep structural evidence without copying visitor values into artifacts."""
+    return {
+        "push_count": len(data_layer),
+        "keys": sorted({str(key) for item in data_layer for key in item}),
+    }
+
+
 def build_publisher_surface_snapshot(payload: SnapshotInput) -> dict[str, Any]:
     parser = _parse_html(payload.html)
     text = _script_text(parser)
@@ -246,7 +254,16 @@ def build_publisher_surface_snapshot(payload: SnapshotInput) -> dict[str, Any]:
     seen_keys: set[str] = set()
     div_by_id = {d.get("id"): d for d in parser.divs if d.get("id")}
     manifest_keys_by_div = {f"div-gpt-{k}": k for k in manifest_by_key}
-    all_div_ids = sorted(str(x) for x in (set(define_slots) | set(div_by_id)) if x)
+    explicit_ad_divs = {
+        str(div_id)
+        for div_id, div in div_by_id.items()
+        if div_id
+        and (
+            div.get("attrs", {}).get("data-ad-slot")
+            or div_id in manifest_keys_by_div
+        )
+    }
+    all_div_ids = sorted(set(define_slots) | explicit_ad_divs)
     for div_id in all_div_ids:
         attrs = div_by_id.get(div_id, {}).get("attrs", {})
         slot_key = attrs.get("data-ad-slot") or manifest_keys_by_div.get(div_id) or div_id
@@ -326,7 +343,7 @@ def build_publisher_surface_snapshot(payload: SnapshotInput) -> dict[str, Any]:
         "slots": sorted(slots, key=lambda s: s["slot_key"].get("value", "")),
         "dataLayer": {
             "status": "observed" if data_layer else "absent_confirmed",
-            **({"value": data_layer, "observed_at": payload.observed_at} if data_layer else {}),
+            **({"value": _data_layer_contract(data_layer), "observed_at": payload.observed_at} if data_layer else {}),
         },
         "findings": sorted(findings, key=lambda f: (f["code"], json.dumps(f.get("evidence", ""), sort_keys=True))),
     }

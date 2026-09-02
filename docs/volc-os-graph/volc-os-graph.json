@@ -2278,11 +2278,11 @@
       "type": "capability",
       "cluster": "publisher_quality",
       "cluster_label": "Qualidade do publisher",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "CWV, loader de anúncios, dataLayer, LCP, INP, CLS e correlação com receita.",
-      "evidence": "ClickUp oficial: 11 tarefas, todas em “to do”.",
+      "evidence": "PublisherSurfaceSnapshot v1 integrado a partir de 307a3d5: scanner local read-only e determinístico inventaria identidade de página, slots GPT, reservas de espaço, lazy load, refresh, dataLayer sanitizado e divergências AdManifest × DOM. A revisão factual Gemini 3.7 Flash passou; a integração adicionou contraprovas para SSRF fail-closed, divs comuns e vazamento de valores do dataLayer. Continua parcial: REAL_TARGET_NOT_PROVEN, sem DOM renderizado, CSS externo, CrUX/RUM/CWV ou correlação com receita.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
