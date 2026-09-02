@@ -41,6 +41,7 @@ import {
   numeroOuTraco,
   portoesAbertos,
   ROTULO_DA_MENSURACAO,
+  textoDoLanceAutomatico,
   type ContratoDeCanal,
   type RespostaDosCanais,
 } from '@/lib/trafego/canais';
@@ -124,9 +125,17 @@ function Mensuracao({ c }: { c: ContratoDeCanal }) {
               : null
           }
         />
+        {/* ⚠️ TRÊS estados. O ternário direto fazia a chave ausente cair no
+            ramo falso e virar o veredito "não elegível" — que é uma afirmação
+            sobre a conta, feita sem leitura nenhuma. */}
         <Fato
           rotulo="lance automático"
-          valor={m.smart_bidding_eligible ? 'elegível' : 'não elegível'}
+          valor={textoDoLanceAutomatico(m.smart_bidding_eligible)}
+          ressalva={
+            m.smart_bidding_eligible === null || m.smart_bidding_eligible === undefined
+              ? 'o servidor não respondeu este campo — "não lido" não é "não elegível"'
+              : null
+          }
         />
         {/* ⚠️ A procedência da LEITURA, no ramo lido. Ela só aparecia no ramo
             não-lido, e sumia justo quando havia o que explicar. `fonte` (como a

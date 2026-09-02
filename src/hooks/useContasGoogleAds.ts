@@ -26,6 +26,13 @@ export function useContasGoogleAds() {
   const [escopo, setEscopo] = useState<EscopoDeContas | null>(null);
   const [projetos, setProjetos] = useState<ProjetoComConta[]>([]);
   const [trava, setTrava] = useState<EstadoDaTrava | null>(null);
+  // ⚠️ TRÊS estados, não dois. `trava === null` era a mesma coisa para "ainda
+  // não perguntei" e para "perguntei e a resposta não veio", e o painel
+  // renderizava o selo com `{trava && …}` — a falha de leitura sumia o selo, e
+  // um cartão sem selo é indistinguível de um cartão saudável.
+  const [travaLida, setTravaLida] = useState<'nao_coletado' | 'com_dados' | 'falhou'>(
+    'nao_coletado',
+  );
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -38,11 +45,17 @@ export function useContasGoogleAds() {
       const [e, p, t] = await Promise.all([
         pautadorApi.escopoDeContas(),
         pautadorApi.projetosComConta(),
-        pautadorApi.estadoDaTrava().catch(() => null),
+        // A falha da trava não derruba a tela inteira — as contas continuam
+        // legíveis —, mas ela é REGISTRADA, e quem renderiza tem de dizê-la.
+        pautadorApi.estadoDaTrava().then(
+          (v) => ({ ok: true as const, v }),
+          () => ({ ok: false as const, v: null }),
+        ),
       ]);
       setEscopo(e);
       setProjetos(p.projetos);
-      setTrava(t);
+      setTrava(t.v);
+      setTravaLida(t.ok ? 'com_dados' : 'falhou');
       setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falhei ao ler as contas.');
@@ -101,5 +114,8 @@ export function useContasGoogleAds() {
     [carregar, toast],
   );
 
-  return { escopo, projetos, trava, carregando, salvando, erro, carregar, vincular, desvincular };
+  return {
+    escopo, projetos, trava, travaLida,
+    carregando, salvando, erro, carregar, vincular, desvincular,
+  };
 }

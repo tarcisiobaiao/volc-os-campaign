@@ -27,6 +27,91 @@ import { AlertTriangle, ExternalLink, Info, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { VerticalDePolitica } from '@/types/trafego';
 
+/**
+ * O que o portão diz sobre ESTE país — em três estados, e não em dois.
+ *
+ * ⚠️ `nao_verificavel` existe porque `(v.paises_exigem || []).includes(pais)`
+ * transformava lista ausente em `false`, e `false` aqui não era "não sei": era
+ * o chip verde "sem portão em BR" e uma nota com escudo verde afirmando que
+ * não há portão de habilitação naquele país. `paises_exigem` é NÃO-opcional no
+ * contrato — o `|| []` só existe porque a ausência em runtime é possível, e
+ * ausência em runtime é ignorância, não conclusão.
+ *
+ * A régua é a de `tomDoEstado` em `lib/trafego/portoes.ts`: só o comprovado é
+ * positivo, e o indeterminado é cinza — nunca verde, nunca vermelho.
+ */
+export type EstadoDoPortaoNoPais = 'exige' | 'nao_exige' | 'nao_verificavel';
+
+export interface VereditoDoPortaoDePolitica {
+  estado: EstadoDoPortaoNoPais;
+  /** O Google recusa este lançamento hoje. Fato lido. */
+  barra: boolean;
+  /** Sobe, e veicula com restrição de alcance. Fato lido. */
+  limita: boolean;
+  /** Ninguém pôde verificar. NÃO é `barra`, e também não é permissão. */
+  indeterminado: boolean;
+  /** A vertical avaliada, quando ela existe na lista lida. */
+  vertical: VerticalDePolitica | null;
+}
+
+export function vereditoDoPortao(
+  verticais: VerticalDePolitica[],
+  escolhida: string,
+  certificacoes: string[],
+  pais: string,
+): VereditoDoPortaoDePolitica {
+  const atual = verticais.find((v) => v.id === escolhida) ?? null;
+  const estado = estadoNoPais(atual, pais);
+  const declarada = !!atual?.exige && certificacoes.includes(atual.exige);
+  // ⚠️ SEVERIDADE NÃO LIDA NÃO É PERMISSÃO — e esta função agora guarda um
+  // botão que gasta dinheiro.
+  //
+  // `severidade` é `'bloqueio' | 'limitacao' | null`, e o servidor emite `null`
+  // quando a chave falta no spec (`regra.get("severidade")`). Comparar contra
+  // os dois valores conhecidos e deixar o resto cair fora fazia `barra=false`,
+  // `limita=false` e `indeterminado=false` ao mesmo tempo — nenhuma pendência,
+  // botão habilitado — para uma vertical cujo portão EXISTE e SE APLICA neste
+  // país (`estado === 'exige'`). É o mesmo discriminante desconhecido caindo no
+  // ramo permissivo que o `default` de `vocabulario.ts` acabou de fechar; aqui
+  // ele custava mais, porque libera o clique.
+  const severidadeLida =
+    atual?.severidade === 'bloqueio' || atual?.severidade === 'limitacao';
+  const pendente = estado === 'exige' && !declarada;
+  return {
+    estado,
+    barra: pendente && atual?.severidade === 'bloqueio',
+    limita: pendente && atual?.severidade === 'limitacao',
+    // Portão que se aplica, sem habilitação declarada e com severidade que
+    // ninguém leu: o lançamento não pode seguir por ignorância.
+    indeterminado: estado === 'nao_verificavel' || (pendente && !severidadeLida),
+    vertical: atual,
+  };
+}
+
+/**
+ * ⚠️ Falha FECHADA e SEM VEREDITO. Vertical que a lista lida não contém, e
+ * vertical cuja lista de países não veio, são ignorância — nunca "sem portão".
+ */
+function estadoNoPais(
+  v: VerticalDePolitica | null | undefined,
+  pais: string,
+): EstadoDoPortaoNoPais {
+  if (!v) return 'nao_verificavel';
+  // `exige: null` é CONCLUSÃO do servidor: esta vertical não tem portão em
+  // lugar nenhum. Não depende da lista de países.
+  if (!v.exige) return 'nao_exige';
+  if (!Array.isArray(v.paises_exigem)) return 'nao_verificavel';
+  // ⚠️ ESTE é o formato que o servidor REALMENTE emite quando a chave falta:
+  // `regra.get("paises_exigem", [])` devolve `[]`, e JSON não transporta
+  // `undefined`. Uma vertical que declara `exige` (existe habilitação a pedir)
+  // e chega com a lista de países VAZIA não está dizendo "não exige em lugar
+  // nenhum" — está dizendo que a lista não foi preenchida. Tratar isso como
+  // `nao_exige` imprimia o escudo VERDE "sem portão em BR" sobre uma vertical
+  // que declara portão. Lista vazia com `exige` preenchido é ignorância.
+  if (v.paises_exigem.length === 0) return 'nao_verificavel';
+  return v.paises_exigem.includes(pais) ? 'exige' : 'nao_exige';
+}
+
 interface Props {
   verticais: VerticalDePolitica[];
   escolhida: string;
@@ -44,12 +129,15 @@ export const PortaoDePolitica: React.FC<Props> = ({
   verticais, escolhida, onEscolher, certificacoes, onCertificacoes,
   pais, sugeridaPelaEntidade,
 }) => {
-  const atual = verticais.find((v) => v.id === escolhida);
-  // O portão é por PAÍS: verificar no Brasil não habilita o México.
-  const exigeAqui = !!atual?.exige && (atual.paises_exigem || []).includes(pais);
+  // O portão é por PAÍS: verificar no Brasil não habilita o México. E o
+  // veredito é o MESMO que o pai lê para decidir se o botão pode ficar
+  // habilitado — uma fonte só, não duas contas paralelas.
+  const veredito = vereditoDoPortao(verticais, escolhida, certificacoes, pais);
+  const atual = veredito.vertical ?? undefined;
+  const exigeAqui = veredito.estado === 'exige';
+  const naoVerificado = veredito.estado === 'nao_verificavel';
   const declarada = !!atual?.exige && certificacoes.includes(atual.exige);
-  const barra = exigeAqui && !declarada && atual?.severidade === 'bloqueio';
-  const limita = exigeAqui && !declarada && atual?.severidade === 'limitacao';
+  const { barra, limita } = veredito;
   const divergiu = !!sugeridaPelaEntidade && sugeridaPelaEntidade !== escolhida;
 
   return (
@@ -68,7 +156,8 @@ export const PortaoDePolitica: React.FC<Props> = ({
 
       <div className="grid gap-2">
         {verticais.map((v) => {
-          const pedeAqui = !!v.exige && (v.paises_exigem || []).includes(pais);
+          const dela = estadoNoPais(v, pais);
+          const pedeAqui = dela === 'exige';
           const sel = v.id === escolhida;
           return (
             <button
@@ -86,14 +175,30 @@ export const PortaoDePolitica: React.FC<Props> = ({
                   'h-3 w-3 shrink-0 rounded-full border',
                   sel ? 'border-foreground bg-foreground' : 'border-muted-foreground')} />
                 <span className="text-sm font-medium">{v.titulo}</span>
-                {!pedeAqui && (
+                {dela === 'nao_exige' && (
                   <span className="kicker text-success">sem portão em {pais}</span>
                 )}
-                {pedeAqui && (
-                  <span className={cn('kicker',
-                    v.severidade === 'bloqueio' ? 'text-destructive' : 'text-warning')}>
-                    {v.severidade === 'bloqueio' ? 'barra o lançamento' : 'veicula limitado'}
+                {/* ⚠️ Cinza, e não verde nem amarelo: é ignorância, e
+                    ignorância nunca é uma cor boa (`portoes.ts:tomDoEstado`). */}
+                {dela === 'nao_verificavel' && (
+                  <span className="kicker text-muted-foreground">
+                    portão não verificado em {pais}
                   </span>
+                )}
+                {/* ⚠️ O `else` afirmava "veicula limitado" sobre uma
+                    severidade que ninguém leu. Dizer a consequência errada é
+                    pior que não dizer nenhuma: "limitado" soa como permissão
+                    com ressalva, e o que se tem é desconhecimento. */}
+                {pedeAqui && (
+                  v.severidade === 'bloqueio' ? (
+                    <span className="kicker text-destructive">barra o lançamento</span>
+                  ) : v.severidade === 'limitacao' ? (
+                    <span className="kicker text-warning">veicula limitado</span>
+                  ) : (
+                    <span className="kicker text-muted-foreground">
+                      severidade não declarada
+                    </span>
+                  )
                 )}
               </span>
               {v.descricao && (
@@ -164,10 +269,27 @@ export const PortaoDePolitica: React.FC<Props> = ({
         </Nota>
       )}
 
-      {!exigeAqui && (
+      {veredito.estado === 'nao_exige' && (
         <Nota tom="bom">
           Sem portão de habilitação em {pais}. O que decide agora é a revisão do
           anúncio, e ela acontece mesmo com a campanha pausada.
+        </Nota>
+      )}
+
+      {/* ⚠️ O ramo que faltava. Antes, lista de países ausente caía no `!exigeAqui`
+          acima e produzia um escudo VERDE afirmando que não há portão neste país. */}
+      {naoVerificado && (
+        <Nota tom="nota">
+          <b>O portão em {pais} não foi possível verificar.</b>{' '}
+          {atual
+            ? <>A vertical <span className="font-mono">{escolhida}</span> exige{' '}
+              <span className="font-mono">{atual.exige}</span>, e a lista de países
+              que a exigem não veio nesta leitura.</>
+            : <>A vertical <span className="font-mono">{escolhida}</span> não está na
+              lista que esta leitura trouxe.</>}{' '}
+          Isto é uma falha de leitura, e não uma afirmação sobre a política: o portão
+          continua existindo, e se ele barra este lançamento segue desconhecido até a
+          leitura voltar.
         </Nota>
       )}
     </section>

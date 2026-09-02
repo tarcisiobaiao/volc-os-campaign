@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useContasGoogleAds } from '@/hooks/useContasGoogleAds';
+import { fraseDoPortao } from '@/components/trafego/oportunidades/linguagem';
 import { cn } from '@/lib/utils';
 import type { ContaDaCasa, ProjetoComConta } from '@/types/trafego';
 
@@ -42,8 +43,8 @@ function comHifens(id: string | null): string {
 }
 
 export const PainelGoogleAds: React.FC = () => {
-  const { escopo, projetos, trava, carregando, salvando, erro, carregar, vincular, desvincular } =
-    useContasGoogleAds();
+  const { escopo, projetos, trava, travaLida, carregando, salvando, erro, carregar,
+          vincular, desvincular } = useContasGoogleAds();
 
   // `null` = ninguém escolhendo; um id = o seletor aberto naquela linha.
   const [escolhendo, setEscolhendo] = useState<number | null>(null);
@@ -108,12 +109,22 @@ export const PainelGoogleAds: React.FC = () => {
                 DENTRO do `with destravar()` no servidor, então em repouso ele
                 diria "bloqueada" mesmo com a chave posta. Quem responde "há
                 autorização neste processo?" é o ambiente. */}
-            {trava && (
+            {trava ? (
               <Badge variant={trava.env_presente ? 'danger' : 'success'} className="gap-1">
                 <Lock className="h-3 w-3" />
                 {trava.env_presente ? 'escrita LIBERADA' : 'escrita bloqueada'}
               </Badge>
-            )}
+            ) : travaLida === 'falhou' ? (
+              /* ⚠️ A falha de leitura vira PALAVRA, não a ausência do selo.
+                 Sem este ramo, "não consegui verificar" desenhava exatamente o
+                 mesmo cartão que "verifiquei" — e o selo é justamente o que
+                 responde se um clique daqui pode gastar dinheiro. A frase é a
+                 que o repositório já escreve em `oportunidades/linguagem.ts`. */
+              <Badge variant="warning" className="gap-1" title={fraseDoPortao(null).explicacao}>
+                <AlertTriangle className="h-3 w-3" />
+                {fraseDoPortao(null).palavra}
+              </Badge>
+            ) : null}
           </CardContent>
         </Card>
       )}

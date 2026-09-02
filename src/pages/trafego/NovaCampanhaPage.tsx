@@ -47,6 +47,9 @@ import { ListaDeKeywords } from '@/components/trafego/ListaDeKeywords';
 import { ReguaDeLeilao, achatar } from '@/components/trafego/ReguaDeLeilao';
 import { MesaDeCriterios } from '@/components/trafego/MesaDeCriterios';
 import { pautadorApi } from '@/lib/pautadorApi';
+import { compacto, fraseDoPortao } from '@/components/trafego/oportunidades/linguagem';
+import { vereditoDoPortao } from '@/components/trafego/PortaoDePolitica';
+import { leituraConcluiu, type EstadoDeLeitura } from '@/lib/trafego/canais';
 import { chave } from '@/lib/trafego/criterios';
 import { cn } from '@/lib/utils';
 import { DECORRE_DA_ESTRATEGIA } from '@/types/trafego';
@@ -99,6 +102,12 @@ const NovaCampanhaPage: React.FC = () => {
   // habilitação barra o lançamento. Chegava fixa da entidade; agora o operador
   // responde. Ver PortaoDePolitica.tsx para o porquê.
   const [verticais, setVerticais] = useState<VerticalDePolitica[]>([]);
+  // ⚠️ TRÊS estados por leitura, não dois. `verticais: []` e `trava: null`
+  // eram, cada um, a mesma coisa para "ainda não perguntei", "perguntei e não
+  // há nada" e "perguntei e a resposta não veio" — e a terceira era a que
+  // apagava o portão que pode barrar tudo, sem uma palavra na tela.
+  const [leituraDoPortao, setLeituraDoPortao] = useState<EstadoDeLeitura>('nao_coletado');
+  const [leituraDaTrava, setLeituraDaTrava] = useState<EstadoDeLeitura>('nao_coletado');
   const [vertical, setVertical] = useState<string>('');
   const [certificacoes, setCertificacoes] = useState<string[]>([]);
 
@@ -125,14 +134,29 @@ const NovaCampanhaPage: React.FC = () => {
     let ativo = true;
     Promise.all([
       pautadorApi.cockpitDeTrafego(oid, { runId }),
-      pautadorApi.estadoDaTrava().catch(() => null),
-      pautadorApi.verticaisEPortoes().catch(() => ({ verticais: [] })),
+      // ⚠️ As duas leituras auxiliares não derrubam a tela — o cockpit ainda é
+      // legível —, mas a FALHA é registrada. Um `.catch(() => null)` mudo
+      // devolvia o mesmo valor que uma resposta legítima.
+      pautadorApi.estadoDaTrava().then(
+        (v) => ({ ok: true as const, v }),
+        () => ({ ok: false as const, v: null }),
+      ),
+      pautadorApi.verticaisEPortoes().then(
+        (v) => ({ ok: true as const, v: v.verticais ?? [] }),
+        () => ({ ok: false as const, v: [] as VerticalDePolitica[] }),
+      ),
     ])
       .then(([c, t, v]) => {
         if (!ativo) return;
         setCockpit(c);
-        setTrava(t);
-        setVerticais(v.verticais);
+        setTrava(t.v);
+        setLeituraDaTrava(t.ok ? 'com_dados' : 'falhou');
+        setVerticais(v.v);
+        // Lista vazia LIDA é uma conclusão do servidor (`vazio_confirmado`);
+        // lista vazia por falha é ignorância. As duas pedem coisas opostas.
+        setLeituraDoPortao(
+          !v.ok ? 'falhou' : v.v.length > 0 ? 'com_dados' : 'vazio_confirmado',
+        );
         // O padrão é o que a entidade classificou — mudar é ato deliberado.
         setVertical(c.origem.vertical);
         // Pré-marca o que a mineração aprovou. A triagem já foi feita por quem
@@ -283,18 +307,60 @@ const NovaCampanhaPage: React.FC = () => {
   const bloqueios = (cockpit?.avisos ?? []).filter(barra);
   const observacoes = (cockpit?.avisos ?? []).filter((a) => !barra(a));
 
+  // ⚠️ O VEREDITO DO PORTÃO DE POLÍTICA ENTRA AQUI, e antes não entrava.
+  //
+  // `bloqueios` são os avisos do SERVIDOR, lidos no load, com a vertical que a
+  // ENTIDADE declarou. O portão local julga a vertical que o OPERADOR marcou
+  // agora — e ele só produzia uma nota vermelha. Consequência medida: trocar a
+  // vertical para uma que exige certificação que a conta não tem pintava a
+  // nota "O lançamento está barrado" e deixava o botão primário habilitado. O
+  // bloqueio existia na tela e não existia na decisão da tela.
+  //
+  // Mesma função que o componente usa para desenhar: uma fonte, não duas.
+  const portao = vereditoDoPortao(
+    verticais, vertical || cockpit?.origem.vertical || '', certificacoes,
+    cockpit?.origem.pais ?? '',
+  );
+
   const pendencias: string[] = [];
   if (!conta?.vinculada) pendencias.push('vincular a conta');
   if (gruposEscolhidos.length === 0) pendencias.push('marcar ao menos uma keyword');
   if (escrita?.status !== 'done') pendencias.push('escrever a copy');
   for (const b of bloqueios) pendencias.push(b.titulo.toLowerCase());
+  if (cockpit && portao.barra) pendencias.push('resolver o portão de política');
+  // Não saber não é permissão. O portão é o que pode barrar tudo; deixar o
+  // botão verde enquanto ele não pôde ser lido é a mentira que esta barra
+  // existe para não contar.
+  //
+  // ⚠️ `vazio_confirmado` NÃO é `falhou`, e os dois não podem virar a mesma
+  // regra. Servidor que respondeu e não declarou vertical nenhuma DISSE algo —
+  // e essa resposta não autoriza esta tela a inventar uma exigência que
+  // ninguém emitiu. O que barra é a leitura que não concluiu: a que falhou, e
+  // a que veio parcial (vertical fora da lista lida, ou `paises_exigem`
+  // ausente numa lista que veio com conteúdo).
+  const portaoNaoConcluiu =
+    portao.indeterminado
+    && !(leituraDoPortao === 'vazio_confirmado' && verticais.length === 0);
+  if (cockpit && portaoNaoConcluiu) pendencias.push('verificar o portão de política');
 
   const podeLancar = pendencias.length === 0;
   // O que este funil já produziu. Decide se a barra oferece "Lançar campanha"
   // ou "Lançar outra" — ver o ⚠️ na barra.
   const lancadas = cockpit?.campanhas_lancadas ?? [];
   const jaLancou = lancadas.length > 0;
-  const volumeSelecionado = selecionadas.reduce((s, k) => s + (k.volume || 0), 0);
+  // ⚠️ Era `selecionadas.reduce((s, k) => s + (k.volume || 0), 0)`, e o `|| 0`
+  // fazia keyword SEM VOLUME MEDIDO entrar na soma como zero — dentro de um
+  // número apresentado como medição, em `text-5xl`. Contradizia o próprio
+  // arquivo trinta linhas abaixo ("Ausência fica AUSENTE — a linha mostra
+  // 'volume não medido', nunca zero: zero é uma medição") e `compacto(null)`.
+  //
+  // O que a soma dos medidos é, quando falta alguém, é um PISO — a mesma
+  // palavra que `PainelDeCanais` usa para contagem truncada.
+  const volumeMedido = selecionadas.filter((k) => k.volume != null);
+  const volumeSelecionado = volumeMedido.length > 0
+    ? volumeMedido.reduce((s, k) => s + (k.volume as number), 0)
+    : null;
+  const semVolumeMedido = selecionadas.length - volumeMedido.length;
 
   // Volume medido por keyword, para a mesa. Ausência fica AUSENTE — a linha
   // mostra "volume não medido", nunca zero: zero é uma medição.
@@ -525,7 +591,15 @@ const NovaCampanhaPage: React.FC = () => {
                   <div className="kicker">volume/mês selecionado</div>
                   <div className="text-outline font-display text-4xl font-bold leading-none tabular-nums md:text-5xl">
                     {compacto(volumeSelecionado)}
+                    {volumeSelecionado != null && semVolumeMedido > 0 ? '+' : ''}
                   </div>
+                  {semVolumeMedido > 0 && (
+                    <div className="kicker mt-1 text-muted-foreground">
+                      {volumeSelecionado == null
+                        ? `nenhuma das ${selecionadas.length} tem volume medido`
+                        : `piso — ${semVolumeMedido} sem volume medido`}
+                    </div>
+                  )}
                 </div>
                 {cockpit.triagem && (
                   <p className="max-w-[52ch] text-xs leading-relaxed text-muted-foreground">
@@ -646,6 +720,48 @@ const NovaCampanhaPage: React.FC = () => {
               </div>
             )}
 
+            {/* ⚠️ O RAMO QUE FALTAVA. `verticaisEPortoes()` caía num
+                `.catch(() => ({ verticais: [] }))`, e o `verticais.length > 0`
+                acima fazia a seção sumir SEM UMA PALAVRA. Ausência de portão na
+                tela lê-se como "não há portão" — e o comentário acima diz que
+                este é justamente "o que pode barrar tudo".
+
+                A frase é a mesma que `PainelDeCanais` já usa para o mesmo tipo
+                de buraco: falha de leitura não é afirmação sobre o objeto. */}
+            {cockpit && verticais.length === 0 && (
+              <div className="reveal" role="status"
+                   style={{ animationDelay: '0.42s' }}>
+                <section className="card-volc p-5 md:p-6" aria-label="portão de política">
+                  <div className="mb-3 flex items-baseline gap-3">
+                    <h2 className="text-[15px] font-medium tracking-tight">
+                      o que este portal é
+                    </h2>
+                    <span className="hairline flex-1" />
+                    <span className="kicker">portão por país · {cockpit.origem.pais}</span>
+                  </div>
+                  <p className="flex items-start gap-2 text-sm font-medium">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+                    {leituraConcluiu(leituraDoPortao)
+                      ? 'O servidor respondeu e não declarou nenhuma vertical.'
+                      : 'Não foi possível ler o portão de política.'}
+                  </p>
+                  <p className="mt-2 max-w-[74ch] text-[11px] leading-relaxed text-muted-foreground">
+                    {leituraConcluiu(leituraDoPortao)
+                      ? 'A lista de verticais voltou vazia. Isso é resposta do servidor, e '
+                        + 'não silêncio desta tela — mas ele não autoriza nada: o portão de '
+                        + 'habilitação existe do lado do Google independentemente do que esta '
+                        + 'lista traga, e nesta janela ele não pôde ser avaliado para esta '
+                        + 'vertical. A revisão do anúncio continua sendo quem decide.'
+                      : 'Isto é uma falha de leitura, e não uma afirmação sobre a política: '
+                        + 'o portão de habilitação por vertical × país continua existindo, e '
+                        + 'se ele barra este lançamento segue desconhecido nesta tela até a '
+                        + 'leitura voltar. Recarregue a página; se repetir, avise quem cuida '
+                        + 'do sistema antes de subir qualquer coisa.'}
+                  </p>
+                </section>
+              </div>
+            )}
+
             <Cartao n={4} titulo="conta e lance" indice={5} pronto={!!conta?.vinculada}
                     estado={conta?.vinculada ? conta.dominio : 'sem conta vinculada'}>
               {conta?.vinculada ? (
@@ -714,6 +830,23 @@ const NovaCampanhaPage: React.FC = () => {
                   vontade — a prova é leitura e não cria nada.
                 </p>
               )}
+
+              {/* ⚠️ O TERCEIRO ESTADO. `estadoDaTrava().catch(() => null)`
+                  colapsava "liberada" e "não consegui verificar" na MESMA tela:
+                  as duas não escreviam nada. A frase honesta já existe no
+                  repositório (`oportunidades/linguagem.ts`) e não era usada
+                  aqui — o único dos três consumidores que a usava era a lista. */}
+              {leituraDaTrava === 'falhou' && (
+                <p role="status"
+                   className="mt-4 flex items-start gap-2 text-[11px] leading-relaxed text-warning">
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+                  <span>
+                    <b>Trava de escrita: {fraseDoPortao(null).palavra}.</b>{' '}
+                    {fraseDoPortao(null).explicacao} Isto é uma falha de leitura,
+                    e não uma afirmação sobre a permissão deste servidor.
+                  </span>
+                </p>
+              )}
             </Cartao>
           </div>
         )}
@@ -756,12 +889,6 @@ function rotuloDaCopy(e: CopyPersistida | null): string {
   if (e.status === 'error') return 'falhou';
   if (!e.copy) return 'não escrita';
   return `${e.copy.headlines.length} títulos · ${e.copy.descriptions.length} descrições`;
-}
-
-function compacto(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.', ',')}k`;
-  return String(n);
 }
 
 /** Onde estou e quanto falta — a sensação de passo sem partir a página.

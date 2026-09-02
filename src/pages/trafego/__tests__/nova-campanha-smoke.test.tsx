@@ -11,7 +11,7 @@
  * `pautador_trafego_copy`, e estes testes são o contrato dessa mudança.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import type { Cockpit, CopyPersistida } from '@/types/trafego';
@@ -190,6 +190,24 @@ describe('NovaCampanhaPage', () => {
     // Sem nenhum clique: a medição da geração anterior está na tela.
     await waitFor(() => expect(screen.getByText('preço não configurado')).toBeTruthy());
     expect(escreverCopy).not.toHaveBeenCalled();
+
+    // ⚠️ ESTA ASSERÇÃO MUDOU EM 02/09/2026, e a versão anterior dela era um
+    // falso verde travado por teste.
+    //
+    // O card 73 é `vertical: financeiro`, que em BR exige
+    // `verificacao_servicos_financeiros`, e a conta não declara nenhuma. O
+    // portão pintava "O lançamento está barrado" na tela E o botão continuava
+    // habilitado, porque o veredito local nunca era elevado a `podeLancar`. O
+    // teste cobrava o botão habilitado — isto é, cobrava o defeito.
+    await waitFor(() => expect(screen.getByText(/O lançamento está barrado/)).toBeTruthy());
+    expect(
+      (screen.getByRole('button', { name: /Lançar campanha/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    // Declarada a habilitação, o portão libera — e aí sim o botão abre, o que
+    // prova que era o portão barrando e nada mais.
+    const portao = screen.getByLabelText('portão de política');
+    fireEvent.click(within(portao).getByRole('checkbox'));
     await waitFor(() => {
       const lancar = screen.getByRole('button', { name: /Lançar campanha/ });
       expect((lancar as HTMLButtonElement).disabled).toBe(false);

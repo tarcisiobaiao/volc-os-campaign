@@ -297,8 +297,13 @@ export interface MensuracaoDoCanal {
   measurement_readiness: EstadoDeMensuracao;
   data_manager_status: EstadoDeMensuracao;
   observability_status: EstadoDeMensuracao;
-  /** ⚠️ Nunca ligado por ausência de bloqueio conhecido. Vem do servidor. */
-  smart_bidding_eligible: boolean;
+  /**
+   * ⚠️ Nunca ligado por ausência de bloqueio conhecido. Vem do servidor.
+   *
+   * `null`/ausente = o servidor não respondeu este campo. NÃO é `false`: quem
+   * renderiza tem de passar por `textoDoLanceAutomatico`, que separa os três.
+   */
+  smart_bidding_eligible: boolean | null;
   fonte: string | null;
   notas: Record<string, unknown>;
   /**
@@ -737,4 +742,24 @@ export function numeroOuTraco(
 ): string {
   if (valor === null || valor === undefined) return '—';
   return `${valor}${sufixoQuandoPiso}`;
+}
+
+/**
+ * O lance automático dito em TRÊS estados, e não em dois.
+ *
+ * ⚠️ `smart_bidding_eligible` é booleano no contrato, e o servidor pode não
+ * emitir a chave. O ternário direto (`v ? 'elegível' : 'não elegível'`) fazia
+ * `undefined` cair no ramo falso e produzia um VEREDITO — "não elegível" — onde
+ * ninguém tinha lido nada. Falha fechada não é desculpa para afirmar: "lemos e
+ * não há sinal" pede que alguém configure a conta, "não conseguimos ler" pede
+ * uma leitura, e as duas ações são opostas.
+ *
+ * É o mesmo argumento que `smart_bidding_ready` (`types/trafego.ts`) usa para
+ * existir ao lado do booleano: `NAO_PRONTO` e `INDETERMINADO` são estados
+ * diferentes.
+ */
+export function textoDoLanceAutomatico(valor: boolean | null | undefined): string {
+  if (valor === true) return 'elegível';
+  if (valor === false) return 'não elegível';
+  return 'não lido';
 }

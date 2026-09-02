@@ -166,13 +166,29 @@ export const PainelDoLancamento: React.FC<Props> = ({
         </Aviso>
       )}
 
+      {/* ⚠️ TRÊS estados, e o terceiro faltava.
+          `trava?.env_presente` com `trava == null` caía no ramo falso e a tela
+          AFIRMAVA "a trava de escrita está fechada" — um veredito sobre a
+          permissão do servidor, emitido quando ninguém tinha conseguido lê-la.
+          Este painel existe justamente para dizer o que vai acontecer no
+          clique; errar aqui é o defeito mais caro dele. */}
       <div className={cn('mt-4 flex items-start gap-2 border-t border-border pt-4 text-[11px] leading-relaxed',
-                         trava?.env_presente ? 'text-warning' : 'text-muted-foreground')}>
-        {trava?.env_presente
-          ? <Unlock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          : <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />}
+                         !trava ? 'text-warning'
+                         : trava.env_presente ? 'text-warning' : 'text-muted-foreground')}>
+        {!trava
+          ? <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          : trava.env_presente
+            ? <Unlock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            : <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />}
         <span>
-          {trava?.env_presente ? (
+          {!trava ? (
+            <>
+              <b>Trava de escrita: permissão não verificada.</b> Não foi possível
+              confirmar se a publicação está liberada neste servidor. Isto é uma
+              falha de leitura, e não uma afirmação sobre a permissão — não conte
+              com "não cria nada" enquanto ela não voltar.
+            </>
+          ) : trava.env_presente ? (
             <>
               <b>A trava de escrita está ABERTA.</b> Lançar cria a campanha de
               verdade — pausada, mas persistida na conta.

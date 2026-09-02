@@ -137,4 +137,17 @@ describe('PainelDoLancamento · qual campo diz que a chave está posta', () => {
                                gruposEscolhidos={GRUPOS} budget="10" estrategia="MANUAL_CPC" />);
     expect(screen.getByText(/A trava de escrita está fechada/)).toBeTruthy();
   });
+
+  it('trava NÃO LIDA não pode ser dita como "fechada"', () => {
+    // ⚠️ `trava?.env_presente` com `trava === null` caía no ramo falso, e a
+    // tela AFIRMAVA "a trava de escrita está fechada" — um veredito sobre a
+    // permissão do servidor, emitido sem que ninguém tivesse conseguido lê-la.
+    // Este painel existe para dizer o que vai acontecer no clique; a frase
+    // errada aqui é o defeito mais caro dele.
+    render(<PainelDoLancamento cockpit={cockpitCom()} trava={null}
+                               gruposEscolhidos={GRUPOS} budget="10" estrategia="MANUAL_CPC" />);
+    expect(screen.queryByText(/A trava de escrita está fechada/)).toBeNull();
+    expect(screen.queryByText(/A trava de escrita está ABERTA/)).toBeNull();
+    expect(screen.getByText(/permissão não verificada/)).toBeTruthy();
+  });
 });

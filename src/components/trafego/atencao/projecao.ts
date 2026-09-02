@@ -66,6 +66,7 @@ export type Sintoma =
   | 'ligada_sem_impressao'
   | 'ligada_sem_clique'
   | 'ligada_sem_medida'
+  | 'ligada_com_entrega_parcial'
   | 'sincronizacao_falhou'
   | 'campanha_nao_encontrada'
   | 'estado_desconhecido'
@@ -128,6 +129,21 @@ export const SINTOMAS: Record<Sintoma, DescricaoDoSintoma> = {
       'campanha como gastando por padrão e confira o painel do Google antes de decidir.',
     escopo: 'campanha',
     ordem: 3,
+  },
+  ligada_com_entrega_parcial: {
+    titulo: 'ligada e com medida incompleta',
+    afirma:
+      'a conta declara a campanha como ligada, houve leitura, e ela veio sem a contagem ' +
+      'de impressões. Isto não é zero impressão: é o número que não chegou. Sem ele, ' +
+      '"não apareceu" e "apareceu e ninguém clicou" continuam os dois possíveis.',
+    proximaAcao:
+      'Peça uma leitura desta conta no inventário. Não mexa em lance nem em anúncio ' +
+      'antes: as duas correções são opostas, e a medida que separa uma da outra é ' +
+      'justamente a que faltou.',
+    escopo: 'campanha',
+    // Entre "não sei quanto gasta" (3) e "a conta não respondeu" (4): há
+    // leitura, e ela não fecha.
+    ordem: 3.5,
   },
   sincronizacao_falhou: {
     titulo: 'sincronização falhou',
@@ -467,8 +483,16 @@ export function sintomaDaCampanha(campanha: CampanhaNoInventario): Sintoma | nul
   //   poucas impressões       → quem não aparece não pode ser clicado
   const imp = campanha.entrega.impressoes;
   const cli = campanha.entrega.cliques;
-  if (imp == null) return null;
+  // Clique MEDIDO e positivo é conclusão, não ausência: clique implica
+  // veiculação, e a campanha está funcionando mesmo sem a contagem de
+  // impressões. Este ramo vem primeiro porque é o único positivo aqui.
   if (cli != null && cli > 0) return null;
+  // ⚠️ Era `if (imp == null) return null;`, e `return null` significa SAIR DA
+  // FILA. "Não afirmar nada" e "sumir da aba que responde o que quer algo de
+  // mim hoje" são a mesma coisa na tela: uma campanha ligada, com leitura, e
+  // sem o número, ficava indistinguível de uma campanha saudável. Ela pode
+  // estar gastando agora, e a medida que diria não veio.
+  if (imp == null) return 'ligada_com_entrega_parcial';
   return imp >= IMPRESSOES_PARA_CULPAR_O_ANUNCIO
     ? 'ligada_sem_clique'
     : 'ligada_sem_impressao';
@@ -772,6 +796,7 @@ const FAMILIA_DO_SINTOMA: Record<string, FamiliaDeDecisao> = {
   ligada_sem_impressao: 'entrega',
   ligada_sem_clique: 'entrega',
   ligada_sem_medida: 'entrega',
+  ligada_com_entrega_parcial: 'entrega',
 
   sincronizacao_falhou: 'leitura_da_conta',
   leitura_desatualizada: 'leitura_da_conta',
