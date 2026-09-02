@@ -1137,3 +1137,85 @@ bem-sucedido no mesmo intervalo.
 O agendamento systemd está versionado em `deploy/google-intelligence/`, mas ainda
 não foi instalado: a cópia da credencial OAuth e a ativação persistente no servidor
 exigem autorização explícita do dono.
+
+---
+
+## Série v12_04 — fato canônico Google Ads campanha-dia
+
+**Estado: ESCRITA E PROVADA EM DESCARTÁVEL — NÃO APLICADA.**
+
+| Arquivo | Estado | SHA-256 |
+|---|---|---|
+| `v12_04_gads_fato_canonico_dia.sql` | **não aplicada** em produção | `f19ed662c596f863806a05047b67808fe2b10660f2ed286866ec88816ccda713` |
+| `v12_04_rollback.sql` | executado só no descartável | `583a2f7189db739feeed944cb3bd51e4a333a878cadbaa366ec9511cb95cbee3` |
+| `../../scripts/provas-v12_04.sql` | 65 provas de comportamento | `ab2a12ef7d3649166bd019eb01e2c707d3120a6b35ca8c5da5a8d85d2a7ccf83` |
+| `../../scripts/provar-ciclo-v12_04.sh` | ciclo completo | `e1f27d04471a94bcad5f7a06f15930b662fc29e0dcbb61511ea79a8816f89689` |
+
+### Por que v12_04 e não v13_01
+
+O prompt M-W2-02 (`docs/closure/fable-global-v1/prompts/m-w2-02-migration-d0-d1.md`)
+reserva `v13_01_gads_fato_canonico.sql` a uma sessão interativa em branch própria,
+e a v12_03 está reservada à ampliação de `tipo_sinal` do PMax. A entrega P10-T16
+não podia tocar nenhuma das duas, e o objeto é o mesmo que aquele prompt descreve.
+
+A escolha não fica no ar: o preflight da v12_04 **aborta com mensagem nomeada** se
+`trafego_coleta_execucao` ou `google_ads_campanha_dia` já existirem. Se as duas
+lanes existirem, o integrador escolhe UMA — aplicar as duas por engano é
+mecanicamente impossível.
+
+### O que ela cria
+
+- `trafego_coleta_execucao` — ledger append-only, uma linha por lote; o
+  fechamento (ordinal 0) reconcilia contra o que o banco persistiu;
+- `google_ads_campanha_dia` — fato com chave
+  `(customer_id, campaign_id, metric_date, segments_hash)`, **nenhuma métrica com
+  DEFAULT**, dinheiro em micros com moeda, precedência `D0 < D-1 < backfill`;
+- `volc_registrar_gads_campanha_dia(jsonb)` — a única porta de ingestão,
+  `SECURITY DEFINER` com `search_path` fixo;
+- `volc_gads_projetar_daily_compat(uuid)` — projeção de compatibilidade,
+  fault-isolated, restrita a 16 colunas de entrega de `daily_campaign_metrics`;
+- `volc_gads_uuid_da_chave(text)` — identidade derivada, não sorteada;
+- `trafego_coleta_execucao_saude` — view read-only para o deadman.
+
+RLS **habilitada e forçada** nas duas tabelas, zero policies, `REVOKE` de
+`public`, `anon`, `authenticated` **e `service_role`** antes do `GRANT` mínimo.
+`service_role` fica com `SELECT` e `EXECUTE` da RPC; sem escrita direta.
+
+### Prova
+
+```bash
+bash scripts/provar-ciclo-v12_04.sh
+# passaram 107 · falharam 0
+# CICLO v12_04 COMPLETO: aplicar → operar → reverter → reaplicar
+
+bash scripts/provar-ponta-a-ponta-gads.sh
+# passaram 12 · falharam 0
+# PONTA A PONTA COMPLETA — documentos do n8n aceitos pela RPC v12_04
+```
+
+⚠️ Estes scripts usam **docker** (`postgres:16-alpine`), e não `initdb`/`pg_ctl`
+como as séries v10/v11/v12_02: a máquina desta lane não tem binários Postgres
+locais. O contrato da prova é o mesmo — cluster efêmero, papéis de produção
+reproduzidos (inclusive o ACL padrão quebrado e o `BYPASSRLS` do `service_role`),
+ciclo completo, e nunca uma linha enviada a `database.agenciavolc.com.br`.
+
+### O que a v12_04 deliberadamente não faz
+
+Não altera `daily_campaign_metrics` — nem coluna, nem constraint, nem trigger. A
+projeção **escreve** em 16 colunas de entrega dessa tabela e nunca encosta em
+receita, `revenue_converted`, revshare, GAM, comissão, orientação ou otimização;
+quando o fato canônico é NULL, ela grava NULL — nunca zero. E ela **não cria
+linha nova** na legada: criar exigiria decidir receita e projeto sem dado.
+
+### O portão que falta
+
+Aplicação depende de autorização de banco e da sequência de
+`docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/AUTORIZACAO-ATIVACAO.md` —
+conferência da agenda viva, backup conferido, canário D-1 e D0 reconciliados,
+repetição idempotente e projeção conferida antes de qualquer agenda.
+
+⚠️ O rollback **recusa perda silenciosa**: com dado gravado, ele aborta dizendo
+quantos fatos e recibos morreriam. Para seguir é preciso declarar na sessão
+`SET volc.rollback_v12_04_apagar_fatos = 'sim';`. E ele **não desfaz** o que a
+projeção escreveu na legada — o valor anterior não foi guardado, e inventar um
+seria pior do que declarar a lacuna.

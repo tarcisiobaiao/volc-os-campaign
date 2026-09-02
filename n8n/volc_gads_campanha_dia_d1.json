@@ -1,0 +1,1083 @@
+{
+  "name": "VOLC · Google Ads campanha-dia · D-1 (ontem fechado)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "533616b2-84f4-5d8e-bcc7-0d2996c8a4de",
+      "name": "Agenda",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -660,
+        -120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f67ec88d-34f0-506b-817e-fd649b21f692",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "SUPABASE_URL",
+              "type": "string",
+              "value": "https://database.agenciavolc.com.br"
+            },
+            {
+              "id": "c2",
+              "name": "GOOGLEADS_BASE",
+              "type": "string",
+              "value": "https://googleads.googleapis.com"
+            },
+            {
+              "id": "c3",
+              "name": "GOOGLEADS_API_VERSION",
+              "type": "string",
+              "value": "v25"
+            },
+            {
+              "id": "c4",
+              "name": "JOB",
+              "type": "string",
+              "value": "gads_dia_d1"
+            },
+            {
+              "id": "c5",
+              "name": "JANELA_MODO",
+              "type": "string",
+              "value": "D-1"
+            },
+            {
+              "id": "c6",
+              "name": "PASSOS",
+              "type": "string",
+              "value": "06"
+            },
+            {
+              "id": "c7",
+              "name": "PASSO_FORCADO",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "c8",
+              "name": "TZ",
+              "type": "string",
+              "value": "America/Sao_Paulo"
+            },
+            {
+              "id": "c9",
+              "name": "PAGE_SIZE",
+              "type": "string",
+              "value": "1000"
+            },
+            {
+              "id": "c10",
+              "name": "MAX_PAGINAS",
+              "type": "string",
+              "value": "50"
+            },
+            {
+              "id": "c11",
+              "name": "LOGIN_CUSTOMER_ID",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "c12",
+              "name": "CONTAS_PERMITIDAS",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "c13",
+              "name": "CONTRATO_VERSAO",
+              "type": "string",
+              "value": "gads-campanha-dia-v1"
+            },
+            {
+              "id": "c14",
+              "name": "CONTRATO_SHA256",
+              "type": "string",
+              "value": "9566b7b3a609c40439fb57413c1f0d888222a4c4e4479268ff0cfb03addbf413"
+            },
+            {
+              "id": "c15",
+              "name": "GAQL_CAMPOS",
+              "type": "string",
+              "value": "customer.id,customer.currency_code,campaign.id,campaign.name,campaign.status,campaign.advertising_channel_type,segments.date,metrics.impressions,metrics.clicks,metrics.interactions,metrics.cost_micros,metrics.conversions,metrics.all_conversions,metrics.conversions_value,metrics.all_conversions_value,metrics.ctr,metrics.average_cpc,metrics.cost_per_conversion,metrics.search_impression_share,metrics.search_budget_lost_impression_share,metrics.search_rank_lost_impression_share,metrics.search_top_impression_share,metrics.search_absolute_top_impression_share,metrics.search_click_share,metrics.search_exact_match_impression_share,metrics.top_impression_percentage,metrics.absolute_top_impression_percentage"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d348294-094b-577f-887d-132339c718e7",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -440,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes compartilhados ────────────────────────────────────────────────\n// Sem `require`: o Code node do n8n bloqueia builtins por padrao\n// (NODE_FUNCTION_ALLOW_BUILTIN nao esta armada). Sem luxon tambem: `Intl`\n// resolve fuso corretamente e nao depende de biblioteca.\nfunction dataNaZona(instante, tz) {\n  const partes = new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',\n  }).formatToParts(instante);\n  const v = {};\n  for (const p of partes) v[p.type] = p.value;\n  if (!v.year || !v.month || !v.day) {\n    throw new Error(`FUSO_INVALIDO: nao consegui ler a data em ${tz}`);\n  }\n  return `${v.year}-${v.month}-${v.day}`;\n}\n\nfunction horaNaZona(instante, tz) {\n  const partes = new Intl.DateTimeFormat('en-GB', {\n    timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',\n  }).formatToParts(instante);\n  const v = {};\n  for (const p of partes) v[p.type] = p.value;\n  return { hora: v.hour, minuto: v.minute };\n}\n\n// Aritmetica de CALENDARIO, nao de milissegundos: subtrair 86400000 de um\n// instante erra no dia em que o fuso muda. Aqui o dia anterior sai da data\n// local ja resolvida.\nfunction diaAnterior(iso) {\n  const [a, m, d] = iso.split('-').map(Number);\n  const x = new Date(Date.UTC(a, m - 1, d) - 86400000);\n  const p = (n) => String(n).padStart(2, '0');\n  return `${x.getUTCFullYear()}-${p(x.getUTCMonth() + 1)}-${p(x.getUTCDate())}`;\n}\n\n// ── IDENTIDADE DA EXECUCAO ──────────────────────────────────────────────────\n//\n// A chave e `job:origem:janela:passo`, e o PASSO e deliberado: as quatro\n// passadas D0 do mesmo dia sao QUATRO leituras da mesma janela, nao repeticoes\n// da mesma leitura. Colapsa-las numa chave so obrigaria a ATUALIZAR o recibo, e\n// recibo que se atualiza deixa de ser recibo. E preserva a doutrina do coletor\n// v3: uma falha nao ocupa a chave do sucesso posterior.\nconst cfg = $('Config').first().json;\nconst tz = String(cfg.TZ || 'America/Sao_Paulo');\nconst modo = String(cfg.JANELA_MODO || '').toUpperCase();\nif (modo !== 'D0' && modo !== 'D-1') {\n  throw new Error(`JANELA_MODO_INVALIDO: ${cfg.JANELA_MODO}`);\n}\n\nconst agora = new Date();\nconst hojeSp = dataNaZona(agora, tz);\nconst janela = modo === 'D0' ? hojeSp : diaAnterior(hojeSp);\n\n// Disparo: `isExecuted` diz qual gatilho acordou o fluxo. Se o no nem existir\n// na execucao, tratamos como manual — nunca como agenda, porque declarar\n// \"agenda\" numa rodada manual mentiria para o deadman.\nlet porAgenda = false;\ntry { porAgenda = Boolean($('Agenda').isExecuted); } catch (e) { porAgenda = false; }\nconst disparo = porAgenda ? 'agenda' : 'manual';\n\nconst relogio = horaNaZona(agora, tz);\nconst passosConfigurados = String(cfg.PASSOS || '')\n  .split(',').map((s) => s.trim()).filter(Boolean);\n\nfunction passoDaAgenda(hora) {\n  // Encaixa a hora atual no ultimo passo agendado <= hora. Sem passo anterior,\n  // usa o ultimo do dia — a rodada da madrugada pertence ao ciclo anterior.\n  let escolhido = passosConfigurados[passosConfigurados.length - 1];\n  for (const p of passosConfigurados) {\n    if (p <= hora) escolhido = p;\n  }\n  return escolhido;\n}\n\nlet passo;\nif (String(cfg.PASSO_FORCADO || '').trim() !== '') {\n  passo = String(cfg.PASSO_FORCADO).trim();\n} else if (disparo === 'agenda') {\n  passo = passoDaAgenda(relogio.hora);\n} else {\n  // Rodada manual ganha passo proprio: repetir o mesmo minuto e idempotente,\n  // e um minuto depois e outra leitura, com outro recibo.\n  passo = `m${relogio.hora}${relogio.minuto}`;\n}\nif (!passo) throw new Error('PASSO_INDETERMINADO: PASSOS vazio no Config');\n\nconst job = String(cfg.JOB || '');\nif (!/^[a-z0-9_]{3,40}$/.test(job)) throw new Error(`JOB_INVALIDO: ${job}`);\n\nconst execucaoChave = `${job}:${modo}:${janela}:${passo}`;\nconst contasPermitidas = String(cfg.CONTAS_PERMITIDAS || '')\n  .split(',').map((s) => s.trim()).filter(Boolean);\n\nconst filtroConta = contasPermitidas.length\n  ? `&customer_id=in.(${contasPermitidas.join(',')})`\n  : '';\n\nreturn [{\n  json: {\n    fonte: 'n8n',\n    job,\n    disparo,\n    origem_janela: modo,\n    janela_inicio: janela,\n    janela_fim: janela,\n    passo,\n    execucao_chave: execucaoChave,\n    api_versao: String(cfg.GOOGLEADS_API_VERSION || ''),\n    contrato_versao: String(cfg.CONTRATO_VERSAO || ''),\n    contrato_sha256: String(cfg.CONTRATO_SHA256 || ''),\n    tz,\n    workflow_id: $workflow.id,\n    execucao_externa_id: String($execution.id),\n    iniciada_em: agora.toISOString(),\n    contas_permitidas: contasPermitidas,\n    url_contas: `${cfg.SUPABASE_URL}/rest/v1/trafego_inventario_conta`\n      + `?select=customer_id,nome&order=customer_id.asc&limit=500${filtroConta}`,\n  },\n}];\n"
+      },
+      "id": "788f6317-141c-5285-9073-98cac4820b57",
+      "name": "Identidade da execucao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_contas }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "5deedc37-1bd4-5ba8-8f05-f764eec36ea9",
+      "name": "Contas autorizadas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        -20
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── CONTAS AUTORIZADAS ──────────────────────────────────────────────────────\n//\n// A lista vem do inventario governado, nunca de constante no fluxo. Emite UM\n// item de proposito: o proximo no e um HTTP, e um item por conta o faria\n// disparar N vezes.\nconst ident = $('Identidade da execucao').first().json;\nconst cfg = $('Config').first().json;\nconst permitidas = ident.contas_permitidas || [];\n\nconst vistas = new Set();\nconst contas = [];\nfor (const item of $input.all()) {\n  const linha = item.json;\n  if (linha === null || linha === undefined) continue;\n  const bruto = linha.customer_id;\n  if (bruto === null || bruto === undefined || bruto === '') continue;\n  const cid = String(bruto).replace(/[^0-9]/g, '');\n  if (!/^[0-9]{6,12}$/.test(cid)) continue;\n  if (permitidas.length && !permitidas.includes(cid)) continue;\n  if (vistas.has(cid)) continue;\n  vistas.add(cid);\n  contas.push(cid);\n}\ncontas.sort();\n\n// Falha fechada. Zero conta autorizada NAO e \"nada a fazer\": ou o inventario\n// nao respondeu, ou a allowlist esta errada. Seguir daria um recibo verde de\n// uma rodada que nao leu nada.\nif (contas.length === 0) {\n  throw new Error('SEM_CONTA_AUTORIZADA: o inventario nao devolveu conta valida'\n    + ' para esta execucao; nada foi lido e nada sera declarado como vazio');\n}\n\nconst url = `${cfg.SUPABASE_URL}/rest/v1/trafego_inventario_campanha`\n  + `?select=volc_campaign_id,customer_id,campaign_id&limit=20000`\n  + `&customer_id=in.(${contas.join(',')})`;\n\nreturn [{ json: { ...ident, contas, total_contas: contas.length, url_campanhas: url } }];\n"
+      },
+      "id": "bad501dc-12d0-5b5e-9af5-f02c74be6063",
+      "name": "Selecionar contas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_campanhas }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "b4b15729-04b3-5dfe-9a2b-d3b19904ad13",
+      "name": "Campanhas conhecidas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        -20
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── IDENTIDADE VOLC POR CONTA ───────────────────────────────────────────────\n//\n// Cada conta leva SO o seu pedaco do mapa. Carregar o mapa inteiro em todo item\n// engordaria o loop sem necessidade, e ler o mapa com `$('No').all()` dentro do\n// laco seria o acumulador global que este contrato proibe.\nconst base = $('Selecionar contas').first().json;\nconst porConta = {};\nfor (const item of $input.all()) {\n  const linha = item.json;\n  if (!linha || linha.customer_id === null || linha.customer_id === undefined) continue;\n  const cid = String(linha.customer_id);\n  const camp = linha.campaign_id === null || linha.campaign_id === undefined\n    ? null : String(linha.campaign_id);\n  const volc = linha.volc_campaign_id === null || linha.volc_campaign_id === undefined\n    ? null : String(linha.volc_campaign_id);\n  if (!camp || !volc) continue;\n  if (!porConta[cid]) porConta[cid] = {};\n  porConta[cid][camp] = volc;\n}\n\nreturn base.contas.map((cid, i) => ({\n  json: {\n    fonte: base.fonte,\n    job: base.job,\n    disparo: base.disparo,\n    origem_janela: base.origem_janela,\n    janela_inicio: base.janela_inicio,\n    janela_fim: base.janela_fim,\n    execucao_chave: base.execucao_chave,\n    api_versao: base.api_versao,\n    contrato_versao: base.contrato_versao,\n    contrato_sha256: base.contrato_sha256,\n    workflow_id: base.workflow_id,\n    execucao_externa_id: base.execucao_externa_id,\n    iniciada_em: base.iniciada_em,\n    contas_tentadas: base.contas,\n    total_contas: base.total_contas,\n    customer_id: cid,\n    conta_ordinal: i + 1,\n    mapa_conta: porConta[cid] || {},\n  },\n}));\n"
+      },
+      "id": "5d2b1753-dbb1-5f66-aad6-d3c789f75628",
+      "name": "Identidade VOLC por conta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "b7a74b6b-f2de-561d-b8f3-fd5d50c99b77",
+      "name": "Lote de contas",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        880,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── PEDIDO DE UMA PAGINA ────────────────────────────────────────────────────\n//\n// ⚠️ UMA CONTA POR ITERACAO, e isso e uma decisao, nao um descuido. O endpoint\n// `googleAds:search` e POR CLIENTE: um lote com N contas exigiria abrir o lote\n// de novo dentro do laco, e o retorno do laco passaria a disparar mais de uma\n// vez por iteracao — que e exatamente como um `SplitInBatches` pula lote. O\n// lote de VOLUME e a pagina (PAGE_SIZE linhas por chamada e por RPC).\nconst itens = $input.all();\nif (itens.length === 0) {\n  throw new Error('LOTE_VAZIO: o laco entregou zero item');\n}\nif (itens.length > 1) {\n  throw new Error(`LOTE_CONTAS_MAIOR_QUE_UM: ${itens.length} contas na mesma iteracao;`\n    + ' o batchSize do laco precisa continuar 1 enquanto a chamada for por cliente');\n}\nconst ctx = itens[0].json;\nconst cfg = $('Config').first().json;\n\nconst pagina = Number(ctx.pagina || 0) + 1;\nconst teto = Math.max(1, Number(cfg.MAX_PAGINAS) || 50);\n// Truncar em silencio seria descartar linha lida. Estourar o teto e erro.\nif (pagina > teto) {\n  throw new Error(`PAGINACAO_ACIMA_DO_TETO: conta ${ctx.customer_id} passou de ${teto}`\n    + ' paginas; nenhuma linha foi descartada, a execucao parou');\n}\n\nconst campos = String(cfg.GAQL_CAMPOS || '').split(',').map((s) => s.trim()).filter(Boolean);\nif (campos.length === 0) throw new Error('GAQL_SEM_CAMPOS');\nconst gaql = `SELECT ${campos.join(', ')} FROM campaign`\n  + ` WHERE segments.date BETWEEN '${ctx.janela_inicio}' AND '${ctx.janela_fim}'`\n  + ` ORDER BY campaign.id`;\n\nreturn [{\n  json: {\n    ...ctx,\n    pagina,\n    page_token: String(ctx.proximo_page_token || ''),\n    page_size: Math.max(1, Number(cfg.PAGE_SIZE) || 1000),\n    gaql,\n    url_google: `${cfg.GOOGLEADS_BASE}/${ctx.api_versao}/customers/${ctx.customer_id}`\n      + '/googleAds:search',\n    login_customer_id: String(cfg.LOGIN_CUSTOMER_ID || ''),\n    acumulado: ctx.acumulado || {\n      linhas_lidas: 0, linhas_aceitas: 0, linhas_preteridas: 0,\n      linhas_rejeitadas: 0, projecao_linhas: 0, paginas: 0,\n    },\n  },\n}];\n"
+      },
+      "id": "9bf79b57-227b-5b68-aa9e-9bc6b1aa3ba9",
+      "name": "Pagina: preparar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url_google }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAdsOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "login-customer-id",
+              "value": "={{ $json.login_customer_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: $json.gaql, pageSize: $json.page_size, pageToken: $json.page_token }) }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "08864ed0-4c9a-57ec-a47a-10ed4aeb9fb7",
+      "name": "Google Ads: search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        120
+      ],
+      "credentials": {
+        "googleAdsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "VOLC Google Ads"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "6070d048-52b1-51b4-af89-e588c83b57ba",
+      "name": "Juntar contexto e resposta",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1450,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "80508cd8-2ea0-524b-938a-f931bacd2cfa",
+      "name": "Juntar contexto e erro",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1450,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── NORMALIZACAO ────────────────────────────────────────────────────────────\n//\n// ⚠️ AQUI MORA O DEFEITO QUE ESTA ENTREGA CORRIGE. O Code legado fazia\n// `parseFloat(item.metrics?.conversionsValue || 0)`: ausencia virava ZERO, e\n// depois ninguem conseguia separar \"nao entregou\" de \"nao li\". Aqui ausencia\n// vira `null` e zero medido continua zero — os dois viajam ate o banco, onde a\n// coluna nao tem DEFAULT.\n// ⚠️ O contexto CHEGA NO ITEM, vindo do Merge — nao de\n// `$('Pagina: preparar pedido')`. A primeira versao usava `$()` e o simulador\n// derrubou: `$()` resolve pelo INDICE DA RODADA do no atual, e uma conta que\n// falha faz o pedido rodar mais vezes que a normalizacao. Na segunda conta, o\n// contexto lido era o da PRIMEIRA — a conta errada com a mesma cara.\nconst ctx = $input.first().json;\nconst corpo = ctx;\n\nif (!ctx || String(ctx.customer_id || '') === '') {\n  throw new Error('CONTEXTO_PERDIDO: a iteracao nao trouxe a conta pedida');\n}\n\nconst resultados = Array.isArray(corpo && corpo.results) ? corpo.results : [];\nconst proximo = corpo && corpo.nextPageToken ? String(corpo.nextPageToken) : '';\n\nfunction num(v) {\n  // '' e ausencia, nao zero: `Number('')` devolveria 0 e fabricaria medida.\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'boolean') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n}\nfunction inteiro(v) {\n  const n = num(v);\n  return n === null ? null : Math.trunc(n);\n}\nfunction texto(v) {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  return s === '' ? null : s;\n}\n\nconst colhidaEm = new Date().toISOString();\nconst linhas = [];\nfor (const r of resultados) {\n  const cliente = (r && r.customer) || {};\n  const campanha = (r && r.campaign) || {};\n  const seg = (r && r.segments) || {};\n  const m = (r && r.metrics) || {};\n\n  const contaDevolvida = texto(cliente.id);\n  if (contaDevolvida !== null && contaDevolvida !== String(ctx.customer_id)) {\n    throw new Error(`IDENTIDADE_DIVERGENTE: pedi ${ctx.customer_id} e a resposta`\n      + ` trouxe ${contaDevolvida}`);\n  }\n\n  linhas.push({\n    customer_id: String(ctx.customer_id),\n    campaign_id: texto(campanha.id),\n    metric_date: texto(seg.date),\n    volc_campaign_id: (ctx.mapa_conta || {})[texto(campanha.id)] || null,\n    campaign_name: texto(campanha.name),\n    campaign_status: texto(campanha.status),\n    advertising_channel_type: texto(campanha.advertisingChannelType),\n    currency_code: texto(cliente.currencyCode),\n    colhida_em: colhidaEm,\n    segmentos: {},\n\n    impressoes: inteiro(m.impressions),\n    cliques: inteiro(m.clicks),\n    interacoes: inteiro(m.interactions),\n    custo_micros: inteiro(m.costMicros),\n\n    conversoes: num(m.conversions),\n    todas_conversoes: num(m.allConversions),\n    valor_conversoes: num(m.conversionsValue),\n    valor_todas_conversoes: num(m.allConversionsValue),\n\n    ctr: num(m.ctr),\n    // Micros vem da API; nao recalculamos custo/conversao a partir de outras\n    // duas medidas — o legado fazia isso e inventava numero quando conversoes\n    // era zero.\n    cpc_medio_micros: num(m.averageCpc),\n    custo_por_conversao_micros: num(m.costPerConversion),\n\n    search_impression_share: num(m.searchImpressionShare),\n    search_budget_lost_impression_share: num(m.searchBudgetLostImpressionShare),\n    search_rank_lost_impression_share: num(m.searchRankLostImpressionShare),\n    search_top_impression_share: num(m.searchTopImpressionShare),\n    search_absolute_top_impression_share: num(m.searchAbsoluteTopImpressionShare),\n    search_click_share: num(m.searchClickShare),\n    search_exact_match_impression_share: num(m.searchExactMatchImpressionShare),\n    top_impression_percentage: num(m.topImpressionPercentage),\n    absolute_top_impression_percentage: num(m.absoluteTopImpressionPercentage),\n\n    metricas_extras: {},\n  });\n}\n\n// O ordinal do lote e o indice da rodada DESTE no, que so executa quando a\n// chamada ao Google deu certo. Assim a sequencia de lotes fica contigua e o\n// fechamento consegue acusar lote perdido.\nconst loteOrdinal = Number($runIndex) + 1;\nif (!Number.isInteger(loteOrdinal) || loteOrdinal < 1) {\n  throw new Error(`LOTE_ORDINAL_INVALIDO: ${loteOrdinal}`);\n}\n\nreturn [{\n  json: {\n    ...ctx,\n    lote_ordinal: loteOrdinal,\n    linhas,\n    linhas_lidas_na_pagina: linhas.length,\n    proximo_page_token: proximo,\n    tem_proxima_pagina: proximo !== '',\n    pagina_lida_em: colhidaEm,\n  },\n}];\n"
+      },
+      "id": "a160d3bd-a32d-5792-b394-54f6a431eeac",
+      "name": "Pagina: normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── VALIDACAO SEMANTICA ─────────────────────────────────────────────────────\n//\n// O banco valida de novo, e isso e de proposito: aqui a recusa vira motivo\n// legivel no recibo, la ela vira constraint. Duas redes, a mesma regra.\nconst ctx = $input.first().json;\nconst linhas = Array.isArray(ctx.linhas) ? ctx.linhas : [];\n\nconst TAXAS = [\n  'ctr', 'search_impression_share', 'search_budget_lost_impression_share',\n  'search_rank_lost_impression_share', 'search_top_impression_share',\n  'search_absolute_top_impression_share', 'search_click_share',\n  'search_exact_match_impression_share', 'top_impression_percentage',\n  'absolute_top_impression_percentage',\n];\nconst NAO_NEGATIVAS = [\n  'impressoes', 'cliques', 'interacoes', 'custo_micros', 'conversoes',\n  'todas_conversoes', 'valor_conversoes', 'valor_todas_conversoes',\n  'cpc_medio_micros', 'custo_por_conversao_micros',\n];\n\nconst boas = [];\nconst recusadas = [];\nconst chaves = new Set();\n\nfor (let i = 0; i < linhas.length; i += 1) {\n  const l = linhas[i];\n  let motivo = null;\n\n  if (!/^[0-9]{6,12}$/.test(String(l.customer_id || ''))) motivo = 'CUSTOMER_ID_INVALIDO';\n  else if (!/^[0-9]{1,20}$/.test(String(l.campaign_id || ''))) motivo = 'CAMPAIGN_ID_INVALIDO';\n  else if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(l.metric_date || ''))) motivo = 'DATA_AUSENTE';\n  else if (l.metric_date < ctx.janela_inicio || l.metric_date > ctx.janela_fim) motivo = 'DATA_FORA_DA_JANELA';\n  else if (!/^[A-Z]{3}$/.test(String(l.currency_code || ''))) motivo = 'MOEDA_AUSENTE_OU_INVALIDA';\n\n  if (motivo === null) {\n    for (const campo of TAXAS) {\n      const v = l[campo];\n      if (v !== null && (typeof v !== 'number' || v < 0 || v > 1)) {\n        motivo = `TAXA_FORA_DE_0_1:${campo}`;\n        break;\n      }\n    }\n  }\n  if (motivo === null) {\n    for (const campo of NAO_NEGATIVAS) {\n      const v = l[campo];\n      if (v !== null && (typeof v !== 'number' || v < 0)) {\n        motivo = `VALOR_NEGATIVO_OU_NAO_NUMERICO:${campo}`;\n        break;\n      }\n    }\n  }\n  if (motivo === null) {\n    const chave = `${l.customer_id}|${l.campaign_id}|${l.metric_date}`;\n    if (chaves.has(chave)) motivo = 'LINHA_DUPLICADA_NA_PAGINA';\n    else chaves.add(chave);\n  }\n\n  if (motivo === null) boas.push(l);\n  else recusadas.push({ ordinal: i + 1, campaign_id: l.campaign_id || null, motivo });\n}\n\n// ⚠️ A pagina segue mesmo com linha recusada: parcial preserva a linha verde.\n// O que NAO pode acontecer e a recusa sumir — ela viaja no motivo do lote.\nconst houveRecusa = recusadas.length > 0;\nconst resultado = houveRecusa ? 'parcial' : 'ok';\nconst motivoLote = houveRecusa\n  ? `${recusadas.length} de ${linhas.length} linhas recusadas na validacao local`\n  : null;\n\nconst agora = new Date().toISOString();\nconst documento = {\n  chave_idempotencia: `${ctx.execucao_chave}|${ctx.lote_ordinal}`,\n  execucao_chave: ctx.execucao_chave,\n  fonte: ctx.fonte,\n  job: ctx.job,\n  disparo: ctx.disparo,\n  workflow_id: ctx.workflow_id,\n  execucao_externa_id: ctx.execucao_externa_id,\n  api_versao: ctx.api_versao,\n  contrato_versao: ctx.contrato_versao,\n  contrato_sha256: ctx.contrato_sha256,\n  tipo_lote: 'contas',\n  lote_ordinal: ctx.lote_ordinal,\n  origem_janela: ctx.origem_janela,\n  janela_inicio: ctx.janela_inicio,\n  janela_fim: ctx.janela_fim,\n  iniciada_em: ctx.iniciada_em,\n  encerrada_em: agora,\n  duracao_ms: Math.max(0, Date.parse(agora) - Date.parse(ctx.iniciada_em)),\n  batimento_em: agora,\n  resultado,\n  motivo: motivoLote,\n  escopo: `conta ${ctx.customer_id} pagina ${ctx.pagina}`,\n  contas_tentadas: [String(ctx.customer_id)],\n  contas_aceitas: [String(ctx.customer_id)],\n  contas_recusadas: [],\n  projetar_compat: true,\n  linhas: boas,\n};\n\nreturn [{\n  json: {\n    ...ctx,\n    documento,\n    linhas_enviadas: boas.length,\n    linhas_recusadas_localmente: recusadas.length,\n    recusas_locais: recusadas,\n  },\n}];\n"
+      },
+      "id": "0abf6b10-3517-5268-a4ba-f42e2b8b62bc",
+      "name": "Validar semanticamente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1850,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/rpc/volc_registrar_gads_campanha_dia",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ documento: $json.documento }) }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "8bacd8e4-75b8-5372-bcd6-488f053679a5",
+      "name": "RPC: ingerir lote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2050,
+        40
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── RECONCILIACAO DO LOTE ───────────────────────────────────────────────────\n//\n// O recibo do banco tem de bater com o que o fluxo enviou. Nao bater e defeito,\n// nao ruido — e o fluxo para em vez de fechar uma execucao que mente.\nconst recibo = $input.first().json;\nconst ctx = $('Validar semanticamente').first().json;\n\nif (!recibo || typeof recibo !== 'object') {\n  throw new Error('RPC_SEM_RECIBO: a ingestao nao devolveu documento');\n}\n// Amarra dura contra desalinhamento de rodada: o recibo tem de ser DESTE lote.\nif (String(recibo.chave_idempotencia || '') !== String(ctx.documento.chave_idempotencia)) {\n  throw new Error(`RECIBO_DE_OUTRO_LOTE: esperava ${ctx.documento.chave_idempotencia}`\n    + ` e recebi ${recibo.chave_idempotencia}`);\n}\n\nconst aceitas = Number(recibo.linhas_aceitas || 0);\nconst preteridas = Number(recibo.linhas_preteridas || 0);\nconst rejeitadas = Number(recibo.linhas_rejeitadas || 0);\nconst lidas = Number(recibo.linhas_lidas || 0);\n\nif (aceitas + preteridas + rejeitadas !== lidas) {\n  throw new Error(`RECIBO_NAO_FECHA: ${aceitas}+${preteridas}+${rejeitadas} != ${lidas}`);\n}\nif (lidas !== Number(ctx.linhas_enviadas)) {\n  throw new Error(`RECIBO_DIVERGE_DO_ENVIO: enviei ${ctx.linhas_enviadas} e o banco`\n    + ` contou ${lidas}`);\n}\n\nconst antes = ctx.acumulado || {};\nconst acumulado = {\n  linhas_lidas: Number(antes.linhas_lidas || 0) + lidas + Number(ctx.linhas_recusadas_localmente || 0),\n  linhas_aceitas: Number(antes.linhas_aceitas || 0) + aceitas,\n  linhas_preteridas: Number(antes.linhas_preteridas || 0) + preteridas,\n  linhas_rejeitadas: Number(antes.linhas_rejeitadas || 0) + rejeitadas\n    + Number(ctx.linhas_recusadas_localmente || 0),\n  projecao_linhas: Number(antes.projecao_linhas || 0) + Number(recibo.projecao_linhas || 0),\n  paginas: Number(antes.paginas || 0) + 1,\n};\n\nconst projecoes = (antes.projecoes || []).concat([String(recibo.projecao_estado || 'nao_solicitada')]);\n\nreturn [{\n  json: {\n    fonte: ctx.fonte,\n    job: ctx.job,\n    disparo: ctx.disparo,\n    origem_janela: ctx.origem_janela,\n    janela_inicio: ctx.janela_inicio,\n    janela_fim: ctx.janela_fim,\n    execucao_chave: ctx.execucao_chave,\n    api_versao: ctx.api_versao,\n    contrato_versao: ctx.contrato_versao,\n    contrato_sha256: ctx.contrato_sha256,\n    workflow_id: ctx.workflow_id,\n    execucao_externa_id: ctx.execucao_externa_id,\n    iniciada_em: ctx.iniciada_em,\n    contas_tentadas: ctx.contas_tentadas,\n    total_contas: ctx.total_contas,\n    customer_id: ctx.customer_id,\n    conta_ordinal: ctx.conta_ordinal,\n    mapa_conta: ctx.mapa_conta,\n    pagina: ctx.pagina,\n    proximo_page_token: ctx.proximo_page_token,\n    tem_proxima_pagina: Boolean(ctx.tem_proxima_pagina),\n    acumulado: { ...acumulado, projecoes },\n    estado_conta: 'lida',\n    ultimo_recibo: recibo.chave_idempotencia,\n  },\n}];\n"
+      },
+      "id": "eb80bbc4-a5d1-5a08-aede-8ebe68026971",
+      "name": "Reconciliar lote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7bcf34c2-b00e-5bf9-a3ef-f43452bcf637",
+              "leftValue": "={{ $json.tem_proxima_pagina }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ab54e268-35dc-50cd-8a55-40c35143f3e3",
+      "name": "Tem proxima pagina?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2450,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── CLASSIFICACAO DO ERRO DO GOOGLE ─────────────────────────────────────────\n//\n// ⚠️ A saida de erro NUNCA volta para o no de requisicao. Ela segue para a\n// frente e reentra no laco de contas, que so anda — por isso 401/403 nao tem\n// como girar. O limite de tentativa de 429/5xx e o `maxTries` do proprio no.\n//\n// Rotulo desconhecido vira DESCONHECIDA, nunca \"ok\". A mensagem publica nao\n// interpola o texto bruto do erro: ele pode carregar token e cabecalho.\n// Mesma razao da normalizacao: contexto pelo Merge, nunca por `$()` dentro do\n// laco. Aqui o risco era pior — o classificador roda so quando ha falha, entao\n// o indice de rodada dele nunca acompanha o do pedido.\nconst ctx = $input.first().json || {};\nconst bruto = ctx;\n\nconst erroComoTexto = bruto.error === null || bruto.error === undefined ? '' : String(bruto.error);\nconst alvo = bruto.error && typeof bruto.error === 'object' ? bruto.error : bruto;\nlet codigo = null;\nfor (const chave of ['httpCode', 'status', 'statusCode', 'code']) {\n  const v = alvo[chave];\n  if (v !== null && v !== undefined && /^[0-9]{3}$/.test(String(v))) {\n    codigo = Number(v);\n    break;\n  }\n}\nif (codigo === null) {\n  const m = `${String(alvo.message || '')} ${erroComoTexto}`.match(/\\b(4[0-9]{2}|5[0-9]{2})\\b/);\n  if (m) codigo = Number(m[1]);\n}\n\nif (String(ctx.customer_id || '') === '') {\n  throw new Error('CONTEXTO_PERDIDO: a falha chegou sem a conta que a produziu');\n}\n\nlet classe;\nif (codigo === 401 || codigo === 403) classe = 'AUTENTICACAO';\nelse if (codigo === 429) classe = 'COTA';\nelse if (codigo !== null && codigo >= 500) classe = 'INDISPONIVEL';\nelse if (codigo !== null && codigo >= 400) classe = 'PEDIDO_INVALIDO';\nelse classe = 'DESCONHECIDA';\n\nconst retryRecomendado = classe === 'COTA' || classe === 'INDISPONIVEL';\n\nreturn [{\n  json: {\n    fonte: ctx.fonte,\n    job: ctx.job,\n    disparo: ctx.disparo,\n    origem_janela: ctx.origem_janela,\n    janela_inicio: ctx.janela_inicio,\n    janela_fim: ctx.janela_fim,\n    execucao_chave: ctx.execucao_chave,\n    api_versao: ctx.api_versao,\n    contrato_versao: ctx.contrato_versao,\n    contrato_sha256: ctx.contrato_sha256,\n    workflow_id: ctx.workflow_id,\n    execucao_externa_id: ctx.execucao_externa_id,\n    iniciada_em: ctx.iniciada_em,\n    contas_tentadas: ctx.contas_tentadas,\n    total_contas: ctx.total_contas,\n    customer_id: ctx.customer_id,\n    conta_ordinal: ctx.conta_ordinal,\n    pagina: ctx.pagina,\n    acumulado: ctx.acumulado,\n    estado_conta: 'falhou',\n    erro_classe: classe,\n    erro_codigo: codigo === null ? null : String(codigo),\n    retry_recomendado: retryRecomendado,\n    tem_proxima_pagina: false,\n    proximo_page_token: '',\n  },\n}];\n"
+      },
+      "id": "62228f4c-969f-55a5-9137-0aff8d1fabf1",
+      "name": "Classificar erro do Google",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── FECHAMENTO DA EXECUCAO ──────────────────────────────────────────────────\n//\n// ⚠️ O acumulado vem de `$input.all()` — a saida `done` do laco, que traz TODOS\n// os itens que reentraram nele. Nao de `$('No dentro do laco').all()`, que\n// devolveria so a ultima rodada e faria o recibo declarar o ultimo lote como se\n// fosse a execucao inteira.\nconst itens = $input.all().map((i) => i.json);\nif (itens.length === 0) {\n  throw new Error('FECHAMENTO_SEM_ITEM: o laco terminou sem devolver conta nenhuma');\n}\nconst base = itens[0];\n\nlet aceitas = 0; let preteridas = 0; let rejeitadas = 0;\nlet lidas = 0; let projetadas = 0; let paginas = 0;\nconst contasAceitas = [];\nconst contasRecusadas = [];\nconst projecoes = [];\n\nfor (const it of itens) {\n  const a = it.acumulado || {};\n  aceitas += Number(a.linhas_aceitas || 0);\n  preteridas += Number(a.linhas_preteridas || 0);\n  rejeitadas += Number(a.linhas_rejeitadas || 0);\n  lidas += Number(a.linhas_lidas || 0);\n  projetadas += Number(a.projecao_linhas || 0);\n  paginas += Number(a.paginas || 0);\n  for (const p of (a.projecoes || [])) projecoes.push(p);\n\n  if (it.estado_conta === 'falhou') {\n    contasRecusadas.push({\n      customer_id: String(it.customer_id),\n      classe: it.erro_classe || 'DESCONHECIDA',\n      codigo: it.erro_codigo === undefined ? null : it.erro_codigo,\n    });\n  } else {\n    contasAceitas.push(String(it.customer_id));\n  }\n}\n\n// Uma falha de conta nao pode virar vazio nem sumir. Ela decide o desfecho.\nlet resultado;\nlet motivo = null;\nif (contasRecusadas.length === 0 && rejeitadas === 0) {\n  resultado = 'ok';\n} else if (contasRecusadas.length === 0) {\n  resultado = aceitas > 0 ? 'parcial' : 'falhou';\n  motivo = `${rejeitadas} linhas rejeitadas semanticamente; nenhuma recusa pode virar ok`;\n} else if (contasAceitas.length > 0 || aceitas > 0) {\n  resultado = 'parcial';\n  motivo = `${contasRecusadas.length} de ${itens.length} contas falharam; ${rejeitadas} linhas rejeitadas: `\n    + contasRecusadas.map((c) => `${c.customer_id}/${c.classe}`).join(', ');\n} else {\n  resultado = 'falhou';\n  motivo = `todas as ${contasRecusadas.length} contas falharam; ${rejeitadas} linhas rejeitadas: `\n    + contasRecusadas.map((c) => `${c.customer_id}/${c.classe}`).join(', ');\n}\n\n// `falhou` significa \"nada aproveitavel\". Se linha verde existe, o desfecho\n// honesto e parcial — e o schema do banco recusaria o contrario.\nif (resultado === 'falhou' && aceitas > 0) {\n  resultado = 'parcial';\n  motivo = `linhas aceitas apesar de contas falhas: ${motivo}`;\n}\n\nlet projecaoEstado = 'nao_solicitada';\nif (projecoes.length > 0) {\n  if (projecoes.includes('falhou')) projecaoEstado = 'falhou';\n  else if (projecoes.includes('recusada_ambigua') || projecoes.includes('parcial')) projecaoEstado = 'parcial';\n  else if (projecoes.includes('indisponivel')) projecaoEstado = 'indisponivel';\n  else projecaoEstado = 'aplicada';\n}\nif (projecaoEstado === 'falhou' && projetadas > 0) projecaoEstado = 'parcial';\nif (projetadas === 0 && (projecaoEstado === 'aplicada' || projecaoEstado === 'parcial')) {\n  projecaoEstado = projecoes.includes('recusada_ambigua') ? 'recusada_ambigua' : projecaoEstado;\n}\n\nconst agora = new Date().toISOString();\nconst documento = {\n  chave_idempotencia: `${base.execucao_chave}|0`,\n  execucao_chave: base.execucao_chave,\n  fonte: base.fonte,\n  job: base.job,\n  disparo: base.disparo,\n  workflow_id: base.workflow_id,\n  execucao_externa_id: base.execucao_externa_id,\n  api_versao: base.api_versao,\n  contrato_versao: base.contrato_versao,\n  contrato_sha256: base.contrato_sha256,\n  tipo_lote: 'fechamento',\n  lote_ordinal: 0,\n  origem_janela: base.origem_janela,\n  janela_inicio: base.janela_inicio,\n  janela_fim: base.janela_fim,\n  iniciada_em: base.iniciada_em,\n  encerrada_em: agora,\n  duracao_ms: Math.max(0, Date.parse(agora) - Date.parse(base.iniciada_em)),\n  batimento_em: agora,\n  resultado,\n  motivo,\n  escopo: `${contasAceitas.length} contas lidas, ${contasRecusadas.length} recusadas`,\n  contas_tentadas: base.contas_tentadas || [],\n  contas_aceitas: contasAceitas,\n  contas_recusadas: contasRecusadas,\n  linhas_aceitas: aceitas,\n  linhas_preteridas: preteridas,\n  linhas_rejeitadas: rejeitadas,\n  projecao_estado: projecaoEstado,\n  projecao_linhas: projetadas,\n  linhas: [],\n};\n\nreturn [{\n  json: {\n    documento,\n    resumo: {\n      job: base.job,\n      execucao_chave: base.execucao_chave,\n      janela: base.janela_inicio,\n      contas_lidas: contasAceitas.length,\n      contas_recusadas: contasRecusadas.length,\n      paginas,\n      linhas_lidas: lidas,\n      linhas_aceitas: aceitas,\n      linhas_preteridas: preteridas,\n      linhas_rejeitadas: rejeitadas,\n      projecao_estado: projecaoEstado,\n      projecao_linhas: projetadas,\n      resultado,\n      motivo,\n    },\n  },\n}];\n"
+      },
+      "id": "603df1bc-da63-5b31-b52a-f4f78600e11c",
+      "name": "Fechar execucao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 1
+      },
+      "id": "b9ca02c2-c0f2-5f54-9db0-07c48f3f0271",
+      "name": "Limite do fechamento",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/rpc/volc_registrar_gads_campanha_dia",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ documento: $json.documento }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "417ebafc-2104-5990-8b28-cace699b7736",
+      "name": "RPC: fechar recibo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -220
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "url": "={{ $node[\"Config\"].json[\"SUPABASE_URL\"] + '/rest/v1/trafego_coleta_execucao_saude?select=*&execucao_chave=eq.' + $node[\"Fechar execucao\"].json[\"resumo\"][\"execucao_chave\"] }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "024a368e-5670-59f9-b036-878a95606a60",
+      "name": "Releitura do recibo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -220
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── BATIMENTO E SAUDE ───────────────────────────────────────────────────────\n//\n// A leitura de volta prova que o recibo POUSOU. Sem ela, o fluxo declararia\n// sucesso com base na propria memoria — o autoatestado que o contrato de saude\n// proibe (docs/contracts/HEALTH-DEADMAN-GOOGLE-INTELLIGENCE.md).\n//\n// ⚠️ SAUDAVEL nunca sai so de tentativa ou batimento. Ausencia de leitura de\n// volta e INDETERMINADO, nao sucesso.\nconst fechamento = $('Fechar execucao').first().json;\nconst resumo = fechamento.resumo;\n\nconst linhas = $input.all().map((i) => i.json).filter((l) => l && l.execucao_chave);\nconst lido = linhas.find((l) => String(l.execucao_chave) === String(resumo.execucao_chave)) || null;\n\nlet estado;\nlet alerta = false;\nlet motivoAlerta = null;\n\nif (lido === null) {\n  estado = 'INDETERMINADO';\n  alerta = true;\n  motivoAlerta = 'o recibo de fechamento nao foi encontrado na releitura';\n} else if (String(lido.resultado) === 'falhou') {\n  estado = 'FALHOU';\n  alerta = true;\n  motivoAlerta = String(lido.motivo || 'falha sem motivo declarado');\n} else if (Number(lido.linhas_aceitas) !== Number(resumo.linhas_aceitas)) {\n  estado = 'INDETERMINADO';\n  alerta = true;\n  motivoAlerta = `releitura diverge: banco ${lido.linhas_aceitas},`\n    + ` fluxo ${resumo.linhas_aceitas}`;\n} else if (String(lido.resultado) === 'parcial') {\n  estado = 'PARCIAL';\n  alerta = true;\n  motivoAlerta = String(lido.motivo || 'parcial sem motivo declarado');\n} else {\n  // Vazio confirmado NAO e alerta: a leitura foi boa e nao havia linha.\n  estado = 'SAUDAVEL';\n  alerta = false;\n}\n\nreturn [{\n  json: {\n    ...resumo,\n    estado_saude: estado,\n    alerta,\n    motivo_alerta: motivoAlerta,\n    batimento_em: lido === null ? null : lido.batimento_em,\n    releitura_encontrada: lido !== null,\n    vazio_confirmado: Number(resumo.linhas_lidas) === 0 && String(resumo.resultado) === 'ok',\n  },\n}];\n"
+      },
+      "id": "d573b1e7-4c4b-5962-8d99-b063080da73a",
+      "name": "Batimento e saude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "53788e82-2d47-55b2-bbfb-d63b98047580",
+              "leftValue": "={{ $json.alerta }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ff13dc46-8b64-5f70-9cb3-e9dff1a09c59",
+      "name": "Falha real?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2200,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "key"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ key: 'gads_dia_' + $json.job + '_ultimo_alerta', value: $json.execucao_chave + ' | ' + $json.estado_saude + ' | ' + ($json.motivo_alerta || 'sem motivo declarado'), updated_at: new Date().toISOString() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "24535e93-c190-509b-8c28-49e702dcde71",
+      "name": "Alerta de rotina parada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2420,
+        -220
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "width": 900,
+        "height": 260,
+        "content": "## VOLC · Google Ads campanha-dia · D-1 (ontem fechado)\n\n**INATIVO por contrato.** A agenda so pode ser ligada depois do pacote de autorizacao (docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/AUTORIZACAO-ATIVACAO.md).\n\nGerado por `n8n/gerar_flows_gads_ledger_v12.py`. **Nao edite este JSON a mao** — edite o gerador e regere, senao D0 e D-1 divergem na primeira correcao.\n\nDestino unico: `database.agenciavolc.com.br`. Somente leitura no Google Ads (zero `mutate`). Ausencia permanece NULL; zero medido permanece zero.\n\nAntes de ativar: preencher `LOGIN_CUSTOMER_ID`, apontar a credencial `VOLC Google Ads`, e rodar o canario com `CONTAS_PERMITIDAS` = uma conta."
+      },
+      "id": "7b14aeab-7bfe-5a57-a0c2-51571844b5b3",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        -420
+      ]
+    }
+  ],
+  "connections": {
+    "Agenda": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Identidade da execucao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identidade da execucao": {
+      "main": [
+        [
+          {
+            "node": "Contas autorizadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contas autorizadas": {
+      "main": [
+        [
+          {
+            "node": "Selecionar contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selecionar contas": {
+      "main": [
+        [
+          {
+            "node": "Campanhas conhecidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campanhas conhecidas": {
+      "main": [
+        [
+          {
+            "node": "Identidade VOLC por conta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identidade VOLC por conta": {
+      "main": [
+        [
+          {
+            "node": "Lote de contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lote de contas": {
+      "main": [
+        [
+          {
+            "node": "Fechar execucao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pagina: preparar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pagina: preparar pedido": {
+      "main": [
+        [
+          {
+            "node": "Google Ads: search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Juntar contexto e resposta",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Juntar contexto e erro",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Google Ads: search": {
+      "main": [
+        [
+          {
+            "node": "Juntar contexto e resposta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Juntar contexto e erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar contexto e resposta": {
+      "main": [
+        [
+          {
+            "node": "Pagina: normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar contexto e erro": {
+      "main": [
+        [
+          {
+            "node": "Classificar erro do Google",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pagina: normalizar": {
+      "main": [
+        [
+          {
+            "node": "Validar semanticamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar semanticamente": {
+      "main": [
+        [
+          {
+            "node": "RPC: ingerir lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC: ingerir lote": {
+      "main": [
+        [
+          {
+            "node": "Reconciliar lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reconciliar lote": {
+      "main": [
+        [
+          {
+            "node": "Tem proxima pagina?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem proxima pagina?": {
+      "main": [
+        [
+          {
+            "node": "Pagina: preparar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lote de contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classificar erro do Google": {
+      "main": [
+        [
+          {
+            "node": "Lote de contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fechar execucao": {
+      "main": [
+        [
+          {
+            "node": "Limite do fechamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limite do fechamento": {
+      "main": [
+        [
+          {
+            "node": "RPC: fechar recibo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC: fechar recibo": {
+      "main": [
+        [
+          {
+            "node": "Releitura do recibo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Releitura do recibo": {
+      "main": [
+        [
+          {
+            "node": "Batimento e saude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batimento e saude": {
+      "main": [
+        [
+          {
+            "node": "Falha real?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falha real?": {
+      "main": [
+        [
+          {
+            "node": "Alerta de rotina parada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "executionTimeout": 3600
+  },
+  "pinData": {},
+  "meta": {
+    "volc": {
+      "gerador": "n8n/gerar_flows_gads_ledger_v12.py",
+      "contrato": "gads-campanha-dia-v1",
+      "contrato_sha256": "9566b7b3a609c40439fb57413c1f0d888222a4c4e4479268ff0cfb03addbf413",
+      "rpc": "volc_registrar_gads_campanha_dia",
+      "migration": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+      "papel": "D-1",
+      "estado": "INATIVO — depende do pacote de autorizacao"
+    }
+  }
+}

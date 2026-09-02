@@ -1,0 +1,191 @@
+{
+  "_comentario": "Delta de curadoria proposto pela lane hermes-p10-t16-n8n-ledger-v12-v1. NÃO aplicado: nem ROADMAP-VIVO.json, nem curadoria-operacional.json, nem graphify-out/** foram tocados nesta árvore. O integrador único aplica e reconstrói o Mapa Vivo UMA vez, depois do merge, e roda `python3 scripts/atualizar_grafo_volc_os.py --check`.",
+  "worker": "hermes-p10-t16-n8n-ledger-v12-v1",
+  "branch": "sprint/hermes-p10-t16-n8n-ledger-v12-v1",
+  "base_oficial": "b6e226ab2f6d339d2c7c899b83b05ff4a95ebcac",
+  "data": "2026-09-01",
+  "commits": [
+    "ad64524 feat(banco): fato canonico Google Ads campanha-dia com ledger e RPC unica",
+    "8e4750c feat(n8n): workflows D0/D-1 do fato campanha-dia, inativos e provados",
+    "(este) docs(closure): ADR de agenda, autorizacao e matriz de contraprovas"
+  ],
+  "gates": {
+    "ciclo_sql_v12_04": "107 provas, 0 falhas (aplicar → operar → reverter → reaplicar, Postgres 16 descartável em container)",
+    "validacao_n8n_no_a_no": "339 provas, 0 falhas, 0 pulados",
+    "simulacao_offline_code_nodes": "65 provas, 0 falhas (JavaScript real em vm, relógio injetado, zero rede)",
+    "ponta_a_ponta_fluxo_rpc": "12 provas, 0 falhas",
+    "agenda_unica": "14 provas, 0 falhas, 1 pulado declarado (REAL_N8N_READ_NOT_PROVEN)",
+    "suite_focal": "18 passed",
+    "suite_completa": "2922 passed, 20 failed, 101 skipped",
+    "baseline_b6e226a": "2904 passed, 20 failed, 101 skipped — as MESMAS 20, medidas em worktree limpa",
+    "delta": "+18 passaram, 0 novas falhas",
+    "autoridade_supabase": "✓ https://database.agenciavolc.com.br",
+    "ausencia_de_mutacao_google": "3/3 ok",
+    "segredos": "nenhum padrão forte no working tree",
+    "git_diff_check": "sem achados",
+    "gerador_determinista": "JSON em disco = o que o gerador produz",
+    "arvore": "limpa"
+  },
+  "leitura_real": "REAL_N8N_READ_NOT_PROVEN · REAL_GOOGLE_ADS_READ_NOT_PROVEN",
+  "tarefas_propostas": [
+    {
+      "id": "P10-T16",
+      "status_atual": "todo",
+      "status_proposto": "partial",
+      "motivo_de_nao_promover": "o critério de aceite exige canário manual, reconciliação de recibos, ativação de UMA agenda e heartbeat ligado. Nada disso pode acontecer sem autorização de banco e acesso ao n8n. A migration não foi aplicada, os workflows não foram importados nem ativados, nenhuma unit systemd foi instalada e nenhuma chamada real à Google Ads API foi feita.",
+      "proof_proposto": "A autoridade de agenda foi decidida e registrada em ADR (N8N_IS_SCHEDULE_AUTHORITY): o n8n agenda, o coletor Python vira biblioteca/one-shot/fallback/diagnóstico, e os timers systemd ficam desinstalados com condição explícita de aposentadoria. O fato canônico campanha-dia deixou de ser proposta textual: v12_04 cria trafego_coleta_execucao e google_ads_campanha_dia com RPC única governada, provada em ciclo completo num Postgres descartável (107 provas). Os dois workflows D0/D-1 existem como artefato versionado, gerado, inativo e validado nó a nó (339 provas), com o JavaScript executado offline (65 provas) e os documentos que ele monta aceitos pela RPC real (12 provas ponta a ponta). Continua partial porque nada foi aplicado nem ativado.",
+      "evidencia_a_acrescentar": "2026-09-01 · ad64524 + 8e4750c (sprint/hermes-p10-t16-n8n-ledger-v12-v1): a ingestão Google Ads campanha-dia ganhou fato canônico, ledger de execução e uma única porta de escrita. A chave inclui a CONTA — duas contas com o mesmo campaign_id deixam de colidir, que é o defeito estrutural de daily_campaign_metrics. Nenhuma métrica tem DEFAULT: ausência permanece NULL, zero medido permanece zero, e número que chega como string é recusado com motivo. D0 e D-1 compartilham a chave do fato sob precedência total e declarada (D0 < D-1 < backfill), então a janela fechada nunca é rebaixada pela intradia. O recibo de fechamento reconcilia contra o COUNT real da tabela e recusa fechar quando diverge; a FK do fato para o ledger é DEFERRABLE INITIALLY DEFERRED, então fato sem recibo não sobrevive ao COMMIT. A projeção de compatibilidade escreve 16 colunas de entrega de daily_campaign_metrics, grava NULL onde o canônico é NULL, recusa campaign_id ambíguo, nunca cria linha nova e nunca encosta em receita, revshare, GAM, comissão, orientação ou otimização; se falhar, o SQLSTATE vai para o recibo e o fato sobrevive. Nos workflows, o simulador offline derrubou um defeito real antes de qualquer ativação: o contexto da iteração vinha de $('Pagina: preparar pedido'), e $() resolve pelo índice da rodada do nó que pergunta — uma conta que falha desalinha os índices e a iteração seguinte passa a colar a resposta certa na conta errada, em silêncio. A defesa passou a ser dois Merge por posição, e a regressão virou contraprova nomeada. PARTIAL: REAL_N8N_READ_NOT_PROVEN, REAL_GOOGLE_ADS_READ_NOT_PROVEN, migration não aplicada, canário não executado e primeira agenda automática não ligada.",
+      "lacuna_bloqueante": "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/AUTORIZACAO-ATIVACAO.md — dez passos, começando por conferir no painel do n8n os cinco workflows da família que o inventário de 19/08 registra com agenda ATIVA."
+    },
+    {
+      "id": "P06-T08",
+      "status_atual": "(o integrador confere)",
+      "status_proposto": "partial",
+      "motivo_de_nao_promover": "a migration existe e está provada em descartável, mas não foi aplicada e o canário D0/D-1 não foi reconciliado.",
+      "evidencia_a_acrescentar": "2026-09-01 · ad64524: supabase/migrations/v12_04_gads_fato_canonico_dia.sql + v12_04_rollback.sql, com 107 provas no ciclo aplicar→operar→reverter→reaplicar e hashes registrados em supabase/migrations/README.md. Série v12_04 e não v13_01/v12_03: as duas estão reservadas a outras lanes, e o preflight aborta com mensagem nomeada se as tabelas já existirem — aplicar as duas por engano é mecanicamente impossível."
+    }
+  ],
+  "fatos_a_atualizar": [
+    {
+      "id": "F019",
+      "classificacao_atual": "CONFIRMADO",
+      "classificacao_proposta": "PARCIALMENTE SUPERADO",
+      "o_que_mudou": "‘nenhum SQL o cria’ deixou de valer: v12_04 cria trafego_coleta_execucao e google_ads_campanha_dia, provados em descartável. Continua valendo que nada foi aplicado. O adaptador scripts/adaptar_gads_reports_n8n.py deixou de ser untracked (já estava versionado no commit base) e continua sem consumidor: os workflows desta entrega nascem de gerador próprio, porque o export que o adaptador remenda não existe no repositório."
+    },
+    {
+      "id": "F018",
+      "classificacao_atual": "CONFIRMADO",
+      "classificacao_proposta": "CONFIRMADO (inalterado)",
+      "o_que_mudou": "nada. Os 13 flows do núcleo que escrevem no Supabase hospedado legado não foram migrados aqui; isso é o cluster CL-11. Os dois workflows novos apontam exclusivamente para database.agenciavolc.com.br, conferido por varredura de hosts."
+    }
+  ],
+  "conceitos_propostos": [
+    {
+      "id": "concept:gads_cost_ingestion",
+      "state_atual": "(o integrador confere; F018/F019 apontam cap_cost_ingestion)",
+      "state_proposto": "partial",
+      "evidence_proposta": "A ingestão de custo Google Ads deixou de depender só do contrato legado daily_campaign_metrics. Existe fato canônico campanha-dia com identidade por conta, moeda, micros, NULL≠0, precedência D0<D-1<backfill, ledger de execução append-only, recibo que reconcilia contra o que foi persistido e projeção de compatibilidade restrita às colunas de entrega. A orquestração é do n8n, por ADR; a consistência é do banco, por RPC única SECURITY DEFINER com search_path fixo, sem escrita direta nem para service_role. Continua partial porque nada foi aplicado nem ativado, e porque a instância n8n viva não foi lida nesta lane."
+    },
+    {
+      "id": "concept:schedule_authority",
+      "state_atual": "(pode não existir; o integrador cria ou reaproveita)",
+      "state_proposto": "decidido",
+      "evidence_proposta": "ADR-N8N-AUTORIDADE-DE-AGENDA.md registra N8N_IS_SCHEDULE_AUTHORITY em 01/09/2026: o n8n é a única autoridade de agenda da ingestão contínua Google Ads; o coletor Python permanece como biblioteca, one-shot, fallback e diagnóstico; os timers de deploy/google-intelligence/ ficam desinstalados e inativos, versionados como alternativa declarada com condição explícita de aposentadoria. A decisão é medida por scripts/gate_agenda_unica_gads.py, que confere systemd desta máquina, os artefatos capazes de agendar no repositório e a ausência de chamada à API de ativação do n8n — e NOMEIA o que não prova: cinco workflows da família aparecem com agenda ativa no inventário de 19/08/2026, e conferi-los no painel é pré-condição de ativação."
+    }
+  ],
+  "nos_propostos": [
+    {
+      "id": "gads-fato-campanha-dia",
+      "tipo": "schema",
+      "cluster": "dados",
+      "rotulo": "Fato canônico Google Ads campanha-dia (v12_04)",
+      "estado": "escrito_e_provado_nao_aplicado",
+      "path": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+      "evidence": "trafego_coleta_execucao (ledger append-only por lote) + google_ads_campanha_dia (chave customer_id+campaign_id+metric_date+segments_hash, zero DEFAULT em métrica, dinheiro em micros com moeda) + volc_registrar_gads_campanha_dia (única porta, SECURITY DEFINER, search_path fixo, idempotente com memória, recusa a mesma chave com conteúdo diferente) + volc_gads_projetar_daily_compat (projeção fault-isolated, 16 colunas de entrega, nunca receita/orientação) + trafego_coleta_execucao_saude (view read-only para o deadman). RLS habilitada e forçada, zero policies, zero grant anon/authenticated, service_role sem escrita direta. 107 provas no ciclo completo em Postgres descartável."
+    },
+    {
+      "id": "n8n-gads-campanha-dia-d0",
+      "tipo": "workflow",
+      "cluster": "aquisicao",
+      "rotulo": "n8n · Google Ads campanha-dia D0 (hoje)",
+      "estado": "inativo",
+      "path": "n8n/volc_gads_campanha_dia_d0.json",
+      "evidence": "Gerado por n8n/gerar_flows_gads_ledger_v12.py, active: false. Agenda 0 6,12,18,23 * * * em America/Sao_Paulo, janela do dia corrente. Google Ads v25 somente SELECT, paginação explícita com teto, normalização que preserva NULL≠0, validação semântica local, uma única RPC de ingestão, reconciliação por lote, fechamento com Limit 1 na saída done, releitura do recibo e alerta só em falha real."
+    },
+    {
+      "id": "n8n-gads-campanha-dia-d1",
+      "tipo": "workflow",
+      "cluster": "aquisicao",
+      "rotulo": "n8n · Google Ads campanha-dia D-1 (ontem fechado)",
+      "estado": "inativo",
+      "path": "n8n/volc_gads_campanha_dia_d1.json",
+      "evidence": "Mesmo desenho e MESMO código do D0, byte a byte (conferido pelo validador); diferem só em Config e agenda: 0 6 * * *, janela do dia anterior, janela_fechada = true, precedência 2."
+    },
+    {
+      "id": "gate-workflows-n8n-gads",
+      "tipo": "gate",
+      "cluster": "governanca",
+      "rotulo": "Validação nó a nó dos workflows Google Ads",
+      "estado": "ativo",
+      "path": "scripts/validar_workflows_n8n_gads.py",
+      "evidence": "339 provas em sete camadas: estrutura, round trip de import/export, regras por tipo de nó, expressões e referências com maiúsculas conferidas, node --check em cada jsCode, topologia elo a elo com prova de alcançabilidade contra laço de autenticação, e varreduras de segredo, *.supabase.co, host fora da allowlist, mutação Google e ativação n8n. Os 27 campos GAQL são conferidos contra os descriptors do SDK google-ads 31.4.0 (v25); ausência do SDK vira PULADO explícito, nunca aprovação."
+    },
+    {
+      "id": "simulador-gads-ledger-v12",
+      "tipo": "prova",
+      "cluster": "governanca",
+      "rotulo": "Simulador offline dos Code nodes",
+      "estado": "ativo",
+      "path": "scripts/simular_gads_ledger_v12.mjs",
+      "evidence": "Executa o jsCode EXATO do workflow num vm com dublê do runtime n8n, relógio injetado e zero rede: 65 provas cobrindo janela D0/D-1 e virada de ano, NULL≠0, identidade devolvida, validação parcial, paginação sem descarte, acumulado do done, falha que não vira vazio, vazio confirmado que não alerta, releitura do recibo e idempotência. Foi ele que derrubou o defeito de índice de rodada do $() antes de qualquer ativação. Com --rpc=psql, os documentos vão para a RPC v12_04 real num Postgres descartável."
+    },
+    {
+      "id": "gate-agenda-unica-gads",
+      "tipo": "gate",
+      "cluster": "governanca",
+      "rotulo": "Autoridade única de agenda Google Ads",
+      "estado": "ativo",
+      "path": "scripts/gate_agenda_unica_gads.py",
+      "evidence": "Mede systemd desta máquina (units instaladas, ativas, em list-timers e em /etc/systemd/system), varre os artefatos CAPAZES de agendar no repositório rastreado, confere que os workflows nascem inativos e que nenhum artefato chama a API de ativação do n8n. Declara como PULADO, com nomes, o que não prova: cinco workflows da família com agenda ativa no inventário de 19/08/2026 na instância viva."
+    }
+  ],
+  "arestas_propostas": [
+    {"source": "n8n-gads-campanha-dia-d0", "target": "gads-fato-campanha-dia", "relation": "escreve_por_rpc"},
+    {"source": "n8n-gads-campanha-dia-d1", "target": "gads-fato-campanha-dia", "relation": "escreve_por_rpc"},
+    {"source": "n8n-gads-campanha-dia-d0", "target": "concept:schedule_authority", "relation": "implementa"},
+    {"source": "n8n-gads-campanha-dia-d1", "target": "concept:schedule_authority", "relation": "implementa"},
+    {"source": "gads-fato-campanha-dia", "target": "daily_campaign_metrics", "relation": "projeta_compatibilidade", "_nota": "projeção restrita a 16 colunas de entrega; a legada NÃO vira autoridade. Se o nó da legada tiver outro id na curadoria, o integrador substitui o target."},
+    {"source": "gads-fato-campanha-dia", "target": "trafego-campanha", "relation": "referencia_identidade"},
+    {"source": "gate-workflows-n8n-gads", "target": "n8n-gads-campanha-dia-d0", "relation": "valida"},
+    {"source": "gate-workflows-n8n-gads", "target": "n8n-gads-campanha-dia-d1", "relation": "valida"},
+    {"source": "simulador-gads-ledger-v12", "target": "n8n-gads-campanha-dia-d1", "relation": "prova_comportamento"},
+    {"source": "gate-agenda-unica-gads", "target": "concept:schedule_authority", "relation": "mede"},
+    {"source": "concept:schedule_authority", "target": "deploy-google-intelligence-timers", "relation": "aposenta_condicionalmente", "_nota": "os timers seguem versionados e desinstalados; só voltam à mesa por ADR sucessora."}
+  ],
+  "lacunas_abertas": [
+    {
+      "id": "agenda_legada_conflitante",
+      "descricao": "O inventário sanitizado de 19/08/2026 registra cinco workflows da família Google Ads com scheduleTrigger e ativo=true na instância viva: custo-gads-report, custo-gads-report-d1, custo-gads-placements-display, custo-gads-placements-display-d1 e criacao-gads-factory-v3. Esta lane não leu a instância (REAL_N8N_READ_NOT_PROVEN), então não afirma que a agenda já é única — afirma que nenhuma agenda desta entrega está ligada.",
+      "acao": "Passo 1 de AUTORIZACAO-ATIVACAO.md: conferir por ID no painel e desativar o que escrever campanha-dia, ANTES de ativar o par novo.",
+      "gate": "python3 scripts/gate_agenda_unica_gads.py"
+    },
+    {
+      "id": "leitura_real_google_ads",
+      "descricao": "REAL_GOOGLE_ADS_READ_NOT_PROVEN. Os 27 campos existem nos descriptors do SDK v25; isso não prova que o par (recurso, campo) é selecionável em GAQL — só o google_ads_field da API responde. Um campo recusado derruba a página inteira até ser removido da consulta.",
+      "acao": "Passo 5 da autorização: canário manual D-1 numa conta, uma janela. Se a API recusar campo, removê-lo do GAQL_CAMPOS do gerador e regerar — nunca editar o JSON à mão.",
+      "precedente": "docs/closure/hermes-p04-t07-pmax-real-read-v1/LINHAGEM-CORRECAO-V25.md fez exatamente isso com nove campos PMax."
+    },
+    {
+      "id": "credencial_developer_token_no_http_node",
+      "descricao": "O nó do Google injeta o developer token por ={{ $credentials.developerToken }}. Isso não foi exercitado contra um n8n real.",
+      "acao": "Passo 6 da autorização. Se o n8n não resolver $credentials ali, escolher outro caminho de injeção — jamais escrever o token no JSON.",
+      "guarda": "o validador recusa segredo literal no artefato"
+    },
+    {
+      "id": "colisao_v13_01",
+      "descricao": "A lane M-W2-02 tem prompt para criar v13_01_gads_fato_canonico.sql com os mesmos objetos. Se as duas existirem, há duas autoridades para a mesma tabela.",
+      "acao": "O integrador escolhe UMA antes de aplicar. O preflight da v12_04 aborta com mensagem nomeada se as tabelas já existirem, então aplicar as duas é mecanicamente impossível.",
+      "guarda": "backend/tests/test_gads_workflows_n8n.py::test_a_migration_nao_toca_a_serie_reservada_a_outra_lane"
+    },
+    {
+      "id": "familia_de_inteligencia_ainda_sem_agenda",
+      "descricao": "A ADR decide a autoridade de AGENDA, e a família de inteligência Google Ads (diagnóstico, recomendações, simulações, forecast, PMax) continua sem rotina contínua ligada. Ela não foi migrada para o n8n nesta lane.",
+      "acao": "Entrega própria. Quando for ligada, a agenda passa a ser do n8n pela mesma ADR."
+    },
+    {
+      "id": "projecao_ambigua_nao_retroage",
+      "descricao": "Quando duas contas passam a compartilhar um campaign_id, a projeção da segunda é recusada (recusada_ambigua) mas a da primeira não é revertida: a linha legada fica com os números de uma conta só, sem marcador. O fato canônico guarda as duas separadas.",
+      "acao": "Aceitável enquanto daily_campaign_metrics não tiver conta na chave. Migrar consumidores para o fato canônico encerra a lacuna."
+    },
+    {
+      "id": "rollback_nao_desfaz_projecao",
+      "descricao": "O rollback da v12_04 não reverte as colunas de entrega que a projeção escreveu na legada: o valor anterior não foi guardado.",
+      "acao": "Declarado no cabeçalho do rollback e na autorização. Receita, revshare, GAM, comissão e orientação nunca foram tocadas, então não precisam de reversão."
+    }
+  ],
+  "frescor_do_grafo": {
+    "recalculado_nesta_lane": false,
+    "motivo": "proibição explícita de tocar Roadmap, curadoria e grafo em trabalho paralelo (AGENTS.md). graphify-out/UPDATE_STATUS.json continua apontando para o commit anterior a esta entrega — divergência esperada e declarada.",
+    "acao_do_integrador": "python3 scripts/atualizar_grafo_volc_os.py && python3 scripts/atualizar_grafo_volc_os.py --check, UMA vez, depois do merge e da aplicação deste delta."
+  }
+}
