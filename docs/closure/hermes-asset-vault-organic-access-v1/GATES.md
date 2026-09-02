@@ -123,3 +123,34 @@ Resultado: dependências instaladas em `node_modules`, **sem alteração rastrea
 | handoff/curation não promovem `done` | `CURATION-HANDOFF.json` propõe no máximo `partial` para P03-T11 e mantém P03-T02/P03-T07/P12-T02/P12-T09 em `todo`; não edita Roadmap/grafo | **ok** |
 
 Sem rodada corretiva de código necessária; só artefatos foram atualizados para refletir gates reais executados por Hermes após o encerramento do executor.
+
+---
+
+## 6. Microcorreção final aceita pelo dono
+
+Após aceitação da entrega como candidata `partial`, foram corrigidos apenas estados finais incorretos e a separação de portões:
+
+- procedência documental atualizada para HEAD final/publicação real;
+- `broker_de_acesso` deixou de carregar estado editorial `todo` hardcoded no produto e passou a expor capacidade factual: `implementacao=local_verified`, `operacao_real=live_read_not_proven`, `tarefa=P03-T11`;
+- `pronto_para_receber_peca`, `pronto_para_operar_acesso` e `pronto_para_publicar` foram separados;
+- `publica` permanece sempre `false` nesta rota read-only.
+
+---
+
+## 7. Gates da microcorreção final
+
+**HEAD anterior:** `67ac4ac5ed184eb5c4107fe2ac9285f16d6eaf2f`
+
+| Gate limitado | Resultado |
+|---|---|
+| Testes focais Cofre/broker/prontidão | `178 passed`, 5 warnings herdados |
+| Frontend Asset Vault | `43 passed` em 3 arquivos |
+| TypeScript vs baseline | `76` erros totais herdados, `0` em `src/features/asset-vault` |
+| Build | `npm run build` passou; warning herdado de chunk grande/dynamic import |
+| Autoteste broker | passou: recusas sem rede, sem AdsPower e sem 1Password |
+| `git diff --check` | passou |
+| Scanner de segredos | 0 hits |
+| Scanner `op://` em closure | 0 hits |
+| Artefatos com estados superados | **0 hits** no scanner de placeholders de pós-commit, branch não publicada, commit ausente ou push ausente |
+
+Divergência ambiental preservada: não foram reexecutados/corrigidos os 20 testes de criativos fora do ownership; o integrador deve reexecutá-los na convergência.

@@ -3,17 +3,40 @@
   "_missao": "hermes-asset-vault-organic-access-v1",
   "_branch": "sprint/hermes-asset-vault-organic-access-v1",
   "_base_sha": "c8ca8628e83742dd7da5242f0a015f76292aafe7",
-  "_head_medido": "PREENCHIDO_APOS_COMMIT",
-  "_commits": "PREENCHIDO_APOS_COMMIT",
+  "_head_medido": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso",
+  "_commits": [
+    {
+      "sha": "c1fd42e",
+      "subject": "fix(cofre): reconcile readiness gates and closure provenance"
+    },
+    {
+      "sha": "67ac4ac",
+      "subject": "docs(closure): record asset vault organic access checkpoint"
+    },
+    {
+      "sha": "82a37b1",
+      "subject": "feat(cofre): show readiness blockers in asset vault UI"
+    },
+    {
+      "sha": "a68f047",
+      "subject": "test(cofre): prove broker secrecy and readiness semantics"
+    },
+    {
+      "sha": "8393662",
+      "subject": "feat(cofre): expose organic readiness without publishing"
+    },
+    {
+      "sha": "bf4d345",
+      "subject": "feat(cofre): add read-only AdsPower broker boundary"
+    }
+  ],
   "_medido_em": "2026-09-02",
   "_sessao_claude": "553b5b9d-aa0e-4e87-9981-766952b591c7",
-
   "_aviso_que_vem_antes_de_tudo": "Claude Code nao conseguiu rodar interpretadores/git por bloqueio da camada de permissao, mas Hermes/Bia executou os gates apos o encerramento do executor. Ver GATES.md: testes focais backend/Cofre/broker passaram, frontend Asset Vault passou, build passou, TypeScript manteve baseline herdado sem erro em asset-vault; backend completo falha apenas em criativo fora do ownership.",
-  "_commits_observacao": "Commits atomicos serao/foram criados pela coordenadora Hermes/Bia apos gates e revisao focal, sem push ate autorizacao final da missao.",
-  "_pre_condicao_do_integrador": "A branch nao esta mesclada e nao foi enviada. Trabalho que so existe numa worktree nao pode marcar a fonte compartilhada como concluido — CLAUDE.md e AGENTS.md sao explicitos. Alem disso, nenhuma escrita foi feita no Supabase oficial, entao nenhum ativo real existe no Cofre em producao.",
+  "_commits_observacao": "Cinco commits atomicos ja foram criados e publicados na feature branch; esta microcorrecao atualiza apenas fatos finais/documentacao e contrato de prontidao.",
+  "_pre_condicao_do_integrador": "A branch nao esta mesclada e foi publicada na feature branch. Trabalho que so existe numa worktree nao pode marcar a fonte compartilhada como concluido — CLAUDE.md e AGENTS.md sao explicitos. Alem disso, nenhuma escrita foi feita no Supabase oficial, entao nenhum ativo real existe no Cofre em producao.",
   "_nenhuma_tarefa_vira_done": "Nenhuma das sete propostas pede 'done'. Codigo revisado em worktree nao e operacao provada, e 'done' significa 'concluido e provado' neste roadmap.",
   "_frescor_do_mapa_vivo": "DEFASADO e NAO CONSERTADO por instrucao explicita do Hermes. `python3 scripts/atualizar_grafo_volc_os.py --check` falhou no preflight porque graphify-out/UPDATE_STATUS.json esta ausente; confirmado por leitura nesta sessao que o diretorio graphify-out/ nao existe nesta worktree. Nenhum arquivo de grafo foi criado, editado ou regenerado.",
-
   "tarefas": [
     {
       "id": "P03-T11",
@@ -29,7 +52,7 @@
         "o 1Password nao foi consultado: nao ha app, CLI op nem MCP nesta maquina, e a resolucao efemeira depende do checkpoint de autorizacao",
         "abrir perfil ou navegador exige um SEGUNDO checkpoint, que esta missao nao pediu",
         "a idempotencia vive no processo; um sidecar reiniciado esquece, e a durabilidade so existe quando o recibo virar verificacao no Cofre",
-        "a branch ainda nao esta mesclada"
+        "a branch esta publicada e ainda nao integrada em volc-os-v2"
       ]
     },
     {
@@ -42,7 +65,7 @@
         "A LACUNA QUE MANTEM 'partial' E A MESMA DE ANTES: a ligacao ao GRAFO continua inteiramente aberta. O Cofre nao escreve no Mapa Vivo e nao le dele; a correspondencia com projetos e campanhas segue sendo texto declarado, nao aresta",
         "frontend Asset Vault rodou verde: 40 testes passados em 3 arquivos",
         "build frontend passou; TypeScript manteve baseline herdado de 76 erros e 0 em src/features/asset-vault",
-        "a branch ainda nao esta mesclada"
+        "a branch esta publicada e ainda nao integrada em volc-os-v2"
       ]
     },
     {
@@ -105,7 +128,6 @@
       ]
     }
   ],
-
   "nos_de_grafo_afetados_quando_o_mapa_for_reconstruido": [
     "Cofre de Ativos (API administrativa) — uma rota de leitura a mais: GET /api/cofre/ativos/{id}/prontidao",
     "Broker de acesso 1Password->AdsPower — NO NOVO, estado 'parcial', dentro da fronteira do Cofre",
@@ -114,11 +136,16 @@
     "Aresta nova: Broker de acesso --depends_on--> AdsPower Local API (somente leitura, loopback)",
     "Aresta nova: Prontidao --produces_for--> Porta de publicacao (P12-T09), hoje inexistente e nomeada como bloqueio"
   ],
-
   "_o_que_o_integrador_nao_deve_fazer": [
     "nao aplicar nenhuma proposta antes de revisar GATES.md e o checkpoint de autorizacao",
     "nao promover P03-T11 para 'done': o broker nunca falou com um AdsPower real",
     "nao reabrir a seguranca da v13_01/v13_02 sem contraprova executavel — esta missao nao produziu nenhuma",
     "nao tratar a ausencia de graphify-out/ como defeito desta missao: ela e anterior e foi registrada, nao consertada"
-  ]
+  ],
+  "_branch_publicada": "sprint/hermes-asset-vault-organic-access-v1",
+  "_sha_remoto_publicado_antes_da_microcorrecao": "67ac4ac5ed184eb5c4107fe2ac9285f16d6eaf2f",
+  "_estado_publicacao": "publicada na feature branch, ainda nao integrada em volc-os-v2",
+  "_arvore_limpa": "verificada por Hermes apos commit/push final",
+  "_zero_escrita_externa": "zero Supabase write, zero AdsPower real, zero publicacao, zero migration, zero deploy",
+  "_sha_remoto_publicado_apos_microcorrecao": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso"
 }

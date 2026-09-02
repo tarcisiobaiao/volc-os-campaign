@@ -70,7 +70,7 @@ export function ProntidaoDeOperacao({ ativoId }: { ativoId: string }) {
   const cabecalho = (
     <div className="flex items-center gap-2">
       <Waypoints aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-      <h4 className="text-sm font-semibold">Prontidão para operar</h4>
+      <h4 className="text-sm font-semibold">Prontidão por portão</h4>
     </div>
   );
 
@@ -130,10 +130,22 @@ export function ProntidaoDeOperacao({ ativoId }: { ativoId: string }) {
         ))}
       </ul>
 
+      <div className="mt-4 grid gap-2 text-[11px] sm:grid-cols-3">
+        <span className={cn("rounded-md border px-2 py-1", prontidao.pronto_para_receber_peca ? "text-emerald-600" : "text-destructive")}>
+          Receber peça: {prontidao.pronto_para_receber_peca ? "sim" : "não"}
+        </span>
+        <span className={cn("rounded-md border px-2 py-1", prontidao.pronto_para_operar_acesso ? "text-emerald-600" : "text-destructive")}>
+          Operar acesso: {prontidao.pronto_para_operar_acesso ? "sim" : "não"}
+        </span>
+        <span className={cn("rounded-md border px-2 py-1", prontidao.pronto_para_publicar ? "text-emerald-600" : "text-destructive")}>
+          Publicar: {prontidao.pronto_para_publicar ? "sim" : "não"}
+        </span>
+      </div>
+
       {prontidao.bloqueios.length ? (
         <div className="mt-4 rounded-md border border-border bg-muted/40 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            O que impede a publicação
+            O que impede acesso/publicação
           </p>
           <ul className="mt-1.5 space-y-1">
             {prontidao.bloqueios.map((bloqueio) => (

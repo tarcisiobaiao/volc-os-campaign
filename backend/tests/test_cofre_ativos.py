@@ -625,6 +625,7 @@ def _repo_para_handoff(**ajustes):
         "ativo_id": "asset:facebook-page:piloto", "nome": "Pagina do piloto",
         "kind": "facebook_page", "plataforma": "Meta", "estado": "active",
         "url_publica": "https://facebook.com/pagina", "projeto": "Piloto", "vertical": "Organico",
+        "dono_nome": "Tarcisio", "dono_custodia": "declared",
         "aposentado_em": None,
         "relacoes": [{"tipo": "authenticates_through", "destino": "asset:browser-profile:piloto",
                       "rotulo": "Perfil AdsPower do piloto", "estado": "declared"}],
@@ -919,14 +920,40 @@ def test_prontidao_uma_referencia_comprovada_nao_e_apagada_por_outra_pendente():
     assert corpo["perguntas"]["referencia_resolvivel"]["valor"] == "sim"
 
 
-def test_prontidao_nomeia_a_porta_de_publicacao_ausente_como_bloqueio():
-    """"Por que nao publica?" tem de ter resposta no corpo. Um `pronto: false`
-    mudo faria alguem procurar o defeito no ativo, e o que falta e o sistema."""
+def test_prontidao_separa_receber_de_publicar_quando_p12_t09_nao_existe():
+    """Uma pagina pode estar apta a RECEBER/associar uma peca aprovada no Cofre
+    e ainda nao poder publica-la. P12-T09 ausente bloqueia publicacao, nao o
+    relacionamento futuro da peca com o destino."""
+    corpo = montar(_repo_para_handoff(credencial=[{
+        "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+        "verificacao_estado": "verified", "verificado_em": "2026-09-01T10:00:00Z"},
+    ])).get(PRONTIDAO).json()
+    assert corpo["pronto_para_receber_peca"] is True
+    assert corpo["perguntas"]["peca_roteavel"]["valor"] == "sim"
+    assert corpo["pronto_para_publicar"] is False
+    assert corpo["publica"] is False
+    assert any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+    assert not any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["recebimento"])
+
+
+def test_prontidao_publicacao_continua_falsa_mesmo_com_recebimento_verde():
     corpo = montar(_repo_para_handoff()).get(PRONTIDAO).json()
-    assert corpo["pronto_para_receber_peca"] is False
-    assert any("P12-T09" in b for b in corpo["bloqueios"])
-    assert corpo["perguntas"]["peca_roteavel"]["valor"] == "nao"
-    assert corpo["componentes_seguintes"]["broker_de_acesso"]["tarefa"] == "P03-T11"
+    assert corpo["pronto_para_publicar"] is False
+    assert corpo["publica"] is False
+    assert any("autorizacao de ato de publicacao" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+
+
+def test_prontidao_broker_local_provado_nao_vira_live_read():
+    corpo = montar(_repo_para_handoff()).get(PRONTIDAO).json()
+    broker = corpo["componentes_seguintes"]["broker_de_acesso"]
+    assert broker == {
+        "tarefa": "P03-T11",
+        "implementacao": "local_verified",
+        "operacao_real": "live_read_not_proven",
+    }
+    assert corpo["perguntas"]["perfil_disponivel"]["procedencia"] == "registro"
+    assert corpo["perguntas"]["perfil_disponivel"]["valor"] == "desconhecido"
+    assert corpo["pronto_para_operar_acesso"] is False
 
 
 def test_prontidao_e_handoff_nao_podem_divergir_sobre_o_que_existe():

@@ -47,7 +47,14 @@ from typing import Any, Mapping
 #: existe enquanto a outra diz que nao.
 COMPONENTES_SEGUINTES: dict[str, dict[str, str]] = {
     "producao_criativa": {"tarefa": "P17", "estado": "fora desta missao"},
-    "broker_de_acesso": {"tarefa": "P03-T11", "estado": "todo"},
+    # Estado factual da CAPACIDADE, nao promocao editorial do Roadmap.
+    # P03-T11 segue proposta `partial` no handoff porque o broker foi provado
+    # localmente, mas nenhuma leitura real do AdsPower aconteceu.
+    "broker_de_acesso": {
+        "tarefa": "P03-T11",
+        "implementacao": "local_verified",
+        "operacao_real": "live_read_not_proven",
+    },
     "porta_de_publicacao": {"tarefa": "P12-T09", "estado": "todo"},
     "qa_visual": {"tarefa": "P12-T11", "estado": "todo"},
 }
@@ -108,20 +115,23 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
     aposentado = bool(detalhe.get("aposentado_em"))
 
     bloqueios: list[str] = []
+    bloqueios_recebimento: list[str] = []
+    bloqueios_acesso: list[str] = []
+    bloqueios_publicacao: list[str] = []
 
     # 1. Qual e a pagina de destino
     if detalhe.get("ativo_id"):
         destino = _resposta(SIM, f"{detalhe.get('nome')} ({detalhe.get('kind')})")
     else:
         destino = _resposta(NAO, "o ativo nao tem identidade no Cofre")
-        bloqueios.append("o ativo nao tem identidade no Cofre")
+        bloqueios_recebimento.append("o ativo nao tem identidade no Cofre")
 
     # 2. Quem responde por ela
     dono_nome = str(detalhe.get("dono_nome") or "").strip()
     custodia = str(detalhe.get("dono_custodia") or "unassigned")
     if not dono_nome or custodia == "unassigned":
         dono = _resposta(NAO, "o ativo nao tem dono nomeado")
-        bloqueios.append("o ativo nao tem dono nomeado: ninguem responde por uma publicacao nele")
+        bloqueios_recebimento.append("o ativo nao tem dono nomeado: ninguem responde por uma peca associada a ele")
     elif custodia == "declared":
         dono = _resposta(SIM, f"{dono_nome} — custodia declarada, nao conferida")
     else:
@@ -139,7 +149,7 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
         perfil = _resposta(SIM, str(perfis[0].get("rotulo") or perfis[0].get("destino")))
     else:
         perfil = _resposta(NAO, "nenhuma aresta authenticates_through declarada")
-        bloqueios.append(
+        bloqueios_acesso.append(
             "nenhum perfil de navegador relacionado (authenticates_through): "
             "o QA visual nao saberia qual perfil abrir")
 
@@ -150,7 +160,7 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
         onde = _resposta(SIM, f"referencia registrada em {nomes}")
     else:
         onde = _resposta(NAO, "nenhuma referencia de acesso registrada")
-        bloqueios.append(
+        bloqueios_acesso.append(
             "nenhuma referencia de acesso registrada: o broker nao teria o que resolver")
 
     # 6. A referencia pode ser resolvida em runtime
@@ -162,7 +172,7 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
             estado, (DESCONHECIDO, f"estado de verificacao nao reconhecido: {estado}"))
         resolvivel = _resposta(valor, motivo)
         if valor != SIM:
-            bloqueios.append(f"a referencia de acesso nao esta comprovada: {motivo}")
+            bloqueios_acesso.append(f"a referencia de acesso nao esta comprovada: {motivo}")
 
     # 7. O perfil esta disponivel AGORA
     #
@@ -177,7 +187,7 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
                                         if vivo else "o broker nao encontrou o perfil")),
             procedencia="sonda")
         if not vivo:
-            bloqueios.append("o broker nao encontrou o perfil no host isolado")
+            bloqueios_acesso.append("o broker nao encontrou o perfil no host isolado")
     elif not perfis:
         disponivel = _resposta(NAO, "nao ha perfil relacionado para consultar")
     else:
@@ -187,20 +197,36 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
             "esta API responde pelo registro, nunca ao vivo",
             procedencia="registro")
 
-    # 8. Uma peca aprovada pode ser roteada para ca
+    # 8. Uma peca aprovada pode ser associada a este destino no Cofre.
+    #
+    # Receber/associar uma peca e diferente de PUBLICAR. P12-T09 ausente bloqueia
+    # publicacao, mas nao torna falso que existe um destino com owner ao qual uma
+    # peca aprovada futura possa ser relacionada.
     if aposentado:
-        bloqueios.append("o ativo esta aposentado")
+        bloqueios_recebimento.append("o ativo esta aposentado")
+    roteavel = _resposta(
+        NAO if bloqueios_recebimento else SIM,
+        bloqueios_recebimento[0] if bloqueios_recebimento
+        else "ativo, destino e owner estao identificados; a peca pode ser associada ao Cofre")
+
+    # Portoes separados: acesso operacional e publicacao final.
+    if disponivel["valor"] == DESCONHECIDO:
+        bloqueios_acesso.append(
+            "perfil relacionado sem leitura ao vivo: broker local foi provado, mas live-read nao")
+
     porta = COMPONENTES_SEGUINTES["porta_de_publicacao"]
     if porta["estado"] != "done":
-        # Bloqueio de SISTEMA, nao do ativo: ele vale para toda pagina do Cofre
-        # enquanto P12-T09 nao existir. Ele aparece aqui para que "por que nao
-        # publica?" tenha resposta no corpo, em vez de virar investigacao.
-        bloqueios.append(
+        bloqueios_publicacao.append(
             f"nao existe porta de publicacao no VOLC ({porta['tarefa']}): "
             "nenhuma peca aprovada tem por onde sair")
-    roteavel = _resposta(
-        NAO if bloqueios else SIM,
-        bloqueios[0] if bloqueios else "inventario, acesso e destino estao completos")
+    bloqueios_publicacao.extend(bloqueios_recebimento)
+    bloqueios_publicacao.extend(bloqueios_acesso)
+    bloqueios_publicacao.append("nenhuma autorizacao de ato de publicacao foi concedida nesta rota")
+
+    bloqueios = bloqueios_recebimento + bloqueios_acesso + bloqueios_publicacao
+    pronto_para_receber_peca = not bloqueios_recebimento
+    pronto_para_operar_acesso = not bloqueios_acesso
+    pronto_para_publicar = False
 
     return {
         "ativo_id": detalhe.get("ativo_id"),
@@ -237,8 +263,15 @@ def avaliar(detalhe: Mapping[str, Any], engines: list[Mapping[str, Any]] | None 
             for e in engines
         ],
         "componentes_seguintes": COMPONENTES_SEGUINTES,
-        "pronto_para_receber_peca": not bloqueios,
+        "pronto_para_receber_peca": pronto_para_receber_peca,
+        "pronto_para_operar_acesso": pronto_para_operar_acesso,
+        "pronto_para_publicar": pronto_para_publicar,
         "bloqueios": bloqueios,
+        "bloqueios_por_portao": {
+            "recebimento": bloqueios_recebimento,
+            "acesso": bloqueios_acesso,
+            "publicacao": bloqueios_publicacao,
+        },
         # A publicacao continua sendo um ato separado e explicito. Esta rota
         # RESPONDE; ela nao cria job, nao abre navegador e nao publica.
         "publica": False,

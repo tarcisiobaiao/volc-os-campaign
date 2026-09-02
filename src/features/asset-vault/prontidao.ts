@@ -90,9 +90,16 @@ export interface ProntidaoDoAtivo {
   perguntas: Record<ChaveDaPergunta, RespostaDeProntidao>;
   retrato: RetratoDeProntidao;
   producao_possivel: EngineParaODestino[];
-  componentes_seguintes: Record<string, { tarefa: string; estado: string }>;
+  componentes_seguintes: Record<string, { tarefa: string; estado?: string; implementacao?: string; operacao_real?: string }>;
   pronto_para_receber_peca: boolean;
+  pronto_para_operar_acesso: boolean;
+  pronto_para_publicar: boolean;
   bloqueios: string[];
+  bloqueios_por_portao: {
+    recebimento: string[];
+    acesso: string[];
+    publicacao: string[];
+  };
   /** Sempre `false`. Publicar é um ato separado, e nenhuma leitura o dispara. */
   publica: boolean;
 }
@@ -117,7 +124,15 @@ export function ehProntidao(valor: unknown): valor is ProntidaoDoAtivo {
   if (!valor || typeof valor !== 'object') return false;
   const p = valor as Record<string, unknown>;
   if (typeof p.pronto_para_receber_peca !== 'boolean') return false;
+  if (typeof p.pronto_para_operar_acesso !== 'boolean') return false;
+  if (typeof p.pronto_para_publicar !== 'boolean') return false;
   if (!Array.isArray(p.bloqueios) || p.bloqueios.some((b) => typeof b !== 'string')) return false;
+  const portoes = p.bloqueios_por_portao as Record<string, unknown> | undefined;
+  if (!portoes || typeof portoes !== 'object') return false;
+  for (const chave of ['recebimento', 'acesso', 'publicacao']) {
+    const lista = portoes[chave];
+    if (!Array.isArray(lista) || lista.some((b) => typeof b !== 'string')) return false;
+  }
   const perguntas = p.perguntas;
   if (!perguntas || typeof perguntas !== 'object') return false;
   return PERGUNTAS.every((chave) => respostaValida((perguntas as Record<string, unknown>)[chave]));

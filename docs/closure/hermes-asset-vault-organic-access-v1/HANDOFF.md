@@ -3,7 +3,7 @@
 **Missão:** `hermes-asset-vault-organic-access-v1`
 **Branch:** `sprint/hermes-asset-vault-organic-access-v1` · **base:** `c8ca8628e83742dd7da5242f0a015f76292aafe7`
 **Data:** 02/09/2026 · **Sessão Claude:** `553b5b9d-aa0e-4e87-9981-766952b591c7`
-**Mesclada?** Não. **Enviada (push)?** pendente da coordenadora. **Commitada?** pendente/ver seção de commits no relatório final.
+**Mesclada?** Não. **Enviada (push)?** Sim. **Commitada?** Sim — HEAD `67ac4ac5ed184eb5c4107fe2ac9285f16d6eaf2f`.
 
 ---
 
@@ -11,8 +11,8 @@
 
 O sistema passou a **saber responder** as nove perguntas da operação orgânica —
 qual página, de quem, com qual perfil, onde mora a credencial, se ela já foi
-resolvida, se o perfil está disponível, se uma peça pode ser roteada e o que
-impede a publicação — e ganhou o **broker do P03-T11** que só pergunta; o que
+resolvida, se o perfil está disponível, se uma peça pode ser recebida no Cofre,
+se o acesso pode ser operado, se pode publicar e o que impede cada portão — e ganhou o **broker do P03-T11** que só pergunta; o que
 continua faltando não é código, é **um dado real que ninguém digitou** e **uma
 autorização de escrita**.
 
@@ -92,8 +92,9 @@ broker, ao vivo). **Esta API só produz `registro`** — ela não alcança a Loc
 API do AdsPower, que escuta em loopback no outro host, e não resolve `op://`.
 Um `sim` inventado ali seria a pior resposta possível.
 
-`peca_roteavel` responde **não** para toda página do Cofre hoje, e o motivo está
-no corpo: `P12-T09` não existe, então nenhuma peça aprovada tem por onde sair.
+`pronto_para_receber_peca` agora é separado de `pronto_para_publicar`: ausência de
+`P12-T09` bloqueia publicação, mas não torna falsa a associação futura de uma peça
+aprovada ao destino no Cofre.
 "Por que não publica?" tem de ter resposta lida, não investigada.
 
 ---
@@ -208,7 +209,7 @@ Evidência principal em [`GATES.md`](GATES.md):
 - backend completo falha apenas em testes de `criativo`, fora do ownership;
 - `git diff --check`, ownership e scanners de segredo verdes.
 
-Os commits atômicos são responsabilidade da coordenadora Hermes/Bia após esta atualização de artefatos.
+Os commits atômicos foram criados pela coordenadora Hermes/Bia após os gates e publicados somente na feature branch.
 
 ---
 
@@ -230,6 +231,18 @@ Os commits atômicos são responsabilidade da coordenadora Hermes/Bia após esta
 
 Zero publicação · zero deploy · zero migration · zero escrita no Supabase
 oficial · zero leitura autenticada no Supabase oficial · zero abertura de perfil
-ou navegador AdsPower · zero consulta ao 1Password · zero segredo lido, medido,
-hasheado ou derivado · zero merge · zero push · zero edição de Roadmap,
+ou navegador AdsPower · zero consulta real ao 1Password · zero segredo lido, medido,
+hasheado ou derivado · zero merge · push somente da feature branch · zero edição de Roadmap,
 curadoria ou grafo.
+
+
+---
+
+## Microcorreção final
+
+Após aceite no mérito como candidata `partial`, esta branch recebeu uma correção limitada:
+
+- closure atualizado para refletir branch publicada, HEAD/SHA remoto e árvore limpa;
+- estado do broker no produto separado do estado editorial do Roadmap;
+- portões separados: receber peça, operar acesso e publicar;
+- `publica` preservado como `false`.

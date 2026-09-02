@@ -93,9 +93,19 @@ const PRONTIDAO: cofre.ProntidaoDoAtivo = {
     ultima_revisao_resultado: null, aposentado_em: null,
   },
   producao_possivel: [],
-  componentes_seguintes: { porta_de_publicacao: { tarefa: "P12-T09", estado: "todo" } },
-  pronto_para_receber_peca: false,
+  componentes_seguintes: {
+    porta_de_publicacao: { tarefa: "P12-T09", estado: "todo" },
+    broker_de_acesso: { tarefa: "P03-T11", implementacao: "local_verified", operacao_real: "live_read_not_proven" },
+  },
+  pronto_para_receber_peca: true,
+  pronto_para_operar_acesso: false,
+  pronto_para_publicar: false,
   bloqueios: ["nao existe porta de publicacao no VOLC (P12-T09): nenhuma peca aprovada tem por onde sair"],
+  bloqueios_por_portao: {
+    recebimento: [],
+    acesso: ["nenhum perfil de navegador relacionado"],
+    publicacao: ["nao existe porta de publicacao no VOLC (P12-T09): nenhuma peca aprovada tem por onde sair"],
+  },
   publica: false,
 };
 

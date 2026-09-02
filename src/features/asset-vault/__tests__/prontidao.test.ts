@@ -35,9 +35,19 @@ function prontidao(sobrescreve: Partial<Record<(typeof PERGUNTAS)[number], Retur
     perguntas,
     retrato: { estado: "declared", dono_nome: "Tarcisio", revisao_atual: 1 },
     producao_possivel: [],
-    componentes_seguintes: { porta_de_publicacao: { tarefa: "P12-T09", estado: "todo" } },
-    pronto_para_receber_peca: false,
+    componentes_seguintes: {
+      porta_de_publicacao: { tarefa: "P12-T09", estado: "todo" },
+      broker_de_acesso: { tarefa: "P03-T11", implementacao: "local_verified", operacao_real: "live_read_not_proven" },
+    },
+    pronto_para_receber_peca: true,
+    pronto_para_operar_acesso: false,
+    pronto_para_publicar: false,
     bloqueios: ["nao existe porta de publicacao no VOLC (P12-T09)"],
+    bloqueios_por_portao: {
+      recebimento: [],
+      acesso: ["perfil relacionado sem leitura ao vivo"],
+      publicacao: ["nao existe porta de publicacao no VOLC (P12-T09)"],
+    },
     publica: false,
     ...extra,
   };
@@ -64,9 +74,17 @@ describe("prontidão — o guarda de forma", () => {
     expect(ehProntidao(prontidao({}, { bloqueios: [{ x: 1 }] as unknown as string[] }))).toBe(false);
   });
 
-  it("recusa `pronto` ausente em vez de assumir `false`", () => {
+  it("recusa portoes ausentes em vez de assumir `false`", () => {
+    for (const chave of ["pronto_para_receber_peca", "pronto_para_operar_acesso", "pronto_para_publicar"]) {
+      const torta = prontidao() as unknown as Record<string, unknown>;
+      delete torta[chave];
+      expect(ehProntidao(torta)).toBe(false);
+    }
+  });
+
+  it("recusa lista de bloqueios por portao ausente", () => {
     const torta = prontidao() as unknown as Record<string, unknown>;
-    delete torta.pronto_para_receber_peca;
+    delete torta.bloqueios_por_portao;
     expect(ehProntidao(torta)).toBe(false);
   });
 
@@ -110,5 +128,33 @@ describe("prontidão — o vocabulário de três valores", () => {
       expect(PERGUNTA_LABEL[chave]).toBeTruthy();
     }
     expect(Object.keys(PERGUNTA_LABEL).sort()).toEqual([...PERGUNTAS].sort());
+  });
+});
+
+
+describe("prontidão — portões separados", () => {
+  it("P12-T09 ausente não torna falso o recebimento de peça", () => {
+    const p = prontidao({}, {
+      pronto_para_receber_peca: true,
+      pronto_para_publicar: false,
+      bloqueios_por_portao: {
+        recebimento: [],
+        acesso: [],
+        publicacao: ["nao existe porta de publicacao no VOLC (P12-T09)"],
+      },
+    });
+    expect(ehProntidao(p)).toBe(true);
+    expect(p.pronto_para_receber_peca).toBe(true);
+    expect(p.pronto_para_publicar).toBe(false);
+  });
+
+  it("broker local verificado continua diferente de live-read", () => {
+    const p = prontidao();
+    expect(p.componentes_seguintes.broker_de_acesso).toMatchObject({
+      tarefa: "P03-T11",
+      implementacao: "local_verified",
+      operacao_real: "live_read_not_proven",
+    });
+    expect(p.perguntas.perfil_disponivel.valor).toBe("sim");
   });
 });
