@@ -911,10 +911,26 @@ class LeituraDoDestino:
 
     `backend/app/landing_policy/**` é ownership de outra frente. A sentinela lê
     o veredito que ela grava e nunca o recalcula.
+
+    ## `nao_consultado` e `ausente` são fatos diferentes
+
+    ⚠️ Esta distinção nasceu de um defeito medido nesta própria lane. Com um só
+    estado para "não tem recibo", `ausente` era o default — e como ele produz
+    `DATA_UNAVAILABLE`, que está acima de `OBSERVING` na ordem causal, TODA
+    campanha passava a ter o destino como causa primária. Uma campanha recém-
+    criada em carência saía `DATA_UNAVAILABLE@destination` em vez de
+    `OBSERVING`. Era o mesmo defeito do eixo `conta`, com outra roupa: um degrau
+    que ninguém preenche sequestrando o veredito de todas as campanhas.
+
+    · `nao_consultado` — esta leitura não perguntou ao portão de destino. NÃO é
+      causa, e vai para `desconhecidos`; rebaixa a evidência para `parcial`, de
+      modo que `HEALTHY` continua inalcançável;
+    · `ausente` — perguntamos, e não existe recibo. Isso É causa, porque
+      ausência de recibo não é aprovação.
     """
 
-    #: `apto` | `reprovado` | `em_revisao` | `ausente`
-    estado: str = "ausente"
+    #: `apto` | `reprovado` | `em_revisao` | `ausente` | `nao_consultado`
+    estado: str = "nao_consultado"
     motivo: Optional[str] = None
     observado_em: Optional[str] = None
 
@@ -1700,6 +1716,11 @@ def _desconhecidos(leitura: LeituraParaSentinela) -> Tuple[str, ...]:
         )
     if leitura.destino.estado == "ausente":
         faltando.append("recibo de destino pago: ausente — ausência não é aprovação")
+    elif leitura.destino.estado == "nao_consultado":
+        faltando.append(
+            "recibo de destino pago: não consultado por esta leitura — isto NÃO "
+            "afirma que o destino esteja apto"
+        )
     if leitura.medicao.conversion_goal_status is None:
         faltando.append("prontidão de mensuração: não apurada")
     for valor in leitura.valores_desconhecidos:
@@ -1718,6 +1739,9 @@ def _estado_da_evidencia(leitura: LeituraParaSentinela) -> str:
         or leitura.campanha.horas_ligada is None
         or bool(leitura.keywords.sem_dado_de_lance)
         or not leitura.recomendacoes.apurado
+        # Destino não consultado não vira causa, e também não vira prova
+        # completa: `HEALTHY` continua fora de alcance.
+        or leitura.destino.estado == "nao_consultado"
     )
     return "parcial" if incompleto else "apurada"
 

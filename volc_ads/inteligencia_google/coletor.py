@@ -173,6 +173,39 @@ class ColetorGoogleInteligencia:
     ) -> DocumentoColeta:
         cid = campanha.customer_id
         campaign_id = campanha.campaign_id
+        # ⚠️ O ESTADO DA CONTA VEM PRIMEIRO, e nao e detalhe de ordenacao.
+        #
+        # Medido em 03/09/2026: nenhuma consulta do VOLC-OS lia `customer.status`.
+        # `backend/app/trafego/contas.py` descobre contas com
+        # `WHERE customer_client.status = 'ENABLED'` — uma conta suspensa
+        # simplesmente DESAPARECE da lista, sem linha e sem explicacao — e
+        # `GAQL_CONTA` nem seleciona o campo. O resultado foi o incidente Credito
+        # Up: conta suspensa por politica, campanhas Search sem gasto, e o
+        # diagnostico dizendo `conta: nao_apurado` porque nao havia onde guardar
+        # o fato.
+        #
+        # Isto entra no documento `DIAGNOSTICO_ENTREGA` que ja existe, como um
+        # item de `tipo_item='account'`. Nao precisa de migration: o CHECK de
+        # `trafego_google_inteligencia_item.tipo_item` na v12_01 e
+        # `btrim(tipo_item) <> ''` — aberto de proposito — enquanto o de
+        # `tipo_sinal` e fechado em doze valores, e `DIAGNOSTICO_ENTREGA` e um
+        # deles.
+        conta = self._query(cid, """
+          SELECT customer.id, customer.status, customer.descriptive_name,
+                 customer.currency_code, customer.time_zone,
+                 customer.auto_tagging_enabled, customer.manager,
+                 customer.test_account, customer.optimization_score
+          FROM customer LIMIT 1
+        """)
+        # As metas efetivas da conta. Sem elas, `MEASUREMENT_NOT_READY` nao pode
+        # ser afirmado nem negado sobre uma campanha em Smart Bidding — e a
+        # sentinela precisa poder dizer "nao apurei" em vez de "esta pronto".
+        metas = self._query(cid, """
+          SELECT customer_conversion_goal.category,
+                 customer_conversion_goal.origin,
+                 customer_conversion_goal.biddable
+          FROM customer_conversion_goal
+        """)
         base = self._query(cid, f"""
           SELECT campaign.id, campaign.name, campaign.status,
                  campaign.primary_status, campaign.primary_status_reasons,
@@ -267,9 +300,18 @@ class ColetorGoogleInteligencia:
             unidade="micros", moeda="BRL",
         ))
 
-        itens = [Item("campaign", base[0], campaign_id)]
+        # ⚠️ O item de conta e o PRIMEIRO da lista, e a ordem importa: `ordinal`
+        # e a chave de leitura do ledger, e o consumidor le a conta antes de
+        # concluir qualquer coisa sobre a campanha.
+        itens = [Item("account", linha, cid) for linha in conta[:1]]
+        itens += [Item("campaign", base[0], campaign_id)]
         itens += [Item("keyword", linha, str(linha.get("ad_group_criterion", {}).get("criterion_id", ""))) for linha in keywords]
         itens += [Item("ad", linha, str(linha.get("ad_group_ad", {}).get("ad", {}).get("id", ""))) for linha in anuncios]
+        itens += [
+            Item("conversion_goal", linha, str(
+                linha.get("customer_conversion_goal", {}).get("category", "")
+            )) for linha in metas
+        ]
         return DocumentoColeta.agora(
             tipo_sinal="DIAGNOSTICO_ENTREGA", estado=EstadoColeta.COM_DADOS,
             customer_id=cid, login_customer_id=self.login_customer_id,
@@ -280,6 +322,12 @@ class ColetorGoogleInteligencia:
                 "somente_leitura": True,
                 "desempenho_retornou": bool(desempenho),
                 "keywords": len(keywords), "anuncios": len(anuncios),
+                # ⚠️ Declarado como booleano, e nao deduzido da contagem de itens
+                # pelo consumidor: "a conta respondeu e nao havia linha" e "nao
+                # perguntei" produzem os dois zero itens, e sao fatos opostos.
+                "conta_retornou": bool(conta),
+                "metas_retornaram": bool(metas),
+                "metas": len(metas),
             }, itens=itens, metricas=metricas,
         )
 

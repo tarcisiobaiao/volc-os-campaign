@@ -74,7 +74,15 @@ def test_contraprova_rota_entrega_envelope_exato(cliente):
     _autorizar(Repo())
     resposta = cliente.get("/api/trafego/campanhas/cmp.search:01/diagnostico")
     assert resposta.status_code == 200
-    assert set(resposta.json()) == {"versao", "diagnostico", "propostas"}
+    assert set(resposta.json()) == {"versao", "diagnostico", "propostas", "sentinela"}
+    assert resposta.json()["versao"] == 2
+    # ⚠️ A rota emite o veredito da sentinela MESMO sem coleta nenhuma. Omiti-lo
+    # aqui deixaria a superfície sem veredito exatamente no caso em que o
+    # silêncio mais se parece com saúde.
+    sentinela = resposta.json()["sentinela"]
+    assert sentinela["status"] == "DATA_UNAVAILABLE"
+    assert sentinela["mutacao_externa"] is False
+    assert sentinela["proximo_ato"]
     assert set(resposta.json()["diagnostico"]) == {
         "versao", "volc_campaign_id", "customer_id", "nome_campanha", "moeda",
         "estado_coleta", "frescor", "janela", "leitura", "degraus", "parcial",

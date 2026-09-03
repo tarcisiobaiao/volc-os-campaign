@@ -821,3 +821,414 @@ def test_21c_a_ordem_de_avaliacao_nao_decide_o_veredito():
         estado_da_coleta="falhou",
     ))
     assert v.status == s.ACCOUNT_BLOCKED
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# As contraprovas do DIAGNÓSTICO PERSISTIDO — os falsos verdes medidos em
+# `34dc7b4`, cada um com o input exato que os produzia.
+# ═══════════════════════════════════════════════════════════════════════════
+
+import asyncio  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+
+from app.trafego.diagnostico_persistido import (  # noqa: E402
+    obter_diagnostico_campanha,
+)
+
+CAMPANHA_PERSISTIDA = {
+    "volc_campaign_id": "cmp.search:01", "customer_id": "9990001111",
+    "campaign_id": "24156373085", "nome": "Search de prova", "moeda": "BRL",
+}
+AGORA_RECENTE = datetime(2026, 8, 28, 12, 10, tzinfo=timezone.utc)
+
+
+def coleta_persistida(estado="com_dados"):
+    return {
+        "coleta_id": "c1", "estado": estado, "customer_id": "9990001111",
+        "volc_campaign_id": "cmp.search:01", "campaign_id": "24156373085",
+        "janela_inicio": "2026-08-20", "janela_fim": "2026-08-27",
+        "coletada_em": "2026-08-28T12:00:00Z", "quantidade": 3,
+        "erro_codigo": None, "erro_classe": None,
+    }
+
+
+def item_conta(status="ENABLED"):
+    return {"tipo_item": "account", "recurso_externo": "9990001111",
+            "payload": {"customer": {"status": status, "id": "9990001111"}}}
+
+
+def item_campanha(**campos):
+    base = {"status": "ENABLED", "primary_status": "ELIGIBLE",
+            "serving_status": "SERVING", "primary_status_reasons": []}
+    base.update(campos)
+    return {"tipo_item": "campaign", "recurso_externo": "24156373085",
+            "payload": {"campaign": base}}
+
+
+def item_keyword(ref="k1", *, lance=3_000_000, primeira=1_000_000, qs=8,
+                 primary="ELIGIBLE", texto="credito consignado", match="PHRASE"):
+    criterio = {"primary_status": primary, "primary_status_reasons": [],
+                "keyword": {"match_type": match, "text": texto}}
+    if lance is not None:
+        criterio["effective_cpc_bid_micros"] = lance
+    if primeira is not None:
+        criterio["position_estimates"] = {"first_page_cpc_micros": primeira}
+    if qs is not None:
+        criterio["quality_info"] = {"quality_score": qs}
+    return {"tipo_item": "keyword", "recurso_externo": ref,
+            "payload": {"ad_group_criterion": criterio}}
+
+
+def item_anuncio(ref="a1", *, status="ENABLED", primary="ELIGIBLE",
+                 aprovacao="APPROVED", revisao="REVIEWED"):
+    return {"tipo_item": "ad", "recurso_externo": ref, "payload": {"ad_group_ad": {
+        "status": status, "primary_status": primary, "primary_status_reasons": [],
+        "policy_summary": {"approval_status": aprovacao, "review_status": revisao},
+    }}}
+
+
+def item_meta(categoria="PURCHASE", biddable=True):
+    return {"tipo_item": "conversion_goal", "recurso_externo": categoria,
+            "payload": {"customer_conversion_goal": {
+                "category": categoria, "origin": "WEBSITE", "biddable": biddable}}}
+
+
+def metrica(nome, valor):
+    return {"recurso_tipo": "campaign", "recurso_externo": "24156373085",
+            "nome": nome, "estado_valor": "medido", "valor_numerico": valor,
+            "valor_texto": None, "unidade": None, "moeda": None}
+
+
+class RepoPersistido:
+    def __init__(self, itens, metricas, *, estado="com_dados", transicoes=None):
+        self._itens, self._metricas = itens, metricas
+        self._estado, self._transicoes = estado, transicoes
+
+    async def campanha(self, _): return CAMPANHA_PERSISTIDA
+    async def coleta(self, _): return coleta_persistida(self._estado)
+    async def itens(self, _): return self._itens
+    async def metricas(self, _): return self._metricas
+    async def transicoes(self, _): return self._transicoes or []
+
+
+def diagnosticar(itens, metricas, **kw):
+    return asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01", RepoPersistido(itens, metricas, **kw), agora=AGORA_RECENTE,
+    ))
+
+
+def por_eixo(resposta):
+    return {d.eixo: d for d in resposta.diagnostico.degraus}
+
+
+def test_p01_conta_suspensa_aparece_no_degrau_conta():
+    """Antes: `conta: nao_apurado` para SEMPRE — não havia campo para o fato."""
+    r = diagnosticar(
+        [item_conta("SUSPENDED"), item_campanha()],
+        [metrica("impressions", 0)],
+    )
+    conta_ = por_eixo(r)["conta"]
+    assert conta_.estado == "bloqueia"
+    assert "SUSPENDED" in conta_.frase
+    assert r.sentinela.status == "ACCOUNT_BLOCKED"
+    assert r.sentinela.severidade == "critica"
+
+
+def test_p01b_a_escada_deixou_de_estar_permanentemente_suspensa():
+    """Com `conta` preenchido, o degrau 0 para de suspender a escada inteira.
+
+    ⚠️ `conta` é o primeiro eixo da ordem causal. Enquanto ele saía
+    `nao_apurado`, `vereditoDaEscada` no frontend devolvia
+    `{tipo:'nao_apurado', eixo:'conta'}` em TODA campanha e `degrausConfiaveis`
+    devolvia lista vazia — a tela nunca mentia de verde porque nunca
+    diagnosticava nada.
+    """
+    r = diagnosticar(
+        [item_conta("ENABLED"), item_campanha(), item_keyword(), item_anuncio(),
+         item_meta()],
+        [metrica("impressions", 1000), metrica("clicks", 30),
+         metrica("cost_micros", 20_000_000)],
+    )
+    assert por_eixo(r)["conta"].estado == "ok"
+    assert por_eixo(r)["conta"].estado != "nao_apurado"
+
+
+def test_p02_perda_por_rank_deixa_de_sair_como_orcamento_ok_e_calado():
+    """0% de perda por orçamento e 90% por classificação — dados medidos.
+
+    O ramo `ok` do orçamento dizia "A conta mediu zero de perda de participação
+    por orçamento" e NENHUM degrau mencionava rank, embora
+    `search_rank_lost_impression_share` estivesse na allowlist desde a v12.
+    """
+    r = diagnosticar(
+        [item_conta(), item_campanha(), item_keyword(), item_anuncio()],
+        [metrica("impressions", 10), metrica("clicks", 0),
+         metrica("search_budget_lost_impression_share", 0.0),
+         metrica("search_rank_lost_impression_share", 0.9001)],
+    )
+    orcamento = por_eixo(r)["orcamento"]
+    assert orcamento.estado == "ok"
+    assert "leilão" in orcamento.frase          # aponta para onde a causa está
+    campos = {e.campo for e in orcamento.evidencias}
+    assert "metrics.search_rank_lost_impression_share" in campos
+    assert "LIMITED_BY_RANK" in {
+        c["status"] for c in
+        ([r.sentinela.causa_primaria] if r.sentinela.causa_primaria else [])
+        + r.sentinela.causas_secundarias
+    }
+
+
+def test_p03_estado_desconhecido_nao_produz_impedimento_falso():
+    """`ENABLED` + `MISCONFIGURED` + `SUSPENDED`: três valores reais, presentes.
+
+    O `else` devolvia `impedimento="primary_status e serving_status ausentes"` —
+    factualmente falso, porque os dois campos vieram.
+    """
+    r = diagnosticar(
+        [item_conta(), item_campanha(primary_status="MISCONFIGURED",
+                                     serving_status="SUSPENDED")],
+        [metrica("impressions", 0)],
+    )
+    campanha_ = por_eixo(r)["campanha"]
+    assert campanha_.estado == "bloqueia"
+    assert campanha_.impedimento is None
+    assert "ausentes" not in (campanha_.impedimento or "")
+
+
+def test_p03b_valor_realmente_fora_do_vocabulario_se_nomeia():
+    r = diagnosticar(
+        [item_conta(), item_campanha(primary_status="HIBERNATING",
+                                     serving_status="SERVING")],
+        [metrica("impressions", 0)],
+    )
+    campanha_ = por_eixo(r)["campanha"]
+    assert campanha_.estado == "nao_apurado"
+    assert "HIBERNATING" in campanha_.frase
+    assert "vocabulário" in (campanha_.impedimento or "")
+
+
+def test_p04_anuncio_reprovado_deixa_de_sair_como_ok():
+    """`ENABLED` + `ELIGIBLE` + `DISAPPROVED` saía como `anuncio: ok, presente`."""
+    r = diagnosticar(
+        [item_conta(), item_campanha(),
+         item_anuncio(aprovacao="DISAPPROVED", revisao="REVIEWED")],
+        [metrica("impressions", 0)],
+    )
+    anuncio = por_eixo(r)["anuncio"]
+    assert anuncio.estado == "bloqueia"
+    assert anuncio.estado != "ok"
+    assert "reprov" in anuncio.frase.lower()
+
+
+def test_p04b_aprovado_com_limite_nao_e_verde():
+    r = diagnosticar(
+        [item_conta(), item_campanha(), item_anuncio(aprovacao="APPROVED_LIMITED")],
+        [metrica("impressions", 0)],
+    )
+    assert por_eixo(r)["anuncio"].estado == "limita"
+
+
+def test_p04c_em_revisao_nao_e_aprovado_nem_reprovado():
+    r = diagnosticar(
+        [item_conta(), item_campanha(),
+         item_anuncio(aprovacao="UNKNOWN", revisao="REVIEW_IN_PROGRESS")],
+        [metrica("impressions", 0)],
+    )
+    anuncio = por_eixo(r)["anuncio"]
+    assert anuncio.estado == "nao_apurado"
+    assert anuncio.palavra == "em revisão"
+
+
+def test_p05_keyword_abaixo_da_primeira_pagina_deixa_de_sair_ok():
+    """Lance R$ 0,50 contra estimativa de R$ 3,20, `primary_status=ELIGIBLE`."""
+    r = diagnosticar(
+        [item_conta(), item_campanha(),
+         item_keyword("k1", lance=500_000, primeira=3_200_000, qs=3),
+         item_keyword("k2", lance=500_000, primeira=3_100_000, qs=3, texto="consignado credito", match="BROAD")],
+        [metrica("impressions", 0)],
+    )
+    keyword = por_eixo(r)["keyword"]
+    assert keyword.estado == "bloqueia"
+    assert keyword.estado != "ok"
+    assert "2" in keyword.frase          # o denominador está na frase
+    valores = {e.rotulo: e.valor for e in keyword.evidencias}
+    assert valores["com lance abaixo da 1ª página"] == "2 de 2"
+
+
+def test_p06_coleta_parcial_nao_produz_degrau_ok():
+    """`parcial=True` era bandeira de envelope; os degraus saíam `ok` mesmo assim."""
+    r = diagnosticar(
+        [item_conta(), item_campanha(), item_anuncio(), item_meta()],
+        [metrica("impressions", 1000)],
+        estado="parcial",
+    )
+    estados = {d.eixo: d.estado for d in r.diagnostico.degraus}
+    assert "ok" not in estados.values()
+    assert all(
+        e in {"nao_apurado", "limita", "bloqueia"} for e in estados.values()
+    )
+
+
+def test_p07_metas_de_conversao_preenchem_o_eixo_conversao():
+    r = diagnosticar(
+        [item_conta(), item_campanha(), item_meta("PURCHASE", True)],
+        [metrica("impressions", 100)],
+    )
+    assert por_eixo(r)["conversao"].estado == "ok"
+
+    sem_meta = diagnosticar(
+        [item_conta(), item_campanha()], [metrica("impressions", 100)],
+    )
+    assert por_eixo(sem_meta)["conversao"].estado == "limita"
+    assert "zero metas" in por_eixo(sem_meta)["conversao"].frase
+
+
+def test_p08_o_veredito_da_sentinela_viaja_no_envelope():
+    r = diagnosticar(
+        [item_conta("SUSPENDED"), item_campanha(),
+         item_keyword(lance=500_000, primeira=3_200_000)],
+        [metrica("impressions", 0)],
+        transicoes=[{"ocorrido_em": "2026-08-20T12:00:00Z",
+                     "de": "PAUSED", "para": "ENABLED"}],
+    )
+    assert r.versao == 2
+    assert r.sentinela is not None
+    assert r.sentinela.status == "ACCOUNT_BLOCKED"
+    assert r.sentinela.janela_do_guardiao == "apos_72h"
+    assert r.sentinela.mutacao_externa is False
+    assert r.sentinela.proximo_ato
+    assert r.sentinela.chave
+
+
+def test_p09_horas_ligada_vem_do_mesmo_diario_que_o_sino_usa():
+    """Sem transições, a janela é indeterminada — e NÃO "recém-criada"."""
+    sem = diagnosticar(
+        [item_conta(), item_campanha()], [metrica("impressions", 0)],
+    )
+    assert sem.sentinela.janela_do_guardiao == "indeterminada"
+    assert sem.sentinela.status != "NO_DELIVERY"
+
+    nova = diagnosticar(
+        [item_conta(), item_campanha(), item_anuncio(), item_keyword(), item_meta()],
+        [metrica("impressions", 0)],
+        transicoes=[{"ocorrido_em": "2026-08-28T10:00:00Z",
+                     "de": "PAUSED", "para": "ENABLED"}],
+    )
+    assert nova.sentinela.janela_do_guardiao == "nascimento"
+    assert nova.sentinela.status == "OBSERVING"
+
+
+def test_p10_recomendacoes_nao_lidas_nao_viram_zero():
+    r = diagnosticar([item_conta(), item_campanha()], [metrica("impressions", 0)])
+    assert r.sentinela.recomendacoes["apurado"] is False
+    assert r.sentinela.recomendacoes["quantidade"] is None
+    assert any("recomendações" in d for d in r.sentinela.desconhecidos)
+
+
+def test_p11_recomendacoes_com_falha_de_leitura_nao_viram_zero():
+    class RepoQueFalhaNasRecomendacoes(RepoPersistido):
+        async def recomendacoes(self, _customer_id):
+            raise RuntimeError("PostgREST fora do ar")
+
+    r = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        RepoQueFalhaNasRecomendacoes(
+            [item_conta(), item_campanha()], [metrica("impressions", 0)]
+        ),
+        agora=AGORA_RECENTE,
+    ))
+    assert r.sentinela.recomendacoes["estado_da_coleta"] == "falhou"
+    assert r.sentinela.recomendacoes["itens"] is None
+    assert r.sentinela.recomendacoes["quantidade"] is None
+
+
+def test_p12_recomendacoes_lidas_sao_adjudicadas_e_nunca_aplicadas():
+    class RepoComRecomendacoes(RepoPersistido):
+        async def recomendacoes(self, _customer_id):
+            coleta = {"estado": "com_dados", "coletada_em": "2026-08-28T12:00:00Z"}
+            linhas = [{
+                "recurso_externo": "customers/9990001111/recommendations/abc",
+                "payload": {"recommendation": {
+                    "type": "KEYWORD", "dismissed": False,
+                    "impact": {"base_metrics": {"clicks": 10}},
+                }},
+            }]
+            return coleta, linhas
+
+    r = asyncio.run(obter_diagnostico_campanha(
+        "cmp.search:01",
+        RepoComRecomendacoes(
+            [item_conta(), item_campanha()], [metrica("impressions", 0)]
+        ),
+        agora=AGORA_RECENTE,
+    ))
+    rec = r.sentinela.recomendacoes
+    assert rec["estado_da_coleta"] == "com_dados"
+    assert rec["quantidade"] == 1
+    item = rec["itens"][0]
+    assert item["adjudicacao"] == "nova"
+    assert item["aplicada"] is False
+    assert "informado pelo Google" in item["impacto_informado"]
+    assert "não aplica nem dispensa" in item["proximo_ato"]
+
+
+def test_p13_o_itens_e_o_metricas_paginam_em_vez_de_truncar():
+    """`select_all` existia e não era chamado; o PostgREST corta em 1000."""
+    from app.trafego.diagnostico_persistido import SupabaseRepositorioDiagnostico
+
+    chamadas = []
+
+    class Supa:
+        enabled = True
+
+        async def select(self, tabela, params):
+            chamadas.append(("select", tabela))
+            return []
+
+        async def select_all(self, tabela, params):
+            chamadas.append(("select_all", tabela))
+            return []
+
+    repo = SupabaseRepositorioDiagnostico(Supa())
+    asyncio.run(repo.itens("c1"))
+    asyncio.run(repo.metricas("c1"))
+    assert [c[0] for c in chamadas] == ["select_all", "select_all"]
+
+
+def test_p14_destino_nao_consultado_nao_sequestra_o_veredito():
+    """O defeito que esta lane cometeu e consertou dentro de si mesma.
+
+    Com um só estado para "não tem recibo", `ausente` era o default da ponte —
+    e como `ausente` produz `DATA_UNAVAILABLE`, que está acima de `OBSERVING`,
+    TODA campanha passava a ter o destino como causa primária. Era o mesmo
+    defeito do eixo `conta`: um degrau que ninguém preenche sequestrando o
+    veredito de todas as campanhas.
+    """
+    nova = diagnosticar(
+        [item_conta(), item_campanha(), item_anuncio(), item_keyword(), item_meta()],
+        [metrica("impressions", 0)],
+        transicoes=[{"ocorrido_em": "2026-08-28T10:00:00Z",
+                     "de": "PAUSED", "para": "ENABLED"}],
+    )
+    assert nova.sentinela.status == "OBSERVING"
+    assert nova.sentinela.escopo != "destination"
+    # E o não-consultado continua DITO, em vez de escondido.
+    assert any("não consultado" in d for d in nova.sentinela.desconhecidos)
+    # ⚠️ E a evidência continua parcial: ninguém sai saudável por engano.
+    assert nova.sentinela.estado_da_evidencia == "parcial"
+
+
+def test_p14b_destino_consultado_e_ausente_continua_sendo_causa():
+    """`ausente` (perguntei, não há) É causa. Ausência não é aprovação."""
+    leitura_ = s.LeituraParaSentinela(
+        customer_id=CUSTOMER, volc_campaign_id=CAMPANHA,
+        conta=conta(), campanha=campanha(), metricas=metricas(),
+        keywords=s.ler_keywords([kw("a")]), anuncios=anuncios(),
+        medicao=s.LeituraDeMedicao(conversion_goal_status="PRONTO"),
+        destino=s.LeituraDoDestino(estado="ausente"),
+        recomendacoes=recomendacoes_apuradas(0),
+        estado_da_coleta="com_dados", frescor="recente", observado_em=AGORA,
+    )
+    v = s.avaliar(leitura_)
+    assert v.status == s.DATA_UNAVAILABLE
+    assert v.escopo == s.ESCOPO_DESTINO
