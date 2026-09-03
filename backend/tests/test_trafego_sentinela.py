@@ -1516,3 +1516,127 @@ def test_r12_as_fixturas_desta_lane_sao_sinteticas():
         if f.exists() and real in f.read_text(encoding="utf-8")
     ]
     assert not sujos, f"identificador operacional real em: {sujos}"
+
+
+# ── três achados extras, encontrados na verificação das correções ────────────
+
+
+def test_r13_aprovacao_ausente_e_tao_desconhecida_quanto_unknown():
+    """A ausência do campo era MAIS permissiva que `UNKNOWN`.
+
+    ⚠️ Um veredito de política que a conta não deu e um veredito que não
+    coletamos são a mesma ignorância — e a versão anterior fazia justamente a
+    leitura mais otimista das duas no caso em que tínhamos menos direito a ela.
+    """
+    from app.trafego.diagnostico_persistido import _anuncios_para_sentinela
+
+    def linha(**extra):
+        campos = {
+            "ad_group_ad.status": "ENABLED",
+            "ad_group_ad.primary_status": "ELIGIBLE",
+            "ad_group_ad.primary_status_reasons": [],
+            "ad_group_ad.policy_summary.review_status": "REVIEWED",
+        }
+        campos.update(extra)
+        return {"campos": campos}
+
+    ausente = _anuncios_para_sentinela([linha()])
+    desconhecido = _anuncios_para_sentinela([
+        linha(**{"ad_group_ad.policy_summary.approval_status": "UNKNOWN"}),
+    ])
+    assert ausente.aptos == 0
+    assert ausente.sem_estado == 1
+    assert (ausente.aptos, ausente.sem_estado) == (
+        desconhecido.aptos, desconhecido.sem_estado
+    )
+
+
+def test_r14_aprovado_com_limite_e_estado_conhecido_e_nao_ignorancia():
+    """`APPROVED_LIMITED` não é apto E não é desconhecido."""
+    from app.trafego.diagnostico_persistido import _anuncios_para_sentinela
+
+    ads = _anuncios_para_sentinela([{"campos": {
+        "ad_group_ad.status": "ENABLED",
+        "ad_group_ad.primary_status": "ELIGIBLE",
+        "ad_group_ad.primary_status_reasons": [],
+        "ad_group_ad.policy_summary.approval_status": "APPROVED_LIMITED",
+        "ad_group_ad.policy_summary.review_status": "REVIEWED",
+    }}])
+    assert ads.limitados == 1
+    assert ads.aptos == 0
+    assert ads.sem_estado == 0       # ⚠️ NÃO é ignorância
+
+    v = s.avaliar(leitura(anuncios=ads))
+    assert v.status == s.POLICY_BLOCKED
+    assert v.status != s.HEALTHY
+    assert "restrição" in v.causa_primaria.frase
+
+
+def test_r15_todo_denominador_respeita_a_politica_em_uso():
+    """Nenhum denominador pode publicar percentual que a política proíbe."""
+    politica = s.PoliticaDoGuardiao(minimo_para_proporcao=99)
+    cenarios = [
+        leitura(anuncios=anuncios(observados=3, aptos=0, reprovados=3)),
+        leitura(anuncios=anuncios(observados=3, aptos=0, em_revisao=3)),
+        leitura(anuncios=anuncios(observados=3, aptos=0)),
+        leitura(keywords=s.ler_keywords([
+            kw("a", lance=1, primeira=9), kw("b", lance=1, primeira=9),
+            kw("c", lance=1, primeira=9),
+        ])),
+        leitura(keywords=s.ler_keywords([
+            kw("a", qs=1), kw("b", qs=1), kw("c", qs=1),
+        ])),
+        leitura(keywords=s.ler_keywords([
+            kw("a b", match="PHRASE"), kw("b a", match="BROAD"), kw("c"),
+        ])),
+    ]
+    for l in cenarios:
+        v = s.avaliar(l, politica)
+        for causa in [v.causa_primaria, *v.causas_secundarias]:
+            if causa is None or causa.denominador is None:
+                continue
+            j = causa.denominador.json()
+            assert j["proporcao"] is None, (
+                f"{causa.status}: proporção publicada apesar de "
+                f"minimo_para_proporcao=99 ({j})"
+            )
+            assert "%" not in j["frase"], f"{causa.status}: {j['frase']}"
+            assert "%" not in causa.frase, f"{causa.status}: {causa.frase}"
+
+
+def test_r16_healthy_continua_alcancavel():
+    """A correção do achado 4 não pode ter tornado HEALTHY impossível.
+
+    ⚠️ Um estado que nenhuma entrada alcança é um teste que não pode falhar, e
+    um teste que não pode falhar não prova nada. `_estado_da_evidencia` passou a
+    derivar de `_desconhecidos`; esta prova garante que existe caminho completo.
+    """
+    v = s.avaliar(leitura())
+    assert v.status == s.HEALTHY
+    assert v.estado_da_evidencia == "apurada"
+    assert v.desconhecidos == ()
+    assert v.incidente is False
+
+
+def test_r15b_nenhum_denominador_e_construido_sem_a_politica():
+    """Prova ESTRUTURAL, por AST: nenhum `Denominador(...)` esquece a política.
+
+    ⚠️ `test_r15` cobre os cenários que sabe montar; este cobre os que ninguém
+    lembrou de montar. Um construtor novo sem `minimo_para_proporcao` volta a
+    publicar percentual que a política em uso proíbe, e a frase e o JSON voltam
+    a discordar — que foi exatamente o achado 10.
+    """
+    import ast
+    import inspect
+
+    arvore = ast.parse(inspect.getsource(s))
+    faltando = [
+        no.lineno for no in ast.walk(arvore)
+        if isinstance(no, ast.Call)
+        and getattr(no.func, "id", "") == "Denominador"
+        and "minimo_para_proporcao" not in {k.arg for k in no.keywords}
+    ]
+    assert not faltando, (
+        f"Denominador sem minimo_para_proporcao nas linhas {faltando} de "
+        "sentinela.py"
+    )

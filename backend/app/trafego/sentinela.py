@@ -962,6 +962,13 @@ class LeituraDeAnuncios:
     aptos: int = 0
     reprovados: int = 0
     em_revisao: int = 0
+    #: `APPROVED_LIMITED` — aprovado COM restrição de veiculação.
+    #:
+    #: ⚠️ Campo próprio porque ele é um estado CONHECIDO. Empurrá-lo para
+    #: `sem_estado` trocaria "a conta aprovou com restrição" por "não sei o que
+    #: a conta disse" — que é perder informação que já temos, e é o espelho do
+    #: erro oposto de contá-lo como aprovado.
+    limitados: int = 0
     sem_estado: int = 0
     motivos: Tuple[str, ...] = ()
 
@@ -1271,7 +1278,10 @@ def _causas_do_destino(leitura: LeituraParaSentinela) -> List[Causa]:
     return []
 
 
-def _causas_dos_anuncios(leitura: LeituraParaSentinela) -> List[Causa]:
+def _causas_dos_anuncios(
+    leitura: LeituraParaSentinela,
+    politica: PoliticaDoGuardiao = POLITICA_PADRAO,
+) -> List[Causa]:
     ads = leitura.anuncios
     quando = leitura.observado_em
     causas: List[Causa] = []
@@ -1288,8 +1298,33 @@ def _causas_dos_anuncios(leitura: LeituraParaSentinela) -> List[Causa]:
             denominador=Denominador(
                 rotulo="reprovados por política", quantos=ads.reprovados,
                 de_quantos=ads.observados, unidade="anúncios",
+                minimo_para_proporcao=politica.minimo_para_proporcao,
             ),
             proximo_ato="revisar a política do anúncio antes de mexer em lance ou verba",
+        ))
+        return causas
+
+    if ads.limitados and ads.aptos == 0 and not ads.reprovados:
+        causas.append(Causa(
+            status=POLICY_BLOCKED, escopo=ESCOPO_ANUNCIO,
+            frase=(
+                f"A conta aprovou {ads.limitados} de {ads.observados} anúncios "
+                "COM restrição de veiculação — não é o mesmo que aprovados."
+            ),
+            evidencias=(
+                _ev("aprovados com limite",
+                    "ad_group_ad.policy_summary.approval_status",
+                    ads.limitados, quando),
+            ),
+            motivo_da_conta=ads.motivos,
+            denominador=Denominador(
+                rotulo="aprovados com restrição", quantos=ads.limitados,
+                de_quantos=ads.observados, unidade="anúncios",
+                minimo_para_proporcao=politica.minimo_para_proporcao,
+            ),
+            proximo_ato=(
+                "conferir a restrição declarada pela conta antes de mexer em lance"
+            ),
         ))
         return causas
 
@@ -1308,6 +1343,7 @@ def _causas_dos_anuncios(leitura: LeituraParaSentinela) -> List[Causa]:
             denominador=Denominador(
                 rotulo="em revisão", quantos=ads.em_revisao,
                 de_quantos=ads.observados, unidade="anúncios",
+                minimo_para_proporcao=politica.minimo_para_proporcao,
             ),
             proximo_ato="aguardar a revisão do Google; não há ato de lance que a acelere",
         ))
@@ -1321,6 +1357,7 @@ def _causas_dos_anuncios(leitura: LeituraParaSentinela) -> List[Causa]:
                 evidencias=(_ev("anúncios observados", "ad_group_ad", 0, quando),),
                 denominador=Denominador(
                     rotulo="aptos", quantos=0, de_quantos=0, unidade="anúncios",
+                    minimo_para_proporcao=politica.minimo_para_proporcao,
                 ),
                 proximo_ato=(
                     "criar ao menos um anúncio apto no grupo antes de qualquer "
@@ -1360,6 +1397,7 @@ def _causas_dos_anuncios(leitura: LeituraParaSentinela) -> List[Causa]:
             denominador=Denominador(
                 rotulo="aptos", quantos=0, de_quantos=ads.observados,
                 unidade="anúncios",
+                minimo_para_proporcao=politica.minimo_para_proporcao,
             ),
             proximo_ato=(
                 "tornar ao menos um anúncio apto antes de qualquer ajuste de "
@@ -1906,7 +1944,7 @@ def avaliar(
     candidatas += _causa_de_coleta(leitura)
     candidatas += _causas_do_destino(leitura)
     candidatas += _causas_da_campanha(leitura, janela, politica)
-    candidatas += _causas_dos_anuncios(leitura)
+    candidatas += _causas_dos_anuncios(leitura, politica)
     candidatas += _causas_das_keywords(leitura, politica)
     candidatas += _causas_da_medicao(leitura)
 

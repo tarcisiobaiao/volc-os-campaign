@@ -1054,7 +1054,7 @@ def _keywords_para_sentinela(
 def _anuncios_para_sentinela(
     linhas: Sequence[Dict[str, Any]],
 ) -> sent.LeituraDeAnuncios:
-    aptos = reprovados = revisao = sem_estado = 0
+    aptos = reprovados = revisao = limitados = sem_estado = 0
     motivos: List[str] = []
     for linha in linhas:
         campos = linha["campos"]
@@ -1073,10 +1073,23 @@ def _anuncios_para_sentinela(
         if aprovacao in ANUNCIO_REPROVADO:
             reprovados += 1
             continue
+        if aprovacao in ANUNCIO_LIMITADO:
+            # Estado CONHECIDO: aprovado com restrição. Não é apto e não é
+            # desconhecido — os dois seriam perda de informação, em direções
+            # opostas.
+            limitados += 1
+            continue
         if revisao_txt in ANUNCIO_EM_REVISAO:
             revisao += 1
             continue
-        if status is None or primary is None:
+        # ⚠️ AUSENTE É TÃO DESCONHECIDO QUANTO `UNKNOWN`.
+        #
+        # A versão anterior tratava os dois de forma diferente: `UNKNOWN` ia
+        # para `sem_estado` e o campo AUSENTE caía adiante e podia contar como
+        # apto. Um veredito de política que a conta não deu e um veredito que
+        # não coletamos são a mesma ignorância, e a mais permissiva das duas
+        # leituras era justamente a que tínhamos menos direito de fazer.
+        if aprovacao is None or status is None or primary is None:
             sem_estado += 1
             continue
         # ⚠️ APTO EXIGE APROVAÇÃO RECONHECIDA, e não "ausência de reprovação".
@@ -1086,7 +1099,7 @@ def _anuncios_para_sentinela(
         # valor REAL do enum, produzia `aptos=1` e a campanha saía `HEALTHY`.
         # Um veredito de política que a conta não deu não pode virar aprovação
         # nossa por omissão.
-        if aprovacao is not None and aprovacao not in ANUNCIO_APROVADO:
+        if aprovacao not in ANUNCIO_APROVADO:
             sem_estado += 1
             continue
         if (
@@ -1098,7 +1111,7 @@ def _anuncios_para_sentinela(
             sem_estado += 1
     return sent.LeituraDeAnuncios(
         observados=len(linhas), aptos=aptos, reprovados=reprovados,
-        em_revisao=revisao, sem_estado=sem_estado,
+        em_revisao=revisao, limitados=limitados, sem_estado=sem_estado,
         motivos=tuple(dict.fromkeys(motivos)),
     )
 
