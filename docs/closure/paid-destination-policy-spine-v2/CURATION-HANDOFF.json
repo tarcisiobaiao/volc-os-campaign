@@ -3,7 +3,10 @@
   "mission": "paid-destination-policy-spine-v2",
   "branch": "sprint/paid-destination-policy-spine-v2",
   "base_commit": "34dc7b41bce901bd8bebfdec0a01e293678cbf08",
-  "head_commit": "81aebac9b051c3b982746cbe74a158be13c2d9c1",
+  "head_before_closure": "255bd21",
+  "closure_commit_self_unavailable": "Um artefato NAO pode declarar o SHA do commit que o contem: o hash so existe depois que o arquivo esta escrito. A versao anterior deste arquivo afirmava head_commit=81aebac como se fosse o HEAD final, e ele nao era — cinco commits vieram depois, tres deles consertando falso bloqueio critico. Um numero autorreferente num handoff e pior que numero nenhum: ele parece verificavel e nao e.",
+  "final_sha_verified_externally": "O SHA final da branch e o que `git rev-parse sprint/paid-destination-policy-spine-v2` devolve DEPOIS do ultimo commit desta missao, e o que o remoto confirma em `git ls-remote origin sprint/paid-destination-policy-spine-v2`. O integrador le dali, nunca daqui. Este arquivo declara apenas o HEAD que existia ANTES do lote de fechamento.",
+  "production_readiness": "NAO. Nada nesta branch esta pronto para producao.",
   "produced_at": "2026-09-03",
   "produced_by": "Claude Code Opus 5 (executor canonico unico) + 4 frentes com ownership exclusivo",
   "_protocol": {
@@ -28,7 +31,9 @@
     "supabase_migration": false,
     "deploy": false,
     "public_get_requests": 4,
-    "public_get_note": "Quatro GETs publicos autorizados pela secao 12 do briefing: dois destinos /r/ x dois user-agents, pausa de 3s, sem cookie, sem autenticacao, sem formulario. Resultado em LIVE-READ-SUMMARY.json."
+    "public_get_note": "Quatro GETs publicos autorizados pela secao 12 do briefing: dois destinos /r/ x dois user-agents, pausa de 3s, sem cookie, sem autenticacao, sem formulario. Resultado em LIVE-READ-SUMMARY.json.",
+    "supabase_write_executed_against_official": false,
+    "supabase_write_note": "A rota de confirmacao PERSISTE o recibo `live` em pautador_funnel_runs.paginas_publicadas — coluna jsonb que JA EXISTE, sem migration e sem coluna nova. Ela NAO foi executada contra o Supabase oficial nesta missao: os testes usam duble do cliente, com sentinela provando zero escrita real."
   },
   "existing_tasks_affected": [
     {
@@ -36,7 +41,7 @@
       "title": "Ligar o portao de politica de destino pago a geracao, publicacao e campanha",
       "current_status": "partial",
       "proposed_status": "partial",
-      "why": "As tres barreiras ESTAO ligadas e provadas por teste hermetico. O que impede 'done' nao e codigo: e que (a) a invocacao do motor por terminal nao passa por barreira nenhuma, por construcao — a credencial do WordPress vive no motor; e (b) ha indicio, nao resolvido, de um caminho de criacao de campanha fora de /subir. Marcar 'done' com esses dois abertos seria a promocao por codigo que o protocolo de fechamento proibe.",
+      "why": "MANTEM-SE `partial`, e agora por um motivo a mais que os dois anteriores. As tres barreiras estao ligadas e provadas, e a rodada final acrescentou o ato explicito de reauditoria ao vivo (provar read-only -> confirmacao humana vinculada ao mesmo hash -> gravacao governada do recibo `live`), sem o qual nenhum destino ficava elegivel. O que continua impedindo `done`: (a) a invocacao do motor por terminal nao passa por barreira nenhuma, por construcao — a credencial do WordPress vive no motor; (b) ha indicio nao resolvido de um caminho de criacao de campanha fora de /subir; e (c) a gravacao do recibo `live` NUNCA foi executada contra o Supabase oficial nesta missao, por proibicao explicita — ela esta implementada e provada hermeticamente, e nao esta provada em producao. Marcar `done` com esses tres abertos seria a promocao por codigo que o protocolo de fechamento proibe.",
       "evidence": [
         "docs/closure/paid-destination-policy-spine-v2/GATES.md",
         "docs/closure/paid-destination-policy-spine-v2/COUNTERPROOFS.md",
