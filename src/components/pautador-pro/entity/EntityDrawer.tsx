@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ElegibilidadePaga } from './ElegibilidadePaga';
 import { pautadorService } from '@/services/pautadorService';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { entitySubtitle, funnelRoleLabel, funnelSummary, funnelTitle } from '@/t
 import type { EntityCard, EntityFunnelResponse, EntityMineResponse } from '@/types/pautadorEntity';
 import { BriefingAcoes } from './BriefingAcoes';
 import { ValidacaoPainel } from './ValidacaoPainel';
-import type { EixoEmProgresso } from '@/types/pautadorValidacao';
+import type { EixoEmProgresso, FunilDeProducao } from '@/types/pautadorValidacao';
 
 interface EntityDrawerProps {
   card: EntityCard | null;
@@ -49,7 +50,14 @@ const sev = (s?: string | null) => {
   return m[(s || '').toLowerCase()] || 'text-muted-foreground';
 };
 
-type ClusterRow = { production_ads_queue?: Array<{ keyword: string; volume?: number; cpc?: number; competition?: string }>; keywords?: Array<{ keyword: string }>; currency?: string | null };
+type ClusterRow = {
+  production_ads_queue?: Array<{ keyword: string; volume?: number; cpc?: number; competition?: string }>;
+  keywords?: Array<{ keyword: string }>;
+  currency?: string | null;
+  // O conjunto pago viaja aqui dentro — sem endpoint novo e sem migration:
+  // `MineResponse.factory_output` já é `List[Dict[str, Any]]`.
+  factory_output?: FunilDeProducao[];
+};
 
 export const EntityDrawer: React.FC<EntityDrawerProps & {
   onMedir?: (card: EntityCard) => void;
@@ -228,6 +236,13 @@ export const EntityDrawer: React.FC<EntityDrawerProps & {
               progresso={card.id ? progresso?.[String(card.id)] : undefined}
               onMedir={onMedir ? () => onMedir(card) : undefined}
             />
+            {/* A SEGUNDA RESPOSTA, imediatamente abaixo da primeira.
+                Elas podem discordar: tema apto a virar pauta com todas as
+                keywords retidas é o caso comum de um tema institucional. */}
+            <ElegibilidadePaga
+              conjunto={cluster?.factory_output?.[0]?.keywords_campanha?.conjunto_pago}
+              valeProduzirConteudo={card.validacao?.apto ?? null}
+            />
           </TabsContent>
 
           {/* DETALHE */}
@@ -315,8 +330,11 @@ export const EntityDrawer: React.FC<EntityDrawerProps & {
           <TabsContent value="keywords" className="mt-4 space-y-3">
             {!!cluster?.production_ads_queue?.length && (
               <div>
+                {/* O cabeçalho dizia o total e o corpo mostrava 40. Uma
+                    lista cortada em silêncio se lê como lista inteira. */}
                 <p className="kicker mb-1">
-                  Fila de ADS — minerada ({cluster.production_ads_queue.length})
+                  Fila de ADS — minerada ({cluster.production_ads_queue.length}
+                  {cluster.production_ads_queue.length > 40 ? ' — mostrando as 40 primeiras' : ''})
                 </p>
                 <div className="rounded-lg border divide-y max-h-64 overflow-y-auto">
                   {cluster.production_ads_queue.slice(0, 40).map((k, i) => (
