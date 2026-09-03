@@ -77,12 +77,12 @@ const Grupo: React.FC<{
           {meta.titulo}
         </span>
         <span className="text-[10px] tabular-nums text-muted-foreground">{itens.length}</span>
-        <span className="text-[10px] text-muted-foreground/80 leading-snug">{meta.explica}</span>
+        <span className="text-[10px] text-muted-foreground leading-snug">{meta.explica}</span>
       </h4>
       <ul className="space-y-0.5">
         {itens.map((t) => (
-          <li key={t} className="text-[11px] leading-snug text-foreground/90 flex gap-1.5">
-            <span aria-hidden className="text-muted-foreground/50 select-none">–</span>
+          <li key={t} className="text-[11px] leading-snug text-foreground flex gap-1.5">
+            <span aria-hidden className="text-muted-foreground select-none">–</span>
             <span className="break-words">{t}</span>
           </li>
         ))}
@@ -119,7 +119,7 @@ export const TeseDaOportunidade: React.FC<{
             <span aria-hidden className={cn('text-[15px] leading-none', TOM_TEXTO[d.tom])}>{d.glifo}</span>
             {d.palavra}
           </h3>
-          <p className="text-[12px] leading-snug text-foreground/85 max-w-[62ch]">{tese.porque}</p>
+          <p className="text-[12px] leading-snug text-foreground max-w-[62ch]">{tese.porque}</p>
         </header>
 
         {/* ── o formato, com os observáveis que o produziram ─────────── */}
@@ -134,7 +134,7 @@ export const TeseDaOportunidade: React.FC<{
               <ul className="mt-1.5 flex flex-wrap gap-1">
                 {tese.observaveis_do_formato.map((o) => (
                   <li key={o}
-                    className="rounded bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-foreground/80 border border-border">
+                    className="rounded bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-foreground border border-border">
                     {o}
                   </li>
                 ))}
@@ -162,7 +162,7 @@ export const TeseDaOportunidade: React.FC<{
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-info">
               Próximo experimento
             </p>
-            <p className="text-[11px] leading-snug text-foreground/90 mt-0.5">
+            <p className="text-[11px] leading-snug text-foreground mt-0.5">
               {tese.proximo_experimento}
             </p>
           </div>
@@ -173,13 +173,13 @@ export const TeseDaOportunidade: React.FC<{
                            text-[10px] text-muted-foreground">
           <span>
             cobertura{' '}
-            <span className="tabular-nums text-foreground/80">
+            <span className="tabular-nums text-foreground">
               {tese.cobertura != null ? `${Math.round(tese.cobertura * 100)}%` : '—'}
             </span>
           </span>
           <span>
             índice{' '}
-            <span className="tabular-nums text-foreground/80">
+            <span className="tabular-nums text-foreground">
               {tese.indice_citado != null ? tese.indice_citado.toFixed(3) : '—'}
             </span>
           </span>
@@ -187,7 +187,7 @@ export const TeseDaOportunidade: React.FC<{
           {!tese.comparavel && tese.motivo_incomparavel && (
             <span className="text-warning">fora do ranking: {tese.motivo_incomparavel}</span>
           )}
-          <span className="ml-auto text-muted-foreground/60">
+          <span className="ml-auto text-muted-foreground">
             derivado do que já foi medido · {tese.versao_do_contrato}
           </span>
         </footer>

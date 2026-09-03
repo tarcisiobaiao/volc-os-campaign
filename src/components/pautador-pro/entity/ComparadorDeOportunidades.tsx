@@ -72,25 +72,30 @@ const Linha: React.FC<{
         : {})}
     >
       <td className="py-1.5 pl-2 pr-1 align-top text-[11px] tabular-nums text-muted-foreground">
-        {posicao ?? '—'}
+        {posicao ?? <span aria-label="fora do ranking">—</span>}
       </td>
       <td className="py-1.5 pr-2 align-top">
         <span className="text-[12px] font-medium text-foreground break-words">{t.tema}</span>
       </td>
       <td className="py-1.5 pr-2 align-top"><Decisao t={t} /></td>
       <td className="py-1.5 pr-2 align-top text-[11px] text-muted-foreground">
-        {formato ? formato.nome : <span className="text-muted-foreground/60">—</span>}
+        {formato ? formato.nome
+          : <span className="text-muted-foreground" aria-label="sem formato recomendado">—</span>}
       </td>
-      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums text-foreground/80">
+      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums text-foreground">
         {t.indice_citado != null ? t.indice_citado.toFixed(3) : '—'}
       </td>
-      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums text-foreground/80">
+      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums text-foreground">
         {t.cobertura != null ? `${Math.round(t.cobertura * 100)}%` : '—'}
       </td>
-      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums">
-        <span className="text-foreground/70">{t.fatos.length}</span>
-        <span className="text-muted-foreground/50"> / </span>
-        <span className={cn(t.desconhecidos.length ? 'text-warning' : 'text-muted-foreground/70')}>
+      {/* O par fato/desconhecido é UM dado, não dois. O rótulo acessível diz a
+          frase inteira; a barra é pontuação e sai da árvore de acessibilidade
+          (e, por ser decorativa, está isenta do piso de contraste). */}
+      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums"
+        aria-label={`${t.fatos.length} fatos, ${t.desconhecidos.length} desconhecidos`}>
+        <span className="text-foreground">{t.fatos.length}</span>
+        <span aria-hidden className="text-muted-foreground"> / </span>
+        <span className={cn(t.desconhecidos.length ? 'text-warning' : 'text-muted-foreground')}>
           {t.desconhecidos.length}
         </span>
       </td>
@@ -202,7 +207,7 @@ export const ComparadorDeOportunidades: React.FC<{
               Fora do ranking
               <span className="ml-1.5 tabular-nums font-normal text-muted-foreground">{fora.length}</span>
             </h4>
-            <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[64ch] leading-snug">
+            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[64ch] leading-snug">
               Não entram na ordenação porque não há base para comparar. Ficam
               aqui, com o motivo — some da lista seria pior que aparecer último.
             </p>
@@ -213,9 +218,9 @@ export const ComparadorDeOportunidades: React.FC<{
               <tbody>
                 {fora.map((t) => (
                   <tr key={t.opportunity_id ?? t.tema} className="border-t border-border">
-                    <td className="py-1.5 pl-2 pr-1 w-8 text-[11px] text-muted-foreground/60" aria-hidden>—</td>
+                    <td className="py-1.5 pl-2 pr-1 w-8 text-[11px] text-muted-foreground" aria-hidden>—</td>
                     <td className="py-1.5 pr-2 align-top">
-                      <span className="text-[12px] text-foreground/80 break-words">{t.tema}</span>
+                      <span className="text-[12px] text-foreground break-words">{t.tema}</span>
                     </td>
                     <td className="py-1.5 pr-2 align-top"><Decisao t={t} /></td>
                     <td className="py-1.5 pr-2 align-top text-[11px] text-muted-foreground" colSpan={4}>
