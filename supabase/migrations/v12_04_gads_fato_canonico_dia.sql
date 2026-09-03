@@ -611,6 +611,7 @@ DECLARE
   v_fatos        integer;
   v_resultado    text;
   v_projetar     boolean;
+  v_con          text;
 BEGIN
   IF jsonb_typeof(documento) <> 'object' THEN
     RAISE EXCEPTION USING ERRCODE = '22023',
@@ -659,6 +660,29 @@ BEGIN
   );
   v_payload := encode(sha256(convert_to(v_hash_alvo::text, 'UTF8')), 'hex');
 
+  -- Premissa operacional desta RPC: READ COMMITTED. REPEATABLE READ e
+  -- SERIALIZABLE mudam visibilidade de lote vs fechamento e do UPSERT.
+  -- PostgreSQL mapeia READ UNCOMMITTED para READ COMMITTED; current_setting
+  -- nesse caso devolve 'read committed' e a chamada segue.
+  IF current_setting('transaction_isolation') IS DISTINCT FROM 'read committed' THEN
+    RAISE EXCEPTION USING ERRCODE = '0A000',
+      MESSAGE = 'ISOLAMENTO_NAO_SUPORTADO_V12_04: a RPC exige READ COMMITTED; atual='
+                || current_setting('transaction_isolation');
+  END IF;
+
+  -- Locks transacionais, nunca session-lock: abortar a transacao libera.
+  -- classid 120405 / hashtext('v12_04:idemp:' || chave_idempotencia)
+  --   fecha a janela de idempotencia (SELECT do recibo + INSERT).
+  -- classid 120404 / hashtext('v12_04:exec:' || execucao_chave)
+  --   serializa lote vs fechamento vs paginas da MESMA execucao.
+  -- Ordem fixa: sempre 120405 e em seguida 120404. A mesma chave idempotente
+  -- espera primeiro no classid 120405 (contraprova E observa exatamente isso).
+  -- Execucoes distintas nao compartilham 120405; lote vs fechamento da mesma
+  -- execucao serializam em 120404 depois de tomarem chaves 120405 diferentes.
+  -- Nao ha lock de tabela.
+  PERFORM pg_advisory_xact_lock(120405, hashtext('v12_04:idemp:' || v_chave));
+  PERFORM pg_advisory_xact_lock(120404, hashtext('v12_04:exec:' || v_exec_chave));
+
   -- ── idempotencia com memoria ─────────────────────────────────────────────
   SELECT * INTO v_existente
     FROM public.trafego_coleta_execucao
@@ -687,6 +711,18 @@ BEGIN
 
   v_exec_id := public.volc_gads_uuid_da_chave(v_chave);
 
+  IF EXISTS (
+    SELECT 1 FROM public.trafego_coleta_execucao e
+     WHERE e.execucao_chave = v_exec_chave
+       AND e.tipo_lote = v_tipo
+       AND e.lote_ordinal = v_ordinal
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = '23505',
+      MESSAGE = 'LOTE_JA_OCUPADO: execucao_chave=' || v_exec_chave
+                || ' tipo_lote=' || coalesce(v_tipo, '?')
+                || ' lote_ordinal=' || coalesce(v_ordinal::text, '?');
+  END IF;
+
   -- ── lote de contas: escreve o fato ANTES do recibo ───────────────────────
   IF v_tipo = 'contas' THEN
 
@@ -702,7 +738,14 @@ BEGIN
     END IF;
 
     v_i := 0;
-    FOR v_linha IN SELECT value FROM jsonb_array_elements(v_linhas) LOOP
+    FOR v_linha IN
+      SELECT value
+        FROM jsonb_array_elements(v_linhas)
+       ORDER BY value->>'customer_id',
+                value->>'campaign_id',
+                value->>'metric_date',
+                coalesce((value->'segmentos')::text, '{}')
+    LOOP
       v_i := v_i + 1;
       v_motivo_linha := NULL;
 
@@ -759,38 +802,8 @@ BEGIN
       v_seg_hash := encode(sha256(convert_to(v_seg::text, 'UTF8')), 'hex');
       v_precedencia := CASE v_origem WHEN 'D0' THEN 1 WHEN 'D-1' THEN 2 ELSE 3 END;
 
-      SELECT g.precedencia, g.colhida_em, g.execucao_id
-        INTO v_atual
-        FROM public.google_ads_campanha_dia g
-       WHERE g.customer_id   = v_linha->>'customer_id'
-         AND g.campaign_id   = v_linha->>'campaign_id'
-         AND g.metric_date   = (v_linha->>'metric_date')::date
-         AND g.segments_hash = v_seg_hash;
-
-      IF FOUND THEN
-        -- A mesma execucao nao pode escrever o mesmo fato duas vezes: se
-        -- pudesse, `linhas_aceitas` deixaria de resolver as linhas persistidas
-        -- e a reconciliacao do fechamento viraria decoracao.
-        IF EXISTS (
-          SELECT 1 FROM public.trafego_coleta_execucao e
-           WHERE e.execucao_id = v_atual.execucao_id
-             AND e.execucao_chave = v_exec_chave
-        ) OR v_atual.execucao_id = v_exec_id THEN
-          RAISE EXCEPTION USING ERRCODE = '22023',
-            MESSAGE = 'FATO_DUPLICADO_NA_EXECUCAO: '
-                      || (v_linha->>'customer_id') || '/' || (v_linha->>'campaign_id')
-                      || '/' || (v_linha->>'metric_date');
-        END IF;
-
-        -- precedencia total e declarada
-        IF v_precedencia < v_atual.precedencia
-           OR (v_precedencia = v_atual.precedencia
-               AND (v_linha->>'colhida_em')::timestamptz < v_atual.colhida_em) THEN
-          v_preteridas := v_preteridas + 1;
-          CONTINUE;
-        END IF;
-      END IF;
-
+      -- Decisao atomica: o WHERE do ON CONFLICT compara EXCLUDED com a linha
+      -- travada pelo indice unico. SELECT previo sem lock e TOCTOU.
       INSERT INTO public.google_ads_campanha_dia AS g (
         customer_id, campaign_id, metric_date, segments_hash, segmentos,
         volc_campaign_id, campaign_name, campaign_status, advertising_channel_type,
@@ -868,9 +881,141 @@ BEGIN
         top_impression_percentage = EXCLUDED.top_impression_percentage,
         absolute_top_impression_percentage = EXCLUDED.absolute_top_impression_percentage,
         metricas_extras = EXCLUDED.metricas_extras,
-        atualizada_em = now();
+        atualizada_em = now()
+      WHERE (
+              EXCLUDED.precedencia > g.precedencia
+           OR (EXCLUDED.precedencia = g.precedencia
+               AND EXCLUDED.colhida_em > g.colhida_em)
+            )
+        AND g.execucao_id IS DISTINCT FROM EXCLUDED.execucao_id
+        AND NOT EXISTS (
+          SELECT 1 FROM public.trafego_coleta_execucao e
+           WHERE e.execucao_id = g.execucao_id
+             AND e.execucao_chave = v_exec_chave
+        );
 
-      v_aceitas := v_aceitas + 1;
+      IF FOUND THEN
+        v_aceitas := v_aceitas + 1;
+      ELSE
+        SELECT g.*
+          INTO v_atual
+          FROM public.google_ads_campanha_dia g
+         WHERE g.customer_id   = v_linha->>'customer_id'
+           AND g.campaign_id   = v_linha->>'campaign_id'
+           AND g.metric_date   = (v_linha->>'metric_date')::date
+           AND g.segments_hash = v_seg_hash
+         FOR UPDATE;
+
+        IF NOT FOUND THEN
+          RAISE EXCEPTION USING ERRCODE = 'XX000',
+            MESSAGE = 'FATO_UPSERT_SEM_ALVO: '
+                      || (v_linha->>'customer_id') || '/' || (v_linha->>'campaign_id')
+                      || '/' || (v_linha->>'metric_date');
+        END IF;
+
+        IF v_atual.execucao_id = v_exec_id
+           OR EXISTS (
+             SELECT 1 FROM public.trafego_coleta_execucao e
+              WHERE e.execucao_id = v_atual.execucao_id
+                AND e.execucao_chave = v_exec_chave
+           ) THEN
+          RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'FATO_DUPLICADO_NA_EXECUCAO: '
+                      || (v_linha->>'customer_id') || '/' || (v_linha->>'campaign_id')
+                      || '/' || (v_linha->>'metric_date');
+        END IF;
+
+        IF v_precedencia > v_atual.precedencia
+           OR (v_precedencia = v_atual.precedencia
+               AND (v_linha->>'colhida_em')::timestamptz > v_atual.colhida_em) THEN
+          RAISE EXCEPTION USING ERRCODE = 'XX000',
+            MESSAGE = 'FATO_UPSERT_STALE: vencedor nao aplicado';
+        END IF;
+
+        -- Empate total: mesma precedencia e mesmo colhida_em. First-writer
+        -- permanece se o conteudo persistivel e identico; qualquer divergencia
+        -- persistivel e recusada com nome (a transacao inteira desfaz, sem
+        -- versao parcial).
+        --
+        -- Entram na comparacao todos os campos que o INSERT/UPDATE grava como
+        -- fato: segmentos, metadados da campanha, moeda, API, metricas, shares,
+        -- percentuais e metricas_extras.
+        -- Ficam de fora, de proposito:
+        --   fato_id, customer_id, campaign_id, metric_date, segments_hash
+        --     (identidade ja casada pelo WHERE / indice unico);
+        --   execucao_id (procedencia da execucao);
+        --   colhida_em (chave do empate, ja igual neste ramo);
+        --   origem_janela, janela_fechada, precedencia
+        --     (procedencia da janela; iguais neste ramo);
+        --   atualizada_em (relogio tecnico).
+        IF v_precedencia = v_atual.precedencia
+           AND (v_linha->>'colhida_em')::timestamptz
+               IS NOT DISTINCT FROM v_atual.colhida_em
+           AND NOT (
+                v_seg IS NOT DISTINCT FROM v_atual.segmentos
+            AND nullif(v_linha->>'volc_campaign_id', '')
+                IS NOT DISTINCT FROM v_atual.volc_campaign_id
+            AND nullif(v_linha->>'campaign_name', '')
+                IS NOT DISTINCT FROM v_atual.campaign_name
+            AND nullif(v_linha->>'campaign_status', '')
+                IS NOT DISTINCT FROM v_atual.campaign_status
+            AND nullif(v_linha->>'advertising_channel_type', '')
+                IS NOT DISTINCT FROM v_atual.advertising_channel_type
+            AND v_api IS NOT DISTINCT FROM v_atual.api_versao
+            AND (v_linha->>'currency_code')
+                IS NOT DISTINCT FROM v_atual.currency_code
+            AND (v_linha->>'impressoes')::bigint
+                IS NOT DISTINCT FROM v_atual.impressoes
+            AND (v_linha->>'cliques')::bigint
+                IS NOT DISTINCT FROM v_atual.cliques
+            AND (v_linha->>'interacoes')::bigint
+                IS NOT DISTINCT FROM v_atual.interacoes
+            AND (v_linha->>'custo_micros')::bigint
+                IS NOT DISTINCT FROM v_atual.custo_micros
+            AND (v_linha->>'conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.conversoes
+            AND (v_linha->>'todas_conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.todas_conversoes
+            AND (v_linha->>'valor_conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.valor_conversoes
+            AND (v_linha->>'valor_todas_conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.valor_todas_conversoes
+            AND (v_linha->>'ctr')::numeric
+                IS NOT DISTINCT FROM v_atual.ctr
+            AND (v_linha->>'cpc_medio_micros')::numeric
+                IS NOT DISTINCT FROM v_atual.cpc_medio_micros
+            AND (v_linha->>'custo_por_conversao_micros')::numeric
+                IS NOT DISTINCT FROM v_atual.custo_por_conversao_micros
+            AND (v_linha->>'search_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_impression_share
+            AND (v_linha->>'search_budget_lost_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_budget_lost_impression_share
+            AND (v_linha->>'search_rank_lost_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_rank_lost_impression_share
+            AND (v_linha->>'search_top_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_top_impression_share
+            AND (v_linha->>'search_absolute_top_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_absolute_top_impression_share
+            AND (v_linha->>'search_click_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_click_share
+            AND (v_linha->>'search_exact_match_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_exact_match_impression_share
+            AND (v_linha->>'top_impression_percentage')::numeric
+                IS NOT DISTINCT FROM v_atual.top_impression_percentage
+            AND (v_linha->>'absolute_top_impression_percentage')::numeric
+                IS NOT DISTINCT FROM v_atual.absolute_top_impression_percentage
+            AND coalesce(v_linha->'metricas_extras', '{}'::jsonb)
+                IS NOT DISTINCT FROM v_atual.metricas_extras
+           ) THEN
+          RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'FATO_EMPATE_CONTEUDO_DIVERGENTE: '
+                      || (v_linha->>'customer_id') || '/'
+                      || (v_linha->>'campaign_id') || '/'
+                      || (v_linha->>'metric_date');
+        END IF;
+
+        v_preteridas := v_preteridas + 1;
+      END IF;
     END LOOP;
 
     -- projecao: fault-isolated, com desfecho nomeado no recibo.
@@ -962,38 +1107,70 @@ BEGIN
       MESSAGE = 'TIPO_LOTE_INVALIDO: ' || coalesce(v_tipo, '(nulo)');
   END IF;
 
-  INSERT INTO public.trafego_coleta_execucao (
-    execucao_id, chave_idempotencia, execucao_chave,
-    fonte, job, disparo, workflow_id, execucao_externa_id,
-    api_versao, contrato_versao, contrato_sha256,
-    tipo_lote, lote_ordinal,
-    origem_janela, janela_inicio, janela_fim,
-    iniciada_em, encerrada_em, duracao_ms, batimento_em,
-    resultado, motivo, escopo,
-    contas_tentadas, contas_aceitas, contas_recusadas,
-    linhas_lidas, linhas_aceitas, linhas_preteridas, linhas_rejeitadas, rejeicoes,
-    projecao_estado, projecao_linhas, projecao_erro_codigo,
-    payload_sha256
-  ) VALUES (
-    v_exec_id, v_chave, v_exec_chave,
-    documento->>'fonte', documento->>'job', documento->>'disparo',
-    nullif(documento->>'workflow_id', ''), nullif(documento->>'execucao_externa_id', ''),
-    v_api, documento->>'contrato_versao', documento->>'contrato_sha256',
-    v_tipo, v_ordinal,
-    v_origem, v_ini, v_fim,
-    (documento->>'iniciada_em')::timestamptz,
-    (documento->>'encerrada_em')::timestamptz,
-    (documento->>'duracao_ms')::integer,
-    (documento->>'batimento_em')::timestamptz,
-    v_resultado, nullif(documento->>'motivo', ''), nullif(documento->>'escopo', ''),
-    ARRAY(SELECT jsonb_array_elements_text(coalesce(documento->'contas_tentadas', '[]'::jsonb))),
-    ARRAY(SELECT jsonb_array_elements_text(coalesce(documento->'contas_aceitas', '[]'::jsonb))),
-    coalesce(documento->'contas_recusadas', '[]'::jsonb),
-    v_aceitas + v_preteridas + v_rejeitadas,
-    v_aceitas, v_preteridas, v_rejeitadas, v_rejeicoes,
-    v_proj_estado, v_proj_linhas, v_proj_erro,
-    v_payload
-  );
+  BEGIN
+    INSERT INTO public.trafego_coleta_execucao (
+      execucao_id, chave_idempotencia, execucao_chave,
+      fonte, job, disparo, workflow_id, execucao_externa_id,
+      api_versao, contrato_versao, contrato_sha256,
+      tipo_lote, lote_ordinal,
+      origem_janela, janela_inicio, janela_fim,
+      iniciada_em, encerrada_em, duracao_ms, batimento_em,
+      resultado, motivo, escopo,
+      contas_tentadas, contas_aceitas, contas_recusadas,
+      linhas_lidas, linhas_aceitas, linhas_preteridas, linhas_rejeitadas, rejeicoes,
+      projecao_estado, projecao_linhas, projecao_erro_codigo,
+      payload_sha256
+    ) VALUES (
+      v_exec_id, v_chave, v_exec_chave,
+      documento->>'fonte', documento->>'job', documento->>'disparo',
+      nullif(documento->>'workflow_id', ''), nullif(documento->>'execucao_externa_id', ''),
+      v_api, documento->>'contrato_versao', documento->>'contrato_sha256',
+      v_tipo, v_ordinal,
+      v_origem, v_ini, v_fim,
+      (documento->>'iniciada_em')::timestamptz,
+      (documento->>'encerrada_em')::timestamptz,
+      (documento->>'duracao_ms')::integer,
+      (documento->>'batimento_em')::timestamptz,
+      v_resultado, nullif(documento->>'motivo', ''), nullif(documento->>'escopo', ''),
+      ARRAY(SELECT jsonb_array_elements_text(coalesce(documento->'contas_tentadas', '[]'::jsonb))),
+      ARRAY(SELECT jsonb_array_elements_text(coalesce(documento->'contas_aceitas', '[]'::jsonb))),
+      coalesce(documento->'contas_recusadas', '[]'::jsonb),
+      v_aceitas + v_preteridas + v_rejeitadas,
+      v_aceitas, v_preteridas, v_rejeitadas, v_rejeicoes,
+      v_proj_estado, v_proj_linhas, v_proj_erro,
+      v_payload
+    );
+  EXCEPTION WHEN unique_violation THEN
+    GET STACKED DIAGNOSTICS v_con = CONSTRAINT_NAME;
+    SELECT * INTO v_existente
+      FROM public.trafego_coleta_execucao
+     WHERE chave_idempotencia = v_chave;
+    IF FOUND THEN
+      IF v_existente.payload_sha256 <> v_payload THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+          MESSAGE = 'CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE: a chave '
+                    || v_chave || ' ja existe com outro conteudo';
+      END IF;
+      RETURN jsonb_build_object(
+        'execucao_id',       v_existente.execucao_id,
+        'chave_idempotencia', v_existente.chave_idempotencia,
+        'repetida',          true,
+        'linhas_lidas',      v_existente.linhas_lidas,
+        'linhas_aceitas',    v_existente.linhas_aceitas,
+        'linhas_preteridas', v_existente.linhas_preteridas,
+        'linhas_rejeitadas', v_existente.linhas_rejeitadas,
+        'rejeicoes',         v_existente.rejeicoes,
+        'projecao_estado',   v_existente.projecao_estado,
+        'projecao_linhas',   v_existente.projecao_linhas,
+        'resultado',         v_existente.resultado
+      );
+    END IF;
+    RAISE EXCEPTION USING ERRCODE = '23505',
+      MESSAGE = 'LOTE_JA_OCUPADO: constraint=' || coalesce(v_con, '?')
+                || ' execucao_chave=' || v_exec_chave
+                || ' tipo_lote=' || coalesce(v_tipo, '?')
+                || ' lote_ordinal=' || coalesce(v_ordinal::text, '?');
+  END;
 
   RETURN jsonb_build_object(
     'execucao_id',        v_exec_id,
@@ -1013,7 +1190,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.volc_registrar_gads_campanha_dia(jsonb) IS
-  'Unica porta de ingestao do fato campanha-dia. Idempotente pela chave, recusa a mesma chave com outro conteudo, aplica precedencia D0<D-1<backfill, projeta compatibilidade em bloco isolado e so fecha a execucao depois de reconciliar contra o que foi persistido.';
+  'Unica porta de ingestao do fato campanha-dia. Exige READ COMMITTED (ISOLAMENTO_NAO_SUPORTADO_V12_04). Idempotente pela chave (advisory xact lock 120405 + unique), recusa a mesma chave com outro conteudo, aplica precedencia D0<D-1<backfill no UPSERT atomico, empate total identico fica com o first-writer (preterida) e empate divergente recusa FATO_EMPATE_CONTEUDO_DIVERGENTE, serializa lote/fechamento da mesma execucao (advisory xact lock 120404 depois de 120405), projeta compatibilidade em bloco isolado e so fecha a execucao depois de reconciliar contra o que foi persistido.';
 
 
 -- ─────────────────────────────────────────────── leitura de saude / deadman ──
