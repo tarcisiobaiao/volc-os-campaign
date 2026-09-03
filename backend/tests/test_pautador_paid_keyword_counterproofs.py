@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 import pytest
 
 from app.agents.mining.classifier import gold_miner_classify
-from app.agents.mining.funnel_factory import funnel_factory
+from app.agents.mining.funnel_factory import funnel_factory, funnel_factory_com_conjuntos
 
 HOJE = datetime(2026, 9, 3, tzinfo=timezone.utc)
 
@@ -117,6 +117,18 @@ IPVA = _funil(
 )
 
 
+def _item_e_conjunto(ai):
+    """A fila JSON-safe e o conjunto vivo, da MESMA construção.
+
+    O router serializa `factory_output` para o Supabase e para a tela, então
+    `keywords_campanha.conjunto_pago` viaja como dicionário. O domínio e
+    estas contraprovas precisam do objeto — e ele é o mesmo de que aquele
+    dicionário saiu, nunca uma segunda montagem.
+    """
+    fila, conjuntos = funnel_factory_com_conjuntos(ai, today=HOJE)
+    return fila[0], conjuntos[0]
+
+
 def _selecionadas(item):
     return [k["keyword"] for sub in item["funnel_context"]["sub_intencoes_raw"] for k in sub["keywords"]]
 
@@ -154,8 +166,7 @@ def test_N_lista_google_ads_deriva_exatamente_de_selected():
     """
     from app.agents.mining.paid_eligibility import derivar_lista_google_ads
 
-    item = funnel_factory(BPC_LOAS, today=HOJE)[0]
-    conjunto = item["keywords_campanha"]["conjunto_pago"]
+    item, conjunto = _item_e_conjunto(BPC_LOAS)
     assert item["keywords_campanha"]["lista_google_ads"] == derivar_lista_google_ads(conjunto)
 
 
@@ -173,8 +184,8 @@ def test_C_navegacional_de_alto_volume_nao_entra_automaticamente():
     """
     from app.agents.mining.paid_eligibility import INCLUDE
 
-    item = funnel_factory(BPC_LOAS, today=HOJE)[0]
-    decisoes = {d.termo: d for d in item["keywords_campanha"]["conjunto_pago"].candidates}
+    item, conjunto = _item_e_conjunto(BPC_LOAS)
+    decisoes = {d.termo: d for d in conjunto.candidates}
 
     for termo in ("meu inss login", "inss telefone 135"):
         assert decisoes[termo].decisao != INCLUDE, f"{termo!r} entrou por volume"
@@ -196,8 +207,8 @@ def test_D_cpc_ausente_nao_vira_zero():
     """D. CPC ausente não vira 0 nem "barato"."""
     from app.agents.mining.paid_eligibility import AUSENTE
 
-    item = funnel_factory(IPVA, today=HOJE)[0]
-    decisoes = {d.termo: d for d in item["keywords_campanha"]["conjunto_pago"].candidates}
+    _item, conjunto = _item_e_conjunto(IPVA)
+    decisoes = {d.termo: d for d in conjunto.candidates}
     cpc = decisoes["ipva 2026 tabela"].cpc
     assert cpc.estado == AUSENTE
     assert cpc.valor is None
@@ -221,8 +232,8 @@ def test_E_volume_ausente_nao_vira_zero_nem_sem_demanda():
     """E. Volume ausente não vira 0 nem "sem demanda"."""
     from app.agents.mining.paid_eligibility import AUSENTE
 
-    item = funnel_factory(IPVA, today=HOJE)[0]
-    decisoes = {d.termo: d for d in item["keywords_campanha"]["conjunto_pago"].candidates}
+    _item, conjunto = _item_e_conjunto(IPVA)
+    decisoes = {d.termo: d for d in conjunto.candidates}
     volume = decisoes["ipva 2026 tabela"].volume
     assert volume.estado == AUSENTE
     assert volume.valor is None
@@ -269,9 +280,18 @@ def test_D4_o_humano_nao_le_zero_onde_o_dado_falta():
     """D. O texto que vai à tela não pode escrever "Vol: 0, CPC: 0.00" para
     um termo sem medição nenhuma. Foi assim que a ausência virou fato."""
     item = funnel_factory(IPVA, today=HOJE)[0]
-    texto = item["funnel_context"]["sub_intencoes_raw"][0]["keywords_text"]
-    linha = next(l for l in texto.splitlines() if "ipva 2026 tabela" in l)
-    assert "Vol: 0," not in linha and "CPC: 0.00" not in linha
+    sub = item["funnel_context"]["sub_intencoes_raw"][0]
+    superficies = [
+        sub["keywords_text"],
+        sub.get("keywords_retidas_text", ""),
+        item["keywords_campanha"]["lista_clickup"],
+    ]
+    linhas = [
+        l for texto in superficies for l in texto.splitlines() if "ipva 2026 tabela" in l
+    ]
+    assert linhas, "o termo retido sumiu de toda superfície legível"
+    for linha in linhas:
+        assert "Vol: 0" not in linha and "0.00" not in linha, linha
 
 
 # ── F: as duas decisões são independentes ───────────────────────────────────
@@ -298,11 +318,10 @@ def test_F_tema_editorial_apto_com_todas_as_keywords_retidas():
         },
         tema="bpc loas",
     )
-    item = funnel_factory(
-        _funil("Só navegacional", "inss", [_sub("NAVEGACIONAL", [_kw("meu inss login", 480000, 0.05)])]),
-        today=HOJE,
-    )[0]
-    visao = ponte(editorial, item["keywords_campanha"]["conjunto_pago"])
+    _item, conjunto = _item_e_conjunto(
+        _funil("Só navegacional", "inss", [_sub("NAVEGACIONAL", [_kw("meu inss login", 480000, 0.05)])])
+    )
+    visao = ponte(editorial, conjunto)
 
     assert visao["vale_produzir_conteudo"] is True
     assert visao["apto_para_midia_paga"] is False
@@ -333,8 +352,8 @@ def test_G_termo_de_concorrente_nao_entra_por_expansao():
     """G. Termo de concorrente exige decisão explícita — nunca expansão."""
     from app.agents.mining.paid_eligibility import HUMAN_REVIEW, INCLUDE
 
-    item = funnel_factory(BPC_LOAS, today=HOJE)[0]
-    decisoes = {d.termo: d for d in item["keywords_campanha"]["conjunto_pago"].candidates}
+    item, conjunto = _item_e_conjunto(BPC_LOAS)
+    decisoes = {d.termo: d for d in conjunto.candidates}
     alvo = decisoes["bpc loas advogado x concorrente"]
     assert alvo.decisao != INCLUDE
     assert alvo.decisao == HUMAN_REVIEW or alvo.riscos.get("marca_terceiro")
@@ -347,8 +366,7 @@ def test_G2_termo_de_marca_nao_e_negativado_automaticamente():
     Auto-negativa é o espelho do defeito, não a correção: bloqueia demanda real
     sem evidência de search term e sem revisão de overblocking.
     """
-    item = funnel_factory(BPC_LOAS, today=HOJE)[0]
-    conjunto = item["keywords_campanha"]["conjunto_pago"]
+    _item, conjunto = _item_e_conjunto(BPC_LOAS)
     assert conjunto.negative_keywords == [], "o motor criou negativa sem search-term evidence"
 
 
@@ -371,8 +389,8 @@ def test_H_deduplicacao_nao_funde_sub_intencoes_distintas():
             _sub("NAVEGACIONAL", [_kw("BPC LOAS ", 900, 0.01)], volume_sub=900),
         ],
     )
-    item = funnel_factory(funil, today=HOJE)[0]
-    candidatos = item["keywords_campanha"]["conjunto_pago"].candidates
+    _item, conjunto = _item_e_conjunto(funil)
+    candidatos = conjunto.candidates
     subintencoes = {d.subintencao for d in candidatos if d.termo_normalizado == "bpc loas"}
     assert subintencoes == {"ELEGIBILIDADE", "NAVEGACIONAL"}
 
@@ -381,7 +399,7 @@ def test_H_deduplicacao_nao_funde_sub_intencoes_distintas():
 
 
 def _conjunto_bpc():
-    return funnel_factory(BPC_LOAS, today=HOJE)[0]["keywords_campanha"]["conjunto_pago"]
+    return _item_e_conjunto(BPC_LOAS)[1]
 
 
 def test_I_hash_muda_se_o_termo_muda():
@@ -492,8 +510,7 @@ def test_L_evidencia_pos_lancamento_nao_justifica_selecao_inicial():
 
 def test_M_desconhecido_nao_produz_ready_for_campaign_plan():
     """M. Sem teto econômico do dono, o conjunto não fica pronto — fica bloqueado."""
-    item = funnel_factory(IPVA, today=HOJE)[0]  # owner_ceiling nunca declarado
-    conjunto = item["keywords_campanha"]["conjunto_pago"]
+    _item, conjunto = _item_e_conjunto(IPVA)  # owner_ceiling nunca declarado
     assert conjunto.owner_ceiling is None
     assert conjunto.ready_for_campaign_plan is False
     assert "teto_economico_desconhecido" in conjunto.blockers
@@ -518,8 +535,8 @@ def test_M2_ready_for_campaign_plan_nao_autoriza_campanha():
 
 def test_dois_nichos_nao_colapsam_no_mesmo_conjunto():
     """BPC/LOAS e IPVA não compartilham cluster, intenção nem conjunto pago."""
-    bpc = funnel_factory(BPC_LOAS, today=HOJE)[0]["keywords_campanha"]["conjunto_pago"]
-    ipva = funnel_factory(IPVA, today=HOJE)[0]["keywords_campanha"]["conjunto_pago"]
+    bpc = _item_e_conjunto(BPC_LOAS)[1]
+    ipva = _item_e_conjunto(IPVA)[1]
 
     from app.agents.mining.paid_eligibility import impressao_do_conjunto
 

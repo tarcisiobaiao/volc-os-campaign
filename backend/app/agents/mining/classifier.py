@@ -83,6 +83,16 @@ _MONTH_PATTERNS = [re.sub(r"_[a-z]{2}$", "", m) for m in MONTH_WORDS.keys()]
 UNIQUE_MONTHS = list(dict.fromkeys(_MONTH_PATTERNS))
 
 
+def _numero(bruto: Any) -> Optional[float]:
+    """O número, ou `None` quando não houve medição — nunca 0 por omissão."""
+    if bruto is None:
+        return None
+    try:
+        return float(bruto)
+    except (TypeError, ValueError):
+        return None
+
+
 def _contains_any(text: str, words: List[str]) -> bool:
     return any(w in text for w in words)
 
@@ -151,8 +161,22 @@ def gold_miner_classify(raw_keywords: List[Dict[str, Any]], *, today: Optional[d
     }
 
     for k in raw_keywords:
-        vol = int(k.get("volume") or 0)
-        cpc = float(k.get("cpc") or 0)
+        # ⚠️ AUSÊNCIA NÃO É ZERO, E MEDIR NÃO PODE CUSTAR CARO.
+        #
+        # `float(k.get("cpc") or 0)` fazia um CPC que ninguém mediu valer 0,00,
+        # e 0,00 passa em `cpc <= max_cpc_scale`. Consequência medida em
+        # 2026-09-03, sobre o MESMO termo:
+        #
+        #     'ipva tabela fipe' sem CPC   -> APROVADA "Good Volume + Affordable CPC"
+        #     'ipva tabela fipe' CPC 4,20  -> DESCARTADA
+        #
+        # Não medir saía estritamente melhor que medir. `cpc_medido` é `None`
+        # quando não há medição, e as regras que dependem de preço passaram a
+        # exigir número — regra de preço sem preço não decide.
+        vol_medido = _numero(k.get("volume"))
+        cpc_medido = _numero(k.get("cpc"))
+        vol = int(vol_medido) if vol_medido is not None else 0
+        cpc = float(cpc_medido) if cpc_medido is not None else 0.0
         comp = str(k.get("competition") or "").upper()
         monthly = k.get("monthly_searches") or []
 
@@ -207,16 +231,23 @@ def gold_miner_classify(raw_keywords: List[Dict[str, Any]], *, today: Optional[d
             gold["questions"].append({**processed})
 
         # R2 hidden trends
-        if vol == 0 and k.get("source") == "google_autocomplete":
+        if vol_medido == 0 and k.get("source") == "google_autocomplete":
             tags.append("HIDDEN_TREND")
             processed["reason"] = "Google Autocomplete suggestion — no historical data yet."
             gold["hidden_trends"].append(processed)
             continue
 
-        # R3 dead keywords
-        if vol == 0 and reliability == "HIGH":
+        # R3 dead keywords — SÓ com zero MEDIDO e confiabilidade declarada.
+        #
+        # `vol == 0` incluía o volume ausente, então um termo que ninguém
+        # mediu era descartado com o rótulo "(vol=0 confirmed)" — uma
+        # afirmação de demanda zero em cima de uma lacuna. `confirmed_zero`
+        # e `absent` são estados diferentes e continuam diferentes aqui.
+        if vol_medido == 0 and reliability == "HIGH":
             gold["discards"].append(display_keyword + " (vol=0 confirmed)")
             continue
+        if vol_medido is None:
+            tags.append("VOLUME_AUSENTE")
 
         # R4 seasonal spike
         if peak and (peak.get("spike_ratio") or 0) > 3:
@@ -235,12 +266,18 @@ def gold_miner_classify(raw_keywords: List[Dict[str, Any]], *, today: Optional[d
             processed["reason"] = f"Temporal Trend{warp_reason}"
             gold["future"].append(processed)
             approved = True
-        elif vol >= config["volume_scale"] and cpc <= config["max_cpc_scale"]:
+        elif (
+            vol >= config["volume_scale"]
+            and cpc_medido is not None
+            and cpc_medido <= config["max_cpc_scale"]
+        ):
             tags.append("SCALE_OPPORTUNITY")
             processed["reason"] = f"Good Volume + Affordable CPC{warp_reason}"
             gold["gems"].append(processed)
             approved = True
-        elif vol >= config["volume_gem"] and (comp == "LOW" or cpc < 0.20):
+        elif vol >= config["volume_gem"] and (
+            comp == "LOW" or (cpc_medido is not None and cpc_medido < 0.20)
+        ):
             tags.append("HIDDEN_GEM")
             processed["reason"] = f"Low Competition / Low Cost{warp_reason}"
             gold["gems"].append(processed)

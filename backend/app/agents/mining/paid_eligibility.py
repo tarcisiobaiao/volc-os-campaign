@@ -1,0 +1,1014 @@
+"""Elegibilidade paga — a decisão que a mineração NÃO tem o direito de tomar.
+
+## As duas decisões, e por que precisavam ser separadas
+
+    "Vale criar conteúdo sobre este tema?"      → `app.validacao` (o Validador)
+    "Quais termos podem entrar num leilão?"     → este módulo
+
+Elas vazavam uma para a outra. `funnel_factory` escolhia de 3 a 10 termos por
+sub-intenção em `selected` e exportava `final_campaign`, construída a partir de
+`deduped` — a tela mostrava a escolha e a campanha recebia a mineração inteira.
+Medido em 2026-09-03 contra `origin/volc-os-v2@34dc7b4`, no funil BPC/LOAS:
+
+    selecionadas : 5      exportadas : 8
+
+E os dois termos que a seleção colocava em primeiro lugar eram
+`meu inss login` (480.000) e `inss telefone 135` (300.000): navegacional e
+suporte entrando por volume, empurrando a intenção de elegibilidade para fora.
+É o mesmo defeito que o Validador já documenta do lado editorial — "73% do eixo
+`volume` era gente procurando o telefone do Banco Pan" — aparecendo do lado
+pago, onde ninguém tinha olhado.
+
+## Ausência não é zero, e medir não pode custar caro
+
+O caminho antigo lia `kw.get("cpc") or 0`. A consequência, medida:
+
+    'ipva tabela fipe' sem CPC   → APROVADA  "Good Volume + Affordable CPC"
+    'ipva tabela fipe' CPC 4,20  → DESCARTADA
+
+Não medir saía mais barato que medir. `Sinal` existe para fechar isso: um
+número só entra numa decisão acompanhado do estado que diz de onde ele veio, e
+`absent` nunca aceita valor numérico.
+
+O vocabulário de estado não é invenção deste módulo. `app.validacao` já grava
+`proveniencia: medido | julgado | ausente` por eixo, com `motivo_ausencia`
+junto. Aqui ele é estendido para o que um sinal de leilão precisa distinguir —
+notadamente `confirmed_zero`, que o motor antigo não conseguia expressar:
+`data_reliability` é lido em `classifier.py` e nunca foi escrito por nenhum
+produtor do repositório, então "volume zero confirmado" e "volume ausente"
+caíam no mesmo descarte.
+
+## O que este módulo NÃO decide
+
+`ready_for_campaign_plan` diz que o CONJUNTO pode ser preparado com governança.
+Não diz que a conta está apta, que o destino pago passou, que a mensuração está
+pronta, nem que alguém autorizou gasto. Esses portões são de outras lanes e
+continuam independentes — `PORTOES_EXTERNOS` os nomeia justamente para que
+nenhum leitor confunda os dois níveis.
+
+E nada aqui cria negativa. Negativa sem search-term evidence e sem revisão de
+overblocking é o espelho do defeito, não a correção.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import unicodedata
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+# ── estados do dado ─────────────────────────────────────────────────────────
+#
+# Sete estados, porque seis colapsariam dois casos que decidem diferente.
+# `absent` (a chave não veio) e `unknown` (veio um número que não se sabe
+# interpretar) levam a caminhos distintos: o primeiro pede medição, o segundo
+# pede confirmação. E `confirmed_zero` é o único zero que pode ser lido como
+# demanda zero — todo outro zero é ruído com cara de fato.
+
+MEDIDO = "measured"
+ZERO_CONFIRMADO = "confirmed_zero"
+AUSENTE = "absent"
+DESCONHECIDO = "unknown"
+NAO_APLICAVEL = "not_applicable"
+FALHOU = "failed"
+INFERIDO = "inferred"
+
+ESTADOS: Tuple[str, ...] = (
+    MEDIDO, ZERO_CONFIRMADO, AUSENTE, DESCONHECIDO, NAO_APLICAVEL, FALHOU, INFERIDO,
+)
+
+# Estados em que NÃO existe número. Guardar um valor aqui é o bug que este
+# módulo foi escrito para impedir, então o construtor recusa.
+ESTADOS_SEM_NUMERO: Tuple[str, ...] = (AUSENTE, DESCONHECIDO, NAO_APLICAVEL, FALHOU)
+
+# A tradução para o vocabulário que `app.validacao` já grava por eixo. Existe
+# para que as duas metades do Pautador continuem falando a mesma língua sem que
+# nenhuma das duas precise reescrever a outra.
+PROVENIENCIA_EQUIVALENTE: Dict[str, str] = {
+    MEDIDO: "medido",
+    ZERO_CONFIRMADO: "medido",
+    INFERIDO: "julgado",
+    AUSENTE: "ausente",
+    DESCONHECIDO: "ausente",
+    NAO_APLICAVEL: "ausente",
+    FALHOU: "ausente",
+}
+
+
+class EstadoInvalido(ValueError):
+    """Um `Sinal` foi montado com estado e valor que se contradizem."""
+
+
+@dataclass(frozen=True)
+class Sinal:
+    """Um número de leilão com o estado que o autoriza a ser lido.
+
+    `valor` só existe quando o estado permite. Não há caminho para "0 porque
+    não veio": tentar construir `Sinal(0.0, AUSENTE)` levanta.
+    """
+
+    valor: Optional[float]
+    estado: str
+    fonte: str = "desconhecida"
+    frescor: Optional[str] = None
+    motivo: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.estado not in ESTADOS:
+            raise EstadoInvalido(f"estado fora do vocabulário: {self.estado!r}")
+        if self.estado in ESTADOS_SEM_NUMERO and self.valor is not None:
+            raise EstadoInvalido(f"{self.estado!r} não pode carregar valor ({self.valor!r})")
+        if self.estado == ZERO_CONFIRMADO and self.valor != 0:
+            raise EstadoInvalido("confirmed_zero exige valor 0")
+        if self.estado in (MEDIDO, INFERIDO) and self.valor is None:
+            raise EstadoInvalido(f"{self.estado!r} exige valor")
+
+    @property
+    def tem_numero(self) -> bool:
+        return self.valor is not None
+
+    @property
+    def proveniencia(self) -> str:
+        return PROVENIENCIA_EQUIVALENTE[self.estado]
+
+    def como_dicionario(self) -> Dict[str, Any]:
+        return {
+            "valor": self.valor,
+            "estado": self.estado,
+            "fonte": self.fonte,
+            "frescor": self.frescor,
+            "motivo": self.motivo,
+            "proveniencia": self.proveniencia,
+        }
+
+    @classmethod
+    def ausente(cls, motivo: str, *, fonte: str = "desconhecida") -> "Sinal":
+        return cls(None, AUSENTE, fonte=fonte, motivo=motivo)
+
+    @classmethod
+    def de_bruto(
+        cls,
+        mapa: Any,
+        chave: str,
+        *,
+        fonte: str,
+        medicao_confirmada: bool = False,
+        frescor: Optional[str] = None,
+    ) -> "Sinal":
+        """Lê um campo cru SEM inventar zero.
+
+        A chave que não veio é `absent`. O `0` cru é `unknown` até que alguém
+        prove que o termo foi de fato medido — `medicao_confirmada=True` é essa
+        prova, e é justamente o que `data_reliability` prometia e nunca
+        entregou, porque nenhum produtor do repositório o escrevia.
+        """
+        if not isinstance(mapa, dict) or chave not in mapa:
+            return cls(None, AUSENTE, fonte=fonte, motivo="chave_ausente")
+        bruto = mapa.get(chave)
+        if bruto is None:
+            return cls(None, AUSENTE, fonte=fonte, motivo="valor_nulo")
+        try:
+            valor = float(bruto)
+        except (TypeError, ValueError):
+            return cls(None, FALHOU, fonte=fonte, motivo=f"valor_ilegivel:{bruto!r}"[:80])
+        if valor == 0:
+            if medicao_confirmada:
+                return cls(0.0, ZERO_CONFIRMADO, fonte=fonte, frescor=frescor)
+            return cls(None, DESCONHECIDO, fonte=fonte, motivo="zero_sem_confirmacao")
+        return cls(valor, MEDIDO, fonte=fonte, frescor=frescor)
+
+
+# ── arquétipos de intenção ──────────────────────────────────────────────────
+#
+# Léxico determinístico, multi-rótulo, em cima do vocabulário que o motor JÁ
+# tem: as QUESTION_WORDS do Gold Miner continuam sendo a fonte do rótulo
+# informacional, para não abrir um segundo motor semântico concorrente.
+#
+# Os treze arquétipos não vieram de um quadro teórico: são os que o par de
+# nichos de prova (BPC/LOAS e IPVA) exige para não colapsar, mais os que o
+# defeito medido obrigou a nomear — `navegacional` e `suporte_acesso`, os dois
+# que entravam por volume.
+
+ARQ_INFORMACIONAL = "informacional"
+ARQ_ELEGIBILIDADE = "elegibilidade"
+ARQ_PROCEDURAL = "procedural"
+ARQ_COMPARACAO = "comparacao"
+ARQ_TRANSACIONAL = "transacional"
+ARQ_URGENCIA = "urgencia"
+ARQ_VALOR_PRECO = "valor_preco"
+ARQ_NAVEGACIONAL = "navegacional"
+ARQ_SUPORTE_ACESSO = "suporte_acesso"
+ARQ_MARCA_ENTIDADE = "marca_entidade"
+ARQ_GOVERNO = "governo_institucional"
+ARQ_RECORRENCIA = "recorrencia_calendario"
+ARQ_DECISAO_OBJECAO = "decisao_objecao"
+
+ARQUETIPOS: Tuple[str, ...] = (
+    ARQ_INFORMACIONAL, ARQ_ELEGIBILIDADE, ARQ_PROCEDURAL, ARQ_COMPARACAO,
+    ARQ_TRANSACIONAL, ARQ_URGENCIA, ARQ_VALOR_PRECO, ARQ_NAVEGACIONAL,
+    ARQ_SUPORTE_ACESSO, ARQ_MARCA_ENTIDADE, ARQ_GOVERNO, ARQ_RECORRENCIA,
+    ARQ_DECISAO_OBJECAO,
+)
+
+# Arquétipos que NÃO podem ser elegíveis só por volume. Não são proibidos:
+# são retidos até que alguém diga, explicitamente, que aquele termo pertence à
+# própria marca do anunciante ou tem contexto que o justifique.
+ARQUETIPOS_RETIDOS: Tuple[str, ...] = (ARQ_NAVEGACIONAL, ARQ_SUPORTE_ACESSO)
+
+_LEXICO: Dict[str, Tuple[str, ...]] = {
+    ARQ_ELEGIBILIDADE: (
+        "quem tem direito", "tem direito", "direito a", "quem pode", "posso",
+        "requisitos", "criterios", "criterio", "elegivel", "elegibilidade",
+        "se enquadra", "condicoes para", "regras para",
+    ),
+    ARQ_PROCEDURAL: (
+        "como ", "passo a passo", "dar entrada", "solicitar", "requerer",
+        "fazer o", "tutorial", "onde fazer", "como pedir", "inscricao",
+        "cadastrar", "cadastro", "agendar", "agendamento",
+    ),
+    ARQ_COMPARACAO: (
+        " vs ", " x ", "melhor que", "diferenca entre", "comparativo",
+        "compara", "ou ", "qual melhor", "vale mais a pena",
+    ),
+    ARQ_TRANSACIONAL: (
+        "contratar", "comprar", "assinar", "cotacao", "orcamento",
+        "simular", "simulacao", "solicitar online", "contrate",
+    ),
+    ARQ_URGENCIA: (
+        "urgente", "hoje", "agora", "ultimo dia", "prazo final",
+        "vence hoje", "de imediato", "rapido",
+    ),
+    ARQ_VALOR_PRECO: (
+        "valor", "valores", "preco", "precos", "quanto custa", "quanto e",
+        "tabela", "custo", "taxa", "aliquota", "desconto", "parcelamento",
+        "parcelar", "quanto vou receber",
+    ),
+    ARQ_NAVEGACIONAL: (
+        "login", "entrar", "acessar", "portal", "site oficial", "aplicativo",
+        " app", "area do", "meu ", "minha conta", "www", ".gov", ".com",
+    ),
+    ARQ_SUPORTE_ACESSO: (
+        "telefone", "0800", "fone", "contato", "atendimento", "sac",
+        "central de", "reclamacao", "ouvidoria", "falar com", "chat",
+        "segunda via de senha", "recuperar senha", "esqueci a senha",
+    ),
+    ARQ_GOVERNO: (
+        "inss", "gov.br", "govbr", "detran", "receita federal", "caixa",
+        "ministerio", "prefeitura", "secretaria", "sefaz", "bpc", "loas",
+        "ipva", "irpf", "fgts", "pis", "bolsa familia", "cadunico",
+    ),
+    ARQ_RECORRENCIA: (
+        "calendario", "cronograma", "datas", "quando sai", "quando cai",
+        "todo ano", "anual", "mensal", "vencimento",
+    ),
+    ARQ_DECISAO_OBJECAO: (
+        "negado", "indeferido", "recusado", "bloqueado", "cancelado",
+        "o que fazer", "recorrer", "recurso", "reclamar", "deu errado",
+        "nao recebi", "problema com",
+    ),
+}
+
+# Marcas de terceiro / concorrência. Não é lista de empresas — é a marca
+# LINGUÍSTICA de que o termo aponta para outra entidade. Uma lista de nomes
+# envelheceria e daria falsa cobertura.
+_MARCA_TERCEIRO = (
+    "concorrente", "concorrentes", "alternativa a", "alternativas a",
+    "parecido com", "similar a", "igual ao", "substituto de", "melhor que ",
+    " vs ", " x ",
+)
+
+
+def normalizar_termo(termo: Any) -> str:
+    """A forma sob a qual dois termos são o MESMO termo.
+
+    `lower().strip()` mais colapso de espaço interno. Deliberadamente NÃO
+    remove acento nem ordena palavras: `merger._strong_normalize` faz isso e é
+    correto para consolidar banco, mas aqui fundiria `ipva de sp` com `sp de
+    ipva`, que são a mesma frase para um banco e frases diferentes para um
+    leilão.
+    """
+    return " ".join(str(termo or "").lower().strip().split())
+
+
+def _sem_acento(texto: str) -> str:
+    norm = unicodedata.normalize("NFD", texto)
+    return "".join(c for c in norm if unicodedata.category(c) != "Mn")
+
+
+# Importado do motor existente — o rótulo informacional continua saindo da
+# mesma lista que o Gold Miner usa, e não de uma segunda cópia divergente.
+def _palavras_de_pergunta() -> Tuple[str, ...]:
+    from app.agents.mining.classifier import QUESTION_WORDS
+
+    return tuple(QUESTION_WORDS)
+
+
+def arquetipos(termo: Any) -> Tuple[str, ...]:
+    """Os arquétipos de intenção do termo, em ordem canônica e sem repetição.
+
+    Multi-rótulo de propósito: `bpc loas valor 2026` é ao mesmo tempo
+    `valor_preco`, `governo_institucional` e `recorrencia_calendario`, e
+    reduzir isso a um rótulo só é como o motor antigo perdia a intenção.
+    """
+    texto = _sem_acento(normalizar_termo(termo))
+    if not texto:
+        return ()
+    acolchoado = f" {texto} "
+    achados = set()
+    for arq, marcas in _LEXICO.items():
+        for marca in marcas:
+            if _sem_acento(marca) in acolchoado:
+                achados.add(arq)
+                break
+    for palavra in _palavras_de_pergunta():
+        p = _sem_acento(palavra)
+        if p and (acolchoado.startswith(f" {p}") or f" {p} " in acolchoado):
+            achados.add(ARQ_INFORMACIONAL)
+            break
+    return tuple(a for a in ARQUETIPOS if a in achados)
+
+
+def riscos(termo: Any, *, marcas_proprias: Sequence[str] = ()) -> Dict[str, bool]:
+    """Riscos que TIRAM o termo do caminho automático — para os dois lados.
+
+    Nem inclusão automática, nem negativa automática. Um termo de marca ou de
+    entidade pública vai para revisão humana com o motivo escrito; a decisão de
+    leiloar em cima de uma marca de terceiro é jurídica e comercial, e o motor
+    não tem contexto para tomá-la.
+    """
+    texto = _sem_acento(normalizar_termo(termo))
+    acolchoado = f" {texto} "
+    proprias = {_sem_acento(normalizar_termo(m)) for m in marcas_proprias if m}
+    e_propria = any(m and m in texto for m in proprias)
+    arqs = arquetipos(termo)
+    return {
+        "marca_propria": e_propria,
+        "marca_terceiro": (not e_propria) and any(_sem_acento(m) in acolchoado for m in _MARCA_TERCEIRO),
+        "institucional_governo": ARQ_GOVERNO in arqs,
+        "navegacional_ou_suporte": bool(set(arqs) & set(ARQUETIPOS_RETIDOS)) and not e_propria,
+    }
+
+
+# ── match type ──────────────────────────────────────────────────────────────
+#
+# Nenhum match type é universal, e BROAD nunca é proposto automaticamente:
+# ampla é exatamente o caminho pelo qual um termo de marca de terceiro entra
+# num conjunto que ninguém aprovou.
+
+EXACT, PHRASE, BROAD = "EXACT", "PHRASE", "BROAD"
+
+
+def propor_match_type(termo: Any, arqs: Sequence[str]) -> str:
+    palavras = normalizar_termo(termo).split()
+    curto_e_decidido = len(palavras) <= 3 and bool(
+        {ARQ_TRANSACIONAL, ARQ_ELEGIBILIDADE, ARQ_VALOR_PRECO} & set(arqs)
+    )
+    return EXACT if curto_e_decidido else PHRASE
+
+
+# ── evidência e vazamento de desfecho ───────────────────────────────────────
+
+PRE_LANCAMENTO = "pre_lancamento"
+POS_LANCAMENTO = "pos_lancamento"
+
+
+class VazamentoDeDesfecho(RuntimeError):
+    """Evidência posterior ao lançamento foi oferecida como insumo anterior a ele."""
+
+
+@dataclass(frozen=True)
+class Evidencia:
+    """Uma prova, com o MOMENTO em que ela passou a existir.
+
+    Search terms e conversões de uma campanha podem ensinar a PRÓXIMA campanha.
+    Não podem justificar, retroativamente, a seleção inicial da mesma campanha
+    — é a definição de ler o desfecho de volta na entrada.
+    """
+
+    fonte: str
+    momento: str = PRE_LANCAMENTO
+    campanha_ref: Optional[str] = None
+    detalhe: str = ""
+    frescor: Optional[str] = None
+
+    def como_dicionario(self) -> Dict[str, Any]:
+        return {
+            "fonte": self.fonte, "momento": self.momento,
+            "campanha_ref": self.campanha_ref, "detalhe": self.detalhe,
+            "frescor": self.frescor,
+        }
+
+
+def _guardar_vazamento(
+    evidencias: Sequence[Evidencia], momento_da_decisao: str, campanha_ref: Optional[str]
+) -> None:
+    if momento_da_decisao != PRE_LANCAMENTO:
+        return
+    for ev in evidencias:
+        if ev.momento == POS_LANCAMENTO and ev.campanha_ref and ev.campanha_ref == campanha_ref:
+            raise VazamentoDeDesfecho(
+                f"evidência {ev.fonte!r} é pós-lançamento da campanha {campanha_ref!r} "
+                "e não pode sustentar a seleção inicial dessa mesma campanha"
+            )
+
+
+# ── priors de benchmark: anotam, não decidem ────────────────────────────────
+
+
+@dataclass(frozen=True)
+class PriorDeBenchmark:
+    nome: str
+    afirmacao: str
+    confianca: str          # alta | media | baixa | nenhuma
+    bloqueia: bool
+    autoriza: bool
+    origem: str
+    limitacao: str
+
+
+# O benchmark Webgo (run 20260903T010510Z) é gerador de hipóteses. Os números
+# abaixo saíram da errata v2 dele, que corrige a leitura v1 — e a correção é
+# justamente a razão pela qual nada aqui bloqueia ou autoriza:
+#
+#   · "122 episódios sobreviveram aos controles" é declarado FACTUALMENTE
+#     ERRADO pela própria errata: 0 dos 122 têm controle pareado utilizável, e
+#     o bloqueador registrado nos 122 é literalmente "sem controle pareado
+#     utilizavel". Eles passaram critérios internos mínimos, não controles.
+#   · O degrau superior de evidência (`razoavel`) NUNCA foi alcançado:
+#     fraca 2.347 / nenhuma 1.081 / moderada 122 / razoavel 0.
+#   · 35 de 35 playbooks saíram com confiança `baixa`, por critério que o
+#     próprio benchmark rotula "ARBITRADA, nao estatistica".
+#   · `EXCELLENT` foi rebaixado a NOT_IDENTIFIABLE (contagem inflada 2,00x por
+#     partição duplicada; direção inverte contra os controles fortes).
+#   · SEARCH e MAXIMIZE_CONVERSIONS não são dois sinais: são a mesma fatia, e
+#     SEARCH sobrou como `external_prior`, não como sinal identificado.
+#   · E o que mais importa aqui: NÃO EXISTE teste de desfecho no nível de
+#     keyword em lugar nenhum daquele pacote. `KEYWORD_OR_MATCH_CHANGE` tem
+#     exatamente UM episódio legível. Usar aquilo para validar elegibilidade de
+#     keyword seria um erro de categoria que o próprio benchmark recusa.
+PRIORS_DE_BENCHMARK: Tuple[PriorDeBenchmark, ...] = (
+    PriorDeBenchmark(
+        nome="search_como_prior_externo",
+        afirmacao="campanhas SEARCH aparecem mais entre as vencedoras do portfólio observado",
+        confianca="baixa",
+        bloqueia=False,
+        autoriza=False,
+        origem="webgo/20260903T010510Z refinement-v2 (classificado external_prior)",
+        limitacao=(
+            "inseparável da estratégia de lance; inverte contra os 3 controles fortes; "
+            "seleção não é aleatória — quem escolhe Search escolhe tema, site e operador junto"
+        ),
+    ),
+    PriorDeBenchmark(
+        nome="forca_de_anuncio_excellent",
+        afirmacao="anúncios EXCELLENT apareceriam mais entre vencedoras",
+        confianca="nenhuma",
+        bloqueia=False,
+        autoriza=False,
+        origem="webgo/20260903T010510Z refinement-v2 (rebaixado a not_identifiable)",
+        limitacao=(
+            "contagem inflada 2,00x por partição duplicada; direção inverte contra controles; "
+            "e é score pós-desfecho recomputado pelo Google — usá-lo antes do lançamento "
+            "importa o resultado para dentro da entrada"
+        ),
+    ),
+    PriorDeBenchmark(
+        nome="ausencia_de_evidencia_de_keyword",
+        afirmacao="o benchmark não contém teste de desfecho no nível de keyword",
+        confianca="alta",
+        bloqueia=False,
+        autoriza=False,
+        origem="webgo/20260903T010510Z (KEYWORD_OR_MATCH_CHANGE: 1 episódio legível)",
+        limitacao=(
+            "este é o único prior de confiança alta, e o que ele afirma é uma AUSÊNCIA: "
+            "nenhuma regra de elegibilidade de keyword pode citar aquele pacote como validação"
+        ),
+    ),
+)
+
+
+# ── decisões ────────────────────────────────────────────────────────────────
+
+INCLUDE = "INCLUDE"
+EXPERIMENT = "EXPERIMENT"
+HOLD = "HOLD"
+REJECT = "REJECT"
+HUMAN_REVIEW = "HUMAN_REVIEW"
+
+DECISOES: Tuple[str, ...] = (INCLUDE, EXPERIMENT, HOLD, REJECT, HUMAN_REVIEW)
+
+# Portões que NÃO são deste módulo e que continuam valendo depois dele.
+PORTOES_EXTERNOS: Tuple[str, ...] = (
+    "conta", "destino_pago", "mensuracao", "aprovacao_humana",
+)
+
+ESTAGIOS = ("tofu", "mofu", "bofu", "desconhecido")
+
+# Versão da política de seleção. Muda quando o critério muda — é o que permite
+# a um conjunto antigo dizer sob qual régua ele foi montado.
+SELECTION_POLICY_VERSION = "pautador-paid-keyword-eligibility-v1"
+
+
+@dataclass
+class PaidKeywordDecision:
+    """A decisão sobre UM termo, com as razões e os estados que a sustentam."""
+
+    termo: str
+    termo_normalizado: str
+    subintencao: Optional[str] = None
+    fonte: str = "mineracao"
+    estagio: str = "desconhecido"
+    arquetipos: Tuple[str, ...] = ()
+    match_type: str = PHRASE
+    volume: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
+    cpc: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
+    competicao: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
+    lance_topo: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
+    congruencia: str = "nao_avaliada"     # congruente | incongruente | nao_avaliada
+    amplitude: str = "media"              # estreita | media | ampla
+    riscos: Dict[str, bool] = field(default_factory=dict)
+    viabilidade: str = "desconhecida"     # cabe_no_teto | acima_do_teto | desconhecida
+    evidencias: List[Evidencia] = field(default_factory=list)
+    confianca: str = "baixa"
+    decisao: str = HOLD
+    motivos: List[str] = field(default_factory=list)
+    bloqueadores: List[str] = field(default_factory=list)
+    alertas: List[str] = field(default_factory=list)
+    selecionada: bool = False
+
+    def como_dicionario(self) -> Dict[str, Any]:
+        return {
+            "termo": self.termo,
+            "termo_normalizado": self.termo_normalizado,
+            "fonte": self.fonte,
+            "subintencao": self.subintencao,
+            "estagio": self.estagio,
+            "arquetipos": list(self.arquetipos),
+            "match_type": self.match_type,
+            "volume": self.volume.como_dicionario(),
+            "cpc": self.cpc.como_dicionario(),
+            "competicao": self.competicao.como_dicionario(),
+            "lance_topo": self.lance_topo.como_dicionario(),
+            "congruencia": self.congruencia,
+            "amplitude": self.amplitude,
+            "riscos": dict(self.riscos),
+            "viabilidade": self.viabilidade,
+            "evidencias": [e.como_dicionario() for e in self.evidencias],
+            "confianca": self.confianca,
+            "decisao": self.decisao,
+            "situacao": self.situacao,
+            "motivos": list(self.motivos),
+            "bloqueadores": list(self.bloqueadores),
+            "alertas": list(self.alertas),
+            "selecionada": self.selecionada,
+        }
+
+    @property
+    def situacao(self) -> str:
+        """O que aconteceu com o termo, dito numa palavra.
+
+        `decisao` responde "este termo é elegível?" e é propriedade do termo.
+        `situacao` responde "ele entrou no conjunto?", que é outra pergunta —
+        um termo pode ser elegível e ficar de fora por quantidade. Colapsar as
+        duas foi como `INCLUDE` acabava listado ao lado de `HOLD` na tela de
+        retidos, sem que se pudesse dizer qual dos dois pede medição e qual
+        pede só uma vaga.
+        """
+        if self.selecionada:
+            return "SELECIONADO"
+        if self.decisao == INCLUDE:
+            return "ELEGIVEL_NAO_SELECIONADO"
+        return self.decisao
+
+    def identidade(self) -> Tuple[str, str, str]:
+        """O que define o termo para efeito de aprovação.
+
+        Termo normalizado, match type e sub-intenção. Mudar qualquer um dos
+        três muda o que está sendo aprovado — e a impressão precisa mudar junto.
+        """
+        return (self.termo_normalizado, self.match_type, self.subintencao or "")
+
+
+def decidir_keyword(
+    bruto: Dict[str, Any],
+    *,
+    subintencao: Optional[str] = None,
+    estagio: str = "desconhecido",
+    fonte: str = "mineracao",
+    teto_do_dono: Optional[float] = None,
+    congruencia: str = "nao_avaliada",
+    marcas_proprias: Sequence[str] = (),
+    evidencias: Optional[Sequence[Evidencia]] = None,
+    momento_da_decisao: str = PRE_LANCAMENTO,
+    campanha_ref: Optional[str] = None,
+    medicao_confirmada: bool = False,
+) -> PaidKeywordDecision:
+    """A decisão sobre um termo, com razão escrita para cada caminho.
+
+    Nenhum ramo lê um número sem olhar o estado dele antes. Volume alto não
+    vence incongruência nem intenção errada, e ausência nunca pontua melhor
+    que medição.
+    """
+    evidencias = list(evidencias or [])
+    _guardar_vazamento(evidencias, momento_da_decisao, campanha_ref)
+
+    termo = str(bruto.get("keyword") or bruto.get("termo") or "")
+    normalizado = normalizar_termo(termo)
+    arqs = arquetipos(termo)
+    risco = riscos(termo, marcas_proprias=marcas_proprias)
+
+    d = PaidKeywordDecision(
+        termo=termo,
+        termo_normalizado=normalizado,
+        subintencao=subintencao,
+        fonte=fonte,
+        estagio=estagio if estagio in ESTAGIOS else "desconhecido",
+        arquetipos=arqs,
+        match_type=propor_match_type(termo, arqs),
+        volume=Sinal.de_bruto(bruto, "volume", fonte=fonte, medicao_confirmada=medicao_confirmada),
+        cpc=Sinal.de_bruto(bruto, "cpc", fonte=fonte, medicao_confirmada=medicao_confirmada),
+        competicao=Sinal.de_bruto(bruto, "competition_index", fonte=fonte),
+        lance_topo=Sinal.de_bruto(bruto, "high_bid", fonte=fonte),
+        congruencia=congruencia,
+        amplitude="ampla" if len(normalizado.split()) <= 2 else "estreita",
+        riscos=risco,
+        evidencias=evidencias,
+    )
+
+    if not normalizado:
+        d.decisao = REJECT
+        d.motivos.append("termo_vazio")
+        return d
+
+    # Viabilidade perante o teto DECLARADO. Sem teto, "desconhecida" — nunca
+    # inventada, e nunca confundida com "cabe".
+    if teto_do_dono is None:
+        d.viabilidade = "desconhecida"
+        d.alertas.append("teto_economico_do_dono_nao_declarado")
+    elif d.cpc.tem_numero:
+        d.viabilidade = "cabe_no_teto" if d.cpc.valor <= teto_do_dono else "acima_do_teto"
+    else:
+        d.viabilidade = "desconhecida"
+        d.alertas.append("cpc_sem_medicao_impede_avaliar_teto")
+
+    # 1. RISCO ANTES DE TUDO. Marca de terceiro e entidade pública saem do
+    #    caminho automático — para os dois lados, inclusão e negativa.
+    if risco["marca_terceiro"]:
+        d.decisao = HUMAN_REVIEW
+        d.motivos.append("aponta_para_marca_de_terceiro")
+        d.bloqueadores.append("decisao_juridica_e_comercial_nao_e_do_motor")
+        return d
+    # 2. INTENÇÃO ANTES DE VOLUME. É o defeito medido: os dois termos de maior
+    #    volume do funil BPC/LOAS eram `meu inss login` e `inss telefone 135`.
+    #
+    #    O termo navegacional/suporte que TAMBÉM nomeia entidade pública é o
+    #    caso de impersonação — vai para revisão humana, não para o descarte
+    #    silencioso, porque negativá-lo sozinho também seria decidir demais.
+    if risco["navegacional_ou_suporte"]:
+        d.decisao = HUMAN_REVIEW if risco["institucional_governo"] else HOLD
+        d.motivos.append("intencao_navegacional_ou_suporte")
+        d.bloqueadores.append("volume_nao_compra_intencao")
+        if risco["institucional_governo"]:
+            d.motivos.append("navegacional_para_entidade_publica")
+        if d.volume.tem_numero:
+            d.alertas.append(f"volume_medido_alto_ignorado:{int(d.volume.valor)}")
+        return d
+
+    # ⚠️ ENTIDADE PÚBLICA NO TERMO É ANOTAÇÃO, NÃO VEREDITO.
+    #
+    # A primeira versão desta regra mandava para revisão humana TODO termo que
+    # citasse INSS, DETRAN, IPVA, BPC ou LOAS — e o resultado, medido, foi 8 de
+    # 8 termos do funil BPC/LOAS retidos. Um motor que retém tudo não separa
+    # nada, e a fronteira que ele defenderia deixa de ser testável.
+    #
+    # O risco real é de DESTINO, não de vocabulário: quem responde por
+    # `government_services` é `landing_policy`, cujo portão continua valendo
+    # depois deste. Aqui o sinal fica escrito, viaja no alerta e baixa a
+    # confiança — que é o que uma anotação deve fazer.
+    if risco["institucional_governo"] and not risco["marca_propria"]:
+        d.alertas.append("termo_cita_entidade_publica")
+        d.alertas.append("verificar_politica_de_servicos_governamentais_no_destino")
+
+    if d.congruencia == "incongruente":
+        d.decisao = REJECT
+        d.motivos.append("termo_nao_congruente_com_anuncio_e_pagina")
+        return d
+
+    # 3. ZERO CONFIRMADO é o único zero que decide. Todo outro pede medição.
+    if d.volume.estado == ZERO_CONFIRMADO:
+        d.decisao = REJECT
+        d.motivos.append("demanda_zero_confirmada_na_medicao")
+        d.confianca = "media"
+        return d
+
+    if not d.volume.tem_numero:
+        d.decisao = HOLD
+        d.motivos.append(f"volume_{d.volume.estado}")
+        d.bloqueadores.append("ausencia_de_volume_nao_e_ausencia_de_demanda")
+        if not d.cpc.tem_numero:
+            d.bloqueadores.append(f"cpc_{d.cpc.estado}")
+        return d
+
+    # 4. Volume medido. O que separa INCLUDE de EXPERIMENT é a economia MEDIDA,
+    #    não a economia assumida — CPC ausente vira experimento, não desconto.
+    if d.congruencia == "nao_avaliada":
+        d.alertas.append("congruencia_termo_anuncio_pagina_nao_avaliada")
+
+    if d.cpc.tem_numero:
+        d.decisao = INCLUDE
+        d.confianca = "media" if d.congruencia == "congruente" else "baixa"
+        d.motivos.append("volume_e_cpc_medidos_com_intencao_compativel")
+        if d.viabilidade == "acima_do_teto":
+            d.decisao = EXPERIMENT
+            d.motivos.append("cpc_medido_acima_do_teto_declarado")
+    else:
+        d.decisao = EXPERIMENT
+        d.confianca = "baixa"
+        d.motivos.append("volume_medido_mas_cpc_sem_medicao")
+        d.bloqueadores.append(f"cpc_{d.cpc.estado}")
+
+    if d.amplitude == "ampla":
+        d.alertas.append("termo_amplo_pode_puxar_intencao_alheia")
+    return d
+
+
+# ── o conjunto, e a impressão que o congela ─────────────────────────────────
+
+
+class ConjuntoCongelado(RuntimeError):
+    """Alguém tentou mexer num conjunto já aprovado."""
+
+
+class HashDivergente(ValueError):
+    """A aprovação citou uma impressão que não é a do conjunto apresentado."""
+
+
+def impressao_de_decisoes(decisoes: Iterable[PaidKeywordDecision]) -> str:
+    """SHA-256 do conjunto, com semântica de CONJUNTO — decidida, não acidental.
+
+    A ordem NÃO entra. Duas apresentações do mesmo conjunto aprovam a mesma
+    coisa, e a ordenação canônica existe só para tornar a impressão
+    reproduzível. Já `termo_normalizado`, `match_type` e `subintencao` entram
+    os três: mudar qualquer um muda o que se está aprovando.
+    """
+    identidades = sorted(d.identidade() for d in decisoes)
+    bruto = json.dumps(
+        {"policy": SELECTION_POLICY_VERSION, "keywords": identidades},
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    return hashlib.sha256(bruto.encode("utf-8")).hexdigest()
+
+
+@dataclass
+class CampaignKeywordSet:
+    """O conjunto literal que pode ser preparado — e nada além disso."""
+
+    candidates: List[PaidKeywordDecision] = field(default_factory=list)
+    selected_keywords: List[PaidKeywordDecision] = field(default_factory=list)
+    excluded_keywords: List[PaidKeywordDecision] = field(default_factory=list)
+    human_review_keywords: List[PaidKeywordDecision] = field(default_factory=list)
+    negative_keywords: List[Dict[str, Any]] = field(default_factory=list)
+    owner_ceiling: Optional[float] = None
+    selection_policy_version: str = SELECTION_POLICY_VERSION
+    evidence_snapshot: Dict[str, Any] = field(default_factory=dict)
+    approved_set_sha256: Optional[str] = None
+    aprovado_por: Optional[str] = None
+    blockers: List[str] = field(default_factory=list)
+    alertas: List[str] = field(default_factory=list)
+
+    # ── portões que continuam de fora ───────────────────────────────────────
+    @property
+    def portoes_externos_pendentes(self) -> Dict[str, str]:
+        """Este módulo não avalia conta, destino, mensuração nem autorização.
+
+        Devolver "nao_avaliado_aqui" em vez de omitir é deliberado: um campo
+        ausente seria lido como "sem pendência".
+        """
+        return {portao: "nao_avaliado_aqui" for portao in PORTOES_EXTERNOS}
+
+    @property
+    def selected_set_sha256(self) -> str:
+        return impressao_de_decisoes(self.selected_keywords)
+
+    @property
+    def congelado(self) -> bool:
+        return self.approved_set_sha256 is not None
+
+    @property
+    def ready_for_campaign_plan(self) -> bool:
+        """O conjunto pode ser PREPARADO. Não é autorização de lançamento."""
+        return bool(self.selected_keywords) and not self.blockers
+
+    def acrescentar(self, decisao: PaidKeywordDecision) -> None:
+        if self.congelado:
+            raise ConjuntoCongelado(
+                f"conjunto aprovado em {self.approved_set_sha256[:12]}… não aceita "
+                f"acréscimo de {decisao.termo!r}"
+            )
+        self.candidates.append(decisao)
+        if decisao.decisao == INCLUDE:
+            decisao.selecionada = True
+            self.selected_keywords.append(decisao)
+        elif decisao.decisao == HUMAN_REVIEW:
+            self.human_review_keywords.append(decisao)
+        else:
+            self.excluded_keywords.append(decisao)
+
+    def como_dicionario(self) -> Dict[str, Any]:
+        return {
+            "candidates": [d.como_dicionario() for d in self.candidates],
+            "selected_keywords": [d.como_dicionario() for d in self.selected_keywords],
+            "excluded_keywords": [d.como_dicionario() for d in self.excluded_keywords],
+            "human_review_keywords": [d.como_dicionario() for d in self.human_review_keywords],
+            "negative_keywords": list(self.negative_keywords),
+            "owner_ceiling": self.owner_ceiling,
+            "selection_policy_version": self.selection_policy_version,
+            "evidence_snapshot": dict(self.evidence_snapshot),
+            "selected_set_sha256": self.selected_set_sha256,
+            "approved_set_sha256": self.approved_set_sha256,
+            "aprovado_por": self.aprovado_por,
+            "ready_for_campaign_plan": self.ready_for_campaign_plan,
+            "portoes_externos_pendentes": self.portoes_externos_pendentes,
+            "blockers": list(self.blockers),
+            "alertas": list(self.alertas),
+        }
+
+
+def impressao_do_conjunto(conjunto: CampaignKeywordSet) -> str:
+    return conjunto.selected_set_sha256
+
+
+def aprovar(
+    conjunto: CampaignKeywordSet, *, aprovado_por: str, hash_conferido: str
+) -> CampaignKeywordSet:
+    """Congela o conjunto contra a impressão que o humano de fato conferiu.
+
+    `hash_conferido` não é cerimônia: é o que impede aprovar uma tela e
+    exportar outra coisa. Divergiu, não aprova.
+    """
+    atual = conjunto.selected_set_sha256
+    if hash_conferido != atual:
+        raise HashDivergente(
+            f"impressão conferida {hash_conferido[:12]}… difere do conjunto {atual[:12]}…"
+        )
+    conjunto.approved_set_sha256 = atual
+    conjunto.aprovado_por = aprovado_por
+    return conjunto
+
+
+def derivar_lista_google_ads(conjunto: CampaignKeywordSet) -> str:
+    """A lista que vai para o Google Ads, derivada EXATAMENTE de `selected`.
+
+    Uma função só, usada pelo produtor e pelo teste — é o que impede a
+    divergência silenciosa que abriu esta sprint.
+    """
+    return "\n".join(d.termo for d in conjunto.selected_keywords)
+
+
+# ── política de seleção por sub-intenção ────────────────────────────────────
+#
+# ⚠️ PROVENIÊNCIA DOS LIMIARES, DECLARADA EM VEZ DE ASSUMIDA.
+#
+# 20000 / 3 / 10 não foram calibrados aqui nem em lugar nenhum do repositório.
+# Eles são cópia literal do nó "🏭 FUNNEL FACTORY" do n8n
+# (`backend/n8n_kw_pautador.json`), onde aparecem como `VOLUME_THRESHOLD`,
+# `MIN_ITEMS_PER_INTENT` e `MAX_ITEMS_PER_INTENT` sem nenhuma justificativa
+# registrada. Classificação honesta: DEFAULT OPERACIONAL PORTADO, não fato
+# calibrado.
+#
+# Esta sprint NÃO os altera — mudar um número sem evidência seria o mesmo erro
+# na direção oposta. O que ela faz é (a) nomeá-los, (b) versioná-los em
+# `SELECTION_POLICY_VERSION` e (c) gravá-los no `evidence_snapshot`, para que a
+# próxima pessoa saiba que está olhando para um default e não para uma medição.
+
+VOLUME_THRESHOLD = 20000
+MIN_ITEMS = 3
+MAX_ITEMS = 10
+
+POLITICA_DE_SELECAO = {
+    "volume_threshold": VOLUME_THRESHOLD,
+    "min_items_por_subintencao": MIN_ITEMS,
+    "max_items_por_subintencao": MAX_ITEMS,
+    "origem": "portado de n8n_kw_pautador.json (nó FUNNEL FACTORY)",
+    "classificacao": "default_operacional_portado",
+    "calibrado": False,
+    "justificativa_registrada": None,
+}
+
+
+def aplicar_politica_de_selecao(
+    elegiveis: Sequence[PaidKeywordDecision],
+) -> Tuple[List[PaidKeywordDecision], List[PaidKeywordDecision]]:
+    """Aplica o corte por volume SOBRE o conjunto já elegível — nunca antes.
+
+    A ordem importa e é o coração da correção: elegibilidade primeiro,
+    quantidade depois. Invertida, o corte por volume promove justamente os
+    termos navegacionais que a elegibilidade recusaria.
+
+    Termos sem volume medido não podem ser ordenados por volume, e ordenar
+    tratando-os como 0 é a coerção que esta sprint fecha — então eles ficam
+    depois dos medidos, com o estado preservado.
+    """
+    medidos = sorted(
+        [d for d in elegiveis if d.volume.tem_numero],
+        key=lambda d: d.volume.valor, reverse=True,
+    )
+    sem_numero = [d for d in elegiveis if not d.volume.tem_numero]
+    ordenados = medidos + sem_numero
+
+    acima = [d for d in ordenados if d.volume.tem_numero and d.volume.valor >= VOLUME_THRESHOLD]
+    if len(acima) < MIN_ITEMS:
+        escolhidos = ordenados[: min(MAX_ITEMS, len(ordenados))]
+    else:
+        escolhidos = acima[:MAX_ITEMS]
+
+    ids = {id(d) for d in escolhidos}
+    fora = [d for d in ordenados if id(d) not in ids]
+    for d in fora:
+        d.motivos.append("fora_da_politica_de_selecao_por_volume")
+        d.alertas.append("elegivel_mas_nao_selecionado")
+    return escolhidos, fora
+
+
+def montar_conjunto(
+    decisoes: Sequence[PaidKeywordDecision],
+    selecionadas: Sequence[PaidKeywordDecision],
+    *,
+    teto_do_dono: Optional[float] = None,
+    evidence_snapshot: Optional[Dict[str, Any]] = None,
+) -> CampaignKeywordSet:
+    """Monta o conjunto SEM reabrir nenhuma decisão já tomada."""
+    escolhidas = {id(d) for d in selecionadas}
+    conjunto = CampaignKeywordSet(
+        owner_ceiling=teto_do_dono,
+        evidence_snapshot=dict(evidence_snapshot or {}),
+    )
+    conjunto.evidence_snapshot.setdefault("politica_de_selecao", dict(POLITICA_DE_SELECAO))
+    conjunto.evidence_snapshot.setdefault(
+        "priors_de_benchmark",
+        [
+            {"nome": p.nome, "confianca": p.confianca, "bloqueia": p.bloqueia,
+             "autoriza": p.autoriza, "origem": p.origem}
+            for p in PRIORS_DE_BENCHMARK
+        ],
+    )
+
+    for d in decisoes:
+        conjunto.candidates.append(d)
+        if id(d) in escolhidas and d.decisao == INCLUDE:
+            d.selecionada = True
+            conjunto.selected_keywords.append(d)
+        elif d.decisao == HUMAN_REVIEW:
+            conjunto.human_review_keywords.append(d)
+        else:
+            conjunto.excluded_keywords.append(d)
+
+    if teto_do_dono is None:
+        conjunto.blockers.append("teto_economico_desconhecido")
+    if not conjunto.selected_keywords:
+        conjunto.blockers.append("nenhuma_keyword_elegivel_selecionada")
+    if conjunto.human_review_keywords:
+        conjunto.alertas.append(
+            f"{len(conjunto.human_review_keywords)}_termos_aguardando_revisao_humana"
+        )
+    return conjunto
+
+
+def media_de_cpc(decisoes: Sequence[PaidKeywordDecision]) -> Sinal:
+    """A média dos CPCs MEDIDOS — nunca dos zeros que a ausência produzia.
+
+    Média sem proveniência é pior que buraco: o funil IPVA publicava
+    `avg_cpc: "0.00"` com dois termos que nunca tiveram CPC nenhum.
+    """
+    valores = [d.cpc.valor for d in decisoes if d.cpc.estado == MEDIDO]
+    if not valores:
+        return Sinal.ausente("nenhum_cpc_medido", fonte="derivado")
+    return Sinal(round(sum(valores) / len(valores), 2), MEDIDO, fonte="derivado")
+
+
+def media_de_volume(decisoes: Sequence[PaidKeywordDecision]) -> Sinal:
+    valores = [d.volume.valor for d in decisoes if d.volume.estado == MEDIDO]
+    if not valores:
+        return Sinal.ausente("nenhum_volume_medido", fonte="derivado")
+    return Sinal(float(sum(valores)), MEDIDO, fonte="derivado")
+
+
+__all__ = [
+    "MEDIDO", "ZERO_CONFIRMADO", "AUSENTE", "DESCONHECIDO", "NAO_APLICAVEL",
+    "FALHOU", "INFERIDO", "ESTADOS", "PROVENIENCIA_EQUIVALENTE",
+    "EstadoInvalido", "Sinal",
+    "ARQUETIPOS", "ARQUETIPOS_RETIDOS", "arquetipos", "riscos", "normalizar_termo",
+    "EXACT", "PHRASE", "BROAD", "propor_match_type",
+    "PRE_LANCAMENTO", "POS_LANCAMENTO", "Evidencia", "VazamentoDeDesfecho",
+    "PriorDeBenchmark", "PRIORS_DE_BENCHMARK",
+    "INCLUDE", "EXPERIMENT", "HOLD", "REJECT", "HUMAN_REVIEW", "DECISOES",
+    "PORTOES_EXTERNOS", "SELECTION_POLICY_VERSION",
+    "PaidKeywordDecision", "decidir_keyword",
+    "CampaignKeywordSet", "ConjuntoCongelado", "HashDivergente",
+    "impressao_de_decisoes", "impressao_do_conjunto", "aprovar",
+    "derivar_lista_google_ads",
+    "VOLUME_THRESHOLD", "MIN_ITEMS", "MAX_ITEMS", "POLITICA_DE_SELECAO",
+    "aplicar_politica_de_selecao", "montar_conjunto",
+    "media_de_cpc", "media_de_volume",
+]
