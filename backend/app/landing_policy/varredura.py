@@ -128,6 +128,18 @@ class PaginaObservada:
     #: `NAO_APLICAVEL_E_DESCONHECIDO_EM` no ponto de campanha, então uma leitura
     #: AO VIVO nunca pode alegar "não se aplica".
     documento_parcial: bool = False
+    #: ⚠️ ESTA AVALIAÇÃO É O ATO DE AUDITORIA, não a conferência de uma anterior.
+    #:
+    #: Campo de SERVIDOR, ligado APENAS por `redator.reauditoria.provar_destino`
+    #: e por `confirmar_reauditoria` — nunca por payload, e nunca pelo caminho de
+    #: campanha, que força papel e ponto e não constrói esta página.
+    #:
+    #: Quando ligado, `approval_receipt` e `live_drift` respondem
+    #: `not_applicable`: perguntar por uma aprovação anterior a um ato de
+    #: aprovação é circular, e foi essa circularidade que deixou o ciclo do
+    #: recibo `live` sem entrada. Todas as outras oito verificações continuam
+    #: exigidas e conclusivas — o ato audita a página inteira.
+    e_o_ato_de_auditoria: bool = False
     #: Hosts que o CHROME do site legitimamente linka — crédito do tema, rede
     #: social da casa, autoria.
     #:
@@ -1947,6 +1959,17 @@ def varrer_deriva(pagina: PaginaObservada) -> Verificacao:
     # Sem impressão gravada — recibo antigo, artefato de outra época — o byte
     # continua sendo a única referência, e ele é usado assim mesmo: uma medida
     # ruidosa é melhor que nenhuma, desde que o recibo diga QUAL foi usada.
+    if pagina.e_o_ato_de_auditoria and not pagina.impressao_aprovada:
+        # Deriva mede distância até uma aprovação. Na primeira auditoria não há
+        # de onde derivar — e é justamente o marco zero que este ato grava.
+        return Verificacao(
+            nome=V_DERIVA,
+            status=STATUS_NAO_APLICAVEL,
+            detalhe=(
+                "primeira auditoria ao vivo desta URL: não há aprovação anterior "
+                "de onde derivar, e é o marco zero que este ato registra"
+            ),
+        )
     if pagina.impressao_aprovada:
         observada = impressao_canonica(pagina.html) if pagina.html else None
         if observada is None:
@@ -2058,6 +2081,17 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
     verdade, um "não se aplica".
     """
     recibo = pagina.recibo_de_aprovacao
+    if pagina.e_o_ato_de_auditoria and recibo is None:
+        # ESTA avaliação é a auditoria. Não existe aprovação anterior porque
+        # ela está sendo feita agora — e cobrar uma seria circular.
+        return Verificacao(
+            nome=V_RECIBO,
+            status=STATUS_NAO_APLICAVEL,
+            detalhe=(
+                "esta avaliação É o ato de auditoria ao vivo: a aprovação anterior "
+                "não existe por construção, e é ela que este ato produz"
+            ),
+        )
     if recibo is None and pagina.sha256_observado is None:
         # ⚠️ NADA NO AR AINDA: não há aprovação anterior a conferir.
         #

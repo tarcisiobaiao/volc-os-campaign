@@ -202,22 +202,27 @@ def test_url_vazia_e_recusa():
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_a_primeira_reauditoria_nao_alcanca_elegibilidade():
-    """⚠️ O BOOTSTRAP DA DERIVA, MEDIDO E PINADO — não é um desejo, é o estado.
+def test_a_primeira_reauditoria_de_uma_url_consegue_ficar_verde():
+    """⚠️ ESTE TESTE AFIRMAVA O CONTRÁRIO, E O CONTRÁRIO ERA O DEFEITO.
 
-    Com o recibo do portão 2 (escopo `artifact`) como único anterior, a página
-    limpa sai com ZERO bloqueio e ainda assim NÃO elegível: `live_drift`
-    responde `unavailable` porque não há hash aprovado ao vivo para comparar, e
-    `live_drift` está entre as verificações cuja ausência reprova no ponto de
-    campanha.
+    A versão anterior pinava o laço fechado como se fosse o estado correto: com
+    `recibo_anterior` de escopo `artifact` (ou nenhum), a página limpa saía com
+    ZERO bloqueio e mesmo assim inelegível, porque `live_drift` e
+    `approval_receipt` pediam uma aprovação anterior. O único produtor de recibo
+    `live` era, portanto, inalcançável por si mesmo — a rodada tinha trocado um
+    produtor AUSENTE por um INALCANÇÁVEL, e a parada operacional continuava
+    exatamente onde estava.
 
-    Este teste existe para que a próxima pessoa veja o laço fechado antes de
-    perder uma tarde: o primeiro recibo `live` de uma URL não é alcançável por
-    este caminho. Do SEGUNDO em diante o laço se sustenta — é o que
-    `test_com_recibo_live_anterior_a_pagina_limpa_fica_elegivel` prova.
+    A correção não afrouxa nada: a reauditoria passou a avaliar no ponto
+    `AUDITORIA_AO_VIVO`, onde as outras OITO verificações continuam exigidas e
+    conclusivas, e onde identidade e redirecionamento não podem sair "não se
+    aplica". O que deixa de ser cobrado é a única coisa que não pode existir por
+    construção: a aprovação anterior a um ato de aprovação.
 
-    ⚠️ E o desfecho é fail-closed, não um bug de segurança: nada fica verde por
-    acidente. O que ele custa é operação, não risco.
+    E o portão não se autoaprova — quem aprova é a confirmação HUMANA vinculada
+    ao mesmo hash, e o portão de CAMPANHA continua exigindo o recibo `live` que
+    só este ato produz. A autoridade não sumiu: ela saiu do software e foi para
+    a pessoa.
     """
     prova = ra.provar_destino(
         url=URL, papel_do_motor="LP",
@@ -225,8 +230,24 @@ def test_a_primeira_reauditoria_nao_alcanca_elegibilidade():
         agora=AGORA, ler=LeitorFalso())
 
     assert prova.bloqueios == []
+    assert prova.desconhecidos == [], prova.desconhecidos
+    assert prova.elegivel is True
+    assert prova.recibo_candidato["fingerprint_scope"] == "live"
+    assert prova.recibo_candidato["gate_point"] == "live_audit"
+
+
+def test_a_primeira_reauditoria_de_uma_url_SUJA_continua_reprovando():
+    """O simétrico obrigatório: o bootstrap não é passe livre.
+
+    Se o ponto novo apenas destravasse tudo, ele seria a porta de saída da
+    política em vez do ato que a alimenta.
+    """
+    prova = ra.provar_destino(
+        url=URL, papel_do_motor="LP", recibo_anterior=None,
+        agora=AGORA, ler=LeitorFalso(html=HTML_COM_LINK_NO_CORPO))
+
     assert prova.elegivel is False
-    assert [d["verificacao"] for d in prova.desconhecidos] == ["live_drift"]
+    assert "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO" in {b["code"] for b in prova.bloqueios}
 
 
 def test_com_recibo_live_anterior_a_pagina_limpa_fica_elegivel(recibo_live):

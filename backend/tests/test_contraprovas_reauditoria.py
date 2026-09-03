@@ -539,7 +539,11 @@ def test_prova_live_limpa_gera_candidato_com_escopo_live():
     assert prova.recibo_candidato["fingerprint_scope"] == "live"
     assert prova.recibo_candidato["paid_destination_ready"] is True
     assert prova.recibo_candidato["role"] == "paid_destination"
-    assert prova.recibo_candidato["gate_point"] == "campaign_destination_eligibility"
+    # ⚠️ O PONTO É `live_audit`, e ele nasceu da correção focal desta rodada.
+    # Avaliar no ponto de CAMPANHA exigia aprovação anterior de um ato de
+    # aprovação — circular, e foi o que deixou o ciclo do recibo `live` sem
+    # entrada. Ver `PontoDePortao.AUDITORIA_AO_VIVO`.
+    assert prova.recibo_candidato["gate_point"] == "live_audit"
     assert len(prova.impressao_da_prova) == 64, prova.impressao_da_prova
     agentes = [a.lower() for a in ler.agentes]  # type: ignore[attr-defined]
     assert len(agentes) == 3, agentes
@@ -1005,7 +1009,11 @@ def test_o_papel_avaliado_e_o_do_servidor_e_nao_o_declarado_pelo_motor():
                            ler=_leitor(desktop=HTML_LINK_NO_CORPO))
 
     assert prova.recibo_candidato["role"] == "paid_destination"
-    assert prova.recibo_candidato["gate_point"] == "campaign_destination_eligibility"
+    # ⚠️ O PONTO É `live_audit`, e ele nasceu da correção focal desta rodada.
+    # Avaliar no ponto de CAMPANHA exigia aprovação anterior de um ato de
+    # aprovação — circular, e foi o que deixou o ciclo do recibo `live` sem
+    # entrada. Ver `PontoDePortao.AUDITORIA_AO_VIVO`.
+    assert prova.recibo_candidato["gate_point"] == "live_audit"
     assert prova.elegivel is False
 
 

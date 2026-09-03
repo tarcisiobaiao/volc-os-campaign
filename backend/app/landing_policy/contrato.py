@@ -130,6 +130,27 @@ class PontoDePortao(str, Enum):
     ARTEFATO_DE_GERACAO = "generation_artifact"
     PRE_PUBLICACAO_WORDPRESS = "pre_publication_wordpress"
     ELEGIBILIDADE_DESTINO_CAMPANHA = "campaign_destination_eligibility"
+    #: ⚠️ O ATO DE AUDITAR, que é diferente de CONFERIR uma auditoria anterior.
+    #:
+    #: Sem este ponto o ciclo do recibo `live` não tinha entrada, e isso foi
+    #: medido por duas frentes independentes: o único produtor de recibo `live`
+    #: avaliava no ponto de CAMPANHA, onde `approval_receipt` exige uma
+    #: aprovação ANTERIOR e `live_drift` exige uma impressão anterior. Com
+    #: `recibo_anterior=None` as duas reprovavam, a confirmação recusava, nada
+    #: era gravado — e a próxima tentativa partia de `None` de novo. A rodada
+    #: trocou um produtor AUSENTE de recibo `live` por um INALCANÇÁVEL.
+    #:
+    #: A pergunta aqui é outra: não "existe aprovação anterior e a página ainda
+    #: bate com ela?", e sim "eu devo aprovar o que está no ar AGORA?". Exigir
+    #: aprovação anterior de um ato de aprovação é circular — é a mesma
+    #: impossibilidade estrutural que `EXIGENCIAS_POR_PONTO` existe para não
+    #: cobrar (antes de publicar não há redirecionamento para observar).
+    #:
+    #: E ele NÃO é um portão que se autoaprova: quem aprova é a confirmação
+    #: HUMANA, vinculada ao mesmo hash da prova. O portão de CAMPANHA continua
+    #: exigindo o recibo `live` que só este ato produz — então a autoridade não
+    #: some, ela muda de lugar, do software para a pessoa.
+    AUDITORIA_AO_VIVO = "live_audit"
 
 
 class Veredito(str, Enum):
@@ -277,6 +298,14 @@ EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
     PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA: frozenset(TODAS_AS_VERIFICACOES),
 }
 
+#: No ATO de auditoria tudo que a página no ar mostra é exigível — identidade,
+#: links, formulário, alegação, governo, conteúdo, segurança, redirecionamento e
+#: cloaking. O que NÃO é exigível são as duas verificações que perguntam por uma
+#: aprovação anterior: elas não existem por construção quando esta É a primeira.
+EXIGENCIAS_POR_PONTO[PontoDePortao.AUDITORIA_AO_VIVO] = frozenset(
+    set(TODAS_AS_VERIFICACOES) - {V_RECIBO, V_DERIVA}
+)
+
 NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA] = frozenset(
     # `V_IDENTIDADE` entra aqui por causa de `PaginaObservada.documento_parcial`:
     # ele deixa a identidade sair `not_applicable` antes da publicação, onde o
@@ -284,6 +313,13 @@ NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA] = 
     # está no ar — "não se aplica" ali seria a mesma isenção, aplicada ao ponto
     # em que ela não tem desculpa.
     {V_DERIVA, V_IDENTIDADE, V_RECIBO, V_REDIRECIONAMENTO}
+)
+#: No ato de auditoria a página está no ar: identidade e redirecionamento não
+#: podem sair "não se aplica" — ali eles são observáveis e a isenção não tem
+#: desculpa. Recibo e deriva ficam de fora porque a ausência deles é o motivo
+#: de o ato existir.
+NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.AUDITORIA_AO_VIVO] = frozenset(
+    {V_IDENTIDADE, V_REDIRECIONAMENTO}
 )
 
 

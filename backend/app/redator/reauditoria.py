@@ -63,9 +63,11 @@ from app.landing_policy import (
     JANELA_DE_FRESCOR_PADRAO_S,
     POLICY_CONTRACT_VERSION,
     PaginaObservada,
+    PontoDePortao,
     PapelDestino,
     PapelRelaxadoPeloCliente,
     carregar_fontes,
+    avaliar,
     elegibilidade_de_destino_de_campanha,
     emitir_recibo,
     impressao,
@@ -481,6 +483,18 @@ def provar_destino(
     anterior_e_ao_vivo = (
         str((recibo_anterior or {}).get("fingerprint_scope") or "") == ESCOPO_AO_VIVO
     )
+    # ⚠️ ESTA AVALIAÇÃO É O ATO, e a bandeira é o que quebra a circularidade.
+    #
+    # Medido por duas frentes independentes: avaliando no ponto de CAMPANHA,
+    # `approval_receipt` exige aprovação anterior e `live_drift` exige impressão
+    # anterior. Com `recibo_anterior=None` as duas reprovavam, a confirmação
+    # recusava, nada era gravado — e a próxima tentativa partia de `None`. O
+    # produtor do recibo `live` era inalcançável por si mesmo.
+    #
+    # A bandeira NÃO afrouxa o portão: as outras oito verificações continuam
+    # exigidas, e identidade e redirecionamento não podem sair "não se aplica"
+    # neste ponto. Quem aprova é a confirmação HUMANA vinculada ao mesmo hash; o
+    # portão de campanha continua exigindo o recibo que só este ato produz.
     pagina = PaginaObservada(
         url=canonica,
         html=html,
@@ -509,10 +523,22 @@ def provar_destino(
         chrome_declarado_pelo_site=tuple(chrome_declarado_pelo_site or ()),
         origem="reauditoria_ao_vivo",
         observado_em=_agora_iso(momento),
+        e_o_ato_de_auditoria=True,
     )
 
     fontes = carregar_fontes()
-    avaliacao = elegibilidade_de_destino_de_campanha(pagina, fontes=fontes)
+    # O PONTO É O DA AUDITORIA, não o da campanha — e o papel continua forçado.
+    #
+    # `elegibilidade_de_destino_de_campanha` responde "existe aprovação anterior
+    # e a página ainda bate com ela?". Aqui a pergunta é "eu devo aprovar o que
+    # está no ar agora?". São perguntas diferentes, e usar a primeira para
+    # produzir a resposta da segunda foi o que deixou o ciclo sem entrada.
+    avaliacao = avaliar(
+        pagina,
+        PapelDestino.PAID_DESTINATION,
+        PontoDePortao.AUDITORIA_AO_VIVO,
+        fontes=fontes,
+    )
 
     bloqueios = [_com_dono(a.para_json()) for a in avaliacao.bloqueios]
     riscos = [_com_dono(a.para_json()) for a in avaliacao.riscos]
