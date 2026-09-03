@@ -660,14 +660,28 @@ BEGIN
   );
   v_payload := encode(sha256(convert_to(v_hash_alvo::text, 'UTF8')), 'hex');
 
+  -- Premissa operacional desta RPC: READ COMMITTED. REPEATABLE READ e
+  -- SERIALIZABLE mudam visibilidade de lote vs fechamento e do UPSERT.
+  -- PostgreSQL mapeia READ UNCOMMITTED para READ COMMITTED; current_setting
+  -- nesse caso devolve 'read committed' e a chamada segue.
+  IF current_setting('transaction_isolation') IS DISTINCT FROM 'read committed' THEN
+    RAISE EXCEPTION USING ERRCODE = '0A000',
+      MESSAGE = 'ISOLAMENTO_NAO_SUPORTADO_V12_04: a RPC exige READ COMMITTED; atual='
+                || current_setting('transaction_isolation');
+  END IF;
+
   -- Locks transacionais, nunca session-lock: abortar a transacao libera.
-  -- classid 120404 / hashtext('v12_04:exec:' || execucao_chave)
-  --   serializa lote vs fechamento vs paginas da MESMA execucao.
   -- classid 120405 / hashtext('v12_04:idemp:' || chave_idempotencia)
   --   fecha a janela de idempotencia (SELECT do recibo + INSERT).
-  -- Ordem fixa 120404 depois 120405 para nao deadlockar. Nao ha lock de tabela.
-  PERFORM pg_advisory_xact_lock(120404, hashtext('v12_04:exec:' || v_exec_chave));
+  -- classid 120404 / hashtext('v12_04:exec:' || execucao_chave)
+  --   serializa lote vs fechamento vs paginas da MESMA execucao.
+  -- Ordem fixa: sempre 120405 e em seguida 120404. A mesma chave idempotente
+  -- espera primeiro no classid 120405 (contraprova E observa exatamente isso).
+  -- Execucoes distintas nao compartilham 120405; lote vs fechamento da mesma
+  -- execucao serializam em 120404 depois de tomarem chaves 120405 diferentes.
+  -- Nao ha lock de tabela.
   PERFORM pg_advisory_xact_lock(120405, hashtext('v12_04:idemp:' || v_chave));
+  PERFORM pg_advisory_xact_lock(120404, hashtext('v12_04:exec:' || v_exec_chave));
 
   -- ── idempotencia com memoria ─────────────────────────────────────────────
   SELECT * INTO v_existente
@@ -883,7 +897,7 @@ BEGIN
       IF FOUND THEN
         v_aceitas := v_aceitas + 1;
       ELSE
-        SELECT g.precedencia, g.colhida_em, g.execucao_id
+        SELECT g.*
           INTO v_atual
           FROM public.google_ads_campanha_dia g
          WHERE g.customer_id   = v_linha->>'customer_id'
@@ -916,6 +930,88 @@ BEGIN
                AND (v_linha->>'colhida_em')::timestamptz > v_atual.colhida_em) THEN
           RAISE EXCEPTION USING ERRCODE = 'XX000',
             MESSAGE = 'FATO_UPSERT_STALE: vencedor nao aplicado';
+        END IF;
+
+        -- Empate total: mesma precedencia e mesmo colhida_em. First-writer
+        -- permanece se o conteudo persistivel e identico; qualquer divergencia
+        -- persistivel e recusada com nome (a transacao inteira desfaz, sem
+        -- versao parcial).
+        --
+        -- Entram na comparacao todos os campos que o INSERT/UPDATE grava como
+        -- fato: segmentos, metadados da campanha, moeda, API, metricas, shares,
+        -- percentuais e metricas_extras.
+        -- Ficam de fora, de proposito:
+        --   fato_id, customer_id, campaign_id, metric_date, segments_hash
+        --     (identidade ja casada pelo WHERE / indice unico);
+        --   execucao_id (procedencia da execucao);
+        --   colhida_em (chave do empate, ja igual neste ramo);
+        --   origem_janela, janela_fechada, precedencia
+        --     (procedencia da janela; iguais neste ramo);
+        --   atualizada_em (relogio tecnico).
+        IF v_precedencia = v_atual.precedencia
+           AND (v_linha->>'colhida_em')::timestamptz
+               IS NOT DISTINCT FROM v_atual.colhida_em
+           AND NOT (
+                v_seg IS NOT DISTINCT FROM v_atual.segmentos
+            AND nullif(v_linha->>'volc_campaign_id', '')
+                IS NOT DISTINCT FROM v_atual.volc_campaign_id
+            AND nullif(v_linha->>'campaign_name', '')
+                IS NOT DISTINCT FROM v_atual.campaign_name
+            AND nullif(v_linha->>'campaign_status', '')
+                IS NOT DISTINCT FROM v_atual.campaign_status
+            AND nullif(v_linha->>'advertising_channel_type', '')
+                IS NOT DISTINCT FROM v_atual.advertising_channel_type
+            AND v_api IS NOT DISTINCT FROM v_atual.api_versao
+            AND (v_linha->>'currency_code')
+                IS NOT DISTINCT FROM v_atual.currency_code
+            AND (v_linha->>'impressoes')::bigint
+                IS NOT DISTINCT FROM v_atual.impressoes
+            AND (v_linha->>'cliques')::bigint
+                IS NOT DISTINCT FROM v_atual.cliques
+            AND (v_linha->>'interacoes')::bigint
+                IS NOT DISTINCT FROM v_atual.interacoes
+            AND (v_linha->>'custo_micros')::bigint
+                IS NOT DISTINCT FROM v_atual.custo_micros
+            AND (v_linha->>'conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.conversoes
+            AND (v_linha->>'todas_conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.todas_conversoes
+            AND (v_linha->>'valor_conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.valor_conversoes
+            AND (v_linha->>'valor_todas_conversoes')::numeric
+                IS NOT DISTINCT FROM v_atual.valor_todas_conversoes
+            AND (v_linha->>'ctr')::numeric
+                IS NOT DISTINCT FROM v_atual.ctr
+            AND (v_linha->>'cpc_medio_micros')::numeric
+                IS NOT DISTINCT FROM v_atual.cpc_medio_micros
+            AND (v_linha->>'custo_por_conversao_micros')::numeric
+                IS NOT DISTINCT FROM v_atual.custo_por_conversao_micros
+            AND (v_linha->>'search_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_impression_share
+            AND (v_linha->>'search_budget_lost_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_budget_lost_impression_share
+            AND (v_linha->>'search_rank_lost_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_rank_lost_impression_share
+            AND (v_linha->>'search_top_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_top_impression_share
+            AND (v_linha->>'search_absolute_top_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_absolute_top_impression_share
+            AND (v_linha->>'search_click_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_click_share
+            AND (v_linha->>'search_exact_match_impression_share')::numeric
+                IS NOT DISTINCT FROM v_atual.search_exact_match_impression_share
+            AND (v_linha->>'top_impression_percentage')::numeric
+                IS NOT DISTINCT FROM v_atual.top_impression_percentage
+            AND (v_linha->>'absolute_top_impression_percentage')::numeric
+                IS NOT DISTINCT FROM v_atual.absolute_top_impression_percentage
+            AND coalesce(v_linha->'metricas_extras', '{}'::jsonb)
+                IS NOT DISTINCT FROM v_atual.metricas_extras
+           ) THEN
+          RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'FATO_EMPATE_CONTEUDO_DIVERGENTE: '
+                      || (v_linha->>'customer_id') || '/'
+                      || (v_linha->>'campaign_id') || '/'
+                      || (v_linha->>'metric_date');
         END IF;
 
         v_preteridas := v_preteridas + 1;
@@ -1094,7 +1190,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.volc_registrar_gads_campanha_dia(jsonb) IS
-  'Unica porta de ingestao do fato campanha-dia. Idempotente pela chave (advisory xact lock 120405 + unique), recusa a mesma chave com outro conteudo, aplica precedencia D0<D-1<backfill no UPSERT atomico, serializa lote/fechamento da mesma execucao (advisory xact lock 120404), projeta compatibilidade em bloco isolado e so fecha a execucao depois de reconciliar contra o que foi persistido.';
+  'Unica porta de ingestao do fato campanha-dia. Exige READ COMMITTED (ISOLAMENTO_NAO_SUPORTADO_V12_04). Idempotente pela chave (advisory xact lock 120405 + unique), recusa a mesma chave com outro conteudo, aplica precedencia D0<D-1<backfill no UPSERT atomico, empate total identico fica com o first-writer (preterida) e empate divergente recusa FATO_EMPATE_CONTEUDO_DIVERGENTE, serializa lote/fechamento da mesma execucao (advisory xact lock 120404 depois de 120405), projeta compatibilidade em bloco isolado e so fecha a execucao depois de reconciliar contra o que foi persistido.';
 
 
 -- ─────────────────────────────────────────────── leitura de saude / deadman ──
