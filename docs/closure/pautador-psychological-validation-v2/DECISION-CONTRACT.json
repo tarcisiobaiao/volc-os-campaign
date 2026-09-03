@@ -1,0 +1,58 @@
+{
+  "contrato": "DECISION-CONTRACT/1",
+  "principio": "Medicao, tese de oportunidade e elegibilidade paga sao TRES objetos. Nenhum decide o outro.",
+  "camadas": {
+    "1_medicao": {
+      "modulo": "app.validacao.orquestrador + app.motor_pautas.espaco",
+      "produz": "oito eixos com proveniencia, indice, cobertura, perfil, portoes",
+      "alterado_nesta_lane": "somente persistencia (_gravar_parcial, _ou_anterior). A REGUA nao mudou: espaco.py e ficha.derivar estao byte-identicos ao commit base."
+    },
+    "2_tese": {
+      "modulo": "app.validacao.oportunidade",
+      "novo": true,
+      "produz": "decisao em vocabulario fechado + formato + tres conjuntos disjuntos + proximo experimento",
+      "nunca_recalcula": "le card.resumo e CITA indice/cobertura/perfil"
+    },
+    "3_paga": {
+      "modulo": "app.agents.mining.paid_eligibility",
+      "alterado_nesta_lane": "nao. Nenhuma linha."
+    }
+  },
+  "vocabulario_de_decisao": {
+    "aprofundar": "medido, ramifica, sustenta funil",
+    "experimentar": "promissor com buraco barato de fechar",
+    "insuficiente": "medido, mas a evidencia nao sustenta a aposta; ou poucas perguntas para concluir",
+    "inadequado": "medido e NAO serve ao formato de funil",
+    "retido": "cobertura abaixo do minimo OU desconhecida — nao priorizar",
+    "sem_validacao": "card antigo/nunca medido — lacuna, nao merito",
+    "falha_na_leitura": "a ficha nao pode ser lida — falha tecnica, NAO conclusao sobre o tema"
+  },
+  "invariantes_provados_por_teste": [
+    "nenhum campo de economia paga aparece na tese (CAMPOS_PROIBIDOS_NO_EDITORIAL)",
+    "score do LLM nao alcanca a decisao nem o ranking (3 pernas: valor, transporte, AST)",
+    "nenhum prior move decisao, ranking, formato ou a oportunidade escolhida (8 mutacoes x 9 casos)",
+    "ausente != zero confirmado != palpite, inclusive em BOOLEANOS (None nunca vira False)",
+    "cobertura desconhecida RETEM a priorizacao",
+    "tese_do_resumo e deterministica, idempotente e nao muta a entrada",
+    "o desempate final e estavel por opportunity_id",
+    "a Camada 2 nao importa app.entities e nao faz IO"
+  ],
+  "acoplamento_declarado_e_nao_corrigido": {
+    "id": "CPC->densidade->indice",
+    "descricao": "a PRESENCA de cpc no cluster vira existe_leilao, que move densidade entre 'nenhuma' e 'rala' — mas SOMENTE quando a SERP nao tem nenhum dominio comercial no top-10.",
+    "o_valor_do_cpc_e_usado": false,
+    "pre_existente_ao_lane": true,
+    "por_que_nao_foi_corrigido": "corrigir muda a semantica de medicao de todo card ja medido e exige remedicao da base. Fora de uma rodada corretiva focal.",
+    "congelado_em": "backend/tests/test_revisao_adversarial_achados.py::test_codex_a5_presenca_de_cpc_move_densidade_quando_serp_nao_tem_comercial",
+    "achado_por": "revisao adversarial independente (Codex)"
+  },
+  "mutacao_externa": {
+    "google_ads": "nenhuma chamada, nem mutate nem validate-only",
+    "wordpress": "nenhuma",
+    "n8n": "nenhuma",
+    "deploy": "nenhum",
+    "migration": "nenhuma",
+    "supabase": "o Validador escreve por DESENHO, e ja escrevia antes desta lane. `_gravar_parcial` aumentou a frequencia dentro de uma run que o operador dispara, com o mesmo upsert idempotente (on_conflict=opportunity_id,eixo, resolution=merge-duplicates). NENHUMA escrita ocorreu nesta sessao: o worktree nao tem Supabase configurado.",
+    "afirmacao_anterior_corrigida": "a lane afirmou 'zero mutacao externa' de forma ampla demais; a revisao adversarial (Codex A7) apontou, e a afirmacao foi reescrita para o que e verdade."
+  }
+}

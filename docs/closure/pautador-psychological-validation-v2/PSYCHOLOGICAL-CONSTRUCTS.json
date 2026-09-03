@@ -1,0 +1,138 @@
+{
+  "contrato": "PSYCHOLOGICAL-CONSTRUCTS/1",
+  "principio": "O LLM CONTA observaveis sobre um texto que ele mesmo escreveu. O Python DERIVA os niveis por aritmetica. Nenhum construto entra por nota.",
+  "por_que_a_lista_e_fechada": "OBSERVAVEIS_ACEITOS e uma DECISAO, nao um inventario. Nada visual entra: o corpus Webgo mostrou que elemento recorrente de pagina e template — 14 de 18 dominios servem vencedora, perdedora e controle com o mesmo gerador.",
+  "construtos": [
+    {
+      "nome": "ramos_de_acao",
+      "definicao_operacional": "quantos caminhos levam a ACOES diferentes; passos do mesmo caminho contam 1",
+      "observavel": "contagem 1..3 sobre a resposta_literal",
+      "fonte": "LLM conta",
+      "derivacao": "Python: entra em engajamento e no roteador de formato",
+      "estado_de_ausencia": "pergunta descartada, nunca zerada",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "engajamento(dado_unico) e o unico estado com evidencia FORTE: 9 temas somaram R$138.814 acima da mediana e perderam assim mesmo",
+      "evidencia_webgo": "CONTRAPROVA: mediana de 3 rotulos de escolha por pagina contra mediana de 1 destino real; 66 de 82 paginas apontam 3+ rotulos para um unico URL",
+      "classificacao": "sustentado",
+      "risco_de_sobreposicao": "com decisao_apos_resposta; medido e declarado"
+    },
+    {
+      "nome": "condicoes_pessoais",
+      "definicao_operacional": "quantos fatos da situacao DELA sao necessarios para responder",
+      "observavel": "contagem 0..3",
+      "fonte": "LLM conta",
+      "derivacao": "Python: roteador de formato",
+      "estado_de_ausencia": "pergunta descartada",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "separa ferramenta de elegibilidade de artigo",
+      "evidencia_webgo": "controles enumeram MAIS condicoes que vencedoras — direcao invertida",
+      "classificacao": "hipotese",
+      "risco_de_sobreposicao": "baixo"
+    },
+    {
+      "nome": "oficial_fecha_sozinho",
+      "definicao_operacional": "o canal oficial resolve a pergunta inteira, sem intermediario",
+      "observavel": "booleano observado; None quando ninguem observou",
+      "fonte": "LLM observa",
+      "derivacao": "Python: VETO do roteador, com piso de N",
+      "estado_de_ausencia": "None — NAO e False; vai para desconhecidos",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "era contado e jogado fora ate esta lane; e o unico observavel que separa 'da para fazer a ferramenta' de 'o balcao ja faz'",
+      "evidencia_webgo": "54 de 82 paginas mandam 'verificar nos canais oficiais' mas 79 de 82 tem um unico link externo, que e o credito do provedor: dependencia RETORICA, nao operacional",
+      "classificacao": "sustentado",
+      "risco_de_sobreposicao": "nenhum"
+    },
+    {
+      "nome": "decisao_apos_resposta",
+      "definicao_operacional": "sobra uma decisao real para ela tomar, respondivel SEM o dado pessoal dela",
+      "observavel": "booleano observado",
+      "fonte": "LLM observa",
+      "derivacao": "Python: roteador de formato",
+      "estado_de_ausencia": "None",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "distingue comparador de guia",
+      "evidencia_webgo": "nenhuma pagina do corpus executa acao, calcula ou simula",
+      "classificacao": "hipotese",
+      "risco_de_sobreposicao": "com ramos_de_acao — ambos descrevem ramificacao"
+    },
+    {
+      "nome": "ignorancia",
+      "definicao_operacional": "quanto o leitor NAO sabe ao chegar",
+      "observavel": "derivado das contagens",
+      "fonte": "Python deriva",
+      "derivacao": "ficha.derivar",
+      "estado_de_ausencia": "eixo ausente com motivo",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "o UNICO eixo com correlacao medida contra desfecho: +0,194 no teste cego, contra +0,017 da hipotese de pressao psicologica que caiu",
+      "evidencia_webgo": "nao observavel no corpus",
+      "classificacao": "sustentado",
+      "risco_de_sobreposicao": "baixo"
+    },
+    {
+      "nome": "engajamento",
+      "definicao_operacional": "a resposta esgota a pergunta ou sustenta leitura",
+      "observavel": "derivado",
+      "fonte": "Python deriva",
+      "derivacao": "ficha.derivar; dado_unico e PORTAO",
+      "estado_de_ausencia": "eixo ausente",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "FORTE no extremo (dado_unico), NENHUMA nos niveis intermediarios — por isso a escala foi reduzida a dois niveis",
+      "evidencia_webgo": "nao observavel",
+      "classificacao": "sustentado",
+      "risco_de_sobreposicao": "com ramos_de_acao, do qual deriva"
+    },
+    {
+      "nome": "opacidade",
+      "definicao_operacional": "quao clara e a regra oficial",
+      "observavel": "derivado",
+      "fonte": "Python deriva",
+      "derivacao": "ficha.derivar",
+      "estado_de_ausencia": "eixo ausente",
+      "pode_alterar_decisao": true,
+      "evidencia_interna": "correlacao +0,176 onde duas declaracoes concordam",
+      "evidencia_webgo": "nao observavel",
+      "classificacao": "hipotese",
+      "risco_de_sobreposicao": "baixo"
+    },
+    {
+      "nome": "tensao",
+      "definicao_operacional": "a aflicao que a pergunta carrega, em vocabulario FECHADO de 7",
+      "observavel": "classificacao contra tabela fechada",
+      "fonte": "LLM classifica (nao conta)",
+      "derivacao": "Python: MODA entre perguntas; o NUMERO que acompanha (intensidade) e DESCARTADO",
+      "estado_de_ausencia": "'nenhuma'",
+      "pode_alterar_decisao": false,
+      "evidencia_interna": "as intensidades 0,64-0,84 vieram do desfecho `lucro`, que `spend` preve com AUC 0,971 — regua contaminada",
+      "evidencia_webgo": "nao observavel",
+      "classificacao": "contestado",
+      "risco_de_sobreposicao": "e o unico item de `fatos` que e CLASSIFICACAO e nao contagem — achado de revisao (Gemini P1), declarado"
+    }
+  ],
+  "construtos_recusados": [
+    {
+      "nome": "pressao_psicologica_ordinal",
+      "motivo": "correlacao +0,017 com desfecho em 237 temas, duas rodadas. Reordenar por ignorancia deu +0,194",
+      "fonte": "motor_pautas/DECISOES.md secao 2"
+    },
+    {
+      "nome": "prospect_theory_como_prior",
+      "motivo": "razao perda/ganho medida 1,06x e depois 0,69x (invertida); Kahneman preve ~2,0x. Descreve escolha sob risco, nao leitura",
+      "fonte": "DECISOES.md secao 3"
+    },
+    {
+      "nome": "loewenstein_u_invertido",
+      "motivo": "o pico esta no hiato MAXIMO nas duas rodadas, monotonico decrescente",
+      "fonte": "DECISOES.md secao 4"
+    },
+    {
+      "nome": "features_iab",
+      "motivo": "todas pioram o AUC fora da amostra",
+      "fonte": "DECISOES.md secao 5"
+    },
+    {
+      "nome": "qualquer_observavel_visual",
+      "motivo": "template: medianas empatam nos tres grupos e 14 de 18 dominios servem mais de um grupo",
+      "fonte": "benchmark Webgo, verificado nesta lane"
+    }
+  ]
+}

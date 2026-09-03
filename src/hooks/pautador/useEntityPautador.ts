@@ -12,6 +12,7 @@ import { pautadorEntityService } from '@/services/pautadorEntityService';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import type { MarketTier, OpportunityStatus, PautadorCountry } from '@/types/pautador';
 import { entityKey } from '@/types/pautadorEntity';
+import type { TesesResposta } from '@/types/pautadorOportunidade';
 import type { EixoEmProgresso, ValidacaoRelatorio } from '@/types/pautadorValidacao';
 import type {
   EntityCard,
@@ -79,6 +80,11 @@ export function useEntityPautador() {
   // PERGUNTA. O modal NÃO trava o arraste — ele só antecede o movimento.
   const [medindo, setMedindo] = useState<Set<string>>(new Set());
   const [medindoLote, setMedindoLote] = useState(false);
+  // As TESES da coluna. Leitura pura e barata (nenhuma medição, nenhum custo),
+  // então pode ser recarregada sempre que a lista muda.
+  const [teses, setTeses] = useState<TesesResposta | null>(null);
+  const [tesesCarregando, setTesesCarregando] = useState(false);
+  const [tesesErro, setTesesErro] = useState<string | null>(null);
   const [ultimoLote, setUltimoLote] = useState<ValidacaoRelatorio | null>(null);
   const [progresso, setProgresso] = useState<Record<string, EixoEmProgresso[]>>({});
 
@@ -104,6 +110,31 @@ export function useEntityPautador() {
 
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // As teses acompanham a coluna de validação. É leitura pura e barata — sem
+  // medição, sem custo —, então recarregar a cada mudança da lista é honesto:
+  // o operador vê a comparação atualizada assim que uma medição termina.
+  // ⚠️ A CHAVE PRECISA MUDAR QUANDO A MEDIÇÃO MUDA.
+  //
+  // A primeira versão usava só os IDs da coluna. Medir um card altera o
+  // CONTEÚDO (`validacao`) sem alterar a lista de IDs, então o efeito nunca
+  // refazia a leitura e o operador continuava vendo a tese PRÉ-medição até
+  // que a composição da coluna mudasse por outro motivo (achado Codex, P1).
+  //
+  // `validado_em` é o carimbo que `_gravar_resumo` grava a cada run, então ele
+  // é exatamente o que muda quando há medição nova.
+  const idsValidando = useMemo(
+    () => cards.filter((c) => c.status === 'validating' && c.id)
+               .map((c) => `${c.id}:${(c.validacao as { validado_em?: string } | null)?.validado_em ?? ''}`)
+               .join(','),
+    [cards],
+  );
+  useEffect(() => {
+    void carregarTeses(cards.filter((c) => c.status === 'validating'));
+    // `idsValidando` é a chave estável: recarrega quando a COMPOSIÇÃO da
+    // coluna muda, não a cada renderização de um card.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsValidando]);
   const currentCodeRef = useRef<string | undefined>(undefined);
 
   const countryMeta = useMemo(
@@ -392,7 +423,14 @@ export function useEntityPautador() {
   // mecanismo que faz re-arrastar refazer só o que falta.
   const medirCard = useCallback(async (card: EntityCard, opts?: { silencioso?: boolean }) => {
     if (!card.id || card.ephemeral) return;
-    const key = String(card.id);   // mesma chave que o drawer consulta
+    // ⚠️ `entityKey`, e NÃO `String(card.id)`.
+    //
+    // Até `b2af81f0` esta linha era a única das 19 do hook que usava
+    // `String(card.id)`. O board lê com `entityKey(card)` (`ent-<id>`), então
+    // `medindoKeys.has(key)` era SEMPRE falso: o selo de medição e o progresso
+    // por eixo nunca apareciam no card durante os ~2 minutos da run. Só o
+    // drawer via, porque ele copiava a convenção errada.
+    const key = entityKey(card);
     setMedindo((s) => new Set(s).add(key));
     setProgresso((p) => ({ ...p, [key]: [] }));
 
@@ -450,6 +488,23 @@ export function useEntityPautador() {
       void loadCards(countryMeta?.country_code, countryMeta?.country_name);
     }
   }, [patchLocal, toast, loadCards, countryMeta]);
+
+  /** Lê as teses já deriváveis. NÃO mede e NÃO gasta: deriva do `validacao`
+   *  que o Validador gravou. Falhar aqui não apaga o que está na tela — a
+   *  comparação some, o card continua. */
+  const carregarTeses = useCallback(async (cards: EntityCard[]) => {
+    const ids = cards.map((c) => c.id).filter((x): x is number => !!x);
+    if (!ids.length) { setTeses(null); setTesesErro(null); return; }
+    setTesesCarregando(true);
+    setTesesErro(null);
+    try {
+      setTeses(await pautadorApi.entityTeses({ opportunity_ids: ids }));
+    } catch (e) {
+      setTesesErro(e instanceof Error ? e.message : 'falha ao ler as teses');
+    } finally {
+      setTesesCarregando(false);
+    }
+  }, []);
 
   /** A coluna inteira. É o caminho PADRÃO — o lote paga a base uma vez. */
   const medirColuna = useCallback(async (cards: EntityCard[]) => {
@@ -753,6 +808,7 @@ export function useEntityPautador() {
     toggleFunnelCompleted, createManualEntity,
     enrichEntity,
     medirCard, medirColuna, medindo, medindoLote, ultimoLote, progresso,
+    teses, tesesCarregando, tesesErro, carregarTeses,
   };
 }
 

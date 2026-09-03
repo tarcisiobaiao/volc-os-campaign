@@ -1,5 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { TeseDaOportunidade } from './TeseDaOportunidade';
+import type { TeseDeOportunidade } from '@/types/pautadorOportunidade';
 import {
   alvoDeOuro, CORTE_QUADRANTE, ESCOPO_PAUTADOR, ETAPAS_DA_MEDICAO, FAMILIA,
   MOTIVO_AUSENCIA, PERFIL_HUMANO, PESO, QUEM_MEDE, ROTULO_EIXO, ROTULO_FAMILIA,
@@ -547,11 +549,14 @@ const ESTILO_OURO = `
 
 export const ValidacaoPainel: React.FC<{
   validacao?: ValidacaoResumo | null;
+  /** A tese de oportunidade — derivada do resumo, no servidor. O painel não a
+   *  calcula: se ela não vier, as barras continuam valendo sozinhas. */
+  tese?: TeseDeOportunidade | null;
   custoEstimadoUsd?: number;
   medindo?: boolean;
   progresso?: EixoEmProgresso[];
   onMedir?: () => void;
-}> = ({ validacao, custoEstimadoUsd = 0.0092, medindo, progresso, onMedir }) => {
+}> = ({ validacao, tese, custoEstimadoUsd = 0.0092, medindo, progresso, onMedir }) => {
   // Passar o mouse num eixo acende a família que ele alimenta. É a aritmética
   // respondendo ao toque: dá para ver `ignorancia` empurrando a demanda humana.
   const [eixoAtivo, setEixoAtivo] = React.useState<string | null>(null);
@@ -604,6 +609,10 @@ export const ValidacaoPainel: React.FC<{
     // invisível, que é pior. Com ele o texto quebra e nada some.
     <div className="val space-y-5 break-words">
       <style>{ESTILO + ESTILO_OURO}</style>
+
+      {/* A TESE VEM ANTES DAS BARRAS. As barras dizem o que foi medido; a tese
+          diz o que fazer com isso, e é a pergunta que o operador traz. */}
+      <TeseDaOportunidade tese={tese} />
 
       {/* ── 3 SEGUNDOS ──────────────────────────────────────────────── */}
       {rompe ? (

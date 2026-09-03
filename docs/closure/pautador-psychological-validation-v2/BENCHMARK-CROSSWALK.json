@@ -1,0 +1,94 @@
+{
+  "contrato": "BENCHMARK-CROSSWALK/1",
+  "run_analisado": "engenharia reversa Google Ads, snapshot local somente-leitura (pseudonimo: RUN-A)",
+  "veredito": "BENCHMARK_EVIDENCE_INSUFFICIENT para peso, threshold e prova causal. UTIL para hipotese, contraprova e taxonomia.",
+  "regra_aplicada": "nenhum prior, de qualquer confianca, bloqueia ou autoriza. PRIORS_WEBGO tem pode_decidir=False em 100% das entradas, provado por MUTACAO em 93 testes.",
+  "o_que_eu_verifiquei_rodando_os_dados": [
+    {
+      "id": "V-B1",
+      "afirmacao": "46 pares de controle, so 10 sao de vencedora; 36 (78,3%) sao de perdedora e deterioracao, e mesmo assim servem de comparador unico das vencedoras",
+      "status": "sustentado",
+      "tem_controle": "sim",
+      "impacto": "invalida qualquer share comparativo publicado"
+    },
+    {
+      "id": "V-B2",
+      "afirmacao": "um script do proprio run intersecta com literal vazio (`& set()`), entao o 0 publicado para controles-de-vencedora-com-pagina e artefato de codigo",
+      "status": "sustentado",
+      "tem_controle": "n/a",
+      "impacto": "um numero publicado nao mede o que diz medir"
+    },
+    {
+      "id": "V-B3",
+      "afirmacao": "o sinal de canal NAO E IDENTIFICAVEL: a direcao inverte conforme a janela de lucro escolhida (28,1% vs 33,0% em 90d; 36,5% vs 18,7% em 180d; 43,9% vs 32,5% em all)",
+      "status": "contestado",
+      "tem_controle": "sim",
+      "impacto": "uma escolha arbitraria do analista determina a resposta"
+    },
+    {
+      "id": "V-B4",
+      "afirmacao": "estrutura de pagina nao discrimina vencedora de controle: medianas de palavras 894/927/902, CTAs 6/6/6, formularios 1/1/1",
+      "status": "sustentado",
+      "tem_controle": "sim",
+      "impacto": "nenhum observavel visual merece peso"
+    },
+    {
+      "id": "V-B5",
+      "afirmacao": "14 de 18 dominios servem MAIS DE UM grupo de desempenho: o mesmo template produz vencedora, perdedora e controle",
+      "status": "sustentado",
+      "tem_controle": "sim",
+      "impacto": "as paginas nao sao observacoes independentes; n efetivo ~18, nao 82"
+    },
+    {
+      "id": "V-B6",
+      "afirmacao": "densidade de anuncio acima da dobra e o UNICO gradiente monotonico com controle: 14,8% / 38,9% / 68,4%",
+      "status": "hipotese",
+      "tem_controle": "sim",
+      "impacto": "nao vira peso: n agrupado por dominio, medida de DOM do estado ATUAL contra desfecho de 90-180d, e propriedade de monetizacao PAGA — fora da decisao editorial",
+      "correcao_minha": "minha primeira leitura usou MEDIANA (5/5/8) e concluiu que nao discriminava. A mediana escondia a cauda; por proporcao o gradiente e real. Eu estava errado."
+    }
+  ],
+  "relatado_pelos_investigadores_nao_reverificado_linha_a_linha": [
+    "a janela de 30 dias de eventos de mudanca esta DENTRO da janela de 90 dias que rotula vencedora/perdedora — circularidade nao registrada em nenhuma errata",
+    "0 dos 122 episodios legiveis tem controle pareado utilizavel",
+    "35 de 35 playbooks com tem_contraprova=False e n_legiveis=0",
+    "o pareamento e feito NA PROPRIA VARIAVEL testada (canal entra nos tres estratos), entao a comparacao de canal nao pode produzir sinal por construcao",
+    "1 par vencedora-controle e literalmente a MESMA pagina servindo as duas campanhas"
+  ],
+  "o_que_atravessou_para_o_volc": [
+    {
+      "prior": "webgo/ramificacao-cosmetica",
+      "uso": "CONTRAPROVA para ramos_de_acao: rotulo de escolha nao e ramo. Mediana 3 rotulos contra 1 destino real.",
+      "confianca": "media",
+      "pode_decidir": false,
+      "efeito_real": "nenhum efeito automatico. Fica como hipotese visivel e como argumento para o prompt exigir que ramo leve a ACAO diferente."
+    },
+    {
+      "prior": "webgo/estrutura-nao-discrimina",
+      "uso": "afirma uma AUSENCIA: justifica OBSERVAVEIS_ACEITOS excluir hero, CTA, selo, layout, template, design e cor",
+      "confianca": "alta",
+      "pode_decidir": false,
+      "efeito_real": "moldou o que NAO entrou. E o uso mais valioso do benchmark."
+    },
+    {
+      "prior": "webgo/densidade-de-anuncio",
+      "uso": "hipotese para o lado pago",
+      "confianca": "baixa",
+      "pode_decidir": false,
+      "efeito_real": "nenhum"
+    },
+    {
+      "prior": "webgo/passo-2-inobservavel",
+      "uso": "proibe citar o benchmark para sustentar 'sustenta sequencia de paginas'",
+      "confianca": "alta",
+      "pode_decidir": false,
+      "efeito_real": "limita o que a lane pode afirmar"
+    }
+  ],
+  "privacidade": {
+    "raw_copiado_para_o_git": 0,
+    "urls_dominios_ids_ou_termos_crus_nos_artefatos": 0,
+    "enviado_a_api_externa": "nenhum dado bruto do benchmark. O pacote para o revisor semantico externo continha apenas codigo da lane, sanitizado (paths absolutos e URLs substituidos).",
+    "screenshots_versionados": 0
+  }
+}

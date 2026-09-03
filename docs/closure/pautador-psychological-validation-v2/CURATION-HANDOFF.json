@@ -1,0 +1,115 @@
+{
+  "contrato": "CURATION-HANDOFF/1",
+  "estado": "pending_single_curator",
+  "aviso": "Esta branch NAO editou Roadmap, curadoria nem grafo. O que segue e PROPOSTA para o curador integrador aplicar uma unica vez, depois da integracao.",
+  "base": "b2af81f0a2018626c5d873574664991b16f7ce38",
+  "branch": "sprint/pautador-psychological-validation-v2",
+  "tarefas_roadmap_afetadas": [
+    {
+      "tema": "Validador / coluna Em validacao",
+      "estado_honesto_proposto": "partial",
+      "por_que_nao_done": "a Camada 2 esta completa e testada, mas o acoplamento CPC->densidade->indice continua de pe no motor de MEDICAO, e a descoberta continua pedindo nota ao LLM. Nenhum dos dois foi corrigido nesta lane, e ambos afetam o que o operador le.",
+      "provas": [
+        "3787 passed / 112 skipped",
+        "replay de 1152 casos com 3 invariantes vazios",
+        "93 testes de mutacao de prior",
+        "36 testes de nao-alcancabilidade do score"
+      ],
+      "lacunas": [
+        "CPC->densidade (pre-existente, congelado em teste)",
+        "DIVIDA-DESCOBERTA-SCORE (fora do ownership, provado nao-alcancavel)",
+        "temperatura 0.9 fixa, sem seed, sem JSON Schema",
+        "custo do LLM fora da contabilidade"
+      ]
+    },
+    {
+      "tema": "Comparacao de oportunidades",
+      "estado_honesto_proposto": "partial",
+      "por_que_nao_done": "a tabela existe e nao ordena o incomparavel, mas nao foi exercitada no fluxo real de arraste — a pagina exige o Supabase oficial, proibido nesta missao.",
+      "provas": [
+        "15 testes de componente",
+        "recibo de navegador: 208 nos medidos, 0 abaixo do piso WCAG"
+      ],
+      "lacunas": [
+        "fluxo ponta a ponta nao exercitado",
+        "tema escuro nao medido",
+        "leitor de tela real nao testado"
+      ]
+    }
+  ],
+  "nos_de_grafo_propostos": [
+    {
+      "id": "app.validacao.oportunidade",
+      "tipo": "modulo",
+      "papel": "Camada 2 — tese de oportunidade, deterministica",
+      "relacoes": [
+        {
+          "para": "app.validacao.orquestrador",
+          "tipo": "le_resumo_de",
+          "nota": "nunca recalcula"
+        },
+        {
+          "para": "app.agents.mining.paid_eligibility",
+          "tipo": "reusa_vocabulario_de_estado",
+          "nota": "Sinal, Evidencia, VazamentoDeDesfecho; NAO reusa decisao"
+        },
+        {
+          "para": "app.validacao.ficha",
+          "tipo": "importa_piso",
+          "nota": "N_MINIMO_PARA_PORTAO — uma unica verdade sobre o piso"
+        }
+      ]
+    },
+    {
+      "id": "rota:POST /api/pautador/entity-opportunities/teses",
+      "tipo": "rota",
+      "papel": "leitura pura: nao mede, nao gasta, isola falha por card"
+    },
+    {
+      "id": "componente:TeseDaOportunidade",
+      "tipo": "ui",
+      "papel": "tres conjuntos disjuntos sempre visiveis"
+    },
+    {
+      "id": "componente:ComparadorDeOportunidades",
+      "tipo": "ui",
+      "papel": "tabela; o incomparavel aparece, nao e ordenado"
+    }
+  ],
+  "relacoes_alteradas": [
+    {
+      "de": "EntityKanbanBoard",
+      "para": "score da descoberta",
+      "estado": "INALTERADO e problematico",
+      "nota": "o card ainda exibe com destaque um numero que pode ter vindo do LLM, sem proveniencia visivel. Fora do ownership desta lane; ver DIVIDA-DESCOBERTA-SCORE."
+    }
+  ],
+  "riscos": [
+    {
+      "id": "R1",
+      "risco": "o acoplamento CPC->densidade->indice sobrevive e agora tambem ordena o ranking novo",
+      "severidade": "media",
+      "mitigacao_atual": "congelado em teste e declarado; so a PRESENCA do cpc importa, e so quando a SERP nao tem dominio comercial"
+    },
+    {
+      "id": "R2",
+      "risco": "reprocessar com refazer=True nao e deterministico (temperatura 0.9, sem seed)",
+      "severidade": "media",
+      "mitigacao_atual": "3 passadas com unanimidade; instabilidade agora aparece como CONTRADICAO na tela"
+    },
+    {
+      "id": "R3",
+      "risco": "a descoberta continua ensinando a formula de pontuacao ao LLM",
+      "severidade": "alta para a leitura do operador, nula para a decisao desta lane",
+      "mitigacao_atual": "provado nao-alcancavel por 3 pernas; registrado com teste que falha se o registro sumir"
+    }
+  ],
+  "proximos_atos_propostos": [
+    "1. Decidir sobre CPC->densidade: ou tirar existe_leilao de nivel_densidade, ou mover densidade para fora do escopo do Pautador. Ambos exigem remedicao da base.",
+    "2. Autorizar uma lane para a DIVIDA-DESCOBERTA-SCORE: tirar a formula do prompt, remover o fallback que confia no score do modelo, e dar proveniencia visivel ao numero do card.",
+    "3. Expor temperatura e seed por configuracao, e enviar JSON Schema real ao provedor.",
+    "4. Contabilizar o custo das 3 chamadas de LLM por lote.",
+    "5. Remover, com decisao de curadoria, os ~800 linhas de prompt morto (classificador_eixos.md, portao_engajamento.md) e as funcoes sem chamador de validacao/portao.py.",
+    "6. Consertar psique.ler (82 de 91 pares violam confianca==nenhuma => intensidade==0) na lane que puder tocar o grafo."
+  ]
+}
