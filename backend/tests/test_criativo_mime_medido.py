@@ -157,3 +157,93 @@ def test_arquivo_ilegivel_nao_derruba_a_medicao() -> None:
     from app.criativo.bancada.operario import _mime_medido
 
     assert _mime_medido(Path("/caminho/que/nao/existe.png")) is None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A sentinela do arranjo — risco FUTURO, e nao defeito de hoje
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# A revisao adversarial levantou a fragilidade do reconhecimento de MIME:
+# `mime_de` conhece TRES assinaturas, e a de JPEG tem DOIS bytes. Foi medido, com
+# cinco ataques executados contra o contrato atual, e nenhum passou:
+#
+#   bytes Mach-O declarados `image/webp`      -> mime_gate FAIL      bloqueado
+#   lixo comecando com \xff\xd8 como JPEG     -> mime_gate PASS, dim FAIL
+#   PNG 64x64 com pedido de 1200x628          -> mime_gate PASS, dim FAIL
+#   PNG real declarado `image/gif`            -> mime_gate FAIL      bloqueado
+#   bytes arbitrarios declarados `video/mp4`  -> mime_gate SKIP, dim FAIL
+#
+# Ou seja: NAO ha defeito executavel hoje. Os dois gates sao complementares —
+# onde a assinatura rasa deixa passar, o leitor profundo (o mesmo que mede a
+# dimensao) recusa; e onde a assinatura nao existe, o outro instrumento mede.
+#
+# O problema e que essa complementaridade e EMERGENTE: ela vale por causa da
+# relacao entre tres conjuntos, e nenhum deles sabe dos outros. Basta alguem
+# acrescentar `image/webp` a `_MIMES_MENSURAVEIS` — um gesto razoavel, para o
+# gate de dimensao passar a cobrar webp — sem ensinar a assinatura ao `mime_de`,
+# e o par volta a somar dois SKIPPED, que foi exatamente o bloqueante que a
+# revisao pegou.
+#
+# Estas provas nao mudam comportamento nenhum. Elas transformam o risco futuro
+# em vermelho no dia em que ele nascer, em vez de em bloqueante na revisao
+# seguinte.
+
+
+def test_todo_mime_que_pula_o_gate_e_medido_por_outro_instrumento() -> None:
+    """INVARIANTE 1. `SKIPPED` so e seguro se o gate `dimensao` for BLOQUEANTE ali.
+
+    Um MIME dispensado do gate de assinatura e que o gate de dimensao tambem nao
+    cobre nao e conferido por ninguem — e dois `SKIPPED` nao-bloqueantes somam um
+    caminho verde sem leitura, que foi o bloqueante da revisao.
+    """
+    from app.criativo.bancada.operario import (
+        _MIMES_MENSURAVEIS,
+        _MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO,
+    )
+
+    orfaos = _MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO - _MIMES_MENSURAVEIS
+    assert not orfaos, (
+        f"{sorted(orfaos)} pulam o gate de assinatura e NAO estao em "
+        f"`_MIMES_MENSURAVEIS`: nenhum gate bloqueante abre o arquivo."
+    )
+
+
+def test_todo_mime_mensuravel_sem_assinatura_tem_dispensa_declarada() -> None:
+    """INVARIANTE 2. O contrario: nao reprovar formato legitimo que so o ffprobe le.
+
+    Um MIME que o sistema mede por outro instrumento, mas cuja assinatura
+    `mime_de` nao le, precisa estar na lista de dispensa — senao toda peca
+    legitima daquele formato sai `FAIL` no gate de MIME.
+    """
+    from volc_ads.criativo.adaptadores.medir_imagem import FORMATOS_RECONHECIDOS
+
+    from app.criativo.bancada.operario import (
+        _MIMES_MENSURAVEIS,
+        _MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO,
+    )
+
+    sem_assinatura = _MIMES_MENSURAVEIS - FORMATOS_RECONHECIDOS
+    sem_dispensa = sem_assinatura - _MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO
+    assert not sem_dispensa, (
+        f"{sorted(sem_dispensa)} sao medidos pelo gate de dimensao, `mime_de` nao "
+        f"le a assinatura deles, e nao ha dispensa declarada: toda peca legitima "
+        f"desses formatos seria reprovada no gate de MIME."
+    )
+
+
+def test_toda_assinatura_reconhecida_tambem_e_medida() -> None:
+    """INVARIANTE 3. Reconhecer o formato e nao medir a dimensao e meia conferencia.
+
+    Se `mime_de` aprender uma assinatura nova sem que o medidor aprenda o
+    formato, o gate de MIME sai `PASS` e o de dimensao sai `SKIPPED` — e a peca
+    chega a `rendered` com a geometria nunca conferida.
+    """
+    from volc_ads.criativo.adaptadores.medir_imagem import FORMATOS_RECONHECIDOS
+
+    from app.criativo.bancada.operario import _MIMES_MENSURAVEIS
+
+    meio_conferidos = FORMATOS_RECONHECIDOS - _MIMES_MENSURAVEIS
+    assert not meio_conferidos, (
+        f"{sorted(meio_conferidos)} tem assinatura lida e dimensao NAO medida: "
+        f"o gate de MIME passa e o de dimensao pula."
+    )
