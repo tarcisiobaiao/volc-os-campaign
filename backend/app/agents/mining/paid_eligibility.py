@@ -474,6 +474,45 @@ PRIORS_DE_BENCHMARK: Tuple[PriorDeBenchmark, ...] = (
         ),
     ),
     PriorDeBenchmark(
+        nome="match_type_nao_discrimina",
+        afirmacao="BROAD/PHRASE/EXACT não separam campanha vencedora de controle",
+        confianca="baixa",
+        bloqueia=False,
+        autoriza=False,
+        origem="webgo/20260903T010510Z data/curated/pattern_shares.csv (dimensão tipo_de_correspondencia)",
+        limitacao=(
+            "resultado NEGATIVO explícito — BROAD sai 'igual ao controle: e o padrao da "
+            "operacao, nao sinal' e EXACT 'nao e mais frequente nas vencedoras'. "
+            "`propor_match_type` deste módulo é, portanto, POLÍTICA declarada e não "
+            "achado importado: nenhum match type aqui cita aquele pacote como prova"
+        ),
+    ),
+    PriorDeBenchmark(
+        nome="vazio_de_search_term_nao_e_ausencia_de_demanda",
+        afirmacao="resultado vazio de search term nunca se lê como 'sem demanda de busca'",
+        confianca="alta",
+        bloqueia=False,
+        autoriza=False,
+        origem="webgo/20260903T010510Z HANDOFF.md (armadilha 4: search_term_view em PMax é GAQL válida com 0 linhas)",
+        limitacao=(
+            "prior METODOLÓGICO, não de conteúdo: diz como LER um vazio, não o que "
+            "incluir. É o mesmo princípio que `Sinal` codifica em `absent` vs "
+            "`confirmed_zero`, e a única coisa deste benchmark que o motor de fato aplica"
+        ),
+    ),
+    PriorDeBenchmark(
+        nome="padrao_presente_tambem_no_controle_nao_e_sinal",
+        afirmacao="um padrão presente nas vencedoras E nos controles é o default da operação",
+        confianca="alta",
+        bloqueia=False,
+        autoriza=False,
+        origem="webgo/20260903T010510Z refinement-v2 (filtro de sinal declarado)",
+        limitacao=(
+            "prior METODOLÓGICO. Só a diferença ENTRE grupos informa, e mesmo ela é "
+            "associação: os grupos não foram sorteados"
+        ),
+    ),
+    PriorDeBenchmark(
         nome="ausencia_de_evidencia_de_keyword",
         afirmacao="o benchmark não contém teste de desfecho no nível de keyword",
         confianca="alta",
@@ -857,6 +896,91 @@ def aprovar(
     return conjunto
 
 
+# ── reconciliação com os contratos que já existem ───────────────────────────
+#
+# ⚠️ ESTE MÓDULO É O TERCEIRO VOCABULÁRIO DE AUSÊNCIA DO REPOSITÓRIO, E ISSO
+# PRECISA DE JUSTIFICATIVA, NÃO DE SILÊNCIO.
+#
+# Os outros dois, ambos legítimos e ambos com dono:
+#
+#   `app.validacao.orquestrador.Eixo.proveniencia`  medido | julgado | ausente
+#       Fala de EIXO EDITORIAL. `PROVENIENCIA_EQUIVALENTE`, no topo deste
+#       arquivo, traduz para lá — as duas metades do Pautador continuam
+#       falando a mesma língua sem que nenhuma reescreva a outra.
+#
+#   `app.criativo.bancada.contrato.Ausencia`        nao_medido | nao_apurado |
+#       nao_declarado | nao_suportado | nao_aplicavel | sem_custo_de_provider |
+#       falhou | mismatch | aguardando_aprovacao
+#       Fala de CAMPO DE TRABALHO na bancada de criativos, e distingue coisas
+#       que um sinal de leilão não tem (custo de provider, aprovação pendente).
+#       `AUSENCIA_EQUIVALENTE` mapeia o que é mapeável e deixa explícito o que
+#       não é: `mismatch` — "sei, e está errado" — não tem análogo aqui, e
+#       inventar um seria fingir uma medição que este módulo não faz.
+#
+# O que justifica o terceiro é o eixo: nenhum dos dois expressa
+# `confirmed_zero`, e sem ele "demanda medida como zero" e "demanda não medida"
+# caem no mesmo lugar — que é literalmente o defeito de `classifier.py` que
+# esta sprint fechou.
+
+AUSENCIA_EQUIVALENTE: Dict[str, str] = {
+    AUSENTE: "nao_medido",
+    DESCONHECIDO: "nao_declarado",
+    NAO_APLICAVEL: "nao_aplicavel",
+    FALHOU: "falhou",
+}
+
+
+class CriterioIndisponivel(RuntimeError):
+    """`volc_ads` não está no path — a conversão para critério não é possível."""
+
+
+def para_criterios_de_campanha(
+    conjunto: CampaignKeywordSet, *, exigir_aprovacao: bool = True
+) -> List[Any]:
+    """Converte o conjunto SELECIONADO em `volc_ads.campanha.criterio.Criterio`.
+
+    A ponte explícita para o lado pago aterrissa no contrato que JÁ EXISTE, em
+    vez de abrir um segundo. `Criterio` é imutável, valida match type, nível e
+    origem, e recusa `origem="SEARCH_TERM"` sem evidência medida com janela —
+    tudo isso continua valendo e não é reimplementado aqui.
+
+    A importação é preguiçosa de propósito: `volc_ads` mora fora de
+    `backend/app` e é consumido por outra lane. Uma dependência dura faria a
+    mineração deixar de importar num ambiente onde aquele pacote não está, e
+    este módulo não precisa dele para decidir — só para entregar.
+
+    `exigir_aprovacao=True` é o padrão porque é o portão que esta sprint
+    existiu para instalar: sem `approved_set_sha256`, não há conjunto literal
+    aprovado, e converter seria produzir critérios que ninguém conferiu.
+
+    NENHUMA NEGATIVA É PRODUZIDA AQUI. Negativa exige search-term evidence e
+    revisão de overblocking, e as duas coisas moram fora deste módulo.
+    """
+    try:
+        from volc_ads.campanha.criterio import Criterio
+    except ImportError as exc:  # pragma: no cover - depende do layout de deploy
+        raise CriterioIndisponivel(str(exc)) from exc
+
+    if exigir_aprovacao and not conjunto.congelado:
+        raise ConjuntoCongelado(
+            "conjunto sem approved_set_sha256 não vira critério — aprove antes, "
+            "ou passe exigir_aprovacao=False para um ensaio explicitamente seco"
+        )
+    return [
+        Criterio(
+            texto=d.termo,
+            match_type=d.match_type,
+            negativa=False,
+            nivel="AD_GROUP",
+            grupo=d.subintencao,
+            origem="PAUTADOR",
+            motivo="; ".join(d.motivos) or None,
+            aprovado_por=conjunto.aprovado_por,
+        )
+        for d in conjunto.selected_keywords
+    ]
+
+
 def derivar_lista_google_ads(conjunto: CampaignKeywordSet) -> str:
     """A lista que vai para o Google Ads, derivada EXATAMENTE de `selected`.
 
@@ -1007,7 +1131,8 @@ __all__ = [
     "PaidKeywordDecision", "decidir_keyword",
     "CampaignKeywordSet", "ConjuntoCongelado", "HashDivergente",
     "impressao_de_decisoes", "impressao_do_conjunto", "aprovar",
-    "derivar_lista_google_ads",
+    "derivar_lista_google_ads", "para_criterios_de_campanha",
+    "CriterioIndisponivel", "AUSENCIA_EQUIVALENTE",
     "VOLUME_THRESHOLD", "MIN_ITEMS", "MAX_ITEMS", "POLITICA_DE_SELECAO",
     "aplicar_politica_de_selecao", "montar_conjunto",
     "media_de_cpc", "media_de_volume",

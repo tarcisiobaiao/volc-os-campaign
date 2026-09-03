@@ -555,3 +555,41 @@ def test_arquetipos_separam_governo_de_imposto_estadual():
     assert "navegacional" in arquetipos("meu inss login")
     assert "suporte_acesso" in arquetipos("inss telefone 135")
     assert arquetipos("bpc loas quem tem direito") != arquetipos("ipva 2026 tabela")
+
+
+# ── reconciliação com o contrato de critério que já existe ──────────────────
+
+
+def test_conjunto_aprovado_vira_criterio_do_contrato_existente():
+    """A ponte paga aterrissa em `volc_ads.campanha.criterio.Criterio`.
+
+    Não num segundo contrato paralelo. `Criterio` já valida match type, nível e
+    origem, e já recusa `SEARCH_TERM` sem evidência medida — nada disso é
+    reimplementado do lado da mineração.
+    """
+    from app.agents.mining.paid_eligibility import (
+        aprovar,
+        impressao_do_conjunto,
+        para_criterios_de_campanha,
+    )
+
+    conjunto = _conjunto_bpc()
+    aprovar(conjunto, aprovado_por="operador", hash_conferido=impressao_do_conjunto(conjunto))
+    criterios = para_criterios_de_campanha(conjunto)
+
+    assert [c.texto for c in criterios] == [d.termo for d in conjunto.selected_keywords]
+    assert all(c.origem == "PAUTADOR" for c in criterios)
+    assert all(c.negativa is False for c in criterios), "o motor criou negativa sozinho"
+    assert all(c.nivel == "AD_GROUP" for c in criterios)
+    assert all(c.aprovado_por == "operador" for c in criterios)
+
+
+def test_conjunto_nao_aprovado_nao_vira_criterio():
+    """J. Sem impressão aprovada não há critério — nem por engano."""
+    from app.agents.mining.paid_eligibility import (
+        ConjuntoCongelado,
+        para_criterios_de_campanha,
+    )
+
+    with pytest.raises(ConjuntoCongelado):
+        para_criterios_de_campanha(_conjunto_bpc())
