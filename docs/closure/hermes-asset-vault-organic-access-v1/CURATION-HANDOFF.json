@@ -1,0 +1,149 @@
+{
+  "_papel": "DELTA PROPOSTO. NAO aplicado. Esta missao NAO editou volc-os-workbook/ROADMAP-VIVO.json, NAO editou docs/volc-os-graph/curadoria-operacional.json e NAO reconstruiu o Mapa Vivo. Quem aplica e o integrador unico, uma vez, depois do merge.",
+  "_missao": "hermes-asset-vault-organic-access-v1",
+  "_branch": "sprint/hermes-asset-vault-organic-access-v1",
+  "_base_sha": "c8ca8628e83742dd7da5242f0a015f76292aafe7",
+  "_head_medido": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso",
+  "_medido_em": "2026-09-02",
+  "_sessao_claude": "553b5b9d-aa0e-4e87-9981-766952b591c7",
+  "_aviso_que_vem_antes_de_tudo": "Claude Code nao conseguiu rodar interpretadores/git por bloqueio da camada de permissao, mas Hermes/Bia executou os gates apos o encerramento do executor. Ver GATES.md: testes focais backend/Cofre/broker passaram, frontend Asset Vault passou, build passou, TypeScript manteve baseline herdado sem erro em asset-vault; backend completo falha apenas em criativo fora do ownership.",
+  "_commits_observacao": "A branch possui seis commits desde a base: cinco commits anteriores ao artefato listados em _commits_anteriores_ao_artefato e o commit corrente desta microcorrecao, cujo SHA nao pode ser embutido sem alterar o proprio SHA.",
+  "_pre_condicao_do_integrador": "A branch nao esta mesclada e foi publicada na feature branch. Trabalho que so existe numa worktree nao pode marcar a fonte compartilhada como concluido — CLAUDE.md e AGENTS.md sao explicitos. Alem disso, nenhuma escrita foi feita no Supabase oficial, entao nenhum ativo real existe no Cofre em producao.",
+  "_nenhuma_tarefa_vira_done": "Nenhuma das sete propostas pede 'done'. Codigo revisado em worktree nao e operacao provada, e 'done' significa 'concluido e provado' neste roadmap.",
+  "_frescor_do_mapa_vivo": "DEFASADO e NAO CONSERTADO por instrucao explicita do Hermes. `python3 scripts/atualizar_grafo_volc_os.py --check` falhou no preflight porque graphify-out/UPDATE_STATUS.json esta ausente; confirmado por leitura nesta sessao que o diretorio graphify-out/ nao existe nesta worktree. Nenhum arquivo de grafo foi criado, editado ou regenerado.",
+  "tarefas": [
+    {
+      "id": "P03-T11",
+      "titulo": "Criar broker seguro entre 1Password e AdsPower",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "e_a_unica_mudanca_de_estado_proposta": true,
+      "prova": "O sidecar passou a existir em backend/app/asset_vault/broker/ (dominio, aplicacao, infraestrutura, cli), dentro da fronteira do Cofre porque e o Cofre que sabe qual perfil pertence a qual ativo. Contra o criterio de aceite escrito no Roadmap: (1) LOOPBACK — exigir_endereco_de_loopback aceita so IP literal de loopback e recusa nome DNS (inclusive local.adspower.net, porque quem controla o resolvedor controla para onde o Bearer vai), https, userinfo na URL, porta implicita, caminho e query; a validacao acontece na CONSTRUCAO, entao um broker apontado para fora nao chega a existir. (2) BEARER ATIVO — exigir_bearer falha fechado; nao ha modo degradado. (3) SEGREDO INJETADO EM RUNTIME — o broker NAO fala com o 1Password: ele roda sob `op run --` e consome uma variavel; com o cofre trancado a variavel chega com o op:// literal e ele para em blocked/segredo_nao_resolvido em vez de mandar o endereco como se fosse chave. (4) ALLOWLIST — quatro acoes, todas nao-mutantes, com `muta` DECLARADO por acao e nunca inferido do verbo HTTP (no AdsPower browser/start e um GET e abre um navegador); perfil conferido contra lista explicita. (5) TIMEOUT — 0,5 a 60 s, padrao 12 s. (6) IDEMPOTENCIA — mesma gramatica de chave do Cofre; mesma chave + mesma entrada devolve replay visivel, entrada diferente e conflito. (7) RECIBO SANITIZADO — postura do Bearer (presente/origem/nome da variavel), nunca valor; forma e digest sha256[:16] da referencia, nunca os segmentos; a resposta da Local API e montada por PROJECAO por allowlist e nao por remocao, porque o user/list devolve o perfil inteiro e o perfil guarda usuario, senha, cookie e chave de 2FA da conta que ele autentica. (8) PORTA EXTERNA e (9) MODO SEM VERIFICACAO falham no preflight, com nome proprio. Abrir perfil, fechar perfil, criar/atualizar/apagar perfil e criar grupo sao recusados PELO NOME, com estado blocked/exige_checkpoint. A classe Segredo recusa str, repr, format, json, copy, deepcopy, pickle e len, e sai por uma unica porta (.revelar()), chamada em um unico lugar do codigo.",
+      "lacunas_restantes": [
+        "NENHUMA CHAMADA REAL foi feita a nenhum AdsPower: nao ha cliente AdsPower nesta maquina",
+        "os caminhos da Local API vem da documentacao publica citada no ADR de 28/08/2026 e NAO foram exercitados contra um cliente real; se a versao mudar um caminho, a falha e um 404 sanitizado e nao um efeito inesperado, porque toda acao publicada e nao-mutante e o transporte recusa muta=True",
+        "testes focais e autoteste do broker rodaram verdes localmente por Hermes/Bia apos o executor; nenhuma chamada real ao AdsPower foi feita",
+        "o 1Password nao foi consultado: nao ha app, CLI op nem MCP nesta maquina, e a resolucao efemeira depende do checkpoint de autorizacao",
+        "abrir perfil ou navegador exige um SEGUNDO checkpoint, que esta missao nao pediu",
+        "a idempotencia vive no processo; um sidecar reiniciado esquece, e a durabilidade so existe quando o recibo virar verificacao no Cofre",
+        "a branch esta publicada e ainda nao integrada em volc-os-v2"
+      ]
+    },
+    {
+      "id": "P03-T06",
+      "titulo": "Criar a tela Cofre de Ativos e liga-la ao grafo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Sem mudanca de estado, apenas de evidencia. A tela passou a mostrar PRONTIDAO DE OPERACAO no inspetor: estado, dono e custodia, finalidade, ultima revisao, as oito perguntas e os bloqueios nomeados. A regra mora no backend (app/asset_vault/prontidao.py) e nao no componente, como CLAUDE.md exige; o frontend guarda o vocabulario (prontidao.ts) e um guarda de forma que recusa desenhar quando a resposta nao e reconhecida — forma inesperada e indisponibilidade, nunca uma prontidao vazia que parece 'nada pendente'. O vocabulario e de TRES valores: 'desconhecido' nao e 'nao', e cada resposta carrega procedencia ('registro' das tabelas, 'sonda' do broker ao vivo).",
+      "lacunas_restantes": [
+        "A LACUNA QUE MANTEM 'partial' E A MESMA DE ANTES: a ligacao ao GRAFO continua inteiramente aberta. O Cofre nao escreve no Mapa Vivo e nao le dele; a correspondencia com projetos e campanhas segue sendo texto declarado, nao aresta",
+        "frontend Asset Vault rodou verde: 40 testes passados em 3 arquivos",
+        "build frontend passou; TypeScript manteve baseline herdado de 76 erros e 0 em src/features/asset-vault",
+        "a branch esta publicada e ainda nao integrada em volc-os-v2"
+      ]
+    },
+    {
+      "id": "P03-T10",
+      "titulo": "Persistir referencias de credencial no Cofre sem duplicar segredo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Sem mudanca de estado. A evidencia nova e uma rota de leitura a mais sob a mesma fronteira: GET /api/cofre/ativos/{id}/prontidao responde ONDE a credencial mora (provider e nome logico) e SE ela ja foi resolvida alguma vez, e nao devolve o localizador — a mesma assimetria deliberada do handoff. A varredura de op:// em test_cofre_ativos.py, que antes cobria quatro rotas de leitura, passou a cobrir seis, incluindo handoff e prontidao; essa varredura e a unica que pega uma projecao nova sem que ninguem se lembre de pensar nela.",
+      "lacunas_restantes": [
+        "CONTINUA PARCIAL PELA MESMA RAZAO: nenhuma referencia REAL foi persistida nem resolvida. Nada mudou nesse ponto",
+        "a rota/projecao nova foi exercitada nos testes focais backend/Cofre",
+        "resolver op:// em runtime depende do checkpoint de autorizacao e do broker rodando no host isolado"
+      ]
+    },
+    {
+      "id": "P03-T02",
+      "titulo": "Cadastrar a pagina Facebook monetizada",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudanca de estado. Esta missao PROCUROU fonte autorizada de leitura para a identidade real da Pagina e NAO ENCONTROU NENHUMA nesta maquina: sem credencial Meta, sem AdsPower, sem 1Password. Nenhum dado foi inventado. O que passou a existir e a lista minima do que falta, derivada do modelo versionado: 30 pendencias com perfil AdsPower, 16 sem ele, em docs/closure/hermes-asset-vault-organic-access-v1/CAMPOS-QUE-FALTAM.md. O onboarding NAO foi tocado de proposito — trocar uma ferramenta provada (56/56 no autoteste) por uma nao provada, sem poder rodar o autoteste, seria uma piora.",
+      "lacunas_restantes": [
+        "continua sem UM dado real: nem ID, nem URL, nem Business Portfolio, nem nome",
+        "a unica evidencia segue sendo a declaracao do dono de 26/08/2026",
+        "o autoteste do onboarding rodou verde (56/56); a contagem de 30/16 pendencias permanece derivada do modelo e deve ser regenerada contra a ficha real"
+      ]
+    },
+    {
+      "id": "P03-T07",
+      "titulo": "Inventariar perfis AdsPower sem copiar segredos",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudanca de estado. A evidencia nova e que passou a existir COMO inventariar sem copiar segredo: a acao 'inventario_perfis' do broker projeta user_id, serial_number, name, group_id, group_name, domain_name e created_time, e reduz o proxy a um booleano — host, porta, usuario e senha do proxy ficam de fora, e usuario, senha, cookie e chave de 2FA da conta tambem. A projecao e por allowlist e nao por remocao, justamente para que um campo novo do AdsPower nao entre sozinho numa versao futura. Mas ferramenta pronta nao e perfil inventariado.",
+      "lacunas_restantes": [
+        "NENHUM perfil real foi inventariado: nao ha ID de referencia, owner, proxy nem proximo uso de perfil nenhum no Cofre",
+        "nao ha instancia AdsPower nesta maquina, e consultar uma exige o checkpoint de autorizacao",
+        "a projecao nao foi exercitada contra uma resposta real da Local API"
+      ]
+    },
+    {
+      "id": "P12-T02",
+      "titulo": "Onboard da pagina real no Cofre",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudanca de estado, pelo mesmo motivo de P03-T02: falta o input humano. O que mudou e que o pedido ao operador ficou reduzido a uma lista fechada e contavel, e que o ato de persistir ganhou um checkpoint de autorizacao escrito, com as seis RPCs governadas, os payloads sem segredo, a chave de idempotencia, as linhas a criar, o readback esperado e o rollback logico.",
+      "lacunas_restantes": [
+        "falta o input humano e o cadastro",
+        "falta a autorizacao para escrever no Supabase oficial",
+        "autorizar sem a ficha preenchida nao desbloqueia nada: a ordem e ficha, autorizacao, aplicacao, readback"
+      ]
+    },
+    {
+      "id": "P12-T09",
+      "titulo": "Criar a porta VOLC para draft, agenda e publicacao",
+      "estado_atual": "todo",
+      "estado_proposto": "todo",
+      "prova": "Sem mudanca de estado e SEM implementacao — esta missao nao tocou publicacao. O contrato de prontidao agora separa explicitamente os portoes: uma peca pode ser recebida/associada quando ativo, destino e owner estao identificados, e isso e expresso por pronto_para_receber_peca. A ausencia de P12-T09 permanece como bloqueio somente no portao publicacao e mantem pronto_para_publicar=false. A rota continua estritamente read-only, com publica=false: ela nao cria job, nao abre navegador, nao publica e nao autoriza ato de publicacao.",
+      "lacunas_restantes": [
+        "nao existe PublicationJob, adapter, idempotencia nem reconciliacao",
+        "publicacao continua sendo um ato separado e explicito, e nada nesta missao a dispara"
+      ]
+    }
+  ],
+  "nos_de_grafo_afetados_quando_o_mapa_for_reconstruido": [
+    "Cofre de Ativos (API administrativa) — uma rota de leitura a mais: GET /api/cofre/ativos/{id}/prontidao",
+    "Broker de acesso 1Password->AdsPower — NO NOVO, estado 'parcial', dentro da fronteira do Cofre",
+    "Tela Cofre de Ativos — passa a consumir prontidao alem de detalhe",
+    "Aresta nova: Broker de acesso --depends_on--> 1Password (por injecao via op run, nunca por leitura direta)",
+    "Aresta nova: Broker de acesso --depends_on--> AdsPower Local API (somente leitura, loopback)",
+    "Aresta nova: Prontidao --produces_for--> Porta de publicacao (P12-T09), hoje inexistente e nomeada como bloqueio"
+  ],
+  "_o_que_o_integrador_nao_deve_fazer": [
+    "nao aplicar nenhuma proposta antes de revisar GATES.md e o checkpoint de autorizacao",
+    "nao promover P03-T11 para 'done': o broker nunca falou com um AdsPower real",
+    "nao reabrir a seguranca da v13_01/v13_02 sem contraprova executavel — esta missao nao produziu nenhuma",
+    "nao tratar a ausencia de graphify-out/ como defeito desta missao: ela e anterior e foi registrada, nao consertada"
+  ],
+  "_branch_publicada": "sprint/hermes-asset-vault-organic-access-v1",
+  "_sha_remoto_publicado_antes_da_microcorrecao": "67ac4ac5ed184eb5c4107fe2ac9285f16d6eaf2f",
+  "_estado_publicacao": "publicada na feature branch, ainda nao integrada em volc-os-v2",
+  "_arvore_limpa": "verificada por Hermes apos commit/push final",
+  "_zero_escrita_externa": "zero Supabase write, zero AdsPower real, zero publicacao, zero migration, zero deploy",
+  "_sha_remoto_publicado_apos_microcorrecao": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_para_evitar_sha_auto_referencial_falso",
+  "_commits_anteriores_ao_artefato": [
+    {
+      "sha": "bf4d345",
+      "subject": "feat(cofre): add read-only AdsPower broker boundary"
+    },
+    {
+      "sha": "8393662",
+      "subject": "feat(cofre): expose organic readiness without publishing"
+    },
+    {
+      "sha": "a68f047",
+      "subject": "test(cofre): prove broker secrecy and readiness semantics"
+    },
+    {
+      "sha": "82a37b1",
+      "subject": "feat(cofre): show readiness blockers in asset vault UI"
+    },
+    {
+      "sha": "67ac4ac",
+      "subject": "docs(closure): record asset vault organic access checkpoint"
+    }
+  ],
+  "_commit_desta_microcorrecao": "self_unavailable_by_construction",
+  "_sha_final_verificado_externamente": "verificado_por_readback_no_relatorio_Hermes_final; nao_embutido_no_artefato_para_evitar_sha_auto_referencial_falso"
+}

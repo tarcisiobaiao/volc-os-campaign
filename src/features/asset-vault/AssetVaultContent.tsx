@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import * as cofre from "./cofreApi";
+import { ProntidaoDeOperacao } from "./ProntidaoDeOperacao";
 import { ProntidaoVisual } from "./ProntidaoVisual";
 import {
   CLUSTER_DESCRIPTION, CLUSTER_LABEL, CUSTODY_LABEL, KIND_CLUSTER, KIND_LABEL,
@@ -913,6 +914,10 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
         </div>
 
         <PosturaDeAcesso credenciais={ativo.credencial} />
+        {/* A regra de prontidão mora no backend, e a consulta é própria: um
+            painel que a derivasse do detalhe reimplementaria a regra na tela —
+            e as duas versões divergiriam na primeira mudança. */}
+        <ProntidaoDeOperacao ativoId={ativoId} />
         {ativo.engine ? <PerfilDoEngine engine={ativo.engine} /> : null}
 
         <div className="border-b border-border p-5">

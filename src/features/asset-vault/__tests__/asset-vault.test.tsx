@@ -66,6 +66,49 @@ const DETALHE: cofre.DetalheDoAtivo = {
   ],
 };
 
+/**
+ * A prontidão do inspetor, na forma que o backend produz.
+ *
+ * ⚠️ Ela é mockada em `comInventario` de propósito. Sem isso, cada teste que
+ * abre o inspetor faria a consulta real cair no estado "não configurado" — o
+ * que não quebraria nada hoje, mas transformaria a saída de todos eles num
+ * painel de erro, e a próxima pessoa leria isso como defeito da tela.
+ */
+const PRONTIDAO: cofre.ProntidaoDoAtivo = {
+  ativo_id: PAGINA.ativo_id,
+  perguntas: {
+    pagina_de_destino: { valor: "sim", motivo: "Página monetizada do piloto (facebook_page)", procedencia: "registro" },
+    dono: { valor: "sim", motivo: "Tarcisio — custodia declarada, nao conferida", procedencia: "registro" },
+    ativos_relacionados: { valor: "sim", motivo: "1 relacao(oes) declarada(s)", procedencia: "registro" },
+    perfil_de_navegador: { valor: "nao", motivo: "nenhuma aresta authenticates_through declarada", procedencia: "registro" },
+    onde_esta_a_credencial: { valor: "nao", motivo: "nenhuma referencia de acesso registrada", procedencia: "registro" },
+    referencia_resolvivel: { valor: "nao", motivo: "nao ha referencia para resolver", procedencia: "registro" },
+    perfil_disponivel: { valor: "nao", motivo: "nao ha perfil relacionado para consultar", procedencia: "registro" },
+    peca_roteavel: { valor: "nao", motivo: "nenhuma referencia de acesso registrada", procedencia: "registro" },
+  },
+  retrato: {
+    estado: "declared", criticidade: "high", dono_nome: "Tarcisio", dono_custodia: "declared",
+    finalidade: "Conferir ID da página e Business Portfolio.", revisao_atual: 1,
+    atualizado_em: "2026-09-01T10:00:00Z", ultima_revisao_em: null,
+    ultima_revisao_resultado: null, aposentado_em: null,
+  },
+  producao_possivel: [],
+  componentes_seguintes: {
+    porta_de_publicacao: { tarefa: "P12-T09", estado: "todo" },
+    broker_de_acesso: { tarefa: "P03-T11", implementacao: "local_verified", operacao_real: "live_read_not_proven" },
+  },
+  pronto_para_receber_peca: true,
+  pronto_para_operar_acesso: false,
+  pronto_para_publicar: false,
+  bloqueios: ["nao existe porta de publicacao no VOLC (P12-T09): nenhuma peca aprovada tem por onde sair"],
+  bloqueios_por_portao: {
+    recebimento: [],
+    acesso: ["nenhum perfil de navegador relacionado"],
+    publicacao: ["nao existe porta de publicacao no VOLC (P12-T09): nenhuma peca aprovada tem por onde sair"],
+  },
+  publica: false,
+};
+
 function mount(entrada = "/settings/cofre-ativos") {
   const cliente = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return render(
@@ -79,6 +122,7 @@ function comInventario(ativos: cofre.AtivoDaLista[], gavetas = GAVETAS) {
   vi.spyOn(cofre, "cofreConfigurado").mockReturnValue(true);
   vi.spyOn(cofre, "inventario").mockResolvedValue({ gavetas, ativos });
   vi.spyOn(cofre, "detalhe").mockResolvedValue(DETALHE);
+  vi.spyOn(cofre, "prontidao").mockResolvedValue(PRONTIDAO);
 }
 
 describe("Cofre de Ativos — os estados que não são dado", () => {
