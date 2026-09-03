@@ -371,7 +371,13 @@ def janela_do_guardiao(
     existir tem estado conhecido e antiguidade desconhecida; chamá-la de
     "recém-nascida" faria uma campanha parada há um mês parecer em carência.
     """
-    if horas_ligada is None:
+    # ⚠️ `NaN` entra aqui como número e sai como "campanha madura": toda
+    # comparação com `NaN` é falsa, então a cascata inteira cai no `else` final
+    # e `apos_72h` abre `NO_DELIVERY` sobre uma idade que ninguém conhece.
+    # `NaN` é a forma numérica de "não sei", e é tratado como tal.
+    if horas_ligada is None or horas_ligada != horas_ligada:
+        return JANELA_INDETERMINADA
+    if horas_ligada < 0:
         return JANELA_INDETERMINADA
     if horas_ligada < politica.horas_de_carencia:
         return JANELA_NASCIMENTO
@@ -473,6 +479,13 @@ class Denominador:
     #: Observados que NÃO puderam ser classificados por falta de dado.
     fora_da_conta: int = 0
     unidade: str = "keywords"
+    #: ⚠️ A política viaja COM o denominador, e não como argumento de método.
+    #:
+    #: `Causa.json()` chamava `Denominador.json()` sem política, e a serialização
+    #: usava o padrão: com `minimo_para_proporcao=4`, a frase respeitava a
+    #: política e omitia o percentual, enquanto o JSON publicava `100%` para o
+    #: mesmo dado. Duas respostas para a mesma pergunta, no mesmo objeto.
+    minimo_para_proporcao: int = POLITICA_PADRAO.minimo_para_proporcao
 
     def __post_init__(self) -> None:
         if self.quantos < 0 or self.de_quantos < 0 or self.fora_da_conta < 0:
@@ -484,18 +497,25 @@ class Denominador:
             )
 
     def proporcao(
-        self, politica: PoliticaDoGuardiao = POLITICA_PADRAO,
+        self, politica: Optional[PoliticaDoGuardiao] = None,
     ) -> Optional[float]:
         """A proporção, ou `None` quando a amostra não a sustenta.
 
         Devolver `None` em vez de `0.0` é o ponto: uma amostra pequena demais
         não produz "0%", produz "não dá para dizer".
+
+        Sem argumento, usa o mínimo que o PRÓPRIO denominador carrega — de modo
+        que a serialização não possa discordar da frase.
         """
-        if self.de_quantos < max(1, politica.minimo_para_proporcao):
+        minimo = (
+            self.minimo_para_proporcao if politica is None
+            else politica.minimo_para_proporcao
+        )
+        if self.de_quantos < max(1, minimo):
             return None
         return self.quantos / self.de_quantos
 
-    def frase(self, politica: PoliticaDoGuardiao = POLITICA_PADRAO) -> str:
+    def frase(self, politica: Optional[PoliticaDoGuardiao] = None) -> str:
         """A contagem em português, sempre com o denominador visível."""
         base = f"{self.quantos} de {self.de_quantos} {self.unidade} {self.rotulo}"
         p = self.proporcao(politica)
@@ -721,9 +741,21 @@ class LeituraDeKeywords:
     #: Observadas cujo lance OU estimativa de primeira página não veio.
     sem_dado_de_lance: int = 0
     baixa_qualidade: int = 0
+    #: ⚠️ Observadas que NÃO puderam ser classificadas quanto a qualidade —
+    #: nem pelo número, nem por um motivo declarado pela conta.
+    #:
+    #: A versão anterior contava aqui toda keyword sem `quality_score`,
+    #: INCLUSIVE as que a conta já tinha classificado com
+    #: `AD_GROUP_CRITERION_LOW_QUALITY`. A mesma keyword ficava no numerador de
+    #: `baixa_qualidade` E fora do universo medido, e o denominador saía "1 de
+    #: 2, 1 fora" quando o correto era "1 de 3".
     sem_dado_de_qualidade: int = 0
     raramente_servidas: int = 0
     reprovadas: int = 0
+    #: Em revisão de política: nem aprovadas, nem reprovadas.
+    em_revisao: int = 0
+    #: Aprovadas com restrição. Não é verde, pelo mesmo motivo de APPROVED_LIMITED.
+    restritas: int = 0
     #: Observadas sem NENHUM estado conclusivo.
     sem_dados: int = 0
     clusters: Tuple[ClusterDeIntencao, ...] = ()
@@ -739,6 +771,12 @@ class LeituraDeKeywords:
 
     @property
     def medidas_para_qualidade(self) -> int:
+        """O denominador honesto de "baixa qualidade".
+
+        Uma keyword classificada por MOTIVO DECLARADO conta como medida mesmo
+        sem o número: o Google dizendo `AD_GROUP_CRITERION_LOW_QUALITY` é
+        evidência mais forte que a ausência do campo.
+        """
         return max(0, self.observadas - self.sem_dado_de_qualidade)
 
     def json(self) -> Dict[str, Any]:
@@ -754,6 +792,8 @@ class LeituraDeKeywords:
             "medidas_para_qualidade": self.medidas_para_qualidade,
             "raramente_servidas": self.raramente_servidas,
             "reprovadas": self.reprovadas,
+            "em_revisao": self.em_revisao,
+            "restritas": self.restritas,
             "sem_dados": self.sem_dados,
             "clusters_redundantes": self.clusters_redundantes,
             "clusters": [c.json() for c in self.clusters],
@@ -806,6 +846,7 @@ def ler_keywords(
     observadas = len(keywords)
     habilitadas = aptas = abaixo = sem_lance = 0
     baixa_qualidade = sem_qualidade = raramente = reprovadas = sem_dados = 0
+    em_revisao = restritas = 0
 
     for kw in keywords:
         primary = kw.get("primary_status")
@@ -821,6 +862,15 @@ def ler_keywords(
             reprovadas += 1
         if _tem(motivos, KW_RARAMENTE_SERVIDA):
             raramente += 1
+        # ⚠️ `KW_EM_REVISAO` e `KW_RESTRITA` foram criados, verificados contra o
+        # SDK — e nunca consultados. Uma keyword `ELIGIBLE` com motivo
+        # `AD_GROUP_CRITERION_UNDER_REVIEW` contava como apta e o veredito saía
+        # `HEALTHY`. Constante correta e nunca lida é o mesmo defeito de
+        # `first_page_cpc_micros`: o sinal existe e é jogado fora.
+        if _tem(motivos, KW_EM_REVISAO):
+            em_revisao += 1
+        if _tem(motivos, KW_RESTRITA):
+            restritas += 1
 
         lance = _inteiro(kw.get("lance_micros"))
         primeira = _inteiro(kw.get("primeira_pagina_micros"))
@@ -830,21 +880,27 @@ def ler_keywords(
             abaixo += 1
 
         qs = _inteiro(kw.get("quality_score"))
-        if qs is None:
-            sem_qualidade += 1
-            # ⚠️ Um motivo declarado pela conta VALE mesmo sem o número: o
-            # Google dizendo LOW_QUALITY_SCORE é evidência mais forte que a
-            # ausência do campo, e ignorá-la perderia o fato observado.
-            if _tem(motivos, KW_BAIXA_QUALIDADE):
-                baixa_qualidade += 1
-        elif qs <= politica.quality_score_baixo:
+        declarada_baixa = _tem(motivos, KW_BAIXA_QUALIDADE)
+        if qs is not None and qs <= politica.quality_score_baixo:
             baixa_qualidade += 1
+        elif declarada_baixa:
+            # Um motivo declarado pela conta VALE mesmo sem o número, e a
+            # keyword fica DENTRO do universo medido — classificá-la e ao mesmo
+            # tempo declará-la sem dado a contaria duas vezes.
+            baixa_qualidade += 1
+        elif qs is None:
+            sem_qualidade += 1
 
-        # Apta = habilitada, com lance acima da estimativa, sem motivo negativo.
+        # Apta = habilitada, com lance acima da estimativa, e sem NENHUM motivo
+        # negativo declarado pela conta — inclusive revisão e restrição.
         if (
             primary_txt in KW_HABILITADA
             and lance is not None and primeira is not None and lance >= primeira
-            and not _tem(motivos, KW_REPROVADA | KW_RARAMENTE_SERVIDA)
+            and not _tem(
+                motivos,
+                KW_REPROVADA | KW_RARAMENTE_SERVIDA | KW_EM_REVISAO
+                | KW_RESTRITA | KW_BAIXA_QUALIDADE,
+            )
         ):
             aptas += 1
 
@@ -852,7 +908,8 @@ def ler_keywords(
         observadas=observadas, habilitadas=habilitadas, aptas=aptas,
         abaixo_da_primeira_pagina=abaixo, sem_dado_de_lance=sem_lance,
         baixa_qualidade=baixa_qualidade, sem_dado_de_qualidade=sem_qualidade,
-        raramente_servidas=raramente, reprovadas=reprovadas, sem_dados=sem_dados,
+        raramente_servidas=raramente, reprovadas=reprovadas,
+        em_revisao=em_revisao, restritas=restritas, sem_dados=sem_dados,
         clusters=agrupar_por_intencao(keywords),
     )
 
@@ -1113,7 +1170,16 @@ def _causas_da_conta(leitura: LeituraParaSentinela) -> List[Causa]:
                 "leitura de campanha; nenhuma conclusão de entrega vale até lá"
             ),
         ))
-        return causas
+        # ⚠️ SEM `return` AQUI, e isso é o ponto.
+        #
+        # A versão anterior retornava, e com isso um `status=SUSPENDED` JÁ
+        # OBSERVADO junto de uma falha de acesso posterior saía como
+        # `ACCESS_UNAVAILABLE` — uma causa da posição 2 escondendo a da posição
+        # 1. Era o defeito de origem desta lane cometido de novo: a ordem de
+        # AVALIAÇÃO decidindo o veredito em vez de `PRECEDENCIA`. Um fato
+        # observado não deixa de existir porque a leitura seguinte falhou.
+        if conta.status is None:
+            return causas
 
     status = None if conta.status is None else str(conta.status).upper()
     if status is None:
@@ -1487,6 +1553,7 @@ def _causas_das_keywords(
             rotulo="com lance abaixo da estimativa de primeira página",
             quantos=kw.abaixo_da_primeira_pagina, de_quantos=medidas,
             fora_da_conta=kw.sem_dado_de_lance,
+            minimo_para_proporcao=politica.minimo_para_proporcao,
         )
         causas.append(Causa(
             status=LIMITED_BY_RANK, escopo=ESCOPO_KEYWORD,
@@ -1519,6 +1586,50 @@ def _causas_das_keywords(
             proximo_ato="avaliar lance e qualidade; proposta reversível, nenhum ato aplicado",
         ))
 
+    # ⚠️ Em revisão vem ANTES de reprovada e antes de qualquer causa de lance:
+    # o Google ainda não decidiu, e afirmar aprovado ou reprovado seria inventar
+    # veredito. Sem esta causa, uma keyword `ELIGIBLE` com
+    # `AD_GROUP_CRITERION_UNDER_REVIEW` saía como campanha saudável.
+    if kw.em_revisao:
+        causas.append(Causa(
+            status=POLICY_REVIEW, escopo=ESCOPO_KEYWORD,
+            frase=(
+                f"{kw.em_revisao} de {kw.observadas} keywords estão em revisão "
+                "de política: não estão aprovadas e não estão reprovadas."
+            ),
+            evidencias=(
+                _ev("em revisão", "ad_group_criterion.primary_status_reasons",
+                    kw.em_revisao, quando),
+            ),
+            denominador=Denominador(
+                rotulo="em revisão de política", quantos=kw.em_revisao,
+                de_quantos=kw.observadas,
+                minimo_para_proporcao=politica.minimo_para_proporcao,
+            ),
+            proximo_ato=(
+                "aguardar o veredito do Google; não há ato de lance que o acelere"
+            ),
+        ))
+
+    if kw.restritas:
+        causas.append(Causa(
+            status=POLICY_BLOCKED, escopo=ESCOPO_KEYWORD,
+            frase=(
+                f"{kw.restritas} de {kw.observadas} keywords estão aprovadas "
+                "COM restrição — não é o mesmo que aprovadas."
+            ),
+            evidencias=(
+                _ev("restritas", "ad_group_criterion.primary_status_reasons",
+                    kw.restritas, quando),
+            ),
+            denominador=Denominador(
+                rotulo="aprovadas com restrição", quantos=kw.restritas,
+                de_quantos=kw.observadas,
+                minimo_para_proporcao=politica.minimo_para_proporcao,
+            ),
+            proximo_ato="revisar a restrição declarada antes de mexer em lance",
+        ))
+
     if kw.reprovadas:
         causas.append(Causa(
             status=POLICY_BLOCKED, escopo=ESCOPO_KEYWORD,
@@ -1530,6 +1641,7 @@ def _causas_das_keywords(
             denominador=Denominador(
                 rotulo="reprovadas por política", quantos=kw.reprovadas,
                 de_quantos=kw.observadas,
+                minimo_para_proporcao=politica.minimo_para_proporcao,
             ),
             proximo_ato="revisar as keywords reprovadas antes de mexer em lance",
         ))
@@ -1540,8 +1652,12 @@ def _causas_das_keywords(
     if kw.baixa_qualidade:
         d = Denominador(
             rotulo="com Quality Score baixo", quantos=kw.baixa_qualidade,
-            de_quantos=max(kw.medidas_para_qualidade, kw.baixa_qualidade),
+            # ⚠️ Sem `max(...)`: `medidas_para_qualidade` já inclui as
+            # classificadas por motivo declarado, e o `max` existia só para
+            # tapar a contagem dupla que o `elif` anterior produzia.
+            de_quantos=kw.medidas_para_qualidade,
             fora_da_conta=kw.sem_dado_de_qualidade,
+            minimo_para_proporcao=politica.minimo_para_proporcao,
         )
         frases.append(d.frase(politica))
         den_risco = d
@@ -1552,6 +1668,7 @@ def _causas_das_keywords(
         d = Denominador(
             rotulo="raramente servidas", quantos=kw.raramente_servidas,
             de_quantos=kw.observadas,
+            minimo_para_proporcao=politica.minimo_para_proporcao,
         )
         frases.append(d.frase(politica))
         den_risco = den_risco or d
@@ -1565,6 +1682,7 @@ def _causas_das_keywords(
                 len(set(c.variantes)) for c in kw.clusters if c.redundante
             ),
             de_quantos=kw.observadas,
+            minimo_para_proporcao=politica.minimo_para_proporcao,
         )
         frases.append(
             f"{kw.clusters_redundantes} grupo(s) de intenção com mais de uma "
@@ -1750,21 +1868,24 @@ def _desconhecidos(leitura: LeituraParaSentinela) -> Tuple[str, ...]:
 
 
 def _estado_da_evidencia(leitura: LeituraParaSentinela) -> str:
+    """O estado da PROVA — derivado do MESMO lugar que lista os desconhecidos.
+
+    ⚠️ A versão anterior repetia à mão uma lista de condições que já viviam em
+    `_desconhecidos`, e as duas divergiam: com uma keyword sem Quality Score, a
+    mesma resposta trazia `desconhecidos: ["1 keyword(s) sem Quality Score
+    observado"]` E `estado_da_evidencia: "apurada"` — dizia não saber e
+    declarava prova completa, no mesmo objeto.
+
+    Derivar de `_desconhecidos` torna a contradição **impossível de escrever**:
+    se há algo que não sabemos, a prova não está completa, por construção.
+    Acrescentar um desconhecido novo passa a rebaixar a evidência sozinho,
+    sem ninguém precisar lembrar de atualizar dois lugares.
+    """
     if leitura.estado_da_coleta is None or leitura.frescor != "recente":
         return "ausente"
     if leitura.estado_da_coleta != "com_dados":
         return "parcial"
-    incompleto = (
-        leitura.conta.status is None
-        or leitura.metricas.impressoes is None
-        or leitura.campanha.horas_ligada is None
-        or bool(leitura.keywords.sem_dado_de_lance)
-        or not leitura.recomendacoes.apurado
-        # Destino não consultado não vira causa, e também não vira prova
-        # completa: `HEALTHY` continua fora de alcance.
-        or leitura.destino.estado == "nao_consultado"
-    )
-    return "parcial" if incompleto else "apurada"
+    return "parcial" if _desconhecidos(leitura) else "apurada"
 
 
 def avaliar(

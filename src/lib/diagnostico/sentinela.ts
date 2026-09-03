@@ -261,14 +261,24 @@ export function tomDaSeveridade(valor: SeveridadeDaSentinela | string): Tom {
 /**
  * O veredito pode ser lido como boa notícia?
  *
- * ⚠️ Duas condições, e as duas são necessárias. Um `HEALTHY` com evidência
- * `parcial` não é saúde: é a conclusão certa apoiada numa prova incompleta, e
- * pintá-lo de verde é o falso verde que este pacote inteiro existe para
- * impedir. O backend já recusa emitir `HEALTHY` sem prova completa; esta função
- * é a segunda tranca, do lado da tela.
+ * ⚠️ TRÊS condições, e as três são necessárias.
+ *
+ * A versão anterior tinha duas e um comentário que prometia uma "tranca do
+ * frescor" que não existia no código: `HEALTHY` + `apurada` + `frescor:'velho'`
+ * saía verde. É o falso verde mais caro possível — a conclusão certa, com a
+ * prova completa, sobre um retrato de ontem. O próprio `types/diagnostico.ts`
+ * já dizia a regra em prosa: *"Leitura velha ou sem carimbo nunca autoriza um
+ * degrau `ok`"*. Agora ela é código.
+ *
+ * `nao_apurado` cai fora junto com `velho`: um frescor que não se sabe não é
+ * um frescor bom.
  */
 export function podeSerLidoComoBom(v: VeredictoDaSentinela): boolean {
-  return v.status === 'HEALTHY' && v.estado_da_evidencia === 'apurada';
+  return (
+    v.status === 'HEALTHY' &&
+    v.estado_da_evidencia === 'apurada' &&
+    v.frescor === 'recente'
+  );
 }
 
 /** O tom final do veredito, já com a tranca do frescor aplicada. */

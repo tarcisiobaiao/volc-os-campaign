@@ -67,6 +67,9 @@ ANUNCIO_LIMITADO: frozenset[str] = frozenset({"APPROVED_LIMITED"})
 ANUNCIO_EM_REVISAO: frozenset[str] = frozenset({
     "REVIEW_IN_PROGRESS", "UNDER_APPEAL", "ELIGIBLE_MAY_SERVE",
 })
+#: A ÚNICA aprovação que autoriza contar um anúncio como apto.
+#: `APPROVED_LIMITED` fica de fora de propósito — ele tem tratamento próprio.
+ANUNCIO_APROVADO: frozenset[str] = frozenset({"APPROVED"})
 
 COLUNAS_CAMPANHA = (
     "volc_campaign_id,customer_id,campaign_id,nome,moeda,canal,estado_externo,"
@@ -1076,12 +1079,23 @@ def _anuncios_para_sentinela(
         if status is None or primary is None:
             sem_estado += 1
             continue
+        # ⚠️ APTO EXIGE APROVAÇÃO RECONHECIDA, e não "ausência de reprovação".
+        #
+        # A versão anterior considerava apto tudo que não fosse explicitamente
+        # limitado ou reprovado — então `approval_status=UNKNOWN`, que é um
+        # valor REAL do enum, produzia `aptos=1` e a campanha saía `HEALTHY`.
+        # Um veredito de política que a conta não deu não pode virar aprovação
+        # nossa por omissão.
+        if aprovacao is not None and aprovacao not in ANUNCIO_APROVADO:
+            sem_estado += 1
+            continue
         if (
             str(status).upper() == "ENABLED"
             and str(primary).upper() in {"ELIGIBLE", "ENABLED"}
-            and aprovacao not in ANUNCIO_LIMITADO
         ):
             aptos += 1
+        else:
+            sem_estado += 1
     return sent.LeituraDeAnuncios(
         observados=len(linhas), aptos=aptos, reprovados=reprovados,
         em_revisao=revisao, sem_estado=sem_estado,
@@ -1288,14 +1302,10 @@ async def _recomendacoes(
     for linha in linhas or []:
         payload = linha.get("payload") if isinstance(linha.get("payload"), dict) else {}
         rec = payload.get("recommendation") if isinstance(payload.get("recommendation"), dict) else {}
-        impacto = rec.get("impact")
         itens.append(sent.RecomendacaoAdjudicada(
             tipo=str(rec.get("type") or rec.get("type_") or "DESCONHECIDO"),
             alvo=_texto(linha.get("recurso_externo")),
-            impacto_informado=(
-                None if impacto is None
-                else f"{_texto(impacto)} (informado pelo Google, não medido por nós)"
-            ),
+            impacto_informado=_impacto_permitido(rec.get("impact")),
             observado_em=observado,
             frescor=frescor_rec,
             evidencia=(
@@ -1304,11 +1314,77 @@ async def _recomendacoes(
                         rec.get("dismissed"), observado),
             ),
         ))
+    # ⚠️ O CABEÇALHO DA COLETA TEM VOTO.
+    #
+    # Uma coleta que declara `quantidade=1` e devolve zero itens NÃO é um vazio
+    # confirmado: é uma leitura que perdeu linhas. Ignorar `quantidade` fazia a
+    # tela poder dizer "o Google não sugeriu nada" sobre uma recomendação que
+    # existe e não foi lida — a forma exata de ausência virando zero que esta
+    # lane inteira existe para impedir.
+    declarada = _num(coleta.get("quantidade"))
+    if declarada is not None and declarada > len(itens):
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_FALHOU,
+            itens=None,
+            impedimento=(
+                f"a coleta declarou {declarada} recomendação(ões) e a leitura "
+                f"trouxe {len(itens)}: linhas perdidas, não vazio confirmado"
+            ),
+        )
+    if not itens and estado == "com_dados":
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_FALHOU,
+            itens=None,
+            impedimento=(
+                "a coleta está em com_dados e não trouxe item nenhum: "
+                "leitura incompleta, não ausência de recomendação"
+            ),
+        )
     return sent.QuadroDeRecomendacoes(
         estado_da_coleta=(
             sent.COLETA_COM_DADOS if itens else sent.COLETA_VAZIO_CONFIRMADO
         ),
         itens=tuple(itens),
+    )
+
+
+#: Os únicos campos de `recommendation.impact` que podem sair na resposta.
+#:
+#: ⚠️ A versão anterior fazia `_texto(impacto)` no dicionário inteiro. Isso é o
+#: MESMO defeito que `CAMINHOS_ITEM` existe para impedir em toda outra leitura
+#: deste módulo — payload bruto da conta atravessando para o fio — e um campo
+#: aninhado qualquer, hoje ou numa versão futura da API, sairia junto. Aqui a
+#: allowlist é nominal e os valores são forçados a numérico.
+METRICAS_DE_IMPACTO: tuple[str, ...] = (
+    "impressions", "clicks", "cost_micros", "conversions",
+    "all_conversions", "video_views",
+)
+
+
+def _impacto_permitido(impacto: Any) -> Optional[str]:
+    """O impacto informado pelo Google, reduzido à allowlist e a números.
+
+    Devolve `None` quando não há nada permitido a dizer — e `None` aqui é
+    "o Google não informou impacto legível", não "o impacto é zero".
+    """
+    if not isinstance(impacto, dict):
+        return None
+    partes: List[str] = []
+    for balde in ("base_metrics", "potential_metrics"):
+        metricas = impacto.get(balde)
+        if not isinstance(metricas, dict):
+            continue
+        for nome in METRICAS_DE_IMPACTO:
+            valor = metricas.get(nome)
+            numero = _num(valor)
+            if numero is None:
+                continue
+            partes.append(f"{balde}.{nome}={numero}")
+    if not partes:
+        return None
+    return (
+        f"{'; '.join(partes)} "
+        "(informado pelo Google, não medido por nós)"
     )
 
 

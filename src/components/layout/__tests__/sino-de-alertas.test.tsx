@@ -337,3 +337,41 @@ describe('zero numa lista incompleta não é "não há nada"', () => {
     );
   });
 });
+
+// ── achado 8 da revisão adversarial ─────────────────────────────────────────
+
+describe('o rótulo acessível do sino não contradiz o corpo', () => {
+  it('lista incompleta não anuncia ausência total no aria-label', async () => {
+    // ⚠️ O corpo do popover já dizia "nada pede atenção no que foi lido", e o
+    // `aria-label`/`title` do gatilho continuavam dizendo "nenhuma condição
+    // ativa". Para quem navega por leitor de tela o rótulo do botão É a
+    // informação: a ressalva no corpo só chega a quem abre o popover.
+    const { rotuloDoSino } = await import('@/components/layout/SinoDeAlertas');
+    expect(rotuloDoSino('lista_incompleta', 0)).not.toMatch(
+      /nenhuma condição ativa/i,
+    );
+    expect(rotuloDoSino('lista_incompleta', 0)).toMatch(/no que foi lido/i);
+    expect(rotuloDoSino('lista_incompleta', 0)).toMatch(
+      /parte do registro não foi carregada/i,
+    );
+  });
+
+  it('os outros cinco estados continuam com o rótulo que sempre tiveram', async () => {
+    const { rotuloDoSino } = await import('@/components/layout/SinoDeAlertas');
+    expect(rotuloDoSino('sem_condicao', 0)).toMatch(/nenhuma condição ativa/i);
+    expect(rotuloDoSino('com_condicao', 2)).toMatch(/2 condições ativas/i);
+    expect(rotuloDoSino('com_condicao', 1)).toMatch(/1 condição ativa/i);
+    expect(rotuloDoSino('indisponivel', 0)).toMatch(/não foi possível consultar/i);
+    expect(rotuloDoSino('consultando', 0)).toMatch(/consultando/i);
+    expect(rotuloDoSino('ultimo_conhecido', 3)).toMatch(/último estado conhecido/i);
+  });
+
+  it('um estado que esta versão não conhece NÃO cai no ramo otimista', async () => {
+    const { rotuloDoSino } = await import('@/components/layout/SinoDeAlertas');
+    // A cascata é derivada de `estado`, e não de `quantos`, exatamente para que
+    // um estado novo não herde "nenhuma condição ativa" por descuido.
+    expect(rotuloDoSino('estado_de_2031' as never, 0)).not.toMatch(
+      /nenhuma condição ativa/i,
+    );
+  });
+});

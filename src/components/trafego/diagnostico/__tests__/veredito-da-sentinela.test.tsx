@@ -365,3 +365,44 @@ describe('haQuantoTempo', () => {
     expect(haQuantoTempo('2026-08-29T12:00:00Z', AGORA)).toBe('há 5 dias');
   });
 });
+
+// ── as contraprovas da revisão adversarial ───────────────────────────────────
+
+describe('achado 5 — a "tranca do frescor" era só um comentário', () => {
+  it('HEALTHY com prova completa mas leitura VELHA nunca é bom', () => {
+    // ⚠️ O falso verde mais caro possível: a conclusão certa, com a prova
+    // completa, sobre um retrato de ontem. `podeSerLidoComoBom` tinha duas
+    // condições e um comentário prometendo uma terceira que não existia.
+    const velho = veredito({
+      status: 'HEALTHY',
+      severidade: 'informativa',
+      incidente: false,
+      estado_da_evidencia: 'apurada',
+      frescor: 'velho',
+      causa_primaria: null,
+    });
+    expect(podeSerLidoComoBom(velho)).toBe(false);
+    expect(tomDoVeredito(velho)).not.toBe('bom');
+  });
+
+  it('frescor não apurado também não autoriza verde', () => {
+    const semCarimbo = veredito({
+      status: 'HEALTHY',
+      estado_da_evidencia: 'apurada',
+      frescor: 'nao_apurado',
+      causa_primaria: null,
+    });
+    expect(podeSerLidoComoBom(semCarimbo)).toBe(false);
+  });
+
+  it('e as TRÊS condições juntas continuam produzindo verde', () => {
+    const bom = veredito({
+      status: 'HEALTHY',
+      estado_da_evidencia: 'apurada',
+      frescor: 'recente',
+      causa_primaria: null,
+    });
+    expect(podeSerLidoComoBom(bom)).toBe(true);
+    expect(tomDoVeredito(bom)).toBe('bom');
+  });
+});

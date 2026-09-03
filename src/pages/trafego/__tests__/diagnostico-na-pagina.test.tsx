@@ -213,8 +213,8 @@ describe('a página abre com o veredito, e não com "não foi possível apurar"'
 
   const vereditoDeContaSuspensa = {
     versao: 1,
-    customer_id: '8017851692',
-    volc_campaign_id: 'gads-8017851692-241',
+    customer_id: '9990001111',
+    volc_campaign_id: 'gads-9990001111-241',
     escopo: 'account' as const,
     status: 'ACCOUNT_BLOCKED',
     severidade: 'critica',

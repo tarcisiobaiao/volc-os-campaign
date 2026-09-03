@@ -1232,3 +1232,287 @@ def test_p14b_destino_consultado_e_ausente_continua_sendo_causa():
     v = s.avaliar(leitura_)
     assert v.status == s.DATA_UNAVAILABLE
     assert v.escopo == s.ESCOPO_DESTINO
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AS CONTRAPROVAS DA REVISÃO ADVERSARIAL (Codex gpt-5.6-sol, 03/09/2026).
+#
+# Doze achados, todos com reprodução executada pelo revisor. Cada `test_r*`
+# abaixo é a contraprova dele, incorporada com o input exato que ele usou.
+# Nenhuma foi enfraquecida para passar: o código foi consertado.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_r01_payload_bruto_de_impacto_nao_vaza_na_resposta():
+    """BLOQUEANTE 1. `_texto(impacto)` serializava o dicionário inteiro."""
+    import json as _json
+
+    from app.trafego.diagnostico_persistido import _recomendacoes
+
+    class RepoImpacto:
+        async def recomendacoes(self, _customer_id):
+            return (
+                {"estado": "com_dados", "coletada_em": AGORA, "quantidade": 1},
+                [{
+                    "recurso_externo": "recommendations/sintetica",
+                    "payload": {"recommendation": {
+                        "type": "KEYWORD", "dismissed": False,
+                        "impact": {
+                            "secret_token": "NAO_PODE_VAZAR",
+                            "base_metrics": {
+                                "clicks": 10, "campo_futuro": "TAMBEM_NAO_PODE"
+                            },
+                        },
+                    }},
+                }],
+            )
+
+    quadro = asyncio.run(_recomendacoes(RepoImpacto(), CUSTOMER))
+    corpo = _json.dumps(quadro.json(), ensure_ascii=False)
+    assert "NAO_PODE_VAZAR" not in corpo
+    assert "TAMBEM_NAO_PODE" not in corpo
+    assert "secret_token" not in corpo
+    # e o que a allowlist permite CONTINUA aparecendo
+    assert "clicks=10" in corpo
+    assert "informado pelo Google" in corpo
+
+
+def test_r01b_impacto_sem_campo_permitido_e_none_e_nao_zero():
+    from app.trafego.diagnostico_persistido import _impacto_permitido
+
+    assert _impacto_permitido({"so_campo_desconhecido": 1}) is None
+    assert _impacto_permitido(None) is None
+    assert _impacto_permitido("texto solto") is None
+
+
+def test_r02_keyword_em_revisao_nao_pode_ser_healthy():
+    """BLOQUEANTE 2. `KW_EM_REVISAO` foi criado, validado e nunca consultado."""
+    kws = s.ler_keywords([kw("x", motivos=("AD_GROUP_CRITERION_UNDER_REVIEW",))])
+    assert kws.em_revisao == 1
+    assert kws.aptas == 0
+    v = s.avaliar(leitura(keywords=kws))
+    assert v.status != s.HEALTHY
+    assert s.POLICY_REVIEW in {
+        c.status for c in [v.causa_primaria, *v.causas_secundarias] if c
+    }
+
+
+def test_r02b_keyword_restrita_tambem_nao_e_verde():
+    kws = s.ler_keywords([kw("x", motivos=("AD_GROUP_CRITERION_RESTRICTED",))])
+    assert kws.restritas == 1
+    assert kws.aptas == 0
+    v = s.avaliar(leitura(keywords=kws))
+    assert v.status != s.HEALTHY
+
+
+def test_r03_aprovacao_desconhecida_nao_vira_anuncio_apto_nem_healthy():
+    """BLOQUEANTE 3. Apto era "ausência de reprovação", não aprovação lida."""
+    from app.trafego.diagnostico_persistido import _anuncios_para_sentinela
+
+    ads = _anuncios_para_sentinela([{"campos": {
+        "ad_group_ad.status": "ENABLED",
+        "ad_group_ad.primary_status": "ELIGIBLE",
+        "ad_group_ad.primary_status_reasons": [],
+        "ad_group_ad.policy_summary.approval_status": "UNKNOWN",
+        "ad_group_ad.policy_summary.review_status": "REVIEWED",
+    }}])
+    assert ads.aptos == 0
+    assert ads.sem_estado == 1
+    v = s.avaliar(leitura(anuncios=ads))
+    assert v.status != s.HEALTHY
+
+
+def test_r03b_aprovado_de_verdade_continua_apto():
+    """A correção não pode transformar um anúncio bom em problema."""
+    from app.trafego.diagnostico_persistido import _anuncios_para_sentinela
+
+    ads = _anuncios_para_sentinela([{"campos": {
+        "ad_group_ad.status": "ENABLED",
+        "ad_group_ad.primary_status": "ELIGIBLE",
+        "ad_group_ad.primary_status_reasons": [],
+        "ad_group_ad.policy_summary.approval_status": "APPROVED",
+        "ad_group_ad.policy_summary.review_status": "REVIEWED",
+    }}])
+    assert ads.aptos == 1
+    assert ads.sem_estado == 0
+
+
+def test_r04_falso_verde_com_quality_score_ausente():
+    """ALTO 4. A resposta dizia não saber E declarava prova completa."""
+    v = s.avaliar(leitura(keywords=s.ler_keywords([kw("x", qs=None)])))
+    assert v.estado_da_evidencia == "parcial"
+    assert v.status != s.HEALTHY
+
+
+def test_r04b_evidencia_e_desconhecidos_nao_podem_se_contradizer():
+    """A invariante estrutural que torna o achado 4 impossível de reescrever."""
+    cenarios = [
+        leitura(),
+        leitura(keywords=s.ler_keywords([kw("x", qs=None)])),
+        leitura(conta=s.LeituraDaConta(customer_id=CUSTOMER, status=None)),
+        leitura(campanha=campanha(horas_ligada=None)),
+        leitura(recomendacoes=s.QuadroDeRecomendacoes()),
+        leitura(destino=s.LeituraDoDestino(estado="nao_consultado")),
+        leitura(keywords=s.ler_keywords([kw("x", lance=None)])),
+    ]
+    for l in cenarios:
+        v = s.avaliar(l)
+        if v.estado_da_evidencia == "apurada":
+            assert v.desconhecidos == (), (
+                f"prova apurada com desconhecidos: {v.desconhecidos}"
+            )
+        if v.desconhecidos:
+            assert v.estado_da_evidencia != "apurada"
+
+
+def test_r06_quantidade_positiva_sem_itens_nao_vira_vazio_confirmado():
+    """ALTO 6. Itens perdidos viravam "o Google não sugeriu nada"."""
+    from app.trafego.diagnostico_persistido import _recomendacoes
+
+    class RepoItensPerdidos:
+        async def recomendacoes(self, _customer_id):
+            return ({"estado": "com_dados", "coletada_em": AGORA,
+                     "quantidade": 1}, [])
+
+    quadro = asyncio.run(_recomendacoes(RepoItensPerdidos(), CUSTOMER))
+    assert quadro.apurado is False
+    assert quadro.estado_da_coleta != s.COLETA_VAZIO_CONFIRMADO
+    assert quadro.itens is None
+    assert "linhas perdidas" in (quadro.impedimento or "")
+
+
+def test_r06b_vazio_declarado_e_vazio_lido_continua_vazio_confirmado():
+    from app.trafego.diagnostico_persistido import _recomendacoes
+
+    class RepoVazioDeVerdade:
+        async def recomendacoes(self, _customer_id):
+            return ({"estado": "vazio_confirmado", "coletada_em": AGORA,
+                     "quantidade": 0}, [])
+
+    quadro = asyncio.run(_recomendacoes(RepoVazioDeVerdade(), CUSTOMER))
+    assert quadro.apurado is True
+    assert quadro.estado_da_coleta == s.COLETA_VAZIO_CONFIRMADO
+    assert quadro.itens == ()
+
+
+def test_r07_conta_suspensa_observada_vence_falha_de_acesso():
+    """ALTO 7. Um `return` fazia a ordem de AVALIAÇÃO decidir o veredito."""
+    v = s.avaliar(leitura(conta=s.LeituraDaConta(
+        customer_id=CUSTOMER, status="SUSPENDED", acesso_negado=True,
+        motivo_do_acesso="USER_PERMISSION_DENIED", observado_em=AGORA,
+    )))
+    assert v.status == s.ACCOUNT_BLOCKED
+    # e a falha de acesso NÃO some: ela vira causa secundária
+    assert s.ACCESS_UNAVAILABLE in {c.status for c in v.causas_secundarias}
+
+
+def test_r07b_acesso_negado_sem_status_continua_access_unavailable():
+    v = s.avaliar(leitura(
+        conta=s.LeituraDaConta(customer_id=CUSTOMER, status=None,
+                               acesso_negado=True,
+                               motivo_do_acesso="USER_PERMISSION_DENIED"),
+        metricas=s.LeituraDeMetricas(),
+    ))
+    assert v.status == s.ACCESS_UNAVAILABLE
+
+
+def test_r09_motivo_low_quality_entra_no_denominador_classificado_uma_vez():
+    """MÉDIO 9. A keyword ficava no numerador E fora do universo medido."""
+    kws = s.ler_keywords([
+        kw("a", qs=None, motivos=("AD_GROUP_CRITERION_LOW_QUALITY",)),
+        kw("b", qs=8),
+        kw("c", qs=9),
+    ])
+    assert kws.baixa_qualidade == 1
+    assert kws.sem_dado_de_qualidade == 0
+    assert kws.medidas_para_qualidade == 3
+
+    v = s.avaliar(leitura(keywords=kws))
+    causa = next(
+        c for c in [v.causa_primaria, *v.causas_secundarias]
+        if c and c.status == s.KEYWORD_STRUCTURE_RISK
+    )
+    assert causa.denominador.de_quantos == 3
+    assert causa.denominador.fora_da_conta == 0
+    assert causa.denominador.proporcao() == pytest.approx(1 / 3)
+
+
+def test_r09b_keyword_sem_score_e_sem_motivo_continua_fora_da_conta():
+    kws = s.ler_keywords([kw("a", qs=None), kw("b", qs=8), kw("c", qs=9)])
+    assert kws.baixa_qualidade == 0
+    assert kws.sem_dado_de_qualidade == 1
+    assert kws.medidas_para_qualidade == 2
+
+
+def test_r10_politica_customizada_nao_some_na_serializacao():
+    """MÉDIO 10. A frase respeitava a política e o JSON publicava 100%."""
+    kws = s.ler_keywords([
+        kw("a", lance=1, primeira=10), kw("b", lance=1, primeira=10),
+        kw("c", lance=1, primeira=10),
+    ])
+    v = s.avaliar(leitura(keywords=kws),
+                  s.PoliticaDoGuardiao(minimo_para_proporcao=4))
+    causa = next(c for c in [v.causa_primaria, *v.causas_secundarias]
+                 if c and c.status == s.LIMITED_BY_RANK)
+    d = causa.json()["denominador"]
+    assert d["proporcao"] is None
+    assert "%" not in d["frase"]
+    # e a frase da causa concorda com o JSON
+    assert "%" not in causa.frase
+
+
+def test_r11_horas_nan_nao_viram_campanha_madura_com_incidente():
+    """MÉDIO 11. Toda comparação com NaN é falsa; a cascata caía em apos_72h."""
+    v = s.avaliar(leitura(
+        campanha=campanha(horas_ligada=float("nan")),
+        metricas=metricas(impressoes=0, cliques=0, custo_micros=0),
+    ))
+    assert v.janela_do_guardiao == s.JANELA_INDETERMINADA
+    assert v.status != s.NO_DELIVERY
+
+
+def test_r11b_horas_negativas_tambem_sao_indeterminadas():
+    assert s.janela_do_guardiao(-5.0) == s.JANELA_INDETERMINADA
+
+
+def test_r12_as_fixturas_desta_lane_sao_sinteticas():
+    """BAIXO 12. Identificador operacional real numa fixture nova.
+
+    ⚠️ O id real NÃO é escrito aqui: ele é lido do brief que já o documenta, e
+    procurado nos arquivos desta lane. Colar o número no teste para provar que
+    ele não está nos outros arquivos seria espalhá-lo mais um lugar.
+    """
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[2]
+    brief = raiz / "volc_ads" / "briefs" / "fgts_saque_aniversario.py"
+    if not brief.exists():
+        pytest.skip("o brief que documenta o id operacional não está aqui")
+
+    achado = re.search(
+        r"""CUSTOMER_ID\s*=\s*["'](\d{8,12})""", brief.read_text(encoding="utf-8")
+    )
+    if achado is None:
+        pytest.skip("o brief não declara CUSTOMER_ID nesta versão")
+    real = achado.group(1)
+
+    # `9990001111` é sintético e não corresponde a conta alguma.
+    assert CUSTOMER == "9990001111"
+    assert real != CUSTOMER
+
+    desta_lane = [
+        Path(__file__),
+        raiz / "backend" / "tests" / "test_trafego_sentinela_vocabulario.py",
+        raiz / "backend" / "app" / "trafego" / "sentinela.py",
+        raiz / "src" / "lib" / "diagnostico" / "sentinela.ts",
+        raiz / "src" / "components" / "trafego" / "diagnostico"
+             / "VereditoDaSentinela.tsx",
+        raiz / "src" / "components" / "trafego" / "diagnostico" / "__tests__"
+             / "veredito-da-sentinela.test.tsx",
+    ]
+    sujos = [
+        str(f.relative_to(raiz)) for f in desta_lane
+        if f.exists() and real in f.read_text(encoding="utf-8")
+    ]
+    assert not sujos, f"identificador operacional real em: {sujos}"
