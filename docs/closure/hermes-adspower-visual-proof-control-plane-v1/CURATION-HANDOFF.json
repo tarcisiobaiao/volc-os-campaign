@@ -1,0 +1,56 @@
+{
+  "mission": "hermes-adspower-visual-proof-control-plane-v1",
+  "branch": "sprint/hermes-adspower-visual-proof-control-plane-v1",
+  "base_sha": "382c5d4c67fc521d5e6739f8e76d1c36a96fdb53",
+  "mode": "BIA_TAKEOVER_POS_EXECUTOR",
+  "authority_files_modified": false,
+  "proposals_only": true,
+  "proposed_updates": [
+    {
+      "target": "volc-os-workbook/ROADMAP-VIVO.json",
+      "action": "propose_after_review",
+      "task_refs": ["P03-T02", "P03-T07", "P03-T11", "P12-T02", "P12-T11"],
+      "proposed_state": "local_hermetic_spine_ready_for_external_authorization",
+      "reason": "The lane adds a local/hermetic Visual Proof + AdsPower broker spine but does not prove real AdsPower/page/screenshot readiness."
+    },
+    {
+      "target": "docs/volc-os-graph/curadoria-operacional.json",
+      "action": "propose_after_review",
+      "nodes": [
+        "visual_proof.domain",
+        "adspower_broker.loopback",
+        "asset_vault.visual_readiness",
+        "visual_proof.external_authorization_checkpoint"
+      ],
+      "reason": "Record new local control-plane contracts only after reviewer accepts the branch."
+    },
+    {
+      "target": "graphify-out/",
+      "action": "do_not_update_in_this_lane",
+      "reason": "Graph outputs were unavailable/stale in the worktree and graph mutation was explicitly prohibited."
+    }
+  ],
+  "external_actions_performed": [],
+  "external_actions_required_before_real_use": [
+    "authorize real page data",
+    "authorize real AdsPower profile inventory",
+    "authorize private broker allowlist on isolated host",
+    "authorize first read-only broker health/profile check",
+    "authorize any official Supabase migration separately"
+  ],
+  "forbidden_actions_respected": [
+    "no real AdsPower",
+    "no real browser profile",
+    "no real navigation",
+    "no real screenshot",
+    "no official Supabase write",
+    "no official migration",
+    "no Postiz",
+    "no publication",
+    "no n8n",
+    "no deploy",
+    "no merge",
+    "no Roadmap edit",
+    "no graph edit"
+  ]
+}
