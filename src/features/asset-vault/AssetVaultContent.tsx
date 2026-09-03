@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import * as cofre from "./cofreApi";
+import { ProntidaoVisual } from "./ProntidaoVisual";
 import {
   CLUSTER_DESCRIPTION, CLUSTER_LABEL, CUSTODY_LABEL, KIND_CLUSTER, KIND_LABEL,
   STATE_LABEL, VERIFICATION_LABEL, ASSET_CLUSTERS, ASSET_KINDS,
@@ -816,6 +817,11 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
     queryFn: () => cofre.detalhe(ativoId),
     retry: false,
   });
+  const prontidao = useQuery({
+    queryKey: ["cofre", "prontidao-visual", ativoId],
+    queryFn: () => cofre.prontidaoVisual(ativoId),
+    retry: false,
+  });
 
   const aposentar = useMutation({
     mutationFn: (motivo: string) => cofre.aposentar(ativoId, {
@@ -954,6 +960,17 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
           )}
         </div>
       </section>
+
+      {/* A prontidão é uma consulta SEPARADA de propósito: se ela cair, o
+          inspetor do ativo continua abrindo. Amarrá-la ao mesmo `useQuery` faria
+          uma indisponibilidade do broker esconder o inventário inteiro. */}
+      <ProntidaoVisual
+        carregando={prontidao.isPending}
+        indisponivel={prontidao.isError}
+        prontidao={prontidao.data ?? null}
+        mensagemDeErro={prontidao.error instanceof Error ? prontidao.error.message : undefined}
+        aoTentarDeNovo={() => void prontidao.refetch()}
+      />
 
       {painel === "revisao" ? <FormularioDeRevisao ativo={ativo} aoFechar={() => setPainel(null)} aoConcluir={recarregar} /> : null}
       {painel === "credencial" ? <FormularioDeCredencial ativoId={ativoId} aoFechar={() => setPainel(null)} aoConcluir={recarregar} /> : null}
