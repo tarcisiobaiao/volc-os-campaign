@@ -30,6 +30,14 @@ from app.landing_policy.plano import (
     documento_do_plano,
     pagina_do_plano,
 )
+from app.landing_policy.registro import (
+    CHAVE_DO_RECIBO,
+    anexar_recibo,
+    gravar_recibo_local,
+    nome_do_recibo,
+    recibo_da_url,
+    url_canonica,
+)
 from app.landing_policy.portao import (
     Avaliacao,
     PapelRelaxadoPeloCliente,
@@ -52,6 +60,7 @@ from app.landing_policy.varredura import (
 __all__ = [
     "Achado",
     "Avaliacao",
+    "CHAVE_DO_RECIBO",
     "PapelRelaxadoPeloCliente",
     "PlanoDaPagina",
     "CARIMBO_DETERMINISTICO",
@@ -63,6 +72,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "Veredito",
     "Verificacao",
+    "anexar_recibo",
     "avaliar",
     "avaliar_plano",
     "carregar_fontes",
@@ -71,14 +81,18 @@ __all__ = [
     "documento_do_plano",
     "emitir_recibo",
     "fonte_do_codigo",
+    "gravar_recibo_local",
+    "nome_do_recibo",
     "impressao",
     "impressao_canonica",
     "impressao_do_recibo",
     "json_deterministico",
     "pagina_do_plano",
     "papel_do_servidor",
+    "recibo_da_url",
     "sem_fonte_oficial",
     "severidade",
     "texto_visivel",
+    "url_canonica",
     "versao_da_fonte",
 ]
