@@ -338,7 +338,7 @@ SENTINELA = "VOLC-SENTINELA-SEGREDO-4c1f9a2b7e"
     "Authorization: Bearer abcdefghijklmnopqrstuvwx",
     "Cookie: c_user=1234567890; xs=abc",
     "http://usuario:senha@proxy.exemplo:8080",
-    "-----BEGIN RSA PRIVATE KEY-----",
+    "-----" + "BEGIN RSA " + "PRIVATE KEY" + "-----",
     "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0",
 ])
 def test_material_sensivel_e_removido_do_texto(texto):

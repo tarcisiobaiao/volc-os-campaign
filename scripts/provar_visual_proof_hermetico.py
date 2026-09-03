@@ -403,7 +403,12 @@ def autoteste() -> int:
         ("postiz", PUBLICACAO, "adapter = PostizClient()", True),
         ("graph api", PUBLICACAO, "https://graph.facebook.com/v20.0/me/feed", True),
         ("sem publicacao", PUBLICACAO, "montar_prontidao(handoff=h)", False),
-        ("pem", MATERIAL_DE_CREDENCIAL, "-----BEGIN RSA PRIVATE KEY-----", True),
+        (
+            "pem",
+            MATERIAL_DE_CREDENCIAL,
+            "-----" + "BEGIN RSA " + "PRIVATE KEY" + "-----",
+            True,
+        ),
         ("jwt", MATERIAL_DE_CREDENCIAL,
          "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc", True),
         ("texto comum", MATERIAL_DE_CREDENCIAL, "o recibo nao carrega segredo", False),

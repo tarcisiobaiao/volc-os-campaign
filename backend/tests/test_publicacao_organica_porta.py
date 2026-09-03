@@ -291,7 +291,14 @@ def test_rede_interna_com_sim_explicito_e_aceita() -> None:
     assert validar_base_url("http://postiz:5000", permitir_rede_interna=True) == "http://postiz:5000"
 
 
-def test_https_publico_nao_precisa_do_sim() -> None:
+def test_https_publico_nao_precisa_do_sim(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A prova e sobre a politica da URL, nao sobre a disponibilidade do DNS da
+    # maquina que roda a suite. Um resolvedor deterministico tambem impede que
+    # uma falha externa transforme este teste em falso negativo.
+    monkeypatch.setattr(
+        "app.publicacao_organica.adaptadores.postiz.socket.getaddrinfo",
+        lambda *_args, **_kwargs: [(None, None, None, None, ("8.8.8.8", 0))],
+    )
     assert validar_base_url("https://api.postiz.com").endswith("api.postiz.com")
 
 
