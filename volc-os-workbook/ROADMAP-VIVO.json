@@ -360,8 +360,8 @@
         {
           "id": "P03-T07",
           "title": "Inventariar perfis AdsPower sem copiar segredos",
-          "status": "todo",
-          "proof": "O tipo 'browser_profile' passou a existir no catalogo (cofre_tipo, dominio.py e contract.ts concordam, com teste que le a migration), e o onboarding emite o perfil como ativo relacionado a pagina por 'authenticates_through' quando a ficha declarar um. Mas NENHUM perfil real foi inventariado: nao ha ID de referencia, owner, proxy nem proximo uso de perfil nenhum no Cofre, porque nao ha instancia AdsPower conferida. Tipo no catalogo nao e perfil no inventario.",
+          "status": "partial",
+          "proof": "A convergência de 02/09/2026 integrou o contrato `browser_profile`, a prontidão visual do Cofre e um broker AdsPower hermético com referência por owner/ativo, allowlist e recibo sanitizado. O conjunto passou 187 testes focais e o gate estrutural `provar_visual_proof_hermetico.py`. Continua partial: nenhum perfil real foi inventariado, nenhum ID/owner/proxy/próximo uso foi persistido e nenhuma instância AdsPower foi consultada.",
           "explanation": "Registrar qual perfil de navegador pertence a cada ativo e para que ele pode ser usado, sem guardar cookie, senha ou chave da Local API no catálogo público.",
           "acceptance": "Um perfil do piloto possui ID de referência, owner, ativo relacionado, estado, finalidade, última revisão e referência segura de credencial; nenhum segredo bruto aparece na API ou no grafo.",
           "dependencies": [
@@ -419,8 +419,8 @@
         {
           "id": "P03-T11",
           "title": "Criar broker seguro entre 1Password e AdsPower",
-          "status": "todo",
-          "proof": "Local API e MCP do AdsPower foram confirmados; nenhum broker, secret injection, allowlist ou recibo VOLC foi implementado.",
+          "status": "partial",
+          "proof": "A convergência de 02/09/2026 integrou `tools/adspower-broker`: sidecar em loopback, Bearer ativo, segredo injetável somente em runtime, allowlist de perfil/ação, timeout, idempotência, sanitização e recibo. O fake hermético e as guardas passaram 187 testes focais; o gate estrutural confirmou zero endpoint externo, driver real, segredo ou publicação. Continua partial: não houve resolução real 1Password→broker, AdsPower vivo, perfil real, navegação nem screenshot.",
           "explanation": "Executar o navegador no host isolado por uma porta local autenticada, sem expor a API key, sessão ou cookies ao browser do VOLC, grafo ou Supabase.",
           "acceptance": "Sidecar em loopback usa Bearer ativo, segredo injetado em runtime, allowlist de perfil/ação, timeout, idempotência e recibo sanitizado; porta externa e modo sem verificação falham no preflight.",
           "dependencies": [
@@ -1473,7 +1473,7 @@
           "id": "P12-T05",
           "title": "Publicar com URL, versão e horário registrados",
           "status": "todo",
-          "proof": "sem recibo de publicação; Postiz foi escolhido como núcleo externo, mas ainda não está implantado ou ligado ao VOLC",
+          "proof": "A espinha local agora possui job, operação, recibo imutável, URL/ID externo, versão, horário, idempotência e reconciliação, provados no ciclo v14_01 e contra um control plane Postiz hermético. Continua todo porque não existe recibo de publicação real: nenhuma instância Postiz, destino real ou postagem foi autorizada.",
           "explanation": "Publicar somente depois da aprovação e devolver ao VOLC o ID externo, a URL real, a versão da peça, o horário e o resultado de cada destino.",
           "acceptance": "Uma publicação do piloto possui chave de idempotência, aprovação, executor, ID externo, URL reconciliada, versão, horário, tentativas e recibo sanitizado.",
           "dependencies": [
@@ -1502,7 +1502,7 @@
           "id": "P12-T08",
           "title": "Subir Postiz self-hosted como serviço isolado",
           "status": "todo",
-          "proof": "repositório, API pública, CLI, n8n e modo self-hosted confirmados; nenhuma instância VOLC foi implantada",
+          "proof": "Existe pacote reproduzível em `deploy/postiz/` com imagens pinadas, healthchecks, fronteira de rede, menor privilégio, backup/restore, upgrade/rollback e análise AGPL-3.0. O validador offline reprovou 18 mutações adversariais e aprovou o pacote intacto. Continua todo: nenhum container foi iniciado, nenhum healthcheck vivo respondeu e backup/restore real não foi executado.",
           "explanation": "Executar o scheduler fora do core VOLC, com autenticação própria, backup e limites, para que uma atualização do Postiz não quebre o sistema principal.",
           "acceptance": "Instância isolada responde healthcheck, possui backup e restauração provados, segredo fora do bundle, uma integração sandbox e inventário de versão/licença.",
           "dependencies": [
@@ -1516,8 +1516,8 @@
         {
           "id": "P12-T09",
           "title": "Criar a porta VOLC para draft, agenda e publicação",
-          "status": "todo",
-          "proof": "Postiz possui draft, schedule e now; o VOLC ainda não possui PublicationJob, adapter, idempotência ou reconciliação",
+          "status": "partial",
+          "proof": "A convergência de 02/09/2026 integrou `PublicationJob`, domínio e aplicação, adapter Postiz, idempotência, fencing, recibo append-only e reconciliação. O ciclo v14_01 aplicar→operar→rollback→reaplicar, uma corrida real entre processos, 128 testes backend e 112 frontend passaram. Continua partial: o aceite externo em sandbox não ocorreu, há somente um destino no cenário e IDs/URLs reais ainda não retornaram ao job.",
           "explanation": "O VOLC envia um job aprovado e recebe recibos, sem depender do banco ou dos componentes internos do Postiz.",
           "acceptance": "Adapter cria draft, agenda ou publica em sandbox; retry não duplica post; falha de um destino não contamina outro; IDs e URLs retornam ao job.",
           "dependencies": [
@@ -1547,8 +1547,8 @@
         {
           "id": "P12-T11",
           "title": "Integrar AdsPower MCP ao portão visual do Redator",
-          "status": "todo",
-          "proof": "MCP oficial suporta Claude, Codex e Cursor e controla a Local API; nenhuma chamada, screenshot ou resultado está integrado ao VOLC",
+          "status": "partial",
+          "proof": "A convergência de 02/09/2026 integrou `VisualProofJob`, prontidão no Asset Vault e um control plane hermético que registra URL esperada, viewport, console, screenshot/hash e veredito aprovado/corrigir/indeterminado sem expor segredo. Passou 187 testes focais e gate estrutural. Continua partial: AdsPower MCP/Local API, perfil real, página real, navegador e screenshot real não foram exercitados.",
           "explanation": "Depois da publicação, abrir a URL no perfil isolado correto e conferir carregamento, conteúdo, Gutenberg, slots de anúncio, clipping e sobreposição antes de considerar a superfície saudável.",
           "acceptance": "VisualProofJob abre a URL esperada com API key ativa, gera screenshot e hash, registra viewport e console, distingue aprovado/corrigir/indeterminado e não expõe segredo.",
           "dependencies": [
@@ -1944,9 +1944,9 @@
         {
           "id": "P17-T03",
           "title": "Aplicar a v11_03 no Supabase oficial",
-          "status": "todo",
+          "status": "partial",
           "priority": 3,
-          "proof": "Migration e rollback existem e passaram 129/129 no ciclo aplicar→operar→reverter→reaplicar; produção possui zero tabela/função criativo_render_*.",
+          "proof": "Pacote operacional pronto e revalidado na convergência de 02/09/2026: v11_03 e rollback passaram 178/178 no ciclo aplicar→operar→reverter→reaplicar, incluindo RLS/grants, nove funções, sete gatilhos, concorrência e base futura encolhida. Continua partial: não houve backup nem aplicação no Supabase oficial; produção continua sem as tabelas/funções `criativo_render_*`.",
           "acceptance": "Backup conferido, preflight nominal, cinco tabelas e nove funções publicadas, RLS/grants/guardas provados e rollback executável; nenhuma aplicação sem autorização explícita.",
           "dependencies": [
             "P17-T02",
@@ -1969,7 +1969,7 @@
     "title": "Executar imagem e vídeo fora do processo web",
     "status": "partial",
     "priority": 3,
-    "proof": "6caaece integrado na convergência: `python -m app.criativo.bancada.worker` executa imagem em processo separado, sem importar app.main nem abrir porta. Provas em subprocesso cobrem múltiplos workers, claim único, SIGTERM, SIGKILL, lease vencido, retomada e tentativa=2 sem duplicar trabalho. Continua partial: vídeo depende de P17-T07 e o local de execução do worker em produção ainda é decisão externa.",
+    "proof": "A convergência de 02/09/2026 integrou a espinha de go-live: `python -m app.criativo.bancada.worker` executa imagem e a peça-canário atravessa subprocesso real. O contrato SQLite/Postgres passou 77 testes sem skip, com fencing por `(operário, tentativa)`, múltiplos workers, claim único, sinais, lease, retomada e concorrência real. Continua partial: não existe host/serviço de produção para o worker e o despacho padrão ainda é inline.",
           "acceptance": "Worker isolado reivindica jobs, renova lease, mede artefato no disco/storage, registra custo e recibo e pode ser interrompido sem perder ou duplicar trabalho.",
           "dependencies": [
             "P17-T04"
@@ -1980,7 +1980,7 @@
     "title": "Fechar storage remoto e verificação de bytes",
     "status": "partial",
     "priority": 4,
-    "proof": "6caaece integrado na convergência: armazenamento_verificado.py implementa a máquina LOCAL→UPLOADED_UNVERIFIED→VERIFIED_OK|VERIFIED_MISMATCH, chave canônica, releitura, bytes e sha256, distinguindo objeto ausente, bucket ausente e falha de rede. Continua partial: bucket, uploader e reconciliação remotos não foram autorizados nem provados.",
+    "proof": "A convergência de 02/09/2026 revalidou a máquina LOCAL→UPLOADED_UNVERIFIED→VERIFIED_OK|VERIFIED_MISMATCH e fechou a forma do hash remoto nos dois lados do tradutor, compatível com os CHECKs da v11_03. Continua partial: o bucket privado `criativos` não existe, o adapter remoto ainda não é escolhido por configuração e upload/releitura reais não foram autorizados.",
           "acceptance": "Objeto usa chave canônica por tenant/job/slot, bytes e sha256 são reconferidos, divergência é terminal e nenhum artefato é apresentado como verificado antes da leitura de volta.",
           "dependencies": [
             "P17-T03",
@@ -1992,7 +1992,7 @@
     "title": "Tornar o Remotion hermético e decidir licença",
     "status": "partial",
     "priority": 5,
-    "proof": "6caaece integrou a decisão e o inventário em deploy/creative-worker/REMOTION-HERMETICO.md e docs/architecture/REMOTION-HERMETICO-P17-T07.md. A licença foi confirmada na fonte oficial, mas nenhum render hermético offline reproduziu hash aprovado; fontes/runtime e operação de vídeo continuam pendentes.",
+    "proof": "O runtime Remotion foi exercitado de verdade na convergência de 02/09/2026: golden de vídeo 22/22, runtime 13/13 e render hermético 17/17; o canário reproduziu sha256 bit a bit em instalação nova. Continua partial: a licença ainda exige decisão do dono, equivalência macOS↔Linux não foi provada e uma máquina nova precisa pré-aquecer o Chrome Headless Shell antes de operar sem rede.",
           "acceptance": "Render offline reproduz hash aprovado, não abre conexão externa, carrega somente fontes necessárias e possui decisão de licença registrada antes de faturar vídeo.",
           "dependencies": [
             "P17-T05"
@@ -2003,7 +2003,7 @@
     "title": "Provar uma peça real por destino com aprovação humana",
     "status": "partial",
     "priority": 4,
-    "proof": "6caaece integrou contrato de destinos, golden de imagem, procedência e envelopes que atravessam 11 elos até aprovação/biblioteca, com validação por destino. Continua partial: nenhuma peça atravessou storage remoto verificado e publicação real; aprovação humana no Supabase oficial depende de P17-T03/P17-T06.",
+    "proof": "A convergência de 02/09/2026 mediu a matriz por destino (6 SUPPORTED, 8 PARTIAL, 2 BLOCKED, 5 NOT_APPLICABLE), fechou MIME medido contra os bytes, geometria de vídeo e canário com 14 afirmações verificáveis. Continua partial: não existe superfície UI/endpoint de pacote por destino, nenhuma aprovação humana real ocorreu e nenhuma peça atravessou storage remoto e publicação real.",
           "acceptance": "Uma peça aprovada para Google/Meta ou orgânico possui briefing, versão do motor, seed, hashes, validações, custo, recibo, armazenamento verificado e vínculo ao destino, sem publicação automática.",
           "dependencies": [
             "P17-T05",

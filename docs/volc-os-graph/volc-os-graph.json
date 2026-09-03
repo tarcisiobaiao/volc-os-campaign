@@ -917,7 +917,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Registro operacional de páginas, perfis, contas, domínios, propriedades monetizadas, integrações, engines e referências seguras de credencial, com dono, estado, evidência, relações e próximo uso.",
-      "evidence": "Deixou de ser retrato editorial em 033e1620 (merge 4afc128): a tela le /api/cofre sobre nove tabelas cofre_* persistidas, com 13 rotas sob exigir_admin, cadastro, revisao, relacao, verificacao, aposentadoria e reativacao pela interface, e a fixture fora do caminho de producao (ha teste que exige que nenhum dos oito nomes dela apareca quando a API falha). 92 provas SQL, 67 testes de backend, 24 de frontend. LACUNAS: a migration NAO foi aplicada em producao (0 tabelas cofre_ em database.agenciavolc.com.br), nenhum ativo real foi cadastrado, e a ligacao ao grafo continua aberta — o Cofre nao escreve no Mapa Vivo nem le dele.",
+      "evidence": "O schema v13_01/v13_02, API administrativa e tela do Cofre estão operacionais no Supabase oficial, com segredo mantido no 1Password e somente referências governadas no banco. Em 02/09/2026 a convergência integrou prontidão visual por ativo e owner, conectada a um broker AdsPower hermético e a VisualProofJob; 187 testes focais e um gate estrutural confirmaram zero segredo, endpoint externo, driver real ou publicação. Continua partial: não há página monetizada nem perfil AdsPower real cadastrados, e a ligação bidirecional Cofre↔Mapa Vivo permanece aberta.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1173,11 +1173,11 @@
       "type": "concept",
       "cluster": "governance",
       "cluster_label": "Governança & operação",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Após publicar, abre a URL no perfil isolado correto, registra screenshot, DOM, console e sinais de layout e devolve aprovado, corrigir ou indeterminado ao Redator.",
-      "evidence": "Caso de uso declarado pelo dono em 28/08/2026. AdsPower MCP oferece controle do navegador, mas nenhuma integração, regra Gutenberg/ad slot, screenshot ou recibo existe no VOLC O.S.",
+      "evidence": "Em 02/09/2026 foram integrados VisualProofJob, prontidão por ativo/owner, contrato de screenshot/hash, viewport, console e veredito aprovado/corrigir/indeterminado, ligados a broker AdsPower hermético. Passou 187 testes focais e gate estrutural. Continua partial: nenhuma página, perfil, navegador ou screenshot real foi exercitado.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1576,11 +1576,11 @@
       "type": "concept",
       "cluster": "platform",
       "cluster_label": "Plataforma & integrações",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Executor local e isolado de perfis de navegador para navegação agentic, screenshots e inspeção da superfície publicada.",
-      "evidence": "Repositório oficial MIT consultado em 28/08/2026 oferece skill, CLI e MCP para Claude, Codex e Cursor, cliente headless, porta 50325 e API_KEY. AdsPower, perfil e integração VOLC não foram observados em execução.",
+      "evidence": "A convergência de 02/09/2026 integrou um broker VOLC em loopback com Bearer, allowlist, segredo somente em runtime, timeout, idempotência e recibo sanitizado, exercitado contra fake hermético. Continua partial: AdsPower MCP/Local API, chave, perfil e navegador reais não foram observados.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1732,11 +1732,11 @@
       "type": "concept",
       "cluster": "platform",
       "cluster_label": "Plataforma & integrações",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Serviço self-hosted escolhido para calendário, drafts, agendamento, publicação e analytics multicanal, acessado por uma porta VOLC.",
-      "evidence": "Fontes oficiais consultadas em 28/08/2026 confirmam API pública, OAuth2, SDK, CLI, nó n8n, self-hosting, draft/schedule/now e dezenas de providers. Repositório AGPL-3.0. Nenhuma instância VOLC foi implantada.",
+      "evidence": "Porta VOLC e pacote self-hosted integrados em 02/09/2026. `deploy/postiz/` contém compose, rede, healthchecks, backup/restore, upgrade/rollback e menor privilégio; o validador aprovou o pacote e reprovou 18 mutações conhecidas. Continua sem instância, healthcheck vivo, credencial ou destino real.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1853,7 +1853,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Executa trabalhos tipados de imagem e vídeo com reivindicação, lease, retomada, cancelamento, validação, artefato e recibo sem acoplar a fábrica ao processo web.",
-      "evidence": "A convergência de 02/09/2026 integrou 6caaece: uma única porta escolhe SQLite ou Postgres, 36 asserções idênticas cobrem os dois depósitos e o ciclo v11_03 passou 129/129. Um worker de imagem em processo próprio foi provado com múltiplos workers, SIGTERM, SIGKILL, lease vencido e retomada sem duplicação. Continua partial: v11_03 não foi aplicada no Supabase oficial, vídeo depende do Remotion hermético e não há worker/bucket remoto operando.",
+      "evidence": "A convergência operacional de 02/09/2026 integrou a espinha de go-live da fábrica: porta SQLite/Postgres única, worker em subprocesso, fencing por operário+tentativa, MIME e geometria medidos, matriz de 21 destinos e canário verificável. O ciclo v11_03 passou 178/178, o contrato Postgres 77/77 sem skip, e imagem/vídeo/Remotion reproduziram goldens e hashes. Continua partial: v11_03 não foi aplicada no Supabase oficial, não há worker hospedado nem bucket privado remoto, licença Remotion e equivalência Linux seguem abertas, e nenhuma aprovação humana/publicação real ocorreu.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1905,7 +1905,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Transforma pauta em peças próprias para cada canal, passa por aprovação, publica em ativos sociais e devolve métricas e aprendizado para o sistema.",
-      "evidence": "VOS PRIME e Organic Attention Matrix descrevem o ciclo; o dono declara engines de imagem e vídeo e uma página monetizada. Em 28/08/2026 foi aceita a divisão Postiz como núcleo externo de publicação, MultiPost como fallback e AdsPower MCP como QA pós-publicação. Nenhum dos três está integrado, não há publicação comprovada nem histórico de aprendizado no VOLC O.S.",
+      "evidence": "Em 02/09/2026 deixou de ser apenas desenho: v14_01, domínio, porta Postiz, jobs, operações, recibos, idempotência, fencing, reconciliação, UI e pacote self-hosted foram integrados. O ciclo SQL aplicar→operar→rollback→reaplicar, corrida real, 128 testes backend, 112 frontend e 18 mutações do pacote passaram. Continua partial: Postiz não foi implantado, não há destino real, postagem real, mídia anexada, aprendizado nem QA visual em página viva.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1983,7 +1983,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Envelope versionado de briefing, brand pack, assets, destinos, variantes, gates, custo, aprovação e vínculo com campanha ou publicação.",
-      "evidence": "O núcleo Asset/Procedencia/Exigencia/Violacao/Falha/Lote e a porta MotorDeCriativo nasceram em 6eed77f. Em 6caaece entraram contrato por destino, golden de imagem, ownership HTTP, procedência pública sanitizada e envelopes que atravessam 11 elos até aprovação/biblioteca. Continua partial: onze campos do recibo ainda não têm produtor completo, vídeo não foi provado e storage/publicação reais permanecem fora da integração.",
+      "evidence": "Em 02/09/2026 a espinha de go-live passou a produzir e verificar imagem e vídeo em subprocesso, medir MIME/geometria, preservar fencing e materializar uma matriz de capacidade por destino. O canário confere 14 afirmações e os ciclos integrados estão verdes. Continua partial: não há pacote UI/endpoint por destino, storage remoto, aprovação humana ou publicação real.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -2005,11 +2005,11 @@
       "type": "concept",
       "cluster": "production",
       "cluster_label": "Conteúdo & publicação",
-      "state": "decision",
-      "state_label": "Decisão aberta",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "O VOLC governa pauta, aprovação, linhagem e aprendizado; um serviço isolado agenda e publica por canal, devolvendo IDs, URLs e recibos sem se tornar a fonte de verdade.",
-      "evidence": "Decisão de 28/08/2026 em docs/architecture/ADR-DISTRIBUICAO-ORGANICA-E-QA-VISUAL.md: Postiz é o núcleo escolhido, integrado por API/CLI como serviço separável por causa do contrato funcional e da licença AGPL-3.0.",
+      "evidence": "Decisão de 28/08/2026 materializada em 02/09/2026: v14_01 e a porta `backend/app/publicacao_organica/` governam draft, schedule, now, recibo, retry e reconciliação sem depender do banco interno do Postiz. Provas herméticas e ciclo PostgreSQL passaram; falta instância Postiz, destino e ato real.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -2243,7 +2243,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Código pode controlar sozinho fonte, texto, gráficos, geometria, layers, contraste, formatos e aprovação; quando há imagem, ela entra como asset opcional e separado.",
-      "evidence": "PRENSA POC executada: 26 renders typography_only, 12 deterministic_graphics_and_typography e 26 híbridos com asset IA no snapshot de 26/08/2026. Biblioteca/CLI existe fora do VOLC O.S.; gateway e workers não.",
+      "evidence": "Além do snapshot PRENSA, a convergência de 02/09/2026 exercitou o runtime integrado: goldens de imagem e vídeo, Remotion 13/13 e render hermético 17/17, com sha256 bit a bit reproduzido em instalação nova. Continua partial: worker hospedado, pré-aquecimento Linux, licença Remotion e equivalência entre plataformas ainda não foram fechados.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
