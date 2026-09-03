@@ -10,7 +10,7 @@ import path from "path";
 const FRONT_PORT = Number(process.env.FRONT_PORT || 8080);
 const API_TARGET = `http://localhost:${process.env.API_PORT || 3001}`;
 
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: FRONT_PORT,
@@ -40,6 +40,24 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // ⚠️ A bancada visual (`/qa/trafego/...`) é ferramenta de conferência e
+      // não pode ser publicada. Guardar a rota com `import.meta.env.DEV`
+      // elimina o ramo; guardar o `React.lazy` junto elimina a chamada — e
+      // nenhum dos dois elimina o CHUNK: o Rollup monta o grafo a partir de
+      // cada `import()` ANTES da eliminação de código morto, e o build emitia
+      // `assets/BancadaVisual-*.js` com as fixtures dentro.
+      //
+      // Trocar o módulo é o que de fato o tira dali. Quem cobra é
+      // `src/pages/qa/__tests__/bancada-fora-de-producao.test.ts` sob
+      // `VOLC_PROVA_DE_BUNDLE=1`, rodando `vite build` e varrendo a saída.
+      ...(mode === "production"
+        ? {
+            "./pages/qa/BancadaVisual": path.resolve(
+              __dirname,
+              "./src/pages/qa/BancadaVisual.producao.tsx",
+            ),
+          }
+        : {}),
     },
   },
 }));

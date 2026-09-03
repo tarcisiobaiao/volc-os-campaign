@@ -34,6 +34,18 @@ import RedatorPage from "./pages/redator/RedatorPage";
 import FunilPage from "./pages/redator/FunilPage";
 import ConfigRedatorPage from "./pages/redator/ConfigRedatorPage";
 import PaginaDoFunilPage from "./pages/redator/PaginaDoFunilPage";
+/**
+ * A bancada visual — só em desenvolvimento, e o guarda fica NO `lazy`.
+ *
+ * ⚠️ Guardar apenas a `<Route>` não bastava, e a prova de bundle mediu isso: um
+ * `React.lazy(() => import(...))` no topo do módulo é um ponto de entrada para o
+ * Rollup MESMO com a rota eliminada — ele emitia `assets/BancadaVisual-*.js` no
+ * build de produção. Com o `import()` dentro do ramo, a condição vira o literal
+ * `false` e o ramo inteiro sai antes de virar chunk.
+ */
+const BancadaVisual = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/qa/BancadaVisual"))
+  : null;
 import HubDeTrafegoPage from "./pages/trafego/HubDeTrafegoPage";
 import QuadroDeOportunidades from "./components/trafego/oportunidades/QuadroDeOportunidades";
 import NovaCampanhaPage from "./pages/trafego/NovaCampanhaPage";
@@ -93,6 +105,34 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* ⚠️ A bancada visual existe SÓ em desenvolvimento.
+                `import.meta.env.DEV` vira o literal `false` no build, e o ramo
+                inteiro — inclusive o `import()` dinâmico — sai na eliminação de
+                código morto. Ela monta os componentes reais contra fixtures
+                para que os estados que uma conta saudável não produz (leitura
+                falhou, portão sem causa, contrato truncado) possam ser
+                conferidos em navegador. Fora de `ProtectedRoute` de propósito:
+                não toca dado de ninguém. */}
+            {import.meta.env.DEV && BancadaVisual != null && (
+              <Route
+                path="/qa/trafego/:superficie/:estado"
+                element={
+                  <React.Suspense fallback={null}>
+                    <BancadaVisual />
+                  </React.Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && BancadaVisual != null && (
+              <Route
+                path="/qa/trafego"
+                element={
+                  <React.Suspense fallback={null}>
+                    <BancadaVisual />
+                  </React.Suspense>
+                }
+              />
+            )}
             <Route path="/login" element={<Login />} />
             <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><OperatorRedirect><GeneralDashboard /></OperatorRedirect></ProtectedRoute>} />

@@ -11,6 +11,8 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { ConversaDeCriacao } from '@/components/trafego/criacao/ConversaDeCriacao';
+import { montarConversa } from '@/components/trafego/criacao/conversa';
 import { JornadaDoCanal } from '@/components/trafego/estudio/JornadaDoCanal';
 import type {
   BloqueadorDeCanal,
@@ -228,6 +230,56 @@ describe('os estados degradados são três frases diferentes', () => {
     expect(
       screen.getByText(/não uma recusa dirigida a você/i),
     ).toBeTruthy();
+  });
+});
+
+describe('a causa repetida é dita uma vez', () => {
+  // ⚠️ Medido ao ver a conversa montada pela primeira vez: um canal sem
+  // construtor devolve treze etapas bloqueadas pela MESMA frase, e a lista
+  // imprimia a frase treze vezes — treze parágrafos idênticos empurrando para
+  // fora da tela a única informação nova de cada linha, que é o nome da etapa.
+  it('canal não operado: a dependência aparece uma vez, não uma por etapa', () => {
+    render(
+      <ConversaDeCriacao
+        passos={montarConversa({
+          manifesto: null, respostas: {}, travaAberta: null, podeAprovar: true,
+        })}
+      />,
+    );
+    const repetida = screen.getAllByText(
+      /o Hub não declara construtor para este canal/i,
+    );
+    // Uma no subtítulo do cabeçalho. Nenhuma nas treze linhas.
+    expect(repetida.length).toBe(1);
+    expect(
+      screen.getByText(/estão fechadas pelo mesmo motivo/i),
+    ).toBeTruthy();
+  });
+
+  it('quando as causas DIFEREM, cada linha volta a carregar a sua', () => {
+    // O caso interessante: aí a diferença é a informação, e resumir apagaria
+    // justamente o que o operador precisa comparar.
+    render(
+      <ConversaDeCriacao
+        passos={montarConversa({
+          manifesto: {
+            plataforma: 'GOOGLE_ADS', canal: 'SEARCH', rotulo: 'Search',
+            hierarquia: ['campanha'], paineis: [], campos_do_pedido: ['conversao'],
+            capacidades: ['ler', 'propor'], provas_obrigatorias: [],
+            indisponibilidades: [], sabe_provar: true, sabe_criar: true,
+          },
+          respostas: {},
+          travaAberta: null,
+          podeAprovar: false,
+        })}
+      />,
+    );
+    // `aprovacao` fecha por papel; `criacao` fecha por prova; `ativacao` por
+    // não haver campanha criada. Três causas, três frases.
+    expect(screen.getByText(/exige um papel que esta conta não tem/i)).toBeTruthy();
+    expect(screen.getByText(/a prova contra a conta ainda não passou/i)).toBeTruthy();
+    expect(screen.getByText(/não há campanha criada para ligar/i)).toBeTruthy();
+    expect(screen.queryByText(/estão fechadas pelo mesmo motivo/i)).toBeNull();
   });
 });
 
