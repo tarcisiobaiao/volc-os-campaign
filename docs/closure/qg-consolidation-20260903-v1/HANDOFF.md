@@ -21,7 +21,7 @@ o fechamento contra lote em voo.
 | P10-T17 concorrência v12_04 | `fa48cbaa918b3589214f157bd105a08ece6bbada` | concorrência local fechada; migration oficial pendente |
 | Search Delivery Sentinel 72h | `27c972094aaff826edf3562558b5c3bcb5c32d1b` | diagnóstico causal e janela 72h implementados; rotina/persistência pendentes |
 | Paid Destination Policy Spine v2 | `b7192990a248003188a66c9c2c39f85f8400c1b2` | três barreiras + reauditoria em duas etapas; recibo oficial ainda não emitido |
-| Paid Keyword Eligibility | `5be28ee9d39e05a535634432d94877bd7ade8a28` | conjunto positivo aprovado selado antes da rede; negativas pós-lançamento pendentes |
+| Paid Keyword Eligibility | código `5be28ee9d39e05a535634432d94877bd7ade8a28`; evidência final `68a8eaf2f7326d5924b1405d68ba376b0bd91a21` | conjunto positivo aprovado selado antes da rede; negativas pós-lançamento pendentes; suíte integral reconfirmada fora do sandbox |
 
 Os conflitos em `backend/app/routers/trafego.py` e
 `backend/tests/test_trafego_canario.py` foram resolvidos preservando os dois
@@ -47,6 +47,12 @@ portões independentes: destino pago e conjunto de keywords aprovado.
 - Autoridade Supabase: `https://database.agenciavolc.com.br` confirmada por
   leitura; nenhuma escrita.
 - Secret scan e `git diff --check`: verdes.
+
+Após a consolidação inicial, a própria lane de Paid Keyword Eligibility
+reexecutou a suíte integral fora da restrição de `bind()`/`initdb` e registrou
+**3348 passed, 112 skipped, 0 failed**, além de **117 passed, 1 skipped** nos
+três arquivos antes impedidos pelo sandbox. O commit `68a8eaf` contém somente
+essa evidência; nenhum código ou estado operacional mudou.
 
 ## Roadmap e leitura de progresso
 
