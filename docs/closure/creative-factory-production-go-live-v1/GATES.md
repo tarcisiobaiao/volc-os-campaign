@@ -17,13 +17,13 @@ entre duas máquinas e não a diferença entre dois commits.
 
 | Gate | Base `382c5d4` | Merge `87cfcef` | HEAD | Comando |
 |---|---|---|---|---|
-| backend | **3332** passed · 87 skipped · **0 failed** | **3370** · 87 · **0** | **3402** · 90 · **0** | `PYTHONPATH=$PWD backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly` |
+| backend | **3332** passed · 87 skipped · **0 failed** | **3370** · 87 · **0** | **3405** · 90 · **0** | `PYTHONPATH=$PWD backend/.venv/bin/python -m pytest backend/tests volc_ads -q -p no:randomly` |
 | frontend | **1256** passed · 5 skipped | **1262** · 5 | **1262** · 5 | `npx vitest run` |
 | TypeScript | **76** erros herdados | **76** | **76** | `npx tsc --noEmit -p tsconfig.app.json` |
 
 **Zero falhas nos três pontos.** O `+38` do merge é exatamente o conjunto de
-testes que a feature acrescenta; o `+32` do HEAD são as provas das cinco
-correções desta lane.
+testes que a feature acrescenta; o `+35` do HEAD são as provas das cinco
+correções desta lane, mais a sentinela de invariante do gate de MIME.
 
 ⚠️ **Os 87 `skipped` são do ambiente, não do código.** Esta worktree não tem
 `.env`, então tudo que exige `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` pula —
@@ -48,7 +48,7 @@ delta. Um delta que se reproduz em dois ambientes é o que sobrou de fato.
 | runtime Remotion | **13 passed** | `pytest backend/tests/test_criativo_runtime_remotion.py` |
 | identidades declaradas × arquivos (**nova**) | **8 passed** | `pytest backend/tests/test_v11_03_identidades_declaradas.py` |
 | o registro de storage cabe no banco (**nova**) | **12 passed** | `pytest backend/tests/test_criativo_storage_registro_cabe_no_banco.py` |
-| o MIME é medido, não declarado (**nova**) | **5 passed** | `pytest backend/tests/test_criativo_mime_medido.py` |
+| o MIME é medido, não declarado (**nova**) | **8 passed** | `pytest backend/tests/test_criativo_mime_medido.py` |
 | contrato do depósito, **os dois adapters** | **77 passed · 0 skipped** | `VOLC_EXIGIR_POSTGRES=1 <python-com-psycopg> -m pytest backend/tests/test_criativo_deposito_contrato.py` |
 | higiene do diff | **limpo** | `git diff --check origin/volc-os-v2 HEAD` |
 | segredos | **nenhum padrão forte** | `python scripts/verificar_segredos.py` |
@@ -155,3 +155,36 @@ Depois do conserto: **8 concorrentes disputando `validating → failed` dão
 normalização de `sha256:` nos casos exercitados (hash válido cabe no CHECK,
 mismatch real continua recusado, valor malformado continua fora), e as 16 provas
 que rodou.
+
+
+## 7. A fragilidade do reconhecimento de MIME — risco futuro, não defeito de hoje
+
+A revisão adversarial levantou que `mime_de` conhece **três** assinaturas e a de
+JPEG tem **dois bytes**. A pergunta certa é se isso é defeito executável agora ou
+risco de amanhã, e ela se responde executando. Cinco ataques ao contrato atual:
+
+| Ataque | `mime_declarado_confere` | `dimensao` | Resultado |
+|---|---|---|---|
+| bytes Mach-O declarados `image/webp` | **FAIL** | SKIPPED | bloqueado |
+| lixo iniciado por `\xff\xd8` como `image/jpeg` | PASS | **FAIL** | bloqueado |
+| PNG 64×64 com pedido de 1200×628 | PASS | **FAIL** | bloqueado |
+| PNG real declarado `image/gif` | **FAIL** | PASS | bloqueado |
+| bytes arbitrários declarados `video/mp4` | SKIPPED | **FAIL** | bloqueado |
+
+**Nenhum passou. Não há defeito executável, e por isso não houve mudança de
+comportamento.** Os dois gates são complementares: onde a assinatura rasa deixa
+passar, o leitor profundo — o mesmo que mede a dimensão — recusa; e onde a
+assinatura não existe, o outro instrumento mede.
+
+**O risco futuro é concreto, e é de arranjo.** A complementaridade é
+**emergente**: vale pela relação entre três conjuntos (`FORMATOS_RECONHECIDOS`,
+`_MIMES_MENSURAVEIS`, `_MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO`), e nenhum deles
+sabe dos outros. Acrescentar `image/webp` a `_MIMES_MENSURAVEIS` — gesto razoável,
+para o gate de dimensão passar a cobrar webp — sem ensinar a assinatura ao
+`mime_de` faz o par voltar a somar dois `SKIPPED`, que foi exatamente o bloqueante
+que a revisão pegou.
+
+Uma propriedade que ninguém afirma é uma propriedade que a próxima edição remove
+sem querer. `c72b676` diz as três invariantes, sem tocar em comportamento.
+Contraprova executada: com `image/webp` acrescentado e a assinatura não ensinada,
+a invariante 2 fica vermelha **nomeando o formato**.

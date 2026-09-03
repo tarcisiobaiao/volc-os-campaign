@@ -47,7 +47,7 @@
     {
       "elo": "fencing contra worker antigo",
       "estado": "executed_integrated",
-      "evidencia": "CORRIGIDO nesta lane (dbf55ad): o token (operario, tentativa) desceu para o portao; 3 provas no contrato compartilhado"
+      "evidencia": "CORRIGIDO nesta lane em DUAS rodadas: dbf55ad desceu o token (operario, tentativa) para o portao; 2fe767e fechou os dois caminhos que faltavam (`motor_desconhecido` e `bater()`) e a janela de check-then-act do Postgres. 8 concorrentes disputando estado terminal: 1 vencedor, 7 recusas."
     },
     {
       "elo": "worker fora do processo web",
@@ -67,7 +67,7 @@
     {
       "elo": "MIME medido da assinatura",
       "estado": "executed_integrated",
-      "evidencia": "NOVO nesta lane (d15b4ca): gate mime_declarado_confere, bloqueante; antes era declarado pelo motor"
+      "evidencia": "NOVO nesta lane (d15b4ca), endurecido em 2fe767e e com invariante dita em c72b676: gate `mime_declarado_confere` bloqueante, fail-closed. 5 ataques executados ao contrato atual, nenhum passou."
     },
     {
       "elo": "dimensao/duracao medidas do arquivo",
@@ -382,5 +382,7 @@
       "classe": "PARTIAL",
       "detalhe": "psycopg foi DECLARADO em requirements-dev.txt nesta lane, e nao instalado em backend/.venv (venv compartilhado, fora do ownership desta lane). Enquanto nao for instalado, o gate oficial roda 40 passed / 37 skipped em vez de 77 / 0."
     }
-  ]
+  ],
+  "_head": "c72b676be63bc2175050c72352833f4e6300d266",
+  "_postgres_usado": "DESCARTAVEL E LOCAL, sempre. Clusters criados por `initdb` dentro de `mktemp -d`, escutando apenas em socket unix dentro do proprio diretorio, destruidos por `pg_ctl stop` na mesma sessao. ZERO contato com https://database.agenciavolc.com.br — nem leitura, nem escrita, nem migration."
 }

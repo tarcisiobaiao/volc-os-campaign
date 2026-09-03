@@ -5,7 +5,7 @@
 > ação, destino exato, impacto, rollback, prova prévia, comando exato, resultado
 > esperado e hard stops.
 
-**Base:** `382c5d4` · **HEAD:** `2fe767e` · **Branch:** `sprint/creative-factory-production-go-live-v1`
+**Base:** `382c5d4` · **HEAD:** `c72b676` · **Branch:** `sprint/creative-factory-production-go-live-v1`
 
 ## Envelope: o que esta lane NÃO fez
 
@@ -21,8 +21,12 @@
 | Deploy de worker | **0** |
 | `push` · `merge` · alteração de `main` | **0** |
 
-Os únicos Postgres tocados nasceram de `initdb` dentro de `mktemp -d` e morreram
-com `pg_ctl stop` na mesma sessão.
+**O PostgreSQL usado em toda esta lane foi DESCARTÁVEL E LOCAL.** Clusters
+nascidos de `initdb` dentro de `mktemp -d`, escutando apenas num socket unix
+dentro do próprio diretório, destruídos por `pg_ctl stop` na mesma sessão. Houve
+**zero** contato com `https://database.agenciavolc.com.br` — nem leitura, nem
+escrita, nem migration. Toda afirmação deste pacote sobre o comportamento da
+v11_03 em Postgres real foi medida nesses clusters, nunca em produção.
 
 **Rede que HOUVE, e está declarada** — nenhuma é ato de produto:
 

@@ -16,13 +16,19 @@ de autorização externa e está inteiro em `EXTERNAL-AUTHORIZATION.md`.
 | Feature integrada | `5235f0c6d8a6c526b42bf64342373471cd14ebe4` — **igual ao esperado** |
 | Merge-base | `c8ca8628e83742dd7da5242f0a015f76292aafe7` |
 | Merge | `87cfcef` (`--no-ff`, sem rebase, sem squash) |
-| HEAD | `2fe767e` |
+| HEAD | `c72b676` |
 | Branch | `sprint/creative-factory-production-go-live-v1` |
 | Worktree | `/private/tmp/volc-creative-factory-production-go-live-v1` |
 | Árvore | limpa na criação e na entrega |
 
 **64 arquivos** contra a base, dos quais **17 são desta lane** (os outros 47 vêm
 da feature integrada).
+
+> **Estado de encerramento: `LOCAL_CLOSURE_COMPLETE_EXTERNAL_CHECKPOINT_READY`.**
+> O PostgreSQL usado em toda esta lane foi **descartável e local** — clusters que
+> `initdb` cria dentro de `mktemp -d` e `pg_ctl stop` destrói na mesma sessão.
+> **Zero** contato com `https://database.agenciavolc.com.br`: nem leitura, nem
+> escrita, nem migration.
 
 ## 1. A integração, e por que ela não podia ser silenciosa
 
@@ -50,7 +56,7 @@ publisher + asset vault + tráfego + mensuração **1114 passed · 15 skipped ·
 
 ## 2. O que esta lane consertou, e como cada um foi provado
 
-Cinco commits atômicos. Cada um traz a contraprova vermelha no corpo da mensagem.
+Seis commits atômicos. Cada um traz a contraprova vermelha no corpo da mensagem.
 
 ### `c8c54c0` — o passo 0 mandava parar, e era ele que estava errado
 
@@ -125,7 +131,16 @@ afirmações conferidas" sem os fatos. E minhas próprias guardas podiam passar 
 conferir nada: uma linha malformada sumia em silêncio, e um CHECK **comentado**
 contava como proteção.
 
-Mais uma hipótese que ele registrou por não ter Postgres, e que era verdadeira:
+### `c72b676` — a complementaridade dos dois gates deixa de ser sorte
+
+A fragilidade do reconhecimento de MIME que a revisão levantou foi **medida**:
+cinco ataques ao contrato atual, **nenhum passou**. Não é defeito executável, e
+por isso este commit **não muda comportamento**. O que existe é risco de arranjo —
+a complementaridade entre os gates é emergente, e a próxima edição razoável a
+remove sem querer. As três invariantes passam a ser ditas. Seção 7 de `GATES.md`.
+
+Voltando a `2fe767e`: mais uma hipótese que o revisor registrou por não ter
+Postgres, e que era verdadeira:
 em `autocommit=True`, o `select ... for update` de `DepositoPostgres.transicionar`
 soltava o lock antes das guardas — check-then-act com janela real. Medido aqui,
 consertado, e provado: 8 concorrentes disputando um estado terminal agora dão

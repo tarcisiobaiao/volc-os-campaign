@@ -7,13 +7,13 @@
   ],
   "worker": {
     "comando": "python -m app.criativo.bancada.worker --ate-esvaziar --lease 300",
-    "pid_deste_processo": 25811,
+    "pid_deste_processo": 35811,
     "codigo_de_saida": 0,
     "linhas_de_log": 5
   },
   "pecas": {
     "imagem": {
-      "trabalho_id": "5a50aa03-e6e5-4aae-a6af-dae6a20bde9f",
+      "trabalho_id": "b4e27cca-5c1f-4c09-99ee-1d72f069ce0b",
       "estado_antes_do_worker": "queued",
       "primeiro_enfileiramento_criou": true,
       "segundo_enfileiramento_criou": false,
@@ -21,7 +21,7 @@
       "idempotente": true,
       "estado_depois_do_worker": "rendered",
       "tentativa": 1,
-      "produzido_por": "worker-25815",
+      "produzido_por": "worker-35815",
       "produzido_por_outro_processo": true,
       "motor": "tipografico-local@1.0.0",
       "seed": 20260902,
@@ -106,10 +106,10 @@
       "hashes_de_entrada": {},
       "storage": {
         "estado": "VERIFIED_OK",
-        "chave": "criativos/positivo/5a50aa03-e6e5-4aae-a6af-dae6a20bde9f/2-imagem_marketing__31dbc13fa0f54399e45999c80dc861b1.png",
+        "chave": "criativos/positivo/b4e27cca-5c1f-4c09-99ee-1d72f069ce0b/2-imagem_marketing__31dbc13fa0f54399e45999c80dc861b1.png",
         "sha256_relido": "31dbc13fa0f54399e45999c80dc861b164afabb8ec679ec91fe7cda32b34be54",
         "bytes_relidos": 27568,
-        "lido_em": "2026-09-02T23:41:31.265853+00:00",
+        "lido_em": "2026-09-03T00:00:39.013883+00:00",
         "objeto_existe_na_loja": true,
         "hash_relido_bate_com_o_artefato": true,
         "hash_relido_bate_com_a_medicao_independente": true
@@ -195,7 +195,7 @@
       }
     },
     "video": {
-      "trabalho_id": "1304ec5c-142c-414e-aff6-809b423a9312",
+      "trabalho_id": "0cfc02d9-86f9-41d9-96d5-b775423ba200",
       "estado_antes_do_worker": "queued",
       "primeiro_enfileiramento_criou": true,
       "segundo_enfileiramento_criou": false,
@@ -203,7 +203,7 @@
       "idempotente": true,
       "estado_depois_do_worker": "rendered",
       "tentativa": 1,
-      "produzido_por": "worker-25815",
+      "produzido_por": "worker-35815",
       "produzido_por_outro_processo": true,
       "motor": "remotion-local@1",
       "seed": 20260902,
@@ -316,10 +316,10 @@
       },
       "storage": {
         "estado": "VERIFIED_OK",
-        "chave": "criativos/positivo/1304ec5c-142c-414e-aff6-809b423a9312/5-video__3e5ae27082f61c8456172c1a7726229b.mp4",
+        "chave": "criativos/positivo/0cfc02d9-86f9-41d9-96d5-b775423ba200/5-video__3e5ae27082f61c8456172c1a7726229b.mp4",
         "sha256_relido": "3e5ae27082f61c8456172c1a7726229b72db8469a2f632cb8aaa3fd97d5e7164",
         "bytes_relidos": 448196,
-        "lido_em": "2026-09-02T23:41:34.140041+00:00",
+        "lido_em": "2026-09-03T00:00:44.580225+00:00",
         "objeto_existe_na_loja": true,
         "hash_relido_bate_com_o_artefato": true,
         "hash_relido_bate_com_a_medicao_independente": true

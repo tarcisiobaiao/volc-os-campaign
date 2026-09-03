@@ -4,7 +4,7 @@
   "branch": "sprint/creative-factory-production-go-live-v1",
   "base_sha": "382c5d4c67fc521d5e6739f8e76d1c36a96fdb53",
   "merge_sha": "87cfcefb0abbe85e9c596af4145669d9873575b8",
-  "head_sha": "2fe767e5a995bfbc4ba05bb7f81cfb1185faeaa8",
+  "head_sha": "c72b676be63bc2175050c72352833f4e6300d266",
   "feature_integrada_sha": "5235f0c6d8a6c526b42bf64342373471cd14ebe4",
   "natureza": "PROPOSTA. Nada aqui foi escrito no ROADMAP-VIVO.json, na curadoria humana, no grafo nem em graphify-out. O integrador oficial aplica UMA vez, depois do merge, conforme o protocolo obrigatorio do AGENTS.md. Trabalho que so existe numa branch nao pode marcar a fonte compartilhada como concluida.",
   "frescor_do_mapa_vivo": {
@@ -137,6 +137,12 @@
       "o_que": "`_declaracoes` ignorava em silencio uma linha que a regex nao casasse; `_check_da_migration` aceitava um CHECK COMENTADO como protecao viva.",
       "gravidade": "alto (um guard que passa sem conferir e pior que nenhum)",
       "contraprova": "tirando uma crase: 'a regex leu 5 declaracoes e o documento promete 6'. Comentando o CHECK: 3 provas vermelhas."
+    },
+    {
+      "onde": "backend/tests/test_criativo_mime_medido.py (sentinela, nao conserto)",
+      "o_que": "a fragilidade do reconhecimento de MIME levantada pela revisao foi MEDIDA: 5 ataques ao contrato atual, NENHUM passou. Nao ha defeito executavel. O que ha e risco de arranjo — a complementaridade entre o gate de assinatura e o de dimensao e EMERGENTE, e acrescentar `image/webp` a `_MIMES_MENSURAVEIS` sem ensinar a assinatura ao `mime_de` faz o par voltar a somar dois SKIPPED.",
+      "gravidade": "risco futuro, sem defeito atual — zero mudanca de comportamento",
+      "contraprova": "com `image/webp` acrescentado e a assinatura nao ensinada, a invariante 2 fica vermelha nomeando o formato; sem o acrescimo, 8 verdes"
     }
   ],
   "backlog_nomeado_nao_corrigido": [
@@ -181,7 +187,7 @@
   "gates": {
     "backend_base_382c5d4": "3332 passed / 87 skipped / 0 failed",
     "backend_merge_87cfcef": "3370 passed / 87 skipped / 0 failed",
-    "backend_head": "3402 passed / 90 skipped / 0 failed",
+    "backend_head": "3405 passed / 90 skipped / 0 failed",
     "contrato_do_deposito_com_postgres_real": "77 passed / 0 skipped (VOLC_EXIGIR_POSTGRES=1)",
     "frontend_base": "1256 passed / 5 skipped",
     "frontend_head": "1262 passed / 5 skipped",
@@ -218,5 +224,21 @@
     "gemini_3_7_flash": "PROVIDER_NOT_AVAILABLE — CLI 0.57.0 presente, sem ~/.gemini/settings.json, sem oauth_creds.json, sem GEMINI_API_KEY/GOOGLE_API_KEY no ambiente. Ler segredo de .env de projeto para alimentar CLI e o padrao flagrado como risco na missao anterior; declarado em vez de simulado.",
     "rodadas_corretivas": 2,
     "_nota_rodadas": "Duas rodadas corretivas AGREGADAS, e nao duas passadas soltas: a primeira fecha os sobreviventes da auditoria interna (fase 2), a segunda fecha a revisao adversarial externa (fase 6). O prompt pede uma rodada por revisao."
+  },
+  "estado_de_encerramento": "LOCAL_CLOSURE_COMPLETE_EXTERNAL_CHECKPOINT_READY",
+  "postgres_usado": "DESCARTAVEL E LOCAL, sempre. Clusters criados por `initdb` dentro de `mktemp -d`, escutando apenas em socket unix dentro do proprio diretorio, destruidos por `pg_ctl stop` na mesma sessao. ZERO contato com https://database.agenciavolc.com.br — nem leitura, nem escrita, nem migration.",
+  "achados_da_revisao_externa": {
+    "confirmados_e_corrigidos": [
+      "BLOQ 1 — a cerca tinha dois buracos: `motor_desconhecido` escrevia FAILED sem cerca nenhuma, e `bater()` deixava o zumbi homonimo renovar o lease do dono vivo",
+      "BLOQ 2 — o gate de MIME mandava todo `mime_de() is None` para SKIPPED: bytes arbitrarios declarados `image/webp` chegavam a rendered com VERIFIED_OK",
+      "HIPOTESE (o revisor nao tinha Postgres; eu tinha) — `select ... for update` fora de `con.transaction()` com autocommit=True solta o lock antes das guardas: check-then-act com janela real, so no Postgres",
+      "ALTO 1 — a canario podia declarar 'todas as afirmacoes conferidas' sem os fatos",
+      "ALTO 2 — as guardas por regex podiam passar sem conferir nada (linha malformada sumia; CHECK comentado contava como protecao)"
+    ],
+    "medido_e_NAO_corrigido_por_nao_ser_defeito": [
+      "fragilidade do reconhecimento de MIME: 5 ataques executados ao contrato atual, nenhum passou. Virou sentinela de invariante (c72b676), sem mudanca de comportamento."
+    ],
+    "refutados_pela_auditoria_interna": 32,
+    "sobreviventes_da_auditoria_interna": 5
   }
 }
