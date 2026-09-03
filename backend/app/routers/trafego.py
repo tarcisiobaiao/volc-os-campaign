@@ -2539,7 +2539,10 @@ async def provar(
             keywords_por_grupo=selecao_aprovada,
             grupos_usar_todas=frozenset(),
             rede=_rede_do_corpo(body),
-            keywords_fora=list(body.keywords_fora),
+            # Recusa fechada: depois da impressão emitida, retirar keyword
+            # mudaria o conjunto sem mudar o selo.
+            keywords_fora=portao_pago.recusar_keywords_fora(
+                body.keywords_fora, conjunto),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,
             cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
@@ -2551,7 +2554,11 @@ async def provar(
             # Positivos do CONJUNTO APROVADO + negativas declaradas no corpo.
             # A ordem importa: o conjunto foi declarado primeiro e por isso
             # vence o legado que repetir a mesma identidade.
-            criterios=tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(body, pp)),
+            # POSITIVAS: só do conjunto aprovado. Do corpo, só NEGATIVAS —
+            # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
+            # uma quarta positiva entrava e trocava o match type aprovado.
+            criterios=tuple(criterios_do_conjunto) + tuple(
+                portao_pago.somente_negativas_do_corpo(_criterios_do_corpo(body, pp))),
             negativas_campanha=(),
             negativas_adgroup=(),
             vertical=body.vertical,
@@ -2587,6 +2594,12 @@ async def provar(
                     plano = _dataclasses.replace(
                         plano, avisos=plano.avisos + avisos_da_ponte
                     )
+        # A PÓS-CONDIÇÃO, sobre o artefato que de fato vai ao Google.
+        # Conferir a entrada que a rota montou não basta: o que importa é o
+        # brief final, depois de todo adaptador. Multiconjunto, não conjunto —
+        # cardinalidade é o que o defeito alterava.
+        portao_pago.conferir_positivas_do_brief(
+            plano.brief, criterios_do_conjunto, grupo_colapsado=True)
         # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
         # id colado do painel do Google vem `801-785-1692`, com hífen.
         preparo = sb.preparar(
@@ -3028,7 +3041,10 @@ async def subir(
             keywords_por_grupo=selecao_aprovada,
             grupos_usar_todas=frozenset(),
             rede=_rede_do_corpo(body),
-            keywords_fora=list(body.keywords_fora),
+            # Recusa fechada: depois da impressão emitida, retirar keyword
+            # mudaria o conjunto sem mudar o selo.
+            keywords_fora=portao_pago.recusar_keywords_fora(
+                body.keywords_fora, conjunto),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,
             cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
@@ -3037,7 +3053,11 @@ async def subir(
             # O adaptador da fronteira reúne os dois contratos num só. Vazio
             # significa que o pedido não declarou negativa nenhuma, e aí as
             # listas antigas seguem o caminho de sempre.
-            criterios=tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(body, pp)),
+            # POSITIVAS: só do conjunto aprovado. Do corpo, só NEGATIVAS —
+            # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
+            # uma quarta positiva entrava e trocava o match type aprovado.
+            criterios=tuple(criterios_do_conjunto) + tuple(
+                portao_pago.somente_negativas_do_corpo(_criterios_do_corpo(body, pp))),
             negativas_campanha=(),
             negativas_adgroup=(),
             vertical=body.vertical,
@@ -3052,6 +3072,11 @@ async def subir(
             conjunto_unico=True,
         )
         plano = pp.montar_brief(cockpit, escolha, copy=_copy_do_corpo(body.texto_do_anuncio))
+        # A MESMA pós-condição de `/provar`, sobre o brief que vai ser ESCRITO.
+        # `/subir` remonta o plano, então precisa reconferir o que remontou —
+        # herdar a recusa da entrada não prova nada sobre a saída.
+        portao_pago.conferir_positivas_do_brief(
+            plano.brief, criterios_do_conjunto, grupo_colapsado=True)
         preparo = sb.preparar(
             cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
             ai_max=body.ai_max,

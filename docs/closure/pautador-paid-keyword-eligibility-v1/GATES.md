@@ -166,3 +166,37 @@ igual, com o mesmo endereço, **sem nenhuma alteração desta lane**. É depend�
 de ordem — o autouse `_leituras_vivas_desligadas` vive noutro arquivo — e na
 suíte completa ele passa. Registrado por honestidade, não corrigido: mexer nele
 seria a rodada arquitetural que esta missão proíbe.
+
+---
+
+# Rodada 3 — mutação pós-aprovação fechada
+
+O fechamento anterior ainda permitia que o corpo HTTP acrescentasse uma
+positiva com outro match type ou retirasse uma selecionada por
+`keywords_fora`, depois de `approved_set_sha256` existir. A contraprova
+material mediu 3 positivas aprovadas virando 4 critérios, com o mesmo termo em
+`PHRASE` e `EXACT`.
+
+## Gates desta microcorreção
+
+| gate | resultado |
+|---|---|
+| `test_pautador_campaign_birth_wiring.py` | **33 passed** — inclui chamadas diretas de `/provar` e `/subir` para as duas mutações |
+| suíte ampla compatível com o sandbox (`backend/tests` + `backend/app/motor_pautas/testes` + `volc_ads`, menos os 3 arquivos abaixo) | **3882 passed, 112 skipped** em 52,52s |
+| `py_compile` dos 3 arquivos tocados | **verde** |
+| `gate_sem_mutacao_google.py` no venv | **3/3 verde**, incluindo 5 contraprovas da rota |
+| `verificar_segredos.py` | **nenhum padrão forte** |
+| `git diff --check` | **limpo** |
+
+O comando amplo literal também foi tentado. Ele chegou a **3891 passed, 113
+skipped**, mas terminou com 9 falhas e 99 erros exclusivamente nas famílias
+`test_adspower_broker_hermetico.py`, `test_publicacao_organica_e2e.py` e
+`test_trafego_persistencia.py`: o sandbox Codex recusou `bind()` em loopback e
+`initdb` com `PermissionError`. A repetição excluiu somente esses três arquivos
+ambientalmente impedidos e ficou verde. Não foi pedido acesso externo porque a
+missão proíbe rede/serviços reais e os gates diretamente afetados já são
+herméticos.
+
+O gate completo herdado do HEAD `406b08c` continua sendo **3333 passed, 112
+skipped**. Ele não é reapresentado como se tivesse sido executado depois desta
+microcorreção.

@@ -16,8 +16,10 @@ ainda é conta real.
 """
 from __future__ import annotations
 
+import asyncio
 import copy
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import pytest
 
@@ -359,3 +361,276 @@ def test_8b_nenhuma_negativa_nasce_deste_caminho():
     conjunto, criterios = portao.criterios_do_cluster(cluster)
     assert conjunto.negative_keywords == []
     assert all(c.negativa is False for c in criterios)
+
+
+# ── mutação PÓS-APROVAÇÃO pelo corpo HTTP ──────────────────────────────────
+#
+# Ligar o conjunto à rota não fechou o portão: as duas rotas montavam
+#
+#     criterios = tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(...))
+#
+# e `_criterios_do_corpo` devolve `body.criterios`, que aceita `negativa=False`.
+# Reproduzido contra o funil BPC/LOAS antes da correção:
+#
+#     approved_match=PHRASE  body_match=EXACT
+#     positive_count=4       duplicate_count_for_term=2
+#
+# O corpo produzia uma QUARTA positiva e trocava o match type DEPOIS de
+# `approved_set_sha256` ter sido emitido. Segunda variante: `keywords_fora`
+# retirava selecionada aprovada — 3 viravam 2.
+
+
+def _corpo(texto, *, match_type="PHRASE", negativa=False, grupo="ELEGIBILIDADE",
+           nivel="AD_GROUP", origem="MANUAL"):
+    from volc_ads import pautador_ponte as pp
+
+    return pp.Criterio(texto=texto, match_type=match_type, negativa=negativa,
+                       nivel=nivel, grupo=grupo, origem=origem)
+
+
+def test_M1_positiva_do_corpo_e_recusada_antes_da_rede():
+    """Positiva adicional pelo corpo é recusada — fechado, não filtrado."""
+    _c, aprovados = portao.criterios_do_cluster(_cluster(aprovado=True))
+    with pytest.raises(portao.PortaoDoConjuntoPago) as e:
+        portao.somente_negativas_do_corpo([_corpo("termo novo do corpo")])
+    assert e.value.codigo == portao.POSITIVA_DO_CORPO == "CRITERIO_POSITIVO_DO_CORPO_RECUSADO"
+    assert len(aprovados) == 3
+
+
+def test_M2_mesma_keyword_com_outro_match_type_e_recusada():
+    """A forma exata do bloqueante: mesmo termo, match type diferente.
+
+    Sem cobrir match type a recusa seria contornável por uma linha — foi
+    assim que o corpo passou por cima de PHRASE com EXACT.
+    """
+    _c, aprovados = portao.criterios_do_cluster(_cluster(aprovado=True))
+    alvo = aprovados[0]
+    assert alvo.match_type == "PHRASE"
+    with pytest.raises(portao.PortaoDoConjuntoPago) as e:
+        portao.somente_negativas_do_corpo([_corpo(alvo.texto, match_type="EXACT")])
+    assert e.value.codigo == portao.POSITIVA_DO_CORPO
+
+
+def test_M3_negativa_declarada_pelo_operador_continua_possivel():
+    """Fechar a positiva não pode fechar a negativa: ela é caminho legítimo,
+    com todas as regras de evidência e procedência que `Criterio` já impõe."""
+    passou = portao.somente_negativas_do_corpo(
+        [_corpo("gratis", match_type="BROAD", negativa=True, nivel="CAMPAIGN", grupo=None)]
+    )
+    assert len(passou) == 1 and passou[0].negativa is True
+
+
+def test_M4_keywords_fora_que_retira_selecionada_e_recusada():
+    conjunto, aprovados = portao.criterios_do_cluster(_cluster(aprovado=True))
+    with pytest.raises(portao.PortaoDoConjuntoPago) as e:
+        portao.recusar_keywords_fora([aprovados[0].texto], conjunto)
+    assert e.value.codigo == portao.KEYWORDS_FORA == "KEYWORDS_FORA_APOS_APROVACAO_RECUSADA"
+    assert aprovados[0].texto in e.value.detalhe, "o erro precisa NOMEAR o que foi atingido"
+
+
+def test_M5_keywords_fora_sem_efeito_tambem_nao_e_silenciada():
+    """Aceitar um campo que não faz nada é como o operador acredita ter
+    excluído algo que continua no pedido."""
+    conjunto, _ = portao.criterios_do_cluster(_cluster(aprovado=True))
+    with pytest.raises(portao.PortaoDoConjuntoPago) as e:
+        portao.recusar_keywords_fora(["termo que nao esta no conjunto"], conjunto)
+    assert e.value.codigo == portao.KEYWORDS_FORA
+
+
+def test_M6_keywords_fora_vazia_continua_passando():
+    conjunto, _ = portao.criterios_do_cluster(_cluster(aprovado=True))
+    assert portao.recusar_keywords_fora([], conjunto) == []
+    assert portao.recusar_keywords_fora(["", "  "], conjunto) == []
+
+
+def test_M7_positivas_do_brief_sao_EXATAMENTE_as_aprovadas():
+    """Não subconjunto. Igualdade de MULTICONJUNTO sobre
+    (texto normalizado, match type, grupo, origem)."""
+    _c, aprovados = portao.criterios_do_cluster(_cluster(aprovado=True))
+
+    class BriefFalso:
+        def __init__(self, crits):
+            self.criterios = list(crits)
+
+    # idêntico passa
+    assert portao.conferir_positivas_do_brief(BriefFalso(aprovados), aprovados) is None
+
+    # sobrando, faltando e duplicata exata recusam
+    for rotulo, crits in (
+        ("sobrando", list(aprovados) + [_corpo("extra")]),
+        ("faltando", list(aprovados[:2])),
+        ("duplicata", list(aprovados) + [aprovados[0]]),
+        ("outro match", [_corpo(c.texto, match_type="EXACT", origem="PAUTADOR") for c in aprovados]),
+        ("outro grupo", [_corpo(c.texto, grupo="OUTRO", origem="PAUTADOR") for c in aprovados]),
+        ("outra origem", [_corpo(c.texto, origem="MANUAL") for c in aprovados]),
+    ):
+        with pytest.raises(portao.PortaoDoConjuntoPago, match=portao.POSITIVAS_DIVERGENTES):
+            portao.conferir_positivas_do_brief(BriefFalso(crits), aprovados)
+
+    # O grupo só pode desaparecer quando a rota declara explicitamente a
+    # topologia `conjunto_unico=True`; ausência sozinha não prova colapso.
+    sem_grupo = [
+        _corpo(c.texto, match_type=c.match_type, grupo=None, origem=c.origem)
+        for c in aprovados
+    ]
+    with pytest.raises(portao.PortaoDoConjuntoPago, match=portao.POSITIVAS_DIVERGENTES):
+        portao.conferir_positivas_do_brief(BriefFalso(sem_grupo), aprovados)
+    assert portao.conferir_positivas_do_brief(
+        BriefFalso(sem_grupo), aprovados, grupo_colapsado=True
+    ) is None
+
+    parcial = list(sem_grupo)
+    parcial[0] = aprovados[0]
+    with pytest.raises(portao.PortaoDoConjuntoPago, match=portao.POSITIVAS_DIVERGENTES):
+        portao.conferir_positivas_do_brief(
+            BriefFalso(parcial), aprovados, grupo_colapsado=True
+        )
+
+
+def test_M8_negativa_no_brief_nao_conta_como_positiva_divergente():
+    """A pós-condição olha só as positivas — negativa declarada não a quebra."""
+    _c, aprovados = portao.criterios_do_cluster(_cluster(aprovado=True))
+
+    class BriefFalso:
+        def __init__(self, crits):
+            self.criterios = list(crits)
+
+    com_negativa = list(aprovados) + [
+        _corpo("gratis", match_type="BROAD", negativa=True, nivel="CAMPAIGN", grupo=None)
+    ]
+    assert portao.conferir_positivas_do_brief(BriefFalso(com_negativa), aprovados) is None
+
+
+def test_M9_as_duas_rotas_aplicam_as_tres_guardas():
+    """`/provar` e `/subir`: só negativas do corpo, `keywords_fora` recusada,
+    e a pós-condição sobre o brief FINAL — cada uma nas duas rotas."""
+    import inspect
+
+    from app.routers import trafego
+
+    fonte = inspect.getsource(trafego)
+    assert fonte.count("portao_pago.somente_negativas_do_corpo(") == 2
+    assert fonte.count("portao_pago.recusar_keywords_fora(") == 2
+    assert fonte.count("portao_pago.conferir_positivas_do_brief(") == 2
+    assert fonte.count("grupo_colapsado=True") == 2
+    # e o caminho antigo, que somava o corpo cru, não existe mais
+    assert "tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(body, pp))" not in fonte
+    assert "keywords_fora=list(body.keywords_fora)" not in fonte
+
+
+def test_M10_as_recusas_acontecem_antes_da_rede():
+    """As três guardas rodam antes de `sb.preparar()`, em ambas as rotas."""
+    import inspect
+
+    from app.routers import trafego
+
+    fonte = inspect.getsource(trafego)
+    preparar = [i for i in range(len(fonte)) if fonte.startswith("sb.preparar(", i)]
+    assert len(preparar) == 2
+    for marca in ("portao_pago.somente_negativas_do_corpo(",
+                  "portao_pago.recusar_keywords_fora(",
+                  "portao_pago.conferir_positivas_do_brief("):
+        ocorrencias = [i for i in range(len(fonte)) if fonte.startswith(marca, i)]
+        assert len(ocorrencias) == 2, marca
+        for guarda, rede in zip(ocorrencias, preparar):
+            assert guarda < rede, f"{marca} depois da rede"
+
+
+def test_M11_o_bloqueante_original_nao_reproduz_mais():
+    """A contraprova do integrador, ponta a ponta.
+
+    Antes: approved_match=PHRASE · body_match=EXACT · positive_count=4 ·
+    duplicate_count_for_term=2. Agora a montagem nem chega a acontecer.
+    """
+    _c, aprovados = portao.criterios_do_cluster(_cluster(aprovado=True))
+    assert len(aprovados) == 3
+    alvo = aprovados[0]
+    injecao = [_corpo(alvo.texto, match_type="EXACT")]
+    with pytest.raises(portao.PortaoDoConjuntoPago):
+        criterios = tuple(aprovados) + tuple(portao.somente_negativas_do_corpo(injecao))
+        del criterios  # inalcançável: a linha acima recusa
+
+
+class _SubirSemRede:
+    chamadas_preparar = 0
+
+    @staticmethod
+    def resolver_provador(_canal):
+        return "SEARCH", object()
+
+    @staticmethod
+    def resolver_construtor(_canal):
+        return "SEARCH", object()
+
+    @classmethod
+    def preparar(cls, *_args, **_kwargs):
+        cls.chamadas_preparar += 1
+        pytest.fail("uma recusa do conjunto aprovado alcançou a rede Google")
+
+
+@pytest.mark.parametrize("nome_rota", ["provar", "subir"])
+@pytest.mark.parametrize("mutacao", ["positiva", "keywords_fora"])
+def test_M12_rotas_reais_recusam_mutacao_antes_da_rede(
+    monkeypatch, nome_rota, mutacao
+):
+    """Executa as FUNÇÕES DE ROTA, não apenas helpers ou inspeção de fonte."""
+    from fastapi import HTTPException
+    from app.routers import trafego
+    from volc_ads import pautador_ponte as pp
+
+    cluster = _cluster(aprovado=True)
+    _conjunto, aprovados = portao.criterios_do_cluster(cluster)
+    dados = {
+        "opportunity_id": 1,
+        "customer_id": "5478096539",
+        "login_customer_id": "6016739364",
+    }
+    if mutacao == "positiva":
+        dados["criterios"] = [{
+            "texto": aprovados[0].texto,
+            "match_type": "EXACT",
+            "negativa": False,
+            "origem": "MANUAL",
+        }]
+        codigo = portao.POSITIVA_DO_CORPO
+    else:
+        dados["keywords_fora"] = [aprovados[0].texto]
+        codigo = portao.KEYWORDS_FORA
+
+    if nome_rota == "subir":
+        dados.update({
+            "motivo": "contraprova hermética do conjunto aprovado",
+            "plano_impressao": "f" * 64,
+            "confirmar_criacao_pausada": True,
+        })
+        corpo = trafego.SubirEntrada(**dados)
+    else:
+        corpo = trafego.ProvarEntrada(**dados)
+
+    monkeypatch.setattr(
+        pp, "carregar", lambda *_a, **_k: SimpleNamespace(cluster=cluster)
+    )
+    monkeypatch.setattr(pp, "montar_cockpit", lambda *_a, **_k: object())
+    monkeypatch.setattr(
+        pp, "montar_brief",
+        lambda *_a, **_k: pytest.fail("a recusa atravessou a montagem do brief"),
+    )
+    monkeypatch.setattr(
+        trafego, "_no_escopo", lambda *_a: ("5478096539", "6016739364")
+    )
+    monkeypatch.setattr(trafego, "_ponte", lambda: (pp, _SubirSemRede))
+    monkeypatch.setattr(trafego.canario, "exigir", lambda **_k: "FORGE-TESTE")
+    monkeypatch.setattr(trafego.escopo, "conta_da_casa", lambda *_a: None)
+    _SubirSemRede.chamadas_preparar = 0
+
+    with pytest.raises(HTTPException) as erro:
+        asyncio.run(
+            getattr(trafego, nome_rota)(
+                corpo, identidade=SimpleNamespace(papel="admin")
+            )
+        )
+
+    assert erro.value.status_code == 409
+    assert erro.value.detail["codigo"] == codigo
+    assert erro.value.detail["nada_foi_criado"] is True
+    assert _SubirSemRede.chamadas_preparar == 0

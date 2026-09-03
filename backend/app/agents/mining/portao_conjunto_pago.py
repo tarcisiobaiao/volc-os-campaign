@@ -59,7 +59,7 @@ paga a partir de um cluster que não passou pelo contrato.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app.agents.mining.paid_eligibility import (
     CampaignKeywordSet,
@@ -77,6 +77,10 @@ HASH_DIVERGENTE = "CONJUNTO_PAGO_HASH_DIVERGENTE"
 BLOQUEADO = "CONJUNTO_PAGO_BLOQUEADO"
 VAZIO = "CONJUNTO_PAGO_VAZIO"
 N8N_SEM_CONTRATO = "N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED"
+# As três recusas que fecham a MUTAÇÃO PÓS-APROVAÇÃO pelo corpo HTTP.
+POSITIVA_DO_CORPO = "CRITERIO_POSITIVO_DO_CORPO_RECUSADO"
+KEYWORDS_FORA = "KEYWORDS_FORA_APOS_APROVACAO_RECUSADA"
+POSITIVAS_DIVERGENTES = "CONJUNTO_POSITIVO_DIVERGENTE"
 
 #: A única autoridade operacional de elegibilidade paga.
 AUTORIDADE = "python:app.agents.mining.paid_eligibility"
@@ -206,6 +210,160 @@ def keywords_por_grupo(conjunto: CampaignKeywordSet) -> Dict[str, Tuple[str, ...
     return {grupo: tuple(termos) for grupo, termos in fora.items()}
 
 
+# ── a mutação pós-aprovação pelo corpo HTTP ────────────────────────────────
+#
+# ⚠️ O PORTÃO ESTAVA ABERTO PELO LADO DE DENTRO.
+#
+# Ligar o conjunto aprovado à rota não bastava: as duas rotas montavam
+#
+#     criterios = tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(...))
+#
+# e `_criterios_do_corpo` devolve `body.criterios`, que aceita `negativa=False`.
+# Reproduzido contra o funil BPC/LOAS:
+#
+#     conjunto aprovado    'bpc loas quem tem direito'  PHRASE
+#     corpo injeta         'bpc loas quem tem direito'  EXACT
+#     positive_count            4   (o conjunto aprovado tinha 3)
+#     duplicate_count_for_term  2   match types ['PHRASE', 'EXACT']
+#
+# O corpo produzia uma QUARTA positiva e mudava a semântica de match type
+# DEPOIS de `approved_set_sha256` ter sido emitido. A garantia publicada — "as
+# positivas nascem exclusivamente do conjunto aprovado" — era falsa.
+#
+# A segunda variante da mesma falha: `keywords_fora` continuava descendo para a
+# `Escolha` e RETIRAVA selecionada aprovada. Medido: 3 aprovadas viravam 2.
+#
+# Aprovar precisa significar aprovar. Depois da impressão emitida, o corpo só
+# pode ACRESCENTAR NEGATIVA — e nem isso em silêncio.
+
+
+def _identidade_positiva(c: Any) -> Tuple[str, str, str, str]:
+    """O que torna duas positivas A MESMA operação de campanha.
+
+    Texto normalizado pela régua do lado Ads (`Criterio.chave`), match type,
+    grupo e origem. Os quatro entram porque mudar qualquer um deles muda o que
+    vai ao leilão — foi trocando só o match type que o corpo escapou.
+    """
+    return (c.chave, c.match_type, c.grupo or "", c.origem)
+
+
+def somente_negativas_do_corpo(criterios_do_corpo: Sequence[Any]) -> List[Any]:
+    """Deixa passar negativa declarada; recusa positiva, fechado.
+
+    Negativa continua sendo caminho legítimo do operador, com todas as regras
+    de evidência, procedência e overblocking que `Criterio` já impõe — este
+    módulo não cria negativa nenhuma e não afrouxa nenhuma daquelas regras.
+    O que ele fecha é a porta pela qual uma POSITIVA entrava por fora do
+    conjunto que alguém assinou.
+    """
+    positivas = [c for c in criterios_do_corpo if not c.negativa]
+    if positivas:
+        amostra = ", ".join(
+            f"{c.texto!r} ({c.match_type})" for c in positivas[:5]
+        )
+        raise PortaoDoConjuntoPago(
+            POSITIVA_DO_CORPO,
+            f"{len(positivas)} critério(s) POSITIVO(s) vieram no corpo do pedido, e "
+            "existe conjunto aprovado. Depois da impressão emitida, positiva só "
+            f"nasce do conjunto: {amostra}"
+            f"{'…' if len(positivas) > 5 else ''}. Para mudar o conjunto, mude a "
+            "seleção e aprove de novo — a impressão nova é o que autoriza. "
+            "O corpo continua podendo declarar NEGATIVAS.",
+        )
+    return list(criterios_do_corpo)
+
+
+def recusar_keywords_fora(
+    keywords_fora: Sequence[str], conjunto: CampaignKeywordSet
+) -> List[str]:
+    """`keywords_fora` não retira selecionada depois da aprovação.
+
+    Recusa QUALQUER lista não vazia, e não só a que acerta um termo aprovado.
+    Ignorar as que não acertam seria silenciar o campo — e o campo estar lá,
+    aceito e sem efeito, é como o operador acredita ter excluído algo que
+    continua no pedido. Quando ela acerta termos aprovados, o erro os nomeia.
+    """
+    fora = [str(k) for k in (keywords_fora or []) if str(k).strip()]
+    if not fora:
+        return []
+    from volc_ads.campanha.criterio import chave as _chave
+
+    aprovadas = {_chave(d.termo) for d in conjunto.selected_keywords}
+    atingidas = sorted({k for k in fora if _chave(k) in aprovadas})
+    detalhe = (
+        f"`keywords_fora` traz {len(fora)} termo(s) e existe conjunto aprovado. "
+        "A exclusão é decidida na SELEÇÃO, antes da impressão — depois dela, "
+        "retirar keyword mudaria o conjunto sem mudar o selo."
+    )
+    if atingidas:
+        detalhe += f" Atinge keyword(s) aprovada(s): {', '.join(repr(k) for k in atingidas)}."
+    else:
+        detalhe += (
+            " Nenhum dos termos está no conjunto aprovado, então o campo não "
+            "teria efeito — e aceitar sem efeito é pior que recusar."
+        )
+    raise PortaoDoConjuntoPago(KEYWORDS_FORA, detalhe)
+
+
+def conferir_positivas_do_brief(
+    brief: Any,
+    aprovados: Sequence[Any],
+    *,
+    grupo_colapsado: bool = False,
+) -> None:
+    """As positivas do Brief FINAL são exatamente as aprovadas.
+
+    Não subconjunto, não superconjunto, não a mesma lista com outro match
+    type: o mesmo MULTICONJUNTO de (texto normalizado, match type, grupo,
+    origem). É a pós-condição que torna a garantia verificável no artefato que
+    de fato vai ao Google, e não só na entrada que a rota montou.
+
+    `Counter` e não `set` de propósito — sem ele, uma duplicata exata passaria,
+    e cardinalidade é justamente o que o defeito alterava.
+    """
+    from collections import Counter
+
+    positivas = [c for c in getattr(brief, "criterios", []) if not c.negativa]
+
+    # ⚠️ O GRUPO NEM SEMPRE É DIMENSÃO DO BRIEF, E EXIGIR QUE SEJA É EXIGIR
+    # PROVA SOBRE O QUE O ARTEFATO NÃO CARREGA.
+    #
+    # Com `conjunto_unico=True` — a doutrina da casa, "um conjunto, sempre" —
+    # `montar_brief` colapsa todas as keywords num ad group só e as positivas
+    # saem SEM rótulo de grupo. Medido: aprovada em `INTENCAO`, no brief como
+    # `''`. Isso é o colapso documentado fazendo o trabalho dele, não mutação.
+    #
+    # Então a igualdade é conferida na dimensão que o brief de fato expressa,
+    # mas SOMENTE quando o chamador declara explicitamente que escolheu essa
+    # topologia. Inferir o colapso apenas porque todos os grupos sumiram faria
+    # uma remoção acidental de todos os rótulos parecer legítima.
+    grupos_no_brief = {(c.grupo or "") for c in positivas}
+    if grupo_colapsado and grupos_no_brief != {""}:
+        raise PortaoDoConjuntoPago(
+            POSITIVAS_DIVERGENTES,
+            "o brief declarou conjunto único, mas preservou grupo em ao menos "
+            "uma positiva; a topologia final não corresponde à aprovada.",
+        )
+
+    def _ident(c: Any) -> Tuple[str, ...]:
+        cheia = _identidade_positiva(c)
+        return (cheia[0], cheia[1], cheia[3]) if grupo_colapsado else cheia
+
+    esperado = Counter(_ident(c) for c in aprovados)
+    obtido = Counter(_ident(c) for c in positivas)
+    if esperado == obtido:
+        return
+    sobrando = sorted(str(k) for k in (obtido - esperado).elements())
+    faltando = sorted(str(k) for k in (esperado - obtido).elements())
+    raise PortaoDoConjuntoPago(
+        POSITIVAS_DIVERGENTES,
+        "as positivas do brief final não são exatamente as aprovadas — "
+        f"aprovadas={sum(esperado.values())}, no brief={sum(obtido.values())}. "
+        + (f"Sobrando: {sobrando[:5]}. " if sobrando else "")
+        + (f"Faltando: {faltando[:5]}." if faltando else ""),
+    )
+
+
 __all__ = [
     "AUTORIDADE",
     "CONJUNTO_AUSENTE", "NAO_APROVADO", "HASH_DIVERGENTE", "BLOQUEADO", "VAZIO",
@@ -213,4 +371,7 @@ __all__ = [
     "PortaoDoConjuntoPago",
     "parece_produzido_fora_do_motor",
     "conjunto_do_cluster", "criterios_do_cluster", "keywords_por_grupo",
+    "POSITIVA_DO_CORPO", "KEYWORDS_FORA", "POSITIVAS_DIVERGENTES",
+    "somente_negativas_do_corpo", "recusar_keywords_fora",
+    "conferir_positivas_do_brief",
 ]

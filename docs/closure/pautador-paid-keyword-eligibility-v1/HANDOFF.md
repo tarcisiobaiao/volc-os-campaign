@@ -349,3 +349,29 @@ que existia desde o início.
 5. **O workflow n8n versionado ainda carrega o defeito de origem**
    (`dedupedKws.forEach -> allKeywordsForCampaign`, CPC/volume ausente virando
    zero). Fechado por recusa, não por correção.
+
+## Microcorreção final — o selo passou a governar também o corpo HTTP
+
+O wiring anterior ainda somava as positivas aprovadas a
+`_criterios_do_corpo(body, pp)`. Como o contrato HTTP aceita
+`negativa=False`, o mesmo termo aprovado em `PHRASE` podia reaparecer em
+`EXACT`: 3 aprovadas viravam 4 critérios. `keywords_fora` abria a direção
+oposta, reduzindo o conjunto depois da aprovação.
+
+As duas rotas agora:
+
+1. recusam qualquer critério positivo vindo do corpo;
+2. continuam aceitando negativas declaradas pelo operador;
+3. recusam `keywords_fora` não vazio depois da aprovação;
+4. conferem, no `Brief` final e antes de `sb.preparar`, igualdade de
+   multiconjunto entre positivas aprovadas e materializadas — texto
+   normalizado, match type, origem e cardinalidade;
+5. tratam a remoção do rótulo de grupo como legítima somente porque as duas
+   rotas declaram explicitamente `conjunto_unico=True`. O helper não infere
+   colapso pela simples ausência de grupos.
+
+As contraprovas chamam as funções reais `/provar` e `/subir`, recebem 409 com
+código estável e mantêm a sentinela de rede em zero. Com isso, a afirmação
+“positiva nasce exclusivamente do conjunto aprovado” passou a valer também
+contra mutações no envelope HTTP e contra divergência introduzida por
+adaptadores posteriores.

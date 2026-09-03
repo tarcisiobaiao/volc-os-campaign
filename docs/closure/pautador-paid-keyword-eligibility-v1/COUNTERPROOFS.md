@@ -259,3 +259,24 @@ declarada passava direto. Numa guarda contra vazamento, "não sei de qual
 campanha isto veio" é exatamente o caso que precisa ser barrado — só a menção
 EXPLÍCITA de outra campanha a libera, e isso continua testado
 (`test_X10b`).
+
+## Rodada final — o corpo HTTP alterava o conjunto já aprovado
+
+Reprodução anterior à correção:
+
+```text
+approved_match=PHRASE
+body_match=EXACT
+positive_count=4
+duplicate_count_for_term=2
+```
+
+O conjunto possuía três positivas, mas `/provar` e `/subir` concatenavam
+`criterios_do_conjunto` com `_criterios_do_corpo`, que também aceita positivas.
+O mesmo envelope ainda podia reduzir três para duas por `keywords_fora`.
+
+As contraprovas M1–M12 cobrem a recusa de positiva adicional, troca de match
+type, retirada por `keywords_fora`, negativa legítima, igualdade exata do
+multiconjunto final, colapso de grupo somente quando explicitamente declarado,
+as duas funções reais de rota e a ordem anterior a qualquer rede. Resultado:
+**33/33 verdes** no arquivo do caminho real.
