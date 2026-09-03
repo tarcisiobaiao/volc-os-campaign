@@ -1,0 +1,1396 @@
+{
+  "sprint": "traffic-operating-cockpit-v2",
+  "base_sha": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "capturado_em": "2026-09-03",
+  "como_reproduzir": {
+    "ambiente": "worktree isolada; front 8091, express 3011, fastapi 8020",
+    "env": "fail-closed — .env da worktree SEM GOOGLE_ADS_*, GOOGLE_APPLICATION_CREDENTIALS e N8N_*; /health responde engine=mock",
+    "rota": "/qa/trafego/:superficie/:estado (existe apenas sob import.meta.env.DEV)",
+    "driver": "playwright-core já presente na máquina; nenhum pacote instalado neste repositório"
+  },
+  "politica_de_binarios": "docs/closure/ não contém nenhuma imagem neste repositório (verificado: zero PNG/JPG na árvore inteira de docs/closure). As capturas ficam como evidência LOCAL e não entram no Git. Este manifesto registra o que cada cena AFIRMA, a matriz coberta e a medição automática de cada captura — que é o que se audita.",
+  "evidencia_local": "/private/tmp/claude-502/-Users-mac-Desktop-VOLC-OS-CAMPAIGN/a8fa8979-b491-4051-92bd-c4a1dab0c16d/scratchpad/shots/v3",
+  "evidencia_local_reduced_motion": "/private/tmp/claude-502/-Users-mac-Desktop-VOLC-OS-CAMPAIGN/a8fa8979-b491-4051-92bd-c4a1dab0c16d/scratchpad/shots/reduced",
+  "matriz": {
+    "viewports": [
+      "375x812",
+      "768x1024",
+      "1440x900",
+      "1920x1080"
+    ],
+    "temas": [
+      "light",
+      "dark"
+    ],
+    "cenas": 13,
+    "capturas": 104
+  },
+  "resumo_automatico": {
+    "capturas_com_overflow_horizontal": 0,
+    "capturas_com_erro_de_console": 0,
+    "capturas_que_falharam": 0,
+    "alvos_de_toque_abaixo_de_40px": 0,
+    "capturas_sem_landmark": 0
+  },
+  "reduced_motion": {
+    "capturas": 13,
+    "viewport": "1440x900",
+    "tema": "light",
+    "comparacao_byte_a_byte_com_o_modo_normal": "12 de 13 idênticas",
+    "ressalva": "A cena divergente é RUÍDO DE CAPTURA, não movimento: duas capturas da mesma cena no mesmo modo também diferem em bytes. A evidência conclusiva de reduced-motion é estrutural — o código novo não tem animate-*, não importa framer-motion e não declara keyframes; ver MOTION-MAP.md."
+  },
+  "cenas": [
+    {
+      "cena": "conversa__canal-nao-operado",
+      "rota": "/qa/trafego/conversa/canal-nao-operado",
+      "titulo": "Canal que o Hub não opera",
+      "afirma": "as treze etapas saem bloqueadas com a mesma dependência nomeada — não somem.",
+      "capturas": [
+        {
+          "arquivo": "conversa__canal-nao-operado__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__canal-nao-operado__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "conversa__sem-conversao",
+      "rota": "/qa/trafego/conversa/sem-conversao",
+      "titulo": "Canal cujo pedido não tem conversão",
+      "afirma": "`não se aplica` é distinto de `pendente`: é uma pergunta que não existe aqui.",
+      "capturas": [
+        {
+          "arquivo": "conversa__sem-conversao__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "conversa__sem-conversao__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__carregando",
+      "rota": "/qa/trafego/jornada/carregando",
+      "titulo": "A leitura falhou",
+      "afirma": "falha de leitura não é bloqueio, e a frase diz isso; há caminho de releitura.",
+      "capturas": [
+        {
+          "arquivo": "jornada__carregando__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__carregando__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__contrato-ausente",
+      "rota": "/qa/trafego/jornada/contrato-ausente",
+      "titulo": "Sessão sem papel para aprovar",
+      "afirma": "a etapa de aprovação fecha com o motivo, e não some da lista.",
+      "capturas": [
+        {
+          "arquivo": "jornada__contrato-ausente__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-ausente__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__contrato-parcial",
+      "rota": "/qa/trafego/jornada/contrato-parcial",
+      "titulo": "Fechado sem causa — lacuna do contrato",
+      "afirma": "BLOQUEADO sem bloqueador é declarado como lacuna, e nunca lido como permissão.",
+      "capturas": [
+        {
+          "arquivo": "jornada__contrato-parcial__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__contrato-parcial__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__demand-gen-porta-estreita",
+      "rota": "/qa/trafego/jornada/demand-gen-porta-estreita",
+      "titulo": "Performance Max — planeja, e a criação é retida por decisão",
+      "afirma": "bloqueio de `produto` somado a um de `observabilidade`; nenhum deles diz que falta código.",
+      "capturas": [
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__demand-gen-porta-estreita__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__display-politica",
+      "rota": "/qa/trafego/jornada/display-politica",
+      "titulo": "Demand Gen — prova desligada, criação recusada pelo manifesto",
+      "afirma": "dois bloqueios independentes, com origens diferentes (`servidor` e `manifesto`).",
+      "capturas": [
+        {
+          "arquivo": "jornada__display-politica__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__display-politica__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__fechado-sem-causa",
+      "rota": "/qa/trafego/jornada/fechado-sem-causa",
+      "titulo": "Lendo",
+      "afirma": "enquanto lê, a tela não desenha nenhum veredito.",
+      "capturas": [
+        {
+          "arquivo": "jornada__fechado-sem-causa__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__fechado-sem-causa__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__leitura-falhou",
+      "rota": "/qa/trafego/jornada/leitura-falhou",
+      "titulo": "O canal não veio na resposta",
+      "afirma": "ausência é dita como defeito do servidor, não como recusa dirigida ao operador.",
+      "capturas": [
+        {
+          "arquivo": "jornada__leitura-falhou__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__leitura-falhou__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__nao-apurado",
+      "rota": "/qa/trafego/jornada/nao-apurado",
+      "titulo": "Contrato truncado — portão ausente não é portão fechado",
+      "afirma": "os portões que não vieram dizem \"não veio\", e não desenham recusa.",
+      "capturas": [
+        {
+          "arquivo": "jornada__nao-apurado__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__nao-apurado__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__pmax-retido",
+      "rota": "/qa/trafego/jornada/pmax-retido",
+      "titulo": "Nada apurado — âmbar, nunca vermelho",
+      "afirma": "INDETERMINADO tem tom próprio; pintar ignorância de vermelho ensina a ignorar o vermelho.",
+      "capturas": [
+        {
+          "arquivo": "jornada__pmax-retido__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__pmax-retido__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__search-criavel",
+      "rota": "/qa/trafego/jornada/search-criavel",
+      "titulo": "Display — sabe criar, e a política recusa",
+      "afirma": "bloqueio de origem `politica` com revalidação declarada; o manifesto diz sabe_criar, o portão diz não.",
+      "capturas": [
+        {
+          "arquivo": "jornada__search-criavel__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__search-criavel__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    },
+    {
+      "cena": "jornada__sem-papel",
+      "rota": "/qa/trafego/jornada/sem-papel",
+      "titulo": "Sessão sem papel para aprovar",
+      "afirma": "a etapa de aprovação fecha com o motivo, e não some da lista.",
+      "capturas": [
+        {
+          "arquivo": "jornada__sem-papel__375x812__light.png",
+          "viewport": "375x812",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__375x812__dark.png",
+          "viewport": "375x812",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__768x1024__light.png",
+          "viewport": "768x1024",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__768x1024__dark.png",
+          "viewport": "768x1024",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__1440x900__light.png",
+          "viewport": "1440x900",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__1440x900__dark.png",
+          "viewport": "1440x900",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__1920x1080__light.png",
+          "viewport": "1920x1080",
+          "tema": "light",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        },
+        {
+          "arquivo": "jornada__sem-papel__1920x1080__dark.png",
+          "viewport": "1920x1080",
+          "tema": "dark",
+          "overflow_horizontal": false,
+          "erros_de_console": 0,
+          "alvos_abaixo_de_40px": 0,
+          "landmarks": [
+            "main",
+            "header"
+          ]
+        }
+      ]
+    }
+  ]
+}

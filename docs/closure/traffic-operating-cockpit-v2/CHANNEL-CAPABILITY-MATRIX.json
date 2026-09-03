@@ -1,0 +1,1714 @@
+{
+  "sprint": "traffic-operating-cockpit-v2",
+  "base_sha": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "gerado_por": "backend/app/trafego/contrato_canais.contrato_dos_canais() chamado DIRETO no processo Python, sem HTTP e sem rede. Nenhum valor abaixo foi escrito à mão: é a mesma função que serve GET /api/trafego/canais.",
+  "leitura_viva_do_google": false,
+  "por_que_sem_leitura_viva": "esta tela não consulta a conta do Google — ela gastaria quota do cliente a cada carregamento. A leitura de metas e sinal acontece quando um pedido é conferido.",
+  "avisos_de_leitura": [
+    "`mensuracao.lida` é SEMPRE false nesta rota e isso não é defeito: a rota não chama o Google Ads, e o que não foi observado sai dizendo que não foi observado. Medição provada vive em POST /provar e em GET /plano-de-mensuracao.",
+    "`ativavel` é BLOQUEADO em TODOS os canais e em TODOS os perfis. Não existe rota de ativação entre os 32 endpoints. Lista de bloqueadores vazia NUNCA é permissão.",
+    "Os quatro canais saem SEMPRE, inclusive os que não criam nada: esconder um canal sem construtor mentiria por omissão sobre o que a conta está gastando."
+  ],
+  "canais_sem_manifesto": {
+    "SHOPPING": "aparece no inventário e não tem manifesto — nenhuma capacidade pode ser afirmada.",
+    "VIDEO": "idem. A única descrição por canal é uma gramática do frontend, declarada como tal.",
+    "META": "manifesto com capacidades=() — nem ler é possível hoje."
+  },
+  "perfis": {
+    "servidor_desta_bancada": {
+      "SEARCH": {
+        "rotulo": "Search",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "keyword"
+        ],
+        "campos_do_pedido": [
+          "grupos",
+          "keywords",
+          "negativas",
+          "copy",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "sem_capacidade_de_escrita",
+                "origem": "servidor",
+                "causa": "a permissão operacional para escrever nas contas está fechada neste servidor.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "meta_efetiva_divergente",
+                "origem": "mensuracao",
+                "causa": "a única meta de conversão que esta campanha pode otimizar é 'download de aplicativo', e a conta declara oito ações de compra como primárias. Em lance manual isso não muda nada; em lance automático a campanha aprenderia a perseguir um objetivo que ninguém escolheu.",
+                "revalidacao": "a leitura viva das metas acontece ao provar um pedido para esta conta"
+              },
+              {
+                "codigo": "meta_efetiva_nao_lida",
+                "origem": "mensuracao",
+                "causa": "o sistema sabe quais ações de conversão a conta marcou como primárias, e ainda não sabe qual delas esta campanha efetivamente persegue. São perguntas diferentes, e a segunda é a que decide o lance automático.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "anuncios_em_revisao",
+                "origem": "observabilidade",
+                "causa": "a maior parte dos anúncios desta campanha ainda está em revisão pelo Google. Ligar a campanha antes do veredito é começar a gastar sobre uma decisão que ainda pode ser 'reprovado'.",
+                "revalidacao": "o veredito por anúncio é lido pela consulta de política"
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "sitelink",
+            "callout",
+            "structured_snippet"
+          ],
+          "quantidade": 4,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DISPLAY": {
+        "rotulo": "Display",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [
+          "a primeira fatia de Display não monta segmentação: a campanha nasce em inventário aberto, escolhido pelo lance. Tópicos, listas de público e demografia estão confirmados na matriz de API do canal e entram na fatia seguinte.",
+          "segmentação positiva por posicionamento não entra: a documentação oficial se contradiz — a tabela de critérios diz que não existe, e a configuração de rede da campanha fala em veicular nos posicionamentos especificados — e a prova por validate_only na conta real ainda não foi autorizada. Excluir posicionamento (negativo) é onde as duas fontes concordam.",
+          "sitelink, chamada e trecho estruturado não são montados em Display — a matriz não declara tipo nem campo para eles neste canal, e montá-los por analogia com Search subiria recurso que não veicula.",
+          "Display não aceita lance manual: a tabela oficial de estratégias não declara compatibilidade do CPC manual com este canal, e sem termo de busca ele não teria sinal que filtrasse inventário. Só maximizar conversões, com CPA-alvo dentro.",
+          "as palavras-chave do pedido não viram critério em Display; elas continuam servindo à triagem no cockpit."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "sem_capacidade_de_escrita",
+                "origem": "servidor",
+                "causa": "a permissão operacional para escrever nas contas está fechada neste servidor.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "fora_da_janela_do_canario",
+                "origem": "politica",
+                "causa": "a janela de criação autorizada hoje é somente Search, na conta 547-809-6539 (Portal Mundo Mais), sempre pausada. Display tem construtor pronto e continua fora dessa janela — abri-la é uma decisão do dono, não uma consequência de o construtor existir.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "logo",
+            "logo_quadrado",
+            "video_youtube"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DEMAND_GEN": {
+        "rotulo": "Demand Gen",
+        "sabe_provar": true,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance",
+          "upgraded_targeting",
+          "channel_controls",
+          "audiencias",
+          "intencoes",
+          "exclusoes_de_audiencia"
+        ],
+        "indisponibilidades": [
+          "Demand Gen pode ser montado e conferido por validate_only somente quando a capacidade experimental do servidor estiver ligada. Ela nasce desligada.",
+          "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+          "esta onda escolhe explicitamente o anúncio multi-asset; carrossel, vídeo responsivo e produto permanecem não suportados.",
+          "intenção e exclusão têm campos próprios, mas itens não vazios falham fechado até a documentação/SDK confirmarem operações compatíveis."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "demand_gen_experimental_desligado",
+                "origem": "servidor",
+                "causa": "a conferência de Demand Gen é uma porta experimental e nasce desligada neste servidor. Ela depende de uma versão específica do SDK do Google estar disponível aqui, e quem administra o sistema é que a liga.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "mutacao_real_recusada",
+                "origem": "manifesto",
+                "causa": "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "imagem_marketing_retrato",
+            "imagem_marketing_retrato_alto",
+            "logo_quadrado"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "PERFORMANCE_MAX": {
+        "rotulo": "Performance Max",
+        "sabe_provar": false,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler"
+        ],
+        "hierarquia": [
+          "campanha",
+          "asset_group",
+          "asset"
+        ],
+        "campos_do_pedido": [],
+        "indisponibilidades": [
+          "criar: Performance Max não está no registro do executor. O builder monta e serializa o plano offline; o que falta é uma decisão de produto, não o construtor. O canal existe no inventário porque a conta pode ter campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+          "provar por validate_only: a prova externa exige o canal habilitado no executor — mudança coordenada em subir.py, backend e plataforma.py."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "pmax_observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "criar uma campanha de Performance Max que este sistema não sabe reler seria criar algo que ninguém consegue acompanhar. O inventário enxerga a campanha; a estrutura interna dela — os grupos de recursos e os assets de cada um — não é lida por ninguém aqui, e é nela que Performance Max decide o que entrega. Enquanto isso não for provado, criar é assumir um gasto cego.",
+                "revalidacao": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só."
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "marketing",
+            "marketing_quadrada",
+            "marketing_retrato",
+            "logo",
+            "logo_paisagem"
+          ],
+          "quantidade": 5,
+          "fonte": "volc_ads/campanha/brief.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      }
+    },
+    "com_mutacao_aberta": {
+      "SEARCH": {
+        "rotulo": "Search",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "keyword"
+        ],
+        "campos_do_pedido": [
+          "grupos",
+          "keywords",
+          "negativas",
+          "copy",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "meta_efetiva_divergente",
+                "origem": "mensuracao",
+                "causa": "a única meta de conversão que esta campanha pode otimizar é 'download de aplicativo', e a conta declara oito ações de compra como primárias. Em lance manual isso não muda nada; em lance automático a campanha aprenderia a perseguir um objetivo que ninguém escolheu.",
+                "revalidacao": "a leitura viva das metas acontece ao provar um pedido para esta conta"
+              },
+              {
+                "codigo": "meta_efetiva_nao_lida",
+                "origem": "mensuracao",
+                "causa": "o sistema sabe quais ações de conversão a conta marcou como primárias, e ainda não sabe qual delas esta campanha efetivamente persegue. São perguntas diferentes, e a segunda é a que decide o lance automático.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "anuncios_em_revisao",
+                "origem": "observabilidade",
+                "causa": "a maior parte dos anúncios desta campanha ainda está em revisão pelo Google. Ligar a campanha antes do veredito é começar a gastar sobre uma decisão que ainda pode ser 'reprovado'.",
+                "revalidacao": "o veredito por anúncio é lido pela consulta de política"
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "sitelink",
+            "callout",
+            "structured_snippet"
+          ],
+          "quantidade": 4,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DISPLAY": {
+        "rotulo": "Display",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [
+          "a primeira fatia de Display não monta segmentação: a campanha nasce em inventário aberto, escolhido pelo lance. Tópicos, listas de público e demografia estão confirmados na matriz de API do canal e entram na fatia seguinte.",
+          "segmentação positiva por posicionamento não entra: a documentação oficial se contradiz — a tabela de critérios diz que não existe, e a configuração de rede da campanha fala em veicular nos posicionamentos especificados — e a prova por validate_only na conta real ainda não foi autorizada. Excluir posicionamento (negativo) é onde as duas fontes concordam.",
+          "sitelink, chamada e trecho estruturado não são montados em Display — a matriz não declara tipo nem campo para eles neste canal, e montá-los por analogia com Search subiria recurso que não veicula.",
+          "Display não aceita lance manual: a tabela oficial de estratégias não declara compatibilidade do CPC manual com este canal, e sem termo de busca ele não teria sinal que filtrasse inventário. Só maximizar conversões, com CPA-alvo dentro.",
+          "as palavras-chave do pedido não viram critério em Display; elas continuam servindo à triagem no cockpit."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "fora_da_janela_do_canario",
+                "origem": "politica",
+                "causa": "a janela de criação autorizada hoje é somente Search, na conta 547-809-6539 (Portal Mundo Mais), sempre pausada. Display tem construtor pronto e continua fora dessa janela — abri-la é uma decisão do dono, não uma consequência de o construtor existir.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "logo",
+            "logo_quadrado",
+            "video_youtube"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DEMAND_GEN": {
+        "rotulo": "Demand Gen",
+        "sabe_provar": true,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance",
+          "upgraded_targeting",
+          "channel_controls",
+          "audiencias",
+          "intencoes",
+          "exclusoes_de_audiencia"
+        ],
+        "indisponibilidades": [
+          "Demand Gen pode ser montado e conferido por validate_only somente quando a capacidade experimental do servidor estiver ligada. Ela nasce desligada.",
+          "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+          "esta onda escolhe explicitamente o anúncio multi-asset; carrossel, vídeo responsivo e produto permanecem não suportados.",
+          "intenção e exclusão têm campos próprios, mas itens não vazios falham fechado até a documentação/SDK confirmarem operações compatíveis."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "demand_gen_experimental_desligado",
+                "origem": "servidor",
+                "causa": "a conferência de Demand Gen é uma porta experimental e nasce desligada neste servidor. Ela depende de uma versão específica do SDK do Google estar disponível aqui, e quem administra o sistema é que a liga.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "mutacao_real_recusada",
+                "origem": "manifesto",
+                "causa": "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "imagem_marketing_retrato",
+            "imagem_marketing_retrato_alto",
+            "logo_quadrado"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "PERFORMANCE_MAX": {
+        "rotulo": "Performance Max",
+        "sabe_provar": false,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler"
+        ],
+        "hierarquia": [
+          "campanha",
+          "asset_group",
+          "asset"
+        ],
+        "campos_do_pedido": [],
+        "indisponibilidades": [
+          "criar: Performance Max não está no registro do executor. O builder monta e serializa o plano offline; o que falta é uma decisão de produto, não o construtor. O canal existe no inventário porque a conta pode ter campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+          "provar por validate_only: a prova externa exige o canal habilitado no executor — mudança coordenada em subir.py, backend e plataforma.py."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "pmax_observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "criar uma campanha de Performance Max que este sistema não sabe reler seria criar algo que ninguém consegue acompanhar. O inventário enxerga a campanha; a estrutura interna dela — os grupos de recursos e os assets de cada um — não é lida por ninguém aqui, e é nela que Performance Max decide o que entrega. Enquanto isso não for provado, criar é assumir um gasto cego.",
+                "revalidacao": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só."
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "marketing",
+            "marketing_quadrada",
+            "marketing_retrato",
+            "logo",
+            "logo_paisagem"
+          ],
+          "quantidade": 5,
+          "fonte": "volc_ads/campanha/brief.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      }
+    },
+    "com_demand_gen_ligado": {
+      "SEARCH": {
+        "rotulo": "Search",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "keyword"
+        ],
+        "campos_do_pedido": [
+          "grupos",
+          "keywords",
+          "negativas",
+          "copy",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "meta_efetiva_divergente",
+                "origem": "mensuracao",
+                "causa": "a única meta de conversão que esta campanha pode otimizar é 'download de aplicativo', e a conta declara oito ações de compra como primárias. Em lance manual isso não muda nada; em lance automático a campanha aprenderia a perseguir um objetivo que ninguém escolheu.",
+                "revalidacao": "a leitura viva das metas acontece ao provar um pedido para esta conta"
+              },
+              {
+                "codigo": "meta_efetiva_nao_lida",
+                "origem": "mensuracao",
+                "causa": "o sistema sabe quais ações de conversão a conta marcou como primárias, e ainda não sabe qual delas esta campanha efetivamente persegue. São perguntas diferentes, e a segunda é a que decide o lance automático.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "anuncios_em_revisao",
+                "origem": "observabilidade",
+                "causa": "a maior parte dos anúncios desta campanha ainda está em revisão pelo Google. Ligar a campanha antes do veredito é começar a gastar sobre uma decisão que ainda pode ser 'reprovado'.",
+                "revalidacao": "o veredito por anúncio é lido pela consulta de política"
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "sitelink",
+            "callout",
+            "structured_snippet"
+          ],
+          "quantidade": 4,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DISPLAY": {
+        "rotulo": "Display",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [
+          "a primeira fatia de Display não monta segmentação: a campanha nasce em inventário aberto, escolhido pelo lance. Tópicos, listas de público e demografia estão confirmados na matriz de API do canal e entram na fatia seguinte.",
+          "segmentação positiva por posicionamento não entra: a documentação oficial se contradiz — a tabela de critérios diz que não existe, e a configuração de rede da campanha fala em veicular nos posicionamentos especificados — e a prova por validate_only na conta real ainda não foi autorizada. Excluir posicionamento (negativo) é onde as duas fontes concordam.",
+          "sitelink, chamada e trecho estruturado não são montados em Display — a matriz não declara tipo nem campo para eles neste canal, e montá-los por analogia com Search subiria recurso que não veicula.",
+          "Display não aceita lance manual: a tabela oficial de estratégias não declara compatibilidade do CPC manual com este canal, e sem termo de busca ele não teria sinal que filtrasse inventário. Só maximizar conversões, com CPA-alvo dentro.",
+          "as palavras-chave do pedido não viram critério em Display; elas continuam servindo à triagem no cockpit."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "fora_da_janela_do_canario",
+                "origem": "politica",
+                "causa": "a janela de criação autorizada hoje é somente Search, na conta 547-809-6539 (Portal Mundo Mais), sempre pausada. Display tem construtor pronto e continua fora dessa janela — abri-la é uma decisão do dono, não uma consequência de o construtor existir.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "logo",
+            "logo_quadrado",
+            "video_youtube"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DEMAND_GEN": {
+        "rotulo": "Demand Gen",
+        "sabe_provar": true,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance",
+          "upgraded_targeting",
+          "channel_controls",
+          "audiencias",
+          "intencoes",
+          "exclusoes_de_audiencia"
+        ],
+        "indisponibilidades": [
+          "Demand Gen pode ser montado e conferido por validate_only somente quando a capacidade experimental do servidor estiver ligada. Ela nasce desligada.",
+          "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+          "esta onda escolhe explicitamente o anúncio multi-asset; carrossel, vídeo responsivo e produto permanecem não suportados.",
+          "intenção e exclusão têm campos próprios, mas itens não vazios falham fechado até a documentação/SDK confirmarem operações compatíveis."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "mutacao_real_recusada",
+                "origem": "manifesto",
+                "causa": "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "imagem_marketing_retrato",
+            "imagem_marketing_retrato_alto",
+            "logo_quadrado"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "PERFORMANCE_MAX": {
+        "rotulo": "Performance Max",
+        "sabe_provar": false,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler"
+        ],
+        "hierarquia": [
+          "campanha",
+          "asset_group",
+          "asset"
+        ],
+        "campos_do_pedido": [],
+        "indisponibilidades": [
+          "criar: Performance Max não está no registro do executor. O builder monta e serializa o plano offline; o que falta é uma decisão de produto, não o construtor. O canal existe no inventário porque a conta pode ter campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+          "provar por validate_only: a prova externa exige o canal habilitado no executor — mudança coordenada em subir.py, backend e plataforma.py."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "pmax_observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "criar uma campanha de Performance Max que este sistema não sabe reler seria criar algo que ninguém consegue acompanhar. O inventário enxerga a campanha; a estrutura interna dela — os grupos de recursos e os assets de cada um — não é lida por ninguém aqui, e é nela que Performance Max decide o que entrega. Enquanto isso não for provado, criar é assumir um gasto cego.",
+                "revalidacao": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só."
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "marketing",
+            "marketing_quadrada",
+            "marketing_retrato",
+            "logo",
+            "logo_paisagem"
+          ],
+          "quantidade": 5,
+          "fonte": "volc_ads/campanha/brief.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      }
+    },
+    "sessao_sem_admin": {
+      "SEARCH": {
+        "rotulo": "Search",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "keyword"
+        ],
+        "campos_do_pedido": [
+          "grupos",
+          "keywords",
+          "negativas",
+          "copy",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "sem_capacidade_de_prova",
+                "origem": "operador",
+                "causa": "mandar o Google conferir um pedido bate na conta do cliente e consome quota dela, então exige papel administrativo. A conferência não cria nada — mas ela também não é anônima.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "portao_anterior_fechado",
+                "origem": "operador",
+                "causa": "a escada é montar → conferir → criar, e o degrau anterior está fechado. Criar sem conferir é pular exatamente a etapa que separa 'montei um pedido' de 'tenho o direito de gastar'.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "sem_capacidade_de_escrita",
+                "origem": "operador",
+                "causa": "esta sessão não tem papel de administração.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "meta_efetiva_divergente",
+                "origem": "mensuracao",
+                "causa": "a única meta de conversão que esta campanha pode otimizar é 'download de aplicativo', e a conta declara oito ações de compra como primárias. Em lance manual isso não muda nada; em lance automático a campanha aprenderia a perseguir um objetivo que ninguém escolheu.",
+                "revalidacao": "a leitura viva das metas acontece ao provar um pedido para esta conta"
+              },
+              {
+                "codigo": "meta_efetiva_nao_lida",
+                "origem": "mensuracao",
+                "causa": "o sistema sabe quais ações de conversão a conta marcou como primárias, e ainda não sabe qual delas esta campanha efetivamente persegue. São perguntas diferentes, e a segunda é a que decide o lance automático.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "anuncios_em_revisao",
+                "origem": "observabilidade",
+                "causa": "a maior parte dos anúncios desta campanha ainda está em revisão pelo Google. Ligar a campanha antes do veredito é começar a gastar sobre uma decisão que ainda pode ser 'reprovado'.",
+                "revalidacao": "o veredito por anúncio é lido pela consulta de política"
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "sitelink",
+            "callout",
+            "structured_snippet"
+          ],
+          "quantidade": 4,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DISPLAY": {
+        "rotulo": "Display",
+        "sabe_provar": true,
+        "sabe_criar": true,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance"
+        ],
+        "indisponibilidades": [
+          "a primeira fatia de Display não monta segmentação: a campanha nasce em inventário aberto, escolhido pelo lance. Tópicos, listas de público e demografia estão confirmados na matriz de API do canal e entram na fatia seguinte.",
+          "segmentação positiva por posicionamento não entra: a documentação oficial se contradiz — a tabela de critérios diz que não existe, e a configuração de rede da campanha fala em veicular nos posicionamentos especificados — e a prova por validate_only na conta real ainda não foi autorizada. Excluir posicionamento (negativo) é onde as duas fontes concordam.",
+          "sitelink, chamada e trecho estruturado não são montados em Display — a matriz não declara tipo nem campo para eles neste canal, e montá-los por analogia com Search subiria recurso que não veicula.",
+          "Display não aceita lance manual: a tabela oficial de estratégias não declara compatibilidade do CPC manual com este canal, e sem termo de busca ele não teria sinal que filtrasse inventário. Só maximizar conversões, com CPA-alvo dentro.",
+          "as palavras-chave do pedido não viram critério em Display; elas continuam servindo à triagem no cockpit."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "sem_capacidade_de_prova",
+                "origem": "operador",
+                "causa": "mandar o Google conferir um pedido bate na conta do cliente e consome quota dela, então exige papel administrativo. A conferência não cria nada — mas ela também não é anônima.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "portao_anterior_fechado",
+                "origem": "operador",
+                "causa": "a escada é montar → conferir → criar, e o degrau anterior está fechado. Criar sem conferir é pular exatamente a etapa que separa 'montei um pedido' de 'tenho o direito de gastar'.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "sem_capacidade_de_escrita",
+                "origem": "operador",
+                "causa": "esta sessão não tem papel de administração.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "fora_da_janela_do_canario",
+                "origem": "politica",
+                "causa": "a janela de criação autorizada hoje é somente Search, na conta 547-809-6539 (Portal Mundo Mais), sempre pausada. Display tem construtor pronto e continua fora dessa janela — abri-la é uma decisão do dono, não uma consequência de o construtor existir.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "logo",
+            "logo_quadrado",
+            "video_youtube"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "DEMAND_GEN": {
+        "rotulo": "Demand Gen",
+        "sabe_provar": true,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler",
+          "propor"
+        ],
+        "hierarquia": [
+          "campanha",
+          "grupo",
+          "anuncio",
+          "asset"
+        ],
+        "campos_do_pedido": [
+          "copy",
+          "criativos",
+          "url_final",
+          "verba_diaria",
+          "estrategia_de_lance",
+          "upgraded_targeting",
+          "channel_controls",
+          "audiencias",
+          "intencoes",
+          "exclusoes_de_audiencia"
+        ],
+        "indisponibilidades": [
+          "Demand Gen pode ser montado e conferido por validate_only somente quando a capacidade experimental do servidor estiver ligada. Ela nasce desligada.",
+          "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+          "esta onda escolhe explicitamente o anúncio multi-asset; carrossel, vídeo responsivo e produto permanecem não suportados.",
+          "intenção e exclusão têm campos próprios, mas itens não vazios falham fechado até a documentação/SDK confirmarem operações compatíveis."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "sem_capacidade_de_prova",
+                "origem": "operador",
+                "causa": "mandar o Google conferir um pedido bate na conta do cliente e consome quota dela, então exige papel administrativo. A conferência não cria nada — mas ela também não é anônima.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "demand_gen_experimental_desligado",
+                "origem": "servidor",
+                "causa": "a conferência de Demand Gen é uma porta experimental e nasce desligada neste servidor. Ela depende de uma versão específica do SDK do Google estar disponível aqui, e quem administra o sistema é que a liga.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "mutacao_real_recusada",
+                "origem": "manifesto",
+                "causa": "criação real continua recusada em /subir, no canário e no executor, mesmo depois de uma prova aceita.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "ninguém contou quantas campanhas deste canal foram lidas de volta nesta sessão.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "texto",
+            "imagem_marketing",
+            "imagem_marketing_quadrada",
+            "imagem_marketing_retrato",
+            "imagem_marketing_retrato_alto",
+            "logo_quadrado"
+          ],
+          "quantidade": 6,
+          "fonte": "volc_ads/campanha/perfil.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      },
+      "PERFORMANCE_MAX": {
+        "rotulo": "Performance Max",
+        "sabe_provar": false,
+        "sabe_criar": false,
+        "capacidades_declaradas": [
+          "ler"
+        ],
+        "hierarquia": [
+          "campanha",
+          "asset_group",
+          "asset"
+        ],
+        "campos_do_pedido": [],
+        "indisponibilidades": [
+          "criar: Performance Max não está no registro do executor. O builder monta e serializa o plano offline; o que falta é uma decisão de produto, não o construtor. O canal existe no inventário porque a conta pode ter campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+          "provar por validate_only: a prova externa exige o canal habilitado no executor — mudança coordenada em subir.py, backend e plataforma.py."
+        ],
+        "portoes": {
+          "planejavel": {
+            "estado": "PERMITIDO",
+            "aberto": true,
+            "bloqueadores": []
+          },
+          "validavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              }
+            ]
+          },
+          "criavel_pausada": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "PMAX_FORA_DO_EXECUTOR",
+                "origem": "produto",
+                "causa": "Performance Max monta o plano inteiro aqui, sem falar com o Google — e não está habilitado nesta versão para ser conferido nem criado. Isso não é falha, não é ausência e não é zero: é uma decisão registrada, e ela existe porque habilitar o canal no executor derrubaria a criação dos outros três.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "pmax_observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "criar uma campanha de Performance Max que este sistema não sabe reler seria criar algo que ninguém consegue acompanhar. O inventário enxerga a campanha; a estrutura interna dela — os grupos de recursos e os assets de cada um — não é lida por ninguém aqui, e é nela que Performance Max decide o que entrega. Enquanto isso não for provado, criar é assumir um gasto cego.",
+                "revalidacao": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só."
+              }
+            ]
+          },
+          "ativavel": {
+            "estado": "BLOQUEADO",
+            "aberto": false,
+            "bloqueadores": [
+              {
+                "codigo": "ativacao_fora_de_escopo",
+                "origem": "produto",
+                "causa": "despausar campanha não é uma ação que este sistema executa. A janela autorizada cria sempre pausada, e ligar uma campanha continua sendo um ato feito por uma pessoa, no painel do Google, com consciência do gasto que começa ali.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "politica_nao_inclui_ativacao",
+                "origem": "politica",
+                "causa": "a autorização em vigor cobre criar pausada e nada além. Ativar é outro ato, e ele não foi autorizado.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "mensuracao_nao_lida",
+                "origem": "mensuracao",
+                "causa": "ninguém leu a conta para saber se existe meta de conversão e sinal chegando. Ativar sem essa leitura é deixar a campanha aprender do que ninguém mediu.",
+                "revalidacao": null
+              },
+              {
+                "codigo": "observabilidade_nao_provada",
+                "origem": "observabilidade",
+                "causa": "Performance Max é inventariado como qualquer campanha da conta, e a estrutura interna dele — grupos de recursos e seus assets — só é relida quando alguém fotografa a campanha e a fotografia volta do ledger. Ninguém releu esta campanha ainda, então o que a tela mostra deste canal é o nível da campanha, e só.",
+                "revalidacao": null
+              }
+            ]
+          }
+        },
+        "assets": {
+          "estado": "PERMITIDO",
+          "recursos": [
+            "marketing",
+            "marketing_quadrada",
+            "marketing_retrato",
+            "logo",
+            "logo_paisagem"
+          ],
+          "quantidade": 5,
+          "fonte": "volc_ads/campanha/brief.py",
+          "causa": null
+        },
+        "mensuracao_lida_nesta_rota": false
+      }
+    }
+  }
+}
