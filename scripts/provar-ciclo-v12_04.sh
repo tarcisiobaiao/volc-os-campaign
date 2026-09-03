@@ -162,6 +162,16 @@ prova "o zero medido do teste de papel entrou como zero" \
 prova "a métrica não enviada continua NULL" \
   "[ \"\$(q \"select conversoes is null from public.google_ads_campanha_dia where campaign_id='1234567'\")\" = t ]"
 
+# A prova sequencial acima não autoriza alegar concorrência. Este degrau roda um
+# segundo Postgres descartável, com duas conexões psql independentes, transações
+# sobrepostas e observação material de wait_event_type='Lock'.
+echo; echo "DEGRAU 2-ter — concorrência atômica real"
+if bash "$RAIZ/scripts/provar-concorrencia-v12_04.sh"; then
+  ok=$((ok + 3))
+else
+  falhou=$((falhou + 1))
+fi
+
 echo; echo "DEGRAU 3 — reverter"
 recusa "rollback com dado gravado é RECUSADO sem declaração de perda" \
   "docker exec -i '$C' psql -U postgres -d postgres -v ON_ERROR_STOP=1 -X -q -f - < '$RAIZ/supabase/migrations/v12_04_rollback.sql'"

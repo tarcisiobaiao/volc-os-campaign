@@ -659,6 +659,34 @@ BEGIN
   );
   v_payload := encode(sha256(convert_to(v_hash_alvo::text, 'UTF8')), 'hex');
 
+  -- Esta RPC foi desenhada e provada em READ COMMITTED. Em isolamento de
+  -- snapshot fixo, uma sessão que esperou o lock poderia continuar sem enxergar
+  -- o recibo recém-commitado pela vencedora e cair em UNIQUE. Falhar com nome é
+  -- melhor do que fingir idempotência fora do contrato testado.
+  IF current_setting('transaction_isolation') <> 'read committed' THEN
+    RAISE EXCEPTION USING ERRCODE = '25001',
+      MESSAGE = 'ISOLAMENTO_NAO_SUPORTADO_V12_04: use READ COMMITTED para a RPC';
+  END IF;
+
+  -- Locks por identidade de fato são tomados ANTES do lock de idempotência e em
+  -- ordem determinística. Isso evita deadlock entre duas execuções com chaves
+  -- distintas que disputam os mesmos fatos em ordem oposta.
+  PERFORM pg_advisory_xact_lock(hashtextextended('v12_04:fato:' || k, 0))
+    FROM (
+      SELECT DISTINCT
+             coalesce(x->>'customer_id', '<null>') || '|' ||
+             coalesce(x->>'campaign_id', '<null>') || '|' ||
+             coalesce(x->>'metric_date', '<null>') || '|' ||
+             encode(sha256(convert_to(coalesce(x->'segmentos', '{}'::jsonb)::text, 'UTF8')), 'hex') AS k
+        FROM jsonb_array_elements(v_linhas) x
+       ORDER BY 1
+    ) s;
+
+  -- Depois dos locks de fato, serializamos a chave de idempotência. Sem este
+  -- lock, duas transações iguais podiam ambas não ver o recibo invisível da
+  -- outra; a perdedora quebrava em UNIQUE depois de já disputar fato.
+  PERFORM pg_advisory_xact_lock(hashtextextended('v12_04:idempotencia:' || v_chave, 0));
+
   -- ── idempotencia com memoria ─────────────────────────────────────────────
   SELECT * INTO v_existente
     FROM public.trafego_coleta_execucao
@@ -759,7 +787,14 @@ BEGIN
       v_seg_hash := encode(sha256(convert_to(v_seg::text, 'UTF8')), 'hex');
       v_precedencia := CASE v_origem WHEN 'D0' THEN 1 WHEN 'D-1' THEN 2 ELSE 3 END;
 
-      SELECT g.precedencia, g.colhida_em, g.execucao_id
+      -- Lock transacional por identidade canonica do fato. Ele torna falsa a
+      -- leitura concorrente 'nao existe ainda' e permite que a segunda sessao
+      -- decida contra o fato materializado pela primeira.
+      PERFORM pg_advisory_xact_lock(hashtextextended(
+        'v12_04:fato:' || (v_linha->>'customer_id') || '|' || (v_linha->>'campaign_id')
+        || '|' || (v_linha->>'metric_date') || '|' || v_seg_hash, 0));
+
+      SELECT g.*
         INTO v_atual
         FROM public.google_ads_campanha_dia g
        WHERE g.customer_id   = v_linha->>'customer_id'
@@ -783,6 +818,33 @@ BEGIN
         END IF;
 
         -- precedencia total e declarada
+        -- Empate total é determinístico e conservador: se o conteúdo é o
+        -- mesmo, o primeiro fato materializado fica e o segundo deixa recibo
+        -- coerente como preterido. Se o conteúdo diverge no mesmo posto e mesmo
+        -- colhida_em, não é idempotência: é conflito explícito.
+        IF v_precedencia = v_atual.precedencia
+           AND (v_linha->>'colhida_em')::timestamptz = v_atual.colhida_em THEN
+          IF (v_linha->>'currency_code') IS DISTINCT FROM v_atual.currency_code
+             OR ((v_linha->>'impressoes')::bigint IS DISTINCT FROM v_atual.impressoes)
+             OR ((v_linha->>'cliques')::bigint IS DISTINCT FROM v_atual.cliques)
+             OR ((v_linha->>'interacoes')::bigint IS DISTINCT FROM v_atual.interacoes)
+             OR ((v_linha->>'custo_micros')::bigint IS DISTINCT FROM v_atual.custo_micros)
+             OR ((v_linha->>'conversoes')::numeric IS DISTINCT FROM v_atual.conversoes)
+             OR ((v_linha->>'todas_conversoes')::numeric IS DISTINCT FROM v_atual.todas_conversoes)
+             OR ((v_linha->>'valor_conversoes')::numeric IS DISTINCT FROM v_atual.valor_conversoes)
+             OR ((v_linha->>'valor_todas_conversoes')::numeric IS DISTINCT FROM v_atual.valor_todas_conversoes)
+             OR ((v_linha->>'ctr')::numeric IS DISTINCT FROM v_atual.ctr)
+             OR ((v_linha->>'cpc_medio_micros')::numeric IS DISTINCT FROM v_atual.cpc_medio_micros)
+             OR ((v_linha->>'custo_por_conversao_micros')::numeric IS DISTINCT FROM v_atual.custo_por_conversao_micros) THEN
+            RAISE EXCEPTION USING ERRCODE = '22023',
+              MESSAGE = 'FATO_EMPATE_CONTEUDO_DIVERGENTE: '
+                        || (v_linha->>'customer_id') || '/' || (v_linha->>'campaign_id')
+                        || '/' || (v_linha->>'metric_date');
+          END IF;
+          v_preteridas := v_preteridas + 1;
+          CONTINUE;
+        END IF;
+
         IF v_precedencia < v_atual.precedencia
            OR (v_precedencia = v_atual.precedencia
                AND (v_linha->>'colhida_em')::timestamptz < v_atual.colhida_em) THEN

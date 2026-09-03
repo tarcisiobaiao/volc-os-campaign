@@ -1,0 +1,70 @@
+{
+  "mission": "hermes-p10-t17-gads-ledger-concurrency-v1",
+  "verdict": "P10_T17_ACCEPTED",
+  "base": {
+    "repo": "tarcisiobaiao/volc-os-campaign",
+    "source_branch": "origin/volc-os-v2",
+    "expected_sha": "34dc7b41bce901bd8bebfdec0a01e293678cbf08",
+    "confirmed": true
+  },
+  "task": {
+    "id": "P10-T17",
+    "title": "Fechar concorrência atômica da RPC v12_04 antes da migration oficial",
+    "status": "accepted",
+    "official_migration_applied": false,
+    "eligible_for_future_official_window": true
+  },
+  "evidence": {
+    "baseline_red": "BASELINE_RED_CONFIRMED: true concurrent retry produced non-idempotent loser under observed Lock wait",
+    "lock_wait_observed": true,
+    "wait_event_type": "Lock",
+    "postgres_disposable": true,
+    "independent_connections": 2,
+    "overlapping_transactions": true,
+    "concurrency_gate": {
+      "command": "bash scripts/provar-concorrencia-v12_04.sh",
+      "passed": 5,
+      "failed": 0
+    },
+    "cycle_gate": {
+      "command": "bash scripts/provar-ciclo-v12_04.sh",
+      "passed": 110,
+      "failed": 0,
+      "cycle": "apply_operate_rollback_reapply"
+    }
+  },
+  "contract": {
+    "authority": "postgres_rpc",
+    "rpc": "public.volc_registrar_gads_campanha_dia(jsonb)",
+    "isolation_level": "READ COMMITTED",
+    "lock_mechanism": "pg_advisory_xact_lock",
+    "fact_identity": ["customer_id", "campaign_id", "metric_date", "segments_hash"],
+    "idempotency_identity": "chave_idempotencia",
+    "tie_policy": "first_writer_wins_for_identical_content_explicit_conflict_for_divergent_content"
+  },
+  "curation": {
+    "p10_t17": "accepted",
+    "v12_04_official_migration": "eligible_not_applied",
+    "roadmap_edit": false,
+    "graph_edit": false,
+    "recommended_next_step": "schedule_separate_authorized_supabase_official_migration_window"
+  },
+  "external_mutation": {
+    "supabase_official_write": false,
+    "google_ads_call": false,
+    "google_ads_mutate": false,
+    "data_manager": false,
+    "n8n_write_or_activation": false,
+    "deploy": false,
+    "merge_to_volc_os_v2_or_main": false
+  },
+  "files_changed": [
+    "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+    "scripts/provar-ciclo-v12_04.sh",
+    "scripts/provar-concorrencia-v12_04.sh",
+    "docs/closure/hermes-p10-t17-gads-ledger-concurrency-v1/HANDOFF.md",
+    "docs/closure/hermes-p10-t17-gads-ledger-concurrency-v1/GATES.md",
+    "docs/closure/hermes-p10-t17-gads-ledger-concurrency-v1/CONCURRENCY-PROOF.md",
+    "docs/closure/hermes-p10-t17-gads-ledger-concurrency-v1/CURATION-HANDOFF.json"
+  ]
+}
