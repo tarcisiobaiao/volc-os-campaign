@@ -413,11 +413,38 @@ def test_cp23_o_formato_cita_os_observaveis_que_o_produziram():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def test_cp25_a_camada_nao_tem_efeito_externo():
+    """Lido por AST, não por substring: um scanner de texto acusaria a própria
+    frase do docstring que promete não fazer isso, e um teste que falha na
+    própria promessa ensina a apagar a promessa."""
+    import ast
     import app.validacao.oportunidade as mod
-    fonte = open(mod.__file__, encoding="utf-8").read().lower()
-    for proibido in ("mutate", "httpx", "requests", "wordpress", "publicar",
-                     "googleads", "supabase", "aiohttp"):
-        assert proibido not in fonte, f"{proibido!r} aparece na Camada 2"
+
+    arvore = ast.parse(open(mod.__file__, encoding="utf-8").read())
+
+    importados = set()
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Import):
+            importados.update(a.name.split(".")[0] for a in no.names)
+        elif isinstance(no, ast.ImportFrom) and no.module:
+            importados.add(no.module.split(".")[0])
+            importados.add(no.module)
+
+    for proibido in ("httpx", "requests", "aiohttp", "urllib", "socket",
+                     "subprocess", "google", "googleads"):
+        assert proibido not in importados, f"import proibido: {proibido!r}"
+
+    # o único acoplamento permitido é ler primitivas de estado/fronteira
+    externos = {m for m in importados if m.startswith("app.")}
+    assert externos <= {
+        "app.agents.mining.paid_eligibility",
+        "app.agents.mining.ponte_editorial",
+    }, f"acoplamento inesperado: {externos}"
+
+    chamadas = {no.func.attr for no in ast.walk(arvore)
+                if isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)}
+    for proibida in ("mutate", "post", "put", "patch", "delete", "insert",
+                     "upsert", "select", "publicar"):
+        assert proibida not in chamadas, f"chamada proibida: {proibida!r}"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
