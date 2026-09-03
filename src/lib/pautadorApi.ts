@@ -15,6 +15,7 @@ import type {
   PautadorCountry,
 } from '@/types/pautador';
 import type { ValidacaoRelatorio } from '@/types/pautadorValidacao';
+import type { TesesResposta } from '@/types/pautadorOportunidade';
 import type {
   ClickupDispatch,
   EntityCard,
@@ -425,6 +426,22 @@ export const pautadorApi = {
     total: number;
   }> {
     return request(`/api/pautador/entity-opportunities/${opportunityId}/axes`);
+  },
+
+  /** As TESES já deriváveis do que foi medido. Leitura pura: não mede, não
+   *  gasta e não chama API externa. Por isso pode ser pedida para a coluna
+   *  inteira sempre que a lista muda.
+   *
+   *  A resposta separa `ranking` de `fora_do_ranking` de propósito: card sem
+   *  cobertura mínima não entra na ordenação e também não some da tela. */
+  entityTeses(params: {
+    opportunity_ids?: number[]; country_code?: string; status?: string;
+    limite?: number; aplicar_priors?: boolean;
+  }): Promise<TesesResposta> {
+    return request('/api/pautador/entity-opportunities/teses', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
   },
 
   /** A coluna inteira numa passada — o caminho PADRÃO. A base de US$ 0,012 por

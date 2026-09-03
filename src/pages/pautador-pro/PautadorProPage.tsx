@@ -15,6 +15,7 @@ import { useEntityPautador } from '@/hooks/pautador/useEntityPautador';
 import { KpiCards } from '@/components/pautador-pro/KpiCards';
 import { EntityKanbanBoard } from '@/components/pautador-pro/entity/EntityKanbanBoard';
 import { EntityDrawer } from '@/components/pautador-pro/entity/EntityDrawer';
+import { ComparadorDeOportunidades } from '@/components/pautador-pro/entity/ComparadorDeOportunidades';
 import { ManualEntityDialog } from '@/components/pautador-pro/entity/ManualEntityDialog';
 import { DuplicateEntityDialog } from '@/components/pautador-pro/entity/DuplicateEntityDialog';
 import { DispararRedatorDialog } from '@/components/pautador-pro/entity/DispararRedatorDialog';
@@ -87,6 +88,7 @@ const PautadorProContent: React.FC = () => {
     toggleFunnelCompleted, createManualEntity,
     enrichEntity,
     medirCard, medirColuna, medindo, medindoLote, ultimoLote, progresso,
+    teses, tesesCarregando, tesesErro,
   } = useEntityPautador();
 
   const [activeTab, setActiveTab] = useState('kanban');
@@ -203,7 +205,23 @@ const PautadorProContent: React.FC = () => {
                 </div>
               )
             ) : (
-              <EntityKanbanBoard cards={cards} busyKeys={busyKeys} miningKeys={miningKeys} buildingKeys={buildingKeys} doneKeys={doneKeys} onCardClick={openCard} onStatusChange={moveEntity} onToggleComplete={toggleFunnelCompleted} onEscreverFunil={setAlvoDoRedator} onAddManual={() => setManualOpen(true)} onAddEnrich={() => setEnrichOpen(true)} onDuplicate={setDuplicateTarget} onMedirColuna={medirColuna} medindoLote={medindoLote} ultimoLote={ultimoLote} medindo={medindo} progresso={progresso} />
+              <>
+                <EntityKanbanBoard cards={cards} busyKeys={busyKeys} miningKeys={miningKeys} buildingKeys={buildingKeys} doneKeys={doneKeys} onCardClick={openCard} onStatusChange={moveEntity} onToggleComplete={toggleFunnelCompleted} onEscreverFunil={setAlvoDoRedator} onAddManual={() => setManualOpen(true)} onAddEnrich={() => setEnrichOpen(true)} onDuplicate={setDuplicateTarget} onMedirColuna={medirColuna} medindoLote={medindoLote} ultimoLote={ultimoLote} medindo={medindo} progresso={progresso} />
+                {/* A comparação só aparece quando há coluna de validação. Ela
+                    não mede e não gasta: lê o que já foi gravado. */}
+                {(teses?.ranking.length || teses?.fora_do_ranking.length || tesesCarregando) ? (
+                  <ComparadorDeOportunidades
+                    dados={teses}
+                    carregando={tesesCarregando}
+                    erro={tesesErro}
+                    selecionadaId={selected?.id ?? null}
+                    onSelecionar={(t) => {
+                      const alvo = cards.find((c) => c.id === t.opportunity_id);
+                      if (alvo) openCard(alvo);
+                    }}
+                  />
+                ) : null}
+              </>
             )}
           </TabsContent>
 
@@ -218,6 +236,7 @@ const PautadorProContent: React.FC = () => {
         </Tabs>
 
         <EntityDrawer
+          tese={selected?.id ? (teses?.teses.find((t) => t.opportunity_id === selected.id) ?? null) : null}
           onMedir={medirCard}
           medindo={medindo}
           progresso={progresso}

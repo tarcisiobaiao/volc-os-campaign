@@ -10,6 +10,7 @@ import { Loader2, Pickaxe, Workflow, Check, X, Landmark, RotateCw, Trash2, Light
 import { TierBadge } from '@/components/pautador-pro/TierBadge';
 import { STATUS_LABELS } from '@/types/pautador';
 import type { OpportunityStatus, Tier } from '@/types/pautador';
+import type { TeseDeOportunidade } from '@/types/pautadorOportunidade';
 import { entityKey, entitySubtitle, funnelRoleLabel, funnelSummary, funnelTitle } from '@/types/pautadorEntity';
 import type { EntityCard, EntityFunnelResponse, EntityMineResponse } from '@/types/pautadorEntity';
 import { BriefingAcoes } from './BriefingAcoes';
@@ -63,10 +64,13 @@ export const EntityDrawer: React.FC<EntityDrawerProps & {
   onMedir?: (card: EntityCard) => void;
   medindo?: Set<string>;
   progresso?: Record<string, EixoEmProgresso[]>;
+  /** A tese DESTE card, já derivada no servidor. Ausente é estado válido: o
+   *  painel de eixos continua legível sem ela. */
+  tese?: TeseDeOportunidade | null;
 }> = ({
   card, open, onOpenChange, mineResult, funnelResult, busy, onMove, onMine, onFunnel, onValidate,
   onRerun, onDelete, onSaveInsights, onSaveTaskDescription, onSaveDisplayTitle,
-  onMedir, medindo, progresso,
+  onMedir, medindo, progresso, tese,
 }) => {
   // keywords mineradas (n8n ou interno) vivem em pautador_keyword_clusters
   const [cluster, setCluster] = useState<ClusterRow | null>(null);
@@ -232,6 +236,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps & {
           <TabsContent value="validacao" className="pt-3">
             <ValidacaoPainel
               validacao={card.validacao}
+              tese={tese}
               medindo={!!card.id && medindo?.has(entityKey(card))}
               progresso={card.id ? progresso?.[entityKey(card)] : undefined}
               onMedir={onMedir ? () => onMedir(card) : undefined}

@@ -37,6 +37,7 @@ from app.entities.orchestrator import (
 )
 from app.entities.schemas import (
     EntityCard,
+    EntityTesesRequest,
     EntityValidateBatchRequest,
     EntityDiscoveryRequest,
     EntityDiscoveryResponse,
@@ -1172,6 +1173,66 @@ async def entity_axes(opp_id: int) -> Dict[str, Any]:
          "order": "medido_em.asc"},
     )
     return {"eixos": linhas, "total": len(linhas)}
+
+
+@router.post("/entity-opportunities/teses")
+async def entity_teses(body: EntityTesesRequest) -> Dict[str, Any]:
+    """As TESES de oportunidade dos cards pedidos. Leitura pura.
+
+    Não mede, não gasta e não chama nenhuma API externa: a tese é derivada do
+    `validacao` que o Validador já gravou, pela Camada 2
+    (`app.validacao.oportunidade`). É por isso que ela pode ser pedida para a
+    coluna inteira sem custo.
+
+    A resposta separa `ranking` de `fora_do_ranking` de propósito. Card sem
+    cobertura mínima NÃO some da tela: ele volta em `fora_do_ranking` com o
+    motivo escrito. Sumir seria a ordenação silenciosa que a tela existe para
+    não fazer.
+    """
+    from app.validacao.oportunidade import comparar, tese_do_resumo
+
+    settings = get_settings()
+    supa = SupabaseService(settings)
+    if not supa.enabled:
+        raise HTTPException(status_code=503, detail="Supabase não configurado")
+
+    filtro: Dict[str, str] = {
+        "select": "id,validacao,pautador_entities(canonical_name,full_name)",
+    }
+    ids = [int(i) for i in (body.opportunity_ids or [])]
+    if ids:
+        filtro["id"] = f"in.({','.join(str(i) for i in ids)})"
+    elif body.country_code:
+        filtro["country_code"] = f"eq.{body.country_code.upper()}"
+        if body.status:
+            filtro["status"] = f"eq.{body.status}"
+        filtro["limit"] = str(body.limite or 60)
+    else:
+        return {"teses": [], "ranking": [], "fora_do_ranking": [],
+                "aviso": "nenhum card selecionado"}
+
+    linhas = await supa.select("pautador_entity_opportunities", filtro)
+
+    teses = []
+    por_id: Dict[int, Any] = {}
+    for r in linhas:
+        ent = r.get("pautador_entities") or {}
+        if isinstance(ent, list):
+            ent = ent[0] if ent else {}
+        tema = (ent.get("canonical_name") or ent.get("full_name") or "").strip() or f"card {r.get('id')}"
+        t = tese_do_resumo(r.get("validacao"), tema=tema,
+                           aplicar_priors=bool(body.aplicar_priors))
+        por_id[int(r["id"])] = t
+        teses.append({"opportunity_id": int(r["id"]), **t.como_dicionario()})
+
+    ranking, fora = comparar(list(por_id.values()))
+    inverso = {id(v): k for k, v in por_id.items()}
+    return {
+        "teses": teses,
+        "ranking": [{"opportunity_id": inverso[id(t)], **t.como_dicionario()} for t in ranking],
+        "fora_do_ranking": [{"opportunity_id": inverso[id(t)], **t.como_dicionario()} for t in fora],
+        "total": len(teses),
+    }
 
 
 @router.post("/entity-opportunities/validate-batch")

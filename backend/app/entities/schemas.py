@@ -336,6 +336,22 @@ class EntityFunnelResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class EntityTesesRequest(BaseModel):
+    """Entrada da leitura de TESES. Não mede, não gasta, não chama API.
+
+    A tese é derivada do `validacao` que já está gravado. Pedir tese de um card
+    nunca dispara medição — se não há resumo, a resposta é `sem_validacao`, que
+    é uma lacuna declarada e não um veredito sobre o tema.
+    """
+
+    opportunity_ids: List[int] = Field(default_factory=list)
+    country_code: Optional[str] = None
+    status: Optional[str] = None
+    limite: Optional[int] = 60
+    # Priors do benchmark entram como HIPÓTESE marcada, nunca movem a decisão.
+    aplicar_priors: bool = False
+
+
 class EntityValidateBatchRequest(BaseModel):
     """Entrada da validação em LOTE — o caminho padrão da coluna.
 
