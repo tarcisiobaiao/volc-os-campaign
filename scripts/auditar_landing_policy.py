@@ -245,16 +245,45 @@ def main() -> int:
         args.evidencia = args.matriz = True
 
     if args.matriz:
+        # ⚠️ `--saida` com `--matriz` E `--evidencia` juntos é ambíguo: são dois
+        # artefatos e um destino só. Recusar é mais honesto que escolher por
+        # conta própria — foi exatamente a escolha implícita que apagava a
+        # evidência antes.
+        if args.saida and args.evidencia:
+            print(
+                "erro · --saida não pode servir a --matriz e --evidencia na mesma "
+                "chamada: são dois artefatos e um destino. Rode duas vezes.",
+                file=sys.stderr,
+            )
+            return 2
         matriz = escrever_matriz()
-        _gravar(args.saida or MATRIZ, matriz)
-        print(f"ok · matriz com {matriz['_generated']['rule_count']} regras → {args.saida or MATRIZ}")
+        destino_matriz = args.saida or MATRIZ
+        _gravar(destino_matriz, matriz)
+        print(f"ok · matriz com {matriz['_generated']['rule_count']} regras → {destino_matriz}")
 
     if args.evidencia:
+        # ⚠️ ISTO ERA UM BUG DESTRUTIVO DE PRECEDÊNCIA, e ele apagava evidência.
+        #
+        # A expressão anterior era
+        #     args.saida or RECIBOS if not args.matriz else RECIBOS
+        # que o Python lê como
+        #     (args.saida or RECIBOS) if (not args.matriz) else RECIBOS
+        # — ou seja, `--matriz --evidencia --saida X` escrevia a MATRIZ em X e
+        # sobrescrevia `GATE-RECEIPTS.json` IN PLACE, sem backup. Esse arquivo é
+        # citado como evidência E6 pelo pacote de apelação; perdê-lo por uma
+        # combinação de flags seria destruir prova com um comando de leitura.
+        #
+        # `--saida`, quando dado, manda. Sempre. Um destino explícito não pode
+        # ser silenciosamente ignorado por causa de outra flag.
         recibos = auditar_evidencia()
-        _gravar(args.saida or RECIBOS if not args.matriz else RECIBOS, recibos)
+        destino_recibos = args.saida or RECIBOS
+        _gravar(destino_recibos, recibos)
         c = recibos["counts"]
+        # E o caminho impresso é o caminho ESCRITO. Antes ele dizia sempre
+        # `RECIBOS`, mesmo tendo escrito noutro lugar — um relatório que mente
+        # sobre onde pôs o arquivo é como se descobre o arquivo errado depois.
         print(f"ok · {c['receipts']} recibos · {c['blocked']} bloqueados · "
-              f"{c['ready']} prontos → {RECIBOS}")
+              f"{c['ready']} prontos → {destino_recibos}")
 
     if args.ao_vivo:
         recibo = auditar_ao_vivo(args.ao_vivo)
