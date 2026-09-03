@@ -29,6 +29,8 @@
  * decisão que o backend existe para tomar.
  */
 
+import type { ManifestoDeCanal } from '@/types/trafego';
+
 // ── os quatro estados, e por que quatro ─────────────────────────────────────
 //
 //   PERMITIDO       medido, e a resposta é sim
@@ -92,19 +94,20 @@ export interface PortaoDeCanal {
   bloqueadores: BloqueadorDeCanal[];
 }
 
-export interface ManifestoDoCanal {
-  plataforma: string;
-  canal: string;
-  rotulo: string;
-  hierarquia: string[];
-  paineis: string[];
-  campos_do_pedido: string[];
-  capacidades: string[];
-  provas_obrigatorias: string[];
-  indisponibilidades: string[];
-  sabe_criar: boolean;
-  sabe_provar: boolean;
-}
+/**
+ * O manifesto do canal — **um só tipo, declarado em `@/types/trafego`**.
+ *
+ * ⚠️ Este arquivo declarava uma SEGUNDA cópia deste mesmo objeto do servidor, e
+ * as duas já discordavam: aqui `sabe_provar` era obrigatório e lá era opcional,
+ * `plataforma` era `string` aqui e `Plataforma` lá, `capacidades` era `string[]`
+ * aqui e `CapacidadeDeAcao[]` lá. Uma resposta é uma só; dois tipos para ela
+ * significam que metade das telas valida uma forma e metade valida outra, e o
+ * compilador aceita as duas.
+ *
+ * O alias fica porque o nome `ManifestoDoCanal` já aparece na prosa deste
+ * contrato; ele aponta para a declaração canônica e não pode divergir dela.
+ */
+export type ManifestoDoCanal = ManifestoDeCanal;
 
 export interface AssetsDoCanal {
   estado: EstadoDePortao;

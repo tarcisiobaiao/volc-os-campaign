@@ -1103,8 +1103,16 @@ export interface ManifestoDeCanal {
   capacidades: CapacidadeDeAcao[];
   provas_obrigatorias: string[];
   indisponibilidades: string[];
-  /** Há builder e porta `validate_only`; isto não autoriza criação real. */
-  sabe_provar?: boolean;
+  /**
+   * Há builder e porta `validate_only`; isto não autoriza criação real.
+   *
+   * ⚠️ NÃO é opcional. `plataforma.ManifestoDeCanal.para_json()` emite
+   * `sabe_provar` em toda resposta (backend/app/trafego/plataforma.py:305-306),
+   * e o marcador `?` era um enfraquecimento local sem base no servidor: ele
+   * obrigava cada leitor a inventar um padrão para um campo que sempre chega, e
+   * `capacidadesDoCanal` inventava `sabe_criar` — que é outra pergunta.
+   */
+  sabe_provar: boolean;
   /** Há builder, prova e admissão no executor de mutação real. */
   sabe_criar: boolean;
 }

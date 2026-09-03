@@ -53,6 +53,7 @@ const manifestoSearch: ManifestoDeCanal = {
   capacidades: ['ler', 'propor'],
   provas_obrigatorias: [],
   indisponibilidades: ['nenhuma regra de bidding está aprovada'],
+  sabe_provar: false,
   sabe_criar: false,
 };
 

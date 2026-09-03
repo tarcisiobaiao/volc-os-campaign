@@ -54,6 +54,7 @@ const manifesto: ManifestoDeCanal = {
   capacidades: ['ler', 'propor'],
   provas_obrigatorias: [],
   indisponibilidades: ['nenhuma regra de bidding está aprovada (ADR-11)'],
+  sabe_provar: false,
   sabe_criar: false,
 };
 
