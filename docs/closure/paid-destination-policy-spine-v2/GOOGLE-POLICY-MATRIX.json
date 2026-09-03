@@ -23,8 +23,8 @@
     "by": "scripts/auditar_landing_policy.py --matriz",
     "do_not_edit_here": "edit the canonical file next to the code; this copy is rewritten",
     "from": "backend/app/landing_policy/fontes_politica.json",
-    "policy_source_version": "43472d43866cbf19",
-    "rule_count": 39
+    "policy_source_version": "378f6df6522429fa",
+    "rule_count": 42
   },
   "rules": {
     "AFILIACAO_GOVERNAMENTAL_IMPLICITA": {
@@ -157,6 +157,17 @@
       "policy": "Misrepresentation — Unclear relevance",
       "result": "NOT EVALUATED against live ad copy — ad text was not read in this mission (see ACCOUNT-EVIDENCE.md, no further account reads).",
       "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "DESTINO_NAO_RESPONDE": {
+      "applicability": "A política nomeia literalmente destinos que não funcionam — erro de servidor, página inexistente, conteúdo removido. Um destino que devolve 404 ou 410 ao revisor é o caso exato, e ele é observável na leitura ao vivo.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Apontar o anúncio para uma URL que responde 200, ou pausar a campanha.",
+      "evidence": "Status HTTP da leitura ao vivo fora da faixa aceita (2xx).",
+      "policy": "Destination requirements — Destinations that don't work",
+      "regime": "google_literal",
+      "result": "NOT_OBSERVED nos dois destinos lidos ao vivo em 2026-09-03 (ambos 200). A regra existe porque `status_http` era coletado e não participava de decisão nenhuma — e `volc_ads/policy/spec.py::checar_destino` modelava exatamente isto sem nunca ser chamado, 'por falta de um status HTTP que ninguém coleta'. Agora a barreira 3 coleta.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
     },
     "DIVERGENCIA_RASTREADOR_USUARIO": {
       "applicability": "'Showing different content on your website to different people or to Google to try to hide things that might break Google Ads' rules.'",
@@ -331,6 +342,17 @@
       "result": "NOT_OBSERVED — não havia recibo nenhum para envelhecer.",
       "url": "https://support.google.com/adspolicy/answer/6368661"
     },
+    "RECIBO_DE_OUTRO_CONTEUDO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. Um recibo aprova UM conteúdo, não uma URL para sempre. Se o `content_fingerprint` do recibo não bate com a impressão do que está no ar, o recibo é de outra coisa — e aceitar isso transformaria a aprovação numa credencial transferível.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Resolver o recibo pela URL canônica correta e reavaliar ao vivo.",
+      "evidence": "Recibo cujo `content_fingerprint` (ou, sem ele, `content_sha256`) diverge do que foi observado nesta leitura.",
+      "policy": "Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "OBSERVED na revisão adversarial cruzada: um recibo com fingerprint de outra página satisfazia a verificação e a página ficava elegível.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
     "RECIBO_DE_POLITICA_DESATUALIZADO": {
       "applicability": "⚠️ REGRA INTERNA DO VOLC. O Google publica atualização de política com data de efeito — Government documents and services muda em 05/10/2026. Um recibo emitido contra a matriz anterior não prova nada sobre a regra nova, e reaproveitá-lo em silêncio é a forma mais barata de um sistema mentir sobre sua própria cobertura.",
       "confidence": "high",
@@ -341,6 +363,17 @@
       "regime": "volc_interno_mais_restritivo",
       "result": "NOT_OBSERVED — a versão de contrato v2 é a primeira a existir.",
       "url": "https://support.google.com/adspolicy/answer/6008942"
+    },
+    "RECIBO_NAO_APROVA_O_DESTINO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O recibo existe, é desta versão de política e está dentro da janela de frescor — e diz que a página foi REPROVADA. Conferir a metadata do recibo sem ler o veredito dele é o erro mais sutil possível: o portão fica verde por causa de um artefato que diz vermelho.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Reavaliar o destino e emitir recibo que efetivamente aprove.",
+      "evidence": "Recibo resolvido cujo `paid_destination_ready` não é `true`.",
+      "policy": "Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "OBSERVED na revisão adversarial cruzada desta sprint: um recibo com `paid_destination_ready: false` e um bloqueio listado satisfazia a verificação `approval_receipt` e a página ficava elegível.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
     },
     "REDIRECIONAMENTO_CROSS_DOMAIN": {
       "applicability": "Google prohibits 'using click trackers... to redirect people to websites with content prohibited by Google Ads' policies'.",

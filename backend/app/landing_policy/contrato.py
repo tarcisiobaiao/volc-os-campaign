@@ -335,6 +335,19 @@ _BLOQUEIA_NO_PAGO = frozenset({
     "RECIBO_DE_APROVACAO_AUSENTE",
     "RECIBO_DE_APROVACAO_VENCIDO",
     "RECIBO_DE_POLITICA_DESATUALIZADO",
+    # ⚠️ OS DOIS ABAIXO SAÍRAM DA REVISÃO ADVERSARIAL CRUZADA, e os dois eram
+    # verde medido. A v2 conferia a METADATA do recibo — versão e frescor — e
+    # não lia nem o veredito dele nem a que conteúdo ele se referia. Então um
+    # recibo que dizia `paid_destination_ready: false`, e um recibo de OUTRA
+    # página, satisfaziam a verificação `approval_receipt` do mesmo jeito.
+    "RECIBO_NAO_APROVA_O_DESTINO",
+    "RECIBO_DE_OUTRO_CONTEUDO",
+    # `status_http` era coletado e não entrava em decisão nenhuma. Um destino
+    # que devolve 404 ao revisor é o caso literal de "destinations that don't
+    # work" — e `volc_ads/policy/spec.py::checar_destino` modelava exatamente
+    # isto sem nunca ser chamado, "por falta de um status HTTP que ninguém
+    # coleta". A barreira 3 passou a coletar.
+    "DESTINO_NAO_RESPONDE",
     "CADEIA_DE_REDIRECIONAMENTO_EXCESSIVA",
     # ── promovidos de `_RISCO_SEMPRE` na v2, por contraprova ────────────────
     #

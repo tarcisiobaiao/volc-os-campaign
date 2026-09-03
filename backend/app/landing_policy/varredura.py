@@ -1353,6 +1353,27 @@ def varrer_seguranca(pagina: PaginaObservada) -> Verificacao:
             )
         )
 
+    # ⚠️ O STATUS HTTP ERA COLETADO E NÃO DECIDIA NADA.
+    #
+    # `PaginaObservada.status_http` existia desde a v1 e nenhuma varredura o
+    # lia. Um destino que devolve 404 ou 410 ao revisor é o caso LITERAL de
+    # "destinations that don't work" — e a página, sem conteúdo, passava por
+    # todas as outras varreduras justamente por não ter nada que reprovasse.
+    #
+    # `volc_ads/policy/spec.py::checar_destino` modelava exatamente esta regra e
+    # nunca era chamado; `volc_ads/campanha/search.py` registra em prosa que ele
+    # ficava de fora "por falta de um status HTTP que ninguém aqui coleta". A
+    # barreira 3 passou a coletar, e a regra passou a ter onde morar.
+    if pagina.status_http is not None and not (200 <= int(pagina.status_http) < 300):
+        achados.append(
+            Achado(
+                "DESTINO_NAO_RESPONDE",
+                "O destino não devolve conteúdo: o status HTTP da leitura ao vivo "
+                "está fora da faixa aceita.",
+                evidencia={"status_http": int(pagina.status_http)},
+            )
+        )
+
     push = _SERVICE_WORKER_RE.search(pagina.html or "")
     if push:
         achados.append(
@@ -1701,6 +1722,60 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
             )
         )
 
+    # ⚠️ O VEREDITO DO RECIBO, ANTES DA DATA DELE.
+    #
+    # Conferir versão e frescor sem ler o veredito é o erro mais sutil possível:
+    # o portão fica verde por causa de um artefato que diz vermelho. Medido na
+    # revisão adversarial cruzada — um recibo com `paid_destination_ready:
+    # false` e um bloqueio listado satisfazia esta verificação.
+    if recibo.get("paid_destination_ready") is not True:
+        achados.append(
+            Achado(
+                "RECIBO_NAO_APROVA_O_DESTINO",
+                "O recibo existe, é desta política e está no prazo — e ele diz que "
+                "a página NÃO foi aprovada.",
+                evidencia={
+                    "paid_destination_ready": recibo.get("paid_destination_ready"),
+                    "verdict": recibo.get("verdict"),
+                    "bloqueios_no_recibo": [
+                        b.get("code")
+                        for b in (recibo.get("blockers") or [])
+                        if isinstance(b, dict)
+                    ][:6],
+                },
+            )
+        )
+
+    # ⚠️ E A QUE CONTEÚDO ELE SE REFERE.
+    #
+    # Um recibo aprova UM conteúdo, não uma URL para sempre. Sem esta amarra, a
+    # aprovação vira credencial transferível: bastava passar o recibo de uma
+    # página limpa junto com o HTML de outra. Também medido.
+    #
+    # A comparação é sobre a IMPRESSÃO CANÔNICA quando ela existe nos dois
+    # lados — o byte diverge por rotação de anúncio e faria falso vermelho.
+    impressao_do_recibo = str(recibo.get("content_fingerprint") or "")
+    if impressao_do_recibo and pagina.html:
+        impressao_no_ar = impressao_canonica(pagina.html)
+        if impressao_do_recibo != impressao_no_ar:
+            achados.append(
+                Achado(
+                    "RECIBO_DE_OUTRO_CONTEUDO",
+                    "O recibo aprova um conteúdo diferente do que está sendo "
+                    "avaliado agora.",
+                    evidencia={
+                        "no_recibo_12": impressao_do_recibo[:12],
+                        "observado_12": impressao_no_ar[:12],
+                    },
+                )
+            )
+    elif not impressao_do_recibo:
+        # Recibo antigo, sem impressão canônica gravada. Cai no sha256 do byte,
+        # que é ruidoso — por isso vira RISCO por meio do inventário, e não
+        # bloqueio: acusar deriva por rotação de token é como o portão é
+        # desligado. A ausência fica registrada no inventário abaixo.
+        pass
+
     emitido_em = recibo.get("observed_at_epoch")
     agora = pagina.avaliado_em_epoch
     idade: float | None = None
@@ -1745,6 +1820,8 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
                 "idade_s": int(idade) if idade is not None else None,
                 "janela_s": int(pagina.janela_de_frescor_s),
                 "content_sha256_12": str(recibo.get("content_sha256") or "")[:12],
+                "content_fingerprint_12": impressao_do_recibo[:12] or None,
+                "impressao_conferida": bool(impressao_do_recibo and pagina.html),
                 "paid_destination_ready_no_recibo": bool(
                     recibo.get("paid_destination_ready")
                 ),

@@ -415,6 +415,39 @@
       "result": "NOT_OBSERVED nos quatro destinos preservados — zero saltos na leitura ao vivo de 2026-09-03. A regra existe porque a ausência de medição foi o buraco, não porque a cadeia foi observada.",
       "confidence": "medium",
       "correction": "Apontar o anúncio para a URL canônica final, sem intermediários."
+    },
+    "RECIBO_NAO_APROVA_O_DESTINO": {
+      "policy": "Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/6368661",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O recibo existe, é desta versão de política e está dentro da janela de frescor — e diz que a página foi REPROVADA. Conferir a metadata do recibo sem ler o veredito dele é o erro mais sutil possível: o portão fica verde por causa de um artefato que diz vermelho.",
+      "evidence": "Recibo resolvido cujo `paid_destination_ready` não é `true`.",
+      "result": "OBSERVED na revisão adversarial cruzada desta sprint: um recibo com `paid_destination_ready: false` e um bloqueio listado satisfazia a verificação `approval_receipt` e a página ficava elegível.",
+      "confidence": "high",
+      "correction": "Reavaliar o destino e emitir recibo que efetivamente aprove."
+    },
+    "RECIBO_DE_OUTRO_CONTEUDO": {
+      "policy": "Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/6368661",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. Um recibo aprova UM conteúdo, não uma URL para sempre. Se o `content_fingerprint` do recibo não bate com a impressão do que está no ar, o recibo é de outra coisa — e aceitar isso transformaria a aprovação numa credencial transferível.",
+      "evidence": "Recibo cujo `content_fingerprint` (ou, sem ele, `content_sha256`) diverge do que foi observado nesta leitura.",
+      "result": "OBSERVED na revisão adversarial cruzada: um recibo com fingerprint de outra página satisfazia a verificação e a página ficava elegível.",
+      "confidence": "high",
+      "correction": "Resolver o recibo pela URL canônica correta e reavaliar ao vivo."
+    },
+    "DESTINO_NAO_RESPONDE": {
+      "policy": "Destination requirements — Destinations that don't work",
+      "url": "https://support.google.com/adspolicy/answer/6368661",
+      "consulted_at": "2026-09-03",
+      "regime": "google_literal",
+      "applicability": "A política nomeia literalmente destinos que não funcionam — erro de servidor, página inexistente, conteúdo removido. Um destino que devolve 404 ou 410 ao revisor é o caso exato, e ele é observável na leitura ao vivo.",
+      "evidence": "Status HTTP da leitura ao vivo fora da faixa aceita (2xx).",
+      "result": "NOT_OBSERVED nos dois destinos lidos ao vivo em 2026-09-03 (ambos 200). A regra existe porque `status_http` era coletado e não participava de decisão nenhuma — e `volc_ads/policy/spec.py::checar_destino` modelava exatamente isto sem nunca ser chamado, 'por falta de um status HTTP que ninguém coleta'. Agora a barreira 3 coleta.",
+      "confidence": "high",
+      "correction": "Apontar o anúncio para uma URL que responde 200, ou pausar a campanha."
     }
   }
 }

@@ -91,6 +91,13 @@ def montar(miolo: str = "", *, rodape: str = RODAPE, h1: str = "Guia", **kwargs)
 
 
 def recibo_valido(**kwargs) -> dict:
+    """O recibo que uma página APROVADA carrega.
+
+    ⚠️ Sem `content_fingerprint` de propósito no default: `montar` monta HTML
+    diferente por teste (miolo, rodapé, H1), e um fingerprint fixo aqui daria
+    `RECIBO_DE_OUTRO_CONTEUDO` em toda prova. Quem precisa da amarra passa o
+    fingerprint explicitamente — ver `test_cp16d`.
+    """
     base = {
         "policy_contract_version": POLICY_CONTRACT_VERSION,
         "policy_source_version": versao_da_fonte(),
@@ -473,6 +480,56 @@ def test_cp16b_recibo_vencido_e_recibo_ausente_sao_defeitos_diferentes():
     vencido = recibo_valido(observed_at_epoch=AGORA - JANELA_DE_FRESCOR_PADRAO_S - 1)
     assert "RECIBO_DE_APROVACAO_VENCIDO" in pago(montar(recibo_de_aprovacao=vencido))
     assert "RECIBO_DE_APROVACAO_AUSENTE" in pago(montar(recibo_de_aprovacao=None))
+
+
+def test_cp16c_recibo_que_diz_reprovado_nao_aprova_nada():
+    """⚠️ ACHADO DA REVISÃO ADVERSARIAL CRUZADA, e era verde MEDIDO.
+
+    A v2 conferia a METADATA do recibo — versão e frescor — e nunca lia o
+    veredito dele. Um recibo com `paid_destination_ready: false` e um bloqueio
+    listado satisfazia a verificação `approval_receipt` do mesmo jeito que um
+    recibo limpo.
+
+    É o erro mais sutil da família: o portão fica verde por causa de um artefato
+    que diz vermelho.
+    """
+    reprovado = recibo_valido(
+        paid_destination_ready=False,
+        verdict="blocked",
+        blockers=[{"code": "IDENTIDADE_OPERADOR_AUSENTE"}],
+    )
+    achados = pago(montar(recibo_de_aprovacao=reprovado))
+    assert "RECIBO_NAO_APROVA_O_DESTINO" in achados
+
+
+def test_cp16d_recibo_de_outra_pagina_nao_aprova_esta():
+    """Um recibo aprova UM conteúdo, não uma URL para sempre.
+
+    Sem esta amarra a aprovação vira credencial transferível: bastava passar o
+    recibo de uma página limpa junto com o HTML de outra. Também medido.
+    """
+    de_outra = recibo_valido(content_fingerprint="deadbeef" * 8)
+    assert "RECIBO_DE_OUTRO_CONTEUDO" in pago(montar(recibo_de_aprovacao=de_outra))
+
+
+@pytest.mark.parametrize("status", [404, 410, 500, 503])
+def test_cp19b_destino_que_nao_responde_nao_e_destino(status):
+    """⚠️ `status_http` ERA COLETADO E NÃO DECIDIA NADA.
+
+    `PaginaObservada.status_http` existia desde a v1 e nenhuma varredura o lia.
+    Uma página que devolve 404 ao revisor passava por todas as outras varreduras
+    justamente por não ter conteúdo que reprovasse — e ficava elegível.
+
+    `volc_ads/policy/spec.py::checar_destino` modelava exatamente esta regra e
+    nunca era chamado; `volc_ads/campanha/search.py` registra em prosa que ele
+    ficava de fora "por falta de um status HTTP que ninguém aqui coleta". A
+    barreira 3 passou a coletar.
+    """
+    assert "DESTINO_NAO_RESPONDE" in pago(montar(status_http=status))
+
+
+def test_cp19c_status_200_nao_e_falso_positivo():
+    assert "DESTINO_NAO_RESPONDE" not in pago(montar(status_http=200))
 
 
 def test_cp17_leitura_ao_vivo_indisponivel_falha_fechada():
