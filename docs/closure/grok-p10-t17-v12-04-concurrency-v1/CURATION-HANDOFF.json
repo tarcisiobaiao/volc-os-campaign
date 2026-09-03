@@ -1,0 +1,38 @@
+{
+  "_comentario": "Delta de curadoria proposto pela lane grok-p10-t17-v12-04-concurrency-v1. NÃO aplicado: nem ROADMAP-VIVO.json, nem curadoria-operacional.json, nem graphify-out/** foram tocados nesta árvore. O integrador único aplica e reconstrói o Mapa Vivo UMA vez, depois do merge.",
+  "worker": "grok-p10-t17-v12-04-concurrency-v1",
+  "branch": "sprint/grok-p10-t17-v12-04-concurrency-v1",
+  "base_oficial": "34dc7b41bce901bd8bebfdec0a01e293678cbf08",
+  "data": "2026-09-03",
+  "commits_esperados": [
+    "test(v12_04): reproduz corridas reais da ingestao campanha-dia",
+    "fix(v12_04): torna precedencia e idempotencia atomicas",
+    "docs(closure): handoff P10-T17 com provas e limites"
+  ],
+  "veredito": "P10_T17_LOCAL_CONCURRENCY_ACCEPTED",
+  "leitura_real": "REAL_N8N_READ_NOT_PROVEN · REAL_GOOGLE_ADS_READ_NOT_PROVEN · v12_04_NOT_APPLIED_OFFICIALLY",
+  "tarefas_propostas": [
+    {
+      "id": "P10-T17",
+      "status_atual": "todo",
+      "status_proposto": "done",
+      "motivo_de_promover": "contraprova concorrente real ficou vermelha na RPC anterior (10/14 casos) e verde depois (14/14 em Postgres 15.19 e 16.14); ciclo apply→operate→rollback→reapply 107/0; semântica documentada. A migration oficial continua não aplicada.",
+      "proof_proposto": "2026-09-03 · sprint/grok-p10-t17-v12-04-concurrency-v1: a RPC volc_registrar_gads_campanha_dia decide precedência no UPSERT atômico (D0 < D-1 < backfill, desempate por colhida_em) e fecha a janela de idempotência com pg_advisory_xact_lock(120404/120405) em ordem fixa. Runner scripts/provar-concorrencia-v12_04.py usa duas sessões, barreiras e SQLSTATE. Vermelho reproduziu rebaixamento D0-sobre-D-1, 23505 no pkey em vez de repetida/divergente, e fechamento falso contra lote in-flight. Verde: 14/0 ×3 em 16.14 e 14/0 ×2 em 15.19. Ciclo v12_04 107/0. n8n 337/0/2, simulador 65/0, pytest focal 18 passed. PARTIAL de ativação permanece em P10-T16: nada aplicado, nada ligado.",
+      "lacuna_restante": "v12_04 segue não aplicada em database.agenciavolc.com.br. Canário, n8n vivo e Google Ads real continuam no pacote de autorização de P10-T16."
+    },
+    {
+      "id": "P10-T16",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "motivo_de_nao_promover": "P10-T17 fecha só a concorrência atômica local. Migration oficial, import, ativação e heartbeat não foram feitos.",
+      "evidencia_a_acrescentar": "O risco de corrida da RPC v12_04 deixou de ser limitação de desenho: está corrigido e provado em descartável. O restante do aceite de ativação não muda."
+    }
+  ],
+  "conceitos_propostos": [
+    {
+      "id": "gads-fato-campanha-dia",
+      "state_proposto": "partial",
+      "evidence_proposta": "A RPC única agora aplica precedência e idempotência atomicamente sob concorrência real, provada em Postgres 15 e 16 descartáveis. Continua partial porque a migration não foi aplicada oficialmente."
+    }
+  ]
+}
