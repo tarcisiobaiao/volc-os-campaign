@@ -48,8 +48,8 @@ from typing import Any, Mapping
 COMPONENTES_SEGUINTES: dict[str, dict[str, str]] = {
     "producao_criativa": {"tarefa": "P17", "estado": "fora desta missao"},
     # Estado factual da CAPACIDADE, nao promocao editorial do Roadmap.
-    # P03-T11 segue proposta `partial` no handoff porque o broker foi provado
-    # localmente, mas nenhuma leitura real do AdsPower aconteceu.
+    # P03-T11 permanece partial: tools/adspower-broker foi provado
+    # localmente; nenhuma leitura real do AdsPower aconteceu.
     "broker_de_acesso": {
         "tarefa": "P03-T11",
         "implementacao": "local_verified",

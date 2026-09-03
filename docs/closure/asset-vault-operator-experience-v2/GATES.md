@@ -1,7 +1,9 @@
 # GATES — asset-vault-operator-experience-v2
 
 Medido em 2026-09-03 na worktree `/private/tmp/volc-asset-vault-operator-experience-v2`.
-Branch `sprint/asset-vault-operator-experience-v2`. HEAD de merge `caf4df9e350800e6a26ce236e8e4136b4f9a4a56` + commits desta missão, inclusive a microcorreção de persistência 1Password.
+Branch `sprint/asset-vault-operator-experience-v2`. HEAD de merge `caf4df9e350800e6a26ce236e8e4136b4f9a4a56` + commits desta missão, inclusive a microcorreção de persistência 1Password e a adjudicação de autoridade única do broker.
+
+A linha oficial avançou independentemente para `3331c0c5d63e31e0d068786707c75169231bdad7`. Esta correção **não** fez rebase nem merge dessa linha. A base da feature continua `207e91f1`.
 
 Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4
 
@@ -10,8 +12,10 @@ Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4
 | Gate | Resultado |
 |---|---|
 | Checkout `main` intocado | sim. Worktree isolada |
-| `origin/volc-os-v2` = `207e91f1da290130e8d02b78c3ba1c8e9a761111` | sim |
-| Candidato `5f54d25cf4375c4a43c6b8b5c819f8937106090d` integrado por merge | sim, pais `207e91f` + `5f54d25` |
+| `origin/volc-os-v2` na base desta feature = `207e91f1da290130e8d02b78c3ba1c8e9a761111` | sim |
+| Linha oficial observada `3331c0c5` — sem rebase/merge nesta correção | sim |
+| Candidato `5f54d25c` unido por merge; sidecar `backend/app/asset_vault/broker/` **removido na adjudicação** | sim |
+| Autoridade canônica única = `tools/adspower-broker/` | sim |
 | Sem cherry-pick seletivo, rebase ou force push | sim |
 | Sem merge em `volc-os-v2` / `main` | sim |
 | Sem escrita Supabase / migration / 1Password real / AdsPower / publish / deploy | sim |
@@ -22,6 +26,27 @@ Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4
 | PNG de evidência sem `op://` | varridos; zero hits |
 | Bundle `dist/` sem `op://` contíguo | zero hits na build desta rodada |
 | sessionStorage / localStorage sem pecas nem localizador | contraprovas executáveis no onboarding; rascunho legado é sanitizado na leitura |
+
+## Adjudicação de autoridade única (esta correção)
+
+Medido nesta rodada, sem rebase/merge de `3331c0c`.
+
+| Gate | Resultado |
+|---|---|
+| `backend/app/asset_vault/broker/**` ausente | **sim** |
+| `backend/tests/test_cofre_broker.py` ausente | **sim** |
+| `python3 scripts/verificar_autoridade_unica_adspower.py` | **PASSOU** — autoridade única `tools/adspower-broker/` |
+| pytest autoridade única | **6 passed** (`scripts/tests/test_autoridade_unica_adspower.py`) |
+| pytest Cofre / prontidão / VisualProof / broker canônico + gate | **278 passed**, 5 warnings herdados |
+| `python3 scripts/provar_visual_proof_hermetico.py` | **PASSOU** — `veredito: hermetico` |
+| Vitest `src/features/asset-vault` | **93 passed** em 10 arquivos |
+| TypeScript ownership Asset Vault | **0** erros; baseline herdado **76** |
+| `npx vite build` | **PASSOU** em 8,04 s; warning herdado de chunk >500 kB; `dist/` sem `op://` |
+| `git diff --check` | **limpo** |
+| Scanner `op://` / segredo no diff | gramática/`op://VOLC/...` truncado no as-is; zero localizador real; zero segredo |
+| Scanner de imports do pacote removido (código) | **0 hits** fora do gate, dos testes do gate e da nota de supersessão |
+
+Preservados: interface do Cofre, onboarding, correção de sessionStorage, `prontidao.py`, rotas de prontidão, `ProntidaoDeOperacao`, prontidão visual, `backend/app/visual_proof`, `tools/adspower-broker`.
 
 ## Testes
 
@@ -86,4 +111,4 @@ Nav/footer/hero (42–45) são do shell global, fora do ownership.
 
 ## O que estes gates NÃO provam
 
-Inventário real, segredo resolvido, AdsPower, publicação, deploy.
+Inventário real, Cofre povoado, segredo resolvido, AdsPower real, publicação, deploy. P03-T07 e P03-T11 permanecem `partial`.

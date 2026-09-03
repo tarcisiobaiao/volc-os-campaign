@@ -117,4 +117,6 @@ Carregando (`role=status` “Carregando o inventário”), não configurado, 401
 7. `src/features/asset-vault/__tests__/prontidao-operacao.test.ts`
 8. `src/features/asset-vault/ProntidaoDeOperacao.tsx` (painel operacional ligado em `AssetVaultContent`)
 
-Procedência: `merge-tree --write-tree` dos pais `207e91f1` + `5f54d25c`; união no merge `caf4df9e`. Broker e `prontidao.py` entraram sem CONFLICT. Sem cherry-pick seletivo. Sem rebase. Sem force push.
+Procedência: `merge-tree --write-tree` dos pais `207e91f1` + `5f54d25c`; união no merge `caf4df9e`. O sidecar candidato `backend/app/asset_vault/broker/` e `prontidao.py` entraram sem CONFLICT. Sem cherry-pick seletivo. Sem rebase. Sem force push.
+
+**Adjudicação posterior (2026-09-03):** o segundo candidato `backend/app/asset_vault/broker/` foi **removido**. Autoridade canônica única: `tools/adspower-broker/`. Inventário de perfis/grupos (P03-T07) **não** foi transplantado.

@@ -1,5 +1,11 @@
 # Handoff — espinha de acesso orgânico: Cofre → 1Password → AdsPower → página
 
+> **SUPERSESSÃO (2026-09-03, `sprint/asset-vault-operator-experience-v2`).**
+> `backend/app/asset_vault/broker/` é **CANDIDATO NÃO INTEGRADO/SUPERADO**.
+> Não está na árvore final. A autoridade canônica única de P03-T11 é
+> `tools/adspower-broker/`. Inventário real de perfis/grupos **não** foi
+> transplantado. Ver [`SUPERSEDED.md`](SUPERSEDED.md).
+
 **Missão:** `hermes-asset-vault-organic-access-v1`
 **Branch:** `sprint/hermes-asset-vault-organic-access-v1` · **base:** `c8ca8628e83742dd7da5242f0a015f76292aafe7`
 **Data:** 02/09/2026 · **Sessão Claude:** `553b5b9d-aa0e-4e87-9981-766952b591c7`

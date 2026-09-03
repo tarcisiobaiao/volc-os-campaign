@@ -1,4 +1,11 @@
 {
+  "_supersessao": {
+    "em": "2026-09-03",
+    "veredito": "CANDIDATO NAO INTEGRADO/SUPERADO",
+    "pacote": "backend/app/asset_vault/broker/",
+    "autoridade_canonica": "tools/adspower-broker/",
+    "nota": "A prova de P03-T11 e a mencao a inventario_perfis neste JSON descrevem o sidecar candidato da missao hermes-asset-vault-organic-access-v1. Ele foi removido na adjudicacao da feature asset-vault-operator-experience-v2. Nao tratar este JSON como presenca na arvore final. Inventario real de perfis/grupos continua nao implementado. P03-T07 e P03-T11 permanecem partial na linha oficial."
+  },
   "_papel": "DELTA PROPOSTO. NAO aplicado. Esta missao NAO editou volc-os-workbook/ROADMAP-VIVO.json, NAO editou docs/volc-os-graph/curadoria-operacional.json e NAO reconstruiu o Mapa Vivo. Quem aplica e o integrador unico, uma vez, depois do merge.",
   "_missao": "hermes-asset-vault-organic-access-v1",
   "_branch": "sprint/hermes-asset-vault-organic-access-v1",

@@ -1,5 +1,13 @@
 # Checkpoint de autorização — persistir a espinha orgânica no Supabase oficial
 
+> **SUPERSESSÃO (2026-09-03, `sprint/asset-vault-operator-experience-v2`).**
+> A seção 10 descreve operações do sidecar candidato
+> `backend/app/asset_vault/broker/`. Esse candidato é
+> **CANDIDATO NÃO INTEGRADO/SUPERADO** e **não** está na árvore final.
+> A autoridade canônica única de P03-T11 é `tools/adspower-broker/`.
+> `inventario_perfis` / `inventario_grupos` **não** foram transplantados.
+> Ver [`SUPERSEDED.md`](SUPERSEDED.md).
+
 **Missão:** `hermes-asset-vault-organic-access-v1`
 **Branch:** `sprint/hermes-asset-vault-organic-access-v1` · **base:** `c8ca862`
 **Data:** 02/09/2026

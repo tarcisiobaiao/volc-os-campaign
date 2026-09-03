@@ -113,8 +113,9 @@ class CasosDeUso:
         Item G da missao, e a fronteira dele importa: esta funcao RESPONDE
         ("quais engines existem, o que produzem, quem recebe a peca, qual
         referencia sera resolvida, qual componente vem depois") e NAO EXECUTA
-        ("cria o job, abre o navegador, publica"). O broker do 1Password->AdsPower
-        (P03-T11) e a porta do Postiz (P12-T08/T09) sao outras missoes, e o
+        ("cria o job, abre o navegador, publica"). O broker canonico
+        (`tools/adspower-broker`, P03-T11) e a porta do Postiz (P12-T08/T09)
+        sao outras missoes, e o
         contrato entre elas esta em
         `docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md`.
 

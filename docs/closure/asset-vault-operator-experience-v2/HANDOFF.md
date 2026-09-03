@@ -10,9 +10,11 @@ Para a Bia: **revisão independente**. Não implementar em paralelo.
 
 | O quê | SHA |
 |---|---|
-| `origin/volc-os-v2` (base) | `207e91f1da290130e8d02b78c3ba1c8e9a761111` |
+| `origin/volc-os-v2` (base desta feature) | `207e91f1da290130e8d02b78c3ba1c8e9a761111` |
+| Linha oficial observada (NÃO mesclada, NÃO rebaseada) | `3331c0c5d63e31e0d068786707c75169231bdad7` |
 | Candidato funcional | `5f54d25cf4375c4a43c6b8b5c819f8937106090d` |
 | Merge na feature (união) | `caf4df9e350800e6a26ce236e8e4136b4f9a4a56` |
+| HEAD antes da adjudicação de autoridade | `b491f4901ff0358db9adb547cde64f9998b29210` |
 | Pais do merge | `207e91f` + `5f54d25` |
 | Branch | `sprint/asset-vault-operator-experience-v2` |
 | Worktree | `/private/tmp/volc-asset-vault-operator-experience-v2` |
@@ -21,7 +23,11 @@ Para a Bia: **revisão independente**. Não implementar em paralelo.
 
 ## Commits desta missão
 
-Ver `git log caf4df9..HEAD --oneline` após o push. Seis commits da experiência + um commit corretivo da persistência 1Password, sem amend.
+Ver `git log caf4df9..HEAD --oneline` após o push. Commits da experiência + microcorreção de persistência 1Password + um commit corretivo de autoridade única, sem amend, rebase ou force.
+
+## Autoridade única (P03-T11)
+
+`tools/adspower-broker/` é a **única** autoridade canônica. O segundo candidato (`backend/app/asset_vault/broker/`, unido a partir de `5f54d25`) foi **removido durante a adjudicação**. `inventario_perfis` / `inventario_grupos` **não** foram transplantados: inventário real de perfis/grupos continua não implementado. P03-T07 permanece `partial` conforme a linha oficial `3331c0c`. P03-T11 permanece `partial` porque AdsPower real e resolução real ainda não foram exercitados. Interface pronta **não** significa Cofre povoado.
 
 ## Arquivos (ownership)
 
@@ -30,18 +36,23 @@ Ver `git log caf4df9..HEAD --oneline` após o push. Seis commits da experiência
 - `src/pages/settings/AssetVaultPage.tsx`
 - testes focais do Cofre
 - `docs/closure/asset-vault-operator-experience-v2/**`
+- remoção de `backend/app/asset_vault/broker/**` e `backend/tests/test_cofre_broker.py`
+- `scripts/verificar_autoridade_unica_adspower.py` e o teste do gate
+- nota de supersessão em `docs/closure/hermes-asset-vault-organic-access-v1/`
 
-Não alterados: DESIGN.md, PRODUCT.md, tokens globais, Navigation, Tráfego, Roadmap, curadoria, grafo, backend/schema/migrations.
+Não alterados: DESIGN.md, PRODUCT.md, tokens globais, Navigation, Tráfego, Roadmap, curadoria, grafo, schema/migrations. Sem merge da linha oficial.
 
 ## Vereditos
 
-Remedidos após a microcorreção de persistência (gates em `GATES.md`):
+Remedidos após a adjudicação de autoridade única (gates em `GATES.md`):
 
+- `ASSET_VAULT_SINGLE_BROKER_AUTHORITY_ACCEPTED`
 - `ASSET_VAULT_OPERATOR_EXPERIENCE_ACCEPTED`
 - `SECURE_REFERENCE_ONBOARDING_ACCEPTED`
-- `DESKTOP_MOBILE_A11Y_ACCEPTED`
 
-Estes **não** significam inventário real, segredo resolvido, AdsPower, publicação ou deploy.
+`DESKTOP_MOBILE_A11Y_ACCEPTED` permanece da rodada anterior: esta correção não redesenhou a UI.
+
+Estes **não** significam inventário real, Cofre povoado, segredo resolvido, AdsPower, publicação ou deploy.
 
 ## Revisão adversarial (uma rodada, já aplicada)
 

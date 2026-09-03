@@ -1,5 +1,12 @@
 # Gates — `hermes-asset-vault-organic-access-v1`
 
+> **SUPERSESSÃO (2026-09-03, `sprint/asset-vault-operator-experience-v2`).**
+> Os gates 3, 5, 6 e 12 abaixo mediram o sidecar candidato
+> `backend/app/asset_vault/broker/` e `test_cofre_broker.py`. Esse candidato é
+> **CANDIDATO NÃO INTEGRADO/SUPERADO** e **não** está na árvore final.
+> A autoridade canônica única de P03-T11 é `tools/adspower-broker/`.
+> Ver [`SUPERSEDED.md`](SUPERSEDED.md).
+
 **Data:** 02/09/2026 · **Branch:** `sprint/hermes-asset-vault-organic-access-v1`
 **Base:** `c8ca8628e83742dd7da5242f0a015f76292aafe7`
 **Sessão Claude:** `553b5b9d-aa0e-4e87-9981-766952b591c7`
