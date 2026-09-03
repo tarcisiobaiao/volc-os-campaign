@@ -31,6 +31,9 @@ from typing import Any
 
 from app.landing_policy.contrato import (
     EXIGENCIAS_POR_PONTO,
+    NAO_APLICAVEL_E_DESCONHECIDO_EM,
+    STATUS_FALHOU,
+    STATUS_NAO_APLICAVEL,
     SEVERIDADE_BLOQUEIO,
     SEVERIDADE_OBSERVACAO,
     SEVERIDADE_RISCO,
@@ -38,6 +41,7 @@ from app.landing_policy.contrato import (
     PapelDestino,
     PontoDePortao,
     Veredito,
+    PAPEIS_ESTRITOS,
     Verificacao,
     carregar_fontes,
     fonte_do_codigo,
@@ -74,8 +78,19 @@ class Avaliacao:
         Quem quer a resposta para um destino pago avalia com o papel de destino
         pago — é para isso que o ponto de portão de campanha força o papel.
         """
+        # ⚠️ `conversion_page` TAMBÉM RESPONDE, e antes ela não podia.
+        #
+        # A regra pedia `papel is PAID_DESTINATION`, então uma página que
+        # COLETA dado do visitante — o papel que a doutrina chama de mais duro —
+        # jamais ficava verde. O efeito prático era o oposto do pretendido: para
+        # publicar, a operação precisaria BAIXAR o papel para `paid_destination`,
+        # trocando o regime estrito pelo menos estrito. Uma régua que ninguém
+        # consegue atingir é uma régua que se contorna.
+        #
+        # Papel frouxo continua sem poder responder: aprovar um artigo orgânico
+        # como pronto para clique comprado seria afirmar algo que ninguém mediu.
         return (
-            self.papel is PapelDestino.PAID_DESTINATION
+            self.papel in PAPEIS_ESTRITOS
             and not self.bloqueios
             and not self.desconhecidos
         )
@@ -86,9 +101,10 @@ class Avaliacao:
         if self.paid_destination_ready:
             return []
         fora: list[str] = []
-        if self.papel is not PapelDestino.PAID_DESTINATION:
+        if self.papel not in PAPEIS_ESTRITOS:
             fora.append(
-                f"papel avaliado foi {self.papel.value}, não paid_destination"
+                f"papel avaliado foi {self.papel.value}, que não é papel estrito "
+                f"(paid_destination ou conversion_page)"
             )
         fora += [f"bloqueio {a.codigo}: {a.mensagem}" for a in self.bloqueios]
         fora += [
@@ -98,9 +114,21 @@ class Avaliacao:
 
 
 def _chave(achado: Achado) -> tuple[str, str]:
+    """Chave de deduplicação. NUNCA levanta.
+
+    ⚠️ `json.dumps` de uma evidência não serializável levantava `TypeError`
+    para fora de `avaliar()` — e sem `Avaliacao` não há recibo de recusa, no
+    ponto de integração com mais chance de embrulhar tudo num `except`
+    permissivo. Uma evidência esquisita é um defeito de quem a montou; ela não
+    pode apagar o veredito das outras.
+    """
     import json
 
-    return (achado.codigo, json.dumps(achado.evidencia, sort_keys=True, ensure_ascii=False))
+    try:
+        evidencia = json.dumps(achado.evidencia, sort_keys=True, ensure_ascii=False)
+    except (TypeError, ValueError):
+        evidencia = repr(achado.evidencia)[:400]
+    return (achado.codigo, evidencia)
 
 
 def avaliar(
@@ -160,15 +188,35 @@ def avaliar(
             else:
                 observacoes.append(classificado)
 
-    desconhecidos = [
-        {
-            "verificacao": v.nome,
-            "status": v.status,
-            "motivo": v.detalhe or f"verificação exigida terminou como {v.status}",
-        }
-        for v in verificacoes
-        if v.nome in exigidas and not v.conclusiva
-    ]
+    # ── DESCONHECIDOS: três caminhos, e cada um é um defeito diferente ──────
+    #
+    # 1. verificação EXIGIDA que não concluiu — o fecha-por-ausência original;
+    # 2. verificação que saiu `not_applicable` num ponto em que "não se aplica"
+    #    é impossível de boa-fé (uma página no ar sempre tem hash observável);
+    # 3. varredura que EXPLODIU — em qualquer ponto, exigida ou não.
+    #
+    # O caso 3 é o que mais custava. `failed` só virava desconhecido quando o
+    # nome estava em `exigidas`, então no portão de pré-publicação as quatro
+    # verificações não exigidas podiam explodir inteiras e a publicação seguia
+    # autorizada. "Não é exigível aqui" e "quebrou" são coisas diferentes:
+    # a primeira é uma decisão do contrato, a segunda é um defeito do software —
+    # e software quebrado nunca é evidência de página limpa.
+    nao_aplicavel_reprova = NAO_APLICAVEL_E_DESCONHECIDO_EM.get(ponto, frozenset())
+    desconhecidos: list[dict[str, str]] = []
+    for v in verificacoes:
+        if v.status == STATUS_FALHOU:
+            motivo = v.detalhe or "a varredura levantou exceção"
+        elif v.nome in exigidas and not v.conclusiva:
+            motivo = v.detalhe or f"verificação exigida terminou como {v.status}"
+        elif v.nome in nao_aplicavel_reprova and v.status == STATUS_NAO_APLICAVEL:
+            motivo = (
+                v.detalhe
+                or "saiu 'não se aplica' num ponto em que a página já está no ar; "
+                "uma página no ar sempre tem o que observar"
+            )
+        else:
+            continue
+        desconhecidos.append({"verificacao": v.nome, "status": v.status, "motivo": motivo})
 
     if bloqueios:
         veredito = Veredito.BLOQUEADO

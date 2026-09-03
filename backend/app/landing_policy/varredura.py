@@ -254,11 +254,21 @@ class _Parser(HTMLParser):
             self._texto_script = []
         elif t == "a" and self._pilha_ancora:
             self._pilha_ancora.pop()
-        elif self._profundidade_botao > 0 and t in ("div", "span", "a", "li"):
+        if self._profundidade_botao > 0 and t in ("div", "span", "a", "li"):
             # Heurística: fecha o escopo de botão no fim do contêiner mais
             # provável. Erra para MENOS botão, nunca para mais — um botão não
             # reconhecido vira link em prosa, que é a classificação mais frouxa,
             # e por isso o `em_botao` também é setado na própria âncora.
+            #
+            # ⚠️ ERA UM `elif` DA CADEIA DE `</a>`, E ISSO INVERTIA A HEURÍSTICA.
+            #
+            # Fechar uma âncora consumia o ramo, então `</a>` NUNCA decrementava
+            # a profundidade: depois do primeiro `<div class="wp-block-button">`
+            # da página, TODO link seguinte era marcado `em_botao`. O comentário
+            # acima descrevia o oposto do que o código fazia, e o efeito era
+            # fabricar `PAGINA_PONTE` e `BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO` em
+            # páginas corretas. Bloqueio falso é como um portão é desligado pela
+            # operação — e um portão desligado não protege nada.
             self._profundidade_botao -= 1
 
 
@@ -270,8 +280,41 @@ def analisar(html: str) -> _Parser:
     return p
 
 
+#: Elemento escondido por CSS inline ou por atributo. O conteúdo dele NÃO é
+#: texto visível — e tratá-lo como visível é o que deixa a página satisfazer
+#: identidade e disclosure com um bloco `display:none` que o leitor nunca vê.
+#: É uma forma vizinha de cloaking: o revisor lê o HTML, o visitante lê a tela.
+_ESCONDIDO_RE = re.compile(
+    r"(?is)<(\w+)\b[^>]*?(?:"
+    r"style=[\"'][^\"']*?(?:display\s*:\s*none|visibility\s*:\s*hidden|"
+    r"font-size\s*:\s*0|opacity\s*:\s*0)[^\"']*[\"']"
+    r"|\shidden(?=[\s/>])"
+    r"|aria-hidden=[\"']true[\"']"
+    r")[^>]*>.*?</\1\s*>"
+)
+
+
 def texto_visivel(html: str) -> str:
+    """O texto que o LEITOR vê — não o texto que está no arquivo.
+
+    ⚠️ Bloco escondido por CSS inline sai antes do achatamento. Sem isso, um
+    `<div style="display:none">` com CNPJ, aviso de não-vínculo e divulgação de
+    monetização satisfaz identidade, governo e alegações de uma vez — e o
+    visitante não vê nenhum dos três. O revisor do Google lê a tela, não o
+    `<div>`.
+
+    O que NÃO é tratado: CSS de folha externa. Uma classe `.oculto{display:none}`
+    definida em `<style>` continua invisível para esta função, porque resolver
+    cascata exige um motor de renderização. É limite declarado, não descuido —
+    e é por isso que a varredura de segurança continua registrando o que carrega.
+    """
     sem_codigo = _SCRIPT_STYLE_RE.sub(" ", html or "")
+    anterior = None
+    # Laço: blocos escondidos podem estar aninhados, e uma passada só remove o
+    # externo, devolvendo o interno ao texto "visível".
+    while anterior != sem_codigo:
+        anterior = sem_codigo
+        sem_codigo = _ESCONDIDO_RE.sub(" ", sem_codigo)
     return re.sub(r"\s+", " ", _html.unescape(_TAG_RE.sub(" ", sem_codigo))).strip()
 
 
@@ -398,9 +441,16 @@ def _host(url: str) -> str:
 
 
 def _mesmo_site(host: str, site: str) -> bool:
+    """`host` pertence a `site`? A relação é de SUBDOMÍNIO, e ela tem direção.
+
+    ⚠️ A versão anterior era simétrica (`site.endswith("." + host)` também
+    valia), então declarar `docs.exemplo.com` como fonte autorizava
+    `exemplo.com` inteiro — o pai herdava a autorização do filho. Autorização
+    tem que descer, nunca subir.
+    """
     if not host or not site:
         return False
-    return host == site or host.endswith("." + site) or site.endswith("." + host)
+    return host == site or host.endswith("." + site)
 
 
 def e_governo(host: str) -> bool:
@@ -503,12 +553,24 @@ def varrer_identidade(pagina: PaginaObservada) -> Verificacao:
     tem_nao_afiliacao = bool(_NAO_AFILIACAO_RE.search(texto))
     tem_monetizacao = bool(_MONETIZACAO_RE.search(texto))
 
-    if not cnpjs and not (tem_sobre and tem_contato):
+    # ⚠️ ERAM DOIS REQUISITOS INDEPENDENTES COLAPSADOS NUM `OU`.
+    #
+    # A regra anterior — `not cnpjs and not (tem_sobre and tem_contato)` —
+    # aprovava por CNPJ **ou** por "sobre"+"contato". Uma página sem CNPJ
+    # nenhum, contendo só as palavras "Sobre" e "Contato", passava como
+    # operador identificado. É a mesma forma do defeito `adsense OU utilidade
+    # pública` que o `ROOT-CAUSE-ANALYSIS.md` nomeia: dois requisitos
+    # diferentes, um `ou` no meio, e o mais barato satisfazendo o outro.
+    #
+    # São perguntas diferentes: "QUEM é o operador, com registro" e "COMO se
+    # chega até ele". A segunda já tinha achado próprio
+    # (`IDENTIDADE_CONTATO_AUSENTE`); a primeira passa a ter o seu.
+    if not cnpjs:
         achados.append(
             Achado(
                 "IDENTIDADE_OPERADOR_AUSENTE",
-                "Nenhuma identidade de operador observada: sem CNPJ e sem bloco "
-                "'sobre'+'contato' na página.",
+                "Nenhum registro de operador (CNPJ) na página. 'Sobre' e 'Contato' "
+                "dizem como chegar a alguém; eles não dizem QUEM responde.",
                 evidencia={"cnpj_observado": False, "sobre": tem_sobre, "contato": tem_contato},
             )
         )
@@ -521,6 +583,11 @@ def varrer_identidade(pagina: PaginaObservada) -> Verificacao:
             )
         )
     esperado = (pagina.cnpj_esperado or "").strip()
+    # ⚠️ O `and cnpjs` continua, e agora é correto: sem CNPJ na página,
+    # `IDENTIDADE_OPERADOR_AUSENTE` já reprovou acima. Antes desta correção o
+    # par deixava um buraco no meio — a página sem CNPJ não caía nem por
+    # ausência (bastava "Sobre"+"Contato") nem por divergência (não havia o que
+    # divergir).
     if esperado and cnpjs and esperado not in cnpjs:
         achados.append(
             Achado(
@@ -1232,7 +1299,13 @@ def varrer_seguranca(pagina: PaginaObservada) -> Verificacao:
     mistos = sorted(
         {
             _host(u)
-            for u in re.findall(r'(?:src|href)=["\'](http://[^"\']+)', pagina.html or "")
+            # ⚠️ `href` SAIU DA BUSCA. Um link de navegação `http://` não é
+            # sub-recurso: ele não é carregado na página, é seguido pelo
+            # clique. Incluí-lo fazia o recibo afirmar "sub-recurso carregado
+            # por http:// numa página https" sobre um link comum — uma frase
+            # falsa dentro de um artefato de apelação, que é o pior lugar
+            # possível para uma imprecisão.
+            for u in re.findall(r'src=["\'](http://[^"\']+)', pagina.html or "")
             if "w3.org" not in u
         }
     )

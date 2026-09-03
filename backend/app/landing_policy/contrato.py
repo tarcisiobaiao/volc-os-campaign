@@ -240,6 +240,25 @@ TODAS_AS_VERIFICACOES = (
 #: O que precisa ter sido CONCLUSIVAMENTE verificado em cada ponto de portão,
 #: para o papel `paid_destination`. Fora dessa lista a verificação ainda roda e
 #: ainda produz achados — ela só não transforma "não deu para olhar" em reprova.
+#: As verificações que, NO PONTO DE CAMPANHA, não podem sair `not_applicable`.
+#:
+#: ⚠️ ESTA TABELA EXISTE POR CAUSA DE UM FALSO VERDE MEDIDO.
+#:
+#: `not_applicable` está em `STATUS_CONCLUSIVOS` — e deve estar: antes de
+#: publicar, redirecionamento e deriva realmente não existem, e chamá-los de
+#: "não sei" seria reprovar toda página por uma impossibilidade estrutural.
+#:
+#: Mas `varrer_deriva` e `varrer_recibo` devolvem `not_applicable` quando não há
+#: HTML ao vivo observado — e no ponto de CAMPANHA isso não é "não se aplica",
+#: é "ninguém leu a página". Medido: com evidência de redirecionamento completa
+#: e nenhuma leitura ao vivo, o portão de campanha devolvia
+#: `paid_destination_ready=True` sem ter comparado hash aprovado nem conferido
+#: recibo. O verde saía de duas ausências.
+#:
+#: Uma página que está no ar SEMPRE tem hash observável. `not_applicable` aqui
+#: é impossível de boa-fé, e por isso vira desconhecido.
+NAO_APLICAVEL_E_DESCONHECIDO_EM: dict[PontoDePortao, frozenset[str]] = {}
+
 EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
     # Antes de existir no ar: só o que o artefato consegue provar sobre si.
     PontoDePortao.ARTEFATO_DE_GERACAO: frozenset(
@@ -257,6 +276,10 @@ EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
     # o mesmo erro que a tabela inteira existe para não cometer.
     PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA: frozenset(TODAS_AS_VERIFICACOES),
 }
+
+NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA] = frozenset(
+    {V_DERIVA, V_RECIBO, V_REDIRECIONAMENTO}
+)
 
 
 # ── severidade por papel ────────────────────────────────────────────────────
