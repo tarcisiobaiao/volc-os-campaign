@@ -74,22 +74,42 @@ function compacto(n: number): string {
 }
 
 export function medir(selecionadas: Selecionada[]) {
-  const volume = selecionadas.reduce((a, k) => a + (k.volume || 0), 0);
-  const comCpc = selecionadas.filter((k) => k.cpc);
-  const cpcMax = comCpc.reduce((a, k) => Math.max(a, k.cpc!.valor), 0);
+  // ⚠️ O DENOMINADOR HONESTO É O DOS PRESENTES.
+  //
+  // Desde que `Cpc.valor` e `volume` passaram a ser `number | null` (a ausência
+  // deixou de virar `0` na projeção do servidor), estas contas precisam
+  // distinguir "não medido" de "medido em zero". `k.cpc` existir NÃO garante
+  // mais que `k.cpc.valor` é número: um CPC sem valor ainda carrega procedência
+  // e moeda, e é exatamente esse o caso que o cluster medido produz.
+  //
+  // Somar ausência como zero puxaria a média para baixo em silêncio — que é a
+  // forma mais barata de um lance parecer seguro e não ser.
+  const comVolume = selecionadas.filter((k) => k.volume != null);
+  const volume = comVolume.length
+    ? comVolume.reduce((a, k) => a + (k.volume as number), 0) : 0;
+  const comCpc = selecionadas.filter((k) => k.cpc?.valor != null);
+  const cpcMax = comCpc.reduce((a, k) => Math.max(a, k.cpc!.valor as number), 0);
   // Ponderado pelo VOLUME, não pela contagem: é o CPC do tráfego que entra, e é
   // o número que se compara com o RPM. A média simples diria outra coisa e a
   // diferença entre as duas é justamente a concentração.
-  const custoTotal = comCpc.reduce((a, k) => a + k.cpc!.valor * (k.volume || 0), 0);
-  const volumeComCpc = comCpc.reduce((a, k) => a + (k.volume || 0), 0);
+  //
+  // Só pesa quem tem CPC **e** volume: uma keyword sem volume não tem peso, e
+  // dar-lhe peso zero a faria desaparecer da média em vez de ficar de fora dela.
+  const pesaveis = comCpc.filter((k) => k.volume != null);
+  const custoTotal = pesaveis.reduce(
+    (a, k) => a + (k.cpc!.valor as number) * (k.volume as number), 0);
+  const volumeComCpc = pesaveis.reduce((a, k) => a + (k.volume as number), 0);
   const ponderado = volumeComCpc > 0 ? custoTotal / volumeComCpc : 0;
   const simples = comCpc.length
-    ? comCpc.reduce((a, k) => a + k.cpc!.valor, 0) / comCpc.length : 0;
+    ? comCpc.reduce((a, k) => a + (k.cpc!.valor as number), 0) / comCpc.length : 0;
   const moedas = new Set(comCpc.map((k) => k.cpc!.moeda).filter(Boolean));
   return {
     volume, cpcMax, ponderado, simples,
     n: selecionadas.length,
+    /** Quantas ficaram fora da média de CPC — por não ter CPC medido. */
     semCpc: selecionadas.length - comCpc.length,
+    /** Quantas ficaram fora do volume — por não ter volume medido. */
+    semVolume: selecionadas.length - comVolume.length,
     moeda: moedas.size === 1 ? [...moedas][0]! : null,
     // Divergência entre ponderado e simples É o sinal de concentração,
     // expressa em número para quem quiser o número.
@@ -110,11 +130,17 @@ export const ReguaDeLeilao: React.FC<{
 
   const barras: Barra[] = useMemo(() => {
     if (!m.volume || !m.cpcMax) return [];
+    // Só entra na régua quem tem volume MEDIDO e maior que zero. Quem não foi
+    // medido não vira barra de largura zero — ele fica de fora, e a contagem
+    // `semVolume` diz que ficou.
     return [...selecionadas]
-      .filter((k) => k.volume > 0)
-      .sort((a, b) => b.volume - a.volume)
+      .filter((k) => k.volume != null && k.volume > 0)
+      .sort((a, b) => (b.volume as number) - (a.volume as number))
       .map((k) => {
-        const pct = k.volume / m.volume;
+        const pct = (k.volume as number) / m.volume;
+        // ⚠️ `?? 0` aqui é DESENHO, não medida: uma keyword com volume e sem CPC
+        // aparece com a altura mínima. O número que o operador lê continua
+        // vindo de `m`, que a exclui do denominador.
         const cpc = k.cpc?.valor ?? 0;
         return {
           ...k,

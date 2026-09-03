@@ -1,0 +1,651 @@
+{
+  "_leia_primeiro": [
+    "Esta matriz descreve o que CADA CANAL pode fazer HOJE, na base 207e91f1da290130e8d02b78c3ba1c8e9a761111.",
+    "Ela e derivada do codigo, nao de intencao. Toda celula carrega arquivo:linha.",
+    "REGRA QUE GOVERNA O ARQUIVO: nao existe simetria entre canais, e este arquivo nao a fabrica.",
+    "Onde um eixo pedido pela missao NAO tem conceito no contrato do servidor, ele aparece com",
+    "estado 'SEM_CONCEITO_NO_CONTRATO' e o fato real mais proximo — nunca com um veredito inventado."
+  ],
+  "versao": "1.0.0",
+  "artefato": "CHANNEL-CAPABILITY-MATRIX.json",
+  "spec": "docs/specs/traffic-operating-experience-v3",
+  "base_factual": {
+    "commit": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+    "branch_da_spec": "sprint/fable-traffic-operating-experience-spec-v3",
+    "linha_oficial_no_fechamento": "3331c0c5d63e31e0d068786707c75169231bdad7",
+    "delta_no_dominio_de_trafego": "vazio"
+  },
+  "vocabulario_real_do_servidor": {
+    "_fonte": "backend/app/trafego/contrato_canais.py:86-131",
+    "portoes": {
+      "_fonte": "contrato_canais.py:99-105",
+      "_ordem": "na ordem em que o operador os atravessa",
+      "valores": [
+        "planejavel",
+        "validavel",
+        "criavel_pausada",
+        "ativavel"
+      ]
+    },
+    "estados": {
+      "_fonte": "contrato_canais.py:86-97",
+      "valores": [
+        "PERMITIDO",
+        "BLOQUEADO",
+        "INDETERMINADO",
+        "NAO_APLICAVEL"
+      ],
+      "significado": {
+        "PERMITIDO": "medido, e a resposta e sim",
+        "BLOQUEADO": "medido, e a resposta e nao. Sempre acompanhado de ao menos um bloqueador",
+        "INDETERMINADO": "NAO medido. Pede uma leitura que ninguem fez — nao pede permissao",
+        "NAO_APLICAVEL": "a pergunta nao cabe. Nunca e emitido para um PORTAO; so para o eixo Assets (contrato_canais.py:638,656)"
+      }
+    },
+    "origens_de_recusa": {
+      "_fonte": "contrato_canais.py:114-126",
+      "_por_que_existe": "a origem decide A QUEM PEDIR. Um botao cinza sem origem faz oito problemas virarem a mesma frustracao",
+      "valores": [
+        "construtor",
+        "manifesto",
+        "servidor",
+        "operador",
+        "politica",
+        "mensuracao",
+        "observabilidade",
+        "produto"
+      ],
+      "a_quem_pedir": {
+        "_fonte_frontend": "src/lib/trafego/canais.ts:530-539",
+        "construtor": "quem escreve o engine",
+        "manifesto": "quem declara a plataforma",
+        "servidor": "quem administra o backend",
+        "operador": "quem administra o sistema/permissoes",
+        "politica": "o dono da politica de gasto",
+        "mensuracao": "quem le a conta e prova a medicao",
+        "observabilidade": "quem constroi a releitura pos-criacao",
+        "produto": "quem decide o escopo do produto"
+      }
+    },
+    "canais_com_contrato_de_portoes": {
+      "_fonte": "contrato_canais.py:128-131",
+      "valores": [
+        "SEARCH",
+        "DISPLAY",
+        "DEMAND_GEN",
+        "PERFORMANCE_MAX"
+      ],
+      "_meta_ads": "existe no manifesto (plataforma.py:460-471) para o eixo de navegacao e NAO tem portao de criacao para projetar"
+    },
+    "invariante_de_construcao": {
+      "_fonte": "contrato_canais.py:207-219",
+      "regra": "portao BLOQUEADO sem bloqueador, portao PERMITIDO com bloqueador e portao INDETERMINADO sem bloqueador sao recusados na construcao do tipo"
+    }
+  },
+  "identidade_de_referencia": {
+    "_por_que": "o veredito de um portao muda com o papel e com a trava; sem declarar a identidade a matriz seria ambigua",
+    "papel": "admin",
+    "escrita_permitida": true,
+    "fator_lido_pelo_manifesto": "env_presente (o fator DURAVEL da trava), nao escrita_permitida()",
+    "_fonte": "backend/app/routers/trafego.py:5432-5437",
+    "como_muda_com_papel_menor": {
+      "_fonte": "backend/tests/test_trafego_contrato_canais.py:211-224",
+      "regra": "a ORIGEM do bloqueio de escrita muda com o papel: 'servidor' para admin sem escrita, 'operador' para quem nao e admin",
+      "_nota": "is_admin NAO implica google_mutate (backend/app/trafego/capacidades.py:147-162)"
+    }
+  },
+  "eixos_pedidos_versus_contrato_real": {
+    "_por_que_esta_secao_existe": [
+      "A missao pediu dez eixos por canal. O contrato do servidor tem quatro portoes.",
+      "Mapear os dez em quatro sem dizer isso produziria seis vereditos inventados.",
+      "Esta tabela diz, eixo a eixo, o que existe e o que nao existe."
+    ],
+    "observado": {
+      "estado": "SEM_CONCEITO_NO_CONTRATO",
+      "fato_real_mais_proximo": "contagem de campanhas no espelho por canal, usada como insumo do portao — nao e um portao",
+      "evidencia": "backend/app/trafego/contrato_canais.py:1675, 1703-1706",
+      "regra_de_ausencia": "campanhas_no_espelho=0 NAO vira BLOQUEADO: zero e ambiguo por construcao e sai INDETERMINADO com a razao dita (contrato_canais.py:1179-1189). Canal cuja consulta falha nao entra no dicionario, e a ausencia da chave produz INDETERMINADO"
+    },
+    "analisavel": {
+      "estado": "SEM_CONCEITO_NO_CONTRATO",
+      "fato_real_mais_proximo": "a capacidade LER declarada no manifesto por canal",
+      "evidencia": "backend/app/trafego/plataforma.py:358, 381, 419, 441, 465"
+    },
+    "planejavel": {
+      "estado": "PORTAO_REAL",
+      "portao": "planejavel",
+      "evidencia": "contrato_canais.py:781-793"
+    },
+    "validavel_localmente": {
+      "estado": "SEM_CONCEITO_NO_CONTRATO",
+      "fato_real_mais_proximo": "o engine monta o plano offline e declara pode_provar/pode_criar por canal; nao ha portao HTTP que separe validacao local de validacao contra conta",
+      "evidencia": "volc_ads/campanha/perfil.py:228, 251, 279, 297-312"
+    },
+    "validavel_contra_conta_real": {
+      "estado": "PORTAO_REAL",
+      "portao": "validavel",
+      "nota": "validate_only e tratado como LEITURA: o portao validavel NAO espera a trava de escrita",
+      "evidencia": "contrato_canais.py:829-838; backend/app/routers/trafego.py:2879-2884"
+    },
+    "criavel_pausado": {
+      "estado": "PORTAO_REAL",
+      "portao": "criavel_pausada",
+      "evidencia": "contrato_canais.py:911-957"
+    },
+    "mutavel": {
+      "estado": "SEM_CONCEITO_NO_CONTRATO",
+      "prova_de_ausencia": "grep -rn '\\bmutavel\\b' backend/app/ src/ => 3 resultados, todos comentarios sobre 'singleton mutavel' em criativo/bancada; nenhum em contexto de portao",
+      "fato_real_mais_proximo": "o manifesto declara permite_mutacao_real por canal; nenhum canal declara a capacidade ESCREVER",
+      "evidencia": "backend/app/trafego/plataforma.py:246-247, 277-289"
+    },
+    "ativavel": {
+      "estado": "PORTAO_REAL",
+      "portao": "ativavel",
+      "veredito_universal": "BLOQUEADO em 4 de 4 canais, para as 4 identidades testadas — 16 celulas, nenhuma aberta",
+      "evidencia": "contrato_canais.py:974-1016; backend/tests/test_trafego_contrato_canais.py:230-236"
+    },
+    "monitoravel": {
+      "estado": "SEM_CONCEITO_NO_CONTRATO",
+      "fato_real_mais_proximo": "o bloco Observabilidade, que e insumo dos portoes criavel_pausada (so PMax) e ativavel (todos)",
+      "evidencia": "contrato_canais.py:1090, 1126-1133, 1494-1507"
+    },
+    "reconciliavel": {
+      "estado": "SEM_CONCEITO_NO_CONTRATO",
+      "fato_real_mais_proximo": "POST /api/trafego/reconciliar existe, e independente de canal, e NAO TEM CONSUMIDOR NO FRONTEND",
+      "evidencia": "backend/app/routers/trafego.py:4442-4447",
+      "prova_de_ausencia_do_consumidor": "grep -rn 'api/trafego/reconciliar' src/ api/ => 0 resultados"
+    }
+  },
+  "canais": {
+    "SEARCH": {
+      "rotulo": "Search",
+      "construtor_no_engine": {
+        "existe": true,
+        "pode_provar": true,
+        "pode_criar": true,
+        "evidencia": "volc_ads/campanha/search.py:499-508; volc_ads/campanha/perfil.py:228"
+      },
+      "manifesto": {
+        "campos_do_pedido": 7,
+        "permite_prova": true,
+        "permite_mutacao_real": true,
+        "evidencia": "backend/app/trafego/plataforma.py:350-362",
+        "_dependencia": "permite_prova e permite_mutacao_real NAO sao portas independentes: o construtor do manifesto RECUSA mutacao real sem prova, e recusa prova sem campos de pedido. A dependencia e unidirecional e esta escrita em plataforma.py:272-275"
+      },
+      "portoes": {
+        "planejavel": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "evidencia": "contrato_canais.py:781-793",
+          "nota_sem_papel": "sem papel o portao fecha com codigo 'sem_leitura' e origem 'operador' — nao 'construtor' (contrato_canais.py:816-821)",
+          "_nota_de_prova": "test_trafego_contrato_canais.py:136-140 afirma SOMENTE o planejavel de PERFORMANCE_MAX; nenhum teste do arquivo sustenta \"os quatro canais tem planejavel PERMITIDO\""
+        },
+        "validavel": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "evidencia": "contrato_canais.py:829-838"
+        },
+        "criavel_pausada": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "evidencia": "backend/tests/test_trafego_contrato_canais.py:694-698",
+          "nota": "e o UNICO canal cujo portao criavel_pausada sai PERMITIDO, e sai sem nenhum bloqueador",
+          "condicionado_a": "estar dentro da janela do canario — ver bloco 'janela_do_canario'"
+        },
+        "ativavel": {
+          "estado": "BLOQUEADO",
+          "bloqueadores": [
+            {
+              "codigo": "ativacao_fora_de_escopo",
+              "origem": "produto",
+              "causa": "despausar campanha nao e uma acao que este sistema executa; ligar continua sendo ato de uma pessoa no painel do Google",
+              "evidencia": "contrato_canais.py:507-515"
+            },
+            {
+              "codigo": "politica_nao_inclui_ativacao",
+              "origem": "politica",
+              "causa": "a autorizacao em vigor cobre criar pausada e nada alem",
+              "evidencia": "contrato_canais.py:981-987"
+            },
+            {
+              "codigo": "mensuracao_nao_lida | mensuracao_nao_provada",
+              "origem": "mensuracao",
+              "causa": "sem meta efetiva e sem fonte de sinal comprovada, lance automatico gasta o orcamento aprendendo o que ninguem mediu",
+              "evidencia": "contrato_canais.py:990-1007"
+            },
+            {
+              "codigo": "observabilidade_nao_provada",
+              "origem": "observabilidade",
+              "causa": "sem releitura pos-criacao, um desvio de entrega ou de politica nao seria notado",
+              "evidencia": "contrato_canais.py:1009-1014"
+            }
+          ],
+          "bloqueios_medidos_exclusivos_deste_canal": {
+            "_o_que_sao": "tres bloqueios com data de observacao, oriundos da releitura de UMA campanha (24195821946); envelhecem e saem sozinhos quando uma leitura viva discorda",
+            "codigos": [
+              "meta_efetiva_divergente",
+              "meta_efetiva_nao_lida",
+              "espelho_so_le_ativas"
+            ],
+            "observado_em": "2026-09-01",
+            "evidencia": "contrato_canais.py:465, 482, 496, 1510-1533; campos observado_em/revalidacao em 464-475",
+            "_ressalvas": [
+              "os tres so saem juntos em dois dos tres ramos; quando a leitura viva ja aconteceu e a meta esta PRONTA, sobra UM: anuncios_em_revisao (contrato_canais.py:1524-1533)",
+              "nem todo bloqueio medido carrega revalidacao: BLOQUEIO_META_NAO_EFETIVA e BLOQUEIO_ESPELHO_SO_ENABLED tem observado_em e NENHUM caminho de reconferencia (contrato_canais.py:481-490)"
+            ]
+          }
+        }
+      },
+      "assets": {
+        "fonte": "volc_ads/campanha/perfil.py",
+        "evidencia": "contrato_canais.py:601-612"
+      },
+      "owner_do_proximo_desbloqueio": "mensuracao + observabilidade (para ativavel); nenhum para os tres primeiros portoes",
+      "proxima_capacidade": "nenhuma pendente para criar pausada. Ativacao permanece fora de escopo por decisao de produto, nao por lacuna tecnica"
+    },
+    "DISPLAY": {
+      "rotulo": "Display",
+      "construtor_no_engine": {
+        "existe": true,
+        "pode_provar": true,
+        "pode_criar": true,
+        "constroi": "budget -> campanha DISPLAY -> geo -> idioma -> ad group -> responsive display ad",
+        "ausencias_declaradas": 4,
+        "evidencia": "volc_ads/campanha/display.py:676-684; perfil.py:251"
+      },
+      "manifesto": {
+        "permite_prova": true,
+        "permite_mutacao_real": true,
+        "indisponibilidades_declaradas": 5,
+        "nota": "as cinco indisponibilidades descrevem o que a PRIMEIRA FATIA nao monta — nao sao ausencia de construtor",
+        "evidencia": "backend/app/trafego/plataforma.py:373-405",
+        "_dependencia": "permite_prova e permite_mutacao_real NAO sao portas independentes: o construtor do manifesto RECUSA mutacao real sem prova, e recusa prova sem campos de pedido. A dependencia e unidirecional e esta escrita em plataforma.py:272-275"
+      },
+      "portoes": {
+        "planejavel": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "evidencia": "contrato_canais.py:781-793",
+          "_nota_de_prova": "test_trafego_contrato_canais.py:136-140 afirma SOMENTE o planejavel de PERFORMANCE_MAX; nenhum teste do arquivo sustenta \"os quatro canais tem planejavel PERMITIDO\""
+        },
+        "validavel": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "evidencia": "contrato_canais.py:829-838"
+        },
+        "criavel_pausada": {
+          "estado": "BLOQUEADO",
+          "bloqueadores": [
+            {
+              "codigo": "fora_da_janela_do_canario",
+              "origem": "politica",
+              "causa": "a causa NOMEIA a conta e diz que o construtor esta pronto — o impedimento e a janela autorizada, nao a capacidade",
+              "evidencia": "contrato_canais.py:946-957"
+            }
+          ],
+          "_correcao_de_leitura": "o impedimento de PRODUTO em Display e a janela do canario. A ausencia de caminho HTTP de imagens e uma indisponibilidade do MANIFESTO, e nao e o bloqueador deste portao",
+          "_ressalva": "fora_da_janela_do_canario e UM dos tres bloqueios possiveis do ramo else; Display so sai com codigo unico quando a escrita esta aberta E o portao validavel esta aberto (test_trafego_contrato_canais.py:701-704)"
+        },
+        "ativavel": {
+          "estado": "BLOQUEADO",
+          "bloqueadores_iguais_a": "SEARCH",
+          "evidencia": "contrato_canais.py:974-1016"
+        }
+      },
+      "owner_do_proximo_desbloqueio": "politica (dono da janela do canario)",
+      "proxima_capacidade": "ampliar a janela do canario para incluir DISPLAY, ou declarar por que ela nao sera ampliada"
+    },
+    "DEMAND_GEN": {
+      "rotulo": "Demand Gen",
+      "construtor_no_engine": {
+        "existe": true,
+        "pode_provar": true,
+        "pode_criar": false,
+        "motivo_estrutural": "dois registros em volc_ads/subir.py",
+        "evidencia": "volc_ads/campanha/demand_gen.py:891-908; perfil.py:279"
+      },
+      "manifesto": {
+        "campos_do_pedido": 10,
+        "permite_prova": true,
+        "permite_mutacao_real": false,
+        "evidencia": "backend/app/trafego/plataforma.py:408-433",
+        "_correcao": "a contagem literal de plataforma.py:414-418 devolve 10, nao 11",
+        "_dependencia": "permite_prova e permite_mutacao_real NAO sao portas independentes: o construtor do manifesto RECUSA mutacao real sem prova, e recusa prova sem campos de pedido. A dependencia e unidirecional e esta escrita em plataforma.py:272-275"
+      },
+      "portoes": {
+        "planejavel": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "evidencia": "contrato_canais.py:781-793",
+          "_nota_de_prova": "test_trafego_contrato_canais.py:136-140 afirma SOMENTE o planejavel de PERFORMANCE_MAX; nenhum teste do arquivo sustenta \"os quatro canais tem planejavel PERMITIDO\""
+        },
+        "validavel": {
+          "estado": "BLOQUEADO",
+          "bloqueadores": [
+            {
+              "codigo": "demand_gen_experimental_desligado",
+              "origem": "servidor",
+              "causa": "capacidade de SERVIDOR que NAO e herdada da capacidade geral de prova",
+              "evidencia": "contrato_canais.py:868-873"
+            }
+          ],
+          "porta_experimental": {
+            "exige": "flag duravel E sonda local do SDK v25",
+            "regra": "ausencia, erro de grafia ou qualquer valor diferente de 'on' mantem a superficie fechada",
+            "evidencia": "backend/app/trafego/capacidades.py:134-140"
+          }
+        },
+        "criavel_pausada": {
+          "estado": "BLOQUEADO",
+          "bloqueadores": [
+            {
+              "codigo": "mutacao_real_recusada",
+              "origem": "manifesto",
+              "causa": "o manifesto declara permite_mutacao_real=false",
+              "evidencia": "contrato_canais.py:916-922"
+            }
+          ],
+          "nota_de_alcance": "e um ramo elif que nunca alcanca os testes de escrita e de canario"
+        },
+        "ativavel": {
+          "estado": "BLOQUEADO",
+          "bloqueadores_iguais_a": "SEARCH",
+          "evidencia": "contrato_canais.py:974-1016"
+        }
+      },
+      "recusa_dura_na_rota_de_escrita": {
+        "regra": "POST /subir recusa DEMAND_GEN com 403 ANTES de escopo, canario, ponte, trava e mutate",
+        "evidencia": "backend/app/routers/trafego.py:3483-3491"
+      },
+      "owner_do_proximo_desbloqueio": "servidor (a porta experimental) e depois construtor (os dois registros em subir.py)",
+      "proxima_capacidade": "abrir a prova estreita atras da flag; a criacao permanece fechada por manifesto"
+    },
+    "PERFORMANCE_MAX": {
+      "rotulo": "Performance Max",
+      "construtor_no_engine": {
+        "existe": "somente planejador",
+        "pode_provar": false,
+        "pode_criar": false,
+        "constroi": "grafo completo offline, serializado, sem falar com o Google",
+        "evidencia": "volc_ads/campanha/pmax.py:1057-1080; perfil.py:297-312 (construtor= ausente por decisao declarada)"
+      },
+      "manifesto": {
+        "campos_do_pedido": 0,
+        "permite_prova": false,
+        "permite_mutacao_real": false,
+        "unica_capacidade": "LER",
+        "_defeito_conhecido_no_manifesto": "a indisponibilidade declarada ainda afirma que 'o engine levanta excecao', o que deixou de ser verdade — o engine planeja",
+        "evidencia": "backend/app/trafego/plataforma.py:436-447",
+        "_dependencia": "permite_prova e permite_mutacao_real NAO sao portas independentes: o construtor do manifesto RECUSA mutacao real sem prova, e recusa prova sem campos de pedido. A dependencia e unidirecional e esta escrita em plataforma.py:272-275"
+      },
+      "portoes": {
+        "planejavel": {
+          "estado": "PERMITIDO",
+          "bloqueadores": [],
+          "por_que": "o portao pergunta ao ENGINE antes do manifesto, e o engine tem planejar()",
+          "evidencia": "contrato_canais.py:781-793; backend/tests/test_trafego_contrato_canais.py:136-140 (o teste cobre PMax)",
+          "regra_de_discordancia": "quando engine e manifesto discordam, planejavel sai INDETERMINADO com codigo 'montagem_indeterminada' e origem 'construtor' (contrato_canais.py:795-806)"
+        },
+        "validavel": {
+          "estado": "BLOQUEADO",
+          "bloqueadores": [
+            {
+              "codigo": "PMAX_FORA_DO_EXECUTOR",
+              "origem": "produto",
+              "observado_em": "2026-09-01",
+              "causa": "decisao registrada: habilitar o canal no executor derrubaria a criacao dos outros tres. Nao e falha, nao e ausencia e nao e zero",
+              "evidencia": "contrato_canais.py:572-586, 845-846"
+            }
+          ]
+        },
+        "criavel_pausada": {
+          "estado": "BLOQUEADO",
+          "bloqueadores": [
+            {
+              "codigo": "PMAX_FORA_DO_EXECUTOR",
+              "origem": "produto",
+              "evidencia": "contrato_canais.py:1546"
+            },
+            {
+              "codigo": "pmax_observabilidade_nao_provada",
+              "origem": "observabilidade",
+              "causa": "o inventario enxerga a campanha; a estrutura interna — grupos de recursos e assets — nao e lida por ninguem aqui, e e nela que PMax decide o que entrega",
+              "evidencia": "contrato_canais.py:1538-1560, 1616-1618"
+            }
+          ],
+          "_por_que_dois_codigos": "sao razoes INDEPENDENTES, e a independencia precisa sobreviver: se a decisao de produto for revertida numa tarde e o codigo fosse unico, PMax passaria a ser criavel sem ninguem conseguir observar a campanha depois. Fechar uma nao abre o portao",
+          "invariante_travado": "backend/tests/test_trafego_contrato_canais.py:786-792 substitui o manifesto por um que sabe criar e cobra que o portao continue fechado"
+        },
+        "ativavel": {
+          "estado": "BLOQUEADO",
+          "bloqueadores_iguais_a": "SEARCH",
+          "evidencia": "contrato_canais.py:974-1016"
+        }
+      },
+      "assets": {
+        "papeis": 5,
+        "fonte": "PAPEIS_DE_ASSET_PMAX no brief, e NAO perfil.py — o unico canal cuja lista nao vem de perfil",
+        "evidencia": "volc_ads/campanha/brief.py:1032-1038; contrato_canais.py:675-682",
+        "_defeito_conhecido": "o comentario em volc_ads/campanha/perfil.py:329-332 afirma que perfil.PERFORMANCE_MAX.recursos_criativos esta vazio, e isso ja NAO e verdade: o perfil declara sete recursos"
+      },
+      "observabilidade": {
+        "exige_linhagem": "releitura_do_ledger",
+        "regra": "recusa veredito autoatestado pela propria execucao, mesmo com provada=true",
+        "evidencia": "contrato_canais.py:1090, 1126-1133"
+      },
+      "owner_do_proximo_desbloqueio": "produto (a decisao) E observabilidade (a releitura) — os dois, independentemente",
+      "proxima_capacidade": "provar a releitura da estrutura interna (grupos de recursos e assets). Sem isso, reverter a decisao de produto nao abre o portao"
+    }
+  },
+  "canais_sem_contrato_de_portoes": {
+    "_o_que_e_esta_secao": "canais que a GRAMATICA DO FRONTEND conhece e que o contrato do servidor nao projeta. A assimetria e declarada no proprio tipo (src/types/trafego.ts:1009-1024, 1038-1048): o tipo Canal tem SEIS valores e os canais com manifesto sao QUATRO",
+    "VIDEO": {
+      "no_frontend": {
+        "existe": true,
+        "apiCria": false,
+        "etapas_de_jornada": 1,
+        "evidencia": "src/components/trafego/canal/jornada.ts:537-603"
+      },
+      "no_contrato_do_servidor": "ausente",
+      "invariante_travado": "mesmo com um manifesto mentiroso dizendo sabe_criar:true, Video NAO ganha CTA de criar — a recusa da API vence (src/components/trafego/canal/__tests__/jornada.test.ts:210-222)",
+      "veredito_para_a_tela": "observar e analisar"
+    },
+    "SHOPPING": {
+      "no_frontend": {
+        "existe": true,
+        "etapas_de_jornada": 6,
+        "evidencia": "src/components/trafego/canal/jornada.ts:537-603"
+      },
+      "no_contrato_do_servidor": "ausente",
+      "veredito_para_a_tela": "pre-requisito ausente"
+    },
+    "META_ADS": {
+      "no_manifesto": true,
+      "no_contrato_de_portoes": false,
+      "por_que": "existe no manifesto para o eixo de navegacao e nao tem portao de criacao para projetar — nem ler ele pode hoje",
+      "evidencia": "backend/app/trafego/plataforma.py:460-471; contrato_canais.py:128-131"
+    }
+  },
+  "vocabularios_de_canal_que_nao_coincidem": {
+    "_por_que_importa": "quatro listas de canal convivem com tamanhos diferentes; um executor que assumir uma so vai produzir simetria falsa",
+    "contrato_de_portoes": {
+      "n": 4,
+      "evidencia": "contrato_canais.py:131"
+    },
+    "tipo_do_frontend": {
+      "n": 6,
+      "evidencia": "src/types/trafego.ts:1009-1024"
+    },
+    "vocabulario_canonico_do_espelho": {
+      "n": 15,
+      "nota": "nomes do enum do Google",
+      "evidencia": "backend/app/trafego/dominio.py:136-153, 266-268"
+    },
+    "apelidos": {
+      "porta_de_escrita": "PMAX -> PERFORMANCE_MAX",
+      "porta_de_leitura": "PMAX e DISCOVERY",
+      "evidencia": "backend/app/trafego/dominio.py:166, 273-276"
+    },
+    "gramatica_do_estudio": {
+      "nota": "a aba Criar monta a bancada sobre SEIS canais fixos derivados de CANAIS no frontend, e NAO sobre a lista que o servidor devolve em GET /canais",
+      "evidencia": "src/components/trafego/canal/jornada.ts:879"
+    }
+  },
+  "janela_do_canario": {
+    "_o_que_e": "a unica janela em que uma criacao real e autorizada hoje",
+    "conta": "547-809-6539",
+    "nome_da_conta": "Portal Mundo Mais",
+    "mcc": "6016739364",
+    "canal": "SEARCH",
+    "cria_pausada": true,
+    "inclui_ativacao": false,
+    "orcamento_diario_maximo_brl": "20.00",
+    "cpc_maximo_brl": "1.00",
+    "evidencia": "backend/app/trafego/canario.py:25-29, 44-51",
+    "teto_economico_derivado": {
+      "_regra_da_plataforma": "o limite de gasto diario do Google e 2x o orcamento diario medio",
+      "teto_do_dia_no_maximo_do_canario_brl": "40.00",
+      "teto_de_tres_dias_brl": "120.00",
+      "_aviso": "este numero e uma CONSEQUENCIA da regra da plataforma aplicada ao teto do canario. Nao e uma medida, nao carrega frescor, e nao deve ser exibido com carimbo de leitura"
+    }
+  },
+  "lacunas_de_servidor_que_a_matriz_expoe": [
+    {
+      "lacuna": "GET /canais nao passa prontidao_por_canal nem prontidao_pmax ao contrato",
+      "consequencia": "a mensuracao de TODOS os canais chega a tela sempre com lida=false, e a observabilidade de PMax sai INDETERMINADA em toda resposta HTTP",
+      "evidencia": "backend/app/routers/trafego.py:5512-5516",
+      "prova_de_ausencia": "grep -rn 'prontidao_pmax' backend/app/routers/ => 0; grep -rn 'prontidao_por_canal' backend/app/routers/ => 0",
+      "owner": "servidor"
+    },
+    {
+      "lacuna": "POST /reconciliar nao tem consumidor no frontend",
+      "consequencia": "a saida de 'indeterminado' do lancamento existe no backend e nao tem porta na tela",
+      "evidencia": "backend/app/routers/trafego.py:4442-4447",
+      "prova_de_ausencia": "grep -rn 'api/trafego/reconciliar' src/ api/ => 0 resultados",
+      "owner": "frontend"
+    },
+    {
+      "lacuna": "GET /plano-de-mensuracao nao tem consumidor de rede no frontend",
+      "consequencia": "os sete portoes de mensuracao nunca chegam a tela por esta rota",
+      "prova_de_ausencia": "grep -c 'plano-de-mensuracao' src/lib/pautadorApi.ts => 0",
+      "owner": "frontend"
+    },
+    {
+      "lacuna": "nenhum handler de trafego.py ou trafego_inventario.py declara response_model",
+      "consequencia": "os schemas de saida sao dicionarios montados a mao; nao ha contrato tipado de resposta para o executor programar contra",
+      "prova_de_ausencia": "grep -rn 'response_model' backend/app/routers/trafego.py backend/app/routers/trafego_inventario.py => 0 resultados",
+      "excecao": "backend/app/routers/trafego_diagnostico.py:51 declara RespostaDoDiagnostico",
+      "owner": "servidor"
+    },
+    {
+      "lacuna": "nao existe rota de ativacao em lugar nenhum",
+      "consequencia": "o portao ativavel e um veredito projetado sem nenhuma rota que o consuma para agir — e por isso a tela nao pode oferecer controle",
+      "prova_de_ausencia": "grep -rn '\"/ativar' backend/ => 0 resultados",
+      "owner": "produto",
+      "_nota": "esta lacuna e intencional e nao deve ser fechada sem decisao de produto"
+    }
+  ],
+  "invariantes_travados_por_teste": [
+    {
+      "invariante": "todo canal sempre traz os quatro portoes, na ordem, e os quatro canais sempre saem — inclusive o que nao cria",
+      "evidencia": "backend/tests/test_trafego_contrato_canais.py:44-55"
+    },
+    {
+      "invariante": "ativavel nunca abre, em nenhum canal, para nenhuma das quatro identidades testadas",
+      "evidencia": "backend/tests/test_trafego_contrato_canais.py:230-236"
+    },
+    {
+      "invariante": "o codigo de PMax do contrato e literalmente o mesmo do engine, e esta na lista fechada plano.CODIGOS",
+      "evidencia": "backend/tests/test_trafego_contrato_canais.py:160-166"
+    },
+    {
+      "invariante": "o bloqueio de observabilidade de PMax sobrevive ao dia em que o canal ENTRAR no executor",
+      "evidencia": "backend/tests/test_trafego_contrato_canais.py:786-792"
+    },
+    {
+      "invariante": "o manifesto do Hub e o perfil do engine precisam concordar sobre quem sabe criar; a comparacao e feita por arvore sintatica para nao depender do SDK instalado",
+      "evidencia": "backend/tests/test_trafego_canal_de_criacao.py:821-830"
+    },
+    {
+      "invariante": "no frontend, INDETERMINADO tem tom proprio e nunca herda o de BLOQUEADO; so PERMITIDO produz o tom 'aberto'",
+      "evidencia": "src/lib/trafego/__tests__/canais.test.ts:91-107"
+    },
+    {
+      "invariante": "no frontend, null vira traco e nunca 0; 0 medido continua sendo 0; contagem truncada e declarada como piso",
+      "evidencia": "src/lib/trafego/__tests__/canais.test.ts:138-152"
+    },
+    {
+      "invariante": "manifesto null ('o Hub nao opera') e manifesto com capacidades:[] ('opera e nao pode nada') sao dois tipos distintos de resposta",
+      "evidencia": "src/components/trafego/canal/__tests__/capacidades.test.ts:29-44"
+    },
+    {
+      "invariante": "Demand Gen com a capacidade estreita ligada expoe a prova HTTP e continua sem cockpit e sem escrita",
+      "evidencia": "src/components/trafego/canal/__tests__/jornada.test.ts:178-188"
+    }
+  ],
+  "reguas_de_pintura_que_nao_sao_a_mesma": {
+    "_por_que_esta_secao_existe": "dois modulos do frontend chamados de 'portoes' medem coisas diferentes, e confundi-los produz cor errada",
+    "portoes_de_canal": {
+      "quantos": 4,
+      "regua": "src/lib/trafego/canais.ts:485-496 — so PERMITIDO produz o tom 'aberto'; INDETERMINADO tem tom proprio ('ignorado')",
+      "como_a_tela_conta": "pelo campo 'aberto' que o SERVIDOR emite, sem reimplementar a regra (canais.ts:549-574)",
+      "_nota": "a funcao tomDoEstado de canais.ts nao tem consumidor de producao: o renderizador codifica as classes direto no mapa DESENHO"
+    },
+    "portoes_de_mensuracao": {
+      "quantos": 7,
+      "arquivo": "src/lib/trafego/portoes.ts",
+      "estados": 5,
+      "regua": "src/lib/trafego/portoes.ts:119-124 — so PRONTO devolve 'provado'; NAO_PRONTO devolve 'negado'; NAO_APLICAVEL devolve 'ausente'; PARCIAL e INDETERMINADO caem no default 'ignorado'",
+      "declaracao_em_palavras": "portoes.ts:21-23, 112-115 — PARCIAL e INDETERMINADO sao 'nao sei', nunca degraus para o verde"
+    }
+  },
+  "o_que_esta_matriz_nao_afirma": [
+    "Nao afirma que qualquer canal alem de SEARCH pode criar campanha real hoje.",
+    "Nao afirma que Performance Max pode ser provado ou criado: ele planeja, e a retencao e decisao de produto registrada com data e dono.",
+    "Nao afirma que a ativacao existira. Nao ha rota, e o portao esta fechado por quatro razoes de quatro origens.",
+    "Nao afirma nada sobre o estado ao vivo de nenhuma conta do Google Ads: nenhuma chamada foi feita nesta missao.",
+    "Nao afirma que os vereditos aqui sao estaveis: bloqueios medidos carregam observado_em e revalidacao justamente porque envelhecem."
+  ],
+  "segunda_dimensao_da_matriz": {
+    "_por_que": "o mesmo canal muda de veredito por PESSOA; uma matriz so por canal seria ambigua",
+    "capacidades_da_sessao": "cinco booleanos com invariantes que formam uma escada; sao eles que decidem a celula",
+    "evidencia": "backend/app/trafego/capacidades.py:147-154",
+    "regra": "is_admin NAO implica google_mutate"
+  },
+  "assimetrias_do_envelope": [
+    {
+      "fato": "GET /canais/{canal} devolve 404 para um canal do tipo Canal sem manifesto (VIDEO, SHOPPING); o envelope carrega tambem operador, politica_canario e fontes",
+      "evidencia": "backend/app/routers/trafego.py:5543-5546"
+    },
+    {
+      "fato": "o campo operacional e assimetrico por canal e montado NA ROTA, fora dos portoes: so SEARCH recebe canario, so PERFORMANCE_MAX recebe observabilidade e assets_exigidos; os outros dois recebem objeto vazio",
+      "evidencia": "backend/app/routers/trafego.py:5476-5490"
+    },
+    {
+      "fato": "a MESMA resposta de /canais entrega TRES listas divergentes de papeis de asset de Performance Max: 5 em assets.recursos (do brief), 12 em operacional.assets_exigidos.papeis (do coverage) e 7 no perfil do engine",
+      "evidencia": "backend/app/trafego/pmax_cockpit.py:205-215"
+    },
+    {
+      "fato": "nao existe visao lado a lado dos quatro canais: a tela empilha um <section> por canal com contador textual de portoes abertos — a matriz nunca e desenhada como matriz",
+      "evidencia": "src/components/trafego/canais/PainelDeCanais.tsx:353-366"
+    },
+    {
+      "fato": "a auditoria de coerencia do contrato vira aviso VISIVEL ao operador quando o servidor manda veredito incoerente",
+      "evidencia": "src/components/trafego/canais/PainelDeCanais.tsx:372-378"
+    }
+  ],
+  "autoridade_de_quem_cria_e_quem_prova": {
+    "_onde_mora": "no engine, em dois registros distintos, conferidos contra o manifesto por teste",
+    "sabem_criar": [
+      "SEARCH",
+      "DISPLAY"
+    ],
+    "sabem_provar": [
+      "SEARCH",
+      "DISPLAY",
+      "DEMAND_GEN"
+    ],
+    "evidencia": "volc_ads/subir.py:122-133",
+    "_nota": "2 que criam e 3 que provam sao a autoridade; o manifesto e conferido contra eles"
+  }
+}

@@ -468,3 +468,429 @@ async def funnel(opp_id: int, body: Optional[FunnelRequest] = Body(default=None)
         persisted=persisted,
         warnings=warnings,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# O ATO QUE FALTAVA: CONFERIR E APROVAR O CONJUNTO PAGO
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ O MOTOR DECIDIA BEM E NINGUÉM PODIA ASSINAR A DECISÃO.
+#
+# `paid_eligibility.aprovar()` existe desde a sprint do conjunto pago e, medido
+# em 03/09/2026, NÃO TEM CHAMADOR DE PRODUÇÃO: os 9 call sites são todos de
+# teste. Quem produz o conjunto (`funnel_factory.py:391`) grava
+# `conjunto_pago` SEM `approved_set_sha256`, e `portao_conjunto_pago.py:158`
+# recusa exatamente esse estado com `CONJUNTO_PAGO_NAO_APROVADO`.
+#
+# O efeito é o caminho normal fechado: `/provar` e `/subir` devolvem 409 e a
+# campanha Search não nasce. Não faltava motor nem portão — faltava a PORTA
+# pela qual um humano confere a impressão e assina.
+#
+# Estas duas rotas são essa porta, e só ela: nenhuma decide elegibilidade,
+# nenhuma cria keyword, nenhuma toca no Google Ads. A primeira MOSTRA o que o
+# motor decidiu; a segunda registra que uma pessoa conferiu aquela impressão.
+
+from app.agents.mining.paid_eligibility import (  # noqa: E402
+    MEDIDO as _SINAL_MEDIDO,
+    CampaignKeywordSet,
+    HashDivergente,
+    aprovar,
+    conjunto_de_dicionario,
+)
+from app.agents.mining.portao_conjunto_pago import (  # noqa: E402
+    N8N_SEM_CONTRATO,
+    PortaoDoConjuntoPago,
+    conjunto_do_cluster,
+    parece_produzido_fora_do_motor,
+)
+from app.seguranca.identidade import Identidade  # noqa: E402
+
+from pydantic import BaseModel  # noqa: E402
+
+#: Um motivo tem de dizer alguma coisa. "ok", "sim" e "." são assinatura sem
+#: declaração — e é a declaração que serve à auditoria depois, quando alguém
+#: perguntar por que aquele conjunto foi congelado.
+MOTIVO_MINIMO = 10
+
+
+class AprovacaoConjuntoPagoRequest(BaseModel):
+    """O ato humano, por escrito.
+
+    `hash_conferido` não é cerimônia: é o que impede aprovar uma tela e
+    exportar outra coisa. Ele viaja no corpo porque o que se aprova é a
+    IMPRESSÃO QUE O OPERADOR VIU, não a que o servidor tem no momento do
+    clique — se as duas divergirem, `aprovar()` recusa.
+    """
+
+    opportunity_id: Optional[int] = None
+    run_id: Optional[int] = None
+    hash_conferido: str
+    motivo: str
+
+
+def _sinal_para_cpc(sinal: Any) -> Optional[Dict[str, Any]]:
+    """`Sinal` → o `Cpc` que a tela conhece, com a ausência preservada.
+
+    ⚠️ O objeto viaja MESMO SEM NÚMERO, com `valor: null`. É a mesma regra de
+    `volc_ads/pautador_ponte.Cpc`: quem carrega a procedência é o objeto, e
+    "não medido, fonte X" é informação — um `null` no lugar do objeto inteiro
+    seria silêncio, e um `0.0` seria a afirmação de que o clique é de graça.
+
+    `moeda` é `null` de propósito: o conjunto pago não declara moeda em lugar
+    nenhum, e escrever "BRL" aqui seria inventar a unidade do número.
+    """
+    if sinal is None:
+        return None
+    valor = getattr(sinal, "valor", None)
+    estado = str(getattr(sinal, "estado", "") or "")
+    fonte = str(getattr(sinal, "fonte", "") or "?")
+    motivo = getattr(sinal, "motivo", None)
+    procedencia = f"estado {estado} · fonte {fonte}"
+    if motivo:
+        procedencia += f" · {motivo}"
+    return {
+        "valor": None if valor is None else float(valor),
+        "procedencia": procedencia,
+        "moeda": None,
+        # `measured` no vocabulário do `Sinal` é medição de leilão de verdade,
+        # que é o que "medido na conta" quer dizer para quem lê a tela.
+        "medido_na_conta": estado == _SINAL_MEDIDO,
+    }
+
+
+def _kw_do_conjunto(d: Any) -> Dict[str, Any]:
+    """Uma decisão do conjunto, na forma que `KeywordDoConjuntoPago` declara."""
+    volume = getattr(getattr(d, "volume", None), "valor", None)
+    motivos = list(getattr(d, "motivos", None) or [])
+    return {
+        "termo": d.termo,
+        "termo_normalizado": d.termo_normalizado,
+        "match_type": d.match_type,
+        "subintencao": d.subintencao,
+        # `int` só quando há número. Volume ausente é `null` — ver o ⚠️ de
+        # `src/types/trafego.ts:Cpc.valor`: zero é uma medição.
+        "volume": None if volume is None else int(volume),
+        "cpc": _sinal_para_cpc(getattr(d, "cpc", None)),
+        "motivo": "; ".join(motivos) or None,
+    }
+
+
+def _localizar_conjunto(cluster: Dict[str, Any]) -> tuple[int, Dict[str, Any]]:
+    """Onde, dentro de `factory_output`, mora o conjunto pago deste cluster.
+
+    ⚠️ POR QUE NÃO `conjunto_do_cluster()` AQUI.
+
+    `portao_conjunto_pago.conjunto_do_cluster()` é o portão de DEPOIS da
+    aprovação: ele recusa com `CONJUNTO_PAGO_NAO_APROVADO` justamente o estado
+    que esta tela existe para mostrar — conjunto minerado, ainda sem selo. Usá-
+    lo na leitura fecharia a porta que estamos abrindo.
+
+    O que se reaproveita dele é a guarda que vale nos dois lados
+    (`parece_produzido_fora_do_motor`), e o portão inteiro volta a rodar no
+    POST, como CONFERÊNCIA, antes de qualquer escrita.
+
+    Devolve o ÍNDICE junto com o dicionário porque `factory_output` é uma lista
+    com um item por funil: escrever de volta sem o índice sobrescreveria os
+    outros funis do mesmo cluster.
+    """
+    if parece_produzido_fora_do_motor(cluster):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"{N8N_SEM_CONTRATO}: este cluster foi produzido fora do motor "
+                "Python de elegibilidade paga e não carrega `conjunto_pago`. "
+                "Minere de novo pelo motor antes de aprovar conjunto."
+            ),
+        )
+    itens = [x for x in (cluster.get("factory_output") or []) if isinstance(x, dict)]
+    for i, item in enumerate(itens):
+        bruto = (item.get("keywords_campanha") or {}).get("conjunto_pago")
+        if bruto:
+            return i, bruto
+    raise HTTPException(
+        status_code=404,
+        detail=(
+            "Este cluster não tem `conjunto_pago` em nenhum funil de "
+            "`factory_output`. Não há conjunto para conferir — rode a fábrica "
+            "de funis do Pautador antes."
+        ),
+    )
+
+
+async def _cluster_do_card(
+    supa: SupabaseService, opportunity_id: int, run_id: Optional[int]
+) -> Dict[str, Any]:
+    """O cluster mais recente do card, conferido contra o `run_id` pedido.
+
+    ⚠️ 404, e não um corpo vazio com `pode_aprovar: false`.
+
+    O corpo de revisão exige `selected_set_sha256` — uma impressão. Devolver um
+    corpo sem cluster obrigaria a inventar essa string, e uma tela de
+    conferência com impressão inventada é pior que uma tela que não abre.
+
+    `run_id` é CONFERIDO, não usado como filtro: `get_latest_cluster` devolve o
+    mais recente do card, e devolver calado o conjunto de outra execução seria
+    apresentar para assinatura algo diferente do que o operador pediu.
+    """
+    if not supa.enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase não configurado neste backend: não há conjunto para ler.",
+        )
+    cluster = await supa.get_latest_cluster(opportunity_id)
+    if not cluster:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Nenhum cluster de keywords para a oportunidade {opportunity_id}. "
+                "Minere a oportunidade antes de aprovar conjunto pago."
+            ),
+        )
+    if run_id is not None and cluster.get("run_id") not in (None, run_id):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"O cluster mais recente deste card é da execução "
+                f"{cluster.get('run_id')}, e você pediu a {run_id}. Recuso "
+                "apresentar um conjunto de outra execução para conferência."
+            ),
+        )
+    return cluster
+
+
+def _veredito(conjunto: CampaignKeywordSet) -> tuple[bool, Optional[str], List[str]]:
+    """Se este conjunto pode ser aprovado, por que não, e o que alertar.
+
+    A autoridade é do servidor: a tela PROJETA este veredito, não o recalcula.
+    Recalcular no navegador é como nasceram as duas réguas de severidade do
+    cockpit.
+    """
+    alertas = list(conjunto.alertas or [])
+    selecionado = conjunto.selected_set_sha256
+
+    if not conjunto.selected_keywords:
+        return False, (
+            "O conjunto não tem nenhuma keyword selecionada. Aprovar um conjunto "
+            "vazio congelaria uma campanha sem termo — reveja a seleção."
+        ), alertas
+    if conjunto.blockers:
+        return False, (
+            "Há bloqueador em aberto: " + ", ".join(conjunto.blockers)
+            + ". Bloqueador é nomeado de propósito — o portão diz qual falta em "
+            "vez de escolher um número plausível."
+        ), alertas
+    if conjunto.approved_set_sha256 == selecionado:
+        return False, (
+            f"Este conjunto já está aprovado na impressão {selecionado[:12]}… "
+            f"por {conjunto.aprovado_por or 'alguém não identificado'}. "
+            "Aprovar de novo não mudaria nada."
+        ), alertas
+    if conjunto.approved_set_sha256:
+        # Aprovado ANTES e alterado depois. É re-aprovável — a doutrina do
+        # portão é "mude a seleção e aprove de novo, a impressão nova é o que
+        # autoriza" — mas o operador precisa saber que está trocando um selo,
+        # não colocando o primeiro.
+        alertas.append(
+            f"Este conjunto já tinha sido aprovado em "
+            f"{conjunto.approved_set_sha256[:12]}… e MUDOU desde então. Aprovar "
+            f"agora substitui aquele selo pela impressão {selecionado[:12]}…."
+        )
+    return True, None, alertas
+
+
+def _corpo_da_revisao(
+    opportunity_id: int, cluster: Dict[str, Any], conjunto: CampaignKeywordSet
+) -> Dict[str, Any]:
+    pode, porque_nao, alertas = _veredito(conjunto)
+    return {
+        "opportunity_id": opportunity_id,
+        "cluster_id": cluster.get("id"),
+        "selecionadas": [_kw_do_conjunto(d) for d in conjunto.selected_keywords],
+        "excluidas": [_kw_do_conjunto(d) for d in conjunto.excluded_keywords],
+        "em_revisao_humana": [_kw_do_conjunto(d) for d in conjunto.human_review_keywords],
+        # `negative_keywords` é `List[Dict]` no motor e `string[]` no contrato da
+        # tela. O motor NÃO cria negativa (`conferir_congelamento` levanta se
+        # houver), então esta lista é vazia na prática — a conversão existe para
+        # não estourar caso um registro antigo traga alguma.
+        "negativas": [
+            str(n.get("termo") or n.get("texto") or n) if isinstance(n, dict) else str(n)
+            for n in (conjunto.negative_keywords or [])
+        ],
+        # ⚠️ RECALCULADA das decisões, nunca lida do registro — é a propriedade
+        # `selected_set_sha256`. Ler o hash gravado seria pedir ao registro que
+        # atestasse a si mesmo.
+        "selected_set_sha256": conjunto.selected_set_sha256,
+        "approved_set_sha256": conjunto.approved_set_sha256,
+        "aprovado_por": conjunto.aprovado_por,
+        "selection_policy_version": conjunto.selection_policy_version,
+        "blockers": list(conjunto.blockers or []),
+        "alertas": alertas,
+        "pode_aprovar": pode,
+        "porque_nao": porque_nao,
+    }
+
+
+@router.get("/opportunities/{opportunity_id}/conjunto-pago")
+async def revisar_conjunto_pago(
+    opportunity_id: int = Path(..., ge=1),
+    run_id: Optional[int] = None,
+) -> Dict[str, Any]:
+    """O conjunto pago apresentado para CONFERÊNCIA. Leitura pura.
+
+    Não decide elegibilidade, não reordena, não completa nada: o que sai daqui
+    é o que o motor gravou, reidratado, com a impressão recalculada. É essa
+    impressão que o operador confere e devolve em `hash_conferido`.
+    """
+    supa = SupabaseService(get_settings())
+    cluster = await _cluster_do_card(supa, opportunity_id, run_id)
+    _, bruto = _localizar_conjunto(cluster)
+    try:
+        conjunto = conjunto_de_dicionario(bruto)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"O `conjunto_pago` gravado está ilegível: {exc}",
+        ) from exc
+    return _corpo_da_revisao(opportunity_id, cluster, conjunto)
+
+
+@router.post("/opportunities/{opportunity_id}/conjunto-pago/aprovar")
+async def aprovar_conjunto_pago(
+    opportunity_id: int = Path(..., ge=1),
+    body: AprovacaoConjuntoPagoRequest = Body(...),
+    identidade: Identidade = Depends(exigir_usuario),
+) -> Dict[str, Any]:
+    """O ato humano: congela o conjunto contra a impressão que foi conferida.
+
+    ⚠️ `aprovado_por` é a IDENTIDADE AUTENTICADA, nunca um campo do corpo. Um
+    aprovador que viaja no corpo é um aprovador que o cliente escolhe, e uma
+    assinatura escolhida pelo assinado não é assinatura.
+    """
+    if body.opportunity_id is not None and body.opportunity_id != opportunity_id:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"O corpo declara a oportunidade {body.opportunity_id} e a URL "
+                f"pede a {opportunity_id}. Recuso adivinhar qual das duas você "
+                "quis aprovar."
+            ),
+        )
+
+    motivo = (body.motivo or "").strip()
+    if len(motivo) < MOTIVO_MINIMO:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Escreva por que este conjunto pode ser congelado (ao menos "
+                f"{MOTIVO_MINIMO} caracteres). O motivo é o que responde, daqui "
+                "a três meses, por que estes termos e não outros foram ao "
+                "leilão — 'ok' não responde."
+            ),
+        )
+
+    supa = SupabaseService(get_settings())
+    cluster = await _cluster_do_card(supa, opportunity_id, body.run_id)
+    indice, bruto = _localizar_conjunto(cluster)
+    try:
+        conjunto = conjunto_de_dicionario(bruto)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"O `conjunto_pago` gravado está ilegível: {exc}",
+        ) from exc
+
+    pode, porque_nao, _ = _veredito(conjunto)
+    if not pode:
+        raise HTTPException(status_code=409, detail=porque_nao)
+
+    try:
+        aprovar(
+            conjunto,
+            aprovado_por=identidade.email or identidade.sub,
+            hash_conferido=body.hash_conferido,
+        )
+    except HashDivergente as exc:
+        # ⚠️ 409 e NADA congelado. A impressão que o operador conferiu não é a
+        # do conjunto que está no banco agora: o conjunto mudou entre a tela e
+        # o clique. Aprovar assim seria assinar um documento e arquivar outro.
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"{exc} — o conjunto mudou entre a sua conferência e este "
+                "clique, então a assinatura não vale para ele. Abra a revisão "
+                "de novo, confira a impressão nova e aprove a partir dela. "
+                "Nada foi congelado."
+            ),
+        ) from exc
+
+    aprovado_em = _now()
+
+    # ── a escrita ───────────────────────────────────────────────────────────
+    # ⚠️ O ARRAY INTEIRO VOLTA, COM OS OUTROS FUNIS INTACTOS.
+    #
+    # `factory_output` é jsonb ARRAY com um item por funil, e o PostgREST não
+    # faz `jsonb_set` por caminho: o PATCH substitui a coluna. Então a escrita é
+    # read-modify-write do array LIDO nesta mesma requisição, trocando apenas
+    # `[indice].keywords_campanha.conjunto_pago`. Mandar `[item]` — só o funil
+    # aprovado — apagaria os demais.
+    itens = [dict(x) for x in (cluster.get("factory_output") or []) if isinstance(x, dict)]
+    campanha = dict(itens[indice].get("keywords_campanha") or {})
+    campanha["conjunto_pago"] = conjunto.como_dicionario()
+    # O ato humano fica FORA de `conjunto_pago`: `conjunto_de_dicionario` só lê
+    # os campos do contrato, e o instante/motivo não são parte da impressão —
+    # incluí-los ali seria misturar o que o hash cobre com o que ele não cobre.
+    campanha["aprovacao_humana"] = {
+        "aprovado_por": conjunto.aprovado_por,
+        "aprovado_em": aprovado_em,
+        "motivo": motivo,
+        "hash_conferido": body.hash_conferido,
+    }
+    itens[indice] = {**itens[indice], "keywords_campanha": campanha}
+
+    # ⚠️ A CONFERÊNCIA ANTES DA ESCRITA, PELO PORTÃO DE VERDADE.
+    #
+    # `conjunto_do_cluster` é o mesmo portão que `/provar` e `/subir` usam. Se
+    # ele não abrir sobre o registro que estamos prestes a gravar, então esta
+    # aprovação não destravaria nada — e gravá-la deixaria o operador achando
+    # que destravou. Roda ANTES do PATCH: falhou, nada foi escrito.
+    try:
+        conjunto_do_cluster({**cluster, "factory_output": itens})
+    except PortaoDoConjuntoPago as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"A aprovação não destravaria o portão de campanha ({exc.codigo}): "
+                f"{exc.detalhe} Nada foi gravado."
+            ),
+        ) from exc
+
+    try:
+        linhas = await supa.patch(
+            "pautador_keyword_clusters",
+            {"id": f"eq.{cluster.get('id')}"},
+            {"factory_output": itens},
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=502,
+            detail=f"A aprovação não foi gravada (o conjunto segue sem selo): {exc}",
+        ) from exc
+    if not linhas:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"O PATCH em `pautador_keyword_clusters#{cluster.get('id')}` não "
+                "devolveu linha nenhuma: a aprovação NÃO foi gravada. O conjunto "
+                "segue sem selo."
+            ),
+        )
+
+    return {
+        "opportunity_id": opportunity_id,
+        "cluster_id": cluster.get("id"),
+        "approved_set_sha256": conjunto.approved_set_sha256,
+        "aprovado_por": conjunto.aprovado_por,
+        "aprovado_em": aprovado_em,
+        "n_selecionadas": len(conjunto.selected_keywords),
+        "motivo": motivo,
+    }

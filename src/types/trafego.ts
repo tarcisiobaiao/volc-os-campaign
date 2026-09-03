@@ -21,7 +21,21 @@ import type { PlanoDeMensuracao } from '@/lib/trafego/canais';
 import type { PerfilDeMensuracao } from '@/lib/trafego/portoes';
 
 export interface Cpc {
-  valor: number;
+  /**
+   * ⚠️ `null` É AUSÊNCIA, E AUSÊNCIA NÃO É ZERO.
+   *
+   * Até 03/09/2026 este campo era `number`, e a projeção do servidor garantia o
+   * tipo com `float(getattr(c, "valor", 0) or 0)` — um CPC não medido chegava à
+   * tela como `0.0` e era desenhado "R$ 0,00", que é uma MEDIÇÃO: diz que o
+   * clique é de graça. O próprio módulo que fazia isso abre com "Nenhum CPC sai
+   * sem procedência" e escreve, sobre outro campo, que "um zero ali seria um
+   * custo medido que não foi medido". A doutrina estava certa e a porta de saída
+   * a contradizia.
+   *
+   * Com `null`, a tela escreve **não medido** — e os ramos de ausência que os
+   * componentes já tinham deixam de ser código morto.
+   */
+  valor: number | null;
   procedencia: string;
   /** Pode ser `null` — o cluster não declara moeda. A tela diz "moeda não
    *  declarada" em vez de assumir BRL: assumir é como um número de sete países
@@ -32,7 +46,9 @@ export interface Cpc {
 
 export interface KeywordCandidata {
   texto: string;
-  volume: number;
+  /** `null` = volume não medido. Ver o ⚠️ de `Cpc.valor`: zero é uma medição,
+   *  e "0 buscas/mês" é uma afirmação cara de se fazer por engano. */
+  volume: number | null;
   cpc: Cpc | null;
   competicao: string;
   tendencia: number | null;
@@ -53,7 +69,8 @@ export interface GrupoCandidato {
   tipo: string;
   descricao: string;
   keywords: KeywordCandidata[];
-  volume: number;
+  /** `null` = o grupo não tem volume medido. Ver o ⚠️ de `Cpc.valor`. */
+  volume: number | null;
   /** Média dos termos. */
   cpc_simples: Cpc | null;
   /** Média do TRÁFEGO. Diverge da simples quando um termo de volume enorme puxa
@@ -73,8 +90,12 @@ export interface Triagem {
   para_conteudo: number;
   descartadas: number;
   breakdown: Record<string, number>;
-  volume_total: number;
-  volume_da_fila: number;
+  /** `null` = a linha do cluster não declarou o total. Ver o ⚠️ de `Cpc.valor`:
+   *  um `0` aqui afirma que não há busca nenhuma, que é uma medição cara. */
+  volume_total: number | null;
+  /** `null` = NENHUM termo da fila declara volume. Uma soma sobre ausências não
+   *  é zero — é uma soma que não pôde ser feita. */
+  volume_da_fila: number | null;
 }
 
 export interface Fato {
@@ -112,16 +133,36 @@ export interface OrigemDaCampanha {
   texto_da_lp?: string;
 }
 
+/**
+ * O vocabulário fechado de severidade, e o que cada valor FAZ com o lançamento.
+ *
+ * ⚠️ `limitacao` BARRA, e essa é a única leitura defensável. `FULLY_LIMITED`
+ * deixou 57 anúncios sem veicular em 39 contas sob
+ * `GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES` — anúncio que não veicula é
+ * reprovação com outro nome, e o engine já registrava isso em
+ * `volc_ads/campanha/conteudo.py:56` (`SEVERIDADE_BARRA`). Quem dizia o
+ * contrário era a tela: `PortaoDePolitica` escrevia que a campanha "sobe com
+ * restrição". Duas réguas para o mesmo veredito divergem na primeira mudança.
+ *
+ * A régua agora é uma só, e mora no servidor. Ver `Cockpit.bloqueado`.
+ */
+export type SeveridadeDeAviso = 'bloqueio' | 'limitacao' | 'atencao' | 'informacao';
+
+/** As severidades que NÃO impedem avançar. Fechada, e fail-closed por fora:
+ *  uma severidade nova do servidor barra até alguém decidir o contrário. */
+export const SEVERIDADES_QUE_INFORMAM: readonly SeveridadeDeAviso[] = ['atencao', 'informacao'];
+
 export interface AvisoDoCockpit {
   codigo: string;
-  severidade: 'informacao' | 'atencao' | 'bloqueio' | string;
+  severidade: SeveridadeDeAviso | string;
   titulo: string;
   detalhe: string;
 }
 
 export interface Descartada {
   texto: string;
-  volume: number;
+  /** `null` = volume não medido. Ver o ⚠️ de `Cpc.valor`. */
+  volume: number | null;
   cpc: Cpc | null;
   motivo: string;
   destino: string;
@@ -144,6 +185,34 @@ export interface Cockpit {
     aviso: string | null;
   } | null;
   avisos: AvisoDoCockpit[];
+  /**
+   * ⚠️ O VEREDITO DE PRONTIDÃO, E ELE É DO SERVIDOR.
+   *
+   * Até 03/09/2026 o domínio já calculava isto — `Cockpit.bloqueado` e
+   * `Cockpit.bloqueios` são `@property` de `volc_ads/pautador_ponte.py:266-272`
+   * e `para_json()` até emitia a primeira — e a projeção
+   * (`backend/app/trafego/projecao.py:157`) não copiava nenhuma das duas. O
+   * payload levava só `avisos[]`, e cada tela refiltrava por severidade no
+   * navegador. Duas réguas para o mesmo veredito: a do engine barrava só
+   * `bloqueio`; a da tela barrava tudo que não fosse `informacao`/`atencao`.
+   *
+   * Agora o servidor adjudica e o navegador PROJETA. Não recalcule prontidão a
+   * partir de `avisos[]`: `bloqueios` já é o subconjunto que barra.
+   *
+   * Opcional no tipo porque um servidor mais antigo não os emite — e a leitura
+   * correta da ausência é fail-closed, nunca "então não há bloqueio".
+   */
+  bloqueado?: boolean;
+  /** O subconjunto de `avisos` que IMPEDE avançar, já filtrado pelo servidor. */
+  bloqueios?: AvisoDoCockpit[];
+  /**
+   * Quando esta projeção foi lida, em ISO-8601 UTC. `null` = ninguém leu.
+   *
+   * ⚠️ Nunca substitua por um relógio local: `new Date()` no navegador mede a
+   * hora de quem olha, não a idade do dado. Sem este carimbo a tela escreve
+   * "sem carimbo de leitura", que é verdade, em vez de um frescor inventado.
+   */
+  lido_em?: string | null;
   /** O que este funil já lançou. Vazio quando nenhuma — e é isso que decide se
    *  a tela mostra "lançar" ou "já está no ar". */
   campanhas_lancadas?: CampanhaLancada[];
@@ -177,6 +246,113 @@ export interface Cockpit {
     } | null;
     detalhes_indisponiveis?: string;
   } | null;
+}
+
+// ── a bancada guiada ────────────────────────────────────────────────────────
+
+/**
+ * As seis paradas do lançamento, na ordem em que uma CAUSA a seguinte.
+ *
+ * Não é uma ordem de conveniência. Destino vem primeiro porque é a única parada
+ * que se resolve inteira sem gastar nada. Política antes de Anúncio porque a
+ * copy é escrita e provada sob a vertical. Termos antes de Anúncio porque a copy
+ * ancora nos termos. Economia depois de Termos porque a régua do leilão é que
+ * dimensiona a aposta. Revisão não decide nada: confere e dispara a prova.
+ */
+export type ParadaDaBancada =
+  | 'destino' | 'politica' | 'termos' | 'anuncio' | 'economia' | 'revisao';
+
+export const PARADAS_DA_BANCADA: readonly ParadaDaBancada[] =
+  ['destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao'];
+
+/**
+ * O estado de uma parada. Union fechada, glifo + palavra + descrição — nunca só
+ * cor.
+ *
+ * ⚠️ `indeterminada` NUNCA degrada para `pendente`. "não consegui ler" e "falta
+ * fazer" são fatos diferentes, e confundi-los é como um erro de leitura vira
+ * uma tarefa do operador. `nao_se_aplica` sai do denominador do progresso: um
+ * canal sem construtor não mostra "etapa 3 de 12".
+ */
+export type EstadoDaParada =
+  | 'confirmada' | 'atual' | 'pendente' | 'bloqueada' | 'indeterminada' | 'nao_se_aplica';
+
+/** Uma parada projetada para o mapa. `causa` é obrigatória quando bloqueada. */
+export interface ParadaProjetada {
+  parada: ParadaDaBancada;
+  rotulo: string;
+  estado: EstadoDaParada;
+  /** Por que está bloqueada ou indeterminada. Vazio nos demais estados. */
+  causa: string | null;
+}
+
+/** Uma linha do Pedido persistente. Projeção pura: rótulo, valor, fonte. */
+export interface LinhaDoPedido {
+  rotulo: string;
+  /** `null` = ausência. A tela escreve "—" e diz quem não leu. Nunca `0`. */
+  valor: string | null;
+  /** De onde veio o valor. "você, agora", "a conta", "a mineração". */
+  fonte: string;
+  /** Só quando o valor é MEDIDA. `null` quando não há carimbo de leitura. */
+  frescor?: string | null;
+}
+
+// ── o conjunto pago: revisão e aprovação ────────────────────────────────────
+
+/**
+ * Uma keyword do conjunto pago, como o servidor a apresenta para conferência.
+ *
+ * ⚠️ Este conjunto é AUTORIDADE. A tela confere e declara exclusões; ela não
+ * acrescenta positivas. `POST /provar` e `POST /subir` recusam qualquer critério
+ * positivo vindo do corpo (`CRITERIO_POSITIVO_DO_CORPO_RECUSADO`).
+ */
+export interface KeywordDoConjuntoPago {
+  termo: string;
+  termo_normalizado: string;
+  match_type: MatchType;
+  subintencao: string | null;
+  /** `null` = volume não medido. Ver o ⚠️ de `Cpc.valor`. */
+  volume: number | null;
+  /** `null` = CPC não medido. Nunca `0`. */
+  cpc: Cpc | null;
+  motivo: string | null;
+}
+
+/** O conjunto pago apresentado para revisão, com a impressão a conferir. */
+export interface RevisaoDoConjuntoPago {
+  opportunity_id: number;
+  cluster_id: number | null;
+  selecionadas: KeywordDoConjuntoPago[];
+  excluidas: KeywordDoConjuntoPago[];
+  em_revisao_humana: KeywordDoConjuntoPago[];
+  negativas: string[];
+  /** A impressão do conjunto APRESENTADO. É ela que o humano confirma. */
+  selected_set_sha256: string;
+  /** `null` = ainda não aprovado. Quando presente e igual à de cima, congelado. */
+  approved_set_sha256: string | null;
+  aprovado_por: string | null;
+  selection_policy_version: string;
+  /** Prontos do servidor, em linguagem operacional. Não os remonte. */
+  blockers: string[];
+  alertas: string[];
+  /** ⚠️ Autoridade do servidor: só ele decide se o conjunto pode ser aprovado. */
+  pode_aprovar: boolean;
+  /** Por que não pode, quando `pode_aprovar` é falso. */
+  porque_nao: string | null;
+}
+
+/** O recibo da aprovação: a identidade do conjunto congelado. */
+export interface AprovacaoDoConjuntoPago {
+  opportunity_id: number;
+  cluster_id: number | null;
+  /** A impressão congelada. Daqui em diante o portão a exige idêntica. */
+  approved_set_sha256: string;
+  aprovado_por: string;
+  /** ISO-8601 UTC. */
+  aprovado_em: string;
+  /** Quantas positivas o conjunto congelou. */
+  n_selecionadas: number;
+  motivo: string;
 }
 
 // ── o quadro ────────────────────────────────────────────────────────────────

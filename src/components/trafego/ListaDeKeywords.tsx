@@ -67,9 +67,27 @@ export const ListaDeKeywords: React.FC<{
   marcadas: Set<string>;
   onAlternar: (texto: string) => void;
 }> = ({ grupo, marcadas, onAlternar }) => {
+  // ⚠️ AUSÊNCIA NÃO É ZERO, NEM NA ORDENAÇÃO.
+  //
+  // `b.volume - a.volume` com `volume: number | null` devolve `NaN`, e um
+  // comparador que devolve NaN produz ordem indefinida — a lista embaralharia
+  // sem ninguém notar. Quem não tem volume medido vai para o FIM, junto, e não
+  // se mistura com quem foi medido em zero: são fatos diferentes.
   const ordenadas = React.useMemo(
-    () => [...grupo.keywords].sort((a, b) => b.volume - a.volume), [grupo.keywords]);
-  const maior = ordenadas[0]?.volume || 1;
+    () => [...grupo.keywords].sort((a, b) => {
+      if (a.volume == null && b.volume == null) return 0;
+      if (a.volume == null) return 1;
+      if (b.volume == null) return -1;
+      return b.volume - a.volume;
+    }),
+    [grupo.keywords],
+  );
+  // O maior volume MEDIDO. `|| 1` evita divisão por zero; ele não inventa dado,
+  // porque a barra de quem não tem volume simplesmente não é desenhada.
+  const maior = React.useMemo(
+    () => grupo.keywords.reduce((m, k) => (k.volume != null && k.volume > m ? k.volume : m), 0) || 1,
+    [grupo.keywords],
+  );
   const uteis = React.useMemo(() => tagsQueDiscriminam(grupo), [grupo]);
 
   return (
@@ -86,7 +104,11 @@ const Linha: React.FC<{
   k: KeywordCandidata; maior: number; tagsUteis: Set<string>;
   marcada: boolean; onAlternar: () => void;
 }> = ({ k, maior, tagsUteis, marcada, onAlternar }) => {
-  const pct = Math.max(0.5, (k.volume / maior) * 100);
+  // `null` = sem barra. Desenhar 0,5% para quem não foi medido daria a mesma
+  // forma de quem foi medido perto de zero.
+  const pct = k.volume == null ? null : Math.max(0.5, (k.volume / maior) * 100);
+  const volumeLido = k.volume == null ? null : k.volume.toLocaleString('pt-BR');
+  const cpcLido = k.cpc?.valor == null ? null : k.cpc.valor.toFixed(2).replace('.', ',');
   const tags = [...new Set(k.tags)]
     .filter((t) => tagsUteis.has(t))
     .map((t) => TRADUCAO_DE_TAG[t] ?? t.toLowerCase().replace(/_/g, ' '));
@@ -97,7 +119,9 @@ const Linha: React.FC<{
         type="button"
         onClick={onAlternar}
         aria-pressed={marcada}
-        aria-label={`${k.texto}, volume ${k.volume}${k.cpc ? `, CPC ${k.cpc.valor.toFixed(2)}` : ''}${marcada ? ', selecionada' : ', fora'}`}
+        aria-label={`${k.texto}, volume ${volumeLido ?? 'não medido'}`
+          + `${cpcLido ? `, CPC ${cpcLido}` : ', CPC não medido'}`
+          + `${marcada ? ', selecionada' : ', fora'}`}
         className={cn(
           'group relative flex w-full items-center gap-3 overflow-hidden px-3 py-2.5 text-left',
           'transition-[opacity,transform] duration-150',
@@ -111,10 +135,12 @@ const Linha: React.FC<{
         {/* A barra de volume, ATRÁS do conteúdo. É o que faz a lista concordar
             com a régua: escanear as linhas dá a mesma conclusão que olhar a
             forma. */}
-        <span aria-hidden
-              className={cn('absolute inset-y-0 left-0 -z-10 transition-[width] duration-200',
-                            marcada ? 'bg-muted' : 'bg-muted/50')}
-              style={{ width: `${pct}%` }} />
+        {pct != null && (
+          <span aria-hidden
+                className={cn('absolute inset-y-0 left-0 -z-10 transition-[width] duration-200',
+                              marcada ? 'bg-muted' : 'bg-muted/50')}
+                style={{ width: `${pct}%` }} />
+        )}
 
         <span className={cn(
           'flex h-4 w-4 shrink-0 items-center justify-center border transition-colors',
@@ -135,10 +161,12 @@ const Linha: React.FC<{
           )}
         </span>
 
+        {/* ⚠️ Ausência é escrita, não zerada. "não medido" e "0" são afirmações
+            diferentes, e a segunda é cara: diz que ninguém procura por isso. */}
         <span className="tabular shrink-0 text-right text-[13px] leading-none">
-          {k.volume.toLocaleString('pt-BR')}
+          {volumeLido ?? <span className="text-muted-foreground">não medido</span>}
           <span className="mt-1 block text-[11px] text-muted-foreground">
-            {k.cpc ? k.cpc.valor.toFixed(2).replace('.', ',') : '—'}
+            {cpcLido ?? 'CPC não medido'}
           </span>
         </span>
       </button>

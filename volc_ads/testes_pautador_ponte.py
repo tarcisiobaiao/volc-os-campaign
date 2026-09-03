@@ -30,6 +30,8 @@ from typing import Any, get_type_hints
 
 from .campanha.brief import Copy
 from .pautador_ponte import (
+    Aviso,
+    Cockpit,
     Escolha,
     Linhas,
     PonteIncompleta,
@@ -617,6 +619,114 @@ def teste_cockpit_vira_json() -> None:
     assert d["grupos"][0]["cpc_ponderado"]["procedencia"]
     assert d["grupos"][0]["cpc_ponderado"]["moeda"] is None
     assert d["origem"]["fatos"][0]["fonte"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# UMA RÉGUA SÓ DE SEVERIDADE, E AUSÊNCIA QUE NÃO VIRA ZERO — 03/09/2026
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Os dois defeitos que estes testes travam viviam do mesmo hábito: escolher um
+# default silencioso onde não havia informação. `Cockpit.bloqueado` testava
+# `== "bloqueio"` e deixava passar `limitacao`, que o `policy/spec.json` emite;
+# `_cpc()`/`_candidata()` transformavam ausência em `0.0`/`0`, que é uma
+# medição. Nos dois casos o sistema respondia com confiança sobre o que não
+# sabia.
+
+
+def teste_limitacao_barra_igual_a_bloqueio() -> None:
+    """FULLY_LIMITED é reprovação com outro nome — 57 anúncios em 39 contas."""
+    c = Cockpit(
+        opportunity_id=73, cluster_id=None, origem=None, triagem=None,
+        grupos=(), descartadas=(), procedencia=None,
+        avisos=(Aviso("PORTAO_HABILITACAO", "limitacao",
+                      "Vertical exige habilitação",
+                      "O anúncio é aceito e não veicula."),),
+    )
+    assert c.bloqueado is True
+    assert [a.codigo for a in c.bloqueios] == ["PORTAO_HABILITACAO"]
+    # E o JSON leva as DUAS coisas: que barrou, e o que barrou.
+    d = c.para_json()
+    assert d["bloqueado"] is True
+    assert [b["codigo"] for b in d["bloqueios"]] == ["PORTAO_HABILITACAO"]
+
+
+def teste_atencao_e_informacao_nao_barram() -> None:
+    """`atencao` é para o operador ler e decidir. Barrar aqui seria a régua da
+    tela — que barrava tudo que não fosse `informacao` — vencendo a do engine."""
+    c = Cockpit(
+        opportunity_id=73, cluster_id=None, origem=None, triagem=None,
+        grupos=(), descartadas=(), procedencia=None,
+        avisos=(Aviso("URL_PROVISORIA", "atencao", "URL provisória", "…"),
+                Aviso("KEYWORD_ORFA", "informacao", "Órfãs agrupadas", "…")),
+    )
+    assert c.bloqueado is False
+    assert c.bloqueios == ()
+
+
+def teste_cpc_ausente_sai_none_e_nao_zero() -> None:
+    """⚠️ "R$ 0,00" não é silêncio: é a afirmação de que o clique é de graça."""
+    from .pautador_ponte import _cpc
+
+    for bruto in (None, "", "nao-e-numero"):
+        cpc = _cpc(bruto, "procedência de teste", None)
+        assert cpc.valor is None, (bruto, cpc.valor)
+        # E o objeto continua nascendo: é ele que carrega a procedência.
+        assert cpc.procedencia == "procedência de teste"
+    # Um zero MEDIDO continua sendo zero — ausência e zero deixaram de colidir.
+    assert _cpc(0, "p", None).valor == 0.0
+
+
+def teste_volume_ausente_na_keyword_fica_none() -> None:
+    linhas = _linhas()
+    # A primeira da fila de anúncio perde o volume, como uma linha do n8n em que
+    # `keyword_info.search_volume` não veio.
+    linhas.cluster["production_ads_queue"][0].pop("volume")
+    c = montar_cockpit(linhas)
+    sem_volume = [k for g in c.grupos for k in g.keywords if k.volume is None]
+    assert len(sem_volume) == 1, [k.texto for k in sem_volume]
+    # O grupo dela continua com volume: é a soma dos PRESENTES, não zero.
+    g = _grupo(c, "ACESSO")
+    assert g.volume is not None and g.volume > 0, g.volume
+
+
+def teste_media_de_grupo_sem_nenhum_cpc_e_none() -> None:
+    """Média sobre zero valores presentes não é 0,0 — é "não sei"."""
+    linhas = _linhas()
+    for e in linhas.cluster["production_ads_queue"]:
+        e.pop("cpc", None)
+    c = montar_cockpit(linhas)
+    g = _grupo(c, "ACESSO")
+    assert g.cpc_simples.valor is None, g.cpc_simples
+    assert g.cpc_ponderado.valor is None, g.cpc_ponderado
+    assert all(k.cpc.valor is None for k in g.keywords)
+    # A procedência continua viajando, mesmo sem número.
+    assert "services_used" in g.cpc_simples.procedencia
+
+
+def teste_media_parcial_declara_que_e_parcial() -> None:
+    """Uma média de 4 apresentada como média de 5 é a ausência-como-zero com
+    outra cara: em vez do número, inventa o denominador."""
+    linhas = _linhas()
+    linhas.cluster["production_ads_queue"][0].pop("cpc")
+    c = montar_cockpit(linhas)
+    g = _grupo(c, "ACESSO")
+    assert g.cpc_simples.valor is not None
+    assert "PARCIAL" in g.cpc_simples.procedencia, g.cpc_simples.procedencia
+    # A keyword sem CPC não entra no denominador: a média é das 4 restantes.
+    presentes = [k.cpc.valor for k in g.keywords if k.cpc.valor is not None]
+    assert len(presentes) == 4
+    assert round(g.cpc_simples.valor, 4) == round(sum(presentes) / 4, 4)
+
+
+def teste_volume_da_fila_soma_os_presentes_e_none_quando_nao_ha_nenhum() -> None:
+    linhas = _linhas()
+    for e in linhas.cluster["production_ads_queue"]:
+        e.pop("volume", None)
+    linhas.cluster.pop("total_volume", None)
+    c = montar_cockpit(linhas)
+    assert c.triagem is not None
+    assert c.triagem.volume_da_fila is None, c.triagem.volume_da_fila
+    assert c.triagem.volume_total is None, c.triagem.volume_total
 
 
 def main() -> int:

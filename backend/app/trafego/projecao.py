@@ -29,7 +29,24 @@ um número solto.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
+
+
+def _agora_iso() -> str:
+    """O instante em que ESTA projeção foi montada, com fuso explícito.
+
+    Mesmo formato de `routers/trafego.py:5268` (`_agora_iso`), e replicado aqui
+    em vez de importado: a projeção é chamada PELO router, e importar de volta
+    fecharia o ciclo. Duas linhas iguais custam menos que um import circular —
+    e o que a tela não pode ter são dois FORMATOS de instante, não duas
+    definições da mesma linha.
+
+    Com fuso, e não `datetime.now()` nu: um instante ingênuo chega ao navegador
+    interpretado no fuso de quem olha, que não é o fuso do servidor nem o da
+    conta de anúncio.
+    """
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _cpc(c: Any) -> dict[str, Any] | None:
@@ -38,11 +55,26 @@ def _cpc(c: Any) -> dict[str, Any] | None:
     `moeda` pode chegar `None` — o cluster medido não a declara. A tela mostra
     "moeda não declarada" em vez de assumir BRL, porque assumir é como um número
     de sete países vira um número de um país sem ninguém notar.
+
+    ⚠️ `valor` SAI `None` QUANDO É AUSENTE, E ISSO CONSERTA UMA CONTRADIÇÃO
+    DESTE PRÓPRIO ARQUIVO.
+
+    Até 03/09/2026 a linha era `float(getattr(c, "valor", 0) or 0)` — a única
+    `or 0` do módulo. Um CPC não medido chegava à tela como `0.0` e era
+    desenhado "R$ 0,00", que é uma AFIRMAÇÃO: diz que o clique é de graça. O
+    docstring do topo abre com "Nenhum CPC sai sem procedência" e o de
+    `escrita()` escreve, sobre outro campo, que "um zero ali seria um custo
+    medido que não foi medido". A doutrina estava certa e a porta de saída a
+    contradizia.
+
+    Um `0.0` que chegue aqui daqui em diante é um zero MEDIDO e continua saindo
+    como `0.0` — ausência e zero deixaram de ser a mesma coisa.
     """
     if c is None:
         return None
+    valor = getattr(c, "valor", None)
     return {
-        "valor": float(getattr(c, "valor", 0) or 0),
+        "valor": None if valor is None else float(valor),
         "procedencia": getattr(c, "procedencia", "") or "",
         "moeda": getattr(c, "moeda", None),
         "medido_na_conta": bool(getattr(c, "medido_na_conta", False)),
@@ -155,6 +187,26 @@ def origem(o: Any, *, com_texto_da_lp: bool = False) -> dict[str, Any]:
 
 
 def cockpit(c: Any, *, com_texto_da_lp: bool = False) -> dict[str, Any]:
+    """O cockpit inteiro, COM o veredito de prontidão que o domínio já emitiu.
+
+    ⚠️ `bloqueado` e `bloqueios` são COPIADOS, nunca recalculados aqui.
+
+    `Cockpit.bloqueado` e `Cockpit.bloqueios` são `@property` de
+    `volc_ads/pautador_ponte.py` desde sempre, e `para_json()` até emitia a
+    primeira — mas esta função não copiava nenhuma das duas. O payload levava
+    só `avisos[]`, e cada tela refiltrava por severidade no navegador: duas
+    réguas para o mesmo veredito, a do engine barrando só `bloqueio` e a da
+    tela barrando tudo que não fosse `informacao`. Refiltrar aqui seria a
+    TERCEIRA régua, e é justamente o que `alerta_de_entrega()` documenta não
+    fazer ("qualquer conta feita aqui seria uma segunda régua fora do alcance
+    dos testes").
+
+    Por isso o acesso é direto (`c.bloqueado`), sem `getattr(..., False)`: o
+    default de um `getattr` seria "não há bloqueio", que é o fail-OPEN exato
+    que um portão não pode ter. Um objeto que não carrega a propriedade não é
+    um `Cockpit`, e é melhor que isso levante aqui do que vire um payload que
+    diz "pode subir".
+    """
     return {
         "opportunity_id": c.opportunity_id,
         "cluster_id": c.cluster_id,
@@ -174,6 +226,12 @@ def cockpit(c: Any, *, com_texto_da_lp: bool = False) -> dict[str, Any]:
             "aviso": getattr(c.procedencia, "aviso", None),
         } if c.procedencia else None,
         "avisos": [aviso(a) for a in (c.avisos or ())],
+        "bloqueado": bool(c.bloqueado),
+        "bloqueios": [aviso(a) for a in (c.bloqueios or ())],
+        # QUANDO esta projeção foi montada. Sem ele a tela só tinha o relógio do
+        # navegador, que mede a hora de quem olha e não a idade do dado — um
+        # cockpit de duas horas atrás parecia recém-lido.
+        "lido_em": _agora_iso(),
     }
 
 

@@ -96,11 +96,43 @@ export const Lancamento: React.FC<Props> = ({
   const [indeterminacao, setIndeterminacao] = useState<SubidaIndeterminada | null>(null);
   const [recusa, setRecusa] = useState<RecusaDeclarada | null>(null);
   const [erro, setErro] = useState<string>('');
-  const [motivo, setMotivo] = useState(`lançamento de "${titulo}"`);
+  // ⚠️ NASCE VAZIO, E ISSO É O PONTO.
+  //
+  // Até 03/09/2026 este campo nascia com `lançamento de "${titulo}"` — quinze e
+  // poucos caracteres de texto do robô, que passavam folgados pelo único gate
+  // que existia (`motivo.trim().length < 10`). O operador podia criar campanha
+  // sem digitar uma palavra, e o recibo gravava a frase da máquina.
+  //
+  // O rótulo do campo promete "Vai no recibo. É o que responde 'por que
+  // gastamos isto?' daqui a três meses". Um default esvazia essa promessa: daqui
+  // a três meses todos os recibos dizem a mesma coisa, que é nada.
+  //
+  // `titulo` continua na assinatura porque a escada o usa para se identificar —
+  // ele só não escreve mais a justificativa no lugar do humano.
+  const [motivo, setMotivo] = useState('');
   const [confirmouPausada, setConfirmouPausada] = useState(false);
   const [segundos, setSegundos] = useState(0);
 
   const painel = useRef<HTMLDivElement>(null);
+  /** ⚠️ A TRAVA DE REENTRÂNCIA, EXPLÍCITA.
+   *
+   *  A proteção anterior era emergente: o bloco só renderizava em
+   *  `aguardando_escrita` e `setEstado('escrevendo')` rodava antes do await.
+   *  Emergente quer dizer que ela depende de o React ter re-renderizado entre os
+   *  dois cliques — e dois cliques rápidos no mesmo frame não dão essa garantia.
+   *  `/subir` CRIA CAMPANHA. Uma segunda chamada não é um erro de tela: é uma
+   *  segunda campanha na conta, ou um 409 que o operador vai ler como falha.
+   *  Um ref é síncrono e não espera render nenhum.
+   *
+   *  ⚠️ E ELE NUNCA É SOLTO. Não é esquecimento: os quatro desfechos que
+   *  oferecem saída (`destino_reprovado`, `reprovada`, `erro`, `fora_do_canario`)
+   *  saem por "Voltar e ajustar", que chama `onFechar` e DESMONTA este
+   *  componente — a próxima tentativa nasce com um ref novo. Os dois desfechos
+   *  que não oferecem saída (`criada`, `indeterminado`) são justamente aqueles
+   *  em que um segundo `/subir` é o pior resultado possível. Soltar o ref só
+   *  criaria um caminho para reenviar de dentro de um estado que declarou que
+   *  não se reenvia. */
+  const escrevendoAgora = useRef(false);
 
   // Fechar no meio da PROVA é seguro — `validate_only` não cria nada em desfecho
   // nenhum. Fechar no meio da ESCRITA não é, e por isso ali não há saída.
@@ -171,9 +203,16 @@ export const Lancamento: React.FC<Props> = ({
   useEffect(() => { void provar(); }, [provar]);
 
   const escrever = async () => {
+    // ⚠️ PRIMEIRA LINHA, E SÍNCRONA. Ver o comentário de `escrevendoAgora`.
+    if (escrevendoAgora.current) return;
     const impressao = prova?.autorizacao.plano_impressao;
     if (!prova?.autorizacao.alvo_canario || !prova.autorizacao.elegivel
         || !impressao || !confirmouPausada) return;
+    // O motivo é do humano, e é obrigatório NESTE ato — não antes. A guarda é a
+    // mesma do botão; repetida aqui porque um Enter no formulário não passa pelo
+    // `disabled` do botão.
+    if (motivo.trim().length < 10) return;
+    escrevendoAgora.current = true;
     setEstado('escrevendo');
     try {
       const r = await pautadorApi.subirCampanha({
@@ -256,6 +295,16 @@ export const Lancamento: React.FC<Props> = ({
 
   const avanco = AVANCO[estado];
   const p = prova?.preparo;
+
+  /** O que ainda falta para o ato de escrever ficar disponível, em linguagem de
+   *  operador. Uma fonte só: o botão desabilita por esta lista e a razão
+   *  adjacente a imprime inteira. Duas expressões separadas — uma no `disabled`
+   *  e outra no texto — divergiriam na primeira mudança. */
+  const faltasParaEscrever: string[] = [];
+  if (motivo.trim().length < 10)
+    faltasParaEscrever.push('escrever o motivo (pelo menos 10 caracteres)');
+  if (!confirmouPausada)
+    faltasParaEscrever.push('confirmar a autorização de criação pausada');
 
   return (
     <div className="ignicao" data-estado={estado} role="dialog" aria-modal="true"
@@ -538,18 +587,22 @@ export const Lancamento: React.FC<Props> = ({
                 </p>
               )}
               <label className="block">
-                <span className="kicker text-white/60">por que está subindo</span>
+                <span className="kicker text-white/70">por que está subindo</span>
                 <Input value={motivo} onChange={(e) => setMotivo(e.target.value)}
-                       className="mt-1.5 h-9 border-white/20 bg-white/5 text-sm text-white" />
+                       aria-describedby="ajuda-motivo"
+                       placeholder="escreva a razão desta campanha"
+                       className="mt-1.5 h-10 border-white/25 bg-white/5 text-sm text-white placeholder:text-white/40" />
               </label>
               {/* O motivo vai para o RECIBO. `subir()` recusa menos de 10
                   caracteres, e a razão está no cabeçalho dele: recibo sem
-                  motivo é um gasto que ninguém sabe explicar depois. */}
-              <p className="mt-1.5 text-[11px] leading-relaxed text-white/45">
+                  motivo é um gasto que ninguém sabe explicar depois.
+                  ⚠️ O campo nasce VAZIO desde 03/09/2026 — ver o comentário do
+                  `useState`. O placeholder convida; ele não preenche. */}
+              <p id="ajuda-motivo" className="mt-1.5 text-xs leading-relaxed text-white/70">
                 Vai no recibo. É o que responde "por que gastamos isto?" daqui a
                 três meses.
               </p>
-              <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-white/10 p-3 text-[11px] leading-relaxed text-white/70">
+              <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-white/15 p-3 text-xs leading-relaxed text-white/80">
                 <input type="checkbox" checked={confirmouPausada}
                        onChange={(e) => setConfirmouPausada(e.target.checked)}
                        className="mt-0.5 h-4 w-4 accent-white" />
@@ -558,8 +611,20 @@ export const Lancamento: React.FC<Props> = ({
                   na conta-laboratório. Ativação será uma decisão separada.
                 </span>
               </label>
+              {/* ⚠️ O `disabled` NUNCA É MUDO. Com o motivo nascendo vazio, o
+                  botão começa desabilitado — e um botão apagado sem razão
+                  adjacente é um beco: o operador não sabe o que fazer para
+                  acender. Enumera TODAS as faltas, não as duas primeiras. */}
+              {faltasParaEscrever.length > 0 && (
+                <p id="falta-escrever"
+                   className="mt-3 text-xs leading-relaxed text-warning">
+                  Falta: {faltasParaEscrever.join('; ')}.
+                </p>
+              )}
               <Button onClick={escrever}
-                      disabled={motivo.trim().length < 10 || !confirmouPausada}
+                      disabled={faltasParaEscrever.length > 0}
+                      aria-disabled={faltasParaEscrever.length > 0}
+                      aria-describedby={faltasParaEscrever.length > 0 ? 'falta-escrever' : undefined}
                       className="mt-3 w-full">
                 Criar campanha pausada
               </Button>

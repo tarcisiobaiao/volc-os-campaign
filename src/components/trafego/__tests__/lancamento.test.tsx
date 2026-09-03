@@ -126,6 +126,29 @@ describe('Lancamento', () => {
     expect(subirCampanha).not.toHaveBeenCalled();
   });
 
+  it('o motivo nasce VAZIO — a máquina não escreve a justificativa do humano', async () => {
+    // ⚠️ A CONTRAPROVA DO DEFEITO DE 03/09/2026.
+    //
+    // O campo nascia com `lançamento de "${titulo}"`, quinze e poucos caracteres
+    // que passavam folgados pelo único gate existente (10 caracteres). O
+    // operador podia criar campanha sem digitar uma palavra, e o recibo gravava
+    // a frase do robô — esvaziando a promessa do próprio rótulo do campo ("é o
+    // que responde 'por que gastamos isto?' daqui a três meses").
+    provarCampanha.mockResolvedValue(APROVADO);
+    renderizar(ABERTA);
+
+    const campo = await screen.findByRole('textbox');
+    expect((campo as HTMLInputElement).value).toBe('');
+    // E o título NÃO pode ter vazado para o campo por nenhum outro caminho.
+    expect(screen.queryByDisplayValue(/lançamento de/)).toBeNull();
+
+    // Um botão desabilitado não pode ser mudo: a razão fica visível, sem
+    // depender de hover, de título ou de breakpoint.
+    expect((screen.getByRole('button', { name: 'Criar campanha pausada' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/escrever o motivo/)).toBeTruthy();
+    expect(screen.getByText(/confirmar a autorização de criação pausada/)).toBeTruthy();
+  });
+
   it('com a trava aberta exige motivo de 10+ caracteres e escreve com ele', async () => {
     provarCampanha.mockResolvedValue(APROVADO);
     subirCampanha.mockResolvedValue({
@@ -134,7 +157,7 @@ describe('Lancamento', () => {
     });
     renderizar(ABERTA);
 
-    const campo = await screen.findByDisplayValue(/lançamento de "Cartão para Negativado"/);
+    const campo = await screen.findByRole('textbox');
     const botao = screen.getByRole('button', { name: 'Criar campanha pausada' });
     expect((botao as HTMLButtonElement).disabled).toBe(true);
 
@@ -154,6 +177,33 @@ describe('Lancamento', () => {
         plano_impressao: 'f'.repeat(64),
         confirmar_criacao_pausada: true,
       }));
+  });
+
+  it('duplo clique NÃO manda dois `/subir` — a campanha não nasce duas vezes', async () => {
+    // ⚠️ A proteção anterior era EMERGENTE: o bloco só renderizava em
+    // `aguardando_escrita` e `setEstado('escrevendo')` rodava antes do await.
+    // Emergente quer dizer que ela depende de o React ter re-renderizado entre
+    // os dois cliques — e dois cliques no mesmo frame não dão essa garantia.
+    // `/subir` CRIA CAMPANHA: uma segunda chamada é uma segunda campanha na
+    // conta, ou um 409 que o operador lê como falha.
+    provarCampanha.mockResolvedValue(APROVADO);
+    let liberar: (v: unknown) => void = () => {};
+    subirCampanha.mockReturnValue(new Promise((res) => { liberar = res; }));
+    renderizar(ABERTA);
+
+    const campo = await screen.findByRole('textbox');
+    fireEvent.change(campo, { target: { value: 'canário na conta da casa' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    const botao = screen.getByRole('button', { name: 'Criar campanha pausada' });
+    fireEvent.click(botao);
+    fireEvent.click(botao);
+    fireEvent.click(botao);
+
+    liberar({ recibo: { nome_campanha: 'FORGE · Cartão', customer_id: '8017851692',
+                        n_operacoes: 72, request_id: 'req-1', criados: [] } });
+    await waitFor(() => expect(screen.getByText('A campanha existe, e está pausada.')).toBeTruthy());
+    expect(subirCampanha).toHaveBeenCalledTimes(1);
   });
 
   it('dinheiro ausente NÃO vira R$ 0,00 no cartão que o humano autoriza', async () => {
@@ -184,7 +234,7 @@ describe('Lancamento', () => {
         preparo: REPROVADO.preparo }));
 
     renderizar(ABERTA);
-    const campo = await screen.findByDisplayValue(/lançamento de/);
+    const campo = await screen.findByRole('textbox');
     fireEvent.change(campo, { target: { value: 'motivo suficientemente longo' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
@@ -212,7 +262,7 @@ describe('Lancamento', () => {
     provarCampanha.mockResolvedValue(APROVADO);
     subirCampanha.mockRejectedValue(new ErroFalso('conexão caiu', 0));
     renderizar(ABERTA);
-    const campo = await screen.findByDisplayValue(/lançamento de/);
+    const campo = await screen.findByRole('textbox');
     fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
@@ -237,7 +287,7 @@ describe('Lancamento', () => {
       reenvio_permitido: true,
     }));
     renderizar(ABERTA);
-    const campo = await screen.findByDisplayValue(/lançamento de/);
+    const campo = await screen.findByRole('textbox');
     fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
@@ -259,7 +309,7 @@ describe('Lancamento', () => {
       recibo_id: 'recibo-2', item_id: 'item-2', reenvio_permitido: false,
     }));
     renderizar(ABERTA);
-    const campo = await screen.findByDisplayValue(/lançamento de/);
+    const campo = await screen.findByRole('textbox');
     fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));
@@ -280,7 +330,7 @@ describe('Lancamento', () => {
       },
     });
     renderizar(ABERTA);
-    const campo = await screen.findByDisplayValue(/lançamento de/);
+    const campo = await screen.findByRole('textbox');
     fireEvent.change(campo, { target: { value: 'canário manual com recibo' } });
     fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Criar campanha pausada' }));

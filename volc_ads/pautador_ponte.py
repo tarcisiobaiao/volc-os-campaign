@@ -73,9 +73,31 @@ from pathlib import Path
 from typing import Any
 
 from .campanha.brief import Brief, Copy, SubIntencao
+from .campanha.conteudo import SEVERIDADE_BARRA
 from .campanha.criterio import Criterio, Evidencia, de_lista, deduplicar
 from .policy import spec as _policy
 from .referencia import geo as _geo
+
+# ⚠️ A RÉGUA DE SEVERIDADE É UMA SÓ, E ELA MORA EM `campanha/conteudo.py`.
+#
+# `SEVERIDADE_BARRA` (`volc_ads/campanha/conteudo.py:56`) é `{"erro",
+# "bloqueio", "limitacao"}`, e a nota de lá diz por que `limitacao` entra:
+# FULLY_LIMITED deixou 57 anúncios sem veicular em 39 contas — anúncio que não
+# veicula é reprovação com outro nome.
+#
+# Até 03/09/2026 este módulo tinha a SEGUNDA régua: `Cockpit.bloqueado` testava
+# `== "bloqueio"` e nada mais, enquanto `policy/spec.json:776` já emitia
+# `"severidade": "limitacao"`. Duas listas do mesmo veredito divergem na
+# primeira mudança, e essa já tinha divergido.
+#
+# Importada, e não redigitada. `conteudo.py` não importa este módulo (ele só
+# conhece `policy.spec`, `validacao` e `brief`), então não há ciclo — foi
+# conferido antes de trocar a cópia pelo import.
+#
+# `erro` sobra no conjunto de propósito: nenhum `Aviso` do cockpit usa essa
+# palavra hoje, mas um que passe a usar tem de barrar, e não escorregar por
+# estar fora de uma lista curta demais.
+SEVERIDADES_QUE_BARRAM = frozenset(SEVERIDADE_BARRA)
 
 # Texto que a tela renderiza ao lado de todo CPC minerado. Fica aqui, e não na
 # tela, porque é a mesma frase para os sete países e porque a versão curta que
@@ -114,9 +136,18 @@ class PonteIncompleta(ValueError):
 # ── procedência ──────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class Cpc:
-    """Um CPC que carrega de onde veio. Ver o ⚠️ do topo do módulo."""
+    """Um CPC que carrega de onde veio. Ver o ⚠️ do topo do módulo.
 
-    valor: float
+    ⚠️ `valor` é `float | None`, e `None` é AUSÊNCIA — nunca zero.
+
+    Até 03/09/2026 `_cpc()` fazia `float(valor or 0.0)` e caía para `0.0` no
+    `except`. Um CPC que a mineração não trouxe chegava à tela como "R$ 0,00",
+    que não é silêncio: é a afirmação de que o clique é de graça. Um `0.0` que
+    chegue aqui daqui em diante é um zero MEDIDO, e continua valendo como
+    medição.
+    """
+
+    valor: float | None
     procedencia: str
     moeda: str | None = None
     medido_na_conta: bool = False
@@ -126,13 +157,29 @@ class Cpc:
 class Aviso:
     """O que a tela precisa explicar.
 
-    `severidade` é binária no que importa: `bloqueio` impede montar o `Brief` —
-    `montar_brief` levanta `PonteIncompleta` e não existe parâmetro para
-    suavizar. `atencao` e `informacao` são para o operador ler e decidir.
+    `severidade` tem QUATRO valores, e eles se separam em dois efeitos — não em
+    quatro cores:
+
+        bloqueio    BARRA. `montar_brief` levanta `PonteIncompleta` e não
+                    existe parâmetro para suavizar.
+        limitacao   BARRA, pela mesma porta. É o efeito FULLY_LIMITED do
+                    `policy/spec.json`: o anúncio é aceito e não veicula, o que
+                    é reprovação com outro nome (57 anúncios em 39 contas sob
+                    GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES).
+        atencao     INFORMA. O operador lê e decide; nada é impedido.
+        informacao  INFORMA. Contexto do que a triagem já fez.
+
+    ⚠️ A versão anterior deste docstring dizia que a severidade "é binária" e
+    listava só três valores — e `Cockpit.bloqueado` testava só `== "bloqueio"`.
+    `limitacao` já era emitida pelo spec e passava direto pelo portão. Quem
+    decide o que barra é `SEVERIDADES_QUE_BARRAM`, no topo deste módulo, e ele
+    é importado de `campanha/conteudo.py` para não haver duas listas.
     """
 
     codigo: str
-    severidade: str  # bloqueio | atencao | informacao
+    # bloqueio | limitacao (barram) · atencao | informacao (informam).
+    # Ver `SEVERIDADES_QUE_BARRAM` — a régua é lá, não aqui.
+    severidade: str
     titulo: str
     detalhe: str
 
@@ -141,7 +188,9 @@ class Aviso:
 @dataclass(frozen=True)
 class KeywordCandidata:
     texto: str
-    volume: int
+    # `None` = a mineração não trouxe volume para este termo. Zero é uma
+    # medição — "0 buscas/mês" é uma afirmação cara de se fazer por engano.
+    volume: int | None
     cpc: Cpc
     competicao: str
     tendencia: int | None
@@ -164,7 +213,10 @@ class GrupoCandidato:
     tipo: str
     descricao: str
     keywords: tuple[KeywordCandidata, ...]
-    volume: int
+    # Soma dos volumes PRESENTES. `None` quando nenhuma keyword do grupo tem
+    # volume: somar ausências e apresentar `0` diria que o grupo não tem busca,
+    # que é o oposto de "não sei quanta busca ele tem".
+    volume: int | None
     cpc_simples: Cpc
     cpc_ponderado: Cpc
     volume_declarado: int
@@ -182,7 +234,7 @@ class Descartada:
     a campanha deliberadamente NÃO compra."""
 
     texto: str
-    volume: int
+    volume: int | None
     cpc: Cpc
     motivo: str
     destino: str  # "conteudo"
@@ -237,8 +289,15 @@ class Triagem:
     para_conteudo: int
     descartadas: int
     breakdown: dict[str, int]
-    volume_total: int
-    volume_da_fila: int
+    # ⚠️ OS DOIS SÃO `int | None`, E PELA MESMA RAZÃO DO `GrupoCandidato.volume`.
+    #
+    # `volume_total` é o `total_volume` DECLARADO na linha do cluster: quando a
+    # coluna vem nula, a linha não declarou nada, e `0` seria uma declaração.
+    # `volume_da_fila` é SOMA sobre `production_ads_queue`: soma os presentes e
+    # só vira `None` quando NENHUM termo da fila tem volume. Uma soma parcial
+    # continua sendo um número útil; uma soma de zero termos, não.
+    volume_total: int | None
+    volume_da_fila: int | None
 
 
 @dataclass(frozen=True)
@@ -265,15 +324,26 @@ class Cockpit:
 
     @property
     def bloqueado(self) -> bool:
-        return any(a.severidade == "bloqueio" for a in self.avisos)
+        """O veredito de prontidão. É DAQUI que a tela e a rota o leem.
+
+        ⚠️ Testava `== "bloqueio"` até 03/09/2026, e por isso um aviso de
+        severidade `limitacao` — que `policy/spec.json:776` emite — passava
+        pelo portão sem barrar nada.
+        """
+        return any(a.severidade in SEVERIDADES_QUE_BARRAM for a in self.avisos)
 
     @property
     def bloqueios(self) -> tuple[Aviso, ...]:
-        return tuple(a for a in self.avisos if a.severidade == "bloqueio")
+        return tuple(a for a in self.avisos if a.severidade in SEVERIDADES_QUE_BARRAM)
 
     def para_json(self) -> dict[str, Any]:
         d = dataclasses.asdict(self)
+        # As duas juntas, e não só a primeira: `bloqueado` diz QUE barrou e
+        # `bloqueios` diz O QUE barrou. Emitir só o booleano obrigava quem
+        # consome a refiltrar `avisos` por severidade — que é exatamente a
+        # segunda régua que este módulo acabou de eliminar.
         d["bloqueado"] = self.bloqueado
+        d["bloqueios"] = [dataclasses.asdict(a) for a in self.bloqueios]
         return d
 
 
@@ -449,10 +519,25 @@ def _idioma_segmentavel(tag: str, pais: str) -> tuple[str, str]:
 
 # ── montagem do cockpit ──────────────────────────────────────────────────────
 def _cpc(valor: Any, proc: str, moeda: str | None) -> Cpc:
+    """Ausente entra, ausente sai. A procedência viaja em qualquer caso.
+
+    ⚠️ As DUAS portas de ausência levavam a zero antes de 03/09/2026:
+    `float(valor or 0.0)` transformava `None`/`""` em `0.0`, e o `except`
+    devolvia `0.0` para lixo ilegível. As duas produziam a mesma frase na tela
+    — "R$ 0,00" —, que afirma que o clique é de graça.
+
+    O `Cpc` continua nascendo mesmo sem número: é ele que carrega a
+    procedência, e "não medido, mineração X" é informação; um `None` pelado no
+    lugar do objeto não seria.
+    """
+    if valor is None:
+        return Cpc(valor=None, procedencia=proc, moeda=moeda, medido_na_conta=False)
     try:
-        v = round(float(valor or 0.0), 4)
+        v: float | None = round(float(valor), 4)
     except (TypeError, ValueError):
-        v = 0.0
+        # Ilegível não é zero. Vira ausência, e a procedência diz de onde o
+        # ilegível veio para alguém poder ir olhar.
+        v = None
     return Cpc(valor=v, procedencia=proc, moeda=moeda, medido_na_conta=False)
 
 
@@ -499,10 +584,30 @@ def _motivo(e: dict[str, Any]) -> str:
     return f"sem motivo declarado; tags: {tags}" if tags else "sem motivo declarado"
 
 
+def _inteiro(v: Any) -> int | None:
+    """Um inteiro, ou `None`. Nunca um zero de consolação."""
+    if v is None:
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _volume(e: dict[str, Any]) -> int | None:
+    """O volume da entrada, com a ausência preservada.
+
+    Era `int(e.get("volume") or 0)` em três lugares deste arquivo. Além de
+    apagar a ausência, o `or` também apagava um `0` MEDIDO — os dois viravam a
+    mesma coisa, e um deles é um fato sobre o termo.
+    """
+    return _inteiro(e.get("volume"))
+
+
 def _candidata(e: dict[str, Any], proc: str, moeda: str | None, em_conteudo: bool) -> KeywordCandidata:
     return KeywordCandidata(
         texto=str(e.get("keyword") or ""),
-        volume=int(e.get("volume") or 0),
+        volume=_volume(e),
         cpc=_cpc(e.get("cpc"), proc, moeda),
         competicao=str(e.get("competition") or ""),
         tendencia=e.get("trend_score"),
@@ -512,24 +617,71 @@ def _candidata(e: dict[str, Any], proc: str, moeda: str | None, em_conteudo: boo
     )
 
 
-def _agregar(kws: tuple[KeywordCandidata, ...], proc: str, moeda: str | None) -> tuple[int, Cpc, Cpc]:
-    """Volume somado e os DOIS CPCs do conjunto.
+def _rotulo_media(proc: str, tipo: str, presentes: int, total: int) -> str:
+    """A procedência da média DIZ sobre quantas keywords ela foi feita.
 
-    O simples é o que a sub-intenção declara em `metricas.cpc_medio` (medido: a
-    média aritmética inclusive dos zeros). O ponderado por volume é o que a
-    régua de leilão do §5.3 precisa — em ACESSO os dois dão 0,72 e 0,88, e a
-    diferença é uma keyword de 27.100 buscas puxando o conjunto.
+    ⚠️ Uma média parcial apresentada como média do grupo é o defeito da
+    ausência-como-zero com outra cara: em vez de inventar um número, inventa um
+    denominador. Se 2 de 5 keywords têm CPC, o número é a média DAQUELAS DUAS —
+    e quem lê a tela precisa saber disso sem abrir o grupo.
     """
-    volume = sum(k.volume for k in kws)
-    valores = [k.cpc.valor for k in kws]
-    simples = sum(valores) / len(valores) if valores else 0.0
-    ponderado = (
-        sum(k.cpc.valor * k.volume for k in kws) / volume if volume else 0.0
+    base = f"{proc} · {tipo}"
+    if presentes == total:
+        return base
+    return f"{base} — PARCIAL: {presentes} de {total} keywords têm o dado"
+
+
+def _agregar(
+    kws: tuple[KeywordCandidata, ...], proc: str, moeda: str | None
+) -> tuple[int | None, Cpc, Cpc]:
+    """Volume somado e os DOIS CPCs do conjunto — sobre o que EXISTE.
+
+    O simples é o que a sub-intenção declara em `metricas.cpc_medio`. O
+    ponderado por volume é o que a régua de leilão do §5.3 precisa — em ACESSO
+    os dois dão 0,72 e 0,88, e a diferença é uma keyword de 27.100 buscas
+    puxando o conjunto.
+
+    ⚠️ AS MÉDIAS SÃO DOS PRESENTES, E O DENOMINADOR TAMBÉM.
+
+    Antes de 03/09/2026 a ausência de CPC já tinha virado `0.0` lá em `_cpc()`,
+    e a média somava esses zeros com denominador cheio: cinco keywords das
+    quais duas foram medidas produziam uma média DIVIDIDA POR CINCO — um número
+    menor que qualquer CPC real do grupo, apresentado como o CPC do grupo.
+
+    Agora ausência é `None`, e portanto:
+
+      · a média sai sobre os valores presentes, com denominador igual à
+        contagem dos presentes;
+      · quando NENHUM está presente, a média é `None` — não `0.0`;
+      · no ponderado, uma keyword sem volume não entra no PESO. Ela não tem
+        como pesar, e dar-lhe peso zero silenciosamente é decidir que ela não
+        importa em vez de admitir que não se sabe;
+      · a procedência declara quando a média é parcial (ver `_rotulo_media`).
+    """
+    total = len(kws)
+
+    volumes = [k.volume for k in kws if k.volume is not None]
+    volume = sum(volumes) if volumes else None
+
+    com_cpc = [k for k in kws if k.cpc is not None and k.cpc.valor is not None]
+    simples = (
+        round(sum(k.cpc.valor for k in com_cpc) / len(com_cpc), 4) if com_cpc else None
     )
+
+    # Só entra no ponderado quem tem OS DOIS: o valor e o peso.
+    com_peso = [k for k in com_cpc if k.volume is not None]
+    peso = sum(k.volume for k in com_peso)
+    ponderado = (
+        round(sum(k.cpc.valor * k.volume for k in com_peso) / peso, 4)
+        if peso else None
+    )
+
     return (
         volume,
-        _cpc(round(simples, 4), f"{proc} · média aritmética do grupo", moeda),
-        _cpc(round(ponderado, 4), f"{proc} · média ponderada por volume", moeda),
+        _cpc(simples, _rotulo_media(proc, "média aritmética do grupo",
+                                    len(com_cpc), total), moeda),
+        _cpc(ponderado, _rotulo_media(proc, "média ponderada por volume",
+                                      len(com_peso), total), moeda),
     )
 
 
@@ -630,7 +782,7 @@ def _grupos_do_funil(
     descartadas = tuple(
         Descartada(
             texto=str(e.get("keyword") or ""),
-            volume=int(e.get("volume") or 0),
+            volume=_volume(e),
             cpc=_cpc(e.get("cpc"), proc, moeda),
             motivo=_motivo(e),
             destino="conteudo",
@@ -892,9 +1044,22 @@ def montar_cockpit(linhas: Linhas) -> Cockpit:
 
     resumo = cluster.get("summary") or {}
     breakdown = resumo.get("breakdown") or {}
-    volume_da_fila = sum(int(e.get("volume") or 0) for e in ads)
-    volume_total = int(cluster.get("total_volume") or 0)
-    if volume_total and volume_total != volume_da_fila:
+    # A SOMA É SOBRE OS PRESENTES, E A AUSÊNCIA TOTAL NÃO VIRA ZERO.
+    #
+    # Somar `0` por termo sem volume dava um total menor que o real e
+    # indistinguível de um total honesto. Agora a soma inclui só quem declarou;
+    # `None` aparece apenas quando NENHUM termo da fila declarou volume, que é
+    # o único caso em que não há número nenhum para somar.
+    volumes_da_fila = [v for v in (_volume(e) for e in ads) if v is not None]
+    volume_da_fila = sum(volumes_da_fila) if volumes_da_fila else None
+    # `total_volume` é DECLARAÇÃO da linha, não soma nossa: coluna nula é linha
+    # que não declarou, e `0` seria uma declaração de que não há busca.
+    volume_total = _inteiro(cluster.get("total_volume"))
+    # `is not None` e não truthiness: com o `if volume_total and ...` antigo,
+    # uma linha que declarasse `0` contra uma fila de 30.430 não gerava aviso
+    # nenhum — a divergência mais gritante era a única silenciosa.
+    if (volume_total is not None and volume_da_fila is not None
+            and volume_total != volume_da_fila):
         avisos.append(Aviso(
             "VOLUME_DIVERGE", "informacao",
             "`total_volume` não é a soma da fila de anúncio",
@@ -1368,6 +1533,18 @@ def cockpit(opportunity_id: int, **kw: Any) -> Cockpit:
     return montar_cockpit(carregar(opportunity_id, **kw))
 
 
+def _ausente(v: Any, formato: str = "") -> str:
+    """`None` vira um travessão, não um zero — nem no terminal.
+
+    O CLI é a ferramenta que se abre justamente quando o cluster está estranho;
+    um `0` impresso ali mandaria o operador procurar um problema de volume que
+    não existe, quando o que existe é dado que não veio.
+    """
+    if v is None:
+        return "—"
+    return format(v, formato) if formato else str(v)
+
+
 def _imprimir(c: Cockpit) -> None:
     o = c.origem
     print(f"opportunity {c.opportunity_id} · cluster {c.cluster_id}")
@@ -1381,13 +1558,18 @@ def _imprimir(c: Cockpit) -> None:
         t = c.triagem
         print(f"  triagem   {t.aprovadas_anuncio} para anúncio · {t.para_conteudo} "
               f"para conteúdo · {t.descartadas} descartes · de {t.analisadas} analisadas")
-        print(f"            volume da fila {t.volume_da_fila} (linha declara {t.volume_total})")
+        print(f"            volume da fila {_ausente(t.volume_da_fila)} "
+              f"(linha declara {_ausente(t.volume_total)})")
     print(f"\n  {'grupo':<16} {'kw':>7} {'volume':>9} {'declarado':>10} "
           f"{'CPC simples':>12} {'CPC pond.':>10}")
     for g in c.grupos:
+        # `_ausente` porque volume e CPC agora podem ser `None`: um `:.2f`
+        # sobre `None` levanta, e o CLI é a ferramenta que se usa justamente
+        # quando o cluster está estranho.
         print(f"  {g.tipo:<16} {len(g.keywords):>3}/{g.keywords_declaradas:<3} "
-              f"{g.volume:>9} {g.volume_declarado:>10} "
-              f"{g.cpc_simples.valor:>12.2f} {g.cpc_ponderado.valor:>10.2f}")
+              f"{_ausente(g.volume):>9} {g.volume_declarado:>10} "
+              f"{_ausente(g.cpc_simples.valor, '.2f'):>12} "
+              f"{_ausente(g.cpc_ponderado.valor, '.2f'):>10}")
     if c.procedencia:
         p = c.procedencia
         print(f"\n  procedência: services_used={list(p.servicos_declarados)} · "
@@ -1396,7 +1578,7 @@ def _imprimir(c: Cockpit) -> None:
               f"medido na conta={p.medido_na_conta}")
     print(f"\n  descartadas para conteúdo: {len(c.descartadas)}")
     for d in c.descartadas[:3]:
-        print(f"    {d.texto!r} vol {d.volume} · {d.motivo}")
+        print(f"    {d.texto!r} vol {_ausente(d.volume)} · {d.motivo}")
     print(f"\n  avisos ({len(c.avisos)}):")
     for a in c.avisos:
         print(f"    [{a.severidade:<11}] {a.codigo}: {a.titulo}")

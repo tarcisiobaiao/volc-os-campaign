@@ -107,6 +107,7 @@ import type {
   CopyGerada, CopyPersistida, VereditoDePolitica, VerticalDePolitica,
   PedidoDeProva, PedidoDeProvaSearch, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
   RespostaDaCopy, RespostaDaProva, ReciboDeLancamento,
+  RevisaoDoConjuntoPago, AprovacaoDoConjuntoPago,
 } from '@/types/trafego';
 import type { RespostaDoDiagnostico } from '@/types/diagnostico';
 import type { RespostaDoDecisionLab } from '@/types/inteligenciaDecisao';
@@ -870,6 +871,41 @@ export const pautadorApi = {
     if (opts?.comTextoDaLp) q.set('com_texto_da_lp', 'true');
     const s = q.toString();
     return request(`/api/trafego/candidatos/${opportunityId}${s ? `?${s}` : ''}`);
+  },
+
+  // ── o conjunto pago: conferir, e depois congelar ──────────────────────────
+  //
+  // ⚠️ O ATO QUE FALTAVA. `aprovar()` existe no engine desde sempre
+  // (`backend/app/agents/mining/paid_eligibility.py:1166`) e não tinha um único
+  // chamador de produção: nove call sites, todos de teste. Quem PRODUZ o
+  // conjunto (`funnel_factory.py:391`) persiste `conjunto_pago` sem
+  // `approved_set_sha256`, e o portão recusa exatamente esse estado
+  // (`portao_conjunto_pago.py:158`, `CONJUNTO_PAGO_NAO_APROVADO`). Resultado
+  // medido: `/provar` e `/subir` devolviam 409 e a campanha Search não nascia
+  // pelo caminho normal. Estas duas rotas são a ponte humana que faltava.
+  //
+  // A revisão é LEITURA. Não congela nada, e pode ser pedida quantas vezes o
+  // operador quiser.
+  revisarConjuntoPago(opportunityId: number, runId?: number | null): Promise<RevisaoDoConjuntoPago> {
+    const q = runId != null ? `?run_id=${runId}` : '';
+    return request(`/api/pautador/opportunities/${opportunityId}/conjunto-pago${q}`);
+  },
+
+  // ⚠️ ATO HUMANO, e ele CONGELA. `hash_conferido` é a impressão que apareceu na
+  // tela: o servidor a compara com a do conjunto atual e recusa se divergirem
+  // (`HashDivergente`). É isso que impede aprovar um conjunto e criar campanha
+  // com outro — a mineração pode ter rodado de novo entre a conferência e o
+  // clique. O `motivo` nasce VAZIO na tela e é do humano; ele vai ao recibo.
+  aprovarConjuntoPago(pedido: {
+    opportunity_id: number;
+    run_id?: number | null;
+    hash_conferido: string;
+    motivo: string;
+  }): Promise<AprovacaoDoConjuntoPago> {
+    return request(`/api/pautador/opportunities/${pedido.opportunity_id}/conjunto-pago/aprovar`, {
+      method: 'POST',
+      body: JSON.stringify(pedido),
+    });
   },
 
   // O estágio 3. ⚠️ ESTA ROTA GASTA e DEMORA: medido em 18/08/2026 no card 73,

@@ -1,0 +1,518 @@
+{
+  "schema": "VolcCurationHandoff.v1",
+  "mission": "VOLC Traffic Operating Experience v3 — especificacao executavel da experiencia operacional de trafego. SOMENTE DOCUMENTACAO.",
+  "branch": "sprint/fable-traffic-operating-experience-spec-v3",
+  "base_commit": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "head_before_closure": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "closure_commit_self_unavailable": "um artefato nao pode declarar o SHA do commit que o contem",
+  "final_sha_verified_externally": "o integrador le o SHA final no remoto, nao aqui",
+  "linha_oficial_no_fechamento": "3331c0c5d63e31e0d068786707c75169231bdad7",
+  "production_readiness": "NAO APLICAVEL — nada foi implementado. Esta lane produziu 15 artefatos de especificacao em docs/specs/traffic-operating-experience-v3/ e nenhuma linha de codigo de produto.",
+  "produced_by": "lane de especificacao, isolada em worktree",
+  "_protocol": {
+    "regra": "Esta lane NAO aplica nada. Ela emite delta; o integrador unico aplica os cinco passos de AGENTS.md apos a integracao.",
+    "nao_editado": [
+      "volc-os-workbook/ROADMAP-VIVO.json",
+      "docs/volc-os-graph/curadoria-operacional.json",
+      "docs/volc-os-graph/volc-os-graph.json",
+      "design.md",
+      "docs/DESIGN.md"
+    ],
+    "nenhuma_promocao_para_done": "NENHUMA tarefa deste delta e proposta para `done`. Uma spec nao prova criterio de aceite de implementacao.",
+    "aviso_de_schema": "NAO existe schema canonico de CURATION-HANDOFF.json neste repositorio: ha 13 arquivos com esse nome e mais de 100 chaves de topo distintas; a unica chave presente em 12 dos 13 e `branch`. Este arquivo segue a familia `VolcCurationHandoff.v1` (o molde mais completo, em docs/closure/paid-destination-policy-spine-v2/CURATION-HANDOFF.json). Nenhum codigo do repositorio le estes arquivos — nao ha validacao automatica possivel."
+  },
+  "external_mutation": {
+    "google_ads_mutate": false,
+    "google_ads_validate_only": false,
+    "google_ads_read": false,
+    "supabase_write": false,
+    "supabase_read": false,
+    "wordpress": false,
+    "postiz": false,
+    "adspower": false,
+    "n8n": false,
+    "deploy": false,
+    "gets_publicos": 0,
+    "git_remoto": "somente `git fetch` de leitura de origin/volc-os-v2, para remedir o delta da base. Nenhum push, merge, rebase, amend ou tag.",
+    "nota": "A worktree ficou limpa fora de docs/specs/traffic-operating-experience-v3/ durante toda a missao."
+  },
+  "existing_tasks_affected": [
+    {
+      "id": "P05-T11",
+      "title": "Executar o primeiro canario Search pausado na Portal Mundo Mais",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`. A spec nao executa canario nenhum. O que ela acrescenta e evidencia sobre a JANELA: a politica e uma conta unica hardcoded (5478096539, MCC 6016739364, SEARCH, cria_pausada=true, inclui_ativacao=false) com dois tetos POR PEDIDO — orcamento diario R$ 20,00 e CPC R$ 1,00 — e NENHUM conceito de exposicao acumulada. O modulo inteiro nao le custo: os R$ 150 de gatilho de aborto do PLANO-DE-CANARIO §6 nao existem em codigo. Um canario que so limita taxa e nao vigia acumulado depende de vigilancia humana, e isso precisa estar escrito no criterio de aceite.",
+      "evidence": [
+        "backend/app/trafego/canario.py:25-34 (janela) e :153-163 (os dois tetos por pedido)",
+        "grep -niE 'acumulad|exposicao|30.4' backend/app/trafego/canario.py => 0 resultados",
+        "docs/growth-engine/PLANO-DE-CANARIO.md:200-210 (o gatilho de R$ 150 que nao foi implementado)"
+      ],
+      "decision_needed": "o criterio de aceite deve exigir vigilancia acumulada, ou declarar que a vigilancia e humana?",
+      "confidence": "high"
+    },
+    {
+      "id": "P05-T05",
+      "title": "Levar recibo de lancamento ao cockpit existente",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`, com dois fatos novos medidos. (a) Existem DUAS superficies de recibo com tipos diferentes: a da ignicao (Lancamento.tsx:801-879) e CartaoDeRecibo.tsx:107-114, que mostra exatamente os dois campos que a primeira omite — motivo declarado e impressao do pedido — e que NENHUMA rota monta. (b) O recibo da ignicao e apenas estado de modal: onFechar faz setLancando(false), desmontando o componente e descartando o useState; nao ha persistencia (zero localStorage/sessionStorage) e nao existe GET .../recibos.",
+      "evidence": [
+        "src/pages/trafego/NovaCampanhaPage.tsx:789-810 (onFechar descarta)",
+        "grep -rn 'QuadroDoLote|CartaoDeRecibo' src/pages/ src/App.tsx => 0",
+        "grep -rn 'router.get(\"[^\"]*recibo' backend/ => 0"
+      ],
+      "decision_needed": "unificar as duas superficies de recibo, ou aposentar CartaoDeRecibo?",
+      "confidence": "high"
+    },
+    {
+      "id": "P05-T09",
+      "title": "Criar o guardiao canonico das primeiras 72 horas",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`, e a spec nomeia por que: o Guardiao existe como POLITICA versionada e como CLASSIFICACAO DE JANELA calculada por requisicao a partir de horas_ligada — e nao como PROCESSO. Nao ha agendador no backend (zero APScheduler/celery/@repeat_every), nao ha tabela de incidentes no schema, e Incidente/consolidar/incidente_do_veredito nao tem chamador de producao. Sem memoria de incidente, `consolidar(anteriores, atuais, quando)` nao tem de onde ler `anteriores`.",
+      "evidence": [
+        "backend/app/trafego/diagnostico_persistido.py:1343-1354 (calculo por requisicao)",
+        "grep -rn 'APScheduler|celery|@repeat_every' backend/app/ => 0",
+        "grep -rn 'trafego_incidente' sql/ supabase/ => 0",
+        "backend/app/trafego/sentinela.py:2075-2100, 2146-2150 (funcao pura sem chamador)"
+      ],
+      "decision_needed": "o Guardiao 72h e um processo agendado ou uma leitura sob demanda? A decisao muda o criterio de aceite.",
+      "confidence": "high"
+    },
+    {
+      "id": "P09-T14",
+      "title": "Operacionalizar a coleta continua de inteligencia oficial Google Ads",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`, com a consequencia operacional agora medida e nomeada: o coletor CONTINUO nao alcanca campanha PAUSED — a agenda filtra estado_externo = ENABLED e canal = SEARCH, com instrucao explicita de nao ampliar. O coletor que LE PAUSED existe (campanha_por_identidade, sem filtro de estado) e NAO tem rota HTTP: so CLI. E alvo.py declara que a autoridade de agenda ainda nao foi escolhida e que o pacote systemd versionado nunca foi instalado. Consequencia ja medida no repositorio: o espelho tinha ZERO linhas para a campanha canario nascida PAUSED. O ciclo fecha contra si mesmo — a campanha nasce pausada por seguranca, e a pausa a torna invisivel para a vigilancia.",
+      "evidence": [
+        "volc_ads/inteligencia_google/persistencia.py:77-90 (filtro ENABLED+SEARCH)",
+        "volc_ads/inteligencia_google/persistencia.py:111-119 (campanha_por_identidade, sem filtro)",
+        "volc_ads/inteligencia_google/alvo.py:19-23 (autoridade de agenda nao escolhida)",
+        "backend/app/trafego/contrato_canais.py:492-504 (zero linhas para a canario pausada)"
+      ],
+      "decision_needed": "qual e a autoridade de agenda — systemd, n8n ou rota de servico?",
+      "confidence": "high"
+    },
+    {
+      "id": "P09-T15",
+      "title": "Ligar o portao de politica de destino pago a geracao, publicacao e campanha",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`. O portao de DESTINO esta correto e fail-closed em cinco pontos independentes. O que a spec acrescenta sao QUATRO pontos onde ausencia vira permissao — todos no portao de VERTICAL, nao no de destino: (1) vertical fora da lista pinta nota VERDE 'Sem portao de habilitacao'; (2) falha da rota de verticais vira lista vazia no cliente e ESCONDE o painel inteiro sem mensagem de erro; (3) o `barra` calculado pelo PortaoDePolitica nunca entra em podeLancar, e nao existe prop de callback; (4) no servidor, vertical fora da matriz devolve LISTA VAZIA de violacoes — o oposto de contrato.severidade(), onde codigo nao classificado bloqueia. Achado adicional: readiness.live_verified fica `true` quando a verificacao live_drift sai `not_applicable`, porque STATUS_NAO_APLICAVEL esta dentro de STATUS_CONCLUSIVOS.",
+      "evidence": [
+        "src/components/trafego/PortaoDePolitica.tsx:167-172",
+        "src/pages/trafego/NovaCampanhaPage.tsx:155, 702, 332-343",
+        "volc_ads/policy/spec.py:163-168 vs backend/app/landing_policy/contrato.py:455-464",
+        "backend/app/landing_policy/recibo.py:160-163 com contrato.py:73"
+      ],
+      "decision_needed": "o portao de vertical deve barrar o lancamento, como o de destino barra?",
+      "confidence": "high"
+    },
+    {
+      "id": "P04-T09",
+      "title": "Fechar a prova segura do builder Demand Gen",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial` — e a propria tarefa tem TETO DE ESTADO auto-declarado: o quinto criterio de aceite proibe que ela chegue a `done`. A spec confirma o estado da matriz: validavel BLOQUEADO por `demand_gen_experimental_desligado` (origem servidor), criavel_pausada BLOQUEADO por `mutacao_real_recusada` (origem manifesto), e POST /subir recusa DEMAND_GEN com 403 ANTES de escopo, canario, ponte, trava e mutate. A porta experimental exige flag duravel E sonda local do SDK v25.",
+      "evidence": [
+        "volc-os-workbook/ROADMAP-VIVO.json:530-531 (o teto auto-declarado)",
+        "backend/app/trafego/contrato_canais.py:868-873 e :916-922",
+        "backend/app/routers/trafego.py:3483-3491",
+        "backend/app/trafego/capacidades.py:134-140"
+      ],
+      "decision_needed": null,
+      "confidence": "high"
+    },
+    {
+      "id": "P04-T07",
+      "title": "Definir observabilidade PMax antes de autorizar criacao",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`, e a spec registra a arquitetura de defesa que a tarefa produziu e que precisa sobreviver: PMax tem DOIS bloqueadores INDEPENDENTES em criavel_pausada — PMAX_FORA_DO_EXECUTOR (origem produto, com data) e pmax_observabilidade_nao_provada (origem observabilidade) — e ha teste que substitui o manifesto por um que sabe criar e cobra que o portao continue fechado. Achado novo: GET /canais NUNCA passa prontidao_pmax, entao a observabilidade sai INDETERMINADA em toda resposta HTTP; e a MESMA resposta entrega TRES listas divergentes de papeis de asset de PMax (5 no brief, 12 no coverage, 7 no perfil do engine).",
+      "evidence": [
+        "backend/app/trafego/contrato_canais.py:1538-1560, 1616-1618",
+        "backend/tests/test_trafego_contrato_canais.py:786-792",
+        "backend/app/routers/trafego.py:5512-5516",
+        "backend/app/trafego/pmax_cockpit.py:205-215"
+      ],
+      "decision_needed": "qual das tres listas de papeis de asset de PMax e a autoridade?",
+      "confidence": "high"
+    },
+    {
+      "id": "P09-T17",
+      "title": "Inventariar e fechar caminhos de criacao de campanha fora de /subir",
+      "current_status": "todo",
+      "proposed_status": "todo",
+      "why": "MANTEM `todo`, e a spec acrescenta um caminho concreto ao inventario que a tarefa pede: /settings/campaigns (src/App.tsx:105) e uma SEGUNDA lista de campanhas com botoes proprios de pausar/ativar que escrevem direto no Supabase. Enquanto ela existir, duas telas podem discordar sobre se uma campanha esta rodando. A spec a nomeia como divida e a declara FORA de escopo do redesign.",
+      "evidence": [
+        "src/App.tsx:105 e :101 (uma terceira superficie sobre o mesmo objeto)",
+        "docs/specs/traffic-operating-experience-v3/IMPLEMENTATION-SLICES.md secao 2"
+      ],
+      "decision_needed": "aposentar /settings/campaigns, ou coloca-la atras do mesmo portao de escrita?",
+      "confidence": "high"
+    },
+    {
+      "id": "P06-T07",
+      "title": "Criar o Tracking Control Plane em modo leitura",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "MANTEM `partial`. Fato correlato medido: metrics.cost_micros e custo SERVIDO e nao COBRADO, nao existe metrica de custo cobrado na v25 (verificado por introspeccao do proto), e a interface hoje apresenta cost_micros ao operador como 'gasto' e 'custo' sem nenhuma marcacao. Qualquer plano de controle de tracking que trate esse numero como fatura esta errado por construcao.",
+      "evidence": [
+        "docs/growth-engine/matriz-api/comum.md:504-518",
+        "src/components/trafego/AlertaDeEntrega.tsx:90",
+        "grep -rniE 'custo servido|custo cobrado|served cost|billed cost' src/ backend/ volc_ads/ => 0"
+      ],
+      "decision_needed": null,
+      "confidence": "high"
+    }
+  ],
+  "proposed_new_tasks": [
+    {
+      "proposed_id": "P09-TXX",
+      "initiative_hint": "P09 — Separar fato, recomendacao, autorizacao e acao",
+      "title": "BLOQUEANTE — Fechar o ciclo de aprovacao do conjunto pago",
+      "proposed_status": "todo",
+      "why": "BLOQUEANTE, confirmado por revisao cruzada independente. O portao recusa conjunto NAO APROVADO antes de qualquer rede (portao_conjunto_pago.py:158-163), e NADA no sistema produz o estado aprovado: approved_set_sha256 so e atribuido dentro de paid_eligibility.aprovar() (:1179) ou reidratado de um dicionario que ja o tenha (:883), e aprovar() NAO TEM CHAMADOR DE PRODUCAO; funnel_factory.py:387-391 persiste sem aprovar. Consequencia: no caminho normal, POST /provar termina em 409 NAO_APROVADO e a campanha nao nasce — ou seja, a capacidade central de Search nao e executavel hoje. Nenhuma correcao de interface conserta isso. Tres desenhos possiveis estao nomeados na fatia A0 da spec, e a escolha e DE PRODUTO: (a) aprovacao explicita numa superficie de curadoria; (b) aprovacao implicita ao confirmar a parada Termos; (c) aprovacao no funnel_factory — desaconselhada, porque autoaprovar apaga a distincao entre lista minerada e conjunto de campanha, que e a razao de o portao existir.",
+      "evidence": [
+        "backend/app/agents/mining/portao_conjunto_pago.py:158-163",
+        "backend/app/agents/mining/funnel_factory.py:391",
+        "backend/app/agents/mining/paid_eligibility.py:1166-1181",
+        "backend/app/routers/trafego.py:2977-2981 vs src/components/trafego/MesaDeCriterios.tsx:497-501",
+        "grep por chamadas de aprovar( em backend/ e volc_ads/ => nenhum chamador de producao"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Decidir se a correspondencia por termo e uma capacidade do produto",
+      "proposed_status": "todo",
+      "why": "A parada Termos oferece escolha de correspondencia por keyword, e essa escolha NAO TEM CANAL ate o servidor. PedidoDeProva so tem um match_type GLOBAL fora de criterios (types/trafego.ts:951-956); a escolha individual de hoje vira criterio positivo e e recusada fechada (portao_conjunto_pago.py:250-272). E o conjunto do servidor nasce com a propria correspondencia (paid_eligibility.py:920-929), que PARTICIPA da identidade conferida pelo portao (:240-247) — mudar a correspondencia muda o hash e invalida a aprovacao. Ou a correspondencia por termo nao e uma capacidade, ou existe uma operacao de 'alterar e reaprovar o conjunto' que nao existe hoje e que ninguem dimensionou.",
+      "evidence": [
+        "src/types/trafego.ts:951-956",
+        "backend/app/agents/mining/paid_eligibility.py:920-929",
+        "backend/app/agents/mining/portao_conjunto_pago.py:240-247, 250-272"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Emitir bloqueado e bloqueios em projecao.cockpit e tirar a elegibilidade do navegador",
+      "proposed_status": "todo",
+      "why": "A decisao 'este lancamento pode acontecer' e hoje 100% derivada no navegador (podeLancar = pendencias.length === 0). O servidor JA CALCULA a mesma coisa — o dataclass Cockpit expoe bloqueado e bloqueios — e projecao.cockpit descarta os dois. E as duas regras DIVERGEM: o servidor barra so em severidade == 'bloqueio'; o cliente barra em tudo que nao for informacao/atencao. Esta e a dependencia M1 que o fechamento da sprint anterior nomeou como o proximo ato de maior valor e explicitamente nao fez.",
+      "evidence": [
+        "src/pages/trafego/NovaCampanhaPage.tsx:332-343",
+        "volc_ads/pautador_ponte.py:266-272",
+        "backend/app/trafego/projecao.py:157-177",
+        "grep -rn 'pode_lancar' backend/ src/ => 0"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Parar de coagir ausencia a zero na ponte do cockpit",
+      "proposed_status": "todo",
+      "why": "A doutrina 'ausencia nao e zero' esta implementada nos DOIS extremos e quebrada NO MEIO. O tipo Sinal recusa Sinal(0.0, AUSENTE) e levanta excecao; a tela sabe renderizar 'volume nao medido' e '—'; e a ponte coage int(e.get('volume') or 0) e float(valor or 0.0). Consequencia medida: pelo cockpit nenhum volume e nenhum CPC chega nulo, e TRES ramos de ausencia que a tela ja escreveu sao codigo morto. E a regua de leilao desaparece inteira quando todos os CPCs sao zero — um estado alcancavel por construcao. Correcao de duas expressoes.",
+      "evidence": [
+        "volc_ads/pautador_ponte.py:451-456 e :505-506",
+        "backend/app/agents/mining/paid_eligibility.py:107-109, 120-121",
+        "src/components/trafego/MesaDeCriterios.tsx:201-202 · ListaDeKeywords.tsx:140-142 · ReguaDeLeilao.tsx:78, 92, 112, 230"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Dar porta operacional ao POST /reconciliar",
+      "proposed_status": "todo",
+      "why": "A unica saida do desfecho `indeterminado` existe no backend, e correta: le a conta, fecha o MESMO recibo, nunca reenvia, aceita `marca` como alternativa ao campaign_id (o caminho do item que nunca teve id externo), e protege contra item de outra conta, item inexistente e duplicidade consumada. E ela NAO TEM UM UNICO CONSUMIDOR no frontend, enquanto proximoAtoSeguro devolve `reconciliar_na_conta` por padrao e a ignicao INSTRUI o operador a reconciliar — em texto, sem botao e sem chamada. Tres bloqueios correlatos: (a) SubidaIndeterminada nao declara `marca`, descartando a chave da porta de saida; (b) a rota exige exigir_admin enquanto o resto do router exige exigir_usuario, entao o operador nao fecha o proprio recibo; (c) nao existe caixa de entrada de recibos abertos — quem perder o item_id perde a saida.",
+      "evidence": [
+        "backend/app/routers/trafego.py:4442-4447, 4174-4180, 4186-4195",
+        "grep -rn 'api/trafego/reconciliar' src/ api/ => 0",
+        "src/components/trafego/Lancamento.tsx:900-902",
+        "src/types/trafego.ts:799-805"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Fechar a acessibilidade e o contraste da Ignicao",
+      "proposed_status": "todo",
+      "why": "A ignicao declara role=dialog aria-modal=true e NAO implementa modalidade: zero armadilha de foco, zero portal, zero inert. Nao ha nenhuma regiao viva (zero aria-live, role=status, role=alert, aria-busy) numa tela cujo conteudo muda por conta propria. O foco vai ao painel UMA vez, no mount. O botao de fechar e DESMONTADO durante a escrita em vez de desabilitado. O dialogo nao rola (.ignicao e overflow:hidden sem conteiner de rolagem). Todo valor do recibo e truncate sem title e sem botao de copia — inclusive o request id que o operador precisa enviar ao suporte. E 18 das 47 ocorrencias de text-white/NN reprovam na AA contra o fundo declarado.",
+      "evidence": [
+        "src/components/trafego/Lancamento.tsx:261-262, 118, 279-284, 270-271, 905-910",
+        "src/index.css:925-928 e :933",
+        "contrastes calculados: /30 = 2,58:1 · /35 = 3,12:1 · /40 = 3,76:1 · /45 = 4,49:1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P04-TXX",
+      "initiative_hint": "P04 — Destravar Google Ads alem de Search",
+      "title": "Unificar o renderizador de portao e tirar a paleta crua das superficies de canal",
+      "proposed_status": "todo",
+      "why": "Dois renderizadores de portao DISCORDAM DE COR para o mesmo veredito: PortoesDoCanal pinta BLOQUEADO de ambar sem fundo; PainelDaMensuracao pinta o negativo de ROSA com fundo. E dentro do proprio PortoesDoCanal o ambar de BLOQUEADO colide com o ambar do tom `permissao`. As tres superficies de canais/ usam 216 ocorrencias de paleta crua do Tailwind em 6 arquivos, com ZERO token semantico e sem equivalencia de tema escuro. A divida esta concentrada, nao espalhada: PainelDeCanais.tsx sozinho responde por cerca de metade.",
+      "evidence": [
+        "src/components/trafego/canais/PortoesDoCanal.tsx:55-79, 89-101",
+        "src/components/trafego/canais/PainelDaMensuracao.tsx:67-74",
+        "grep -rnoE '(text|bg|border|border-l|border-r|dark:text|dark:bg|dark:border)-(slate|rose|violet|amber|emerald|sky)-[0-9]{2,3}' src/pages/trafego src/components/trafego | grep -v __tests__ | wc -l => 216"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P04-TXX",
+      "initiative_hint": "P04 — Destravar Google Ads alem de Search",
+      "title": "Tirar a intersecao de escrita por canal do navegador",
+      "proposed_status": "todo",
+      "why": "A aba `criar` faz exatamente o calculo que a aba `canais` RECUSA fazer: jornada.ts cruza API + backend + sabe_criar + permissao + trava no navegador para decidir se a escrita sai, enquanto PainelDeCanais declara por escrito que nao calcula autorizacao e apenas desenha o veredito do servidor. E a bancada monta sobre SEIS canais fixos derivados do frontend, e nao sobre a lista que o servidor devolve em GET /canais — o que e simetria falsa por construcao.",
+      "evidence": [
+        "src/components/trafego/canal/jornada.ts:645-646 (dentro de cruzar(), que comeca em :616) e :879",
+        "src/components/trafego/canais/PainelDeCanais.tsx:10"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Levar o teto real de gasto e a distincao servido x cobrado para a tela",
+      "proposed_status": "todo",
+      "why": "O limite diario do Google e 2x o orcamento diario medio e o mensal e 30,4x, com excecao documentada para payment_mode = CONVERSIONS e com um limite no NIVEL DA CONTA que sobrepoe o de campanha e nao pode ter aumento solicitado. Nada disso existe em codigo: zero ocorrencias de '2x o orcamento', '30,4', 'custo servido' ou 'custo cobrado' em src/ ou backend/. O unico teto calculado em codigo divide a verba NOMINAL pelo lance, assumindo 1x. Correlato: graduacao_em_conversoes e aceito pelo modelo HTTP e NUNCA lido, persistido ou executado, enquanto a tela declara que o 'motor de gestao' a executa.",
+      "evidence": [
+        "docs/growth-engine/matriz-api/comum.md:459, 460, 471-474, 603-614",
+        "backend/app/trafego/dominio.py:1031-1037",
+        "grep -rn 'graduacao_em_conversoes' backend/ volc_ads/ api/ => 3 resultados, todos definicao ou repasse"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P04-TXX",
+      "initiative_hint": "P04 — Destravar Google Ads alem de Search",
+      "title": "Verificar e datar a capacidade de Video e Shopping contra a API",
+      "proposed_status": "todo",
+      "why": "A afirmacao 'a Google Ads API nao cria nem atualiza campanha de Video' e o pre-requisito Merchant Center de Shopping NAO estao em docs/growth-engine/. Nao existe arquivo de canal para Video nem para Shopping na matriz-api, que cobre quatro canais. As duas afirmacoes vivem num prompt de briefing de design que lista a URL oficial mas nao tem a verificacao datada contra o proto instalado que a matriz-api faz para os outros quatro. Enquanto isso nao existir, a tela deve falar do VOLC e nao do Google.",
+      "evidence": [
+        "ls docs/growth-engine/matriz-api/ => 7 arquivos, nenhum de video ou shopping",
+        "docs/design/PROMPT-GROK-SPRINT-TRAFEGO-CONTRASTE-E-CRIACAO-POR-CANAL.md:97, 129, 246, 259, 263, 267-271",
+        "docs/growth-engine/MATRIZ-DE-CAPACIDADES.md:45-46"
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "proposed_graph_nodes": [
+    {
+      "id": "spec_traffic_operating_experience_v3",
+      "cluster": "acquisition",
+      "label": "Especificacao da experiencia operacional de trafego v3",
+      "path": "docs/specs/traffic-operating-experience-v3/",
+      "state": "ESPECIFICADO, NAO IMPLEMENTADO",
+      "business_meaning": "Quinze artefatos que descrevem como a superficie onde o dinheiro passa a ser possivel deve funcionar: topologia, contratos de tela, mapa de autoridade por campo, matriz de capacidade por canal, estados, responsividade, fatias de implementacao e contraprovas. Nao autoriza implementacao: a direcao esta sujeita a aprovacao humana.",
+      "confidence": "high"
+    },
+    {
+      "id": "divida_elegibilidade_no_navegador",
+      "cluster": "acquisition",
+      "label": "Elegibilidade de lancamento derivada no navegador",
+      "path": "src/pages/trafego/NovaCampanhaPage.tsx:332-343",
+      "state": "DEFEITO MEDIDO, NAO CORRIGIDO",
+      "business_meaning": "A decisao que autoriza gasto e montada no cliente a cada render, com regra que DIVERGE da do servidor. O servidor ja calcula o veredito e a projecao HTTP o descarta.",
+      "confidence": "high"
+    },
+    {
+      "id": "divida_coercao_de_ausencia_na_ponte",
+      "cluster": "acquisition",
+      "label": "Ponte do cockpit coage ausencia a zero",
+      "path": "volc_ads/pautador_ponte.py:451-456, 505-506",
+      "state": "DEFEITO MEDIDO, NAO CORRIGIDO",
+      "business_meaning": "A doutrina 'ausencia nao e zero' e garantida por tipo no motor e renderizada pela tela, e quebrada na ponte entre os dois. Tres ramos de honestidade da interface sao codigo morto por causa de duas expressoes.",
+      "confidence": "high"
+    },
+    {
+      "id": "saida_de_indeterminado_sem_porta",
+      "cluster": "acquisition",
+      "label": "POST /reconciliar sem consumidor",
+      "path": "backend/app/routers/trafego.py:4442",
+      "state": "IMPLEMENTADO NO SERVIDOR, INALCANCAVEL PELA TELA",
+      "business_meaning": "A unica saida correta do desfecho indeterminado — inevitavel porque a API do Google nao oferece chave de idempotencia — existe, e testada, e nenhuma tela a chama. O produto instrui o operador a reconciliar sem lhe dar o ato.",
+      "confidence": "high"
+    },
+    {
+      "id": "campanha_pausada_invisivel",
+      "cluster": "acquisition",
+      "label": "Campanha nascida PAUSED fora do alcance do coletor continuo",
+      "path": "volc_ads/inteligencia_google/persistencia.py:77-90",
+      "state": "LACUNA MEDIDA",
+      "business_meaning": "A campanha nasce pausada por seguranca, e a pausa a torna invisivel para a vigilancia: o coletor continuo filtra ENABLED e SEARCH. O coletor que le PAUSED existe, nao tem rota e nao tem agenda. O espelho teve zero linhas para a campanha canario.",
+      "confidence": "high"
+    }
+  ],
+  "proposed_graph_edges": [
+    {
+      "from": "spec_traffic_operating_experience_v3",
+      "to": "divida_elegibilidade_no_navegador",
+      "kind": "documenta",
+      "state": "PROPOSTO",
+      "why": "A spec nomeia a divida com arquivo:linha, mede a divergencia entre as duas regras e propoe a correcao como primeira fatia.",
+      "confidence": "high"
+    },
+    {
+      "from": "spec_traffic_operating_experience_v3",
+      "to": "divida_coercao_de_ausencia_na_ponte",
+      "kind": "documenta",
+      "state": "PROPOSTO",
+      "why": "A spec identifica que os ramos de ausencia da tela sao inalcancaveis e que a causa esta na ponte, nao na interface.",
+      "confidence": "high"
+    },
+    {
+      "from": "spec_traffic_operating_experience_v3",
+      "to": "saida_de_indeterminado_sem_porta",
+      "kind": "documenta",
+      "state": "PROPOSTO",
+      "why": "A spec prova a ausencia de consumidor por busca e especifica onde o ato deve viver: a regiao Recibo, no estado indeterminado.",
+      "confidence": "high"
+    },
+    {
+      "from": "spec_traffic_operating_experience_v3",
+      "to": "campanha_pausada_invisivel",
+      "kind": "documenta",
+      "state": "PROPOSTO",
+      "why": "A spec exige que o Recibo declare a lacuna ao operador, para que o silencio da vigilancia nao seja lido como boa noticia.",
+      "confidence": "high"
+    },
+    {
+      "from": "cap_google_multichannel",
+      "to": "spec_traffic_operating_experience_v3",
+      "kind": "e_especificado_por",
+      "state": "PROPOSTO",
+      "why": "A curadoria ja declara cap_google_multichannel como `partial` e nomeia duas lacunas; a spec acrescenta a matriz de capacidade por canal legivel por maquina, com os quatro portoes reais e as oito origens de recusa.",
+      "confidence": "medium"
+    }
+  ],
+  "facts_worth_curating": [
+    {
+      "fact": "O contrato de canais tem QUATRO canais e QUATRO portoes (planejavel, validavel, criavel_pausada, ativavel), com quatro estados e OITO origens de recusa. Os nomes observavel, analisavel, mutavel, monitoravel e reconciliavel NAO existem no codigo.",
+      "source": "backend/app/trafego/contrato_canais.py:99-131 · grep dos cinco nomes => 0",
+      "confidence": "high"
+    },
+    {
+      "fact": "O portao `ativavel` esta BLOQUEADO em 4 de 4 canais para as 4 identidades testadas — 16 celulas — e a funcao nao tem ramo que produza outro estado. O comentario declara que lista vazia de bloqueadores nunca significaria permissao.",
+      "source": "backend/app/trafego/contrato_canais.py:974-1016 · backend/tests/test_trafego_contrato_canais.py:230-236",
+      "confidence": "high"
+    },
+    {
+      "fact": "A autoridade sobre quem cria e quem prova mora no engine, em dois registros: DOIS canais sabem criar (SEARCH, DISPLAY) e TRES sabem provar. O manifesto e conferido contra eles por teste, por arvore sintatica, para nao depender do SDK instalado.",
+      "source": "volc_ads/subir.py:122-133 · backend/tests/test_trafego_canal_de_criacao.py:821-830",
+      "confidence": "high"
+    },
+    {
+      "fact": "A garantia de nascer PAUSED nao vive no contrato HTTP: e um literal do construtor em volc_ads/campanha/comum.py:207, e o payload de /subir NAO TEM campo de status — nao ha como o cliente pedir outro.",
+      "source": "volc_ads/campanha/comum.py:207 · backend/app/routers/trafego.py:3398-3431",
+      "confidence": "high"
+    },
+    {
+      "fact": "A trava do motivo de 10 caracteres e medida em TRES lugares independentes e nasce satisfeita: o campo e pre-preenchido com `lancamento de \"<titulo>\"`, que ja tem 17 caracteres para um titulo de um. As tres guardas existem e nenhuma pede algo de alguem.",
+      "source": "src/components/trafego/Lancamento.tsx:99 · trafego.py:3416-3423 · volc_ads/subir.py:936",
+      "confidence": "high"
+    },
+    {
+      "fact": "A API do Google Ads nao oferece chave de idempotencia — varredura por 'idempotent'/'idempotency' em 70 paginas oficiais, marcada [media]. E por isso que o desfecho indeterminado e inevitavel e que POST /reconciliar existe.",
+      "source": "docs/growth-engine/matriz-api/comum.md:151-154",
+      "confidence": "high"
+    },
+    {
+      "fact": "metrics.cost_micros e custo SERVIDO e nao COBRADO, e nao existe metrica de custo cobrado na v25 — verificado por introspeccao do proto instalado. O relatorio Billed cost so existe na UI.",
+      "source": "docs/growth-engine/matriz-api/comum.md:504-518",
+      "confidence": "high"
+    },
+    {
+      "fact": "campaign.status e o unico dos tres campos de estado que e gravavel; serving_status e primary_status sao Output only. Ler status = ENABLED NAO prova entrega.",
+      "source": "docs/growth-engine/matriz-api/comum.md:338-344",
+      "confidence": "high"
+    },
+    {
+      "fact": "AdGroupAd.ad e Immutable: editar o criativo de um RSA existente e impossivel pela API. O caso de uso e replace-and-retire, com dois AdGroupAd distintos no historico.",
+      "source": "docs/growth-engine/matriz-api/search.md:66, 73-75",
+      "confidence": "high"
+    },
+    {
+      "fact": "Campaign.url_expansion_opt_out NAO existe na v25 — provado por introspeccao do proto. O controle real de expansao em PMax e criterio webpage negativo (que nao pode excluir a final URL do proprio asset group) mais asset_automation_settings, uma lista de 12 pares com dependencia que gera erro se invertida.",
+      "source": "docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md:74 · docs/growth-engine/matriz-api/performance-max.md:186-187, 202-215",
+      "confidence": "high"
+    },
+    {
+      "fact": "A divergencia bg-card x bg-background em design.md e 2 passagens mandando bg-background (§Elevation :193, §Components :201) contra 2 proibindo (§Surfaces :96, docs/DESIGN.md:63). O codigo implementa bg-card, e NENHUMA superficie do produto usa bg-background como estado de aba selecionada. Ja existe adjudicacao escrita que estabelece design.md (raiz) como contrato que vence, e a correcao da frase obsoleta foi PROPOSTA e explicitamente NAO aplicada.",
+      "source": "src/components/ui/tabs.tsx:42 · design.md:96, 193, 201 · docs/DESIGN.md:63 · docs/design/AUTORIDADE-VISUAL-RECONCILIADA.md:20-27, 111-117",
+      "confidence": "high"
+    },
+    {
+      "fact": "A janela do inventario nao e a largura do trabalho: a barra lateral e 320px aberta e 64px recolhida, e densidade.tsx ja mediu que numa janela de 1280 sobram ~900px. LARGURA_AMPLA e 1440, nao 1280, e a razao esta escrita no proprio arquivo.",
+      "source": "src/components/layout/Navigation.tsx:558 · src/components/trafego/inventario/densidade.tsx:25-38",
+      "confidence": "high"
+    },
+    {
+      "fact": "src/index.css:905-913 aplica, FORA de qualquer classe de opt-in, `table { display: block; overflow-x: auto }` abaixo de 768px — uma rede de seguranca global que da rolagem horizontal a toda tabela do produto e que as paginas redesenhadas nao devem herdar.",
+      "source": "src/index.css:905-913",
+      "confidence": "high"
+    },
+    {
+      "fact": "A classe .touch-target ja foi no-op por nao estar importada: 55 chamadas em 16 arquivos nao faziam nada, e a sonda mediu alvos de 16x16 em controles que o codigo supunha protegidos. Presenca de classe nao e prova de alvo.",
+      "source": "src/index.css:250-274",
+      "confidence": "high"
+    },
+    {
+      "fact": "O comentario de cabecalho de acessibilidade-do-inventario.test.tsx afirma que --muted-foreground so passa na AA sobre --card. Isso descreve o estado ANTERIOR: o corpo do teste registra que o token foi de 45% para 40% e que a prova inverteu de sentido, passando a guardar o invariante. Vale o corpo, nao o cabecalho.",
+      "source": "src/components/trafego/inventario/__tests__/acessibilidade-do-inventario.test.tsx:10-14 vs :466-489",
+      "confidence": "high"
+    },
+    {
+      "fact": "Existem DUAS funcoes tomDoEstado e DOIS tipos EstadoDePortao exportados de src/lib/trafego/, com vocabularios incompativeis: canais.ts descreve os 4 portoes de canal (4 estados) e portoes.ts descreve os 7 portoes de mensuracao (5 estados). Confundi-los produz cor errada.",
+      "source": "src/lib/trafego/canais.ts:485-496 · src/lib/trafego/portoes.ts:27-32, 119-124",
+      "confidence": "high"
+    },
+    {
+      "fact": "graphify-out/ e gitignorado, entao UPDATE_STATUS.json nao existe em worktree isolada e `--check` devolveria {\"current\": false, \"reason\": \"UPDATE_STATUS.json ausente\"}. Isso e estado ESPERADO de worktree, nao defasagem do grafo. O grafo gerado esta em sincronia perfeita com a curadoria (233 nos e 412 arestas, zero ausencias nos dois sentidos); o que esta defasado e a camada tecnica/viva, com snapshot_date 2026-08-22.",
+      "source": ".gitignore:72-79 · scripts/atualizar_grafo_volc_os.py:185-188 · docs/volc-os-graph/volc-os-graph.json",
+      "confidence": "high"
+    },
+    {
+      "fact": "O ROADMAP-VIVO tem 17 iniciativas e 164 tarefas. O bloco de trafego (P04, P05, P06, P09, P10, P11) concentra 71 delas: 13 done, 36 partial, 22 todo, e ZERO em risk ou reserved. O campo `acceptance` e polimorfico — lista em 12 tarefas, string em 55, ausente em 97 — e um delta precisa respeitar o tipo ja usado na tarefa alvo.",
+      "source": "volc-os-workbook/ROADMAP-VIVO.json · backend/app/routers/work_road.py:43, 78-88",
+      "confidence": "high"
+    },
+    {
+      "fact": "O validador executavel do schema de tarefa exige apenas id unico, title nao vazio e status num conjunto fechado de CINCO valores. Um CURATION-HANDOFF ja mesclado propos `proposed_status: \"blocked\"`, valor que nao existe nesse conjunto e que quebraria a rota com 503.",
+      "source": "backend/app/routers/work_road.py:43, 78-88 · docs/closure/hermes-redator-google-ads-policy-incident-v1/CURATION-HANDOFF.json:24-25",
+      "confidence": "high"
+    }
+  ],
+  "o_que_este_handoff_nao_propoe": [
+    "Nenhuma promocao para `done`. Uma spec nao prova criterio de aceite de implementacao.",
+    "Nenhuma alteracao em design.md, docs/DESIGN.md, ROADMAP-VIVO.json ou curadoria-operacional.json — a lane nao as tocou.",
+    "Nenhuma tarefa nova para criar rota de ativacao: ela nao existe por decisao de produto registrada, com quatro razoes de quatro origens.",
+    "Nenhum estado `blocked`, `risk` ou `reserved`: o validador do QG aceita cinco valores e um handoff anterior ja quebrou por propor um valor fora deles.",
+    "Nenhuma reconstrucao do grafo: a lane nao rodou scripts/atualizar_grafo_volc_os.py."
+  ],
+  "revisao_independente": {
+    "interna": "14 eixos de investigacao, cada um seguido de refutacao adversarial; 13 relatorios de refutacao; uma rodada corretiva aplicada",
+    "cruzada_codex": {
+      "ferramenta": "codex-cli 0.151.0, execucao nao-interativa, sandbox somente leitura",
+      "veredito": "REPROVADO — 1 bloqueante, 9 materiais, 1 menor",
+      "adjudicacao": "os 12 achados foram abertos no codigo; NENHUM foi refutado; TODOS foram aceitos e corrigidos",
+      "efeito_material": [
+        "criada a fatia A0 e reordenado o grafo de dependencias",
+        "reescrita a fatia A2, que prometia 'duas expressoes' e exige mudar modelo, projecao e tipos",
+        "criada a fatia A1b, porque bloqueado/bloqueios sao globais e nao dizem a parada dona",
+        "corrigida contradicao interna no limiar de 1440px",
+        "fatia J dividida em J1/J2/J3, com rollbacks distintos",
+        "removidas duas excecoes que a spec se autoconcedia contra design.md",
+        "decidida a persistencia (sessionStorage) em vez de deixar a escolha binaria ao executor"
+      ],
+      "detalhe": "docs/specs/traffic-operating-experience-v3/DECISION-LOG.md secao 9.1b"
+    },
+    "cruzada_gemini": "CROSS_PROVIDER_REVIEW_NOT_AVAILABLE — sem metodo de autenticacao. A missao proibe configurar credencial ou substituir por revisao ficticia."
+  }
+}
