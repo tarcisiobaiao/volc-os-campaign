@@ -230,6 +230,19 @@ def gold_miner_classify(raw_keywords: List[Dict[str, Any]], *, today: Optional[d
             "keyword": display_keyword,
             "volume": vol,
             "cpc": cpc,
+            # ⚠️ O ESTADO PRECISA SOBREVIVER À FILA.
+            #
+            # `production_ads_queue` é consumida direto por
+            # `volc_ads.pautador_ponte` para montar o Brief, sem passar pelo
+            # LLM. Sem estes dois campos, tudo o que `gold_extractor` mediu na
+            # origem morria aqui e o Brief voltava a ver `cpc: 0` sem saber se
+            # era preço ou lacuna.
+            "volume_estado": k.get("volume_estado") or (
+                "measured" if vol_medido is not None else "unknown"
+            ),
+            "cpc_estado": k.get("cpc_estado") or (
+                "measured" if cpc_medido is not None else "unknown"
+            ),
             "competition": comp,
             "tags": tags,
             "trend_score": trend,

@@ -673,3 +673,176 @@ def test_E7_classifier_nao_aprova_com_cpc_declarado_ausente():
         today=HOJE,
     )
     assert [k["keyword"] for k in saida["production_ads_queue"]] == []
+
+
+# ── rodada corretiva: achados reproduzidos das revisões cruzadas ────────────
+
+
+def test_R1_lexico_nao_retem_termo_comercial_legitimo():
+    """Revisão externa: `"meu "` e `" app"` sozinhos retinham termo comercial.
+
+    Reproduzido antes da correção: `vender meu precatorio`,
+    `simular meu financiamento` e `seguro auto app` saíam HOLD por
+    navegacional. Reter demais é o mesmo defeito do outro lado da balança.
+    """
+    from app.agents.mining.paid_eligibility import INCLUDE, decidir_keyword
+
+    for termo in ("vender meu precatorio", "simular meu financiamento", "seguro auto app"):
+        d = decidir_keyword({"keyword": termo, "volume": 50000, "cpc": 2.0}, subintencao="X")
+        assert d.decisao == INCLUDE, f"{termo!r} retido indevidamente: {d.motivos}"
+
+
+def test_R2_comparacao_nao_e_marca_de_terceiro():
+    """Revisão externa: `" x "` em `_MARCA_TERCEIRO` mandava comparação genérica
+    para revisão humana. `clt x pj` não cita marca de ninguém."""
+    from app.agents.mining.paid_eligibility import INCLUDE, decidir_keyword
+
+    for termo in ("advogado presencial x online", "clt x pj"):
+        d = decidir_keyword({"keyword": termo, "volume": 50000, "cpc": 2.0}, subintencao="X")
+        assert d.decisao == INCLUDE
+        assert d.riscos["marca_terceiro"] is False
+
+
+def test_R3_marca_de_terceiro_declarada_pelo_operador_e_respeitada():
+    """G. O léxico não conhece marca que ninguém declarou — e diz isso.
+
+    `jusbrasil consulta` passava como INCLUDE porque nenhum marcador
+    relacional aparece nele. A cobertura por vocabulário é declaradamente
+    parcial; a lista do operador é o que a completa.
+    """
+    from app.agents.mining.paid_eligibility import HUMAN_REVIEW, INCLUDE, decidir_keyword
+
+    sem_lista = decidir_keyword({"keyword": "jusbrasil consulta", "volume": 9000, "cpc": 1.0}, subintencao="X")
+    com_lista = decidir_keyword(
+        {"keyword": "jusbrasil consulta", "volume": 9000, "cpc": 1.0},
+        subintencao="X",
+        marcas_de_terceiro=["jusbrasil"],
+    )
+    assert sem_lista.decisao == INCLUDE
+    assert com_lista.decisao == HUMAN_REVIEW
+
+
+def test_R4_dedup_funde_campos_em_vez_de_descartar_medicao():
+    """Revisão interna: a troca em bloco jogava fora o CPC medido do perdedor.
+
+    Entrada concreta, numa sub-intenção só: a grafia de maior volume não tinha
+    CPC, a de menor volume tinha CPC medido. O vencedor levava tudo, o CPC
+    sumia, e a decisão caía de INCLUDE para EXPERIMENT por um dado que a
+    mineração TINHA.
+    """
+    from app.agents.mining.paid_eligibility import INCLUDE, MEDIDO
+
+    funil = _funil(
+        "dup",
+        "ipva",
+        [
+            _sub(
+                "VALOR",
+                [
+                    {"keyword": "ipva 2026 consulta", "volume": 30000},
+                    {"keyword": "IPVA 2026 Consulta", "volume": 28000, "cpc": 0.40},
+                ],
+            )
+        ],
+    )
+    _item, conjunto = _item_e_conjunto(funil)
+    assert len(conjunto.candidates) == 1
+    d = conjunto.candidates[0]
+    assert d.volume.valor == 30000 and d.volume.estado == MEDIDO
+    assert d.cpc.valor == 0.40 and d.cpc.estado == MEDIDO
+    assert d.decisao == INCLUDE
+
+
+def test_R5_reescrita_de_ano_nao_produz_termo_malformado():
+    """Revisão interna: `replace` cego transformava `irpf 2025/2026` em
+    `irpf 2026/2026` — uma keyword que não é de ninguém, exportada assim."""
+    funil = _funil(
+        "ano",
+        "irpf",
+        [
+            _sub(
+                "VALOR",
+                [
+                    {"keyword": "declaracao irpf 2025/2026", "volume": 40000, "cpc": 0.80},
+                    {"keyword": "calendario pis 2025", "volume": 50000, "cpc": 0.10},
+                    {"keyword": "tabela 12025 codigo", "volume": 25000, "cpc": 0.30},
+                ],
+            )
+        ],
+    )
+    _item, conjunto = _item_e_conjunto(funil)
+    termos = {d.termo for d in conjunto.candidates}
+    assert "declaracao irpf 2025/2026" in termos, "o ano composto foi reescrito"
+    assert "calendario pis 2026" in termos, "o ano isolado não foi normalizado"
+    assert "tabela 12025 codigo" in termos, "dígitos internos foram reescritos"
+
+
+def test_R6_proveniencia_da_reescrita_chega_a_saida():
+    """Revisão interna: `original` era escrito e lido por ninguém."""
+    funil = _funil("ano", "pis", [_sub("VALOR", [{"keyword": "calendario pis 2025", "volume": 50000, "cpc": 0.10}])])
+    item, conjunto = _item_e_conjunto(funil)
+    assert conjunto.candidates[0].original == "calendario pis 2025"
+    assert item["keywords_campanha"]["keywords_array"][0]["original"] == "calendario pis 2025"
+
+
+def test_R7_normalizacao_dobra_acento_para_keyword_positiva():
+    """Revisão interna: as duas grafias sobreviviam e somavam volume duas vezes.
+
+    A regra da casa já estava escrita em `volc_ads.campanha.criterio.chave`: o
+    acento se preserva na NEGATIVA (que não expande para variantes próximas) e
+    se dobra na keyword POSITIVA (onde as duas grafias competiriam entre si).
+    """
+    from app.agents.mining.paid_eligibility import normalizar_termo
+
+    assert normalizar_termo("Declaração IPVA 2026") == normalizar_termo("declaracao ipva 2026")
+
+
+def test_R8_congruencia_nao_avaliada_bloqueia_o_conjunto_nao_a_keyword():
+    """M. Desconhecido não abre o portão — e não recusa o termo tampouco."""
+    from app.agents.mining.paid_eligibility import INCLUDE
+
+    _item, conjunto = _item_e_conjunto(BPC_LOAS)
+    assert conjunto.selected_keywords, "o termo continua elegível"
+    assert all(d.decisao == INCLUDE for d in conjunto.selected_keywords)
+    assert "congruencia_nao_avaliada" in conjunto.blockers
+    assert conjunto.ready_for_campaign_plan is False
+
+
+def test_R9_exposicao_por_variante_proxima_fica_escrita():
+    """Revisão externa: reter `meu inss login` não impede que uma busca por ele
+    acione um termo INCLUÍDO — variantes próximas valem para EXACT e PHRASE.
+
+    O motor não fecha isso (negativa exige search-term evidence, que só existe
+    depois do lançamento). Ele declara.
+    """
+    _item, conjunto = _item_e_conjunto(BPC_LOAS)
+    assert any("variante_proxima" in a for a in conjunto.alertas)
+    assert all(
+        "match_type_nao_isola_variantes_proximas" in d.alertas
+        for d in conjunto.selected_keywords
+    )
+
+
+def test_R10_estado_sobrevive_ate_production_ads_queue():
+    """Codex: os estados morriam no classificador, e `production_ads_queue` é
+    consumida direto por `volc_ads.pautador_ponte` para montar o Brief."""
+    from app.agents.mining.classifier import gold_miner_classify
+
+    saida = gold_miner_classify(
+        [{"keyword": "termo titan", "volume": 90000, "cpc": 0, "cpc_estado": "absent"}],
+        today=HOJE,
+    )
+    fila = saida["production_ads_queue"]
+    assert fila and fila[0]["cpc_estado"] == "absent"
+    assert fila[0]["volume_estado"] == "measured"
+
+
+def test_R11_impressao_tem_semantica_de_conjunto_de_verdade():
+    """Revisão interna: `sorted` sobre gerador preservava duplicatas, então a
+    impressão dependia de quantas vezes o termo foi minerado."""
+    from app.agents.mining.paid_eligibility import impressao_de_decisoes
+
+    conjunto = _conjunto_bpc()
+    uma = impressao_de_decisoes(conjunto.selected_keywords)
+    duas = impressao_de_decisoes(list(conjunto.selected_keywords) + list(conjunto.selected_keywords))
+    assert uma == duas

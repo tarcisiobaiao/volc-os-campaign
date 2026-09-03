@@ -278,9 +278,24 @@ _LEXICO: Dict[str, Tuple[str, ...]] = {
         "tabela", "custo", "taxa", "aliquota", "desconto", "parcelamento",
         "parcelar", "quanto vou receber",
     ),
+    # ⚠️ MARCADORES FRACOS FORAM REMOVIDOS DEPOIS DE MEDIR O ESTRAGO.
+    #
+    # `"meu "` e `" app"` sozinhos retinham termo comercial legítimo. Medido:
+    #
+    #     vender meu precatorio       -> HOLD  (navegacional)
+    #     simular meu financiamento   -> HOLD  (navegacional, apesar de
+    #                                           também ser transacional)
+    #     seguro auto app             -> HOLD  (navegacional)
+    #
+    # Reter demais não é o lado seguro: é o mesmo defeito do outro lado da
+    # balança — um motor que segura tudo não separa nada. Ficaram os
+    # marcadores que nomeiam um ARTEFATO DE ACESSO, e as formas compostas de
+    # portal ("meu inss", "meu gov") que são a convenção brasileira de nome.
     ARQ_NAVEGACIONAL: (
-        "login", "entrar", "acessar", "portal", "site oficial", "aplicativo",
-        " app", "area do", "meu ", "minha conta", "www", ".gov", ".com",
+        "login", "acessar", "portal", "site oficial", "aplicativo",
+        "baixar app", "app oficial", "area do", "area logada",
+        "minha conta", "meu cadastro", "meu inss", "meu gov", "meu beneficio",
+        "www", ".gov", ".com", "entrar no", "entrar na",
     ),
     ARQ_SUPORTE_ACESSO: (
         "telefone", "0800", "fone", "contato", "atendimento", "sac",
@@ -306,28 +321,51 @@ _LEXICO: Dict[str, Tuple[str, ...]] = {
 # Marcas de terceiro / concorrência. Não é lista de empresas — é a marca
 # LINGUÍSTICA de que o termo aponta para outra entidade. Uma lista de nomes
 # envelheceria e daria falsa cobertura.
+# ⚠️ `" x "` E `" vs "` SAÍRAM DAQUI, E CONTINUAM EM `ARQ_COMPARACAO`.
+#
+# Comparação não é marca de terceiro. Medido, com os dois marcadores aqui:
+#
+#     advogado presencial x online  -> HUMAN_REVIEW (marca_terceiro)
+#     clt x pj                      -> HUMAN_REVIEW (marca_terceiro)
+#
+# Nenhum dos dois cita marca de ninguém. Ficaram os marcadores que de fato
+# apontam para OUTRA ENTIDADE.
+#
+# ⚠️ E o léxico NÃO detecta marca que ele não conhece: `jusbrasil consulta`
+# passa como INCLUDE. Isso não tem conserto por vocabulário — por isso
+# `decidir_keyword` aceita `marcas_de_terceiro`, uma lista que o operador
+# declara. Sem ela, a cobertura de marca é declaradamente parcial.
 _MARCA_TERCEIRO = (
     "concorrente", "concorrentes", "alternativa a", "alternativas a",
     "parecido com", "similar a", "igual ao", "substituto de", "melhor que ",
-    " vs ", " x ",
 )
-
-
-def normalizar_termo(termo: Any) -> str:
-    """A forma sob a qual dois termos são o MESMO termo.
-
-    `lower().strip()` mais colapso de espaço interno. Deliberadamente NÃO
-    remove acento nem ordena palavras: `merger._strong_normalize` faz isso e é
-    correto para consolidar banco, mas aqui fundiria `ipva de sp` com `sp de
-    ipva`, que são a mesma frase para um banco e frases diferentes para um
-    leilão.
-    """
-    return " ".join(str(termo or "").lower().strip().split())
 
 
 def _sem_acento(texto: str) -> str:
     norm = unicodedata.normalize("NFD", texto)
     return "".join(c for c in norm if unicodedata.category(c) != "Mn")
+
+
+def normalizar_termo(termo: Any) -> str:
+    """A forma sob a qual dois termos são o MESMO termo POSITIVO.
+
+    Minúscula, espaço colapsado e ACENTO DOBRADO. NÃO ordena palavras:
+    `merger._strong_normalize` ordena e é correto para consolidar banco, mas
+    aqui fundiria `ipva de sp` com `sp de ipva` — a mesma frase para um banco,
+    frases diferentes para um leilão.
+
+    ⚠️ O acento dobra aqui e NÃO dobra em `volc_ads.campanha.criterio.chave`,
+    e a assimetria é a regra da casa, não um descuido. Lá o objeto é a
+    NEGATIVA, que não expande para variantes próximas: deduplicar `grátis` com
+    `gratis` APAGARIA um bloqueio declarado. Aqui o objeto é a keyword
+    POSITIVA, onde o Google casa variantes próximas e as duas grafias
+    competiriam entre si pelo mesmo leilão.
+
+    Sem isso, `declaração ipva 2026` e `declaracao ipva 2026` — as duas
+    grafias que a mineração rotineiramente traz — sobreviviam como keywords
+    separadas e somavam volume duas vezes.
+    """
+    return " ".join(_sem_acento(str(termo or "")).lower().strip().split())
 
 
 # Importado do motor existente — o rótulo informacional continua saindo da
@@ -363,7 +401,12 @@ def arquetipos(termo: Any) -> Tuple[str, ...]:
     return tuple(a for a in ARQUETIPOS if a in achados)
 
 
-def riscos(termo: Any, *, marcas_proprias: Sequence[str] = ()) -> Dict[str, bool]:
+def riscos(
+    termo: Any,
+    *,
+    marcas_proprias: Sequence[str] = (),
+    marcas_de_terceiro: Sequence[str] = (),
+) -> Dict[str, bool]:
     """Riscos que TIRAM o termo do caminho automático — para os dois lados.
 
     Nem inclusão automática, nem negativa automática. Um termo de marca ou de
@@ -373,12 +416,16 @@ def riscos(termo: Any, *, marcas_proprias: Sequence[str] = ()) -> Dict[str, bool
     """
     texto = _sem_acento(normalizar_termo(termo))
     acolchoado = f" {texto} "
-    proprias = {_sem_acento(normalizar_termo(m)) for m in marcas_proprias if m}
+    proprias = {normalizar_termo(m) for m in marcas_proprias if m}
     e_propria = any(m and m in texto for m in proprias)
+    terceiras = {normalizar_termo(m) for m in marcas_de_terceiro if m}
     arqs = arquetipos(termo)
     return {
         "marca_propria": e_propria,
-        "marca_terceiro": (not e_propria) and any(_sem_acento(m) in acolchoado for m in _MARCA_TERCEIRO),
+        "marca_terceiro": (not e_propria) and (
+            any(_sem_acento(m) in acolchoado for m in _MARCA_TERCEIRO)
+            or any(m and m in texto for m in terceiras)
+        ),
         "institucional_governo": ARQ_GOVERNO in arqs,
         "navegacional_ou_suporte": bool(set(arqs) & set(ARQUETIPOS_RETIDOS)) and not e_propria,
     }
@@ -389,6 +436,17 @@ def riscos(termo: Any, *, marcas_proprias: Sequence[str] = ()) -> Dict[str, bool
 # Nenhum match type é universal, e BROAD nunca é proposto automaticamente:
 # ampla é exatamente o caminho pelo qual um termo de marca de terceiro entra
 # num conjunto que ninguém aprovou.
+#
+# ⚠️ E NENHUM MATCH TYPE ISOLA. Variantes próximas se aplicam a EXACT E a
+# PHRASE — sinônimos, erros de grafia e buscas de mesma intenção —, então
+# propor EXACT para um termo curto NÃO impede que ele seja acionado por uma
+# busca de suporte ou navegacional. A proposta aqui é de CONTENÇÃO RELATIVA,
+# não de estanqueidade, e o alerta correspondente viaja na decisão.
+#
+# Consequência que fica escrita porque não é fechada aqui: enquanto não
+# existir negativa com search-term evidence, os termos que este motor RETÉM
+# continuam alcançáveis por variante próxima dos termos que ele INCLUI. Isso
+# é bloqueador de lançamento, não de preparação — e está no handoff.
 
 EXACT, PHRASE, BROAD = "EXACT", "PHRASE", "BROAD"
 
@@ -399,6 +457,11 @@ def propor_match_type(termo: Any, arqs: Sequence[str]) -> str:
         {ARQ_TRANSACIONAL, ARQ_ELEGIBILIDADE, ARQ_VALOR_PRECO} & set(arqs)
     )
     return EXACT if curto_e_decidido else PHRASE
+
+
+#: O alerta que acompanha TODA proposta de match type. Existe para que a tela
+#: não leia "EXACT" como "só casa isto".
+ALERTA_VARIANTES_PROXIMAS = "match_type_nao_isola_variantes_proximas"
 
 
 # ── evidência e vazamento de desfecho ───────────────────────────────────────
@@ -589,6 +652,10 @@ class PaidKeywordDecision:
 
     termo: str
     termo_normalizado: str
+    #: A grafia ANTES de qualquer reescrita (ano normalizado, por exemplo).
+    #: `None` quando o termo chegou como está — um termo que MUDOU antes de
+    #: entrar na campanha precisa dizer de onde veio.
+    original: Optional[str] = None
     subintencao: Optional[str] = None
     fonte: str = "mineracao"
     estagio: str = "desconhecido"
@@ -614,6 +681,7 @@ class PaidKeywordDecision:
         return {
             "termo": self.termo,
             "termo_normalizado": self.termo_normalizado,
+            "original": self.original,
             "fonte": self.fonte,
             "subintencao": self.subintencao,
             "estagio": self.estagio,
@@ -672,6 +740,7 @@ def decidir_keyword(
     teto_do_dono: Optional[float] = None,
     congruencia: str = "nao_avaliada",
     marcas_proprias: Sequence[str] = (),
+    marcas_de_terceiro: Sequence[str] = (),
     evidencias: Optional[Sequence[Evidencia]] = None,
     momento_da_decisao: str = PRE_LANCAMENTO,
     campanha_ref: Optional[str] = None,
@@ -689,11 +758,12 @@ def decidir_keyword(
     termo = str(bruto.get("keyword") or bruto.get("termo") or "")
     normalizado = normalizar_termo(termo)
     arqs = arquetipos(termo)
-    risco = riscos(termo, marcas_proprias=marcas_proprias)
+    risco = riscos(termo, marcas_proprias=marcas_proprias, marcas_de_terceiro=marcas_de_terceiro)
 
     d = PaidKeywordDecision(
         termo=termo,
         termo_normalizado=normalizado,
+        original=bruto.get("original"),
         subintencao=subintencao,
         fonte=fonte,
         estagio=estagio if estagio in ESTAGIOS else "desconhecido",
@@ -803,6 +873,8 @@ def decidir_keyword(
 
     if d.amplitude == "ampla":
         d.alertas.append("termo_amplo_pode_puxar_intencao_alheia")
+    # Nenhum match type isola: variantes próximas valem para EXACT e PHRASE.
+    d.alertas.append(ALERTA_VARIANTES_PROXIMAS)
     return d
 
 
@@ -825,7 +897,11 @@ def impressao_de_decisoes(decisoes: Iterable[PaidKeywordDecision]) -> str:
     reproduzível. Já `termo_normalizado`, `match_type` e `subintencao` entram
     os três: mudar qualquer um muda o que se está aprovando.
     """
-    identidades = sorted(d.identidade() for d in decisoes)
+    # `set` antes de `sorted`: a docstring promete semântica de CONJUNTO, e
+    # `sorted` sobre um gerador preservava duplicatas. Duas decisões com o mesmo
+    # (termo, match type, sub-intenção) são a mesma operação para a API — contá-las
+    # duas vezes faria a impressão depender de quantas vezes o termo foi minerado.
+    identidades = sorted(set(d.identidade() for d in decisoes))
     bruto = json.dumps(
         {"policy": SELECTION_POLICY_VERSION, "keywords": identidades},
         ensure_ascii=False, sort_keys=True, separators=(",", ":"),
@@ -1067,6 +1143,12 @@ def aplicar_politica_de_selecao(
     Termos sem volume medido não podem ser ordenados por volume, e ordenar
     tratando-os como 0 é a coerção que esta sprint fecha — então eles ficam
     depois dos medidos, com o estado preservado.
+
+    ⚠️ Pelo caminho de `funnel_factory` esse ramo não é alcançado hoje:
+    `decidir_keyword` devolve HOLD para volume sem número, e só INCLUDE chega
+    aqui. Ele fica como guarda para chamadores que passem outro recorte — não
+    como comportamento que este pipeline exercite. Dizer o contrário seria
+    documentação afirmando cobertura que o teste não tem.
     """
     medidos = sorted(
         [d for d in elegiveis if d.volume.tem_numero],
@@ -1126,10 +1208,52 @@ def montar_conjunto(
         conjunto.blockers.append("teto_economico_desconhecido")
     if not conjunto.selected_keywords:
         conjunto.blockers.append("nenhuma_keyword_elegivel_selecionada")
+
+    # ⚠️ CONGRUÊNCIA NÃO AVALIADA BLOQUEIA O CONJUNTO, NÃO A KEYWORD.
+    #
+    # Uma revisão externa apontou que liberar INCLUDE com congruência
+    # `nao_avaliada` expõe o termo a índice de qualidade baixo por relevância
+    # de anúncio e página. Está certo — e a resposta correta não é recusar o
+    # termo, porque quem avalia congruência de destino é outra lane e ela pode
+    # nem ter rodado ainda. A resposta é a mesma regra que vale para o teto:
+    # desconhecido não abre o portão. O termo continua elegível; o CONJUNTO
+    # não fica pronto enquanto ninguém tiver olhado o destino.
+    if any(d.congruencia == "nao_avaliada" for d in conjunto.selected_keywords):
+        conjunto.blockers.append("congruencia_nao_avaliada")
+
     if conjunto.human_review_keywords:
         conjunto.alertas.append(
             f"{len(conjunto.human_review_keywords)}_termos_aguardando_revisao_humana"
         )
+
+    # ⚠️ O QUE FOI RETIDO CONTINUA ALCANÇÁVEL — e isso precisa estar escrito.
+    #
+    # Reter `meu inss login` do conjunto NÃO impede que uma busca por ele
+    # acione um termo INCLUÍDO, porque variantes próximas valem para EXACT e
+    # PHRASE. Fechar isso exige negativa, negativa exige search-term evidence,
+    # e evidência de search term só existe depois do lançamento. O motor não
+    # resolve o círculo — ele o declara.
+    retidos_por_intencao = [
+        d for d in conjunto.excluded_keywords + conjunto.human_review_keywords
+        if d.riscos.get("navegacional_ou_suporte")
+    ]
+    if retidos_por_intencao and conjunto.selected_keywords:
+        conjunto.alertas.append(
+            "termos_navegacionais_retidos_seguem_alcancaveis_por_variante_proxima"
+            "__negativa_exige_search_term_evidence"
+        )
+
+    # Um mesmo termo selecionado em duas sub-intenções vira dois critérios em
+    # ad groups diferentes, competindo entre si. Não é erro do motor decidir
+    # assim — é informação que o operador precisa ver antes de aprovar.
+    vistos: Dict[str, str] = {}
+    for d in conjunto.selected_keywords:
+        anterior = vistos.get(d.termo_normalizado)
+        if anterior is not None and anterior != (d.subintencao or ""):
+            conjunto.alertas.append(
+                f"termo_em_mais_de_uma_subintencao:{d.termo_normalizado}"
+            )
+        vistos[d.termo_normalizado] = d.subintencao or ""
     return conjunto
 
 

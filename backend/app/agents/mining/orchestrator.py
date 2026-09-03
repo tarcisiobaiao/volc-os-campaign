@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from app.agents.base import AgentContext, BaseAgent
 from app.agents.mining.classifier import gold_miner_classify
 from app.agents.mining.funnel_factory import funnel_factory
+from app.agents.mining.paid_eligibility import Sinal
 from app.agents.mining.geo import GeoLanguageMapper
 from app.agents.mining.gold_extractor import extract_gold
 from app.agents.mining.merger import final_classifier, mega_merge
@@ -69,6 +70,18 @@ def _comp_to_qual(comp: str) -> Optional[str]:
     if c == "HIGH":
         return "high"
     return None
+
+
+def _volume_comparavel(k: Optional[Dict[str, Any]]) -> Optional[float]:
+    """O volume pela MESMA régua de `Sinal` — `None` quando não há número.
+
+    O desempate da união lia `(k.get("volume") or 0)`, então uma keyword sem
+    volume medido valia 0 e perdia para qualquer outra — inclusive quando a
+    outra também não tinha volume, e inclusive por motivo errado.
+    """
+    sinal = Sinal.de_bruto(k or {}, "volume", fonte="uniao")
+    return sinal.valor if sinal.tem_numero else None
+
 
 
 class MiningOrchestrator(BaseAgent):
@@ -346,7 +359,11 @@ class MiningOrchestrator(BaseAgent):
         for k in build_queue:
             key = str(k.get("keyword", "")).lower().strip()
             existing = out.get(key)
-            if not existing or (k.get("volume") or 0) > (existing.get("volume") or 0):
+            # O desempate lê o ESTADO antes do número: um volume ausente valia
+            # 0 aqui e perdia para qualquer coisa, inclusive por motivo errado.
+            novo_v = _volume_comparavel(k)
+            velho_v = _volume_comparavel(existing) if existing else None
+            if not existing or (novo_v is not None and (velho_v is None or novo_v > velho_v)):
                 out[key] = {
                     "keyword": k.get("keyword"),
                     "volume": k.get("volume") or 0,

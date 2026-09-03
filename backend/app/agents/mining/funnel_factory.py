@@ -44,6 +44,7 @@ termos são de fato o mesmo.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -87,14 +88,53 @@ def _cpc_legivel(sinal: Sinal) -> str:
 
 
 def _volume_bruto(bruto: Dict[str, Any]) -> Optional[float]:
-    """O volume só para ordenar dedup — `None` quando não há número."""
-    valor = bruto.get("volume")
-    if valor is None:
-        return None
-    try:
-        return float(valor)
-    except (TypeError, ValueError):
-        return None
+    """O volume comparável, pela MESMA régua que `Sinal` usa.
+
+    Antes esta função devolvia `float(0)` para um `0` cru, enquanto
+    `Sinal.de_bruto` classificava o mesmo `0` como `unknown` — "sem número".
+    Duas réguas no mesmo payload é como a coerção volta pela porta dos fundos:
+    o desempate de dedup e a contagem de volume perdido liam um número que a
+    decisão dizia não existir.
+    """
+    sinal = Sinal.de_bruto(bruto, "volume", fonte="funnel_prospector")
+    return sinal.valor if sinal.tem_numero else None
+
+
+def _fundir(velho: Dict[str, Any], novo: Dict[str, Any]) -> Dict[str, Any]:
+    """Funde duas grafias do MESMO termo sem descartar medição.
+
+    A troca em bloco (`result[idx] = kw`) escolhia o vencedor pelo volume e
+    jogava fora tudo o que o perdedor tinha medido. Entrada concreta, numa
+    sub-intenção só:
+
+        {"keyword": "ipva 2026 consulta", "volume": 30000}              (sem CPC)
+        {"keyword": "IPVA 2026 consulta", "volume": 28000, "cpc": 0.40}
+
+    O primeiro vencia por volume, o CPC medido do segundo sumia, e a decisão
+    caía de INCLUDE para EXPERIMENT por um dado que a mineração TINHA.
+
+    Agora cada campo é decidido por conta própria: vence o que tem medição, e
+    entre dois medidos vence o maior volume — mas só no campo volume.
+    """
+    fundido = dict(velho)
+    v_novo, v_velho = _volume_bruto(novo), _volume_bruto(velho)
+    if v_novo is not None and (v_velho is None or v_novo > v_velho):
+        fundido["keyword"] = novo.get("keyword", fundido.get("keyword"))
+        fundido["volume"] = novo.get("volume")
+        if "volume_estado" in novo:
+            fundido["volume_estado"] = novo["volume_estado"]
+    for campo in CAMPOS_NUMERICOS:
+        if campo == "volume":
+            continue
+        atual = Sinal.de_bruto(fundido, campo, fonte="funnel_prospector")
+        candidato = Sinal.de_bruto(novo, campo, fonte="funnel_prospector")
+        if candidato.tem_numero and not atual.tem_numero:
+            fundido[campo] = novo[campo]
+            if f"{campo}_estado" in novo:
+                fundido[f"{campo}_estado"] = novo[f"{campo}_estado"]
+    if not fundido.get("original") and novo.get("original"):
+        fundido["original"] = novo["original"]
+    return fundido
 
 
 def funnel_factory_com_conjuntos(
@@ -103,6 +143,7 @@ def funnel_factory_com_conjuntos(
     today: Optional[datetime] = None,
     teto_do_dono: Optional[float] = None,
     marcas_proprias: Sequence[str] = (),
+    marcas_de_terceiro: Sequence[str] = (),
 ) -> Tuple[List[Dict[str, Any]], List[CampaignKeywordSet]]:
     """A fila de produção (JSON-safe) e os conjuntos pagos vivos, na mesma ordem.
 
@@ -118,10 +159,21 @@ def funnel_factory_com_conjuntos(
     current_month = date.month
     previous_year = current_year - 1
 
+    # O ano só é reescrito quando aparece como TOKEN INTEIRO. O `replace`
+    # cego do port original transformava `declaracao irpf 2025/2026` em
+    # `declaracao irpf 2026/2026` — uma keyword malformada que ia direto para
+    # a campanha. Exercício/ano-calendário lado a lado é forma ordinária em
+    # keyword de imposto e benefício no Brasil.
+    padrao_ano_anterior = re.compile(rf"(?<!\d){previous_year}(?!\d)")
+    padrao_ano_atual = re.compile(rf"(?<!\d){current_year}(?!\d)")
+
     def process_keyword_date(keyword: str) -> Tuple[Optional[str], bool, Optional[str]]:
         processed = keyword or ""
-        if str(previous_year) in processed:
-            processed = processed.replace(str(previous_year), str(current_year))
+        # Só reescreve se o ano anterior aparece SOZINHO e o ano atual ainda
+        # não está no termo. `declaracao irpf 2025/2026` já carrega os dois:
+        # reescrever produziria `2026/2026`, que não é o termo de ninguém.
+        if padrao_ano_anterior.search(processed) and not padrao_ano_atual.search(processed):
+            processed = padrao_ano_anterior.sub(str(current_year), processed)
         if str(current_year) in processed:
             for month_name, month_num in MONTHS_PT.items():
                 if month_name in processed.lower() and month_num < current_month:
@@ -142,12 +194,10 @@ def funnel_factory_com_conjuntos(
             chave = normalizar_termo(kw.get("keyword"))
             if chave not in seen:
                 seen[chave] = len(result)
-                result.append(kw)
+                result.append(dict(kw))
                 continue
             idx = seen[chave]
-            novo, velho = _volume_bruto(kw), _volume_bruto(result[idx])
-            if novo is not None and (velho is None or novo > velho):
-                result[idx] = kw
+            result[idx] = _fundir(result[idx], kw)
         return result
 
     funnels = ai_output.get("funis_sugeridos") or []
@@ -192,6 +242,9 @@ def funnel_factory_com_conjuntos(
                     if campo in kw:
                         bruto[campo] = kw[campo]
                 if kw.get("keyword") != novo:
+                    # A proveniência da reescrita de ano viajava e era lida por
+                    # ninguém. Um termo que MUDOU antes de entrar na campanha
+                    # precisa dizer de onde veio.
                     bruto["original"] = kw.get("keyword")
                 processed_kws.append(bruto)
 
@@ -204,6 +257,7 @@ def funnel_factory_com_conjuntos(
                     subintencao=tipo,
                     teto_do_dono=teto_do_dono,
                     marcas_proprias=marcas_proprias,
+                    marcas_de_terceiro=marcas_de_terceiro,
                 )
                 for b in deduped
             ]
@@ -290,12 +344,14 @@ def funnel_factory_com_conjuntos(
                     "theme": funnel.get("keyword_ancora"),
                     "anchor_volume": funnel.get("volume_ancora") or 0,
                     "metrics": {
-                        "total_volume": metricas.get("volume_agregado") or 0,
+                        "total_volume_declarado": metricas.get("volume_agregado"),
                         "valid_volume": total_valid_volume,
-                        "valid_volume_medidos": len(volumes_medidos),
+                        "valid_keywords_com_volume_medido": len(volumes_medidos),
                         "lost_volume": total_lost_volume,
-                        "lost_volume_sem_medicao": len(removed_keywords) - len(perdidos),
-                        "avg_cpc": metricas.get("cpc_medio") or 0,
+                        "removed_keywords_sem_volume_medido": len(removed_keywords) - len(perdidos),
+                        # Declarado pelo LLM do prospector, não medido. `None` quando ele
+                        # não declarou — `0` diria "de graça".
+                        "avg_cpc_declarado": metricas.get("cpc_medio"),
                         "total_keywords": metricas.get("qtd_keywords") or 0,
                         "candidatas": len(conjunto.candidates),
                         "valid_keywords": len(conjunto.selected_keywords),
@@ -357,6 +413,7 @@ def _kw_publica(decisao) -> Dict[str, Any]:
     """
     return {
         "keyword": decisao.termo,
+        "original": decisao.original,
         "sub_intencao": decisao.subintencao,
         "match_type": decisao.match_type,
         "volume": decisao.volume.valor,
@@ -378,9 +435,11 @@ def funnel_factory(
     today: Optional[datetime] = None,
     teto_do_dono: Optional[float] = None,
     marcas_proprias: Sequence[str] = (),
+    marcas_de_terceiro: Sequence[str] = (),
 ) -> List[Dict[str, Any]]:
     """A fila de produção, JSON-safe — a assinatura que o orquestrador chama."""
     fila, _conjuntos = funnel_factory_com_conjuntos(
-        ai_output, today=today, teto_do_dono=teto_do_dono, marcas_proprias=marcas_proprias
+        ai_output, today=today, teto_do_dono=teto_do_dono,
+        marcas_proprias=marcas_proprias, marcas_de_terceiro=marcas_de_terceiro,
     )
     return fila
