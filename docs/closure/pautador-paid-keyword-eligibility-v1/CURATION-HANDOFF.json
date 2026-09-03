@@ -1,0 +1,71 @@
+{
+  "para": "o agente integrador/curador — esta lane NÃO editou Roadmap, curadoria nem grafo",
+  "branch": "sprint/pautador-paid-keyword-eligibility-v1",
+  "base": "origin/volc-os-v2 @ 34dc7b41bce901bd8bebfdec0a01e293678cbf08",
+  "worktree": "/private/tmp/volc-pautador-paid-keyword-eligibility-v1",
+  "arquivos_somente_leitura_respeitados": [
+    "volc-os-workbook/ROADMAP-VIVO.json",
+    "docs/volc-os-graph/curadoria-operacional.json",
+    "docs/volc-os-graph/volc-os-graph.json",
+    "backend/app/landing_policy/**",
+    "backend/app/routers/publicacao.py",
+    "backend/app/routers/trafego.py",
+    "volc_ads/pautador_ponte.py",
+    "volc_ads/campanha/criterio.py"
+  ],
+  "tarefas_afetadas": [
+    {
+      "id": "cap_keyword_mining",
+      "estado_atual_na_curadoria": "live",
+      "o_que_mudou": "A mineração passou a produzir uma DECISÃO por keyword, não só uma fila. `paid_eligibility.py` separa elegibilidade paga de oportunidade editorial, e o conjunto exportado para campanha passou a ser exatamente o conjunto selecionado.",
+      "estado_proposto": "live",
+      "evidencia_nova": "49 contraprovas em backend/tests/test_pautador_paid_keyword_counterproofs.py; dossiê dry-run com o caso real opportunity_id=104, onde o motor antigo entregaria 3 keywords sem demanda medida e o novo entrega 0 com motivo escrito.",
+      "ressalva": "o summary da curadoria diz 'valida demanda, cria seeds, clusters e hipóteses de funil' — continua verdadeiro. O que ele NÃO diz, e agora precisa dizer, é que a fila de campanha deixou de ser a mineração inteira."
+    },
+    {
+      "id": "P05-T08",
+      "titulo": "Fechar governança bidirecional de termos e negativas",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "por_que_NAO_promover": "O critério de aceite pede propostas de PROMOVER, NEGATIVAR, PRESERVAR e DESPROMOVER com SearchTermView separado de CampaignSearchTermView. Esta sprint entregou apenas o lado de ENTRADA (que termo pode entrar), e deliberadamente NÃO entregou negativa: `negative_keywords` é vazio em todo caminho, porque negativa exige search-term evidence e revisão de overblocking. Promover a tarefa por causa deste trabalho seria promover por código escrito, não por critério provado.",
+      "o_que_esta_sprint_adianta": [
+        "vocabulário de estado do dado (measured/confirmed_zero/absent/unknown/not_applicable/failed/inferred) que a governança de termos vai precisar",
+        "guarda de vazamento de desfecho: search term pós-lançamento não pode justificar a seleção inicial da MESMA campanha",
+        "conjunto literal com impressão SHA-256 e congelamento na aprovação — o mecanismo que 'nenhum mutate sem aprovação e recibo reversível' exige do lado da keyword"
+      ]
+    },
+    {
+      "id": "P08-T06",
+      "titulo": "Unificar sinais existentes num Topic Radar",
+      "status_atual": "partial",
+      "status_proposto": "partial",
+      "por_que_NAO_promover": "Esta sprint separa dois sinais em vez de unificá-los, que é o oposto do que a tarefa pede — e a separação é deliberada: uma nota única faria oportunidade editorial e elegibilidade paga competirem na mesma escala. O Topic Radar, quando existir, precisa CARREGAR as duas respostas lado a lado, não fundi-las.",
+      "insumo_novo_para_a_tarefa": "ponte_editorial.ponte(editorial, conjunto) devolve exatamente o par de respostas que o radar precisaria exibir, já com bloqueadores e portões externos declarados."
+    }
+  ],
+  "nos_de_grafo_sugeridos": [
+    {
+      "id": "cap_paid_keyword_eligibility",
+      "label": "Elegibilidade de keyword paga",
+      "cluster": "discovery",
+      "state": "live",
+      "summary": "Decide, por termo, se ele pode entrar numa campanha Search — com estado do dado, arquétipo de intenção, risco e motivo escritos. Não autoriza campanha.",
+      "evidence": "backend/app/agents/mining/paid_eligibility.py; 49 contraprovas; dry-run em 3 casos, um real.",
+      "relacoes_sugeridas": [
+        {"tipo": "separa_de", "destino": "cap_keyword_mining", "nota": "mineração é ampla, seleção paga é estreita"},
+        {"tipo": "le_de", "destino": "app.validacao", "nota": "adapta card.resumo, nunca recalcula a resposta editorial"},
+        {"tipo": "entrega_para", "destino": "volc_ads.campanha.criterio", "nota": "para_criterios_de_campanha exige approved_set_sha256"},
+        {"tipo": "nao_substitui", "destino": "landing_policy", "nota": "government_services e destino pago continuam de lá"}
+      ]
+    }
+  ],
+  "o_que_o_integrador_precisa_saber": [
+    "Nenhuma migration foi criada e nenhuma persistência nova foi necessária: o contrato viaja em factory_output[].keywords_campanha.conjunto_pago, e MineResponse.factory_output já é List[Dict[str, Any]].",
+    "gold_extractor e merger ganharam campos ADITIVOS (<campo>_estado). Nada foi removido e nada a jusante quebrou — volc_ads/testes_pautador_ponte.py e testes_criterio.py seguem verdes.",
+    "classifier.gold_miner_classify mudou de comportamento num ponto: regra de preço agora exige preço medido. production_ads_queue pode ficar MENOR do que ficava, e isso é a correção, não regressão.",
+    "gold_extractor passou a marcar competition ausente como UNSPECIFIED em vez de UNKNOWN. Se algum consumidor comparar com a string 'UNKNOWN', precisa ser conferido — nenhum consumidor no repositório faz isso hoje.",
+    "O bloqueador de lançamento que esta sprint NÃO fecha: os termos retidos continuam alcançáveis por variante próxima dos termos incluídos, porque variantes próximas valem para EXACT e PHRASE. Fechar exige negativa, negativa exige search-term evidence, e evidência de search term só existe depois do lançamento. Está declarado no alerta do conjunto e no HANDOFF."
+  ],
+  "mutacao_externa": {"google_ads": "nenhuma", "supabase_write": "nenhuma", "migration": "nenhuma", "deploy": "nenhum", "merge": "nenhum"},
+  "leitura_externa_feita": "Supabase self-hosted, SOMENTE GET: pautador_keyword_clusters (3 linhas de índice + 1 linha completa, id=7)."
+}

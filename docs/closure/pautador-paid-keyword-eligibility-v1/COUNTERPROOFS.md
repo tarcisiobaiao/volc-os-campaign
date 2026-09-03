@@ -211,3 +211,51 @@ ali (a lista passou a ser só de selecionados) e passou a viver em
 superfícies legíveis do item e exigir que (a) o termo apareça em pelo menos
 uma e (b) nenhuma o escreva como `Vol: 0` / `0.00`. A contraprova ficou mais
 forte, não mais fraca: antes ela olhava um campo, agora olha três.
+
+---
+
+# Revisão adversarial Codex (gpt-5.6-sol, effort high) — veredito BLOCK
+
+Onze achados, todos REPRODUZIDOS antes de qualquer correção, todos fechados,
+todos travados por teste (`test_X*`). A revisão foi read-only e não editou nada.
+
+| # | achado | entrada que reproduz | o que saía de errado |
+|---|--------|----------------------|----------------------|
+| 1 | o hash cobria `termo_normalizado` e a exportação lê `termo` | aprovar `advogado trabalhista`, depois `decisao.termo = "cassino online"` | `approved_set_sha256` intacto, campanha recebe `cassino online` |
+| 2 | `aprovar()` não congelava a lista | `conjunto.selected_keywords.append(retida)` depois de aprovar | `congelado` seguia `True` e a exportação incluía termo não aprovado |
+| 3 | `derivar_lista_google_ads` apaga match type e sub-intenção | mesmo termo em `EXACT/elegibilidade` e `PHRASE/transacional` | hashes diferentes, texto exportado idêntico |
+| 4 | `montar_conjunto` descartava seleção fantasma em silêncio | `montar_conjunto([], [decisao])` | conjunto vazio com o motivo ERRADO, escondendo bug do chamador |
+| 6 | o funil copiava números e descartava `<campo>_estado` | `volume_estado="failed"` na entrada do funil | volume voltava a `measured`, decisão virava `INCLUDE` |
+| 7 | `Sinal.de_bruto` honrava só três estados declarados | `{"volume": 1000, "volume_estado": "failed"}` | `Sinal(1000.0, "measured")` — leitura que FALHOU entrava como medida |
+| 8 | `_medido` tratava só `absent` como sem número | `{"volume": 0, "volume_estado": "unknown", "data_reliability": "HIGH"}` | descarte rotulado `(vol=0 confirmed)` — medição afirmada sobre lacuna |
+| 10 | a guarda de vazamento falhava ABERTO | evidência `pos_lancamento` com `campanha_ref=None` | nenhuma exceção; a decisão pré-lançamento carregava evidência pós |
+| 11 | valor negativo aceito como medido | `{"volume": -100, "cpc": -0.5}` marcados `measured` | `INCLUDE` com `viabilidade="cabe_no_teto"` — CPC negativo cabe em qualquer teto |
+| 12 | marca casava por substring | `telefone panasonic assistencia` com `marcas_proprias=["pan"]` | `"pan"` dentro de `"panasonic"` desligava o bloqueio de suporte |
+| 13 | léxico de suporte não cobria `ligar para` | `ligar para o inss no 135` | `INCLUDE` — um pedido de telefone entrando como keyword paga |
+| 14 | `negative_keywords` era lista pública mutável | `conjunto.negative_keywords.append(...)` após aprovar | a negativa viajava serializada num conjunto "congelado" |
+
+O achado 5 (o payload JSON é um snapshot que não acompanha mutações
+posteriores do conjunto vivo) é inerente a produzir um snapshot, e a direção
+perigosa dele passou a ser barrada por `conferir_congelamento`. O achado 3 foi
+respondido documentando o que `lista_google_ads` é — texto plano de colagem,
+não o portador da semântica aprovada, que é `para_criterios_de_campanha`.
+
+Na afirmação 6 do pacote (priors de benchmark) o revisor não encontrou defeito:
+todos têm `bloqueia=False` e `autoriza=False` e só aparecem no snapshot de
+evidência, sem participar de ramo decisório nenhum.
+
+## As duas correções mais importantes desta rodada
+
+**O congelamento passou a ser verificado no USO, não só na escrita.**
+`aprovar()` sozinho não congela nada — Python não dá congelamento profundo de
+graça, `CampaignKeywordSet` é dataclass mutável e `selected_keywords` é lista.
+`conferir_congelamento()` roda em toda saída e recusa entregar qualquer coisa
+quando a impressão atual difere da aprovada. Foi o que transformou a promessa
+em invariante.
+
+**A guarda de vazamento passou a falhar FECHADO.** Antes ela só levantava
+quando as duas `campanha_ref` batiam; evidência pós-lançamento sem campanha
+declarada passava direto. Numa guarda contra vazamento, "não sei de qual
+campanha isto veio" é exatamente o caso que precisa ser barrado — só a menção
+EXPLÍCITA de outra campanha a libera, e isso continua testado
+(`test_X10b`).

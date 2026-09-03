@@ -918,3 +918,198 @@ def test_R14_marca_de_terceiro_separa_keyword_de_texto_de_anuncio():
     )
     assert d.decisao == HUMAN_REVIEW
     assert any("texto_de_anuncio" in a for a in d.alertas)
+
+
+# ── revisão adversarial Codex: 11 achados, todos reproduzidos e fechados ────
+#
+# A revisão devolveu BLOCK. Cada teste abaixo reproduz um achado com a entrada
+# concreta que o revisor deu, e trava o fechamento.
+
+
+def test_X1_hash_cobre_o_campo_que_a_exportacao_le():
+    """#1 · O hash cobria `termo_normalizado` e a exportação lê `termo`.
+
+    Trocar `decisao.termo` de `advogado trabalhista` para `cassino online`
+    deixava `approved_set_sha256` intacto e mudava o que ia para a campanha.
+    Um hash que não cobre o campo exportado não congela nada.
+    """
+    from app.agents.mining.paid_eligibility import (
+        CampaignKeywordSet, HashDivergente, aprovar, decidir_keyword,
+        derivar_lista_google_ads, impressao_do_conjunto,
+    )
+
+    c = CampaignKeywordSet()
+    c.acrescentar(decidir_keyword({"keyword": "advogado trabalhista", "volume": 9000, "cpc": 1.0}, subintencao="X"))
+    aprovar(c, aprovado_por="op", hash_conferido=impressao_do_conjunto(c))
+    c.selected_keywords[0].termo = "cassino online"
+    with pytest.raises(HashDivergente):
+        derivar_lista_google_ads(c)
+
+
+def test_X2_append_direto_nao_burla_o_congelamento():
+    """#2 · `CampaignKeywordSet` é mutável e `selected_keywords` é lista.
+
+    `conjunto.selected_keywords.append(...)` passava por cima de
+    `acrescentar()` sem tocar em `approved_set_sha256`. O congelamento passou
+    a ser conferido no USO, não só na escrita.
+    """
+    from app.agents.mining.paid_eligibility import (
+        CampaignKeywordSet, HashDivergente, aprovar, decidir_keyword,
+        derivar_lista_google_ads, impressao_do_conjunto,
+    )
+
+    c = CampaignKeywordSet()
+    c.acrescentar(decidir_keyword({"keyword": "advogado trabalhista", "volume": 9000, "cpc": 1.0}, subintencao="X"))
+    aprovar(c, aprovado_por="op", hash_conferido=impressao_do_conjunto(c))
+    c.selected_keywords.append(
+        decidir_keyword({"keyword": "meu inss login", "volume": 9000, "cpc": 0.1}, subintencao="X")
+    )
+    with pytest.raises(HashDivergente):
+        derivar_lista_google_ads(c)
+
+
+def test_X4_selecao_fora_das_decisoes_nao_some_em_silencio():
+    """#4 · Descartar uma seleção fantasma produzia um conjunto vazio com o
+    motivo ERRADO, escondendo bug do chamador atrás de mensagem de negócio."""
+    from app.agents.mining.paid_eligibility import decidir_keyword, montar_conjunto
+
+    d = decidir_keyword({"keyword": "advogado", "volume": 9000, "cpc": 1.0}, subintencao="X")
+    with pytest.raises(ValueError):
+        montar_conjunto([], [d], teto_do_dono=1.0)
+
+
+def test_X6_estado_atravessa_a_fronteira_do_funil():
+    """#6 · O funil copiava os números e descartava `<campo>_estado`.
+
+    O mesmo defeito que a sprint fechou um salto antes, reaparecendo um salto
+    depois: `volume_estado="failed"` sumia e o número voltava a valer medido.
+    """
+    from app.agents.mining.paid_eligibility import FALHOU
+
+    funil = _funil(
+        "estado",
+        "adv",
+        [
+            _sub(
+                "X",
+                [{"keyword": "advogado trabalhista", "volume": 1000,
+                  "volume_estado": "failed", "cpc": 0.10, "cpc_estado": "measured"}],
+            )
+        ],
+    )
+    _item, conjunto = _item_e_conjunto(funil)
+    d = conjunto.candidates[0]
+    assert d.volume.estado == FALHOU and d.volume.valor is None
+    assert d.decisao != "INCLUDE"
+
+
+def test_X7_todo_estado_declarado_e_honrado():
+    """#7 · `failed`, `not_applicable` e `unknown` com valor não-zero caíam no
+    ramo final e eram promovidos a `measured`. Honrar só os estados
+    convenientes é não honrar estado nenhum."""
+    from app.agents.mining.paid_eligibility import ESTADOS_SEM_NUMERO, Sinal
+
+    for estado in ESTADOS_SEM_NUMERO:
+        s = Sinal.de_bruto({"volume": 1000, "volume_estado": estado}, "volume", fonte="x")
+        assert s.estado == estado, f"{estado} virou {s.estado}"
+        assert s.valor is None
+
+
+def test_X8_classifier_honra_todos_os_estados_sem_numero():
+    """#8 · Só `absent` era tratado como sem número, então um `0` marcado
+    `unknown` era descartado como "(vol=0 confirmed)" — medição afirmada
+    sobre uma lacuna."""
+    from app.agents.mining.classifier import gold_miner_classify
+
+    saida = gold_miner_classify(
+        [{"keyword": "advogado previdenciario", "volume": 0,
+          "volume_estado": "unknown", "data_reliability": "HIGH"}],
+        today=HOJE,
+    )
+    assert not any("vol=0 confirmed" in str(x) for x in saida["production_ads_queue"])
+    assert saida["production_ads_queue"] == []
+
+
+def test_X10_vazamento_falha_fechado():
+    """#10 · A guarda só levantava quando as duas `campanha_ref` batiam, então
+    evidência pós-lançamento SEM campanha declarada passava direto. Numa
+    guarda contra vazamento, "não sei de onde veio" é o caso a barrar."""
+    from app.agents.mining.paid_eligibility import Evidencia, VazamentoDeDesfecho, decidir_keyword
+
+    with pytest.raises(VazamentoDeDesfecho):
+        decidir_keyword(
+            {"keyword": "advogado trabalhista", "volume": 100, "cpc": 1.0},
+            subintencao="X",
+            evidencias=[Evidencia("search_term_view", momento="pos_lancamento", campanha_ref=None)],
+            momento_da_decisao="pre_lancamento",
+            campanha_ref="C1",
+        )
+
+
+def test_X10b_prior_de_outra_campanha_continua_permitido():
+    """#10 · Fechar não pode virar bloquear tudo: evidência pós-lançamento de
+    OUTRA campanha é prior legítimo, e só a menção explícita a libera."""
+    from app.agents.mining.paid_eligibility import Evidencia, decidir_keyword
+
+    d = decidir_keyword(
+        {"keyword": "advogado trabalhista", "volume": 9000, "cpc": 1.0},
+        subintencao="X",
+        evidencias=[Evidencia("search_term_view", momento="pos_lancamento", campanha_ref="C2")],
+        momento_da_decisao="pre_lancamento",
+        campanha_ref="C1",
+    )
+    assert d.decisao == "INCLUDE"
+
+
+def test_X11_valor_negativo_nao_e_medicao():
+    """#11 · `-100` como `measured` não é medição pequena: é dado corrompido.
+    E CPC negativo cabe em qualquer teto — autorizava `cabe_no_teto`."""
+    from app.agents.mining.paid_eligibility import EstadoInvalido, FALHOU, MEDIDO, Sinal, decidir_keyword
+
+    with pytest.raises(EstadoInvalido):
+        Sinal(-5.0, MEDIDO)
+    assert Sinal.de_bruto({"cpc": -0.5}, "cpc", fonte="x").estado == FALHOU
+    d = decidir_keyword(
+        {"keyword": "advogado trabalhista", "volume": -100, "volume_estado": "measured",
+         "cpc": -0.5, "cpc_estado": "measured"},
+        subintencao="X", teto_do_dono=5.0, congruencia="congruente",
+    )
+    assert d.decisao != "INCLUDE"
+    assert d.viabilidade != "cabe_no_teto"
+
+
+def test_X12_marca_casa_por_token_nao_por_substring():
+    """#12 · `"pan"` casava dentro de `"panasonic"`, virava marca própria, e
+    marca própria DESLIGA o bloqueio de navegacional/suporte — um termo de
+    suporte de terceiro entrava por coincidência de três letras."""
+    from app.agents.mining.paid_eligibility import riscos
+
+    r = riscos("telefone panasonic assistencia", marcas_proprias=["pan"])
+    assert r["marca_propria"] is False
+    assert r["navegacional_ou_suporte"] is True
+    assert riscos("telefone pan agencia", marcas_proprias=["pan"])["marca_propria"] is True
+
+
+def test_X13_lexico_de_suporte_cobre_ligar_para():
+    """#13 · `ligar para o inss no 135` saía INCLUDE: nenhum marcador de
+    suporte casava a frase, apesar de ser literalmente um pedido de telefone."""
+    from app.agents.mining.paid_eligibility import decidir_keyword
+
+    d = decidir_keyword({"keyword": "ligar para o inss no 135", "volume": 9000, "cpc": 0.5}, subintencao="X")
+    assert d.decisao != "INCLUDE"
+
+
+def test_X14_negativa_acrescentada_a_mao_e_recusada_na_saida():
+    """#14 · "nenhuma negativa é criada aqui" era frase, não invariante:
+    `negative_keywords` é lista pública e viajava serializada."""
+    from app.agents.mining.paid_eligibility import (
+        CampaignKeywordSet, HashDivergente, aprovar, decidir_keyword,
+        derivar_lista_google_ads, impressao_do_conjunto,
+    )
+
+    c = CampaignKeywordSet()
+    c.acrescentar(decidir_keyword({"keyword": "advogado trabalhista", "volume": 9000, "cpc": 1.0}, subintencao="X"))
+    aprovar(c, aprovado_por="op", hash_conferido=impressao_do_conjunto(c))
+    c.negative_keywords.append({"texto": "gratis"})
+    with pytest.raises(HashDivergente):
+        derivar_lista_google_ads(c)

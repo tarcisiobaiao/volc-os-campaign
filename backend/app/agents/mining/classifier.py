@@ -101,7 +101,11 @@ def _medido(k: Dict[str, Any], campo: str) -> Optional[float]:
     devolveu métricas" seria indistinguível de um `0` medido — e as regras
     abaixo decidem diferente nos dois casos.
     """
-    if k.get(f"{campo}_estado") == "absent":
+    # `absent` não é o único estado sem número. `unknown`, `failed` e
+    # `not_applicable` também não autorizam leitura numérica — tratar só
+    # `absent` deixava um `0` marcado `unknown` ser descartado como
+    # "(vol=0 confirmed)", que é afirmar medição sobre uma lacuna.
+    if k.get(f"{campo}_estado") in ("absent", "unknown", "failed", "not_applicable"):
         return None
     return _numero(k.get(campo))
 

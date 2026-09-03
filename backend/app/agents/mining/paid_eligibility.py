@@ -123,6 +123,14 @@ class Sinal:
             raise EstadoInvalido("confirmed_zero exige valor 0")
         if self.estado in (MEDIDO, INFERIDO) and self.valor is None:
             raise EstadoInvalido(f"{self.estado!r} exige valor")
+        # Volume, CPC, competição e faixa de lance são grandezas não negativas.
+        # Um -100 chegando como `measured` não é uma medição pequena: é um
+        # dado corrompido, e aceitá-lo autorizava INCLUDE com
+        # `viabilidade="cabe_no_teto"` — o CPC negativo cabe em qualquer teto.
+        if self.valor is not None and self.valor < 0:
+            raise EstadoInvalido(
+                f"valor negativo ({self.valor}) não é medição válida de sinal de leilão"
+            )
 
     @property
     def tem_numero(self) -> bool:
@@ -172,6 +180,8 @@ class Sinal:
             valor = float(bruto)
         except (TypeError, ValueError):
             return cls(None, FALHOU, fonte=fonte, motivo=f"valor_ilegivel:{bruto!r}"[:80])
+        if valor < 0:
+            return cls(None, FALHOU, fonte=fonte, motivo=f"valor_negativo:{valor}")
 
         # O ESTADO DECLARADO PELA ORIGEM VENCE O PALPITE DESTA CAMADA.
         #
@@ -181,14 +191,28 @@ class Sinal:
         # para distinguir um `0` que a API respondeu de um `0` que uma camada
         # intermediária inventou.
         declarado = mapa.get(f"{chave}_estado")
-        if declarado == AUSENTE:
-            return cls(None, AUSENTE, fonte=fonte, motivo="origem_declarou_ausente")
-        if declarado == MEDIDO:
+        if declarado in ESTADOS:
+            # ⚠️ TODO estado declarado é honrado, não só os que dão certo.
+            #
+            # A primeira versão desta guarda tratava `absent`, `measured` e
+            # `unknown`+0 — e deixava `failed`, `not_applicable` e um `unknown`
+            # com valor não-zero CAÍREM no ramo final, que os promovia a
+            # `measured`. Uma revisão adversarial reproduziu:
+            #
+            #     {"volume": 1000, "volume_estado": "failed"}
+            #        -> Sinal(1000.0, "measured")  -> decisão INCLUDE
+            #
+            # Ou seja: declarar que a leitura FALHOU deixava o número entrar
+            # como se tivesse sido medido. Honrar só os estados convenientes é
+            # não honrar estado nenhum.
+            if declarado in ESTADOS_SEM_NUMERO:
+                return cls(None, declarado, fonte=fonte,
+                           motivo=f"origem_declarou_{declarado}")
+            if declarado == ZERO_CONFIRMADO:
+                return cls(0.0, ZERO_CONFIRMADO, fonte=fonte, frescor=frescor)
             if valor == 0:
                 return cls(0.0, ZERO_CONFIRMADO, fonte=fonte, frescor=frescor)
-            return cls(valor, MEDIDO, fonte=fonte, frescor=frescor)
-        if declarado == DESCONHECIDO and valor == 0:
-            return cls(None, DESCONHECIDO, fonte=fonte, motivo="origem_declarou_desconhecido")
+            return cls(valor, declarado, fonte=fonte, frescor=frescor)
 
         if valor == 0:
             if medicao_confirmada:
@@ -300,6 +324,9 @@ _LEXICO: Dict[str, Tuple[str, ...]] = {
     ARQ_SUPORTE_ACESSO: (
         "telefone", "0800", "fone", "contato", "atendimento", "sac",
         "central de", "reclamacao", "ouvidoria", "falar com", "chat",
+        # Reproduzido numa revisão adversarial: `ligar para o inss no 135`
+        # saía INCLUDE porque nenhum marcador de suporte casava a frase.
+        "ligar para", "ligar no", "numero do", "numero de contato", "whatsapp",
         "segunda via de senha", "recuperar senha", "esqueci a senha",
     ),
     ARQ_GOVERNO: (
@@ -401,6 +428,11 @@ def arquetipos(termo: Any) -> Tuple[str, ...]:
     return tuple(a for a in ARQUETIPOS if a in achados)
 
 
+def _casa_frase(texto_acolchoado: str, frase: str) -> bool:
+    """A frase aparece como sequência de PALAVRAS INTEIRAS no texto."""
+    return f" {frase} " in texto_acolchoado
+
+
 def riscos(
     termo: Any,
     *,
@@ -416,15 +448,22 @@ def riscos(
     """
     texto = _sem_acento(normalizar_termo(termo))
     acolchoado = f" {texto} "
+    # ⚠️ MARCA CASA POR TOKEN, NÃO POR SUBSTRING.
+    #
+    # `m in texto` fazia `"pan"` casar dentro de `"panasonic"`. Reproduzido:
+    # `telefone panasonic assistencia` com `marcas_proprias=["pan"]` virava
+    # marca própria, o que DESLIGA o bloqueio de navegacional/suporte — um
+    # termo de suporte de terceiro entrava como INCLUDE por coincidência de
+    # três letras.
     proprias = {normalizar_termo(m) for m in marcas_proprias if m}
-    e_propria = any(m and m in texto for m in proprias)
+    e_propria = any(m and _casa_frase(acolchoado, m) for m in proprias)
     terceiras = {normalizar_termo(m) for m in marcas_de_terceiro if m}
     arqs = arquetipos(termo)
     return {
         "marca_propria": e_propria,
         "marca_terceiro": (not e_propria) and (
             any(_sem_acento(m) in acolchoado for m in _MARCA_TERCEIRO)
-            or any(m and m in texto for m in terceiras)
+            or any(m and _casa_frase(acolchoado, m) for m in terceiras)
         ),
         "institucional_governo": ARQ_GOVERNO in arqs,
         "navegacional_ou_suporte": bool(set(arqs) & set(ARQUETIPOS_RETIDOS)) and not e_propria,
@@ -503,10 +542,20 @@ def _guardar_vazamento(
     if momento_da_decisao != PRE_LANCAMENTO:
         return
     for ev in evidencias:
-        if ev.momento == POS_LANCAMENTO and ev.campanha_ref and ev.campanha_ref == campanha_ref:
+        if ev.momento != POS_LANCAMENTO:
+            continue
+        # ⚠️ FALHA FECHADO. A primeira versão só levantava quando as duas
+        # `campanha_ref` batiam — então uma evidência pós-lançamento SEM
+        # campanha declarada passava direto para uma decisão pré-lançamento.
+        # Reproduzido numa revisão adversarial. Numa guarda contra vazamento,
+        # "não sei de qual campanha isto veio" é exatamente o caso que precisa
+        # ser barrado: só a menção EXPLÍCITA de outra campanha a libera.
+        if ev.campanha_ref is None or ev.campanha_ref == campanha_ref:
             raise VazamentoDeDesfecho(
-                f"evidência {ev.fonte!r} é pós-lançamento da campanha {campanha_ref!r} "
-                "e não pode sustentar a seleção inicial dessa mesma campanha"
+                f"evidência {ev.fonte!r} é pós-lançamento "
+                + (f"da campanha {campanha_ref!r}" if ev.campanha_ref else "sem campanha declarada")
+                + " e não pode sustentar uma seleção pré-lançamento. Para usá-la como "
+                "prior de OUTRA campanha, declare `campanha_ref` dela."
             )
 
 
@@ -731,13 +780,21 @@ class PaidKeywordDecision:
             return "ELEGIVEL_NAO_SELECIONADO"
         return self.decisao
 
-    def identidade(self) -> Tuple[str, str, str]:
+    def identidade(self) -> Tuple[str, str, str, str]:
         """O que define o termo para efeito de aprovação.
 
-        Termo normalizado, match type e sub-intenção. Mudar qualquer um dos
-        três muda o que está sendo aprovado — e a impressão precisa mudar junto.
+        Termo COMO SERÁ EXPORTADO, termo normalizado, match type e
+        sub-intenção. Mudar qualquer um dos quatro muda o que está sendo
+        aprovado — e a impressão precisa mudar junto.
+
+        ⚠️ `termo` entrou aqui depois que uma revisão adversarial mostrou o
+        buraco: a impressão cobria só `termo_normalizado`, e a exportação lê
+        `termo`. Trocar `decisao.termo` de `advogado trabalhista` para
+        `cassino online` deixava `approved_set_sha256` intacto e mudava o que
+        ia para a campanha. Um hash que não cobre o campo exportado não
+        congela nada.
         """
-        return (self.termo_normalizado, self.match_type, self.subintencao or "")
+        return (self.termo, self.termo_normalizado, self.match_type, self.subintencao or "")
 
 
 def decidir_keyword(
@@ -1098,6 +1155,7 @@ def para_criterios_de_campanha(
     except ImportError as exc:  # pragma: no cover - depende do layout de deploy
         raise CriterioIndisponivel(str(exc)) from exc
 
+    conferir_congelamento(conjunto)
     if exigir_aprovacao and not conjunto.congelado:
         raise ConjuntoCongelado(
             "conjunto sem approved_set_sha256 não vira critério — aprove antes, "
@@ -1118,12 +1176,54 @@ def para_criterios_de_campanha(
     ]
 
 
+def conferir_congelamento(conjunto: CampaignKeywordSet) -> None:
+    """O congelamento é verificado no USO, não só na escrita.
+
+    ⚠️ `aprovar()` sozinho não congela nada, e uma revisão adversarial provou:
+    `CampaignKeywordSet` é dataclass mutável e `selected_keywords` é lista, então
+
+        aprovar(conjunto, ...)
+        conjunto.selected_keywords.append(decisao_retida)
+
+    passava por cima de `acrescentar()` sem tocar em `approved_set_sha256`, e a
+    exportação passava a incluir um termo que ninguém aprovou.
+
+    Nenhuma quantidade de disciplina no construtor resolve isso — Python não
+    tem congelamento profundo de graça. O que resolve é toda saída conferir a
+    impressão ATUAL contra a aprovada antes de entregar qualquer coisa.
+    """
+    if not conjunto.congelado:
+        return
+    atual = conjunto.selected_set_sha256
+    if atual != conjunto.approved_set_sha256:
+        raise HashDivergente(
+            f"o conjunto mudou depois de aprovado: impressão atual {atual[:12]}… "
+            f"difere da aprovada {conjunto.approved_set_sha256[:12]}…. "
+            "Nada é exportado a partir de um conjunto que divergiu da aprovação."
+        )
+    if conjunto.negative_keywords:
+        # A promessa "nenhuma negativa é criada aqui" precisava de um guarda,
+        # não de uma frase: a lista é pública e mutável.
+        raise HashDivergente(
+            "conjunto aprovado carrega negativas — este motor não cria negativa, "
+            "e negativa exige search-term evidence com revisão de overblocking"
+        )
+
+
 def derivar_lista_google_ads(conjunto: CampaignKeywordSet) -> str:
     """A lista que vai para o Google Ads, derivada EXATAMENTE de `selected`.
 
     Uma função só, usada pelo produtor e pelo teste — é o que impede a
     divergência silenciosa que abriu esta sprint.
+
+    ⚠️ Esta lista é TEXTO PLANO e por construção NÃO carrega match type nem
+    sub-intenção. Dois conjuntos aprovados diferentes — mesmo termo em EXACT /
+    elegibilidade e em PHRASE / transacional — produzem o mesmo texto aqui,
+    com impressões diferentes. Ela é conveniência de colagem, não o portador da
+    semântica aprovada: quem carrega a semântica é `para_criterios_de_campanha`,
+    que devolve `Criterio` com match type, nível e grupo.
     """
+    conferir_congelamento(conjunto)
     return "\n".join(d.termo for d in conjunto.selected_keywords)
 
 
@@ -1206,6 +1306,17 @@ def montar_conjunto(
     evidence_snapshot: Optional[Dict[str, Any]] = None,
 ) -> CampaignKeywordSet:
     """Monta o conjunto SEM reabrir nenhuma decisão já tomada."""
+    conhecidas = {id(d) for d in decisoes}
+    fantasmas = [d for d in selecionadas if id(d) not in conhecidas]
+    if fantasmas:
+        # Descartar em silêncio uma seleção que não está entre as decisões
+        # produziria um conjunto vazio com o motivo errado
+        # (`nenhuma_keyword_elegivel_selecionada`), escondendo um bug do
+        # chamador atrás de uma mensagem de negócio plausível.
+        raise ValueError(
+            "montar_conjunto recebeu seleções que não estão entre as decisões: "
+            + ", ".join(repr(d.termo) for d in fantasmas[:5])
+        )
     escolhidas = {id(d) for d in selecionadas}
     conjunto = CampaignKeywordSet(
         owner_ceiling=teto_do_dono,
@@ -1316,6 +1427,7 @@ __all__ = [
     "PaidKeywordDecision", "decidir_keyword",
     "CampaignKeywordSet", "ConjuntoCongelado", "HashDivergente",
     "impressao_de_decisoes", "impressao_do_conjunto", "aprovar",
+    "conferir_congelamento",
     "derivar_lista_google_ads", "para_criterios_de_campanha",
     "CriterioIndisponivel", "AUSENCIA_EQUIVALENTE",
     "VOLUME_THRESHOLD", "MIN_ITEMS", "MAX_ITEMS", "POLITICA_DE_SELECAO",

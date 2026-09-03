@@ -241,6 +241,19 @@ def funnel_factory_com_conjuntos(
                 for campo in CAMPOS_NUMERICOS:
                     if campo in kw:
                         bruto[campo] = kw[campo]
+                    # ⚠️ O ESTADO ATRAVESSA A FRONTEIRA JUNTO COM O NÚMERO.
+                    #
+                    # Copiar só os campos numéricos destruía, aqui, a
+                    # proveniência que `gold_extractor` grava na origem — o
+                    # mesmo defeito que esta sprint fechou um salto antes,
+                    # reaparecendo um salto depois. Reproduzido numa revisão
+                    # adversarial: `volume_estado="failed"` sumia e o número
+                    # voltava a valer como medido.
+                    if f"{campo}_estado" in kw:
+                        bruto[f"{campo}_estado"] = kw[f"{campo}_estado"]
+                for extra in ("cpc_motivo_de_ausencia", "bloco_de_metricas_presente"):
+                    if extra in kw:
+                        bruto[extra] = kw[extra]
                 if kw.get("keyword") != novo:
                     # A proveniência da reescrita de ano viajava e era lida por
                     # ninguém. Um termo que MUDOU antes de entrar na campanha
