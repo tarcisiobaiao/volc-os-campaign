@@ -1,10 +1,10 @@
 # UX-AS-IS — Cofre de Ativos (antes do redesign operador v2)
 
-**Lido em:** 2026-09-03  
-**Árvore:** `/private/tmp/volc-asset-vault-operator-experience-v2`  
-**SHA da auditoria (pós-merge, pré-redesign):** `caf4df9e350800e6a26ce236e8e4136b4f9a4a56`  
-**Pais do merge:** `207e91f1da290130e8d02b78c3ba1c8e9a761111` (`origin/volc-os-v2`) + `5f54d25cf4375c4a43c6b8b5c819f8937106090d` (candidato orgânico)  
-**Checkout principal (`main`) não foi usado.**  
+**Lido em:** 2026-09-03
+**Árvore:** `/private/tmp/volc-asset-vault-operator-experience-v2`
+**SHA da auditoria (pós-merge, pré-redesign):** `caf4df9e350800e6a26ce236e8e4136b4f9a4a56`
+**Pais do merge:** `207e91f1da290130e8d02b78c3ba1c8e9a761111` (`origin/volc-os-v2`) + `5f54d25cf4375c4a43c6b8b5c819f8937106090d` (candidato orgânico)
+**Checkout principal (`main`) não foi usado.**
 **localhost:8080 (PID 38779) não foi alterado nem morto.**
 
 Hallmark · pre-emit critique desta auditoria: P5 H4 E4 S5 R4 V4
@@ -101,14 +101,20 @@ Carregando (`role=status` “Carregando o inventário”), não configurado, 401
 
 ## 7. Merge do candidato (pré-condição do redesign)
 
-`git merge-tree --write-tree` **não** foi limpo. Conflito material em cinco caminhos. Resolução **união**, não ours/theirs:
+`git merge-tree --write-tree 207e91f1da290130e8d02b78c3ba1c8e9a761111 5f54d25cf4375c4a43c6b8b5c819f8937106090d` **não** foi limpo.
 
-| Path | União |
-|---|---|
-| `backend/app/asset_vault/rotas.py` | `prontidao-visual` **e** `prontidao` |
-| `cofreApi.ts` | `prontidaoVisual()` **e** `prontidao()` |
-| `AssetVaultContent.tsx` | ambos os painéis |
-| `prontidao.ts` | visual permanece; operacional em `prontidaoOperacao.ts` |
-| testes | `prontidao.test.ts` visual; `prontidao-operacao.test.ts` operacional |
+**Cinco arquivos com CONFLICT** (saída reproduzida nesta worktree):
 
-Broker e `prontidao.py` entraram limpos. Sem cherry-pick seletivo. Sem rebase. Sem force push.
+1. `backend/app/asset_vault/rotas.py` (content)
+2. `src/features/asset-vault/AssetVaultContent.tsx` (content)
+3. `src/features/asset-vault/cofreApi.ts` (content)
+4. `src/features/asset-vault/prontidao.ts` (add/add)
+5. `src/features/asset-vault/__tests__/prontidao.test.ts` (add/add)
+
+**Oito caminhos envolvidos na resolução** (união, não ours/theirs): os cinco CONFLICT acima, mais os artefatos criados/ligados no commit `caf4df9e350800e6a26ce236e8e4136b4f9a4a56` para não colapsar os contratos:
+
+6. `src/features/asset-vault/prontidaoOperacao.ts` (split do add/add visual vs operacional)
+7. `src/features/asset-vault/__tests__/prontidao-operacao.test.ts`
+8. `src/features/asset-vault/ProntidaoDeOperacao.tsx` (painel operacional ligado em `AssetVaultContent`)
+
+Procedência: `merge-tree --write-tree` dos pais `207e91f1` + `5f54d25c`; união no merge `caf4df9e`. Broker e `prontidao.py` entraram sem CONFLICT. Sem cherry-pick seletivo. Sem rebase. Sem force push.

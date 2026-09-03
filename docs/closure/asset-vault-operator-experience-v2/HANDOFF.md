@@ -17,11 +17,11 @@ Para a Bia: **revisão independente**. Não implementar em paralelo.
 | Branch | `sprint/asset-vault-operator-experience-v2` |
 | Worktree | `/private/tmp/volc-asset-vault-operator-experience-v2` |
 
-`merge-tree` **não era limpo**. Cinco paths em união (rotas, cliente, tela, tipos de prontidão, testes). Sem ours/theirs silencioso.
+`merge-tree` **não era limpo**. Cinco arquivos com CONFLICT no `merge-tree` dos pais `207e91f1` + `5f54d25c`; oito caminhos envolvidos na resolução da união (os cinco CONFLICT mais `prontidaoOperacao.ts`, `prontidao-operacao.test.ts` e `ProntidaoDeOperacao.tsx`). Sem ours/theirs silencioso.
 
 ## Commits desta missão
 
-Ver `git log caf4df9..HEAD --oneline` após o push. Seis commits pequenos, sem amend.
+Ver `git log caf4df9..HEAD --oneline` após o push. Seis commits da experiência + um commit corretivo da persistência 1Password, sem amend.
 
 ## Arquivos (ownership)
 
@@ -35,7 +35,7 @@ Não alterados: DESIGN.md, PRODUCT.md, tokens globais, Navigation, Tráfego, Roa
 
 ## Vereditos
 
-Só depois dos gates em `GATES.md`:
+Remedidos após a microcorreção de persistência (gates em `GATES.md`):
 
 - `ASSET_VAULT_OPERATOR_EXPERIENCE_ACCEPTED`
 - `SECURE_REFERENCE_ONBOARDING_ACCEPTED`
@@ -51,8 +51,9 @@ Estes **não** significam inventário real, segredo resolvido, AdsPower, publica
 | Frontend | Duas CTAs de cadastro | Uma no header; empty tem a sua |
 | a11y | Hit <40×40 no inspetor | Tokens `HIT` / `SECUNDARIO` / `PERIGO` |
 | a11y | 320px esmagava H1+CTA | Header `flex-col` até `sm` |
-| Contrato | Placeholder `op://` | Peças cofre/item/campo; montagem só no POST |
+| Contrato | Placeholder `op://` | Peças cofre/item/campo só em memória; montagem só no POST |
 | Segredo | Chave de idempotência com localizador | Chave deriva das peças, sem endereço |
+| Segredo | Rascunho em sessionStorage recompunha o localizador | Persistível = metadados; pecas efêmeras; Fechar/Concluir/remontar descartam |
 | Responsivo | Abas cortadas | `basis-50%` em mobile |
 | Anti-slop | Pulso 5 cards | Faixa 3 colunas |
 | API | 409 genérico | `ErroDoFormulario` nomeia conflito |

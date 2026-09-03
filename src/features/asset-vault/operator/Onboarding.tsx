@@ -13,10 +13,13 @@ import { AREA, ENTRADA, FOCO, HIT, PRESSIONAR, PRIMARIO, SECUNDARIO } from "./ch
 import { ErroDoFormulario } from "./Estados";
 import {
   diagnosticarReferencia, fraseDaFalha, montarReferencia1Password,
-  retratoDaReferencia, type PecasDaReferencia,
+  type PecasDaReferencia,
 } from "./referencia";
-
-const CHAVE_RASCUNHO = "volc.cofre.onboarding.v2";
+import {
+  gravarRascunhoPersistivel, lerRascunhoPersistivel, limparRascunhoPersistivel,
+  pecasVazias, reescreverRascunhoSanitizadoSeExistir, rotuloDoProvider,
+  type MetadadosDaCredencial, type RascunhoPersistivel,
+} from "./rascunho";
 
 const PASSOS = [
   { id: 1, titulo: "Tipo de ativo", porque: "A gaveta nasce do tipo. Escolher os dois convidaria a contradição que o banco recusa." },
@@ -27,50 +30,6 @@ const PASSOS = [
   { id: 6, titulo: "Relações", porque: "Sem aresta o Cofre sabe que o ativo existe e não sabe o que cai junto. Pode pular." },
   { id: 7, titulo: "Revisão e confirmação", porque: "O POST só sai daqui. Reenvio com a mesma chave devolve o mesmo recibo." },
 ] as const;
-
-type Rascunho = {
-  passo: number;
-  kind: AssetKind;
-  ativo_id: string;
-  nome: string;
-  plataforma: string;
-  estado: string;
-  criticidade: string;
-  resumo: string;
-  capacidades: string;
-  tags: string;
-  proxima_acao: string;
-  dono_nome: string;
-  dono_custodia: string;
-  projeto: string;
-  vertical: string;
-  display_id: string;
-  url_publica: string;
-  credencial: PecasDaReferencia & { nome_logico: string; owner_nome: string; finalidade: string; pular: boolean };
-  relacao: { tipo: string; destino: string; rotulo: string; pular: boolean };
-};
-
-const VAZIO: Rascunho = {
-  passo: 1,
-  kind: "facebook_page",
-  ativo_id: "", nome: "", plataforma: "", estado: "declared", criticidade: "medium",
-  resumo: "", capacidades: "", tags: "", proxima_acao: "",
-  dono_nome: "", dono_custodia: "declared",
-  projeto: "", vertical: "", display_id: "", url_publica: "",
-  credencial: { cofre: "", item: "", campo: "credential", nome_logico: "", owner_nome: "", finalidade: "", pular: false },
-  relacao: { tipo: "depends_on", destino: "", rotulo: "", pular: true },
-};
-
-function lerRascunho(): Rascunho {
-  try {
-    const cru = sessionStorage.getItem(CHAVE_RASCUNHO);
-    if (!cru) return VAZIO;
-    const lido = JSON.parse(cru) as Partial<Rascunho>;
-    return { ...VAZIO, ...lido, credencial: { ...VAZIO.credencial, ...lido.credencial }, relacao: { ...VAZIO.relacao, ...lido.relacao } };
-  } catch {
-    return VAZIO;
-  }
-}
 
 function Campo({ rotulo, ajuda, obrigatorio, children }: {
   rotulo: string; ajuda?: string; obrigatorio?: boolean; children: React.ReactNode;
@@ -94,68 +53,95 @@ export function OnboardingProgressivo({
   aoConcluir: (id: string) => void;
 }) {
   const { toast } = useToast();
-  const [rascunho, setRascunho] = React.useState<Rascunho>(lerRascunho);
+  const [rascunho, setRascunho] = React.useState<RascunhoPersistivel>(lerRascunhoPersistivel);
+  const [pecas, setPecas] = React.useState<PecasDaReferencia>(() => pecasVazias());
   const [sucessoIdempotente, setSucessoIdempotente] = React.useState(false);
 
   React.useEffect(() => {
-    sessionStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho));
+    gravarRascunhoPersistivel(rascunho);
   }, [rascunho]);
 
-  const mudar = <K extends keyof Rascunho>(campo: K, valor: Rascunho[K]) =>
+  React.useEffect(() => {
+    return () => {
+      reescreverRascunhoSanitizadoSeExistir();
+    };
+  }, []);
+
+  const mudar = <K extends keyof RascunhoPersistivel>(campo: K, valor: RascunhoPersistivel[K]) =>
     setRascunho((atual) => ({ ...atual, [campo]: valor }));
+
+  const descartarPecas = () => setPecas(pecasVazias());
+
+  const cancelar = () => {
+    descartarPecas();
+    gravarRascunhoPersistivel(rascunho);
+    aoFechar();
+  };
 
   const enviar = useMutation({
     mutationFn: async () => {
-      const ativo: Record<string, unknown> = {
-        ativo_id: rascunho.ativo_id.trim(),
-        kind: rascunho.kind,
-        cluster: KIND_CLUSTER[rascunho.kind],
-        nome: rascunho.nome.trim(),
-        plataforma: rascunho.plataforma.trim(),
-        estado: rascunho.estado,
-        criticidade: rascunho.criticidade,
-        resumo: rascunho.resumo.trim(),
-        dono_nome: rascunho.dono_nome.trim(),
-        dono_custodia: rascunho.dono_custodia,
-        capacidades: rascunho.capacidades.split(",").map((c) => c.trim()).filter(Boolean),
-        tags: rascunho.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        proxima_acao: rascunho.proxima_acao.trim(),
-      };
-      for (const opcional of ["projeto", "vertical", "display_id", "url_publica"] as const) {
-        const valor = rascunho[opcional].trim();
-        if (valor) ativo[opcional] = valor;
-      }
-      const cadastro = await cofre.cadastrarAtivo({
-        chave_idempotencia: cofre.chaveDoAto("cadastro", ativo.ativo_id as string, ativo),
-        motivo: "cadastro pela tela do Cofre de Ativos",
-        ativo,
-      });
-      const ativoId = cadastro.ativo_id ?? rascunho.ativo_id.trim();
-      if (!rascunho.credencial.pular) {
-        const falha = diagnosticarReferencia(rascunho.credencial);
-        if (falha) throw new Error(fraseDaFalha(falha));
-        await cofre.referenciarCredencial(ativoId, {
-          chave_idempotencia: cofre.chaveDoAto("credencial", ativoId, rascunho.credencial),
-          provider: "1password",
-          nome_logico: rascunho.credencial.nome_logico.trim(),
-          localizador: montarReferencia1Password(rascunho.credencial),
-          finalidade: rascunho.credencial.finalidade.trim(),
-          owner_nome: rascunho.credencial.owner_nome.trim(),
+      const pecasDoAto = { cofre: pecas.cofre, item: pecas.item, campo: pecas.campo };
+      try {
+        const ativo: Record<string, unknown> = {
+          ativo_id: rascunho.ativo_id.trim(),
+          kind: rascunho.kind,
+          cluster: KIND_CLUSTER[rascunho.kind],
+          nome: rascunho.nome.trim(),
+          plataforma: rascunho.plataforma.trim(),
+          estado: rascunho.estado,
+          criticidade: rascunho.criticidade,
+          resumo: rascunho.resumo.trim(),
+          dono_nome: rascunho.dono_nome.trim(),
+          dono_custodia: rascunho.dono_custodia,
+          capacidades: rascunho.capacidades.split(",").map((c) => c.trim()).filter(Boolean),
+          tags: rascunho.tags.split(",").map((t) => t.trim()).filter(Boolean),
+          proxima_acao: rascunho.proxima_acao.trim(),
+        };
+        for (const opcional of ["projeto", "vertical", "display_id", "url_publica"] as const) {
+          const valor = rascunho[opcional].trim();
+          if (valor) ativo[opcional] = valor;
+        }
+        const cadastro = await cofre.cadastrarAtivo({
+          chave_idempotencia: cofre.chaveDoAto("cadastro", ativo.ativo_id as string, ativo),
+          motivo: "cadastro pela tela do Cofre de Ativos",
+          ativo,
         });
+        const ativoId = cadastro.ativo_id ?? rascunho.ativo_id.trim();
+        if (!rascunho.credencial.pular) {
+          const falha = diagnosticarReferencia(pecasDoAto);
+          if (falha) throw new Error(fraseDaFalha(falha));
+          const localizador = montarReferencia1Password(pecasDoAto);
+          await cofre.referenciarCredencial(ativoId, {
+            chave_idempotencia: cofre.chaveDoAto("credencial", ativoId, {
+              provider: rascunho.credencial.provider,
+              nome_logico: rascunho.credencial.nome_logico.trim(),
+              cofre: pecasDoAto.cofre.trim(),
+              item: pecasDoAto.item.trim(),
+              campo: pecasDoAto.campo.trim(),
+            }),
+            provider: rascunho.credencial.provider,
+            nome_logico: rascunho.credencial.nome_logico.trim(),
+            localizador,
+            finalidade: rascunho.credencial.finalidade.trim(),
+            owner_nome: rascunho.credencial.owner_nome.trim(),
+          });
+        }
+        if (!rascunho.relacao.pular && rascunho.relacao.destino.trim()) {
+          await cofre.relacionar(ativoId, {
+            chave_idempotencia: cofre.chaveDoAto("relacao", ativoId, rascunho.relacao),
+            tipo: rascunho.relacao.tipo,
+            destino_externo: rascunho.relacao.destino.trim(),
+            destino_rotulo: rascunho.relacao.rotulo.trim() || rascunho.relacao.destino.trim(),
+            estado: "declared",
+          });
+        }
+        return cadastro;
+      } finally {
+        setPecas(pecasVazias());
       }
-      if (!rascunho.relacao.pular && rascunho.relacao.destino.trim()) {
-        await cofre.relacionar(ativoId, {
-          chave_idempotencia: cofre.chaveDoAto("relacao", ativoId, rascunho.relacao),
-          tipo: rascunho.relacao.tipo,
-          destino_externo: rascunho.relacao.destino.trim(),
-          destino_rotulo: rascunho.relacao.rotulo.trim() || rascunho.relacao.destino.trim(),
-          estado: "declared",
-        });
-      }
-      return cadastro;
     },
     onSuccess: (recibo) => {
-      sessionStorage.removeItem(CHAVE_RASCUNHO);
+      limparRascunhoPersistivel();
       setSucessoIdempotente(Boolean(recibo.idempotente));
       toast({
         title: recibo.idempotente ? "Este cadastro já existia" : "Ativo cadastrado",
@@ -168,7 +154,7 @@ export function OnboardingProgressivo({
   });
 
   const passo = PASSOS[rascunho.passo - 1];
-  const podeAvancar = validarPasso(rascunho);
+  const podeAvancar = validarPasso(rascunho, pecas);
 
   return (
     <section className="rounded-lg border border-border bg-card" aria-label="Cadastrar ativo">
@@ -178,7 +164,7 @@ export function OnboardingProgressivo({
           <h2 className="mt-1 font-display text-lg font-semibold text-balance">{passo.titulo}</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground text-pretty">{passo.porque}</p>
         </div>
-        <button type="button" onClick={aoFechar} aria-label="Fechar" className={cn(SECUNDARIO, "px-2")}>Fechar</button>
+        <button type="button" onClick={cancelar} aria-label="Fechar" className={cn(SECUNDARIO, "px-2")}>Fechar</button>
       </header>
 
       <ol className="flex gap-1 overflow-x-auto border-b border-border px-5 py-3" aria-label="Etapas do cadastro">
@@ -283,8 +269,10 @@ export function OnboardingProgressivo({
 
         {rascunho.passo === 5 ? (
           <PassoCredencial
-            pecas={rascunho.credencial}
-            aoMudar={(credencial) => mudar("credencial", credencial)}
+            pecas={pecas}
+            metadados={rascunho.credencial}
+            aoMudarPecas={setPecas}
+            aoMudarMetadados={(credencial) => mudar("credencial", credencial)}
           />
         ) : null}
 
@@ -327,17 +315,31 @@ export function OnboardingProgressivo({
             <div><dt className="text-muted-foreground">Identidade</dt><dd>{rascunho.nome || "sem nome"} · {rascunho.ativo_id || "sem id"}</dd></div>
             <div><dt className="text-muted-foreground">Owner</dt><dd>{rascunho.dono_nome || "sem dono"} · {rascunho.dono_custodia}</dd></div>
             <div><dt className="text-muted-foreground">Destino</dt><dd>{rascunho.projeto || "projeto não informado"}</dd></div>
-            <div>
-              <dt className="text-muted-foreground">Credencial</dt>
-              <dd className="text-pretty">{rascunho.credencial.pular ? "não cadastrar referência agora" : retratoDaReferencia(rascunho.credencial)}</dd>
-            </div>
+            {rascunho.credencial.pular ? (
+              <div>
+                <dt className="text-muted-foreground">Credencial</dt>
+                <dd>não cadastrar referência agora</dd>
+              </div>
+            ) : (
+              <>
+                <div><dt className="text-muted-foreground">Provider</dt><dd>{rotuloDoProvider(rascunho.credencial.provider)}</dd></div>
+                <div><dt className="text-muted-foreground">Nome lógico</dt><dd>{rascunho.credencial.nome_logico || "sem nome lógico"}</dd></div>
+                <div><dt className="text-muted-foreground">Finalidade</dt><dd>{rascunho.credencial.finalidade || "sem finalidade"}</dd></div>
+                <div><dt className="text-muted-foreground">Responsável</dt><dd>{rascunho.credencial.owner_nome || "sem responsável"}</dd></div>
+              </>
+            )}
             <div><dt className="text-muted-foreground">Relações</dt><dd>{rascunho.relacao.pular ? "incompleta neste cadastro" : rascunho.relacao.rotulo || rascunho.relacao.destino}</dd></div>
             {sucessoIdempotente ? <p className="text-xs text-muted-foreground">Reenvio reconhecido. Nada novo foi gravado.</p> : null}
           </dl>
         ) : null}
 
         {!podeAvancar && rascunho.passo < 7 ? (
-          <p role="alert" className="text-xs text-destructive">{mensagemDoPasso(rascunho)}</p>
+          <p role="alert" className="text-xs text-destructive">{mensagemDoPasso(rascunho, pecas)}</p>
+        ) : null}
+        {rascunho.passo === 7 && !rascunho.credencial.pular && diagnosticarReferencia(pecas) ? (
+          <p role="alert" className="text-xs text-destructive">
+            A referência não permanece no browser. Volte à etapa da credencial e informe cofre, item e campo de novo.
+          </p>
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
@@ -362,12 +364,14 @@ export function OnboardingProgressivo({
 }
 
 function PassoCredencial({
-  pecas, aoMudar,
+  pecas, metadados, aoMudarPecas, aoMudarMetadados,
 }: {
-  pecas: Rascunho["credencial"];
-  aoMudar: (valor: Rascunho["credencial"]) => void;
+  pecas: PecasDaReferencia;
+  metadados: MetadadosDaCredencial;
+  aoMudarPecas: (valor: PecasDaReferencia) => void;
+  aoMudarMetadados: (valor: MetadadosDaCredencial) => void;
 }) {
-  const falha = pecas.pular ? null : diagnosticarReferencia(pecas);
+  const falha = metadados.pular ? null : diagnosticarReferencia(pecas);
   return (
     <>
       <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-pretty">
@@ -375,30 +379,29 @@ function PassoCredencial({
         Referência cadastrada não significa acesso provado. Não há botão que copie ou revele o segredo.
       </p>
       <label className={cn("flex items-center gap-2 text-sm", HIT)}>
-        <input type="checkbox" checked={pecas.pular} onChange={(e) => aoMudar({ ...pecas, pular: e.target.checked })} />
+        <input type="checkbox" checked={metadados.pular} onChange={(e) => aoMudarMetadados({ ...metadados, pular: e.target.checked })} />
         Cadastrar sem referência agora
       </label>
-      {!pecas.pular ? (
+      {!metadados.pular ? (
         <>
           <Campo rotulo="Nome do cofre no 1Password" obrigatorio ajuda="o cofre, não a senha">
-            <input value={pecas.cofre} onChange={(e) => aoMudar({ ...pecas, cofre: e.target.value })} className={ENTRADA} placeholder="VOLC" />
+            <input value={pecas.cofre} onChange={(e) => aoMudarPecas({ ...pecas, cofre: e.target.value })} className={ENTRADA} placeholder="VOLC" />
           </Campo>
           <Campo rotulo="Nome do item" obrigatorio>
-            <input value={pecas.item} onChange={(e) => aoMudar({ ...pecas, item: e.target.value })} className={ENTRADA} placeholder="Pagina do piloto" />
+            <input value={pecas.item} onChange={(e) => aoMudarPecas({ ...pecas, item: e.target.value })} className={ENTRADA} placeholder="Pagina do piloto" />
           </Campo>
           <Campo rotulo="Campo" obrigatorio ajuda="use credential. MFA e password são recusados.">
-            <input value={pecas.campo} onChange={(e) => aoMudar({ ...pecas, campo: e.target.value })} className={ENTRADA} placeholder="credential" />
+            <input value={pecas.campo} onChange={(e) => aoMudarPecas({ ...pecas, campo: e.target.value })} className={ENTRADA} placeholder="credential" />
           </Campo>
           <Campo rotulo="Nome lógico" obrigatorio ajuda="MAIÚSCULAS_COM_UNDERSCORE">
-            <input required value={pecas.nome_logico} onChange={(e) => aoMudar({ ...pecas, nome_logico: e.target.value })} className={ENTRADA} placeholder="FB_PAGE_ADMIN" />
+            <input required value={metadados.nome_logico} onChange={(e) => aoMudarMetadados({ ...metadados, nome_logico: e.target.value })} className={ENTRADA} placeholder="FB_PAGE_ADMIN" />
           </Campo>
           <Campo rotulo="Responsável" obrigatorio>
-            <input required value={pecas.owner_nome} onChange={(e) => aoMudar({ ...pecas, owner_nome: e.target.value })} className={ENTRADA} />
+            <input required value={metadados.owner_nome} onChange={(e) => aoMudarMetadados({ ...metadados, owner_nome: e.target.value })} className={ENTRADA} />
           </Campo>
           <Campo rotulo="Finalidade" obrigatorio>
-            <input required value={pecas.finalidade} onChange={(e) => aoMudar({ ...pecas, finalidade: e.target.value })} className={ENTRADA} />
+            <input required value={metadados.finalidade} onChange={(e) => aoMudarMetadados({ ...metadados, finalidade: e.target.value })} className={ENTRADA} />
           </Campo>
-          <p className="text-xs text-muted-foreground text-pretty">{retratoDaReferencia(pecas)}</p>
           {falha ? <p role="alert" className="text-xs text-destructive">{fraseDaFalha(falha)}</p> : null}
         </>
       ) : (
@@ -408,7 +411,7 @@ function PassoCredencial({
   );
 }
 
-function validarPasso(r: Rascunho): boolean {
+function validarPasso(r: RascunhoPersistivel, pecas: PecasDaReferencia): boolean {
   switch (r.passo) {
     case 1: return Boolean(r.kind);
     case 2:
@@ -417,21 +420,21 @@ function validarPasso(r: Rascunho): boolean {
     case 4: return true;
     case 5:
       if (r.credencial.pular) return true;
-      return !diagnosticarReferencia(r.credencial) && Boolean(r.credencial.nome_logico.trim() && r.credencial.owner_nome.trim() && r.credencial.finalidade.trim());
+      return !diagnosticarReferencia(pecas) && Boolean(r.credencial.nome_logico.trim() && r.credencial.owner_nome.trim() && r.credencial.finalidade.trim());
     case 6:
       if (r.relacao.pular) return true;
       return Boolean(r.relacao.destino.trim());
-    case 7: return validarPasso({ ...r, passo: 2 }) && validarPasso({ ...r, passo: 3 });
+    case 7: return validarPasso({ ...r, passo: 2 }, pecas) && validarPasso({ ...r, passo: 3 }, pecas) && validarPasso({ ...r, passo: 5 }, pecas);
     default: return false;
   }
 }
 
-function mensagemDoPasso(r: Rascunho): string {
+function mensagemDoPasso(r: RascunhoPersistivel, pecas: PecasDaReferencia): string {
   if (r.passo === 2 && r.resumo.trim().length > 0 && r.resumo.trim().length < 10) {
     return "O resumo precisa de pelo menos 10 caracteres.";
   }
   if (r.passo === 5 && !r.credencial.pular) {
-    const falha = diagnosticarReferencia(r.credencial);
+    const falha = diagnosticarReferencia(pecas);
     return falha ? fraseDaFalha(falha) : "Nome lógico, responsável e finalidade são obrigatórios.";
   }
   return "Preencha os campos obrigatórios desta etapa para continuar.";

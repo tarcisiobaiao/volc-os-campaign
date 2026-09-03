@@ -1,10 +1,10 @@
 # EXPERIENCE-CONTRACT — Cofre operador v2
 
-Registro: PRODUCT (DESIGN.md / design.md).  
-Cena: operador administrativo, de dia, cadastrando e conferindo patrimônio **antes** de operar campanha ou publicar.  
+Registro: PRODUCT (DESIGN.md / design.md).
+Cena: operador administrativo, de dia, cadastrando e conferindo patrimônio **antes** de operar campanha ou publicar.
 Direção: VOLC Mission Control — técnica, compacta, calma. Wow por clareza, não por aurora.
 
-Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4  
+Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4
 Macrostructure: kicker + H1 + aurora-rule de identidade → faixa operacional de 3 colunas → tabela densa / workspace de onboarding → inspetor de prontidão.
 
 ## Perguntas que a página responde imediatamente
@@ -24,7 +24,7 @@ Faixa `border-y`, três colunas assimétricas. Números `tabular-nums` e `font-d
 `<table>` comparável no desktop (identidade, tipo, owner, estado, verificação, relações, revisão, ação). Agrupamento por gaveta via `th scope=colgroup`. Mobile: lista fora da região “Ativos encontrados”, um ativo = um botão ≥40×40. Uma primária de cadastro no cabeçalho da **página**; empty state tem “Cadastrar o primeiro ativo” (ação de empty, não segunda primária de região).
 
 ### C. Onboarding progressivo
-Workspace lateral (`xl:grid-cols-[26rem_1fr]`), não modal genérico. Sete etapas, rascunho em `sessionStorage` (`volc.cofre.onboarding.v2`) **sem localizador**. Cada etapa: porquê, obrigatório vs opcional, validação inline. Credencial: cofre / item / campo / nome lógico — o endereço é composto só no POST. MFA, query e campo de senha recusados. Sem botão copiar/revelar.
+Workspace lateral (`xl:grid-cols-[26rem_1fr]`), não modal genérico. Sete etapas. Rascunho persistível em `sessionStorage` (`volc.cofre.onboarding.v2`): identidade e metadados da credencial (provider, nome lógico, finalidade, responsável). Cofre, item, campo e o localizador são estado efêmero só em memória; Fechar, Concluir, recarregar e cancelar os descartam. A revisão mostra provider, nome lógico, finalidade e responsável — não as peças. O localizador é montado só no POST autenticado e as peças saem em seguida. MFA, query e campo de senha recusados. Sem botão copiar/revelar.
 
 ### D. Detalhe e prontidão
 Identidade, procedência, relações, referência **mascarada**, verificações, bloqueadores (cada prontidão no seu painel), trilha, próximo ato. Aposentar/reativar exigem confirmação com consequência. `ProntidaoDeOperacao` e `ProntidaoVisual` permanecem — contratos distintos.

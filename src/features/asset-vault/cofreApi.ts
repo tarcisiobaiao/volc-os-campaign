@@ -18,11 +18,15 @@
  * e a tela tem um estado próprio para ela — diferente do estado vazio, que
  * também é um fato legítimo.
  *
- * **Não monta o localizador de nada.** O endereço do item no 1Password não
- * chega neste arquivo porque não sai do banco: `cofre_postura_credencial`
- * projeta provider, nome lógico, finalidade, estado e frescor, e omite o
- * endereço. Se algum dia um `localizador` aparecer numa resposta, o defeito
- * está no backend, não aqui — e há teste dos dois lados.
+ * **Leituras nunca recebem o localizador.** GET de inventário, detalhe,
+ * postura e prontidão projetam provider, nome lógico, finalidade, estado e
+ * frescor. O endereço não sai do banco. Se `localizador` aparecer numa
+ * resposta, o defeito está no backend — e há teste dos dois lados.
+ *
+ * **A mutation de referência envia o localizador.** `referenciarCredencial`
+ * encaminha no POST o campo `localizador` montado pela UI em memória no
+ * instante do ato. Este arquivo não persiste o endereço nem o devolve em
+ * leitura; só o transmite no corpo autenticado da escrita.
  */
 import { supabase } from '@/lib/supabase';
 import type { ProntidaoDoAtivo } from './prontidaoOperacao';
@@ -336,7 +340,8 @@ export function prontidaoVisual(ativoId: string): Promise<ProntidaoVisualPayload
  * As nove respostas de operação sobre um ativo — e nenhuma delas publica.
  *
  * ⚠️ Ela também **não** traz o localizador, pela mesma razão do handoff: quem
- * resolve `op://` é o broker, no host isolado. E duas das oito perguntas voltam
+ * resolve a secret reference do 1Password é o broker, no host isolado. E duas
+ * das oito perguntas voltam
  * como `desconhecido` de propósito — disponibilidade de perfil só é observável
  * de dentro do host do AdsPower, e um `não` inventado aqui mandaria alguém
  * cadastrar um perfil que já existe.
@@ -429,9 +434,9 @@ export function registrarVerificacao(ativoId: string, corpo: Record<string, unkn
 }
 
 /**
- * Registra ONDE a credencial mora. O valor nunca passa por aqui — e o campo
- * `localizador` do formulário é o único do sistema inteiro que aceita uma
- * secret reference, com a gramática validada no servidor.
+ * Registra ONDE a credencial mora. O valor nunca passa por aqui. O campo
+ * `localizador` chega montado pela UI em memória e segue no POST; a gramática
+ * é validada no servidor. GET continua omitindo o endereço.
  */
 export function referenciarCredencial(ativoId: string, corpo: Record<string, unknown>): Promise<Recibo> {
   return pedir<Recibo>(`/ativos/${encodeURIComponent(ativoId)}/credencial`, {
