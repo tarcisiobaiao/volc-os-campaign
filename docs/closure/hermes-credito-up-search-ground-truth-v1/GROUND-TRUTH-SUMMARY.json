@@ -1,0 +1,144 @@
+{
+  "account_suspension": {
+    "do_not_claim": "No API evidence establishes the literal suspension cause.",
+    "reason_verdict": "NOT_EXPOSED_BY_API",
+    "root_cause_verdict": "HYPOTHESIS_PARTIALLY_SUPPORTED",
+    "state": "SUSPENDED",
+    "state_verdict": "PROVEN"
+  },
+  "api_sdk": {
+    "credential_source": {
+      "configured": true,
+      "kind": "external_secret_source",
+      "path_versioned": false,
+      "value_versioned": false
+    },
+    "google_ads_api_version": "v25",
+    "sdk": "google-ads python"
+  },
+  "base": "34dc7b41bce901bd8bebfdec0a01e293678cbf08",
+  "branch": "sprint/hermes-credito-up-search-ground-truth-v1",
+  "change_events": {
+    "limitation": "No individual events versioned publicly; private evidence has full sanitized operational rows.",
+    "rows": 0
+  },
+  "conversion_bidding": {
+    "campaign_conversions_observed_90d": 0.0,
+    "conversion_action_rows": 5,
+    "customer_goal_rows": 2,
+    "included_in_conversions_metric": 1,
+    "primary_actions": 1,
+    "smart_bidding_readiness": "NOT_NEEDED_FOR_OBSERVED_MANUAL_CPC_BUT_SIGNAL_WEAK_FOR_FUTURE_SMART_BIDDING"
+  },
+  "destination_policy_facts": {
+    "all_status_200": true,
+    "clickable_link_hosts": "not_measured",
+    "document_redirects": "not_measured",
+    "final_url_count": 2,
+    "form_action_hosts": "not_measured",
+    "forms_total": 2,
+    "legacy_external_hosts_aggregate_hash": "d27bcad5ff2f3e43e44d517c3669c32431797716a1fb634b3baa025d298abf9b",
+    "note": "The prior public package contained aggregate external_hosts from a limited HTML parser. This sanitized package intentionally does not present them as clickable links because host role separation was not measured without ambiguity.",
+    "public_reads": 2,
+    "resource_hosts": "not_measured",
+    "script_hosts": "not_measured_separately_from_inline_source_hosts"
+  },
+  "early_warning": {
+    "corrected_verdict": "SEARCH_ALERT_OPERATIONAL_GAP: PARTIALLY_PROVEN",
+    "known_existing_capability": "Some collection/projection of Google intelligence signals already exists in VOLC artifacts.",
+    "not_used": "VOLC_EARLY_WARNING_GAP: PROVEN",
+    "partially_proven_gap": "Continuous collection plus delivered alert plus operator reaction loop was not proven end-to-end in this mission.",
+    "signals_supported": [
+      "account suspended state",
+      "near/low delivery metrics",
+      "below first page bid keyword reason",
+      "campaign removed status",
+      "zero conversions for future smart bidding readiness",
+      "paid destination receipt requirement"
+    ]
+  },
+  "generated_at": "2026-09-03T10:28:56.029422+00:00",
+  "keyword_diagnostics": {
+    "clicks": 12,
+    "cost_brl": 0.48,
+    "cost_micros": 480000,
+    "impressions": 1202,
+    "keyword_rows": 263,
+    "primary_status_counts": {
+      "ELIGIBLE": 39,
+      "NOT_ELIGIBLE": 172,
+      "UNKNOWN": 52
+    },
+    "primary_status_reasons_counts": {
+      "AD_GROUP_CRITERION_BELOW_FIRST_PAGE_BID": 52,
+      "CAMPAIGN_REMOVED": 172
+    },
+    "verdict": "PROVEN",
+    "zero_impression_keyword_rows": 246
+  },
+  "public_sanitization": {
+    "no_api_call_list": true,
+    "no_individual_keyword_rows": true,
+    "no_raw_ids": true,
+    "no_raw_payloads": true,
+    "no_request_ids": true,
+    "no_search_term_rows": true
+  },
+  "recommendations": {
+    "rows": 0,
+    "verdict": "EMPTY_CONFIRMED"
+  },
+  "schema": "CreditoUpSearchGroundTruthSummary.v2.sanitized",
+  "search_delivery": {
+    "ad_policy_approval_counts": {
+      "APPROVED": 5
+    },
+    "ad_rows": 5,
+    "ad_strength_counts": {
+      "AVERAGE": 3,
+      "GOOD": 1,
+      "POOR": 1
+    },
+    "campaign_primary_status_counts": {
+      "ELIGIBLE": 2,
+      "REMOVED": 3
+    },
+    "campaign_rows": 5,
+    "campaign_status_counts": {
+      "ENABLED": 2,
+      "REMOVED": 3
+    },
+    "clicks": 12,
+    "conversions": 0.0,
+    "cost_brl": 0.48,
+    "cost_micros": 480000,
+    "impressions": 1202,
+    "root_cause_verdict": "MULTIFACTORIAL",
+    "search_term_rows": 371
+  },
+  "source_private_evidence_manifest_sha256": "422f2fa30b94a190610dad26412ae5f02ed732e0571725f0adbd0926ada12736",
+  "topology": {
+    "accessible_customer_refs": 13,
+    "failed_or_not_enabled_direct_reads": 1,
+    "green_direct_customer_reads": 12,
+    "limitation": "manager child queries had some USER_PERMISSION_DENIED; not treated as zero",
+    "target_account_pseudo": "CUST_e130fdfff3",
+    "target_customer_status": "SUSPENDED",
+    "verdict": "PARTIAL"
+  },
+  "zero_mutate": {
+    "called_method_count": 132,
+    "external_writes": false,
+    "forbidden_methods_observed": 0,
+    "gemini_review": "UNAVAILABLE_NO_ENV_NO_LIBRARY",
+    "google_ads_mutate": false,
+    "read_only_methods_observed": [
+      "CustomerService.ListAccessibleCustomers",
+      "GoogleAdsFieldService.SearchGoogleAdsFields",
+      "GoogleAdsService.Search",
+      "HTTP.GET"
+    ],
+    "sdk_api": "google-ads python v25",
+    "validate_only_mutate": false
+  }
+}
