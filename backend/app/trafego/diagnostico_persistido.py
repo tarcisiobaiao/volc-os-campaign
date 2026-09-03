@@ -771,7 +771,27 @@ def _degraus_observados(
                        "ad_group_criterion.keyword.text (normalizado)",
                        leitura_kw.clusters_redundantes, janela, leitura),
         ]
-        if medidas and abaixo == medidas:
+        total_kw = leitura_kw.observadas
+        # ⚠️ CADA MOTIVO DECLARADO PELA CONTA TEM RAMO PRÓPRIO.
+        #
+        # A versão anterior tinha quatro ramos e um `else`, e CINCO motivos
+        # reais caíam nesse `else`: baixa qualidade, em revisão, restrita,
+        # raramente servida e reprovada. Todos saíam com
+        # `impedimento="lance ou estimativa de primeira página ausentes"` sobre
+        # uma keyword cujo lance foi lido — e a frase se contradizia sozinha,
+        # dizendo "0 de 1 vieram sem lance" no mesmo objeto. É o mesmo defeito
+        # do eixo `campanha` da primeira rodada, repetido no eixo da keyword:
+        # um `else` afirmando uma falta que não existe.
+        if leitura_kw.reprovadas and leitura_kw.reprovadas == total_kw:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="bloqueia", palavra="reprovadas",
+                frase=(
+                    f"A conta reprovou por política as {total_kw} keywords "
+                    "observadas."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif medidas and abaixo == medidas:
             degraus["keyword"] = DegrauDeEntrega(
                 eixo="keyword", estado="bloqueia", palavra="lance abaixo da 1ª página",
                 frase=(
@@ -779,6 +799,19 @@ def _degraus_observados(
                     "da estimativa de primeira página."
                 ),
                 evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.em_revisao and not leitura_kw.aptas:
+            # Nem aprovada, nem reprovada. Afirmar qualquer um dos dois seria
+            # inventar um veredito que o Google ainda não deu.
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="nao_apurado", palavra="em revisão",
+                frase=(
+                    f"{leitura_kw.em_revisao} de {total_kw} keywords estão em "
+                    "revisão de política: não estão aprovadas e não estão "
+                    "reprovadas."
+                ),
+                evidencias=ev_kw,
+                impedimento="a conta ainda não decidiu a política destas keywords",
             )
         elif abaixo:
             degraus["keyword"] = DegrauDeEntrega(
@@ -789,25 +822,68 @@ def _degraus_observados(
                 ),
                 evidencias=ev_kw, impedimento=None,
             )
+        elif leitura_kw.restritas and not leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="aprovadas com restrição",
+                frase=(
+                    f"A conta aprovou {leitura_kw.restritas} de {total_kw} "
+                    "keywords COM restrição — não é o mesmo que aprovadas."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.raramente_servidas and not leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="raramente servidas",
+                frase=(
+                    f"A conta declarou {leitura_kw.raramente_servidas} de "
+                    f"{total_kw} keywords como raramente servidas."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.baixa_qualidade and not leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="baixa qualidade",
+                frase=(
+                    f"{leitura_kw.baixa_qualidade} de "
+                    f"{leitura_kw.medidas_para_qualidade} keywords com qualidade "
+                    "medida estão no balde baixo."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
         elif leitura_kw.aptas:
             degraus["keyword"] = DegrauDeEntrega(
                 eixo="keyword", estado="ok", palavra="aptas",
                 frase=(
-                    f"{leitura_kw.aptas} de {leitura_kw.observadas} keywords "
+                    f"{leitura_kw.aptas} de {total_kw} keywords "
                     "estão habilitadas e com lance acima da estimativa."
                 ),
                 evidencias=ev_kw, impedimento=None,
             )
-        else:
+        elif leitura_kw.sem_dado_de_lance:
             degraus["keyword"] = DegrauDeEntrega(
                 eixo="keyword", estado="nao_apurado", palavra="não apurado",
                 frase=(
                     "Nenhuma keyword pôde ser classificada: "
-                    f"{leitura_kw.sem_dado_de_lance} de {leitura_kw.observadas} "
+                    f"{leitura_kw.sem_dado_de_lance} de {total_kw} "
                     "vieram sem lance ou sem estimativa de primeira página."
                 ),
                 evidencias=ev_kw,
                 impedimento="lance ou estimativa de primeira página ausentes",
+            )
+        else:
+            # ⚠️ O último ramo NOMEIA o que realmente falta, em vez de repetir
+            # a única falta que alguém pensou primeiro.
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="nao_apurado", palavra="não apurado",
+                frase=(
+                    f"As {total_kw} keywords foram lidas e nenhuma se enquadrou "
+                    "nos estados que esta versão sabe nomear."
+                ),
+                evidencias=ev_kw,
+                impedimento=(
+                    "estado da keyword fora do vocabulário conhecido — "
+                    "nunca degradado para ok"
+                ),
             )
 
     for tipo, eixo, rotulo in (("ad", "anuncio", "anúncio"),):

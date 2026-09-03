@@ -33,10 +33,10 @@ Isso está registrado porque a diferença mudava a leitura dos números.
 | | passed | skipped | failed |
 |---|---|---|---|
 | **baseline** `34dc7b4` | 3815 | 97 | 0 |
-| **final** | 3929 | 97 | 0 |
-| delta | **+114** | **0** | 0 |
+| **final** | 3937 | 97 | 0 |
+| delta | **+122** | **0** | 0 |
 
-Os +114 são exatamente as provas novas desta lane. **Os 97 skips são os mesmos**,
+Os +122 são exatamente as provas novas desta lane. **Os 97 skips são os mesmos**,
 todos por dependência de ambiente (`psycopg` ausente, fixtures de run do
 FunnelForge ausentes, `VOLC_SEGREDO_KEY` não definida) — nenhum introduzido nem
 removido por esta lane.
@@ -44,7 +44,7 @@ removido por esta lane.
 ### Focais
 
 ```
-test_trafego_sentinela.py                92 passed
+test_trafego_sentinela.py               100 passed
 test_trafego_sentinela_vocabulario.py    17 passed
 test_trafego_diagnostico_v12.py          32 passed
 test_trafego_diagnostico_v12_rota.py      6 passed
@@ -63,7 +63,7 @@ test_trafego_inventario.py                  passed
 |---|---|---|---|---|---|
 | **baseline** | 97 | 1409 | 1406 | 3 | 0 |
 | **final** | 98 | 1438 | 1435 | 3 | 0 |
-| delta | +1 | **+29** | +29 | **0** | 0 |
+| delta | +1 | **+29** | **+29** | **0** | 0 |
 
 Os 3 skips são os mesmos três, todos em
 `src/components/trafego/vinculo/__tests__/retratos.test.tsx`.

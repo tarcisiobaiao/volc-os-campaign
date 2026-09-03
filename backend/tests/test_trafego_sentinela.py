@@ -1640,3 +1640,63 @@ def test_r15b_nenhum_denominador_e_construido_sem_a_politica():
         f"Denominador sem minimo_para_proporcao nas linhas {faltando} de "
         "sentinela.py"
     )
+
+
+def test_r17_cada_motivo_de_keyword_tem_ramo_proprio_no_degrau():
+    """O `else` do degrau afirmava uma falta que não existia.
+
+    ⚠️ CINCO motivos reais caíam num único `else` que dizia
+    `impedimento="lance ou estimativa de primeira página ausentes"` sobre
+    keywords cujo lance FOI lido — e a frase se contradizia sozinha, dizendo
+    "0 de 1 vieram sem lance" no mesmo objeto. É o mesmo defeito do eixo
+    `campanha` da primeira rodada, repetido no eixo da keyword.
+    """
+    esperado = {
+        "AD_GROUP_CRITERION_DISAPPROVED": ("bloqueia", "reprovadas"),
+        "AD_GROUP_CRITERION_UNDER_REVIEW": ("nao_apurado", "em revisão"),
+        "AD_GROUP_CRITERION_RESTRICTED": ("limita", "aprovadas com restrição"),
+        "AD_GROUP_CRITERION_RARELY_SERVED": ("limita", "raramente servidas"),
+        "AD_GROUP_CRITERION_LOW_QUALITY": ("limita", "baixa qualidade"),
+    }
+    for motivo, (estado, palavra) in esperado.items():
+        r = diagnosticar(
+            [item_conta(), item_campanha(),
+             item_keyword("k1", lance=3_000_000, primeira=1_000_000, qs=8)],
+            [metrica("impressions", 0)],
+        )
+        # o item acima não tem motivo; refaz com o motivo declarado
+        item = item_keyword("k1", lance=3_000_000, primeira=1_000_000, qs=8)
+        item["payload"]["ad_group_criterion"]["primary_status_reasons"] = [motivo]
+        r = diagnosticar(
+            [item_conta(), item_campanha(), item],
+            [metrica("impressions", 0)],
+        )
+        degrau = por_eixo(r)["keyword"]
+        assert degrau.estado == estado, f"{motivo}: {degrau.estado} != {estado}"
+        assert degrau.palavra == palavra, f"{motivo}: {degrau.palavra}"
+        # ⚠️ E NUNCA o impedimento falso: o lance FOI lido.
+        assert "lance ou estimativa de primeira página ausentes" != (
+            degrau.impedimento
+        ), f"{motivo}: impedimento factualmente falso"
+        assert "sem lance" not in degrau.frase, f"{motivo}: {degrau.frase}"
+
+
+def test_r17b_a_falta_de_lance_de_verdade_continua_sendo_nomeada():
+    """A correção não pode ter apagado o caso em que o lance REALMENTE falta."""
+    item = item_keyword("k1", lance=None, primeira=None, qs=None)
+    r = diagnosticar(
+        [item_conta(), item_campanha(), item], [metrica("impressions", 0)],
+    )
+    degrau = por_eixo(r)["keyword"]
+    assert degrau.estado == "nao_apurado"
+    assert degrau.impedimento == "lance ou estimativa de primeira página ausentes"
+    assert "1 de 1" in degrau.frase
+
+
+def test_r17c_keyword_apta_de_verdade_continua_ok():
+    r = diagnosticar(
+        [item_conta(), item_campanha(),
+         item_keyword("k1", lance=3_000_000, primeira=1_000_000, qs=9)],
+        [metrica("impressions", 100)],
+    )
+    assert por_eixo(r)["keyword"].estado == "ok"
