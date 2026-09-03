@@ -295,3 +295,45 @@ describe('estadoDoSino — um estado por vez, e a ordem é a regra', () => {
     expect(estadoDoSino(base)).toBe('sem_condicao');
   });
 });
+
+// ── o falso verde do sino ────────────────────────────────────────────────────
+
+describe('zero numa lista incompleta não é "não há nada"', () => {
+  const base = {
+    indisponivel: false,
+    carregando: false,
+    ultimoEstadoConhecido: false,
+    quantos: 0,
+  };
+
+  it('contagem zero com lista incompleta NÃO cai em sem_condicao', () => {
+    // ⚠️ Medido em 03/09/2026: com `quantos === 0` e `parcial === true` — o que
+    // acontece toda vez que o inventário tem mais páginas do que esta sessão
+    // carregou — o sino caía em `sem_condicao` e desenhava o check verde de
+    // "Nenhuma condição ativa". A ressalva existia, num bloco cinza abaixo, e o
+    // operador lia o glifo.
+    expect(estadoDoSino({ ...base, parcial: true })).toBe('lista_incompleta');
+    expect(estadoDoSino({ ...base, parcial: true })).not.toBe('sem_condicao');
+  });
+
+  it('lista completa e zero continua sendo sem_condicao', () => {
+    expect(estadoDoSino({ ...base, parcial: false })).toBe('sem_condicao');
+    expect(estadoDoSino(base)).toBe('sem_condicao');
+  });
+
+  it('uma condição achada vence a ressalva de método', () => {
+    // Uma condição achada é uma afirmação VERDADEIRA mesmo com a busca
+    // incompleta. Escondê-la atrás do aviso trocaria um alarme real por um
+    // aviso sobre como a lista foi montada.
+    expect(estadoDoSino({ ...base, quantos: 2, parcial: true })).toBe('com_condicao');
+  });
+
+  it('não saber perguntar continua vencendo tudo', () => {
+    expect(estadoDoSino({ ...base, indisponivel: true, parcial: true })).toBe(
+      'indisponivel',
+    );
+    expect(estadoDoSino({ ...base, carregando: true, parcial: true })).toBe(
+      'consultando',
+    );
+  });
+});

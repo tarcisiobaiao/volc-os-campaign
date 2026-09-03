@@ -38,6 +38,7 @@ import {
   ArrowRight,
   Bell,
   CheckCircle2,
+  CircleHelp,
   RefreshCw,
   WifiOff,
 } from 'lucide-react';
@@ -227,6 +228,23 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
               A atualização falhou. O último estado conhecido continua visível — ele é de
               antes, não de agora.
             </p>
+          )}
+
+          {estado === 'lista_incompleta' && (
+            <div className="px-4 py-7">
+              <CircleHelp className="mb-3 h-5 w-5 text-muted-foreground" aria-hidden />
+              <p className="text-sm font-medium">
+                Nada pede atenção no que foi lido
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Parte do registro ainda não foi carregada nesta sessão, então
+                este zero vale para o que foi conferido — não para a conta
+                inteira.{' '}
+                <strong className="font-medium text-foreground">
+                  Isto não é o mesmo que "está tudo bem".
+                </strong>
+              </p>
+            </div>
           )}
 
           {estado === 'sem_condicao' && (
