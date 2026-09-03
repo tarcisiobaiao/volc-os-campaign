@@ -140,17 +140,42 @@ export const JornadaDoCanal: React.FC<JornadaDoCanalProps> = ({
   // "não consegui ler" e "este servidor não devolveu este canal" levam a lugares
   // diferentes: esperar, tentar de novo, e perguntar a quem administra.
   if (carregando) {
+    // ⚠️ `role="status"` + `aria-live`: a leitura começa e termina sem mudar o
+    // foco, então quem usa leitor de tela não recebia aviso nenhum — a tela
+    // trocava de conteúdo em silêncio.
     return (
-      <p className={cn('text-[13px] text-muted-foreground', className)}>
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className={cn('text-sm text-muted-foreground', className)}
+      >
         Lendo o que este canal permite agora…
       </p>
+    );
+  }
+
+  // ⚠️ FALHA COM DADO ANTERIOR ≠ FALHA SEM DADO NENHUM.
+  //
+  // O React Query preserva o último resultado bom quando uma RELEITURA falha.
+  // Verificar `falhou` antes de `contrato` apagava esse contrato da tela e
+  // colapsava "conhecido, porém velho" em "não sei nada" — o operador perdia
+  // um veredito que continua sendo o melhor disponível, e perdia junto a
+  // informação de que ele envelheceu. As duas situações pedem atos diferentes:
+  // uma pede releitura, a outra pede esperar ou procurar quem administra.
+  if (falhou && contrato != null) {
+    return (
+      <div className={cn('space-y-8', className)}>
+        <AvisoDeReleituraFalha aoRevalidar={aoRevalidar} />
+        <EscadaDePortoes contrato={contrato} />
+      </div>
     );
   }
 
   if (falhou) {
     return (
       <div className={cn('max-w-[70ch]', className)} role="alert">
-        <p className="text-[13px] leading-relaxed">
+        <p className="text-sm leading-relaxed">
           Não consegui ler os portões deste canal.{' '}
           <span className="text-muted-foreground">
             Isto não afirma que ele esteja bloqueado — afirma que a leitura não
@@ -163,7 +188,7 @@ export const JornadaDoCanal: React.FC<JornadaDoCanalProps> = ({
             onClick={aoRevalidar}
             className={cn(
               'mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-3',
-              'text-[13px] font-medium transition-volc duration-150 hover:bg-muted/50',
+              'text-sm font-medium transition-volc duration-150 hover:bg-muted/50',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
             )}
           >
@@ -177,7 +202,7 @@ export const JornadaDoCanal: React.FC<JornadaDoCanalProps> = ({
 
   if (contrato == null) {
     return (
-      <p className={cn('max-w-[70ch] text-[13px] leading-relaxed', className)}>
+      <p className={cn('max-w-[70ch] text-sm leading-relaxed', className)}>
         Este servidor não devolveu contrato para o canal escolhido.{' '}
         <span className="text-muted-foreground">
           Os quatro canais do Google saem sempre na resposta; a ausência de um
@@ -187,11 +212,31 @@ export const JornadaDoCanal: React.FC<JornadaDoCanalProps> = ({
     );
   }
 
+  /**
+   * Os três portões que mandam nas três etapas finais.
+   *
+   * ⚠️ Sem isto, a conversa recalculava elegibilidade no navegador e a escada
+   * acima podia dizer "bloqueado pela política" enquanto a lista abaixo dizia
+   * "a prova ainda não passou" — dois motivos diferentes para o mesmo fato, na
+   * mesma tela. Pior: `ativacao` fechava por SEQUÊNCIA e reabriria ao responder
+   * a criação, prometendo um degrau que não existe em canal nenhum.
+   */
+  const doPortao = (nome: Parameters<typeof portao>[1]) => {
+    const p = portao(contrato, nome);
+    if (!p) return null;
+    return { estado: p.estado, causa: p.bloqueadores[0]?.causa ?? null };
+  };
+
   const passos = montarConversa({
     manifesto: contrato.manifesto,
     respostas: {},
     travaAberta,
     podeAprovar,
+    portoes: {
+      validavel: doPortao('validavel'),
+      criavel_pausada: doPortao('criavel_pausada'),
+      ativavel: doPortao('ativavel'),
+    },
   });
 
   return (
@@ -214,6 +259,44 @@ export const JornadaDoCanal: React.FC<JornadaDoCanalProps> = ({
     </div>
   );
 };
+
+/**
+ * A releitura falhou, e o que está na tela continua sendo o último veredito bom.
+ *
+ * ⚠️ A frase precisa dizer as DUAS coisas: que os portões abaixo são reais (não
+ * são chute nem placeholder) e que ninguém os confirmou agora. Dizer só a
+ * primeira esconde o envelhecimento; dizer só a segunda joga fora informação
+ * boa.
+ */
+const AvisoDeReleituraFalha: React.FC<{ aoRevalidar?: () => void }> = ({
+  aoRevalidar,
+}) => (
+  <div
+    role="alert"
+    className="max-w-[70ch] rounded-md border border-warning/50 bg-warning/[0.10] px-3 py-2.5"
+  >
+    <p className="text-sm leading-relaxed">
+      A releitura falhou. Os portões abaixo são a última leitura que deu certo —{' '}
+      <span className="text-muted-foreground">
+        continuam sendo o melhor que se sabe, e ninguém os confirmou agora.
+      </span>
+    </p>
+    {aoRevalidar && (
+      <button
+        type="button"
+        onClick={aoRevalidar}
+        className={cn(
+          'mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-card px-3',
+          'text-sm font-medium transition-volc duration-150 hover:bg-muted/50',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+        )}
+      >
+        <RotateCw className="h-3.5 w-3.5" aria-hidden />
+        Tentar ler de novo
+      </button>
+    )}
+  </div>
+);
 
 // ── os quatro portões ───────────────────────────────────────────────────────
 
@@ -283,7 +366,7 @@ const LinhaDePortao: React.FC<{
               />
             )}
           </span>
-          <span className="mt-0.5 block max-w-[64ch] text-[12px] leading-relaxed text-muted-foreground">
+          <span className="mt-0.5 block max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
             {PERGUNTA_DO_PORTAO[nome]}
           </span>
 
@@ -299,7 +382,7 @@ const LinhaDePortao: React.FC<{
               autoriza, e este aviso existe porque `ativavel` chega bloqueado com
               a lista vazia em alguns perfis. */}
           {p && p.estado === 'BLOQUEADO' && p.bloqueadores.length === 0 && (
-            <p className="mt-2 max-w-[64ch] text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
               Fechado, e o servidor não nomeou a causa nesta resposta. Isto é uma
               lacuna do contrato, não uma permissão.
             </p>
@@ -328,7 +411,7 @@ const Bloqueio: React.FC<{ bloqueio: BloqueadorDeCanal }> = ({ bloqueio }) => {
       {/* A causa vai como o servidor a escreveu. O contrato de canais proíbe
           ligar comportamento a trechos dela — e reescrevê-la aqui seria uma
           segunda redação da mesma regra, que é o defeito com outra roupa. */}
-      <p className="max-w-[64ch] text-[12px] leading-relaxed">{bloqueio.causa}</p>
+      <p className="max-w-[64ch] text-sm leading-relaxed">{bloqueio.causa}</p>
       <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
         <Chip
           glifo={Ban}
@@ -336,13 +419,13 @@ const Bloqueio: React.FC<{ bloqueio: BloqueadorDeCanal }> = ({ bloqueio }) => {
           descricao={aQuemPedir ?? 'origem que esta versão da tela não conhece'}
           tom={TOM_DA_ORIGEM[bloqueio.origem] ?? 'neutro'}
         />
-        <span className="text-[11px] leading-relaxed text-muted-foreground">
+        <span className="text-sm leading-relaxed text-muted-foreground">
           {aQuemPedir ??
             'Origem desconhecida por esta tela — peça a quem administra o sistema.'}
         </span>
       </p>
       {bloqueio.revalidacao && (
-        <p className="mt-1 max-w-[64ch] text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
           Como conferir de novo: {bloqueio.revalidacao}
         </p>
       )}

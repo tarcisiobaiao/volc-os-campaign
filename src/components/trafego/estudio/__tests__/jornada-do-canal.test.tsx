@@ -8,6 +8,9 @@
  * deu; e um controle de ativar seria UI morta, porque nenhum canal deste
  * sistema tem rota de ativação.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -104,9 +107,12 @@ describe('a escada dos quatro portões', () => {
     // Um botão cinza sem origem faz "peça ao admin", "peça a quem escreve o
     // engine" e "peça ao dono" virarem a mesma frustração.
     montar();
+    // A causa aparece na escada E na etapa "Criação pausada" — o mesmo fato,
+    // dito pela mesma fonte nos dois lugares. Antes a etapa dizia OUTRA coisa
+    // ("a prova ainda não passou"), que era elegibilidade recalculada aqui.
     expect(
-      screen.getByText(/a janela autorizada de criação admite apenas Search/i),
-    ).toBeTruthy();
+      screen.getAllByText(/a janela autorizada de criação admite apenas Search/i).length,
+    ).toBeGreaterThanOrEqual(1);
     // `getAllBy`: a frase aparece no texto E na descrição acessível do chip de
     // origem, de propósito — quem navega por leitor de tela ouve a mesma
     // resposta que quem lê a linha.
@@ -127,7 +133,7 @@ describe('a escada dos quatro portões', () => {
         ],
       }),
     });
-    expect(screen.getByText(causa)).toBeTruthy();
+    expect(screen.getAllByText(causa).length).toBeGreaterThanOrEqual(1);
   });
 
   it('INDETERMINADO não é desenhado como bloqueado', () => {
@@ -183,6 +189,58 @@ describe('a escada dos quatro portões', () => {
   });
 });
 
+describe('a ativação não vira um degrau alcançável', () => {
+  // ⚠️ ACHADO QUE BLOQUEAVA O ACEITE (revisão adversarial Codex, lente 1).
+  //
+  // A etapa de ativação fechava com "não há campanha criada para ligar" — uma
+  // dependência de SEQUÊNCIA. Bastava responder `criacao` para ela abrir. Só
+  // que ela não abre nunca: `_portao_ativavel` devolve BLOQUEADO nos quatro
+  // canais, em todos os perfis de sessão, e não existe rota de ativação entre
+  // os 32 endpoints. Prometer o degrau seguinte de um caminho que termina ali
+  // é a promessa falsa mais cara desta tela.
+  it('com o portão fechado, a ativação fecha pela causa do servidor', () => {
+    montar();
+    expect(
+      screen.getAllByText(/não existe rota de ativação neste sistema/i).length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText(/não há campanha criada para ligar/i)).toBeNull();
+  });
+
+  it('nem respondendo a criação a ativação abre', () => {
+    // A prova direta na máquina: mesmo com `criacao` respondida — o estado que
+    // antes destravava a etapa —, o portão do servidor continua mandando.
+    const passos = montarConversa({
+      manifesto: contrato().manifesto,
+      respostas: { criacao: 'campanha 123 criada, pausada' },
+      travaAberta: true,
+      podeAprovar: true,
+      portoes: {
+        validavel: { estado: 'PERMITIDO', causa: null },
+        criavel_pausada: { estado: 'PERMITIDO', causa: null },
+        ativavel: {
+          estado: 'BLOQUEADO',
+          causa: 'não existe rota de ativação neste sistema.',
+        },
+      },
+    });
+    const ativacao = passos.find((p) => p.etapa === 'ativacao')!;
+    expect(ativacao.estado).toBe('bloqueada');
+    expect(ativacao.dependencia?.dependencia).toMatch(/não existe rota de ativação/i);
+  });
+
+  it('sem portão lido, a regra local NÃO abre a ativação por conta própria', () => {
+    // Ausência de leitura não pode virar permissão. Sem `portoes`, a máquina
+    // cai na regra conservadora e a etapa continua fechada.
+    const passos = montarConversa({
+      manifesto: contrato().manifesto,
+      respostas: {},
+      travaAberta: true,
+      podeAprovar: true,
+    });
+    expect(passos.find((p) => p.etapa === 'ativacao')!.estado).toBe('bloqueada');
+  });
+});
+
 describe('nenhum ato falso sai desta tela', () => {
   it('não existe controle de ativar, nem quando ativável vem sem bloqueador', () => {
     // Nenhum canal deste sistema tem rota de ativação: `_portao_ativavel`
@@ -197,16 +255,40 @@ describe('nenhum ato falso sai desta tela', () => {
         ],
       }),
     });
-    for (const b of screen.queryAllByRole('button')) {
-      expect(b.textContent ?? '').not.toMatch(/ativar|ligar|despausar|habilitar/i);
-    }
+    // ⚠️ Antes este laço percorria uma coleção VAZIA e passava sem executar uma
+    // única asserção — o defeito que a revisão adversarial chamou de vacuamente
+    // verdadeiro. Agora o estado da coleção é afirmado primeiro, e a busca é
+    // por qualquer elemento interativo (não só `role=button`), incluindo os que
+    // um "Confirmar" genérico traria.
+    const interativos = [
+      ...screen.queryAllByRole('button'),
+      ...screen.queryAllByRole('link'),
+      ...Array.from(document.querySelectorAll('input, select, textarea, [onclick]')),
+    ];
+    expect(interativos.length, 'a montagem não tem controle nenhum a inspecionar')
+      .toBe(0);
+    // E o texto inteiro da tela também não promete o ato.
+    expect(document.body.textContent ?? '').not.toMatch(
+      /\b(ativar|despausar|habilitar) (esta )?campanha\b/i,
+    );
   });
 
-  it('a tela não dispara chamada privilegiada: não há botão de provar nem de subir', () => {
+  it('a tela não dispara chamada privilegiada: nenhum controle, e nenhum cliente HTTP', () => {
     montar();
-    for (const b of screen.queryAllByRole('button')) {
-      expect(b.textContent ?? '').not.toMatch(/provar|subir|criar campanha|lançar/i);
-    }
+    // Primeiro o fato: a jornada é leitura. Ela não tem controle nenhum além do
+    // "tentar ler de novo", que só aparece no estado de falha.
+    expect(screen.queryAllByRole('button').length).toBe(0);
+
+    // Depois a prova estrutural, que é a que vale: o módulo não importa o
+    // cliente HTTP do backend. Um botão renomeado passaria por qualquer regex
+    // de texto; um `import` não passa.
+    const fonte = readFileSync(
+      resolve(__dirname, '..', 'JornadaDoCanal.tsx'),
+      'utf-8',
+    );
+    expect(fonte).not.toMatch(/pautadorApi/);
+    expect(fonte).not.toMatch(/\bfetch\(/);
+    expect(fonte).not.toMatch(/useMutation/);
   });
 });
 
@@ -217,12 +299,54 @@ describe('os estados degradados são três frases diferentes', () => {
     expect(screen.queryByText(/Criável pausada/i)).toBeNull();
   });
 
-  it('falha de leitura diz que não é bloqueio, e oferece reler', () => {
-    montar({ falhou: true, aoRevalidar: () => {} });
+  it('falha SEM leitura anterior: não afirma bloqueio, e oferece reler', () => {
+    montar({ contrato: null, falhou: true, aoRevalidar: () => {} });
     const alerta = screen.getByRole('alert');
     expect(alerta.textContent).toMatch(/não afirma que ele esteja bloqueado/i);
     expect(screen.getByRole('button', { name: /tentar ler de novo/i })).toBeTruthy();
     expect(screen.queryByText(/Criável pausada/i)).toBeNull();
+  });
+
+  it('falha COM leitura anterior preserva o veredito e diz que envelheceu', () => {
+    // ⚠️ ACHADO DA REVISÃO ADVERSARIAL (lente 3). O React Query preserva o
+    // último resultado bom quando uma RELEITURA falha. Apagar o contrato da
+    // tela colapsava "conhecido, porém velho" em "não sei nada" — dois estados
+    // que pedem atos diferentes, e o operador perdia um veredito que continua
+    // sendo o melhor disponível.
+    montar({ falhou: true, aoRevalidar: () => {} });
+    const alerta = screen.getByRole('alert');
+    expect(alerta.textContent).toMatch(/última leitura que deu certo/i);
+    expect(alerta.textContent).toMatch(/ninguém os confirmou agora/i);
+    // Os portões continuam na tela — são reais, não placeholder.
+    expect(screen.getByText(/Criável pausada/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /tentar ler de novo/i })).toBeTruthy();
+  });
+
+  it('o aviso de releitura falha não vira veredito novo: a escada é a mesma', () => {
+    // Sem o aviso, a mesma escada. Com o aviso, a mesma escada mais o aviso —
+    // nenhum estado muda por causa da falha de releitura.
+    const portoes = () =>
+      ['Planejável', 'Validável', 'Criável pausada', 'Ativável'].map((rotulo) => {
+        const linha = screen
+          .getAllByRole('listitem')
+          .find((li) => (li.textContent ?? '').includes(rotulo))!;
+        // A palavra do estado, que é o que o operador lê.
+        return [rotulo, /permitido|bloqueado|não apurado|não cabe/i
+          .exec(linha.textContent ?? '')?.[0]?.toLowerCase()];
+      });
+
+    montar({ falhou: true });
+    const comFalha = portoes();
+    cleanup();
+    montar();
+    const semFalha = portoes();
+
+    // Nenhum estado muda por causa da falha de RELEITURA: o veredito é o mesmo,
+    // o que mudou foi só a confiança na idade dele.
+    expect(comFalha).toEqual(semFalha);
+    expect(comFalha.map(([, estado]) => estado)).toEqual([
+      'permitido', 'permitido', 'bloqueado', 'bloqueado',
+    ]);
   });
 
   it('contrato ausente é dito como defeito do servidor, não como recusa', () => {
@@ -293,25 +417,22 @@ describe('a conversa de criação chega junto com os portões', () => {
     ).toBeTruthy();
   });
 
-  it('a criação fica fechada pela prova, ANTES de a trava sequer ser consultada', () => {
-    // ⚠️ Esta prova fixa a ORDEM das dependências, e ela importa.
+  it('a criação fecha pela CAUSA DO SERVIDOR, e nenhum estado de trava a reabre', () => {
+    // ⚠️ Antes esta etapa fechava por uma regra local ("a prova ainda não
+    // passou"), enquanto a escada logo acima dizia que o motivo era a janela do
+    // canário. Dois motivos para o mesmo fato, na mesma tela — e o operador
+    // levado à porta errada.
     //
-    // `travaDaEtapa` pergunta pela prova primeiro: sem prova aprovada, a
-    // criação está fechada e o estado da trava é irrelevante para o operador
-    // naquele instante. Dizer "a trava está fechada" aqui mandaria a pessoa
-    // pedir a abertura da trava para destravar algo que a trava não segura —
-    // e a trava é justamente o que não se pede por engano.
-    //
-    // A trava continua entrando na máquina e volta a decidir assim que a prova
-    // for respondida; o que esta prova impede é a tela antecipar o motivo.
+    // Agora quem responde é o portão `criavel_pausada`, e nenhuma combinação de
+    // trava o reabre.
     for (const trava of [null, false, true] as const) {
       cleanup();
       montar({ travaAberta: trava });
       expect(
-        screen.getByText(/a prova contra a conta ainda não passou/i),
-        `trava=${String(trava)} deveria continuar barrando pela prova`,
-      ).toBeTruthy();
-      expect(screen.queryByText(/trava de escrita/i)).toBeNull();
+        screen.getAllByText(/a janela autorizada de criação admite apenas Search/i).length,
+        `trava=${String(trava)} deveria continuar fechando pela causa do servidor`,
+      ).toBeGreaterThanOrEqual(2);
+      expect(screen.queryByText(/a prova contra a conta ainda não passou/i)).toBeNull();
     }
   });
 
