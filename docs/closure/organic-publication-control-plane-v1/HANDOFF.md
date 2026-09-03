@@ -3,9 +3,9 @@
 **Data:** 02/09/2026
 **Branch:** `sprint/organic-publication-control-plane-v1`
 **Base:** `origin/volc-os-v2` = `382c5d4c67fc521d5e6739f8e76d1c36a96fdb53` (conferida)
-**HEAD:** `ea43c0329f02d96b26515c34f139c2587da44bbe`
+**HEAD:** `33136f4` + este commit (ver `git log --oneline -5`)
 **Worktree:** `/private/tmp/volc-organic-publication-control-plane-v1`
-**Árvore:** limpa · **Commits:** 4 locais, **nenhum push, nenhum merge**
+**Árvore:** limpa · **Commits:** 5 locais, **nenhum push, nenhum merge**
 
 **Veredito:** `LOCAL_OPERATIONAL_SPINE_ACCEPTED`.
 **Não** `PRODUCTION_READY` — nenhuma página real, nenhuma instância Postiz e
@@ -147,7 +147,7 @@ Detalhe em `GATES.md`. Resumo:
 
 | gate | baseline | branch |
 |---|---|---|
-| backend amplo | 2600 / 87 skip / **0 fail** | 2723 / 87 skip / **0 fail** |
+| backend amplo | 2600 / 87 skip / **0 fail** | 2728 / 87 skip / **0 fail** |
 | frontend amplo | 1134 / **2 fail** (7 arquivos) | 1248 / **2 fail** (**os mesmos** 7) |
 | `tsc` | 117 linhas, ratchet 76 | **saída byte a byte idêntica** |
 | build | — | exit 0 |

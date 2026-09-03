@@ -50,7 +50,7 @@ git diff --check
 |---|---|---|---|---|
 | 1 | ciclo SQL v14_01 | n/a (não existia) | aplicar → operar → reverter → reaplicar, **completo** | ✅ |
 | 2 | backend focal | n/a | **128 passed** | ✅ |
-| 3 | backend amplo | 2600 passed / 87 skipped / **0 failed** | 2723 passed / 87 skipped / **0 failed** | ✅ +123, zero regressão |
+| 3 | backend amplo | 2600 passed / 87 skipped / **0 failed** | 2728 passed / 87 skipped / **0 failed** | ✅ +128, zero regressão |
 | 4 | frontend focal | n/a | **112 passed** (3 arquivos) | ✅ |
 | 5 | frontend amplo | 1134 passed / **2 failed** (7 arquivos) | 1248 passed / **2 failed** (7 arquivos) | ✅ mesmas falhas |
 | 6 | `tsc --noEmit -p tsconfig.app.json` | 117 linhas / ratchet **76** | 117 linhas / ratchet **76** | ✅ saída **byte a byte idêntica** |
