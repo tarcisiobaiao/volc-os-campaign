@@ -74,18 +74,21 @@ declarado continua sendo hyperlink externo e continua bloqueando — mas em
 Um portão que reprova demais é desligado pela operação, e portão desligado não
 protege nada. Três fontes conhecidas de falso positivo, todas medidas:
 
-1. **Casamento por substring sem fronteira de palavra.** `_ORGAOS` contém
-   `"pis"`, então "epi**sód**io" não casa mas "**pis**ta" casa;
-   `_DOCUMENTOS_RESTRITOS` contém `"visto"` (particípio de *ver*) e `"cin"`
-   (dentro de "va**cin**a"). Um texto inocente pode disparar
-   `AVISO_NAO_OFICIAL_AUSENTE`.
-2. **`ANCORA_INCONGRUENTE_COM_DESTINO`** compara tokens da âncora com o caminho
-   da URL. Ele foi **promovido a bloqueio** no papel estrito nesta sprint, o que
-   aumenta o custo de um falso positivo. Foi medido nos quatro destinos
-   preservados e nos dois lidos ao vivo, e disparou onde havia incongruência
-   real — mas a heurística é textual.
+1. ~~Casamento por substring sem fronteira de palavra~~ — **corrigido**.
+   `_contar_termo` passou a exigir fronteira de palavra, e `"cin"`/`"visto"`
+   saíram de `_DOCUMENTOS_RESTRITOS` (voltam pela forma não ambígua: "visto
+   americano", "carteira de identidade nacional"). Travado por
+   `test_rc11_documento_restrito_exige_a_palavra_inteira`.
+2. **`ANCORA_INCONGRUENTE_COM_DESTINO`** foi promovido a bloqueio e **devolvido
+   a risco na mesma sprint**. Medido no papel estrito, ele reprovava CTA interno
+   banal: "Simule agora" → `/rec/calculadora-do-saque/`, "Continuar" →
+   `/rec/regras-do-fgts/`. A regra exige interseção de tokens entre a âncora e o
+   caminho, e um CTA bom quase nunca repete o slug — ele diz o que o leitor
+   GANHA, não onde ele vai. Continua sendo emitido como risco, e o operador o lê.
 3. **`_marcas_sem_lastro`** procura nome próprio dentro de uma moldura de
-   parceria. Não é NER; ele erra em nome próprio que não é marca.
+   parceria. Não é NER; ele erra em nome próprio que não é marca. O substantivo
+   que ABRE a moldura ("Empresas como…") deixou de ser colhido como marca —
+   era falso bloqueio medido —, mas a heurística continua textual.
 
 O vazamento de profundidade de botão — que marcava **todo** link posterior ao
 primeiro `wp-block-button` como `em_botao` e fabricava `PAGINA_PONTE` — **foi
