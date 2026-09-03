@@ -1,0 +1,16 @@
+{
+  "name": "volc-os-remotion-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runtime Remotion minimo e hermetico do VOLC O.S. Nao e a fabrica externa: e uma composicao propria, com fonte licenciada versionada neste repositorio e zero rede durante o render.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@remotion/bundler": "4.0.479",
+    "@remotion/fonts": "4.0.479",
+    "@remotion/renderer": "4.0.479",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.479"
+  }
+}

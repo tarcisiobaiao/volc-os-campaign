@@ -241,6 +241,70 @@ def test_quem_nao_e_dono_nao_transiciona(deposito: Deposito) -> None:
     assert deposito.por_id(t.id).estado is EstadoDoTrabalho.CLAIMED
 
 
+def test_o_zumbi_homonimo_nao_derruba_o_dono_vivo(deposito: Deposito) -> None:
+    """A cerca e `(operario, tentativa)`, e nao so o nome.
+
+    O nome padrao do operario e `worker-<pid>`, e PID repete entre containers.
+    Contraprova executada antes do conserto (SQLite, `Operario` real):
+
+        zumbi     reivindica -> tentativa=1, 'worker-4242', lease curto
+        o lease vence, `devolver_vencidos` devolve o trabalho para a fila
+        dono vivo reivindica -> tentativa=2, 'worker-4242'  (mesmo PID)
+        o zumbi acorda e chama transicionar(QUEUED, exigir_operario='worker-4242')
+        ACEITO — e o trabalho que o dono vivo produz volta para `queued`
+
+    `Operario._ainda_somos_donos` ja conferia os dois, e a docstring dele ja
+    dizia "a posse e da REIVINDICACAO, nao do nome". Quem GRAVA e o deposito, e
+    o portao perguntava so o nome. Uma guarda que depende de o chamador se
+    lembrar dela e documentacao, nao guarda.
+    """
+    deposito.enfileirar(encomenda())
+    zumbi = deposito.reivindicar("worker-4242", lease_s=-1)
+    assert deposito.devolver_vencidos() == 1
+
+    vivo = deposito.reivindicar("worker-4242", lease_s=60)
+    assert vivo.tentativa != zumbi.tentativa, (
+        "reivindicar precisa incrementar a tentativa, senao nao ha token de cerca"
+    )
+
+    with pytest.raises(TransicaoProibida):
+        deposito.transicionar(
+            zumbi.id, EstadoDoTrabalho.QUEUED,
+            falha={"codigo": "motor_recusou", "mensagem": "zumbi",
+                   "permanente": False},
+            exigir_operario="worker-4242", exigir_tentativa=zumbi.tentativa,
+        )
+    assert deposito.por_id(zumbi.id).estado is EstadoDoTrabalho.CLAIMED, (
+        "o zumbi tirou o trabalho das maos do dono vivo"
+    )
+
+
+def test_o_dono_vivo_escreve_com_o_proprio_token(deposito: Deposito) -> None:
+    """A cerca nao pode ter fechado a porta para quem tem a chave."""
+    deposito.enfileirar(encomenda())
+    zumbi = deposito.reivindicar("worker-4242", lease_s=-1)
+    deposito.devolver_vencidos()
+    vivo = deposito.reivindicar("worker-4242", lease_s=60)
+
+    andou = deposito.transicionar(
+        vivo.id, EstadoDoTrabalho.RUNNING,
+        exigir_operario="worker-4242", exigir_tentativa=vivo.tentativa,
+    )
+    assert andou.estado is EstadoDoTrabalho.RUNNING
+    assert zumbi.tentativa != vivo.tentativa
+
+
+def test_sem_o_token_a_garantia_antiga_continua(deposito: Deposito) -> None:
+    """`exigir_tentativa` e opcional: quem so sabe o nome nao perde nada."""
+    deposito.enfileirar(encomenda())
+    t = deposito.reivindicar("op-A", lease_s=60)
+    with pytest.raises(TransicaoProibida):
+        deposito.transicionar(t.id, EstadoDoTrabalho.RUNNING, exigir_operario="op-B")
+    assert deposito.transicionar(
+        t.id, EstadoDoTrabalho.RUNNING, exigir_operario="op-A"
+    ).estado is EstadoDoTrabalho.RUNNING
+
+
 def test_o_dono_some_quando_o_trabalho_sai_de_execucao(deposito: Deposito) -> None:
     t = ate_validating(deposito)
     final = deposito.transicionar(

@@ -25,7 +25,7 @@ import { Carregando, ErroDeLeitura, Vazio } from '@/components/criativos/comum/E
 import { Preview } from '@/components/criativos/comum/Preview';
 import { SeloDaAprovacao, SeloDeProcedencia } from '@/components/criativos/comum/Selo';
 import { FormularioDeDecisao } from '@/components/criativos/aprovacoes/Decisao';
-import { fraseDaFila } from '@/components/criativos/aprovacoes/regras';
+import { fraseDaFila, pecaEDecidivel } from '@/components/criativos/aprovacoes/regras';
 import { custoLegivel, dimensoes, instante, kindLegivel } from '@/components/criativos/comum/formato';
 import { FILTROS_VAZIOS } from '@/components/criativos/biblioteca/filtros';
 import { useCriativosBiblioteca, useDecidirAprovacao } from '@/hooks/useCriativosBiblioteca';
@@ -101,7 +101,7 @@ const ItemDaFila: React.FC<{ asset: AssetMaster; aoRenovar: () => void }> = ({
         <div id={idPainel} className="border-t border-border px-3 py-4">
           <FormularioDeDecisao
             prefixo={`fila-${asset.id}`}
-            aprovavel
+            aprovavel={pecaEDecidivel(asset)}
             enviando={decidir.isPending}
             erro={decidir.isError ? decidir.error : null}
             aoDecidir={(pedido) => decidir.mutate(pedido)}

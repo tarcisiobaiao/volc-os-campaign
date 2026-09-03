@@ -54,6 +54,27 @@ exception when others then
 end;
 $$;
 
+-- ⚠️ Uma prova que LÊ uma coluna inexistente aborta o psql inteiro sob
+-- `ON_ERROR_STOP` e leva junto todas as provas seguintes — o mesmo defeito de
+-- arranjo que já derrubou a primeira versão destas provas. `mede` executa a
+-- leitura por SQL dinâmico e devolve a falha como linha de relatório.
+create or replace function pg_temp.mede(
+    rotulo text, sql text, esperado text
+) returns text
+language plpgsql as $$
+declare visto text;
+begin
+    execute sql into visto;
+    if visto is not distinct from esperado then
+        return '  ok   ' || rotulo;
+    end if;
+    return 'FALHOU  ' || rotulo || ' :: esperava ' || coalesce(esperado, '<null>')
+           || ', veio ' || coalesce(visto, '<null>');
+exception when others then
+    return 'FALHOU  ' || rotulo || ' :: a leitura quebrou (' || sqlstate || '): ' || sqlerrm;
+end;
+$$;
+
 create or replace function pg_temp.aceita(rotulo text, sql text) returns text
 language plpgsql as $$
 begin
@@ -480,3 +501,162 @@ select pg_temp.aceita('LOCAL -> VERIFIED_OK num unico UPDATE atomico',
     from public.criativo_render_recibo r
     join public.criativo_render_job j on j.id = r.job_id
     where a.recibo_id = r.id and a.slot='4x5'$q$);
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- DEFEITO D4 — `tolerancia_lufs` existia no contrato Python e nao no schema
+-- ══════════════════════════════════════════════════════════════════════════
+-- `backend/app/criativo/bancada/contrato.py`, dataclass `MedidaDeAudio`, declara
+-- QUATRO numeros: lufs_integrado, true_peak_dbtp, alvo_lufs e tolerancia_lufs.
+-- A tabela de recibo guardava tres. A tolerancia e justamente o que transforma
+-- "-15,8 LUFS com alvo -16" em PASS ou FAIL: sem ela gravada, o recibo nao
+-- permite reconstruir o veredito que foi dado no dia. Guardar a medida e o alvo
+-- e jogar fora a margem e preservar a conta pela metade.
+--
+-- Estas provas FALHAM (SQLSTATE 42703, coluna inexistente) contra o schema de
+-- tres colunas. E essa a contraprova vermelha do D4.
+
+select case
+       when count(*) = 4 then '  ok   recibo guarda as 4 medidas de audio do contrato'
+       else 'FALHOU  recibo guarda ' || count(*) || ' das 4 medidas de audio (falta '
+            || coalesce((select string_agg(c, ', ') from unnest(array[
+                 'lufs_integrado','true_peak_dbtp','alvo_lufs','tolerancia_lufs']) c
+                 where c not in (select column_name from information_schema.columns
+                                  where table_schema='public'
+                                    and table_name='criativo_render_recibo')), '?') || ')'
+       end
+  from information_schema.columns
+ where table_schema='public' and table_name='criativo_render_recibo'
+   and column_name in ('lufs_integrado','true_peak_dbtp','alvo_lufs','tolerancia_lufs');
+
+-- Ausencia e NULL, nunca 0 — o mesmo tratamento das outras tres.
+select case
+       when count(*) = 1 then '  ok   tolerancia_lufs e numeric e aceita ausencia (NULL)'
+       else 'FALHOU  tolerancia_lufs ausente ou com tratamento de ausencia diferente'
+       end
+  from information_schema.columns
+ where table_schema='public' and table_name='criativo_render_recibo'
+   and column_name='tolerancia_lufs' and data_type='numeric' and is_nullable='YES';
+
+select pg_temp.aceita('recibo grava as 4 medidas de audio como numeros',
+ $q$insert into public.criativo_render_job (id, tenant_id, idempotency_key, encomenda,
+    motor_slug, seed) values ('a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4','tenant-A','k-audio',
+    '{}'::jsonb,'m',7);
+    update public.criativo_render_job set estado='claimed', owner='op-audio',
+    lease_ate=now()+interval '60s' where id='a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4';
+    update public.criativo_render_job set estado='running'
+    where id='a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4';
+    update public.criativo_render_job set estado='validating'
+    where id='a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4';
+    insert into public.criativo_render_recibo (job_id, tenant_id, produzido_por,
+    motor_slug, motor_versao, seed, versoes, parametros, assinatura, iniciado_em,
+    terminado_em, lufs_integrado, true_peak_dbtp, alvo_lufs, tolerancia_lufs)
+    values ('a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4','tenant-A','op-audio','m','1',7,
+    '{}'::jsonb,'{}'::jsonb, repeat('a',64), now(), now(), -15.8, -1.2, -16.0, 1.0)$q$);
+
+select pg_temp.mede('a margem do gate de audio sobrevive no recibo',
+ $q$select lufs_integrado || '/' || true_peak_dbtp || '/' || alvo_lufs || '/' || tolerancia_lufs
+    from public.criativo_render_recibo
+    where job_id='a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4'$q$,
+ '-15.8/-1.2/-16.0/1.0');
+
+-- Ausencia continua sendo ausencia: recibo sem medida de audio permanece legal.
+select pg_temp.aceita('recibo sem medida de audio continua legal (ausencia e NULL)',
+ $q$insert into public.criativo_render_job (id, tenant_id, idempotency_key, encomenda,
+    motor_slug, seed) values ('a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5','tenant-A','k-mudo',
+    '{}'::jsonb,'m',7);
+    update public.criativo_render_job set estado='claimed', owner='op-mudo',
+    lease_ate=now()+interval '60s' where id='a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5';
+    update public.criativo_render_job set estado='running'
+    where id='a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5';
+    update public.criativo_render_job set estado='validating'
+    where id='a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5';
+    insert into public.criativo_render_recibo (job_id, tenant_id, produzido_por,
+    motor_slug, motor_versao, seed, versoes, parametros, assinatura, iniciado_em,
+    terminado_em) values ('a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5','tenant-A','op-mudo',
+    'm','1',7,'{}'::jsonb,'{}'::jsonb, repeat('b',64), now(), now())$q$);
+
+select pg_temp.mede('sem audio, tolerancia_lufs e NULL e nao 0',
+ $q$select coalesce(tolerancia_lufs::text, 'NULL') from public.criativo_render_recibo
+    where job_id='a5a5a5a5-a5a5-4a5a-8a5a-a5a5a5a5a5a5'$q$, 'NULL');
+
+-- ── 12. storage_sha256_remoto ───────────────────────────────────────────────
+-- ⚠️ O booleano `storage_hash_conferido` e o `str | None` que
+-- `armazenamento_verificado.estado_de` recebe eram tipos diferentes para o MESMO
+-- fato: aqui um veredito, la o hash relido. Nenhum dos dois tinha produtor, entao
+-- a divergencia era latente — e latente e o que vira defeito no dia em que
+-- alguem liga os dois lados sem ligar uma coisa a outra.
+--
+-- A coluna nova guarda o hash RELIDO. Ela nao substitui o booleano: o booleano
+-- responde "bateu?" e e o que o gatilho ja usa; o hash responde "o que voltou?",
+-- que e a unica pergunta util no dia de um mismatch.
+--
+-- ⚠️ ACHADO NA PROPRIA PROVA. A primeira versao usava
+-- `insert ... select id from criativo_render_recibo where job_id=...`. Quando o
+-- fixture do recibo falhava, o SELECT devolvia ZERO linhas, o INSERT sucedia sem
+-- inserir nada, e `recusa` reportava "foi aceito e devia ser recusado" — uma
+-- prova que falha pelo motivo errado. Aqui o `recibo_id` e literal: um insert
+-- sobre recibo inexistente estoura FK (23503), que `recusa` ja recusa como
+-- prova quebrada.
+
+select pg_temp.aceita('job proprio para as provas de storage remoto',
+ $q$insert into public.criativo_render_job (id, tenant_id, idempotency_key, encomenda, motor_slug, seed)
+    values ('9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a','tenant-A','k-storage-remoto','{}'::jsonb,'remotion-local',7)$q$);
+select pg_temp.aceita('job de storage vai a claimed',
+ $q$update public.criativo_render_job set estado='claimed', owner='op-s',
+    lease_ate=now()+interval '5 min', batimento_em=now() where id='9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a'$q$);
+select pg_temp.aceita('job de storage vai a running',
+ $q$update public.criativo_render_job set estado='running' where id='9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a'$q$);
+select pg_temp.aceita('job de storage vai a validating',
+ $q$update public.criativo_render_job set estado='validating' where id='9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a'$q$);
+select pg_temp.aceita('recibo do job de storage',
+ $q$insert into public.criativo_render_recibo (id, job_id, tenant_id, produzido_por, motor_slug,
+    motor_versao, seed, versoes, parametros, assinatura, iniciado_em, terminado_em)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b', '9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a','tenant-A','op-s','remotion-local','1',7,
+    '{}'::jsonb,'{}'::jsonb, repeat('e',64), now(), now())$q$);
+
+select pg_temp.aceita('hash remoto igual ao local, com carimbo e veredito true',
+ $q$insert into public.criativo_render_artefato (recibo_id, slot, mime, bytes, sha256,
+    storage_chave, storage_conferido_em, storage_hash_conferido, storage_sha256_remoto)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b','s1','video/mp4',10,repeat('a',64),
+      'criativos/tenant-A/9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a/s1__'||repeat('a',32)||'.mp4',
+      now(), true, repeat('a',64))$q$);
+
+select pg_temp.aceita('MISMATCH e REGISTRAVEL: false com hash remoto diferente',
+ $q$insert into public.criativo_render_artefato (recibo_id, slot, mime, bytes, sha256,
+    storage_chave, storage_conferido_em, storage_hash_conferido, storage_sha256_remoto)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b','s3','video/mp4',10,repeat('a',64),
+      'criativos/tenant-A/9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a/s3__'||repeat('a',32)||'.mp4',
+      now(), false, repeat('b',64))$q$);
+
+select pg_temp.recusa('veredito true com hash remoto DIFERENTE',
+ $q$insert into public.criativo_render_artefato (recibo_id, slot, mime, bytes, sha256,
+    storage_chave, storage_conferido_em, storage_hash_conferido, storage_sha256_remoto)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b','s2','video/mp4',10,repeat('a',64),
+      'criativos/tenant-A/9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a/s2__'||repeat('a',32)||'.mp4',
+      now(), true, repeat('b',64))$q$,
+ '23514', 'veredito_coerente');
+
+select pg_temp.recusa('hash remoto SEM o carimbo da leitura que o produziu',
+ $q$insert into public.criativo_render_artefato (recibo_id, slot, mime, bytes, sha256,
+    storage_sha256_remoto)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b','s4','video/mp4',10,repeat('a',64), repeat('a',64))$q$,
+ '23514', 'hash_remoto_exige_conferencia');
+
+select pg_temp.recusa('hash remoto com prefixo de algoritmo',
+ $q$insert into public.criativo_render_artefato (recibo_id, slot, mime, bytes, sha256,
+    storage_chave, storage_conferido_em, storage_hash_conferido, storage_sha256_remoto)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b','s5','video/mp4',10,repeat('a',64),
+      'criativos/tenant-A/9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a9a/s5__'||repeat('a',32)||'.mp4',
+      now(), true, 'sha256:'||repeat('a',64))$q$,
+ '23514', 'hash_remoto_forma');
+
+select pg_temp.aceita('artefato sem leitura nenhuma',
+ $q$insert into public.criativo_render_artefato (recibo_id, slot, mime, bytes, sha256)
+    values ('9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b','s6','video/mp4',10,repeat('a',64))$q$);
+select case
+    when storage_conferido_em is null and storage_hash_conferido is null
+     and storage_sha256_remoto is null
+    then '  ok   sem leitura, os TRES campos sao NULL — nao false, nao zero, nao string vazia'
+    else 'FALHOU  a ausencia de leitura nao ficou NULL nos tres campos'
+  end
+  from public.criativo_render_artefato where recibo_id = '9b9b9b9b-9b9b-4b9b-8b9b-9b9b9b9b9b9b' and slot='s6';

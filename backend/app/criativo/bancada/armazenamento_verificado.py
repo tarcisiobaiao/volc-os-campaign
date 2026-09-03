@@ -166,21 +166,34 @@ def estado_de(
     *,
     storage_chave: str | None,
     storage_conferido_em: datetime | None,
-    storage_hash_conferido: str | None,
+    storage_hash_conferido: bool | None,
+    storage_sha256_remoto: str | None = None,
     sha256_do_artefato: str,
 ) -> EstadoDoArmazenamento:
     """Classifica uma LINHA (do banco ou de um registro) na mesma máquina.
 
-    Recebe exatamente as três colunas que o gatilho olha em
+    Recebe exatamente as colunas que o gatilho olha em
     `criativo_render_artefato`. Existe para que a leitura de volta do banco e a
     publicação usem a MESMA regra: sem isto, a aplicação teria a sua noção de
     "verificado" e o banco a dele, que é a dupla verdade que o P17-T04 já pagou
     para eliminar na fila de trabalhos.
 
+    ⚠️ DIVERGÊNCIA FECHADA. `storage_hash_conferido` é `boolean` no SQL e esta
+    função recebia a STRING do sha256 remoto — as duas metades da mesma máquina
+    trocando tipos diferentes para o mesmo fato. Nenhuma das duas tinha produtor,
+    então nada quebrava; quebraria no dia em que alguém ligasse os dois lados.
+
+    Agora são dois campos com papéis distintos, e o segundo é opcional para que
+    uma linha gravada antes de `storage_sha256_remoto` existir continue legível:
+
+    - `storage_hash_conferido` é o VEREDITO (`bateu?`), e é o que decide;
+    - `storage_sha256_remoto` é O QUE VOLTOU, e serve à forense de um mismatch.
+
     Duas linhas impossíveis levantam em vez de virar um estado plausível:
-    conferência sem endereço (regra 3 do gatilho) e hash conferido sem carimbo
-    de conferência — meia conferência registrada é pior que nenhuma, porque
-    parece completa.
+    conferência sem endereço (regra 3 do gatilho) e veredito sem carimbo de
+    conferência — meia conferência registrada é pior que nenhuma, porque parece
+    completa. E uma terceira: veredito que CONTRADIZ o hash remoto, que é a única
+    forma de os dois campos contarem histórias opostas sobre a mesma leitura.
     """
     if storage_chave is None:
         if storage_conferido_em is not None:
@@ -188,27 +201,50 @@ def estado_de(
                 "conferencia sem endereco no armazenamento: "
                 "storage_conferido_em preenchido com storage_chave nula"
             )
-        if storage_hash_conferido is not None:
-            raise ValueError("hash conferido sem endereco no armazenamento")
+        if storage_hash_conferido is not None or storage_sha256_remoto is not None:
+            raise ValueError("conferencia sem endereco no armazenamento")
         return EstadoDoArmazenamento.LOCAL
 
     if storage_conferido_em is None:
-        if storage_hash_conferido is not None:
+        if storage_hash_conferido is not None or storage_sha256_remoto is not None:
             raise ValueError(
-                "hash conferido sem carimbo de conferencia: "
+                "veredito sem carimbo de conferencia: "
                 "conferencia pela metade nao e um estado"
             )
         return EstadoDoArmazenamento.UPLOADED_UNVERIFIED
 
-    # ⚠️ Carimbo COM hash nulo é o objeto ausente na releitura: a conferência
-    # aconteceu e não havia o que hashear. Preencher esse campo com um hash de
-    # bytes vazios seria inventar um conteúdo que ninguém leu — ausência
-    # preservada como ausência, e o veredito é divergência.
     if storage_hash_conferido is None:
-        return EstadoDoArmazenamento.VERIFIED_MISMATCH
-    if storage_hash_conferido == sha256_do_artefato:
-        return EstadoDoArmazenamento.VERIFIED_OK
-    return EstadoDoArmazenamento.VERIFIED_MISMATCH
+        raise ValueError(
+            "carimbo de conferencia sem veredito: "
+            "alguem releu e nao registrou o que concluiu"
+        )
+    if storage_sha256_remoto is not None:
+        # ⚠️ `hash_puro` nos DOIS lados, e nenhum dos dois pode ser dispensado.
+        # A coluna do banco guarda `<hex>` (é o que o CHECK `hash_forma` aceita)
+        # e a máquina de armazenamento fala `sha256:<hex>`; um par misto — uma
+        # metade lida do banco, a outra vinda da publicação em memória — fazia
+        # esta comparação dar `False` com o veredito `True`, e a linha correta
+        # LEVANTAVA "veredito contradiz o hash remoto". Um leitor que recusa a
+        # linha certa é pior que um que aceita a errada: a forense de um
+        # mismatch real começa por conseguir ler a linha.
+        #
+        # Normalizar é idempotente, então quem já manda a forma pura — o caso do
+        # banco, que é o de produção — não muda de comportamento.
+        bate = hash_puro(storage_sha256_remoto) == hash_puro(sha256_do_artefato)
+        if bate is not storage_hash_conferido:
+            raise ValueError(
+                "veredito contradiz o hash remoto: os dois campos contam "
+                "historias opostas sobre a mesma leitura"
+            )
+    # ⚠️ Veredito `False` com hash remoto NULO é o objeto ausente na releitura: a
+    # conferência aconteceu e não havia o que hashear. Preencher esse campo com o
+    # hash de bytes vazios seria inventar um conteúdo que ninguém leu — ausência
+    # preservada como ausência, e o veredito é divergência.
+    return (
+        EstadoDoArmazenamento.VERIFIED_OK
+        if storage_hash_conferido
+        else EstadoDoArmazenamento.VERIFIED_MISMATCH
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -228,6 +264,21 @@ def _segmento(nome: str, valor: str) -> str:
             f"{nome} invalido para chave de armazenamento: {valor!r}"
         )
     return valor
+
+
+def hash_puro(valor: str | None) -> str | None:
+    """`sha256:<hex>` ou `<hex>` viram sempre `<hex>`. `None` continua `None`.
+
+    A máquina de armazenamento fala `sha256:<hex>` (é o que `sha256_de` devolve)
+    e o banco fala `<hex>`: o CHECK `criativo_render_artefato_hash_remoto_forma`
+    da v11_03 exige `^[0-9a-f]{64}$`. Este é o único tradutor entre as duas
+    linguagens, e ele mora aqui — na fronteira em que o valor sai — porque duas
+    cópias da mesma normalização já divergiram uma vez: o recibo normalizava e
+    `Publicacao.para_registro` não, e a coluna era a mesma.
+
+    Idempotente de propósito: chamar duas vezes não estraga um valor já puro.
+    """
+    return None if valor is None else valor.removeprefix("sha256:")
 
 
 def chave_canonica(tenant_id: str, job_id: str, slot: str, sha256: str,
@@ -260,7 +311,21 @@ def chave_canonica(tenant_id: str, job_id: str, slot: str, sha256: str,
     tenant = _segmento("tenant_id", tenant_id)
     job = _segmento("job_id", job_id)
     peca = _segmento("slot", slot)
-    return conferir_chave(f"criativos/{tenant}/{job}/{peca}_{curto}.{ext}")
+    # ⚠️ DOIS underscores, e o delimitador NAO e estetica. `criativo_storage_chave`
+    # e `criativo_storage_chave_valida` (v11_03, ~:661 e ~:672) montam e conferem
+    # `criativos/<tenant>/<job>/<slot>__<sufixo>`, e o comentario da propria funcao
+    # SQL explica o porque: com UM underscore o prefixo `criativos/T/J/1x1` casa
+    # tambem com `criativos/T/J/1x1-malicioso.png`, e a chave de um slot passaria a
+    # apontar para o objeto de outro.
+    #
+    # Este arquivo emitia UM. Enquanto a v11_03 nao esta aplicada, a divergencia e
+    # latente; no dia da aplicacao o gatilho `criativo_render_storage_do_dono`
+    # recusaria TODA escrita de artefato com chave — a fabrica inteira pararia na
+    # migration, e o sintoma apareceria longe da causa.
+    #
+    # O SQL esta certo e o Python o segue: quem constroi a chave em dois lugares
+    # tem duas chances de divergir, e ja divergiu uma vez.
+    return conferir_chave(f"criativos/{tenant}/{job}/{peca}__{curto}.{ext}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -322,18 +387,60 @@ class Publicacao:
         return self
 
     def para_registro(self) -> dict[str, Any]:
-        """As três colunas do gatilho, e nada além delas.
+        """As quatro colunas do gatilho, e nada além delas.
 
         `UPLOADED_UNVERIFIED` sai com carimbo e hash NULOS de propósito: é assim
         que o banco também representa "subiu e não foi conferido", e escrever um
         carimbo aqui gravaria uma conferência que não houve — que o gatilho, por
         ser terminal, nunca deixaria corrigir depois.
+
+        ⚠️ DIVERGÊNCIA FECHADA. `storage_hash_conferido` é `boolean` no SQL e este
+        método devolvia a STRING do sha256 remoto: as duas metades da mesma
+        máquina não trocavam o mesmo tipo. Nada escrevia nenhuma das duas — nem
+        `deposito_postgres` toca nestas colunas, nem este método tem chamador de
+        produção —, então a divergência era LATENTE, e latente é o que vira
+        defeito no dia em que alguém liga os dois lados.
+
+        A v11_03 ganhou `storage_sha256_remoto text` e este método passa a emitir
+        os dois: o booleano responde "bateu?", o hash responde "o que voltou?".
+        Um booleano perde a segunda resposta para sempre, e um mismatch é
+        exatamente quando ela importa. Um CHECK impede que os dois se
+        contradigam.
+
+        ⚠️ SEGUNDA DIVERGÊNCIA FECHADA, e ela é da mesma família da primeira.
+        `sha256_de` devolve `sha256:<hex>`, e este método emitia esse valor
+        direto na coluna. O CHECK `criativo_render_artefato_hash_remoto_forma`
+        exige `^[0-9a-f]{64}$` — a forma PURA. Contraprova executada em
+        PostgreSQL 17 com a v11_03 aplicada: o valor que este método emitia
+        recebia `ERROR: violates check constraint
+        criativo_render_artefato_hash_remoto_forma`; o mesmo valor sem o prefixo
+        entrou. Ou seja, no dia da aplicação da v11_03 toda gravação de artefato
+        com hash remoto conferido seria recusada — o mesmo formato de defeito
+        que a chave canônica de UM underscore tinha, e pelo mesmo motivo: duas
+        metades da máquina descrevendo o mesmo valor de dois jeitos.
+
+        O operário já normalizava, mas só no caminho do RECIBO
+        (`operario._hash_puro`), e o comentário lá já citava este CHECK. Este
+        método é o OUTRO caminho para a MESMA coluna, e não normalizava. Uma
+        normalização que vale para um dos dois caminhos não é normalização; é
+        coincidência. Ela passa a morar aqui, na fronteira em que o valor sai
+        para o banco, para que os dois caminhos não possam mais divergir.
+
+        `storage_hash_conferido` continua comparando as formas INTERNAS
+        (`sha256_remoto == sha256_local`), que carregam as duas o mesmo prefixo:
+        a resposta "bateu?" não muda, e comparar depois de normalizar só um dos
+        lados é que inverteria o veredito.
         """
         conferiu = self.estado in TERMINAIS
         return {
             "storage_chave": self.chave if self.estado is not EstadoDoArmazenamento.LOCAL else None,
             "storage_conferido_em": self.conferido_em if conferiu else None,
-            "storage_hash_conferido": self.sha256_remoto if conferiu else None,
+            "storage_hash_conferido": (
+                # `None` quando ninguém releu: `False` diria "conferi e não bateu".
+                None if not conferiu
+                else self.sha256_remoto == self.sha256_local
+            ),
+            "storage_sha256_remoto": hash_puro(self.sha256_remoto) if conferiu else None,
         }
 
 

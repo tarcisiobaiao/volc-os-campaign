@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "missao": "creative-factory-production-go-live-v1",
+  "branch": "sprint/creative-factory-production-go-live-v1",
+  "base_sha": "382c5d4c67fc521d5e6739f8e76d1c36a96fdb53",
+  "merge_sha": "87cfcefb0abbe85e9c596af4145669d9873575b8",
+  "head_sha": "c72b676be63bc2175050c72352833f4e6300d266",
+  "feature_integrada_sha": "5235f0c6d8a6c526b42bf64342373471cd14ebe4",
+  "natureza": "PROPOSTA. Nada aqui foi escrito no ROADMAP-VIVO.json, na curadoria humana, no grafo nem em graphify-out. O integrador oficial aplica UMA vez, depois do merge, conforme o protocolo obrigatorio do AGENTS.md. Trabalho que so existe numa branch nao pode marcar a fonte compartilhada como concluida.",
+  "frescor_do_mapa_vivo": {
+    "estado_factual": "defasado, e nenhuma afirmacao deste pacote depende dele",
+    "o_que_foi_medido": "graphify-out/ nao e rastreado (`.gitignore:79`) e nao existe nesta worktree. Na arvore principal, graphify-out/UPDATE_STATUS.json diz built_at_commit=a539dbd7d7cb395ebc14986f0e1944d94f0aad26, que nao e o HEAD de main (314c3e4) nem de origin/volc-os-v2 (382c5d4) nem desta lane.",
+    "consequencia": "Antes de tratar o grafo como corrente, o integrador precisa rodar scripts/atualizar_grafo_volc_os.py e o modo --check. Os 63 arquivos que entraram por esta linhagem nao estao descritos em lugar nenhum do grafo."
+  },
+  "delta_de_roadmap_proposto": [
+    {
+      "id": "P17-T03",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "A migration continua NAO APLICADA no Supabase oficial. `done` afirmaria persistencia que nao existe.",
+      "o_que_mudou_nesta_lane": "O ciclo aplicar->operar->reverter->reaplicar foi reproduzido nesta arvore: 178 provas, 0 falhas. E dois defeitos que so apareceriam NO DIA DA APLICACAO foram fechados: (a) o passo 0 do PACOTE declarava sha256 errados para a propria migration e para o arquivo de provas, desde o commit que escreveu a tabela; (b) `Publicacao.para_registro()` emitia storage_sha256_remoto com prefixo `sha256:`, que o CHECK criativo_render_artefato_hash_remoto_forma recusa — contraprova executada em PostgreSQL 17 com a migration aplicada.",
+      "evidencia": "docs/closure/creative-factory-production-go-live-v1/GATES.md; commits c8c54c0 e 2ffaf5d",
+      "bloqueio": "autorizacao literal do dono (D6 de docs/closure/fable-global-v1/OPEN-DECISIONS.md)"
+    },
+    {
+      "id": "P17-T05",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "O worker e processo real e provado, e continua sem lugar onde rodar: nao ha Dockerfile, unit systemd nem entrada de Procfile. E o despacho padrao continua `inline`, dentro do processo web.",
+      "o_que_mudou_nesta_lane": "O item 4 do contrato de execucao duravel — fencing contra worker antigo — estava FURADO e foi fechado. A cerca era o NOME do operario, e o nome padrao e worker-<pid>, que repete entre containers: um zumbi de lease vencido devolvia para a fila o trabalho que o dono vivo estava produzindo. Reproduzido e corrigido; o token (operario, tentativa) desceu para dentro de `transicionar`, nos DOIS depositos. Alem disso a peca-canario do go-live passou a atravessar um SUBPROCESSO real do worker, e nao o operario em processo.",
+      "evidencia": "commit dbf55ad; 3 provas no contrato compartilhado; 77 passed/0 skipped com VOLC_EXIGIR_POSTGRES=1",
+      "bloqueio": "decisao de executor (Decisao 5 do ADR-REMOTION-RUNTIME-STORAGE)"
+    },
+    {
+      "id": "P17-T06",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "O bucket `criativos` NAO existe, e a troca para o adaptador remoto ainda exige editar armazenamento.py:689 — o ADR exige configuracao, nao edicao.",
+      "o_que_mudou_nesta_lane": "A maquina de storage verificado passou a caber no banco: o hash remoto era emitido numa forma que a v11_03 recusa, e o LEITOR (`estado_de`) recusava a linha certa quando as duas formas se misturavam. Os dois lados normalizam agora, pelo mesmo tradutor.",
+      "evidencia": "commit 2ffaf5d; 10 provas em test_criativo_storage_registro_cabe_no_banco.py",
+      "bloqueio": "criar o bucket PRIVADO e ligar o adaptador por configuracao"
+    },
+    {
+      "id": "P17-T07",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "Licenca do Remotion pendente, e equivalencia de pixel macOS<->Linux NAO PROVADA.",
+      "o_que_mudou_nesta_lane": "O runtime foi instalado e EXERCIDO de verdade nesta arvore: golden de video 22/0, runtime 13/0, hermetico 17/0, e o video da canario reproduziu o sha256 bit-a-bit igual ao declarado pelo last-mile, noutra worktree e com npm ci novo. Descoberto e declarado um fato operacional que muda o deploy: a PRIMEIRA execucao de uma maquina nova NAO e hermetica — o Remotion baixa o Chrome Headless Shell, e sob o sandbox o primeiro trabalho FALHA com uma mensagem que nao diz por que. Alem disso, o contrato publicado do gate `render_sem_rede` afirmava um `SKIPPED` que o codigo nunca emite.",
+      "evidencia": "GATES.md secao 3; commit d15b4ca",
+      "bloqueio": "decisao de licenca do dono; e prova de equivalencia em Linux"
+    },
+    {
+      "id": "P17-T08",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "Continua sem superficie de pacote por destino: nem UI, nem endpoint, nem servico. O ciclo pela tela termina em 'peca aprovada'. E nenhuma aprovacao humana real aconteceu.",
+      "o_que_mudou_nesta_lane": "A matriz de capacidade por destino foi medida por execucao e classificada: 6 SUPPORTED, 8 PARTIAL, 2 BLOCKED, 5 NOT_APPLICABLE — em CAPABILITY-MATRIX.json, com o que falta em cada linha. E dois consertos: o MIME era DECLARADO pelo motor e nunca medido (um motor que grava PNG e declara image/jpeg chegava a rendered, com chave .jpg e Content-Type image/jpeg), e `validar_asset` nunca julgava geometria de video.",
+      "evidencia": "CAPABILITY-MATRIX.json; commit d15b4ca; 5 provas em test_criativo_mime_medido.py",
+      "bloqueio": "superficie de pacote/entrega (UI + endpoint) e aprovacao humana real"
+    }
+  ],
+  "nao_reabrir": {
+    "P17-T01": "consolidado; nada nesta lane o contradiz",
+    "P17-T02": "consolidado",
+    "P17-T04": "consolidado, e REFORCADO: a porta unica de deposito continua unica, e o contrato compartilhado passou a cobrir tambem o token de cerca — nos dois adapters",
+    "P17-T09": "consolidado; a fronteira publica nao foi afrouxada por esta lane"
+  },
+  "defeitos_fechados_com_contraprova": [
+    {
+      "onde": "docs/closure/.../braco-a/PACOTE-v11_03.md + supabase/migrations/README.md",
+      "o_que": "o passo 0 mandava o operador PARAR se um sha256 divergisse, e dois dos oito estavam errados desde que a tabela foi escrita — a migration e o arquivo de provas. A contagem do ciclo estava errada pela terceira vez (129 -> 166 -> 178).",
+      "gravidade": "bloqueante para a autorizacao externa",
+      "contraprova": "repondo os valores velhos, test_v11_03_identidades_declaradas.py fica vermelho com o diagnostico exato"
+    },
+    {
+      "onde": "backend/app/criativo/bancada/armazenamento_verificado.py",
+      "o_que": "para_registro() emitia storage_sha256_remoto com prefixo `sha256:`, que o CHECK da v11_03 recusa; e estado_de() levantava sobre uma linha CERTA quando as duas formas se misturavam.",
+      "gravidade": "bloqueante para a autorizacao externa (faz o ato autorizado falhar)",
+      "contraprova": "PostgreSQL 17 com a v11_03 aplicada: valor prefixado recusado pelo CHECK, valor puro gravado"
+    },
+    {
+      "onde": "backend/app/criativo/bancada/deposito.py e deposito_postgres.py",
+      "o_que": "a cerca contra worker antigo era o NOME do operario; com worker-<pid> repetido entre containers, um zumbi de lease vencido derrubava o dono vivo.",
+      "gravidade": "alto (atinge o item 4 da autorizacao: executor remoto)",
+      "contraprova": "reproduzido com o deposito real; depois do conserto, TransicaoProibida"
+    },
+    {
+      "onde": "backend/app/criativo/bancada/operario.py",
+      "o_que": "o MIME era declarado pelo motor e nunca medido. Um motor que grava PNG e declara image/jpeg chegava a rendered com todos os gates verdes, chave .jpg e Content-Type image/jpeg.",
+      "gravidade": "alto",
+      "contraprova": "gate mime_declarado_confere FAIL com dimensao PASS; removendo o gate, 3 provas ficam vermelhas"
+    },
+    {
+      "onde": "volc_ads/criativo/validacao.py",
+      "o_que": "um `return` fazia video sair antes do bloco de geometria: 100x100 num envelope 1080x1920 nao recebia achado nenhum.",
+      "gravidade": "baixo",
+      "contraprova": "repondo o return, 2 provas ficam vermelhas"
+    },
+    {
+      "onde": "backend/app/criativo/bancada/adaptadores/remotion.py + RELATORIO-DE-ENTREGA.md",
+      "o_que": "o contrato publicado do gate render_sem_rede afirmava um `SKIPPED` que o codigo nunca emite; descrevia o desenho anterior a propria revisao adversarial que o mudou.",
+      "gravidade": "baixo, e com consequencia de planejamento: quem lesse contaria com um SKIPPED inexistente ao planejar o deploy em Linux",
+      "contraprova": "grep no codigo: as tres saidas sao PASS, WARN e FAIL"
+    },
+    {
+      "onde": "backend/requirements-dev.txt",
+      "o_que": "psycopg nao era declarado, entao no interpretador do gate oficial toda a parametrizacao [postgres] do contrato do deposito saia como skip verde.",
+      "gravidade": "medio",
+      "contraprova": "40 passed/37 skipped sem o driver; 77 passed/0 skipped com ele e VOLC_EXIGIR_POSTGRES=1"
+    },
+    {
+      "onde": "backend/app/criativo/bancada/operario.py e deposito*.py",
+      "o_que": "a cerca de dbf55ad deixava DUAS escritas de fora: o ramo `motor_desconhecido` (sem cerca nenhuma) e `bater()` (sem tentativa). O zumbi homonimo matava o trabalho do dono vivo e renovava o lease dele.",
+      "gravidade": "bloqueante (atinge o item 5 da autorizacao: executor remoto)",
+      "contraprova": "antes: estado=failed na tentativa 2 e heartbeat do zumbi aceito. Depois: claimed preservado e batimento recusado."
+    },
+    {
+      "onde": "backend/app/criativo/bancada/operario.py",
+      "o_que": "o gate mime_declarado_confere mandava todo `mime_de() is None` para SKIPPED. Bytes arbitrarios declarados `image/webp` chegavam a rendered com VERIFIED_OK, porque `dimensao` tambem sai SKIPPED para webp.",
+      "gravidade": "bloqueante",
+      "contraprova": "binario Mach-O (`cafebabe`) declarado image/webp -> failed, mime_declarado_confere FAIL bloqueante"
+    },
+    {
+      "onde": "backend/app/criativo/bancada/deposito_postgres.py",
+      "o_que": "`select ... for update` rodava fora de `con.transaction()` com autocommit=True: o lock caia antes das guardas de posse, e o UPDATE final nao repete a condicao no where. Check-then-act com janela real, so no Postgres.",
+      "gravidade": "bloqueante (divergencia SQLite/Postgres, a familia que o P17-T04 fechou no lease)",
+      "contraprova": "c1 for update em autocommit; c2 for update NOWAIT SUCEDE. Dentro de con.transaction(), c2 -> LockNotAvailable. Depois do conserto: 8 concorrentes -> 1 venceu / 7 TransicaoProibida."
+    },
+    {
+      "onde": "scripts/produzir_peca_canario_go_live.py",
+      "o_que": "o veredito podia sair 'TODAS AS AFIRMACOES CONFERIDAS' com o arquivo do worker ausente, destinos vazios e gate bloqueante em FAIL; e `_sem_publicacao` so olhava dominio, entao um recibo com `publicado: true` passava.",
+      "gravidade": "alto (evidencia falsa)",
+      "contraprova": "o veredito confere 14 afirmacoes nomeadas e as grava no JSON; os dois casos do revisor agora sao detectados"
+    },
+    {
+      "onde": "backend/tests/ (as guardas desta lane)",
+      "o_que": "`_declaracoes` ignorava em silencio uma linha que a regex nao casasse; `_check_da_migration` aceitava um CHECK COMENTADO como protecao viva.",
+      "gravidade": "alto (um guard que passa sem conferir e pior que nenhum)",
+      "contraprova": "tirando uma crase: 'a regex leu 5 declaracoes e o documento promete 6'. Comentando o CHECK: 3 provas vermelhas."
+    },
+    {
+      "onde": "backend/tests/test_criativo_mime_medido.py (sentinela, nao conserto)",
+      "o_que": "a fragilidade do reconhecimento de MIME levantada pela revisao foi MEDIDA: 5 ataques ao contrato atual, NENHUM passou. Nao ha defeito executavel. O que ha e risco de arranjo — a complementaridade entre o gate de assinatura e o de dimensao e EMERGENTE, e acrescentar `image/webp` a `_MIMES_MENSURAVEIS` sem ensinar a assinatura ao `mime_de` faz o par voltar a somar dois SKIPPED.",
+      "gravidade": "risco futuro, sem defeito atual — zero mudanca de comportamento",
+      "contraprova": "com `image/webp` acrescentado e a assinatura nao ensinada, a invariante 2 fica vermelha nomeando o formato; sem o acrescimo, 8 verdes"
+    }
+  ],
+  "backlog_nomeado_nao_corrigido": [
+    {
+      "id": "BL-1",
+      "onde": "backend/tests/test_trafego_canario.py:309",
+      "o_que": "o teste /provar escapa das portas hermeticas e abre rede real ao endpoint OAuth do Google quando ~/google-ads.yaml existe. PRE-EXISTENTE na linha oficial; nao e regressao do merge. Disparou 2 conexoes reais durante a auditoria.",
+      "por_que_nao_agora": "e da lane de trafego, e consertar exige decidir o contrato de hermetismo daquela suite"
+    },
+    {
+      "id": "BL-2",
+      "onde": "backend/.venv (ambiente compartilhado)",
+      "o_que": "psycopg foi DECLARADO em requirements-dev.txt e nao instalado. Ate ser instalado, o gate oficial nao cobre o adapter Postgres.",
+      "comando": "backend/.venv/bin/pip install 'psycopg[binary]>=3.1'",
+      "por_que_nao_agora": "o venv e compartilhado com a arvore principal e outras worktrees; instalar nele e ato fora do ownership desta lane"
+    },
+    {
+      "id": "BL-3",
+      "onde": "src/types/parqueCriativo.ts:340",
+      "o_que": "`interface Recibo` nao declara `destinos`; nenhum componente le o veredito de destino e `destinoLegivel` desconhece google/meta/organico. O backend produz e o produto nao mostra.",
+      "por_que_nao_agora": "e superficie de produto, e depende da decisao de pacote por destino (P17-T08)"
+    },
+    {
+      "id": "BL-4",
+      "onde": "volc_ads/criativo/destinos.py e backend/app/criativo/bancada/operario.py",
+      "o_que": "preencher um envelope nao exige a midia certa em todos os caminhos (PacoteDeDestino aceita PNG no envelope de video; SaidaPedida.slot e string livre). Refutado como ESCOPO JA DECLARADO pelo refutador, mas continua verdadeiro.",
+      "por_que_nao_agora": "escopo declarado desde o last-mile; consertar muda o contrato de pacote, que ainda nao tem consumidor"
+    },
+    {
+      "id": "BL-5",
+      "onde": "backend/app/criativo/bancada/operario.py",
+      "o_que": "`rendered` e alcancado com storage BUCKET_AUSENTE, INDISPONIVEL ou VERIFIED_MISMATCH, e nenhum consumidor de producao le esse veredito para barrar aprovacao ou entrega.",
+      "por_que_nao_agora": "escopo declarado ('o veredito de storage nao e persistido em criativo_master'); consertar exige colunas que a tabela nao tem"
+    },
+    {
+      "id": "BL-6",
+      "onde": "docs/volc-os-graph/ e graphify-out/",
+      "o_que": "o grafo e o workbook nao descrevem os 63 arquivos entrados por esta linhagem.",
+      "por_que_nao_agora": "esta lane esta PROIBIDA de editar essas fontes; e trabalho do integrador unico"
+    }
+  ],
+  "gates": {
+    "backend_base_382c5d4": "3332 passed / 87 skipped / 0 failed",
+    "backend_merge_87cfcef": "3370 passed / 87 skipped / 0 failed",
+    "backend_head": "3405 passed / 90 skipped / 0 failed",
+    "contrato_do_deposito_com_postgres_real": "77 passed / 0 skipped (VOLC_EXIGIR_POSTGRES=1)",
+    "frontend_base": "1256 passed / 5 skipped",
+    "frontend_head": "1262 passed / 5 skipped",
+    "typescript": "76 erros herdados, identico no base e no HEAD",
+    "ciclo_v11_03": "178 passaram / 0 falharam",
+    "preflight_v11_03": "30 / 0",
+    "plano_v11_03": "12 / 0",
+    "render_hermetico": "17 / 0",
+    "golden_imagem": "23 passed",
+    "golden_video": "22 passed",
+    "runtime_remotion": "13 passed",
+    "git_diff_check": "limpo",
+    "scanner_de_segredos": "nenhum padrao forte"
+  },
+  "atos_externos": {
+    "migration_aplicada_em_producao": 0,
+    "escrita_no_supabase_oficial": 0,
+    "leitura_do_supabase_oficial": 0,
+    "bucket_criado": 0,
+    "provider_pago_chamado": 0,
+    "publicacao_em_plataforma": 0,
+    "aprovacao_em_nome_do_usuario": 0,
+    "deploy_de_worker": 0,
+    "push_merge_ou_main": 0,
+    "rede_que_houve_e_esta_declarada": [
+      "npm ci do runtime Remotion (registro publico do npm)",
+      "download do Chrome Headless Shell pelo Remotion na primeira execucao",
+      "2 conexoes ao endpoint OAuth do Google disparadas por test_trafego_canario.py (teste PRE-EXISTENTE; ver BL-1)"
+    ]
+  },
+  "revisao": {
+    "auditoria_interna": "7 contratos, 44 agentes, refutacao adversarial por achado: 37 achados, 32 refutados, 5 sobreviveram",
+    "codex_gpt_5_6_sol": "EXECUTADO. Dois BLOQUEANTES, dois ALTOS e uma hipotese — TODOS sobre correcoes desta lane, todos reproduzidos e fechados em 2fe767e. (1) a cerca tinha dois buracos: `motor_desconhecido` escrevia FAILED sem cerca nenhuma e `bater()` deixava o zumbi homonimo renovar o lease do dono vivo; (2) o gate de MIME que eu criei tinha o buraco que veio fechar — `image/webp` produzia dois SKIPPED nao-bloqueantes, e dois SKIPPED somam um caminho verde sem abrir o arquivo; (3) a canario podia declarar 'todas as afirmacoes conferidas' sem os fatos; (4) minhas guardas por regex podiam passar sem conferir nada (linha malformada sumia em silencio; CHECK comentado contava como protecao). A HIPOTESE que ele nao pode testar por nao ter Postgres: `select ... for update` fora de `con.transaction()` com autocommit=True solta o lock antes das guardas. Testada aqui e VERDADEIRA; consertada; 8 concorrentes disputando estado terminal agora dao 1 vencedor e 7 recusas.",
+    "gemini_3_7_flash": "PROVIDER_NOT_AVAILABLE — CLI 0.57.0 presente, sem ~/.gemini/settings.json, sem oauth_creds.json, sem GEMINI_API_KEY/GOOGLE_API_KEY no ambiente. Ler segredo de .env de projeto para alimentar CLI e o padrao flagrado como risco na missao anterior; declarado em vez de simulado.",
+    "rodadas_corretivas": 2,
+    "_nota_rodadas": "Duas rodadas corretivas AGREGADAS, e nao duas passadas soltas: a primeira fecha os sobreviventes da auditoria interna (fase 2), a segunda fecha a revisao adversarial externa (fase 6). O prompt pede uma rodada por revisao."
+  },
+  "estado_de_encerramento": "LOCAL_CLOSURE_COMPLETE_EXTERNAL_CHECKPOINT_READY",
+  "postgres_usado": "DESCARTAVEL E LOCAL, sempre. Clusters criados por `initdb` dentro de `mktemp -d`, escutando apenas em socket unix dentro do proprio diretorio, destruidos por `pg_ctl stop` na mesma sessao. ZERO contato com https://database.agenciavolc.com.br — nem leitura, nem escrita, nem migration.",
+  "achados_da_revisao_externa": {
+    "confirmados_e_corrigidos": [
+      "BLOQ 1 — a cerca tinha dois buracos: `motor_desconhecido` escrevia FAILED sem cerca nenhuma, e `bater()` deixava o zumbi homonimo renovar o lease do dono vivo",
+      "BLOQ 2 — o gate de MIME mandava todo `mime_de() is None` para SKIPPED: bytes arbitrarios declarados `image/webp` chegavam a rendered com VERIFIED_OK",
+      "HIPOTESE (o revisor nao tinha Postgres; eu tinha) — `select ... for update` fora de `con.transaction()` com autocommit=True solta o lock antes das guardas: check-then-act com janela real, so no Postgres",
+      "ALTO 1 — a canario podia declarar 'todas as afirmacoes conferidas' sem os fatos",
+      "ALTO 2 — as guardas por regex podiam passar sem conferir nada (linha malformada sumia; CHECK comentado contava como protecao)"
+    ],
+    "medido_e_NAO_corrigido_por_nao_ser_defeito": [
+      "fragilidade do reconhecimento de MIME: 5 ataques executados ao contrato atual, nenhum passou. Virou sentinela de invariante (c72b676), sem mudanca de comportamento."
+    ],
+    "refutados_pela_auditoria_interna": 32,
+    "sobreviventes_da_auditoria_interna": 5
+  }
+}

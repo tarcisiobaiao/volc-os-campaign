@@ -233,37 +233,83 @@ CARIMBO = datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
 
 
 def test_estado_de_classifica_as_quatro_linhas():
+    """⚠️ ATUALIZADO. `storage_hash_conferido` é `boolean` no SQL e esta função
+    recebia a STRING do sha256 remoto — as duas metades da mesma máquina trocando
+    tipos diferentes para o mesmo fato. Agora são dois campos com papéis
+    distintos: o booleano DECIDE, o hash remoto serve à forense."""
     assert estado_de(storage_chave=None, storage_conferido_em=None,
-                     storage_hash_conferido=None, sha256_do_artefato=SHA) is E.LOCAL
+                     storage_hash_conferido=None, storage_sha256_remoto=None,
+                     sha256_do_artefato=SHA) is E.LOCAL
     assert estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=None,
-                     storage_hash_conferido=None,
+                     storage_hash_conferido=None, storage_sha256_remoto=None,
                      sha256_do_artefato=SHA) is E.UPLOADED_UNVERIFIED
     assert estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
-                     storage_hash_conferido=SHA,
+                     storage_hash_conferido=True, storage_sha256_remoto=SHA,
                      sha256_do_artefato=SHA) is E.VERIFIED_OK
     assert estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
-                     storage_hash_conferido=sha256_de(b"outra coisa"),
+                     storage_hash_conferido=False,
+                     storage_sha256_remoto=sha256_de(b"outra coisa"),
                      sha256_do_artefato=SHA) is E.VERIFIED_MISMATCH
+
+
+def test_o_veredito_nao_pode_contradizer_o_hash_remoto():
+    """A única forma de os dois campos contarem histórias opostas sobre a MESMA
+    leitura. O CHECK `veredito_coerente` da v11_03 barra isso no banco; aqui a
+    guarda existe para que a leitura de volta não normalize a contradição em
+    silêncio."""
+    with pytest.raises(ValueError, match="contradiz"):
+        estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
+                  storage_hash_conferido=True,
+                  storage_sha256_remoto=sha256_de(b"outra coisa"),
+                  sha256_do_artefato=SHA)
+    with pytest.raises(ValueError, match="contradiz"):
+        estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
+                  storage_hash_conferido=False, storage_sha256_remoto=SHA,
+                  sha256_do_artefato=SHA)
+
+
+def test_a_linha_antiga_sem_hash_remoto_continua_legivel():
+    """`storage_sha256_remoto` é opcional de propósito: uma linha gravada antes
+    de a coluna existir tem veredito e não tem hash, e continua classificável.
+    Exigi-la faria a migração de schema apagar a leitura do passado."""
+    assert estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
+                     storage_hash_conferido=True,
+                     sha256_do_artefato=SHA) is E.VERIFIED_OK
 
 
 def test_conferencia_sem_endereco_e_linha_impossivel():
     """Regra 3 do gatilho, do lado de cá: não se confere o que não subiu."""
     with pytest.raises(ValueError, match="conferencia sem endereco"):
         estado_de(storage_chave=None, storage_conferido_em=CARIMBO,
-                  storage_hash_conferido=SHA, sha256_do_artefato=SHA)
+                  storage_hash_conferido=True, storage_sha256_remoto=SHA,
+                  sha256_do_artefato=SHA)
 
 
 def test_hash_sem_carimbo_e_meia_conferencia_e_levanta():
     with pytest.raises(ValueError, match="carimbo"):
         estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=None,
-                  storage_hash_conferido=SHA, sha256_do_artefato=SHA)
+                  storage_hash_conferido=True, storage_sha256_remoto=SHA,
+                  sha256_do_artefato=SHA)
 
 
 def test_carimbo_com_hash_nulo_e_divergencia_e_nao_sucesso():
-    """Conferiu e não havia o que hashear: o objeto não estava lá."""
+    """Conferiu e não havia o que hashear: o objeto não estava lá.
+
+    O veredito é `False` e o hash remoto é `None` — e o `None` é preservado como
+    ausência. Preenchê-lo com o hash de bytes vazios inventaria um conteúdo que
+    ninguém leu."""
     assert estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
-                     storage_hash_conferido=None,
+                     storage_hash_conferido=False, storage_sha256_remoto=None,
                      sha256_do_artefato=SHA) is E.VERIFIED_MISMATCH
+
+
+def test_carimbo_sem_veredito_e_linha_impossivel():
+    """Alguém releu e não registrou o que concluiu. Antes isto era lido como
+    divergência — um veredito INVENTADO a partir de uma ausência."""
+    with pytest.raises(ValueError, match="sem veredito"):
+        estado_de(storage_chave="criativos/t/j/1x1_a.png", storage_conferido_em=CARIMBO,
+                  storage_hash_conferido=None, storage_sha256_remoto=None,
+                  sha256_do_artefato=SHA)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -349,6 +395,7 @@ def test_o_registro_de_nao_conferido_nao_carimba_conferencia():
     assert registro["storage_chave"] == "criativos/t/j/1x1_a.png"
     assert registro["storage_conferido_em"] is None
     assert registro["storage_hash_conferido"] is None
+    assert registro["storage_sha256_remoto"] is None
 
 
 @pytest.mark.parametrize(

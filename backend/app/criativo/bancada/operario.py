@@ -40,22 +40,48 @@ from typing import Any
 
 from .contrato import (
     Artefato,
+    Aprovacao,
+    Ausencia,
+    Custo,
+    Declarado,
+    DestinoDoRecibo,
     Encomenda,
     EstadoDoTrabalho,
     FalhaDoMotor,
+    InsumoSanitizado,
     MedidaDeAudio,
     MotorDeProducao,
+    Procedencia,
     Recibo,
+    RegistroDeStorage,
     TransicaoProibida,
     Validacao,
 )
 from .deposito import DepositoDeTrabalhos, Trabalho
+from .sanitizacao import sanitizar_insumo
 
 log = logging.getLogger(__name__)
 
 
 def _agora() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _intervalo_s(inicio: str, fim: str) -> float:
+    """Segundos entre dois carimbos ISO. `0.0` so quando eles sao iguais.
+
+    Nao levanta: um recibo nao pode deixar de existir porque a subtracao de duas
+    datas falhou. Quando nao da para ler, devolve `-1.0`, que e um valor
+    IMPOSSIVEL para uma duracao e por isso legivel como "nao foi possivel medir"
+    — ao contrario de `0.0`, que se confunde com "instantaneo".
+    """
+    try:
+        return max(
+            0.0,
+            (datetime.fromisoformat(fim) - datetime.fromisoformat(inicio)).total_seconds(),
+        )
+    except (TypeError, ValueError):
+        return -1.0
 
 
 def _sha256_do_arquivo(p: Path) -> str:
@@ -68,7 +94,23 @@ def _sha256_do_arquivo(p: Path) -> str:
 
 #: MIMEs cuja dimensao este operario SABE medir. Um artefato que declara um
 #: destes e nao abre nao e "formato desconhecido": e arquivo quebrado.
-_MIMES_MENSURAVEIS = frozenset({"image/png", "image/jpeg", "image/gif"})
+#:
+#: ⚠️ `video/mp4` ENTROU. Enquanto ele nao estava aqui, um artefato de video caia
+#: no ramo `SKIPPED` nao-bloqueante — "nao sei medir a dimensao deste formato" —
+#: e um mp4 de 640x360 declarando 1080x1920 chegava a `rendered` sem que nada
+#: abrisse o arquivo. Era o mesmo defeito que a contraprova de dimensao fechou
+#: para imagem, sobrevivendo na midia que ninguem produzia ainda.
+_MIMES_MENSURAVEIS = frozenset({"image/png", "image/jpeg", "image/gif", "video/mp4"})
+
+#: MIMEs medidos por `ffprobe` e nao pelo leitor de cabecalho de imagem.
+_MIMES_DE_VIDEO = frozenset({"video/mp4"})
+
+#: MIMEs cuja assinatura `mime_de` NAO le, e que mesmo assim sao verificados —
+#: por outro instrumento, no gate `dimensao`. Esta e a UNICA lista que autoriza
+#: `mime_declarado_confere` a sair `SKIPPED`; tudo que nao esta aqui e nao e
+#: confirmado pela assinatura sai `FAIL`. Manter as duas coisas ligadas e o que
+#: impede dois SKIPPED nao-bloqueantes de somarem um caminho verde sem leitura.
+_MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO = _MIMES_DE_VIDEO & _MIMES_MENSURAVEIS
 
 
 def _medir_dimensao(caminho: Path) -> tuple[int, int] | None:
@@ -76,7 +118,8 @@ def _medir_dimensao(caminho: Path) -> tuple[int, int] | None:
 
     ⚠️ `None` e ausencia de medicao, nunca `(0, 0)`. O medidor le o cabecalho do
     formato com a biblioteca padrao (PNG, GIF, JPEG) e ja recusa o caso classico
-    do IHDR todo zero.
+    do IHDR todo zero. Para video a leitura e do `ffprobe`, que tambem devolve
+    ausencia em vez de zero.
     """
     try:
         from volc_ads.criativo.adaptadores.medir_imagem import medir  # noqa: PLC0415
@@ -87,6 +130,59 @@ def _medir_dimensao(caminho: Path) -> tuple[int, int] | None:
     if m.largura is None or m.altura is None:
         return None
     return (m.largura, m.altura)
+
+
+def _medir_dimensao_de_video(caminho: Path) -> tuple[int, int] | None:
+    try:
+        from volc_ads.criativo.adaptadores.medir_video import medir  # noqa: PLC0415
+
+        m = medir(str(caminho))
+    except Exception:  # noqa: BLE001 — ffprobe ausente ou arquivo ilegivel
+        return None
+    if m.largura is None or m.altura is None:
+        return None
+    return (m.largura, m.altura)
+
+
+def _mime_medido(caminho: Path) -> str | None:
+    """O MIME lido da ASSINATURA do arquivo. `None` quando nao da para saber.
+
+    ⚠️ ACHADO ADVERSARIAL (02/09/2026), reproduzido por execucao. O MIME
+    percorria o sistema inteiro DECLARADO pelo motor e nunca era medido, com o
+    medidor pronto ao lado: `medir_imagem.mime_de` ja le a assinatura, e o
+    proprio `Medida.mime` ja vinha preenchido e era descartado.
+
+    Contraprova: um motor que grava PNG e declara `image/jpeg` chegava a
+    `rendered` com o gate `dimensao` PASS — porque `_dimensao_do_artefato`
+    escolhe o medidor pelo MIME declarado, e um PNG declarado como JPEG cai no
+    leitor de imagem, que le PNG. O recibo saia dizendo `image/jpeg`, a chave de
+    storage terminava em `.jpg`, o `Content-Type` do upload ia `image/jpeg`, e o
+    storage dizia `VERIFIED_OK` — porque a releitura confere BYTES, e os bytes
+    estavam certos. Tudo verde sobre um arquivo cujo tipo o sistema inteiro
+    descrevia errado.
+
+    O dano nao e interno: um endereco `.jpg` servido com `Content-Type:
+    image/jpeg` sobre bytes PNG e o que chega ao navegador do cliente e ao
+    upload para o destino.
+    """
+    try:
+        from volc_ads.criativo.adaptadores.medir_imagem import mime_de  # noqa: PLC0415
+
+        return mime_de(caminho.read_bytes())
+    except Exception:  # noqa: BLE001 — medidor ausente ou arquivo ilegivel
+        return None
+
+
+def _dimensao_do_artefato(a: Artefato, caminho: Path) -> tuple[int, int] | None:
+    """Escolhe o medidor pelo MIME DECLARADO, e mede o ARQUIVO.
+
+    Usar o MIME declarado para escolher o medidor nao e confiar nele: se o
+    arquivo nao abrir como o formato declarado, a medida sai `None` e o gate
+    reprova por `declarou um formato que sei medir e os bytes nao abrem`.
+    """
+    if a.mime in _MIMES_DE_VIDEO:
+        return _medir_dimensao_de_video(caminho)
+    return _medir_dimensao(caminho)
 
 
 def _mensagem_para_o_operador(e: BaseException) -> str:
@@ -105,8 +201,11 @@ class Batimento:
 
     def __init__(self, deposito: DepositoDeTrabalhos, trabalho_id: str,
                  *, operario: str, intervalo_s: float | None = None,
-                 lease_s: int = 60) -> None:
+                 lease_s: int = 60, tentativa: int | None = None) -> None:
         self._d, self._id, self._operario = deposito, trabalho_id, operario
+        # ⚠️ A tentativa e a outra metade da cerca. Sem ela, um zumbi homonimo
+        # renova o lease do dono vivo e o recolhedor nunca age.
+        self._tentativa = tentativa
         # ⚠️ O intervalo era FIXO em 5s enquanto `lease_s` era parametro:
         # qualquer `Operario(lease_s<=5)` era, por construcao, uma configuracao
         # SEM batimento — e nada avisava. Agora ele acompanha o lease.
@@ -122,7 +221,9 @@ class Batimento:
     def __enter__(self) -> Batimento:
         def laco() -> None:
             while not self._parar.wait(self._intervalo):
-                if self._d.bater(self._id, lease_s=self._lease, operario=self._operario):
+                if self._d.bater(self._id, lease_s=self._lease,
+                                 operario=self._operario,
+                                 tentativa=self._tentativa):
                     self.batidas += 1
                 else:
                     self.perdeu_o_trabalho = True
@@ -150,6 +251,7 @@ class Operario:
         *,
         nome: str | None = None,
         lease_s: int = 60,
+        loja: Any | None = None,
     ) -> None:
         self.deposito = deposito
         self.motores = motores
@@ -157,6 +259,13 @@ class Operario:
         self.raiz.mkdir(parents=True, exist_ok=True)
         self.nome = nome or f"operario-{uuid.uuid4().hex[:8]}"
         self.lease_s = lease_s
+        # ⚠️ `None` NAO e "sem armazenamento configurado, tanto faz": e um
+        # operario que produz e nao guarda, e o recibo diz isso com nome
+        # (`nao_publicado` / `NAO_APLICAVEL`) em vez de deixar `storage` vazio.
+        # Quem monta a bancada de producao (`servico.montar`) passa a loja; um
+        # operario de teste que so quer exercitar a fila nao precisa dela, e a
+        # diferenca fica escrita no recibo em vez de escondida.
+        self.loja = loja
 
     # ── um trabalho ──────────────────────────────────────────────────────────
 
@@ -170,18 +279,37 @@ class Operario:
     def executar(self, trabalho: Trabalho) -> Trabalho:
         motor = self.motores.get(trabalho.encomenda.motor_slug)
         if motor is None:
-            return self.deposito.transicionar(
-                trabalho.id,
-                EstadoDoTrabalho.FAILED,
-                falha={
-                    "codigo": "motor_desconhecido",
-                    "mensagem": (
-                        f"nenhum motor registrado com o slug "
-                        f"`{trabalho.encomenda.motor_slug}`"
-                    ),
-                    "permanente": True,
-                },
-            )
+            # ⚠️ ACHADO ADVERSARIAL (Codex, 02/09/2026). Esta escrita era a UNICA
+            # do operario sem a cerca, e e a mais facil de disparar: basta o
+            # trabalho pedir um motor que ESTE processo nao tem. Um zumbi
+            # homonimo cujo container nao registra o motor matava, com
+            # `permanente: True`, o trabalho que o dono vivo estava produzindo —
+            # e `permanente` nao volta para a fila.
+            try:
+                return self.deposito.transicionar(
+                    trabalho.id,
+                    EstadoDoTrabalho.FAILED,
+                    falha={
+                        "codigo": "motor_desconhecido",
+                        "mensagem": (
+                            f"nenhum motor registrado com o slug "
+                            f"`{trabalho.encomenda.motor_slug}`"
+                        ),
+                        "permanente": True,
+                    },
+                    exigir_operario=self.nome,
+                    exigir_tentativa=trabalho.tentativa,
+                )
+            except TransicaoProibida:
+                # Quem perdeu a posse sai calado, como em `_falhar` e `_largar`.
+                # Deixar a excecao subir mataria o LACO DO WORKER — e derrubar o
+                # processo vivo por causa de um zumbi seria trocar um dano por
+                # outro maior.
+                log.warning(
+                    "trabalho %s: motor `%s` ausente, e a posse ja nao e nossa",
+                    trabalho.id, trabalho.encomenda.motor_slug,
+                )
+                return self.deposito.por_id(trabalho.id) or trabalho
 
         # Diretorio exclusivo POR REIVINDICACAO, nao por trabalho.
         #
@@ -199,10 +327,12 @@ class Operario:
         iniciado = _agora()
 
         with Batimento(self.deposito, trabalho.id, operario=self.nome,
-                       lease_s=self.lease_s) as batimento:
+                       lease_s=self.lease_s,
+                       tentativa=trabalho.tentativa) as batimento:
             try:
                 self.deposito.transicionar(
-                    trabalho.id, EstadoDoTrabalho.RUNNING, exigir_operario=self.nome
+                    trabalho.id, EstadoDoTrabalho.RUNNING,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
                 artefatos = motor.produzir(trabalho.encomenda, str(dir_trabalho))
 
@@ -227,9 +357,12 @@ class Operario:
                     return self._largar(trabalho, dir_trabalho)
 
                 self.deposito.transicionar(
-                    trabalho.id, EstadoDoTrabalho.VALIDATING, exigir_operario=self.nome
+                    trabalho.id, EstadoDoTrabalho.VALIDATING,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
-                validacoes = self._validar(trabalho.encomenda, artefatos, motor)
+                validacoes = self._validar(
+                    trabalho.encomenda, artefatos, motor, str(dir_trabalho)
+                )
 
                 reprovou = [v for v in validacoes if v.bloqueante and v.resultado == "FAIL"]
                 if reprovou:
@@ -251,8 +384,19 @@ class Operario:
                             "validacoes": [asdict(v) for v in validacoes],
                         },
                         exigir_operario=self.nome,
+                        exigir_tentativa=trabalho.tentativa,
                     )
 
+                # A publicacao acontece DEPOIS de os gates aprovarem e ANTES do
+                # recibo: subir o que o gate reprovaria seria pagar
+                # armazenamento por peca que nao serve, e assinar o recibo antes
+                # de publicar faria `storage` nascer sempre vazio.
+                storage = self._publicar(trabalho, artefatos)
+                medida_de_audio, audio_ausente = self._audio(
+                    motor, trabalho.encomenda, str(dir_trabalho)
+                )
+                custo = self._custo(motor, trabalho.encomenda)
+                terminado = _agora()
                 recibo = Recibo(
                     trabalho_id=trabalho.id,
                     chave_de_idempotencia=trabalho.chave_idempotencia,
@@ -264,11 +408,31 @@ class Operario:
                     parametros=dict(trabalho.encomenda.parametros),
                     artefatos=artefatos,
                     validacoes=tuple(validacoes),
-                    audio=self._audio(motor, trabalho.encomenda),
+                    audio=medida_de_audio,
                     iniciado_em=iniciado,
-                    terminado_em=_agora(),
-                    custo_estimado_usd=None,
-                    custo_real_usd=None,
+                    terminado_em=terminado,
+                    # ⚠️ Os dois campos antigos continuam existindo e continuam
+                    # espelhando `custo` — mas agora TEM produtor, e a razao da
+                    # ausencia mora ao lado deles em vez de se perder no `None`.
+                    custo_estimado_usd=custo.estimado_usd.valor,
+                    custo_real_usd=custo.real_usd.valor,
+                    procedencia=self._procedencia(trabalho, motor),
+                    insumo=self._insumo(trabalho.encomenda),
+                    hashes_de_entrada=self._hashes_de_entrada(
+                        motor, trabalho.encomenda, str(dir_trabalho)
+                    ),
+                    tentativa=trabalho.tentativa,
+                    custo=custo,
+                    duracao_do_trabalho_s=_intervalo_s(iniciado, terminado),
+                    storage=storage,
+                    destinos=self._destinos(artefatos),
+                    # ⚠️ Nasce `aguardando`, sempre. Um recibo que nascesse
+                    # `aprovado` faria o operario aprovar em nome de uma pessoa —
+                    # e a aprovacao humana existe justamente porque a maquina nao
+                    # pode dar essa resposta.
+                    aprovacao=Aprovacao(estado="aguardando"),
+                    audio_ausente_porque=audio_ausente,
+                    video_ausente_porque=self._video_ausente_porque(artefatos),
                 )
                 corpo = asdict(recibo)
                 corpo["assinatura_determinista"] = recibo.assinatura_determinista()
@@ -298,7 +462,7 @@ class Operario:
                     return self._largar(trabalho, dir_trabalho)
                 return self.deposito.transicionar(
                     trabalho.id, EstadoDoTrabalho.RENDERED, recibo=corpo,
-                    exigir_operario=self.nome,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
 
             except FalhaDoMotor as e:
@@ -418,7 +582,7 @@ class Operario:
             try:
                 devolvido = self.deposito.transicionar(
                     trabalho.id, EstadoDoTrabalho.QUEUED, falha=falha,
-                    exigir_operario=self.nome,
+                    exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
                 )
             except TransicaoProibida:
                 # ⚠️ ACHADO #13. Aqui estava o dano. O `rmtree` era incondicional
@@ -436,7 +600,7 @@ class Operario:
         try:
             return self.deposito.transicionar(
                 trabalho.id, EstadoDoTrabalho.FAILED, falha=falha,
-                exigir_operario=self.nome,
+                exigir_operario=self.nome, exigir_tentativa=trabalho.tentativa,
             )
         except TransicaoProibida:
             return self.deposito.por_id(trabalho.id) or trabalho
@@ -445,7 +609,7 @@ class Operario:
 
     def _validar(
         self, encomenda: Encomenda, artefatos: tuple[Artefato, ...],
-        motor: MotorDeProducao,
+        motor: MotorDeProducao, dir_trabalho: str,
     ) -> list[Validacao]:
         validacoes: list[Validacao] = []
         pedido = {s.slot: s for s in encomenda.saidas}
@@ -500,7 +664,7 @@ class Operario:
             # grava 64x64 e declara 1200x628 chegava a `rendered`, com recibo, e
             # o gate dizia PASS {'pedido': [1200,628], 'produzido': [1200,628]}.
             # A peca nao serve a canal nenhum, e nada acusava.
-            medida = _medir_dimensao(caminho)
+            medida = _dimensao_do_artefato(a, caminho)
             if medida is None:
                 # ⚠️ ACHADO NA PROPRIA CORRECAO. A primeira versao mandava TODO
                 # nao-medivel para `SKIPPED` nao-bloqueante, e com isso um motor
@@ -558,6 +722,56 @@ class Operario:
                         detalhe={"slot": a.slot, "declarado": [a.largura, a.altura],
                                  "medido": [medida[0], medida[1]]},
                         bloqueante=True))
+            # ⚠️ O MIME tambem e afirmacao do motor, e ate aqui ninguem a
+            # conferia. Mesmo formato do gate de dimensao, e pelo mesmo motivo:
+            # o que o motor DIZ e o que o arquivo E sao perguntas diferentes.
+            #
+            # ⚠️ ACHADO ADVERSARIAL (Codex, 02/09/2026). A PRIMEIRA versao deste
+            # gate mandava todo `medido is None` para `SKIPPED` nao-bloqueante —
+            # e com isso um motor que apontasse para bytes arbitrarios (um
+            # binario Mach-O, no caso reproduzido) declarando `image/webp`
+            # chegava a `rendered` com `VERIFIED_OK`: `dimensao` tambem sai
+            # SKIPPED, porque webp nao esta em `_MIMES_MENSURAVEIS`. Dois
+            # SKIPPED nao-bloqueantes somam um caminho verde sem ninguem ter
+            # aberto o arquivo.
+            #
+            # E o MESMO erro que o gate de dimensao ja tinha cometido e
+            # registrado tres blocos acima — "consertar um buraco abrindo
+            # outro" —, e o proprio medidor avisa, em
+            # `medir_imagem.FORMATOS_RECONHECIDOS`: `mime_de` devolver `None`
+            # para um dos tres NAO e "nao apurei", e sim "olhei a assinatura e
+            # nao e nenhum deles". Tratar refutacao como ausencia deixa passar a
+            # declaracao falsa.
+            #
+            # A regra passa a ser fail-closed: so e SKIPPED o formato que ESTE
+            # sistema sabe verificar por OUTRO instrumento — hoje, `video/mp4`,
+            # que o gate `dimensao` abre com ffprobe. Qualquer outro MIME
+            # declarado que a assinatura nao confirme e FAIL.
+            medido = _mime_medido(caminho)
+            if medido is not None:
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere",
+                    resultado="PASS" if medido == a.mime else "FAIL",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "medido": medido},
+                    bloqueante=True))
+            elif a.mime in _MIMES_VERIFICADOS_POR_OUTRO_INSTRUMENTO:
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere", resultado="SKIPPED",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "motivo": "assinatura nao legivel aqui; o formato e"
+                                       " aberto pelo gate `dimensao` (ffprobe)"},
+                    bloqueante=False))
+            else:
+                validacoes.append(Validacao(
+                    gate="mime_declarado_confere", resultado="FAIL",
+                    detalhe={"slot": a.slot, "declarado": a.mime,
+                             "medido": None,
+                             "motivo": "a assinatura do arquivo nao confirma o"
+                                       " MIME declarado, e este sistema nao tem"
+                                       " outro instrumento para verifica-lo"},
+                    bloqueante=True))
+
             validacoes.append(Validacao(
                 gate="arquivo_nao_vazio",
                 resultado="PASS" if a.bytes_ > 0 else "FAIL",
@@ -583,13 +797,344 @@ class Operario:
             validacoes.append(Validacao(
                 gate="contraste", resultado="SKIPPED",
                 detalhe={"motivo": "este motor nao mede contraste"}, bloqueante=False))
+
+        # ⚠️ Gates que so o MOTOR sabe julgar — hermetismo do render, quadros
+        # contados contra quadros pedidos, fps como fracao, safe zone. Eles nao
+        # podem morar aqui: o operario nao sabe se houve sandbox nem quantos
+        # quadros o pedido tinha. E nao podem morar so no motor: um gate que o
+        # motor guarda para si nao entra no recibo e nao reprova nada.
+        #
+        # O gancho segue o mesmo padrao de `medir_contraste`, e le o relatorio
+        # que o motor deixou no diretorio EXCLUSIVO do trabalho — nao um atributo
+        # de instancia, que dois trabalhos simultaneos sobrescreveriam.
+        proprios = getattr(motor, "gates", None)
+        if callable(proprios):
+            try:
+                validacoes.extend(proprios(encomenda, dir_trabalho))
+            except Exception as exc:  # noqa: BLE001
+                # Gate que estoura nao aprova nem reprova a peca: vira FAIL do
+                # PROPRIO gate, com o motivo, para nao virar silencio.
+                validacoes.append(Validacao(
+                    gate="gates_do_motor", resultado="FAIL",
+                    detalhe={"motivo": _mensagem_para_o_operador(exc)},
+                    bloqueante=True))
         return validacoes
 
-    def _audio(self, motor: MotorDeProducao, encomenda: Encomenda) -> MedidaDeAudio | None:
+    # ── procedencia, storage e destino ───────────────────────────────────
+
+    def _publicar(
+        self, trabalho: Trabalho, artefatos: tuple[Artefato, ...],
+    ) -> tuple[RegistroDeStorage, ...]:
+        """Sobe cada artefato e RELE do armazenamento antes de dizer qualquer coisa.
+
+        ⚠️ A maquina de verificacao existia e nao tinha consumidor de producao: o
+        worker gravava no disco local e ninguem publicava. Um worker em outra
+        maquina produzia pecas que a web classificava como perdidas, e a peca
+        "pronta" era pronta so no disco de quem a fez.
+
+        Sem loja, o registro sai `NAO_PUBLICADO` — com nome. Nao ha caminho aqui
+        que devolva `VERIFIED_OK` sem releitura, e e por isso que a publicacao
+        inteira mora atras de `publicar_artefato`, que confere bytes E hash.
+        """
+        from app.criativo.armazenamento import (  # noqa: PLC0415
+            ArmazenamentoIndisponivel,
+            ArquivoRecusado,
+            BucketAusente,
+        )
+        from .armazenamento_verificado import (  # noqa: PLC0415
+            chave_canonica,
+            hash_puro,
+            publicar_artefato,
+        )
+
+        if self.loja is None:
+            return tuple(
+                RegistroDeStorage(
+                    slot=a.slot,
+                    chave=Declarado(ausencia=Ausencia.NAO_APLICAVEL),
+                    estado="NAO_PUBLICADO",
+                    sha256_relido=Declarado(ausencia=Ausencia.NAO_APLICAVEL),
+                    bytes_relidos=Declarado(ausencia=Ausencia.NAO_APLICAVEL),
+                )
+                for a in artefatos
+            )
+
+        registros: list[RegistroDeStorage] = []
+        for a in artefatos:
+            extensao = Path(a.caminho).suffix.lstrip(".") or "bin"
+            try:
+                chave = chave_canonica(
+                    trabalho.tenant_id, trabalho.id, a.slot, a.sha256, extensao
+                )
+            except ArquivoRecusado as exc:
+                registros.append(RegistroDeStorage(
+                    slot=a.slot,
+                    chave=Declarado(ausencia=Ausencia.FALHOU),
+                    estado="RECUSADO",
+                    sha256_relido=Declarado(ausencia=Ausencia.FALHOU),
+                    bytes_relidos=Declarado(ausencia=Ausencia.FALHOU),
+                    lido_em=None,
+                ))
+                log.warning("chave recusada para o slot %s: %s", a.slot, exc)
+                continue
+            # ⚠️ ACHADO ADVERSARIAL, e era bloqueante. A versão anterior lia o
+            # arquivo AQUI, depois da validação, e mandava esses bytes para o
+            # armazenamento sem reconferi-los contra `a.sha256`. O gate tinha
+            # conferido o disco num instante; o upload lia noutro. Reproduzido
+            # pelo revisor: trocando o arquivo entre os dois momentos, o storage
+            # saía `VERIFIED_OK` com `sha256_relido` diferente do `sha256` do
+            # artefato — e a chave, que é content-addressed, continuava montada
+            # com o hash ANTIGO. Um endereço passava a servir conteúdo que ele não
+            # descreve.
+            #
+            # A releitura de `publicar_artefato` prova que o armazenamento devolve
+            # o que recebeu. Ela não prova, e não pode provar, que o que recebeu é
+            # o que o gate aprovou. Essa é a conferência que faltava.
+            dados = Path(a.caminho).read_bytes()
+            sha_do_upload = hashlib.sha256(dados).hexdigest()
+            if sha_do_upload != a.sha256:
+                registros.append(RegistroDeStorage(
+                    slot=a.slot,
+                    chave=Declarado(valor=chave),
+                    estado="MISMATCH_LOCAL",
+                    sha256_relido=Declarado(ausencia=Ausencia.MISMATCH),
+                    bytes_relidos=Declarado(ausencia=Ausencia.MISMATCH),
+                    lido_em=None,
+                ))
+                log.error(
+                    "o arquivo do slot %s mudou entre a validacao e o upload; "
+                    "nada foi enviado", a.slot,
+                )
+                continue
+            try:
+                publicacao = publicar_artefato(
+                    self.loja,
+                    chave=chave,
+                    dados=dados,
+                    mime=a.mime,
+                )
+            except BucketAusente:
+                registros.append(self._storage_falho(a.slot, chave, "BUCKET_AUSENTE"))
+                continue
+            except (ArmazenamentoIndisponivel, ArquivoRecusado, OSError):
+                # ⚠️ Nao colapsar em `VERIFIED_MISMATCH`: mismatch e terminal, e
+                # carimba-lo por um timeout condenaria artefato possivelmente
+                # integro. `INDISPONIVEL` e reconferivel; mismatch nao e.
+                registros.append(self._storage_falho(a.slot, chave, "INDISPONIVEL"))
+                continue
+            registros.append(RegistroDeStorage(
+                slot=a.slot,
+                chave=Declarado(valor=publicacao.chave),
+                estado=str(publicacao.estado.value),
+                # ⚠️ SEM o prefixo `sha256:`. A maquina de armazenamento devolve
+                # `sha256:<hex>` e `Artefato.sha256` guarda `<hex>` puro; deixar
+                # as duas formas conviverem no MESMO recibo faria a pergunta que
+                # mais importa — "o que voltou e o que subiu?" — depender de
+                # lembrar qual campo carrega prefixo. O CHECK `hash_forma` da
+                # v11_03 (`^[0-9a-f]{64}$`) tambem quer a forma pura.
+                #
+                # ⚠️ O normalizador e o de `armazenamento_verificado`, e nao uma
+                # copia local. Havia duas copias, e uma delas nao existia:
+                # `Publicacao.para_registro` escrevia na MESMA coluna sem
+                # normalizar, e a v11_03 recusava a linha. Uma normalizacao que
+                # vale para um dos caminhos nao e normalizacao.
+                sha256_relido=Declarado.de(
+                    hash_puro(publicacao.sha256_remoto), Ausencia.NAO_MEDIDO
+                ),
+                bytes_relidos=Declarado.de(
+                    publicacao.bytes_remoto, Ausencia.NAO_MEDIDO
+                ),
+                lido_em=(
+                    publicacao.conferido_em.isoformat()
+                    if publicacao.conferido_em is not None else None
+                ),
+            ))
+        return tuple(registros)
+
+    @staticmethod
+    def _storage_falho(slot: str, chave: str, estado: str) -> RegistroDeStorage:
+        return RegistroDeStorage(
+            slot=slot,
+            chave=Declarado(valor=chave),
+            estado=estado,
+            # Nenhum byte foi lido. `NAO_MEDIDO` e o nome certo: `0` diria que a
+            # releitura aconteceu e trouxe um objeto vazio.
+            sha256_relido=Declarado(ausencia=Ausencia.NAO_MEDIDO),
+            bytes_relidos=Declarado(ausencia=Ausencia.NAO_MEDIDO),
+            lido_em=None,
+        )
+
+    @staticmethod
+    def _destinos(artefatos: tuple[Artefato, ...]) -> tuple[DestinoDoRecibo, ...]:
+        """Contra que destinos declarados esta producao serve — MEDIDO.
+
+        O casamento e por (largura, altura) MEDIDA e por midia, contra o catalogo
+        de envelopes. Nao ha caminho aqui em que um destino saia `serve` por
+        declaracao do motor: as dimensoes que chegam neste ponto ja passaram pelo
+        gate que as leu do arquivo.
+        """
+        try:
+            from volc_ads.criativo.contrato import TipoDeAsset  # noqa: PLC0415
+            from volc_ads.criativo.destinos import (  # noqa: PLC0415
+                DESTINOS,
+                ENVELOPES,
+                envelopes_de_destino,
+            )
+        except Exception:  # noqa: BLE001 — catalogo ausente
+            return ()
+
+        def e_video(envelope: Any) -> bool:
+            return envelope.tipo is TipoDeAsset.VIDEO
+
+        casados: dict[str, set[str]] = {d: set() for d in DESTINOS}
+        for a in artefatos:
+            if a.largura is None or a.altura is None:
+                continue
+            artefato_e_video = a.mime in _MIMES_DE_VIDEO
+            for env in ENVELOPES:
+                if (env.largura, env.altura) != (a.largura, a.altura):
+                    continue
+                # ⚠️ Geometria igual NAO basta. `organico-reels-9x16` (imagem) e
+                # `organico-reels-video-9x16` (video) tem os MESMOS 1080x1920, e
+                # casar so por medida faria um mp4 cumprir o envelope de imagem
+                # — e o destino receberia um arquivo que ele nao aceita naquela
+                # posicao.
+                if e_video(env) != artefato_e_video:
+                    continue
+                casados[env.destino].add(env.slug)
+
+        saida: list[DestinoDoRecibo] = []
+        for destino in DESTINOS:
+            esperados = tuple(e.slug for e in envelopes_de_destino(destino))
+            entregues = casados[destino]
+            faltando = tuple(s for s in esperados if s not in entregues)
+            if entregues and not faltando:
+                saida.append(DestinoDoRecibo(slug=destino, veredito="serve"))
+            elif entregues:
+                # ⚠️ NAO e `nao_serve`. Uma peca que casa um envelope do destino
+                # SERVE aquele envelope; o que ela nao faz e completar o lote.
+                # Colapsar as duas perguntas numa so faria uma peca legitima
+                # aparecer como imprestavel, e a pergunta de completude ja tem
+                # dono proprio: `PacoteDeDestino.completo`.
+                saida.append(DestinoDoRecibo(
+                    slug=destino, veredito="serve_parcialmente",
+                    motivos=tuple(f"envelope nao produzido: {s}" for s in faltando)))
+            else:
+                saida.append(DestinoDoRecibo(
+                    slug=destino, veredito="nao_serve",
+                    motivos=("nenhuma peca desta producao casa um envelope deste destino",)))
+        return tuple(saida)
+
+    @staticmethod
+    def _procedencia(trabalho: Trabalho, motor: MotorDeProducao) -> Procedencia:
+        def gancho(nome: str, quando_ausente: Ausencia) -> Declarado:
+            fn = getattr(motor, nome, None)
+            if not callable(fn):
+                return Declarado(ausencia=quando_ausente)
+            try:
+                valor = fn()
+            except Exception:  # noqa: BLE001
+                return Declarado(ausencia=Ausencia.FALHOU)
+            return valor if isinstance(valor, Declarado) else Declarado.de(valor, quando_ausente)
+
+        natureza = getattr(motor, "natureza", None)
+        e = trabalho.encomenda
+        return Procedencia(
+            receita_id=e.receita_id,
+            tenant_id=e.tenant_id,
+            modo_slug=e.modo_slug,
+            finalidade_slug=e.finalidade_slug,
+            # ⚠️ Um motor que nao declara natureza vale `nao_declarada`, NUNCA
+            # `producao`. A regra ja existia no envelope e vale igual aqui.
+            natureza=getattr(natureza, "value", None) or "nao_declarada",
+            provider=gancho("provider", Ausencia.NAO_DECLARADO),
+            modelo=gancho("modelo", Ausencia.NAO_DECLARADO),
+            licenca=gancho("licenca", Ausencia.NAO_DECLARADO),
+            disclosure=gancho("disclosure", Ausencia.NAO_DECLARADO),
+            brand_pack=Declarado.de(
+                e.parametros.get("brand_pack_id"), Ausencia.NAO_DECLARADO
+            ),
+        )
+
+    @staticmethod
+    def _custo(motor: MotorDeProducao, encomenda: Encomenda) -> Custo:
+        fn = getattr(motor, "custo", None)
+        if not callable(fn):
+            # ⚠️ `NAO_APURADO` e nao `SEM_CUSTO_DE_PROVIDER`: um motor que nao
+            # tem porta de custo pode ser pago. Assumir gratuito por ausencia de
+            # implementacao e exatamente como todo trabalho nasceria com custo
+            # nulo permanente no dia em que entrasse um provider pago.
+            return Custo(
+                estimado_usd=Declarado(ausencia=Ausencia.NAO_APURADO),
+                real_usd=Declarado(ausencia=Ausencia.NAO_APURADO),
+            )
+        try:
+            valor = fn(encomenda)
+        except Exception:  # noqa: BLE001
+            return Custo(
+                estimado_usd=Declarado(ausencia=Ausencia.FALHOU),
+                real_usd=Declarado(ausencia=Ausencia.FALHOU),
+            )
+        if isinstance(valor, Custo):
+            return valor
+        return Custo(
+            estimado_usd=Declarado(ausencia=Ausencia.NAO_DECLARADO),
+            real_usd=Declarado(ausencia=Ausencia.NAO_DECLARADO),
+        )
+
+    @staticmethod
+    def _hashes_de_entrada(
+        motor: MotorDeProducao, encomenda: Encomenda, dir_trabalho: str,
+    ) -> dict[str, str]:
+        fn = getattr(motor, "hashes_de_entrada", None)
+        if not callable(fn):
+            return {}
+        try:
+            valor = fn(encomenda, dir_trabalho)
+        except Exception:  # noqa: BLE001
+            return {}
+        return {str(k): str(v) for k, v in dict(valor or {}).items()}
+
+    @staticmethod
+    def _insumo(encomenda: Encomenda) -> InsumoSanitizado:
+        p = encomenda.parametros
+        return sanitizar_insumo(p.get("insumo") or p.get("prompt") or p.get("briefing"))
+
+    @staticmethod
+    def _video_ausente_porque(artefatos: tuple[Artefato, ...]) -> Ausencia | None:
+        de_video = [a for a in artefatos if a.mime in _MIMES_DE_VIDEO]
+        if not de_video:
+            return Ausencia.NAO_APLICAVEL
+        if all(a.video is not None for a in de_video):
+            return None
+        return Ausencia.NAO_MEDIDO
+
+    def _audio(
+        self, motor: MotorDeProducao, encomenda: Encomenda, dir_trabalho: str,
+    ) -> tuple[MedidaDeAudio | None, Ausencia | None]:
+        """Devolve a medida E a razao nomeada quando ela nao existe.
+
+        ⚠️ `MedidaDeAudio` era estrutura MORTA: nenhum motor implementava
+        `medir_audio`, e a v11_03 reservou tres colunas numericas que nasceriam
+        permanentemente nulas — o "null permanente que parece lacuna de
+        preenchimento" que o proprio `PLANO-v11_03.md` diz querer evitar. O
+        gancho passa a receber o diretorio do trabalho porque medir audio e medir
+        o ARQUIVO; medir o pedido nao mede nada.
+        """
         medir = getattr(motor, "medir_audio", None)
         if not callable(medir):
-            return None
-        return medir(encomenda)
+            return (None, Ausencia.NAO_SUPORTADO)
+        try:
+            medida = medir(encomenda, dir_trabalho)
+        except TypeError:
+            # Motor com a assinatura antiga de um argumento. Nao e ausencia de
+            # audio: e um motor que este operario nao sabe mais chamar.
+            return (None, Ausencia.NAO_SUPORTADO)
+        except Exception:  # noqa: BLE001
+            return (None, Ausencia.FALHOU)
+        if medida is None:
+            return (None, Ausencia.NAO_MEDIDO)
+        return (medida, None)
 
 
 class Reaper:

@@ -79,7 +79,8 @@ class Deposito(Protocol):
     ) -> Trabalho: ...
 
     def bater(
-        self, trabalho_id: str, *, lease_s: int = 60, operario: str | None = None
+        self, trabalho_id: str, *, lease_s: int = 60, operario: str | None = None,
+        tentativa: int | None = None,
     ) -> bool: ...
 
     def transicionar(
@@ -90,6 +91,7 @@ class Deposito(Protocol):
         falha: dict[str, Any] | None = None,
         recibo: dict[str, Any] | None = None,
         exigir_operario: str | None = None,
+        exigir_tentativa: int | None = None,
     ) -> Trabalho: ...
 
     def devolver_vencidos(self) -> int: ...

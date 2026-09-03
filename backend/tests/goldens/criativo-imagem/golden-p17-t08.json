@@ -117,10 +117,13 @@
     {
       "destino": "organico",
       "esperados": [
-        "organico-reels-9x16"
+        "organico-reels-9x16",
+        "organico-reels-video-9x16"
       ],
-      "faltando": [],
-      "completo": true,
+      "faltando": [
+        "organico-reels-video-9x16"
+      ],
+      "completo": false,
       "verificado": true,
       "publicavel": false,
       "publicacao_automatica": false
