@@ -593,3 +593,83 @@ def test_conjunto_nao_aprovado_nao_vira_criterio():
 
     with pytest.raises(ConjuntoCongelado):
         para_criterios_de_campanha(_conjunto_bpc())
+
+
+# ── E (fechamento da cadeia): a ausência sobrevive ao primeiro salto ────────
+
+
+def test_E4_gold_extractor_distingue_metrica_ausente_de_zero_medido():
+    """E. Sem estado na ORIGEM, `absent` e `confirmed_zero` são irrecuperáveis.
+
+    Reproduzido: uma keyword sem bloco `keywordIdeaMetrics` e outra com zeros
+    MEDIDOS saíam byte a byte idênticas de `extract_gold` — volume 0, cpc 0.0,
+    competition_index 0 — e nenhuma camada a jusante podia recuperar a
+    diferença, nem `Sinal.de_bruto`, que existe para preservá-la.
+    """
+    from app.agents.mining.gold_extractor import extract_gold
+
+    saida = extract_gold(
+        {
+            "results": [
+                {"text": "termo sem metricas", "keywordIdeaMetrics": {}},
+                {
+                    "text": "termo com zero medido",
+                    "keywordIdeaMetrics": {"avgMonthlySearches": 0, "averageCpcMicros": 0},
+                },
+            ],
+            "loop_iteration": 0,
+            "seed_keyword": "s",
+            "master_bank": [],
+        }
+    )
+    banco = {k["keyword"]: k for k in saida["master_bank"]}
+    assert banco["termo sem metricas"]["volume_estado"] == "absent"
+    assert banco["termo com zero medido"]["volume_estado"] == "measured"
+    assert banco["termo sem metricas"]["cpc_estado"] == "absent"
+    assert banco["termo com zero medido"]["cpc_estado"] == "measured"
+
+
+def test_E5_merger_propaga_estado_e_nunca_promove_a_medido():
+    """E. Banco sem estado declarado não vira `measured` por omissão."""
+    from app.agents.mining.merger import final_classifier
+
+    saida = final_classifier(
+        [
+            {
+                "seed_keyword": "s",
+                "loop_iteration": 0,
+                "master_bank": [
+                    {"keyword": "com estado", "volume": 0, "volume_estado": "measured"},
+                    {"keyword": "sem estado", "volume": 0},
+                ],
+            }
+        ]
+    )
+    fila = {k["keyword"]: k for k in saida["build_queue"]}
+    assert fila["com estado"]["volume_estado"] == "measured"
+    assert fila["sem estado"]["volume_estado"] == "unknown"
+
+
+def test_E6_estado_da_origem_vence_o_palpite_da_camada():
+    """E. Com `<campo>_estado` presente, `Sinal` para de adivinhar."""
+    from app.agents.mining.paid_eligibility import AUSENTE, ZERO_CONFIRMADO, Sinal
+
+    ausente = Sinal.de_bruto(
+        {"volume": 0, "volume_estado": "absent"}, "volume", fonte="keyword_planner"
+    )
+    medido_zero = Sinal.de_bruto(
+        {"volume": 0, "volume_estado": "measured"}, "volume", fonte="keyword_planner"
+    )
+    assert ausente.estado == AUSENTE and ausente.valor is None
+    assert medido_zero.estado == ZERO_CONFIRMADO and medido_zero.valor == 0
+
+
+def test_E7_classifier_nao_aprova_com_cpc_declarado_ausente():
+    """D. Um `0` declarado ausente não passa mais em `cpc <= 0.60`."""
+    from app.agents.mining.classifier import gold_miner_classify
+
+    saida = gold_miner_classify(
+        [{"keyword": "termo caro sem preco", "volume": 8000, "cpc": 0, "cpc_estado": "absent"}],
+        today=HOJE,
+    )
+    assert [k["keyword"] for k in saida["production_ads_queue"]] == []

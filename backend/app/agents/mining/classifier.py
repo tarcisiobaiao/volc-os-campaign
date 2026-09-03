@@ -93,6 +93,19 @@ def _numero(bruto: Any) -> Optional[float]:
         return None
 
 
+def _medido(k: Dict[str, Any], campo: str) -> Optional[float]:
+    """O número SÓ quando a origem não o declarou ausente.
+
+    `gold_extractor` grava `<campo>_estado` a partir da presença da chave na
+    resposta do Keyword Planner. Sem consultá-lo, um `0` que veio de "a API não
+    devolveu métricas" seria indistinguível de um `0` medido — e as regras
+    abaixo decidem diferente nos dois casos.
+    """
+    if k.get(f"{campo}_estado") == "absent":
+        return None
+    return _numero(k.get(campo))
+
+
 def _contains_any(text: str, words: List[str]) -> bool:
     return any(w in text for w in words)
 
@@ -173,8 +186,8 @@ def gold_miner_classify(raw_keywords: List[Dict[str, Any]], *, today: Optional[d
         # Não medir saía estritamente melhor que medir. `cpc_medido` é `None`
         # quando não há medição, e as regras que dependem de preço passaram a
         # exigir número — regra de preço sem preço não decide.
-        vol_medido = _numero(k.get("volume"))
-        cpc_medido = _numero(k.get("cpc"))
+        vol_medido = _medido(k, "volume")
+        cpc_medido = _medido(k, "cpc")
         vol = int(vol_medido) if vol_medido is not None else 0
         cpc = float(cpc_medido) if cpc_medido is not None else 0.0
         comp = str(k.get("competition") or "").upper()

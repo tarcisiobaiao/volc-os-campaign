@@ -65,6 +65,16 @@ def final_classifier(all_runs: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "high_bid": kw.get("high_bid") or 0,
                 "competition": kw.get("competition") or "UNKNOWN",
                 "competition_index": kw.get("competition_index") or 0,
+                # ⚠️ O ESTADO VIAJA JUNTO, E O DEFAULT É `unknown` — NUNCA
+                # `measured`. Um banco vindo de uma origem que não grava estado
+                # (autocomplete, contrato legado, fixture antiga) não pode ser
+                # promovido a medido por omissão: seria a mesma coerção que
+                # `or 0` fazia, uma camada acima e com nome melhor.
+                "volume_estado": kw.get("volume_estado") or "unknown",
+                "cpc_estado": kw.get("cpc_estado") or "unknown",
+                "low_bid_estado": kw.get("low_bid_estado") or "unknown",
+                "high_bid_estado": kw.get("high_bid_estado") or "unknown",
+                "competition_index_estado": kw.get("competition_index_estado") or "unknown",
                 "seed_origin": kw.get("seed_origin") or run.get("seed_keyword"),
                 "found_in_loop": kw.get("found_in_loop", run.get("loop_iteration")),
                 "variants": [],

@@ -172,9 +172,43 @@ class Sinal:
             valor = float(bruto)
         except (TypeError, ValueError):
             return cls(None, FALHOU, fonte=fonte, motivo=f"valor_ilegivel:{bruto!r}"[:80])
+
+        # O ESTADO DECLARADO PELA ORIGEM VENCE O PALPITE DESTA CAMADA.
+        #
+        # `gold_extractor` grava `<campo>_estado` a partir da PRESENÇA da chave
+        # na resposta do Keyword Planner, e `merger` propaga. Quando esse campo
+        # chega, ele é a única testemunha que esteve na fonte — aqui já não dá
+        # para distinguir um `0` que a API respondeu de um `0` que uma camada
+        # intermediária inventou.
+        declarado = mapa.get(f"{chave}_estado")
+        if declarado == AUSENTE:
+            return cls(None, AUSENTE, fonte=fonte, motivo="origem_declarou_ausente")
+        if declarado == MEDIDO:
+            if valor == 0:
+                return cls(0.0, ZERO_CONFIRMADO, fonte=fonte, frescor=frescor)
+            return cls(valor, MEDIDO, fonte=fonte, frescor=frescor)
+        if declarado == DESCONHECIDO and valor == 0:
+            return cls(None, DESCONHECIDO, fonte=fonte, motivo="origem_declarou_desconhecido")
+
         if valor == 0:
             if medicao_confirmada:
                 return cls(0.0, ZERO_CONFIRMADO, fonte=fonte, frescor=frescor)
+            # ⚠️ ASSIMETRIA DE CUSTO, DECLARADA.
+            #
+            # Uma revisão externa apontou, com razão, que `avg_monthly_searches
+            # = 0` na resposta do Keyword Planner é RESPOSTA — volume estimado
+            # nulo ou insignificante —, e que ler isso como `unknown` perde
+            # informação real.
+            #
+            # O default continua conservador porque os dois erros não custam o
+            # mesmo: ler um zero-por-omissão como demanda zero REJEITA um termo
+            # que talvez tenha demanda; ler um zero-medido como desconhecido
+            # apenas o SEGURA para medição. Segurar é reversível, rejeitar é o
+            # que some da tela.
+            #
+            # E o caminho certo não é adivinhar aqui: é a origem declarar. Com
+            # `<campo>_estado` presente, o ramo acima já resolve — este ramo só
+            # existe para quem ainda não declara.
             return cls(None, DESCONHECIDO, fonte=fonte, motivo="zero_sem_confirmacao")
         return cls(valor, MEDIDO, fonte=fonte, frescor=frescor)
 

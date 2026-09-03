@@ -30,6 +30,31 @@ def _micros_to_2(micros: Any) -> float:
     return round((float(micros or 0) / _MICROS), 2)
 
 
+def _estado(metricas: Dict[str, Any], chave: str) -> str:
+    """O estado do campo, lido da PRESENÇA da chave — antes de coagir nada.
+
+    ⚠️ ESTE É O PRIMEIRO SALTO DO PIPELINE, E ERA ONDE A AUSÊNCIA MORRIA.
+
+    `int(m.get("avgMonthlySearches") or 0)` fazia uma keyword SEM bloco de
+    métricas sair byte a byte idêntica a uma com zero MEDIDO:
+
+        sem keywordIdeaMetrics   -> volume 0, cpc 0.0, competition_index 0
+        zeros medidos            -> volume 0, cpc 0.0, competition_index 0
+
+    Depois disso nenhuma camada a jusante pode recuperar a diferença — nem
+    `Sinal.de_bruto`, que é justamente o tipo criado para preservá-la. Por
+    isso o estado nasce aqui, ao LADO do número: os campos numéricos ficam
+    como estão (nada a jusante quebra) e o estado viaja junto para quem
+    souber lê-lo.
+
+    `measured` inclui o zero: quando a API devolveu o campo, o zero é
+    resposta. É a única fonte do pipeline que pode afirmar isso.
+    """
+    if chave not in metricas or metricas.get(chave) is None:
+        return "absent"
+    return "measured"
+
+
 def extract_gold(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Port of the '⛏️ Gold Extractor1' Code node.
 
@@ -71,6 +96,12 @@ def extract_gold(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "high_bid": _micros_to_2(m.get("highTopOfPageBidMicros")),
                 "competition": str(m.get("competition") or "UNKNOWN").upper(),
                 "competition_index": int(m.get("competitionIndex") or 0),
+                # O estado ao lado do número — ver `_estado`.
+                "volume_estado": _estado(m, "avgMonthlySearches"),
+                "cpc_estado": _estado(m, "averageCpcMicros"),
+                "low_bid_estado": _estado(m, "lowTopOfPageBidMicros"),
+                "high_bid_estado": _estado(m, "highTopOfPageBidMicros"),
+                "competition_index_estado": _estado(m, "competitionIndex"),
                 "found_in_loop": current_loop,
                 "seed_origin": current_seed,
             }
