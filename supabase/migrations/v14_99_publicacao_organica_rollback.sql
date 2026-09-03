@@ -48,11 +48,12 @@
 --        linha e move o estado. A trilha existe para nao ser reescrita.
 --
 -- (b) "um job ficou preso em em_voo porque o despachante morreu"
---     -> NAO faca UPDATE direto (o REVOKE da secao 12 nem permite). O lease
---        expira sozinho; depois disso o job continua `em_voo` ate alguem
---        concluir o despacho com o fencing correto, ou reconciliar. Se o
---        processo morreu antes de saber o desfecho, o desfecho honesto e
---        `indeterminado`, e ha funcao para isso.
+--     -> NAO faca UPDATE direto (o REVOKE da secao 12 nem permite). Espere o
+--        lease vencer e chame `publicacao_organica_expirar_lease(job_id)`, que
+--        move o job para `indeterminado` — o estado que diz exatamente o que
+--        sabemos: nada. De la, `publicacao_organica_reconciliar` resolve.
+--        `publicacao_organica_presos()` lista quem esta nessa situacao.
+--        ⚠️ NAO redespache: o pedido pode ter chegado, e redespachar duplica.
 --
 -- (c) "preciso publicar de novo a mesma peca"
 --     -> Isso e um JOB NOVO, com chave de idempotencia nova. Reaproveitar o job
@@ -89,6 +90,8 @@ DROP TRIGGER IF EXISTS publicacao_organica_job_sem_delete        ON public.publi
 DROP TRIGGER IF EXISTS publicacao_organica_job_guarda            ON public.publicacao_organica_job;
 DROP TRIGGER IF EXISTS publicacao_organica_job_exige_autorizacao ON public.publicacao_organica_job;
 
+DROP FUNCTION IF EXISTS public.publicacao_organica_presos(integer);
+DROP FUNCTION IF EXISTS public.publicacao_organica_expirar_lease(uuid, text);
 DROP FUNCTION IF EXISTS public.publicacao_organica_fila(integer);
 DROP FUNCTION IF EXISTS public.publicacao_organica_detalhar_job(uuid, uuid);
 DROP FUNCTION IF EXISTS public.publicacao_organica_listar_jobs(uuid, text, integer);
@@ -123,12 +126,16 @@ DO $conferencia$
 DECLARE
   sobrou text;
 BEGIN
-  SELECT string_agg(c.relname, ', ' ORDER BY c.relname) INTO sobrou
+  -- ⚠️ TODA relacao, e nao so `relkind='r'`. A primeira versao conferia apenas
+  -- tabelas comuns, entao uma sequence, view ou tabela particionada orfa
+  -- passaria por um rollback declarado "completo" — apontado por revisao
+  -- adversarial cruzada em 02/09/2026.
+  SELECT string_agg(c.relname || ' (' || c.relkind::text || ')', ', ' ORDER BY c.relname) INTO sobrou
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-   WHERE n.nspname = 'public' AND c.relkind = 'r'
+   WHERE n.nspname = 'public'
      AND c.relname LIKE 'publicacao\_organica\_%';
   IF sobrou IS NOT NULL THEN
-    RAISE EXCEPTION 'v14_99: sobrou tabela: %', sobrou;
+    RAISE EXCEPTION 'v14_99: sobrou relacao: %', sobrou;
   END IF;
 
   SELECT string_agg(p.proname, ', ' ORDER BY p.proname) INTO sobrou

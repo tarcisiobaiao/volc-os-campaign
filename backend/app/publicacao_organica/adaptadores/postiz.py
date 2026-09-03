@@ -136,6 +136,15 @@ class AdaptadorPostiz:
         self._base = validar_base_url(base_url, permitir_rede_interna=permitir_rede_interna)
         self._token = token.strip()
         self._timeout = timeout_s
+        self._permitir_rede_interna = permitir_rede_interna
+        # ⚠️ REDIRECT E VETOR DE SSRF, e o `False` aqui e EXPLICITO por isso.
+        # Ele ja e o padrao do httpx, mas padrao nao e decisao: um dia alguem
+        # troca, e a validacao de destino passa a valer so para o PRIMEIRO salto.
+        # Apontado por revisao adversarial cruzada em 02/09/2026.
+        if cliente is not None and getattr(cliente, "follow_redirects", False):
+            raise FalhaDoControlPlane(
+                "o cliente injetado segue redirects; a validacao de destino so "
+                "vale para o primeiro salto e o token viajaria junto")
         # `cliente` existe para o E2E hermetico injetar um transporte de teste.
         # Em producao e sempre None, e cada chamada abre e fecha o proprio
         # cliente — como o resto deste backend faz (nenhum pool compartilhado).
@@ -149,6 +158,15 @@ class AdaptadorPostiz:
         return {"Authorization": self._token, "Content-Type": "application/json"}
 
     async def _chamar(self, metodo: str, caminho: str, **kwargs: Any) -> Any:
+        # ⚠️ REVALIDACAO A CADA CHAMADA, e nao so na construcao. `validar_base_url`
+        # resolve o DNS UMA vez; um nome que resolvia para endereco publico pode
+        # passar a resolver para 127.0.0.1 depois (DNS rebinding), e o adaptador
+        # entregaria o token para a rede interna. Revalidar nao fecha a janela
+        # inteira — entre esta linha e o `connect()` ainda ha um intervalo, e so
+        # um transporte com pinagem de IP o fecharia — mas reduz a janela de
+        # "horas" (a vida do objeto) para "milissegundos". A limitacao esta
+        # declarada em POSTIZ-OPERATIONS.md, e nao escondida.
+        validar_base_url(self._base, permitir_rede_interna=self._permitir_rede_interna)
         url = f"{self._base}/public/v1{caminho}"
         try:
             if self._cliente is not None:
@@ -156,7 +174,8 @@ class AdaptadorPostiz:
                     metodo, url, headers=self._cabecalhos(), timeout=self._timeout, **kwargs
                 )
             else:
-                async with httpx.AsyncClient(timeout=self._timeout) as cliente:
+                async with httpx.AsyncClient(timeout=self._timeout,
+                                              follow_redirects=False) as cliente:
                     resposta = await cliente.request(
                         metodo, url, headers=self._cabecalhos(), **kwargs
                     )
@@ -169,6 +188,15 @@ class AdaptadorPostiz:
                 "o pedido pode ter chegado"
             ) from exc
 
+        if 300 <= resposta.status_code < 400:
+            # Com `follow_redirects=False` o 3xx chega ate aqui. Ele NAO e
+            # seguido: o destino do `Location` nao passou por `validar_base_url`,
+            # e segui-lo levaria o token para um endereco que ninguem conferiu.
+            raise FalhaDoControlPlane(
+                f"o control plane respondeu {resposta.status_code} (redirect); "
+                "este adaptador nao segue redirect — confira POSTIZ_BASE_URL",
+                status=resposta.status_code, permanente=True,
+            )
         if resposta.status_code >= 500:
             # 5xx depois de o servidor ter recebido o corpo tambem e incerteza:
             # ele pode ter gravado o post e falhado ao responder.

@@ -598,3 +598,83 @@ def test_nenhuma_chamada_externa_real_aconteceu(contexto) -> None:
     """
     assert contexto.plano.chamadas is not None
     assert os.environ.get("POSTIZ_API_TOKEN") in (None, "")
+
+
+# ===========================================================================
+# Exception safety no despacho — achados da revisao adversarial cruzada
+# ===========================================================================
+
+
+def test_um_snapshot_sem_canal_vira_falha_e_nao_deixa_o_job_preso(contexto) -> None:
+    """A montagem do pedido mora DENTRO do try, e por isso o job nao trava.
+
+    ⚠️ Antes do conserto de 02/09/2026, `_solicitacao_do_snapshot` rodava ANTES
+    do `try`: uma excecao ali subia com o job JA REIVINDICADO, deixando-o em
+    `em_voo` sem transicao que o tirasse de la — e nem `reconciliar` nem
+    `cancelar` aceitam `em_voo`.
+    """
+    from app.publicacao_organica.aplicacao import CasosDeUso
+
+    criado = contexto.cliente.post("/api/publicacao-organica/jobs", json=_corpo_do_job(
+        contexto.cenario, texto="snapshot que sera corrompido"))
+    job_id = criado.json()["job_id"]
+    contexto.cliente.post(f"/api/publicacao-organica/jobs/{job_id}/liberar")
+
+    original = CasosDeUso._solicitacao_do_snapshot
+    try:
+        CasosDeUso._solicitacao_do_snapshot = staticmethod(
+            lambda _s: (_ for _ in ()).throw(
+                __import__("app.publicacao_organica.aplicacao", fromlist=["x"]).OperacaoRecusada(
+                    "o snapshot deste job nao tem referencia de canal",
+                    codigo="destino_sem_referencia", status=409)))
+        r = contexto.cliente.post(f"/api/publicacao-organica/jobs/{job_id}/despachar")
+    finally:
+        CasosDeUso._solicitacao_do_snapshot = original
+
+    assert r.status_code in (200, 201), r.text
+    assert r.json()["estado"] == "falha"
+    # O job SAIU de em_voo — nao ficou preso.
+    detalhe = contexto.cliente.get(f"/api/publicacao-organica/jobs/{job_id}").json()
+    assert detalhe["estado"] == "falha"
+    assert contexto.plano.chamadas == []
+
+
+def test_excecao_nao_prevista_no_despacho_vira_indeterminado(contexto) -> None:
+    """O ramo que faltava: nao sabemos se chegou, e "nao sabemos" tem nome."""
+    criado = contexto.cliente.post("/api/publicacao-organica/jobs", json=_corpo_do_job(
+        contexto.cenario, texto="excecao inesperada no adaptador"))
+    job_id = criado.json()["job_id"]
+    contexto.cliente.post(f"/api/publicacao-organica/jobs/{job_id}/liberar")
+
+    class PlanoQueExplode(fk.ControlPlaneFake):
+        def _criar(self, requisicao):  # type: ignore[override]
+            raise ZeroDivisionError("defeito inesperado dentro do adaptador")
+
+    explodindo = PlanoQueExplode()
+    adaptador = AdaptadorPostiz(
+        base_url="http://control-plane-de-prova.local", token=explodindo.token,
+        permitir_rede_interna=True, cliente=explodindo.cliente())
+    casos = CasosDeUso(RepositorioSupabase(contexto.supabase), adaptador)
+
+    import asyncio
+
+    from app.publicacao_organica.aplicacao import Autor
+
+    recibo = asyncio.run(casos.despachar(
+        job_id, Autor(sub=contexto.cenario.dono_a, email="a@agenciavolc.com.br")))
+    assert recibo["estado"] == "indeterminado"
+
+    detalhe = contexto.cliente.get(f"/api/publicacao-organica/jobs/{job_id}").json()
+    assert detalhe["leitura"]["incerto"] is True
+    assert detalhe["leitura"]["tom"] != "sucesso"
+    # ⚠️ O ERRO GRAVADO DIZ QUE FOI IMPREVISTO E NOMEIA O TIPO — e nada alem
+    # disso. Sem traceback, sem caminho de disco, sem a mensagem crua da
+    # excecao (que pode carregar qualquer coisa que o adaptador estivesse
+    # manipulando). O tipo concreto aqui e `TypeError` e nao `ZeroDivisionError`
+    # porque o httpx embrulha o que o transporte levanta — e ISSO E O PONTO:
+    # nao sabemos o que aconteceu, e o registro nao finge saber.
+    erro = detalhe["ultimo_erro"] or ""
+    assert "falha nao prevista no despacho" in erro
+    assert "Error" in erro
+    assert "/private/tmp" not in erro
+    assert "Traceback" not in erro

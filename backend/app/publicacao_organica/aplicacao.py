@@ -206,13 +206,24 @@ class CasosDeUso:
 
         fencing = int(claim["fencing"])
         snapshot = claim.get("solicitacao") or {}
-        solicitacao = self._solicitacao_do_snapshot(snapshot)
 
         desfecho: str
         recibo: dict[str, Any]
+        # ⚠️ A MONTAGEM DO PEDIDO MORA DENTRO DO `try`, e isso e conserto de um
+        # defeito apontado por revisao adversarial cruzada em 02/09/2026. Ela
+        # ficava ANTES, e uma excecao ali (snapshot sem referencia de canal, por
+        # exemplo) subia com o job JA REIVINDICADO — deixando-o em `em_voo` sem
+        # nenhuma transicao que o tirasse de la. O job ficava preso.
         try:
+            solicitacao = self._solicitacao_do_snapshot(snapshot)
             externo = await self._enviar(solicitacao)
             desfecho, recibo = "sucesso", externo.como_recibo()
+        except OperacaoRecusada as exc:
+            # Snapshot invalido e falha DETERMINADA: nada saiu daqui, e reenviar
+            # o mesmo job nunca vai passar. `falha` e o desfecho honesto.
+            desfecho, recibo = "falha", {
+                "erro": dom.sanitizar_erro(str(exc)), "permanente": True,
+            }
         except DesfechoIncerto as exc:
             # ⚠️ AQUI MORA A DIFERENCA ENTRE UM POST DUPLICADO E UM ESTADO
             # HONESTO. Nao sabemos se chegou; nao inventamos recibo e nao
@@ -232,8 +243,23 @@ class CasosDeUso:
                 "erro": "o control plane devolveu um recibo que este contrato recusa gravar",
                 "codigo": exc.codigo,
             }
+        except Exception as exc:  # noqa: BLE001
+            # ⚠️ O RAMO QUE FALTAVA. Uma excecao NAO PREVISTA depois de o job ter
+            # sido reivindicado subia sem transicao nenhuma e deixava a linha em
+            # `em_voo` para sempre. Nao sabemos se o pedido chegou ao destino —
+            # e "nao sabemos" tem um nome neste contrato.
+            log.exception("publicacao organica: falha nao prevista no despacho do job %s", job_id)
+            desfecho, recibo = "indeterminado", {
+                "erro": dom.sanitizar_erro(
+                    f"falha nao prevista no despacho ({type(exc).__name__})"),
+            }
 
         chave = dom.chave_derivada("desp", job_id, fencing)
+        # ⚠️ SE ESTA GRAVACAO FALHAR, o job fica em `em_voo` com o lease correndo.
+        # Isso NAO e silencioso: quando o lease vencer,
+        # `publicacao_organica_presos()` o lista e
+        # `publicacao_organica_expirar_lease()` o move para `indeterminado`.
+        # Perder a resposta do provedor e ruim; perder o job era pior.
         return await self._repo.concluir_despacho(
             job_id, fencing, chave, desfecho, recibo, autor)
 

@@ -366,3 +366,67 @@ async def test_o_recibo_bruto_e_serializavel_e_pequeno(adaptador: AdaptadorPosti
     texto = json.dumps(recibo.bruto)
     assert len(texto) < 4000
     assert recibo.como_recibo()["referencia_externa"] == recibo.referencia_externa
+
+
+# ---------------------------------------------------------------------------
+# Egresso — o que a revisao adversarial cruzada de 02/09/2026 encontrou
+# ---------------------------------------------------------------------------
+
+
+def test_cliente_injetado_que_segue_redirect_e_recusado(plano: fk.ControlPlaneFake) -> None:
+    """Um cliente que segue redirect torna a validacao de destino inutil.
+
+    Ela vale para o PRIMEIRO salto; o `Location` nunca passou por
+    `validar_base_url`. Com o token no header, seguir e entregar a credencial a
+    um endereco que ninguem conferiu.
+    """
+    seguidor = httpx.AsyncClient(transport=plano.transporte(), follow_redirects=True)
+    with pytest.raises(FalhaDoControlPlane) as erro:
+        AdaptadorPostiz(base_url="http://control-plane-de-prova.local",
+                        token=plano.token, permitir_rede_interna=True, cliente=seguidor)
+    assert "redirect" in str(erro.value)
+
+
+async def test_um_3xx_e_recusado_e_nao_seguido() -> None:
+    def responder(requisicao: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"Location": "http://169.254.169.254/latest/meta-data/"})
+
+    adaptador = AdaptadorPostiz(
+        base_url="http://control-plane-de-prova.local", token="token-de-prova",
+        permitir_rede_interna=True,
+        cliente=httpx.AsyncClient(transport=httpx.MockTransport(responder)))
+    with pytest.raises(FalhaDoControlPlane) as erro:
+        await adaptador.criar_rascunho(_pedido())
+    assert "redirect" in str(erro.value)
+    # ⚠️ E NAO vira `DesfechoIncerto`: um 3xx e resposta CONHECIDA, e chamar isso
+    # de incerteza mandaria o job para reconciliacao sem nada para reconciliar.
+
+
+async def test_o_destino_e_revalidado_a_cada_chamada(monkeypatch) -> None:
+    """DNS rebinding: o nome resolvia para publico e passa a resolver para privado.
+
+    A revalidacao nao fecha a janela inteira — so um transporte com pinagem de IP
+    fecharia — mas transforma "validado uma vez, usado por horas" em "validado a
+    cada chamada". Sem ela, o adaptador vira um proxy para a rede interna com o
+    token junto.
+    """
+    from app.publicacao_organica.adaptadores import postiz as mod
+
+    publico = True
+
+    def _resolver(host, *_a, **_k):
+        return [(0, 0, 0, "", ("93.184.216.34" if publico else "127.0.0.1", 0))]
+
+    monkeypatch.setattr(mod.socket, "getaddrinfo", _resolver)
+
+    plano = fk.ControlPlaneFake()
+    adaptador = AdaptadorPostiz(
+        base_url="https://postiz.exemplo.invalid", token=plano.token,
+        permitir_rede_interna=False, cliente=plano.cliente())
+    # Enquanto resolve para publico, funciona.
+    assert await adaptador.listar_canais()
+
+    publico = False
+    with pytest.raises(FalhaDoControlPlane) as erro:
+        await adaptador.listar_canais()
+    assert "rede privada" in str(erro.value)

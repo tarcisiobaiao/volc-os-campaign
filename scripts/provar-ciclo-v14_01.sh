@@ -829,6 +829,123 @@ END
 $bloco$;
 
 -- ===========================================================================
+-- O BURACO NEGRO DO LEASE — achado por revisao adversarial cruzada (02/09/2026)
+-- ===========================================================================
+-- `reivindicar` so aceita `pronto`, e todo claim move o job para `em_voo`. Logo
+-- um despachante que morre entre reivindicar e concluir deixava o job preso:
+-- reivindicar recusava, reconciliar recusava e cancelar recusava. Tres portas
+-- fechadas. A saida e `expirar_lease`, e ela e guardada pelo RELOGIO.
+DO $bloco$
+DECLARE
+  dono_a uuid := '11111111-1111-1111-1111-111111111111';
+  ma uuid := (SELECT valor::uuid FROM _ctx WHERE chave='master_a');
+  criado jsonb; jid uuid; claim jsonb; r jsonb;
+BEGIN
+  criado := public.publicacao_organica_criar_job(
+    jsonb_build_object('peca_tipo','master','peca_id',ma,'peca_versao',1,
+      'autorizacao_id',(SELECT valor FROM _ctx WHERE chave='aprov_a'),
+      'destino_id',(SELECT valor FROM _ctx WHERE chave='destino_apto'),
+      'modo','draft','corpo',jsonb_build_object('texto','despachante que morre')),
+    'cp-lease-preso-0000001', dono_a, 'a@agenciavolc.com.br');
+  jid := (criado->>'job_id')::uuid;
+  PERFORM public.publicacao_organica_liberar(jid, dono_a);
+  claim := public.publicacao_organica_reivindicar(jid, 'consumidor-que-morre', 1);
+
+  -- Com o lease AINDA VALIDO, expirar e recusado: ha um despachante vivo.
+  r := public.publicacao_organica_expirar_lease(jid);
+  IF (r->>'expirado')::boolean IS NOT FALSE THEN
+    RAISE EXCEPTION 'PROVA FALHOU: lease valido foi expirado';
+  END IF;
+  RAISE NOTICE 'PROVA ok: lease valido nao e expirado | %', r->>'motivo';
+
+  -- Envelhece o lease sem tocar em mais nada (simula o relogio andando).
+  UPDATE public.publicacao_organica_job
+     SET lease_ate = now() - interval '1 minute' WHERE id = jid;
+
+  -- Antes do conserto, as TRES portas estavam fechadas. Provamos duas ainda
+  -- fechadas (elas DEVEM continuar fechadas) e a terceira agora aberta.
+  PERFORM _prova_recusa('preso: reconciliar ainda recusa em_voo',
+    format('SELECT public.publicacao_organica_reconciliar(%L::uuid, %L, %L::jsonb, %L::uuid, %L)',
+      jid, 'cp-preso-recon-000001', '{"estado_externo":"DESCONHECIDO"}'::text,
+      dono_a, 'a@agenciavolc.com.br'),
+    '23514', 'nada a reconciliar');
+  PERFORM _prova_recusa('preso: cancelar ainda recusa em_voo',
+    format('SELECT public.publicacao_organica_cancelar(%L::uuid, %L, %L::uuid)', jid, 'desisti', dono_a),
+    '23514', 'em voo nao e cancelado');
+
+  PERFORM _prova_igual('preso aparece na lista de presos',
+    format('SELECT count(*)::text FROM jsonb_array_elements(public.publicacao_organica_presos(50)) e WHERE e->>''job_id''=%L', jid),
+    '1');
+
+  r := public.publicacao_organica_expirar_lease(jid);
+  IF (r->>'expirado')::boolean IS NOT TRUE THEN
+    RAISE EXCEPTION 'PROVA FALHOU: lease vencido nao pode ser expirado: %', r->>'motivo';
+  END IF;
+  PERFORM _prova_igual('lease vencido vira indeterminado, e nao sucesso',
+    format('SELECT estado FROM public.publicacao_organica_job WHERE id=%L', jid),
+    'indeterminado');
+  -- ⚠️ E NAO redespacha: o pedido pode ter chegado. `pronto` nao e alcancavel.
+  PERFORM _prova_recusa('preso nao volta para pronto',
+    format('UPDATE public.publicacao_organica_job SET estado=''pronto'' WHERE id=%L', jid),
+    '23514', 'nao e permitida');
+  -- Daqui a reconciliacao resolve, que e o caminho desenhado.
+  r := public.publicacao_organica_reconciliar(
+    jid, 'cp-preso-recon-000002',
+    jsonb_build_object('estado_externo','DESCONHECIDO'), dono_a, 'a@agenciavolc.com.br');
+  PERFORM _prova_igual('do indeterminado a reconciliacao ja funciona',
+    format('SELECT estado FROM public.publicacao_organica_job WHERE id=%L', jid),
+    'indeterminado');
+  RAISE NOTICE 'PROVA ok: o buraco negro do lease tem saida, e ela nao redespacha';
+END
+$bloco$;
+
+-- ===========================================================================
+-- HORARIO AMBIGUO — o que acontece DUAS vezes no fim do horario de verao
+-- ===========================================================================
+DO $bloco$
+DECLARE
+  dono_a uuid := '11111111-1111-1111-1111-111111111111';
+  ma uuid := (SELECT valor::uuid FROM _ctx WHERE chave='master_a');
+  base jsonb;
+  r jsonb;
+BEGIN
+  base := jsonb_build_object('peca_tipo','master','peca_id',ma,'peca_versao',1,
+            'autorizacao_id',(SELECT valor FROM _ctx WHERE chave='aprov_a'),
+            'destino_id',(SELECT valor FROM _ctx WHERE chave='destino_apto'),
+            'modo','schedule');
+
+  -- 2099-11-01 01:30 em America/New_York acontece duas vezes (EDT e EST).
+  PERFORM _prova_recusa('K6 horario ambiguo (recuo do DST) e recusado',
+    format('SELECT public.publicacao_organica_criar_job(%L::jsonb, %L, %L::uuid, %L)',
+      (base || jsonb_build_object('timezone','America/New_York',
+                                  'horario_local','2099-11-01 01:30:00'))::text,
+      'cp-k6-ambiguo-0000001', dono_a, 'a@agenciavolc.com.br'),
+    '22023', 'acontece DUAS vezes');
+
+  -- ⚠️ E o CONTROLE: um horario normal na MESMA zona continua passando. Sem
+  -- este par, a deteccao poderia estar recusando tudo e o teste ficaria verde.
+  r := public.publicacao_organica_criar_job(
+    base || jsonb_build_object('timezone','America/New_York',
+                               'horario_local','2099-11-01 05:30:00'),
+    'cp-k6-controle-000001', dono_a, 'a@agenciavolc.com.br');
+  IF r->>'job_id' IS NULL THEN
+    RAISE EXCEPTION 'PROVA FALHOU: K6 controle | horario normal foi recusado';
+  END IF;
+  RAISE NOTICE 'PROVA ok: K6 controle | horario normal na mesma zona passa';
+
+  -- Offset fracionario continua correto: 09:30 em Asia/Kathmandu (+05:45) = 03:45Z.
+  r := public.publicacao_organica_criar_job(
+    base || jsonb_build_object('timezone','Asia/Kathmandu',
+                               'horario_local','2099-07-15 09:30:00'),
+    'cp-k7-kathmandu-00001', dono_a, 'a@agenciavolc.com.br');
+  IF (r->>'instante_utc')::timestamptz <> '2099-07-15 03:45:00+00'::timestamptz THEN
+    RAISE EXCEPTION 'PROVA FALHOU: K7 offset fracionario | obtido %', r->>'instante_utc';
+  END IF;
+  RAISE NOTICE 'PROVA ok: K7 offset fracionario (+05:45) | 03:45Z';
+END
+$bloco$;
+
+-- ===========================================================================
 -- CONTRAPROVA H — erro externo com material de credencial e RECUSADO
 -- ===========================================================================
 DO $bloco$

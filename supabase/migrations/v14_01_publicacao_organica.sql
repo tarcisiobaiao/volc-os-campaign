@@ -1111,6 +1111,30 @@ BEGIN
         USING ERRCODE = 'invalid_parameter_value';
     END IF;
 
+    -- ⚠️ HORARIO AMBIGUO: o que acontece DUAS vezes no fim do horario de verao.
+    -- Achado por revisao adversarial cruzada em 02/09/2026. A conferencia de
+    -- volta acima so pega o horario INEXISTENTE (o salto); no recuo, as duas
+    -- ocorrencias voltam para o MESMO `local_ts` e o Postgres escolhe uma em
+    -- silencio. O operador pediu 01:30 e existem dois 01:30 — publicar no
+    -- errado erra por uma hora sem ninguem perceber.
+    --
+    -- A deteccao e por vizinhanca: se algum outro instante proximo tambem
+    -- devolve o mesmo horario local, o horario e ambiguo. As transicoes reais
+    -- sao de 30 minutos (Lord Howe) a 2 horas (casos historicos), entao a
+    -- vizinhanca cobre esse intervalo.
+    IF EXISTS (
+      SELECT 1
+        FROM unnest(ARRAY[
+               interval '-2 hours', interval '-1 hour', interval '-30 minutes',
+               interval '30 minutes', interval '1 hour', interval '2 hours'
+             ]) AS passo
+       WHERE ((instante + passo) AT TIME ZONE tz) = local_ts
+    ) THEN
+      RAISE EXCEPTION
+        'publicacao organica: este horario local acontece DUAS vezes nesta zona (fim do horario de verao); escolha outro horario'
+        USING ERRCODE = 'invalid_parameter_value';
+    END IF;
+
     IF instante <= now() THEN
       RAISE EXCEPTION
         'publicacao organica: agendar para o passado nao agenda nada'
@@ -1332,6 +1356,66 @@ BEGIN
     'estado', 'em_voo',
     'tentativa', j.tentativas + 1,
     'solicitacao', j.solicitacao);
+END
+$funcao$;
+
+
+-- 10.4b expirar lease — a saida do buraco negro em que um despachante morto deixa o job
+-- ⚠️ DEFEITO ENCONTRADO POR REVISAO ADVERSARIAL CRUZADA EM 02/09/2026, e ele era
+-- grave. `reivindicar` so aceita `pronto`, e todo claim bem-sucedido move o job
+-- para `em_voo`. Logo a condicao de lease vencido daquela funcao era CODIGO MORTO,
+-- e um job cujo despachante morreu entre reivindicar e concluir ficava preso:
+-- `reivindicar` recusava (nao esta em `pronto`), `reconciliar` recusava (`em_voo`
+-- nao estava na lista) e `cancelar` recusava (job em voo nao e cancelado). Tres
+-- portas fechadas, nenhuma saida.
+--
+-- A saida honesta NAO e reivindicar de novo: o pedido pode ter chegado ao control
+-- plane, e redespachar duplicaria o post. A saida e `indeterminado` — o estado que
+-- diz exatamente o que sabemos (nada) — de onde a reconciliacao resolve.
+--
+-- A guarda e o RELOGIO: so um lease VENCIDO pode ser expirado. Enquanto ele vale,
+-- ha um despachante vivo que ainda pode concluir com o fencing dele.
+CREATE OR REPLACE FUNCTION public.publicacao_organica_expirar_lease(
+  p_job_id    uuid,
+  p_motivo    text DEFAULT 'lease vencido: o despachante nao concluiu'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $funcao$
+DECLARE
+  j public.publicacao_organica_job%ROWTYPE;
+BEGIN
+  SELECT * INTO j FROM public.publicacao_organica_job WHERE id = p_job_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'publicacao organica: job inexistente' USING ERRCODE = 'no_data_found';
+  END IF;
+
+  IF j.estado <> 'em_voo' THEN
+    RETURN jsonb_build_object(
+      'expirado', false, 'estado', j.estado,
+      'motivo', 'so um job em voo tem lease para expirar');
+  END IF;
+
+  IF j.lease_ate IS NOT NULL AND j.lease_ate > now() THEN
+    -- Ha um despachante vivo. Expirar aqui abriria a janela que o lease fecha.
+    RETURN jsonb_build_object(
+      'expirado', false, 'estado', j.estado,
+      'motivo', 'o lease deste job ainda vale; espere ele vencer');
+  END IF;
+
+  UPDATE public.publicacao_organica_job
+     SET estado = 'indeterminado', lease_owner = NULL, lease_ate = NULL,
+         ultimo_erro = left(p_motivo, 400)
+   WHERE id = p_job_id;
+
+  INSERT INTO public.publicacao_organica_transicao
+    (job_id, de, para, motivo, fencing)
+  VALUES (p_job_id, 'em_voo', 'indeterminado', left(p_motivo, 400), j.fencing);
+
+  RETURN jsonb_build_object('expirado', true, 'estado', 'indeterminado',
+                            'fencing', j.fencing);
 END
 $funcao$;
 
@@ -1804,6 +1888,29 @@ AS $funcao$
 $funcao$;
 
 
+-- Jobs PRESOS: em voo com o lease ja vencido. Sem esta leitura, o buraco negro
+-- da secao 10.4b existiria e ninguem saberia onde procurar.
+CREATE OR REPLACE FUNCTION public.publicacao_organica_presos(
+  p_limite integer DEFAULT 50
+)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $funcao$
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+           'job_id', j.id, 'owner_sub', j.owner_sub, 'modo', j.modo,
+           'tentativas', j.tentativas, 'lease_owner', j.lease_owner,
+           'lease_venceu_em', j.lease_ate) ORDER BY j.lease_ate), '[]'::jsonb)
+    FROM public.publicacao_organica_job j
+   WHERE j.estado = 'em_voo'
+     AND j.lease_ate IS NOT NULL
+     AND j.lease_ate <= now()
+   LIMIT greatest(1, least(coalesce(p_limite, 50), 200));
+$funcao$;
+
+
 -- -----------------------------------------------------------------------------
 -- 12. SEGURANCA — REVOKE nominal, RLS forcada, zero policy, grants minimos
 -- -----------------------------------------------------------------------------
@@ -1870,6 +1977,8 @@ GRANT EXECUTE ON FUNCTION public.publicacao_organica_listar_destinos(uuid)      
 GRANT EXECUTE ON FUNCTION public.publicacao_organica_listar_jobs(uuid, text, integer)                                  TO service_role;
 GRANT EXECUTE ON FUNCTION public.publicacao_organica_detalhar_job(uuid, uuid)                                          TO service_role;
 GRANT EXECUTE ON FUNCTION public.publicacao_organica_fila(integer)                                                     TO service_role;
+GRANT EXECUTE ON FUNCTION public.publicacao_organica_expirar_lease(uuid, text)                                         TO service_role;
+GRANT EXECUTE ON FUNCTION public.publicacao_organica_presos(integer)                                                   TO service_role;
 
 
 -- -----------------------------------------------------------------------------
@@ -1930,16 +2039,16 @@ BEGIN
   SELECT count(*) INTO n_funcoes
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.proname LIKE 'publicacao\_organica\_%';
-  IF n_funcoes < 15 THEN
-    RAISE EXCEPTION 'v14_01: esperava ao menos 15 funcoes, encontrei %', n_funcoes;
+  IF n_funcoes < 17 THEN
+    RAISE EXCEPTION 'v14_01: esperava ao menos 17 funcoes, encontrei %', n_funcoes;
   END IF;
 
   SELECT count(*) INTO n_grants
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.proname LIKE 'publicacao\_organica\_%'
      AND has_function_privilege('service_role', p.oid, 'EXECUTE');
-  IF n_grants <> 11 THEN
-    RAISE EXCEPTION 'v14_01: esperava 11 funcoes executaveis por service_role, encontrei %', n_grants;
+  IF n_grants <> 13 THEN
+    RAISE EXCEPTION 'v14_01: esperava 13 funcoes executaveis por service_role, encontrei %', n_grants;
   END IF;
 
   SELECT count(*) INTO n_triggers
@@ -1951,7 +2060,7 @@ BEGIN
     RAISE EXCEPTION 'v14_01: esperava 6 gatilhos, encontrei %', n_triggers;
   END IF;
 
-  RAISE NOTICE 'v14_01: conferencia ok — 5 tabelas, RLS forcada, 0 policies, % funcoes, 11 grants, 6 gatilhos',
+  RAISE NOTICE 'v14_01: conferencia ok — 5 tabelas, RLS forcada, 0 policies, % funcoes, 13 grants, 6 gatilhos',
     n_funcoes;
 END
 $conferencia$;
