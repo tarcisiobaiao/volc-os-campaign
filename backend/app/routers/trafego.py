@@ -36,6 +36,8 @@ from __future__ import annotations
 import asyncio
 import dataclasses as _dataclasses
 import dataclasses
+import hashlib
+import json
 import logging
 import pathlib
 import re
@@ -2862,6 +2864,23 @@ def _promessa_do_anuncio(brief: Any) -> str:
     return " ".join(partes)[:400]
 
 
+def _impressao_do_destino(destino: DestinoDeCampanha) -> str:
+    """sha256 do VEREDITO do destino — o recibo desta avaliação ao vivo.
+
+    ⚠️ Não é o hash da URL. A URL está dentro de `plano_impressao` e não diz
+    nada sobre o que aquele endereço serve AGORA; o que autoriza a escrita é o
+    veredito que a barreira 3 acabou de emitir sobre a leitura ao vivo. É ele
+    que a autorização de nascimento carrega, e é contra ele que a reconciliação
+    consegue perguntar depois "o destino que autorizou é o que está lá?".
+
+    `para_json()` é estrutural de propósito (códigos, contagens, sem HTML), o
+    que faz deste hash uma identidade estável e não um resumo de página.
+    """
+    canonico = json.dumps(destino.para_json(), sort_keys=True,
+                          separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
+
+
 def _recusa_do_destino(destino: DestinoDeCampanha) -> str:
     """A frase única que a tela mostra quando o destino reprova."""
     motivos = destino.motivos
@@ -3585,10 +3604,14 @@ async def subir(
             cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
             ai_max=body.ai_max,
         )
-        return plano, preparo, linhas
+        # `conjunto` viaja porque a autorização de nascimento precisa NOMEAR
+        # qual conjunto pago autorizou esta escrita — e o único selo que serve é
+        # o `approved_set_sha256` que este portão acabou de reconferir.
+        return plano, preparo, linhas, conjunto
 
     try:
-        plano, preparo, linhas = await asyncio.to_thread(_provar_de_novo)
+        plano, preparo, linhas, conjunto_pago = await asyncio.to_thread(
+            _provar_de_novo)
     except portao_pago.PortaoDoConjuntoPago as exc:
         # A recusa do portão é HERDADA por `/subir`: sem esta cláusula ela
         # cairia no genérico e viraria 500, e um 500 é indistinguível de uma
@@ -3977,8 +4000,85 @@ async def subir(
                                marca=marca,
                                chave_intencao=chave_intencao) from exc
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # A AUTORIZAÇÃO DE NASCIMENTO — a capacidade, emitida no último instante
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ AQUI, e não no topo da rota. Ela NOMEIA o recibo `em_voo`, o aprovador,
+    # o destino aprovado, o conjunto pago selado e o veredito de mensuração — e
+    # nenhuma dessas coisas existe antes deste ponto. Emitir cedo produziria uma
+    # capacidade que afirma provas que ainda não foram feitas.
+    #
+    # ⚠️ E ela é o que torna esta rota a ÚNICA porta. Até 03/09/2026 os portões
+    # acima eram convenções DESTA função: `volc_ads.subir.subir` escrevia sem
+    # nenhum deles, e qualquer módulo que o importasse herdava a capacidade de
+    # criar campanha em qualquer conta. Reproduzido com adapter falso e contador
+    # em `docs/closure/hermes-p09-t17-campaign-birth-authority-v1/contraprova-vermelha-bypass.py`.
+    #
+    # ⚠️ Recusar a emissão DEPOIS do `despachar` fecha o recibo como erro, pelo
+    # mesmo motivo do `_gravar_plano` acima: o recibo já está `em_voo`, e
+    # abandoná-lo deixaria a camada 4 bloqueando este item para sempre.
     try:
-        recibo = await asyncio.to_thread(sb.subir, preparo, motivo=body.motivo)
+        autorizacao = sb.aut.emitir(
+            autoridade=sb.aut.AUTORIDADE_CANONICA,
+            conta=cid,
+            mcc=mid,
+            canal=preparo.canal,
+            plano_impressao=preparo.selo.impressao,
+            recibo_id=str(getattr(despacho, "recibo_id", "") or ""),
+            item_id=str(getattr(despacho, "item_id", "") or ""),
+            idempotency_key=str(registro.get("idempotency_key") or ""),
+            aprovador_sub=identidade.sub,
+            aprovador_email=identidade.email or identidade.sub,
+            destino_url=plano.brief.url_final,
+            # A impressão do VEREDITO do destino, não a URL: é o recibo desta
+            # avaliação ao vivo que autorizou, e ele é o que a reconciliação
+            # precisa poder comparar depois.
+            destino_recibo=_impressao_do_destino(destino),
+            conjunto_pago_autoridade=portao_pago.AUTORIDADE,
+            conjunto_pago_impressao=str(
+                getattr(conjunto_pago, "approved_set_sha256", "") or ""),
+            estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
+            mensuracao_veredito=portoes_do_lance.measurement_ready,
+            orcamento_diario_micros=_micros(body.budget_diario, "budget_diario"),
+            # `_micros` recusa zero — com razão, dinheiro zero não é dinheiro.
+            # CPC ausente é outra coisa: há canal que não declara lance por
+            # clique, e converter a ausência em `_micros(0)` transformaria um
+            # plano legítimo numa recusa de representação.
+            cpc_micros=(_micros(body.cpc_inicial, "cpc_inicial")
+                        if body.cpc_inicial else 0),
+            motivo=body.motivo,
+        )
+    except (sb.aut.EmissaoRecusada, ValueError) as exc:
+        fechamento = await _fechar_recibo_com_erro(ledger, despacho, exc,
+                                                  codigo=type(exc).__name__)
+        log.warning("autorização de nascimento do card %s recusada; nada foi "
+                    "enviado", body.opportunity_id)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "estado": "autorizacao_de_nascimento_recusada",
+                "mensagem": str(exc),
+                "autoridade": sb.aut.AUTORIDADE_CANONICA,
+                "nada_foi_criado": True,
+                "chamada_google": "nenhuma — a recusa acontece antes da rede",
+                "recibo_id": getattr(despacho, "recibo_id", None),
+                "item_id": getattr(despacho, "item_id", None),
+                "reenvio_permitido": fechamento.get("desfecho") == "erro",
+                "ledger": fechamento,
+            },
+        ) from exc
+
+    try:
+        recibo = await asyncio.to_thread(
+            sb.subir, preparo, motivo=body.motivo, autorizacao=autorizacao)
+    except sb.aut.AutorizacaoInvalida as exc:
+        # A capacidade não casou com o payload selado, ou já havia escrito. Como
+        # as guardas locais abaixo, isto nasce ANTES do pré-recibo e antes de
+        # qualquer byte sair: falha confirmada, item reentrável.
+        await _fechar_recibo_com_erro(ledger, despacho, exc,
+                                      codigo=type(exc).__name__)
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (sb.TravaAberta, sb.PayloadNaoValidado, sb.CanalSemMutacaoReal) as exc:
         # Guardas locais do executor: as três são levantadas por funções nomeadas
         # no TOPO de `subir()`, antes do `with modo.destravar()` — ou seja, antes
@@ -4107,6 +4207,14 @@ async def subir(
         "ativacao_incluida": False,
         "marca_remota": marca,
     }
+    # ⚠️ A AUTORIZAÇÃO VAI NA RESPOSTA, E A ASSINATURA NÃO.
+    #
+    # Ela é o que a tela pode exibir como prova de que esta campanha nasceu pela
+    # autoridade canônica: recibo, aprovador, destino, conjunto pago e veredito
+    # de mensuração, todos nomeados. `para_json()` remove a assinatura de
+    # propósito — devolvê-la daria a quem lesse a resposta uma capacidade
+    # reaproveitável enquanto o processo vivesse.
+    projetado["autorizacao_de_nascimento"] = autorizacao.para_json()
 
     # ⚠️ O ID EXTERNO É A ÚNICA COISA QUE SÓ EXISTE DEPOIS DO MUTATE.
     #

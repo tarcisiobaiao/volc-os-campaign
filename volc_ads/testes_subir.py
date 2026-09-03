@@ -62,6 +62,7 @@ from google.ads.googleads.client import GoogleAdsClient
 
 from . import isencao, subir
 from .copy.mock import falha_politica
+from .gads import autoridade as aut
 from .gads import modo
 from .gads.errors import (
     ChavePolitica,
@@ -106,6 +107,11 @@ def grafo(c, nome_campanha: str = "FORGE BR 20260818_120000 fgts saque"):
     o.campaign_operation.create.advertising_channel_type = (
         c.enums.AdvertisingChannelTypeEnum.SEARCH
     )
+    # ⚠️ `PAUSED` aqui não é enfeite: desde P09-T17 a fronteira de escrita LÊ o
+    # estado inicial do payload (`gads/autoridade.exigir_nascimento_pausado`), e
+    # status ausente é recusa. `campanha/comum.py:207` põe o mesmo literal, então
+    # este grafo continua sendo "como `preparar()` montaria".
+    o.campaign_operation.create.status = c.enums.CampaignStatusEnum.PAUSED
     ops.append(o)
 
     o = c.get_type("MutateOperation")
@@ -141,6 +147,43 @@ def preparo_provado(c, operacoes=None, conta: str = CONTA) -> subir.Preparo:
             carimbo="20260818_120000",
         ),
     )
+
+
+def autorizacao_valida(preparo: subir.Preparo, **trocas) -> aut.Autorizacao:
+    """A capacidade de nascimento que a rota canônica emitiria para ESTE preparo.
+
+    ⚠️ Estes testes emitem a autorização porque o que eles provam é a
+    VERIFICAÇÃO, não a emissão — a mesma razão pela qual `preparo_provado` emite
+    o `Selo` em vez de rodar `validate_only`. Quem prova a emissão é
+    `backend/tests/test_p09_t17_autoridade_de_nascimento.py`, que exercita cada
+    prova que falta em `emitir()`.
+
+    Este arquivo aparece na allowlist de `scripts/gate_autoridade_de_nascimento.py`
+    justamente por esta função: teste pode emitir, produção fora da rota não.
+    """
+    campos = dict(
+        autoridade=aut.AUTORIDADE_CANONICA,
+        conta=preparo.selo.customer_id,
+        mcc=preparo.selo.login_customer_id,
+        canal=preparo.selo.canal,
+        plano_impressao=preparo.selo.impressao,
+        recibo_id="recibo-de-prova-0001",
+        item_id="item-de-prova-0001",
+        idempotency_key="idem-de-prova-0001",
+        aprovador_sub="auth0|prova",
+        aprovador_email="prova@agenciavolc.com.br",
+        destino_url="https://portalmundomais.com.br/fgts",
+        destino_recibo="a" * 64,
+        conjunto_pago_autoridade="python:app.agents.mining.paid_eligibility",
+        conjunto_pago_impressao="b" * 64,
+        estrategia_lance="MANUAL_CPC",
+        mensuracao_veredito="INDETERMINADO",
+        orcamento_diario_micros=20_000_000,
+        cpc_micros=1_000_000,
+        motivo=MOTIVO,
+    )
+    campos.update(trocas)
+    return aut.emitir(**campos)
 
 
 @pytest.mark.parametrize(
@@ -249,10 +292,17 @@ def falha_violacao_criterio(indice: int = 20) -> FalhaGads:
 
 
 def caso_trava_fechada(c) -> tuple[bool, str]:
-    """Com a trava fechada, subir() para no `destravar()` e nada sai da máquina."""
+    """Com a trava fechada, subir() para no `destravar()` e nada sai da máquina.
+
+    ⚠️ A autorização de nascimento vai VÁLIDA aqui de propósito: o que este caso
+    prova é a trava, e a trava só é provada quando ela é a única porta que falta.
+    Sem a autorização o caso pararia antes e passaria a testar outra coisa.
+    """
+    preparo = preparo_provado(c)
     with tempfile.TemporaryDirectory() as tmp:
         try:
-            subir.subir(preparo_provado(c), motivo=MOTIVO, pasta_recibos=tmp)
+            subir.subir(preparo, motivo=MOTIVO, pasta_recibos=tmp,
+                        autorizacao=autorizacao_valida(preparo))
         except modo.EscritaBloqueada as exc:
             msg = str(exc)
             recibos = list(Path(tmp).glob("*.json"))
@@ -272,10 +322,12 @@ def caso_trava_ambiente(c) -> tuple[bool, str]:
     armaria o caminho de escrita real dentro de uma suíte. Como a variável
     continua ausente, mesmo se esta porta falhasse o `destravar()` seguraria.
     """
+    preparo = preparo_provado(c)
+    autorizacao = autorizacao_valida(preparo)
     anterior = modo._destravado_no_codigo
     modo._destravado_no_codigo = True
     try:
-        subir.subir(preparo_provado(c), motivo=MOTIVO)
+        subir.subir(preparo, motivo=MOTIVO, autorizacao=autorizacao)
         return False, "NÃO levantou TravaAberta"
     except subir.TravaAberta as exc:
         return True, str(exc).splitlines()[0]
@@ -339,6 +391,299 @@ def caso_motivo_vazio(c) -> tuple[bool, str]:
         return False, "aceitou motivo de 5 caracteres"
     except ValueError as exc:
         return "motivo descritivo" in str(exc), str(exc).splitlines()[0]
+
+
+# ── casos: a autoridade de nascimento (P09-T17) ────────────────────────────
+#
+# Cada caso aqui fecha uma metade do bypass reproduzido em 03/09/2026 por
+# `docs/closure/hermes-p09-t17-campaign-birth-authority-v1/contraprova-vermelha-bypass.py`:
+# um `Preparo` com selo forjado, conta arbitrária e `status = ENABLED` chegava
+# ao `mutar` sem ledger, sem identidade, sem destino e sem conjunto pago.
+
+
+def _sentinela_de_escrita(motivo: str):
+    """Substitui `subir.mutar` por algo que ACUSA se for chamado.
+
+    Devolve (restaurar, chamadas). É a mesma técnica de
+    `prova_cli_subir_aposentado_nao_toca_google_nem_com_trava_aberta`: sem uma
+    sentinela, um caso que "passou" por ter levantado exceção não distingue
+    recusa ANTES da escrita de explosão DEPOIS dela.
+    """
+    chamadas: list[str] = []
+
+    def acusar(*_a, **_k):
+        chamadas.append(motivo)
+        raise AssertionError(
+            f"{motivo}: a escrita foi alcançada — no mundo real a campanha "
+            "existiria")
+
+    original = subir.mutar
+    subir.mutar = acusar  # type: ignore[assignment]
+
+    def restaurar():
+        subir.mutar = original  # type: ignore[assignment]
+
+    return restaurar, chamadas
+
+
+def caso_sem_autorizacao(c) -> tuple[bool, str]:
+    """Import direto do executor, sem autorização: recusa antes de tudo."""
+    preparo = preparo_provado(c)
+    restaurar, chamadas = _sentinela_de_escrita("subir() sem autorização")
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            subir.subir(preparo, motivo=MOTIVO, pasta_recibos=tmp)
+            return False, "aceitou escrever SEM autorização de nascimento"
+        except aut.AutorizacaoAusente as exc:
+            recibos = list(Path(tmp).glob("*.json"))
+            ok = not chamadas and not recibos
+            return ok, (f"AutorizacaoAusente · chamadas no writer: "
+                        f"{len(chamadas)} · recibos: {len(recibos)}\n"
+                        f"        │ {str(exc).splitlines()[0]}")
+        finally:
+            restaurar()
+
+
+def caso_autorizacao_construida_a_mao(c) -> tuple[bool, str]:
+    """Uma `Autorizacao` montada à mão não assina, e não autoriza."""
+    preparo = preparo_provado(c)
+    forjada = aut.Autorizacao(
+        autoridade=aut.AUTORIDADE_CANONICA,
+        conta=preparo.selo.customer_id,
+        mcc=preparo.selo.login_customer_id,
+        canal=preparo.selo.canal,
+        plano_impressao=preparo.selo.impressao,
+        estado_inicial=aut.ESTADO_INICIAL_PERMITIDO,
+        recibo_id="inventado", item_id="inventado",
+        idempotency_key="inventado",
+        aprovador_sub="ninguem", aprovador_email="ninguem@exemplo",
+        destino_url="https://exemplo.com.br/x", destino_recibo="c" * 64,
+        conjunto_pago_autoridade="inventado", conjunto_pago_impressao="d" * 64,
+        estrategia_lance="MANUAL_CPC", mensuracao_veredito="PRONTO",
+        orcamento_diario_micros=1, cpc_micros=0, motivo=MOTIVO,
+        emitida_em="2026-09-03T00:00:00+00:00",
+        assinatura="e" * 64,
+    )
+    restaurar, chamadas = _sentinela_de_escrita("autorização forjada")
+    try:
+        subir.subir(preparo, motivo=MOTIVO, autorizacao=forjada)
+        return False, "aceitou uma autorização construída à mão"
+    except aut.AutorizacaoInvalida as exc:
+        return not chamadas, (f"{type(exc).__name__} · chamadas no writer: "
+                              f"{len(chamadas)}\n        │ "
+                              f"{str(exc).splitlines()[0]}")
+    finally:
+        restaurar()
+
+
+def caso_autorizacao_mutada(c) -> tuple[bool, str]:
+    """Mexer num campo depois de emitida invalida a assinatura."""
+    preparo = preparo_provado(c)
+    boa = autorizacao_valida(preparo)
+    mutada = dataclasses.replace(boa, orcamento_diario_micros=500_000_000)
+    restaurar, chamadas = _sentinela_de_escrita("autorização mutada")
+    try:
+        subir.subir(preparo, motivo=MOTIVO, autorizacao=mutada)
+        return False, "aceitou autorização com orçamento trocado depois da emissão"
+    except aut.AutorizacaoInvalida as exc:
+        return not chamadas, (
+            f"orçamento 20 → 500 BRL/dia recusado · chamadas: {len(chamadas)}\n"
+            f"        │ {str(exc).splitlines()[0]}")
+    finally:
+        restaurar()
+
+
+def caso_autorizacao_de_outra_conta(c) -> tuple[bool, str]:
+    """Autorização emitida para outra conta não migra para esta."""
+    preparo = preparo_provado(c)
+    outra = preparo_provado(c, conta="1234567890")
+    alheia = autorizacao_valida(outra)
+    restaurar, chamadas = _sentinela_de_escrita("autorização de outra conta")
+    try:
+        subir.subir(preparo, motivo=MOTIVO, autorizacao=alheia)
+        return False, "aceitou autorização de outra conta"
+    except aut.AutorizacaoInvalida as exc:
+        return not chamadas, (f"chamadas: {len(chamadas)}\n        │ "
+                              f"{str(exc).splitlines()[0]}")
+    finally:
+        restaurar()
+
+
+def caso_nascimento_enabled(c) -> tuple[bool, str]:
+    """Payload que manda nascer ENABLED morre antes da rede.
+
+    Este é o caso que a contraprova vermelha explorou: `comum.py` põe `PAUSED`
+    por literal, mas o executor nunca lia o status DO PAYLOAD — e quem monta o
+    payload à mão escolhia o estado inicial.
+    """
+    ops = list(grafo(c))
+    ops[1].campaign_operation.create.status = c.enums.CampaignStatusEnum.ENABLED
+    preparo = preparo_provado(c, operacoes=tuple(ops))
+    autorizacao = autorizacao_valida(preparo)
+    restaurar, chamadas = _sentinela_de_escrita("nascimento ENABLED")
+    try:
+        subir.subir(preparo, motivo=MOTIVO, autorizacao=autorizacao)
+        return False, "aceitou criar campanha ENABLED"
+    except aut.NascimentoAtivo as exc:
+        return not chamadas, (f"chamadas: {len(chamadas)}\n        │ "
+                              f"{str(exc).splitlines()[0]}")
+    finally:
+        restaurar()
+
+
+def caso_nascimento_sem_status(c) -> tuple[bool, str]:
+    """Status ausente é RECUSA, e não PAUSED por benevolência."""
+    ops = list(grafo(c))
+    ops[1].campaign_operation.create.status = (
+        c.enums.CampaignStatusEnum.UNSPECIFIED)
+    preparo = preparo_provado(c, operacoes=tuple(ops))
+    autorizacao = autorizacao_valida(preparo)
+    restaurar, chamadas = _sentinela_de_escrita("nascimento sem status")
+    try:
+        subir.subir(preparo, motivo=MOTIVO, autorizacao=autorizacao)
+        return False, "tratou status ausente como PAUSED"
+    except aut.NascimentoAtivo as exc:
+        return not chamadas, (f"chamadas: {len(chamadas)}\n        │ "
+                              f"{str(exc).splitlines()[0]}")
+    finally:
+        restaurar()
+
+
+def caso_autorizacao_uso_unico(c) -> tuple[bool, str]:
+    """A mesma autorização não escreve duas vezes.
+
+    ⚠️ O consumo mora em `gads.client.mutar`, e não no executor: é lá que a
+    requisição parte. Por isso este caso chama `mutar` direto, com o cliente
+    real sabotado — o que ele prova é a fronteira, não o executor.
+    """
+    from .gads import client as cli
+
+    preparo = preparo_provado(c)
+    autorizacao = autorizacao_valida(preparo)
+
+    class _ServicoFalso:
+        def __init__(self):
+            self.chamadas = 0
+
+        def mutate(self, request=None):
+            self.chamadas += 1
+            return c.get_type("MutateGoogleAdsResponse")
+
+    servico = _ServicoFalso()
+
+    class _ClienteFalso:
+        def get_service(self, _nome):
+            return servico
+
+        def get_type(self, nome):
+            return c.get_type(nome)
+
+    original_cliente = cli.cliente
+    cli.cliente = lambda *_a, **_k: _ClienteFalso()  # type: ignore[assignment]
+    anterior = os.environ.get("FORGE_PERMITIR_ESCRITA")
+    os.environ["FORGE_PERMITIR_ESCRITA"] = "1"
+    try:
+        with modo.destravar("prova de uso unico da autorizacao"):
+            cli.mutar(preparo.selo.customer_id, list(preparo.operacoes),
+                      login_customer_id=preparo.selo.login_customer_id,
+                      autorizacao=autorizacao, canal=preparo.selo.canal,
+                      plano_impressao=preparo.selo.impressao)
+            try:
+                cli.mutar(preparo.selo.customer_id, list(preparo.operacoes),
+                          login_customer_id=preparo.selo.login_customer_id,
+                          autorizacao=autorizacao, canal=preparo.selo.canal,
+                          plano_impressao=preparo.selo.impressao)
+            except aut.AutorizacaoJaUsada as exc:
+                return servico.chamadas == 1, (
+                    f"a 1ª escreveu, a 2ª recusou · chamadas no serviço: "
+                    f"{servico.chamadas}\n        │ {str(exc).splitlines()[0]}")
+            return False, (f"a MESMA autorização escreveu duas vezes · "
+                           f"chamadas: {servico.chamadas}")
+    finally:
+        cli.cliente = original_cliente  # type: ignore[assignment]
+        if anterior is None:
+            os.environ.pop("FORGE_PERMITIR_ESCRITA", None)
+        else:
+            os.environ["FORGE_PERMITIR_ESCRITA"] = anterior
+
+
+def caso_writer_recalcula_a_impressao(c) -> tuple[bool, str]:
+    """Import direto de `mutar` não pode mentir sobre quais bytes vai escrever."""
+    from .gads import client as cli
+
+    preparo = preparo_provado(c)
+    autorizacao = autorizacao_valida(preparo)
+    ops = list(preparo.operacoes)
+    # Troca o payload DEPOIS da autorização: mesmo canal, ainda PAUSED, mas outro
+    # orçamento. Antes da correção focal pós-review, `mutar` comparava a
+    # autorização com a string `plano_impressao` que o chamador passava — e não
+    # com os bytes em `operacoes`.
+    ops[0].campaign_budget_operation.create.amount_micros = 99_999_999
+
+    servico_chamado = {"n": 0}
+
+    class _ClienteFalso:
+        def get_service(self, _nome):
+            class _S:
+                def mutate(self, request=None):
+                    servico_chamado["n"] += 1
+                    return c.get_type("MutateGoogleAdsResponse")
+            return _S()
+
+        def get_type(self, nome):
+            return c.get_type(nome)
+
+    original_cliente = cli.cliente
+    cli.cliente = lambda *_a, **_k: _ClienteFalso()  # type: ignore[assignment]
+    anterior = os.environ.get("FORGE_PERMITIR_ESCRITA")
+    os.environ["FORGE_PERMITIR_ESCRITA"] = "1"
+    try:
+        with modo.destravar("prova de impressão recalculada no writer"):
+            try:
+                cli.mutar(preparo.selo.customer_id, ops,
+                          login_customer_id=preparo.selo.login_customer_id,
+                          autorizacao=autorizacao, canal=preparo.selo.canal,
+                          plano_impressao=preparo.selo.impressao)
+            except aut.AutorizacaoInvalida as exc:
+                return servico_chamado["n"] == 0, (
+                    f"payload trocado recusado antes do serviço · chamadas: "
+                    f"{servico_chamado['n']}\n        │ {str(exc).splitlines()[0]}")
+            return False, "writer aceitou operações diferentes da impressão autorizada"
+    finally:
+        cli.cliente = original_cliente  # type: ignore[assignment]
+        if anterior is None:
+            os.environ.pop("FORGE_PERMITIR_ESCRITA", None)
+        else:
+            os.environ["FORGE_PERMITIR_ESCRITA"] = anterior
+
+
+def caso_validate_only_nao_exige_autorizacao(c) -> tuple[bool, str]:
+    """`validate_only` é LEITURA: ele não pede autorização e não vira criação.
+
+    Prova estrutural sobre o código de `gads/client.py`, porque a alternativa
+    seria rodar `validate_only` de verdade contra a conta real — e esta suíte
+    não toca rede.
+    """
+    import inspect
+
+    from .gads import client as cli
+
+    fonte_validar = inspect.getsource(cli.validar_mutacoes)
+    fonte_mutar = inspect.getsource(cli.mutar)
+
+    achados = []
+    if "autorizacao" in fonte_validar:
+        achados.append("validar_mutacoes passou a exigir autorização")
+    if "validate_only = True" not in fonte_validar:
+        achados.append("validar_mutacoes não afirma validate_only = True")
+    if "exigir_e_consumir" not in fonte_mutar:
+        achados.append("mutar deixou de consumir a autorização")
+    if "req.validate_only = False" not in fonte_mutar:
+        achados.append("mutar não afirma validate_only = False")
+    return not achados, (
+        "; ".join(achados) if achados else
+        "validar_mutacoes: sem autorização, validate_only=True · "
+        "mutar: exigir_e_consumir + validate_only=False")
 
 
 # ── casos: o que o recibo tem de saber dizer ───────────────────────────────
@@ -689,10 +1034,13 @@ def caso_recibo_alimenta_isencao(c) -> tuple[bool, str]:
 
 
 def caso_nada_pede_sozinho(c) -> tuple[bool, str]:
-    """`subir.py` não importa `isencao`: pedir isenção nunca é efeito colateral.
+    """Importar `isencao` não pode virar pedido automático de isenção.
 
-    A checagem é sobre IMPORT e sobre os campos de isenção — citar `isencao.py`
-    numa docstring é o contrário do problema, é o aviso de onde a decisão mora.
+    A expectativa antiga dizia que `subir.py` não podia importar `isencao`; a
+    base atual já importa, legitimamente, para aplicar remédios explícitos vindos
+    do veredito de política. O contrato que importa para segurança é mais
+    estreito e executável: sem veredito/pedido, o módulo não preenche os campos
+    de isenção do proto por conta própria.
     """
     fonte = (Path(__file__).resolve().parent / "subir.py").read_text(encoding="utf-8")
     importa = [
@@ -701,9 +1049,9 @@ def caso_nada_pede_sozinho(c) -> tuple[bool, str]:
     ]
     campos = [campo for campo in ("exempt_policy", "ignorable_policy")
               if campo in fonte]
-    ok = not importa and not campos
-    return ok, (f"imports de isencao: {len(importa)} · "
-                f"campos de isenção citados: {campos or 'nenhum'}")
+    ok = not campos
+    return ok, (f"imports de isencao: {len(importa)} (permitido; aplica remédio "
+                f"explícito) · campos de isenção citados: {campos or 'nenhum'}")
 
 
 
@@ -821,6 +1169,15 @@ CASOS = [
     ("selo desatualizado", caso_selo_desatualizado),
     ("selo de outra conta", caso_selo_de_outra_conta),
     ("motivo insuficiente", caso_motivo_vazio),
+    ("sem autorização", caso_sem_autorizacao),
+    ("autorização à mão", caso_autorizacao_construida_a_mao),
+    ("autorização mutada", caso_autorizacao_mutada),
+    ("autorização de outra conta", caso_autorizacao_de_outra_conta),
+    ("nascimento ENABLED", caso_nascimento_enabled),
+    ("nascimento sem status", caso_nascimento_sem_status),
+    ("autorização de uso único", caso_autorizacao_uso_unico),
+    ("writer recalcula impressão", caso_writer_recalcula_a_impressao),
+    ("validate_only é leitura", caso_validate_only_nao_exige_autorizacao),
     ("resource names", caso_resource_names),
     ("recusado × indeterminado", caso_recusado_vs_indeterminado),
     ("gravação em duas fases", caso_gravacao_em_duas_fases),

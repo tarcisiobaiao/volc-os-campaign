@@ -17,7 +17,7 @@ from typing import Any, TypeVar
 
 from google.ads.googleads.client import GoogleAdsClient
 
-from . import modo
+from . import autoridade, modo
 from .errors import Classe, FalhaGads, classificar
 
 log = logging.getLogger("forge.gads")
@@ -178,14 +178,53 @@ def mutar(
     operacoes: list[Any],
     *,
     login_customer_id: str,
+    autorizacao: autoridade.Autorizacao | None = None,
+    canal: str = "",
+    plano_impressao: str = "",
     politica: PoliticaRetry | None = None,
 ) -> Any:
-    """Mutação REAL e atômica. Bloqueada enquanto a trava estiver fechada.
+    """Mutação REAL e atômica. Exige autorização de nascimento E trava aberta.
 
-    Único caminho do forge capaz de alterar uma conta. Passa pela trava de
-    `modo` antes de montar a requisição — nada sai da máquina com a trava
-    fechada. Use `validar_mutacoes()` para testar payload sem escrever.
+    Único caminho do forge capaz de alterar uma conta. As portas, em ordem:
+
+      1. **autorização de nascimento** assinada, casada com conta, MCC, canal e
+         plano — e CONSUMIDA aqui, para que a mesma autorização não escreva
+         duas vezes;
+      2. o payload manda a campanha nascer `PAUSED`, lido do próprio payload;
+      3. a trava de dois fatores de `modo`.
+
+    ⚠️ `autorizacao` tem default `None` por compatibilidade de assinatura, e
+    `None` é RECUSA — nunca permissão. O default existe para que um chamador
+    antigo receba `AutorizacaoAusente` com a mensagem inteira em vez de um
+    `TypeError` que não diz onde a porta está.
+
+    ⚠️ A ordem coloca a autorização ANTES da trava de propósito. A trava é
+    global de processo: com ela aberta por uma escrita legítima em curso, um
+    chamador sem autorização atravessaria a primeira porta se ela fosse a
+    primeira. A autorização não depende do estado de ninguém.
+
+    Use `validar_mutacoes()` para testar payload sem escrever: `validate_only`
+    é leitura e continua sem exigir autorização nenhuma.
     """
+    # ⚠️ `canal` e `plano_impressao` vêm DE QUEM CHAMA, e não da autorização.
+    # Ler os dois de dentro dela faria a conferência comparar cada campo com
+    # ele mesmo — verde sempre, prova nenhuma. Quem chama declara o que acredita
+    # estar escrevendo; a autorização diz o que foi autorizado; divergência
+    # morre aqui. Vazio é divergência: `conferir` recusa contra o valor selado.
+    plano_real = autoridade.impressao_das_operacoes(operacoes)
+    if plano_impressao and str(plano_impressao).strip().lower() != plano_real:
+        raise autoridade.AutorizacaoInvalida(
+            "a impressão declarada pelo chamador não bate com os bytes das "
+            "operações que seriam enviados. Nada foi enviado ao Google."
+        )
+    autoridade.exigir_e_consumir(
+        autorizacao,
+        conta=str(customer_id),
+        mcc=str(login_customer_id),
+        canal=canal,
+        plano_impressao=plano_real,
+    )
+    autoridade.exigir_nascimento_pausado(operacoes)
     modo.exigir_leitura_apenas(f"mutar({customer_id}, {len(operacoes)} operações)")
 
     c = cliente(login_customer_id)

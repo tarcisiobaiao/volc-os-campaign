@@ -1,0 +1,280 @@
+{
+  "mission": "P09-T17",
+  "base": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "branch": "sprint/hermes-p09-t17-campaign-birth-authority-v1",
+  "generated_by": "Bia/Hermes takeover after Claude max_turns",
+  "schema_version": 1,
+  "producers": [
+    {
+      "id": "http-post-api-trafego-subir",
+      "entrypoint": "backend/app/routers/trafego.py:POST /api/trafego/subir",
+      "caller": "frontend/API operator",
+      "channel": "SEARCH/DISPLAY currently creatable",
+      "environment": "production route",
+      "account_mcc_resolved": "_no_escopo + canario.CONTA/MCC checks; expensive conta_da_casa read before write",
+      "credential_origin": "route never receives mutate credential; emits Autorizacao after ledger/plano/destino/keywords/mensuracao gates",
+      "google_method_reachable": "delegates to volc_ads.subir.subir -> volc_ads.gads.client.mutar -> GoogleAdsService.mutate",
+      "writes": "yes",
+      "current_gates": [
+        "admin identity",
+        "account/MCC scope",
+        "canary budget/cpc/PAUSED confirmation",
+        "paid destination live verdict hash",
+        "paid keyword set approved_set_sha256",
+        "sealed plan impression",
+        "remote idempotency read",
+        "measurement plan and bid readiness",
+        "ledger abrir+despachar before network",
+        "persisted measurement plan",
+        "Autorizacao signed and passed to executor",
+        "writer consumes authorization and rechecks PAUSED"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "required; absence/indisponivel fail-closed before mutate",
+      "idempotency": "remote pre-read + ledger idempotency_key + one-use authorization",
+      "initial_campaign_state": "PAUSED enforced from payload",
+      "human_confirmation": "Identidade admin + body.motivo + despacho.aprovado_por_sub",
+      "status": "CANONICO",
+      "proof": [
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py::test_o_fluxo_aprovado_chega_ao_boundary_uma_vez_e_pausado",
+        "scripts/gate_sem_mutacao_google.py",
+        "scripts/gate_autoridade_de_nascimento.py"
+      ]
+    },
+    {
+      "id": "volc-ads-subir-python-import",
+      "entrypoint": "volc_ads/subir.py:subir(preparo, motivo, autorizacao=None)",
+      "caller": "Python import/direct script",
+      "channel": "payload-derived SEARCH/DISPLAY only",
+      "environment": "engine/library/CLI internals",
+      "account_mcc_resolved": "from Selo and Preparo, must match Autorizacao",
+      "credential_origin": "no client construction until authorization, payload PAUSED and mode gate pass",
+      "google_method_reachable": "volc_ads.gads.client.mutar",
+      "writes": "yes only with Autorizacao",
+      "current_gates": [
+        "selo validate_only impression",
+        "canal real",
+        "motivo",
+        "Autorizacao conferida against selo",
+        "payload PAUSED",
+        "mode two-factor"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "named in Autorizacao emitted only by route",
+      "idempotency": "Autorizacao idempotency_key + one-use consumption at writer",
+      "initial_campaign_state": "PAUSED enforced by autoridade.exigir_nascimento_pausado",
+      "human_confirmation": "not accepted directly; must be carried in signed Autorizacao",
+      "status": "DELEGADO",
+      "proof": [
+        "volc_ads/testes_subir.py cases sem autorização/autorização à mão/mutada/outra conta/nascimento ENABLED/uso único",
+        "contraprova-vermelha-bypass.py exits green on fixed tree"
+      ]
+    },
+    {
+      "id": "volc-ads-gads-client-mutar",
+      "entrypoint": "volc_ads/gads/client.py:mutar",
+      "caller": "direct adapter import",
+      "channel": "caller must provide canal/plano_impressao matching Autorizacao",
+      "environment": "engine boundary",
+      "account_mcc_resolved": "function args compared to Autorizacao",
+      "credential_origin": "cliente(login_customer_id) built only after authorization consumed and mode gate passes",
+      "google_method_reachable": "GoogleAdsService.mutate validate_only=False",
+      "writes": "yes only after capability consumption",
+      "current_gates": [
+        "Autorizacao exigir_e_consumir",
+        "payload PAUSED",
+        "mode.exigir_leitura_apenas two-factor"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "required via Autorizacao.recibo_id/item_id",
+      "idempotency": "one-use signature consumed before network; second call rejected",
+      "initial_campaign_state": "PAUSED from payload",
+      "human_confirmation": "required via Autorizacao.aprovador_sub/email",
+      "status": "DELEGADO",
+      "proof": [
+        "volc_ads/testes_subir.py::caso_autorizacao_uso_unico",
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py::test_uma_autorizacao_de_outro_processo_nao_confere"
+      ]
+    },
+    {
+      "id": "cli-volc-ads-subir",
+      "entrypoint": "volc_ads/subir.py:main / --subir",
+      "caller": "terminal CLI",
+      "channel": "legacy SEARCH-style CLI",
+      "environment": "operator shell",
+      "account_mcc_resolved": "not sufficient for birth",
+      "credential_origin": "none after retirement path",
+      "google_method_reachable": "refused before executor/writer",
+      "writes": "no",
+      "current_gates": [
+        "stable retirement message points to POST /api/trafego/subir"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "not opened",
+      "idempotency": "not applicable",
+      "initial_campaign_state": "not applicable",
+      "human_confirmation": "must use canonical route",
+      "status": "RECUSADO",
+      "proof": [
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py::test_o_cli_de_escrita_continua_aposentado",
+        "volc_ads/testes_subir.py::prova_cli_subir_aposentado_nao_toca_google_nem_com_trava_aberta"
+      ]
+    },
+    {
+      "id": "n8n-versioned-google-ads-workflows",
+      "entrypoint": "n8n/*.json",
+      "caller": "versioned n8n workflows",
+      "channel": "intelligence/read workflows",
+      "environment": "versioned n8n definitions only; live n8n not touched",
+      "account_mcc_resolved": "read-only nodes/config in workflow",
+      "credential_origin": "n8n credential reference for googleAds:search only",
+      "google_method_reachable": "googleAds:search/SELECT only in versioned files",
+      "writes": "no",
+      "current_gates": [
+        "static test rejects mutate tokens",
+        "paid set portao rejects cluster without Python contract"
+      ],
+      "missing_gates_after_fix": [
+        "live n8n inventory not proven because mission forbids touching live n8n"
+      ],
+      "ledger": "not used for writes; no write path versioned",
+      "idempotency": "not applicable",
+      "initial_campaign_state": "not applicable",
+      "human_confirmation": "not applicable",
+      "status": "RECUSADO",
+      "proof": [
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py::test_os_workflows_n8n_versionados_nao_mutam_google_ads",
+        "test_o_produtor_fora_do_motor_de_elegibilidade_e_recusado"
+      ]
+    },
+    {
+      "id": "demand-gen-builder",
+      "entrypoint": "volc_ads/campanha/demand_gen.py and route canal=DEMAND_GEN",
+      "caller": "/provar or builder tests",
+      "channel": "DEMAND_GEN",
+      "environment": "validate_only/proof only",
+      "account_mcc_resolved": "proof path only",
+      "credential_origin": "validar_mutacoes validate_only; no mutate capability",
+      "google_method_reachable": "validate_only only; /subir envelope/route rejects",
+      "writes": "no",
+      "current_gates": [
+        "SubirEntrada/route rejection names channel",
+        "gate structural no writer outside allowlist"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "none for birth",
+      "idempotency": "not applicable",
+      "initial_campaign_state": "not created",
+      "human_confirmation": "not applicable",
+      "status": "RECUSADO",
+      "proof": [
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py::test_o_envelope_recusa_demand_gen_antes_de_a_rota_rodar",
+        "test_canal_sem_criacao_real_morre_nomeado_sem_tocar_o_executor"
+      ]
+    },
+    {
+      "id": "pmax-builder",
+      "entrypoint": "volc_ads/campanha/pmax.py/tests_pmax.py",
+      "caller": "builder/proof references",
+      "channel": "PERFORMANCE_MAX/PMAX",
+      "environment": "not a supported birth channel in this engine",
+      "account_mcc_resolved": "not applicable",
+      "credential_origin": "no mutate birth path allowed",
+      "google_method_reachable": "not allowed to writer by authority",
+      "writes": "no",
+      "current_gates": [
+        "CANAIS_QUE_NASCEM excludes PMax",
+        "unsupported channel fails named"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "none for birth",
+      "idempotency": "not applicable",
+      "initial_campaign_state": "not created",
+      "human_confirmation": "not applicable",
+      "status": "RECUSADO",
+      "proof": [
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py parametrized channel tests",
+        "scripts/gate_autoridade_de_nascimento.py channels coherent"
+      ]
+    },
+    {
+      "id": "display-builder",
+      "entrypoint": "volc_ads/campanha/display.py",
+      "caller": "canonical route preparing DISPLAY",
+      "channel": "DISPLAY",
+      "environment": "builder only; no write adapter",
+      "account_mcc_resolved": "canonical route when used for birth",
+      "credential_origin": "validate_only/proof; birth still via /subir authority",
+      "google_method_reachable": "constructs MutateOperation; does not call mutar",
+      "writes": "no directly",
+      "current_gates": [
+        "builder-only; writer allowlist excludes builder",
+        "payload PAUSED checked at writer if route delegates"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "route ledger required when born",
+      "idempotency": "route/writer required when born",
+      "initial_campaign_state": "PAUSED by builder and writer check",
+      "human_confirmation": "route required when born",
+      "status": "DELEGADO",
+      "proof": [
+        "scripts/gate_autoridade_de_nascimento.py allowlist excludes builders",
+        "backend/tests/test_p09_t17_autoridade_de_nascimento.py channel coherence"
+      ]
+    },
+    {
+      "id": "search-builder",
+      "entrypoint": "volc_ads/campanha/search.py",
+      "caller": "canonical route preparing SEARCH",
+      "channel": "SEARCH",
+      "environment": "builder/proof; no direct write authority",
+      "account_mcc_resolved": "canonical route when used for birth",
+      "credential_origin": "validate_only/proof; birth via /subir authority",
+      "google_method_reachable": "constructs operations, validation path; no direct mutar allowed by structural gate",
+      "writes": "no directly",
+      "current_gates": [
+        "builder-only; writer allowlist excludes builder",
+        "payload PAUSED checked at writer"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "route ledger required when born",
+      "idempotency": "route/writer required when born",
+      "initial_campaign_state": "PAUSED",
+      "human_confirmation": "route required",
+      "status": "DELEGADO",
+      "proof": [
+        "scripts/gate_autoridade_de_nascimento.py",
+        "volc_ads/testes_subir.py"
+      ]
+    },
+    {
+      "id": "scripts-and-admin-scanners",
+      "entrypoint": "scripts/*.py, backend/admin/diagnostic routes",
+      "caller": "operators/tests",
+      "channel": "mixed",
+      "environment": "scripts/admin",
+      "account_mcc_resolved": "read/validate only or no birth",
+      "credential_origin": "structural gate rejects write boundary references outside allowlist",
+      "google_method_reachable": "no campaign create/mutate boundary outside allowlist; remover route statically remove-only",
+      "writes": "no campaign birth",
+      "current_gates": [
+        "AST gate for mutar/subir/emitir/CampaignService/CampaignOperation references",
+        "remover_campanha only remove"
+      ],
+      "missing_gates_after_fix": [],
+      "ledger": "not applicable for birth",
+      "idempotency": "not applicable",
+      "initial_campaign_state": "not applicable",
+      "human_confirmation": "not applicable",
+      "status": "DEAD_CODE",
+      "proof": [
+        "scripts/gate_autoridade_de_nascimento.py output 4/4"
+      ]
+    }
+  ],
+  "limitations": [
+    "live n8n instance not read/touched by mission hard stop; inventory covers versioned workflows",
+    "structural scanner is AST/token based and not whole-program flow analysis",
+    "in-process malicious caller could call emitir with forged semantic strings; gate makes this a production-code violation outside canonical route"
+  ]
+}

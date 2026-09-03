@@ -287,7 +287,8 @@ def test_o_recibo_em_voo_e_gravado_antes_da_chamada_que_muta(monkeypatch):
     impressao = _impressao_aprovada(monkeypatch)
     diario: list = []
 
-    def subir(preparo, *, motivo):
+    def subir(preparo, *, motivo, autorizacao=None):
+        assert autorizacao is not None, "a rota chegou ao executor sem autorização"
         diario.append(("MUTATE", motivo))
         return _recibo_criado()
 
@@ -306,7 +307,7 @@ def test_a_aprovacao_persistida_carrega_a_identidade_e_a_impressao(monkeypatch):
     impressao = _impressao_aprovada(monkeypatch)
     diario: list = []
     _montar(monkeypatch, ledger=LedgerDeTeste(diario=diario),
-            subir=lambda preparo, *, motivo: _recibo_criado())
+            subir=lambda preparo, *, motivo, autorizacao=None: _recibo_criado())
     asyncio.run(trafego.subir(_corpo(impressao), identidade=IDENTIDADE))
 
     despachar = next(kw for ato, kw in diario if ato == "despachar")
@@ -440,7 +441,7 @@ def test_falha_ao_fechar_deixa_o_recibo_em_voo_e_diz_isso(monkeypatch):
             raise led.LedgerIndisponivel("o ledger caiu depois do mutate")
 
     _montar(monkeypatch, ledger=LedgerQueQuebraNoFim(diario=diario),
-            subir=lambda preparo, *, motivo: _recibo_criado())
+            subir=lambda preparo, *, motivo, autorizacao=None: _recibo_criado())
     saida = asyncio.run(trafego.subir(_corpo(impressao), identidade=IDENTIDADE))
 
     ledger_saida = saida["recibo"]["ledger"]
@@ -459,7 +460,8 @@ def test_a_campanha_que_sai_para_a_conta_nasce_pausada(monkeypatch):
     diario: list = []
     estados: list = []
 
-    def subir(preparo, *, motivo):
+    def subir(preparo, *, motivo, autorizacao=None):
+        assert autorizacao is not None, "a rota chegou ao executor sem autorização"
         for op in preparo.operacoes:
             if op._pb.WhichOneof("operation") == "campaign_operation":
                 estados.append(

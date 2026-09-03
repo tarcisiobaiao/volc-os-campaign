@@ -1,0 +1,39 @@
+{
+  "mission": "P09-T17",
+  "proposed_state": "done_after_merge_if_final_gates_and_remote_readback_green",
+  "do_not_apply_in_this_branch": true,
+  "evidence": [
+    "PRODUCER-INVENTORY.json",
+    "AUTHORITY-MATRIX.md",
+    "COUNTERPROOFS.md",
+    "GATES.md"
+  ],
+  "affected_relations": [
+    {
+      "from": "POST /api/trafego/subir",
+      "to": "volc_ads.gads.autoridade.emitir",
+      "relation": "canonical_birth_authority"
+    },
+    {
+      "from": "volc_ads.gads.client.mutar",
+      "to": "Autorizacao",
+      "relation": "requires_and_consumes_before_network"
+    },
+    {
+      "from": "scripts/gate_autoridade_de_nascimento.py",
+      "to": "production code",
+      "relation": "blocks new noncanonical writer paths"
+    }
+  ],
+  "open_gaps": [
+    "live n8n not inspected due hard stop",
+    "activation authority remains out of scope"
+  ],
+  "new_tasks": [
+    {
+      "title": "Read-only live n8n birth-path inventory outside this hard-stop lane",
+      "reason": "versioned workflows are covered; live instance was intentionally not touched"
+    }
+  ],
+  "roadmap_note": "P09-T17 can be proposed as closed if final branch gates, review adjudication and remote SHA read-back remain green."
+}

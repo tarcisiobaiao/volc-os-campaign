@@ -58,6 +58,7 @@ from .campanha import perfil, search
 from .campanha.brief import Brief, Linhagem
 from .campanha.criterio import chave as _chave_criterio
 from .criativo.adaptadores import medir_imagem
+from .gads import autoridade as aut
 from .gads import modo
 from .gads.client import (
     ErroEsgotado,
@@ -147,6 +148,15 @@ if set(PROVADORES_POR_CANAL) != _provadores_esperados:
         f"PROVADORES_POR_CANAL lista {sorted(PROVADORES_POR_CANAL)} e o perfil "
         f"declara {sorted(_provadores_esperados)}. Prova e mutação são portas "
         "diferentes e ambas precisam acompanhar o perfil."
+    )
+
+if set(aut.CANAIS_QUE_NASCEM) != _esperado:
+    raise RuntimeError(
+        f"gads/autoridade.py declara que nascem {sorted(aut.CANAIS_QUE_NASCEM)} "
+        f"e campanha/perfil.py declara {sorted(_esperado)} sabendo criar. A "
+        "capacidade de escrita não pode conhecer um conjunto de canais "
+        "diferente do que o engine sabe montar: um canal a mais lá autoriza o "
+        "que ninguém constrói, e um a menos recusa o que a tela oferece."
     )
 
 APELIDOS_DE_CANAL = perfil.APELIDOS
@@ -847,6 +857,7 @@ def subir(
     preparo: Preparo,
     *,
     motivo: str,
+    autorizacao: aut.Autorizacao | None = None,
     pasta_recibos: Path | str = PASTA_RECIBOS,
 ) -> Recibo:
     """Cria a campanha de verdade. Único caminho de escrita deste módulo.
@@ -856,13 +867,36 @@ def subir(
       1. selo, MCC, canal, tipos e hashes — o conteúdo das operações decide;
       2. política de mutação real do canal — Demand Gen para aqui;
       3. motivo descritivo;
-      4. trava ambiente.
+      4. autorização de nascimento, casada com o SELO — não com o rótulo;
+      5. o payload manda nascer PAUSED;
+      6. trava ambiente.
 
-    Só depois das quatro é que `destravar()` abre, o pré-recibo é gravado e o
+    Só depois das seis é que `destravar()` abre, o pré-recibo é gravado e o
     mutate parte. Assim relabeling ou payload divergente não chegam nem a
     consultar a trava, criar recibo ou construir o cliente de mutação.
 
-    Devolve `Recibo`. As quatro portas levantam exceção em vez de devolver recibo:
+    ## Por que a autorização existe, e por que ela não é `bool`
+
+    Até 03/09/2026 este executor cobrava as portas 1–3 e 6, e nenhuma delas era
+    a autoridade canônica: nem ledger, nem identidade humana, nem destino pago
+    com recibo, nem conjunto de keywords selado, nem mensuração, nem
+    idempotência, nem escopo da conta da casa. Todas essas vivem em
+    `POST /api/trafego/subir` — e viviam como convenções DA ROTA. Qualquer
+    módulo que importasse esta função nascia com a capacidade de criar campanha
+    em qualquer conta. Reproduzido com adapter falso e contador em
+    `docs/closure/hermes-p09-t17-campaign-birth-authority-v1/contraprova-vermelha-bypass.py`.
+
+    `aut.Autorizacao` é assinada e de uso único, então ela não pode ser
+    construída à mão, reaproveitada de outro processo nem usada duas vezes.
+
+    ⚠️ O default `None` é RECUSA, e existe só para que o chamador antigo receba
+    `AutorizacaoAusente` com a mensagem inteira em vez de um `TypeError`.
+
+    ⚠️ A autorização é conferida contra o `Selo`, que já foi reconciliado com
+    `campaign_operation.create`. Casá-la com `preparo.canal`/`customer_id`
+    deixaria o relabeling escolher a autorização que serve.
+
+    Devolve `Recibo`. As portas levantam exceção em vez de devolver recibo:
     elas descrevem o estado de QUEM CHAMOU, não o da conta — e nada saiu da
     máquina, então não há o que relatar. Recibo é para o que já aconteceu lá.
     """
@@ -872,6 +906,18 @@ def subir(
     # que já foi reconciliado com campaign_operation.create — nunca o rótulo.
     _recusar_canal_sem_mutacao(selo.canal)
     _exigir_motivo(motivo)
+    # `conferir` e não `exigir_e_consumir`: quem queima a autorização é a
+    # fronteira de escrita (`mutar`). Consumi-la aqui a gastaria em caminhos que
+    # ainda podem recusar — a trava ambiente logo abaixo, por exemplo — e o
+    # operador ficaria sem autorização para a tentativa que ainda não saiu.
+    aut.conferir(
+        autorizacao,
+        conta=selo.customer_id,
+        mcc=selo.login_customer_id,
+        canal=selo.canal,
+        plano_impressao=selo.impressao,
+    )
+    aut.exigir_nascimento_pausado(preparo.operacoes)
     _recusar_trava_ambiente()
 
     pasta = Path(pasta_recibos)
@@ -899,6 +945,13 @@ def subir(
                 preparo.customer_id,
                 list(preparo.operacoes),
                 login_customer_id=preparo.login_customer_id,
+                # ⚠️ Os três vêm do SELO, e o selo já foi reconciliado com
+                # `campaign_operation.create`. Passar o rótulo de `Preparo` aqui
+                # devolveria à fronteira a mesma escolha que `_exigir_selo`
+                # acabou de tirar de quem chama.
+                autorizacao=autorizacao,
+                canal=selo.canal,
+                plano_impressao=selo.impressao,
                 politica=SEM_RETENTATIVA,
             )
         except ErroTerminal as exc:
@@ -1136,25 +1189,11 @@ def _colher_criados(resposta: Any) -> tuple[Criado, ...]:
     return tuple(saida)
 
 
-def _qual_oneof(mensagem: Any, nome: str) -> str:
-    """`WhichOneof` mora no pb2; proto-plus o esconde atrás de `_pb`.
-
-    As duas formas aparecem de verdade: o objeto devolvido por
-    `client.get_type()` responde direto, e o que sai de dentro de um campo
-    repetido às vezes vem embrulhado. Tentar as duas custa nada e evita um
-    `AttributeError` no meio do único caminho que escreve.
-    """
-    for alvo in (mensagem, getattr(mensagem, "_pb", None)):
-        which = getattr(alvo, "WhichOneof", None)
-        if which is None:
-            continue
-        try:
-            campo = which(nome)
-        except Exception:  # noqa: BLE001 — objeto sem esse oneof
-            continue
-        if campo:
-            return str(campo)
-    return ""
+#: O leitor de oneof do payload mora em `gads/autoridade.py`, que é a outra
+#: metade da fronteira de escrita. Duas cópias de um leitor de oneof é como uma
+#: delas passa a aceitar o que a outra recusa — e aqui as duas leem o MESMO
+#: `MutateOperation` para decidir a mesma coisa.
+_qual_oneof = aut.qual_oneof
 
 
 def _tipo_da_operacao(op: Any) -> str:
