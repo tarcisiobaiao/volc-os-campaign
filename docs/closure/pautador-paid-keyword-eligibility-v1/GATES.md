@@ -200,3 +200,28 @@ herméticos.
 O gate completo herdado do HEAD `406b08c` continua sendo **3333 passed, 112
 skipped**. Ele não é reapresentado como se tivesse sido executado depois desta
 microcorreção.
+
+## Confirmação — mesmo alvo, ambiente sem a restrição de sandbox
+
+O comando usado ao longo de todo este fechamento —
+`backend/tests` + `backend/app/motor_pautas/testes` + `volc_ads/testes_pautador_ponte.py`
++ `volc_ads/campanha/testes_criterio.py` — foi reexecutado nesta sessão, num
+ambiente sem a limitação de `bind()`/`initdb` relatada acima.
+
+```
+3348 passed, 112 skipped, 0 failed, 0 error, em 93,40s
+```
+
+Isso inclui, sem exclusão, os três arquivos que o sandbox anterior não
+conseguiu coletar (`test_adspower_broker_hermetico.py`,
+`test_publicacao_organica_e2e.py`, `test_trafego_persistencia.py`) —
+confirmados aqui, isolados: **117 passed, 1 skipped**, zero falha. A restrição
+relatada era mesmo do ambiente, não um defeito desta lane.
+
+`3348 = 3333 (baseline do HEAD 406b08c) + 15`, e 15 é exatamente o número de
+casos novos em `test_pautador_campaign_birth_wiring.py` desta rodada (33 − 18).
+Nenhum teste pré-existente mudou de resultado. Este é o número que a lane
+carrega como evidência de fechamento — completo, sem exclusão de arquivo,
+zero falha.
+
+`tsc --noEmit` e `vite build` confirmados de novo nesta sessão, sem erro.
