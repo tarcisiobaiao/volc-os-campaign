@@ -1,0 +1,820 @@
+{
+  "counts": {
+    "paid_destination_routes": 14,
+    "routes": 58,
+    "routes_only_in_account": 4,
+    "routes_with_ads": 7
+  },
+  "crawl_performed": false,
+  "forms_submitted": false,
+  "generated_by": "scripts/inventariar_landing_r.py",
+  "live_read": true,
+  "rate_limit_seconds": 2.0,
+  "routes": {
+    "https://creditoup.com.br/r": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/r",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-09-02T21:38:05+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts": {
+      "ads_pointing": 1,
+      "artifact_refs": [],
+      "campaign_status": [
+        "PAUSED"
+      ],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/antecipacao-saque-aniversario-fgts",
+      "policy_approval": [
+        "APPROVED"
+      ],
+      "sitemap_lastmod": "2026-08-14T16:54:59+00:00",
+      "sources": [
+        "account_evidence",
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/emprestimo-consignado-inss-guia": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/emprestimo-consignado-inss-guia",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:03+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/emprestimo-para-negativado-urgente": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/emprestimo-para-negativado-urgente",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T20:11:33+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/fgts-saque-aniversario": {
+      "ads_pointing": 3,
+      "artifact_refs": [],
+      "campaign_status": [
+        "ENABLED",
+        "REMOVED"
+      ],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/fgts-saque-aniversario",
+      "policy_approval": [
+        "APPROVED"
+      ],
+      "sitemap_lastmod": "2026-09-02T21:38:05+00:00",
+      "sources": [
+        "account_evidence",
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/guia-pis-pasep-2026": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/guia-pis-pasep-2026",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-03T22:49:41+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa": {
+      "ads_pointing": 3,
+      "artifact_refs": [],
+      "campaign_status": [
+        "ENABLED",
+        "PAUSED",
+        "REMOVED"
+      ],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/maquininha-de-cartao-menor-taxa",
+      "policy_approval": [
+        "APPROVED"
+      ],
+      "sitemap_lastmod": "2026-09-02T21:24:00+00:00",
+      "sources": [
+        "account_evidence",
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/nova-carteira-identidade-nacional-2026": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/nova-carteira-identidade-nacional-2026",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T22:35:53+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/pe-de-meia-2026-guia": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/pe-de-meia-2026-guia",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T22:46:21+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/senai-cursos-gratuitos-2026": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/senai-cursos-gratuitos-2026",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-18T21:34:19+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/r/serasa-limpa-nome-2026": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "paid_destination_route",
+      "path": "/r/serasa-limpa-nome-2026",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:35:09+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:18:20+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/agendamento-nova-identidade-cin": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/agendamento-nova-identidade-cin",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T22:24:00+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/antecipacao-saque-aniversario-p2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:08:21+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/bancos-antecipar-fgts-pix-whatsapp-p2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/bancos-antecipar-fgts-pix-whatsapp-p2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-11T22:02:34+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/calendario-pe-de-meia-2026": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/calendario-pe-de-meia-2026",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-02T14:21:02+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-ativar-saque-aniversario-p1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:08:20+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-baixar-rg-digital-govbr": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-baixar-rg-digital-govbr",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-20T11:20:39+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-cancelar-saque-aniversario-p3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-cancelar-saque-aniversario-p3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:08:22+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-conseguir-emprestimo-negativado-pr1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-conseguir-emprestimo-negativado-pr1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T15:37:39+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-conseguir-emprestimo-negativado-pr2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-conseguir-emprestimo-negativado-pr2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T14:08:43+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-conseguir-emprestimo-negativado-pr3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-conseguir-emprestimo-negativado-pr3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T14:10:07+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-consultar-fgts-pelo-cpf-p1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-consultar-fgts-pelo-cpf-p1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-11T22:02:33+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-desbloquear-beneficio-emprestimo-p2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-desbloquear-beneficio-emprestimo-p2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:04+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-escolher-maquininha-de-cartao-pr": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-escolher-maquininha-de-cartao-pr",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T16:34:12+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/como-se-inscrever-senai": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/como-se-inscrever-senai",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T11:30:51+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/comparar-taxas-maquininhas-p1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/comparar-taxas-maquininhas-p1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:18:18+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/documentos-necessarios-cin-2026": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/documentos-necessarios-cin-2026",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T22:21:14+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/emprestimo-bpc-loas-regras-2026-p3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/emprestimo-bpc-loas-regras-2026-p3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:05+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/emprestimo-clt-negativado-fgts-p3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/emprestimo-clt-negativado-fgts-p3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T14:09:20+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/emprestimo-garantia-celular-online-p2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/emprestimo-garantia-celular-online-p2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T14:10:22+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/emprestimo-na-hora-via-pix-p1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/emprestimo-na-hora-via-pix-p1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-21T14:10:13+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/inscricao-pe-de-meia-passo-a-passo": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/inscricao-pe-de-meia-passo-a-passo",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-02T14:21:19+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/jornada-do-estudante-login": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/jornada-do-estudante-login",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-20T11:27:00+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/lista-cursos-senai-vagas": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/lista-cursos-senai-vagas",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T11:34:03+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/melhor-banco-taxas-consignado-inss-p4": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/melhor-banco-taxas-consignado-inss-p4",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:05+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/melhor-maquininha-para-mei-p2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/melhor-maquininha-para-mei-p2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:18:19+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/passar-cartao-pelo-celular-p4": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/passar-cartao-pelo-celular-p4",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:18:20+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/portal-aluno-senai-login": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/portal-aluno-senai-login",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T11:30:05+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/prazo-recebimento-maquininha-p3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/prazo-recebimento-maquininha-p3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T21:18:20+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-deve-fazer-nova-identidade": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-deve-fazer-nova-identidade",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T22:17:54+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-pode-fazer-senai": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-pode-fazer-senai",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T11:34:39+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-tem-direito-antecipar-fgts-pr1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-tem-direito-antecipar-fgts-pr1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-11T22:02:33+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-tem-direito-antecipar-fgts-pr2": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-tem-direito-antecipar-fgts-pr2",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-11T12:54:14+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-tem-direito-antecipar-fgts-pr3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-tem-direito-antecipar-fgts-pr3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-11T12:54:16+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-tem-direito-consignado-inss-pr": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-tem-direito-consignado-inss-pr",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:03+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-tem-direito-limpar-nome-pr": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-tem-direito-limpar-nome-pr",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:16+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/quem-tem-direito-pe-de-meia": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/quem-tem-direito-pe-de-meia",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-20T11:23:18+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/regras-demissao-quitar-emprestimo-fgts-p3": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/regras-demissao-quitar-emprestimo-fgts-p3",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-11T22:02:36+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/regras-requisitos-pe-de-meia": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/regras-requisitos-pe-de-meia",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-20T11:25:04+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/simular-margem-consignado-inss-p1": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/simular-margem-consignado-inss-p1",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-07-16T19:33:04+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/unidades-senai-telefone-endereco": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/unidades-senai-telefone-endereco",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-02-19T11:33:17+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "creditoup.com.br",
+      "kind": "funnel_interior",
+      "path": "/rec/vantagens-desvantagens-saque-aniversario-pr",
+      "policy_approval": [],
+      "sitemap_lastmod": "2026-08-19T20:11:45+00:00",
+      "sources": [
+        "public_sitemap"
+      ]
+    },
+    "https://portalmundomais.com/r/nova-carteira-identidade-nacional-2026": {
+      "ads_pointing": 2,
+      "artifact_refs": [],
+      "campaign_status": [
+        "PAUSED"
+      ],
+      "host": "portalmundomais.com",
+      "kind": "paid_destination_route",
+      "path": "/r/nova-carteira-identidade-nacional-2026",
+      "policy_approval": [
+        "APPROVED_LIMITED"
+      ],
+      "sitemap_lastmod": null,
+      "sources": [
+        "account_evidence"
+      ]
+    },
+    "https://portalmundomais.com/r/pe-de-meia": {
+      "ads_pointing": 1,
+      "artifact_refs": [],
+      "campaign_status": [
+        "REMOVED"
+      ],
+      "host": "portalmundomais.com",
+      "kind": "paid_destination_route",
+      "path": "/r/pe-de-meia",
+      "policy_approval": [
+        "UNKNOWN"
+      ],
+      "sitemap_lastmod": null,
+      "sources": [
+        "account_evidence"
+      ]
+    },
+    "https://portalmundomais.com/r/pe-de-meia-2026-guia": {
+      "ads_pointing": 2,
+      "artifact_refs": [],
+      "campaign_status": [
+        "PAUSED"
+      ],
+      "host": "portalmundomais.com",
+      "kind": "paid_destination_route",
+      "path": "/r/pe-de-meia-2026-guia",
+      "policy_approval": [
+        "APPROVED"
+      ],
+      "sitemap_lastmod": null,
+      "sources": [
+        "account_evidence"
+      ]
+    },
+    "https://portalmundomais.com/r/senai-cursos-gratuitos-2026": {
+      "ads_pointing": 2,
+      "artifact_refs": [],
+      "campaign_status": [
+        "PAUSED"
+      ],
+      "host": "portalmundomais.com",
+      "kind": "paid_destination_route",
+      "path": "/r/senai-cursos-gratuitos-2026",
+      "policy_approval": [
+        "APPROVED"
+      ],
+      "sitemap_lastmod": null,
+      "sources": [
+        "account_evidence"
+      ]
+    },
+    "https://portalmundomais.com/sitemap_index.xml": {
+      "ads_pointing": 0,
+      "artifact_refs": [],
+      "campaign_status": [],
+      "host": "portalmundomais.com",
+      "kind": "funnel_interior",
+      "path": "/sitemap_index.xml",
+      "policy_approval": [],
+      "sitemap_lastmod": null,
+      "sources": [
+        "public_sitemap"
+      ]
+    }
+  },
+  "routes_only_in_account_evidence": [
+    "https://portalmundomais.com/r/nova-carteira-identidade-nacional-2026",
+    "https://portalmundomais.com/r/pe-de-meia",
+    "https://portalmundomais.com/r/pe-de-meia-2026-guia",
+    "https://portalmundomais.com/r/senai-cursos-gratuitos-2026"
+  ],
+  "schema": "RouteRInventory.v1",
+  "sitemap_errors": {
+    "https://portalmundomais.com/sitemap_index.xml": {
+      "status": 410
+    }
+  },
+  "sources": {
+    "account_evidence": "docs/closure/hermes-redator-google-ads-policy-incident-v1/account-evidence-sanitized.json",
+    "public_sitemap": "robots.txt + declared sitemap index only",
+    "repository_artifacts": "funnelforge-migracao/referencia"
+  }
+}

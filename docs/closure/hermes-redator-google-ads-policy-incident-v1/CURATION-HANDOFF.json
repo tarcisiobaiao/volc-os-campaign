@@ -1,0 +1,185 @@
+{
+  "schema": "VolcCurationHandoff.v1",
+  "mission": "hermes-redator-google-ads-policy-incident-v1",
+  "branch": "sprint/hermes-redator-google-ads-policy-incident-v1",
+  "base_commit": "382c5d4c67fc521d5e6739f8e76d1c36a96fdb53",
+  "produced_at": "2026-09-03",
+  "produced_by": "Claude Code Opus (single canonical executor)",
+  "_protocol": {
+    "rule": "Trabalho paralelo não disputa Roadmap nem curadoria. Este arquivo é um DELTA PROPOSTO; o integrador único aplica e reconstrói o Mapa Vivo uma vez, após o merge.",
+    "files_not_touched": [
+      "volc-os-workbook/ROADMAP-VIVO.json",
+      "docs/volc-os-graph/curadoria-operacional.json",
+      "docs/volc-os-graph/volc-os-graph.json",
+      "graphify-out/**"
+    ],
+    "graph_freshness_check": "NÃO executado nesta branch. `python3 scripts/atualizar_grafo_volc_os.py --check` deve rodar no integrador, após o merge — rodá-lo aqui mediria um worktree isolado e não a fonte compartilhada.",
+    "why_no_promotion": "Trabalho que só existe numa branch não pode marcar a fonte compartilhada como concluída."
+  },
+
+  "existing_tasks_affected": [
+    {
+      "id": "P05-T11",
+      "title": "Executar o primeiro canário Search pausado na Portal Mundo Mais",
+      "current_status": "partial",
+      "proposed_status": "blocked",
+      "why": "O domínio de destino do canário está fora do ar. `https://portalmundomais.com/` e `https://portalmundomais.com/sitemap_index.xml` responderam HTTP 410 (Cloudflare) em 2026-09-03. Quatro rotas /r/ desse domínio existem apenas na evidência da conta, sem página correspondente.",
+      "evidence": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/ROUTE-R-INVENTORY.json#routes_only_in_account_evidence",
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/ROUTE-R-INVENTORY.json#sitemap_errors"
+      ],
+      "decision_needed": "Restaurar o domínio ou remover as campanhas. Republicar as rotas em outro domínio é proibido (Circumventing systems).",
+      "confidence": "high"
+    },
+    {
+      "id": "P08-T09",
+      "title": "Consolidar o recomendador semântico no Redator e FunnelForge",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "Sem mudança de estado. Registrar como nova restrição de aceite que qualquer página gerada com papel `paid_destination` passe pelo portão de `backend/app/landing_policy` antes de publicar.",
+      "evidence": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/REDATOR-POLICY-CONTRACT.md"
+      ],
+      "confidence": "medium"
+    }
+  ],
+
+  "proposed_new_tasks": [
+    {
+      "proposed_id": "P09-TXX",
+      "initiative_hint": "P09 — Separar fato, recomendação, autorização e ação",
+      "title": "Portão de destino pago: ligar os três pontos e gravar o hash aprovado",
+      "proposed_status": "partial",
+      "delivered_in_this_branch": [
+        "Contrato `paid_destination` com cinco papéis e três pontos de portão (backend/app/landing_policy/**)",
+        "33 regras, todas com fonte oficial do Google (fontes_politica.json / GOOGLE-POLICY-MATRIX.json)",
+        "Recibo de portão determinístico com hash de conteúdo e de inventário",
+        "102 testes focais de landing policy: contraprovas explícitas A–X, fecha-por-ausência, regressão permanente FGTS, segurança da leitura pública"
+      ],
+      "remaining": [
+        "Ponto de portão 2 (pré-publicação WordPress) — patch exato pronto, NÃO aplicado: HANDOFF-PATCH-PUBLICACAO.md",
+        "Ponto de portão 3 (elegibilidade de destino de campanha) — precisa de wiring numa rota de tráfego reservada",
+        "Gravar o hash aprovado na publicação; sem ele DERIVA_AO_VIVO é immensurável em todos os 5 recibos",
+        "Portão sobre o PLANO do motor, não só sobre o corpo escrito",
+        "Trocar o OU de `funnelforge...checks.compliance` por exigência dos dois âncoras"
+      ],
+      "evidence": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/ENGINE-CHANGES.md",
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/GATES.md",
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/GATE-RECEIPTS.json"
+      ],
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P05-TXX",
+      "initiative_hint": "P05 — Unir nascimento, Hub e cockpit de campanha",
+      "title": "Remediar os destinos /r/ ao vivo e reauditar antes de qualquer campanha voltar",
+      "proposed_status": "todo",
+      "why": "Os cinco recibos emitidos sobre a evidência preservada saíram `blocked`; nenhum destino está `paid_destination_ready`.",
+      "evidence": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/LIVE-REMEDIATION-PLAN.md",
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/GATE-RECEIPTS.json"
+      ],
+      "blocked_by": "autorização externa do operador (AUTORIZACAO-EXTERNA.md, P1)",
+      "confidence": "high"
+    }
+  ],
+
+  "proposed_graph_nodes": [
+    {
+      "id": "landing_policy_gate",
+      "cluster": "qualidade do publisher",
+      "label": "Portão de política de destino pago",
+      "path": "backend/app/landing_policy/",
+      "state": "implementado, não integrado",
+      "business_meaning": "Separa página editorial de destino que recebe clique comprado, e fecha por ausência: verificação que não pôde ser concluída reprova, em vez de liberar por silêncio.",
+      "confidence": "high"
+    },
+    {
+      "id": "landing_policy_matrix",
+      "cluster": "governança",
+      "label": "Matriz de política oficial do Google para destinos",
+      "path": "backend/app/landing_policy/fontes_politica.json",
+      "state": "ativo",
+      "business_meaning": "33 regras com URL oficial, aplicabilidade, evidência, resultado medido, confiança e correção. Regra sem fonte oficial não entra.",
+      "confidence": "high"
+    }
+  ],
+
+  "proposed_graph_edges": [
+    {
+      "from": "landing_policy_gate",
+      "to": "landing_policy_matrix",
+      "kind": "depende_de",
+      "why": "O portão recusa emitir achado sem fonte oficial correspondente (`sem_fonte_oficial`).",
+      "confidence": "high"
+    },
+    {
+      "from": "landing_policy_gate",
+      "to": "publisher_quality_fetch",
+      "kind": "usa",
+      "why": "A leitura pública SSRF-safe e a cadeia de redirecionamento vêm de `backend/app/publisher_quality/fetch.py`; o portão não abre socket.",
+      "confidence": "high"
+    },
+    {
+      "from": "redator_publicacao_router",
+      "to": "landing_policy_gate",
+      "kind": "deveria_chamar",
+      "state": "PROPOSTO — não aplicado",
+      "why": "Ponto de portão 2. Patch exato em HANDOFF-PATCH-PUBLICACAO.md; o arquivo está em colisão com o Terminal 2 nesta missão.",
+      "confidence": "high"
+    },
+    {
+      "from": "funnelforge_engine",
+      "to": "landing_policy_gate",
+      "kind": "produz_artefato_para",
+      "state": "PROPOSTO — não aplicado",
+      "why": "Ponto de portão 1, sobre o artefato de geração. O motor não foi alterado nesta entrega.",
+      "confidence": "medium"
+    }
+  ],
+
+  "facts_worth_curating": [
+    {
+      "fact": "A suspensão observada é de CONTA, não de anúncio: CUST_013 está SUSPENDED enquanto 11 dos 14 anúncios de Busca estão APPROVED/REVIEWED.",
+      "source": "account-evidence-sanitized.json",
+      "confidence": "high"
+    },
+    {
+      "fact": "A causa literal da suspensão NÃO foi obtida. A hipótese Caixa está em HYPOTHESIS_PARTIALLY_SUPPORTED.",
+      "source": "ROOT-CAUSE-ANALYSIS.md §4",
+      "confidence": "high"
+    },
+    {
+      "fact": "Não há cloaking: Googlebot e usuário receberam HTML byte a byte idêntico em duas leituras de 2026-09-03.",
+      "source": "GATE-RECEIPTS.json, LIVE-LP-SNAPSHOT.md",
+      "confidence": "high"
+    },
+    {
+      "fact": "Nenhum destino /r/ amostrado coleta dado pessoal; o único formulário é a busca do WordPress.",
+      "source": "GATE-RECEIPTS.json#inventory_hashes.forms_and_sensitive_data",
+      "confidence": "high"
+    },
+    {
+      "fact": "Nenhum hash aprovado foi gravado na publicação das páginas históricas, o que torna DERIVA_AO_VIVO immensurável hoje.",
+      "source": "GATE-RECEIPTS.json#unknowns",
+      "confidence": "high"
+    },
+    {
+      "fact": "A política Government documents and services muda em 05/10/2026: autorização exige link a partir de site oficial de governo; contrato comercial não conta.",
+      "source": "https://support.google.com/adspolicy/answer/17260489",
+      "confidence": "high"
+    }
+  ],
+
+  "external_mutation": {
+    "google_ads_mutate": false,
+    "google_ads_account_read_this_session": false,
+    "wordpress_write": false,
+    "appeal_submitted": false,
+    "deploy": false,
+    "supabase_write": false,
+    "search_console_mutation": false,
+    "roadmap_or_graph_edit": false
+  }
+}
