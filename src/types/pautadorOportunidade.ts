@@ -14,10 +14,11 @@ export type DecisaoDeOportunidade =
   | 'insuficiente'
   | 'inadequado'
   | 'retido'
-  | 'sem_validacao';
+  | 'sem_validacao'
+  | 'falha_na_leitura';
 
 export interface TeseDeOportunidade {
-  opportunity_id?: number;
+  opportunity_id?: number | null;
   tema: string;
   decisao: DecisaoDeOportunidade;
   porque: string;
@@ -97,6 +98,16 @@ export const DECISAO_HUMANA: Record<
     tom: 'muted',
     acao: 'Arrastar para Em validação',
   },
+  // ⚠️ FALHA != SIMPLES. Antes este caso caía em `insuficiente` e o operador
+  // lia "Cabe numa página · Considerar artigo único" sobre um tema que nunca
+  // foi lido — falha técnica vestida de conclusão editorial (Gemini, P0).
+  falha_na_leitura: {
+    glifo: '⚠',
+    palavra: 'Falha ao ler',
+    frase: 'A ficha não pôde ser lida. Não é conclusão sobre o tema.',
+    tom: 'destructive',
+    acao: 'Remedir o card',
+  },
 };
 
 export const FORMATO_HUMANO: Record<string, { nome: string; explica: string }> = {
@@ -133,5 +144,6 @@ export const PROCEDENCIA_HUMANA = {
 } as const;
 
 export const ORDEM_DA_DECISAO: DecisaoDeOportunidade[] = [
-  'aprofundar', 'experimentar', 'insuficiente', 'inadequado', 'retido', 'sem_validacao',
+  'aprofundar', 'experimentar', 'insuficiente', 'inadequado',
+  'retido', 'falha_na_leitura', 'sem_validacao',
 ];

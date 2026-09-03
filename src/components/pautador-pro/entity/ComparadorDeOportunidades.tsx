@@ -99,6 +99,15 @@ const Linha: React.FC<{
           {t.desconhecidos.length}
         </span>
       </td>
+      {/* Contradição não pode ficar escondida atrás de um clique: quem escolhe
+          onde apostar precisa ver, na linha, que dois sinais discordam. */}
+      <td className="py-1.5 pr-2 align-top text-right text-[11px] tabular-nums"
+        aria-label={t.contradicoes.length
+          ? `${t.contradicoes.length} contradições` : 'sem contradição'}>
+        {t.contradicoes.length
+          ? <span className="text-destructive font-semibold">{t.contradicoes.length}</span>
+          : <span className="text-muted-foreground">0</span>}
+      </td>
     </tr>
   );
 };
@@ -112,9 +121,8 @@ const Cabecalho: React.FC = () => (
       <th scope="col" className="py-1 pr-2 text-left font-semibold">Formato</th>
       <th scope="col" className="py-1 pr-2 text-right font-semibold">Índice</th>
       <th scope="col" className="py-1 pr-2 text-right font-semibold">Cobertura</th>
-      <th scope="col" className="py-1 pr-2 text-right font-semibold" title="fatos / desconhecidos">
-        Fato/Desc
-      </th>
+      <th scope="col" className="py-1 pr-2 text-right font-semibold">Fato/Desc</th>
+      <th scope="col" className="py-1 pr-2 text-right font-semibold">Contr.</th>
     </tr>
   </thead>
 );
@@ -223,7 +231,7 @@ export const ComparadorDeOportunidades: React.FC<{
                       <span className="text-[12px] text-foreground break-words">{t.tema}</span>
                     </td>
                     <td className="py-1.5 pr-2 align-top"><Decisao t={t} /></td>
-                    <td className="py-1.5 pr-2 align-top text-[11px] text-muted-foreground" colSpan={4}>
+                    <td className="py-1.5 pr-2 align-top text-[11px] text-muted-foreground" colSpan={5}>
                       {t.motivo_incomparavel ?? 'sem base para comparar'}
                     </td>
                   </tr>

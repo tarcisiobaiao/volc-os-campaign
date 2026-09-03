@@ -57,10 +57,15 @@ VERSAO_DO_CONTRATO = "oportunidade/1"
 
 # ── vocabulário de decisão ───────────────────────────────────────────────────
 #
-# Cinco estados, e cada um significa uma AÇÃO diferente do operador. Não são
-# faixas de uma escala: `INADEQUADO` e `INSUFICIENTE` empatam em prioridade e
-# divergem completamente em o que fazer a seguir — um está medido e não serve,
-# o outro não está medido o bastante para dizer.
+# Cada estado significa uma AÇÃO diferente do operador. Não são faixas de uma
+# escala contínua.
+#
+# `INSUFICIENTE` fica ACIMA de `INADEQUADO` na ordenação, e isso é decisão, não
+# empate: um tema que cabe numa página ainda rende um artigo; um tema cujo
+# balcão oficial já resolve não rende nada. Um comentário anterior dizia que os
+# dois "empatam em prioridade" enquanto `comparar()` os ordenava 2 e 3 — a
+# revisão adversarial (Gemini, P1) pegou a contradição, e o texto foi corrigido
+# para o que o código faz.
 
 APROFUNDAR = "aprofundar"        # medido, ramifica, sustenta funil
 EXPERIMENTAR = "experimentar"    # promissor com buraco barato de fechar
@@ -68,9 +73,14 @@ INSUFICIENTE = "insuficiente"    # medido, mas a evidência não sustenta a apos
 INADEQUADO = "inadequado"        # medido e NÃO serve ao formato de funil
 RETIDO = "retido"                # cobertura abaixo do mínimo — não priorizar
 SEM_VALIDACAO = "sem_validacao"  # card antigo/nunca medido — lacuna, não mérito
+# ⚠️ FALHA != SIMPLES. Achado de revisão adversarial (Gemini, P0).
+# A ficha ilegível caía em `INSUFICIENTE`, que a interface mostra como
+# "Cabe numa página · Considerar artigo único". O operador lia uma conclusão
+# editorial sobre um tema que nunca foi lido: falha técnica vestida de medição.
+FALHA_NA_LEITURA = "falha_na_leitura"
 
 DECISOES = (APROFUNDAR, EXPERIMENTAR, INSUFICIENTE, INADEQUADO, RETIDO,
-            SEM_VALIDACAO)
+            SEM_VALIDACAO, FALHA_NA_LEITURA)
 
 # `ordenar()` do espaço usa 0,5 e a razão é a mesma aqui: abaixo disso a média
 # geométrica fala de meia dúzia de eixos e chama isso de retrato do tema.
@@ -172,6 +182,9 @@ class TeseDeOportunidade:
     decisao: str
     porque: str
     versao_do_contrato: str = VERSAO_DO_CONTRATO
+    # Identidade estável do card. Existe para o DESEMPATE ser determinístico:
+    # dois cards homônimos (duplicata por site) precisam de uma ordem fixa.
+    opportunity_id: Optional[int] = None
 
     formato_de_funil: Optional[str] = None
     observaveis_do_formato: Tuple[str, ...] = ()
@@ -191,6 +204,7 @@ class TeseDeOportunidade:
 
     def como_dicionario(self) -> Dict[str, Any]:
         return {
+            "opportunity_id": self.opportunity_id,
             "tema": self.tema,
             "decisao": self.decisao,
             "porque": self.porque,
@@ -223,9 +237,28 @@ GUIA = "guia_sequencial"
 RESPOSTA_UNICA = "resposta_unica"
 
 
+def _bool_observado(valor: Any) -> Optional[bool]:
+    """`True`, `False` ou **`None` para ausente** — nunca `bool(valor)`.
+
+    ⚠️ Achado de revisão adversarial (Codex, A2). A primeira versão fazia
+    `bool(q.get("oficial_fecha_sozinho"))`: observável AUSENTE virava `False`, e
+    o motor então afirmava como FATO `oficial_fecha_sozinho em 0 de 3 perguntas`
+    — que é ausência apresentada como zero confirmado, o erro exato que este
+    motor inteiro existe para não cometer.
+
+    Pior, `bool("false") is True`: uma string malformada virava o oposto do que
+    diz. Booleano só é booleano quando chegou como booleano.
+    """
+    return valor if isinstance(valor, bool) else None
+
+
 def _numeros_das_perguntas(ficha: Dict[str, Any]) -> List[Dict[str, Any]]:
     """As perguntas com as contagens saneadas. Pergunta malformada é DESCARTADA,
-    não zerada — zerar inventaria uma observação que ninguém fez."""
+    não zerada — zerar inventaria uma observação que ninguém fez.
+
+    Os booleanos podem vir `None`, e `None` NÃO é `False`: quem consome precisa
+    distinguir "o balcão não fecha" de "ninguém observou se o balcão fecha".
+    """
     saidas: List[Dict[str, Any]] = []
     for q in (ficha.get("perguntas") or []):
         if not isinstance(q, dict):
@@ -233,11 +266,13 @@ def _numeros_das_perguntas(ficha: Dict[str, Any]) -> List[Dict[str, Any]]:
         ramos, cond = q.get("ramos"), q.get("condicoes")
         if not isinstance(ramos, int) or not isinstance(cond, int):
             continue
+        if isinstance(ramos, bool) or isinstance(cond, bool):
+            continue      # `True` é `int` em Python; contagem booleana é lixo
         saidas.append({
             "ramos": ramos,
             "condicoes": cond,
-            "decide_depois": bool(q.get("decide_depois")),
-            "fecha_sozinho": bool(q.get("oficial_fecha_sozinho")),
+            "decide_depois": _bool_observado(q.get("decide_depois")),
+            "fecha_sozinho": _bool_observado(q.get("oficial_fecha_sozinho")),
             "engajamento": q.get("engajamento"),
         })
     return saidas
@@ -248,10 +283,13 @@ def _rotear_formato(perguntas: List[Dict[str, Any]]) -> Tuple[Optional[str], Tup
         return None, ()
 
     n = len(perguntas)
-    fecham = sum(1 for q in perguntas if q["fecha_sozinho"])
+    # Só conta o que foi OBSERVADO. `None` não entra nem no numerador nem no
+    # denominador — senão "não observado" viraria "não fecha".
+    observaram_fecha = [q for q in perguntas if q["fecha_sozinho"] is not None]
+    fecham = sum(1 for q in observaram_fecha if q["fecha_sozinho"])
     max_cond = max(q["condicoes"] for q in perguntas)
     max_ramos = max(q["ramos"] for q in perguntas)
-    decidem = sum(1 for q in perguntas if q["decide_depois"])
+    decidem = sum(1 for q in perguntas if q["decide_depois"] is True)
 
     # ⚠️ O VETO, COM PISO DE N — e o piso não é enfeite.
     #
@@ -263,10 +301,25 @@ def _rotear_formato(perguntas: List[Dict[str, Any]]) -> Tuple[Optional[str], Tup
     # casos mostrou 192 em que o motor de eixos dizia `apto` com índice 0,747 e
     # o veto matava o tema com n=2. Abaixo do piso o veto não mata — o card cai
     # em `insuficiente`, que é o estado que significa "humano olha".
-    if fecham == n and n >= N_MINIMO_PARA_PORTAO:
+    todas_fecham = bool(observaram_fecha) and fecham == len(observaram_fecha) == n
+    if todas_fecham and n >= N_MINIMO_PARA_PORTAO:
         return None, (
             f"oficial_fecha_sozinho em {fecham} de {n} perguntas",
             f"n_perguntas {n} no piso de {N_MINIMO_PARA_PORTAO}",
+            f"max ramos_de_acao {max_ramos}",
+        )
+    # ⚠️ ABAIXO DO PISO, O VETO NÃO MATA — MAS TAMBÉM NÃO SOME.
+    #
+    # Achado de revisão adversarial (Gemini, P0). A versão anterior só pulava o
+    # `return None` e caía direto na régua de formato: com n=2, ambas fechando,
+    # e 3 condições e 3 ramos, o card saía `ferramenta_de_elegibilidade` e
+    # `aprofundar` — enquanto o comentário logo acima prometia `insuficiente`.
+    # O comentário mentia, e o teste que eu escrevi para ele passou vazio
+    # porque a fixture usava ramos=1 e condicoes=0, que nunca chega neste ramo.
+    if todas_fecham:
+        return None, (
+            f"oficial_fecha_sozinho em {fecham} de {n} perguntas",
+            f"n_perguntas {n} ABAIXO do piso de {N_MINIMO_PARA_PORTAO}",
             f"max ramos_de_acao {max_ramos}",
         )
 
@@ -327,6 +380,7 @@ def tese_do_resumo(
     resumo: Optional[Dict[str, Any]],
     *,
     tema: str,
+    opportunity_id: Optional[int] = None,
     evidencias_externas: Optional[Sequence[Dict[str, Any]]] = None,
     campanha_ref: Optional[str] = None,
     aplicar_priors: bool = False,
@@ -342,6 +396,7 @@ def tese_do_resumo(
     if not isinstance(resumo, dict) or not resumo.get("eixos"):
         return TeseDeOportunidade(
             tema=tema,
+            opportunity_id=opportunity_id,
             decisao=SEM_VALIDACAO,
             porque="Este card não passou pela coluna de validação, ou passou numa "
                    "versão anterior do motor. Não é um veredito sobre o tema.",
@@ -379,10 +434,22 @@ def tese_do_resumo(
         n = len(perguntas)
         max_cond = max(q["condicoes"] for q in perguntas)
         max_ramos = max(q["ramos"] for q in perguntas)
-        fecham = sum(1 for q in perguntas if q["fecha_sozinho"])
         fatos.append(f"perguntas lidas: {n}")
         fatos.append(f"max condicoes_pessoais {max_cond}, max ramos_de_acao {max_ramos}")
-        fatos.append(f"oficial_fecha_sozinho em {fecham} de {n} perguntas")
+        # O denominador é quem OBSERVOU, não quantas perguntas existem. Dizer
+        # "0 de 3" quando ninguém olhou é afirmar ausência como zero medido.
+        observaram = [q for q in perguntas if q["fecha_sozinho"] is not None]
+        if observaram:
+            fecham = sum(1 for q in observaram if q["fecha_sozinho"])
+            fatos.append(
+                f"oficial_fecha_sozinho em {fecham} de {len(observaram)} perguntas"
+                + (f" (observado em {len(observaram)} de {n})" if len(observaram) != n else "")
+            )
+        if len(observaram) < n:
+            desconhecidos.append(
+                f"oficial_fecha_sozinho: não observado em {n - len(observaram)} "
+                f"de {n} perguntas"
+            )
     else:
         desconhecidos.append("perguntas do PAA: nenhuma ficha legível foi gravada")
 
@@ -396,9 +463,16 @@ def tese_do_resumo(
         )
 
     # ── estabilidade entre passadas
+    # ⚠️ INSTABILIDADE É CONTRADIÇÃO, NÃO HIPÓTESE.
+    #
+    # A interface define hipótese como "vem de fora deste card, não move a
+    # decisão". A divergência entre passadas aconteceu na medição DESTE card e
+    # é sinal de que o instrumento derrapou — classificá-la como hipótese
+    # externa escondia instabilidade interna atrás de um rótulo de "contexto"
+    # (achado de revisão adversarial, Gemini, P1).
     comparacao = ficha.get("comparacao") or {}
     if comparacao.get("estavel") is False:
-        hipoteses.append(
+        contradicoes.append(
             "as passadas do modelo divergiram entre si — o nível deste tema não "
             f"é estável (shares {comparacao.get('shares')})"
         )
@@ -437,13 +511,15 @@ def tese_do_resumo(
         cobertura=cobertura, portoes=portoes, desconhecidos=desconhecidos,
     )
 
-    comparavel = decisao not in (RETIDO, SEM_VALIDACAO)
+    comparavel = decisao not in (RETIDO, SEM_VALIDACAO, FALHA_NA_LEITURA)
     motivo_incomparavel = None
     if not comparavel:
-        motivo_incomparavel = (
-            f"cobertura {cobertura} abaixo do mínimo {COBERTURA_MINIMA_PARA_COMPARAR}"
-            if decisao == RETIDO else "sem medição registrada"
-        )
+        motivo_incomparavel = {
+            RETIDO: (f"cobertura {cobertura} abaixo do mínimo "
+                     f"{COBERTURA_MINIMA_PARA_COMPARAR}" if cobertura is not None
+                     else "cobertura não gravada"),
+            FALHA_NA_LEITURA: "a ficha não pôde ser lida — falha, não mérito",
+        }.get(decisao, "sem medição registrada")
 
     experimento = _experimento(desconhecidos, decisao)
 
@@ -455,6 +531,7 @@ def tese_do_resumo(
 
     return TeseDeOportunidade(
         tema=tema,
+        opportunity_id=opportunity_id,
         decisao=decisao,
         porque=porque,
         formato_de_funil=formato,
@@ -478,7 +555,17 @@ def _decidir(*, resumo: Dict[str, Any], perguntas: List[Dict[str, Any]],
     """A regra, em ordem. Cada ramo diz o que o operador faz a seguir."""
 
     # 1 · cobertura primeiro: sem base não se prioriza, nem para cima nem para baixo
-    if cobertura is not None and cobertura < COBERTURA_MINIMA_PARA_COMPARAR:
+    #
+    # ⚠️ `None` é o caso de RETENÇÃO MAIS FORTE, não o mais fraco. A versão
+    # anterior escrevia `if cobertura is not None and cobertura < MIN`, então
+    # cobertura DESCONHECIDA escapava da retenção e o card saía `aprofundar`
+    # e comparável (achado de revisão adversarial, Codex, P1).
+    if cobertura is None:
+        return RETIDO, (
+            "A cobertura não foi gravada. Sem saber quanto do tema foi medido, "
+            "comparar este card com outro é comparar com o desconhecido."
+        )
+    if cobertura < COBERTURA_MINIMA_PARA_COMPARAR:
         return RETIDO, (
             f"Cobertura de {cobertura:.0%} — abaixo de "
             f"{COBERTURA_MINIMA_PARA_COMPARAR:.0%}, a média fala de meia dúzia de "
@@ -486,7 +573,23 @@ def _decidir(*, resumo: Dict[str, Any], perguntas: List[Dict[str, Any]],
         )
 
     # 2 · o veto do formato: o balcão oficial já resolve
+    #
+    # Dois desfechos diferentes, e a diferença é o PISO DE N:
+    #   n >= piso  ->  INADEQUADO   medido, e o balcão já entrega
+    #   n <  piso  ->  INSUFICIENTE poucas perguntas para concluir; humano olha
+    #
+    # Achatar os dois foi o defeito que a revisão pegou nos DOIS sentidos:
+    # antes o veto nem disparava abaixo do piso (e o card virava `aprofundar`);
+    # ao consertar isso, ele passou a matar abaixo do piso. Nenhum dos dois é o
+    # que o piso significa.
     if formato is None and perguntas:
+        if len(perguntas) < N_MINIMO_PARA_PORTAO:
+            return INSUFICIENTE, (
+                f"As {len(perguntas)} perguntas lidas são fechadas pelo canal "
+                f"oficial, mas {len(perguntas)} está abaixo do piso de "
+                f"{N_MINIMO_PARA_PORTAO}: é pouca pergunta para concluir "
+                "qualquer coisa sobre a entidade. Um humano precisa olhar."
+            )
         return INADEQUADO, (
             f"O canal oficial fecha todas as {len(perguntas)} perguntas sozinho. "
             "Uma página aqui repete o balcão sem acrescentar nada — não há funil "
@@ -501,9 +604,10 @@ def _decidir(*, resumo: Dict[str, Any], perguntas: List[Dict[str, Any]],
         )
 
     if not perguntas:
-        return INSUFICIENTE, (
+        return FALHA_NA_LEITURA, (
             "Nenhuma ficha legível foi gravada. Há eixos medidos, mas nada sobre "
-            "a forma das perguntas — e é ela que diz se existe funil."
+            "a forma das perguntas — e é ela que diz se existe funil. Isto é "
+            "falha de leitura, não conclusão sobre o tema."
         )
 
     max_cond = max(q["condicoes"] for q in perguntas)
@@ -536,13 +640,25 @@ def _decidir(*, resumo: Dict[str, Any], perguntas: List[Dict[str, Any]],
 
 
 def _experimento(desconhecidos: List[str], decisao: str) -> Optional[str]:
-    """O menor experimento que reduz a incerteza. Só existe se houver buraco."""
+    """O que falta medir. Só existe se houver buraco.
+
+    ⚠️ NÃO AFIRMA QUAL É O MAIS BARATO. A versão anterior dizia "é o observável
+    ausente mais barato de fechar e o que mais muda a leitura deste card" — mas
+    escolhia `desconhecidos[0]`, e `desconhecidos` sai de `sorted(eixos)`, isto
+    é, ordem ALFABÉTICA. O motor afirmava custo e impacto a partir da letra
+    inicial do nome do eixo (achado de revisão adversarial, Gemini, P2).
+
+    Não há medição de custo por eixo neste motor. Enquanto não houver, a frase
+    diz o que é verdade: o que falta, e que fechar qualquer um deles aumenta a
+    cobertura.
+    """
     if not desconhecidos or decisao == SEM_VALIDACAO:
         return None
-    primeiro = desconhecidos[0].split(" (")[0]
+    nomes = [d.split(" (")[0] for d in desconhecidos]
+    lista = ", ".join(nomes)
     return (
-        f"Medir {primeiro}: é o observável ausente mais barato de fechar e o que "
-        "mais muda a leitura deste card."
+        f"Faltam {len(nomes)} observáveis: {lista}. Medir qualquer um aumenta a "
+        "cobertura; este motor não mede custo por eixo, então a ordem é sua."
     )
 
 
@@ -560,11 +676,16 @@ def comparar(teses: Sequence[TeseDeOportunidade]
     ordem = {APROFUNDAR: 0, EXPERIMENTAR: 1, INSUFICIENTE: 2, INADEQUADO: 3}
     aptos = [t for t in teses if t.comparavel]
     fora = [t for t in teses if not t.comparavel]
+    # O desempate final precisa de uma chave ESTÁVEL e única. Ordenar só por
+    # `tema` deixava dois cards homônimos (duplicata por site) trocarem de
+    # posição conforme a ordem em que o banco devolvesse — sem `order` na
+    # consulta, isso é não determinismo silencioso (achado Codex, P1).
     aptos.sort(key=lambda t: (
         ordem.get(t.decisao, 9),
         -(t.indice_citado if t.indice_citado is not None else -1.0),
         -(t.cobertura if t.cobertura is not None else 0.0),
         t.tema,
+        t.opportunity_id if t.opportunity_id is not None else -1,
     ))
     return aptos, fora
 

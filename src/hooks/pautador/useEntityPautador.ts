@@ -114,9 +114,19 @@ export function useEntityPautador() {
   // As teses acompanham a coluna de validação. É leitura pura e barata — sem
   // medição, sem custo —, então recarregar a cada mudança da lista é honesto:
   // o operador vê a comparação atualizada assim que uma medição termina.
+  // ⚠️ A CHAVE PRECISA MUDAR QUANDO A MEDIÇÃO MUDA.
+  //
+  // A primeira versão usava só os IDs da coluna. Medir um card altera o
+  // CONTEÚDO (`validacao`) sem alterar a lista de IDs, então o efeito nunca
+  // refazia a leitura e o operador continuava vendo a tese PRÉ-medição até
+  // que a composição da coluna mudasse por outro motivo (achado Codex, P1).
+  //
+  // `validado_em` é o carimbo que `_gravar_resumo` grava a cada run, então ele
+  // é exatamente o que muda quando há medição nova.
   const idsValidando = useMemo(
     () => cards.filter((c) => c.status === 'validating' && c.id)
-               .map((c) => c.id).join(','),
+               .map((c) => `${c.id}:${(c.validacao as { validado_em?: string } | null)?.validado_em ?? ''}`)
+               .join(','),
     [cards],
   );
   useEffect(() => {

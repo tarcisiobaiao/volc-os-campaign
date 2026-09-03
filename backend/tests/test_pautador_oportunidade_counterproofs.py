@@ -505,16 +505,24 @@ def test_veto_de_formato_respeita_o_piso_de_n():
     fecha = {"ramos": 1, "condicoes": 0, "decide_depois": False,
              "fecha_sozinho": True, "engajamento": "dado_unico"}
 
-    # abaixo do piso: não veta
-    for n in range(1, N_MINIMO_PARA_PORTAO):
-        formato, _ = _rotear_formato([dict(fecha) for _ in range(n)])
-        assert formato is not None, f"vetou com n={n}, abaixo do piso"
-
-    # no piso e acima: veta
-    for n in (N_MINIMO_PARA_PORTAO, N_MINIMO_PARA_PORTAO + 2):
+    # ⚠️ CONTRATO CORRIGIDO PELA REVISÃO ADVERSARIAL.
+    #
+    # A primeira versão deste teste afirmava que abaixo do piso `_rotear_formato`
+    # devolvia um formato. Era o desenho ERRADO: com 3 condições e 3 ramos ele
+    # devolvia `ferramenta_de_elegibilidade` e o card saía `aprofundar`, apesar
+    # de todas as perguntas serem fechadas pelo balcão oficial (Gemini, P0).
+    #
+    # O contrato certo separa as duas responsabilidades:
+    #   `_rotear_formato` diz SEMPRE None quando tudo fecha — não há página;
+    #   `_decidir` é quem lê o piso e escolhe entre INADEQUADO e INSUFICIENTE.
+    for n in range(1, N_MINIMO_PARA_PORTAO + 3):
         formato, citacoes = _rotear_formato([dict(fecha) for _ in range(n)])
-        assert formato is None, f"não vetou com n={n}"
+        assert formato is None, f"tudo fecha com n={n} e mesmo assim houve formato"
         assert any(str(n) in c for c in citacoes)
+        marca = "ABAIXO do piso" if n < N_MINIMO_PARA_PORTAO else "no piso"
+        assert any(marca in c for c in citacoes), (
+            f"n={n}: a citação precisa dizer de que lado do piso está"
+        )
 
 
 def test_abaixo_do_piso_o_card_nao_e_reprovado_por_veto():

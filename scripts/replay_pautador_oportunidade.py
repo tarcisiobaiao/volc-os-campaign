@@ -182,14 +182,24 @@ def gerar() -> List[Dict[str, Any]]:
                    descobre_que_existe=False,
                    resposta_literal="O prazo é 31 de outubro.")
 
-    for cond, ramos, dec, ofic, stk in itertools.product(
-            range(4), range(1, 4), (False, True), (False, True), (False, True)):
+    # ⚠️ O NÚMERO DE PERGUNTAS PRECISA VARIAR DOS DOIS LADOS DO PISO.
+    #
+    # A primeira versão fixava 2 perguntas por entidade. Como
+    # `N_MINIMO_PARA_PORTAO` é 3, o corpus inteiro ficava ABAIXO do piso e um
+    # único regime dominava o replay — 384 de 576 casos caíam em
+    # `insuficiente` por causa do piso, não por causa do tema. Um replay que só
+    # exercita um lado de uma fronteira não mede a fronteira.
+    for cond, ramos, dec, ofic, stk, n_lookup in itertools.product(
+            range(4), range(1, 4), (False, True), (False, True), (False, True),
+            (1, 3)):
         principal = Ficha(
             condicoes_pessoais=cond, ramos_de_acao=ramos, fontes_oficiais=2,
             decisao_apos_resposta=dec, oficial_fecha_sozinho=ofic,
             regra_mudou_recentemente=False, stake=stk, descobre_que_existe=True,
             resposta_literal="depende da sua situação: para X vale A, para Y vale B.")
-        fichas = {"principal": principal, "lookup": lookup}
+        fichas = {"principal": principal}
+        for i in range(n_lookup):
+            fichas[f"lookup{i}"] = lookup
 
         for sensores in SENSORES:
             antes = _resumo_do_motor_anterior(fichas, sensores)
@@ -200,6 +210,7 @@ def gerar() -> List[Dict[str, Any]]:
                 "condicoes_pessoais": cond, "ramos_de_acao": ramos,
                 "decisao_apos_resposta": dec, "oficial_fecha_sozinho": ofic,
                 "stake": stk, "sensores": sensores,
+                "n_perguntas": 1 + n_lookup,
             }
 
             depois = tese_do_resumo(antes, tema="caso", aplicar_priors=False)
@@ -215,7 +226,7 @@ def gerar() -> List[Dict[str, Any]]:
                               if v.get("proveniencia") == "julgado")
 
             casos.append({
-                "id": f"{cond}{ramos}{int(dec)}{int(ofic)}{int(stk)}-{sensores}",
+                "id": f"{cond}{ramos}{int(dec)}{int(ofic)}{int(stk)}n{1 + n_lookup}-{sensores}",
                 "classe": _classe(antes),
                 "entrada": entrada,
                 "fingerprint_entrada": _fingerprint(entrada),

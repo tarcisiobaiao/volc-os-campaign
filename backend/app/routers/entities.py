@@ -1189,15 +1189,20 @@ async def entity_teses(body: EntityTesesRequest) -> Dict[str, Any]:
     motivo escrito. Sumir seria a ordenação silenciosa que a tela existe para
     não fazer.
     """
-    from app.validacao.oportunidade import comparar, tese_do_resumo
+    from app.validacao.oportunidade import (
+        FALHA_NA_LEITURA, TeseDeOportunidade, comparar, tese_do_resumo,
+    )
 
     settings = get_settings()
     supa = SupabaseService(settings)
     if not supa.enabled:
         raise HTTPException(status_code=503, detail="Supabase não configurado")
 
+    # `order` explícito: sem ele o banco não garante ordem, e dois cards
+    # homônimos trocavam de posição entre chamadas (achado Codex, P1).
     filtro: Dict[str, str] = {
         "select": "id,validacao,pautador_entities(canonical_name,full_name)",
+        "order": "id.asc",
     }
     ids = [int(i) for i in (body.opportunity_ids or [])]
     if ids:
@@ -1213,25 +1218,41 @@ async def entity_teses(body: EntityTesesRequest) -> Dict[str, Any]:
 
     linhas = await supa.select("pautador_entity_opportunities", filtro)
 
-    teses = []
-    por_id: Dict[int, Any] = {}
+    # ⚠️ ISOLAMENTO POR CARD. Um resumo malformado (por exemplo `eixos` como
+    # string) levantava dentro do laço e derrubava a resposta do LOTE INTEIRO —
+    # o operador perdia a coluna toda por causa de um card torto (achado
+    # Codex, P1). Agora o card torto vira `falha_na_leitura` e os outros
+    # continuam.
+    montadas: List[Any] = []
+    falhas: List[Dict[str, Any]] = []
     for r in linhas:
+        opp_id = int(r["id"])
         ent = r.get("pautador_entities") or {}
         if isinstance(ent, list):
             ent = ent[0] if ent else {}
-        tema = (ent.get("canonical_name") or ent.get("full_name") or "").strip() or f"card {r.get('id')}"
-        t = tese_do_resumo(r.get("validacao"), tema=tema,
-                           aplicar_priors=bool(body.aplicar_priors))
-        por_id[int(r["id"])] = t
-        teses.append({"opportunity_id": int(r["id"]), **t.como_dicionario()})
+        tema = (ent.get("canonical_name") or ent.get("full_name") or "").strip() or f"card {opp_id}"
+        try:
+            t = tese_do_resumo(r.get("validacao"), tema=tema, opportunity_id=opp_id,
+                               aplicar_priors=bool(body.aplicar_priors))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("tese falhou opp=%s: %s", opp_id, str(exc)[:200])
+            t = TeseDeOportunidade(
+                tema=tema, opportunity_id=opp_id, decisao=FALHA_NA_LEITURA,
+                porque=("O resumo gravado deste card não pôde ser lido. É falha "
+                        "de leitura, não conclusão sobre o tema."),
+                comparavel=False,
+                motivo_incomparavel="resumo malformado",
+            )
+            falhas.append({"opportunity_id": opp_id, "erro": type(exc).__name__})
+        montadas.append(t)
 
-    ranking, fora = comparar(list(por_id.values()))
-    inverso = {id(v): k for k, v in por_id.items()}
+    ranking, fora = comparar(montadas)
     return {
-        "teses": teses,
-        "ranking": [{"opportunity_id": inverso[id(t)], **t.como_dicionario()} for t in ranking],
-        "fora_do_ranking": [{"opportunity_id": inverso[id(t)], **t.como_dicionario()} for t in fora],
-        "total": len(teses),
+        "teses": [t.como_dicionario() for t in montadas],
+        "ranking": [t.como_dicionario() for t in ranking],
+        "fora_do_ranking": [t.como_dicionario() for t in fora],
+        "total": len(montadas),
+        "falhas": falhas,
     }
 
 
