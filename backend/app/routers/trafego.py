@@ -64,6 +64,7 @@ from app.trafego import (canario, capacidades as cap,
 
 log = logging.getLogger("volc.trafego")
 
+from app.agents.mining import portao_conjunto_pago as portao_pago
 from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario
 
 # ---------------------------------------------------------------------------
@@ -2500,7 +2501,24 @@ async def provar(
             status_code=422, detail=_recusa_de_canal(body.canal, exc)) from exc
 
     def _preparar():
-        cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
+        linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
+        # ⚠️ O PORTÃO DO CONJUNTO PAGO, ANTES DE MONTAR E ANTES DA REDE.
+        #
+        # As keywords POSITIVAS desta rota nasciam do cockpit, e o cockpit as
+        # tira de `production_ads_queue` — a fila BRUTA da mineração. O motor
+        # de elegibilidade existia AO LADO do nascimento da campanha, não no
+        # caminho dele: `para_criterios_de_campanha()` não tinha chamador de
+        # produção nenhum.
+        #
+        # Daqui em diante o critério positivo nasce EXCLUSIVAMENTE do conjunto
+        # aprovado. Conjunto ausente, não aprovado, com hash divergente ou com
+        # bloqueador em aberto recusa AQUI — antes de `preparar()`, portanto
+        # antes de qualquer `validate_only`, que é leitura mas ainda é rede e
+        # ainda é conta real.
+        conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
+            getattr(linhas, "cluster", None)
+        )
+        cockpit = pp.montar_cockpit(linhas)
         # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
         # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
         # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -2509,11 +2527,17 @@ async def provar(
         # Medido contra a conta real: duas keywords escolhidas viraram oito no
         # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
         # com DKI na primeira headline isso vira texto de anúncio.
+        # A seleção desce do CONJUNTO APROVADO, não do corpo do pedido.
+        #
+        # `grupos_usar_todas` fica VAZIO de propósito: "usar todas" significa
+        # "monte o grupo inteiro do cockpit", que é justamente promover a fila
+        # bruta a conjunto de campanha. Depois do portão isso deixa de existir
+        # — não há mais "todas", há o que foi aprovado.
+        selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
         escolha = pp.Escolha(
-            grupos=tuple(g.tipo for g in body.grupos),
-            keywords_por_grupo={g.tipo: tuple(g.keywords)
-                                for g in body.grupos if not g.usar_todas},
-            grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas),
+            grupos=tuple(selecao_aprovada.keys()),
+            keywords_por_grupo=selecao_aprovada,
+            grupos_usar_todas=frozenset(),
             rede=_rede_do_corpo(body),
             keywords_fora=list(body.keywords_fora),
             budget_diario=body.budget_diario,
@@ -2524,7 +2548,10 @@ async def provar(
             # O adaptador da fronteira reúne os dois contratos num só. Vazio
             # significa que o pedido não declarou negativa nenhuma, e aí as
             # listas antigas seguem o caminho de sempre.
-            criterios=tuple(_criterios_do_corpo(body, pp)),
+            # Positivos do CONJUNTO APROVADO + negativas declaradas no corpo.
+            # A ordem importa: o conjunto foi declarado primeiro e por isso
+            # vence o legado que repetir a mesma identidade.
+            criterios=tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(body, pp)),
             negativas_campanha=(),
             negativas_adgroup=(),
             vertical=body.vertical,
@@ -2580,6 +2607,21 @@ async def provar(
                    f"Nada foi criado — `validate_only` valida e descarta, sempre. "
                    f"Tente de novo; se repetir, a API do Google está lenta.",
         ) from None
+    except portao_pago.PortaoDoConjuntoPago as exc:
+        # 409: o pedido é bem formado, o ESTADO é que não autoriza. E a recusa
+        # carrega o código estável para que a tela e o monitoramento possam
+        # distinguir "não aprovado" de "hash divergente" sem ler prosa.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "codigo": exc.codigo,
+                "mensagem": exc.detalhe,
+                "bloqueadores": exc.bloqueadores,
+                "autoridade": portao_pago.AUTORIDADE,
+                "nada_foi_criado": True,
+                "chamada_google": "nenhuma — a recusa acontece antes da rede",
+            },
+        ) from exc
     except pp.PonteIncompleta as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except HTTPException:
@@ -2961,7 +3003,17 @@ async def subir(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     def _provar_de_novo():
-        cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
+        linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
+        # O MESMO portão de `/provar`, pelo mesmo motivo e antes da mesma rede.
+        #
+        # `subir()` reprova o plano antes de escrever, e se esta rota montasse
+        # a `Escolha` pelo caminho antigo ela ultrapassaria, por reconstrução,
+        # uma recusa que `/provar` já tinha dado. A recusa precisa ser herdada
+        # estruturalmente — não por disciplina de quem chama na ordem certa.
+        conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
+            getattr(linhas, "cluster", None)
+        )
+        cockpit = pp.montar_cockpit(linhas)
         # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
         # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
         # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -2970,11 +3022,11 @@ async def subir(
         # Medido contra a conta real: duas keywords escolhidas viraram oito no
         # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
         # com DKI na primeira headline isso vira texto de anúncio.
+        selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
         escolha = pp.Escolha(
-            grupos=tuple(g.tipo for g in body.grupos),
-            keywords_por_grupo={g.tipo: tuple(g.keywords)
-                                for g in body.grupos if not g.usar_todas},
-            grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas),
+            grupos=tuple(selecao_aprovada.keys()),
+            keywords_por_grupo=selecao_aprovada,
+            grupos_usar_todas=frozenset(),
             rede=_rede_do_corpo(body),
             keywords_fora=list(body.keywords_fora),
             budget_diario=body.budget_diario,
@@ -2985,7 +3037,7 @@ async def subir(
             # O adaptador da fronteira reúne os dois contratos num só. Vazio
             # significa que o pedido não declarou negativa nenhuma, e aí as
             # listas antigas seguem o caminho de sempre.
-            criterios=tuple(_criterios_do_corpo(body, pp)),
+            criterios=tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(body, pp)),
             negativas_campanha=(),
             negativas_adgroup=(),
             vertical=body.vertical,
@@ -3008,6 +3060,21 @@ async def subir(
 
     try:
         plano, preparo = await asyncio.to_thread(_provar_de_novo)
+    except portao_pago.PortaoDoConjuntoPago as exc:
+        # A recusa do portão é HERDADA por `/subir`: sem esta cláusula ela
+        # cairia no genérico e viraria 500, e um 500 é indistinguível de uma
+        # falha depois do mutate. Aqui ela é 409, antes de qualquer escrita.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "codigo": exc.codigo,
+                "mensagem": exc.detalhe,
+                "bloqueadores": exc.bloqueadores,
+                "autoridade": portao_pago.AUTORIDADE,
+                "nada_foi_criado": True,
+                "chamada_google": "nenhuma — a recusa acontece antes da rede",
+            },
+        ) from exc
     except HTTPException:
         # ⚠️ TEM DE VIR ANTES do `except Exception`. `_criterios_do_corpo` roda
         # dentro da thread e levanta `HTTPException(422)` para data ISO

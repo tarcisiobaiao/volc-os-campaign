@@ -151,6 +151,32 @@ class Sinal:
         }
 
     @classmethod
+    def de_dicionario(cls, d: Any) -> "Sinal":
+        """Reidrata a partir de `como_dicionario()`.
+
+        Um estado que não pertence ao vocabulário vira `failed` em vez de
+        levantar: o objetivo desta função é reconstruir o que foi GRAVADO para
+        poder CONFERIR, e um registro corrompido tem que chegar reconhecível
+        até a conferência, não explodir antes dela.
+        """
+        if not isinstance(d, dict):
+            return cls(None, FALHOU, motivo="registro_ilegivel")
+        estado = d.get("estado")
+        if estado not in ESTADOS:
+            return cls(None, FALHOU, fonte=str(d.get("fonte") or "?"),
+                       motivo=f"estado_invalido:{estado!r}"[:80])
+        valor = d.get("valor")
+        try:
+            return cls(
+                None if valor is None else float(valor), estado,
+                fonte=str(d.get("fonte") or "?"),
+                frescor=d.get("frescor"), motivo=d.get("motivo"),
+            )
+        except (EstadoInvalido, TypeError, ValueError) as exc:
+            return cls(None, FALHOU, fonte=str(d.get("fonte") or "?"),
+                       motivo=f"reidratacao_invalida:{exc}"[:80])
+
+    @classmethod
     def ausente(cls, motivo: str, *, fonte: str = "desconhecida") -> "Sinal":
         return cls(None, AUSENTE, fonte=fonte, motivo=motivo)
 
@@ -797,6 +823,71 @@ class PaidKeywordDecision:
         return (self.termo, self.termo_normalizado, self.match_type, self.subintencao or "")
 
 
+def _decisao_de_dicionario(d: Dict[str, Any]) -> PaidKeywordDecision:
+    """Reidrata UMA decisão gravada. Nenhum campo é recalculado.
+
+    Reconstruir a decisão é diferente de retomá-la: o que foi decidido no dia
+    da mineração não se re-decide na hora de subir campanha — se re-decidisse,
+    a impressão aprovada deixaria de significar alguma coisa.
+    """
+    return PaidKeywordDecision(
+        termo=str(d.get("termo") or ""),
+        termo_normalizado=str(d.get("termo_normalizado") or ""),
+        original=d.get("original"),
+        subintencao=d.get("subintencao"),
+        fonte=str(d.get("fonte") or "mineracao"),
+        estagio=str(d.get("estagio") or "desconhecido"),
+        arquetipos=tuple(d.get("arquetipos") or ()),
+        match_type=str(d.get("match_type") or PHRASE),
+        volume=Sinal.de_dicionario(d.get("volume")),
+        cpc=Sinal.de_dicionario(d.get("cpc")),
+        competicao=Sinal.de_dicionario(d.get("competicao")),
+        lance_topo=Sinal.de_dicionario(d.get("lance_topo")),
+        congruencia=str(d.get("congruencia") or "nao_avaliada"),
+        amplitude=str(d.get("amplitude") or "media"),
+        riscos=dict(d.get("riscos") or {}),
+        viabilidade=str(d.get("viabilidade") or "desconhecida"),
+        confianca=str(d.get("confianca") or "baixa"),
+        decisao=str(d.get("decisao") or HOLD),
+        motivos=list(d.get("motivos") or []),
+        bloqueadores=list(d.get("bloqueadores") or []),
+        alertas=list(d.get("alertas") or []),
+        selecionada=bool(d.get("selecionada")),
+    )
+
+
+def conjunto_de_dicionario(d: Any) -> CampaignKeywordSet:
+    """Reidrata um `CampaignKeywordSet` gravado em `factory_output`.
+
+    ⚠️ `selected_set_sha256` NÃO é lido do registro — é PROPRIEDADE, e portanto
+    recalculado a partir das decisões reidratadas. É isso que faz a conferência
+    valer alguma coisa: se alguém editou o JSON persistido depois da aprovação,
+    a impressão recomputada não bate com `approved_set_sha256` e o portão
+    recusa. Confiar no hash gravado seria pedir ao registro que ateste a si
+    mesmo.
+    """
+    if not isinstance(d, dict):
+        raise ValueError("conjunto_pago ausente ou ilegível")
+    def _lista(chave: str) -> List[PaidKeywordDecision]:
+        return [_decisao_de_dicionario(x) for x in (d.get(chave) or []) if isinstance(x, dict)]
+
+    conjunto = CampaignKeywordSet(
+        candidates=_lista("candidates"),
+        selected_keywords=_lista("selected_keywords"),
+        excluded_keywords=_lista("excluded_keywords"),
+        human_review_keywords=_lista("human_review_keywords"),
+        negative_keywords=list(d.get("negative_keywords") or []),
+        owner_ceiling=d.get("owner_ceiling"),
+        selection_policy_version=str(d.get("selection_policy_version") or SELECTION_POLICY_VERSION),
+        evidence_snapshot=dict(d.get("evidence_snapshot") or {}),
+        approved_set_sha256=d.get("approved_set_sha256"),
+        aprovado_por=d.get("aprovado_por"),
+        blockers=list(d.get("blockers") or []),
+        alertas=list(d.get("alertas") or []),
+    )
+    return conjunto
+
+
 def decidir_keyword(
     bruto: Dict[str, Any],
     *,
@@ -1424,7 +1515,7 @@ __all__ = [
     "PriorDeBenchmark", "PRIORS_DE_BENCHMARK",
     "INCLUDE", "EXPERIMENT", "HOLD", "REJECT", "HUMAN_REVIEW", "DECISOES",
     "PORTOES_EXTERNOS", "SELECTION_POLICY_VERSION",
-    "PaidKeywordDecision", "decidir_keyword",
+    "PaidKeywordDecision", "decidir_keyword", "conjunto_de_dicionario",
     "CampaignKeywordSet", "ConjuntoCongelado", "HashDivergente",
     "impressao_de_decisoes", "impressao_do_conjunto", "aprovar",
     "conferir_congelamento",

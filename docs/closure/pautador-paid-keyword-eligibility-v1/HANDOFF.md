@@ -16,7 +16,7 @@ aqui.
 | base | `origin/volc-os-v2 @ 34dc7b41bce901bd8bebfdec0a01e293678cbf08` |
 | branch | `sprint/pautador-paid-keyword-eligibility-v1` |
 | worktree | `/private/tmp/volc-pautador-paid-keyword-eligibility-v1` |
-| commits | 9, do vermelho ao fechamento |
+| commits | 10 até o fechamento da primeira rodada; ver `GATES.md` para o total atual |
 | diff | 15 arquivos, +4354 / −89 |
 
 O SHA esperado no briefing conferiu com `origin/volc-os-v2` no preflight.

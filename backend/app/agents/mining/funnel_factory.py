@@ -144,6 +144,7 @@ def funnel_factory_com_conjuntos(
     teto_do_dono: Optional[float] = None,
     marcas_proprias: Sequence[str] = (),
     marcas_de_terceiro: Sequence[str] = (),
+    congruencia: str = "nao_avaliada",
 ) -> Tuple[List[Dict[str, Any]], List[CampaignKeywordSet]]:
     """A fila de produção (JSON-safe) e os conjuntos pagos vivos, na mesma ordem.
 
@@ -271,6 +272,11 @@ def funnel_factory_com_conjuntos(
                     teto_do_dono=teto_do_dono,
                     marcas_proprias=marcas_proprias,
                     marcas_de_terceiro=marcas_de_terceiro,
+                    # O veredito de congruência vem de FORA — quem avalia
+                    # destino é `landing_policy`. Recebê-lo como entrada é o
+                    # que evita mutar a decisão depois de tomada só para
+                    # limpar um bloqueador, que era como o teste fazia.
+                    congruencia=congruencia,
                 )
                 for b in deduped
             ]
@@ -449,10 +455,12 @@ def funnel_factory(
     teto_do_dono: Optional[float] = None,
     marcas_proprias: Sequence[str] = (),
     marcas_de_terceiro: Sequence[str] = (),
+    congruencia: str = "nao_avaliada",
 ) -> List[Dict[str, Any]]:
     """A fila de produção, JSON-safe — a assinatura que o orquestrador chama."""
     fila, _conjuntos = funnel_factory_com_conjuntos(
         ai_output, today=today, teto_do_dono=teto_do_dono,
         marcas_proprias=marcas_proprias, marcas_de_terceiro=marcas_de_terceiro,
+        congruencia=congruencia,
     )
     return fila
