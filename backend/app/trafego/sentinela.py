@@ -244,24 +244,45 @@ ANUNCIO_EM_REVISAO: frozenset = frozenset({
 })
 ANUNCIO_APROVADO: frozenset = frozenset({"APPROVED", "APPROVED_LIMITED"})
 
-#: `ad_group_criterion.primary_status_reasons` que a sentinela sabe nomear.
+# ── `ad_group_criterion.primary_status_reasons`, conferido no descriptor ─────
+#
+# ⚠️ ESTES NOMES SÃO VERIFICADOS CONTRA O SDK, NÃO ESCRITOS DE MEMÓRIA.
+#
+# A primeira versão deste bloco carregava quatro nomes que NÃO EXISTEM no enum
+# `AdGroupCriterionPrimaryStatusReasonEnum` da v25 —
+# `AD_GROUP_CRITERION_LOW_QUALITY_SCORE`, `BELOW_FIRST_PAGE_BID`,
+# `AD_GROUP_CRITERION_LOW_SEARCH_VOLUME` e `AD_GROUP_CRITERION_POLICY_DISAPPROVED`.
+# Nomes inventados não quebram nada de forma visível: eles simplesmente NUNCA
+# casam, e a causa que dependia deles some em silêncio. `KW_BAIXA_QUALIDADE` a
+# partir do motivo declarado pela conta nunca teria disparado.
+#
+# `testes_vocabulario_google.py` fixa cada conjunto contra o descriptor
+# protobuf instalado, e falha se alguém escrever um nome que a API não tem.
+
+#: Lance abaixo do necessário para a primeira página. O único nome real.
 KW_ABAIXO_DA_PRIMEIRA_PAGINA: frozenset = frozenset({
-    "AD_GROUP_CRITERION_LOW_QUALITY_SCORE",  # convive com lance; ver abaixo
     "AD_GROUP_CRITERION_BELOW_FIRST_PAGE_BID",
-    "BELOW_FIRST_PAGE_BID",
-    "LOW_SEARCH_VOLUME_UNDER_REVIEW",  # não é lance; filtrado adiante
 })
+#: Raramente servida. `PAUSED_DUE_TO_LOW_ACTIVITY` é a forma que a conta usa
+#: quando ela mesma pausou o critério por baixa atividade — o efeito para o
+#: operador é o mesmo: a keyword não disputa.
 KW_RARAMENTE_SERVIDA: frozenset = frozenset({
-    "AD_GROUP_CRITERION_RARELY_SERVED", "RARELY_SERVED",
-    "AD_GROUP_CRITERION_LOW_SEARCH_VOLUME", "LOW_SEARCH_VOLUME",
+    "AD_GROUP_CRITERION_RARELY_SERVED",
+    "AD_GROUP_CRITERION_PAUSED_DUE_TO_LOW_ACTIVITY",
 })
-KW_REPROVADA: frozenset = frozenset({
-    "AD_GROUP_CRITERION_POLICY_DISAPPROVED", "POLICY_DISAPPROVED",
-    "AD_GROUP_CRITERION_DISAPPROVED",
+KW_REPROVADA: frozenset = frozenset({"AD_GROUP_CRITERION_DISAPPROVED"})
+#: ⚠️ `AD_GROUP_CRITERION_LOW_QUALITY`, sem `_SCORE`. O sufixo era invenção.
+KW_BAIXA_QUALIDADE: frozenset = frozenset({"AD_GROUP_CRITERION_LOW_QUALITY"})
+#: Em revisão de política: nem aprovada, nem reprovada.
+KW_EM_REVISAO: frozenset = frozenset({
+    "AD_GROUP_CRITERION_UNDER_REVIEW", "AD_GROUP_CRITERION_PENDING_REVIEW",
 })
-KW_BAIXA_QUALIDADE: frozenset = frozenset({
-    "AD_GROUP_CRITERION_LOW_QUALITY_SCORE", "LOW_QUALITY_SCORE",
-})
+#: Aprovada com restrição. Não é verde, pela mesma razão de `APPROVED_LIMITED`.
+KW_RESTRITA: frozenset = frozenset({"AD_GROUP_CRITERION_RESTRICTED"})
+#: ⚠️ `ELIGIBLE` é o único valor positivo de `AdGroupCriterionPrimaryStatusEnum`
+#: (UNSPECIFIED, UNKNOWN, ELIGIBLE, PAUSED, REMOVED, PENDING, NOT_ELIGIBLE).
+#: `ENABLED` fica na lista como tolerância a um servidor que ainda mande o
+#: valor de `ad_group_criterion.status`, e NÃO porque o enum o tenha.
 KW_HABILITADA: frozenset = frozenset({"ELIGIBLE", "ENABLED"})
 
 #: Estratégias de lance que dependem de conversão medida para funcionar.

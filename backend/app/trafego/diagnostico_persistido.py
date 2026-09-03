@@ -46,8 +46,10 @@ ESTADOS_QUE_IMPEDEM: frozenset[str] = frozenset({
 #: desta lista NUNCA vira `ok`: ele nomeia a si mesmo no impedimento.
 ESTADOS_RECONHECIDOS_DA_CAMPANHA: frozenset[str] = (
     ESTADOS_QUE_IMPEDEM
+    #: ⚠️ `NOT_STARTED` não existe em nenhum dos dois enums. O valor real para
+    #: "ainda não começou" é `PENDING`, que já está na lista.
     | frozenset({"ENABLED", "ELIGIBLE", "SERVING", "LIMITED", "LEARNING",
-                 "PAUSED", "PENDING", "NOT_STARTED"})
+                 "PAUSED", "PENDING", "NONE"})
 )
 
 #: `customer.status` que impedem a conta inteira de veicular.
@@ -60,8 +62,10 @@ ANUNCIO_REPROVADO: frozenset[str] = frozenset({"DISAPPROVED"})
 #: ⚠️ `APPROVED_LIMITED` NÃO é verde: é aprovado com restrição, e a conta o
 #: separa de `APPROVED` justamente porque a veiculação é menor.
 ANUNCIO_LIMITADO: frozenset[str] = frozenset({"APPROVED_LIMITED"})
+#: ⚠️ `REVIEWED_AND_PENDING` NÃO existe em `PolicyReviewStatusEnum`. O quarto
+#: valor real é `ELIGIBLE_MAY_SERVE` — em revisão, e veiculando enquanto isso.
 ANUNCIO_EM_REVISAO: frozenset[str] = frozenset({
-    "REVIEW_IN_PROGRESS", "UNDER_APPEAL", "REVIEWED_AND_PENDING",
+    "REVIEW_IN_PROGRESS", "UNDER_APPEAL", "ELIGIBLE_MAY_SERVE",
 })
 
 COLUNAS_CAMPANHA = (
