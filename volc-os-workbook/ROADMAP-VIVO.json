@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-02",
+  "updated_at": "2026-09-03",
   "purpose": "Fonte editorial provisória das tarefas do Workbook. O grafo continua sendo a autoridade de capacidades e relações.",
   "status_weights": {
     "done": 1.0,
@@ -601,6 +601,7 @@
           "status": "partial",
           "priority": 2,
           "proof": "A v12_01 foi aplicada no Supabase oficial e a coleta Google Ads v3 gravou 10 recibos reais da conta Crédito Up sem falha: diagnósticos com 12 e 83 itens para Maquininha e FGTS, forecasts com 4 e 3 cenários, recomendações armazenadas/geradas e simulações como vazio_confirmado=0, nunca como falha ou null. CORREÇÃO DE DESCRIÇÃO ENVELHECIDA (31/08/2026, verificada por leitura): o endpoint GET /api/trafego/campanhas/{volc_campaign_id}/diagnostico EXISTE em backend/app/routers/trafego_diagnostico.py, está montado em backend/app/main.py:178, lê dados persistidos da v12 sem consultar o Google no render, e o frontend o consome por src/hooks/useDiagnosticoDeEntrega.ts na rota registrada em src/App.tsx:131 (CampanhaCanonPage), distinguindo 404/501 de falha real. A afirmação anterior de que o endpoint não existia está errada. Continua parcial por outro motivo: a rotina contínua de coleta aguarda autorização explícita para instalar a credencial OAuth e ativar os timers no servidor (D2), e o aceite completo desta tarefa não foi reverificado campo a campo contra a resposta real do endpoint. · 01/09/2026: a rede de pesquisa deixou de ser efeito invisível e virou decisão declarada (`RedeDePesquisa`), o que remove uma das causas silenciosas de não-escala — parceiros de pesquisa ligados sem ninguém escolher misturam inventário e tornam o resultado impossível de atribuir. Continua partial: search terms, negativas por sobrebloqueio e experimentos seguem sem implementação.",
+          "evidence_2026_09_03": "Search Delivery Sentinel integrou precedência causal entre 16 estados, separou lost rank de lost budget, passou a ler search_rank_lost_impression_share e distinguiu inventário estrutural de keyword de desempenho na janela. Continua partial por ausência de sensor próprio de demanda, grupo/segmentação ainda não apurados e lacunas de quality_info/policy topics na leitura real.",
           "acceptance": "GET /api/trafego/campanhas/:id/diagnostico devolve status, aprovação, estratégia, IS, lost budget, lost rank, Quality Score/componentes e termos com fonte, janela e lido_em; ausência é null; render não consulta Google; FGTS e Maquininha recebem explicação factual, não remédio fixo.",
           "dependencies": [
             "P05-T02",
@@ -615,7 +616,7 @@
           "id": "P05-T08",
           "title": "Fechar governança bidirecional de termos e negativas",
           "status": "partial",
-          "proof": "Engine Search possui critérios e negativas tipados; o workflow histórico foi congelado. Faltam coleta real, margem e detecção inversa. PMax não pode ser inferido de search_term_view: quando entrar, exige campaign_search_term_view e contrato próprio, sem tratar o agregado como insight equivalente.",
+          "proof": "03/09/2026 · A entrada da campanha passou a aceitar exclusivamente o conjunto pago aprovado, com impressão SHA-256; /provar e /subir recusam conjunto ausente/divergente/bloqueado, positivas injetadas pelo corpo e keywords_fora antes de qualquer rede. Continua partial porque esta sprint não entregou negativas nem o ciclo promover/negativar/preservar/despromover baseado em SearchTermView pós-lançamento e revisão de overblocking.",
           "acceptance": "Coleta paginada e idempotente; propostas de promover, negativar, preservar e despromover; margem/RPC no lugar de CPA fixo; conflito reverso visível; SearchTermView separado de CampaignSearchTermView para PMax; nenhum mutate sem aprovação e recibo reversível.",
           "dependencies": [
             "P05-T07",
@@ -630,8 +631,8 @@
         {
           "id": "P05-T09",
           "title": "Criar o guardião canônico das primeiras 72 horas",
-          "status": "todo",
-          "proof": "O legado gads-new-campaign-validation contém NEXUS v3.0 e v4.9 incompatíveis e está inativo. nexus_guardiao_72h existe somente no Lab sintético; nenhum guardião produtivo canônico substitui hoje as duas versões. · 01/09/2026: `backend/app/trafego/prontidao.py` entrega o esqueleto do guardião como quatro portões (G0 nascer, G1 medir, G2 observar, G3 ativar) com `activation_blockers` nomeados. Ele NÃO observa as primeiras 72 horas ainda — não há job, não há janela, não há releitura pós-criação exercida contra campanha real. Segue todo para o que a tarefa pede; o que existe é o contrato de veredito que o guardião vai preencher.",
+          "status": "partial",
+          "proof": "03/09/2026 · Search Delivery Sentinel integrou PolíticaDoGuardiao versionada, janelas nascimento/até 24h/24–72h/após 72h/indeterminada e precedência causal com 109 provas focais. Continua partial: horas_ligada depende de transições que nem todo repositório fornece, a janela real saiu indeterminada e ainda não existe rotina produtiva persistindo/resolvendo os incidentes.",
           "explanation": "Transformar a inteligência útil do validador inicial em um diagnóstico seguro de maturidade, entrega, aprovação, conversão, orçamento, lance, anúncio, termos e leilão.",
           "acceptance": "Uma política versionada substitui v3/v4.9; data inválida vira indeterminado; toda constatação cita evidência e frescor; somente diagnóstico/proposta; nenhuma constante histórica entra sem owner, justificativa e replay.",
           "dependencies": [
@@ -724,9 +725,9 @@
         {
           "id": "P05-T13",
           "title": "Remediar e reauditar destinos pagos /r antes de retomar mídia",
-          "status": "todo",
+          "status": "partial",
           "priority": 1,
-          "proof": "02/09/2026 · lane hermes-redator-google-ads-policy-incident-v1 integrada localmente a partir de d7521ba: a evidência pública preservada produziu cinco recibos `blocked` e zero `paid_destination_ready`. O domínio Portal Mundo Mais respondeu HTTP 410 na coleta registrada; rotas históricas não possuem hash aprovado, portanto deriva ao vivo é desconhecida. A hipótese de que links para Caixa tenham causado a suspensão é apenas parcialmente sustentada: a causa literal da conta não foi obtida, e não houve evidência de cloaking nem coleta de dado pessoal nas páginas amostradas. Nenhuma LP viva foi alterada, nenhum recurso foi enviado e nenhuma campanha foi reativada.",
+          "proof": "03/09/2026 · A espinha v2 tornou o contrato de política chamável nas três barreiras e adicionou reauditoria pública em duas etapas, vinculando confirmação humana ao mesmo hash observado. A evidência pública sanitizada da Crédito Up preserva conta suspensa, ausência de cloaking material na amostra e sinais de destino que exigem remediação, sem publicar termos/IDs crus. Continua partial porque nenhum recibo `live` foi gravado no Supabase oficial, oito destinos históricos não foram reavaliados na lane e a causa literal da suspensão não foi fornecida pelo Google. Nenhuma LP viva foi alterada, nenhum recurso foi enviado e nenhuma campanha foi reativada por esta consolidação.",
           "explanation": "Conter o incidente sem transformar hipótese em fato: corrigir cada destino na origem, provar identidade, transparência, congruência, segurança e estabilidade, e somente depois pedir nova revisão humana da mídia.",
           "acceptance": [
             "Notificação literal da suspensão preservada e causa classificada sem inferência indevida",
@@ -791,14 +792,14 @@
         {
           "id": "P06-T05",
           "title": "Criar recibos e alertas de rotina parada",
-          "status": "todo",
-          "proof": "saúde ainda não é memória única de execução"
+          "status": "partial",
+          "proof": "03/09/2026 · Search Delivery Sentinel entrega identidade determinística do incidente e máquina pura de nova/repetida/resolvida/reaberta, preservando reconhecimento e histórico. Continua partial porque consolidar() ainda não tem chamador produtivo, persistência nem heartbeat de rotina."
         },
         {
           "id": "P06-T06",
           "title": "Entregar o Ads Health Monitor mínimo",
           "status": "partial",
-          "proof": "Inventário, frescor e fila de atenção existem. O Lab prova cost_spike e routine_stale somente em cenários sintéticos. A auditoria Fable confirmou que baseline de três dias pode gerar falso positivo sazonal; cost_spike não pode virar veto antes de baseline por dia da semana e janela mínima declarada. Faltam heartbeat real, persistência, deduplicação e resolução.",
+          "proof": "03/09/2026 · A página canônica passou a mostrar o veredito da Search Delivery Sentinel, e o sino ganhou estado lista_incompleta sem afirmar saúde quando a evidência falta. Continua partial: a FilaDeAtencao ainda projeta o sintoma do inventário, não consome o incidente da sentinela, e faltam visão de carteira, heartbeat e persistência/resolução operacional.",
           "links": [
             "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md",
             "docs/architecture/SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md"
@@ -925,7 +926,7 @@
           "id": "P08-T06",
           "title": "Unificar sinais existentes num Topic Radar",
           "status": "partial",
-          "proof": "Pautador, mineração de keywords e sinais de conteúdo já existem; falta uma saída única que combine Trends, Search Console, GA4, termos, RPM, geo, sazonalidade, risco e prioridade sem criar um segundo motor de pauta"
+          "proof": "03/09/2026 · A elegibilidade paga passou a viajar ao lado da oportunidade editorial, sem fundir as duas escalas; ponte_editorial entrega as duas respostas com seus bloqueadores. Continua partial: o Topic Radar ainda não unifica Trends, Search Console, GA4, termos, RPM, geo e sazonalidade numa saída única."
         },
         {
           "id": "P08-T07",
@@ -1170,6 +1171,7 @@
           "status": "partial",
           "priority": 1,
           "proof": "Migration v12_01 aplicada no Supabase oficial; coletor Python read-only e idempotente provado; execução completa v3 registrou 10 recibos reais da Crédito Up sem falhas, preservou vazio_confirmado=0 distinto de falhou/null e não deixa uma falha antiga esconder o retry bem-sucedido. O pacote systemd é somente alternativa versionada e não foi instalado. Como a ingestão operacional já vive no n8n, falta confrontar e adaptar os workflows D0/D-1 e escolher uma única autoridade de agenda, sem executar dois coletores concorrentes. · 01/09/2026: AUDITADO. O coletor lia apenas campanhas ENABLED (`inteligencia_google/persistencia.py:64-65`, `estado_externo=eq.ENABLED`), então uma campanha PAUSED — que é exatamente o que o canário é — desaparecia da observabilidade. O modelo já tinha os estados semânticos certos (COM_DADOS/VAZIO_CONFIRMADO/PARCIAL/INELEGIVEL/NAO_SUPORTADO/FALHOU). Doutrina oficial fixada em docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md (leitura direta de developers.google.com em 01/09/2026, API v25). A doc confirma que bid simulations exigem 'past performance' e janela 'always in the past': ausência de simulação num canário recém-criado é INELEGIVEL, conclusão válida, não defeito. · 01/09/2026 · 55bd74c..372a4d1 + 2d1895d: o caminho one-shot por identidade canônica explícita agora alcança campanha PAUSED, preserva famílias, recibos, retry e idempotência, e a leitura PMax real provou 13/13 contas consultadas sem colapsar vazio, falha ou não suportado. Segue partial: falta escolher uma única autoridade de agenda entre n8n e worker, ativar frequência/heartbeat/alerta e reconciliar a primeira janela automática; o one-shot não substitui a coleta contínua governada.",
+          "evidence_2026_09_03": "A Search Delivery Sentinel passou a consumir customer.status, metas e estrutura de keywords sem confundir keyword_view vazia com zero configurado; a leitura real sanitizada da Crédito Up confirmou 263 keywords, 371 termos e conta suspensa, sem expor linhas. Continua partial porque frequência, heartbeat, alerta e primeira janela automática ainda não estão ativos.",
           "explanation": "Coletar continuamente diagnóstico, recomendações armazenadas e geradas, simulações, forecasts e experimentos sem transformar ausência em zero nem falha em ausência.",
           "acceptance": "Autoridade de agenda decidida e única (n8n ou worker); frequência e coleta completa ativas; credencial referenciada sem segredo em node; heartbeat e recibo por execução; alerta por atraso/falha; primeira janela automática reconciliada; zero mutate; dashboard mostra com_dados, vazio_confirmado, parcial, inelegível, não suportado e falhou sem colapsar estados.",
           "dependencies": [
@@ -1188,7 +1190,7 @@
           "title": "Ligar o portão de política de destino pago à geração, publicação e campanha",
           "status": "partial",
           "priority": 1,
-          "proof": "02/09/2026 · d7521ba integrado localmente: `backend/app/landing_policy/` entrega contrato por papel, matriz de 33 regras com fonte oficial, varredura fail-closed, recibo determinístico e 102 testes focais; `publisher_quality/fetch.py` ganhou leitura pública SSRF-safe e cadeia de redirecionamento. Os cinco recibos sobre evidência preservada ficaram bloqueados, como deveriam. SEGUE PARTIAL: o módulo ainda não é chamado pelo plano do FunnelForge, pela rota de pré-publicação WordPress nem pela elegibilidade do destino no nascimento da campanha; `HANDOFF-PATCH-PUBLICACAO.md` é somente proposta e não deve ser aplicado cegamente. Nenhum hash aprovado é persistido hoje.",
+          "proof": "03/09/2026 · A espinha v2 liga o mesmo contrato nas três barreiras: geração, duas portas de publicação e /provar+/subir. A reauditoria ao vivo ganhou ato em duas etapas — prova read-only e confirmação humana vinculada ao mesmo hash — capaz de emitir recibo live sem circularidade; 228 provas integradas entre destino e conjunto pago passaram na consolidação. Continua partial: o recibo live nunca foi gravado no Supabase oficial, o CLI do motor ainda alcança a credencial WordPress fora da porta governada, há possível caminho de criação de campanha fora de /subir e o fingerprint ainda não cobre o código dos detectores.",
           "explanation": "O mesmo contrato precisa impedir que um artefato inseguro atravesse qualquer uma das três portas: sair do gerador, chegar ao WordPress e tornar-se URL final de mídia paga.",
           "acceptance": [
             "O plano do motor é avaliado antes de gerar e o HTML final é reavaliado antes de publicar",
@@ -1207,6 +1209,33 @@
             "docs/closure/hermes-redator-google-ads-policy-incident-v1/ENGINE-CHANGES.md",
             "docs/closure/hermes-redator-google-ads-policy-incident-v1/HANDOFF-PATCH-PUBLICACAO.md"
           ]
+        },
+        {
+          "id": "P09-T16",
+          "title": "Tirar a credencial WordPress do alcance direto do CLI do motor",
+          "status": "todo",
+          "priority": 1,
+          "proof": "A barreira HTTP recusa o disparo, mas uma invocação direta de funnelforge com --publish ainda executa no processo que possui a credencial. A defesa no motor existe, porém pode desaparecer por troca de checkout.",
+          "acceptance": "Publicação WordPress só é possível por broker/porta governada com identidade, plano aprovado, recibo e idempotência; o CLI sem autorização não recebe credencial nem publica.",
+          "dependencies": ["P09-T03", "P09-T15"]
+        },
+        {
+          "id": "P09-T17",
+          "title": "Inventariar e fechar caminhos de criação de campanha fora de /subir",
+          "status": "todo",
+          "priority": 1,
+          "proof": "A conta real contém campanhas não registradas pelo canário/ledger local; ainda não foi adjudicado se nasceram por n8n, CLI volc_ads, interface Google Ads ou outro caminho.",
+          "acceptance": "Todo produtor de campanha é inventariado; caminhos não governados são aposentados ou passam pela mesma política de destino, conjunto pago, mensuração, ledger, PAUSED e confirmação humana.",
+          "dependencies": ["P09-T03", "P09-T15"]
+        },
+        {
+          "id": "P09-T18",
+          "title": "Versionar detectores e severidades da política de destino",
+          "status": "todo",
+          "priority": 2,
+          "proof": "policy_source_version cobre a matriz de fontes, mas não regex, limiares nem as tabelas de severidade que também alteram o veredito.",
+          "acceptance": "O fingerprint do recibo cobre fontes, detectores, limiares e severidades; qualquer mudança que altere o veredito invalida recibos anteriores de forma determinística.",
+          "dependencies": ["P09-T15"]
         }
       ]
     },
@@ -1332,8 +1361,8 @@
         {
           "id": "P10-T12",
           "title": "Provar analista agêntico read-only de campanhas sem entrega",
-          "status": "todo",
-          "proof": "As duas campanhas reais têm pouca entrega e o Search Intelligence possui lacunas de Quality Score, impression share e termos; nenhum agente consulta esse conjunto ainda.",
+          "status": "partial",
+          "proof": "03/09/2026 · A Search Delivery Sentinel organizou deterministicamente fatos, desconhecidos, precedência causal e próximo ato sobre leitura real read-only da conta Crédito Up. Continua partial porque o componente entregue é determinístico, não agêntico, e ainda falta comparação humana entre um analista LLM e esse motor sobre o mesmo snapshot fresco.",
           "explanation": "Usar o mesmo runtime para organizar fatos, hipóteses e consultas faltantes, sem reduzir a causa a lance baixo nem transformar recomendação em ação.",
           "acceptance": "Diagnóstico usa snapshot fresco e grafo, cita evidências, distingue ausência, produz plano de investigação e zero mutate/validate_only; avaliação humana compara resultado com o motor determinístico.",
           "dependencies": [
@@ -1395,8 +1424,8 @@
           "title": "Adaptar os workflows n8n Google Ads ao ledger v12 e decidir a autoridade de agenda",
           "status": "partial",
           "priority": 1,
-          "proof": "2026-09-01 · Integrado candidato inativo em 75220271fb24c6c225c2af22be2d59214a115c15: N8N_IS_SCHEDULE_AUTHORITY registrado; v12_04 entrega trafego_coleta_execucao, google_ads_campanha_dia e RPC única; workflows n8n D0/D-1 gerados e active:false; validações locais verdes no resultado integrado (ciclo 107/0, ponta a ponta 12/0, workflow 339/0/0, simulador 65/0, agenda única 14/0/1, pytest focal 18 passed). Permanece partial: migration oficial, canário, leitura real Google Ads/n8n, heartbeat e ativação não executados.",
-          "explanation": "A decisão operacional deixou de estar em aberto: n8n é a única autoridade de agenda; o coletor Python permanece biblioteca/one-shot/fallback/diagnóstico; systemd/timers ficam desinstalados. Antes da migration oficial ainda falta fechar a concorrência atômica da RPC v12_04 e executar o pacote de autorização.",
+          "proof": "03/09/2026 · O candidato Grok de P10-T17 fechou e provou localmente a concorrência atômica da RPC v12_04: matriz A–Q 17/0, locks separados para idempotência e execução, precedência D0<D-1<backfill, fechamento contra lote em voo e empate divergente recusado. P10-T16 continua partial: v12_04 não foi aplicada oficialmente; n8n/Google Ads reais, credenciais, retry, canário, heartbeat e ativação da agenda única seguem não provados.",
+          "explanation": "n8n continua sendo a autoridade única de agenda; o coletor Python permanece biblioteca/one-shot/fallback. A concorrência local deixou de bloquear o desenho, mas a janela operacional oficial ainda não aconteceu.",
           "acceptance": "Inventariar IDs e versões dos workflows VOLC D0/D-1; decidir n8n versus worker e registrar ADR; adaptar em cópia inativa; usar credencial n8n, paginação/lotes, retry com backoff, idempotência v12 e estados semânticos; validar workflow e nodes; canário manual; reconciliar recibos; ativar uma única agenda; heartbeat/deadman; rollback; provar que systemd e agenda duplicada estão inativos.",
           "dependencies": [
             "P06-T08",
@@ -1412,9 +1441,9 @@
         {
           "id": "P10-T17",
           "title": "Fechar concorrência atômica da RPC v12_04 antes da migration oficial",
-          "status": "todo",
+          "status": "done",
           "priority": 1,
-          "proof": "Criada na integração P10-T16 após revisão focal: a entrega inativa é aceita, mas a aplicação oficial exige contraprova concorrente real em PostgreSQL.",
+          "proof": "03/09/2026 · Candidato Grok fa48cbaa adjudicado contra Hermes e integrado: a RPC antiga rebaixava D-1 quando D0 commitava por último; a correção usa UPSERT condicional e locks transacionais de idempotência/execução. Matriz concorrente A–Q passou 17/0 com espera real observada, empate total divergente recusado, isolamento diferente de READ COMMITTED recusado e ciclo apply→operate→rollback→reapply 116/0 em PostgreSQL descartável. A tarefa local está concluída; aplicação oficial pertence a P10-T16 e continua pendente.",
           "explanation": "Transformar o risco de corrida da RPC v12_04 em contrato provado antes de qualquer migration oficial: duas sessões simultâneas não podem rebaixar D-1/backfill, duplicar recibo, perder idempotência ou fechar recibo contra estado transferido por outra execução.",
           "acceptance": "Rodar contraprova concorrente real em PostgreSQL com duas conexões/sessões simultâneas, cobrindo D0 < D-1 < backfill, empate por colhida_em, mesma chave idempotente repetida, mesma chave com payload divergente, fechamento depois da escrita, duas execuções concorrendo pela mesma chave de fato e preservação do recibo. O aceite exige teste automatizado vermelho antes da correção, verde depois, ciclo apply→operate→rollback→reapply verde e documentação da semântica antes de aplicar v12_04 em produção.",
           "dependencies": [
@@ -1422,6 +1451,8 @@
           ],
           "links": [
             "docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/REVISAO-FOCAL.md",
+            "docs/closure/grok-p10-t17-v12-04-concurrency-v1/CONCURRENCY-MATRIX.json",
+            "docs/closure/grok-p10-t17-v12-04-concurrency-v1/HANDOFF.md",
             "supabase/migrations/v12_04_gads_fato_canonico_dia.sql"
           ]
         }
