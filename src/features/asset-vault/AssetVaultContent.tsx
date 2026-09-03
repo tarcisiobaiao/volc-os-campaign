@@ -2,20 +2,35 @@ import * as React from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Archive, ArrowRight, Bot, CheckCircle2, ChevronRight, CircleAlert, CircleDashed,
+  Archive, ArrowRight, Bot, CheckCircle2, CircleAlert, CircleDashed,
   Clock3, Database, ExternalLink, FileCheck2, Fingerprint, Globe2, Image as ImageIcon,
-  KeyRound, Link2, ListFilter, Loader2, LockKeyhole, Megaphone, Network, PlugZap,
-  Plus, Search, ShieldCheck, Undo2, Vault, Waypoints, X,
+  KeyRound, Link2, Loader2, LockKeyhole, Megaphone, Network, PlugZap,
+  ShieldCheck, Undo2, Vault, Waypoints, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import * as cofre from "./cofreApi";
+import { ProntidaoDeOperacao } from "./ProntidaoDeOperacao";
 import { ProntidaoVisual } from "./ProntidaoVisual";
 import {
-  CLUSTER_DESCRIPTION, CLUSTER_LABEL, CUSTODY_LABEL, KIND_CLUSTER, KIND_LABEL,
-  STATE_LABEL, VERIFICATION_LABEL, ASSET_CLUSTERS, ASSET_KINDS,
+  CUSTODY_LABEL, KIND_CLUSTER, KIND_LABEL,
+  STATE_LABEL, VERIFICATION_LABEL, ASSET_KINDS,
   type AssetCluster, type AssetKind, type AssetState, type VerificationState,
 } from "./contract";
+import { CabecalhoDoCofre, AbasDoCofre } from "./operator/Cabecalho";
+import {
+  Aviso, Carregando, ErroDoFormulario, EstadoFalha, EstadoIndisponivel, EstadoNaoConfigurado,
+  EstadoSemPermissao, EstadoSemSessao, Moldura,
+} from "./operator/Estados";
+import { Inventario } from "./operator/Inventario";
+import { OnboardingProgressivo } from "./operator/Onboarding";
+import {
+  diagnosticarReferencia, fraseDaFalha, montarReferencia1Password,
+  retratoDaReferencia, retratoMascarado,
+} from "./operator/referencia";
+import { derivarVisao } from "./operator/visao";
+import { FronteiraDeSeguranca, VisaoOperacional } from "./operator/VisaoOperacional";
+import { FOCO, HIT, PERIGO, PRIMARIO, SECUNDARIO } from "./operator/chrome";
 
 /**
  * O Cofre de Ativos, agora contra dado real.
@@ -124,62 +139,6 @@ function MarcaDeVerificacao({ estado }: { estado: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Os estados que não são "dado"
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Moldura({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto max-w-7xl p-4 sm:p-6">{children}</div>;
-}
-
-function Carregando() {
-  return (
-    <div className="space-y-4" role="status" aria-label="Carregando o inventário">
-      <div className="h-24 animate-pulse rounded-lg border border-border bg-muted/40" />
-      <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 xl:grid-cols-5">
-        {[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-16 animate-pulse bg-card" />)}
-      </div>
-      <div className="space-y-2">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-md border border-border bg-muted/30" />
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">Consultando o Cofre…</p>
-    </div>
-  );
-}
-
-interface AvisoProps {
-  titulo: string;
-  texto: string;
-  tom?: "erro" | "atencao" | "neutro";
-  icone: typeof Vault;
-  acao?: { rotulo: string; aoClicar: () => void };
-  codigo?: string;
-}
-
-function Aviso({ titulo, texto, tom = "neutro", icone: Icon, acao, codigo }: AvisoProps) {
-  const borda = tom === "erro" ? "border-destructive/35" : tom === "atencao" ? "border-warning/35" : "border-border";
-  const fundo = tom === "erro" ? "bg-destructive/10 text-destructive" : tom === "atencao" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground";
-  return (
-    <section className={cn("rounded-lg border bg-card px-5 py-10 text-center", borda)} role="alert">
-      <span className={cn("mx-auto flex h-11 w-11 items-center justify-center rounded-full", fundo)}>
-        <Icon aria-hidden="true" className="h-5 w-5" />
-      </span>
-      <h2 className="mt-4 text-lg font-semibold">{titulo}</h2>
-      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{texto}</p>
-      {acao ? (
-        <button type="button" onClick={acao.aoClicar}
-          className="mt-4 inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
-          {acao.rotulo}
-        </button>
-      ) : null}
-      {/* O código é para quem for investigar, não para quem está operando. */}
-      {codigo ? <p className="mt-3 text-[11px] uppercase tracking-[0.1em] text-muted-foreground">código {codigo}</p> : null}
-    </section>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Formulários
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -206,7 +165,7 @@ function Painel({ titulo, descricao, aoFechar, children }: {
           <h3 className="text-sm font-semibold">{titulo}</h3>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{descricao}</p>
         </div>
-        <button type="button" onClick={aoFechar} aria-label="Fechar" className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+        <button type="button" onClick={aoFechar} aria-label="Fechar" className={SECUNDARIO}>
           <X aria-hidden="true" className="h-4 w-4" />
         </button>
       </header>
@@ -217,145 +176,15 @@ function Painel({ titulo, descricao, aoFechar, children }: {
 
 function BotaoDeEnvio({ enviando, rotulo }: { enviando: boolean; rotulo: string }) {
   return (
-    <button type="submit" disabled={enviando}
-      className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
-      {enviando ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+    <button type="submit" disabled={enviando} className={PRIMARIO}>
+      {enviando ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
       {rotulo}
     </button>
   );
 }
 
-function ErroDoFormulario({ erro }: { erro: unknown }) {
-  if (!erro) return null;
-  const mensagem = erro instanceof Error ? erro.message : "Não foi possível concluir.";
-  return (
-    <p role="alert" className="mt-3 rounded-md border border-destructive/35 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-      {mensagem}
-    </p>
-  );
-}
-
 function FormularioDeCadastro({ aoFechar, aoConcluir }: { aoFechar: () => void; aoConcluir: (id: string) => void }) {
-  const { toast } = useToast();
-  const [kind, setKind] = React.useState<AssetKind>("facebook_page");
-  const [form, setForm] = React.useState({
-    ativo_id: "", nome: "", plataforma: "", estado: "declared", criticidade: "medium",
-    resumo: "", dono_nome: "", dono_custodia: "declared", projeto: "", vertical: "",
-    display_id: "", url_publica: "", capacidades: "", tags: "", proxima_acao: "",
-  });
-  const mudar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [campo]: e.target.value }));
-
-  const enviar = useMutation({
-    mutationFn: async () => {
-      const ativo: Record<string, unknown> = {
-        ativo_id: form.ativo_id.trim(),
-        kind,
-        // A gaveta é DERIVADA do tipo, não escolhida: o contrato diz que um
-        // tipo pertence a exatamente uma gaveta, e oferecer as duas escolhas
-        // convidaria a contradição que o banco recusa por FK.
-        cluster: KIND_CLUSTER[kind],
-        nome: form.nome.trim(),
-        plataforma: form.plataforma.trim(),
-        estado: form.estado,
-        criticidade: form.criticidade,
-        resumo: form.resumo.trim(),
-        dono_nome: form.dono_nome.trim(),
-        dono_custodia: form.dono_custodia,
-        capacidades: form.capacidades.split(",").map((c) => c.trim()).filter(Boolean),
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        proxima_acao: form.proxima_acao.trim(),
-      };
-      for (const opcional of ["projeto", "vertical", "display_id", "url_publica"] as const) {
-        const valor = form[opcional].trim();
-        if (valor) ativo[opcional] = valor;
-      }
-      return cofre.cadastrarAtivo({
-        chave_idempotencia: cofre.chaveDoAto("cadastro", ativo.ativo_id as string, ativo),
-        motivo: "cadastro pela tela do Cofre de Ativos",
-        ativo,
-      });
-    },
-    onSuccess: (recibo) => {
-      toast({
-        title: recibo.idempotente ? "Este cadastro já existia" : "Ativo cadastrado",
-        description: recibo.idempotente
-          ? "O Cofre reconheceu o reenvio e devolveu o mesmo recibo. Nada foi duplicado."
-          : `Revisão ${recibo.revisao} registrada na trilha.`,
-      });
-      if (recibo.ativo_id) aoConcluir(recibo.ativo_id);
-    },
-  });
-
-  return (
-    <Painel titulo="Cadastrar ativo" aoFechar={aoFechar}
-      descricao="Identidade, dono e próxima ação. Senha, token, MFA e chave não entram aqui — a referência de acesso é registrada depois, no ativo, e aponta para o cofre externo.">
-      <form className="grid gap-4 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); enviar.mutate(); }}>
-        <Campo rotulo="Identificador" ajuda="minúsculas, dígitos, ':', '_' e '-' — ex.: asset:facebook-page:piloto">
-          <input required value={form.ativo_id} onChange={mudar("ativo_id")} className={ENTRADA} placeholder="asset:facebook-page:piloto" />
-        </Campo>
-        <Campo rotulo="Nome">
-          <input required value={form.nome} onChange={mudar("nome")} className={ENTRADA} />
-        </Campo>
-        <Campo rotulo="Tipo" ajuda={`Gaveta: ${CLUSTER_LABEL[KIND_CLUSTER[kind]]} (derivada do tipo)`}>
-          <select value={kind} onChange={(e) => setKind(e.target.value as AssetKind)} className={ENTRADA}>
-            {ASSET_KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-          </select>
-        </Campo>
-        <Campo rotulo="Plataforma">
-          <input required value={form.plataforma} onChange={mudar("plataforma")} className={ENTRADA} placeholder="Meta, Google Ads, WordPress…" />
-        </Campo>
-        <Campo rotulo="Estado">
-          <select value={form.estado} onChange={mudar("estado")} className={ENTRADA}>
-            {Object.entries(STATE_LABEL).filter(([v]) => v !== "retired").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        </Campo>
-        <Campo rotulo="Criticidade">
-          <select value={form.criticidade} onChange={mudar("criticidade")} className={ENTRADA}>
-            <option value="low">Baixa</option><option value="medium">Média</option>
-            <option value="high">Alta</option><option value="critical">Crítica</option>
-          </select>
-        </Campo>
-        <Campo rotulo="Dono">
-          <input required value={form.dono_nome} onChange={mudar("dono_nome")} className={ENTRADA} />
-        </Campo>
-        <Campo rotulo="Custódia" ajuda="declarada é o que alguém afirmou; comprovada é o que foi conferido">
-          <select value={form.dono_custodia} onChange={mudar("dono_custodia")} className={ENTRADA}>
-            <option value="declared">Declarada</option><option value="verified">Comprovada</option>
-            <option value="unassigned">Sem dono definido</option>
-          </select>
-        </Campo>
-        <Campo rotulo="Projeto (opcional)"><input value={form.projeto} onChange={mudar("projeto")} className={ENTRADA} /></Campo>
-        <Campo rotulo="Vertical (opcional)"><input value={form.vertical} onChange={mudar("vertical")} className={ENTRADA} /></Campo>
-        <Campo rotulo="ID de exibição (opcional)" ajuda="já sanitizado, como •••-•••-1692. Nunca o ID cru quando ele for sensível.">
-          <input value={form.display_id} onChange={mudar("display_id")} className={ENTRADA} />
-        </Campo>
-        <Campo rotulo="Endereço público (opcional)" ajuda="somente HTTP(S)">
-          <input value={form.url_publica} onChange={mudar("url_publica")} className={ENTRADA} placeholder="https://…" />
-        </Campo>
-        <div className="md:col-span-2">
-          <Campo rotulo="Resumo" ajuda="10 a 800 caracteres. O que este ativo é, e o que ainda não foi conferido.">
-            <textarea required value={form.resumo} onChange={mudar("resumo")} className={AREA} />
-          </Campo>
-        </div>
-        <Campo rotulo="Capacidades" ajuda="separadas por vírgula; pelo menos uma">
-          <input required value={form.capacidades} onChange={mudar("capacidades")} className={ENTRADA} placeholder="Publicação orgânica, Distribuição de vídeo" />
-        </Campo>
-        <Campo rotulo="Tags (opcional)" ajuda="separadas por vírgula">
-          <input value={form.tags} onChange={mudar("tags")} className={ENTRADA} />
-        </Campo>
-        <div className="md:col-span-2">
-          <Campo rotulo="Próxima ação" ajuda="o ato concreto seguinte, não uma intenção genérica">
-            <textarea required value={form.proxima_acao} onChange={mudar("proxima_acao")} className={AREA} />
-          </Campo>
-        </div>
-        <div className="md:col-span-2">
-          <BotaoDeEnvio enviando={enviar.isPending} rotulo="Cadastrar ativo" />
-          <ErroDoFormulario erro={enviar.error} />
-        </div>
-      </form>
-    </Painel>
-  );
+  return <OnboardingProgressivo aoFechar={aoFechar} aoConcluir={aoConcluir} />;
 }
 
 function FormularioDeRevisao({ ativo, aoFechar, aoConcluir }: {
@@ -483,9 +312,8 @@ function FormularioDeRevisao({ ativo, aoFechar, aoConcluir }: {
           <p className="mb-2 text-xs text-muted-foreground">
             {nada ? "Nenhum campo foi alterado." : `${Object.keys(mudancas).length} campo(s) alterado(s): ${Object.keys(mudancas).join(", ")}.`}
           </p>
-          <button type="submit" disabled={enviar.isPending || nada}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
-            {enviar.isPending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : null}
+          <button type="submit" disabled={enviar.isPending || nada} className={PRIMARIO}>
+            {enviar.isPending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
             Registrar revisão
           </button>
           <ErroDoFormulario erro={enviar.error} />
@@ -500,19 +328,37 @@ function FormularioDeCredencial({ ativoId, aoFechar, aoConcluir }: {
 }) {
   const { toast } = useToast();
   const [form, setForm] = React.useState({
-    provider: "1password", nome_logico: "", localizador: "", finalidade: "",
-    owner_nome: "", valido_ate: "",
+    provider: "1password", nome_logico: "", finalidade: "",
+    owner_nome: "", valido_ate: "", cofre: "", item: "", campo: "credential",
   });
   const mudar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [campo]: e.target.value }));
+  const pecas = { cofre: form.cofre, item: form.item, campo: form.campo };
+  const falha = form.provider === "1password" ? diagnosticarReferencia(pecas) : null;
 
   const enviar = useMutation({
     mutationFn: async () => {
+      if (form.provider === "1password") {
+        const problema = diagnosticarReferencia(pecas);
+        if (problema) throw new Error(fraseDaFalha(problema));
+      }
+      const localizador = form.provider === "1password"
+        ? montarReferencia1Password(pecas)
+        : "";
+      if (!localizador) {
+        throw new Error("Este provedor ainda não monta a referência nesta tela. Use 1Password para o primeiro onboarding.");
+      }
       const corpo: Record<string, unknown> = {
-        chave_idempotencia: cofre.chaveDoAto("credencial", ativoId, form),
+        chave_idempotencia: cofre.chaveDoAto("credencial", ativoId, {
+          provider: form.provider,
+          nome_logico: form.nome_logico.trim(),
+          cofre: form.cofre.trim(),
+          item: form.item.trim(),
+          campo: form.campo.trim(),
+        }),
         provider: form.provider,
         nome_logico: form.nome_logico.trim(),
-        localizador: form.localizador.trim(),
+        localizador,
         finalidade: form.finalidade.trim(),
         owner_nome: form.owner_nome.trim(),
       };
@@ -530,7 +376,7 @@ function FormularioDeCredencial({ ativoId, aoFechar, aoConcluir }: {
 
   return (
     <Painel titulo="Registrar referência de acesso" aoFechar={aoFechar}
-      descricao="Aqui entra o ENDEREÇO do item no cofre externo, não o segredo. O Cofre guarda provider, nome lógico, finalidade e validade; o valor nunca sai do 1Password, e este endereço não volta em nenhuma leitura desta tela.">
+      descricao="1Password contém o valor. O Cofre contém a referência. Não há campo de senha, token, cookie ou chave, e não há botão que copie o endereço.">
       <form className="grid gap-4 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); enviar.mutate(); }}>
         <Campo rotulo="Cofre externo">
           <select value={form.provider} onChange={mudar("provider")} className={ENTRADA}>
@@ -544,13 +390,15 @@ function FormularioDeCredencial({ ativoId, aoFechar, aoConcluir }: {
         <Campo rotulo="Nome lógico" ajuda="MAIÚSCULAS_COM_UNDERSCORE — ex.: FB_PAGE_ADMIN">
           <input required value={form.nome_logico} onChange={mudar("nome_logico")} className={ENTRADA} placeholder="FB_PAGE_ADMIN" />
         </Campo>
-        <div className="md:col-span-2">
-          <Campo rotulo="Referência"
-            ajuda="No 1Password: op://<cofre>/<item>/[seção/]<campo>, com espaços em %20. Sem query string — uma referência com ?attribute=otp aponta para MFA, e MFA não entra no Cofre nem por endereço.">
-            <input required value={form.localizador} onChange={mudar("localizador")} className={ENTRADA}
-              placeholder="op://VOLC/Pagina%20Piloto/credential" autoComplete="off" spellCheck={false} />
-          </Campo>
-        </div>
+        <Campo rotulo="Nome do cofre" ajuda="o cofre no 1Password, não a senha">
+          <input required value={form.cofre} onChange={mudar("cofre")} className={ENTRADA} placeholder="VOLC" />
+        </Campo>
+        <Campo rotulo="Nome do item">
+          <input required value={form.item} onChange={mudar("item")} className={ENTRADA} placeholder="Pagina do piloto" />
+        </Campo>
+        <Campo rotulo="Campo" ajuda="use credential. MFA é recusado.">
+          <input required value={form.campo} onChange={mudar("campo")} className={ENTRADA} placeholder="credential" />
+        </Campo>
         <Campo rotulo="Responsável"><input required value={form.owner_nome} onChange={mudar("owner_nome")} className={ENTRADA} /></Campo>
         <Campo rotulo="Válido até (opcional)"><input type="date" value={form.valido_ate} onChange={mudar("valido_ate")} className={ENTRADA} /></Campo>
         <div className="md:col-span-2">
@@ -558,6 +406,8 @@ function FormularioDeCredencial({ ativoId, aoFechar, aoConcluir }: {
             <input required value={form.finalidade} onChange={mudar("finalidade")} className={ENTRADA} />
           </Campo>
         </div>
+        <p className="md:col-span-2 text-xs text-muted-foreground text-pretty">{retratoDaReferencia(pecas)}</p>
+        {falha ? <p role="alert" className="md:col-span-2 text-xs text-destructive">{fraseDaFalha(falha)}</p> : null}
         <div className="md:col-span-2">
           <BotaoDeEnvio enviando={enviar.isPending} rotulo="Registrar referência" />
           <ErroDoFormulario erro={enviar.error} />
@@ -740,9 +590,18 @@ function PosturaDeAcesso({ credenciais }: { credenciais: cofre.PosturaDeCredenci
             <li key={c.referencia_id} className="rounded-md border border-border bg-muted/30 p-3">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-mono text-xs font-semibold">{c.nome_logico}</span>
-                <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{c.provider}</span>
+                <span className="text-[11px] text-muted-foreground">{retratoMascarado(c.provider, c.nome_logico)}</span>
               </div>
               <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{c.finalidade}</p>
+              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                {c.verificacao_estado === "verified" && c.verificado_em
+                  ? `Verificado com recibo em ${dataLegivel(c.verificado_em)}.`
+                  : c.verificacao_estado === "blocked"
+                    ? "Cofre bloqueado na última tentativa. Isso não é autorização negada no VOLC."
+                    : c.verificacao_estado === "failed"
+                      ? "A verificação falhou. Não é o mesmo que cofre trancado."
+                      : "Referência cadastrada não significa acesso provado."}
+              </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                 <span>{CUSTODY_LABEL[c.estado as keyof typeof CUSTODY_LABEL] ?? c.estado}</span>
                 <MarcaDeVerificacao estado={c.verificacao_estado} />
@@ -812,6 +671,7 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
 }) {
   const { toast } = useToast();
   const [painel, setPainel] = React.useState<null | "revisao" | "credencial" | "verificacao" | "relacao">(null);
+  const [confirmar, setConfirmar] = React.useState<null | "aposentar" | "reativar">(null);
   const consulta = useQuery({
     queryKey: ["cofre", "detalhe", ativoId],
     queryFn: () => cofre.detalhe(ativoId),
@@ -913,6 +773,10 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
         </div>
 
         <PosturaDeAcesso credenciais={ativo.credencial} />
+        {/* A regra de prontidão mora no backend, e a consulta é própria: um
+            painel que a derivasse do detalhe reimplementaria a regra na tela —
+            e as duas versões divergiriam na primeira mudança. */}
+        <ProntidaoDeOperacao ativoId={ativoId} />
         {ativo.engine ? <PerfilDoEngine engine={ativo.engine} /> : null}
 
         <div className="border-b border-border p-5">
@@ -936,28 +800,54 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
           <p className="mt-2 text-xs leading-5">{ativo.proxima_acao}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2 p-5">
-          <button type="button" onClick={() => setPainel("revisao")}
-            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted">Revisar ativo</button>
-          <button type="button" onClick={() => setPainel("verificacao")}
-            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted">Registrar verificação</button>
-          <button type="button" onClick={() => setPainel("credencial")}
-            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted">Registrar referência de acesso</button>
-          <button type="button" onClick={() => setPainel("relacao")}
-            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted">Declarar relação</button>
-          {ativo.aposentado_em ? (
-            <button type="button" disabled={reativar.isPending}
-              onClick={() => reativar.mutate("retomada de operação decidida pelo dono")}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-60">
-              <Undo2 aria-hidden="true" className="h-3.5 w-3.5" /> Reativar
-            </button>
-          ) : (
-            <button type="button" disabled={aposentar.isPending}
-              onClick={() => aposentar.mutate("ativo sai de operação; permanece no inventário para auditoria")}
-              className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-60">
-              Aposentar
-            </button>
-          )}
+        <div className="p-5">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setPainel("revisao")} className={SECUNDARIO}>Revisar ativo</button>
+            <button type="button" onClick={() => setPainel("verificacao")} className={SECUNDARIO}>Registrar verificação</button>
+            <button type="button" onClick={() => setPainel("credencial")} className={SECUNDARIO}>Registrar referência de acesso</button>
+            <button type="button" onClick={() => setPainel("relacao")} className={SECUNDARIO}>Declarar relação</button>
+            {ativo.aposentado_em ? (
+              <button type="button" disabled={reativar.isPending} onClick={() => setConfirmar("reativar")} className={SECUNDARIO}>
+                <Undo2 aria-hidden="true" className="h-3.5 w-3.5" /> Reativar
+              </button>
+            ) : (
+              <button type="button" disabled={aposentar.isPending} onClick={() => setConfirmar("aposentar")} className={PERIGO}>
+                Aposentar
+              </button>
+            )}
+          </div>
+          {confirmar === "aposentar" ? (
+            <div className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-3" role="alertdialog" aria-labelledby="confirmar-aposentar">
+              <p id="confirmar-aposentar" className="text-sm font-medium">Aposentar este ativo?</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground text-pretty">
+                Ele sai de operação e permanece no inventário, com data e motivo na trilha. Nada é apagado.
+                Publicação e acesso não são encerrados por este ato — só o registro muda.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" disabled={aposentar.isPending} className={PERIGO}
+                  onClick={() => { aposentar.mutate("ativo sai de operação; permanece no inventário para auditoria"); setConfirmar(null); }}>
+                  Confirmar aposentadoria
+                </button>
+                <button type="button" className={SECUNDARIO} onClick={() => setConfirmar(null)}>Cancelar</button>
+              </div>
+            </div>
+          ) : null}
+          {confirmar === "reativar" ? (
+            <div className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-3" role="alertdialog" aria-labelledby="confirmar-reativar">
+              <p id="confirmar-reativar" className="text-sm font-medium">Reativar este ativo?</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground text-pretty">
+                O estado volta para ativo. Referência cadastrada continua não sendo acesso provado.
+                Verificação vencida ou cofre bloqueado não se resolvem só com reativar.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" disabled={reativar.isPending} className={PRIMARIO}
+                  onClick={() => { reativar.mutate("retomada de operação decidida pelo dono"); setConfirmar(null); }}>
+                  Confirmar reativação
+                </button>
+                <button type="button" className={SECUNDARIO} onClick={() => setConfirmar(null)}>Cancelar</button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -1001,230 +891,6 @@ function Inspetor({ ativoId, ativos, aoAtualizar }: {
 // ─────────────────────────────────────────────────────────────────────────────
 // Inventário
 // ─────────────────────────────────────────────────────────────────────────────
-
-function Pulso({ ativos }: { ativos: cofre.AtivoDaLista[] }) {
-  const verificados = ativos.filter((a) => a.verificacao_estado === "verified").length;
-  const pedemProva = ativos.filter((a) => a.verificacao_estado !== "verified").length;
-  const semReferencia = ativos.filter((a) => !a.credencial_registrada).length;
-  const custodiaAberta = ativos.filter((a) => a.dono_custodia !== "verified").length;
-  const celulas: Array<[number, string]> = [
-    [ativos.length, "ativos no inventário"],
-    [verificados, "verificados"],
-    [pedemProva, "pedem conferência"],
-    [custodiaAberta, "custódias a provar"],
-    [semReferencia, "sem referência de acesso"],
-  ];
-  return (
-    <section aria-label="Pulso do patrimônio" className="mt-6 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 xl:grid-cols-5">
-      {celulas.map(([valor, rotulo]) => (
-        <div key={rotulo} className="flex items-center gap-3 bg-card px-4 py-3">
-          <span className="text-xl font-semibold tabular-nums">{valor}</span>
-          <span className="text-xs leading-4 text-muted-foreground">{rotulo}</span>
-        </div>
-      ))}
-    </section>
-  );
-}
-
-function FronteiraDeSeguranca() {
-  return (
-    <section className="mt-6 grid gap-4 border-y border-border py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center" aria-label="Fronteira de segurança">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 rounded-md bg-success/10 p-2 text-success"><ShieldCheck aria-hidden="true" className="h-4 w-4" /></span>
-        <div>
-          <p className="text-sm font-semibold">Aqui mora o patrimônio, não a senha</p>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-            O VOLC registra identidade, custódia, evidência e postura de acesso. Senhas, chaves, MFA e
-            códigos de recuperação ficam no 1Password. O endereço do item lá também não chega a esta tela.
-          </p>
-        </div>
-      </div>
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
-        <LockKeyhole aria-hidden="true" className="h-3.5 w-3.5" /> Zero segredo neste contrato
-      </span>
-    </section>
-  );
-}
-
-function Lista({ inventario, selecionado, aoSelecionar, aoCadastrar }: {
-  inventario: cofre.Inventario;
-  selecionado: string | null;
-  aoSelecionar: (id: string) => void;
-  aoCadastrar: () => void;
-}) {
-  const [busca, setBusca] = React.useState("");
-  const [gaveta, setGaveta] = React.useState<string>("all");
-  const [tipo, setTipo] = React.useState<string>("all");
-  const [estado, setEstado] = React.useState<string>("all");
-
-  const normal = busca.trim().toLocaleLowerCase("pt-BR");
-  const filtrados = inventario.ativos.filter((a) => {
-    if (gaveta !== "all" && a.cluster !== gaveta) return false;
-    if (tipo !== "all" && a.kind !== tipo) return false;
-    if (estado !== "all" && a.estado !== estado) return false;
-    if (!normal) return true;
-    return [a.nome, a.plataforma, a.projeto, a.vertical, ...(a.tags ?? [])]
-      .filter(Boolean).join(" ").toLocaleLowerCase("pt-BR").includes(normal);
-  });
-
-  const grupos = inventario.gavetas
-    .slice().sort((a, b) => a.ordem - b.ordem)
-    .map((g) => ({ gaveta: g, ativos: filtrados.filter((a) => a.cluster === g.cluster) }))
-    .filter((g) => g.ativos.length > 0);
-
-  const tiposDisponiveis = ASSET_KINDS.filter((k) => gaveta === "all" || KIND_CLUSTER[k] === gaveta);
-  const escolherGaveta = (proxima: string) => {
-    setGaveta(proxima);
-    if (tipo !== "all" && proxima !== "all" && KIND_CLUSTER[tipo as AssetKind] !== proxima) setTipo("all");
-  };
-
-  return (
-    <section aria-labelledby="asset-list-heading" className="min-w-0">
-      <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Inventário persistido</p>
-          <h2 id="asset-list-heading" className="mt-1 text-xl font-semibold tracking-tight">Ativos conhecidos</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{filtrados.length} de {inventario.ativos.length}</p>
-        </div>
-        <button type="button" onClick={aoCadastrar}
-          className="inline-flex w-fit items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
-          <Plus aria-hidden="true" className="h-4 w-4" /> Cadastrar ativo
-        </button>
-      </div>
-
-      <div className="border-b border-border py-4">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Organizar por gaveta</p>
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Gavetas do Cofre">
-          <button type="button" onClick={() => escolherGaveta("all")} aria-pressed={gaveta === "all"}
-            className={cn("shrink-0 rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-              gaveta === "all" ? "border-primary/35 bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
-            Todos <span className="ml-1 tabular-nums">{inventario.ativos.length}</span>
-          </button>
-          {/* As sete gavetas vêm do servidor e aparecem SEMPRE, inclusive com
-              contagem zero: uma gaveta que some quando esvazia faz a estrutura
-              do Cofre parecer menor do que é. */}
-          {inventario.gavetas.slice().sort((a, b) => a.ordem - b.ordem).map((g) => {
-            const Icon = CLUSTER_ICONS[g.cluster] ?? Vault;
-            return (
-              <button key={g.cluster} type="button" onClick={() => escolherGaveta(g.cluster)} aria-pressed={gaveta === g.cluster}
-                className={cn("inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-                  gaveta === g.cluster ? "border-primary/35 bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
-                <Icon aria-hidden="true" className="h-3.5 w-3.5" />{g.rotulo} <span className="tabular-nums">{g.total}</span>
-              </button>
-            );
-          })}
-        </div>
-        {gaveta !== "all" ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {inventario.gavetas.find((g) => g.cluster === gaveta)?.descricao
-              ?? CLUSTER_DESCRIPTION[gaveta as AssetCluster]}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="grid gap-2 border-b border-border py-4 md:grid-cols-[minmax(14rem,1fr)_12rem_11rem]">
-        <label className="relative block">
-          <span className="sr-only">Buscar ativos</span>
-          <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={busca} onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar ativo, plataforma ou projeto"
-            className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-        </label>
-        <label>
-          <span className="sr-only">Filtrar por família</span>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={ENTRADA}>
-            <option value="all">Todas as famílias</option>
-            {tiposDisponiveis.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Filtrar por estado</span>
-          <select value={estado} onChange={(e) => setEstado(e.target.value)} className={ENTRADA}>
-            <option value="all">Todos os estados</option>
-            {Object.entries(STATE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        </label>
-      </div>
-
-      {filtrados.length ? (
-        <section className="space-y-6 pt-5" aria-label="Ativos encontrados">
-          {grupos.map((grupo) => {
-            const GroupIcon = CLUSTER_ICONS[grupo.gaveta.cluster] ?? Vault;
-            return (
-              <section key={grupo.gaveta.cluster} aria-labelledby={`gaveta-${grupo.gaveta.cluster}`}>
-                <div className="flex items-start gap-3 border-b border-border px-3 pb-3">
-                  <span className="rounded-md border border-border bg-muted/50 p-2 text-muted-foreground"><GroupIcon aria-hidden="true" className="h-4 w-4" /></span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <h3 id={`gaveta-${grupo.gaveta.cluster}`} className="text-sm font-semibold">{grupo.gaveta.rotulo}</h3>
-                      <span className="text-xs tabular-nums text-muted-foreground">{grupo.ativos.length}</span>
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{grupo.gaveta.descricao}</p>
-                  </div>
-                </div>
-                <div className="hidden grid-cols-[minmax(16rem,1.5fr)_10rem_9rem_8rem_1.5rem] gap-3 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:grid">
-                  <span>Ativo</span><span>Estado</span><span>Custódia</span><span>Verificação</span><span />
-                </div>
-                <ul className="divide-y divide-border">
-                  {grupo.ativos.map((a) => {
-                    const Icon = CLUSTER_ICONS[a.cluster] ?? Vault;
-                    const marcado = selecionado === a.ativo_id;
-                    return (
-                      <li key={a.ativo_id}>
-                        <button type="button" onClick={() => aoSelecionar(a.ativo_id)} aria-pressed={marcado}
-                          className={cn("grid w-full gap-3 px-3 py-4 text-left outline-none transition-colors hover:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:grid-cols-[minmax(16rem,1.5fr)_10rem_9rem_8rem_1.5rem] md:items-center",
-                            marcado && "bg-primary/[0.055]")}>
-                          <span className="flex min-w-0 items-start gap-3">
-                            <span className={cn("mt-0.5 rounded-md border p-2", marcado ? "border-primary/25 bg-primary/10 text-primary" : "border-border bg-muted/50 text-muted-foreground")}>
-                              <Icon aria-hidden="true" className="h-4 w-4" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-foreground">{a.nome}</span>
-                              <span className="mt-1 block truncate text-xs text-muted-foreground">
-                                {a.tipo_rotulo} · {a.plataforma}{a.display_id ? ` · ${a.display_id}` : ""}
-                              </span>
-                            </span>
-                          </span>
-                          <span><StatePill state={a.estado} /></span>
-                          <span className="text-xs text-foreground/80">{a.dono_nome}
-                            <span className="mt-1 block text-muted-foreground">{a.dono_custodia === "verified" ? "comprovada" : "a provar"}</span>
-                          </span>
-                          <MarcaDeVerificacao estado={a.verificacao_estado} />
-                          <ChevronRight aria-hidden="true" className={cn("hidden h-4 w-4 text-muted-foreground md:block", marcado && "text-primary")} />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
-        </section>
-      ) : inventario.ativos.length === 0 ? (
-        /* VAZIO DE VERDADE: o Cofre respondeu, e não há ativo. É um fato, e a
-           estrutura continua visível acima — sete gavetas com contagem zero. */
-        <div className="py-14 text-center">
-          <Vault aria-hidden="true" className="mx-auto h-6 w-6 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">O Cofre está vazio</p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-            As sete gavetas existem e estão vazias. Comece pelo ativo mais crítico da operação —
-            a página monetizada, o MCC, o Supabase — e registre dono, evidência e próxima ação.
-          </p>
-          <button type="button" onClick={aoCadastrar}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
-            <Plus aria-hidden="true" className="h-4 w-4" /> Cadastrar o primeiro ativo
-          </button>
-        </div>
-      ) : (
-        <div className="py-14 text-center">
-          <ListFilter aria-hidden="true" className="mx-auto h-6 w-6 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">Nenhum ativo neste recorte</p>
-          <p className="mt-1 text-xs text-muted-foreground">Ajuste a busca ou os filtros. O inventário não foi alterado.</p>
-        </div>
-      )}
-    </section>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // As outras três lentes
@@ -1284,7 +950,7 @@ function Revisoes({ ativos, aoSelecionar }: { ativos: cofre.AtivoDaLista[]; aoSe
         {pendentes.map(({ ativo, faltas }) => (
           <li key={ativo.ativo_id}>
             <button type="button" onClick={() => aoSelecionar(ativo.ativo_id)}
-              className="grid w-full gap-2 px-3 py-4 text-left outline-none transition-colors hover:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:grid-cols-[minmax(14rem,1fr)_minmax(0,1.2fr)_8rem]">
+              className="grid min-h-10 w-full gap-2 px-3 py-4 text-left outline-none transition-colors duration-150 hover:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:grid-cols-[minmax(14rem,1fr)_minmax(0,1.2fr)_8rem]">
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold">{ativo.nome}</span>
                 <span className="mt-1 block truncate text-xs text-muted-foreground">{ativo.tipo_rotulo} · {ativo.plataforma}</span>
@@ -1347,7 +1013,7 @@ function Relacoes({ ativos, aoSelecionar }: { ativos: cofre.AtivoDaLista[]; aoSe
           {comArestas.map((a) => (
             <li key={a.ativo_id} className="py-4">
               <button type="button" onClick={() => aoSelecionar(a.ativo_id)}
-                className="text-sm font-semibold hover:underline">{a.nome}</button>
+                className={"text-sm font-semibold hover:underline " + HIT + " " + FOCO}>{a.nome}</button>
               <ul className="mt-2 space-y-1.5 pl-3">
                 {a.relacoes.map((r) => (
                   <li key={`${r.tipo}:${r.destino}`} className="flex items-start gap-2 text-xs">
@@ -1358,7 +1024,7 @@ function Relacoes({ ativos, aoSelecionar }: { ativos: cofre.AtivoDaLista[]; aoSe
                           externo fica como texto, porque o Cofre não é dono dele
                           e fingir que é confundiria quem procura. */}
                       {nomePorId.has(r.destino) ? (
-                        <button type="button" onClick={() => aoSelecionar(r.destino)} className="font-medium hover:underline">
+                        <button type="button" onClick={() => aoSelecionar(r.destino)} className={"font-medium hover:underline " + HIT + " " + FOCO}>
                           {r.rotulo}
                         </button>
                       ) : <span className="font-medium">{r.rotulo}</span>}
@@ -1475,12 +1141,7 @@ export function AssetVaultContent() {
   const recarregar = () => void clientes.invalidateQueries({ queryKey: ["cofre"] });
 
   if (!cofre.cofreConfigurado()) {
-    return (
-      <Moldura>
-        <Aviso icone={PlugZap} tom="atencao" titulo="O Cofre não está configurado neste ambiente"
-          texto="A variável VITE_PAUTADOR_API_URL não foi definida, então esta tela não sabe com qual backend falar. Isso é configuração de ambiente, não falta de dado — o inventário pode existir e estar inacessível daqui." />
-      </Moldura>
-    );
+    return <Moldura><EstadoNaoConfigurado /></Moldura>;
   }
 
   if (inventario.isPending) return <Moldura><Carregando /></Moldura>;
@@ -1488,78 +1149,54 @@ export function AssetVaultContent() {
   if (inventario.isError) {
     const erro = inventario.error;
     const doCofre = erro instanceof cofre.ErroDoCofre ? erro : null;
-    // Quatro falhas, quatro telas. Colapsá-las manda a pessoa para a ação errada:
-    // 401 pede login, 403 pede acesso, 503 pede espera, e o resto pede
-    // investigação. Uma frase genérica não distingue nenhuma delas.
     if (doCofre?.semSessao) {
-      return <Moldura><Aviso icone={KeyRound} tom="atencao" titulo="Sua sessão expirou"
-        texto="Entre novamente para abrir o Cofre." codigo={doCofre.codigo} /></Moldura>;
+      return <Moldura>{EstadoSemSessao(doCofre.codigo)}</Moldura>;
     }
     if (doCofre?.semPermissao) {
-      return <Moldura><Aviso icone={LockKeyhole} tom="atencao" titulo="Acesso restrito"
-        texto="O inventário de ativos e postura de acesso é exclusivo para administradores. Sua identidade é válida; o papel é que não permite." codigo={doCofre.codigo} /></Moldura>;
+      return <Moldura>{EstadoSemPermissao(doCofre.codigo)}</Moldura>;
     }
     if (doCofre?.indisponivel) {
-      return <Moldura><Aviso icone={CircleAlert} tom="erro" titulo="O Cofre não respondeu"
-        texto={`${doCofre.message} Nada foi alterado, e esta tela não mostra um inventário vazio no lugar — vazio e indisponível são fatos diferentes.`}
-        codigo={doCofre.codigo}
-        acao={{ rotulo: "Tentar de novo", aoClicar: () => void inventario.refetch() }} /></Moldura>;
+      return <Moldura>{EstadoIndisponivel(doCofre.message, doCofre.codigo, () => void inventario.refetch())}</Moldura>;
     }
-    return <Moldura><Aviso icone={CircleAlert} tom="erro" titulo="Não consegui abrir o Cofre"
-      texto={erro instanceof Error ? erro.message : "Falha desconhecida."}
-      codigo={doCofre?.codigo}
-      acao={{ rotulo: "Tentar de novo", aoClicar: () => void inventario.refetch() }} /></Moldura>;
+    return <Moldura>{EstadoFalha(erro instanceof Error ? erro.message : "Falha desconhecida.", doCofre?.codigo, () => void inventario.refetch())}</Moldura>;
   }
 
   const dados = inventario.data;
+  const visao = derivarVisao(dados.ativos);
   const ativoAtual = selecionado && dados.ativos.some((a) => a.ativo_id === selecionado)
     ? selecionado
     : dados.ativos[0]?.ativo_id ?? null;
+  const abrirCadastro = () => setCadastrando(true);
 
   return (
     <Moldura>
-      <header>
-        <div className="flex items-start gap-3">
-          <span className="rounded-md border border-primary/20 bg-primary/10 p-2.5 text-primary"><Vault aria-hidden="true" className="h-5 w-5" /></span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Cofre de Ativos</h1>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-              O que existe, em qual gaveta, quem cuida, o que já foi comprovado, como o acesso está
-              protegido e qual é a próxima ação concreta.
-            </p>
-          </div>
-        </div>
-        <nav aria-label="Modos do Cofre" className="mt-5 flex gap-2 overflow-x-auto">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            return (
-              <button key={v.id} type="button" onClick={() => trocarView(v.id)} aria-pressed={view === v.id}
-                className={cn("inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors",
-                  view === v.id ? "border-primary/35 bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
-                <Icon aria-hidden="true" className="h-4 w-4" />{v.label}
-              </button>
-            );
-          })}
-        </nav>
-      </header>
-
-      <Pulso ativos={dados.ativos} />
+      <CabecalhoDoCofre
+        acaoPrimaria={cadastrando ? null : { rotulo: "Cadastrar ativo", aoClicar: abrirCadastro }}
+      />
+      <AbasDoCofre atual={view} aoTrocar={trocarView} />
+      <VisaoOperacional
+        visao={visao}
+        lidoEm={inventario.dataUpdatedAt || null}
+        aoSeguir={escolher}
+      />
       <FronteiraDeSeguranca />
 
       {cadastrando ? (
-        <div className="mt-6">
-          <FormularioDeCadastro aoFechar={() => setCadastrando(false)}
-            aoConcluir={(id) => { setCadastrando(false); recarregar(); escolher(id); }} />
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+          <OnboardingProgressivo
+            aoFechar={() => setCadastrando(false)}
+            aoConcluir={(id) => { setCadastrando(false); recarregar(); escolher(id); }}
+          />
+          <div className="min-w-0">
+            <Inventario inventario={dados} selecionado={ativoAtual} aoSelecionar={escolher} aoCadastrar={abrirCadastro} />
+          </div>
         </div>
-      ) : null}
-
-      {view === "contract" ? (
+      ) : view === "contract" ? (
         <div className="mt-6"><Contrato gavetas={dados.gavetas} /></div>
       ) : (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_25rem]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
           {view === "inventory" ? (
-            <Lista inventario={dados} selecionado={ativoAtual} aoSelecionar={escolher}
-              aoCadastrar={() => setCadastrando(true)} />
+            <Inventario inventario={dados} selecionado={ativoAtual} aoSelecionar={escolher} aoCadastrar={abrirCadastro} />
           ) : view === "reviews" ? (
             <Revisoes ativos={dados.ativos} aoSelecionar={escolher} />
           ) : (

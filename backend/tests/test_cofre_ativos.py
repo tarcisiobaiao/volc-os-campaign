@@ -383,9 +383,15 @@ def test_nenhuma_rota_de_leitura_devolve_localizador():
         postura=[{"provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced"}],
         engines=[{"ativo_id": "asset:engine:x", "modalidade": "imagem"}])
     cliente = montar(repo)
+    # ⚠️ A lista e de TODAS as rotas de leitura, e cresce junto com elas. Quando
+    # `handoff` e `prontidao` nasceram, cada uma ganhou teste proprio — e ficaram
+    # de fora desta varredura, que e a unica que pega uma projecao nova sem que
+    # ninguem se lembre de pensar nela.
     for caminho in ("/api/cofre/ativos",
                     "/api/cofre/ativos/asset:facebook-page:piloto",
                     "/api/cofre/ativos/asset:facebook-page:piloto/credencial",
+                    "/api/cofre/ativos/asset:facebook-page:piloto/handoff",
+                    "/api/cofre/ativos/asset:facebook-page:piloto/prontidao",
                     "/api/cofre/engines"):
         r = cliente.get(caminho)
         assert r.status_code == 200, caminho
@@ -619,6 +625,7 @@ def _repo_para_handoff(**ajustes):
         "ativo_id": "asset:facebook-page:piloto", "nome": "Pagina do piloto",
         "kind": "facebook_page", "plataforma": "Meta", "estado": "active",
         "url_publica": "https://facebook.com/pagina", "projeto": "Piloto", "vertical": "Organico",
+        "dono_nome": "Tarcisio", "dono_custodia": "declared",
         "aposentado_em": None,
         "relacoes": [{"tipo": "authenticates_through", "destino": "asset:browser-profile:piloto",
                       "rotulo": "Perfil AdsPower do piloto", "estado": "declared"}],
@@ -807,3 +814,179 @@ def test_A6_a_rota_de_engines_devolve_503_e_nao_engines_vazias():
     r = TestClient(app, raise_server_exceptions=False).get("/api/cofre/engines")
     assert r.status_code == 503
     assert '"engines":[]' not in r.text.replace(" ", "")
+
+
+# ── 11. PRONTIDAO: as nove perguntas, e o `desconhecido` que nao vira `nao` ──
+#
+# A prova central deste bloco nao e que a rota responde: e que ela distingue
+# "nao ha perfil" de "nao sei se o perfil esta aberto". Um painel que achata os
+# dois num booleano diz "perfil indisponivel" sobre um perfil que ninguem
+# olhou — e a decisao seguinte (cadastrar um perfil, ou ir ate a maquina) e
+# completamente diferente.
+
+
+PRONTIDAO = "/api/cofre/ativos/asset:facebook-page:piloto/prontidao"
+
+
+def test_prontidao_responde_as_oito_perguntas_e_a_lista_de_bloqueios():
+    """Nove respostas, e a nona nao e uma pergunta: e `bloqueios`.
+
+    Chamar as nove de "perguntas" faria alguem procurar uma chave
+    `bloqueio_de_publicacao` dentro de `perguntas` e nao achar.
+    """
+    corpo = montar(_repo_para_handoff(
+        dono_nome="Tarcisio", dono_custodia="declared", criticidade="high",
+        revisao_atual=3, atualizado_em="2026-09-02T09:00:00Z")).get(PRONTIDAO).json()
+    perguntas = corpo["perguntas"]
+    assert set(perguntas) == {
+        "pagina_de_destino", "dono", "ativos_relacionados", "perfil_de_navegador",
+        "onde_esta_a_credencial", "referencia_resolvivel", "perfil_disponivel",
+        "peca_roteavel"}
+    assert perguntas["pagina_de_destino"]["valor"] == "sim"
+    assert perguntas["dono"]["valor"] == "sim"
+    assert perguntas["perfil_de_navegador"]["valor"] == "sim"
+    assert perguntas["onde_esta_a_credencial"]["valor"] == "sim"
+    assert perguntas["referencia_resolvivel"]["valor"] == "sim"
+    # O retrato que a tela mostra: estado, dono, finalidade e ultima revisao.
+    assert corpo["retrato"]["dono_nome"] == "Tarcisio"
+    assert corpo["retrato"]["revisao_atual"] == 3
+    # A nona resposta: o que impede a publicacao, em portugues.
+    assert isinstance(corpo["bloqueios"], list) and corpo["bloqueios"]
+    # E a rota NAO publica. O campo esta no corpo para isso ser um fato lido,
+    # e nao uma promessa do docstring.
+    assert corpo["publica"] is False
+
+
+def test_prontidao_NAO_devolve_o_localizador_nem_endereco_de_cofre():
+    r = montar(_repo_para_handoff()).get(PRONTIDAO)
+    assert "op://" not in r.text
+    assert "localizador" not in r.text
+    assert LOCALIZADOR not in r.text
+    # O que ela DEVOLVE e provider e nome logico — suficiente para conferir,
+    # insuficiente para usar.
+    assert "FB_PAGE_ADMIN" in r.text
+
+
+def test_prontidao_nao_confunde_desconhecido_com_nao():
+    """A disponibilidade do perfil so e observavel pelo broker, no host isolado.
+
+    Esta API nao alcanca a Local API do AdsPower — ela escuta em loopback, na
+    outra maquina. Responder `nao` seria inventar uma observacao; responder
+    `sim` seria pior.
+    """
+    corpo = montar(_repo_para_handoff()).get(PRONTIDAO).json()
+    disponivel = corpo["perguntas"]["perfil_disponivel"]
+    assert disponivel["valor"] == "desconhecido"
+    assert disponivel["procedencia"] == "registro"
+    assert "broker" in disponivel["motivo"]
+
+
+def test_prontidao_sem_perfil_relacionado_responde_nao_e_nao_desconhecido():
+    """Aqui `nao` E a resposta certa: a ausencia da aresta e um FATO do
+    inventario, nao a falta de uma observacao."""
+    corpo = montar(_repo_para_handoff(relacoes=[])).get(PRONTIDAO).json()
+    assert corpo["perguntas"]["perfil_de_navegador"]["valor"] == "nao"
+    assert corpo["perguntas"]["perfil_disponivel"]["valor"] == "nao"
+
+
+@pytest.mark.parametrize("verificacao,esperado", [
+    ("verified", "sim"),
+    ("partial", "desconhecido"),
+    ("unverified", "desconhecido"),
+    ("failed", "nao"),
+    ("expired", "nao"),
+    ("blocked", "nao"),
+])
+def test_prontidao_preserva_os_seis_estados_de_verificacao(verificacao, esperado):
+    """Os seis nao sao sinonimos, e o mapa preserva a diferenca que o schema
+    criou para preservar. `blocked` (cofre trancado) nao e `failed` (tentou e
+    deu errado), e nenhum dos dois e `unverified` (nunca tentei)."""
+    corpo = montar(_repo_para_handoff(credencial=[{
+        "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+        "verificacao_estado": verificacao, "verificado_em": None}])).get(PRONTIDAO).json()
+    assert corpo["perguntas"]["referencia_resolvivel"]["valor"] == esperado
+
+
+def test_prontidao_uma_referencia_comprovada_nao_e_apagada_por_outra_pendente():
+    """Um ativo com duas referencias — uma provada e uma nunca conferida — TEM
+    um acesso comprovado. Responder pelo pior deixaria de reconhecer o que ja
+    foi provado."""
+    corpo = montar(_repo_para_handoff(credencial=[
+        {"provider": "1password", "nome_logico": "ADSPOWER_API_KEY", "estado": "referenced",
+         "verificacao_estado": "unverified", "verificado_em": None},
+        {"provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+         "verificacao_estado": "verified", "verificado_em": "2026-09-01T10:00:00Z"},
+    ])).get(PRONTIDAO).json()
+    assert corpo["perguntas"]["referencia_resolvivel"]["valor"] == "sim"
+
+
+def test_prontidao_separa_receber_de_publicar_quando_p12_t09_nao_existe():
+    """Uma pagina pode estar apta a RECEBER/associar uma peca aprovada no Cofre
+    e ainda nao poder publica-la. P12-T09 ausente bloqueia publicacao, nao o
+    relacionamento futuro da peca com o destino."""
+    corpo = montar(_repo_para_handoff(credencial=[{
+        "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+        "verificacao_estado": "verified", "verificado_em": "2026-09-01T10:00:00Z"},
+    ])).get(PRONTIDAO).json()
+    assert len(corpo["bloqueios"]) == len(set(corpo["bloqueios"]))
+    assert corpo["pronto_para_receber_peca"] is True
+    assert corpo["perguntas"]["peca_roteavel"]["valor"] == "sim"
+    assert corpo["pronto_para_publicar"] is False
+    assert corpo["publica"] is False
+    assert any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+    assert not any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["recebimento"])
+
+
+def test_prontidao_publicacao_continua_falsa_mesmo_com_recebimento_verde():
+    corpo = montar(_repo_para_handoff()).get(PRONTIDAO).json()
+    assert corpo["pronto_para_publicar"] is False
+    assert corpo["publica"] is False
+    assert any("autorizacao de ato de publicacao" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+
+
+def test_prontidao_bloqueios_global_sem_duplicatas():
+    """Publicacao depende de recebimento/acesso, mas o resumo global nao pode
+    repetir a mesma frase: duplicar confunde operador e cria chaves React iguais."""
+    corpo = montar(_repo_para_handoff(credencial=[{
+        "provider": "1password", "nome_logico": "FB_PAGE_ADMIN", "estado": "referenced",
+        "verificacao_estado": "unverified", "verificado_em": None},
+    ], relacoes=[])).get(PRONTIDAO).json()
+    assert len(corpo["bloqueios"]) == len(set(corpo["bloqueios"]))
+    assert not any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["recebimento"])
+    assert any("P12-T09" in b for b in corpo["bloqueios_por_portao"]["publicacao"])
+    assert corpo["pronto_para_publicar"] is False
+    assert corpo["publica"] is False
+
+
+def test_prontidao_broker_local_provado_nao_vira_live_read():
+    corpo = montar(_repo_para_handoff()).get(PRONTIDAO).json()
+    broker = corpo["componentes_seguintes"]["broker_de_acesso"]
+    assert broker == {
+        "tarefa": "P03-T11",
+        "implementacao": "local_verified",
+        "operacao_real": "live_read_not_proven",
+    }
+    assert corpo["perguntas"]["perfil_disponivel"]["procedencia"] == "registro"
+    assert corpo["perguntas"]["perfil_disponivel"]["valor"] == "desconhecido"
+    assert corpo["pronto_para_operar_acesso"] is False
+
+
+def test_prontidao_e_handoff_nao_podem_divergir_sobre_o_que_existe():
+    """Duas rotas publicam a mesma lista de componentes. Duas copias
+    divergiriam, e a divergencia apareceria como uma rota afirmando que o
+    broker existe enquanto a outra afirma que nao."""
+    cliente = montar(_repo_para_handoff())
+    handoff = cliente.get("/api/cofre/ativos/asset:facebook-page:piloto/handoff").json()
+    pront = cliente.get(PRONTIDAO).json()
+    assert handoff["proximo_componente"] == pront["componentes_seguintes"]
+
+
+def test_prontidao_ativo_inexistente_e_404_e_nao_um_retrato_vazio():
+    r = montar(RepositorioDuble(detalhar=None)).get(PRONTIDAO)
+    assert r.status_code == 404
+
+
+def test_prontidao_com_banco_fora_e_503_e_nao_prontidao_falsa():
+    r = montar(RepositorioDuble(detalhar=CofreIndisponivel("banco fora"))).get(PRONTIDAO)
+    assert r.status_code == 503
+    assert "pronto_para_receber_peca" not in r.text
