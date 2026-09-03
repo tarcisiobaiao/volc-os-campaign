@@ -67,6 +67,7 @@ vi.mock('@/lib/pautadorApi', () => ({
 }));
 
 import NovaCampanhaPage from '../NovaCampanhaPage';
+import { reciboApto } from '@/lib/landing-policy/__tests__/recibos';
 
 afterEach(() => {
   cleanup();
@@ -85,6 +86,14 @@ function cockpitLimpo(): Cockpit {
       slug: 'saque', pais: 'BR', idioma: 'pt', idioma_declarado: 'pt',
       vertical: 'informativo', vertical_declarada: 'informativo',
       resumo_da_pesquisa: '', fatos: [], tem_texto_da_lp: true,
+      // O RECIBO DO PORTÃO DE DESTINO PAGO — pela mesma razão que a copy chega
+      // pronta neste arquivo: sem ele o botão de lançar nasce desabilitado e o
+      // pedido nunca é montado, que é o que este teste quer inspecionar. Um
+      // destino publicado e sem avaliação é INDETERMINADO, e indeterminado não
+      // abre nada.
+      landing_policy_receipt: reciboApto({
+        url: 'https://creditoup.com.br/r/saque/',
+      }, { agora_epoch: Date.now() / 1000 }),
     },
     triagem: {
       analisadas: 100, aprovadas_anuncio: 2, para_conteudo: 0, descartadas: 98,

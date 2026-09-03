@@ -76,7 +76,33 @@ SEVERIDADE_BLOQUEIO = "blocker"
 SEVERIDADE_RISCO = "risk"
 SEVERIDADE_OBSERVACAO = "observation"
 
-SCHEMA_VERSION = "landing_policy_gate_receipt.v1"
+SCHEMA_VERSION = "landing_policy_gate_receipt.v2"
+
+#: A versão do CONTRATO — a FORMA da avaliação: quais verificações existem, o que
+#: cada papel exige, em que ponto de portão. É diferente de `versao_da_fonte()`,
+#: que é o hash do TEXTO das regras (`fontes_politica.json`).
+#:
+#: As duas mudam por motivos diferentes, e um recibo precisa das duas. Alguém pode
+#: corrigir a redação de uma regra sem mudar a forma do contrato (muda só a fonte);
+#: e alguém pode acrescentar uma verificação exigida sem tocar em regra nenhuma
+#: (muda só o contrato). Um recibo que carregasse apenas uma das duas pareceria
+#: reaproveitável depois de uma mudança que o invalidou.
+POLICY_CONTRACT_VERSION = "paid_destination_policy_spine.v2"
+
+#: Por quanto tempo uma observação AO VIVO continua valendo como prova de que o
+#: destino está apto. Não é burocracia: uma página no ar muda sem avisar — plugin,
+#: tema, rotação de anúncio, edição manual no WordPress — e um recibo de duas
+#: semanas descreve um conteúdo que pode não existir mais.
+#:
+#: 24 h é o padrão porque a operação sobe campanha no mesmo dia em que aprova a
+#: página. Quem precisar de outra janela passa `janela_de_frescor_s`; o que não
+#: existe é a opção de não ter janela.
+JANELA_DE_FRESCOR_PADRAO_S = 24 * 60 * 60
+
+#: Teto de saltos de redirecionamento até a URL final. Zero salto é o normal de um
+#: destino canônico; um salto (http→https, com/sem barra) é rotina de servidor.
+#: Acima disso a cadeia começa a ser o assunto, e não o detalhe.
+TETO_DE_SALTOS_PADRAO = 2
 
 #: Carimbo determinístico para artefato gerado a partir de arquivo local, onde
 #: "quando eu li" não é informação — é ruído que quebra a comparação byte a byte.
@@ -104,6 +130,27 @@ class PontoDePortao(str, Enum):
     ARTEFATO_DE_GERACAO = "generation_artifact"
     PRE_PUBLICACAO_WORDPRESS = "pre_publication_wordpress"
     ELEGIBILIDADE_DESTINO_CAMPANHA = "campaign_destination_eligibility"
+    #: ⚠️ O ATO DE AUDITAR, que é diferente de CONFERIR uma auditoria anterior.
+    #:
+    #: Sem este ponto o ciclo do recibo `live` não tinha entrada, e isso foi
+    #: medido por duas frentes independentes: o único produtor de recibo `live`
+    #: avaliava no ponto de CAMPANHA, onde `approval_receipt` exige uma
+    #: aprovação ANTERIOR e `live_drift` exige uma impressão anterior. Com
+    #: `recibo_anterior=None` as duas reprovavam, a confirmação recusava, nada
+    #: era gravado — e a próxima tentativa partia de `None` de novo. A rodada
+    #: trocou um produtor AUSENTE de recibo `live` por um INALCANÇÁVEL.
+    #:
+    #: A pergunta aqui é outra: não "existe aprovação anterior e a página ainda
+    #: bate com ela?", e sim "eu devo aprovar o que está no ar AGORA?". Exigir
+    #: aprovação anterior de um ato de aprovação é circular — é a mesma
+    #: impossibilidade estrutural que `EXIGENCIAS_POR_PONTO` existe para não
+    #: cobrar (antes de publicar não há redirecionamento para observar).
+    #:
+    #: E ele NÃO é um portão que se autoaprova: quem aprova é a confirmação
+    #: HUMANA, vinculada ao mesmo hash da prova. O portão de CAMPANHA continua
+    #: exigindo o recibo `live` que só este ato produz — então a autoridade não
+    #: some, ela muda de lugar, do software para a pessoa.
+    AUDITORIA_AO_VIVO = "live_audit"
 
 
 class Veredito(str, Enum):
@@ -189,6 +236,14 @@ V_CONTEUDO = "content_originality_and_congruence"
 V_SEGURANCA = "destination_security_signals"
 V_REDIRECIONAMENTO = "redirect_and_cloaking"
 V_DERIVA = "live_drift"
+#: A décima verificação, e a única que não olha a PÁGINA: ela olha o RECIBO.
+#:
+#: Ela existe porque "o conteúdo no ar é o aprovado?" pressupõe que exista um
+#: aprovado. Sem recibo resolvível, `live_drift` responde `unavailable` e a
+#: operação lê "não deu para comparar" — verdade, mas insuficiente: o problema
+#: não é a comparação, é a ausência de aprovação. São dois defeitos diferentes e
+#: a operação precisa de nomes diferentes para consertar o certo.
+V_RECIBO = "approval_receipt"
 
 TODAS_AS_VERIFICACOES = (
     V_IDENTIDADE,
@@ -200,11 +255,31 @@ TODAS_AS_VERIFICACOES = (
     V_SEGURANCA,
     V_REDIRECIONAMENTO,
     V_DERIVA,
+    V_RECIBO,
 )
 
 #: O que precisa ter sido CONCLUSIVAMENTE verificado em cada ponto de portão,
 #: para o papel `paid_destination`. Fora dessa lista a verificação ainda roda e
 #: ainda produz achados — ela só não transforma "não deu para olhar" em reprova.
+#: As verificações que, NO PONTO DE CAMPANHA, não podem sair `not_applicable`.
+#:
+#: ⚠️ ESTA TABELA EXISTE POR CAUSA DE UM FALSO VERDE MEDIDO.
+#:
+#: `not_applicable` está em `STATUS_CONCLUSIVOS` — e deve estar: antes de
+#: publicar, redirecionamento e deriva realmente não existem, e chamá-los de
+#: "não sei" seria reprovar toda página por uma impossibilidade estrutural.
+#:
+#: Mas `varrer_deriva` e `varrer_recibo` devolvem `not_applicable` quando não há
+#: HTML ao vivo observado — e no ponto de CAMPANHA isso não é "não se aplica",
+#: é "ninguém leu a página". Medido: com evidência de redirecionamento completa
+#: e nenhuma leitura ao vivo, o portão de campanha devolvia
+#: `paid_destination_ready=True` sem ter comparado hash aprovado nem conferido
+#: recibo. O verde saía de duas ausências.
+#:
+#: Uma página que está no ar SEMPRE tem hash observável. `not_applicable` aqui
+#: é impossível de boa-fé, e por isso vira desconhecido.
+NAO_APLICAVEL_E_DESCONHECIDO_EM: dict[PontoDePortao, frozenset[str]] = {}
+
 EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
     # Antes de existir no ar: só o que o artefato consegue provar sobre si.
     PontoDePortao.ARTEFATO_DE_GERACAO: frozenset(
@@ -213,10 +288,39 @@ EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
     PontoDePortao.PRE_PUBLICACAO_WORDPRESS: frozenset(
         {V_IDENTIDADE, V_LINKS_EXTERNOS, V_FORMULARIOS, V_ALEGACOES, V_GOVERNO, V_CONTEUDO}
     ),
-    # No ar, com campanha apontando: aqui redirecionamento, cloaking e deriva
-    # DEIXAM de ser inobserváveis. Não olhar vira o buraco.
+    # No ar, com campanha apontando: aqui redirecionamento, cloaking, deriva e o
+    # RECIBO DE APROVAÇÃO deixam de ser inobserváveis. Não olhar vira o buraco.
+    #
+    # O recibo entra aqui e não nos dois pontos anteriores porque antes de
+    # publicar não existe aprovação anterior para conferir — exigi-la ali
+    # reprovaria toda página primeira por uma impossibilidade estrutural, que é
+    # o mesmo erro que a tabela inteira existe para não cometer.
     PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA: frozenset(TODAS_AS_VERIFICACOES),
 }
+
+#: No ATO de auditoria tudo que a página no ar mostra é exigível — identidade,
+#: links, formulário, alegação, governo, conteúdo, segurança, redirecionamento e
+#: cloaking. O que NÃO é exigível são as duas verificações que perguntam por uma
+#: aprovação anterior: elas não existem por construção quando esta É a primeira.
+EXIGENCIAS_POR_PONTO[PontoDePortao.AUDITORIA_AO_VIVO] = frozenset(
+    set(TODAS_AS_VERIFICACOES) - {V_RECIBO, V_DERIVA}
+)
+
+NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA] = frozenset(
+    # `V_IDENTIDADE` entra aqui por causa de `PaginaObservada.documento_parcial`:
+    # ele deixa a identidade sair `not_applicable` antes da publicação, onde o
+    # rodapé do tema ainda não existe. Numa leitura AO VIVO a página inteira
+    # está no ar — "não se aplica" ali seria a mesma isenção, aplicada ao ponto
+    # em que ela não tem desculpa.
+    {V_DERIVA, V_IDENTIDADE, V_RECIBO, V_REDIRECIONAMENTO}
+)
+#: No ato de auditoria a página está no ar: identidade e redirecionamento não
+#: podem sair "não se aplica" — ali eles são observáveis e a isenção não tem
+#: desculpa. Recibo e deriva ficam de fora porque a ausência deles é o motivo
+#: de o ato existir.
+NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.AUDITORIA_AO_VIVO] = frozenset(
+    {V_IDENTIDADE, V_REDIRECIONAMENTO}
+)
 
 
 # ── severidade por papel ────────────────────────────────────────────────────
@@ -254,12 +358,81 @@ _BLOQUEIA_NO_PAGO = frozenset({
     "CONTEUDO_MISTO",
     "SCRIPT_TERCEIRO_NAO_DECLARADO",
     "SCRIPT_REDIRECIONA_CLIENT_SIDE",
+    # ── a espinha v2 ────────────────────────────────────────────────────────
+    #
+    # ⚠️ POLÍTICA INTERNA DO VOLC, MAIS RESTRITIVA QUE A DO GOOGLE.
+    # O Google não proíbe hyperlink externo em destino pago; ele proíbe sugerir
+    # vínculo e proíbe a página-ponte. Banir TODO hyperlink externo clicável no
+    # `paid_destination` é decisão da casa, tomada depois que sete links
+    # `caixa.gov.br` de âncora numérica foram ao ar na URL que a conta suspensa
+    # anunciava. A regra anterior só barrava host NÃO CLASSIFICADO — governo com
+    # âncora descritiva e fonte de pesquisa declarada passavam em silêncio.
+    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+    # O PAR do código acima, para o link que o TEMA renderiza. Ele bloqueia
+    # igual — fail-closed —, e o que muda é o dono do conserto: quem escreve o
+    # funil não tem como tirar o crédito "Orgulhosamente com WordPress" do
+    # rodapé. Recusa inacionável é como um portão é desligado.
+    "LINK_EXTERNO_NO_CHROME",
+    # O H1 é a promessa que o anúncio compra, e é lido antes de qualquer rodapé.
+    # O aviso de não-vínculo no pé não desfaz uma manchete que diz que o governo
+    # liberou algo.
+    "TITULO_SUGERE_ORIGEM_OFICIAL",
+    # Os três do recibo. Sem eles, "apto" é uma frase sem data e sem versão.
+    "RECIBO_DE_APROVACAO_AUSENTE",
+    "RECIBO_DE_APROVACAO_VENCIDO",
+    "RECIBO_DE_POLITICA_DESATUALIZADO",
+    # ⚠️ OS DOIS ABAIXO SAÍRAM DA REVISÃO ADVERSARIAL CRUZADA, e os dois eram
+    # verde medido. A v2 conferia a METADATA do recibo — versão e frescor — e
+    # não lia nem o veredito dele nem a que conteúdo ele se referia. Então um
+    # recibo que dizia `paid_destination_ready: false`, e um recibo de OUTRA
+    # página, satisfaziam a verificação `approval_receipt` do mesmo jeito.
+    "RECIBO_NAO_APROVA_O_DESTINO",
+    "RECIBO_DE_OUTRO_CONTEUDO",
+    # `status_http` era coletado e não entrava em decisão nenhuma. Um destino
+    # que devolve 404 ao revisor é o caso literal de "destinations that don't
+    # work" — e `volc_ads/policy/spec.py::checar_destino` modelava exatamente
+    # isto sem nunca ser chamado, "por falta de um status HTTP que ninguém
+    # coleta". A barreira 3 passou a coletar.
+    "DESTINO_NAO_RESPONDE",
+    "CADEIA_DE_REDIRECIONAMENTO_EXCESSIVA",
+    # ── promovidos de `_RISCO_SEMPRE` na v2, por contraprova ────────────────
+    #
+    # Os três já eram DETECTADOS; nenhum reprovava, em papel nenhum. O contrato
+    # v1 tratava-os como sinal. A v2 os trata como bloqueio no papel estrito, e
+    # continua tratando-os como risco no papel frouxo — o achado não some do
+    # artigo orgânico, ele muda de peso, como toda a tabela.
+    #
+    # `VALOR_MONETARIO_MALFORMADO`: "2900.00 R$" dentro de um link para o banco
+    # público é vazamento de máquina apresentado como cifra oficial. Contraprova
+    # 11 da espinha v2.
+    "VALOR_MONETARIO_MALFORMADO",
+    # `DIVULGACAO_DE_MONETIZACAO_AUSENTE`: página monetizada que não diz que é
+    # monetizada deixa o leitor sem como separar conteúdo de anúncio.
+    # Contraprova 7.
+    "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
 })
 
 #: Códigos que são risco em toda parte — sinal real, mas não prova de violação.
+#:
+#: ⚠️ Três saíram desta lista na v2 (`VALOR_MONETARIO_MALFORMADO`,
+#: `DIVULGACAO_DE_MONETIZACAO_AUSENTE`, `ANCORA_INCONGRUENTE_COM_DESTINO`) e
+#: passaram a bloquear no papel estrito. Enquanto estiveram aqui, eles eram
+#: detectados e nunca reprovavam nada — que é a forma educada de um portão dizer
+#: "eu vi e deixei passar".
 _RISCO_SEMPRE = frozenset({
-    "VALOR_MONETARIO_MALFORMADO",
-    "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
+    # ⚠️ `ANCORA_INCONGRUENTE_COM_DESTINO` FOI PROMOVIDO E DEPOIS DEVOLVIDO AQUI.
+    #
+    # A promoção durou uma revisão. Medido no papel estrito, ele reprovava CTA
+    # interno banal: "Simule agora" → /rec/calculadora-do-saque/, "Continuar" →
+    # /rec/regras-do-fgts/, "Leia mais" → qualquer coisa. A regra exige
+    # interseção de tokens entre a âncora e o caminho, e um CTA bom quase nunca
+    # repete o slug — ele diz o que o leitor GANHA, não onde ele vai.
+    #
+    # A contraprova 12 do briefing continua coberta pela metade que importa:
+    # CTA EXTERNO cai em `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` e
+    # `BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO`, os dois bloqueios. A metade
+    # "incongruente" é heurística textual, e heurística textual que reprova
+    # é como um portão perde a autoridade que precisa ter nos outros 41 códigos.
     "ANCORA_INCONGRUENTE_COM_DESTINO",
     "REDIRECIONAMENTO_OBSERVADO",
     "SERVICE_WORKER_OU_PUSH_OBSERVADO",

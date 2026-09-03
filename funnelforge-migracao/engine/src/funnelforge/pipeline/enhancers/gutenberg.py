@@ -246,6 +246,81 @@ def _flatten_leading_boxes(content: str, min_flat_paras: int = _LEADING_FLAT_PAR
     return content
 
 
+# ---------------------------------------------------------------------------
+# MOEDA E PERCENTUAL EM pt-BR — corrigidos na GERAÇÃO
+#
+# A evidência preservada de `/r/fgts-saque-aniversario/` traz, no corpo que foi
+# ao ar: "A Caixa aplica uma alíquota de 5 % a 50 % e soma uma parcela fixa de
+# até 2900.00 R$". São duas formas erradas na mesma frase — o símbolo no FIM com
+# ponto decimal inglês, e o espaço antes do sinal de porcentagem — e as duas
+# viram `VALOR_MONETARIO_MALFORMADO` no portão do destino pago.
+#
+# Corrigir aqui, na geração, e não depois: uma correção pós-publicação é uma
+# edição manual por página, e a próxima página nasce com o mesmo defeito.
+#
+# ⚠️ Só formas com `R$` ou `número %` são tocadas. Um "2900.00" solto pode ser
+# versão, medida ou identificador; reescrevê-lo por conta própria seria inventar
+# uma interpretação que o texto não sustenta.
+# ---------------------------------------------------------------------------
+_MOEDA_POSFIXADA_RE = re.compile(r"(?<![\w.,])(\d[\d.,]*)\s*R\$")
+_MOEDA_PREFIXADA_RE = re.compile(r"R\$\s*(\d[\d.,]*)")
+# Espaço (comum ou NBSP) entre o número e o `%`.
+_PERCENTUAL_SOLTO_RE = re.compile(r"(\d)[\s\u00a0]+%")
+
+
+def _numero_ptbr(bruto: str) -> str:
+    """`2900.00` -> `2.900,00`; `2900,00` -> `2.900,00`; `2900` -> `2.900`.
+
+    A ambiguidade real é o ponto sozinho: `2.900` é milhar em pt-BR e `2900.00` é
+    decimal em inglês. A regra de desempate é a quantidade de casas depois do
+    ÚLTIMO separador — duas casas é centavo, três é milhar. Fora disso, devolve o
+    original: adivinhar mais que isso seria inventar um valor.
+    """
+    texto = bruto.strip().rstrip(".,")
+    if not texto or not texto[0].isdigit():
+        return bruto
+    if "," in texto and "." in texto:
+        inteiro, _, decimal = texto.rpartition(",")
+        inteiro = inteiro.replace(".", "").replace(",", "")
+    elif "," in texto:
+        inteiro, _, decimal = texto.rpartition(",")
+    elif "." in texto:
+        inteiro, _, decimal = texto.rpartition(".")
+        if len(decimal) != 2:          # `2.900` é milhar, não centavo
+            inteiro, decimal = texto.replace(".", ""), ""
+    else:
+        inteiro, decimal = texto, ""
+    if not inteiro.isdigit() or (decimal and not decimal.isdigit()):
+        return bruto
+    milhar = f"{int(inteiro):,}".replace(",", ".")
+    return f"{milhar},{decimal}" if decimal else milhar
+
+
+def formatar_moeda_ptbr(texto: str) -> str:
+    """Normaliza valor monetário e percentual para a forma pt-BR."""
+    saida = _MOEDA_POSFIXADA_RE.sub(lambda m: f"R$ {_numero_ptbr(m.group(1))}", texto)
+    saida = _MOEDA_PREFIXADA_RE.sub(lambda m: f"R$ {_numero_ptbr(m.group(1))}", saida)
+    return _PERCENTUAL_SOLTO_RE.sub(r"\1%", saida)
+
+
+def formatar_moeda_em_estrutura(obj: object) -> object:
+    """`formatar_moeda_ptbr` aplicada às FOLHAS de texto de uma estrutura.
+
+    A LP não é HTML: é JSON estruturado que preenche o template Elementor, e
+    `normalize_gutenberg` nunca a toca. Como o valor malformado medido em campo
+    (`2900.00 R$`, `5 %`) estava justamente no corpo da LP, a mesma correção
+    precisa alcançá-la — e alcançar folha a folha, não pelo JSON serializado,
+    para nunca reescrever chave, aspa ou escape.
+    """
+    if isinstance(obj, str):
+        return formatar_moeda_ptbr(obj)
+    if isinstance(obj, list):
+        return [formatar_moeda_em_estrutura(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: formatar_moeda_em_estrutura(v) for k, v in obj.items()}
+    return obj
+
+
 def normalize_gutenberg(html: str, *, ad_paragraph_anchors: list[int] | None = None) -> str:
     content = html.replace("﻿", "").replace(_FENCE + "html", "").replace(
         _FENCE, ""
@@ -265,6 +340,10 @@ def normalize_gutenberg(html: str, *, ad_paragraph_anchors: list[int] | None = N
             flags=re.I,
         )
         p = _split_long_paragraphs(p)
+        # Moeda/percentual FORA do `wp:html`: o bloco cru é território do widget
+        # (código executável), e reescrever markup por causa de um cifrão é como
+        # um widget quebra em silêncio.
+        p = formatar_moeda_ptbr(p)
         out.append(p)
     result = re.sub(r"\n{3,}", "\n\n", "".join(out)).strip()
     result = _wrap_leading_bare_line(result)

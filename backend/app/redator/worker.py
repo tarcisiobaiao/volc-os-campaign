@@ -38,6 +38,10 @@ pode mudar.
    dobro e ninguém pediu isso. E um timeout duro mata processo travado.
 3. **A fila.** Um run por (card, site) — o disparo já recusa duplicata, e aqui a
    reconciliação de startup fecha o que ficou órfão de um backend reiniciado.
+4. **O site do cliente.** `--publish` tem um dono só aqui — `_disparar_motor` —
+   e ele recusa publicar sem a autorização de um portão de política. Enquanto a
+   flag era montada em dois lugares, um portão numa porta deixava a outra
+   aberta.
 """
 from __future__ import annotations
 
@@ -106,6 +110,68 @@ def _carimbo() -> str:
     depender do slug, que o `dedupe_slugs` do motor pode alterar.
     """
     return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+class PublicacaoSemPortao(RuntimeError):
+    """Alguém pediu `--publish` sem dizer QUAL portão autorizou.
+
+    Levantar é o comportamento correto: um `--publish` que ninguém consegue
+    explicar é a mesma coisa que um portão desligado, e a diferença entre os
+    dois só apareceria depois, no site do cliente.
+    """
+
+
+# ── O ÚNICO LUGAR QUE MONTA `--publish` ────────────────────────────────────
+#
+# ⚠️ POR QUE ISTO PRECISOU VIRAR FUNÇÃO
+#
+# `--publish` era montado em DOIS lugares independentes deste arquivo — no
+# `executar` (run inteiro) e no `publicar_pagina` (uma página). Eles não
+# compartilhavam uma linha de código. Um portão colocado numa das portas deixava
+# a outra aberta, e foi exatamente esse o buraco: o
+# `HANDOFF-PATCH-PUBLICACAO.md` fechava `/publicar/{page}` e não mencionava o
+# `/disparar`, que roda o funil inteiro COM publicação.
+#
+# Com um dono único, acrescentar exigência a `--publish` passa a ser uma edição
+# em um lugar — e "esqueci a outra porta" deixa de ser possível por construção.
+#
+# ## O resíduo, dito por escrito
+#
+# Isto governa as chamadas DESTE backend. Um `funnelforge run ... --publish`
+# digitado num terminal, um cron do servidor do motor ou um teste do próprio
+# motor não passam por aqui. É por isso que o portão DENTRO do motor não é
+# opcional: este é o portão da API, não o do produto inteiro.
+async def _disparar_motor(
+    *,
+    raiz: Path,
+    argumentos: list[str],
+    publicar: bool,
+    autorizacao: str = "",
+) -> asyncio.subprocess.Process:
+    """Dispara o motor como processo. É quem decide se `--publish` entra.
+
+    `autorizacao` é o nome do portão que aprovou a publicação, com a evidência
+    que ele produziu (a impressão do recibo). Ela não vai para a linha de
+    comando — o motor não a lê — e existe para duas coisas: obrigar quem publica
+    a ter passado por um portão, e deixar no log qual foi.
+    """
+    exe = _executavel()
+    cmd = [str(exe), *[str(a) for a in argumentos]]
+    if publicar:
+        if not str(autorizacao or "").strip():
+            raise PublicacaoSemPortao(
+                "Pedido de publicação sem portão: nenhuma avaliação de política "
+                "de destino autorizou esta chamada. Publicação recusada."
+            )
+        cmd.append("--publish")
+        log.info("motor: publicação autorizada por %s", autorizacao)
+    return await asyncio.create_subprocess_exec(
+        *cmd,
+        cwd=str(raiz),                       # o motor depende do diretório atual
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
 
 
 def _achar_run_dir(raiz: Path, carimbo: str) -> Optional[Path]:
@@ -206,11 +272,17 @@ async def executar(
     arquitetura: Dict[str, Any],
     perfil: Dict[str, Any],
     publicar: bool = True,
+    autorizacao: str = "",
 ) -> None:
     """Roda um funil de ponta a ponta. Não levanta: o desfecho vai para a linha.
 
     Chamada em segundo plano. Quem dispara já validou credencial, arquitetura e
     duplicata — aqui é execução, não decisão.
+
+    `autorizacao` é o portão de política que liberou a PUBLICAÇÃO, com a
+    evidência que ele deixou. Sem ela, `publicar=True` vira falha na linha do run
+    e nenhum processo é disparado: quem não sabe dizer quem autorizou não
+    publica. Ver `_disparar_motor`.
     """
     from app.redator.perfil import perfil_para_log
 
@@ -225,7 +297,9 @@ async def executar(
     async with _semaforo:
         proc: Optional[asyncio.subprocess.Process] = None
         try:
-            exe = _executavel()
+            # A checagem do motor vem ANTES de a senha decifrada tocar o disco:
+            # motor ausente não justifica credencial em /tmp nem por um instante.
+            _executavel()
 
             caminho_perfil.write_text(json.dumps(perfil, ensure_ascii=False), encoding="utf-8")
             os.chmod(caminho_perfil, 0o600)
@@ -236,18 +310,13 @@ async def executar(
 
             await _atualizar(supa, run_row_id, {"status": "running"})
 
-            cmd = [str(exe), "run-volc",
-                   str(caminho_arq), "--perfil", str(caminho_perfil),
-                   "--timestamp", carimbo]
-            if publicar:
-                cmd.append("--publish")
-
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                cwd=str(raiz),                       # o motor depende do diretório atual
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            proc = await _disparar_motor(
+                raiz=raiz,
+                argumentos=["run-volc", str(caminho_arq),
+                            "--perfil", str(caminho_perfil),
+                            "--timestamp", carimbo],
+                publicar=publicar,
+                autorizacao=autorizacao,
             )
             _em_execucao[run_row_id] = proc
             # O PID e o carimbo vão para a LINHA, não só para a memória deste
@@ -292,6 +361,12 @@ async def executar(
                 **{k: v for k, v in final.items() if k in _COLUNAS},
             })
         except MotorIndisponivel as exc:
+            await _atualizar(supa, run_row_id, {"status": "failed", "erro": str(exc)})
+        except PublicacaoSemPortao as exc:
+            # Não é explosão, é RECUSA — e ela tem de chegar à linha com esse
+            # nome. Cair no `except Exception` abaixo escreveria "run explodiu"
+            # no log de um run que fez a coisa certa ao não publicar.
+            log.warning("run %s: publicação recusada por falta de portão", run_row_id)
             await _atualizar(supa, run_row_id, {"status": "failed", "erro": str(exc)})
         except Exception as exc:  # noqa: BLE001 — o worker nunca derruba a API
             log.exception("run %s explodiu", run_row_id)
@@ -518,6 +593,7 @@ async def publicar_pagina(
     run_id: str,
     page_number: int,
     perfil: Dict[str, Any],
+    autorizacao: str = "",
 ) -> Dict[str, Any]:
     """Envia ao WordPress UMA página já escrita. Devolve o desfecho, não levanta.
 
@@ -528,6 +604,9 @@ async def publicar_pagina(
     A linha do run é atualizada com o estado inteiro relido do disco — é o mesmo
     `resumo_do_estado` do run completo, então `paginas_publicadas`, custo e
     matriz ficam coerentes com o que o motor gravou.
+
+    `autorizacao` é o portão de política que liberou esta página, com a
+    impressão do recibo. Sem ela nada é disparado — ver `_disparar_motor`.
     """
     raiz = raiz_do_motor()
     tmp = Path(tempfile.mkdtemp(prefix="volc-perfil-"))
@@ -535,19 +614,21 @@ async def publicar_pagina(
     caminho_perfil = tmp / "perfil.json"
 
     try:
-        exe = _executavel()
+        # Mesma ordem do `executar`: confere o motor antes de a senha decifrada
+        # tocar o disco.
+        _executavel()
         caminho_perfil.write_text(json.dumps(perfil, ensure_ascii=False), encoding="utf-8")
         os.chmod(caminho_perfil, 0o600)
 
-        cmd = [str(exe), "resume", run_id,
-               "--only", f"p{page_number}",
-               "--publish", "--perfil", str(caminho_perfil)]
-
         log.info("run %s: publicando a página %s de %s", run_row_id, page_number, run_id)
-        proc = await asyncio.create_subprocess_exec(
-            *cmd, cwd=str(raiz),
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        # ⚠️ `--publish` NÃO é montado aqui. Ele tem um dono só neste arquivo, e
+        # é `_disparar_motor` — ver o comentário lá sobre as duas portas.
+        proc = await _disparar_motor(
+            raiz=raiz,
+            argumentos=["resume", run_id, "--only", f"p{page_number}",
+                        "--perfil", str(caminho_perfil)],
+            publicar=True,
+            autorizacao=autorizacao,
         )
         try:
             saida, _ = await asyncio.wait_for(
@@ -596,6 +677,12 @@ async def publicar_pagina(
                 "erro": motivo or ("O motor rodou e a página não apareceu como "
                                    "publicada. Fim da saída: " + texto[-300:])}
     except MotorIndisponivel as exc:
+        return {"ok": False, "erro": str(exc)}
+    except PublicacaoSemPortao as exc:
+        # Recusa, não falha. O `log.exception` abaixo gravaria um traceback de
+        # algo que funcionou como projetado.
+        log.warning("run %s: página %s não publicada — sem portão",
+                    run_row_id, page_number)
         return {"ok": False, "erro": str(exc)}
     except Exception as exc:  # noqa: BLE001 — o worker nunca derruba a API
         log.exception("run %s: falhei ao publicar a página %s", run_row_id, page_number)

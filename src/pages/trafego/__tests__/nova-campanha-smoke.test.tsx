@@ -9,12 +9,27 @@
  *
  * O resultado vivia só na memória do browser. Agora vive em
  * `pautador_trafego_copy`, e estes testes são o contrato dessa mudança.
+ *
+ * ## O que mudou com o portão de destino pago
+ *
+ * Dois destes testes afirmavam o comportamento ANTIGO e precisaram mudar junto
+ * com ele:
+ *
+ * * o lançamento era barrado por um `Set(['LP_EM_RASCUNHO','URL_PROVISORIA'])`
+ *   escrito no cliente. Ele saiu: quem barra agora é a severidade que o
+ *   servidor declara e o recibo do portão de política. Os dois códigos
+ *   continuam impedindo o lançamento — pelo estado da PUBLICAÇÃO, que é o fato
+ *   que eles descrevem, e não pelo nome deles numa lista do browser;
+ * * "a copy já escrita libera o botão" só valia porque a página nunca olhava o
+ *   destino. Um cockpit em rascunho e sem recibo agora barra, então o caso
+ *   feliz precisa de uma origem publicada e avaliada.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 import type { Cockpit, CopyPersistida } from '@/types/trafego';
+import { reciboApto } from '@/lib/landing-policy/__tests__/recibos';
 
 const { escreverCopy, cockpitDeTrafego, lerCopy } = vi.hoisted(() => ({
   escreverCopy: vi.fn(),
@@ -60,8 +75,24 @@ import NovaCampanhaPage from '../NovaCampanhaPage';
 
 const KW = ['banco pan telefone', 'cartão de crédito caixa telefone'];
 
+/**
+ * A origem APTA: publicada e com recibo de portão no ponto de campanha.
+ *
+ * ⚠️ O recibo entra em `origem` sob `landing_policy_receipt` — a mesma chave de
+ * transporte do backend. Sem ele a página é INDETERMINADA, que é o
+ * comportamento correto e o assunto de um teste abaixo.
+ */
+const ORIGEM_APTA = {
+  status_wp: 'publish',
+  url_final: 'https://creditoup.com.br/cartao-para-negativado',
+  landing_policy_receipt: reciboApto({}, { agora_epoch: Date.now() / 1000 }),
+};
+
 /** O card 73, medido em 18/08/2026 — inclusive os dois avisos que barram. */
-function cockpitDoCard73(avisos = AVISOS_REAIS): Cockpit {
+function cockpitDoCard73(
+  avisos = AVISOS_REAIS,
+  origemExtra: Record<string, unknown> = {},
+): Cockpit {
   return {
     opportunity_id: 73,
     cluster_id: 4,
@@ -73,6 +104,7 @@ function cockpitDoCard73(avisos = AVISOS_REAIS): Cockpit {
       slug: 'cartao', pais: 'BR', idioma: 'pt', idioma_declarado: 'pt-BR',
       vertical: 'financeiro', vertical_declarada: 'financeiro',
       resumo_da_pesquisa: '', fatos: [], tem_texto_da_lp: true,
+      ...origemExtra,
     },
     triagem: {
       analisadas: 100, aprovadas_anuncio: 23, para_conteudo: 25, descartadas: 63,
@@ -152,19 +184,46 @@ describe('NovaCampanhaPage', () => {
     expect(screen.getByText('28,7k')).toBeTruthy();
   });
 
-  it('LP em rascunho e URL provisória BARRAM o lançamento', async () => {
+  it('LP em rascunho BARRA o lançamento — agora pelo estado da publicação', async () => {
+    // O cockpit do card 73 é `status_wp: 'draft'` e sem recibo de política. Os
+    // dois fatos barram, e cada um aparece com o nome dele: uma página em
+    // rascunho não está publicada, e uma página sem recibo não foi avaliada.
     cockpitDeTrafego.mockResolvedValue(cockpitDoCard73());
     lerCopy.mockResolvedValue({ existe: false });
     renderizar();
-    await waitFor(() => expect(screen.getByText(/2 travas impedem o lançamento/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Cartão para Negativado')).toBeTruthy());
 
     const lancar = screen.getByRole('button', { name: /Lançar campanha/ });
     expect((lancar as HTMLButtonElement).disabled).toBe(true);
 
-    // "idioma ajustado" é informação e NÃO pode aparecer junto das travas —
-    // dar a ela o mesmo espaço foi o defeito da versão anterior.
+    // `getAllBy…` porque a faixa do topo e o painel do cartão 01 dizem a mesma
+    // frase — de propósito: a decisão é tomada na barra fixa, longe do painel.
+    expect(screen.getAllByText(/publicar a página no WordPress/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/nenhum recibo de política chegou/).length).toBeGreaterThan(0);
+
+    // ⚠️ E o painel NUNCA afirma nada sobre o revisor do Google.
+    expect(screen.getAllByText(/não lê a decisão do revisor/).length).toBeGreaterThan(0);
+
+    // "idioma ajustado" continua sendo informação recolhida, e não ganha o
+    // espaço de um bloqueio — dar a ela o mesmo peso foi o defeito de 18/08.
     expect(screen.queryByText('Idioma ajustado')).toBeNull();
-    expect(screen.getByText(/1 observação/)).toBeTruthy();
+  });
+
+  it('sem recibo de política o cartão da origem NÃO fica pronto', async () => {
+    // ⚠️ A contraprova do fail-open medido: a linha antiga era
+    // `pronto={status_wp !== 'draft'}`, que marcava a etapa como pronta quando
+    // `status_wp` era `null` — ou seja, quando ninguém tinha lido o WordPress.
+    cockpitDeTrafego.mockResolvedValue(cockpitDoCard73([], { status_wp: null }));
+    lerCopy.mockResolvedValue({ existe: false });
+    renderizar();
+    await waitFor(() => expect(screen.getByText('Cartão para Negativado')).toBeTruthy());
+
+    expect(screen.queryByText('LP no ar')).toBeNull();
+    expect(screen.getByText('destino não avaliado')).toBeTruthy();
+    expect(screen.getAllByText(/ler o status da página no WordPress/).length)
+      .toBeGreaterThan(0);
+    const lancar = screen.getByRole('button', { name: /Lançar campanha/ });
+    expect((lancar as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('sem copy o lançamento continua barrado, mesmo sem nenhuma trava', async () => {
@@ -181,7 +240,10 @@ describe('NovaCampanhaPage', () => {
   it('a copy já escrita aparece AO ABRIR, sem clicar em nada', async () => {
     // ⚠️ É o defeito vivido: clicar, sair, voltar — e não havia nada. O texto
     // custou ~174 s de LLM pago e vivia só na memória do browser.
-    cockpitDeTrafego.mockResolvedValue(cockpitDoCard73([]));
+    // ⚠️ `ORIGEM_APTA` não é conveniência de teste: sem destino publicado e
+    // avaliado o botão fica fechado, e é assim que tem de ser. O que este teste
+    // afirma é sobre a COPY, então o destino precisa sair do caminho — provado.
+    cockpitDeTrafego.mockResolvedValue(cockpitDoCard73([], ORIGEM_APTA));
     lerCopy.mockResolvedValue(copiaPronta());
 
     renderizar();

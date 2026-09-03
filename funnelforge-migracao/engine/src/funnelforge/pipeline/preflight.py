@@ -16,9 +16,16 @@ PASSO que não dependem do texto gerado:
   quando a pesquisa não devolveu nenhum link oficial — `official = linkados ∩
   verificados` é vazio por construção, então o mínimo (1 ou 2) nunca é atingido.
 
+- `plano_de_destino_pago` avalia H1/título/subtítulos/CTAs do PLANO contra a
+  política do destino pago. Ele ignora o texto gerado por construção: a alegação
+  que derrubou a conta ("Saque-Aniversário FGTS Liberado pelo Governo") estava no
+  H1, decidida antes da primeira palavra.
+
 Regra de convivência: só é pré-checado o que ESTÁ na lista de validadores
-daquele passo no `config.yaml`. A LP (`write_p1`, `validators: []`) segue sem
-pré-voo nenhum — o pré-voo não pode inventar exigência que o passo não tem.
+daquele passo no `config.yaml` — o pré-voo não pode inventar exigência que o
+passo não tem. ⚠️ Isto deixou de ser inócuo para a LP: `write_p1.validators`
+não é mais uma lista vazia, e é justamente por o nome estar lá que a LP passou a
+ter pré-voo.
 """
 from __future__ import annotations
 
@@ -46,10 +53,27 @@ def _preflight_official_links(ctx: dict) -> list[Issue]:
     )]
 
 
+def _preflight_plano_de_destino_pago(ctx: dict) -> list[Issue]:
+    """O portão de POLÍTICA sobre o plano: H1, título, subtítulos e CTAs.
+
+    Ele não depende de uma linha do texto gerado — o defeito que derrubou a
+    conta estava no H1 do PLANO, decidido antes da primeira palavra. Rodar aqui
+    é a diferença entre reprovar de graça e reprovar depois de pesquisa + até
+    três redações + juiz.
+
+    Mesma função que o validador do passo executa (`checks.plano_de_destino_pago`),
+    não uma cópia: pré-voo que discorda do passo é pior que pré-voo nenhum.
+    """
+    from funnelforge.pipeline.validators.checks import plano_de_destino_pago
+
+    return plano_de_destino_pago("", ctx)
+
+
 # name do validador no config.yaml -> checagem de pré-voo equivalente
 PREFLIGHT: dict[str, object] = {
     "pagespec": _preflight_pagespec,
     "official_link_density": _preflight_official_links,
+    "plano_de_destino_pago": _preflight_plano_de_destino_pago,
 }
 
 

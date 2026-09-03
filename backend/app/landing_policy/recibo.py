@@ -21,7 +21,11 @@ from typing import Any
 
 from app.landing_policy.contrato import (
     CARIMBO_DETERMINISTICO,
+    EXIGENCIAS_POR_PONTO,
+    POLICY_CONTRACT_VERSION,
     SCHEMA_VERSION,
+    STATUS_CONCLUSIVOS,
+    TODAS_AS_VERIFICACOES,
     carregar_fontes,
     fonte_do_codigo,
     impressao,
@@ -37,6 +41,11 @@ def emitir(
     carimbo: str = CARIMBO_DETERMINISTICO,
     fontes: dict[str, Any] | None = None,
     referencias_de_evidencia: list[str] | None = None,
+    impressao_do_conteudo: str | None = None,
+    escopo_da_impressao: str = "artifact",
+    carimbo_epoch: float | None = None,
+    janela_de_frescor_s: int | None = None,
+    papel_declarado: str = "",
 ) -> dict[str, Any]:
     """Monta o recibo de UMA passagem pelo portão.
 
@@ -78,8 +87,37 @@ def emitir(
         "role": avaliacao.papel.value,
         "url": avaliacao.url,
         "content_sha256": hash_do_conteudo,
+        # A projeção estrutural: é ela que decide deriva, e o byte acima é a
+        # evidência de igualdade. Ver `varredura.impressao_canonica`.
+        "content_fingerprint": impressao_do_conteudo,
+        # ⚠️ DE QUE DOCUMENTO É ESSA IMPRESSÃO.
+        #
+        # "artifact" = o corpo que o motor produziu. "live" = a página que o
+        # WordPress serve, com o tema em volta. São documentos diferentes por
+        # construção, e comparar entre escopos reprovava 100% das páginas
+        # corretas. `varrer_recibo` só compara quando os escopos batem.
+        "fingerprint_scope": escopo_da_impressao,
         "observed_at": carimbo,
+        # ⚠️ O CARIMBO COMPARÁVEL, ao lado do carimbo legível.
+        #
+        # `observed_at` é texto e tem default determinístico de propósito (dois
+        # recibos do mesmo artefato local precisam bater byte a byte). Frescor,
+        # porém, é aritmética: parsear data em três formatos é como o frescor
+        # deixa de valer. `None` significa "esta avaliação não é datável" — e
+        # `varrer_recibo` trata isso como `unavailable`, nunca como recente.
+        "observed_at_epoch": carimbo_epoch,
+        "freshness_window_s": janela_de_frescor_s,
+        # As duas versões, porque elas mudam por motivos diferentes: a do
+        # CONTRATO é a forma da avaliação, a da FONTE é o texto das regras.
+        "policy_contract_version": POLICY_CONTRACT_VERSION,
         "policy_source_version": versao_da_fonte(fontes),
+        # O papel que alguém DECLAROU, ao lado do papel efetivamente avaliado.
+        # Divergir não é erro: no ponto de campanha o papel é FORÇADO, e ver as
+        # duas linhas é como o operador entende por que o rigor subiu.
+        "role_declared": papel_declarado or None,
+        "gate_point_requires": sorted(
+            EXIGENCIAS_POR_PONTO.get(avaliacao.ponto, frozenset())
+        ),
         "policy_sources_consulted": sorted(
             {
                 (r.get("url") or "")
@@ -88,6 +126,49 @@ def emitir(
             }
         ),
         "verdict": avaliacao.veredito.value,
+        # ── COMPLETUDE DA EVIDÊNCIA ────────────────────────────────────────
+        #
+        # Quantas das dez verificações chegaram a um desfecho conclusivo. Sem
+        # isto, um recibo com poucos achados parece um recibo de página limpa —
+        # e a diferença entre "olhei tudo e está limpo" e "não consegui olhar"
+        # é o assunto inteiro deste contrato.
+        "evidence_completeness": {
+            "conclusive": sorted(
+                v.nome for v in avaliacao.verificacoes if v.status in STATUS_CONCLUSIVOS
+            ),
+            "inconclusive": sorted(
+                v.nome for v in avaliacao.verificacoes if v.status not in STATUS_CONCLUSIVOS
+            ),
+            "required_here": sorted(EXIGENCIAS_POR_PONTO.get(avaliacao.ponto, frozenset())),
+            "ratio": (
+                f"{sum(1 for v in avaliacao.verificacoes if v.status in STATUS_CONCLUSIVOS)}"
+                f"/{len(TODAS_AS_VERIFICACOES)}"
+            ),
+        },
+        # ── PRONTIDÃO, EM LINGUAGEM QUE NÃO COLAPSA ESTADOS ────────────────
+        #
+        # `paid_destination_ready` responde uma pergunta estreita. A tela precisa
+        # de mais: "apto segundo o VOLC" não é "publicado", que não é "verificado
+        # ao vivo", que não é "aprovado pelo Google" — e essa última NUNCA é
+        # conhecida por este portão. Colapsá-las num único verde foi como uma
+        # LP com sete links de governo virou destino de campanha.
+        "readiness": {
+            "volc_gate": (
+                "ready" if avaliacao.paid_destination_ready
+                else ("blocked" if avaliacao.bloqueios else "indeterminate")
+            ),
+            "live_verified": any(
+                v.nome == "live_drift" and v.status in STATUS_CONCLUSIVOS
+                for v in avaliacao.verificacoes
+            ),
+            "google_approval": "unknown",
+            "google_approval_note": (
+                "Este portão lê HTML; ele não lê a decisão do revisor do Google. "
+                "'ready' aqui significa apenas: nesta avaliação, neste ponto de "
+                "portão, contra esta versão da política, não sobrou bloqueio nem "
+                "desconhecido."
+            ),
+        },
         "paid_destination_ready": avaliacao.paid_destination_ready,
         "not_ready_reasons": avaliacao.motivos,
         "inventory_hashes": inventarios,

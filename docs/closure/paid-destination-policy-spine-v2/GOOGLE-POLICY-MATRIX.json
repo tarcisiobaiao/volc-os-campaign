@@ -1,0 +1,460 @@
+{
+  "_about": {
+    "authority": "Official Google properties only (support.google.com / policies.google.com / developers.google.com). Community threads, agency blogs and forum posts describe what someone believes happened; they are never authority here.",
+    "consulted_at": "2026-09-03",
+    "consulted_by": "Claude Code Opus, mission hermes-redator-google-ads-policy-incident-v1",
+    "contract_version_note": "policy_contract_version identifica a FORMA do contrato (que verificações existem, o que cada papel exige). policy_source_version é o hash desta matriz (o TEXTO das regras). As duas mudam por motivos diferentes e um recibo precisa das duas para ser reaproveitável com honestidade.",
+    "field_meaning": {
+      "applicability": "why this policy applies to a paid destination page",
+      "confidence": "high | medium | low — confidence that the rule maps to the cited policy",
+      "consulted_at": "date this file's author fetched the URL",
+      "correction": "the concrete correction that clears the rule",
+      "evidence": "what the gate must observe for this rule to fire",
+      "policy": "official policy title as published by Google",
+      "regime": "google_literal = a regra reproduz uma cláusula publicada pelo Google. volc_interno_mais_restritivo = a regra é uma política interna do VOLC, mais dura que a do Google, ancorada na cláusula citada em `url`. Confundir as duas faria o sistema apresentar decisão da casa como proibição da plataforma.",
+      "result": "what was actually observed on the incident destinations on 2026-09-03",
+      "url": "official Google URL consulted"
+    },
+    "generated_copy": "docs/closure/hermes-redator-google-ads-policy-incident-v1/GOOGLE-POLICY-MATRIX.json, produced by scripts/auditar_landing_policy.py --matriz",
+    "purpose": "Canonical policy-source matrix for the paid_destination contract. Every rule code the gate can emit must have an entry here; a rule with no official Google source is an opinion, and an opinion does not block a destination.",
+    "scope_note": "This matrix maps engine rules to policy text. It does NOT establish the literal reason Google suspended any account; that requires the in-account/e-mail suspension notice (see ACCOUNT-EVIDENCE.md)."
+  },
+  "_generated": {
+    "by": "scripts/auditar_landing_policy.py --matriz",
+    "do_not_edit_here": "edit the canonical file next to the code; this copy is rewritten",
+    "from": "backend/app/landing_policy/fontes_politica.json",
+    "policy_source_version": "378f6df6522429fa",
+    "rule_count": 42
+  },
+  "rules": {
+    "AFILIACAO_GOVERNAMENTAL_IMPLICITA": {
+      "applicability": "Google prohibits making it 'seem like you're affiliated with another brand, organization or government entity when you're not'.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Carry an explicit, above-the-fold non-affiliation notice on any page naming a public body, and never route the paid click to a government site through a button.",
+      "evidence": "Government entity mentioned in the visible text with no explicit non-affiliation notice, or a primary button pointing at a government site.",
+      "policy": "Unacceptable business practices",
+      "result": "OBSERVED on /r/antecipacao-saque-aniversario-fgts/ (Caixa mentioned 6x, no non-affiliation block).",
+      "url": "https://support.google.com/adspolicy/answer/15938071"
+    },
+    "ALEGACAO_DE_RESULTADO_IMPROVAVEL": {
+      "applicability": "'Making inaccurate claims or claims that entice the user with an improbable result' is prohibited.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "State conditions and let the reader check them; never promise an outcome the page does not control.",
+      "evidence": "Guaranteed approval, credit 'in minutes', 'sem consulta SPC/Serasa', 'liberado pelo governo' and equivalents.",
+      "policy": "Misrepresentation — Unreliable claims",
+      "result": "OBSERVED in the historical artefacts (plan H1 'Saque-Aniversário FGTS Liberado pelo Governo'; body 'não realiza consultas ao SPC ou Serasa'; 'liberação do dinheiro costuma ocorrer em poucos minutos') AND still live on /r/antecipacao-saque-aniversario-fgts/ on 2026-09-03. NOT OBSERVED on /r/fgts-saque-aniversario/, whose copy was rewritten.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "ALEGACAO_FINANCEIRA_SEM_DIVULGACAO": {
+      "applicability": "'Failure to clearly and conspicuously disclose the payment model or full expense' is prohibited; a page quoting rates and amounts without saying what they are and are not is that failure.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Add an explicit figures disclosure ('valores ilustrativos, sujeitos às regras vigentes; consulte o canal oficial') next to the figures.",
+      "evidence": "Monetary values, rates or credit vocabulary present with no disclosure block.",
+      "policy": "Misrepresentation — Dishonest pricing practices",
+      "result": "OBSERVED on /r/antecipacao-saque-aniversario-fgts/ (32 financial-claim occurrences, no disclosure block at all). NOT OBSERVED on /r/fgts-saque-aniversario/, whose footer carries a 'caráter informativo' statement that the gate accepts as disclosure — a weaker disclosure than the figures deserve, but present.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "ANCORA_INCONGRUENTE_COM_DESTINO": {
+      "applicability": "Link text that promises a subject the destination path does not contain is the in-page form of destination mismatch.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Generate the anchor from the destination H1, not from the funnel step's intent.",
+      "evidence": "No token overlap between anchor text and destination path, with both sides measurable.",
+      "policy": "Destination requirements — Destination mismatch",
+      "result": "OBSERVED live on three of the four sampled destinations (e.g. 'Comparar limites e caminhos para receber' pointing at /rec/bancos-antecipar-fgts-pix-whatsapp-p2/), and recorded by hand in funil-no-ar/INVENTARIO.md on 2026-08-11 ('Promessa do botão ≠ conteúdo entregue').",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "AVISO_NAO_OFICIAL_AUSENTE": {
+      "applicability": "Google auto-generates a 'Not a government website' disclosure for in-scope ads; a destination that talks about public benefits and carries no equivalent notice leaves the reader without that boundary.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Render the non-official notice as a first-screen element on every benefit/document page.",
+      "evidence": "Government/benefit vocabulary present and no non-affiliation notice found in the visible text.",
+      "policy": "Other restricted businesses: Government documents and services",
+      "result": "OBSERVED on /r/antecipacao-saque-aniversario-fgts/.",
+      "url": "https://support.google.com/adspolicy/answer/13156083"
+    },
+    "BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO": {
+      "applicability": "The paid click must land where the ad said it would; a button handing that session to an undeclared third party breaks the promise the ad made.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Buttons may only point at the same site or at a channel the page's own evidence authorises.",
+      "evidence": "A button/CTA whose href host is an undeclared third party.",
+      "policy": "Destination requirements — Destination mismatch",
+      "result": "NOT OBSERVED on the sampled live destinations.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "CADEIA_DE_REDIRECIONAMENTO_EXCESSIVA": {
+      "applicability": "A política de circumventing systems descreve o uso de redirecionamento para levar o visitante a lugar diferente do revisado. Uma cadeia longa também degrada o destino: cada salto é uma chance de o revisor e o visitante verem páginas diferentes.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Apontar o anúncio para a URL canônica final, sem intermediários.",
+      "evidence": "Mais saltos de redirecionamento que o teto configurado até a URL final.",
+      "policy": "Circumventing systems / Destination requirements",
+      "regime": "google_literal",
+      "result": "NOT_OBSERVED nos quatro destinos preservados — zero saltos na leitura ao vivo de 2026-09-03. A regra existe porque a ausência de medição foi o buraco, não porque a cadeia foi observada.",
+      "url": "https://support.google.com/adspolicy/answer/6020954"
+    },
+    "CAMPO_CREDENCIAL_OBSERVADO": {
+      "applicability": "'You can't try to get people to give you their personal information like passwords and credit card numbers by pretending to be a trusted or well-known entity.' A credential field on a benefits page is the literal shape of that description.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Never collect credentials on an ad destination.",
+      "evidence": "An input of type password, or a field named for a password/credential.",
+      "policy": "Unacceptable business practices — Phishing",
+      "result": "NOT OBSERVED — the only form on the sampled destinations is the WordPress site search (input name='s').",
+      "url": "https://support.google.com/google-ads/answer/15936970"
+    },
+    "CONTEUDO_DUPLICADO_ENTRE_DOMINIOS": {
+      "applicability": "Google prohibits 'bypassing enforcement mechanisms and detection by creating variations of ads, domains or content'.",
+      "confidence": "low",
+      "consulted_at": "2026-09-03",
+      "correction": "Keep one operator domain per topic set, or make each domain's content genuinely its own; never re-publish a disapproved route on a second domain.",
+      "evidence": "The same route observed on another domain operated by the same house.",
+      "policy": "Circumventing systems",
+      "result": "OBSERVED as a route-name overlap: /r/pe-de-meia-2026-guia, /r/senai-cursos-gratuitos-2026 and /r/nova-carteira-identidade-nacional-2026 exist as slugs on both creditoup.com.br and portalmundomais.com. Content equality was NOT verified — portalmundomais.com returned HTTP 410 on 2026-09-03.",
+      "url": "https://support.google.com/adspolicy/answer/15938075"
+    },
+    "CONTEUDO_MISTO": {
+      "applicability": "Destinations must be 'safe for users'; an http:// sub-resource on an https page is an unsafe destination experience.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "None required.",
+      "evidence": "src/href using http:// for a real sub-resource (XML namespaces excluded).",
+      "policy": "Destination requirements — Destination experience",
+      "result": "NOT OBSERVED — the twelve http:// occurrences on the destination are all the w3.org SVG namespace.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "CONTEUDO_ORIGINAL_INSUFICIENTE": {
+      "applicability": "Google prohibits 'destination content that is designed for the primary purpose of showing ads' and requires destinations to 'offer unique value to users'.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Keep paid destinations above the floor with content that is theirs, not a summary that exists to push the click onward.",
+      "evidence": "Visible word count below the paid-destination floor.",
+      "policy": "Destination requirements — Insufficient original content",
+      "result": "OBSERVED — 763 to 875 visible words across the four sampled /r/ destinations, against a 600-word floor: /r/antecipacao-saque-aniversario-fgts/ (763), /r/fgts-saque-aniversario/ (819), /r/maquininha-de-cartao-menor-taxa/ (840), /r/nova-carteira-identidade-nacional-2026/ (875) all clear the floor, but with little margin.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "DERIVA_AO_VIVO": {
+      "applicability": "Content that changes after approval is how a reviewed destination stops being the reviewed destination.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Record the approved content hash in the gate receipt at publication, and compare it on every campaign eligibility check.",
+      "evidence": "Live content hash differs from the approved hash.",
+      "policy": "Circumventing systems",
+      "result": "NOT MEASURABLE for the historical publications — no approved hash was recorded at publication time. That gap is itself the finding.",
+      "url": "https://support.google.com/adspolicy/answer/15938075"
+    },
+    "DESTINO_INCONGRUENTE_COM_ANUNCIO": {
+      "applicability": "'Promotions that are not relevant to the destination are not allowed.'",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Bind the campaign's promise to the destination H1 at campaign-creation time.",
+      "evidence": "No token overlap between the declared ad promise and the opening of the destination.",
+      "policy": "Misrepresentation — Unclear relevance",
+      "result": "NOT EVALUATED against live ad copy — ad text was not read in this mission (see ACCOUNT-EVIDENCE.md, no further account reads).",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "DESTINO_NAO_RESPONDE": {
+      "applicability": "A política nomeia literalmente destinos que não funcionam — erro de servidor, página inexistente, conteúdo removido. Um destino que devolve 404 ou 410 ao revisor é o caso exato, e ele é observável na leitura ao vivo.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Apontar o anúncio para uma URL que responde 200, ou pausar a campanha.",
+      "evidence": "Status HTTP da leitura ao vivo fora da faixa aceita (2xx).",
+      "policy": "Destination requirements — Destinations that don't work",
+      "regime": "google_literal",
+      "result": "NOT_OBSERVED nos dois destinos lidos ao vivo em 2026-09-03 (ambos 200). A regra existe porque `status_http` era coletado e não participava de decisão nenhuma — e `volc_ads/policy/spec.py::checar_destino` modelava exatamente isto sem nunca ser chamado, 'por falta de um status HTTP que ninguém coleta'. Agora a barreira 3 coleta.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "DIVERGENCIA_RASTREADOR_USUARIO": {
+      "applicability": "'Showing different content on your website to different people or to Google to try to hide things that might break Google Ads' rules.'",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "None required; keep the comparison running as a standing check.",
+      "evidence": "Two user-agent variants of the same URL producing different HTML hashes.",
+      "policy": "Circumventing systems — Cloaking",
+      "result": "NOT OBSERVED — user and Googlebot user-agents returned byte-identical HTML (sha256 7c674d1d7daf…, 174243 bytes) both in the 00:51 preservation and in the 01:1x re-read on 2026-09-03.",
+      "url": "https://support.google.com/adspolicy/answer/15938075"
+    },
+    "DIVULGACAO_DE_MONETIZACAO_AUSENTE": {
+      "applicability": "'Ads that don't clearly indicate they are advertisements' are prohibited; a monetised page that never says it is monetised leaves the reader unable to tell content from ad.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Keep the monetisation disclosure on every page and make it match the ad stack actually loaded.",
+      "evidence": "No advertising/monetisation disclosure in the visible text.",
+      "policy": "Misrepresentation — Misleading ad design",
+      "result": "OBSERVED on /r/antecipacao-saque-aniversario-fgts/. The other three sampled destinations disclose Google AdSense, while the ad script actually loaded is script.joinads.me — see SCRIPT_TERCEIRO_NAO_DECLARADO.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "FORMULARIO_DADO_SENSIVEL": {
+      "applicability": "Personal-data collection on a page framed around a government benefit is the pattern the phishing policy describes; it demands an explicit declared role and disclosure.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Collect data only on a page declared as conversion_page, with disclosure and privacy policy.",
+      "evidence": "Input collecting CPF/RG/card/income/document upload, or a form posting to an undeclared third-party host.",
+      "policy": "Unacceptable business practices — Phishing",
+      "result": "NOT OBSERVED — no personal-data field on the sampled live destinations.",
+      "url": "https://support.google.com/google-ads/answer/15936970"
+    },
+    "FORMULARIO_SEM_POLITICA_DE_PRIVACIDADE": {
+      "applicability": "A destination that collects data and offers no privacy path is not a safe destination experience.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Link the privacy policy from any page that collects data.",
+      "evidence": "Sensitive field observed and no privacy link/label found.",
+      "policy": "Destination requirements",
+      "result": "NOT OBSERVED.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "IDENTIDADE_CNPJ_DIVERGENTE": {
+      "applicability": "'Making misleading statements, obscuring, or omitting material information about your identity, affiliations, or qualifications is not allowed.'",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Print only the operator's own CNPJ; never a partner's or a placeholder.",
+      "evidence": "A CNPJ printed on the page differs from the operator CNPJ declared to the gate.",
+      "policy": "Misrepresentation — Misleading representation",
+      "result": "NOT OBSERVED — the CNPJ printed on the sampled destinations is consistent (42.724.548/0001-24).",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "IDENTIDADE_CONTATO_AUSENTE": {
+      "applicability": "The phishing FAQ asks for 'updated contact information'; without a contact and privacy path the reader cannot tell who answers for the page.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Link contact and privacy policy from every paid destination.",
+      "evidence": "No contact and/or privacy link or label observed.",
+      "policy": "Unacceptable business practices",
+      "result": "OBSERVED on /r/antecipacao-saque-aniversario-fgts/ (no contact and no privacy path).",
+      "url": "https://support.google.com/adspolicy/answer/15938071"
+    },
+    "IDENTIDADE_CREDENCIAL_NAO_COMPROVADA": {
+      "applicability": "Omitting or obscuring material information about qualifications is prohibited; an unproven licence/authorisation claim is exactly that.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Remove the claim, or attach the document that proves it before publication.",
+      "evidence": "Text claims licence, accreditation, official partnership or banking-correspondent status.",
+      "policy": "Misrepresentation — Misleading representation",
+      "result": "NOT OBSERVED on the sampled live destinations.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "IDENTIDADE_OPERADOR_AUSENTE": {
+      "applicability": "Google describes scamming users by 'hiding or misrepresenting info about your business' and, in the phishing FAQ, asks advertisers to keep 'a clear explanation of what your company does, like on an About us page'.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Render the operator identity block (legal name + CNPJ + about + contact) on every paid destination, not only on some.",
+      "evidence": "No CNPJ and no about+contact block observed in the visible text of the destination.",
+      "policy": "Unacceptable business practices",
+      "result": "OBSERVED on https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/ (no CNPJ, no non-affiliation block). ABSENT on /r/fgts-saque-aniversario/, /r/maquininha-de-cartao-menor-taxa/ and /r/nova-carteira-identidade-nacional-2026/, which carry CNPJ 42.724.548/0001-24.",
+      "url": "https://support.google.com/adspolicy/answer/15938071"
+    },
+    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC, MAIS RESTRITIVA QUE A DO GOOGLE. O Google NÃO proíbe literalmente hyperlink externo em página de destino; ele proíbe fazer parecer que existe vínculo com outra marca, órgão ou governo, e proíbe a página-ponte que só encaminha o clique. A âncora oficial desta regra é essa cláusula. A decisão de banir TODO hyperlink externo clicável no corpo visível e no CTA de um paid_destination é do VOLC, tomada depois de sete links caixa.gov.br de âncora numérica terem ido ao ar na URL que a conta suspensa anunciava. Uma regra que dependesse de julgar caso a caso qual link 'sugere vínculo' já falhou uma vez; esta não depende.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Citar a fonte em prosa e mantê-la no dossiê de evidência. Em editorial_solution / organic_article a referência externa continua permitida — o papel da página é que decide, e o achado é registrado nos dois casos.",
+      "evidence": "Link clicável (<a href>) cujo host resolvido não é o domínio canônico da própria página, no corpo visível ou em CTA. Não conta: âncora interna (#), link relativo, mesmo domínio, mailto/tel, e recurso técnico (img/script/font), que não é navegação do leitor.",
+      "policy": "Unacceptable business practices / Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "OBSERVED em /r/fgts-saque-aniversario/ (sete links caixa.gov.br) e em /r/antecipacao-saque-aniversario-fgts/. A regra anterior só barrava host NÃO CLASSIFICADO: um host de governo com âncora descritiva, ou uma fonte de pesquisa declarada, passavam em silêncio no destino pago.",
+      "url": "https://support.google.com/adspolicy/answer/15938071"
+    },
+    "LINK_EXTERNO_NAO_CLASSIFICADO": {
+      "applicability": "Destinations must be 'easy to navigate and safe for users'; an outbound host nobody declared cannot be asserted to be either.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Declare the adtech and author hosts the site legitimately uses, and remove the rest.",
+      "evidence": "Outbound host that is not the site itself, not a government domain, not declared adtech and not backed by the page's own research evidence.",
+      "policy": "Destination requirements",
+      "result": "OBSERVED on all four sampled destinations. www.fabiolobo.com.br is linked from /r/fgts-saque-aniversario/; script.joinads.me is declared by dns-prefetch and preload on every sampled page. Neither host is declared anywhere in the repository.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "LINK_GOVERNO_COM_ANCORA_DE_VALOR": {
+      "applicability": "Anchoring a bare figure to a government homepage makes the reader attribute the figure to that body — a misleading statement about affiliation and sourcing made by structure rather than by words.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Cite the source in prose with a descriptive anchor ('regras do FGTS no site da Caixa'), never wrap a figure in the link.",
+      "evidence": "An <a> whose href host is a government domain and whose anchor text is only a number, percentage, amount or deadline.",
+      "policy": "Misrepresentation — Misleading representation",
+      "result": "OBSERVED — 7 occurrences on https://creditoup.com.br/r/fgts-saque-aniversario/: anchors '40 %', '90 dias', '5 %', '50 %', '2900.00 R$', '5 saques anuais' all pointing at https://www.caixa.gov.br/.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "MARCA_GOVERNAMENTAL_COM_DESTINO_DIVERGENTE": {
+      "applicability": "Google prohibits making it 'seem like you're affiliated with another brand, organization or government entity when you're not'.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Do not use government/brand names as anchor text for non-official domains; label third-party/editorial links by their real destination.",
+      "evidence": "Anchor text names Caixa/gov.br/government entity but href host is not a government host.",
+      "policy": "Unacceptable business practices",
+      "result": "Counterproof coverage; not observed as a live blocker on the preserved FGTS page because Caixa anchors pointed to caixa.gov.br.",
+      "url": "https://support.google.com/adspolicy/answer/15938071"
+    },
+    "MARCA_TERCEIRA_SEM_LASTRO": {
+      "applicability": "Presenting a third-party brand as a partner channel without evidence omits material information about affiliations.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Name a third-party brand only as reporting, never as a partner channel, unless the partnership is documented.",
+      "evidence": "A partnership frame ('banco parceiro, como o X') naming a proper noun with no declared host to back it.",
+      "policy": "Misrepresentation — Misleading representation",
+      "result": "OBSERVED live on /r/antecipacao-saque-aniversario-fgts/ on 2026-09-03 ('autorizar um banco parceiro, como o Banco Bmg ou o Santander') and in the historical artefact funnelforge-migracao/referencia/run-fgts-producao, which carries the same sentence.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    },
+    "OFUSCACAO_DE_SCRIPT_OBSERVADA": {
+      "applicability": "Dynamic code construction is how content is hidden from review; it is worth recording even when benign.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "None required for the attributed plugin; keep the check so an unattributed occurrence surfaces.",
+      "evidence": "eval(, new Function( or String.fromCharCode( in an inline script body.",
+      "policy": "Circumventing systems",
+      "result": "OBSERVED and ATTRIBUTED — String.fromCharCode and eight atob( calls on /r/fgts-saque-aniversario/ all belong to the ad-rotation plugin's ai_* namespace (ai_front, ai-rotate), decoding its own data-info/data-shares/data-time attributes. No network exfiltration observed in the decoded usage.",
+      "url": "https://support.google.com/adspolicy/answer/15938075"
+    },
+    "PAGINA_PONTE": {
+      "applicability": "'Destinations that are solely designed to send users elsewhere' are disapproved.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Keep the destination's own article substantial relative to the number of onward buttons.",
+      "evidence": "Button-to-word ratio above the paid-destination limit.",
+      "policy": "Destination requirements — Bridge pages",
+      "result": "NOT OBSERVED on the four sampled destinations: button-to-word ratios ran 0.0079-0.0085 against a 0.03 limit. The rule stays because the /r/ -> /rec/ shape is exactly what it watches.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "RECIBO_DE_APROVACAO_AUSENTE": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O Google exige que o destino funcione e corresponda ao anúncio; ele não exige recibo nenhum. O recibo é o mecanismo do VOLC para saber QUAL conteúdo foi aprovado e sob QUAL versão de política — sem ele, `DERIVA_AO_VIVO` é literalmente immensurável, e foi.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Gravar o recibo do portão 2 na publicação e resolvê-lo pela URL canônica antes de a campanha usar o destino.",
+      "evidence": "Elegibilidade de campanha pedida para uma URL sem recibo de aprovação resolvível (nenhum recibo, ou recibo de outra URL canônica).",
+      "policy": "Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "OBSERVED — nenhum dos quatro destinos preservados tinha hash aprovado gravado na publicação. `DERIVA_AO_VIVO` saiu `unavailable` nos quatro.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "RECIBO_DE_APROVACAO_VENCIDO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. Uma página no ar muda sem avisar: plugin, tema, rotação de anúncio, edição manual no WordPress. Um recibo antigo descreve um conteúdo que pode não existir mais. Frescor não é burocracia: é a diferença entre 'estava apto' e 'está apto'.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Reavaliar o destino ao vivo e emitir recibo novo antes de usar em campanha.",
+      "evidence": "Recibo cuja observação é mais velha que a janela de frescor configurada.",
+      "policy": "Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "NOT_OBSERVED — não havia recibo nenhum para envelhecer.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "RECIBO_DE_OUTRO_CONTEUDO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. Um recibo aprova UM conteúdo, não uma URL para sempre. Se o `content_fingerprint` do recibo não bate com a impressão do que está no ar, o recibo é de outra coisa — e aceitar isso transformaria a aprovação numa credencial transferível.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Resolver o recibo pela URL canônica correta e reavaliar ao vivo.",
+      "evidence": "Recibo cujo `content_fingerprint` (ou, sem ele, `content_sha256`) diverge do que foi observado nesta leitura.",
+      "policy": "Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "OBSERVED na revisão adversarial cruzada: um recibo com fingerprint de outra página satisfazia a verificação e a página ficava elegível.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "RECIBO_DE_POLITICA_DESATUALIZADO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O Google publica atualização de política com data de efeito — Government documents and services muda em 05/10/2026. Um recibo emitido contra a matriz anterior não prova nada sobre a regra nova, e reaproveitá-lo em silêncio é a forma mais barata de um sistema mentir sobre sua própria cobertura.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Reavaliar contra a matriz vigente e emitir recibo novo.",
+      "evidence": "Recibo cujo `policy_source_version` (hash da matriz) ou `policy_contract_version` difere do vigente.",
+      "policy": "Advertising policies — policy updates",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "NOT_OBSERVED — a versão de contrato v2 é a primeira a existir.",
+      "url": "https://support.google.com/adspolicy/answer/6008942"
+    },
+    "RECIBO_NAO_APROVA_O_DESTINO": {
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O recibo existe, é desta versão de política e está dentro da janela de frescor — e diz que a página foi REPROVADA. Conferir a metadata do recibo sem ler o veredito dele é o erro mais sutil possível: o portão fica verde por causa de um artefato que diz vermelho.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Reavaliar o destino e emitir recibo que efetivamente aprove.",
+      "evidence": "Recibo resolvido cujo `paid_destination_ready` não é `true`.",
+      "policy": "Destination requirements",
+      "regime": "volc_interno_mais_restritivo",
+      "result": "OBSERVED na revisão adversarial cruzada desta sprint: um recibo com `paid_destination_ready: false` e um bloqueio listado satisfazia a verificação `approval_receipt` e a página ficava elegível.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "REDIRECIONAMENTO_CROSS_DOMAIN": {
+      "applicability": "Google prohibits 'using click trackers... to redirect people to websites with content prohibited by Google Ads' policies'.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Never let a paid destination leave its declared domain by redirect.",
+      "evidence": "A redirect hop whose host leaves the declared domain.",
+      "policy": "Circumventing systems — Redirect abuse",
+      "result": "NOT OBSERVED.",
+      "url": "https://support.google.com/adspolicy/answer/15938075"
+    },
+    "REDIRECIONAMENTO_OBSERVADO": {
+      "applicability": "Redirects that do not keep the ad's declared domain break the destination contract; even same-domain redirects are worth recording on a paid destination.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Serve the paid destination directly at the URL declared in the ad.",
+      "evidence": "One or more redirect hops observed while fetching the destination.",
+      "policy": "Destination requirements — Destination mismatch",
+      "result": "NOT OBSERVED — zero redirect hops on https://creditoup.com.br/r/fgts-saque-aniversario/ on 2026-09-03.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "SCRIPT_REDIRECIONA_CLIENT_SIDE": {
+      "applicability": "Google policies on circumventing systems include redirect/cloaking behavior; client-side redirects after load are destination behavior that must not bypass review.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Remove client-side redirects from paid destinations; if a redirect is required, declare and measure it server-side before approval.",
+      "evidence": "Inline or external script body contains window/document location assignment, location.href assignment, or location.replace().",
+      "policy": "Circumventing systems",
+      "result": "NOT OBSERVED in the initial preserved sample unless stated by the specific receipt.",
+      "url": "https://support.google.com/adspolicy/answer/15938075"
+    },
+    "SCRIPT_TERCEIRO_NAO_DECLARADO": {
+      "applicability": "Third-party executable code on a paid destination is a security and destination-experience surface; undeclared hosts can change page behavior after review and must fail closed for paid_destination.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Declare and justify required third-party script/adtech hosts for the page, or remove the script/preload/iframe before eligibility.",
+      "evidence": "Script/iframe host that is neither the site, nor a Google adtech host, nor declared.",
+      "policy": "Destination requirements — Destination experience",
+      "result": "OBSERVED — script.joinads.me/myad26424.js loaded as a module on all four sampled destinations, while the on-page disclosure names Google AdSense.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "SERVICE_WORKER_OU_PUSH_OBSERVADO": {
+      "applicability": "Google requires destinations that are not 'unnecessarily difficult or frustrating to navigate' and expects Better Ads Standards compliance; a push prompt on arrival is the first thing a reviewer meets.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Delay or disable the push prompt on paid destinations so the reviewer and the paid visitor meet the content first.",
+      "evidence": "Service worker, Firebase messaging or push-permission vocabulary observed.",
+      "policy": "Destination requirements — Destination experience",
+      "result": "OBSERVED — the ai-web-push plugin with Firebase messaging is present on all four sampled destinations, with AI_WEB_PUSH_MODAL_DELAY = 0 and AI_WEB_PUSH_ALWAYS_SHOW_MODAL = false.",
+      "url": "https://support.google.com/adspolicy/answer/6368661"
+    },
+    "SERVICO_GOVERNAMENTAL_RESTRITO": {
+      "applicability": "Only certified governments and authorized providers may advertise direct acquisition of in-scope government documents and services; an authorized provider must be linked from an official government website.",
+      "confidence": "medium",
+      "consulted_at": "2026-09-03",
+      "correction": "Keep these pages strictly explanatory, drop acquisition verbs, or obtain certification/authorized-provider status before advertising them.",
+      "evidence": "In-scope document/service vocabulary plus an acquisition verb aimed at the reader.",
+      "policy": "Other restricted businesses: Government documents and services",
+      "result": "OBSERVED by the gate on https://creditoup.com.br/r/nova-carteira-identidade-nacional-2026/ (national identity document plus an acquisition verb aimed at the reader). The matching ads on the portalmundomais.com copy of that route carry APPROVED_LIMITED in the sanitized account evidence — the only literal Google policy signal available for this category.",
+      "url": "https://support.google.com/adspolicy/answer/13156083"
+    },
+    "TITULO_SUGERE_ORIGEM_OFICIAL": {
+      "applicability": "'Make it seem like you're affiliated with another brand, organization or government entity when you're not.' O H1 e o title são a promessa que o anúncio compra: eles são lidos antes de qualquer rodapé. Um aviso de não-vínculo no pé da página não desfaz uma manchete que diz que o governo liberou algo — o leitor já decidiu no primeiro segundo.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Reescrever o título sem sugerir que a página é o canal oficial ou que o órgão liberou algo por meio dela, e avaliar o PLANO antes de escrever.",
+      "evidence": "Verbo/moldura de oficialização ('liberado pelo governo', 'site oficial', 'governo libera', 'consulta oficial', 'portal oficial') no H1, no title ou num subtítulo, junto de menção a órgão público.",
+      "policy": "Unacceptable business practices — Misrepresenting affiliation",
+      "regime": "google_literal",
+      "result": "OBSERVED no artefato histórico do funil FGTS: H1 'Saque-Aniversário FGTS Liberado pelo Governo'. O portão de conteúdo (`calm_utility`) bania a expressão no CORPO e olhava depois do ponto em que o defeito nasceu — o plano. Ver test_landing_policy_regressao_fgts.py.",
+      "url": "https://support.google.com/adspolicy/answer/15938071"
+    },
+    "VALOR_MONETARIO_MALFORMADO": {
+      "applicability": "A machine-formatted amount reads to the visitor as an official figure while being visibly not written by a person; it is an inaccurate claim in presentation.",
+      "confidence": "high",
+      "consulted_at": "2026-09-03",
+      "correction": "Format currency as R$ 2.900,00 at generation time and block publication when the malformed shape appears.",
+      "evidence": "Amount that does not match pt-BR currency formatting.",
+      "policy": "Misrepresentation — Unreliable claims",
+      "result": "OBSERVED — '2900.00 R$' rendered twice inside a caixa.gov.br anchor on /r/fgts-saque-aniversario/.",
+      "url": "https://support.google.com/adspolicy/answer/6020955"
+    }
+  }
+}

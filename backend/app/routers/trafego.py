@@ -40,6 +40,7 @@ import logging
 import pathlib
 import re
 import sys
+import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Annotated, Any, Dict, List, Optional
 
@@ -49,6 +50,20 @@ from pydantic import (BaseModel, ConfigDict, Field, field_validator,
 
 from app.services.supabase_service import SupabaseService
 from app.config import get_settings
+# ⚠️ No topo, pelo MESMO motivo de `prontidao` logo abaixo: desde 03/09/2026 as
+# duas rotas dependem da política de destino para RECUSAR, e um `ImportError`
+# tardio num caminho de escrita viraria 500 depois de o recibo já existir. Os
+# dois pacotes são domínio puro — `landing_policy` lê HTML que já está na mão e
+# `publisher_quality.fetch` só é CHAMADO dentro do portão, nunca no import.
+from app.landing_policy import (
+    JANELA_DE_FRESCOR_PADRAO_S,
+    POLICY_CONTRACT_VERSION,
+    PaginaObservada,
+    elegibilidade_de_destino_de_campanha,
+    impressao_canonica,
+    recibo_da_url,
+)
+from app.publisher_quality import fetch as pqf
 from app.trafego import (canario, capacidades as cap,
                          contrato_canais as ccan, escopo,
                          inteligencia_lab, ledger as led,
@@ -2433,6 +2448,428 @@ def _recusa_de_canal(canal: Any, exc: Exception) -> Dict[str, Any]:
     }
 
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# BARREIRA 3 — O DESTINO, LIDO AO VIVO, ANTES DE O SELO VALER
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ ATÉ 03/09/2026 AS DUAS ROTAS NÃO OLHAVAM O DESTINO, E O BURACO ERA
+# ESTRUTURAL, NÃO UM ESQUECIMENTO.
+#
+# `url_final` chega no corpo de `/provar` como STRING, atravessa `Escolha` até o
+# `Brief` e sai no anúncio. `_impressao_aprovavel` faz hash do payload — então a
+# impressão idêntica em `/provar` e `/subir` prova que o PEDIDO não mudou, e não
+# prova nada sobre o que aquele endereço serve AGORA. Entre as duas requisições
+# cabe uma edição no WordPress, um plugin novo, um redirect, um cloak.
+#
+# E `volc_ads/pautador_ponte.montar_brief` deixa uma `url_final` colada à mão
+# DESARMAR os bloqueadores `SEM_LP`/`SEM_FUNIL` e VENCER a URL derivada do funil
+# publicado, validada só por `startswith("https://")`. Como `/provar` é
+# `exigir_usuario` e não `exigir_admin`, um não-admin cunhava uma impressão
+# aprovável para um endereço que o VOLC nunca gerou nem publicou — pulando as
+# barreiras 1 e 2 por construção. O portão abaixo não desarma nada e não
+# reescreve o Pautador: ele avalia a URL EFETIVA do brief, e a URL manual chega
+# aqui sem recibo de aprovação em `paginas_publicadas`. Faltar reprova.
+#
+# ⚠️ O QUE ESTE PORTÃO NÃO É. Ele não lê a decisão do revisor do Google, não
+# consulta a conta e não escreve em lugar nenhum: são GETs públicos, sem cookie
+# e sem autenticação, sobre a página que a própria casa publicou.
+
+#: Teto de CADA leitura pública do destino. Curto porque são três em sequência e
+#: elas ficam na frente de uma ação humana; a soma tem teto próprio abaixo.
+TIMEOUT_LEITURA_DO_DESTINO_S = 8
+
+#: Teto das três leituras somadas, mais a avaliação.
+#:
+#: ⚠️ `asyncio.wait_for` sobre `asyncio.to_thread` para de ESPERAR, não cancela a
+#: thread — o mesmo custo que `_plano_de_mensuracao` já declara aqui em cima. A
+#: diferença é que ali sobra quota do Google e aqui sobra um GET público
+#: read-only, que termina sozinho e não muta nada.
+TIMEOUT_DESTINO_S = 30.0
+
+#: Os três user-agents da leitura, e o motivo de serem TRÊS e não dois.
+#:
+#: `varrer_redirecionamento` só consegue falar de cloaking quando existe uma
+#: variante ROTULADA como rastreador e pelo menos uma humana; sem o par, a
+#: verificação sai `unavailable` e o destino reprova por ausência — que é o
+#: desfecho correto para "não deu para olhar", e não o que se quer no caminho
+#: normal. Duas leituras bastariam para isso.
+#:
+#: A TERCEIRA existe por causa do falso positivo que a própria varredura
+#: documenta: com UMA variante humana só, qualquer diferença entre ela e a do
+#: rastreador vira acusação de cloaking — inclusive a que vem de layout por
+#: dispositivo. Foi assim que `/r/fgts-saque-aniversario/` quase virou uma
+#: acusação contra evidência que dizia o contrário (o Googlebot recebeu HTML
+#: byte a byte igual ao do desktop; desktop e mobile é que diferiam em 27 bytes
+#: de um token rotativo). Com duas variantes humanas, "desktop ≠ mobile" vai
+#: para o inventário como observação de dispositivo e não vira achado.
+#:
+#: ⚠️ O USER-AGENT DIZ QUEM ESTÁ LENDO ANTES DE DIZER O QUE ELE PARECE. O token
+#: de rastreador está lá porque é ele que faz o cloak se revelar — um servidor
+#: que troca a página para o Googlebot não a troca para "VOLC-…" — e o token de
+#: dispositivo está lá porque é por ele que o WordPress decide servir o tema
+#: móvel (`wp_is_mobile` casa `Mobile`/`Android`). A identidade do VOLC vem
+#: primeiro na string para que o dono do site — a própria casa — veja quem leu.
+LEITURAS_DO_DESTINO: tuple[tuple[str, str], ...] = (
+    ("usuario_desktop", pqf.USER_AGENT_PADRAO),
+    ("usuario_movel", f"{pqf.USER_AGENT_PADRAO} (Mobile; Android)"),
+    ("googlebot",
+     f"{pqf.USER_AGENT_PADRAO} (compatible; Googlebot/2.1; "
+     "+http://www.google.com/bot.html)"),
+)
+
+#: A variante que vale como "a página" para as varreduras que leem o HTML.
+ROTULO_PRINCIPAL = LEITURAS_DO_DESTINO[0][0]
+
+
+class DestinoIlegivel(RuntimeError):
+    """A leitura ao vivo do destino não concluiu.
+
+    Levantada e TRADUZIDA em recusa, nunca engolida: "não consegui olhar" é o
+    que o portão transforma em desconhecido, e desconhecido nunca fica verde.
+    """
+
+
+def _ler_destino_ao_vivo(url: str) -> dict[str, dict[str, Any]]:
+    """As três leituras públicas do destino, ou `DestinoIlegivel`.
+
+    `fetch_public_https_chain` já falha fechado em host privado, em salto para
+    fora do HTTPS público e em resposta acima do teto de bytes — cada uma dessas
+    é motivo de recusa, não de silêncio. Ela TOLERA resposta de erro HTTP de
+    propósito (o status é o dado), e é aqui que o status vira recusa: um destino
+    que não serve a página não é destino, e avaliar o corpo de um 404 diria
+    coisas verdadeiras sobre a página errada.
+    """
+    leituras: dict[str, dict[str, Any]] = {}
+    for rotulo, agente in LEITURAS_DO_DESTINO:
+        try:
+            leitura = pqf.fetch_public_https_chain(
+                url, user_agent=agente, timeout=TIMEOUT_LEITURA_DO_DESTINO_S)
+        except Exception as exc:  # noqa: BLE001 — traduzida abaixo, nunca engolida
+            raise DestinoIlegivel(
+                f"a leitura {rotulo!r} do destino não concluiu "
+                f"({type(exc).__name__}: {str(exc)[:160]})") from exc
+        status = int(leitura.get("status") or 0)
+        if status != 200:
+            raise DestinoIlegivel(
+                f"a leitura {rotulo!r} do destino respondeu HTTP {status}. Um "
+                "destino que não serve a página não é um destino elegível.")
+        leituras[rotulo] = leitura
+    return leituras
+
+
+def _pagina_do_destino(url: str, leituras: dict[str, dict[str, Any]], *,
+                       recibo: Optional[dict[str, Any]],
+                       promessa: str, papel_declarado: str,
+                       agora: float) -> PaginaObservada:
+    """Monta a `PaginaObservada` a partir do que as leituras devolveram.
+
+    `leituras` vazio é o caso da leitura que falhou, e ele NÃO é tratado à
+    parte: a página sai sem hash observado, sem variantes e com
+    `saltos_redirecionamento=None`, que é exatamente como o contrato representa
+    "não foi medido". As verificações ao vivo saem `unavailable`, viram
+    desconhecido no ponto de campanha e reprovam. A ausência atravessa o contrato
+    em vez de virar um ramo `if` que alguém pode inverter depois.
+    """
+    principal = leituras.get(ROTULO_PRINCIPAL) or {}
+    html = str(principal.get("html") or "")
+
+    # ⚠️ A IMPRESSÃO CANÔNICA, E NÃO O SHA256 DO BYTE, COMO VALOR DA VARIANTE.
+    #
+    # O campo se chama `variantes_sha256` e recebe um sha256 — só que o da
+    # PROJEÇÃO ESTRUTURAL, não o dos bytes. A comparação entre variantes é de
+    # igualdade, e comparar bytes aqui produziria acusação de cloaking em toda
+    # página com nonce, token rotativo de push ou carimbo de cache: três
+    # leituras, três hashes, nenhum igual ao outro. `impressao_canonica` existe
+    # exatamente para isso e a sua docstring fecha o argumento — "duas páginas
+    # com a mesma impressão canônica recebem, por construção, o mesmo veredito",
+    # logo servir uma no lugar da outra não muda o que o revisor veria.
+    #
+    # Os bytes não somem: `sha256_observado` continua sendo o do corpo lido, e a
+    # resposta carrega os dois hashes por variante.
+    variantes = {
+        rotulo: impressao_canonica(str(leitura.get("html") or ""))
+        for rotulo, leitura in leituras.items()
+    }
+
+    return PaginaObservada(
+        url=url,
+        html=html,
+        status_http=int(principal.get("status") or 0) or None,
+        # `None` é "não foi medido"; `[]` é "medido, sem salto". A diferença é o
+        # que separa `unavailable` de `absent_confirmed` lá dentro.
+        saltos_redirecionamento=(list(principal.get("hops") or []) if leituras
+                                 else None),
+        cabecalhos=dict(principal.get("headers") or {}),
+        variantes_sha256=variantes,
+        sha256_observado=str(principal.get("sha256") or "") or None,
+        # ⚠️ SÓ UM RECIBO DE ESCOPO `live` SERVE COMO LADO ESQUERDO DA DERIVA.
+        #
+        # O recibo do portão 2 impressiona o ARTEFATO — o corpo que o motor
+        # escreveu. A leitura aqui é a página no ar: o mesmo corpo DENTRO do
+        # tema do WordPress, com cabeçalho, menu, rodapé e slots de anúncio.
+        # São dois documentos diferentes por construção.
+        #
+        # Medido antes desta linha: comparar os dois emitia `DERIVA_AO_VIVO` em
+        # 100% das páginas reais. O `/provar` retinha o selo sempre e o `/subir`
+        # devolvia 409 sempre — nenhuma página jamais viraria destino de
+        # campanha. O próprio motor escreve o aviso contra isso na linha em que
+        # grava o recibo, e esta função fazia exatamente o que o aviso proíbe.
+        #
+        # Enquanto não existir um recibo carimbado SOBRE a leitura ao vivo, a
+        # deriva é honestamente inobservável — e `live_drift` está em
+        # `NAO_APLICAVEL_E_DESCONHECIDO_EM`, então essa ausência REPROVA a
+        # elegibilidade em vez de liberá-la em silêncio. É fail-closed, não
+        # isenção.
+        sha256_aprovado=(
+            str((recibo or {}).get("content_sha256") or "") or None
+            if str((recibo or {}).get("fingerprint_scope") or "artifact") == "live"
+            else None
+        ),
+        impressao_aprovada=(
+            str((recibo or {}).get("content_fingerprint") or "") or None
+            if str((recibo or {}).get("fingerprint_scope") or "artifact") == "live"
+            else None
+        ),
+        recibo_de_aprovacao=recibo,
+        avaliado_em_epoch=agora,
+        # ⚠️ A JANELA É A DO CONTRATO, NUNCA A QUE O RECIBO DECLARA.
+        #
+        # O recibo carrega `freshness_window_s`, e ler dali deixaria a evidência
+        # escolher por quanto tempo ela mesma continua valendo — uma linha de
+        # `paginas_publicadas` com janela de um ano nunca venceria. Quem decide
+        # há quanto tempo uma observação ao vivo ainda descreve o que está no ar
+        # é a política, não o artefato que ela avalia.
+        janela_de_frescor_s=JANELA_DE_FRESCOR_PADRAO_S,
+        promessa_do_anuncio=promessa,
+        papel_declarado=papel_declarado,
+        origem="leitura_publica_ao_vivo",
+        observado_em=_agora_iso(),
+    )
+
+
+@dataclasses.dataclass(frozen=True)
+class DestinoDeCampanha:
+    """O desfecho da barreira 3 para UMA URL, pronto para virar resposta."""
+
+    url: str
+    avaliacao: Any
+    detalhe_da_leitura: str = ""
+    variantes: tuple[dict[str, Any], ...] = ()
+    #: Havia recibo de aprovação resolvível para esta URL? É diferente de "o
+    #: recibo serve": um recibo vencido ou de política antiga está PRESENTE e
+    #: ainda assim reprova, e a operação conserta cada caso de um jeito.
+    recibo_presente: bool = False
+    #: Recusas que nascem AQUI, fora do contrato de política. Elas SOMAM rigor
+    #: ao predicado do contrato; nunca o substituem e nunca o afrouxam.
+    motivos_do_portao: tuple[str, ...] = ()
+
+    @property
+    def elegivel(self) -> bool:
+        """⚠️ `paid_destination_ready`, e NUNCA `not avaliacao.bloqueios`.
+
+        Testar só bloqueios ignora os DESCONHECIDOS — verificação exigida que
+        não pôde ser concluída —, e foi assim que o handoff anterior deixaria
+        publicar uma página cuja varredura falhou. As duas listas dizem coisas
+        diferentes e só uma delas some quando o software quebra.
+
+        ⚠️ O `and` com `motivos_do_portao` só consegue REPROVAR. Ele existe
+        porque duas recusas nascem nesta camada e não na política: a leitura que
+        não concluiu (o contrato já reprova por ausência, e a segunda tranca não
+        custa nada) e o recibo que não declara aprovação. Nenhum caminho aqui
+        transforma um `False` do contrato em `True`.
+        """
+        return (
+            bool(self.avaliacao.paid_destination_ready)
+            and not self.motivos_do_portao
+            and not self.detalhe_da_leitura
+        )
+
+    @property
+    def motivos(self) -> list[str]:
+        """Por que não passou, com as recusas desta camada em primeiro lugar.
+
+        Quando a leitura não concluiu, os desconhecidos que o portão lista são
+        consequência dela; mostrar a causa antes do efeito é o que evita o
+        operador sair procurando defeito na página que ninguém conseguiu ler.
+        """
+        proprios = [m for m in (self.detalhe_da_leitura, *self.motivos_do_portao) if m]
+        return proprios + list(self.avaliacao.motivos)
+
+    def para_json(self) -> dict[str, Any]:
+        """A evidência é ESTRUTURAL: códigos, hashes curtos e contagens.
+
+        Nada de HTML aqui dentro. O portão lê página pública; devolvê-la na
+        resposta faria a API do VOLC republicar conteúdo que ela só observou.
+        """
+        avaliacao = self.avaliacao
+        return {
+            "url": self.url,
+            "elegivel": self.elegivel,
+            "veredito": avaliacao.veredito.value,
+            "papel": avaliacao.papel.value,
+            "ponto": avaliacao.ponto.value,
+            "politica": POLICY_CONTRACT_VERSION,
+            "motivos": self.motivos,
+            "bloqueios": [a.codigo for a in avaliacao.bloqueios],
+            "riscos": [a.codigo for a in avaliacao.riscos],
+            "desconhecidos": list(avaliacao.desconhecidos),
+            "leitura_ao_vivo": {
+                "concluida": not self.detalhe_da_leitura,
+                "detalhe": self.detalhe_da_leitura,
+                "variantes": list(self.variantes),
+            },
+            "recibo_de_aprovacao": {"presente": self.recibo_presente},
+        }
+
+
+def _recusas_do_recibo(recibo: Optional[dict[str, Any]]) -> tuple[str, ...]:
+    """A pergunta que `varrer_recibo` não faz: o recibo APROVA?
+
+    ⚠️ Ela é feita aqui, e não no contrato, porque o contrato não é meu para
+    editar — e porque a pergunta é desta camada: `varrer_recibo` confere que o
+    recibo EXISTE, que é desta política e que ainda está fresco. Um recibo que
+    passa nos três e diz `paid_destination_ready: false` é um recibo de RECUSA,
+    e ele satisfaria os três exames.
+
+    Na prática o registro só pendura recibo em página publicada, e recusa vira
+    arquivo em disco (`nome_do_recibo(..., recusado=True)`) — mas "na prática"
+    é a frase que precede todo falso verde. Conferir custa uma linha.
+    """
+    if recibo is None:
+        # Ausência já é `RECIBO_DE_APROVACAO_AUSENTE` no contrato. Repetir aqui
+        # daria duas frases para o mesmo defeito.
+        return ()
+    if not bool(recibo.get("paid_destination_ready")):
+        return (
+            "o recibo de aprovação desta URL existe, está fresco e é desta "
+            "política — e declara `paid_destination_ready: false`. Um recibo de "
+            "recusa não é uma aprovação.",
+        )
+    return ()
+
+
+def _avaliar_destino(url: str, *, recibo: Optional[dict[str, Any]],
+                     promessa: str, papel_declarado: str,
+                     agora: float) -> DestinoDeCampanha:
+    """Lê e avalia, num único ato síncrono. NUNCA levanta.
+
+    ⚠️ O `except Exception` largo aqui é o oposto do permissivo: ele só consegue
+    produzir RECUSA. Qualquer falha de leitura vira uma avaliação sem evidência
+    ao vivo, e uma avaliação sem evidência ao vivo não fica verde no ponto de
+    campanha. Deixar a exceção subir daria 500 — e um 500 no meio de `/subir`
+    seria indistinguível, para quem lê a tela, de "o portão não rodou".
+    """
+    detalhe = ""
+    leituras: dict[str, dict[str, Any]] = {}
+    try:
+        leituras = _ler_destino_ao_vivo(url)
+    except DestinoIlegivel as exc:
+        detalhe = str(exc)
+    except Exception as exc:  # noqa: BLE001
+        detalhe = (f"a leitura ao vivo do destino falhou "
+                   f"({type(exc).__name__}: {str(exc)[:160]})")
+
+    pagina = _pagina_do_destino(
+        url, leituras, recibo=recibo, promessa=promessa,
+        papel_declarado=papel_declarado, agora=agora)
+    return DestinoDeCampanha(
+        url=url,
+        # O papel é FORÇADO aqui dentro: nenhum campo do chamador escolhe o
+        # rigor com que a página é medida.
+        avaliacao=elegibilidade_de_destino_de_campanha(pagina),
+        detalhe_da_leitura=detalhe,
+        recibo_presente=bool(recibo),
+        motivos_do_portao=_recusas_do_recibo(recibo),
+        # ⚠️ OS DOIS HASHES POR VARIANTE, e não só o que decidiu.
+        #
+        # A comparação usa a impressão canônica (ver `_pagina_do_destino`); os
+        # bytes vão junto porque foram eles que refutaram a acusação de cloaking
+        # contra `/r/fgts-saque-aniversario/` — Googlebot e usuário devolveram
+        # 174 243 bytes idênticos. Guardar só a medida que decide deixaria a
+        # evidência mais forte de fora do registro.
+        #
+        # As impressões vêm de `pagina.variantes_sha256`, já calculadas: recalcular
+        # aqui parsearia o mesmo HTML uma segunda vez por variante.
+        variantes=tuple(
+            {
+                "variante": rotulo,
+                "sha256_do_corpo_12": str(leitura.get("sha256") or "")[:12],
+                "impressao_canonica_12": pagina.variantes_sha256.get(rotulo, "")[:12],
+                "bytes": int(leitura.get("bytes") or 0),
+            }
+            for rotulo, leitura in sorted(leituras.items())
+        ),
+    )
+
+
+async def _destino_de_campanha(url: str, *,
+                               paginas_publicadas: List[Dict[str, Any]],
+                               promessa: str = "",
+                               papel_declarado: str = "") -> DestinoDeCampanha:
+    """O portão da barreira 3, com teto e sem caminho de exceção para fora.
+
+    O recibo é resolvido ANTES da leitura porque ele não depende dela: uma URL
+    sem aprovação registrada já está reprovada, e a leitura só acrescenta o que
+    mudou desde então.
+    """
+    recibo = recibo_da_url(paginas_publicadas, url)
+    agora = time.time()
+    argumentos = dict(recibo=recibo, promessa=promessa,
+                      papel_declarado=papel_declarado, agora=agora)
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(_avaliar_destino, url, **argumentos),
+            timeout=TIMEOUT_DESTINO_S)
+    except asyncio.TimeoutError:
+        pagina = _pagina_do_destino(url, {}, **argumentos)
+        return DestinoDeCampanha(
+            url=url,
+            avaliacao=elegibilidade_de_destino_de_campanha(pagina),
+            recibo_presente=bool(recibo),
+            motivos_do_portao=_recusas_do_recibo(recibo),
+            detalhe_da_leitura=(
+                f"a leitura ao vivo do destino passou de {int(TIMEOUT_DESTINO_S)}s "
+                "e foi encerrada. Nada foi criado, e um destino que não pôde ser "
+                "lido não é um destino elegível."),
+        )
+
+
+def _paginas_publicadas(linhas: Any) -> List[Dict[str, Any]]:
+    """Onde o recibo de aprovação mora: `pautador_funnel_runs.paginas_publicadas`.
+
+    Não há tabela nova e não há segunda autoridade sobre o mesmo fato — o recibo
+    entra no dict da página publicada e viaja verbatim para o banco pelo caminho
+    que já existia. Ver `app/landing_policy/registro.py`.
+    """
+    run = getattr(linhas, "run", None)
+    publicadas = run.get("paginas_publicadas") if isinstance(run, dict) else None
+    return [p for p in (publicadas or []) if isinstance(p, dict)]
+
+
+def _promessa_do_anuncio(brief: Any) -> str:
+    """As headlines aprovadas, para medir congruência anúncio × destino.
+
+    Só as headlines: elas são a promessa que o clique compra. A congruência só
+    consegue ACRESCENTAR achado (o portão acusa quando NADA do que o anúncio
+    promete aparece no início do destino), então um pedido sem copy não afrouxa
+    nada — ele já é recusado antes, pelo RSA sem headline.
+    """
+    copy = getattr(brief, "copy", None)
+    partes = [str(h) for h in (getattr(copy, "headlines", ()) or ()) if h]
+    return " ".join(partes)[:400]
+
+
+def _recusa_do_destino(destino: DestinoDeCampanha) -> str:
+    """A frase única que a tela mostra quando o destino reprova."""
+    motivos = destino.motivos
+    cabeca = "; ".join(motivos[:3])
+    resto = f" (e mais {len(motivos) - 3})" if len(motivos) > 3 else ""
+    return (f"O destino {destino.url} não está elegível como destino de campanha "
+            f"paga: {cabeca}{resto}.")
+
+
 @router.post("/provar")
 async def provar(
     body: ProvarEntrada = Body(...),
@@ -2500,7 +2937,12 @@ async def provar(
             status_code=422, detail=_recusa_de_canal(body.canal, exc)) from exc
 
     def _preparar():
-        cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
+        # ⚠️ As `Linhas` ficam AQUI em vez de serem descartadas dentro da
+        # composição. É nelas que mora `run.paginas_publicadas`, e é lá dentro
+        # que o recibo de aprovação da barreira 2 foi pendurado — sem elas, o
+        # portão do destino não tem contra o que comparar o que está no ar.
+        linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
+        cockpit = pp.montar_cockpit(linhas)
         # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
         # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
         # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -2566,10 +3008,10 @@ async def provar(
             cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
             ai_max=body.ai_max,
         )
-        return plano, preparo
+        return plano, preparo, linhas
 
     try:
-        plano, preparo = await asyncio.wait_for(
+        plano, preparo, linhas = await asyncio.wait_for(
             asyncio.to_thread(_preparar), timeout=TIMEOUT_PROVA_S)
     except asyncio.TimeoutError:
         # A distinção que a tela precisa fazer: passou do teto NÃO significa que
@@ -2598,6 +3040,24 @@ async def provar(
         log.exception("prova do card %s explodiu", body.opportunity_id)
         raise HTTPException(status_code=500, detail=str(exc)[:400]) from exc
 
+    # ── BARREIRA 3, ANTES DE O SELO SER CONSIDERADO ELEGÍVEL ───────────────
+    #
+    # ⚠️ AQUI, e não depois da montagem da resposta: nenhuma impressão aprovável
+    # pode ser cunhada para um destino não conforme, porque é ela que `/subir`
+    # aceita como autorização humana.
+    #
+    # ⚠️ E ele roda SEMPRE, inclusive quando o preparo não emitiu selo. Custa
+    # três GETs públicos por prova — custo real e declarado. A alternativa
+    # ("só olha o destino quando o resto passou") criaria um ramo em que o portão
+    # não roda, e um ramo desses é uma refatoração de distância de virar o
+    # caminho normal. Além disso, é justamente quando a prova reprova que o
+    # operador vai mexer no pedido, e ele precisa ver os DOIS defeitos de uma vez.
+    destino = await _destino_de_campanha(
+        plano.brief.url_final,
+        paginas_publicadas=_paginas_publicadas(linhas),
+        promessa=_promessa_do_anuncio(plano.brief),
+    )
+
     elegivel, motivo_elegibilidade = canario.elegivel(
         customer_id=cid,
         login_customer_id=mid,
@@ -2608,24 +3068,59 @@ async def provar(
         carimbo_nome=body.carimbo_nome,
         rede=_rede_do_corpo(body),
     )
+    if not destino.elegivel:
+        # O motivo do canário continua verdadeiro; o do destino vem primeiro
+        # porque é ele que impede a subida, e uma tela que mostra o segundo
+        # motivo manda o operador consertar o que não estava quebrado.
+        motivo_elegibilidade = _recusa_do_destino(destino)
+
     prontidao_do_lancamento = await _prontidao_do_lancamento(
-        cid, mid, body, plano_valido=bool(preparo.selo) and elegivel,
+        cid, mid, body,
+        plano_valido=bool(preparo.selo) and elegivel and destino.elegivel,
         chave_intencao=chave_intencao)
+
+    preparo_projetado = projecao.preparo(preparo)
+    if preparo.selo and not destino.elegivel:
+        # ⚠️ O SELO NÃO SAI. `projecao.preparo` ecoa `selo.impressao`, e é essa
+        # string que o cliente devolve em `/subir` como plano aprovado. Deixá-la
+        # sair para um destino inelegível seria cunhar exatamente a autorização
+        # que este portão existe para não cunhar — `/subir` reavalia ao vivo e
+        # recusaria de novo, mas contar com a segunda barreira para consertar a
+        # primeira é como as duas viram uma só.
+        #
+        # `selo_retido` fica ao lado e diz por quê: `selo: null` sozinho faria a
+        # tela concluir que o `validate_only` reprovou, que é outro defeito.
+        preparo_projetado["selo"] = None
+        preparo_projetado["selo_retido"] = {
+            "motivos": destino.motivos,
+            "porque": (
+                "O payload passou nos juízes, mas o DESTINO não está elegível "
+                "como destino de campanha paga. A impressão aprovável não foi "
+                "emitida: ela autoriza escrita, e nada aqui autoriza apontar "
+                "clique comprado para esta página."),
+        }
+
     return {
-        "preparo": projecao.preparo(preparo),
+        "preparo": preparo_projetado,
         "avisos": [projecao.aviso(a) for a in (plano.avisos or ())],
         "grupos": [{"tipo": g.tipo, "keywords": len(g.keywords)} for g in (plano.grupos or ())],
         "autorizacao": {
             # Esta é a impressão DAS OPERAÇÕES que passaram no validate_only,
             # depois de toda adaptação/autocorreção. É a única coisa que pode
             # ser aprovada para escrita. Sem selo, não há plano aprovável.
-            "plano_impressao": preparo.selo.impressao if preparo.selo else None,
+            #
+            # ⚠️ E sem DESTINO elegível também não: a impressão é a autorização
+            # que `/subir` aceita, e emiti-la para uma página que o portão
+            # reprovou seria cunhar a autorização de algo que não foi aprovado.
+            "plano_impressao": (preparo.selo.impressao
+                                if (preparo.selo and destino.elegivel) else None),
             # Identifica a intenção e produz a marca remota. Não substitui a
             # impressão efetiva acima: os dois campos têm papéis diferentes.
             "chave_intencao": chave_intencao,
             "carimbo_nome": body.carimbo_nome,
             "alvo_canario": cid == canario.CONTA and mid == canario.MCC,
-            "elegivel": elegivel and preparo.selo is not None,
+            "elegivel": (elegivel and preparo.selo is not None
+                         and destino.elegivel),
             "motivo_elegibilidade": motivo_elegibilidade,
             "politica": canario.POLITICA.para_json(),
             "budget_diario": body.budget_diario,
@@ -2638,6 +3133,13 @@ async def provar(
                            "google_search": True, "search_partners": True,
                            "display_expansion": False}),
         },
+        # ⚠️ O VEREDITO DO DESTINO VAI SEMPRE, inclusive quando ele passa.
+        #
+        # Um campo que só aparece na recusa ensina a tela a tratar ausência como
+        # aprovação — e "não veio nada sobre o destino" é exatamente o estado
+        # que produziu quatro destinos pagos sem nenhuma verificação ao vivo.
+        # Aqui a leitura, o recibo e os códigos ficam visíveis nos dois desfechos.
+        "destino": destino.para_json(),
         # ⚠️ OS QUATRO PORTÕES, e a razão de existirem separados: "pronto" sem
         # sujeito virou uma palavra vazia. Nascer com recibo (G0) não diz nada
         # sobre medir (G1), observar (G2) ou poder ativar (G3). Uma campanha em
@@ -2961,7 +3463,11 @@ async def subir(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     def _provar_de_novo():
-        cockpit = pp.montar_cockpit(pp.carregar(body.opportunity_id, run_id=body.run_id))
+        # ⚠️ As `Linhas` ficam à mão pelo mesmo motivo de `/provar`: é
+        # `run.paginas_publicadas` que carrega o recibo de aprovação da URL, e
+        # sem ele o portão do destino não tem contra o que comparar o ar.
+        linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
+        cockpit = pp.montar_cockpit(linhas)
         # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
         # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
         # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -3004,10 +3510,10 @@ async def subir(
             cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
             ai_max=body.ai_max,
         )
-        return plano, preparo
+        return plano, preparo, linhas
 
     try:
-        plano, preparo = await asyncio.to_thread(_provar_de_novo)
+        plano, preparo, linhas = await asyncio.to_thread(_provar_de_novo)
     except HTTPException:
         # ⚠️ TEM DE VIR ANTES do `except Exception`. `_criterios_do_corpo` roda
         # dentro da thread e levanta `HTTPException(422)` para data ISO
@@ -3046,6 +3552,44 @@ async def subir(
                 "autocorreção), ou a impressão aprovada não foi enviada. Rode "
                 "a prova novamente e revise o plano resultante. Nada foi criado."
             ),
+        )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # BARREIRA 3 — O DESTINO, REAVALIADO AO VIVO. NÃO É REPETIÇÃO DO /provar.
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ AQUI, DEPOIS DA CONFERÊNCIA DO SELO E ANTES DO `ledger.abrir`.
+    #
+    # Depois do selo porque é a partir daqui que o plano está final e o payload
+    # provado é o mesmo que o operador aprovou. Antes do `abrir` porque um
+    # recibo `em_voo` para uma chamada que nunca sai fica órfão, e a camada 4 da
+    # v10_03 passa a bloquear o item até alguém reconciliar uma tentativa que não
+    # existiu — o mesmo raciocínio que já põe o portão do lance nesta janela.
+    #
+    # ⚠️ E ELE NÃO CONFIA NO `/provar`. A conferência logo acima prova que o
+    # PEDIDO não mudou: `_impressao_aprovavel` faz hash do payload, e `url_final`
+    # está lá dentro como string. Impressão idêntica não diz nada sobre o que
+    # aquele endereço serve AGORA — entre as duas requisições cabe uma edição no
+    # WordPress, um plugin novo, um redirect ou um cloak. Reusar o veredito da
+    # prova aqui seria transformar "estava apto" em "está apto", que é
+    # literalmente o que `RECIBO_DE_APROVACAO_VENCIDO` existe para não deixar.
+    destino = await _destino_de_campanha(
+        plano.brief.url_final,
+        paginas_publicadas=_paginas_publicadas(linhas),
+        promessa=_promessa_do_anuncio(plano.brief),
+    )
+    if not destino.elegivel:
+        # 409 e não 422, pelo mesmo motivo do portão do lance logo abaixo: o
+        # payload é válido — é o MUNDO que não sustenta o que ele pede. O detalhe
+        # carrega o veredito inteiro para a tela poder mostrar QUAL verificação
+        # fechou sem repetir a chamada mais lenta do fluxo.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "estado": "destino_nao_elegivel",
+                "mensagem": _recusa_do_destino(destino),
+                "destino": destino.para_json(),
+            },
         )
 
     # Camada de idempotência REMOTA. Se a chamada anterior perdeu a resposta,

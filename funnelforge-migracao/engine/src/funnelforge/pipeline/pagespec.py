@@ -14,13 +14,30 @@ def _sig_tokens(text: str) -> set[str]:
             if t not in _STOP}
 
 
-def _anchor_congruent(anchor: str, target_h1: str) -> bool:
-    """Anchor must describe its target. If the target H1 is unknown we can
-    only require a non-empty anchor; otherwise require a shared significant
-    token between anchor and target H1."""
+def _anchor_congruent(anchor: str, target_h1: str, target_slug: str = "") -> bool:
+    """Anchor must describe its target. If nothing about the target is known we
+    can only require a non-empty anchor; otherwise require a shared significant
+    token between the anchor and the target's H1 OR its SLUG.
+
+    ⚠️ O SLUG PASSOU A CONTAR, e não é afrouxamento.
+
+    Exigir especificamente um token do H1 era uma escolha arbitrária, e ela
+    CONFLITAVA com a régua da política do destino pago, que compara a âncora com
+    o CAMINHO da URL (`ANCORA_INCONGRUENTE_COM_DESTINO`). Quando o H1 e o slug de
+    uma página divergem — no funil de teste deste repositório, "Guia Completo do
+    FGTS" mora em `/rec/quem-tem-direito-pr` —, nenhuma âncora satisfazia as duas
+    réguas ao mesmo tempo: a que descrevia a manchete traía o caminho, e vice-
+    versa. O slug é a identidade do destino na URL; uma âncora que o nomeia
+    descreve o destino tão bem quanto uma que nomeia a manchete.
+    """
     if not target_h1.strip():
+        # Alvo sem H1 conhecido é o caso do `cross_funnel`, cujo `target` é uma
+        # URL absoluta de outro funil — não um slug deste plano. Medir a âncora
+        # contra os tokens de uma URL que não descreve nada seria acusar por uma
+        # ausência de dado, então a regra antiga (âncora não vazia) fica.
         return bool(anchor.strip())
-    return bool(_sig_tokens(anchor) & _sig_tokens(target_h1))
+    referencia = _sig_tokens(target_h1) | _sig_tokens(target_slug.replace("-", " "))
+    return bool(_sig_tokens(anchor) & referencia)
 
 
 def pagespec_for(settings: Settings, role: PageRole, *, terminal: bool = False) -> PageTypeSpec:
@@ -76,7 +93,7 @@ def enforce_pagespec(routes: list[Route], spec: PageTypeSpec, *, slug: str,
     if spec.anchor_congruent:
         for r in routes:
             if r.kind in ("funnel", "cross_funnel") and not _anchor_congruent(
-                    r.anchor, h1_by_slug.get(r.target, "")):
+                    r.anchor, h1_by_slug.get(r.target, ""), r.target):
                 issues.append(Issue(code="anchor_incongruent",
                                     message=f"ancora '{r.anchor}' nao descreve o destino."))
     return issues

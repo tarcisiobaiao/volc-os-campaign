@@ -24,7 +24,9 @@ import { ArrowLeft, ArrowRight, Camera, ExternalLink, Lock, PenLine, Upload } fr
 
 import { Layout } from '@/components/layout/Layout';
 import { LpEmSlots, ProsaDaPagina } from '@/components/redator/ProsaDaPagina';
+import { PainelDoDestinoPago } from '@/components/landing-policy/PainelDoDestinoPago';
 import { pautadorApi } from '@/lib/pautadorApi';
+import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { cn } from '@/lib/utils';
 import { linkDeEdicao } from '@/lib/wordpress';
 import type { ProvaVisual } from '@/types/publicacao';
@@ -75,6 +77,26 @@ const PaginaDoFunilPage: React.FC = () => {
   );
   const idx = ordenadas.findIndex((p) => p.page_number === numero);
   const p: PaginaEscrita | undefined = ordenadas[idx];
+
+  // ⚠️ A PRONTIDÃO DE DESTINO PAGO DESTA PÁGINA, LIDA DO SERVIDOR.
+  //
+  // O recibo viaja dentro do dict de `publicada` — a mesma `paginas_publicadas`
+  // que já existe, sob `landing_policy_receipt`. `publicada` é tipada em
+  // `types/redatorPaginas.ts` sem esse campo (o tipo é de outro dono), então o
+  // portador entra como `unknown` e o adaptador o abre.
+  //
+  // ⚠️ `exige_ponto_de_campanha: false` porque AQUI a pergunta é outra. Esta
+  // tela julga a página antes/depois de publicar, não a elegibilidade de um
+  // destino de campanha — exigir o ponto de campanha aqui reprovaria toda
+  // página por uma ausência estrutural, e ensinaria o operador a ignorar o
+  // painel. Quem exige o ponto de campanha é o cockpit do lançamento.
+  const destino = useMemo(
+    () => leituraDoDestinoPago(p?.publicada as unknown, {
+      status_wp: p?.publicada?.status_wp,
+      exige_ponto_de_campanha: false,
+    }),
+    [p],
+  );
   const anterior = idx > 0 ? ordenadas[idx - 1] : null;
   const proxima = idx >= 0 && idx < ordenadas.length - 1 ? ordenadas[idx + 1] : null;
 
@@ -327,6 +349,15 @@ const PaginaDoFunilPage: React.FC = () => {
                     )}
                   </Lateral>
                 )}
+
+                {/* ⚠️ APARECE SEMPRE, publicada ou não — pelo mesmo motivo que o
+                    painel do WordPress passou a aparecer sempre. Uma página sem
+                    recibo é visualmente idêntica a uma avaliada e aprovada se a
+                    seção só existir quando há recibo, e é justamente a primeira
+                    que ninguém pode mandar tráfego pago para. */}
+                <Lateral titulo="destino pago">
+                  <PainelDoDestinoPago leitura={destino} titulo="" compacto />
+                </Lateral>
               </aside>
             </div>
 

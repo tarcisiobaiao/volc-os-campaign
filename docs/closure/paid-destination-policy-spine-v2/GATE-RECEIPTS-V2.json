@@ -1,0 +1,144 @@
+{
+  "_about": {
+    "evidence": "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/",
+    "limite": "Este delta prova que o contrato v2 detecta mais na mesma evidencia. Ele NAO prova qual politica o Google citou na suspensao, nem que a conta esta segura, nem que qualquer pagina foi aprovada pelo Google.",
+    "purpose": "A diferenca de veredito entre o contrato v1 e o v2 sobre os MESMOS bytes preservados. Nao e uma nova leitura do site: e a mesma evidencia, avaliada por duas versoes do contrato. Nenhuma requisicao de rede foi feita para produzir este arquivo.",
+    "v1_policy_source_version": "df252bc25e636d78",
+    "v2_policy_contract_version": "paid_destination_policy_spine.v2",
+    "v2_policy_source_version": "43472d43866cbf19"
+  },
+  "external_mutation": {
+    "appeal_submitted": false,
+    "deploy": false,
+    "google_ads_mutate": false,
+    "network_request": false,
+    "wordpress_write": false
+  },
+  "por_destino": [
+    {
+      "content_sha256_12": "0dbafa0dd1e4",
+      "desconhecidos_novos": [
+        "approval_receipt"
+      ],
+      "novos_na_v2": [
+        "ANCORA_INCONGRUENTE_COM_DESTINO",
+        "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
+        "RECIBO_DE_APROVACAO_AUSENTE"
+      ],
+      "perdidos_na_v2": [],
+      "url": "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/",
+      "v1": {
+        "blockers": 8,
+        "paid_destination_ready": false,
+        "unknowns": 2
+      },
+      "v2": {
+        "blockers": 11,
+        "paid_destination_ready": false,
+        "unknowns": 3
+      }
+    },
+    {
+      "content_sha256_12": "4077b30e4390",
+      "desconhecidos_novos": [
+        "approval_receipt"
+      ],
+      "novos_na_v2": [
+        "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+        "RECIBO_DE_APROVACAO_AUSENTE",
+        "VALOR_MONETARIO_MALFORMADO"
+      ],
+      "perdidos_na_v2": [],
+      "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "v1": {
+        "blockers": 3,
+        "paid_destination_ready": false,
+        "unknowns": 1
+      },
+      "v2": {
+        "blockers": 6,
+        "paid_destination_ready": false,
+        "unknowns": 2
+      }
+    },
+    {
+      "content_sha256_12": "7c674d1d7daf",
+      "desconhecidos_novos": [
+        "approval_receipt"
+      ],
+      "novos_na_v2": [
+        "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+        "RECIBO_DE_APROVACAO_AUSENTE",
+        "VALOR_MONETARIO_MALFORMADO"
+      ],
+      "perdidos_na_v2": [],
+      "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "v1": {
+        "blockers": 3,
+        "paid_destination_ready": false,
+        "unknowns": 1
+      },
+      "v2": {
+        "blockers": 6,
+        "paid_destination_ready": false,
+        "unknowns": 2
+      }
+    },
+    {
+      "content_sha256_12": "c1cfcab72d7a",
+      "desconhecidos_novos": [
+        "approval_receipt"
+      ],
+      "novos_na_v2": [
+        "ANCORA_INCONGRUENTE_COM_DESTINO",
+        "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+        "RECIBO_DE_APROVACAO_AUSENTE"
+      ],
+      "perdidos_na_v2": [],
+      "url": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+      "v1": {
+        "blockers": 2,
+        "paid_destination_ready": false,
+        "unknowns": 2
+      },
+      "v2": {
+        "blockers": 5,
+        "paid_destination_ready": false,
+        "unknowns": 3
+      }
+    },
+    {
+      "content_sha256_12": "7e0f296129e5",
+      "desconhecidos_novos": [
+        "approval_receipt"
+      ],
+      "novos_na_v2": [
+        "ANCORA_INCONGRUENTE_COM_DESTINO",
+        "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+        "RECIBO_DE_APROVACAO_AUSENTE"
+      ],
+      "perdidos_na_v2": [],
+      "url": "https://creditoup.com.br/r/nova-carteira-identidade-nacional-2026/",
+      "v1": {
+        "blockers": 3,
+        "paid_destination_ready": false,
+        "unknowns": 2
+      },
+      "v2": {
+        "blockers": 6,
+        "paid_destination_ready": false,
+        "unknowns": 3
+      }
+    }
+  ],
+  "schema": "PaidDestinationSpineV2GateDelta",
+  "totais": {
+    "bloqueios_novos": 15,
+    "bloqueios_perdidos": 0,
+    "bloqueios_v1": 19,
+    "bloqueios_v2": 34,
+    "prontos_v1": 0,
+    "prontos_v2": 0,
+    "recibos": 5
+  }
+}

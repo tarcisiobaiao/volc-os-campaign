@@ -37,6 +37,8 @@ vi.mock('@/lib/pautadorApi', () => ({
 }));
 
 import { Lancamento } from '../Lancamento';
+import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
+import { portadorApto } from '@/lib/landing-policy/__tests__/recibos';
 
 const PEDIDO: PedidoDeProvaSearch = {
   opportunity_id: 73, run_id: 6, customer_id: '5478096539',
@@ -83,7 +85,16 @@ const REPROVADO = {
 
 const renderizar = (trava: EstadoDaTrava) =>
   render(<Lancamento pedido={PEDIDO} trava={trava} titulo="Cartão para Negativado"
-                     resumoDaCopy="15 títulos · 4 descrições" onFechar={() => {}} />);
+                     resumoDaCopy="15 títulos · 4 descrições" destino={DESTINO_APTO}
+                     onFechar={() => {}} />);
+
+/** ⚠️ O degrau do destino nasceu nesta sprint e a escada PARA nele quando o
+ *  destino não está apto — por isso estes testes, que são sobre a prova e a
+ *  escrita, precisam de um destino que passa. O caso do destino reprovado tem
+ *  teste próprio em `lib/landing-policy/__tests__/prontidao.test.ts`. */
+const DESTINO_APTO = leituraDoDestinoPago(portadorApto(), {
+  agora_epoch: 1_756_900_000, status_wp: 'publish',
+});
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 

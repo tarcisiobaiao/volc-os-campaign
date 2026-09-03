@@ -37,6 +37,34 @@ site:
   post_type: rec
   lp_post_type: r                      # LP Elementor entra como post type /r (rascunho), rende em /r/<slug>
   cnpj: "42.724.548/0001-24"          # identidade exibida no rodapé público do site
+  # O RODAPÉ INSTITUCIONAL QUE O TEMA RENDERIZA EM TODA PÁGINA.
+  #
+  # ⚠️ DECLARAÇÃO, não observação: o motor produz o CORPO da página; identidade,
+  # aviso de não-vínculo e divulgação de monetização vêm do tema, e nenhum
+  # artefato local os contém. O portão do destino pago não tem como enxergá-los,
+  # e sem esta declaração ele reprovaria TODA LP por três ausências que não são
+  # verdadeiras -- um portão que reprova tudo é um portão que alguém desliga.
+  #
+  # O texto abaixo é a TRANSCRIÇÃO do rodapé medido na captura preservada de
+  # /r/fgts-saque-aniversario/ (docs/closure/hermes-redator-google-ads-policy-
+  # incident-v1/evidence-public/common_desktop-7c674d1d7daf.html), a mesma URL
+  # cujos bloqueios em GATE-RECEIPTS.json NÃO incluem IDENTIDADE_OPERADOR_AUSENTE,
+  # IDENTIDADE_CONTATO_AUSENTE, AVISO_NAO_OFICIAL_AUSENTE nem
+  # DIVULGACAO_DE_MONETIZACAO_AUSENTE. Não é suposição: foi medido.
+  #
+  # Quem confere de verdade é o portão 3, sobre o HTML ao vivo. Se o tema mudar e
+  # esta declaração deixar de ser verdade, é lá que a divergência aparece.
+  # VAZIO é fail-closed de propósito: site cujo rodapé ninguém mediu reprova.
+  rodape_institucional: >-
+    Sobre o nosso site: o site se reserva unicamente a trazer conteúdos
+    informativos e notícias de interesse social. Em hipótese alguma o site faz
+    qualquer tipo de pedido de dados pessoais sem respeitar a LGPD e não
+    solicita qualquer valor para mediar recebimentos de benefícios sociais.
+    Os conteúdos aqui publicados são de caráter informativo e não possuem
+    vínculo, parceria ou qualquer ligação com órgãos públicos ou entidades
+    governamentais. O site é financiado por blocos de anúncios em parceria com
+    o Google Adsense e não tem relação nenhuma com os anunciantes.
+    Sobre Nós - Contato - Política de Privacidade - Termos.
   author: { name: "Equipe Crédito Up", credential: "Redação de jornalismo de serviço." }
   authors:
     - { name: "Equipe Crédito Up", credential: "Redação de jornalismo de serviço.", profile_slug: equipe }
@@ -174,7 +202,13 @@ steps:
   # A LP segue SEM judge de proposito: o criterio 6 dele julga hrefs, e o
   # roteamento da LP e deterministico (lp_template._BUTTON_HREF) -- nao ha href
   # no que o modelo escreve.
-  write_p1:   { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [lp_json_contract, calm_utility, language_pt, critical_fact_grounding] }
+  # `plano_de_destino_pago` e o PORTAO 1 no PLANO -- H1, titulo, subtitulos e
+  # ancoras dos CTAs contra a politica do destino pago. Ele ignora o texto
+  # gerado por construcao, entao `preflight.PREFLIGHT` o roda ANTES da
+  # primeira chamada paga: a alegacao que derrubou a conta estava no H1 do
+  # plano, decidida antes da primeira palavra. So roda porque o nome esta
+  # nesta lista -- validador fora da lista do passo simplesmente nao roda.
+  write_p1:   { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [plano_de_destino_pago, lp_json_contract, calm_utility, language_pt, critical_fact_grounding] }
   write_page: { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [gutenberg_blocks, cta_style, pagespec, calm_utility, compliance, interior_min_length, no_trailing_buttons, no_leading_buttons, short_intro, min_headings, language_pt, same_domain, official_link_density, external_cta_authorized, no_bare_rec, no_self_loop, identity, uniqueness, opening_line_unique, forward_only, cta_destination_congruent, bridge_before_cta, critical_fact_grounding, raw_html_contract, ad_interaction, visual_contract] }
   judge:      { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.0, validators: [] }
   seo:        { model: gpt-4.1, fallbacks: [], temperature: 0.4, validators: [seo_limits] }

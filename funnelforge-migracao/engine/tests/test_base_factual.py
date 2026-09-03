@@ -40,3 +40,28 @@ def test_poda_usa_a_mesma_regra_do_gate():
 def test_sem_pesquisa_nenhuma_o_contrato_continua_explicito():
     saida = base_para_o_redator(None)
     assert "NENHUM" in saida and "sem cifra" in saida.lower()
+
+
+def test_no_destino_pago_a_fonte_e_citada_em_prosa_e_nunca_como_link():
+    """CONTRAPROVA 28, na ORIGEM: o redator deixa de receber a URL para embutir.
+
+    A instrução era literal — "AO USAR ESTE NÚMERO, inclua este link na MESMA
+    frase: <url>" — e o resultado dela está na evidência preservada: sete links
+    `caixa.gov.br` no corpo de `/r/fgts-saque-aniversario/`, o achado mais forte
+    do incidente. Num destino pago a fonte pertence ao dossiê de evidência e é
+    citada em PROSA, com âncora descritiva; em página editorial ela continua
+    permitida, e é o PAPEL que decide.
+    """
+    f = ResearchFacts(fatos_verificados=[_fato("https://www.caixa.gov.br/fgts/")],
+                      fontes_resolvidas=["https://www.caixa.gov.br/fgts/"])
+
+    editorial = base_para_o_redator(f)
+    assert "https://www.caixa.gov.br/fgts/" in editorial
+    assert "inclua este link" in editorial
+
+    pago = base_para_o_redator(f, destino_pago=True)
+    # A URL não é oferecida em lugar nenhum do que o modelo lê.
+    assert "https://" not in pago, pago
+    # O NOME pelo qual citar, sim — é ele que vira âncora descritiva em prosa.
+    assert "caixa.gov.br" in pago
+    assert "NÃO escreva a URL" in pago

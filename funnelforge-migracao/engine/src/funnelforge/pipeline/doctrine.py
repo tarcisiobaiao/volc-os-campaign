@@ -139,10 +139,18 @@ REQUIRED_COMPLIANCE_ANCHORS: tuple[str, ...] = (
 # (finalize_compliance_notice) renders it as a discreet italic footnote at the
 # end of every /rec page, and the uniqueness guard subtracts its tokens as
 # boilerplate (it is identical on every page by design).
+# ⚠️ A SEGUNDA FRASE É NOVA, e ela não é enfeite.
+#
+# `checks.compliance` passou a exigir os DOIS avisos (divulgação de monetização E
+# não-vínculo) em vez de um `OU`. O aviso antigo só dizia o segundo: o primeiro
+# vinha do rodapé do TEMA, fora do artefato. Um portão que exige no CORPO algo
+# que o corpo nunca teve reprovaria todo artigo — então o corpo passa a dizer as
+# duas coisas, e a página fica auto-suficiente em vez de depender do tema.
 COMPLIANCE_NOTICE_TEXT: str = (
     "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os "
     "órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem "
-    "pagamentos."
+    "pagamentos. Este conteúdo é gratuito e financiado por blocos de anúncios em "
+    "parceria com o Google Adsense; não temos relação com os anunciantes."
 )
 
 # ---------------------------------------------------------------------------

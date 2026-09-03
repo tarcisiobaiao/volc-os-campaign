@@ -211,11 +211,26 @@ def test_cp_p_alegacao_financeira_sem_divulgacao_reprova_e_com_divulgacao_passa(
     assert "ALEGACAO_FINANCEIRA_SEM_DIVULGACAO" not in bloqueios(montar(numeros, rodape=com))
 
 
-def test_cp_q_valor_monetario_malformado_vira_risco_nao_silencio():
+def test_cp_q_valor_monetario_malformado_bloqueia_no_pago_e_e_risco_no_organico():
+    """⚠️ MUDANÇA DE CONTRATO NA ESPINHA v2 — antes era risco EM TODA PARTE.
+
+    Enquanto `VALOR_MONETARIO_MALFORMADO` viveu em `_RISCO_SEMPRE`, ele era
+    detectado e nunca reprovava nada, em papel nenhum — a forma educada de um
+    portão dizer "eu vi e deixei passar". E o que ele vê é `2900.00 R$` dentro
+    de um link para o banco público: vazamento de máquina apresentado ao leitor
+    como cifra oficial. A v2 o trata como bloqueio no papel estrito e mantém o
+    risco no frouxo, como toda a tabela de severidade.
+    """
     av = elegibilidade_de_destino_de_campanha(
         montar("<p>A parcela fixa chega a 2900.00 R$ por ano.</p>")
     )
-    assert "VALOR_MONETARIO_MALFORMADO" in {a.codigo for a in av.riscos}
+    assert "VALOR_MONETARIO_MALFORMADO" in {a.codigo for a in av.bloqueios}
+    organico = avaliar(
+        montar("<p>A parcela fixa chega a 2900.00 R$ por ano.</p>"),
+        PapelDestino.ORGANIC_ARTICLE,
+        PontoDePortao.ARTEFATO_DE_GERACAO,
+    )
+    assert "VALOR_MONETARIO_MALFORMADO" in {a.codigo for a in organico.riscos}
 
 
 # ── conteúdo, ponte e congruência ──────────────────────────────────────────
