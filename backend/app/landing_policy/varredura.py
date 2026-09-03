@@ -30,7 +30,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
 
 from app.landing_policy.contrato import (
     JANELA_DE_FRESCOR_PADRAO_S,
@@ -333,6 +333,23 @@ _RUIDO_VOLATIL = (
 )
 
 
+def _normalizar_href(href: str) -> str:
+    """O destino de um link, sem o que muda sozinho.
+
+    Minúsculas no esquema e no host, query e fragmento fora, barra final
+    normalizada. O CAMINHO é preservado: ele é o destino, e mudar o destino é
+    mudança material mesmo quando o host continua o mesmo.
+    """
+    bruto = (href or "").strip()
+    if not bruto:
+        return ""
+    partes = urlsplit(bruto)
+    caminho = partes.path or ""
+    if len(caminho) > 1:
+        caminho = caminho.rstrip("/")
+    return urlunsplit((partes.scheme.lower(), partes.netloc.lower(), caminho, "", ""))
+
+
 def impressao_canonica(html: str) -> str:
     """A impressão do que a página É para o leitor, não dos bytes que a servem.
 
@@ -369,8 +386,19 @@ def impressao_canonica(html: str) -> str:
         "titulo": parser.titulo,
         "cabecalhos": [c["texto"] for c in parser.cabecalhos],
         "texto": texto_visivel(limpo).lower(),
+        # ⚠️ O HREF INTEIRO, não só o host.
+        #
+        # A primeira versão guardava apenas `_host(href)`, e para link relativo
+        # o host é string vazia — então trocar o destino de um CTA de
+        # `/oferta-a` para `/oferta-b` deixava a impressão IDÊNTICA, e
+        # `DERIVA_AO_VIVO` não disparava. Repontar o botão principal depois da
+        # aprovação é exatamente a mudança material que a deriva existe para
+        # pegar, e ela era a única invisível.
+        #
+        # A query sai do href pela mesma razão de `registro.url_canonica`:
+        # `?utm_*` muda a cada carregamento em alguns temas e não é conteúdo.
         "links": sorted(
-            f"{_host(urljoin('', l.get('href') or ''))}|{(l.get('texto') or '')[:60]}|"
+            f"{_normalizar_href(l.get('href') or '')}|{(l.get('texto') or '')[:60]}|"
             f"{int(bool(l.get('em_botao')))}"
             for l in parser.links
             if (l.get("href") or "").strip()

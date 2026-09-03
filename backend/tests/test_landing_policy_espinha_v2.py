@@ -413,6 +413,55 @@ def test_cp15b_ruido_de_rotacao_nao_e_deriva():
     assert av.paid_destination_ready is True
 
 
+def test_cp15c_repontar_um_cta_interno_e_deriva():
+    """⚠️ ERA A ÚNICA MUDANÇA MATERIAL INVISÍVEL À IMPRESSÃO CANÔNICA.
+
+    A primeira versão guardava só o HOST do link, e o host de um link relativo é
+    string vazia. Trocar o destino do botão principal de `/oferta-a` para
+    `/oferta-b` depois da aprovação deixava a impressão idêntica — e repontar o
+    CTA é exatamente o tipo de edição pós-aprovação que a deriva existe para
+    pegar.
+    """
+    aprovado = f'<html><body><h1>Guia</h1><p>{CORPO}</p>{RODAPE}<div class="wp-block-button"><a class="wp-block-button__link" href="/oferta-a">Simular</a></div></body></html>'
+    no_ar = aprovado.replace("/oferta-a", "/oferta-b")
+    pagina = PaginaObservada(
+        url="https://exemplo.com.br/r/x/",
+        html=no_ar,
+        status_http=200,
+        saltos_redirecionamento=[],
+        variantes_sha256={"user": SHA, "googlebot": SHA},
+        sha256_observado=SHA,
+        impressao_aprovada=impressao_canonica(aprovado),
+        cnpj_esperado=CNPJ,
+        recibo_de_aprovacao=recibo_valido(),
+        avaliado_em_epoch=AGORA,
+    )
+    assert "DERIVA_AO_VIVO" in {
+        a.codigo for a in elegibilidade_de_destino_de_campanha(pagina).bloqueios
+    }
+
+
+def test_cp15d_utm_no_href_nao_e_deriva():
+    """O simétrico: alguns temas acrescentam `?utm_*` a cada carregamento."""
+    aprovado = f'<html><body><h1>Guia</h1><p>{CORPO}</p>{RODAPE}<p><a href="/oferta-a">Simular</a></p></body></html>'
+    no_ar = aprovado.replace("/oferta-a", "/oferta-a?utm_source=news&t=99")
+    pagina = PaginaObservada(
+        url="https://exemplo.com.br/r/x/",
+        html=no_ar,
+        status_http=200,
+        saltos_redirecionamento=[],
+        variantes_sha256={"user": SHA, "googlebot": SHA},
+        sha256_observado=SHA,
+        impressao_aprovada=impressao_canonica(aprovado),
+        cnpj_esperado=CNPJ,
+        recibo_de_aprovacao=recibo_valido(),
+        avaliado_em_epoch=AGORA,
+    )
+    assert "DERIVA_AO_VIVO" not in {
+        a.codigo for a in elegibilidade_de_destino_de_campanha(pagina).bloqueios
+    }
+
+
 def test_cp16_recibo_de_versao_antiga_nao_e_reaproveitado_em_silencio():
     antigo = recibo_valido(policy_contract_version="paid_destination_policy_spine.v1")
     assert "RECIBO_DE_POLITICA_DESATUALIZADO" in pago(montar(recibo_de_aprovacao=antigo))
