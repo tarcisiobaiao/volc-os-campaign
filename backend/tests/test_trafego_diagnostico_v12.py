@@ -151,8 +151,13 @@ def test_contraprova_envelope_bate_com_frontend():
         agora=AGORA_RECENTE,
     ))
     dados = _dump(resposta)
-    assert set(dados) == {"versao", "diagnostico", "propostas"}
-    assert dados["versao"] == 1
+    # ⚠️ `sentinela` entrou no envelope em 03/09/2026 e a versão subiu para 2.
+    # O campo é o veredito SERVIDO: antes dele o cliente derivava o seu sobre
+    # uma escada cujo degrau `conta` nunca era preenchido, e o resultado era
+    # `nao_apurado` em toda campanha, com zero degraus confiáveis.
+    assert set(dados) == {"versao", "diagnostico", "propostas", "sentinela"}
+    assert dados["versao"] == 2
+    assert dados["sentinela"]["mutacao_externa"] is False
     assert dados["diagnostico"]["volc_campaign_id"] == "cmp.search:01"
     assert dados["diagnostico"]["estado_coleta"] == "com_dados"
     assert dados["diagnostico"]["frescor"] == "recente"
@@ -318,7 +323,22 @@ def test_contraprova_entidade_pausada_nao_bloqueia_outra_elegivel():
     ))
     degraus = {d["eixo"]: d for d in _dump(resposta)["diagnostico"]["degraus"]}
     assert degraus["anuncio"]["estado"] == "ok"
-    assert degraus["keyword"]["estado"] == "ok"
+
+    # ⚠️ MUDANÇA DE CONTRATO DECLARADA, 03/09/2026.
+    #
+    # Este degrau dizia `ok` porque UMA keyword vinha `ELIGIBLE`. A invariante
+    # que o teste protege continua valendo e é o que se afirma abaixo: uma
+    # keyword pausada NÃO bloqueia a irmã elegível. O que mudou é o outro lado:
+    # nenhuma destas duas keywords traz lance nem estimativa de primeira página,
+    # e a pergunta do degrau — "as keywords disputam alguma consulta?" — não
+    # pode ser respondida com `ELIGIBLE`. Elegível quer dizer "PODE ir a
+    # leilão"; com lance abaixo da estimativa ela é elegível e não aparece. Foi
+    # exatamente esse `ok` que deixou o incidente Crédito Up invisível.
+    assert degraus["keyword"]["estado"] != "bloqueia"
+    assert degraus["keyword"]["estado"] == "nao_apurado"
+    assert degraus["keyword"]["impedimento"] == (
+        "lance ou estimativa de primeira página ausentes"
+    )
 
 
 @pytest.mark.parametrize(
@@ -418,6 +438,15 @@ def test_contraprova_repositorio_consulta_so_relacoes_reais_v12():
             if tabela == "trafego_google_inteligencia_coleta":
                 return [coleta()]
             return []
+
+        async def select_all(self, tabela: str, params: Dict[str, Any]):
+            # ⚠️ `itens()`/`metricas()` passaram a PAGINAR em 03/09/2026: o
+            # PostgREST corta toda resposta em 1000 linhas IGNORANDO um `limit`
+            # maior, e uma campanha grande era lida pela metade em silêncio —
+            # com o eixo do anúncio saindo `ok` por causa de um único elegível
+            # na primeira página. O dublê implementa o método para que a troca
+            # fique provada aqui, e não só afirmada no comentário.
+            return await self.select(tabela, params)
 
     repo = SupabaseRepositorioDiagnostico(Supa())
     asyncio.run(repo.campanha("cmp.search:01"))

@@ -1,0 +1,282 @@
+{
+  "_leia_primeiro": "PROPOSTA. Nada aqui foi aplicado. volc-os-workbook/ROADMAP-VIVO.json, docs/volc-os-graph/curadoria-operacional.json e os arquivos gerados do grafo NAO foram editados por esta lane. O agente integrador/curador aplica os passos 1-5 do protocolo do AGENTS.md UMA vez, depois da integracao.",
+  "lane": "search-delivery-sentinel-72h-v1",
+  "branch": "sprint/search-delivery-sentinel-72h-v1",
+  "base": "34dc7b41bce901bd8bebfdec0a01e293678cbf08",
+  "head_no_fechamento": "ed0c9eaf9cbcbb56a194116d6795b859ee748ebc",
+  "data": "2026-09-03",
+  "aviso_de_integracao": "Uma branch nao integrada NAO pode marcar o roadmap compartilhado como done. Todas as propostas abaixo mantem ou rebaixam estado; nenhuma promove a 'done'.",
+  "roadmap_proposto": [
+    {
+      "id": "P05-T07",
+      "titulo": "Explicar por que uma campanha Search nao escala",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "O dominio explica e a pagina canonica mostra, mas 'nao escala' inclui demanda e concorrencia, que esta lane nao mede. LOW_DEMAND existe no vocabulario e nao tem sensor proprio.",
+      "evidencia": [
+        "backend/app/trafego/sentinela.py -- PRECEDENCIA de 16 posicoes; LIMITED_BY_RANK e LIMITED_BY_BUDGET separados pela metrica que os distingue",
+        "diagnostico_persistido: search_rank_lost_impression_share passou a ser LIDO (estava allowlisted e ignorado desde a v12)",
+        "keywords: lance vs estimativa de primeira pagina com denominador honesto",
+        "92 contraprovas em backend/tests/test_trafego_sentinela.py"
+      ],
+      "lacunas": [
+        "sem sensor de demanda (search volume); LOW_DEMAND nao dispara sozinho",
+        "ad_group.primary_status nao e coletado: o eixo 'grupo' segue nao_apurado",
+        "eixo 'segmentacao' segue nao_apurado -- nenhum sinal coletado"
+      ]
+    },
+    {
+      "id": "P05-T09",
+      "titulo": "Criar o guardiao canonico das primeiras 72 horas",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "As janelas existem, sao versionadas e provadas, mas horas_ligada depende do diario trafego_evento, que so e lido quando o repositorio implementa transicoes(). Na leitura real a janela saiu 'indeterminada'.",
+      "evidencia": [
+        "PoliticaDoGuardiao versionada e configuravel: nascimento / ate_24h / 24_72h / apos_72h / indeterminada",
+        "horas_para_incidente = 24 = dominio.HORAS_ATE_ALERTAR (o mesmo do sino, de proposito)",
+        "None e NaN nao viram 'madura'; janela_madura() so autoriza incidente em 24_72h e apos_72h",
+        "test_03*, test_04b, test_r11 e test_p09"
+      ],
+      "lacunas": [
+        "horas_ligada e opcional no repositorio; sem transicoes() a janela e indeterminada",
+        "a carencia de 6h e um default justificado, ainda nao calibrado por owner/conta"
+      ]
+    },
+    {
+      "id": "P05-T12",
+      "titulo": "Fechar o plano canonico de mensuracao no nascimento Search",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "A sentinela CONSOME trafego.prontidao, nao a reimplementa, e a ponte so sabe derivar o estado das metas observadas na coleta. O plano canonico continua fora desta lane.",
+      "evidencia": [
+        "customer_conversion_goal passou a ser coletado (tipo_item novo, sem migration)",
+        "eixo 'conversao' do diagnostico deixou de ser permanentemente nao_apurado",
+        "MEASUREMENT_NOT_READY so se aplica a ESTRATEGIAS_SMART_BIDDING; MANUAL_CPC nao gera alarme sem objeto",
+        "test_12, test_12b, test_12c, test_p07",
+        "TARGET_IMPRESSION_SHARE removido das estrategias dependentes de conversao: TIS otimiza participacao e posicao, nao conversoes"
+      ],
+      "lacunas": [
+        "conversion_action, campaign_conversion_goal e conversion_goal_campaign_config nao sao coletados",
+        "prontidao.avaliar() completa exige o plano de mensuracao, que a ponte nao carrega"
+      ]
+    },
+    {
+      "id": "P06-T05",
+      "titulo": "Criar recibos e alertas de rotina parada",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "A identidade e a maquina de estados do incidente existem e sao provadas, mas consolidar() e uma funcao PURA: nenhum caminho de producao a chama ainda, e nao ha persistencia de incidente.",
+      "evidencia": [
+        "chave_do_incidente determinística; a JANELA nao entra na chave, de proposito",
+        "consolidar(): repeticao, resolucao, reabertura preservando historico, e nova",
+        "reconhecimento atravessa a repeticao e NAO atravessa a reabertura",
+        "test_13*, test_14*"
+      ],
+      "lacunas": [
+        "consolidar() nao esta ligada a nenhuma rotina; falta o chamador",
+        "heartbeat da rotina de coleta nao foi implementado nesta lane",
+        "nenhuma tabela de incidente foi criada -- por decisao, para nao propor migration"
+      ]
+    },
+    {
+      "id": "P06-T06",
+      "titulo": "Entregar o Ads Health Monitor minimo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "A pagina canonica mostra o veredito e o sino parou de mentir, mas a fila de atencao ainda nao renderiza o incidente da sentinela: ela projeta o sintoma do inventario.",
+      "evidencia": [
+        "envelope v2 com sentinela servida pelo backend",
+        "VereditoDaSentinela.tsx: veredito, severidade, idade, frescor, janela, evidencia, secundarias com denominador, desconhecidos, recomendacoes e proximo ato",
+        "declaracao EM TEXTO de que nenhuma alteracao foi aplicada",
+        "sino: sexto estado lista_incompleta, com rotulo acessivel coerente (achado 8 da revisao)",
+        "verde exige TRES condicoes: HEALTHY + evidencia apurada + frescor recente"
+      ],
+      "lacunas": [
+        "FilaDeAtencao ainda nao consome o veredito da sentinela",
+        "nao ha visao de carteira: o veredito e por campanha, uma requisicao por vez"
+      ]
+    },
+    {
+      "id": "P09-T14",
+      "titulo": "Operacionalizar a coleta continua de inteligencia oficial Google Ads",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "Dois sinais novos entraram sem migration, mas a fonte estrutural de keywords continua sendo keyword_view com segments.date -- keyword que nunca serviu na janela nao volta, e keyword_count e gravado como MEDIDO sobre um subconjunto enviesado.",
+      "evidencia": [
+        "customer.status e customer_conversion_goal coletados dentro do documento DIAGNOSTICO_ENTREGA existente",
+        "sem migration: o CHECK de tipo_item na v12_01 e aberto (btrim(...) <> ''), e DIAGNOSTICO_ENTREGA ja e um dos doze tipo_sinal",
+        "payload declara conta_retornou e metas_retornaram: 'a conta respondeu e nao havia' nao se confunde com 'nao perguntei'",
+        "5 provas novas em backend/tests/test_google_inteligencia_persistente.py",
+        "estrutura de keywords separada do desempenho: ad_group_criterion sem segments.date para inventario, keyword_view na janela para metrica, correlacionados por criterion_id; keyword_count passou a contar a estrutura, e o payload declara estrutura_de_keywords_apurada"
+      ],
+      "lacunas": [
+        "quality_info nao veio em 10 de 10 keywords na leitura real: o incidente nasce como 'sem dado'",
+        "policy_topic_entries (o motivo da reprovacao) e final_urls nao sao coletados"
+      ]
+    },
+    {
+      "id": "P09-T15",
+      "titulo": "Ligar o portao de politica de destino pago",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "Esta lane apenas CONSOME o recibo, e nao ha recibo por campanha para consumir. backend/app/landing_policy/** e ownership de outra frente e nao foi tocado.",
+      "evidencia": [
+        "LeituraDoDestino distingue apto / reprovado / em_revisao / ausente / nao_consultado",
+        "nao_consultado vai para desconhecidos e rebaixa a evidencia; ausente E causa",
+        "POLICY_BLOCKED e POLICY_REVIEW estao na precedencia acima de qualquer causa de campanha",
+        "test_11, test_11b, test_11c, test_p14"
+      ],
+      "lacunas": [
+        "nenhuma fonte de recibo por campanha: a ponte declara nao_consultado sempre",
+        "quem ligar o portao precisa fornecer o veredito por volc_campaign_id"
+      ]
+    },
+    {
+      "id": "P10-T12",
+      "titulo": "Provar analista agentico read-only de campanhas sem entrega",
+      "estado_atual": "todo",
+      "estado_proposto": "partial",
+      "por_que_nao_done": "O analista e deterministico, nao agentico. A missao proibia LLM no agrupamento de redundancia e exigia read-only; ambos cumpridos, mas 'agentico' nao foi entregue.",
+      "evidencia": [
+        "leitura real somente-leitura da conta Credito Up: veredito ACCOUNT_BLOCKED/critica/account sobre dado vivo",
+        "gate_sem_mutacao_google ok 3/3 antes e depois; zero mutacoes",
+        "agrupamento de intencao deterministico, sem LLM: normalizacao, acento, ordem, repeticao, match type",
+        "prova por AST de que nenhum metodo mutavel e alcancavel pelo dominio"
+      ],
+      "lacunas": [
+        "nenhuma negativa e proposta: a lane exige search term observado antes disso",
+        "search_term_view nao e coletado"
+      ]
+    }
+  ],
+  "nos_sugeridos": [
+    {
+      "id": "sentinela-de-entrega-search",
+      "tipo": "capacidade",
+      "rotulo": "Search Delivery Sentinel",
+      "arquivo": "backend/app/trafego/sentinela.py",
+      "resumo": "Dominio puro que decide QUAL causa manda entre 16 estados, com precedencia causal explicita, janelas do guardiao 72h e idempotencia de incidente. Zero rede, zero SDK, zero I/O.",
+      "estado": "implementado_e_provado",
+      "evidencia": "92 contraprovas + 17 provas de vocabulario fixadas no descriptor do SDK"
+    },
+    {
+      "id": "vocabulario-google-fixado-no-sdk",
+      "tipo": "guarda",
+      "rotulo": "Vocabulario Google conferido no descriptor",
+      "arquivo": "backend/tests/test_trafego_sentinela_vocabulario.py",
+      "resumo": "Todo nome de enum usado pela sentinela e conferido contra o protobuf instalado. Encontrou cinco nomes inventados que nunca casariam.",
+      "estado": "implementado_e_provado"
+    }
+  ],
+  "arestas_sugeridas": [
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P05-T07",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P05-T09",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P06-T06",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P10-T12",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "trafego-prontidao",
+      "tipo": "consome_veredito"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "landing-policy-recibo",
+      "tipo": "consome_quando_existir"
+    },
+    {
+      "de": "vocabulario-google-fixado-no-sdk",
+      "para": "sentinela-de-entrega-search",
+      "tipo": "guarda"
+    }
+  ],
+  "handoffs": [
+    {
+      "prioridade": "alta",
+      "para": "a frente dona de backend/app/trafego/contas.py",
+      "arquivo": "backend/app/trafego/contas.py",
+      "linhas": "GAQL_CLIENTES ~54, GAQL_CONTA ~60-70",
+      "defeito": "GAQL_CLIENTES filtra WHERE customer_client.status = 'ENABLED': uma conta suspensa DESAPARECE da descoberta, sem linha e sem explicacao. E GAQL_CONTA nao seleciona customer.status.",
+      "ironia_registrada": "O docstring do proprio arquivo diz que esconder uma conta 'faria uma conta sumir da lista sem explicacao e ninguem saberia por que' -- e e exatamente o que a clausula faz com uma conta suspensa.",
+      "medido_na_conta_real": "2 de 4 contas sob o MCC sao invisiveis a esse filtro (1 CANCELED, 1 SUSPENDED). A conta Credito Up e uma delas.",
+      "correcao_sugerida": "Remover o WHERE e devolver o status por conta, deixando o consumidor decidir; e acrescentar customer.status a GAQL_CONTA. Esta lane NAO tocou o arquivo.",
+      "por_que_nao_foi_feito_aqui": "contas.py esta fora do ownership desta missao."
+    },
+    {
+      "prioridade": "media",
+      "para": "a frente dona de src/components/trafego/inventario/FilaDeAtencao.tsx",
+      "pedido": "A fila de atencao ainda projeta o sintoma do inventario. Consumir o veredito da sentinela daria a ela a mesma prioridade causal da pagina canonica.",
+      "contrato_disponivel": "VeredictoDaSentinela em src/types/diagnostico.ts, com incidente, severidade, escopo, chave e proximo_ato."
+    }
+  ],
+  "estado_honesto": {
+    "veredito_da_lane": "ver HANDOFF.md secao 14",
+    "o_que_esta_provado": [
+      "conta suspensa vence diagnostico inferior, em teste hermetico E na conta real",
+      "campanha pausada nao gera falso alerta de ausencia de gasto",
+      "campanha habilitada, madura e fresca sem entrega gera NO_DELIVERY",
+      "frescor e ausencia sao tratados como quatro estados distintos",
+      "keywords limitadas tem denominador honesto, com o nao-classificavel FORA da conta",
+      "redundancia agrupada sem LLM, sem inventar intencao",
+      "recomendacoes coletadas e adjudicadas, nunca aplicadas",
+      "alertas idempotentes, resolviveis e reabriveis com historico",
+      "nenhum metodo mutavel alcancavel -- provado por AST e pelo gate"
+    ],
+    "o_que_NAO_esta_provado": [
+      "a causa da suspensao (segue HYPOTHESIS_PARTIALLY_SUPPORTED)",
+      "consolidar() em rota produtiva -- e funcao pura sem chamador",
+      "heartbeat da rotina de coleta",
+      "a fila de atencao consumindo o veredito"
+    ]
+  },
+  "nao_mutacoes_confirmadas": [
+    "zero Google Ads mutate",
+    "zero ApplyRecommendation",
+    "zero DismissRecommendation",
+    "zero alteracao de keyword, lance, orcamento, anuncio ou campanha",
+    "zero ativacao ou pausa",
+    "zero migration criada, proposta ou aplicada",
+    "zero escrita no Supabase",
+    "zero n8n",
+    "zero Data Manager",
+    "zero WordPress",
+    "zero deploy",
+    "zero merge em volc-os-v2",
+    "zero merge em main",
+    "zero push",
+    "zero edicao de ROADMAP-VIVO.json, curadoria-operacional.json ou grafo gerado",
+    "zero segredo em codigo, log ou artefato",
+    "zero uso ou conserto do Harness V3",
+    "zero worktree alheia tocada"
+  ],
+  "rodada_corretiva_2026_09_03": {
+    "origem": "avaliacao independente sobre o SHA 98c66da",
+    "bloqueantes": [
+      "TARGET_IMPRESSION_SHARE tratado como dependente de conversao",
+      "keyword_view vazia lida como ausencia de keywords configuradas"
+    ],
+    "ambos_reproduzidos_antes_do_conserto": true,
+    "correcao_preferida_aplicada": true,
+    "estados_mantidos_partial": [
+      "P05-T09",
+      "P06-T05",
+      "P06-T06"
+    ],
+    "nota": "O handoff do keyword_view saiu da lista porque o defeito foi CORRIGIDO nesta lane, nao delegado. A avaliacao independente forneceu o cenario reproduzivel que faltava."
+  }
+}

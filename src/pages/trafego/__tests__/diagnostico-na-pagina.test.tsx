@@ -202,3 +202,139 @@ describe('o portão da página', () => {
     expect(api.diagnosticoDeEntrega).toHaveBeenCalledWith('gads-8017851692-241');
   });
 });
+
+// ── o veredito da sentinela na página ────────────────────────────────────────
+
+describe('a página abre com o veredito, e não com "não foi possível apurar"', () => {
+  const diagnosticoDeProva = () =>
+    derivarDiagnostico(evidenciaDeProva(), ID_FGTS, {
+      agora: new Date('2026-08-26T18:10:11.000Z'),
+    });
+
+  const vereditoDeContaSuspensa = {
+    versao: 1,
+    customer_id: '9990001111',
+    volc_campaign_id: 'gads-9990001111-241',
+    escopo: 'account' as const,
+    status: 'ACCOUNT_BLOCKED',
+    severidade: 'critica',
+    incidente: true,
+    observado_em: '2026-09-03T11:00:00Z',
+    janela_inicio: '2026-08-27',
+    janela_fim: '2026-09-03',
+    janela_do_guardiao: 'apos_72h',
+    frescor: 'recente',
+    estado_da_evidencia: 'parcial' as const,
+    causa_primaria: {
+      status: 'ACCOUNT_BLOCKED',
+      escopo: 'account' as const,
+      severidade: 'critica',
+      frase: 'A conta de anúncio está SUSPENDED.',
+      evidencias: [
+        {
+          rotulo: 'estado da conta',
+          campo: 'customer.status',
+          valor: 'SUSPENDED',
+          observado_em: '2026-09-03T11:00:00Z',
+          origem: 'conta',
+        },
+      ],
+      motivo_da_conta: [],
+      denominador: null,
+      proximo_ato: 'tratar a conta no painel do Google',
+    },
+    causas_secundarias: [
+      {
+        status: 'LIMITED_BY_RANK',
+        escopo: 'keyword' as const,
+        severidade: 'media',
+        frase: '2 de 2 keywords com lance abaixo da estimativa de primeira página',
+        evidencias: [],
+        motivo_da_conta: [],
+        denominador: {
+          rotulo: 'com lance abaixo da estimativa de primeira página',
+          quantos: 2,
+          de_quantos: 2,
+          fora_da_conta: 0,
+          unidade: 'keywords',
+          proporcao: 1,
+          frase: '2 de 2 keywords com lance abaixo da estimativa (100%)',
+        },
+        proximo_ato: 'avaliar lance',
+      },
+    ],
+    desconhecidos: ['recibo de destino pago: não consultado por esta leitura'],
+    recomendacoes: {
+      estado_da_coleta: 'falhou',
+      apurado: false,
+      itens: null,
+      quantidade: null,
+      impedimento: 'a leitura falhou',
+    },
+    proximo_ato:
+      'tratar a conta no painel do Google antes de qualquer ajuste de campanha',
+    chave: 'k1',
+    mutacao_externa: false,
+  };
+
+  it('o operador lê "conta bloqueada", e o lance vira evidência secundária', async () => {
+    // ⚠️ ESTE É O CASO QUE ORIGINOU A MISSÃO. Antes deste pacote a página abria
+    // com "Não foi possível apurar — parou em conta" para TODA campanha,
+    // porque o backend nunca preenchia o degrau `conta` e o veredito era
+    // derivado no cliente sobre essa escada. Uma conta suspensa por política
+    // era indistinguível de uma falha nossa de leitura.
+    api.diagnosticoDeEntrega.mockResolvedValue({
+      versao: 2,
+      diagnostico: diagnosticoDeProva(),
+      propostas: proporMudancas(diagnosticoDeProva()),
+      sentinela: vereditoDeContaSuspensa,
+    });
+    montar();
+
+    const titulo = await screen.findByRole('heading', {
+      name: /Conta de anúncio bloqueada/i,
+    });
+    expect(titulo).toBeTruthy();
+
+    // o próximo ato está na tela, e NÃO manda mexer em lance
+    expect(
+      screen.getByText(/tratar a conta no painel do Google antes de qualquer ajuste/i),
+    ).toBeTruthy();
+
+    // o lance aparece — como causa secundária, com denominador
+    const secundarias = screen.getByRole('list', { name: /causas secundárias/i });
+    expect(within(secundarias).getByText(/Limitada por classificação/i)).toBeTruthy();
+    expect(
+      within(secundarias).getAllByText(/2 de 2 keywords/i).length,
+    ).toBeGreaterThanOrEqual(1);
+
+    // a falha de leitura das recomendações NÃO vira "zero recomendações"
+    expect(screen.getByText(/NÃO significa que não haja nenhuma/i)).toBeTruthy();
+
+    // e a tela DIZ que nada foi aplicado
+    expect(
+      screen.getByTestId('declaracao-de-nao-mutacao').textContent,
+    ).toContain('Nenhuma alteração foi aplicada');
+  });
+
+  it('servidor sem o campo NÃO é lido como campanha saudável', async () => {
+    api.diagnosticoDeEntrega.mockResolvedValue({
+      versao: 1,
+      diagnostico: diagnosticoDeProva(),
+      propostas: proporMudancas(diagnosticoDeProva()),
+      sentinela: null,
+    });
+    montar();
+
+    await waitFor(() =>
+      expect(screen.getByText(/ainda não emite veredito de sentinela/i)).toBeTruthy(),
+    );
+    expect(
+      screen.getByText(/Isto não significa que a campanha esteja bem/i),
+    ).toBeTruthy();
+    // e a escada continua sendo a leitura disponível: o título dela é o
+    // veredito local dos degraus, que segue existindo e respondendo outra
+    // pergunta — até onde a escada foi lida com confiança.
+    expect(document.getElementById('escada-titulo')).toBeTruthy();
+  });
+});

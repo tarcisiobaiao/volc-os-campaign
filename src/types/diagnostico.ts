@@ -638,7 +638,191 @@ export type { ManifestoDeCanal };
  * tempo de render: ela projeta o que a apuração já gravou.
  */
 export interface RespostaDoDiagnostico {
-  versao: typeof VERSAO_DIAGNOSTICO;
+  /**
+   * ⚠️ O envelope está na **versão 2** desde 03/09/2026, e o campo continua
+   * tipado como `number` de propósito: uma tela que quebra ao ver uma versão
+   * nova é pior que uma que lê os campos que conhece.
+   */
+  versao: number;
   diagnostico: DiagnosticoDeEntrega;
   propostas: CaixaDePropostas;
+  /**
+   * O veredito da sentinela, **servido pelo backend**.
+   *
+   * `null` quando o servidor é anterior a este contrato. `null` NÃO significa
+   * "está tudo bem": a tela que recebe `null` diz que não recebeu veredito, e
+   * não desenha saúde.
+   */
+  sentinela: VeredictoDaSentinela | null;
+}
+
+// ── a sentinela de entrega ──────────────────────────────────────────────────
+//
+// ## Por que o veredito passou a vir do servidor
+//
+// `vereditoDaEscada` (em `@/lib/diagnostico/escada`) derivava o veredito aqui,
+// no cliente, a partir dos degraus. A regra dela estava certa e a entrada,
+// errada: o backend nunca preenchia o degrau `conta`, que é o PRIMEIRO da ordem
+// causal — então a função devolvia `{tipo:'nao_apurado', eixo:'conta'}` em toda
+// campanha e `degrausConfiaveis` devolvia lista vazia. A escada inteira era
+// leitura suspensa permanente: a tela nunca mentia de verde porque nunca
+// diagnosticava nada.
+//
+// O veredito servido é o que faz a tela, o sino e o alerta concordarem por
+// construção em vez de por coincidência. `vereditoDaEscada` permanece como
+// leitura local dos degraus — ela responde "até onde a escada foi lida", que é
+// uma pergunta diferente e continua útil.
+
+/** Em que nível o fato foi observado. */
+export type EscopoDaSentinela =
+  | 'account'
+  | 'campaign'
+  | 'ad_group'
+  | 'ad'
+  | 'keyword'
+  | 'measurement'
+  | 'destination';
+
+/**
+ * Os estados da sentinela.
+ *
+ * ⚠️ Tipado como união ABERTA (`| (string & {})`) de propósito: o servidor pode
+ * ganhar um estado antes deste pacote, e a mesma lei do resto deste arquivo
+ * vale aqui — uma tela que apaga o veredito por causa de uma palavra
+ * desconhecida é pior que uma que diz não reconhecer a palavra. Quem consome
+ * usa `vocabularioDaSentinela`, cujo fallback nunca é `bom`.
+ */
+export type StatusDaSentinela =
+  | 'ACCOUNT_BLOCKED'
+  | 'ACCESS_UNAVAILABLE'
+  | 'POLICY_BLOCKED'
+  | 'POLICY_REVIEW'
+  | 'DATA_UNAVAILABLE'
+  /** Desligada por decisão. Não gastar é o esperado — não é incidente. */
+  | 'CAMPAIGN_OFF'
+  | 'ADS_NOT_READY'
+  | 'NO_DELIVERY'
+  | 'LIMITED_BY_BUDGET'
+  | 'LIMITED_BY_RANK'
+  | 'KEYWORD_STRUCTURE_RISK'
+  | 'MEASUREMENT_NOT_READY'
+  | 'LOW_DEMAND'
+  | 'LEARNING'
+  | 'OBSERVING'
+  | 'HEALTHY'
+  | (string & {});
+
+export type SeveridadeDaSentinela =
+  | 'critica' | 'alta' | 'media' | 'baixa' | 'informativa' | (string & {});
+
+/** A fase da vida da campanha, na janela do guardião de 72 horas. */
+export type JanelaDoGuardiao =
+  | 'nascimento'
+  | 'ate_24h'
+  | '24_72h'
+  | 'apos_72h'
+  /** Idade desconhecida. NÃO é zero, e não autoriza incidente de entrega. */
+  | 'indeterminada'
+  | (string & {});
+
+/** Uma contagem com o denominador colado. Nenhum percentual viaja sozinho. */
+export interface DenominadorDaSentinela {
+  rotulo: string;
+  quantos: number;
+  de_quantos: number;
+  /** Observados que não puderam ser classificados por falta de dado. */
+  fora_da_conta: number;
+  unidade: string;
+  /** `null` quando a amostra é pequena demais para sustentar proporção. */
+  proporcao: number | null;
+  /** A contagem já em português, com o denominador visível. */
+  frase: string;
+}
+
+export interface EvidenciaDaSentinela {
+  rotulo: string;
+  campo: string;
+  /** `null` = a conta não respondeu este campo. Nunca `'0'`. */
+  valor: string | null;
+  observado_em: string | null;
+  origem: string;
+}
+
+export interface CausaDaSentinela {
+  status: StatusDaSentinela;
+  escopo: EscopoDaSentinela | (string & {});
+  severidade: SeveridadeDaSentinela;
+  frase: string;
+  evidencias: EvidenciaDaSentinela[];
+  /** O que a conta disse com as próprias palavras. Separado da nossa inferência. */
+  motivo_da_conta: string[];
+  denominador: DenominadorDaSentinela | null;
+  proximo_ato: string | null;
+}
+
+/**
+ * Uma recomendação do Google, registrada e julgada — **nunca aplicada**.
+ *
+ * `aplicada` é sempre `false` e viaja no fio por isso: o operador LÊ que nada
+ * foi aplicado, em vez de deduzir da ausência de um botão.
+ */
+export interface RecomendacaoAdjudicada {
+  tipo: string;
+  alvo: string | null;
+  /** O que a plataforma DIZ que aconteceria. Não é medida nossa. */
+  impacto_informado: string | null;
+  observado_em: string | null;
+  frescor: string;
+  evidencia: EvidenciaDaSentinela[];
+  adjudicacao:
+    | 'nova' | 'revisada' | 'aceita_como_hipotese' | 'rejeitada' | 'superada'
+    | (string & {});
+  confianca: string;
+  proximo_ato: string;
+  aplicada: false;
+}
+
+/**
+ * As recomendações E o estado da apuração delas, juntos.
+ *
+ * ⚠️ `itens: null` é "não apurei"; `itens: []` é "apurei e o Google não sugeriu
+ * nada". Separar os dois é o ponto: uma lista vazia sem o estado da coleta
+ * ofereceria "zero recomendações" sem dizer se ninguém perguntou.
+ */
+export interface QuadroDeRecomendacoes {
+  estado_da_coleta:
+    | 'nao_executada' | 'falhou' | 'vazio_confirmado' | 'com_dados'
+    | (string & {});
+  apurado: boolean;
+  itens: RecomendacaoAdjudicada[] | null;
+  quantidade: number | null;
+  impedimento: string | null;
+}
+
+export interface VeredictoDaSentinela {
+  versao: number;
+  customer_id: string;
+  volc_campaign_id: string;
+  escopo: EscopoDaSentinela | (string & {});
+  status: StatusDaSentinela;
+  severidade: SeveridadeDaSentinela;
+  /** `true` quando este veredito pede alguém. `HEALTHY`/`OBSERVING` não pedem. */
+  incidente: boolean;
+  observado_em: string | null;
+  janela_inicio: string | null;
+  janela_fim: string | null;
+  janela_do_guardiao: JanelaDoGuardiao;
+  frescor: FrescorDoDiagnostico | (string & {});
+  /** `apurada` | `parcial` | `ausente` — o estado da PROVA, não da campanha. */
+  estado_da_evidencia: 'apurada' | 'parcial' | 'ausente' | (string & {});
+  causa_primaria: CausaDaSentinela | null;
+  causas_secundarias: CausaDaSentinela[];
+  /** O que permanece sem resposta. Dito, e não escondido num campo nulo. */
+  desconhecidos: string[];
+  recomendacoes: QuadroDeRecomendacoes;
+  proximo_ato: string | null;
+  /** Identidade determinística do incidente. Mesma condição, mesma chave. */
+  chave: string;
+  /** Sempre `false`. Declarado, não presumido. */
+  mutacao_externa: boolean;
 }

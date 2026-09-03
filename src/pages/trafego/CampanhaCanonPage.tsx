@@ -34,6 +34,7 @@ import {
 import { CodigoDaOcorrencia } from '@/components/trafego/inventario/EstadosDoInventario';
 import { EscadaDeEntrega } from '@/components/trafego/diagnostico/EscadaDeEntrega';
 import { CaixaDePropostas } from '@/components/trafego/diagnostico/CaixaDePropostas';
+import { VereditoDaSentinela } from '@/components/trafego/diagnostico/VereditoDaSentinela';
 import { VisaoDoCanal } from '@/components/trafego/canal/VisaoDoCanal';
 import { EstruturaDoCanal } from '@/components/trafego/hub/EstruturaDoCanal';
 import { RevisarCorrespondencia } from '@/components/trafego/vinculo/RevisarCorrespondencia';
@@ -473,6 +474,32 @@ const Diagnostico: React.FC<{ volcCampaignId: string }> = ({ volcCampaignId }) =
 
   return (
     <>
+      {/*
+        ⚠️ O VEREDITO VEM ANTES DA ESCADA, e a ordem é a leitura.
+
+        A escada responde *onde* a entrega para — e é o segundo passo. O
+        primeiro é a pergunta que o operador faz ao abrir a tela: o que
+        aconteceu, e o que eu faço agora. Enquanto essa pergunta não tinha
+        resposta servida, a página abria com "Não foi possível apurar — parou
+        em conta" para toda campanha, inclusive uma conta suspensa por
+        política: o operador via um problema nosso onde havia um fato da conta.
+      */}
+      {leitura.sentinela ? (
+        <div className="mt-10 border-t border-border pt-6">
+          <VereditoDaSentinela veredito={leitura.sentinela} />
+        </div>
+      ) : (
+        <div className="mt-10 border-t border-border pt-6">
+          <p className="kicker">veredito da sentinela</p>
+          <p className="mt-2 max-w-[70ch] text-[12px] leading-relaxed text-muted-foreground">
+            Este servidor ainda não emite veredito de sentinela — a escada
+            abaixo continua sendo a leitura disponível.{' '}
+            <strong className="font-medium text-foreground">
+              Isto não significa que a campanha esteja bem.
+            </strong>
+          </p>
+        </div>
+      )}
       <div className="mt-10 border-t border-border pt-6">
         <EscadaDeEntrega diagnostico={leitura.diagnostico} />
       </div>

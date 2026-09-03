@@ -484,14 +484,27 @@ def coletor(respostas=None, inventario=(CANARIO, LIGADA, PMAX), **opcoes):
 
 
 def linha_keyword(*, ad_group_id=555, texto="credito consignado", lance=1_200_000,
-                  primeira_pagina=900_000):
+                  primeira_pagina=900_000, criterion_id=0):
+    """Uma keyword ESTRUTURAL — o que `ad_group_criterion` responde, sem data."""
     row = _row()
     row.ad_group.id = ad_group_id
     row.ad_group.type_ = "SEARCH_STANDARD"
+    if criterion_id:
+        row.ad_group_criterion.criterion_id = criterion_id
     row.ad_group_criterion.keyword.text = texto
     row.ad_group_criterion.keyword.match_type = "PHRASE"
     row.ad_group_criterion.effective_cpc_bid_micros = lance
     row.ad_group_criterion.position_estimates.first_page_cpc_micros = primeira_pagina
+    return row
+
+
+def linha_metrica_de_keyword(*, criterion_id, impressoes=0, cliques=0):
+    """A linha do `keyword_view` na janela — SÓ métrica, sem estrutura."""
+    row = _row()
+    row.ad_group.id = 555
+    row.ad_group_criterion.criterion_id = criterion_id
+    row.metrics.impressions = impressoes
+    row.metrics.clicks = cliques
     return row
 
 
@@ -1142,7 +1155,11 @@ def test_leitura_nova_no_mesmo_bucket_e_descartada_e_isso_esta_provado():
     assert gravado["payload"]["keywords"] == 0
 
     # operador sobe keywords no canario; nova leitura, mesmo bucket
-    google.respostas["keywords_diagnostico"] = [linha_keyword(), linha_keyword()]
+    # ⚠️ A ESTRUTURA agora vem de `ad_group_criterion`, sem `segments.date`.
+    # `keyword_view` continua existindo e responde só a métrica da janela.
+    google.respostas["ad_group_criterion"] = [
+        linha_keyword(criterion_id=1), linha_keyword(criterion_id=2),
+    ]
     motor.executar_alvo(_alvo(), modo="frequente")
 
     enviados = [d for d in persistencia.enviados if d["tipo_sinal"] == "DIAGNOSTICO_ENTREGA"]
@@ -1381,3 +1398,120 @@ def test_conta_e_id_externo_continuam_alinhados_com_a_saude():
         assert dominio.normalizar_id_externo(valor) == saude._normalizar_campaign_id(
             valor, "campaign_id"
         )
+
+
+# --- 12. o estado da conta viaja com o diagnostico --------------------------
+#
+# ⚠️ Medido em 03/09/2026, contra `34dc7b4`: NENHUMA consulta do VOLC-OS lia
+# `customer.status`. `backend/app/trafego/contas.py` descobre contas com
+# `WHERE customer_client.status = 'ENABLED'` — uma conta suspensa desaparece da
+# lista sem linha e sem explicacao — e `GAQL_CONTA` nem seleciona o campo. Foi
+# assim que o incidente Credito Up (conta suspensa por politica, campanhas Search
+# sem gasto) chegou ao operador como `conta: nao_apurado`.
+
+
+def linha_conta(customer_id, *, status="ENABLED", nome="conta de prova"):
+    row = _row()
+    row.customer.id = int(customer_id)
+    row.customer.status = status
+    row.customer.descriptive_name = nome
+    row.customer.currency_code = "BRL"
+    return row
+
+
+def linha_meta(*, categoria="PURCHASE", origem="WEBSITE", biddable=True):
+    row = _row()
+    row.customer_conversion_goal.category = categoria
+    row.customer_conversion_goal.origin = origem
+    row.customer_conversion_goal.biddable = biddable
+    return row
+
+
+RESPOSTAS_COM_CONTA = {
+    "campanha_base": [linha_campanha(LIGADA["campaign_id"], nome="ligada")],
+    "campanha_desempenho": [
+        linha_desempenho(LIGADA["campaign_id"], impressoes=0, cliques=0)
+    ],
+    "keywords_diagnostico": [linha_keyword()],
+    "ad_group_ad": [],
+    "campaign_simulation": [],
+    "recommendation": [],
+    "experiment": [],
+    "customer": [linha_conta(LIGADA["customer_id"], status="SUSPENDED")],
+    "customer_conversion_goal": [linha_meta()],
+}
+
+
+def _diagnostico_de(persistencia):
+    return [
+        d for d in persistencia.documentos
+        if d["tipo_sinal"] == "DIAGNOSTICO_ENTREGA"
+    ][0]
+
+
+def test_o_coletor_pergunta_o_estado_da_conta():
+    """A consulta existe, e e SELECT."""
+    _motor, _persistencia, google = coletor(RESPOSTAS_COM_CONTA)
+    _motor.executar(modo="frequente")
+
+    chaves = [chave for _cid, chave in google.registro.consultas]
+    assert "customer" in chaves, (
+        "o coletor nao pergunta o estado da conta; foi assim que a suspensao "
+        "do Credito Up ficou invisivel"
+    )
+    assert "customer_conversion_goal" in chaves
+
+
+def test_conta_suspensa_chega_ao_ledger_como_item_de_conta():
+    _motor, persistencia, _google = coletor(RESPOSTAS_COM_CONTA)
+    _motor.executar(modo="frequente")
+
+    documento = _diagnostico_de(persistencia)
+    contas = [i for i in documento["itens"] if i["tipo_item"] == "account"]
+    assert len(contas) == 1
+    assert contas[0]["payload"]["customer"]["status"] == "SUSPENDED"
+    # ⚠️ E o item da conta e o PRIMEIRO: `ordinal` e a ordem de leitura, e o
+    # consumidor le a conta antes de concluir sobre a campanha.
+    assert contas[0]["ordinal"] == 0
+    assert documento["payload"]["conta_retornou"] is True
+
+
+def test_metas_de_conversao_chegam_ao_ledger():
+    _motor, persistencia, _google = coletor(RESPOSTAS_COM_CONTA)
+    _motor.executar(modo="frequente")
+
+    documento = _diagnostico_de(persistencia)
+    metas = [i for i in documento["itens"] if i["tipo_item"] == "conversion_goal"]
+    assert len(metas) == 1
+    assert metas[0]["payload"]["customer_conversion_goal"]["category"] == "PURCHASE"
+    assert documento["payload"]["metas_retornaram"] is True
+    assert documento["payload"]["metas"] == 1
+
+
+def test_conta_que_nao_respondeu_e_declarada_e_nao_deduzida():
+    """Zero itens de conta pode ser "nao havia" ou "nao perguntei". O payload diz."""
+    respostas = dict(RESPOSTAS_COM_CONTA, customer=[], customer_conversion_goal=[])
+    _motor, persistencia, _google = coletor(respostas)
+    _motor.executar(modo="frequente")
+
+    documento = _diagnostico_de(persistencia)
+    assert [i for i in documento["itens"] if i["tipo_item"] == "account"] == []
+    assert documento["payload"]["conta_retornou"] is False
+    assert documento["payload"]["metas_retornaram"] is False
+
+
+def test_a_consulta_de_conta_nao_precisa_de_migration():
+    """`tipo_item` e um CHECK ABERTO na v12_01; `tipo_sinal` e fechado.
+
+    Esta prova amarra a decisao de arquitetura ao arquivo que a sustenta: o
+    estado da conta viaja dentro de `DIAGNOSTICO_ENTREGA`, que ja e um dos doze
+    `tipo_sinal` aceitos, como um `tipo_item` novo — que a migration permite sem
+    alteracao nenhuma.
+    """
+    from pathlib import Path
+
+    sql = Path("supabase/migrations/v12_01_google_inteligencia_coletas.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "CONSTRAINT trafego_google_item_tipo CHECK (btrim(tipo_item) <> '')" in sql
+    assert "'DIAGNOSTICO_ENTREGA'" in sql

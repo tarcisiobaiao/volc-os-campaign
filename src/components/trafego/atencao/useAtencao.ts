@@ -158,18 +158,38 @@ export type EstadoDoSino =
   | 'com_condicao'
   | 'consultando'
   | 'indisponivel'
-  | 'ultimo_conhecido';
+  | 'ultimo_conhecido'
+  /**
+   * Consultei, contei zero, e a lista que contei está incompleta.
+   *
+   * ⚠️ Este estado nasceu de um falso verde medido em 03/09/2026: com
+   * `quantos === 0` e `parcial === true` — que acontece toda vez que o
+   * inventário tem mais páginas do que esta sessão carregou — o sino caía em
+   * `sem_condicao` e desenhava o check verde de "Nenhuma condição ativa". A
+   * ressalva existia, num bloco cinza abaixo, e o operador lia o glifo.
+   *
+   * Zero numa lista incompleta não é "não há nada": é "não há nada NO QUE EU
+   * VI". São afirmações diferentes, e só uma delas autoriza fechar a central e
+   * ir cuidar de outra coisa.
+   */
+  | 'lista_incompleta';
 
 export function estadoDoSino(leitura: {
   carregando: boolean;
   indisponivel: boolean;
   ultimoEstadoConhecido: boolean;
   quantos: number;
+  parcial?: boolean;
 }): EstadoDoSino {
   // A ordem é a regra. "Não consegui perguntar" vem antes de qualquer contagem,
   // porque uma contagem apurada sobre nada é uma afirmação sobre nada.
   if (leitura.indisponivel) return 'indisponivel';
   if (leitura.carregando) return 'consultando';
   if (leitura.ultimoEstadoConhecido) return 'ultimo_conhecido';
-  return leitura.quantos > 0 ? 'com_condicao' : 'sem_condicao';
+  if (leitura.quantos > 0) return 'com_condicao';
+  // ⚠️ Zero E lista incompleta. `quantos > 0` vem ANTES desta linha de
+  // propósito: uma condição achada é uma afirmação verdadeira mesmo quando a
+  // busca não terminou, e escondê-la atrás da ressalva seria trocar um alarme
+  // real por um aviso de método.
+  return leitura.parcial ? 'lista_incompleta' : 'sem_condicao';
 }

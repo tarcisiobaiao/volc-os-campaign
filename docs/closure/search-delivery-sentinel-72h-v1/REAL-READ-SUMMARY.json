@@ -1,0 +1,135 @@
+{
+  "_leia_primeiro": "Leitura REAL, somente-leitura e pseudonimizada, da conta Credito Up. Nenhuma mutacao foi chamada. Todo identificador saiu como pseudonimo blake2b com sal ALEATORIO por execucao, nao persistido: os pseudonimos abaixo sao inuteis fora desta execucao e nao correlacionam com nenhuma outra. Nenhum customer id, campaign id, texto de keyword, URL, token ou e-mail foi gravado.",
+  "executada_em": "2026-09-03",
+  "branch": "sprint/search-delivery-sentinel-72h-v1",
+  "gate_sem_mutacao_google": {
+    "antes": "ok 3/3",
+    "depois": "ok 3/3"
+  },
+  "executado": true,
+  "somente_leitura": true,
+  "mutacoes_chamadas": 0,
+  "metodos_usados": [
+    "GoogleAdsService.SearchStream (GAQL SELECT)"
+  ],
+  "pseudonimizacao": "blake2b com sal aleatório por execução, não persistido",
+  "mcc": "mcc:701b6d2c88",
+  "contas_sob_o_mcc": {
+    "total": 4,
+    "por_status": {
+      "ENABLED": 2,
+      "CANCELED": 1,
+      "SUSPENDED": 1
+    },
+    "invisiveis_ao_filtro_enabled": 2
+  },
+  "conta_alvo": {
+    "encontrada": true,
+    "pseudonimo": "conta:3231992db5",
+    "status": "SUSPENDED",
+    "visivel_com_filtro_enabled": false
+  },
+  "customer_status": "SUSPENDED",
+  "campanhas_search": {
+    "total": 2,
+    "por_status": {
+      "ENABLED": 2
+    },
+    "por_primary_status": {
+      "ELIGIBLE": 2
+    },
+    "por_serving_status": {
+      "SERVING": 2
+    },
+    "motivos_declarados": {},
+    "estrategias": {
+      "MANUAL_CPC": 2
+    }
+  },
+  "campanha_examinada": {
+    "pseudonimo": "campanha:de09bb0564"
+  },
+  "metricas_7d": {
+    "impressoes": 9,
+    "cliques": 0,
+    "custo_micros": 0,
+    "conversoes": 0.0,
+    "perda_por_rank": 0.0,
+    "perda_por_orcamento": 0.0
+  },
+  "keywords": {
+    "observadas": 10,
+    "habilitadas": 0,
+    "aptas": 0,
+    "abaixo_da_primeira_pagina": 10,
+    "sem_dado_de_lance": 0,
+    "medidas_para_lance": 10,
+    "baixa_qualidade": 0,
+    "sem_dado_de_qualidade": 10,
+    "medidas_para_qualidade": 0,
+    "raramente_servidas": 0,
+    "reprovadas": 0,
+    "em_revisao": 0,
+    "restritas": 0,
+    "sem_dados": 0,
+    "clusters_redundantes": 0,
+    "motivos_declarados": {
+      "AD_GROUP_CRITERION_BELOW_FIRST_PAGE_BID": 10
+    }
+  },
+  "anuncios": {
+    "observados": 1,
+    "aptos": 1,
+    "por_aprovacao": {
+      "APPROVED": 1
+    }
+  },
+  "recomendacoes": {
+    "estado_da_coleta": "vazio_confirmado",
+    "total": 0,
+    "por_tipo": {},
+    "aplicadas_por_nos": 0,
+    "dispensadas_por_nos": 0
+  },
+  "veredito_da_sentinela": {
+    "status": "ACCOUNT_BLOCKED",
+    "severidade": "critica",
+    "escopo": "account",
+    "incidente": true,
+    "janela_do_guardiao": "indeterminada",
+    "estado_da_evidencia": "parcial",
+    "causa_primaria": "A conta de anúncio está SUSPENDED. Enquanto ela estiver assim, nada desta campanha vai a leilão — lance, orçamento e Quality Score são história, não causa.",
+    "causas_secundarias": [
+      "LIMITED_BY_RANK"
+    ],
+    "denominadores": [
+      "10 de 10 keywords com lance abaixo da estimativa de primeira página (100%)"
+    ],
+    "desconhecidos": [
+      "horas_ligada: não sabemos desde quando a campanha está ligada, e por isso a janela do guardião é indeterminada",
+      "10 keyword(s) sem Quality Score observado",
+      "recibo de destino pago: não consultado por esta leitura — isto NÃO afirma que o destino esteja apto",
+      "prontidão de mensuração: não apurada"
+    ],
+    "proximo_ato": "tratar a conta no painel do Google antes de qualquer ajuste de campanha; nenhum ato de lance ou verba muda este estado",
+    "mutacao_externa": false
+  },
+  "trava_ao_final": {
+    "escrita_permitida": false,
+    "FORGE_PERMITIR_ESCRITA_armada": false
+  },
+  "o_que_esta_leitura_prova": [
+    "customer.status = SUSPENDED: a conta Credito Up esta suspensa AGORA.",
+    "visivel_com_filtro_enabled = false: com o WHERE customer_client.status = 'ENABLED' de backend/app/trafego/contas.py, esta conta DESAPARECE da descoberta, sem linha e sem explicacao. E o defeito do handoff, medido.",
+    "As 2 campanhas Search respondem status=ENABLED, primary_status=ELIGIBLE e serving_status=SERVING com a conta suspensa: nenhum sinal de CAMPANHA denuncia a suspensao. So customer.status a ve.",
+    "9 impressoes, 0 cliques e R$ 0,00 em 7 dias.",
+    "O Google declarou AD_GROUP_CRITERION_BELOW_FIRST_PAGE_BID em 10 de 10 keywords -- exatamente o nome de enum que foi CORRIGIDO nesta lane apos a conferencia contra o descriptor do SDK. Com o nome inventado da primeira versao (BELOW_FIRST_PAGE_BID), este motivo teria casado ZERO.",
+    "quality_info nao veio em 10 de 10 keywords: o incidente nasce como 'sem dado', nao como 'Quality Score baixo'.",
+    "O veredito da sentinela sobre dado REAL e ACCOUNT_BLOCKED/critica/account, com o lance como causa SECUNDARIA quantificada -- que e exatamente a prioridade causal que a missao exige."
+  ],
+  "o_que_esta_leitura_NAO_prova": [
+    "Nao prova a CAUSA da suspensao. A hipotese dos links externos para a Caixa continua HYPOTHESIS_PARTIALLY_SUPPORTED; a API nao expoe o motivo literal.",
+    "Nao prova horas_ligada: o diario trafego_evento nao foi consultado nesta leitura, e por isso a janela do guardiao saiu 'indeterminada'.",
+    "Nao prova prontidao de mensuracao nem recibo de destino: nenhum dos dois foi consultado, e ambos estao declarados em 'desconhecidos'."
+  ]
+}

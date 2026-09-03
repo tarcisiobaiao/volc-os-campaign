@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Literal, Optional, Protocol, Sequence, TypeA
 from pydantic import BaseModel, Field
 
 from app.trafego import inventario
+from app.trafego import sentinela as sent
 
 log = logging.getLogger("volc.trafego.diagnostico_persistido")
 
@@ -34,20 +35,64 @@ EIXOS = (
     "segmentacao", "conversao", "leilao",
 )
 
+#: Estados da campanha que a conta usa para dizer "isto não vai a leilão".
+#: ⚠️ `SUSPENDED` e `MISCONFIGURED` entram em 03/09/2026: os dois são valores
+#: reais do enum e caíam no `else` que devolvia "primary_status e serving_status
+#: ausentes" — um impedimento factualmente falso, porque os dois campos vieram.
+ESTADOS_QUE_IMPEDEM: frozenset[str] = frozenset({
+    "NOT_ELIGIBLE", "REMOVED", "ENDED", "SUSPENDED", "MISCONFIGURED",
+})
+#: O que a campanha pode responder e esta versão sabe interpretar. Um valor fora
+#: desta lista NUNCA vira `ok`: ele nomeia a si mesmo no impedimento.
+ESTADOS_RECONHECIDOS_DA_CAMPANHA: frozenset[str] = (
+    ESTADOS_QUE_IMPEDEM
+    #: ⚠️ `NOT_STARTED` não existe em nenhum dos dois enums. O valor real para
+    #: "ainda não começou" é `PENDING`, que já está na lista.
+    | frozenset({"ENABLED", "ELIGIBLE", "SERVING", "LIMITED", "LEARNING",
+                 "PAUSED", "PENDING", "NONE"})
+)
+
+#: `customer.status` que impedem a conta inteira de veicular.
+CONTA_BLOQUEADA: frozenset[str] = frozenset({"SUSPENDED", "CANCELED", "CLOSED"})
+
+#: `policy_summary.approval_status` — o campo colhido, allowlisted e nunca lido
+#: até 03/09/2026. Um anúncio `ENABLED` + `ELIGIBLE` + `DISAPPROVED` saía do
+#: diagnóstico como `anuncio: ok`, palavra "presente".
+ANUNCIO_REPROVADO: frozenset[str] = frozenset({"DISAPPROVED"})
+#: ⚠️ `APPROVED_LIMITED` NÃO é verde: é aprovado com restrição, e a conta o
+#: separa de `APPROVED` justamente porque a veiculação é menor.
+ANUNCIO_LIMITADO: frozenset[str] = frozenset({"APPROVED_LIMITED"})
+#: ⚠️ `REVIEWED_AND_PENDING` NÃO existe em `PolicyReviewStatusEnum`. O quarto
+#: valor real é `ELIGIBLE_MAY_SERVE` — em revisão, e veiculando enquanto isso.
+ANUNCIO_EM_REVISAO: frozenset[str] = frozenset({
+    "REVIEW_IN_PROGRESS", "UNDER_APPEAL", "ELIGIBLE_MAY_SERVE",
+})
+#: A ÚNICA aprovação que autoriza contar um anúncio como apto.
+#: `APPROVED_LIMITED` fica de fora de propósito — ele tem tratamento próprio.
+ANUNCIO_APROVADO: frozenset[str] = frozenset({"APPROVED"})
+
 COLUNAS_CAMPANHA = (
     "volc_campaign_id,customer_id,campaign_id,nome,moeda,canal,estado_externo,"
     "veiculacao,lido_em"
 )
 COLUNAS_COLETA = (
     "coleta_id,estado,customer_id,volc_campaign_id,campaign_id,"
-    "janela_inicio,janela_fim,coletada_em,quantidade,erro_codigo,erro_classe"
+    "janela_inicio,janela_fim,coletada_em,quantidade,erro_codigo,erro_classe,"
+    # ⚠️ `payload` entra em 03/09/2026 por UM campo: saber se o inventário
+    # estrutural de keywords foi apurado. Só esse booleano é lido; nada mais do
+    # payload atravessa para a resposta.
+    "payload"
 )
 COLUNAS_ITEM = "item_id,coleta_id,ordinal,tipo_item,recurso_externo,payload"
 COLUNAS_METRICA = (
     "metrica_id,coleta_id,recurso_tipo,recurso_externo,nome,estado_valor,"
     "valor_numerico,valor_texto,unidade,moeda"
 )
-TIPOS_ITEM = {"campaign", "keyword", "ad"}
+#: ⚠️ `account` e `conversion_goal` entram aqui em 03/09/2026, e sem migration.
+#: O CHECK de `tipo_item` na v12_01 é `btrim(tipo_item) <> ''` — aberto — e os
+#: dois viajam dentro do documento `DIAGNOSTICO_ENTREGA`, que já é um dos doze
+#: `tipo_sinal` que o CHECK fechado aceita. Ver `coletor._diagnostico`.
+TIPOS_ITEM = {"account", "campaign", "keyword", "ad", "conversion_goal"}
 METRICAS_PERMITIDAS = {
     "impressions", "clicks", "cost_micros", "conversions",
     "all_conversions", "search_impression_share",
@@ -59,6 +104,29 @@ METRICAS_PERMITIDAS = {
 
 # Allowlist dos únicos caminhos brutos que podem virar evidência.
 CAMINHOS_ITEM: Dict[str, Dict[str, tuple[str, ...]]] = {
+    "account": {
+        # ⚠️ O campo que faltava. Sem ele, o eixo `conta` saía `nao_apurado`
+        # para SEMPRE — e como `conta` é o degrau 0, `vereditoDaEscada` no
+        # frontend devolvia `{tipo:'nao_apurado', eixo:'conta'}` em toda
+        # campanha, com ZERO degraus confiáveis. A escada inteira era leitura
+        # suspensa permanente: a tela nunca mentia de verde porque nunca
+        # diagnosticava nada.
+        "customer.status": ("customer", "status"),
+        "customer.id": ("customer", "id"),
+        "customer.test_account": ("customer", "test_account"),
+        "customer.optimization_score": ("customer", "optimization_score"),
+    },
+    "conversion_goal": {
+        "customer_conversion_goal.category": (
+            "customer_conversion_goal", "category"
+        ),
+        "customer_conversion_goal.origin": (
+            "customer_conversion_goal", "origin"
+        ),
+        "customer_conversion_goal.biddable": (
+            "customer_conversion_goal", "biddable"
+        ),
+    },
     "campaign": {
         "campaign.status": ("campaign", "status"),
         "campaign.primary_status": ("campaign", "primary_status"),
@@ -89,6 +157,13 @@ CAMINHOS_ITEM: Dict[str, Dict[str, tuple[str, ...]]] = {
         ),
         "ad_group_criterion.quality_info.quality_score": (
             "ad_group_criterion", "quality_info", "quality_score"
+        ),
+        # Colhidos pelo coletor desde sempre e nunca lidos até 03/09/2026.
+        "ad_group_criterion.keyword.text": (
+            "ad_group_criterion", "keyword", "text"
+        ),
+        "ad_group_criterion.position_estimates.top_of_page_cpc_micros": (
+            "ad_group_criterion", "position_estimates", "top_of_page_cpc_micros"
         ),
     },
     "ad": {
@@ -158,10 +233,61 @@ class CaixaDePropostas(BaseModel):
     leitura: Optional[Leitura]
 
 
+class VeredictoDaSentinela(BaseModel):
+    """O veredito da sentinela, servido pelo BACKEND.
+
+    ⚠️ Até 03/09/2026 o veredito era derivado no CLIENTE
+    (`src/lib/diagnostico/escada.ts:44`), e o servidor não emitia campo nenhum.
+    Com o eixo `conta` nunca preenchido, essa derivação devolvia
+    `{tipo:'nao_apurado', eixo:'conta'}` em toda campanha e ZERO degraus
+    confiáveis — a escada inteira era leitura suspensa permanente. Servir o
+    veredito daqui é o que faz a tela e o alerta concordarem por construção, em
+    vez de por coincidência.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    versao: int
+    customer_id: str
+    volc_campaign_id: str
+    escopo: str
+    status: str
+    severidade: str
+    incidente: bool
+    observado_em: Optional[str] = None
+    janela_inicio: Optional[str] = None
+    janela_fim: Optional[str] = None
+    janela_do_guardiao: str
+    frescor: str
+    estado_da_evidencia: str
+    causa_primaria: Optional[Dict[str, Any]] = None
+    causas_secundarias: List[Dict[str, Any]] = Field(default_factory=list)
+    desconhecidos: List[str] = Field(default_factory=list)
+    recomendacoes: Dict[str, Any] = Field(default_factory=dict)
+    proximo_ato: Optional[str] = None
+    chave: str
+    #: Sempre `False`, sempre no fio. O operador LÊ que nada foi aplicado, em
+    #: vez de deduzir isso da ausência de um botão.
+    mutacao_externa: bool = False
+
+
 class RespostaDoDiagnostico(BaseModel):
-    versao: Literal[1] = 1
+    """O envelope do diagnóstico. **Versão 2** desde 03/09/2026.
+
+    A versão sobe porque um consumidor PRECISA saber: até a v1 o veredito era
+    derivado no cliente sobre uma escada cujo primeiro degrau nunca era
+    preenchido, e agora ele vem do servidor. Um cliente da v1 continua lendo
+    `diagnostico` e `propostas` como sempre — o campo novo é opcional — mas um
+    cliente que ignora `sentinela` está descartando o veredito e voltando a
+    derivar o seu, que é o defeito de origem.
+    """
+
+    versao: Literal[2] = 2
     diagnostico: DiagnosticoDeEntrega
     propostas: CaixaDePropostas
+    #: `None` só quando a sentinela não pôde ser avaliada. Nunca omitido para
+    #: significar "está tudo bem".
+    sentinela: Optional[VeredictoDaSentinela] = None
 
 
 class CampanhaNaoEncontradaError(Exception):
@@ -401,6 +527,103 @@ def _degraus_observados(
         ) for eixo in EIXOS
     }
 
+    # ── o degrau 0, que nunca existiu ───────────────────────────────────────
+    #
+    # Até 03/09/2026 `conta` ficava no `nao_apurado` inicial para SEMPRE, porque
+    # não havia caminho de payload para `customer.status`. Como `conta` é o
+    # primeiro eixo da ordem causal, `vereditoDaEscada` (no frontend) devolvia
+    # `{tipo:'nao_apurado', eixo:'conta'}` em TODA campanha e `degrausConfiaveis`
+    # devolvia lista vazia: a escada inteira era leitura suspensa permanente.
+    contas = por_tipo["account"]
+    if contas:
+        campos_conta = contas[0]["campos"]
+        status_conta = campos_conta.get("customer.status")
+        ev_conta = [
+            _evidencia("estado da conta", "customer.status", status_conta, janela, leitura),
+            _evidencia("conta de teste", "customer.test_account",
+                       campos_conta.get("customer.test_account"), janela, leitura),
+        ]
+        texto_conta = None if status_conta is None else str(status_conta).upper()
+        if texto_conta is None:
+            degraus["conta"] = _nao_apurado(
+                "conta", "A linha da conta veio sem o estado dela.",
+                "customer.status ausente",
+            )
+        elif texto_conta in CONTA_BLOQUEADA:
+            degraus["conta"] = DegrauDeEntrega(
+                eixo="conta", estado="bloqueia", palavra="conta bloqueada",
+                frase=(
+                    f"A conta de anúncio está {texto_conta}. Nada desta campanha "
+                    "vai a leilão enquanto ela estiver assim."
+                ),
+                evidencias=ev_conta, impedimento=None,
+            )
+        elif texto_conta == "ENABLED":
+            degraus["conta"] = DegrauDeEntrega(
+                eixo="conta", estado="ok", palavra="conta habilitada",
+                frase="A conta de anúncio respondeu habilitada.",
+                evidencias=ev_conta, impedimento=None,
+            )
+        else:
+            degraus["conta"] = DegrauDeEntrega(
+                eixo="conta", estado="nao_apurado", palavra="não apurado",
+                frase=(
+                    f"A conta respondeu o estado {texto_conta!r}, que esta versão "
+                    "não reconhece."
+                ),
+                evidencias=ev_conta,
+                impedimento="customer.status fora do vocabulário conhecido",
+            )
+    elif estado_coleta == "com_dados":
+        degraus["conta"] = _nao_apurado(
+            "conta",
+            "A coleta completa não trouxe a linha da conta. Sem o estado dela, "
+            "nada acima sustenta conclusão.",
+            "item de conta ausente numa coleta com_dados",
+        )
+
+    # ── o degrau da conversão, também morto até aqui ────────────────────────
+    metas = por_tipo["conversion_goal"]
+    if metas:
+        biddables = [
+            m for m in metas
+            if str(m["campos"].get("customer_conversion_goal.biddable")).lower()
+            in {"true", "sim", "1"}
+        ]
+        ev_metas = [
+            _evidencia(f"meta {i + 1}", "customer_conversion_goal.category",
+                       m["campos"].get("customer_conversion_goal.category"),
+                       janela, leitura)
+            for i, m in enumerate(metas)
+        ]
+        if biddables:
+            degraus["conversao"] = DegrauDeEntrega(
+                eixo="conversao", estado="ok", palavra="meta observada",
+                frase=(
+                    f"A conta declarou {len(biddables)} meta(s) de conversão "
+                    f"usável(is) para lance, de {len(metas)} observada(s)."
+                ),
+                evidencias=ev_metas, impedimento=None,
+            )
+        else:
+            degraus["conversao"] = DegrauDeEntrega(
+                eixo="conversao", estado="limita", palavra="sem meta para lance",
+                frase=(
+                    f"A conta observou {len(metas)} meta(s) de conversão e "
+                    "nenhuma utilizável para lance."
+                ),
+                evidencias=ev_metas, impedimento=None,
+            )
+    elif estado_coleta == "com_dados":
+        degraus["conversao"] = DegrauDeEntrega(
+            eixo="conversao", estado="limita", palavra="nenhuma meta",
+            frase=(
+                "A coleta completa observou zero metas de conversão na conta. "
+                "Sem meta, lance automático otimiza contra um sinal que não existe."
+            ),
+            evidencias=[], impedimento=None,
+        )
+
     campanhas = por_tipo["campaign"]
     if campanhas:
         campos = campanhas[0]["campos"]
@@ -423,7 +646,7 @@ def _degraus_observados(
             estado, palavra, frase, impedimento = (
                 "bloqueia", "desligada", "A conta observou a campanha fora do estado ligado.", None,
             )
-        elif any(v in {"NOT_ELIGIBLE", "REMOVED", "ENDED"} for v in observados):
+        elif any(v in ESTADOS_QUE_IMPEDEM for v in observados):
             estado, palavra, frase, impedimento = (
                 "bloqueia", "não elegível", "A própria conta observou um estado que impede veiculação.", None,
             )
@@ -439,11 +662,28 @@ def _degraus_observados(
             estado, palavra, frase, impedimento = (
                 "ok", "ligada", "A conta observou a campanha ligada sem bloqueio nestes campos.", None,
             )
-        else:
+        elif primary is None or serving is None:
             estado, palavra, frase, impedimento = (
                 "nao_apurado", "não apurado",
                 "A campanha está ligada, mas a coleta não trouxe estado de veiculação.",
                 "primary_status e serving_status ausentes",
+            )
+        else:
+            # ⚠️ Este ramo existia e MENTIA. Com `status=ENABLED`,
+            # `primary_status=MISCONFIGURED` e `serving_status=SUSPENDED` — três
+            # valores reais do enum, todos PRESENTES — ele devolvia
+            # `impedimento="primary_status e serving_status ausentes"`. O
+            # operador lia que faltou dado quando a conta tinha respondido, e
+            # respondido a pior notícia possível.
+            desconhecidos_aqui = sorted(
+                v for v in observados
+                if v not in ESTADOS_RECONHECIDOS_DA_CAMPANHA
+            )
+            estado, palavra, frase, impedimento = (
+                "nao_apurado", "não apurado",
+                "A conta respondeu um estado de veiculação que esta versão não "
+                f"reconhece: {', '.join(desconhecidos_aqui) or 'combinação inesperada'}.",
+                "estado fora do vocabulário conhecido — nunca degradado para ok",
             )
         degraus["campanha"] = DegrauDeEntrega(
             eixo="campanha", estado=estado, palavra=palavra, frase=frase,
@@ -453,19 +693,40 @@ def _degraus_observados(
 
     orcamento = met.get("daily_budget_micros")
     perda = met.get("search_budget_lost_impression_share")
+    # ⚠️ Colhida pelo coletor, allowlisted em METRICAS_PERMITIDAS desde sempre, e
+    # NUNCA lida até 03/09/2026. Numa conta real deste repo a perda por
+    # classificação foi medida em 0,90 e a perda por orçamento em 0,00 — e o
+    # diagnóstico devolvia `orcamento: ok` com a frase "A conta mediu zero de
+    # perda de participação por orçamento", sem uma palavra sobre rank. O verde
+    # era verdadeiro sobre o orçamento e enganoso sobre a campanha.
+    perda_rank = met.get("search_rank_lost_impression_share")
     evidencias_orcamento = []
     if orcamento:
         evidencias_orcamento.append(_evidencia_metrica(orcamento, "orçamento diário", janela, leitura))
     if perda:
         evidencias_orcamento.append(_evidencia_metrica(perda, "perda por orçamento", janela, leitura))
     perda_num = _valor_numerico(perda or {})
+    perda_rank_num = _valor_numerico(perda_rank or {})
+    if perda_rank:
+        evidencias_orcamento.append(
+            _evidencia_metrica(perda_rank, "perda por classificação", janela, leitura)
+        )
     if perda_num is not None:
         limita = perda_num > 0
+        # A frase do ramo `ok` diz agora sobre o QUE foi medido, e o eixo do
+        # leilão recebe a perda por rank logo abaixo. Um zero de orçamento não
+        # autoriza mais a leitura de que nada segura a campanha.
+        frase_ok = "A conta mediu zero de perda de participação por orçamento."
+        if perda_rank_num is not None and perda_rank_num > 0:
+            frase_ok = (
+                "A conta mediu zero de perda por orçamento — o que segura esta "
+                "campanha está medido no degrau do leilão, não aqui."
+            )
         degraus["orcamento"] = DegrauDeEntrega(
             eixo="orcamento", estado="limita" if limita else "ok",
             palavra="perda medida" if limita else "sem perda medida",
             frase=("A conta mediu perda de participação por orçamento." if limita else
-                   "A conta mediu zero de perda de participação por orçamento."),
+                   frase_ok),
             evidencias=evidencias_orcamento, impedimento=None,
         )
     elif evidencias_orcamento:
@@ -476,7 +737,160 @@ def _degraus_observados(
             impedimento="search_budget_lost_impression_share não medido",
         )
 
-    for tipo, eixo, rotulo in (("ad", "anuncio", "anúncio"), ("keyword", "keyword", "keyword")):
+    # ── o degrau da keyword, com o lance que a allowlist já trazia ─────────
+    #
+    # ⚠️ `effective_cpc_bid_micros` e `position_estimates.first_page_cpc_micros`
+    # atravessavam `CAMINHOS_ITEM` desde a v12 e NUNCA eram lidos. O degrau saía
+    # `ok` porque `primary_status` dizia `ELIGIBLE` — que é verdade e não é a
+    # pergunta: elegível quer dizer "pode ir a leilão", não "vai". Com lance de
+    # R$ 0,50 contra estimativa de R$ 3,20 a keyword é elegível e não aparece.
+    #
+    # A contagem sai de `sentinela.ler_keywords`, e não de uma segunda
+    # implementação aqui: o degrau e o veredito precisam concordar sobre o mesmo
+    # denominador, e concordam por usarem a mesma função.
+    linhas_kw = por_tipo["keyword"]
+    if not linhas_kw and estado_coleta == "com_dados":
+        degraus["keyword"] = DegrauDeEntrega(
+            eixo="keyword", estado="bloqueia", palavra="nenhuma observada",
+            frase="A coleta completa observou zero keywords ativas.",
+            impedimento=None,
+        )
+    elif linhas_kw:
+        leitura_kw = sent.ler_keywords(_keywords_para_sentinela(linhas_kw))
+        medidas = leitura_kw.medidas_para_lance
+        abaixo = leitura_kw.abaixo_da_primeira_pagina
+        ev_kw = [
+            _evidencia("keywords observadas", "keyword_view",
+                       leitura_kw.observadas, janela, leitura),
+            _evidencia("com lance abaixo da 1ª página",
+                       "ad_group_criterion.effective_cpc_bid_micros < "
+                       "position_estimates.first_page_cpc_micros",
+                       f"{abaixo} de {medidas}", janela, leitura),
+            _evidencia("sem dado de lance", "ad_group_criterion",
+                       leitura_kw.sem_dado_de_lance, janela, leitura),
+            _evidencia("com Quality Score baixo",
+                       "ad_group_criterion.quality_info.quality_score",
+                       leitura_kw.baixa_qualidade, janela, leitura),
+            _evidencia("grupos de intenção redundantes",
+                       "ad_group_criterion.keyword.text (normalizado)",
+                       leitura_kw.clusters_redundantes, janela, leitura),
+        ]
+        total_kw = leitura_kw.observadas
+        # ⚠️ CADA MOTIVO DECLARADO PELA CONTA TEM RAMO PRÓPRIO.
+        #
+        # A versão anterior tinha quatro ramos e um `else`, e CINCO motivos
+        # reais caíam nesse `else`: baixa qualidade, em revisão, restrita,
+        # raramente servida e reprovada. Todos saíam com
+        # `impedimento="lance ou estimativa de primeira página ausentes"` sobre
+        # uma keyword cujo lance foi lido — e a frase se contradizia sozinha,
+        # dizendo "0 de 1 vieram sem lance" no mesmo objeto. É o mesmo defeito
+        # do eixo `campanha` da primeira rodada, repetido no eixo da keyword:
+        # um `else` afirmando uma falta que não existe.
+        if leitura_kw.reprovadas and leitura_kw.reprovadas == total_kw:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="bloqueia", palavra="reprovadas",
+                frase=(
+                    f"A conta reprovou por política as {total_kw} keywords "
+                    "observadas."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif medidas and abaixo == medidas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="bloqueia", palavra="lance abaixo da 1ª página",
+                frase=(
+                    f"Todas as {medidas} keywords com lance medido estão abaixo "
+                    "da estimativa de primeira página."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.em_revisao and not leitura_kw.aptas:
+            # Nem aprovada, nem reprovada. Afirmar qualquer um dos dois seria
+            # inventar um veredito que o Google ainda não deu.
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="nao_apurado", palavra="em revisão",
+                frase=(
+                    f"{leitura_kw.em_revisao} de {total_kw} keywords estão em "
+                    "revisão de política: não estão aprovadas e não estão "
+                    "reprovadas."
+                ),
+                evidencias=ev_kw,
+                impedimento="a conta ainda não decidiu a política destas keywords",
+            )
+        elif abaixo:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="lance abaixo da 1ª página",
+                frase=(
+                    f"{abaixo} de {medidas} keywords com lance medido estão "
+                    "abaixo da estimativa de primeira página."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.restritas and not leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="aprovadas com restrição",
+                frase=(
+                    f"A conta aprovou {leitura_kw.restritas} de {total_kw} "
+                    "keywords COM restrição — não é o mesmo que aprovadas."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.raramente_servidas and not leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="raramente servidas",
+                frase=(
+                    f"A conta declarou {leitura_kw.raramente_servidas} de "
+                    f"{total_kw} keywords como raramente servidas."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.baixa_qualidade and not leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="limita", palavra="baixa qualidade",
+                frase=(
+                    f"{leitura_kw.baixa_qualidade} de "
+                    f"{leitura_kw.medidas_para_qualidade} keywords com qualidade "
+                    "medida estão no balde baixo."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.aptas:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="ok", palavra="aptas",
+                frase=(
+                    f"{leitura_kw.aptas} de {total_kw} keywords "
+                    "estão habilitadas e com lance acima da estimativa."
+                ),
+                evidencias=ev_kw, impedimento=None,
+            )
+        elif leitura_kw.sem_dado_de_lance:
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="nao_apurado", palavra="não apurado",
+                frase=(
+                    "Nenhuma keyword pôde ser classificada: "
+                    f"{leitura_kw.sem_dado_de_lance} de {total_kw} "
+                    "vieram sem lance ou sem estimativa de primeira página."
+                ),
+                evidencias=ev_kw,
+                impedimento="lance ou estimativa de primeira página ausentes",
+            )
+        else:
+            # ⚠️ O último ramo NOMEIA o que realmente falta, em vez de repetir
+            # a única falta que alguém pensou primeiro.
+            degraus["keyword"] = DegrauDeEntrega(
+                eixo="keyword", estado="nao_apurado", palavra="não apurado",
+                frase=(
+                    f"As {total_kw} keywords foram lidas e nenhuma se enquadrou "
+                    "nos estados que esta versão sabe nomear."
+                ),
+                evidencias=ev_kw,
+                impedimento=(
+                    "estado da keyword fora do vocabulário conhecido — "
+                    "nunca degradado para ok"
+                ),
+            )
+
+    for tipo, eixo, rotulo in (("ad", "anuncio", "anúncio"),):
         linhas = por_tipo[tipo]
         if not linhas and estado_coleta == "com_dados":
             degraus[eixo] = DegrauDeEntrega(
@@ -489,16 +903,44 @@ def _degraus_observados(
                 if tipo == "ad" else
                 ("ad_group_criterion.primary_status",)
             )
+            campos_evidencia = campos_estado + (
+                ("ad_group_ad.policy_summary.approval_status",
+                 "ad_group_ad.policy_summary.review_status")
+                if tipo == "ad" else ()
+            )
             evidencias = [
                 _evidencia(f"{rotulo} {i + 1}", campo, linha["campos"].get(campo), janela, leitura)
-                for i, linha in enumerate(linhas) for campo in campos_estado
+                for i, linha in enumerate(linhas) for campo in campos_evidencia
             ]
             negativos = {"DISABLED", "PAUSED", "REMOVED", "NOT_ELIGIBLE", "ENDED"}
             positivos = {"ENABLED", "ELIGIBLE"}
             estados_por_entidade = []
+            reprovados = limitados = em_revisao = 0
             for linha in linhas:
                 valores = [linha["campos"].get(campo) for campo in campos_estado]
                 normalizados = [str(v).upper() for v in valores if v is not None]
+                # ⚠️ A POLÍTICA DO ANÚNCIO, colhida e allowlisted desde sempre e
+                # nunca lida até 03/09/2026. Um anúncio com `status=ENABLED`,
+                # `primary_status=ELIGIBLE` e
+                # `policy_summary.approval_status=DISAPPROVED` saía daqui como
+                # `anuncio: ok`, palavra "presente", frase "A conta observou
+                # anúncio habilitado" — sobre um anúncio reprovado.
+                aprovacao = linha["campos"].get("ad_group_ad.policy_summary.approval_status")
+                revisao = linha["campos"].get("ad_group_ad.policy_summary.review_status")
+                aprovacao = None if aprovacao is None else str(aprovacao).upper()
+                revisao = None if revisao is None else str(revisao).upper()
+                if aprovacao in ANUNCIO_REPROVADO:
+                    reprovados += 1
+                    estados_por_entidade.append("nao_elegivel")
+                    continue
+                if aprovacao in ANUNCIO_LIMITADO:
+                    limitados += 1
+                    estados_por_entidade.append("limitado")
+                    continue
+                if revisao in ANUNCIO_EM_REVISAO:
+                    em_revisao += 1
+                    estados_por_entidade.append("em_revisao")
+                    continue
                 if len(normalizados) != len(campos_estado):
                     estados_por_entidade.append("indeterminado")
                 elif all(v in positivos for v in normalizados):
@@ -507,8 +949,29 @@ def _degraus_observados(
                     estados_por_entidade.append("nao_elegivel")
                 else:
                     estados_por_entidade.append("indeterminado")
+            total = len(estados_por_entidade)
             if "elegivel" in estados_por_entidade:
                 estado, palavra, frase = "ok", "presente", f"A conta observou {rotulo} habilitado."
+            elif "limitado" in estados_por_entidade:
+                # Aprovado com restrição não é verde: a conta separa
+                # `APPROVED_LIMITED` de `APPROVED` porque a veiculação é menor.
+                estado, palavra, frase = (
+                    "limita", "aprovado com limite",
+                    f"A conta aprovou {limitados} de {total} {rotulo}s com restrição.",
+                )
+            elif "em_revisao" in estados_por_entidade:
+                # ⚠️ Nem aprovado nem reprovado. Afirmar qualquer um dos dois
+                # seria inventar um veredito que o Google ainda não deu.
+                estado, palavra, frase = (
+                    "nao_apurado", "em revisão",
+                    f"A conta tem {em_revisao} de {total} {rotulo}s em revisão: "
+                    "não estão aprovados e não estão reprovados.",
+                )
+            elif reprovados and reprovados == total:
+                estado, palavra, frase = (
+                    "bloqueia", "reprovado",
+                    f"A conta reprovou os {total} {rotulo}s por política.",
+                )
             elif estados_por_entidade and all(v == "nao_elegivel" for v in estados_por_entidade):
                 estado, palavra, frase = "bloqueia", "sem elegível", f"A conta observou {rotulo} não elegível."
             else:
@@ -537,6 +1000,26 @@ def _degraus_observados(
                        "A conta registrou impressões nesta janela."),
                 evidencias=[evidencia_imp], impedimento=None,
             )
+    # ⚠️ COLETA PARCIAL NÃO PRODUZ DEGRAU `ok`.
+    #
+    # `parcial=True` era só uma bandeira do envelope: os degraus continuavam
+    # saindo `ok`, e um `ok` sob leitura parcial AFIRMA sobre o que não foi lido.
+    # A regra aqui é a mesma que `escada.ts` aplica no veredito: prova
+    # incompleta não sustenta conclusão positiva.
+    if estado_coleta == "parcial":
+        for eixo, degrau in list(degraus.items()):
+            if degrau.estado == "ok":
+                degraus[eixo] = DegrauDeEntrega(
+                    eixo=eixo, estado="nao_apurado", palavra="não apurado",
+                    frase=(
+                        f"{degrau.frase} — porém a coleta terminou parcial, e o "
+                        "que não foi lido pode contradizer isto."
+                    ),
+                    motivo_da_conta=degrau.motivo_da_conta,
+                    evidencias=degrau.evidencias,
+                    impedimento="coleta parcial: leitura incompleta não sustenta ok",
+                    propostas=degrau.propostas,
+                )
     return [degraus[eixo] for eixo in EIXOS]
 
 
@@ -558,6 +1041,24 @@ class SupabaseRepositorioDiagnostico:
             log.exception("falha ao ler %s", tabela)
             raise ServicoIndisponivelError("Não foi possível ler o diagnóstico persistido.") from exc
 
+    async def _select_all(self, tabela: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """SELECT paginado. Truncagem silenciosa é falso verde com outra roupa.
+
+        ⚠️ `itens()` e `metricas()` usavam `select`, e o PostgREST deste projeto
+        corta toda resposta em `db-max-rows = 1000` IGNORANDO um `limit` maior,
+        sem erro nenhum (`app/services/supabase_service.py:74-78`). Uma campanha
+        com mais de mil itens era lida pela metade — e como o eixo do anúncio sai
+        `ok` quando encontra UM elegível, um único anúncio bom na primeira página
+        pintava de verde uma campanha com quinhentos reprovados depois da linha
+        mil. O paginador já existia e não era chamado.
+        """
+        self._exigir()
+        try:
+            return await self.supa.select_all(tabela, params)
+        except Exception as exc:
+            log.exception("falha ao ler %s (paginado)", tabela)
+            raise ServicoIndisponivelError("Não foi possível ler o diagnóstico persistido.") from exc
+
     async def campanha(self, volc_campaign_id: str) -> Optional[Dict[str, Any]]:
         linhas = await self._select("trafego_inventario_campanha", {
             "select": COLUNAS_CAMPANHA, "volc_campaign_id": f"eq.{volc_campaign_id}", "limit": 1,
@@ -572,14 +1073,441 @@ class SupabaseRepositorioDiagnostico:
         return linhas[0] if linhas else None
 
     async def itens(self, coleta_id: str) -> List[Dict[str, Any]]:
-        return await self._select("trafego_google_inteligencia_item", {
+        return await self._select_all("trafego_google_inteligencia_item", {
             "select": COLUNAS_ITEM, "coleta_id": f"eq.{coleta_id}", "order": "ordinal.asc",
         })
 
     async def metricas(self, coleta_id: str) -> List[Dict[str, Any]]:
-        return await self._select("trafego_google_inteligencia_metrica", {
+        return await self._select_all("trafego_google_inteligencia_metrica", {
             "select": COLUNAS_METRICA, "coleta_id": f"eq.{coleta_id}", "order": "metrica_id.asc",
         })
+
+
+# ── a ponte para a sentinela ────────────────────────────────────────────────
+#
+# ⚠️ Uma conversão declarada, e não um segundo diagnóstico. Tudo abaixo lê os
+# MESMOS itens e métricas que os degraus leem, e o resultado é uma
+# `LeituraParaSentinela` — nenhuma regra de veredito mora aqui. Duas
+# implementações da mesma pergunta é como a tela e o alerta passam a discordar
+# sem que exista resposta certa entre os dois.
+
+
+def _num(valor: Any) -> Optional[int]:
+    if valor is None or isinstance(valor, bool):
+        return None
+    try:
+        return int(Decimal(str(valor)))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _metrica_num(linha: Optional[Dict[str, Any]]) -> Optional[Decimal]:
+    return None if linha is None else _valor_numerico(linha)
+
+
+def _keywords_para_sentinela(
+    linhas: Sequence[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    saida: List[Dict[str, Any]] = []
+    for linha in linhas:
+        campos = linha["campos"]
+        saida.append({
+            "texto": campos.get("ad_group_criterion.keyword.text"),
+            "match_type": campos.get("ad_group_criterion.keyword.match_type"),
+            "primary_status": campos.get("ad_group_criterion.primary_status"),
+            "primary_status_reasons": campos.get(
+                "ad_group_criterion.primary_status_reasons"
+            ),
+            "lance_micros": campos.get(
+                "ad_group_criterion.effective_cpc_bid_micros"
+            ),
+            "primeira_pagina_micros": campos.get(
+                "ad_group_criterion.position_estimates.first_page_cpc_micros"
+            ),
+            "quality_score": campos.get(
+                "ad_group_criterion.quality_info.quality_score"
+            ),
+        })
+    return saida
+
+
+def _anuncios_para_sentinela(
+    linhas: Sequence[Dict[str, Any]],
+) -> sent.LeituraDeAnuncios:
+    aptos = reprovados = revisao = limitados = sem_estado = 0
+    motivos: List[str] = []
+    for linha in linhas:
+        campos = linha["campos"]
+        aprovacao = campos.get("ad_group_ad.policy_summary.approval_status")
+        revisao_txt = campos.get("ad_group_ad.policy_summary.review_status")
+        status = campos.get("ad_group_ad.status")
+        primary = campos.get("ad_group_ad.primary_status")
+        razoes = campos.get("ad_group_ad.primary_status_reasons")
+        if isinstance(razoes, list):
+            motivos.extend(str(r) for r in razoes)
+        elif razoes is not None:
+            motivos.append(str(razoes))
+
+        aprovacao = None if aprovacao is None else str(aprovacao).upper()
+        revisao_txt = None if revisao_txt is None else str(revisao_txt).upper()
+        if aprovacao in ANUNCIO_REPROVADO:
+            reprovados += 1
+            continue
+        if aprovacao in ANUNCIO_LIMITADO:
+            # Estado CONHECIDO: aprovado com restrição. Não é apto e não é
+            # desconhecido — os dois seriam perda de informação, em direções
+            # opostas.
+            limitados += 1
+            continue
+        if revisao_txt in ANUNCIO_EM_REVISAO:
+            revisao += 1
+            continue
+        # ⚠️ AUSENTE É TÃO DESCONHECIDO QUANTO `UNKNOWN`.
+        #
+        # A versão anterior tratava os dois de forma diferente: `UNKNOWN` ia
+        # para `sem_estado` e o campo AUSENTE caía adiante e podia contar como
+        # apto. Um veredito de política que a conta não deu e um veredito que
+        # não coletamos são a mesma ignorância, e a mais permissiva das duas
+        # leituras era justamente a que tínhamos menos direito de fazer.
+        if aprovacao is None or status is None or primary is None:
+            sem_estado += 1
+            continue
+        # ⚠️ APTO EXIGE APROVAÇÃO RECONHECIDA, e não "ausência de reprovação".
+        #
+        # A versão anterior considerava apto tudo que não fosse explicitamente
+        # limitado ou reprovado — então `approval_status=UNKNOWN`, que é um
+        # valor REAL do enum, produzia `aptos=1` e a campanha saía `HEALTHY`.
+        # Um veredito de política que a conta não deu não pode virar aprovação
+        # nossa por omissão.
+        if aprovacao not in ANUNCIO_APROVADO:
+            sem_estado += 1
+            continue
+        if (
+            str(status).upper() == "ENABLED"
+            and str(primary).upper() in {"ELIGIBLE", "ENABLED"}
+        ):
+            aptos += 1
+        else:
+            sem_estado += 1
+    return sent.LeituraDeAnuncios(
+        observados=len(linhas), aptos=aptos, reprovados=reprovados,
+        em_revisao=revisao, limitados=limitados, sem_estado=sem_estado,
+        motivos=tuple(dict.fromkeys(motivos)),
+    )
+
+
+def _medicao_para_sentinela(
+    metas: Sequence[Dict[str, Any]], estado_coleta: Optional[str],
+) -> sent.LeituraDeMedicao:
+    """Converte as metas observadas no vocabulário de `trafego.prontidao`.
+
+    ⚠️ Sem item de meta E sem coleta completa, o estado é `None` — "não apurei" —
+    e NÃO `NAO_PRONTO`. `prontidao.avaliar` documenta exatamente esta distinção
+    (`metas_da_conta=None` significa "não conseguimos ler", não "não há meta"), e
+    colapsá-las faria uma falha de leitura parecer uma conta sem meta.
+    """
+    if not metas:
+        if estado_coleta == "com_dados":
+            return sent.LeituraDeMedicao(
+                conversion_goal_status="NAO_PRONTO", metas_observadas=0,
+                impedimento="a coleta completa observou zero metas de conversão",
+            )
+        return sent.LeituraDeMedicao()
+    biddables = [
+        m for m in metas
+        if str(m["campos"].get("customer_conversion_goal.biddable")).lower()
+        in {"true", "sim", "1"}
+    ]
+    return sent.LeituraDeMedicao(
+        conversion_goal_status="PRONTO" if biddables else "PARCIAL",
+        metas_observadas=len(metas),
+        impedimento=(
+            None if biddables
+            else "nenhuma das metas observadas é utilizável para lance"
+        ),
+    )
+
+
+def _estrutura_de_keywords_apurada(coleta: Optional[Dict[str, Any]]) -> Optional[bool]:
+    """O inventário estrutural aconteceu nesta coleta?
+
+    `None` quando a coleta é anterior a esta versão do coletor, ou quando o
+    payload não declara — e `None` NÃO é `False`: uma coleta antiga não afirma
+    que o inventário falhou, ela apenas não sabe dizer. A distinção importa
+    porque só `True` autoriza a frase "esta campanha não tem keywords".
+    """
+    if not coleta:
+        return None
+    payload = coleta.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    valor = payload.get("estrutura_de_keywords_apurada")
+    return valor if isinstance(valor, bool) else None
+
+
+def montar_leitura_da_sentinela(
+    *,
+    chave: str,
+    customer_id: str,
+    estado_coleta: Optional[str],
+    frescor: str,
+    leitura: Optional[Leitura],
+    coleta: Optional[Dict[str, Any]],
+    itens: Sequence[Dict[str, Any]],
+    metricas: Dict[str, Dict[str, Any]],
+    campaign_id: str,
+    horas_ligada: Optional[float] = None,
+    recomendacoes: Optional[sent.QuadroDeRecomendacoes] = None,
+    destino: Optional[sent.LeituraDoDestino] = None,
+) -> sent.LeituraParaSentinela:
+    por_tipo = _itens_por_tipo(itens, campaign_id) if itens else {
+        tipo: [] for tipo in TIPOS_ITEM
+    }
+    quando = leitura.lido_em if leitura else None
+
+    contas = por_tipo["account"]
+    status_conta = (
+        contas[0]["campos"].get("customer.status") if contas else None
+    )
+    campanhas = por_tipo["campaign"]
+    campos_camp = campanhas[0]["campos"] if campanhas else {}
+    razoes = campos_camp.get("campaign.primary_status_reasons")
+    if isinstance(razoes, list):
+        razoes_tupla = tuple(str(r) for r in razoes)
+    elif razoes is None:
+        razoes_tupla = ()
+    else:
+        razoes_tupla = (str(razoes),)
+
+    def _m(nome: str) -> Optional[Decimal]:
+        return _metrica_num(metricas.get(nome))
+
+    impressoes = _m("impressions")
+    cliques = _m("clicks")
+    custo = _m("cost_micros")
+    conversoes = _m("conversions")
+    perda_orc = _m("search_budget_lost_impression_share")
+    perda_rank = _m("search_rank_lost_impression_share")
+
+    return sent.LeituraParaSentinela(
+        customer_id=customer_id,
+        volc_campaign_id=chave,
+        conta=sent.LeituraDaConta(
+            customer_id=customer_id,
+            status=None if status_conta is None else str(status_conta),
+            observado_em=quando,
+        ),
+        campanha=sent.LeituraDaCampanha(
+            status=campos_camp.get("campaign.status"),
+            primary_status=campos_camp.get("campaign.primary_status"),
+            primary_status_reasons=razoes_tupla,
+            serving_status=campos_camp.get("campaign.serving_status"),
+            bidding_strategy_type=campos_camp.get("campaign.bidding_strategy_type"),
+            horas_ligada=horas_ligada,
+            orcamento_diario_micros=_num(
+                campos_camp.get("campaign_budget.amount_micros")
+            ),
+        ),
+        metricas=sent.LeituraDeMetricas(
+            impressoes=None if impressoes is None else int(impressoes),
+            cliques=None if cliques is None else int(cliques),
+            custo_micros=None if custo is None else int(custo),
+            conversoes=None if conversoes is None else float(conversoes),
+            perda_por_orcamento=None if perda_orc is None else float(perda_orc),
+            perda_por_rank=None if perda_rank is None else float(perda_rank),
+        ),
+        keywords=sent.ler_keywords(
+            _keywords_para_sentinela(por_tipo["keyword"]),
+            estrutura_apurada=_estrutura_de_keywords_apurada(coleta),
+        ),
+        anuncios=_anuncios_para_sentinela(por_tipo["ad"]),
+        medicao=_medicao_para_sentinela(por_tipo["conversion_goal"], estado_coleta),
+        # ⚠️ O recibo de destino vive em `backend/app/landing_policy/**`, que é
+        # ownership de outra frente e não persiste veredito por campanha hoje.
+        # `nao_consultado` — e NÃO `ausente` — é a leitura honesta: nós não
+        # perguntamos. Dizer `ausente` afirmaria que perguntamos e não havia, e
+        # como `ausente` é causa, isso faria o destino sequestrar o veredito de
+        # toda campanha. A sentinela declara o não-consultado em `desconhecidos`
+        # e rebaixa a evidência para `parcial`, de modo que ninguém sai saudável
+        # por engano.
+        destino=destino or sent.LeituraDoDestino(estado="nao_consultado"),
+        recomendacoes=recomendacoes or sent.QuadroDeRecomendacoes(),
+        estado_da_coleta=estado_coleta,
+        frescor=frescor,
+        observado_em=quando,
+        janela_inicio=str(coleta.get("janela_inicio")) if coleta and coleta.get("janela_inicio") else None,
+        janela_fim=str(coleta.get("janela_fim")) if coleta and coleta.get("janela_fim") else None,
+    )
+
+
+def _veredito(leitura_sent: sent.LeituraParaSentinela) -> VeredictoDaSentinela:
+    return VeredictoDaSentinela(**sent.avaliar(leitura_sent).json())
+
+
+async def _horas_ligada(
+    repositorio: Any, chave: str, agora: Optional[datetime],
+) -> Optional[float]:
+    """Há quantas horas a campanha está ligada — ou `None`, que NÃO é zero.
+
+    Reusa `alertas.horas_ligada`, que lê o diário `trafego_evento`. É a mesma
+    função que o sino usa, e por isso o sino e a sentinela concordam sobre a
+    idade da campanha em vez de terem duas contas parecidas.
+    """
+    buscar = getattr(repositorio, "transicoes", None)
+    if buscar is None:
+        return None
+    try:
+        transicoes = await buscar(chave)
+    except Exception:  # noqa: BLE001
+        log.warning("não foi possível ler as transições de '%s'", chave)
+        return None
+    from app.trafego import alertas as alt  # noqa: PLC0415 — só neste caminho
+
+    return alt.horas_ligada(
+        transicoes or [], (agora or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    )
+
+
+async def _recomendacoes(
+    repositorio: Any, customer_id: str,
+) -> sent.QuadroDeRecomendacoes:
+    """As recomendações do Google, adjudicadas — nunca aplicadas.
+
+    ⚠️ Os três desfechos são distintos e nenhum degrada para os outros:
+    repositório sem o método → `nao_executada`; leitura que estourou →
+    `falhou`; leitura boa sem linha → `vazio_confirmado` com `itens=()`. Só o
+    último autoriza a frase "o Google não sugeriu nada".
+    """
+    buscar = getattr(repositorio, "recomendacoes", None)
+    if buscar is None or not customer_id:
+        return sent.QuadroDeRecomendacoes()
+    try:
+        coleta, linhas = await buscar(customer_id)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("falha ao ler recomendações de %s", customer_id)
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_FALHOU,
+            impedimento=f"a leitura de recomendações falhou ({type(exc).__name__})",
+        )
+    if coleta is None:
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_NAO_EXECUTADA,
+            impedimento="nenhuma coleta de recomendações registrada para esta conta",
+        )
+    estado = str(coleta.get("estado") or "")
+    quando = coleta.get("coletada_em")
+    observado = None if quando is None else str(quando)
+    frescor_rec = _frescor(_leitura(quando))
+    if estado == "falhou":
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_FALHOU,
+            impedimento=(
+                "a coleta de recomendações terminou em falhou "
+                f"({coleta.get('erro_codigo') or coleta.get('erro_classe') or 'sem código'})"
+            ),
+        )
+    if estado not in {"com_dados", "vazio_confirmado"}:
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_NAO_EXECUTADA,
+            impedimento=f"a coleta de recomendações está em {estado or 'estado desconhecido'}",
+        )
+    itens: List[sent.RecomendacaoAdjudicada] = []
+    for linha in linhas or []:
+        payload = linha.get("payload") if isinstance(linha.get("payload"), dict) else {}
+        rec = payload.get("recommendation") if isinstance(payload.get("recommendation"), dict) else {}
+        itens.append(sent.RecomendacaoAdjudicada(
+            tipo=str(rec.get("type") or rec.get("type_") or "DESCONHECIDO"),
+            alvo=_texto(linha.get("recurso_externo")),
+            impacto_informado=_impacto_permitido(rec.get("impact")),
+            observado_em=observado,
+            frescor=frescor_rec,
+            evidencia=(
+                _ev_rec("tipo", "recommendation.type", rec.get("type"), observado),
+                _ev_rec("dispensada na conta", "recommendation.dismissed",
+                        rec.get("dismissed"), observado),
+            ),
+        ))
+    # ⚠️ O CABEÇALHO DA COLETA TEM VOTO.
+    #
+    # Uma coleta que declara `quantidade=1` e devolve zero itens NÃO é um vazio
+    # confirmado: é uma leitura que perdeu linhas. Ignorar `quantidade` fazia a
+    # tela poder dizer "o Google não sugeriu nada" sobre uma recomendação que
+    # existe e não foi lida — a forma exata de ausência virando zero que esta
+    # lane inteira existe para impedir.
+    declarada = _num(coleta.get("quantidade"))
+    if declarada is not None and declarada > len(itens):
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_FALHOU,
+            itens=None,
+            impedimento=(
+                f"a coleta declarou {declarada} recomendação(ões) e a leitura "
+                f"trouxe {len(itens)}: linhas perdidas, não vazio confirmado"
+            ),
+        )
+    if not itens and estado == "com_dados":
+        return sent.QuadroDeRecomendacoes(
+            estado_da_coleta=sent.COLETA_FALHOU,
+            itens=None,
+            impedimento=(
+                "a coleta está em com_dados e não trouxe item nenhum: "
+                "leitura incompleta, não ausência de recomendação"
+            ),
+        )
+    return sent.QuadroDeRecomendacoes(
+        estado_da_coleta=(
+            sent.COLETA_COM_DADOS if itens else sent.COLETA_VAZIO_CONFIRMADO
+        ),
+        itens=tuple(itens),
+    )
+
+
+#: Os únicos campos de `recommendation.impact` que podem sair na resposta.
+#:
+#: ⚠️ A versão anterior fazia `_texto(impacto)` no dicionário inteiro. Isso é o
+#: MESMO defeito que `CAMINHOS_ITEM` existe para impedir em toda outra leitura
+#: deste módulo — payload bruto da conta atravessando para o fio — e um campo
+#: aninhado qualquer, hoje ou numa versão futura da API, sairia junto. Aqui a
+#: allowlist é nominal e os valores são forçados a numérico.
+METRICAS_DE_IMPACTO: tuple[str, ...] = (
+    "impressions", "clicks", "cost_micros", "conversions",
+    "all_conversions", "video_views",
+)
+
+
+def _impacto_permitido(impacto: Any) -> Optional[str]:
+    """O impacto informado pelo Google, reduzido à allowlist e a números.
+
+    Devolve `None` quando não há nada permitido a dizer — e `None` aqui é
+    "o Google não informou impacto legível", não "o impacto é zero".
+    """
+    if not isinstance(impacto, dict):
+        return None
+    partes: List[str] = []
+    for balde in ("base_metrics", "potential_metrics"):
+        metricas = impacto.get(balde)
+        if not isinstance(metricas, dict):
+            continue
+        for nome in METRICAS_DE_IMPACTO:
+            valor = metricas.get(nome)
+            numero = _num(valor)
+            if numero is None:
+                continue
+            partes.append(f"{balde}.{nome}={numero}")
+    if not partes:
+        return None
+    return (
+        f"{'; '.join(partes)} "
+        "(informado pelo Google, não medido por nós)"
+    )
+
+
+def _ev_rec(
+    rotulo: str, campo: str, valor: Any, quando: Optional[str],
+) -> sent.Evidencia:
+    return sent.Evidencia(
+        rotulo=rotulo, campo=campo, valor=_texto(valor),
+        observado_em=quando, origem="conta",
+    )
 
 
 async def obter_diagnostico_campanha(
@@ -593,6 +1521,13 @@ async def obter_diagnostico_campanha(
         raise CampanhaNaoEncontradaError(f"Campanha interna '{chave}' não encontrada.")
 
     coleta = await repositorio.coleta(chave)
+    # ⚠️ Os dois sinais abaixo são OPCIONAIS no repositório de propósito. Um
+    # repositório que não os implementa produz `None` e
+    # `QuadroDeRecomendacoes()` — que a sentinela lê como "não apurei", e NÃO
+    # como "não há". Exigi-los no Protocol quebraria todo dublê existente e
+    # trocaria uma ausência honesta por um erro de integração.
+    horas_ligada = await _horas_ligada(repositorio, chave, agora)
+    recomendacoes = await _recomendacoes(repositorio, str(campanha.get("customer_id") or ""))
     customer_id = str(campanha.get("customer_id") or "")
     nome = str(campanha.get("nome") or "campanha sem nome")
     moeda = campanha.get("moeda") or None
@@ -606,6 +1541,15 @@ async def obter_diagnostico_campanha(
         return RespostaDoDiagnostico(
             diagnostico=diagnostico,
             propostas=CaixaDePropostas(volc_campaign_id=chave, leitura=None),
+            # ⚠️ A sentinela é emitida TAMBÉM aqui. Omiti-la quando não há coleta
+            # deixaria a superfície sem veredito exatamente no caso em que o
+            # silêncio mais se parece com saúde.
+            sentinela=_veredito(montar_leitura_da_sentinela(
+                chave=chave, customer_id=customer_id, estado_coleta=None,
+                frescor="nao_apurado", leitura=None, coleta=None, itens=[],
+                metricas={}, campaign_id=str(campanha.get("campaign_id") or ""),
+                horas_ligada=horas_ligada,
+            )),
         )
 
     estado = str(coleta.get("estado") or "")
@@ -641,6 +1585,11 @@ async def obter_diagnostico_campanha(
         return RespostaDoDiagnostico(
             diagnostico=diagnostico,
             propostas=CaixaDePropostas(volc_campaign_id=chave, leitura=None),
+            sentinela=_veredito(montar_leitura_da_sentinela(
+                chave=chave, customer_id=customer_id, estado_coleta=estado,
+                frescor="velho", leitura=leitura, coleta=coleta, itens=[],
+                metricas={}, campaign_id=campaign_id, horas_ligada=horas_ligada,
+            )),
         )
     if estado in {"falhou", "inelegivel", "nao_suportado", "vazio_confirmado"}:
         motivos = {
@@ -668,6 +1617,12 @@ async def obter_diagnostico_campanha(
             propostas=CaixaDePropostas(
                 volc_campaign_id=chave, leitura=None if estado == "falhou" else leitura,
             ),
+            sentinela=_veredito(montar_leitura_da_sentinela(
+                chave=chave, customer_id=customer_id, estado_coleta=estado,
+                frescor="nao_apurado" if estado == "falhou" else frescor,
+                leitura=leitura_diagnostico, coleta=coleta, itens=[], metricas={},
+                campaign_id=campaign_id, horas_ligada=horas_ligada,
+            )),
         )
 
     coleta_id = str(coleta.get("coleta_id") or "")
@@ -695,6 +1650,12 @@ async def obter_diagnostico_campanha(
     return RespostaDoDiagnostico(
         diagnostico=diagnostico,
         propostas=CaixaDePropostas(volc_campaign_id=chave, leitura=leitura),
+        sentinela=_veredito(montar_leitura_da_sentinela(
+            chave=chave, customer_id=customer_id, estado_coleta=estado,
+            frescor=frescor, leitura=leitura, coleta=coleta, itens=itens,
+            metricas=metricas_por_nome, campaign_id=campaign_id,
+            horas_ligada=horas_ligada, recomendacoes=recomendacoes,
+        )),
     )
 
 

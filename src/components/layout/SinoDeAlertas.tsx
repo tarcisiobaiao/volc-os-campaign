@@ -38,6 +38,7 @@ import {
   ArrowRight,
   Bell,
   CheckCircle2,
+  CircleHelp,
   RefreshCw,
   WifiOff,
 } from 'lucide-react';
@@ -49,7 +50,11 @@ import { INTERVALO_NOTIFICACOES_MS } from '@/hooks/useNotificacoes';
 import { CodigoDaOcorrencia } from '@/components/trafego/inventario/EstadosDoInventario';
 import { visualDoSintoma } from '@/components/trafego/atencao/visual';
 import { descricaoDoSintoma } from '@/components/trafego/atencao/projecao';
-import { estadoDoSino, useAtencao } from '@/components/trafego/atencao/useAtencao';
+import {
+  estadoDoSino,
+  useAtencao,
+  type EstadoDoSino,
+} from '@/components/trafego/atencao/useAtencao';
 import { cn } from '@/lib/utils';
 
 /** Compatibilidade com a primeira versão e prova explícita do intervalo. */
@@ -59,6 +64,42 @@ interface SinoDeAlertasProps {
   className?: string;
   side?: 'top' | 'right' | 'bottom' | 'left';
   align?: 'start' | 'center' | 'end';
+}
+
+/**
+ * O rótulo acessível do gatilho — exportado para poder ser PROVADO.
+ *
+ * ⚠️ O corpo do popover já dizia "nada pede atenção no que foi lido" sob
+ * `lista_incompleta`, e o `aria-label`/`title` do gatilho continuavam dizendo
+ * "nenhuma condição ativa" — a afirmação total que o estado existe para não
+ * fazer. Para quem navega por leitor de tela o rótulo do botão É a informação:
+ * a ressalva no corpo só chega a quem abre o popover.
+ *
+ * A cascata é derivada de `estado`, e NÃO de `quantos`, para que um estado novo
+ * não herde o ramo otimista por descuido. O `default` é a prova disso.
+ */
+export function rotuloDoSino(estado: EstadoDoSino, quantos: number): string {
+  const contagem = quantos === 1 ? '1 condição ativa' : `${quantos} condições ativas`;
+  switch (estado) {
+    case 'indisponivel':
+      return 'Notificações: não foi possível consultar. Abrir central.';
+    case 'consultando':
+      return 'Notificações: consultando a operação.';
+    case 'ultimo_conhecido':
+      return `Notificações: ${contagem} no último estado conhecido. Abrir central.`;
+    case 'com_condicao':
+      return `Notificações: ${contagem}. Abrir central.`;
+    case 'lista_incompleta':
+      return (
+        'Notificações: nada pede atenção no que foi lido, e parte do registro ' +
+        'não foi carregada. Abrir central.'
+      );
+    case 'sem_condicao':
+      return 'Notificações: nenhuma condição ativa.';
+    default:
+      // Estado que esta versão não conhece nunca vira "nenhuma condição ativa".
+      return 'Notificações: estado não reconhecido. Abrir central.';
+  }
 }
 
 const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
@@ -75,16 +116,7 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
   // contar, e um `0` ali diria "não há nada" sobre algo que não foi apurado.
   const contagemVale = estado === 'com_condicao' || estado === 'ultimo_conhecido';
 
-  const rotulo =
-    estado === 'indisponivel'
-      ? 'Notificações: não foi possível consultar. Abrir central.'
-      : estado === 'consultando'
-        ? 'Notificações: consultando a operação.'
-        : estado === 'ultimo_conhecido'
-          ? `Notificações: ${quantos === 1 ? '1 condição ativa' : `${quantos} condições ativas`} no último estado conhecido. Abrir central.`
-          : quantos === 0
-            ? 'Notificações: nenhuma condição ativa.'
-            : `Notificações: ${quantos === 1 ? '1 condição ativa' : `${quantos} condições ativas`}. Abrir central.`;
+  const rotulo = rotuloDoSino(estado, quantos);
 
   return (
     <Popover open={aberto} onOpenChange={setAberto}>
@@ -227,6 +259,23 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
               A atualização falhou. O último estado conhecido continua visível — ele é de
               antes, não de agora.
             </p>
+          )}
+
+          {estado === 'lista_incompleta' && (
+            <div className="px-4 py-7">
+              <CircleHelp className="mb-3 h-5 w-5 text-muted-foreground" aria-hidden />
+              <p className="text-sm font-medium">
+                Nada pede atenção no que foi lido
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Parte do registro ainda não foi carregada nesta sessão, então
+                este zero vale para o que foi conferido — não para a conta
+                inteira.{' '}
+                <strong className="font-medium text-foreground">
+                  Isto não é o mesmo que "está tudo bem".
+                </strong>
+              </p>
+            </div>
           )}
 
           {estado === 'sem_condicao' && (

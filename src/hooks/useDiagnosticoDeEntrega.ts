@@ -23,13 +23,29 @@ import {
   descreverFalha,
   statusDe,
 } from '@/components/trafego/inventario/erros';
-import type { CaixaDePropostas, DiagnosticoDeEntrega } from '@/types/diagnostico';
+import type {
+  CaixaDePropostas,
+  DiagnosticoDeEntrega,
+  VeredictoDaSentinela,
+} from '@/types/diagnostico';
 
 export const CHAVE_DIAGNOSTICO = ['trafego', 'diagnostico'] as const;
 
 export interface LeituraDoDiagnostico {
   diagnostico: DiagnosticoDeEntrega | null;
   propostas: CaixaDePropostas | null;
+  /**
+   * O veredito SERVIDO pelo backend — a resposta a "o que aconteceu e o que
+   * eu faço agora".
+   *
+   * ⚠️ `null` significa que este servidor é anterior ao contrato v2 e NÃO
+   * significa "está tudo bem". A tela que recebe `null` diz que não recebeu
+   * veredito; ela não desenha saúde. Antes deste campo o veredito era derivado
+   * no cliente sobre uma escada cujo degrau `conta` nunca era preenchido, e o
+   * resultado era "não foi possível apurar" em toda campanha — inclusive numa
+   * conta suspensa por política.
+   */
+  sentinela: VeredictoDaSentinela | null;
   carregando: boolean;
   /**
    * `true` quando o servidor não tem a rota de diagnóstico.
@@ -62,6 +78,7 @@ export function useDiagnosticoDeEntrega(volcCampaignId: string): LeituraDoDiagno
   return {
     diagnostico: consulta.data?.diagnostico ?? null,
     propostas: consulta.data?.propostas ?? null,
+    sentinela: consulta.data?.sentinela ?? null,
     carregando: consulta.isLoading && consulta.data == null,
     naoImplementado,
     ocorrencia:
