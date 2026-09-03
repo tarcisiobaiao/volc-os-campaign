@@ -123,10 +123,31 @@ function comInventario(ativos: cofre.AtivoDaLista[], gavetas = GAVETAS) {
   vi.spyOn(cofre, "inventario").mockResolvedValue({ gavetas, ativos });
   vi.spyOn(cofre, "detalhe").mockResolvedValue(DETALHE);
   vi.spyOn(cofre, "prontidao").mockResolvedValue(PRONTIDAO);
+  vi.spyOn(cofre, "prontidaoVisual").mockResolvedValue({
+    ativo_id: PAGINA.ativo_id,
+    destino: {},
+    pagina: { presente: true, motivo: "" },
+    referencia_de_credencial: {
+      presente: false, verificada: false, provider: null, nome_logico: null,
+      verificacao_estado: null, verificado_em: null,
+    },
+    perfil_de_navegador: { presente: false, rotulo: null, ativo_id: null },
+    broker: { estado: "nao_configurado", motivo: "" },
+    qa_visual: { estado: "nao_persistido", motivo: "", job: null, veredito: null, artefato: null },
+    pronto_para_receber_peca: true,
+    pronto_para_publicar: false,
+    pronto_para_qa: false,
+    bloqueios: [],
+    bloqueios_do_cofre: [],
+    proxima_acao: "Registrar referência de acesso.",
+  } as cofre.ProntidaoVisualPayload);
 }
 
 describe("Cofre de Ativos — os estados que não são dado", () => {
-  beforeEach(() => { vi.spyOn(cofre, "cofreConfigurado").mockReturnValue(true); });
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.spyOn(cofre, "cofreConfigurado").mockReturnValue(true);
+  });
 
   it("mostra carregamento enquanto não sabe", () => {
     vi.spyOn(cofre, "inventario").mockImplementation(() => new Promise(() => { /* nunca resolve */ }));
@@ -178,11 +199,13 @@ describe("Cofre de Ativos — os estados que não são dado", () => {
     expect(screen.getByRole("button", { name: /Presenças sociais 0/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Infraestrutura e dados 0/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /cadastrar o primeiro ativo/i })).toBeTruthy();
+    expect(screen.getByText("Sem amostra")).toBeTruthy();
+    expect(screen.getAllByText("sem amostra").length).toBeGreaterThan(0);
   });
 });
 
 describe("Cofre de Ativos — inventário real", () => {
-  beforeEach(() => comInventario([PAGINA, ENGINE]));
+  beforeEach(() => { sessionStorage.clear(); comInventario([PAGINA, ENGINE]); });
 
   it("abre por gavetas, com a contagem que veio do servidor", async () => {
     mount();
@@ -255,7 +278,7 @@ describe("Cofre de Ativos — inventário real", () => {
 });
 
 describe("Cofre de Ativos — a fronteira do segredo na tela", () => {
-  beforeEach(() => comInventario([PAGINA]));
+  beforeEach(() => { sessionStorage.clear(); comInventario([PAGINA]); });
 
   it("o formulário de referência manda o localizador e não o mostra de volta", async () => {
     const enviar = vi.spyOn(cofre, "referenciarCredencial")
@@ -265,9 +288,10 @@ describe("Cofre de Ativos — a fronteira do segredo na tela", () => {
     fireEvent.click(screen.getByRole("button", { name: /registrar referência de acesso/i }));
 
     fireEvent.change(screen.getByPlaceholderText("FB_PAGE_ADMIN"), { target: { value: "FB_PAGE_ADMIN" } });
-    fireEvent.change(screen.getByPlaceholderText(/op:\/\/VOLC/), { target: { value: "op://VOLC/Pagina%20Piloto/credential" } });
-    const campos = container.querySelectorAll("input");
-    // responsável e finalidade
+    fireEvent.change(screen.getByPlaceholderText("VOLC"), { target: { value: "VOLC" } });
+    fireEvent.change(screen.getByPlaceholderText("Pagina do piloto"), { target: { value: "Pagina Piloto" } });
+    fireEvent.change(screen.getByPlaceholderText("credential"), { target: { value: "credential" } });
+    const campos = container.querySelectorAll("form input");
     fireEvent.change(campos[campos.length - 2], { target: { value: "Tarcisio" } });
     fireEvent.change(campos[campos.length - 1], { target: { value: "Acesso administrativo à página" } });
     fireEvent.submit(container.querySelector("form")!);
@@ -295,15 +319,23 @@ describe("Cofre de Ativos — a fronteira do segredo na tela", () => {
     const { container } = mount();
     await waitFor(() => expect(screen.getByRole("button", { name: /cadastrar ativo/i })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /cadastrar ativo/i }));
-
-    fireEvent.change(screen.getByPlaceholderText("asset:facebook-page:piloto"), { target: { value: "asset:website:novo" } });
-    // O select de tipo é o primeiro do formulário; mudá-lo muda a gaveta
-    // exibida, porque a gaveta é DERIVADA e não uma segunda escolha.
     const selects = container.querySelectorAll("form select");
     fireEvent.change(selects[0], { target: { value: "website" } });
     await waitFor(() => expect(screen.getByText(/Gaveta: Sites e domínios/)).toBeTruthy());
     expect(enviar).not.toHaveBeenCalled();
   });
+  it("aposentar pede consequência explícita antes de mutar", async () => {
+    const enviar = vi.spyOn(cofre, "aposentar")
+      .mockResolvedValue({ operacao: "cofre.aposentar", ativo_id: PAGINA.ativo_id, revisao: 2, idempotente: false });
+    mount();
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Aposentar$/ })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /^Aposentar$/ }));
+    expect(enviar).not.toHaveBeenCalled();
+    expect(screen.getByText(/permanece no inventário/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /confirmar aposentadoria/i }));
+    await waitFor(() => expect(enviar).toHaveBeenCalled());
+  });
+
   it("a revisão manda só o que MUDOU, e a chave distingue revisões diferentes", async () => {
     const enviar = vi.spyOn(cofre, "revisarAtivo")
       .mockResolvedValue({ operacao: "cofre.revisar_ativo", ativo_id: PAGINA.ativo_id, revisao: 2, idempotente: false });
