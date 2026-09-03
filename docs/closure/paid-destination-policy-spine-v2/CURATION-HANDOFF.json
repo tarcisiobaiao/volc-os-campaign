@@ -1,0 +1,248 @@
+{
+  "schema": "VolcCurationHandoff.v1",
+  "mission": "paid-destination-policy-spine-v2",
+  "branch": "sprint/paid-destination-policy-spine-v2",
+  "base_commit": "34dc7b41bce901bd8bebfdec0a01e293678cbf08",
+  "head_commit": "81aebac9b051c3b982746cbe74a158be13c2d9c1",
+  "produced_at": "2026-09-03",
+  "produced_by": "Claude Code Opus 5 (executor canonico unico) + 4 frentes com ownership exclusivo",
+  "_protocol": {
+    "rule": "Trabalho paralelo nao disputa Roadmap nem curadoria. Este arquivo e um DELTA PROPOSTO; o integrador unico aplica e reconstroi o Mapa Vivo UMA vez, apos o merge.",
+    "files_not_touched": [
+      "volc-os-workbook/ROADMAP-VIVO.json",
+      "docs/volc-os-graph/curadoria-operacional.json",
+      "docs/volc-os-graph/volc-os-graph.json",
+      "graphify-out/**",
+      "supabase/migrations/**",
+      "src/sql/**"
+    ],
+    "graph_freshness_check": "NAO executado. `graphify-out/` e `.venv-graphify` nao existem nesta worktree — rodar `--check` aqui mediria um worktree isolado, nao a fonte compartilhada. O integrador roda depois do merge.",
+    "why_no_promotion": "Trabalho que so existe numa branch nao pode marcar a fonte compartilhada como concluida."
+  },
+  "external_mutation": {
+    "google_ads_mutate": false,
+    "campaign_activation": false,
+    "appeal_submitted": false,
+    "wordpress_write": false,
+    "supabase_write": false,
+    "supabase_migration": false,
+    "deploy": false,
+    "public_get_requests": 4,
+    "public_get_note": "Quatro GETs publicos autorizados pela secao 12 do briefing: dois destinos /r/ x dois user-agents, pausa de 3s, sem cookie, sem autenticacao, sem formulario. Resultado em LIVE-READ-SUMMARY.json."
+  },
+  "existing_tasks_affected": [
+    {
+      "id": "P09-T15",
+      "title": "Ligar o portao de politica de destino pago a geracao, publicacao e campanha",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "As tres barreiras ESTAO ligadas e provadas por teste hermetico. O que impede 'done' nao e codigo: e que (a) a invocacao do motor por terminal nao passa por barreira nenhuma, por construcao — a credencial do WordPress vive no motor; e (b) ha indicio, nao resolvido, de um caminho de criacao de campanha fora de /subir. Marcar 'done' com esses dois abertos seria a promocao por codigo que o protocolo de fechamento proibe.",
+      "evidence": [
+        "docs/closure/paid-destination-policy-spine-v2/GATES.md",
+        "docs/closure/paid-destination-policy-spine-v2/COUNTERPROOFS.md",
+        "backend/tests/test_landing_policy_espinha_v2.py (79 provas)",
+        "backend/tests/test_barreira2_publicacao.py (18 provas)",
+        "backend/tests/test_barreira3_destino_de_campanha.py (22 provas)",
+        "funnelforge-migracao/engine/tests/test_portao_destino_pago.py (23 provas)"
+      ],
+      "decision_needed": "Decidir se 'done' exige fechar o residuo do terminal (mover a credencial do WordPress para fora do alcance do CLI) — que e outra sprint.",
+      "confidence": "high"
+    },
+    {
+      "id": "P05-T13",
+      "title": "Remediar e reauditar destinos pagos /r antes de retomar midia",
+      "current_status": "todo",
+      "proposed_status": "partial",
+      "why": "Leitura publica read-only de 2026-09-03 mostra que a Fase A2 item 1 do LIVE-REMEDIATION-PLAN FOI executada em /r/fgts-saque-aniversario/: o inventario estrutural traz zero host .gov.br e zero ancora-de-valor em link de governo, onde a preservacao trazia sete. Mas a Fase A1 NAO foi executada: /r/antecipacao-saque-aniversario-fgts/ segue com ONZE bloqueios, sem identidade de operador, sem contato e sem aviso de nao-vinculo. E o formato monetario malformado (A2 item 2) continua na primeira. Oito dos dez destinos /r/ de creditoup.com.br e os quatro de portalmundomais.com NAO foram lidos.",
+      "evidence": [
+        "docs/closure/paid-destination-policy-spine-v2/LIVE-READ-SUMMARY.json"
+      ],
+      "decision_needed": "Concluir a Fase A e reauditar os dez destinos antes de retomar midia.",
+      "confidence": "high"
+    },
+    {
+      "id": "P08-T09",
+      "title": "Consolidar o recomendador semantico no Redator e FunnelForge",
+      "current_status": "partial",
+      "proposed_status": "partial",
+      "why": "Sem mudanca de estado. Registrar como NOVA RESTRICAO DE ACEITE: qualquer pagina gerada para midia paga passa pelo portao no plano (pre-voo, antes da primeira chamada paga ao LLM) e no artefato. E `base_para_o_redator(destino_pago=True)` passou a instruir citacao em PROSA — a fonte de pesquisa nao vira hyperlink.",
+      "evidence": [
+        "funnelforge-migracao/engine/src/funnelforge/pipeline/preflight.py"
+      ],
+      "decision_needed": "",
+      "confidence": "high"
+    },
+    {
+      "id": "P05-T11",
+      "title": "Executar o primeiro canario Search pausado na Portal Mundo Mais",
+      "current_status": "partial",
+      "proposed_status": "blocked",
+      "why": "Sem mudanca em relacao ao handoff anterior, e agora com um motivo a mais: o dominio de destino respondia HTTP 410 em 2026-09-03, e a barreira 3 passou a emitir DESTINO_NAO_RESPONDE para status fora de 2xx. O canario nao apenas nao deve subir — ele agora nao CONSEGUE subir por /subir enquanto o dominio estiver fora do ar, e a recusa e explicita em vez de silenciosa.",
+      "evidence": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/ROUTE-R-INVENTORY.json#sitemap_errors",
+        "backend/app/landing_policy/fontes_politica.json#DESTINO_NAO_RESPONDE"
+      ],
+      "decision_needed": "Restaurar o dominio ou remover as campanhas. Republicar as rotas noutro dominio e proibido (Circumventing systems).",
+      "confidence": "high"
+    }
+  ],
+  "proposed_new_tasks": [
+    {
+      "proposed_id": "P09-TXX",
+      "initiative_hint": "P09 — Separar fato, recomendacao, autorizacao e acao",
+      "title": "Tirar a credencial do WordPress do alcance do CLI do motor",
+      "proposed_status": "todo",
+      "why": "A barreira 2 recusa DISPARAR o subprocesso; ela nao pode parar o motor no meio, e `funnelforge run ... --publish` digitado num terminal publica sem portao nenhum. Enquanto a credencial viver no processo do motor, o portao dentro dele e a unica defesa — e ela cai com um `git checkout` da pasta do motor.",
+      "confidence": "high"
+    },
+    {
+      "proposed_id": "P09-TYY",
+      "initiative_hint": "P09",
+      "title": "Determinar se existe caminho de criacao de campanha fora de /subir",
+      "proposed_status": "todo",
+      "why": "`canario.exigir` restringe a criacao a um customer_id, e a conta suspensa mostrava campanhas que a tabela local nao registrava. Se o caminho existir (n8n, CLI do volc_ads, interface do Google Ads), NENHUMA das tres barreiras cobre o caminho que efetivamente causou o incidente. Nao foi possivel determinar lendo codigo.",
+      "confidence": "medium"
+    },
+    {
+      "proposed_id": "P09-TZZ",
+      "initiative_hint": "P09",
+      "title": "Versionar os detectores, e nao so a matriz de fontes",
+      "proposed_status": "todo",
+      "why": "`policy_contract_version` e string mantida a mao e `policy_source_version` e o hash da matriz. NENHUMA das duas cobre as expressoes regulares e limiares de varredura.py nem as tabelas de severidade. Mover um codigo entre _BLOQUEIA_NO_PAGO e _RISCO_SEMPRE muda o veredito de toda pagina com as duas versoes identicas — o mesmo defeito que versao_da_fonte foi escrita para evitar, um nivel acima. Precedente de conserto ja existe em scripts/inventariar_motor_video.py (source_fingerprint_sha256).",
+      "confidence": "high"
+    }
+  ],
+  "proposed_graph_nodes": [
+    {
+      "id": "landing_policy_gate",
+      "cluster": "qualidade do publisher",
+      "label": "Portao de politica de destino pago",
+      "path": "backend/app/landing_policy/",
+      "state": "IMPLEMENTADO E INTEGRADO (era 'implementado, nao integrado')",
+      "business_meaning": "Separa pagina editorial de destino que recebe clique comprado, e fecha por ausencia: verificacao que nao pode ser concluida reprova, em vez de liberar por silencio. Agora chamado nos tres pontos.",
+      "confidence": "high"
+    },
+    {
+      "id": "landing_policy_plano",
+      "cluster": "conteudo/publicacao",
+      "label": "O plano como documento avaliavel",
+      "path": "backend/app/landing_policy/plano.py",
+      "state": "ativo",
+      "business_meaning": "Renderiza os campos estruturados (H1, titulo, CTA, alegacao, formulario, identidade) como documento e entrega as MESMAS dez varreduras. Markdown e URL nua entram pela mesma porta — e a sintaxe em que o defeito nasce.",
+      "confidence": "high"
+    },
+    {
+      "id": "landing_policy_registro",
+      "cluster": "governanca",
+      "label": "Registro de aprovacao do destino pago",
+      "path": "backend/app/landing_policy/registro.py",
+      "state": "ativo",
+      "business_meaning": "O recibo vive dentro de pautador_funnel_runs.paginas_publicadas (jsonb que ja existia). Sem tabela nova, sem migration, sem segunda autoridade sobre o mesmo fato. E o lado esquerdo, que nao existia, da comparacao de deriva.",
+      "confidence": "high"
+    },
+    {
+      "id": "landing_policy_ponte_motor",
+      "cluster": "conteudo/publicacao",
+      "label": "Ponte do motor para o contrato",
+      "path": "funnelforge-migracao/engine/src/funnelforge/adapters/landing_policy_gate.py",
+      "state": "ativo",
+      "business_meaning": "O motor consulta o contrato do backend em vez de reimplementar as regras. FALHA FECHADA: import quebrado recusa publicar destino pago, em vez de seguir sem portao.",
+      "confidence": "high"
+    }
+  ],
+  "proposed_graph_edges": [
+    {
+      "from": "funnelforge_step_publish",
+      "to": "landing_policy_ponte_motor",
+      "kind": "chama",
+      "state": "APLICADO",
+      "why": "Portao e a PRIMEIRA instrucao de step_publish, antes dos tres upload_media — antes ele rodava depois, e uma pagina recusada ja deixava midia orfa no site.",
+      "confidence": "high"
+    },
+    {
+      "from": "funnelforge_step_content_gate",
+      "to": "landing_policy_ponte_motor",
+      "kind": "chama",
+      "state": "APLICADO",
+      "why": "A isencao da LANDING PAGE foi apagada: a unica pagina que recebe clique comprado era a unica marcada OK sem rodar validador nenhum.",
+      "confidence": "high"
+    },
+    {
+      "from": "redator_publicacao_router",
+      "to": "landing_policy_gate",
+      "kind": "chama",
+      "state": "APLICADO",
+      "why": "Portao 2 nas DUAS portas: /redator/disparar e /redator/runs/{id}/publicar/{page}. Gate numa so deixaria a outra aberta.",
+      "confidence": "high"
+    },
+    {
+      "from": "trafego_router",
+      "to": "landing_policy_gate",
+      "kind": "chama",
+      "state": "APLICADO",
+      "why": "Portao 3 em /provar e reavaliacao AO VIVO em /subir, entre a conferencia do selo e ledger.abrir.",
+      "confidence": "high"
+    },
+    {
+      "from": "landing_policy_gate",
+      "to": "publisher_quality_fetch",
+      "kind": "usa",
+      "why": "Leitura publica SSRF-safe com cadeia de redirecionamento preservada; o portao nao abre socket.",
+      "confidence": "high"
+    },
+    {
+      "from": "landing_policy_registro",
+      "to": "db:pautador_funnel_runs",
+      "kind": "grava_em",
+      "why": "paginas_publicadas jsonb, sem coluna nova.",
+      "confidence": "high"
+    }
+  ],
+  "facts_worth_curating": [
+    {
+      "fact": "O pacote backend/app/landing_policy nao tinha NENHUM chamador de producao antes desta sprint. Portao que nunca esta no caminho nao e portao.",
+      "source": "grep no repositorio na base 34dc7b4",
+      "confidence": "high"
+    },
+    {
+      "fact": "A LANDING PAGE era a unica pagina do sistema isenta do portao de conteudo do motor (step_content_gate marcava OK e retornava) E a unica sem validacao no ramo de publicacao. E ela e a pagina que recebe o clique comprado.",
+      "source": "funnelforge steps.py na base",
+      "confidence": "high"
+    },
+    {
+      "fact": "Sobre os MESMOS bytes preservados, o contrato v2 emite 34 bloqueios onde o v1 emitia 19 — 15 novos, nenhum perdido. Sem uma requisicao de rede.",
+      "source": "docs/closure/paid-destination-policy-spine-v2/GATE-RECEIPTS-V2.json",
+      "confidence": "high"
+    },
+    {
+      "fact": "Em 2026-09-03, os sete links caixa.gov.br de ancora numerica NAO aparecem mais no inventario estrutural de /r/fgts-saque-aniversario/. O formato monetario malformado continua.",
+      "source": "docs/closure/paid-destination-policy-spine-v2/LIVE-READ-SUMMARY.json",
+      "confidence": "high"
+    },
+    {
+      "fact": "/r/antecipacao-saque-aniversario-fgts/ tem ZERO link externo e ONZE bloqueios. Ausencia de link externo nao salva copy com falsa afiliacao — a contraprova 6 do briefing, observada na pagina real.",
+      "source": "LIVE-READ-SUMMARY.json",
+      "confidence": "high"
+    },
+    {
+      "fact": "Cloaking continua REFUTADO, agora com evidencia nova: nos dois destinos lidos, o rastreador recebeu HTML de sha256 identico ao humano, com zero redirecionamento.",
+      "source": "LIVE-READ-SUMMARY.json",
+      "confidence": "high"
+    },
+    {
+      "fact": "A causa literal da suspensao continua NAO OBTIDA. ROOT-CAUSE-ANALYSIS.md permanece em HYPOTHESIS_PARTIALLY_SUPPORTED, e nenhum artefato desta sprint pode ser citado como prova da causa.",
+      "source": "ROOT-CAUSE-ANALYSIS.md secao 4",
+      "confidence": "high"
+    },
+    {
+      "fact": "O venv do motor (funnelforge-migracao/engine/.venv) nao existia nesta maquina: a suite do motor nunca havia sido executavel aqui. Foi criado com o comando que worker._executavel() prescreve.",
+      "source": "medido na base antes de qualquer mudanca",
+      "confidence": "high"
+    },
+    {
+      "fact": "scripts/auditar_landing_policy.py tinha um bug destrutivo de precedencia: `--matriz --evidencia --saida X` sobrescrevia GATE-RECEIPTS.json (evidencia E6 do pacote de apelacao) sem backup. Corrigido.",
+      "source": "commit d94edfe",
+      "confidence": "high"
+    }
+  ]
+}

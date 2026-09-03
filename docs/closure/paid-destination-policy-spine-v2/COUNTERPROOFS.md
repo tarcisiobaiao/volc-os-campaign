@@ -133,6 +133,40 @@ portão desligado não protege nada.
 
 ---
 
+## A rodada corretiva da revisão cruzada
+
+Codex GPT-5.6 read-only produziu doze achados, **todos confirmados por execução**
+antes de virarem conserto. Cada um ganhou contraprova em **V2**, prefixo `rc`:
+
+| achado | prova | tipo |
+|---|---|---|
+| recibo do FUTURO passava no frescor | `test_rc01_recibo_carimbado_no_futuro_nao_e_fresco` | falso verde |
+| cloaking por JS invisível (`location.assign`, script fora do fingerprint) | `test_rc02_*`, `test_rc02b_meta_refresh_*` | falso verde |
+| `<base>`, `formaction` e `<area href>` fora da varredura | `test_rc04_base_formaction_e_area_sao_navegacao` | falso verde |
+| `<a href>` para adtech ficava verde | `test_rc05_hyperlink_para_adtech_*` | falso verde |
+| `JaVaScRiPt:` escapava do `startswith` | `test_rc06_esquema_mascarado_*` | falso verde |
+| `type="search"` isentava `name="cpf"` | `test_rc07_*` + `test_rc07b` (simétrico) | falso verde |
+| "Portal do INSS" não casava | `test_rc08_manchete_que_se_apresenta_como_o_orgao` (6 casos) | falso verde |
+| `?produto=cartao` colidia com `?produto=emprestimo` | `test_a_query_que_decide_conteudo_nao_colide` | falso verde |
+| link ESCONDIDO reprovava página correta | `test_rc10_link_externo_ESCONDIDO_*` | **falso bloqueio** |
+| `"cin"` dentro de "cinco", `"visto"` particípio de ver | `test_rc11_*` (5 casos) | **falso bloqueio** |
+| CTA com destino vazio | `test_rc13_cta_sem_destino_e_inventariado_e_nao_bloqueia` | **falso bloqueio** |
+| `role` com typo virava o papel mais frouxo | `test_rc14_papel_do_motor_irreconhecivel_fecha_*` | falso verde |
+| identidade num fragmento reprovava TODA LP | `test_rc15_identidade_num_documento_parcial_*` | **falso bloqueio** |
+| recibo REPROVADO aprovava | `test_cp16c_recibo_que_diz_reprovado_nao_aprova_nada` | falso verde |
+| recibo de OUTRA página aprovava esta | `test_cp16d_recibo_de_outra_pagina_*` | falso verde |
+| `status_http` não decidia nada | `test_cp19b_*` (4 status) + `test_cp19c` (simétrico) | falso verde |
+
+**Cinco dos dezesseis eram FALSO BLOQUEIO.** Um deles foi de uma regra
+acrescentada durante esta própria sprint: a acusação de CTA com destino vazio
+reprovou uma LP correta no primeiro contato, porque num run `--only p1` as rotas
+interiores ainda não existem. Ela foi rebaixada a inventário — a distinção "a
+rota ainda não resolveu" × "o botão morreu" não é observável a partir do
+documento sozinho, e um bloqueio que eu não consegui qualificar não entra no
+último lote da sprint.
+
+---
+
 ## O que NÃO tem contraprova, e por quê
 
 - **A invocação por terminal do motor** (`funnelforge run … --publish`) não passa
