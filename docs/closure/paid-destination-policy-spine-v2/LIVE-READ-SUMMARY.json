@@ -1,0 +1,143 @@
+{
+  "_about": {
+    "limite": "Uma auditoria ao vivo NAO transforma hipotese em causalidade comprovada. Este arquivo nao afirma o motivo da suspensao.",
+    "method": "GET publico, sem cookie, sem autenticacao, sem formulario, pausa de 3s",
+    "pause_between_requests_s": 3,
+    "purpose": "Leitura publica read-only dos destinos /r/ do incidente, avaliada pelo contrato v2. Serve para dizer o ESTADO ATUAL dos destinos, nao para provar causalidade da suspensao.",
+    "read_date": "2026-09-03",
+    "requests_made": 4,
+    "user_agents": {
+      "humano": "VOLC-PublisherSurfaceSnapshot/1.0 read-only",
+      "rastreador": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+    }
+  },
+  "cloaking": {
+    "detalhe": "Nos dois destinos, a leitura com user-agent de rastreador devolveu HTML com sha256 IDENTICO ao da leitura humana. Zero saltos de redirecionamento nos dois.",
+    "resultado": "REFUTADO NOVAMENTE, com evidencia nova"
+  },
+  "destinos": [
+    {
+      "bloqueios": [
+        "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+        "LINK_EXTERNO_NAO_CLASSIFICADO",
+        "RECIBO_DE_APROVACAO_AUSENTE",
+        "SCRIPT_TERCEIRO_NAO_DECLARADO",
+        "VALOR_MONETARIO_MALFORMADO"
+      ],
+      "desconhecidos": [
+        "approval_receipt",
+        "live_drift"
+      ],
+      "impressao_canonica_12": "ccc2a2c1a989",
+      "inventario_de_links": {
+        "ancoras_de_valor_em_link_de_governo": [],
+        "hosts_externos": {
+          "www.fabiolobo.com.br": 1
+        },
+        "por_classe": {
+          "mesmo_site": 16,
+          "terceiro_desconhecido": 1
+        },
+        "total_ancoras_de_valor_em_governo": 0
+      },
+      "leitura": {
+        "bytes": 173788,
+        "disponivel": true,
+        "html_identico_rastreador_usuario": true,
+        "mudou_desde_a_preservacao": true,
+        "rastreador_lido": true,
+        "rastreador_sha256_12": "eb559fbf2674",
+        "saltos": 0,
+        "sha256_12": "eb559fbf2674",
+        "sha256_preservado_2026_09_03_12": "7c674d1d7daf",
+        "status_http": 200,
+        "url_final": "https://creditoup.com.br/r/fgts-saque-aniversario/"
+      },
+      "paid_destination_ready": false,
+      "riscos": [
+        "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+        "SERVICE_WORKER_OU_PUSH_OBSERVADO"
+      ],
+      "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "veredito": "blocked"
+    },
+    {
+      "bloqueios": [
+        "AFILIACAO_GOVERNAMENTAL_IMPLICITA",
+        "ALEGACAO_DE_RESULTADO_IMPROVAVEL",
+        "ALEGACAO_FINANCEIRA_SEM_DIVULGACAO",
+        "ANCORA_INCONGRUENTE_COM_DESTINO",
+        "AVISO_NAO_OFICIAL_AUSENTE",
+        "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
+        "IDENTIDADE_CONTATO_AUSENTE",
+        "IDENTIDADE_OPERADOR_AUSENTE",
+        "MARCA_TERCEIRA_SEM_LASTRO",
+        "RECIBO_DE_APROVACAO_AUSENTE",
+        "SCRIPT_TERCEIRO_NAO_DECLARADO"
+      ],
+      "desconhecidos": [
+        "approval_receipt",
+        "live_drift"
+      ],
+      "impressao_canonica_12": "3dba1b108ae6",
+      "inventario_de_links": {
+        "ancoras_de_valor_em_link_de_governo": [],
+        "hosts_externos": {},
+        "por_classe": {
+          "mesmo_site": 6
+        },
+        "total_ancoras_de_valor_em_governo": 0
+      },
+      "leitura": {
+        "bytes": 164897,
+        "disponivel": true,
+        "html_identico_rastreador_usuario": true,
+        "mudou_desde_a_preservacao": true,
+        "rastreador_lido": true,
+        "rastreador_sha256_12": "e5fabf527dd7",
+        "saltos": 0,
+        "sha256_12": "e5fabf527dd7",
+        "sha256_preservado_2026_09_03_12": "0dbafa0dd1e4",
+        "status_http": 200,
+        "url_final": "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/"
+      },
+      "paid_destination_ready": false,
+      "riscos": [
+        "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+        "SERVICE_WORKER_OU_PUSH_OBSERVADO"
+      ],
+      "url": "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/",
+      "veredito": "blocked"
+    }
+  ],
+  "external_mutation": {
+    "appeal_submitted": false,
+    "authenticated_access": false,
+    "deploy": false,
+    "form_submitted": false,
+    "google_ads_mutate": false,
+    "wordpress_write": false
+  },
+  "leitura_do_que_mudou": {
+    "antecipacao-saque-aniversario-fgts": {
+      "corresponde_a": "LIVE-REMEDIATION-PLAN.md Fase A1 — NAO executado.",
+      "fato": "Zero link externo, e ainda assim onze bloqueios. Continuam ausentes: identidade do operador, contato/privacidade, aviso de nao-vinculo. Continuam presentes: afiliacao governamental implicita, marca de terceiro sem lastro, alegacao de resultado improvavel e alegacao financeira sem divulgacao.",
+      "prova_que": "Ausencia de link externo nao salva copy com falsa afiliacao. E a contraprova 6 do briefing, observada na pagina real e nao numa fixture."
+    },
+    "fgts-saque-aniversario": {
+      "ainda_aberto": "VALOR_MONETARIO_MALFORMADO continua sendo emitido: a correcao de formato pt-BR (A2 item 2) nao foi feita. E www.fabiolobo.com.br continua sem classificacao declarada (A2 item 3).",
+      "corresponde_a": "LIVE-REMEDIATION-PLAN.md Fase A2 item 1 — executado.",
+      "fato": "Os SETE links caixa.gov.br de ancora numerica NAO existem mais. O inventario ao vivo traz zero host .gov.br e zero ancora-de-valor em link de governo; o unico host externo restante e www.fabiolobo.com.br (1 link de autoria). O sha256 mudou de 7c674d1d7daf para eb559fbf2674.",
+      "limite": "O hash muda tambem por rotacao de anuncio. A conclusao acima nao vem do hash: vem do inventario estrutural de links, que passou de 7 links de governo com ancora de valor para zero."
+    }
+  },
+  "o_que_este_arquivo_nao_afirma": [
+    "Nao afirma o motivo literal da suspensao — a notificacao in-account continua nao lida.",
+    "Nao afirma que a conta Google esta segura.",
+    "Nao afirma que qualquer pagina foi aprovada pelo Google.",
+    "Nao afirma que a remediacao esta completa: um dos dois destinos segue com onze bloqueios.",
+    "Nao mede DERIVA: nao havia hash APROVADO gravado na publicacao, e essa ausencia e ela propria o achado que a espinha v2 fecha."
+  ],
+  "read_at_epoch": 1788432378.461314,
+  "schema": "PaidDestinationSpineV2LiveRead"
+}
