@@ -11,6 +11,7 @@
  * derivada do formato real. Nenhum componente conhece o nome delas.
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LeituraDoInventario } from '@/hooks/useInventario';
@@ -27,6 +28,18 @@ import {
   inventarioRenderavel,
   maquininha,
 } from '@/components/trafego/inventario/fixtureDeProvas';
+
+// ⚠️ `{ wrapper: MemoryRouter }` nas montagens avulsas.
+//
+// As linhas do inventário navegam com `<Link>` para rotas DESTE aplicativo
+// (`/trafego/campanhas/:id`, `/dashboard/campaign/:id`), e `<Link>` fora de um
+// roteador lança. Antes eram `<a href>`: renderizavam em qualquer lugar e
+// cobravam ao operador uma recarga de documento inteiro — o teste passava
+// justamente porque a navegação era a errada.
+//
+// As montagens que já têm a própria moldura (`montar()`) continuam sem o
+// wrapper: dois roteadores aninhados lançam igual.
+
 
 // ── dublês ──────────────────────────────────────────────────────────────────
 // O hook é dublê para que a prova seja sobre a TELA, e não sobre a rede: aqui
@@ -93,7 +106,7 @@ afterEach(cleanup);
 
 describe('inventário — o que existe nas contas', () => {
   it('mostra as duas campanhas da conta, cada uma no seu grupo', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByText('BR - Maquininha de Cartão')).toBeTruthy();
     expect(screen.getByText('BR BR - FGTS Saque-Aniversário')).toBeTruthy();
 
@@ -109,7 +122,7 @@ describe('inventário — o que existe nas contas', () => {
   });
 
   it('agrupa por conta e declara a idade da leitura de cada uma', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByLabelText('conta Crédito Up')).toBeTruthy();
     expect(screen.getByLabelText('conta PMUNDO+')).toBeTruthy();
     expect(screen.getByLabelText('conta Portal Mundo Mais')).toBeTruthy();
@@ -117,7 +130,7 @@ describe('inventário — o que existe nas contas', () => {
   });
 
   it('nomeia o grupo sem conta em vez de exibir a chave sintética do servidor', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByLabelText('conta Sem conta identificada')).toBeTruthy();
     expect(screen.queryByText('conta-nao-identificada')).toBeNull();
   });
@@ -127,7 +140,7 @@ describe('inventário — o que existe nas contas', () => {
 
 describe('os vazios que não podem virar o mesmo vazio', () => {
   it('separa "respondeu e não tem nada" de "nunca foi lida"', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
 
     const lida = screen.getByLabelText('conta Portal Mundo Mais');
     expect(within(lida).getAllByText(/a conta respondeu e não há campanha nenhuma nela/i).length)
@@ -159,7 +172,7 @@ describe('os vazios que não podem virar o mesmo vazio', () => {
         faltou: [],
       }),
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     // A frase aparece no selo e no vazio do grupo: o operador lê o mesmo fato
     // no rótulo e no lugar onde ele esperaria encontrar campanhas.
     expect(screen.getAllByText(/ainda não perguntamos nada a esta conta/i).length).toBe(2);
@@ -171,7 +184,7 @@ describe('os vazios que não podem virar o mesmo vazio', () => {
 
 describe('ausência e zero são coisas diferentes', () => {
   it('zero medido aparece como 0 e vem colado à hora da leitura', () => {
-    render(<BlocoDeEntrega campanha={maquininha} comRotulos />);
+    render(<BlocoDeEntrega campanha={maquininha} comRotulos />, { wrapper: MemoryRouter });
     expect(screen.getByText('1')).toBeTruthy();
     expect(screen.getByText('0')).toBeTruthy();
     expect(screen.getByText('R$ 0,00')).toBeTruthy();
@@ -179,7 +192,7 @@ describe('ausência e zero são coisas diferentes', () => {
   });
 
   it('campanha nunca medida mostra travessão — e nenhum zero', () => {
-    const { container } = render(<BlocoDeEntrega campanha={fgtsDeTeste} comRotulos />);
+    const { container } = render(<BlocoDeEntrega campanha={fgtsDeTeste} comRotulos />, { wrapper: MemoryRouter });
     expect(screen.getAllByText('—').length).toBe(3);
     expect(screen.queryByText('0')).toBeNull();
     expect(screen.getByText('ainda não medida')).toBeTruthy();
@@ -193,13 +206,13 @@ describe('ausência e zero são coisas diferentes', () => {
       ...maquininha,
       entrega: { ...maquininha.entrega, leitura: null },
     };
-    render(<BlocoDeEntrega campanha={semData} />);
+    render(<BlocoDeEntrega campanha={semData} />, { wrapper: MemoryRouter });
     expect(screen.getByText('medida sem data de leitura — não exibida')).toBeTruthy();
     expect(screen.queryByText('R$ 0,00')).toBeNull();
   });
 
   it('teto de cliques ausente não vira número inventado', () => {
-    render(<BlocoDeEntrega campanha={fgtsDeTeste} />);
+    render(<BlocoDeEntrega campanha={fgtsDeTeste} />, { wrapper: MemoryRouter });
     expect(screen.queryByText('83')).toBeNull();
   });
 });
@@ -208,7 +221,7 @@ describe('ausência e zero são coisas diferentes', () => {
 
 describe('todo estado tem palavra, não só cor', () => {
   it('nomeia procedência, vínculo e presença em texto', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getAllByText('sem procedência').length).toBeGreaterThan(0);
     expect(screen.getAllByText('sem vínculo').length).toBeGreaterThan(0);
     expect(screen.getAllByText('registrada').length).toBeGreaterThan(0);
@@ -217,7 +230,7 @@ describe('todo estado tem palavra, não só cor', () => {
   });
 
   it('cada selo carrega a frase do que ele afirma', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(
       screen.getAllByText(/não sabemos como esta campanha entrou no registro/i).length,
     ).toBeGreaterThan(0);
@@ -227,12 +240,12 @@ describe('todo estado tem palavra, não só cor', () => {
   });
 
   it('não usa a conclusão proibida "sumiu"', () => {
-    const { container } = render(<InventarioDeCampanhas />);
+    const { container } = render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect((container.textContent ?? '').toLowerCase()).not.toContain('sumiu');
   });
 
   it('não fala a língua da máquina com o operador', () => {
-    const { container } = render(<InventarioDeCampanhas />);
+    const { container } = render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const texto = (container.textContent ?? '').toLowerCase();
     for (const proibido of ['gaql', 'postgrest', 'snapshot', 'payload', 'cursor']) {
       expect(texto).not.toContain(proibido);
@@ -244,7 +257,7 @@ describe('todo estado tem palavra, não só cor', () => {
 
 describe('falha de uma conta não contamina as outras', () => {
   it('declara o que faltou, com conta e motivo', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByText(/Leitura parcial/i)).toBeTruthy();
     // ⚠️ O `motivo` do servidor deixou de ser impresso: é coluna de texto livre
     // da tentativa de varredura, e a própria frase padrão do backend diz "o
@@ -257,7 +270,7 @@ describe('falha de uma conta não contamina as outras', () => {
   });
 
   it('preserva o último dado bom da conta que não respondeu', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const grupo = screen.getByLabelText('conta PMUNDO+');
     expect(within(grupo).getByText('BR - Consignado INSS')).toBeTruthy();
     expect(within(grupo).getAllByText(/última leitura boa há 7 h/).length).toBeGreaterThan(0);
@@ -265,7 +278,7 @@ describe('falha de uma conta não contamina as outras', () => {
 
   it('quando a atualização falha por cima de dado bom, diz que é o antigo', () => {
     leitura = { ...leituraBase, falhou: true, motivoDaFalha: 'tempo esgotado' };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByText(/A atualização mais recente falhou/i)).toBeTruthy();
     expect(screen.getByText('BR - Maquininha de Cartão')).toBeTruthy();
   });
@@ -279,7 +292,7 @@ describe('falha de uma conta não contamina as outras', () => {
       motivoDaFalha: 'a rede não respondeu',
       recarregar: tentar,
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByText('Não consegui ler o inventário')).toBeTruthy();
     // O texto cru do erro não chega à tela; a frase do vocabulário fechado e o
     // código copiável tomam o lugar dele. Ver `erros.ts`.
@@ -295,7 +308,7 @@ describe('falha de uma conta não contamina as outras', () => {
 describe('carregando e vazio', () => {
   it('carrega com a forma do conteúdo, não com um giro no meio da tela', () => {
     leitura = { ...leituraBase, inventario: null, carregando: true };
-    const { container } = render(<InventarioDeCampanhas />);
+    const { container } = render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByRole('status')).toBeTruthy();
     expect(screen.getByText('lendo o inventário das contas')).toBeTruthy();
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(3);
@@ -306,7 +319,7 @@ describe('carregando e vazio', () => {
       ...leituraBase,
       inventario: inventarioDeProva({ contas: [], parcial: false, faltou: [] }),
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByText('Nenhuma conta no inventário')).toBeTruthy();
     expect(screen.getByText(/ficar vazio\s+não significa que as contas estejam vazias/i)).toBeTruthy();
   });
@@ -316,7 +329,7 @@ describe('carregando e vazio', () => {
 
 describe('expansão embutida, com teclado', () => {
   it('a linha abre no lugar e anuncia o estado com aria-expanded', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const botao = botaoDaCampanha('BR - Maquininha de Cartão');
 
     expect(botao.getAttribute('aria-expanded')).toBe('false');
@@ -331,7 +344,7 @@ describe('expansão embutida, com teclado', () => {
   });
 
   it('não abre em modal: o detalhe é apontado pelo próprio botão', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const botao = botaoDaCampanha('BR - Maquininha de Cartão');
     fireEvent.click(botao);
     const alvo = botao.getAttribute('aria-controls');
@@ -341,7 +354,7 @@ describe('expansão embutida, com teclado', () => {
   });
 
   it('o gatilho é botão nativo, recebe foco e tem alvo de toque de 44px', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const botao = botaoDaCampanha('BR - Maquininha de Cartão');
     expect(botao.tagName).toBe('BUTTON');
     botao.focus();
@@ -351,13 +364,13 @@ describe('expansão embutida, com teclado', () => {
   });
 
   it('o detalhe conta a linhagem a partir do que está carregado', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     fireEvent.click(botaoDaCampanha('BR BR - FGTS Saque-Aniversário'));
     expect(screen.getByText('2 instâncias neste inventário')).toBeTruthy();
   });
 
   it('quando não há painel próprio, diz isso em vez de oferecer um link torto', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     fireEvent.click(botaoDaCampanha('BR BR - FGTS Saque-Aniversário'));
     expect(screen.getByText(/sem painel próprio/i)).toBeTruthy();
   });
@@ -368,7 +381,7 @@ describe('expansão embutida, com teclado', () => {
 describe('monitor, tablet e telefone', () => {
   it('no monitor é tabela comparativa, com onze colunas rotuladas', () => {
     largura(MONITOR);
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.getByRole('table')).toBeTruthy();
     const colunas = screen.getAllByRole('columnheader').map((th) => th.textContent);
     // Estado e canal ganharam coluna própria: dentro da célula do nome eles
@@ -385,7 +398,7 @@ describe('monitor, tablet e telefone', () => {
   it('no tablet as colunas se FUNDEM — e nenhum valor é cortado', () => {
     largura(TABLET);
     leitura = { ...leituraBase, inventario: inventarioRenderavel() };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
 
     const colunas = screen.getAllByRole('columnheader').map((th) => th.textContent);
     expect(colunas).toEqual(['campanha', 'compra', 'entrega', 'situação']);
@@ -402,7 +415,7 @@ describe('monitor, tablet e telefone', () => {
   it('no telefone não há tabela nem grade de cartões: linhas altas em lista', () => {
     largura(TELEFONE);
     leitura = { ...leituraBase, inventario: inventarioRenderavel() };
-    const { container } = render(<InventarioDeCampanhas />);
+    const { container } = render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
 
     expect(screen.queryByRole('table')).toBeNull();
     expect(container.querySelector('table')).toBeNull();
@@ -417,7 +430,7 @@ describe('monitor, tablet e telefone', () => {
   it('a expansão é embutida também no telefone', () => {
     largura(TELEFONE);
     leitura = { ...leituraBase, inventario: inventarioRenderavel() };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const botao = botaoDaCampanha('BR - Maquininha de Cartão');
     fireEvent.click(botao);
     expect(botao.getAttribute('aria-expanded')).toBe('true');
@@ -441,6 +454,7 @@ describe('linha de campanha', () => {
           />
         </tbody>
       </table>,
+      { wrapper: MemoryRouter },
     );
     expect(screen.getByText('ENABLED')).toBeTruthy();
     expect(screen.getByText(/ligada no Google/)).toBeTruthy();

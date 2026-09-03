@@ -78,3 +78,58 @@ describe('os dois vocabulários de portão continuam separados e nomeados', () =
     expect(bloco).not.toContain('PERMITIDO');
   });
 });
+
+describe('navegação interna não recarrega o documento', () => {
+  // ⚠️ Defeito medido: o ÚNICO caminho de entrada da página canônica da campanha
+  // era `<a href="/trafego/campanhas/:id">` dentro de uma linha do inventário.
+  // Âncora crua faz recarga de documento inteiro — perde o estado da SPA e refaz
+  // TODAS as leituras do Hub para abrir uma campanha. O mesmo valia para
+  // `cockpit_href`, que o servidor monta como `/dashboard/campaign/:id`
+  // (backend/app/trafego/inventario.py) e que também é rota deste aplicativo.
+  const ROTAS_INTERNAS = [
+    '/trafego/campanhas/',
+    '/dashboard/campaign/',
+    '/trafego/nova/',
+    '/trafego?aba=',
+  ];
+
+  it('nenhum <a href> aponta para rota interna nos componentes de tráfego', () => {
+    const { readdirSync, statSync } = require('node:fs') as typeof import('node:fs');
+    const culpados: string[] = [];
+    const varrer = (dir: string) => {
+      for (const nome of readdirSync(dir)) {
+        const caminho = resolve(dir, nome);
+        if (statSync(caminho).isDirectory()) {
+          if (nome === '__tests__') continue;
+          varrer(caminho);
+          continue;
+        }
+        if (!nome.endsWith('.tsx')) continue;
+        const fonte = readFileSync(caminho, 'utf-8');
+        // `<a ... href={...}` ou `href="..."` cujo destino começa com rota interna.
+        for (const rota of ROTAS_INTERNAS) {
+          const padrao = new RegExp(
+            `<a[^>]*href=\\{?[\`'"][^\`'"]*${rota.replace(/[?/]/g, '\\$&')}`,
+            's',
+          );
+          if (padrao.test(fonte)) {
+            culpados.push(`${caminho.replace(raiz + '/', '')} → ${rota}`);
+          }
+        }
+      }
+    };
+    varrer(resolve(raiz, 'src/components/trafego'));
+    varrer(resolve(raiz, 'src/pages/trafego'));
+    expect(
+      culpados,
+      'rota interna atrás de <a href> recarrega o documento inteiro; use <Link>',
+    ).toEqual([]);
+  });
+
+  it('a linha do inventário navega com Link para as duas rotas internas', () => {
+    const fonte = ler('src/components/trafego/inventario/LinhaDeCampanha.tsx');
+    expect(fonte).toMatch(/<Link\s+to=\{`\/trafego\/campanhas\/\$\{c\.volc_campaign_id\}`\}/);
+    expect(fonte).toMatch(/<Link\s+to=\{c\.cockpit_href\}/);
+    expect(fonte).toMatch(/import \{ Link \} from 'react-router-dom';/);
+  });
+});

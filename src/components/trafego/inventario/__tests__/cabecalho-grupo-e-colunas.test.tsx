@@ -36,6 +36,18 @@ import {
   quadroDeAlertasDeProva,
 } from '@/components/trafego/inventario/fixtureDeProvas';
 
+// ⚠️ `{ wrapper: MemoryRouter }` nas montagens avulsas.
+//
+// As linhas do inventário navegam com `<Link>` para rotas DESTE aplicativo
+// (`/trafego/campanhas/:id`, `/dashboard/campaign/:id`), e `<Link>` fora de um
+// roteador lança. Antes eram `<a href>`: renderizavam em qualquer lugar e
+// cobravam ao operador uma recarga de documento inteiro — o teste passava
+// justamente porque a navegação era a errada.
+//
+// As montagens que já têm a própria moldura (`montar()`) continuam sem o
+// wrapper: dois roteadores aninhados lançam igual.
+
+
 // ── dublês ──────────────────────────────────────────────────────────────────
 
 const leituraBase: LeituraDoInventario = {
@@ -323,7 +335,7 @@ describe('o grupo de conta identifica sem expor', () => {
   });
 
   it('o resumo mostra o mascarado; a expansão da campanha traz o completo', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const grupo = screen.getByLabelText('conta Crédito Up');
     expect(within(grupo).getByText('•••-•••-1692')).toBeTruthy();
 
@@ -332,7 +344,7 @@ describe('o grupo de conta identifica sem expor', () => {
   });
 
   it('o botão da conta declara que pergunta à conta e que não altera campanha', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const grupo = screen.getByLabelText('conta Crédito Up');
     const botao = within(grupo).getByRole('button', { name: /ler esta conta agora/ });
     const descricao = document.getElementById(botao.getAttribute('aria-describedby') ?? '');
@@ -341,7 +353,7 @@ describe('o grupo de conta identifica sem expor', () => {
   });
 
   it('o cabeçalho do grupo traz nome, quantidade, resultado da leitura e idade', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const grupo = screen.getByLabelText('conta Crédito Up');
     expect(within(grupo).getByText('Crédito Up')).toBeTruthy();
     expect(within(grupo).getByText('3 campanhas')).toBeTruthy();
@@ -354,7 +366,7 @@ describe('o grupo de conta identifica sem expor', () => {
 
 describe('a tabela do monitor é comparativa de verdade', () => {
   it('estado e canal têm coluna própria, e a idade da medida também', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const linha = screen
       .getByRole('button', { name: /^BR - Maquininha de Cartão/ })
       .closest('tr')!;
@@ -391,7 +403,7 @@ describe('a tabela do monitor é comparativa de verdade', () => {
         faltou: [],
       }),
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const estado = screen
       .getByRole('button', { name: /^BR - Maquininha de Cartão/ })
       .closest('tr')!.children[0];
@@ -414,7 +426,7 @@ describe('a tabela do monitor é comparativa de verdade', () => {
         faltou: [],
       }),
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const divergente = screen
       .getByRole('button', { name: /^BR - Maquininha de Cartão/ })
       .closest('tr')!.children[0];
@@ -423,7 +435,7 @@ describe('a tabela do monitor é comparativa de verdade', () => {
   });
 
   it('as colunas de número alinham à direita, e só elas', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const cabecalhos = screen.getAllByRole('columnheader');
     const direita = cabecalhos
       .filter((th) => th.className.includes('text-right'))
@@ -434,7 +446,7 @@ describe('a tabela do monitor é comparativa de verdade', () => {
   });
 
   it('a largura de cada coluna é declarada, para a tabela nunca vazar da página', () => {
-    const { container } = render(<InventarioDeCampanhas />);
+    const { container } = render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const tabela = screen.getByRole('table');
     expect(tabela.className).toContain('table-fixed');
 
@@ -509,7 +521,7 @@ describe('no telefone, uma campanha por bloco e nada de arrasto', () => {
         faltou: [],
       }),
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const bloco = screen.getByRole('listitem');
     const rotulos = Array.from(bloco.querySelectorAll('.kicker')).map((n) => n.textContent);
     expect(rotulos).toEqual([
@@ -519,7 +531,7 @@ describe('no telefone, uma campanha por bloco e nada de arrasto', () => {
 
   it('todo alvo de toque tem pelo menos 44 px de altura no telefone', () => {
     largura(TELEFONE);
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     // `h-11`/`min-h-11` é 2,75rem = 44px, o mínimo que o dedo acerta sem
     // ampliar. Os botões encolhem para `md:h-9` só a partir do tablet, onde
     // quem aponta é o ponteiro.
@@ -538,7 +550,7 @@ describe('no telefone, uma campanha por bloco e nada de arrasto', () => {
 
   it('o detalhe continua embutido — modal não é a primeira interação', () => {
     largura(TELEFONE);
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const botao = screen.getByRole('button', { name: /^BR - Maquininha de Cartão,/ });
     expect(botao.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(botao);
@@ -554,7 +566,7 @@ describe('no telefone, uma campanha por bloco e nada de arrasto', () => {
 
 describe('a expansão diz de onde o número veio e o que pesa contra ele', () => {
   it('herda a conta e a última leitura boa dela', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     fireEvent.click(screen.getByRole('button', { name: /^BR - Maquininha de Cartão/ }));
     expect(screen.getByText('de onde vem este número')).toBeTruthy();
     expect(screen.getByText(/Crédito Up · •••-•••-1692/)).toBeTruthy();
@@ -562,13 +574,13 @@ describe('a expansão diz de onde o número veio e o que pesa contra ele', () =>
   });
 
   it('sem ressalva nenhuma, diz que não há — em vez de deixar um espaço vazio', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     fireEvent.click(screen.getByRole('button', { name: /^BR - Maquininha de Cartão/ }));
     expect(screen.getByText(/nenhuma — o que está na linha veio inteiro/)).toBeTruthy();
   });
 
   it('campanha nunca medida traz a ressalva, e sem repetir o que já tem campo', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     fireEvent.click(
       screen.getByRole('button', { name: /^BR BR - FGTS Saque-Aniversário \(teste/ }),
     );

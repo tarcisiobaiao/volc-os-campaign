@@ -34,6 +34,7 @@
  * exatamente o defeito que este módulo existe para não repetir.
  */
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowUpRight, ChevronDown, ChevronRight, Gauge, TriangleAlert } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -680,17 +681,24 @@ export const DetalheDaCampanha: React.FC<{
 
       <Campo rotulo="onde continuar">
         <span className="flex flex-wrap items-center gap-3">
+          {/* ⚠️ `<Link>`, e não `<a href>`. Os dois endereços são rotas DESTE
+              aplicativo — `/trafego/campanhas/:id` e `/dashboard/campaign/:id`,
+              esta última montada pelo servidor em `inventario.py`. Uma âncora
+              crua faz recarga de documento inteiro: perde o estado da SPA e
+              refaz TODAS as leituras do Hub para abrir uma campanha. Era o
+              único caminho de entrada da página canônica, e ele cobrava o
+              inventário inteiro de novo a cada clique. */}
           <Button asChild className="min-h-11 font-semibold">
-            <a href={`/trafego/campanhas/${c.volc_campaign_id}`}>abrir no Hub</a>
+            <Link to={`/trafego/campanhas/${c.volc_campaign_id}`}>abrir no Hub</Link>
           </Button>
           {c.cockpit_href ? (
-            <a
-              href={c.cockpit_href}
+            <Link
+              to={c.cockpit_href}
               className="inline-flex min-h-11 items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
               <Gauge className="h-3.5 w-3.5" aria-hidden />
               abrir o painel desta campanha
-            </a>
+            </Link>
           ) : (
             <span className="text-muted-foreground">
               sem painel próprio — esta campanha ainda não tem endereço interno seguro
