@@ -25,6 +25,9 @@
  * está no backend, não aqui — e há teste dos dois lados.
  */
 import { supabase } from '@/lib/supabase';
+import type { ProntidaoVisualPayload } from './prontidao';
+
+export type { ProntidaoVisualPayload } from './prontidao';
 
 const RAW_BASE = (import.meta.env.VITE_PAUTADOR_API_URL || '').trim();
 const API_BASE = RAW_BASE.replace(/\/$/, '');
@@ -310,6 +313,21 @@ export function posturaDeCredencial(ativoId: string): Promise<{ credenciais: Pos
 
 export function engines(): Promise<{ engines: EngineDisponivel[] }> {
   return pedir('/engines');
+}
+
+/**
+ * Prontidão para receber peça, publicar e passar pelo QA visual.
+ *
+ * Leitura composta, como o `handoff` do backend: ela não cria job, não chama o
+ * broker e não abre navegador. O tipo vive em `prontidao.ts` porque a decisão
+ * de qual estado mostrar é lógica pura, provada sem montar componente.
+ *
+ * ⚠️ Assim como o resto deste arquivo, ela nunca recebe `localizador` —
+ * `montar_prontidao` herda a omissão do `handoff`, e há teste dos dois lados.
+ */
+export function prontidaoVisual(ativoId: string): Promise<ProntidaoVisualPayload> {
+  return pedir<ProntidaoVisualPayload>(
+    `/ativos/${encodeURIComponent(ativoId)}/prontidao-visual`);
 }
 
 // ── escrita ─────────────────────────────────────────────────────────────────
