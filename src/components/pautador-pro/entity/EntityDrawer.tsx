@@ -10,7 +10,7 @@ import { Loader2, Pickaxe, Workflow, Check, X, Landmark, RotateCw, Trash2, Light
 import { TierBadge } from '@/components/pautador-pro/TierBadge';
 import { STATUS_LABELS } from '@/types/pautador';
 import type { OpportunityStatus, Tier } from '@/types/pautador';
-import { entitySubtitle, funnelRoleLabel, funnelSummary, funnelTitle } from '@/types/pautadorEntity';
+import { entityKey, entitySubtitle, funnelRoleLabel, funnelSummary, funnelTitle } from '@/types/pautadorEntity';
 import type { EntityCard, EntityFunnelResponse, EntityMineResponse } from '@/types/pautadorEntity';
 import { BriefingAcoes } from './BriefingAcoes';
 import { ValidacaoPainel } from './ValidacaoPainel';
@@ -232,8 +232,8 @@ export const EntityDrawer: React.FC<EntityDrawerProps & {
           <TabsContent value="validacao" className="pt-3">
             <ValidacaoPainel
               validacao={card.validacao}
-              medindo={!!card.id && medindo?.has(String(card.id))}
-              progresso={card.id ? progresso?.[String(card.id)] : undefined}
+              medindo={!!card.id && medindo?.has(entityKey(card))}
+              progresso={card.id ? progresso?.[entityKey(card)] : undefined}
               onMedir={onMedir ? () => onMedir(card) : undefined}
             />
             {/* A SEGUNDA RESPOSTA, imediatamente abaixo da primeira.

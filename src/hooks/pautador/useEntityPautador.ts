@@ -392,7 +392,14 @@ export function useEntityPautador() {
   // mecanismo que faz re-arrastar refazer só o que falta.
   const medirCard = useCallback(async (card: EntityCard, opts?: { silencioso?: boolean }) => {
     if (!card.id || card.ephemeral) return;
-    const key = String(card.id);   // mesma chave que o drawer consulta
+    // ⚠️ `entityKey`, e NÃO `String(card.id)`.
+    //
+    // Até `b2af81f0` esta linha era a única das 19 do hook que usava
+    // `String(card.id)`. O board lê com `entityKey(card)` (`ent-<id>`), então
+    // `medindoKeys.has(key)` era SEMPRE falso: o selo de medição e o progresso
+    // por eixo nunca apareciam no card durante os ~2 minutos da run. Só o
+    // drawer via, porque ele copiava a convenção errada.
+    const key = entityKey(card);
     setMedindo((s) => new Set(s).add(key));
     setProgresso((p) => ({ ...p, [key]: [] }));
 

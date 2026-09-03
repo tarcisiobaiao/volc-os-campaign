@@ -1147,13 +1147,19 @@ async def validate_entity(opp_id: int, body: Optional[EntityStatusUpdateRequest]
 async def entity_axes(opp_id: int) -> Dict[str, Any]:
     """Os eixos JÁ GRAVADOS deste card. Barato, sem efeito, para acompanhar.
 
-    A medição leva ~30s e o POST só responde no fim — mas a escrita é
-    INCREMENTAL: cada eixo grava assim que é medido. Este GET existe para a
-    tela ler esse progresso do banco em vez de fingir um.
+    A medição leva ~30s e o POST só responde no fim. A escrita é incremental
+    POR PASSO DE SENSOR: `Validador._gravar_parcial` grava depois do histórico,
+    depois da SERP e depois do tráfego, então esta rota devolve progresso real.
 
-    Não é enfeite: é a arquitetura de gravação idempotente ficando visível. O
-    mesmo mecanismo que faz re-arrastar refazer só o que falta é o que faz a
-    barra de volume preencher quando o histórico volta, e não antes.
+    ⚠️ O QUE ELA NÃO DEVOLVE NO MEIO. Os três eixos derivados da ficha
+    (`ignorancia`, `engajamento`, `opacidade`) saem de UMA chamada de LLM sobre
+    o lote inteiro, no passo 4, e portanto aparecem todos de uma vez, no fim.
+    Uma barra que os mostrasse preenchendo aos poucos estaria mentindo.
+
+    Até `b2af81f0` a promessa deste docstring era falsa: `_gravar_eixos` tinha
+    dois call sites e ambos rodavam depois de TODA a medição, então a tela
+    sondava uma tabela vazia por dois minutos. O texto foi corrigido junto com
+    o mecanismo, e não antes dele.
     """
     settings = get_settings()
     supa = SupabaseService(settings)

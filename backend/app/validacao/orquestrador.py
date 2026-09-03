@@ -40,10 +40,19 @@ ninguém arrastar card a card sem saber o que está pagando.
 
 ## Escrita incremental e idempotente
 
-Cada eixo grava assim que é medido. Se a chamada morrer no passo 4, os passos 2
-e 3 já estão salvos e re-arrastar refaz só o que falta. Medição paga não se
-perde por timeout — e é por isso que isto vive na API do sistema e não num
-webhook fire-and-forget.
+`_gravar_parcial` grava depois de cada passo de SENSOR (histórico, SERP,
+tráfego). Se a chamada morrer no passo 4, os passos 1 a 3 já estão salvos e
+re-arrastar refaz só o que falta. Medição paga não se perde por timeout — e é
+por isso que isto vive na API do sistema e não num webhook fire-and-forget.
+
+Os três eixos da FICHA saem de uma chamada de LLM sobre o lote inteiro e
+aparecem juntos, no fim. Não há progresso parcial a mostrar ali, e fingir que
+há seria o mesmo defeito na direção contrária.
+
+⚠️ Até `b2af81f0` esta seção descrevia um mecanismo que não existia:
+`_gravar_eixos` tinha dois call sites e ambos rodavam depois de toda a medição.
+A rota `GET /{id}/axes` repetia a afirmação para justificar a barra de
+progresso do operador, que sondava uma tabela vazia.
 """
 
 from __future__ import annotations
@@ -157,6 +166,10 @@ class Card:
     serp: Dict[str, Any] = field(default_factory=dict)
     eixos: Dict[str, Eixo] = field(default_factory=dict)
     resumo: Dict[str, Any] = field(default_factory=dict)
+    # O `validacao` que JÁ estava no banco. Numa revalidação, os passos que a
+    # idempotência pula não repovoam `ficha`/`tensao`/`portao` — e `_gravar_resumo`
+    # substitui a coluna inteira. Sem guardar o anterior, revalidar apaga.
+    resumo_anterior: Dict[str, Any] = field(default_factory=dict)
 
     def poe(self, eixo: Eixo) -> None:
         self.eixos[eixo.eixo] = eixo
@@ -288,10 +301,13 @@ class Validador:
         await self._passo_cluster(cards, rel)
         # 1 · histórico EM LOTE sobre os NOMES -> a série que a reposição usa
         await self._passo_historico(cards, rel)
+        await self._gravar_parcial(cards)
         # 2 · SERP, por card, na cabeça EDITORIAL -> formato_consumo
         await self._passo_serp(cards)
+        await self._gravar_parcial(cards)
         # 3 · tráfego dos domínios EM LOTE -> vacuo
         await self._passo_trafego(cards)
+        await self._gravar_parcial(cards)
         # A PONTE DE TENSÃO agora é do LLM, não de regex.
         #
         # `psique.ler` casava SUBSTANTIVO — e a tese que ele deveria executar
@@ -331,7 +347,8 @@ class Validador:
         linhas = await self.supa.select(
             TABELA_OPPS,
             {"id": f"in.({lista})",
-             "select": "id,entity_id,country_code,pautador_entities(canonical_name,"
+             "select": "id,entity_id,country_code,validacao,"
+                       "pautador_entities(canonical_name,"
                        "full_name,aliases,description)"},
         )
         # As consultas que o descobridor já escreveu. São elas que dão a cabeça
@@ -366,6 +383,8 @@ class Validador:
                 descricao=(ent.get("description") or "")[:400],
                 nomes=[nome, *aliases][:6],
                 consultas=consultas.get(opp_id, [])[:12],
+                resumo_anterior=(r.get("validacao")
+                                 if isinstance(r.get("validacao"), dict) else {}),
             ))
         return cards
 
@@ -1009,15 +1028,60 @@ class Validador:
             "eixos": {e.eixo: {"nivel": e.nivel, "proveniencia": e.proveniencia,
                                "motivo_ausencia": e.motivo_ausencia}
                       for e in card.eixos.values()},
-            "portao": card.portao or None,
-            "tensao": card.tensao or None,
-            "ficha": card.ficha or None,
-            "leilao": card.leilao or None,
-            "cabeca_demanda": card.cabeca_demanda,
-            "cabeca_editorial": card.cabeca_editorial,
+            # ⚠️ PRESERVAR, NÃO CONGELAR.
+            #
+            # Estes cinco campos NÃO vivem em `pautador_entity_axes` — só na
+            # coluna `validacao`. Numa revalidação, `_marcar_ja_medidos` repõe
+            # os eixos e `_passo_ficha` PULA o card, então eles chegam vazios
+            # aqui; como `_gravar_resumo` substitui a coluna inteira, gravar o
+            # vazio APAGA a ficha psicológica que custou três passadas de LLM.
+            #
+            # `_ou_anterior` devolve o novo quando o passo rodou e o anterior
+            # quando ele foi pulado. O que nunca existiu continua `None` — a
+            # diferença entre "pulei" e "não existe" é a mesma que este motor
+            # inteiro existe para não borrar.
+            "portao": self._ou_anterior(card, "portao", card.portao),
+            "tensao": self._ou_anterior(card, "tensao", card.tensao),
+            "ficha": self._ou_anterior(card, "ficha", card.ficha),
+            "leilao": self._ou_anterior(card, "leilao", card.leilao),
+            "cabeca_demanda": self._ou_anterior(
+                card, "cabeca_demanda", card.cabeca_demanda),
+            "cabeca_editorial": self._ou_anterior(
+                card, "cabeca_editorial", card.cabeca_editorial),
         }
 
+    @staticmethod
+    def _ou_anterior(card: Card, chave: str, novo: Any) -> Any:
+        if novo:
+            return novo
+        anterior = (card.resumo_anterior or {}).get(chave)
+        return anterior if anterior else None
+
     # ── persistência ───────────────────────────────────────────────────────
+
+    async def _gravar_parcial(self, cards: List[Card]) -> None:
+        """Grava o que já foi medido, no meio da run.
+
+        O docstring deste módulo e a rota `GET /{id}/axes` prometem ao operador
+        que "cada eixo grava assim que é medido". Até `b2af81f0` a promessa era
+        falsa: `_gravar_eixos` tinha dois call sites e ambos rodavam DEPOIS de
+        toda a medição, então a barra de progresso sondava uma tabela vazia por
+        dois minutos e chamava isso de progresso.
+
+        É seguro chamar a cada passo porque a escrita é um upsert em
+        `on_conflict=opportunity_id,eixo` com `merge-duplicates`: N chamadas
+        deixam o banco no mesmo estado que uma. E é o que faz um timeout no
+        passo 4 preservar os passos 1 a 3, em vez de perder a medição paga
+        inteira.
+
+        Nunca levanta: gravar progresso é acessório à medição.
+        """
+        for card in cards:
+            try:
+                await self._gravar_eixos(card)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("gravar parcial opp=%s: %s",
+                            card.opportunity_id, str(exc)[:200])
 
     async def _gravar_eixos(self, card: Card) -> None:
         if not self.supa.enabled or not card.eixos:
