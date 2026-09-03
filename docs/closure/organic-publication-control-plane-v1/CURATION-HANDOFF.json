@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "missao": "organic-publication-control-plane-v1",
+  "branch": "sprint/organic-publication-control-plane-v1",
+  "base_sha": "382c5d4c67fc521d5e6739f8e76d1c36a96fdb53",
+  "data": "2026-09-02",
+  "natureza": "PROPOSTA. Nada aqui foi escrito no ROADMAP-VIVO.json nem na curadoria humana. O integrador oficial aplica uma vez, depois do merge, conforme o protocolo do AGENTS.md.",
+
+  "frescor_do_mapa_vivo": {
+    "estado_factual": "stale_e_de_outra_linhagem",
+    "o_que_foi_medido": "graphify-out/ e gitignored (.gitignore:79) e nao existe nesta worktree. O unico UPDATE_STATUS.json da maquina vive no checkout principal e declara built_at_commit=a539dbd7d7cb395ebc14986f0e1944d94f0aad26 com working_tree_dirty_at_build=true, gerado em 2026-08-29T18:15.",
+    "achado": "`git merge-base --is-ancestor a539dbd7 382c5d4c` e FALSO e `git rev-list --count a539dbd7..382c5d4c` devolve 282. O checkout principal esta em `main` (314c3e4) e a base desta missao vive em `origin/volc-os-v2` — duas linhagens.",
+    "consequencia": "As camadas 3, 4 e 5 do Mapa Vivo nao sao autoridade para esta missao. Foram usados, nesta ordem: codigo, ROADMAP-VIVO.json e curadoria-operacional.json. A leitura do grafo foi somente-leitura e esta declarada como stale no HANDOFF.md.",
+    "acao_do_integrador": "Reconstruir pelo pipeline VOLC (scripts/atualizar_grafo_volc_os.py) UMA vez, APOS o merge em volc-os-v2, e rodar --check."
+  },
+
+  "tarefas_do_roadmap": [
+    {
+      "id": "P12-T09",
+      "titulo_atual": "Criar a porta VOLC para draft, agenda e publicação",
+      "status_atual": "todo",
+      "status_proposto": "partial",
+      "por_que_nao_done": "O criterio de aceite exige 'Adapter cria draft, agenda ou publica em SANDBOX'. Nenhuma instancia Postiz foi implantada e nenhuma chamada externa aconteceu nesta missao. O adaptador real esta escrito e exercitado contra um control plane hermetico que responde as MESMAS rotas da API oficial, mas isso e prova de CONTRATO, nao prova de SANDBOX. Promover para done afirmaria uma prova externa que nao existe.",
+      "proof_proposto": "v14_01 (destino, job, operacao, recibo, transicao) com ciclo aplicar->operar->reverter->reaplicar provado em Postgres descartavel; porta e adaptador Postiz reais em backend/app/publicacao_organica/; 128 testes focais de backend e 112 de frontend; E2E hermetico cobrindo os 14 degraus. FALTA: uma instancia Postiz e um destino real. Retry idempotente PROVADO (nao cria segundo post); 'falha de um destino nao contamina outro' NAO exercitado (um destino so no cenario).",
+      "dependencias_observadas": "P12-T08 continua todo e e pre-requisito real do aceite em sandbox.",
+      "acceptance_ainda_aberto": [
+        "adapter cria draft/agenda/publica em SANDBOX (exige instancia)",
+        "falha de um destino nao contamina outro (exige dois destinos aptos)"
+      ]
+    },
+    {
+      "id": "P12-T08",
+      "titulo_atual": "Subir Postiz self-hosted como serviço isolado",
+      "status_atual": "todo",
+      "status_proposto": "todo",
+      "observacao": "Continua todo, e de proposito. Esta missao entregou o PACOTE (deploy/postiz/: compose com imagens pinadas, healthchecks, fronteira de rede, menor privilegio, backup/restore, upgrade/rollback, licenca AGPL-3.0 analisada, e um validador offline com autoteste de 18 mutacoes). Nenhum container subiu. O aceite da task exige 'instancia isolada responde healthcheck' e 'backup e restauracao PROVADOS' — as duas coisas exigem execucao real e autorizacao.",
+      "proof_proposto_quando_o_integrador_quiser_registrar_o_avanco": "pacote operacional reproduzivel em deploy/postiz/ validado offline por scripts/validar_postiz_pacote.py (APROVADO, com 3 avisos de tag flutuante herdada do compose oficial); nenhuma instancia implantada"
+    },
+    {
+      "id": "P12-T05",
+      "observacao": "O texto atual diz que o Postiz 'ainda nao esta implantado ou ligado ao VOLC'. Continua verdade. Nenhuma mudanca proposta."
+    }
+  ],
+
+  "nos_de_curadoria": [
+    {
+      "no": "system:postiz",
+      "estado_atual": "todo/Planejado",
+      "estado_proposto": "partial",
+      "justificativa": "Deixou de ser so decisao: existe uma porta escrita contra a API oficial, um pacote de implantacao e um validador. Continua sem instancia. 'partial' e o unico estado honesto entre 'planejado' e 'live'.",
+      "evidencia": "backend/app/publicacao_organica/adaptadores/postiz.py; deploy/postiz/; docs/closure/organic-publication-control-plane-v1/"
+    },
+    {
+      "no": "cap_publicacao_organica",
+      "acao": "CRIAR, se nao existir",
+      "estado_proposto": "partial",
+      "resumo": "Espinha local de publicacao organica: peca aprovada -> destino -> rascunho/agendamento -> recibo imutavel -> reconciliacao. Provada em Postgres descartavel e contra um control plane hermetico. Sem instancia externa e sem publicacao real.",
+      "relacoes_propostas": [
+        {"tipo": "depends_on", "alvo": "cap_cofre_de_ativos", "por_que": "o destino organico e um cofre_ativo; a v14_01 tem FK para cofre_ativo e reutiliza tres funcoes genericas da v13_01"},
+        {"tipo": "depends_on", "alvo": "cap_estudio_criativo", "por_que": "o ato de aprovar NAO foi reinventado: a v14_01 consome criativo_aprovacao por FK e por gatilho"},
+        {"tipo": "depends_on", "alvo": "system:postiz", "por_que": "o control plane externo"}
+      ]
+    }
+  ],
+
+  "contradicoes_e_dividas_encontradas": [
+    {
+      "id": "D1",
+      "severidade": "decisao_pendente_de_outro_dono",
+      "onde": "supabase/migrations/v11_01_estudio_criativo.sql secao 9 — public.criativo_entrega",
+      "o_que": "Existem agora DUAS tabelas desenhadas para 'peca aprovada -> destino': criativo_entrega (v11_01) e publicacao_organica_job (v14_01). criativo_entrega esta VAZIA e sem nenhum chamador de producao.",
+      "por_que_nao_foi_resolvido_aqui": "criativo_* e o dominio do Estudio Criativo, sob missao ativa em outro terminal. A fronteira desta missao proibia toca-lo. A analise campo a campo de por que ela nao foi estendida esta em CONTRACTS.md secao 1.2.",
+      "acao_do_dono_do_estudio": "Escolher uma: (a) adotar criativo_entrega como ledger de ENTREGA DE MIDIA PAGA, com escopo escrito no comentario da tabela, ou (b) aposenta-la com migration propria. O que nao pode e ficar como esta: duas tabelas de entrega sem ninguem conseguir responder qual e a canonica."
+    },
+    {
+      "id": "D2",
+      "severidade": "defeito_real_fora_do_escopo",
+      "onde": "backend/app/routers/publicacao.py:1606",
+      "o_que": "A rota de republicacao por pagina le `pautador_opportunities`, enquanto todo o resto do fluxo le `pautador_entity_opportunities`. A coluna `funnel_architecture` so existe na segunda (src/sql/v7_06_pautador_clickup_briefing.sql:17), entao esse ramo e MORTO: a republicacao sempre cai no esqueleto de fallback e perde `tema.termos` e `official_preference`.",
+      "descoberto_por": "o mapeamento de ground truth desta missao",
+      "por_que_nao_foi_consertado_aqui": "E um defeito do fluxo WordPress/Redator, de UMA linha, e conserta-lo dentro desta missao misturaria dois assuntos num commit. Nao foi carregado para o desenho novo.",
+      "acao": "commit separado, no dono do Redator."
+    },
+    {
+      "id": "D3",
+      "severidade": "defeito_real_fora_do_escopo",
+      "onde": "backend/app/routers/publicacao.py:990",
+      "o_que": "Grava `status='error'` contra um CHECK que so aceita 'failed' (src/sql/pautador/02_publicacao_por_projeto.sql:155-156). Reconciliar um run que falhou bate na constraint.",
+      "descoberto_por": "o mapeamento de ground truth desta missao",
+      "acao": "commit separado, no dono do Redator."
+    },
+    {
+      "id": "D4",
+      "severidade": "divida_declarada",
+      "onde": "backend/app/publisher_quality/fetch.py",
+      "o_que": "Existe UMA guarda de SSRF/egresso fail-closed no repositorio, com validacao pos-redirect e teto de bytes — e ela NAO tem chamador de producao: so scripts/auditar_publisher_quality.py e testes a importam.",
+      "relevancia_para_esta_missao": "O adaptador Postiz implementou a propria guarda (validar_base_url + revalidacao por chamada + recusa de 3xx) em vez de reutiliza-la, porque as duas resolvem problemas diferentes: aquela busca conteudo publico arbitrario, esta fala com UM host configurado e carrega um token. A duplicacao esta declarada, nao escondida.",
+      "acao": "decidir se `publisher_quality/fetch.py` ganha consumidor ou vira utilitario compartilhado."
+    },
+    {
+      "id": "D5",
+      "severidade": "observacao_factual",
+      "onde": "conferencia com Gemini 3.7 Flash, 02/09/2026",
+      "o_que": "O revisor factual REFUTOU a afirmacao 'nao existe endpoint de health documentado na API publica do Postiz', alegando um `/health` publico que checa DB, Redis e Temporal.",
+      "o_que_a_fonte_primaria_disse": "A refutacao NAO se sustentou. docs.postiz.com/self-host/architecture.md nao menciona health/readiness; llms.txt nao lista pagina de health; e o healthcheck do compose OFICIAL (gitroomhq/postiz-docker-compose) aponta para `http://localhost:5000/` — a RAIZ, nao /health. Se o endpoint fosse a sonda recomendada, o compose oficial o usaria.",
+      "decisao": "A afirmacao conservadora fica: `prontidao()` usa GET /integrations e DECLARA na resposta que e proxy. Se um /health nao documentado existir, usa-lo seria depender de superficie nao publicada.",
+      "acao": "reconferir quando houver instancia; e uma pergunta de um comando."
+    }
+  ],
+
+  "fatos_externos_para_carregar_para_p12_t02_e_p11": [
+    "Publicar organicamente numa Pagina do Facebook por API exige Page Access Token e as permissoes pages_manage_posts, pages_show_list e pages_read_engagement, com App Review.",
+    "Instagram exige conta Business/Creator vinculada a uma Pagina; o limite citado e 100 posts organicos por 24 horas.",
+    "Desde 2024-2025 a Meta exige Business Verification e App Review (com screencast) para tirar o app de Development Mode, mesmo para uso proprio.",
+    "Tokens de usuario do Facebook sao short-lived: o desenho precisa do fluxo long-lived user token -> page access token, ou os agendamentos comecam a falhar em ~60 dias.",
+    "⚠️ Estes cinco vieram do revisor factual (Gemini) e NAO foram conferidos contra developers.facebook.com por esta missao. Sao pistas para P12-T02/P11, nao fatos verificados aqui."
+  ],
+
+  "arquivos_que_esta_missao_NAO_editou_de_proposito": [
+    "volc-os-workbook/ROADMAP-VIVO.json",
+    "docs/volc-os-graph/curadoria-operacional.json",
+    "docs/volc-os-graph/volc-os-graph.json",
+    "graphify-out/** (ausente na worktree)",
+    "backend/app/routers/criativos_execucao.py",
+    "backend/tests/test_criativo_*",
+    "deploy/creative-worker/**",
+    "scripts/*v11_03*",
+    "supabase/migrations/v11_03*",
+    "src/components/criativos/**",
+    "src/pages/criativos/**",
+    "volc_ads/criativo/**"
+  ]
+}

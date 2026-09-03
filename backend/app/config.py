@@ -137,6 +137,24 @@ class Settings(BaseSettings):
     # configurado" com a chave já gravada no backend/.env.
     volc_segredo_key: Optional[str] = None
 
+    # ---- control plane externo de publicacao organica (Postiz, P12-T09) ------
+    # ⚠️ O UNICO SEGREDO QUE O ADAPTADOR DE PUBLICACAO CONHECE. Ele nao le
+    # `supabase_service_role_key` e nao pode: o ADR de 28/08/2026 decidiu que o
+    # Postiz nunca recebe a service_role, e `test_publicacao_organica_segredos`
+    # falha se o modulo do adaptador passar a referenciar essa chave.
+    #
+    #   postiz_base_url               -> raiz da instancia (a API vive em /public/v1)
+    #   postiz_api_token              -> token do header `Authorization`, CRU (sem Bearer)
+    #   postiz_permitir_rede_interna  -> SIM explicito para host privado/loopback.
+    #                                    Sem ele, uma base_url trocada por engano
+    #                                    apontaria o token para a rede interna.
+    #
+    # Ausentes = adaptador nao construido = 503 dizendo que nao ha control plane.
+    # Nunca um adaptador silencioso que responde "despachado" sobre nada.
+    postiz_base_url: Optional[str] = None
+    postiz_api_token: Optional[str] = None
+    postiz_permitir_rede_interna: bool = False
+
     # ---- ClickUp (entrega do briefing ao mover o card p/ "Pronto") ------------
     # Ao mover um card para "Pronto", o backend gera o DOCX do funil e abre uma
     # TASK no ClickUp (nome "Entidade - País"), anexa o DOCX e comenta.

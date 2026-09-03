@@ -1,0 +1,492 @@
+# =============================================================================
+# deploy/postiz/docker-compose.yml — o control plane externo de publicacao
+# organica, rodando como SERVICO SEPARADO do VOLC-OS.
+#
+# Adaptado do compose oficial (github.com/gitroomhq/postiz-docker-compose,
+# lido em 02/09/2026). Nao e uma copia: as mudancas estao marcadas e cada uma
+# tem motivo escrito abaixo.
+# =============================================================================
+#
+# POR QUE ESTE E O PRIMEIRO COMPOSE DO REPOSITORIO
+#
+# A convencao de deploy desta casa e systemd: `deploy/google-intelligence/`
+# entrega `@.service` + `.timer` + `run.sh`, e nenhum Dockerfile. Essa convencao
+# pressupoe uma coisa que aqui nao vale — que o artefato e CODIGO NOSSO, com
+# venv nosso, rodando um script nosso. O Postiz e o oposto: e software de
+# terceiro sob AGPL-3.0 cuja unidade de distribuicao oficial E a imagem de
+# container, e cuja topologia sao cinco processos (app, Postgres, Redis,
+# Temporal, Elasticsearch) que precisam subir em ordem.
+#
+# Reescrever isso em units systemd seria REEMPACOTAR o Postiz — exatamente o que
+# a fronteira de licenca (LICENCA-E-FRONTEIRA.md) manda nao fazer. O compose
+# preserva o artefato do upstream intacto e deixa a fronteira exatamente onde
+# ela deve estar: no limite de processo, atravessada so por HTTP.
+#
+# Quem quiser o ciclo de vida sob systemd envolve ESTE arquivo num unit
+# `Type=oneshot RemainAfterExit=yes` — o README mostra como. O que nao muda e a
+# regra: nada do Postiz entra no processo do backend VOLC.
+#
+# ⚠️ O QUE ESTE ARQUIVO NAO PROVA
+# Nada aqui foi subido. Nenhum container rodou, nenhuma imagem foi baixada,
+# nenhum healthcheck foi observado passar. Tudo que depende de uma instancia
+# real esta listado como CAPACIDADE NAO PROVADA no README.md. Trate os
+# healthchecks e os conjuntos de capabilities como HIPOTESES FUNDAMENTADAS a
+# confirmar na primeira subida, nao como fatos medidos.
+# =============================================================================
+
+name: postiz
+
+# -----------------------------------------------------------------------------
+# FRONTEIRA DE REDE
+#
+# Duas redes, e a diferenca entre elas e o ponto inteiro:
+#
+#   borda   — tem saida para a internet. Dois servicos estao nela, e os motivos
+#             sao diferentes: o `postiz`, porque precisa falar com Meta,
+#             LinkedIn, X etc.; e a `temporal-ui`, que NAO usa a internet e so
+#             esta ali porque porta publicada nao funciona em rede
+#             `internal: true` (ver a pegadinha no bloco dela). ⚠️ Esta lista e
+#             conferida por scripts/validar_postiz_pacote.py (SERVICOS_NA_BORDA):
+#             acrescentar um terceiro servico aqui reprova o gate ate que a
+#             decisao seja registrada la.
+#   interna — `internal: true`, ou seja, o Docker NAO cria rota de saida. Banco,
+#             Redis, Temporal e Elasticsearch vivem so aqui. Se algum dia um
+#             deles for comprometido, ele nao tem para onde exfiltrar: nao ha
+#             gateway. Isso e mais forte que "nao publicar porta", que so impede
+#             a entrada.
+#
+# ⚠️ O compose oficial usa UMA rede so e publica o Temporal em 127.0.0.1:7233.
+# Aqui o Temporal nao publica porta nenhuma: o `postiz` o alcanca pelo DNS
+# interno do compose (`temporal:7233`). Porta publicada em loopback ainda e
+# porta aberta para qualquer processo local, inclusive um container de outro
+# projeto que compartilhe a maquina.
+# -----------------------------------------------------------------------------
+networks:
+  borda:
+    name: postiz_borda
+  interna:
+    name: postiz_interna
+    internal: true
+
+# -----------------------------------------------------------------------------
+# VOLUMES NOMEADOS — nunca bind mount de diretorio do host.
+# Bind mount arrastaria a UID/GID do host para dentro e faria o backup depender
+# de um caminho que so existe naquela maquina. Volume nomeado tem nome estavel,
+# e o procedimento de backup/restore do README depende desses nomes.
+# -----------------------------------------------------------------------------
+volumes:
+  postiz-config:
+  postiz-uploads:
+  postiz-postgres-data:
+  postiz-redis-data:
+  temporal-postgres-data:
+  temporal-elasticsearch-data:
+
+# -----------------------------------------------------------------------------
+# ANCORA DE ENDURECIMENTO
+# `no-new-privileges` impede que um binario setuid dentro do container ganhe
+# privilegio que o processo pai nao tinha. E barato, nao quebra nada conhecido,
+# e vale para TODOS os servicos — por isso e ancora e nao copia-e-cola.
+# -----------------------------------------------------------------------------
+x-endurecimento: &endurecimento
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+services:
+
+  # ===========================================================================
+  # postiz — a aplicacao. O unico servico que USA a saida para a internet, e a
+  # unica porta publicada na operacao normal.
+  # ⚠️ Nao e a unica porta publicada do ARQUIVO: `temporal-ui` publica
+  # 127.0.0.1:8080 quando alguem sobe o profile `depuracao`. A diferenca esta em
+  # "operacao normal" — sem o profile, aquele servico nao existe.
+  # ===========================================================================
+  postiz:
+    <<: *endurecimento
+    # ⚠️ O COMPOSE OFICIAL USA `ghcr.io/gitroomhq/postiz-app:latest` — E ISSO E
+    # UM PROBLEMA, NAO UM DETALHE. Com `:latest`, um `docker compose pull` de
+    # rotina troca a versao do control plane sem que ninguem decida; a migration
+    # do Prisma roda no boot e altera o banco; e o rollback deixa de existir,
+    # porque nao ha para onde voltar. Pior: a v2.23.0 mudou upload de midia e
+    # protecao contra post duplicado — comportamento que o nosso ledger observa.
+    # Aqui a tag e a do release oficial mais recente conhecido em 02/09/2026:
+    # `v2.23.0`, publicado em 2026-08-04.
+    #
+    # ⚠️ NAO VERIFICADO OFFLINE: a existencia desta tag NO REGISTRY (o release do
+    # GitHub e uma tag de git; o GHCR pode publicar com outro esquema). Confirme
+    # antes da primeira subida, sem baixar a imagem inteira:
+    #     docker buildx imagetools inspect ghcr.io/gitroomhq/postiz-app:v2.23.0
+    # e troque a linha abaixo pelo digest que ele imprimir — digest e o unico
+    # pin que nao se move:
+    #     image: ghcr.io/gitroomhq/postiz-app@sha256:<preencher apos inspecionar>
+    image: ghcr.io/gitroomhq/postiz-app:v2.23.0
+    environment:
+      # --- as seis obrigatorias da referencia oficial -------------------------
+      # DATABASE_URL e MONTADA aqui a partir das partes, de proposito: a senha
+      # tem UMA fonte (POSTIZ_POSTGRES_PASSWORD), a mesma que o servico do
+      # Postgres consome. A alternativa — o operador escrever a URL inteira num
+      # lugar e a senha noutro — garante que um dia os dois divirjam e o boot
+      # falhe com "password authentication failed" sem dizer por que.
+      # ⚠️ A senha entra CRUA na URL: use so [A-Za-z0-9._-]. Um `@`, `:`, `/`,
+      # `#`, `?` ou `%` quebra o parser de URL do Prisma e o erro nao diz isso.
+      DATABASE_URL: "postgresql://${POSTIZ_POSTGRES_USER:?defina POSTIZ_POSTGRES_USER}:${POSTIZ_POSTGRES_PASSWORD:?defina POSTIZ_POSTGRES_PASSWORD}@postiz-postgres:5432/${POSTIZ_POSTGRES_DB:?defina POSTIZ_POSTGRES_DB}"
+      REDIS_URL: "${POSTIZ_REDIS_URL:-redis://postiz-redis:6379}"
+      JWT_SECRET: "${POSTIZ_JWT_SECRET:?defina POSTIZ_JWT_SECRET}"
+      FRONTEND_URL: "${POSTIZ_FRONTEND_URL:?defina POSTIZ_FRONTEND_URL}"
+      NEXT_PUBLIC_BACKEND_URL: "${POSTIZ_PUBLIC_BACKEND_URL:?defina POSTIZ_PUBLIC_BACKEND_URL}"
+      BACKEND_INTERNAL_URL: "${POSTIZ_BACKEND_INTERNAL_URL:-http://localhost:3000}"
+
+      # --- controles de seguranca --------------------------------------------
+      # Instancia FECHADA por padrao. Um Postiz self-hosted com registro aberto
+      # e um formulario publico que cria contas com poder de publicar nas nossas
+      # paginas. `true` e a unica postura defensavel aqui.
+      DISABLE_REGISTRATION: "${POSTIZ_DISABLE_REGISTRATION:-true}"
+      # ⚠️ DIVERGENCIA DA DOCUMENTACAO OFICIAL, REGISTRADA E NAO RESOLVIDA POR
+      # ADIVINHACAO (02/09/2026): a pagina de criacao de post diz "30 requests
+      # per hour"; a introducao diz "90 requests per hour (100 for the cloud)".
+      # O default aqui e o MENOR dos dois numeros oficiais — errar para menos so
+      # atrasa; errar para mais produz 429 no meio de um despacho, que o ledger
+      # tem de reconciliar. O adaptador (backend/app/.../postiz.py) tambem nao
+      # assume nenhum dos dois: trata 429 como falha NAO permanente.
+      API_LIMIT: "${POSTIZ_API_LIMIT:-30}"
+      # Sem `:` no `?`: a variavel tem de estar DECLARADA, mas pode ficar vazia.
+      # A declaracao e o ponto — obriga alguem a decidir conscientemente quais
+      # dominios podem ser buscados por `POST /upload-from-url`. Vazio e uma
+      # decisao valida enquanto esta v1 nao envia midia (a porta declara
+      # `upload_de_midia` como capacidade NAO exercitada); o que nao pode e
+      # ninguem ter olhado.
+      RESTRICT_UPLOAD_DOMAINS: "${POSTIZ_RESTRICT_UPLOAD_DOMAINS?declare POSTIZ_RESTRICT_UPLOAD_DOMAINS mesmo que vazia}"
+
+      # ⚠️ DISABLE_SSRF_PROTECTION e NOT_SECURED NAO APARECEM NESTE ARQUIVO, e
+      # essa ausencia e deliberada e verificada por scripts/validar_postiz_pacote.py.
+      # Ver .env.example, secao PROIBIDAS, para o motivo de cada uma.
+
+      # --- armazenamento local ------------------------------------------------
+      STORAGE_PROVIDER: "${POSTIZ_STORAGE_PROVIDER:-local}"
+      UPLOAD_DIRECTORY: "${POSTIZ_UPLOAD_DIRECTORY:-/uploads}"
+      NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY: "${POSTIZ_UPLOAD_STATIC_DIRECTORY:-/uploads}"
+
+      # --- Temporal (agenda interna do Postiz, nao a nossa) -------------------
+      # ⚠️ Isto NAO e a autoridade de agenda do VOLC. Quem decide QUANDO um post
+      # sai e a v14_01 (`horario_alvo` no ledger); o Temporal aqui e mecanismo
+      # interno do Postiz para executar o que ja foi decidido do nosso lado.
+      TEMPORAL_ADDRESS: "${POSTIZ_TEMPORAL_ADDRESS:-temporal:7233}"
+      TEMPORAL_NAMESPACE: "${POSTIZ_TEMPORAL_NAMESPACE:-default}"
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    ports:
+      # ⚠️ O compose oficial publica `4007:5000`, que em Docker significa
+      # 0.0.0.0 — a instancia inteira exposta em toda interface da maquina, sem
+      # TLS, com o login administrativo junto. Aqui o default e loopback: quem
+      # quiser expor poe um reverse proxy com TLS na frente e sobe
+      # POSTIZ_BIND_ADDR conscientemente. O README explica o desenho.
+      - "${POSTIZ_BIND_ADDR:-127.0.0.1}:${POSTIZ_PORT:-4007}:5000"
+    healthcheck:
+      # ⚠️ NAO E UM HEALTH ENDPOINT OFICIAL. A API publica do Postiz nao
+      # documenta nenhum (fato registrado em portas.py, 02/09/2026). Isto e o
+      # mesmo proxy que o compose oficial usa: "a porta HTTP responde". Ele diz
+      # que o processo esta de pe; NAO diz que o Postgres migrou, que o Temporal
+      # conectou nem que as integracoes estao validas. A prontidao que o VOLC
+      # confia e outra: `GET /public/v1/integrations` autenticado, pela rota
+      # /api/publicacao-organica/prontidao.
+      # ⚠️ NAO VERIFICADO: qual cliente HTTP existe dentro desta imagem. Por
+      # isso a linha tenta curl e cai para wget — se nenhum existir, o servico
+      # nunca fica `healthy` e o `depends_on` trava tudo; e o primeiro sintoma a
+      # investigar numa subida que nao completa.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5000/ >/dev/null 2>&1 || wget -q -O /dev/null http://127.0.0.1:5000/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    networks:
+      - borda
+      - interna
+    # ⚠️ SEM `read_only: true` AQUI, E O MOTIVO IMPORTA. A imagem do Postiz roda
+    # varios processos sob supervisao (app, worker, servidor estatico) que
+    # escrevem em /tmp, em cache de build do Next e em sockets de runtime.
+    # Marcar o rootfs como somente leitura exigiria mapear um tmpfs para cada um
+    # desses caminhos, e NENHUM deles foi medido nesta missao. Ligar read_only
+    # sem essa medicao produz um container que falha no boot por motivo obscuro
+    # — pior que nao ter a protecao. Fica registrado como trabalho pendente.
+    cap_drop:
+      - ALL
+    cap_add:
+      # ⚠️ HIPOTESE, NAO MEDICAO: supervisao de processo tipicamente precisa
+      # trocar de usuario (SETUID/SETGID) e ajustar dono de arquivo nos volumes
+      # montados (CHOWN/FOWNER/DAC_OVERRIDE). Se a primeira subida falhar com
+      # "operation not permitted", o caminho e ADICIONAR a capability que o log
+      # nomear — nunca voltar para o conjunto padrao do Docker, que traz ~14.
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+  # ===========================================================================
+  # postiz-postgres — o banco DO POSTIZ. Nao e o Supabase do VOLC.
+  # ===========================================================================
+  postiz-postgres:
+    <<: *endurecimento
+    # ⚠️ TAG FLUTUANTE HERDADA DO COMPOSE OFICIAL. `17-alpine` nao e `:latest`,
+    # mas tambem nao e um pin: ela anda a cada patch do Postgres. Nao inventamos
+    # um numero de patch aqui porque nao ha rede nesta missao para confirmar que
+    # a tag existe, e apontar para uma tag inexistente quebra a subida. Antes de
+    # producao, resolva para digest:
+    #     docker buildx imagetools inspect postgres:17-alpine
+    # e substitua por `postgres@sha256:<digest>`. O validador do pacote emite
+    # AVISO para esta linha exatamente por isso.
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: "${POSTIZ_POSTGRES_USER:?defina POSTIZ_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTIZ_POSTGRES_PASSWORD:?defina POSTIZ_POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTIZ_POSTGRES_DB:?defina POSTIZ_POSTGRES_DB}"
+    volumes:
+      - postiz-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # ⚠️ O `-h 127.0.0.1` NAO E DECORACAO. Medido neste repositorio em
+      # scripts/provar-ciclo-v13_01.sh: a imagem oficial do Postgres sobe um
+      # servidor TEMPORARIO durante o initdb, atende SO no socket unix, roda os
+      # scripts de inicializacao e so entao derruba esse servidor e sobe o
+      # definitivo. Um `pg_isready` sem `-h` responde "accepting connections"
+      # nessa janela, o container e declarado healthy cedo, o `depends_on`
+      # libera o Postiz e a primeira conexao dele cai no intervalo entre os dois
+      # servidores. Forcando TCP, a janela do servidor temporario nao responde.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - interna
+    # Rootfs somente leitura: os dados vivem no volume, e o resto que o Postgres
+    # escreve e efemero (socket unix e temporarios). Os dois tmpfs abaixo sao o
+    # que torna isso possivel — sem eles o servidor nao inicia.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    cap_drop:
+      - ALL
+    cap_add:
+      # O entrypoint oficial comeca como root para ajustar o dono do PGDATA e
+      # so entao troca para o usuario `postgres`. Sem estas quatro, ele falha
+      # antes do initdb.
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+  # ===========================================================================
+  # postiz-redis — fila e cache do Postiz.
+  # ===========================================================================
+  postiz-redis:
+    <<: *endurecimento
+    # ⚠️ Tag flutuante herdada do oficial (`7.2` cobre todos os patches 7.2.x).
+    # Mesmo tratamento do Postgres: resolver para digest antes de producao.
+    image: redis:7.2
+    volumes:
+      - postiz-redis-data:/data
+    healthcheck:
+      # `redis-cli ping` sozinho devolve exit 0 ate quando o servidor responde
+      # LOADING; o grep no PONG e o que distingue "porta aberta" de "pronto".
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks:
+      - interna
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      # ⚠️ CHOWN/FOWNER/DAC_OVERRIDE nao sao excesso aqui: o entrypoint oficial
+      # do Redis comeca como root, faz `chown -R redis /data` e so entao troca de
+      # usuario. Com `cap_drop: [ALL]` e so SETUID/SETGID, esse chown falha e o
+      # container sai antes de abrir a porta — e o log so diz "Operation not
+      # permitted", sem dizer em que passo.
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+  # ===========================================================================
+  # temporal — o motor de workflow que o Postiz usa internamente.
+  # SEM PORTA PUBLICADA. O compose oficial publica 127.0.0.1:7233; aqui nao ha
+  # necessidade, porque quem fala com ele e o container `postiz`, pela rede
+  # interna. Para depurar, use `docker compose exec temporal ...`.
+  # ===========================================================================
+  temporal:
+    <<: *endurecimento
+    image: temporalio/auto-setup:1.28.1
+    environment:
+      DB: "postgres12"
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: "temporal-postgresql"
+      POSTGRES_USER: "${TEMPORAL_POSTGRES_USER:?defina TEMPORAL_POSTGRES_USER}"
+      POSTGRES_PWD: "${TEMPORAL_POSTGRES_PASSWORD:?defina TEMPORAL_POSTGRES_PASSWORD}"
+      ENABLE_ES: "true"
+      ES_SEEDS: "temporal-elasticsearch"
+      ES_VERSION: "v7"
+    healthcheck:
+      # A CLI `temporal` vem na propria imagem auto-setup. `operator cluster
+      # health` responde depois que o cluster inteiro (frontend, history,
+      # matching, worker) esta servindo — nao so a porta aberta.
+      test: ["CMD-SHELL", "temporal operator cluster health --address 127.0.0.1:7233"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+      temporal-elasticsearch:
+        condition: service_healthy
+    networks:
+      - interna
+    # ⚠️ SEM `read_only: true`: a imagem `auto-setup` GERA o arquivo de
+    # configuracao em /etc/temporal/config no boot, a partir das variaveis de
+    # ambiente. Rootfs somente leitura impede essa escrita e o container morre
+    # no primeiro segundo. Um tmpfs em /etc/temporal/config tambem nao serve:
+    # mascararia os templates que a propria imagem traz.
+    cap_drop:
+      - ALL
+    cap_add:
+      # ⚠️ HIPOTESE, NAO MEDICAO: o `auto-setup` troca de usuario antes de servir.
+      # Se a primeira subida falhar com "operation not permitted", ADICIONE a
+      # capability que o log nomear — nunca volte ao conjunto padrao do Docker.
+      - SETGID
+      - SETUID
+
+  # ===========================================================================
+  # temporal-postgresql — banco do Temporal. Terceiro banco distinto da pilha
+  # (Supabase VOLC, Postgres do Postiz, este). Nenhum deles se conhece.
+  # ===========================================================================
+  temporal-postgresql:
+    <<: *endurecimento
+    # ⚠️ Tag flutuante herdada do oficial, e a mais larga de todas: `16` aceita
+    # qualquer 16.x. Prioridade alta para resolver em digest.
+    image: postgres:16
+    environment:
+      POSTGRES_USER: "${TEMPORAL_POSTGRES_USER:?defina TEMPORAL_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${TEMPORAL_POSTGRES_PASSWORD:?defina TEMPORAL_POSTGRES_PASSWORD}"
+    volumes:
+      - temporal-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Mesmo `-h 127.0.0.1` do banco do Postiz, pelo mesmo motivo medido.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - interna
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+
+  # ===========================================================================
+  # temporal-elasticsearch — visibility store do Temporal.
+  # Mantido porque o compose oficial o mantem: trocar a visibility para
+  # Postgres-only e uma MUDANCA DE TOPOLOGIA que nao pode ser feita as cegas,
+  # sem uma instancia para provar. Fica registrado como simplificacao possivel,
+  # nao aplicada.
+  # ===========================================================================
+  temporal-elasticsearch:
+    <<: *endurecimento
+    image: elasticsearch:7.17.27
+    environment:
+      discovery.type: "single-node"
+      # No-node cluster: seguranca do X-Pack desligada de proposito, porque este
+      # ES nao tem rota de saida nem porta publicada — ele so existe dentro da
+      # rede `interna`. Ligar TLS aqui trocaria uma superficie que nao existe
+      # por um certificado a rotacionar.
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "${TEMPORAL_ES_JAVA_OPTS:--Xms512m -Xmx512m}"
+      cluster.routing.allocation.disk.threshold_enabled: "true"
+      cluster.routing.allocation.disk.watermark.low: "512mb"
+      cluster.routing.allocation.disk.watermark.high: "256mb"
+      cluster.routing.allocation.disk.watermark.flood_stage: "128mb"
+    volumes:
+      - temporal-elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      # `yellow` conta como saudavel: cluster de um no nunca fica `green`,
+      # porque nao ha onde alocar replica. Exigir `green` deixaria o Temporal
+      # esperando para sempre.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    networks:
+      - interna
+    # ⚠️ SEM `read_only: true`: o ES escreve log em
+    # /usr/share/elasticsearch/logs, que nao e volume. Nao medido nesta missao.
+    cap_drop:
+      - ALL
+
+  # ===========================================================================
+  # temporal-ui — SO SOB DEMANDA (`--profile depuracao`).
+  # O compose oficial sobe esta UI sempre, em 127.0.0.1:8080. Um painel
+  # administrativo permanentemente de pe, sem autenticacao propria, e superficie
+  # que nao se paga quando a operacao normal nunca a abre.
+  #   docker compose --profile depuracao up -d temporal-ui
+  # ===========================================================================
+  temporal-ui:
+    <<: *endurecimento
+    profiles:
+      - depuracao
+    image: temporalio/ui:2.34.0
+    environment:
+      TEMPORAL_ADDRESS: "temporal:7233"
+      TEMPORAL_CORS_ORIGINS: "${TEMPORAL_UI_CORS_ORIGINS:-http://localhost:8080}"
+    ports:
+      # Loopback fixo, sem variavel de bind: nao existe motivo legitimo para
+      # expor este painel para fora da maquina. Quem precisa de acesso remoto
+      # usa tunel SSH.
+      - "127.0.0.1:${TEMPORAL_UI_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      temporal:
+        condition: service_healthy
+    networks:
+      # ⚠️ PEGADINHA MEDIDA NO DESENHO, NAO NA EXECUCAO: porta publicada NAO
+      # funciona quando o container esta so numa rede `internal: true` — o
+      # Docker nao monta a regra de NAT para uma rede sem gateway externo. Por
+      # isso a UI precisa estar tambem na `borda`, mesmo sem usar a internet. E
+      # a razao de ela ficar atras de um profile: ganhar rota de saida que nao
+      # usa e exatamente o tipo de superficie que nao deve ficar de pe sempre.
+      - borda
+      - interna
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
