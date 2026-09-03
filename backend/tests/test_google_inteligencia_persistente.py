@@ -484,14 +484,27 @@ def coletor(respostas=None, inventario=(CANARIO, LIGADA, PMAX), **opcoes):
 
 
 def linha_keyword(*, ad_group_id=555, texto="credito consignado", lance=1_200_000,
-                  primeira_pagina=900_000):
+                  primeira_pagina=900_000, criterion_id=0):
+    """Uma keyword ESTRUTURAL — o que `ad_group_criterion` responde, sem data."""
     row = _row()
     row.ad_group.id = ad_group_id
     row.ad_group.type_ = "SEARCH_STANDARD"
+    if criterion_id:
+        row.ad_group_criterion.criterion_id = criterion_id
     row.ad_group_criterion.keyword.text = texto
     row.ad_group_criterion.keyword.match_type = "PHRASE"
     row.ad_group_criterion.effective_cpc_bid_micros = lance
     row.ad_group_criterion.position_estimates.first_page_cpc_micros = primeira_pagina
+    return row
+
+
+def linha_metrica_de_keyword(*, criterion_id, impressoes=0, cliques=0):
+    """A linha do `keyword_view` na janela — SÓ métrica, sem estrutura."""
+    row = _row()
+    row.ad_group.id = 555
+    row.ad_group_criterion.criterion_id = criterion_id
+    row.metrics.impressions = impressoes
+    row.metrics.clicks = cliques
     return row
 
 
@@ -1142,7 +1155,11 @@ def test_leitura_nova_no_mesmo_bucket_e_descartada_e_isso_esta_provado():
     assert gravado["payload"]["keywords"] == 0
 
     # operador sobe keywords no canario; nova leitura, mesmo bucket
-    google.respostas["keywords_diagnostico"] = [linha_keyword(), linha_keyword()]
+    # ⚠️ A ESTRUTURA agora vem de `ad_group_criterion`, sem `segments.date`.
+    # `keyword_view` continua existindo e responde só a métrica da janela.
+    google.respostas["ad_group_criterion"] = [
+        linha_keyword(criterion_id=1), linha_keyword(criterion_id=2),
+    ]
     motor.executar_alvo(_alvo(), modo="frequente")
 
     enviados = [d for d in persistencia.enviados if d["tipo_sinal"] == "DIAGNOSTICO_ENTREGA"]

@@ -8,8 +8,8 @@ Fixtures **sintéticas**: `9990001111` não corresponde a conta alguma, e
 arquivo desta lane.
 
 ```
-backend/tests/test_trafego_sentinela.py              100 provas
-backend/tests/test_trafego_sentinela_vocabulario.py   17 provas
+backend/tests/test_trafego_sentinela.py              113 provas
+backend/tests/test_trafego_sentinela_vocabulario.py   18 provas
 backend/tests/test_google_inteligencia_persistente.py  +5 provas
 src/components/trafego/diagnostico/__tests__/veredito-da-sentinela.test.tsx  20
 src/components/layout/__tests__/sino-de-alertas.test.tsx  +7
@@ -176,3 +176,32 @@ comportamento, provam que uma **classe** de erro não pode ser reescrita.
 política; `test_r16` garante que a correção do achado 4 não tornou `HEALTHY`
 inalcançável — um estado que nenhuma entrada atinge é um teste que não pode
 falhar, e um teste que não pode falhar não prova nada.
+
+
+---
+
+## Os dois bloqueantes da avaliação independente (`test_b*`)
+
+| # | achado | reprodução | prova |
+|---|---|---|---|
+| B1 | `TARGET_IMPRESSION_SHARE` acusado de `MEASUREMENT_NOT_READY` | TIS + `NAO_PRONTO` → `MEASUREMENT_NOT_READY` | `test_b1`, `b1b`, `b1c` (×4) |
+| B2 | `keyword_view` vazia lida como "zero keywords" | ENABLED · 1h · nascimento · 0 impressões · view vazia → `NO_DELIVERY/keyword/nascimento` | `test_b2`…`b2g` |
+
+Os cinco critérios exigidos, conferidos um a um:
+
+| # | critério | resultado |
+|---|---|---|
+| 1 | 1 keyword estrutural, 1h de vida, zero métricas | `OBSERVING` |
+| 2 | madura, keyword estrutural, zero impressões | `NO_DELIVERY` / **campaign** |
+| 3 | inventário apurado e realmente vazio | causa de keyword permitida |
+| 4 | TIS sem conversão | nunca `MEASUREMENT_NOT_READY` |
+| 5 | `MAXIMIZE_CONVERSIONS` sem meta | segue `MEASUREMENT_NOT_READY` |
+
+`test_b2g` é de guarda estrutural: percorre o fonte de `_diagnostico` e falha se
+a consulta estrutural voltar a carregar `segments.date`.
+
+⚠️ **`test_r16` fez o trabalho dele nesta rodada.** A nova entrada em
+`desconhecidos` tornou `HEALTHY` inalcançável para a fixture antiga, e o teste
+falhou imediatamente. A correção foi a fixture declarar `estrutura_apurada=True`
+— que é o que "leitura completa" passou a significar — e **não** afrouxar a
+regra. Um teste que não pode falhar não prova nada; este podia, e provou.

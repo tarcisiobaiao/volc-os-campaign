@@ -6,7 +6,6 @@
   "head_no_fechamento": "ed0c9eaf9cbcbb56a194116d6795b859ee748ebc",
   "data": "2026-09-03",
   "aviso_de_integracao": "Uma branch nao integrada NAO pode marcar o roadmap compartilhado como done. Todas as propostas abaixo mantem ou rebaixam estado; nenhuma promove a 'done'.",
-
   "roadmap_proposto": [
     {
       "id": "P05-T07",
@@ -53,7 +52,8 @@
         "customer_conversion_goal passou a ser coletado (tipo_item novo, sem migration)",
         "eixo 'conversao' do diagnostico deixou de ser permanentemente nao_apurado",
         "MEASUREMENT_NOT_READY so se aplica a ESTRATEGIAS_SMART_BIDDING; MANUAL_CPC nao gera alarme sem objeto",
-        "test_12, test_12b, test_12c, test_p07"
+        "test_12, test_12b, test_12c, test_p07",
+        "TARGET_IMPRESSION_SHARE removido das estrategias dependentes de conversao: TIS otimiza participacao e posicao, nao conversoes"
       ],
       "lacunas": [
         "conversion_action, campaign_conversion_goal e conversion_goal_campaign_config nao sao coletados",
@@ -106,10 +106,10 @@
         "customer.status e customer_conversion_goal coletados dentro do documento DIAGNOSTICO_ENTREGA existente",
         "sem migration: o CHECK de tipo_item na v12_01 e aberto (btrim(...) <> ''), e DIAGNOSTICO_ENTREGA ja e um dos doze tipo_sinal",
         "payload declara conta_retornou e metas_retornaram: 'a conta respondeu e nao havia' nao se confunde com 'nao perguntei'",
-        "5 provas novas em backend/tests/test_google_inteligencia_persistente.py"
+        "5 provas novas em backend/tests/test_google_inteligencia_persistente.py",
+        "estrutura de keywords separada do desempenho: ad_group_criterion sem segments.date para inventario, keyword_view na janela para metrica, correlacionados por criterion_id; keyword_count passou a contar a estrutura, e o payload declara estrutura_de_keywords_apurada"
       ],
       "lacunas": [
-        "keyword_view + segments.date apaga a keyword que nunca serviu (achado da recon, NAO corrigido nesta lane)",
         "quality_info nao veio em 10 de 10 keywords na leitura real: o incidente nasce como 'sem dado'",
         "policy_topic_entries (o motivo da reprovacao) e final_urls nao sao coletados"
       ]
@@ -149,7 +149,6 @@
       ]
     }
   ],
-
   "nos_sugeridos": [
     {
       "id": "sentinela-de-entrega-search",
@@ -169,17 +168,43 @@
       "estado": "implementado_e_provado"
     }
   ],
-
   "arestas_sugeridas": [
-    {"de": "sentinela-de-entrega-search", "para": "P05-T07", "tipo": "implementa_parcialmente"},
-    {"de": "sentinela-de-entrega-search", "para": "P05-T09", "tipo": "implementa_parcialmente"},
-    {"de": "sentinela-de-entrega-search", "para": "P06-T06", "tipo": "implementa_parcialmente"},
-    {"de": "sentinela-de-entrega-search", "para": "P10-T12", "tipo": "implementa_parcialmente"},
-    {"de": "sentinela-de-entrega-search", "para": "trafego-prontidao", "tipo": "consome_veredito"},
-    {"de": "sentinela-de-entrega-search", "para": "landing-policy-recibo", "tipo": "consome_quando_existir"},
-    {"de": "vocabulario-google-fixado-no-sdk", "para": "sentinela-de-entrega-search", "tipo": "guarda"}
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P05-T07",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P05-T09",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P06-T06",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "P10-T12",
+      "tipo": "implementa_parcialmente"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "trafego-prontidao",
+      "tipo": "consome_veredito"
+    },
+    {
+      "de": "sentinela-de-entrega-search",
+      "para": "landing-policy-recibo",
+      "tipo": "consome_quando_existir"
+    },
+    {
+      "de": "vocabulario-google-fixado-no-sdk",
+      "para": "sentinela-de-entrega-search",
+      "tipo": "guarda"
+    }
   ],
-
   "handoffs": [
     {
       "prioridade": "alta",
@@ -194,19 +219,11 @@
     },
     {
       "prioridade": "media",
-      "para": "a frente dona de volc_ads/inteligencia_google/coletor.py (coleta estrutural)",
-      "defeito": "A fonte estrutural de keywords e keyword_view com segments.date. Keyword que nunca serviu na janela nao volta, e a metrica keyword_count e gravada como MEDIDO sobre um subconjunto enviesado.",
-      "correcao_sugerida": "Separar estrutura (FROM ad_group_criterion WHERE type='KEYWORD', sem data) de metrica (FROM keyword_view ... DURING). O modelo esta em docs/growth-engine/diagnostico/consultas/rodar.py.",
-      "por_que_nao_foi_feito_aqui": "Reproduzido pela recon, mas NAO por contraprova executavel desta lane. Corrigir sem prova vermelha contrariaria o metodo da missao."
-    },
-    {
-      "prioridade": "media",
       "para": "a frente dona de src/components/trafego/inventario/FilaDeAtencao.tsx",
       "pedido": "A fila de atencao ainda projeta o sintoma do inventario. Consumir o veredito da sentinela daria a ela a mesma prioridade causal da pagina canonica.",
       "contrato_disponivel": "VeredictoDaSentinela em src/types/diagnostico.ts, com incidente, severidade, escopo, chave e proximo_ato."
     }
   ],
-
   "estado_honesto": {
     "veredito_da_lane": "ver HANDOFF.md secao 14",
     "o_que_esta_provado": [
@@ -227,16 +244,39 @@
       "a fila de atencao consumindo o veredito"
     ]
   },
-
   "nao_mutacoes_confirmadas": [
-    "zero Google Ads mutate", "zero ApplyRecommendation", "zero DismissRecommendation",
+    "zero Google Ads mutate",
+    "zero ApplyRecommendation",
+    "zero DismissRecommendation",
     "zero alteracao de keyword, lance, orcamento, anuncio ou campanha",
-    "zero ativacao ou pausa", "zero migration criada, proposta ou aplicada",
-    "zero escrita no Supabase", "zero n8n", "zero Data Manager", "zero WordPress",
-    "zero deploy", "zero merge em volc-os-v2", "zero merge em main", "zero push",
+    "zero ativacao ou pausa",
+    "zero migration criada, proposta ou aplicada",
+    "zero escrita no Supabase",
+    "zero n8n",
+    "zero Data Manager",
+    "zero WordPress",
+    "zero deploy",
+    "zero merge em volc-os-v2",
+    "zero merge em main",
+    "zero push",
     "zero edicao de ROADMAP-VIVO.json, curadoria-operacional.json ou grafo gerado",
     "zero segredo em codigo, log ou artefato",
     "zero uso ou conserto do Harness V3",
     "zero worktree alheia tocada"
-  ]
+  ],
+  "rodada_corretiva_2026_09_03": {
+    "origem": "avaliacao independente sobre o SHA 98c66da",
+    "bloqueantes": [
+      "TARGET_IMPRESSION_SHARE tratado como dependente de conversao",
+      "keyword_view vazia lida como ausencia de keywords configuradas"
+    ],
+    "ambos_reproduzidos_antes_do_conserto": true,
+    "correcao_preferida_aplicada": true,
+    "estados_mantidos_partial": [
+      "P05-T09",
+      "P06-T05",
+      "P06-T06"
+    ],
+    "nota": "O handoff do keyword_view saiu da lista porque o defeito foi CORRIGIDO nesta lane, nao delegado. A avaliacao independente forneceu o cenario reproduzivel que faltava."
+  }
 }

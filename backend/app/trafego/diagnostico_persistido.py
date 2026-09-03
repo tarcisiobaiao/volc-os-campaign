@@ -77,7 +77,11 @@ COLUNAS_CAMPANHA = (
 )
 COLUNAS_COLETA = (
     "coleta_id,estado,customer_id,volc_campaign_id,campaign_id,"
-    "janela_inicio,janela_fim,coletada_em,quantidade,erro_codigo,erro_classe"
+    "janela_inicio,janela_fim,coletada_em,quantidade,erro_codigo,erro_classe,"
+    # ⚠️ `payload` entra em 03/09/2026 por UM campo: saber se o inventário
+    # estrutural de keywords foi apurado. Só esse booleano é lido; nada mais do
+    # payload atravessa para a resposta.
+    "payload"
 )
 COLUNAS_ITEM = "item_id,coleta_id,ordinal,tipo_item,recurso_externo,payload"
 COLUNAS_METRICA = (
@@ -1224,6 +1228,23 @@ def _medicao_para_sentinela(
     )
 
 
+def _estrutura_de_keywords_apurada(coleta: Optional[Dict[str, Any]]) -> Optional[bool]:
+    """O inventário estrutural aconteceu nesta coleta?
+
+    `None` quando a coleta é anterior a esta versão do coletor, ou quando o
+    payload não declara — e `None` NÃO é `False`: uma coleta antiga não afirma
+    que o inventário falhou, ela apenas não sabe dizer. A distinção importa
+    porque só `True` autoriza a frase "esta campanha não tem keywords".
+    """
+    if not coleta:
+        return None
+    payload = coleta.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    valor = payload.get("estrutura_de_keywords_apurada")
+    return valor if isinstance(valor, bool) else None
+
+
 def montar_leitura_da_sentinela(
     *,
     chave: str,
@@ -1295,7 +1316,10 @@ def montar_leitura_da_sentinela(
             perda_por_orcamento=None if perda_orc is None else float(perda_orc),
             perda_por_rank=None if perda_rank is None else float(perda_rank),
         ),
-        keywords=sent.ler_keywords(_keywords_para_sentinela(por_tipo["keyword"])),
+        keywords=sent.ler_keywords(
+            _keywords_para_sentinela(por_tipo["keyword"]),
+            estrutura_apurada=_estrutura_de_keywords_apurada(coleta),
+        ),
         anuncios=_anuncios_para_sentinela(por_tipo["ad"]),
         medicao=_medicao_para_sentinela(por_tipo["conversion_goal"], estado_coleta),
         # ⚠️ O recibo de destino vive em `backend/app/landing_policy/**`, que é

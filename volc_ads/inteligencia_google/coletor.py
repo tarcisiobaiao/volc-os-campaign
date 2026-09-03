@@ -62,6 +62,34 @@ def _erro(exc: Exception) -> tuple[str, str, str, list[str]]:
     return codigo, type(exc).__name__, detalhe, request_ids
 
 
+def _criterion_id(linha: dict[str, Any]) -> str:
+    return str(linha.get("ad_group_criterion", {}).get("criterion_id", ""))
+
+
+def _casar_keywords(
+    estrutura: list[dict[str, Any]], desempenho: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Correlaciona estrutura e metrica por `criterion_id`.
+
+    A ESTRUTURA manda: toda keyword configurada entra na lista, com ou sem
+    metrica. Uma linha de desempenho sem par estrutural e ignorada -- ela
+    descreve um criterio que a consulta estrutural nao reconheceu como keyword
+    viva, e inventa-lo aqui seria criar keyword que ninguem configurou.
+    """
+    por_id = {_criterion_id(l): l for l in desempenho if _criterion_id(l)}
+    saida: list[dict[str, Any]] = []
+    for linha in estrutura:
+        cid = _criterion_id(linha)
+        metrica = por_id.get(cid, {})
+        # `metrics` ausente NAO vira zero: a chave simplesmente nao existe, e o
+        # `metrica_de_dict` a jusante sabe distinguir ausencia de zero medido.
+        saida.append(
+            {**linha, "metrics": metrica["metrics"]} if metrica.get("metrics")
+            else dict(linha)
+        )
+    return saida
+
+
 class ColetorGoogleInteligencia:
     def __init__(
         self, *, login_customer_id: str = MCC_PADRAO,
@@ -236,16 +264,41 @@ class ColetorGoogleInteligencia:
           WHERE campaign.id = {campaign_id}
             AND segments.date BETWEEN '{inicio.isoformat()}' AND '{fim.isoformat()}'
         """)
-        keywords = self._query(cid, f"""
+        # ⚠️ ESTRUTURA E MÉTRICA SÃO DUAS PERGUNTAS, E VINHAM NA MESMA CONSULTA.
+        #
+        # `keyword_view` com `segments.date` só devolve linha para keyword que
+        # TEVE métrica na janela. Uma campanha recém-criada, ou uma campanha
+        # cujas keywords nunca serviram, respondia ZERO LINHAS — e o consumidor
+        # lia isso como "esta campanha não tem keywords", que é uma afirmação
+        # sobre configuração feita a partir de uma consulta sobre desempenho.
+        # Medido em 03/09/2026: campanha ENABLED com 1h de vida e zero
+        # impressões saía `NO_DELIVERY / keyword / nascimento` — falso alarme
+        # dentro da própria janela de carência do guardião.
+        #
+        # A estrutura agora vem de `ad_group_criterion`, SEM data: ela responde
+        # "quais keywords existem". A métrica continua vindo de `keyword_view`
+        # na janela, e as duas são correlacionadas por `criterion_id`. Só a
+        # fonte estrutural, apurada e vazia, pode afirmar "zero keywords".
+        estrutura = self._query(cid, f"""
           SELECT ad_group.id, ad_group_criterion.criterion_id,
                  ad_group_criterion.keyword.text,
                  ad_group_criterion.keyword.match_type,
+                 ad_group_criterion.status,
+                 ad_group_criterion.negative,
                  ad_group_criterion.primary_status,
                  ad_group_criterion.primary_status_reasons,
                  ad_group_criterion.effective_cpc_bid_micros,
                  ad_group_criterion.position_estimates.first_page_cpc_micros,
                  ad_group_criterion.position_estimates.top_of_page_cpc_micros,
-                 ad_group_criterion.quality_info.quality_score,
+                 ad_group_criterion.quality_info.quality_score
+          FROM ad_group_criterion
+          WHERE campaign.id = {campaign_id}
+            AND ad_group_criterion.type = 'KEYWORD'
+            AND ad_group_criterion.status != 'REMOVED'
+            AND ad_group.status != 'REMOVED'
+        """)
+        desempenho_kw = self._query(cid, f"""
+          SELECT ad_group.id, ad_group_criterion.criterion_id,
                  metrics.impressions, metrics.clicks, metrics.cost_micros,
                  metrics.conversions
           FROM keyword_view
@@ -254,6 +307,7 @@ class ColetorGoogleInteligencia:
             AND ad_group_criterion.status != 'REMOVED'
             AND segments.date BETWEEN '{inicio.isoformat()}' AND '{fim.isoformat()}'
         """)
+        keywords = _casar_keywords(estrutura, desempenho_kw)
         anuncios = self._query(cid, f"""
           SELECT ad_group_ad.ad.id, ad_group_ad.status,
                  ad_group_ad.primary_status, ad_group_ad.primary_status_reasons,
@@ -289,6 +343,9 @@ class ColetorGoogleInteligencia:
             for k in keywords
             if k.get("ad_group_criterion", {}).get("position_estimates", {}).get("first_page_cpc_micros") is not None
         ]
+        # `keyword_count` passa a contar a ESTRUTURA. Antes contava as linhas do
+        # `keyword_view` da janela, e gravava como MEDIDO um numero menor que a
+        # realidade sempre que alguma keyword nao servira no periodo.
         metricas.append(Metrica(
             "campaign", campaign_id, "keyword_count", EstadoValor.MEDIDO,
             valor_numerico=len(keywords), unidade="count",
@@ -328,6 +385,13 @@ class ColetorGoogleInteligencia:
                 "conta_retornou": bool(conta),
                 "metas_retornaram": bool(metas),
                 "metas": len(metas),
+                # ⚠️ A DIFERENCA ENTRE "APUREI E ESTA VAZIO" E "NAO APUREI".
+                # Sem este booleano, zero keywords na resposta e indistinguivel
+                # de uma consulta estrutural que nao aconteceu -- e so a
+                # primeira autoriza afirmar que a campanha nao tem keywords.
+                "estrutura_de_keywords_apurada": True,
+                "keywords_estruturais": len(estrutura),
+                "keywords_com_metrica": len(desempenho_kw),
             }, itens=itens, metricas=metricas,
         )
 

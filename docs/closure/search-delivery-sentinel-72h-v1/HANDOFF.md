@@ -152,6 +152,7 @@ comparação com `NaN` é falsa, e sem o guarda a cascata caía em `apos_72h`.
 | `…primary_status_reasons` | já coletado | agora **lido**, com nomes conferidos no SDK |
 | `ad_group_ad.policy_summary.approval_status/review_status` | já coletado | agora **lido** |
 | `recommendation.*` | já coletado | agora **adjudicado**, nunca aplicado |
+| `ad_group_criterion` (estrutura, **sem data**) | **coletor estendido** | novo — separa inventário de desempenho |
 
 ### Sem migration
 
@@ -399,3 +400,71 @@ Duas medições de baseline também foram descartadas por método (`GATES.md`), 
 portanto não apagou nada, a árvore foi restaurada ao HEAD sem perda e o backup
 alheio segue intacto. Registrado porque worktrees compartilham a lista de stash,
 e isso não é óbvio.
+
+
+---
+
+## 17. Rodada corretiva — dois bloqueantes da avaliação independente
+
+Reproduzidos contra `98c66da` antes de qualquer conserto.
+
+### BLOQUEANTE 1 — `TARGET_IMPRESSION_SHARE`
+
+`ESTRATEGIAS_SMART_BIDDING` incluía TIS, e `_causas_da_medicao` afirmava que
+essa estratégia depende de conversão medida. **É factualmente errado:** TIS
+otimiza participação e posição de impressão, não conversões.
+
+TIS **é** lance automático, e era exatamente isso que o nome antigo escondia —
+"smart bidding" agrupa por *automação*, e a pergunta certa é outra: **a
+estratégia otimiza CONTRA um sinal de conversão?** O conjunto foi renomeado para
+`ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO`, que é o critério de fato, e TIS saiu.
+`MAXIMIZE_CONVERSIONS`, `MAXIMIZE_CONVERSION_VALUE`, `TARGET_CPA` e
+`TARGET_ROAS` continuam dentro.
+
+Reprodução: TIS + `NAO_PRONTO` → `MEASUREMENT_NOT_READY`. Agora: `HEALTHY`.
+
+### BLOQUEANTE 2 — `keyword_view` vazia lida como "zero keywords"
+
+`keyword_view` com `segments.date` só devolve linha para keyword que **teve
+métrica na janela**. Zero linhas viravam `NO_DELIVERY@keyword` — uma afirmação
+sobre **configuração** feita a partir de uma consulta sobre **desempenho**.
+
+Reprodução: campanha `ENABLED`, `horas_ligada=1`, janela `nascimento`,
+`impressions=0`, `keyword_view` vazia → `NO_DELIVERY / keyword / nascimento`.
+Falso alarme dentro da própria carência do guardião.
+
+**Correção preferida aplicada, não o mínimo conservador:**
+
+| | antes | agora |
+|---|---|---|
+| estrutura | `keyword_view` + `segments.date` | `ad_group_criterion`, `type='KEYWORD'`, **sem data** |
+| métrica | mesma consulta | `keyword_view` na janela |
+| correlação | — | por `criterion_id` |
+| `keyword_count` | linhas da janela, gravado como MEDIDO | total **estrutural** |
+| afirmar "zero keywords" | qualquer zero | só com `estrutura_de_keywords_apurada = true` |
+
+O payload da coleta passou a declarar `estrutura_de_keywords_apurada`, e
+`COLUNAS_COLETA` lê **esse único campo** do payload. `None` de uma coleta antiga
+**não é `False`**: ela não afirma que o inventário falhou, apenas não sabe dizer.
+
+Sem prova estrutural: janela imatura → **nenhuma** causa de keyword (`OBSERVING`
+da campanha prevalece); janela madura → `DATA_UNAVAILABLE@keyword`. Em ambos, o
+não-apurado vai para `desconhecidos` e rebaixa a evidência sozinho.
+
+Isto fecha o item 4 do handoff da seção 13 e a ressalva 4 da seção 15 — que
+estavam em backlog por falta de contraprova executável. A avaliação independente
+forneceu o cenário, e com ele o conserto passou a caber no método.
+
+### Gates da rodada corretiva
+
+```
+pytest backend/tests volc_ads -q   3937 -> 3951 passed, 97 skipped (0 failed)
+focais frontend                    6 arquivos, 81 provas, 0 failed
+tsc                                76 herdados, zero novos
+gate_sem_mutacao_google            exit 0
+verificar_segredos                 limpo
+git diff --check                   limpo
+```
+
+Suíte completa executada porque a mudança cruza contratos compartilhados
+(`COLUNAS_COLETA` e as consultas do coletor).

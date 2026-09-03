@@ -81,7 +81,11 @@ def leitura(**kw_):
     base = dict(
         customer_id=CUSTOMER, volc_campaign_id=CAMPANHA,
         conta=conta(), campanha=campanha(), metricas=metricas(),
-        keywords=s.ler_keywords([kw("credito consignado")]),
+        # ⚠️ `estrutura_apurada=True` faz parte do que "leitura completa"
+        # significa desde 03/09/2026. Sem ela, o inventário estrutural entra em
+        # `desconhecidos` e a prova é parcial — que é o comportamento certo, e
+        # é por isso que a fixture do caso SAUDÁVEL precisa declará-la.
+        keywords=s.ler_keywords([kw("credito consignado")], estrutura_apurada=True),
         anuncios=anuncios(),
         medicao=s.LeituraDeMedicao(conversion_goal_status="PRONTO",
                                    metas_observadas=2),
@@ -1700,3 +1704,174 @@ def test_r17c_keyword_apta_de_verdade_continua_ok():
         [metrica("impressions", 100)],
     )
     assert por_eixo(r)["keyword"].estado == "ok"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OS DOIS BLOQUEANTES DA AVALIAÇÃO INDEPENDENTE (SHA 98c66da).
+# Ambos reproduzidos contra o código anterior antes de qualquer conserto.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# ── bloqueante 1: TARGET_IMPRESSION_SHARE não depende de conversão ──────────
+
+
+def test_b1_target_impression_share_sem_conversao_nunca_e_measurement_not_ready():
+    """TIS otimiza participação e posição de impressão, não conversões.
+
+    ⚠️ TIS **é** lance automático, e era isso que o nome antigo
+    (`ESTRATEGIAS_SMART_BIDDING`) escondia. Uma campanha em TIS sem meta de
+    conversão está fazendo exatamente o que foi mandada fazer; acusá-la de
+    `MEASUREMENT_NOT_READY` é o mesmo alarme sem objeto de dizer que um
+    `MANUAL_CPC` está "sem medição".
+    """
+    v = s.avaliar(leitura(
+        campanha=campanha(bidding_strategy_type="TARGET_IMPRESSION_SHARE"),
+        medicao=s.LeituraDeMedicao(conversion_goal_status="NAO_PRONTO",
+                                   metas_observadas=0),
+    ))
+    assert v.status != s.MEASUREMENT_NOT_READY
+    assert s.MEASUREMENT_NOT_READY not in {c.status for c in v.causas_secundarias}
+
+
+def test_b1b_tis_com_prontidao_indeterminada_tambem_nao_alarma():
+    v = s.avaliar(leitura(
+        campanha=campanha(bidding_strategy_type="TARGET_IMPRESSION_SHARE"),
+        medicao=s.LeituraDeMedicao(conversion_goal_status=None),
+    ))
+    assert v.status != s.MEASUREMENT_NOT_READY
+    assert s.ESCOPO_MEDICAO not in {
+        c.escopo for c in [v.causa_primaria, *v.causas_secundarias] if c
+    }
+
+
+@pytest.mark.parametrize("estrategia", [
+    "MAXIMIZE_CONVERSIONS", "MAXIMIZE_CONVERSION_VALUE", "TARGET_CPA", "TARGET_ROAS",
+])
+def test_b1c_as_quatro_que_dependem_continuam_exigindo_mensuracao(estrategia):
+    """A correção não pode ter afrouxado quem de fato depende de conversão."""
+    v = s.avaliar(leitura(
+        campanha=campanha(bidding_strategy_type=estrategia),
+        medicao=s.LeituraDeMedicao(conversion_goal_status="NAO_PRONTO",
+                                   metas_observadas=0),
+    ))
+    assert v.status == s.MEASUREMENT_NOT_READY
+
+
+# ── bloqueante 2: keyword_view vazia não prova ausência de keywords ─────────
+
+
+def test_b2_keyword_view_vazia_na_carencia_e_observing_nunca_no_delivery():
+    """O caso exato da avaliação independente.
+
+    campanha ENABLED · horas_ligada=1 · janela=nascimento · impressions=0 ·
+    keyword_view segmentada por data com ZERO linhas.
+
+    Antes: `NO_DELIVERY / keyword / nascimento` — falso alarme dentro da própria
+    carência do guardião, e uma afirmação sobre CONFIGURAÇÃO feita a partir de
+    uma consulta sobre DESEMPENHO.
+    """
+    v = s.avaliar(leitura(
+        campanha=campanha(horas_ligada=1.0),
+        metricas=metricas(impressoes=0, cliques=0, custo_micros=0, conversoes=0.0),
+        keywords=s.ler_keywords([]),          # estrutura_apurada=None
+    ))
+    assert v.janela_do_guardiao == s.JANELA_NASCIMENTO
+    assert v.status == s.OBSERVING
+    assert v.status != s.NO_DELIVERY
+    assert v.incidente is False
+    # e o que não sabemos é DITO, em vez de virar afirmação
+    assert any("inventário estrutural" in d for d in v.desconhecidos)
+    assert v.estado_da_evidencia == "parcial"
+
+
+def test_b2b_uma_keyword_estrutural_com_1h_de_vida_e_observing():
+    """Contraprova 1 do pedido: estrutura presente, zero métricas, 1h de vida."""
+    v = s.avaliar(leitura(
+        campanha=campanha(horas_ligada=1.0),
+        metricas=metricas(impressoes=0, cliques=0, custo_micros=0, conversoes=0.0),
+        keywords=s.ler_keywords([kw("credito consignado")], estrutura_apurada=True),
+    ))
+    assert v.status == s.OBSERVING
+    assert v.status != s.NO_DELIVERY
+
+
+def test_b2c_campanha_madura_com_keyword_estrutural_e_no_delivery_pela_entrega():
+    """Contraprova 2: o incidente existe, e é da ENTREGA — não de "zero keywords"."""
+    v = s.avaliar(leitura(
+        campanha=campanha(horas_ligada=100.0),
+        metricas=metricas(impressoes=0, cliques=0, custo_micros=0, conversoes=0.0),
+        keywords=s.ler_keywords([kw("credito consignado")], estrutura_apurada=True),
+    ))
+    assert v.status == s.NO_DELIVERY
+    assert v.escopo == s.ESCOPO_CAMPANHA          # ⚠️ campanha, NÃO keyword
+    assert "impressões" in v.causa_primaria.frase
+
+
+def test_b2d_inventario_apurado_e_realmente_vazio_pode_afirmar_ausencia():
+    """Contraprova 3: só a fonte estrutural apurada autoriza a afirmação."""
+    v = s.avaliar(leitura(
+        campanha=campanha(horas_ligada=100.0),
+        metricas=metricas(impressoes=0, cliques=0, custo_micros=0),
+        keywords=s.ler_keywords([], estrutura_apurada=True),
+    ))
+    causas = {c.status: c for c in [v.causa_primaria, *v.causas_secundarias] if c}
+    keyword = next(
+        (c for c in causas.values() if c.escopo == s.ESCOPO_KEYWORD), None
+    )
+    assert keyword is not None
+    assert keyword.status == s.NO_DELIVERY
+    assert "inventário estrutural foi apurado" in keyword.frase
+
+
+def test_b2e_madura_sem_prova_estrutural_e_data_unavailable_nao_no_delivery():
+    """Janela madura e inventário NÃO apurado: não sabemos, e dizemos isso."""
+    v = s.avaliar(leitura(
+        campanha=campanha(horas_ligada=100.0),
+        metricas=metricas(impressoes=0, cliques=0, custo_micros=0),
+        keywords=s.ler_keywords([]),          # estrutura_apurada=None
+    ))
+    keyword = next(
+        (c for c in [v.causa_primaria, *v.causas_secundarias]
+         if c and c.escopo == s.ESCOPO_KEYWORD), None,
+    )
+    assert keyword is not None
+    assert keyword.status == s.DATA_UNAVAILABLE
+    assert keyword.status != s.NO_DELIVERY
+    assert "não prova" in keyword.frase
+
+
+def test_b2f_a_ponte_le_o_fato_estrutural_do_payload_da_coleta():
+    """`None` de uma coleta antiga NÃO é `False`."""
+    from app.trafego.diagnostico_persistido import _estrutura_de_keywords_apurada
+
+    assert _estrutura_de_keywords_apurada(None) is None
+    assert _estrutura_de_keywords_apurada({}) is None
+    assert _estrutura_de_keywords_apurada({"payload": {}}) is None
+    assert _estrutura_de_keywords_apurada({"payload": "texto"}) is None
+    assert _estrutura_de_keywords_apurada(
+        {"payload": {"estrutura_de_keywords_apurada": True}}
+    ) is True
+    assert _estrutura_de_keywords_apurada(
+        {"payload": {"estrutura_de_keywords_apurada": False}}
+    ) is False
+
+
+def test_b2g_o_coletor_pergunta_a_estrutura_sem_janela():
+    """A consulta estrutural existe, é SELECT, e NÃO carrega `segments.date`."""
+    import inspect
+
+    from volc_ads.inteligencia_google import coletor as col
+
+    fonte = inspect.getsource(col.ColetorGoogleInteligencia._diagnostico)
+    assert "FROM ad_group_criterion" in fonte
+    assert "ad_group_criterion.type = 'KEYWORD'" in fonte
+
+    # o trecho da consulta estrutural não pode conter segments.date
+    inicio = fonte.index("FROM ad_group_criterion")
+    bloco = fonte[max(0, inicio - 1400):fonte.index('"""', inicio)]
+    assert "segments.date" not in bloco, (
+        "a consulta estrutural voltou a ser segmentada por data"
+    )
+    # e a de desempenho continua com a janela
+    assert "FROM keyword_view" in fonte
+    assert "segments.date" in fonte

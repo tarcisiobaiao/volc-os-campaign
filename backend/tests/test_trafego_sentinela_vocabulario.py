@@ -190,10 +190,28 @@ def test_approved_limited_nunca_conta_como_aprovado():
 # ── estratégias de lance ────────────────────────────────────────────────────
 
 
-def test_estrategias_de_smart_bidding_existem():
+def test_estrategias_dependentes_de_conversao_existem():
     reais = valores("bidding_strategy_type", "BiddingStrategyTypeEnum")
-    inventadas = s.ESTRATEGIAS_SMART_BIDDING - reais
+    inventadas = s.ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO - reais
     assert not inventadas, sorted(inventadas)
+
+
+def test_target_impression_share_existe_e_fica_de_fora():
+    """⚠️ TIS é lance automático e NÃO otimiza contra conversão.
+
+    O valor existe no enum — não é engano de nome, é engano de significado. Ele
+    otimiza participação e posição de impressão. Incluí-lo na lista fazia uma
+    campanha em TIS sem meta de conversão ser acusada de
+    `MEASUREMENT_NOT_READY` por fazer exatamente o que foi mandada fazer.
+    """
+    reais = valores("bidding_strategy_type", "BiddingStrategyTypeEnum")
+    assert "TARGET_IMPRESSION_SHARE" in reais
+    assert "TARGET_IMPRESSION_SHARE" not in s.ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO
+    # E as quatro que de fato dependem continuam dentro.
+    assert s.ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO == {
+        "MAXIMIZE_CONVERSIONS", "MAXIMIZE_CONVERSION_VALUE",
+        "TARGET_CPA", "TARGET_ROAS",
+    }
 
 
 # ── campos, não só valores ──────────────────────────────────────────────────

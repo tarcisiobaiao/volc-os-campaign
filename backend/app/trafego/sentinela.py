@@ -285,12 +285,22 @@ KW_RESTRITA: frozenset = frozenset({"AD_GROUP_CRITERION_RESTRICTED"})
 #: valor de `ad_group_criterion.status`, e NÃO porque o enum o tenha.
 KW_HABILITADA: frozenset = frozenset({"ELIGIBLE", "ENABLED"})
 
-#: Estratégias de lance que dependem de conversão medida para funcionar.
-#: Fora desta lista, `MEASUREMENT_NOT_READY` não se aplica — dizer que um
-#: `MANUAL_CPC` está "sem medição para Smart Bidding" seria alarme sem objeto.
-ESTRATEGIAS_SMART_BIDDING: frozenset = frozenset({
+#: Estratégias de lance que dependem de CONVERSÃO MEDIDA para funcionar.
+#:
+#: ⚠️ O NOME MUDOU, e o conteúdo com ele. A versão anterior se chamava
+#: `ESTRATEGIAS_SMART_BIDDING` e incluía `TARGET_IMPRESSION_SHARE` — o que é
+#: factualmente errado. Target Impression Share É lance automático, e é por isso
+#: que o nome antigo enganava: ele otimiza PARTICIPAÇÃO e POSIÇÃO de impressão,
+#: não conversões. Uma campanha em TIS sem meta de conversão está fazendo
+#: exatamente o que foi mandada fazer, e chamar isso de
+#: `MEASUREMENT_NOT_READY` é alarme sem objeto — o mesmo erro de dizer que um
+#: `MANUAL_CPC` está "sem medição".
+#:
+#: O critério desta lista é uma pergunta só: **a estratégia otimiza CONTRA um
+#: sinal de conversão?** Se não otimiza, a ausência do sinal não a impede.
+ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO: frozenset = frozenset({
     "MAXIMIZE_CONVERSIONS", "MAXIMIZE_CONVERSION_VALUE",
-    "TARGET_CPA", "TARGET_ROAS", "TARGET_IMPRESSION_SHARE",
+    "TARGET_CPA", "TARGET_ROAS",
 })
 
 
@@ -759,6 +769,14 @@ class LeituraDeKeywords:
     #: Observadas sem NENHUM estado conclusivo.
     sem_dados: int = 0
     clusters: Tuple[ClusterDeIntencao, ...] = ()
+    #: A consulta ESTRUTURAL de keywords aconteceu?
+    #:
+    #: ⚠️ `None` = não apurado. Só `True` autoriza afirmar "esta campanha não
+    #: tem keywords" a partir de `observadas == 0`. A fonte de desempenho
+    #: (`keyword_view` na janela) omite keyword que não serviu no período, e ler
+    #: zero linhas dela como "zero keywords" é responder uma pergunta de
+    #: CONFIGURAÇÃO com uma consulta de DESEMPENHO.
+    estrutura_apurada: Optional[bool] = None
 
     @property
     def clusters_redundantes(self) -> int:
@@ -795,6 +813,7 @@ class LeituraDeKeywords:
             "em_revisao": self.em_revisao,
             "restritas": self.restritas,
             "sem_dados": self.sem_dados,
+            "estrutura_apurada": self.estrutura_apurada,
             "clusters_redundantes": self.clusters_redundantes,
             "clusters": [c.json() for c in self.clusters],
         }
@@ -831,6 +850,8 @@ def _tem(motivos: Sequence[str], conjunto: frozenset) -> bool:
 def ler_keywords(
     keywords: Sequence[Mapping[str, Any]],
     politica: PoliticaDoGuardiao = POLITICA_PADRAO,
+    *,
+    estrutura_apurada: Optional[bool] = None,
 ) -> LeituraDeKeywords:
     """Conta as keywords por estado, sem deixar ausência virar medida.
 
@@ -911,6 +932,7 @@ def ler_keywords(
         raramente_servidas=raramente, reprovadas=reprovadas,
         em_revisao=em_revisao, restritas=restritas, sem_dados=sem_dados,
         clusters=agrupar_por_intencao(keywords),
+        estrutura_apurada=estrutura_apurada,
     )
 
 
@@ -1560,7 +1582,7 @@ def _causas_da_campanha(
 
 
 def _causas_das_keywords(
-    leitura: LeituraParaSentinela, politica: PoliticaDoGuardiao,
+    leitura: LeituraParaSentinela, politica: PoliticaDoGuardiao, janela: str,
 ) -> List[Causa]:
     kw = leitura.keywords
     met = leitura.metricas
@@ -1568,20 +1590,52 @@ def _causas_das_keywords(
     causas: List[Causa] = []
 
     if kw.observadas == 0:
-        if leitura.estado_da_coleta == "com_dados":
+        # ⚠️ SÓ A FONTE ESTRUTURAL PODE AFIRMAR "ZERO KEYWORDS".
+        #
+        # A versão anterior lia zero linhas e emitia `NO_DELIVERY`. Mas a fonte
+        # era `keyword_view` com `segments.date`, que só devolve linha para
+        # keyword que TEVE métrica na janela — então uma campanha ENABLED com
+        # 1h de vida e zero impressões saía `NO_DELIVERY / keyword /
+        # nascimento`: falso alarme dentro da própria carência do guardião, e
+        # uma afirmação sobre CONFIGURAÇÃO feita a partir de uma consulta sobre
+        # DESEMPENHO.
+        if kw.estrutura_apurada is True and leitura.estado_da_coleta == "com_dados":
             causas.append(Causa(
                 status=NO_DELIVERY, escopo=ESCOPO_KEYWORD,
-                frase="A coleta completa observou zero keywords nesta campanha.",
-                evidencias=(_ev("keywords observadas", "keyword_view", 0, quando),),
+                frase=(
+                    "O inventário estrutural foi apurado e esta campanha não "
+                    "tem nenhuma keyword configurada."
+                ),
+                evidencias=(
+                    _ev("keywords estruturais", "ad_group_criterion", 0, quando),
+                    _ev("inventário apurado", "coleta.estrutura_de_keywords_apurada",
+                        True, quando),
+                ),
                 proximo_ato="conferir se o grupo tem keywords antes de olhar lance",
             ))
-        else:
+        elif janela_madura(janela, politica):
+            # Sem prova estrutural, e a janela já autoriza cobrar entrega: o
+            # honesto é dizer que não sabemos, não inventar ausência.
             causas.append(Causa(
                 status=DATA_UNAVAILABLE, escopo=ESCOPO_KEYWORD,
-                frase="Nenhuma keyword observada, e a coleta não foi completa.",
-                evidencias=(_ev("keywords observadas", "keyword_view", None, quando),),
-                proximo_ato="repetir a coleta de keywords antes de concluir",
+                frase=(
+                    "Nenhuma keyword foi observada, e o inventário estrutural "
+                    "não foi apurado: zero linhas de desempenho não prova que a "
+                    "campanha não tenha keywords."
+                ),
+                evidencias=(
+                    _ev("keywords observadas", "keyword_view", 0, quando),
+                    _ev("inventário apurado", "coleta.estrutura_de_keywords_apurada",
+                        kw.estrutura_apurada, quando),
+                ),
+                proximo_ato=(
+                    "apurar o inventário estrutural (ad_group_criterion, sem "
+                    "janela) antes de concluir sobre keywords"
+                ),
             ))
+        # ⚠️ Janela imatura e sem prova estrutural: NENHUMA causa de keyword.
+        # `OBSERVING`, emitido pela campanha, é a leitura certa — e o que não
+        # sabemos vai para `desconhecidos`, que rebaixa a evidência sozinho.
         return causas
 
     # Lance abaixo da primeira página — com denominador honesto.
@@ -1753,8 +1807,9 @@ def _causas_da_medicao(leitura: LeituraParaSentinela) -> List[Causa]:
         None if camp.bidding_strategy_type is None
         else str(camp.bidding_strategy_type).upper()
     )
-    if estrategia not in ESTRATEGIAS_SMART_BIDDING:
-        # Sem Smart Bidding, prontidão de mensuração não é causa de não entrega.
+    if estrategia not in ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO:
+        # A estratégia não otimiza contra conversão: a ausência do sinal não a
+        # impede, e afirmar o contrário seria alarme sem objeto.
         return []
 
     if med.conversion_goal_status is None:
@@ -1900,6 +1955,11 @@ def _desconhecidos(leitura: LeituraParaSentinela) -> Tuple[str, ...]:
         )
     if leitura.medicao.conversion_goal_status is None:
         faltando.append("prontidão de mensuração: não apurada")
+    if leitura.keywords.estrutura_apurada is not True:
+        faltando.append(
+            "inventário estrutural de keywords: não apurado — zero linhas de "
+            "desempenho NÃO prova que a campanha não tenha keywords"
+        )
     for valor in leitura.valores_desconhecidos:
         faltando.append(f"valor não reconhecido da conta: {valor}")
     return tuple(faltando)
@@ -1945,7 +2005,7 @@ def avaliar(
     candidatas += _causas_do_destino(leitura)
     candidatas += _causas_da_campanha(leitura, janela, politica)
     candidatas += _causas_dos_anuncios(leitura, politica)
-    candidatas += _causas_das_keywords(leitura, politica)
+    candidatas += _causas_das_keywords(leitura, politica, janela)
     candidatas += _causas_da_medicao(leitura)
 
     # ⚠️ Campanha desligada CALA os degraus internos dela. Sem esta linha, uma
