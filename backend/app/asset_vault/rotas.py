@@ -70,6 +70,7 @@ from app.asset_vault.aplicacao import (
 from app.asset_vault.infraestrutura import RepositorioSupabase
 from app.config import Settings, get_settings
 from app.seguranca.identidade import Identidade, exigir_admin
+from app.visual_proof.aplicacao import LeitorDeProvaVisual, montar_prontidao
 
 log = logging.getLogger("volc.cofre.http")
 
@@ -119,8 +120,37 @@ def obter_casos(settings: Settings = Depends(get_settings)) -> CasosDeUso:
     return CasosDeUso(RepositorioSupabase(SupabaseService(settings)))
 
 
+def obter_leitor_de_prova_visual() -> LeitorDeProvaVisual:
+    """A UNICA coisa que o Cofre conhece do dominio de prova visual.
+
+    Uma PORTA que responde "qual foi o ultimo job deste ativo" — e que hoje
+    responde, honestamente, que nao existe onde guardar job nenhum. O Cofre nao
+    conhece broker, executor nem contrato de operacao: se conhecesse, a
+    fronteira "o Cofre responde e nao executa" viraria comentario.
+    """
+    from app.visual_proof.infraestrutura import LeitorSemPersistencia  # noqa: PLC0415
+
+    return LeitorSemPersistencia()
+
+
+def obter_broker_configurado() -> bool:
+    """Le CONFIGURACAO, nunca a rede.
+
+    ⚠️ Nao existe chamada de saude ao broker aqui, de proposito: uma rota de
+    leitura do Cofre que faz I/O para um sidecar passa a falhar quando o sidecar
+    cai, e o inventario deixaria de abrir por causa de um componente que ele nem
+    usa. "Configurado" e uma pergunta sobre este ambiente, e e a que a tela
+    precisa para distinguir "nao ha broker" de "o QA nao rodou".
+    """
+    from app.visual_proof.infraestrutura import BrokerHttp  # noqa: PLC0415
+
+    return BrokerHttp().configurado
+
+
 Casos = Annotated[CasosDeUso, Depends(obter_casos)]
 Quem = Annotated[Identidade, Depends(exigir_admin)]
+LeitorVisual = Annotated[LeitorDeProvaVisual, Depends(obter_leitor_de_prova_visual)]
+BrokerConfigurado = Annotated[bool, Depends(obter_broker_configurado)]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -365,6 +395,40 @@ async def handoff(ativo_id: str, casos: Casos) -> dict[str, Any]:
     """
     try:
         return await casos.handoff(ativo_id)
+    except Exception as exc:  # noqa: BLE001
+        raise _traduzir(exc) from exc
+
+
+@router.get("/ativos/{ativo_id}/prontidao-visual")
+async def prontidao_visual(ativo_id: str, casos: Casos, quem: Quem,
+                           leitor: LeitorVisual,
+                           broker_configurado: BrokerConfigurado) -> dict[str, Any]:
+    """Prontidao para receber peca, para publicar e para QA visual — separadas.
+
+    ## As tres perguntas, e por que nao sao uma
+
+    `pronto_para_receber_peca` pergunta sobre o ATIVO: existe, nao esta
+    aposentado. `pronto_para_publicar` pergunta sobre a CADEIA: referencia de
+    acesso verificada e perfil de navegador relacionado. `pronto_para_qa`
+    acrescenta o broker configurado. Um unico "pronto" faria a operacao mandar
+    peca para uma pagina que ninguem consegue abrir — e a diferenca entre os
+    tres e exatamente o que o piloto de P12 precisa enxergar.
+
+    ## O que ela NAO faz
+
+    Nao cria job, nao chama o broker, nao abre navegador. E leitura composta,
+    igual ao `handoff` — e `qa_visual.estado` diz `nao_persistido` enquanto nao
+    existir tabela de `VisualProofJob`, em vez de dizer `nao_executado`, que
+    seria mais otimista do que a verdade.
+    """
+    try:
+        handoff = await casos.handoff(ativo_id)
+        return montar_prontidao(
+            handoff=handoff,
+            broker_configurado=broker_configurado,
+            persistencia=leitor.estado_da_persistencia(),
+            job=leitor.ultimo_job(ativo_id, quem.sub),
+        )
     except Exception as exc:  # noqa: BLE001
         raise _traduzir(exc) from exc
 
