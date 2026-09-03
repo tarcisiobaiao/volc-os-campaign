@@ -32,7 +32,15 @@
       "cluster": "discovery",
       "state": "live",
       "summary": "Entidades, países, dores, eixos, oportunidades, validação e inteligência cultural.",
-      "evidence": "Banco atual: 20 entidades, 20 oportunidades, 88 eixos e 40 dores."
+      "evidence": "Banco atual: 20 entidades, 20 oportunidades, 88 eixos e 40 dores. Em 03/09/2026, a Camada 2 do Validador passou a derivar uma tese determinística a partir do resumo já medido, com sete estados fechados, fatos/hipóteses/desconhecidos disjuntos, formato e próximo experimento. Replay reproduzível de 1.152 casos e 186 testes focais provaram que priors Webgo e score do LLM não movem decisão ou ranking nesta camada. A capacidade permanece live, mas a nova experiência é partial até o arraste real ser exercitado com sessão e dados oficiais."
+    },
+    {
+      "id": "cap_opportunity_validation",
+      "label": "Validação determinística de oportunidades",
+      "cluster": "discovery",
+      "state": "partial",
+      "summary": "Transforma a medição já gravada em tese explicável, formato de funil e próximo experimento, sem recalcular sensores, confiar em score de LLM ou promover benchmark externo a regra.",
+      "evidence": "Integrada em 03/09/2026 pela sprint pautador-psychological-validation-v2: app.validacao.oportunidade, POST /api/pautador/entity-opportunities/teses, TeseDaOportunidade e ComparadorDeOportunidades. Verificação do integrador reproduziu 186 testes focais, 15 de interface, build e replay byte-idêntico de 1.152 casos. Continua partial: fluxo real de arraste não exercitado; CPC->densidade e score opaco na descoberta continuam dívidas a montante."
     },
     {
       "id": "cap_keyword_mining",
@@ -1053,6 +1061,14 @@
       "evidence": "Pautador e mineração de keywords existem. Topic Mine foi aceito apenas para gap analysis; a saída unificada e seu histórico ainda não existem."
     },
     {
+      "id": "concept:opportunity_thesis",
+      "label": "Tese determinística de oportunidade",
+      "cluster": "decision",
+      "state": "partial",
+      "summary": "Camada intermediária entre a medição editorial e a elegibilidade paga: explica se vale aprofundar, experimentar, reter ou descartar, preservando proveniência e incomparabilidade.",
+      "evidence": "DECISION-CONTRACT/1 e app.validacao.oportunidade. Priors Webgo são hipóteses não decisórias por construção e mutação; score do LLM não alcança valor, transporte ou código desta camada. A UI real ainda precisa ser exercitada no fluxo autenticado do Kanban."
+    },
+    {
       "id": "concept:visual_asset_governance",
       "label": "VOLC Creative Governance",
       "cluster": "production",
@@ -1840,6 +1856,21 @@
     }
   ],
   "edges": [
+    {
+      "source": "cap_discovery",
+      "target": "cap_opportunity_validation",
+      "relation": "fornece_medicao_para"
+    },
+    {
+      "source": "cap_opportunity_validation",
+      "target": "concept:opportunity_thesis",
+      "relation": "materializa"
+    },
+    {
+      "source": "concept:opportunity_thesis",
+      "target": "cap_paid_keyword_eligibility",
+      "relation": "antecede_sem_decidir"
+    },
     {
       "source": "cap_discovery",
       "target": "cap_keyword_mining",

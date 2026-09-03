@@ -804,6 +804,19 @@
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
+      "id": "concept:opportunity_thesis",
+      "label": "Tese determinística de oportunidade",
+      "type": "concept",
+      "cluster": "decision",
+      "cluster_label": "Decisão & atuação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Camada intermediária entre a medição editorial e a elegibilidade paga: explica se vale aprofundar, experimentar, reter ou descartar, preservando proveniência e incomparabilidade.",
+      "evidence": "DECISION-CONTRACT/1 e app.validacao.oportunidade. Priors Webgo são hipóteses não decisórias por construção e mutação; score do LLM não alcança valor, transporte ou código desta camada. A UI real ainda precisa ser exercitada no fluxo autenticado do Kanban.",
+      "source": "Curadoria humana, atualizada em 2026-09-03"
+    },
+    {
       "id": "concept:decision_timeline",
       "label": "Timeline auditável de decisão",
       "type": "concept",
@@ -852,7 +865,7 @@
       "state_label": "Vivo agora",
       "tier": 1,
       "summary": "Entidades, países, dores, eixos, oportunidades, validação e inteligência cultural.",
-      "evidence": "Banco atual: 20 entidades, 20 oportunidades, 88 eixos e 40 dores.",
+      "evidence": "Banco atual: 20 entidades, 20 oportunidades, 88 eixos e 40 dores. Em 03/09/2026, a Camada 2 do Validador passou a derivar uma tese determinística a partir do resumo já medido, com sete estados fechados, fatos/hipóteses/desconhecidos disjuntos, formato e próximo experimento. Replay reproduzível de 1.152 casos e 186 testes focais provaram que priors Webgo e score do LLM não movem decisão ou ranking nesta camada. A capacidade permanece live, mas a nova experiência é partial até o arraste real ser exercitado com sessão e dados oficiais.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
@@ -879,6 +892,19 @@
       "tier": 1,
       "summary": "Valida demanda, cria seeds, clusters e hipóteses de funil.",
       "evidence": "Banco atual: 143 seed queries, 3 clusters e 11 validações. Em 03/09/2026, a mineração passou a carregar também o conjunto pago aprovado, sem confundir oportunidade editorial com elegibilidade para mídia. O conjunto positivo materializado em /provar e /subir é exatamente o aprovado e não pode ser ampliado ou reduzido pelo corpo HTTP.",
+      "source": "Curadoria humana, atualizada em 2026-09-03"
+    },
+    {
+      "id": "cap_opportunity_validation",
+      "label": "Validação determinística de oportunidades",
+      "type": "capability",
+      "cluster": "discovery",
+      "cluster_label": "Descoberta & pauta",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Transforma a medição já gravada em tese explicável, formato de funil e próximo experimento, sem recalcular sensores, confiar em score de LLM ou promover benchmark externo a regra.",
+      "evidence": "Integrada em 03/09/2026 pela sprint pautador-psychological-validation-v2: app.validacao.oportunidade, POST /api/pautador/entity-opportunities/teses, TeseDaOportunidade e ComparadorDeOportunidades. Verificação do integrador reproduziu 186 testes focais, 15 de interface, build e replay byte-idêntico de 1.152 casos. Continua partial: fluxo real de arraste não exercitado; CPC->densidade e score opaco na descoberta continuam dívidas a montante.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
@@ -2878,7 +2904,7 @@
       "state": "implemented",
       "state_label": "Implementado",
       "tier": 2,
-      "summary": "Módulo FastAPI com 21 endpoints.",
+      "summary": "Módulo FastAPI com 22 endpoints.",
       "evidence": "Endpoints medidos no código.",
       "source": "backend/app/routers/entities.py",
       "endpoints": [
@@ -2900,6 +2926,7 @@
         "DELETE /entity-opportunities/{opp_id}",
         "POST /entity-opportunities/{opp_id}/validate",
         "GET /entity-opportunities/{opp_id}/axes",
+        "POST /entity-opportunities/teses",
         "POST /entity-opportunities/validate-batch",
         "POST /entities/{entity_id}/mine",
         "POST /entity-opportunities/{opp_id}/funnel"
@@ -8531,6 +8558,13 @@
     },
     {
       "source": "cap_discovery",
+      "target": "cap_opportunity_validation",
+      "relation": "fornece_medicao_para",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "cap_discovery",
       "target": "db:pautador_entities",
       "relation": "usa_dado",
       "evidence": "",
@@ -9060,6 +9094,13 @@
       "relation": "usa_dado",
       "evidence": "",
       "confidence": "measured"
+    },
+    {
+      "source": "cap_opportunity_validation",
+      "target": "concept:opportunity_thesis",
+      "relation": "materializa",
+      "evidence": "",
+      "confidence": "curated"
     },
     {
       "source": "cap_organic_content",
@@ -10760,6 +10801,13 @@
       "target": "cap_health",
       "relation": "fundamenta",
       "evidence": "O sino passa a ser projeção, não fonte (ADR-04).",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:opportunity_thesis",
+      "target": "cap_paid_keyword_eligibility",
+      "relation": "antecede_sem_decidir",
+      "evidence": "",
       "confidence": "curated"
     },
     {

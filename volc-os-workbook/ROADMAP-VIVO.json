@@ -889,7 +889,8 @@
         "concept:tracking_control_plane",
         "concept:behavioral_policy_aggregator",
         "concept:cta_experiment_lab",
-        "concept:semantic_recommender_convergence"
+        "concept:semantic_recommender_convergence",
+        "concept:opportunity_thesis"
       ],
       "tasks": [
         {
@@ -965,6 +966,23 @@
             "P08-T02",
             "P12-T04",
             "P12-T05"
+          ]
+        },
+        {
+          "id": "P08-T10",
+          "title": "Consolidar a tese determinística de oportunidade no Validador",
+          "status": "partial",
+          "priority": 1,
+          "proof": "03/09/2026 · A sprint pautador-psychological-validation-v2 integrou uma Camada 2 determinística entre medição e elegibilidade paga: sete decisões fechadas, fatos/hipóteses/desconhecidos disjuntos, formato sugerido, próximo experimento e comparação que não ordena o incomparável. Foram reproduzidos 186 testes focais, 15 testes de interface, build verde e replay determinístico de 1.152 casos; oito mutações do benchmark Webgo não alteraram decisão, ranking, formato ou topo, e o score do LLM mostrou zero alcance sobre esta camada. Continua partial: o fluxo real de arrastar o card depende do Supabase oficial e não foi exercitado ponta a ponta; CPC ainda influencia densidade pela presença; a descoberta ainda ensina a fórmula ao LLM; tema escuro e leitor de tela real não foram medidos.",
+          "explanation": "Separar medição, tese editorial e elegibilidade paga. O benchmark externo entra somente como hipótese não decisória; ausência nunca vira zero, e nenhum score opaco do LLM pode ordenar esta camada.",
+          "acceptance": "A tese é determinística e reproduzível; cita os observáveis gravados sem recalcular; separa fato, hipótese e desconhecido; não usa priors externos ou score do LLM para decidir; isola card malformado; compara apenas casos comparáveis; mostra o resultado no fluxo real do Kanban com acessibilidade e sem regressão de persistência.",
+          "dependencies": [
+            "P08-T06"
+          ],
+          "links": [
+            "docs/closure/pautador-psychological-validation-v2/HANDOFF.md",
+            "docs/closure/pautador-psychological-validation-v2/DECISION-CONTRACT.json",
+            "docs/closure/pautador-psychological-validation-v2/BEFORE-AFTER-REPLAY.json"
           ]
         }
       ]
