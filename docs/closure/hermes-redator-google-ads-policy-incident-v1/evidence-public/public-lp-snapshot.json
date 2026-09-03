@@ -1,0 +1,552 @@
+{
+  "captured_at": "2026-09-03T00:51:32.267526+00:00",
+  "requested_url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+  "variants": {
+    "common_desktop": {
+      "user_agent_label": "common_desktop",
+      "redirect_chain": [
+        {
+          "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+          "error": "TypeError: OpenerDirector.open() got an unexpected keyword argument 'context'"
+        }
+      ],
+      "final_url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "status": 200,
+      "html_sha256": "7c674d1d7daf896eb7992f9e61f8d8b598b6a28c9acaaeeb29037be6958dcd59",
+      "html_bytes": 174243,
+      "html_file": "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/common_desktop-7c674d1d7daf.html",
+      "canonical": [
+        "https://creditoup.com.br/r/fgts-saque-aniversario/"
+      ],
+      "links": [
+        {
+          "href": "#main",
+          "text": "Pular para o conteúdo"
+        },
+        {
+          "href": "https://creditoup.com.br",
+          "text": "Menu"
+        },
+        {
+          "href": "https://creditoup.com.br/sobre",
+          "text": "Sobre"
+        },
+        {
+          "href": "https://creditoup.com.br/contato",
+          "text": "Contato"
+        },
+        {
+          "href": "https://creditoup.com.br/category/beneficios/",
+          "text": "Direitos e Benefícios"
+        },
+        {
+          "href": "https://creditoup.com.br/category/cursos-e-vagas/",
+          "text": "Cursos e Vagas"
+        },
+        {
+          "href": "https://creditoup.com.br/category/dicas-e-apps/",
+          "text": "Dicas e Apps"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr",
+          "text": "Comparar as Vantagens e Desvantagens"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1",
+          "text": "Ver o passo a passo para Ativar o Saque-Aniversário no Aplicativo"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr",
+          "text": "Comparar as Vantagens e Desvantagens para ver qual é o seu caso"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1",
+          "text": "Ver o passo a passo para Ativar o Saque-Aniversário no Aplicativo"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2",
+          "text": "Entender como funciona a Antecipação do Saque-Aniversário"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "40 %"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2",
+          "text": "Entender como funciona a Antecipação do Saque-Aniversário"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "40 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "90 dias"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "5 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "50 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "2900.00 R$"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "5 saques anuais"
+        },
+        {
+          "href": "https://creditoup.com.br/sobre/",
+          "text": "Sobre Nós"
+        },
+        {
+          "href": "https://creditoup.com.br/contato/",
+          "text": "Contato"
+        },
+        {
+          "href": "https://creditoup.com.br/privacidade",
+          "text": "Política de Privacidade"
+        },
+        {
+          "href": "https://creditoup.com.br/termos",
+          "text": "Termos"
+        },
+        {
+          "href": "https://www.fabiolobo.com.br",
+          "text": "Fabio Lobo"
+        }
+      ],
+      "forms": [
+        {
+          "class": "header__search__form",
+          "method": "get",
+          "action": "https://creditoup.com.br",
+          "role": "search"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "class": "header__search__input",
+          "id": "search-field",
+          "aria-labelledby": "search-field-label",
+          "type": "text",
+          "name": "s",
+          "placeholder": "Buscar no site",
+          "value": ""
+        }
+      ],
+      "scripts": [
+        "inline",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/myad26424.js?ver=1786726513",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/firebasejs/11.1.0/firebase-app-compat.js?ver=1786726513",
+        "https://creditoup.com.br/wp-content/cache/min/1/firebasejs/11.1.0/firebase-messaging-compat.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/plugins/ai-web-push/js/ai-web-push-front.js?ver=1786726514",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/themes/wgc3/assets/scripts/jquery.min.js?ver=3.5.1",
+        "https://creditoup.com.br/wp-includes/js/comment-reply.min.js?ver=7.1",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/themes/wgc3/assets/scripts/lazysizes.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/themes/wgc3/assets/scripts/scripts.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/webpack.runtime.min.js?ver=4.2.1",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/frontend-modules.min.js?ver=4.2.1",
+        "inline",
+        "https://creditoup.com.br/wp-includes/js/jquery/ui/core.min.js?ver=1.14.2",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/frontend.min.js?ver=4.2.1",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/plugins/shortcodes-ultimate/includes/js/shortcodes/index.js?ver=1786726783",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/webpack-pro.runtime.min.js?ver=3.28.4",
+        "https://creditoup.com.br/wp-includes/js/dist/hooks.min.js?ver=f0f188028580e8dc1255",
+        "https://creditoup.com.br/wp-includes/js/dist/i18n.min.js?ver=1dfe7db3940c23ea9216",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/frontend.min.js?ver=3.28.4",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/elements-handlers.min.js?ver=3.28.4",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/wp-rocket/assets/js/lazyload/16.1/lazyload.min.js"
+      ],
+      "iframes": [
+        "https://www.googletagmanager.com/ns.html?id=GTM-KJK7QQK9"
+      ],
+      "visible_text_sample": "Saque-Aniversário do FGTS 2026: Regras, Simulação e Como Ativar\nPular para o conteúdo\nMenu\nFechar\nSobre\nExpandir\nContato\nExpandir\nDireitos e Benefícios\nExpandir\nCursos e Vagas\nExpandir\nDicas e Apps\nExpandir\nBusca\nPesquisar...\nBusca\nFechar\nSaque-Aniversário do FGTS\nRegras, prazos e simulação para 2026 — toque abaixo e veja como avaliar as vantagens ou ativar a modalidade\nComparar as Vantagens e Desvantagens\nVer o passo a passo para Ativar o Saque-Aniversário no Aplicativo\nSaque-Aniversário do FGTS\nRegras, prazos e simulação para 2026 — toque abaixo e veja como avaliar as vantagens ou ativar a modalidade\nComparar as Vantagens e Desvantagens para ver qual é o seu caso\nVer o passo a passo para Ativar o Saque-Aniversário no Aplicativo\nEntender como funciona a Antecipação do Saque-Aniversário\nComo funciona o Saque-Aniversário do FGTS em 2026: guia com o passo a passo\nMuitos trabalhadores buscam uma renda extra anual mas têm dúvidas sobre o impacto de alterar a modalidade de resgate do Fundo de Garantia. Este guia explica de forma prática como funciona o\nSaque-Aniversário do FGTS\nem 2026 para que você tome a melhor decisão financeira.\nO que é o Saque-Aniversário e por que importa agora?\nO\nSaque-Aniversário\né uma opção voluntária que permite retirar uma parte do saldo do Fundo de Garantia uma vez por ano, sempre no mês do seu nascimento.\nAo escolher essa modalidade, o trabalhador deixa de ter direito ao saque integral em caso de demissão sem justa causa, mas mantém o direito de receber a multa rescisória de\n40 %\npaga pelo empregador.\n3 pontos que você precisa saber\n1️⃣ A adesão é totalmente opcional e pode ser feita a qualquer momento diretamente pelo aplicativo gerenciado pela\nCaixa\n.\n2️⃣ Se você se arrepender da escolha, o retorno para a modalidade tradicional de rescisão exige um período de carência de\n24 meses\n.\n3️⃣ O prazo regulamentar para o trabalhador movimentar o dinheiro é de\n3 meses\n, iniciando no mês de seu aniversário.\nEntender como funciona a Antecipação do Saque-Aniversário\nQuem tem direito a essa modalidade?\nTrabalhadores com carteira assinada\nsob o regime da CLT.\nTrabalhadores domésticos, rurais e temporários\ncom contas ativas ou inativas.\nProfissionais avulsos e atletas\ncom saldo sob gestão da\nCaixa Econômica Federal\n.\nPara ter acesso, basta possuir saldo em qualquer conta do fundo e realizar a opção de forma voluntária.\nComo o valor anual é calculado pela Caixa?\nO cálculo do valor anual liberado é feito aplicando uma alíquota sobre o saldo do trabalhador, variando de\n5 %\na\n50 %\nconforme a faixa de saldo.\nPara as faixas que recebem alíquotas menores, a regra adiciona uma parcela fixa que pode chegar a\n2900.00 R$\n, paga anualmente pela\nCaixa\n.\nO trabalhador tem o direito de realizar até\n5 saques anuais\nse optar por antecipar esses valores por meio de linhas de crédito específicas.\nComo voltar para o Saque-Rescisão?\nDepende. Você pode solicitar a alteração de volta a qualquer momento, mas a mudança só surtirá efeito após o cumprimento de uma carência de\n24 meses\nregulamentada pela\nCaixa\n.\nPerco a multa de 40% se aderir ao Saque-Aniversário?\nNão. O trabalhador que opta pelo Saque-Aniversário continua tendo direito ao recebimento da multa rescisória de\n40 %\npaga pelo empregador em caso de demissão sem justa causa.\nQual é o prazo limite para retirar o dinheiro a cada ano?\nDepende do calendário da\nCaixa\n, mas o prazo padrão para realizar a movimentação dos recursos é de\n90 dias\ncorridos a partir da liberação.\nComo é calculada a parcela que tenho direito a sacar?\nDepende do saldo total que você possui nas contas do fundo. A\nCaixa\naplica uma alíquota de\n5 %\na\n50 %\ne soma uma parcela fixa de até\n2900.00 R$\n.\nQuantas parcelas anuais posso antecipar?\nDepende da instituição financeira, mas as regras vigentes permitem a contratação de até\n5 saques anuais\nde forma antecipada como garantia de crédito.\nAgora que você entende o funcionamento do Saque-Aniversário, o próximo passo é avaliar se essa modalidade faz sentido para a sua realidade financeira. Veja as opções de caminhos detalhados nos botões abaixo.\nSobre o nosso site:\nO site creditoup.com.br se reserva unicamente a trazer conteúdos informativos e notícias de interesse social.\nEm hipótese alguma o site creditoup.com.br faz qualquer tipo de pedido de dados pessoais sem respeitar a LGPD e, também, não solicita qualquer valor (compensação financeira) para mediar recebimentos de benefícios sociais.\nOs conteúdos aqui publicados são de caráter informativo e não possuem vínculo, parceria ou qualquer ligação com órgãos públicos ou entidades governamentais.\nO site é financiado por blocos de anúncios em parceria com o Google Adsense. O site creditoup.com.br não tem relação nenhuma com os anunciantes, portanto, não podemos responder por qualquer situação que aconteça fora do nosso domínio.\nO creditoup.com.br é um projeto da Volc Negocios Digitais 42.724.548/0001-24.\n2026 © Crédito Up!\nSobre Nós\nContato\nPolítica de Privacidade\nTermos\nFabio Lobo"
+    },
+    "common_mobile": {
+      "user_agent_label": "common_mobile",
+      "redirect_chain": [
+        {
+          "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+          "error": "TypeError: OpenerDirector.open() got an unexpected keyword argument 'context'"
+        }
+      ],
+      "final_url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "status": 200,
+      "html_sha256": "4077b30e43900f88cdbf6a529527dbb0a8526897abf4b9182471e533b95e30a1",
+      "html_bytes": 174216,
+      "html_file": "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/common_mobile-4077b30e4390.html",
+      "canonical": [
+        "https://creditoup.com.br/r/fgts-saque-aniversario/"
+      ],
+      "links": [
+        {
+          "href": "#main",
+          "text": "Pular para o conteúdo"
+        },
+        {
+          "href": "https://creditoup.com.br",
+          "text": "Menu"
+        },
+        {
+          "href": "https://creditoup.com.br/sobre",
+          "text": "Sobre"
+        },
+        {
+          "href": "https://creditoup.com.br/contato",
+          "text": "Contato"
+        },
+        {
+          "href": "https://creditoup.com.br/category/beneficios/",
+          "text": "Direitos e Benefícios"
+        },
+        {
+          "href": "https://creditoup.com.br/category/cursos-e-vagas/",
+          "text": "Cursos e Vagas"
+        },
+        {
+          "href": "https://creditoup.com.br/category/dicas-e-apps/",
+          "text": "Dicas e Apps"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr",
+          "text": "Comparar as Vantagens e Desvantagens"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1",
+          "text": "Ver o passo a passo para Ativar o Saque-Aniversário no Aplicativo"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr",
+          "text": "Comparar as Vantagens e Desvantagens para ver qual é o seu caso"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1",
+          "text": "Ver o passo a passo para Ativar o Saque-Aniversário no Aplicativo"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2",
+          "text": "Entender como funciona a Antecipação do Saque-Aniversário"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "40 %"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2",
+          "text": "Entender como funciona a Antecipação do Saque-Aniversário"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "40 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "90 dias"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "5 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "50 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "2900.00 R$"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "5 saques anuais"
+        },
+        {
+          "href": "https://creditoup.com.br/sobre/",
+          "text": "Sobre Nós"
+        },
+        {
+          "href": "https://creditoup.com.br/contato/",
+          "text": "Contato"
+        },
+        {
+          "href": "https://creditoup.com.br/privacidade",
+          "text": "Política de Privacidade"
+        },
+        {
+          "href": "https://creditoup.com.br/termos",
+          "text": "Termos"
+        },
+        {
+          "href": "https://www.fabiolobo.com.br",
+          "text": "Fabio Lobo"
+        }
+      ],
+      "forms": [
+        {
+          "class": "header__search__form",
+          "method": "get",
+          "action": "https://creditoup.com.br",
+          "role": "search"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "class": "header__search__input",
+          "id": "search-field",
+          "aria-labelledby": "search-field-label",
+          "type": "text",
+          "name": "s",
+          "placeholder": "Buscar no site",
+          "value": ""
+        }
+      ],
+      "scripts": [
+        "inline",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/myad26424.js?ver=1786726513",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/firebasejs/11.1.0/firebase-app-compat.js?ver=1786726513",
+        "https://creditoup.com.br/wp-content/cache/min/1/firebasejs/11.1.0/firebase-messaging-compat.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/plugins/ai-web-push/js/ai-web-push-front.js?ver=1786726514",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/themes/wgc3/assets/scripts/jquery.min.js?ver=3.5.1",
+        "https://creditoup.com.br/wp-includes/js/comment-reply.min.js?ver=7.1",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/themes/wgc3/assets/scripts/lazysizes.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/themes/wgc3/assets/scripts/scripts.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/webpack.runtime.min.js?ver=4.2.1",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/frontend-modules.min.js?ver=4.2.1",
+        "inline",
+        "https://creditoup.com.br/wp-includes/js/jquery/ui/core.min.js?ver=1.14.2",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/frontend.min.js?ver=4.2.1",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/plugins/shortcodes-ultimate/includes/js/shortcodes/index.js?ver=1786726783",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/webpack-pro.runtime.min.js?ver=3.28.4",
+        "https://creditoup.com.br/wp-includes/js/dist/hooks.min.js?ver=f0f188028580e8dc1255",
+        "https://creditoup.com.br/wp-includes/js/dist/i18n.min.js?ver=1dfe7db3940c23ea9216",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/frontend.min.js?ver=3.28.4",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/elements-handlers.min.js?ver=3.28.4",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/wp-rocket/assets/js/lazyload/16.1/lazyload.min.js"
+      ],
+      "iframes": [
+        "https://www.googletagmanager.com/ns.html?id=GTM-KJK7QQK9"
+      ],
+      "visible_text_sample": "Saque-Aniversário do FGTS 2026: Regras, Simulação e Como Ativar\nPular para o conteúdo\nMenu\nFechar\nSobre\nExpandir\nContato\nExpandir\nDireitos e Benefícios\nExpandir\nCursos e Vagas\nExpandir\nDicas e Apps\nExpandir\nBusca\nPesquisar...\nBusca\nFechar\nSaque-Aniversário do FGTS\nRegras, prazos e simulação para 2026 — toque abaixo e veja como avaliar as vantagens ou ativar a modalidade\nComparar as Vantagens e Desvantagens\nVer o passo a passo para Ativar o Saque-Aniversário no Aplicativo\nSaque-Aniversário do FGTS\nRegras, prazos e simulação para 2026 — toque abaixo e veja como avaliar as vantagens ou ativar a modalidade\nComparar as Vantagens e Desvantagens para ver qual é o seu caso\nVer o passo a passo para Ativar o Saque-Aniversário no Aplicativo\nEntender como funciona a Antecipação do Saque-Aniversário\nComo funciona o Saque-Aniversário do FGTS em 2026: guia com o passo a passo\nMuitos trabalhadores buscam uma renda extra anual mas têm dúvidas sobre o impacto de alterar a modalidade de resgate do Fundo de Garantia. Este guia explica de forma prática como funciona o\nSaque-Aniversário do FGTS\nem 2026 para que você tome a melhor decisão financeira.\nO que é o Saque-Aniversário e por que importa agora?\nO\nSaque-Aniversário\né uma opção voluntária que permite retirar uma parte do saldo do Fundo de Garantia uma vez por ano, sempre no mês do seu nascimento.\nAo escolher essa modalidade, o trabalhador deixa de ter direito ao saque integral em caso de demissão sem justa causa, mas mantém o direito de receber a multa rescisória de\n40 %\npaga pelo empregador.\n3 pontos que você precisa saber\n1️⃣ A adesão é totalmente opcional e pode ser feita a qualquer momento diretamente pelo aplicativo gerenciado pela\nCaixa\n.\n2️⃣ Se você se arrepender da escolha, o retorno para a modalidade tradicional de rescisão exige um período de carência de\n24 meses\n.\n3️⃣ O prazo regulamentar para o trabalhador movimentar o dinheiro é de\n3 meses\n, iniciando no mês de seu aniversário.\nEntender como funciona a Antecipação do Saque-Aniversário\nQuem tem direito a essa modalidade?\nTrabalhadores com carteira assinada\nsob o regime da CLT.\nTrabalhadores domésticos, rurais e temporários\ncom contas ativas ou inativas.\nProfissionais avulsos e atletas\ncom saldo sob gestão da\nCaixa Econômica Federal\n.\nPara ter acesso, basta possuir saldo em qualquer conta do fundo e realizar a opção de forma voluntária.\nComo o valor anual é calculado pela Caixa?\nO cálculo do valor anual liberado é feito aplicando uma alíquota sobre o saldo do trabalhador, variando de\n5 %\na\n50 %\nconforme a faixa de saldo.\nPara as faixas que recebem alíquotas menores, a regra adiciona uma parcela fixa que pode chegar a\n2900.00 R$\n, paga anualmente pela\nCaixa\n.\nO trabalhador tem o direito de realizar até\n5 saques anuais\nse optar por antecipar esses valores por meio de linhas de crédito específicas.\nComo voltar para o Saque-Rescisão?\nDepende. Você pode solicitar a alteração de volta a qualquer momento, mas a mudança só surtirá efeito após o cumprimento de uma carência de\n24 meses\nregulamentada pela\nCaixa\n.\nPerco a multa de 40% se aderir ao Saque-Aniversário?\nNão. O trabalhador que opta pelo Saque-Aniversário continua tendo direito ao recebimento da multa rescisória de\n40 %\npaga pelo empregador em caso de demissão sem justa causa.\nQual é o prazo limite para retirar o dinheiro a cada ano?\nDepende do calendário da\nCaixa\n, mas o prazo padrão para realizar a movimentação dos recursos é de\n90 dias\ncorridos a partir da liberação.\nComo é calculada a parcela que tenho direito a sacar?\nDepende do saldo total que você possui nas contas do fundo. A\nCaixa\naplica uma alíquota de\n5 %\na\n50 %\ne soma uma parcela fixa de até\n2900.00 R$\n.\nQuantas parcelas anuais posso antecipar?\nDepende da instituição financeira, mas as regras vigentes permitem a contratação de até\n5 saques anuais\nde forma antecipada como garantia de crédito.\nAgora que você entende o funcionamento do Saque-Aniversário, o próximo passo é avaliar se essa modalidade faz sentido para a sua realidade financeira. Veja as opções de caminhos detalhados nos botões abaixo.\nSobre o nosso site:\nO site creditoup.com.br se reserva unicamente a trazer conteúdos informativos e notícias de interesse social.\nEm hipótese alguma o site creditoup.com.br faz qualquer tipo de pedido de dados pessoais sem respeitar a LGPD e, também, não solicita qualquer valor (compensação financeira) para mediar recebimentos de benefícios sociais.\nOs conteúdos aqui publicados são de caráter informativo e não possuem vínculo, parceria ou qualquer ligação com órgãos públicos ou entidades governamentais.\nO site é financiado por blocos de anúncios em parceria com o Google Adsense. O site creditoup.com.br não tem relação nenhuma com os anunciantes, portanto, não podemos responder por qualquer situação que aconteça fora do nosso domínio.\nO creditoup.com.br é um projeto da Volc Negocios Digitais 42.724.548/0001-24.\n2026 © Crédito Up!\nSobre Nós\nContato\nPolítica de Privacidade\nTermos\nFabio Lobo"
+    },
+    "googlebot": {
+      "user_agent_label": "googlebot",
+      "redirect_chain": [
+        {
+          "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+          "error": "TypeError: OpenerDirector.open() got an unexpected keyword argument 'context'"
+        }
+      ],
+      "final_url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "status": 200,
+      "html_sha256": "7c674d1d7daf896eb7992f9e61f8d8b598b6a28c9acaaeeb29037be6958dcd59",
+      "html_bytes": 174243,
+      "html_file": "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/googlebot-7c674d1d7daf.html",
+      "canonical": [
+        "https://creditoup.com.br/r/fgts-saque-aniversario/"
+      ],
+      "links": [
+        {
+          "href": "#main",
+          "text": "Pular para o conteúdo"
+        },
+        {
+          "href": "https://creditoup.com.br",
+          "text": "Menu"
+        },
+        {
+          "href": "https://creditoup.com.br/sobre",
+          "text": "Sobre"
+        },
+        {
+          "href": "https://creditoup.com.br/contato",
+          "text": "Contato"
+        },
+        {
+          "href": "https://creditoup.com.br/category/beneficios/",
+          "text": "Direitos e Benefícios"
+        },
+        {
+          "href": "https://creditoup.com.br/category/cursos-e-vagas/",
+          "text": "Cursos e Vagas"
+        },
+        {
+          "href": "https://creditoup.com.br/category/dicas-e-apps/",
+          "text": "Dicas e Apps"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr",
+          "text": "Comparar as Vantagens e Desvantagens"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1",
+          "text": "Ver o passo a passo para Ativar o Saque-Aniversário no Aplicativo"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/vantagens-desvantagens-saque-aniversario-pr",
+          "text": "Comparar as Vantagens e Desvantagens para ver qual é o seu caso"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/como-ativar-saque-aniversario-p1",
+          "text": "Ver o passo a passo para Ativar o Saque-Aniversário no Aplicativo"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2",
+          "text": "Entender como funciona a Antecipação do Saque-Aniversário"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "40 %"
+        },
+        {
+          "href": "https://creditoup.com.br/rec/antecipacao-saque-aniversario-p2",
+          "text": "Entender como funciona a Antecipação do Saque-Aniversário"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "40 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "90 dias"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "5 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "50 %"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "2900.00 R$"
+        },
+        {
+          "href": "https://www.caixa.gov.br/",
+          "text": "5 saques anuais"
+        },
+        {
+          "href": "https://creditoup.com.br/sobre/",
+          "text": "Sobre Nós"
+        },
+        {
+          "href": "https://creditoup.com.br/contato/",
+          "text": "Contato"
+        },
+        {
+          "href": "https://creditoup.com.br/privacidade",
+          "text": "Política de Privacidade"
+        },
+        {
+          "href": "https://creditoup.com.br/termos",
+          "text": "Termos"
+        },
+        {
+          "href": "https://www.fabiolobo.com.br",
+          "text": "Fabio Lobo"
+        }
+      ],
+      "forms": [
+        {
+          "class": "header__search__form",
+          "method": "get",
+          "action": "https://creditoup.com.br",
+          "role": "search"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "class": "header__search__input",
+          "id": "search-field",
+          "aria-labelledby": "search-field-label",
+          "type": "text",
+          "name": "s",
+          "placeholder": "Buscar no site",
+          "value": ""
+        }
+      ],
+      "scripts": [
+        "inline",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/myad26424.js?ver=1786726513",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/firebasejs/11.1.0/firebase-app-compat.js?ver=1786726513",
+        "https://creditoup.com.br/wp-content/cache/min/1/firebasejs/11.1.0/firebase-messaging-compat.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/plugins/ai-web-push/js/ai-web-push-front.js?ver=1786726514",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/themes/wgc3/assets/scripts/jquery.min.js?ver=3.5.1",
+        "https://creditoup.com.br/wp-includes/js/comment-reply.min.js?ver=7.1",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/themes/wgc3/assets/scripts/lazysizes.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/themes/wgc3/assets/scripts/scripts.js?ver=1786726514",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/webpack.runtime.min.js?ver=4.2.1",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/frontend-modules.min.js?ver=4.2.1",
+        "inline",
+        "https://creditoup.com.br/wp-includes/js/jquery/ui/core.min.js?ver=1.14.2",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/elementor/assets/js/frontend.min.js?ver=4.2.1",
+        "inline",
+        "https://creditoup.com.br/wp-content/cache/min/1/wp-content/plugins/shortcodes-ultimate/includes/js/shortcodes/index.js?ver=1786726783",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/webpack-pro.runtime.min.js?ver=3.28.4",
+        "https://creditoup.com.br/wp-includes/js/dist/hooks.min.js?ver=f0f188028580e8dc1255",
+        "https://creditoup.com.br/wp-includes/js/dist/i18n.min.js?ver=1dfe7db3940c23ea9216",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/frontend.min.js?ver=3.28.4",
+        "https://creditoup.com.br/wp-content/plugins/elementor-pro/assets/js/elements-handlers.min.js?ver=3.28.4",
+        "inline",
+        "inline",
+        "inline",
+        "https://creditoup.com.br/wp-content/plugins/wp-rocket/assets/js/lazyload/16.1/lazyload.min.js"
+      ],
+      "iframes": [
+        "https://www.googletagmanager.com/ns.html?id=GTM-KJK7QQK9"
+      ],
+      "visible_text_sample": "Saque-Aniversário do FGTS 2026: Regras, Simulação e Como Ativar\nPular para o conteúdo\nMenu\nFechar\nSobre\nExpandir\nContato\nExpandir\nDireitos e Benefícios\nExpandir\nCursos e Vagas\nExpandir\nDicas e Apps\nExpandir\nBusca\nPesquisar...\nBusca\nFechar\nSaque-Aniversário do FGTS\nRegras, prazos e simulação para 2026 — toque abaixo e veja como avaliar as vantagens ou ativar a modalidade\nComparar as Vantagens e Desvantagens\nVer o passo a passo para Ativar o Saque-Aniversário no Aplicativo\nSaque-Aniversário do FGTS\nRegras, prazos e simulação para 2026 — toque abaixo e veja como avaliar as vantagens ou ativar a modalidade\nComparar as Vantagens e Desvantagens para ver qual é o seu caso\nVer o passo a passo para Ativar o Saque-Aniversário no Aplicativo\nEntender como funciona a Antecipação do Saque-Aniversário\nComo funciona o Saque-Aniversário do FGTS em 2026: guia com o passo a passo\nMuitos trabalhadores buscam uma renda extra anual mas têm dúvidas sobre o impacto de alterar a modalidade de resgate do Fundo de Garantia. Este guia explica de forma prática como funciona o\nSaque-Aniversário do FGTS\nem 2026 para que você tome a melhor decisão financeira.\nO que é o Saque-Aniversário e por que importa agora?\nO\nSaque-Aniversário\né uma opção voluntária que permite retirar uma parte do saldo do Fundo de Garantia uma vez por ano, sempre no mês do seu nascimento.\nAo escolher essa modalidade, o trabalhador deixa de ter direito ao saque integral em caso de demissão sem justa causa, mas mantém o direito de receber a multa rescisória de\n40 %\npaga pelo empregador.\n3 pontos que você precisa saber\n1️⃣ A adesão é totalmente opcional e pode ser feita a qualquer momento diretamente pelo aplicativo gerenciado pela\nCaixa\n.\n2️⃣ Se você se arrepender da escolha, o retorno para a modalidade tradicional de rescisão exige um período de carência de\n24 meses\n.\n3️⃣ O prazo regulamentar para o trabalhador movimentar o dinheiro é de\n3 meses\n, iniciando no mês de seu aniversário.\nEntender como funciona a Antecipação do Saque-Aniversário\nQuem tem direito a essa modalidade?\nTrabalhadores com carteira assinada\nsob o regime da CLT.\nTrabalhadores domésticos, rurais e temporários\ncom contas ativas ou inativas.\nProfissionais avulsos e atletas\ncom saldo sob gestão da\nCaixa Econômica Federal\n.\nPara ter acesso, basta possuir saldo em qualquer conta do fundo e realizar a opção de forma voluntária.\nComo o valor anual é calculado pela Caixa?\nO cálculo do valor anual liberado é feito aplicando uma alíquota sobre o saldo do trabalhador, variando de\n5 %\na\n50 %\nconforme a faixa de saldo.\nPara as faixas que recebem alíquotas menores, a regra adiciona uma parcela fixa que pode chegar a\n2900.00 R$\n, paga anualmente pela\nCaixa\n.\nO trabalhador tem o direito de realizar até\n5 saques anuais\nse optar por antecipar esses valores por meio de linhas de crédito específicas.\nComo voltar para o Saque-Rescisão?\nDepende. Você pode solicitar a alteração de volta a qualquer momento, mas a mudança só surtirá efeito após o cumprimento de uma carência de\n24 meses\nregulamentada pela\nCaixa\n.\nPerco a multa de 40% se aderir ao Saque-Aniversário?\nNão. O trabalhador que opta pelo Saque-Aniversário continua tendo direito ao recebimento da multa rescisória de\n40 %\npaga pelo empregador em caso de demissão sem justa causa.\nQual é o prazo limite para retirar o dinheiro a cada ano?\nDepende do calendário da\nCaixa\n, mas o prazo padrão para realizar a movimentação dos recursos é de\n90 dias\ncorridos a partir da liberação.\nComo é calculada a parcela que tenho direito a sacar?\nDepende do saldo total que você possui nas contas do fundo. A\nCaixa\naplica uma alíquota de\n5 %\na\n50 %\ne soma uma parcela fixa de até\n2900.00 R$\n.\nQuantas parcelas anuais posso antecipar?\nDepende da instituição financeira, mas as regras vigentes permitem a contratação de até\n5 saques anuais\nde forma antecipada como garantia de crédito.\nAgora que você entende o funcionamento do Saque-Aniversário, o próximo passo é avaliar se essa modalidade faz sentido para a sua realidade financeira. Veja as opções de caminhos detalhados nos botões abaixo.\nSobre o nosso site:\nO site creditoup.com.br se reserva unicamente a trazer conteúdos informativos e notícias de interesse social.\nEm hipótese alguma o site creditoup.com.br faz qualquer tipo de pedido de dados pessoais sem respeitar a LGPD e, também, não solicita qualquer valor (compensação financeira) para mediar recebimentos de benefícios sociais.\nOs conteúdos aqui publicados são de caráter informativo e não possuem vínculo, parceria ou qualquer ligação com órgãos públicos ou entidades governamentais.\nO site é financiado por blocos de anúncios em parceria com o Google Adsense. O site creditoup.com.br não tem relação nenhuma com os anunciantes, portanto, não podemos responder por qualquer situação que aconteça fora do nosso domínio.\nO creditoup.com.br é um projeto da Volc Negocios Digitais 42.724.548/0001-24.\n2026 © Crédito Up!\nSobre Nós\nContato\nPolítica de Privacidade\nTermos\nFabio Lobo"
+    }
+  }
+}

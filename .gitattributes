@@ -1,0 +1,2 @@
+# Preserved incident evidence is byte-for-byte public HTML; do not normalize it for whitespace checks.
+docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/*.html -whitespace

@@ -1,0 +1,408 @@
+{
+  "captured_at": "2026-09-03T00:53:00.106883+00:00",
+  "source": "Google Ads API read-only attempt via /root/google-ads.yaml",
+  "raw_identifiers_versioned": false,
+  "mutate_attempted": false,
+  "available": true,
+  "notes": [],
+  "customers": [
+    {
+      "pseudonym": "CUST_001",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_002",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_003",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_004",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_005",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED",
+        "customer_state": "CUSTOMER_NOT_ENABLED_OR_DEACTIVATED"
+      }
+    },
+    {
+      "pseudonym": "CUST_006",
+      "queries": {},
+      "customer": {
+        "status": "ENABLED",
+        "descriptive_name_present": true,
+        "currency_code": "BRL",
+        "time_zone": "America/Sao_Paulo",
+        "test_account": false,
+        "auto_tagging_enabled": true
+      },
+      "matching_search_ads": []
+    },
+    {
+      "pseudonym": "CUST_007",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_008",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_009",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_010",
+      "queries": {},
+      "customer": {
+        "status": "ENABLED",
+        "descriptive_name_present": true,
+        "currency_code": "BRL",
+        "time_zone": "America/Sao_Paulo",
+        "test_account": false,
+        "auto_tagging_enabled": true
+      },
+      "matching_search_ads": [
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_001",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_001",
+          "ad_pseudonym": "CUST_010_AD_001",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://portalmundomais.com/r/pe-de-meia-2026-guia"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_002",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_002",
+          "ad_pseudonym": "CUST_010_AD_002",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://portalmundomais.com/r/senai-cursos-gratuitos-2026"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_003",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_003",
+          "ad_pseudonym": "CUST_010_AD_003",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://portalmundomais.com/r/senai-cursos-gratuitos-2026"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_004",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_004",
+          "ad_pseudonym": "CUST_010_AD_004",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://portalmundomais.com/r/pe-de-meia-2026-guia"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_005",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_005",
+          "ad_pseudonym": "CUST_010_AD_005",
+          "ad_status": "REMOVED",
+          "final_urls": [
+            "https://portalmundomais.com/r/nova-carteira-identidade-nacional-2026"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED_LIMITED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_006",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_006",
+          "ad_pseudonym": "CUST_010_AD_006",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://portalmundomais.com/r/nova-carteira-identidade-nacional-2026"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED_LIMITED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_007",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_007",
+          "ad_pseudonym": "CUST_010_AD_007",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_008",
+          "campaign_name_present": true,
+          "campaign_status": "PAUSED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_008",
+          "ad_pseudonym": "CUST_010_AD_008",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_010_CAMP_009",
+          "campaign_name_present": true,
+          "campaign_status": "REMOVED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_010_ADG_009",
+          "ad_pseudonym": "CUST_010_AD_009",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://portalmundomais.com/r/pe-de-meia?utm_source=gads&utm_campaign={campaignid}"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": false,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "UNKNOWN",
+            "review_status": "REVIEW_IN_PROGRESS"
+          }
+        }
+      ]
+    },
+    {
+      "pseudonym": "CUST_011",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_012",
+      "queries": {
+        "authorization": "USER_PERMISSION_DENIED"
+      }
+    },
+    {
+      "pseudonym": "CUST_013",
+      "queries": {},
+      "customer": {
+        "status": "SUSPENDED",
+        "descriptive_name_present": true,
+        "currency_code": "BRL",
+        "time_zone": "America/Sao_Paulo",
+        "test_account": false,
+        "auto_tagging_enabled": true
+      },
+      "matching_search_ads": [
+        {
+          "campaign_pseudonym": "CUST_013_CAMP_001",
+          "campaign_name_present": true,
+          "campaign_status": "REMOVED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_013_ADG_001",
+          "ad_pseudonym": "CUST_013_AD_001",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/fgts-saque-aniversario/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_013_CAMP_002",
+          "campaign_name_present": true,
+          "campaign_status": "ENABLED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_013_ADG_002",
+          "ad_pseudonym": "CUST_013_AD_002",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_013_CAMP_003",
+          "campaign_name_present": true,
+          "campaign_status": "REMOVED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_013_ADG_003",
+          "ad_pseudonym": "CUST_013_AD_003",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_013_CAMP_004",
+          "campaign_name_present": true,
+          "campaign_status": "ENABLED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_013_ADG_004",
+          "ad_pseudonym": "CUST_013_AD_004",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/fgts-saque-aniversario/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        },
+        {
+          "campaign_pseudonym": "CUST_013_CAMP_005",
+          "campaign_name_present": true,
+          "campaign_status": "REMOVED",
+          "channel": "SEARCH",
+          "ad_group_pseudonym": "CUST_013_ADG_005",
+          "ad_pseudonym": "CUST_013_AD_005",
+          "ad_status": "ENABLED",
+          "final_urls": [
+            "https://creditoup.com.br/r/fgts-saque-aniversario/"
+          ],
+          "final_mobile_urls": [],
+          "campaign_tracking_template_present": false,
+          "campaign_final_url_suffix_present": true,
+          "ad_tracking_template_present": false,
+          "ad_final_url_suffix_present": false,
+          "policy_summary": {
+            "approval_status": "APPROVED",
+            "review_status": "REVIEWED"
+          }
+        }
+      ]
+    }
+  ],
+  "accessible_customer_count": 13,
+  "sanitization_note": "Verbose Google Ads API errors were reduced to classification-only fields; raw customer IDs and request IDs are not stored in repository artifacts."
+}

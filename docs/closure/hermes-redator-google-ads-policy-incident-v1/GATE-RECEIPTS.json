@@ -1,0 +1,1333 @@
+{
+  "counts": {
+    "blocked": 5,
+    "ready": 0,
+    "receipts": 5
+  },
+  "external_mutation": {
+    "appeal_submitted": false,
+    "deploy": false,
+    "google_ads_mutate": false,
+    "wordpress_write": false
+  },
+  "generated_by": "scripts/auditar_landing_policy.py --evidencia",
+  "policy_source_version": "df252bc25e636d78",
+  "receipts": [
+    {
+      "blockers": [
+        {
+          "code": "AFILIACAO_GOVERNAMENTAL_IMPLICITA",
+          "evidence": {
+            "mencoes": 19
+          },
+          "message": "Sem aviso de não-vínculo, a repetição do nome do órgão faz o leitor concluir afiliação que não existe.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Unacceptable business practices",
+            "url": "https://support.google.com/adspolicy/answer/15938071"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "ALEGACAO_DE_RESULTADO_IMPROVAVEL",
+          "evidence": {
+            "trecho": "Pix : a liberação do dinheiro costuma ocorrer em poucos minutos"
+          },
+          "message": "Promessa de resultado que a página não pode garantir ao leitor.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Unreliable claims",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "ALEGACAO_DE_RESULTADO_IMPROVAVEL",
+          "evidence": {
+            "trecho": "não realizam consultas aos órgãos de proteção ao crédito como SPC e Serasa"
+          },
+          "message": "Promessa de resultado que a página não pode garantir ao leitor.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Unreliable claims",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "ALEGACAO_FINANCEIRA_SEM_DIVULGACAO",
+          "evidence": {
+            "amostra": [
+              "100%",
+              "3%",
+              "40%",
+              "R$",
+              "Saque",
+              "antecipação"
+            ],
+            "ocorrencias": 32
+          },
+          "message": "A página faz alegação financeira (valor, alíquota, prazo, crédito) e não traz a divulgação que diz de onde ela vem e o que ela não é.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Dishonest pricing practices",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "AVISO_NAO_OFICIAL_AUSENTE",
+          "evidence": {
+            "mencoes": 19,
+            "orgaos": [
+              "caixa",
+              "caixa econômica",
+              "caixa econômica federal",
+              "fgts",
+              "receita federal"
+            ]
+          },
+          "message": "A página fala de órgão/benefício público e não declara em lugar nenhum que não é canal oficial e não tem vínculo.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Other restricted businesses: Government documents and services",
+            "url": "https://support.google.com/adspolicy/answer/13156083"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "IDENTIDADE_CONTATO_AUSENTE",
+          "evidence": {
+            "contato": false,
+            "privacidade": false
+          },
+          "message": "Faltam os caminhos de contato/privacidade que identificam quem responde pela página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Unacceptable business practices",
+            "url": "https://support.google.com/adspolicy/answer/15938071"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "IDENTIDADE_OPERADOR_AUSENTE",
+          "evidence": {
+            "cnpj_observado": false,
+            "contato": false,
+            "sobre": false
+          },
+          "message": "Nenhuma identidade de operador observada: sem CNPJ e sem bloco 'sobre'+'contato' na página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Unacceptable business practices",
+            "url": "https://support.google.com/adspolicy/answer/15938071"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "MARCA_TERCEIRA_SEM_LASTRO",
+          "evidence": {
+            "marca": "Bmg"
+          },
+          "message": "A página apresenta uma marca de terceiro como canal/parceiro e não há host declarado que sustente isso. O portão não inventa parceria.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "MARCA_TERCEIRA_SEM_LASTRO",
+          "evidence": {
+            "marca": "Santander"
+          },
+          "message": "A página apresenta uma marca de terceiro como canal/parceiro e não há host declarado que sustente isso. O portão não inventa parceria.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "SCRIPT_TERCEIRO_NAO_DECLARADO",
+          "evidence": {
+            "host": "script.joinads.me",
+            "origem": "link:dns-prefetch+link:preload"
+          },
+          "message": "Script/iframe/preload de terceiro que a casa não declarou para este site.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        }
+      ],
+      "content_sha256": "0dbafa0dd1e449024a33656791ea7a1cc4261e226eb7a97b12200d6d5dcf0f07",
+      "evidence_refs": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/r-antecipacao-saque-aniversario-fgts-0dbafa0dd1e4.html"
+      ],
+      "external_mutation": {
+        "appeal_submitted": false,
+        "deploy": false,
+        "google_ads_mutate": false,
+        "wordpress_write": false
+      },
+      "gate_point": "campaign_destination_eligibility",
+      "identity_result": "observed",
+      "inventory_hashes": {
+        "claims_and_disclosures": {
+          "itens": 5,
+          "sha256": "18a043da417164c6f0aa46f84cfdd03cc84204bfb87c8ebe4ecbdd793d013769",
+          "status": "observed"
+        },
+        "content_originality_and_congruence": {
+          "itens": 4,
+          "sha256": "db37178af104538c56af4a7f5f1b26a0f4d5921456845456569fc9dcd0f2ecb1",
+          "status": "observed"
+        },
+        "destination_security_signals": {
+          "itens": 12,
+          "sha256": "ba77cbc91278954f026734436ccbb504524ec36d6f5b1c68e7242335ff417758",
+          "status": "observed"
+        },
+        "external_links": {
+          "itens": 7,
+          "sha256": "335327f006a30588c9bedc60deae36b1beefa4faa1aaaa382d8b59bc5d896368",
+          "status": "observed"
+        },
+        "forms_and_sensitive_data": {
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "absent_confirmed"
+        },
+        "government_services": {
+          "itens": 6,
+          "sha256": "5c83bca0df84aae19b07cca804190f9f1c657746c3d3526c91a062f787b37172",
+          "status": "observed"
+        },
+        "identity": {
+          "itens": 6,
+          "sha256": "b26489ae5bab11fb104f3a24ce7ca63bcfade82c1f4374cab8307705a6f151a6",
+          "status": "observed"
+        },
+        "live_drift": {
+          "detalhe": "não há hash aprovado registrado para comparar com o que está no ar",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        },
+        "redirect_and_cloaking": {
+          "detalhe": "sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        }
+      },
+      "not_ready_reasons": [
+        "bloqueio AFILIACAO_GOVERNAMENTAL_IMPLICITA: Sem aviso de não-vínculo, a repetição do nome do órgão faz o leitor concluir afiliação que não existe.",
+        "bloqueio ALEGACAO_DE_RESULTADO_IMPROVAVEL: Promessa de resultado que a página não pode garantir ao leitor.",
+        "bloqueio ALEGACAO_DE_RESULTADO_IMPROVAVEL: Promessa de resultado que a página não pode garantir ao leitor.",
+        "bloqueio ALEGACAO_FINANCEIRA_SEM_DIVULGACAO: A página faz alegação financeira (valor, alíquota, prazo, crédito) e não traz a divulgação que diz de onde ela vem e o que ela não é.",
+        "bloqueio AVISO_NAO_OFICIAL_AUSENTE: A página fala de órgão/benefício público e não declara em lugar nenhum que não é canal oficial e não tem vínculo.",
+        "bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página.",
+        "bloqueio IDENTIDADE_OPERADOR_AUSENTE: Nenhuma identidade de operador observada: sem CNPJ e sem bloco 'sobre'+'contato' na página.",
+        "bloqueio MARCA_TERCEIRA_SEM_LASTRO: A página apresenta uma marca de terceiro como canal/parceiro e não há host declarado que sustente isso. O portão não inventa parceria.",
+        "bloqueio MARCA_TERCEIRA_SEM_LASTRO: A página apresenta uma marca de terceiro como canal/parceiro e não há host declarado que sustente isso. O portão não inventa parceria.",
+        "bloqueio SCRIPT_TERCEIRO_NAO_DECLARADO: Script/iframe/preload de terceiro que a casa não declarou para este site.",
+        "desconhecido live_drift: não há hash aprovado registrado para comparar com o que está no ar",
+        "desconhecido redirect_and_cloaking: sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+      ],
+      "observations": [],
+      "observed_at": "1970-01-01T00:00:00Z",
+      "paid_destination_ready": false,
+      "policy_source_version": "df252bc25e636d78",
+      "policy_sources_consulted": [
+        "https://support.google.com/adspolicy/answer/13156083",
+        "https://support.google.com/adspolicy/answer/15938071",
+        "https://support.google.com/adspolicy/answer/15938075",
+        "https://support.google.com/adspolicy/answer/6020955",
+        "https://support.google.com/adspolicy/answer/6368661",
+        "https://support.google.com/google-ads/answer/15936970"
+      ],
+      "risks": [
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Comparar limites e caminhos para receber",
+            "caminho": "/rec/bancos-antecipar-fgts-pix-whatsapp-p2/"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
+          "message": "Nenhuma divulgação de monetização por anúncios observada.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading ad design",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+          "evidence": {
+            "construcao": "String.fromCharCode("
+          },
+          "message": "Construção de código dinâmico observada no script da página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Circumventing systems",
+            "url": "https://support.google.com/adspolicy/answer/15938075"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "SERVICE_WORKER_OU_PUSH_OBSERVADO",
+          "evidence": {
+            "sinal": "WEB_PUSH"
+          },
+          "message": "Service worker / notificação push observado no destino. Não é violação por si; é superfície de experiência que o revisor vê antes do conteúdo.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        }
+      ],
+      "role": "paid_destination",
+      "schema": "LandingPolicyGateReceipt",
+      "schema_version": "landing_policy_gate_receipt.v1",
+      "security_result": "observed",
+      "unknowns": [
+        {
+          "motivo": "não há hash aprovado registrado para comparar com o que está no ar",
+          "status": "unavailable",
+          "verificacao": "live_drift"
+        },
+        {
+          "motivo": "sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)",
+          "status": "unavailable",
+          "verificacao": "redirect_and_cloaking"
+        }
+      ],
+      "url": "https://creditoup.com.br/r/antecipacao-saque-aniversario-fgts/",
+      "verdict": "blocked"
+    },
+    {
+      "blockers": [
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.fabiolobo.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "2900.00 R$",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "40 %",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "5 %",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "5 saques anuais",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "50 %",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "90 dias",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "SCRIPT_TERCEIRO_NAO_DECLARADO",
+          "evidence": {
+            "host": "script.joinads.me",
+            "origem": "link:dns-prefetch+link:preload"
+          },
+          "message": "Script/iframe/preload de terceiro que a casa não declarou para este site.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        }
+      ],
+      "content_sha256": "4077b30e43900f88cdbf6a529527dbb0a8526897abf4b9182471e533b95e30a1",
+      "evidence_refs": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/common_mobile-4077b30e4390.html"
+      ],
+      "external_mutation": {
+        "appeal_submitted": false,
+        "deploy": false,
+        "google_ads_mutate": false,
+        "wordpress_write": false
+      },
+      "gate_point": "campaign_destination_eligibility",
+      "identity_result": "observed",
+      "inventory_hashes": {
+        "claims_and_disclosures": {
+          "itens": 5,
+          "sha256": "6c35c75a5cc610b823500f0165dbf9378ef23962a5281b8ee858d471371c878f",
+          "status": "observed"
+        },
+        "content_originality_and_congruence": {
+          "itens": 4,
+          "sha256": "1cc67f31ae5dee277707b24031c3cbce3c92b227c5d6344480c78138f2c79b84",
+          "status": "observed"
+        },
+        "destination_security_signals": {
+          "itens": 13,
+          "sha256": "98e59742e93de6fbe87ba8c6234542683d0efbb71d2634a69be908331a482275",
+          "status": "observed"
+        },
+        "external_links": {
+          "itens": 24,
+          "sha256": "c9df3d0f596e19267aa89c605499bff266216b35f7a37f991f569c23f3ed4529",
+          "status": "observed"
+        },
+        "forms_and_sensitive_data": {
+          "itens": 1,
+          "sha256": "778f09a20bf29e867d5073b656129cfceca74532ec9fafa583feaa748a5522b3",
+          "status": "observed"
+        },
+        "government_services": {
+          "detalhe": "aviso de não-vínculo observado",
+          "itens": 4,
+          "sha256": "38285e9f171b6622dd50d732d3eac5ab20a31ba1b52aadc8e85a9b725bf0305e",
+          "status": "observed"
+        },
+        "identity": {
+          "itens": 6,
+          "sha256": "717589ebc1c458827e1768d864accbbc5fd31c6ab1a0dc04580f126e232d9196",
+          "status": "observed"
+        },
+        "live_drift": {
+          "detalhe": "não há hash aprovado registrado para comparar com o que está no ar",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        },
+        "redirect_and_cloaking": {
+          "itens": 4,
+          "sha256": "8bbaec7765ac096e24c54b9c25e3c0a5bb239e5fc3473eecefe71f3c7334d072",
+          "status": "observed"
+        }
+      },
+      "not_ready_reasons": [
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio SCRIPT_TERCEIRO_NAO_DECLARADO: Script/iframe/preload de terceiro que a casa não declarou para este site.",
+        "desconhecido live_drift: não há hash aprovado registrado para comparar com o que está no ar"
+      ],
+      "observations": [],
+      "observed_at": "1970-01-01T00:00:00Z",
+      "paid_destination_ready": false,
+      "policy_source_version": "df252bc25e636d78",
+      "policy_sources_consulted": [
+        "https://support.google.com/adspolicy/answer/13156083",
+        "https://support.google.com/adspolicy/answer/15938071",
+        "https://support.google.com/adspolicy/answer/15938075",
+        "https://support.google.com/adspolicy/answer/6020955",
+        "https://support.google.com/adspolicy/answer/6368661",
+        "https://support.google.com/google-ads/answer/15936970"
+      ],
+      "risks": [
+        {
+          "code": "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+          "evidence": {
+            "construcao": "String.fromCharCode("
+          },
+          "message": "Construção de código dinâmico observada no script da página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Circumventing systems",
+            "url": "https://support.google.com/adspolicy/answer/15938075"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "SERVICE_WORKER_OU_PUSH_OBSERVADO",
+          "evidence": {
+            "sinal": "WEB_PUSH"
+          },
+          "message": "Service worker / notificação push observado no destino. Não é violação por si; é superfície de experiência que o revisor vê antes do conteúdo.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "VALOR_MONETARIO_MALFORMADO",
+          "evidence": {
+            "trecho": "2900.00 R$"
+          },
+          "message": "Valor monetário fora do formato pt-BR — vazamento de máquina em texto que o leitor lê como número oficial.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Unreliable claims",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "risk"
+        }
+      ],
+      "role": "paid_destination",
+      "schema": "LandingPolicyGateReceipt",
+      "schema_version": "landing_policy_gate_receipt.v1",
+      "security_result": "observed",
+      "unknowns": [
+        {
+          "motivo": "não há hash aprovado registrado para comparar com o que está no ar",
+          "status": "unavailable",
+          "verificacao": "live_drift"
+        }
+      ],
+      "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "verdict": "blocked"
+    },
+    {
+      "blockers": [
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.fabiolobo.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "2900.00 R$",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "40 %",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "5 %",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "5 saques anuais",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "50 %",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_GOVERNO_COM_ANCORA_DE_VALOR",
+          "evidence": {
+            "ancora": "90 dias",
+            "host": "www.caixa.gov.br"
+          },
+          "message": "Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Misleading representation",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "SCRIPT_TERCEIRO_NAO_DECLARADO",
+          "evidence": {
+            "host": "script.joinads.me",
+            "origem": "link:dns-prefetch+link:preload"
+          },
+          "message": "Script/iframe/preload de terceiro que a casa não declarou para este site.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        }
+      ],
+      "content_sha256": "7c674d1d7daf896eb7992f9e61f8d8b598b6a28c9acaaeeb29037be6958dcd59",
+      "evidence_refs": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/common_desktop-7c674d1d7daf.html",
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/googlebot-7c674d1d7daf.html"
+      ],
+      "external_mutation": {
+        "appeal_submitted": false,
+        "deploy": false,
+        "google_ads_mutate": false,
+        "wordpress_write": false
+      },
+      "gate_point": "campaign_destination_eligibility",
+      "identity_result": "observed",
+      "inventory_hashes": {
+        "claims_and_disclosures": {
+          "itens": 5,
+          "sha256": "6c35c75a5cc610b823500f0165dbf9378ef23962a5281b8ee858d471371c878f",
+          "status": "observed"
+        },
+        "content_originality_and_congruence": {
+          "itens": 4,
+          "sha256": "1cc67f31ae5dee277707b24031c3cbce3c92b227c5d6344480c78138f2c79b84",
+          "status": "observed"
+        },
+        "destination_security_signals": {
+          "itens": 13,
+          "sha256": "98e59742e93de6fbe87ba8c6234542683d0efbb71d2634a69be908331a482275",
+          "status": "observed"
+        },
+        "external_links": {
+          "itens": 24,
+          "sha256": "c9df3d0f596e19267aa89c605499bff266216b35f7a37f991f569c23f3ed4529",
+          "status": "observed"
+        },
+        "forms_and_sensitive_data": {
+          "itens": 1,
+          "sha256": "778f09a20bf29e867d5073b656129cfceca74532ec9fafa583feaa748a5522b3",
+          "status": "observed"
+        },
+        "government_services": {
+          "detalhe": "aviso de não-vínculo observado",
+          "itens": 4,
+          "sha256": "38285e9f171b6622dd50d732d3eac5ab20a31ba1b52aadc8e85a9b725bf0305e",
+          "status": "observed"
+        },
+        "identity": {
+          "itens": 6,
+          "sha256": "717589ebc1c458827e1768d864accbbc5fd31c6ab1a0dc04580f126e232d9196",
+          "status": "observed"
+        },
+        "live_drift": {
+          "detalhe": "não há hash aprovado registrado para comparar com o que está no ar",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        },
+        "redirect_and_cloaking": {
+          "itens": 4,
+          "sha256": "8bbaec7765ac096e24c54b9c25e3c0a5bb239e5fc3473eecefe71f3c7334d072",
+          "status": "observed"
+        }
+      },
+      "not_ready_reasons": [
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio LINK_GOVERNO_COM_ANCORA_DE_VALOR: Link para site de governo com âncora que é só um valor. O leitor lê o número como se fosse dado do órgão, e a página não é do órgão.",
+        "bloqueio SCRIPT_TERCEIRO_NAO_DECLARADO: Script/iframe/preload de terceiro que a casa não declarou para este site.",
+        "desconhecido live_drift: não há hash aprovado registrado para comparar com o que está no ar"
+      ],
+      "observations": [],
+      "observed_at": "1970-01-01T00:00:00Z",
+      "paid_destination_ready": false,
+      "policy_source_version": "df252bc25e636d78",
+      "policy_sources_consulted": [
+        "https://support.google.com/adspolicy/answer/13156083",
+        "https://support.google.com/adspolicy/answer/15938071",
+        "https://support.google.com/adspolicy/answer/15938075",
+        "https://support.google.com/adspolicy/answer/6020955",
+        "https://support.google.com/adspolicy/answer/6368661",
+        "https://support.google.com/google-ads/answer/15936970"
+      ],
+      "risks": [
+        {
+          "code": "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+          "evidence": {
+            "construcao": "String.fromCharCode("
+          },
+          "message": "Construção de código dinâmico observada no script da página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Circumventing systems",
+            "url": "https://support.google.com/adspolicy/answer/15938075"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "SERVICE_WORKER_OU_PUSH_OBSERVADO",
+          "evidence": {
+            "sinal": "WEB_PUSH"
+          },
+          "message": "Service worker / notificação push observado no destino. Não é violação por si; é superfície de experiência que o revisor vê antes do conteúdo.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "VALOR_MONETARIO_MALFORMADO",
+          "evidence": {
+            "trecho": "2900.00 R$"
+          },
+          "message": "Valor monetário fora do formato pt-BR — vazamento de máquina em texto que o leitor lê como número oficial.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Misrepresentation — Unreliable claims",
+            "url": "https://support.google.com/adspolicy/answer/6020955"
+          },
+          "severity": "risk"
+        }
+      ],
+      "role": "paid_destination",
+      "schema": "LandingPolicyGateReceipt",
+      "schema_version": "landing_policy_gate_receipt.v1",
+      "security_result": "observed",
+      "unknowns": [
+        {
+          "motivo": "não há hash aprovado registrado para comparar com o que está no ar",
+          "status": "unavailable",
+          "verificacao": "live_drift"
+        }
+      ],
+      "url": "https://creditoup.com.br/r/fgts-saque-aniversario/",
+      "verdict": "blocked"
+    },
+    {
+      "blockers": [
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "pagseguro.uol.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.fabiolobo.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.infinitepay.io"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.mercadopago.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.ton.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "SCRIPT_TERCEIRO_NAO_DECLARADO",
+          "evidence": {
+            "host": "script.joinads.me",
+            "origem": "link:dns-prefetch+link:preload"
+          },
+          "message": "Script/iframe/preload de terceiro que a casa não declarou para este site.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        }
+      ],
+      "content_sha256": "c1cfcab72d7a4450a427a4c15c2817a61fb62bd86b16f73f25f0f2e8f91d9f64",
+      "evidence_refs": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/r-maquininha-de-cartao-menor-taxa-c1cfcab72d7a.html"
+      ],
+      "external_mutation": {
+        "appeal_submitted": false,
+        "deploy": false,
+        "google_ads_mutate": false,
+        "wordpress_write": false
+      },
+      "gate_point": "campaign_destination_eligibility",
+      "identity_result": "observed",
+      "inventory_hashes": {
+        "claims_and_disclosures": {
+          "itens": 5,
+          "sha256": "475a1837582566fcb89c3b2eae08958eaa97f18972713f5667f59af25520646a",
+          "status": "observed"
+        },
+        "content_originality_and_congruence": {
+          "itens": 4,
+          "sha256": "00cd020568e613acadc9f8a864e35d0b39393db1fe59455104776b0eb8ebc5a1",
+          "status": "observed"
+        },
+        "destination_security_signals": {
+          "itens": 13,
+          "sha256": "98e59742e93de6fbe87ba8c6234542683d0efbb71d2634a69be908331a482275",
+          "status": "observed"
+        },
+        "external_links": {
+          "itens": 23,
+          "sha256": "1f91149077544b20f5928ad082bbe70ae65e16915855da868d92fd289a5409d8",
+          "status": "observed"
+        },
+        "forms_and_sensitive_data": {
+          "itens": 1,
+          "sha256": "778f09a20bf29e867d5073b656129cfceca74532ec9fafa583feaa748a5522b3",
+          "status": "observed"
+        },
+        "government_services": {
+          "detalhe": "aviso de não-vínculo observado",
+          "itens": 2,
+          "sha256": "e9f940b93a56f931d4ef98919fe5d1bea37c334be73ad8b4df9d49fa60775290",
+          "status": "observed"
+        },
+        "identity": {
+          "itens": 6,
+          "sha256": "717589ebc1c458827e1768d864accbbc5fd31c6ab1a0dc04580f126e232d9196",
+          "status": "observed"
+        },
+        "live_drift": {
+          "detalhe": "não há hash aprovado registrado para comparar com o que está no ar",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        },
+        "redirect_and_cloaking": {
+          "detalhe": "sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        }
+      },
+      "not_ready_reasons": [
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio SCRIPT_TERCEIRO_NAO_DECLARADO: Script/iframe/preload de terceiro que a casa não declarou para este site.",
+        "desconhecido live_drift: não há hash aprovado registrado para comparar com o que está no ar",
+        "desconhecido redirect_and_cloaking: sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+      ],
+      "observations": [],
+      "observed_at": "1970-01-01T00:00:00Z",
+      "paid_destination_ready": false,
+      "policy_source_version": "df252bc25e636d78",
+      "policy_sources_consulted": [
+        "https://support.google.com/adspolicy/answer/13156083",
+        "https://support.google.com/adspolicy/answer/15938071",
+        "https://support.google.com/adspolicy/answer/15938075",
+        "https://support.google.com/adspolicy/answer/6020955",
+        "https://support.google.com/adspolicy/answer/6368661",
+        "https://support.google.com/google-ads/answer/15936970"
+      ],
+      "risks": [
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Ver opções baratas e sem aluguel para MEI",
+            "caminho": "/rec/melhor-maquininha-para-mei-p2"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+          "evidence": {
+            "construcao": "String.fromCharCode("
+          },
+          "message": "Construção de código dinâmico observada no script da página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Circumventing systems",
+            "url": "https://support.google.com/adspolicy/answer/15938075"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "SERVICE_WORKER_OU_PUSH_OBSERVADO",
+          "evidence": {
+            "sinal": "WEB_PUSH"
+          },
+          "message": "Service worker / notificação push observado no destino. Não é violação por si; é superfície de experiência que o revisor vê antes do conteúdo.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        }
+      ],
+      "role": "paid_destination",
+      "schema": "LandingPolicyGateReceipt",
+      "schema_version": "landing_policy_gate_receipt.v1",
+      "security_result": "observed",
+      "unknowns": [
+        {
+          "motivo": "não há hash aprovado registrado para comparar com o que está no ar",
+          "status": "unavailable",
+          "verificacao": "live_drift"
+        },
+        {
+          "motivo": "sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)",
+          "status": "unavailable",
+          "verificacao": "redirect_and_cloaking"
+        }
+      ],
+      "url": "https://creditoup.com.br/r/maquininha-de-cartao-menor-taxa/",
+      "verdict": "blocked"
+    },
+    {
+      "blockers": [
+        {
+          "code": "LINK_EXTERNO_NAO_CLASSIFICADO",
+          "evidence": {
+            "em_botao": false,
+            "host": "www.fabiolobo.com.br"
+          },
+          "message": "Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "SCRIPT_TERCEIRO_NAO_DECLARADO",
+          "evidence": {
+            "host": "script.joinads.me",
+            "origem": "link:dns-prefetch+link:preload"
+          },
+          "message": "Script/iframe/preload de terceiro que a casa não declarou para este site.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "blocker"
+        },
+        {
+          "code": "SERVICO_GOVERNAMENTAL_RESTRITO",
+          "evidence": {
+            "documentos": [
+              "carteira de identidade",
+              "cin",
+              "cnh",
+              "cpf",
+              "identidade nacional",
+              "passaporte"
+            ]
+          },
+          "message": "A página oferece aquisição de documento/serviço de governo. Isso é restrito a governo certificado ou provedor autorizado — e autorização é link a partir de site oficial de governo, não contrato comercial.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Other restricted businesses: Government documents and services",
+            "url": "https://support.google.com/adspolicy/answer/13156083"
+          },
+          "severity": "blocker"
+        }
+      ],
+      "content_sha256": "7e0f296129e5ffa8dbcc67dc0580b32b85ebb32c85d1aba15b622d4f64b04b04",
+      "evidence_refs": [
+        "docs/closure/hermes-redator-google-ads-policy-incident-v1/evidence-public/r-nova-carteira-identidade-nacional-2026-7e0f296129e5.html"
+      ],
+      "external_mutation": {
+        "appeal_submitted": false,
+        "deploy": false,
+        "google_ads_mutate": false,
+        "wordpress_write": false
+      },
+      "gate_point": "campaign_destination_eligibility",
+      "identity_result": "observed",
+      "inventory_hashes": {
+        "claims_and_disclosures": {
+          "itens": 5,
+          "sha256": "73b4f97607d1672ace2f99cecb6f9bc65dd8857598be36d392282ab3e0c25a4d",
+          "status": "observed"
+        },
+        "content_originality_and_congruence": {
+          "itens": 4,
+          "sha256": "d3e1d1f5223ad4d0df47c82c9f4979c3c131258073beeb002500e2fd61fc68a8",
+          "status": "observed"
+        },
+        "destination_security_signals": {
+          "itens": 13,
+          "sha256": "98e59742e93de6fbe87ba8c6234542683d0efbb71d2634a69be908331a482275",
+          "status": "observed"
+        },
+        "external_links": {
+          "itens": 17,
+          "sha256": "f999be7fd57f3613c53a9e88bb55024a174cbbbfb1eec9536a85873f6c0a9671",
+          "status": "observed"
+        },
+        "forms_and_sensitive_data": {
+          "itens": 1,
+          "sha256": "778f09a20bf29e867d5073b656129cfceca74532ec9fafa583feaa748a5522b3",
+          "status": "observed"
+        },
+        "government_services": {
+          "detalhe": "aviso de não-vínculo observado",
+          "itens": 8,
+          "sha256": "dd0948ae4706b512eddeb43571d14f2fe273b10ba8e0aa844862c7f6f9093543",
+          "status": "observed"
+        },
+        "identity": {
+          "itens": 6,
+          "sha256": "717589ebc1c458827e1768d864accbbc5fd31c6ab1a0dc04580f126e232d9196",
+          "status": "observed"
+        },
+        "live_drift": {
+          "detalhe": "não há hash aprovado registrado para comparar com o que está no ar",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        },
+        "redirect_and_cloaking": {
+          "detalhe": "sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)",
+          "itens": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "status": "unavailable"
+        }
+      },
+      "not_ready_reasons": [
+        "bloqueio LINK_EXTERNO_NAO_CLASSIFICADO: Host externo sem evidência declarada. Sem lastro, o portão não classifica — e o que não classifica não aprova.",
+        "bloqueio SCRIPT_TERCEIRO_NAO_DECLARADO: Script/iframe/preload de terceiro que a casa não declarou para este site.",
+        "bloqueio SERVICO_GOVERNAMENTAL_RESTRITO: A página oferece aquisição de documento/serviço de governo. Isso é restrito a governo certificado ou provedor autorizado — e autorização é link a partir de site oficial de governo, não contrato comercial.",
+        "desconhecido live_drift: não há hash aprovado registrado para comparar com o que está no ar",
+        "desconhecido redirect_and_cloaking: sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+      ],
+      "observations": [],
+      "observed_at": "1970-01-01T00:00:00Z",
+      "paid_destination_ready": false,
+      "policy_source_version": "df252bc25e636d78",
+      "policy_sources_consulted": [
+        "https://support.google.com/adspolicy/answer/13156083",
+        "https://support.google.com/adspolicy/answer/15938071",
+        "https://support.google.com/adspolicy/answer/15938075",
+        "https://support.google.com/adspolicy/answer/6020955",
+        "https://support.google.com/adspolicy/answer/6368661",
+        "https://support.google.com/google-ads/answer/15936970"
+      ],
+      "risks": [
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Descobrir se estou no grupo obrigatório",
+            "caminho": "/rec/quem-deve-fazer-nova-identidade"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Não quero ter problemas com meu CPF",
+            "caminho": "/rec/quem-deve-fazer-nova-identidade"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Quero ver a lista de documentos exigidos ➔",
+            "caminho": "/rec/quem-deve-fazer-nova-identidade"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Quero ver se preciso trocar meu RG agora",
+            "caminho": "/rec/quem-deve-fazer-nova-identidade"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Veja os documentos obrigatórios",
+            "caminho": "/rec/quem-deve-fazer-nova-identidade"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "ANCORA_INCONGRUENTE_COM_DESTINO",
+          "evidence": {
+            "ancora": "Ver os 2 documentos que preciso separar",
+            "caminho": "/rec/quem-deve-fazer-nova-identidade"
+          },
+          "message": "O texto do link promete um assunto que o caminho do destino não contém.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination mismatch",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "OFUSCACAO_DE_SCRIPT_OBSERVADA",
+          "evidence": {
+            "construcao": "String.fromCharCode("
+          },
+          "message": "Construção de código dinâmico observada no script da página.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Circumventing systems",
+            "url": "https://support.google.com/adspolicy/answer/15938075"
+          },
+          "severity": "risk"
+        },
+        {
+          "code": "SERVICE_WORKER_OU_PUSH_OBSERVADO",
+          "evidence": {
+            "sinal": "WEB_PUSH"
+          },
+          "message": "Service worker / notificação push observado no destino. Não é violação por si; é superfície de experiência que o revisor vê antes do conteúdo.",
+          "policy": {
+            "consulted_at": "2026-09-03",
+            "policy": "Destination requirements — Destination experience",
+            "url": "https://support.google.com/adspolicy/answer/6368661"
+          },
+          "severity": "risk"
+        }
+      ],
+      "role": "paid_destination",
+      "schema": "LandingPolicyGateReceipt",
+      "schema_version": "landing_policy_gate_receipt.v1",
+      "security_result": "observed",
+      "unknowns": [
+        {
+          "motivo": "não há hash aprovado registrado para comparar com o que está no ar",
+          "status": "unavailable",
+          "verificacao": "live_drift"
+        },
+        {
+          "motivo": "sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)",
+          "status": "unavailable",
+          "verificacao": "redirect_and_cloaking"
+        }
+      ],
+      "url": "https://creditoup.com.br/r/nova-carteira-identidade-nacional-2026/",
+      "verdict": "blocked"
+    }
+  ],
+  "schema": "LandingPolicyGateReceipts.v1",
+  "source": "preserved public HTML only — no live read in this mode"
+}
