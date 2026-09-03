@@ -2,7 +2,7 @@
   "task": "P10-T17",
   "rpc": "public.volc_registrar_gads_campanha_dia(jsonb)",
   "runner": "scripts/provar-concorrencia-v12_04.py",
-  "synchronization": "advisory locks + barrier triggers; not sleep-only",
+  "synchronization": "advisory locks + barrier triggers; case E waits on pg_locks classid 120405 before releasing A's barrier",
   "red": {
     "image": "postgres:16-alpine",
     "server_version": "16.14",
@@ -25,7 +25,7 @@
       "N": "FAIL — D0 overwrite; superior NULL lost"
     }
   },
-  "green": [
+  "green_a_n": [
     {
       "image": "postgres:16-alpine",
       "server_version": "16.14",
@@ -43,13 +43,53 @@
       "duration_s": 41.8
     }
   ],
+  "green_a_q": [
+    {
+      "image": "postgres:16-alpine",
+      "server_version": "16.14",
+      "repeat_toctou": 3,
+      "passed": 17,
+      "failed": 0,
+      "duration_s": 59.9,
+      "lock_wait_e": {
+        "classid": 120405,
+        "hashtext": 451675352,
+        "holders": 1,
+        "waiters": 1,
+        "objsubid": 2,
+        "holder_application_name": "a",
+        "waiter_application_name": "b",
+        "observed_before_releasing_barrier": true
+      }
+    },
+    {
+      "image": "postgres:15-alpine",
+      "server_version": "15.19",
+      "repeat_toctou": 2,
+      "passed": 17,
+      "failed": 0,
+      "duration_s": 52.4,
+      "lock_wait_e": {
+        "classid": 120405,
+        "hashtext": 451675352,
+        "holders": 1,
+        "waiters": 1,
+        "objsubid": 2,
+        "observed_before_releasing_barrier": true
+      }
+    }
+  ],
   "invariants": {
     "precedence": "D0=1 < D-1=2 < backfill=3; tie-break greater colhida_em",
-    "idempotency": "same key+payload → one receipt, same execucao_id, one repetida",
+    "idempotency": "same key+payload: A holds 120405, B is seen waiting on that classid/objid, then one receipt, same execucao_id, one repetida=false and one true, no 23505",
     "divergent_key": "named CHAVE_REUTILIZADA_CONTEUDO_DIVERGENTE; no partial from loser",
+    "total_tie_identical": "same precedence + same colhida_em + identical persistable content: first-writer stays, other receipt preterida",
+    "total_tie_divergent": "any persistable divergence: FATO_EMPATE_CONTEUDO_DIVERGENTE, no partial",
+    "isolation": "only READ COMMITTED; others raise ISOLAMENTO_NAO_SUPORTADO_V12_04 before locks",
     "identity": "customer_id + campaign_id + metric_date + segments_hash",
-    "close_after_write": "fechamento waits on execucao_chave xact lock",
+    "close_after_write": "fechamento waits on execucao_chave xact lock 120404 after taking its own 120405",
     "null_vs_zero": "NULL remains NULL; measured zero remains 0",
-    "no_global_lock": "distinct facts complete while another row is gated"
+    "no_global_lock": "distinct facts complete while another row is gated",
+    "lock_order": "always 120405 then 120404"
   }
 }
