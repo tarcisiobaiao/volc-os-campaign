@@ -20,6 +20,7 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 LOCK_NS = 120417  # namespace exclusivo do runner (não colide com 120404/120405 da RPC)
 LOCK_TOCTOU = 12
 LOCK_LEDGER = 13
+RPC_LOCK_IDEMP = 120405
 
 SHA = "a" * 64
 
@@ -112,6 +113,41 @@ def linha(**patch: Any) -> dict[str, Any]:
         "conversoes": 2,
         "ctr": 0.0291,
     }
+    base.update(patch)
+    return base
+
+
+def linha_empate(campaign_id: str, **patch: Any) -> dict[str, Any]:
+    """Fato persistível completo para empate total (não o subconjunto Hermes)."""
+    base = linha(
+        campaign_id=campaign_id,
+        colhida_em="2026-08-31T09:00:00Z",
+        campaign_name="Maquininha",
+        campaign_status="ENABLED",
+        advertising_channel_type="SEARCH",
+        impressoes=11,
+        cliques=2,
+        interacoes=2,
+        custo_micros=1000,
+        conversoes=1,
+        todas_conversoes=1,
+        valor_conversoes=10,
+        valor_todas_conversoes=10,
+        ctr=0.1,
+        cpc_medio_micros=500,
+        custo_por_conversao_micros=1000,
+        search_impression_share=0.5,
+        search_budget_lost_impression_share=0.1,
+        search_rank_lost_impression_share=0.2,
+        search_top_impression_share=0.3,
+        search_absolute_top_impression_share=0.05,
+        search_click_share=0.4,
+        search_exact_match_impression_share=0.6,
+        top_impression_percentage=0.7,
+        absolute_top_impression_percentage=0.2,
+        segmentos={"device": "MOBILE"},
+        metricas_extras={"origem_api": "search"},
+    )
     base.update(patch)
     return base
 
@@ -288,6 +324,40 @@ def wait_advisory_waiter(cluster: Cluster, objid: int, timeout: float = 12.0) ->
     raise Falhou(f"ninguém esperou o advisory lock ({LOCK_NS},{objid}) em {timeout}s")
 
 
+def wait_idemp_waiter(cluster: Cluster, chave: str, timeout: float = 12.0) -> dict[str, Any]:
+    """Espera B aparecer em pg_locks como waiter do advisory 120405 da chave."""
+    lit = "'" + chave.replace("'", "''") + "'"
+    sql = (
+        "SELECT json_build_object("
+        " 'holders', count(*) FILTER (WHERE l.granted),"
+        " 'waiters', count(*) FILTER (WHERE NOT l.granted),"
+        " 'classid', 120405,"
+        " 'objid', min(l.objid),"
+        " 'hashtext', hashtext('v12_04:idemp:' || " + lit + "),"
+        " 'locks', coalesce(json_agg(json_build_object("
+        "    'pid', l.pid, 'granted', l.granted, 'objsubid', l.objsubid,"
+        "    'application_name', a.application_name"
+        "  ) ORDER BY l.granted DESC, l.pid), '[]'::json)"
+        ") "
+        "FROM pg_locks l "
+        "LEFT JOIN pg_stat_activity a ON a.pid = l.pid "
+        "WHERE l.locktype = 'advisory' AND l.classid = 120405 "
+        "AND l.objid = hashtext('v12_04:idemp:' || " + lit + ")::oid "
+        "AND l.objsubid IN (1, 2)"
+    )
+    deadline = time.time() + timeout
+    last: dict[str, Any] = {}
+    while time.time() < deadline:
+        raw = cluster.q(sql) or "{}"
+        last = json.loads(raw)
+        if int(last.get("holders") or 0) >= 1 and int(last.get("waiters") or 0) >= 1:
+            return last
+        time.sleep(0.03)
+    raise Falhou(
+        f"B não esperou o advisory classid={RPC_LOCK_IDEMP} da chave {chave!r}: {last}"
+    )
+
+
 def out_rows(cluster: Cluster) -> list[dict[str, Any]]:
     raw = cluster.q(
         "SELECT coalesce(json_agg(json_build_object("
@@ -313,7 +383,8 @@ def fato(cluster: Cluster, campaign_id: str, customer_id: str = "8017851692") ->
     raw = cluster.q(
         "SELECT row_to_json(t) FROM ("
         "SELECT customer_id, campaign_id, origem_janela, precedencia, colhida_em, "
-        "impressoes, cliques, conversoes, execucao_id "
+        "impressoes, cliques, conversoes, execucao_id, campaign_name, "
+        "search_click_share, metricas_extras "
         f"FROM public.google_ads_campanha_dia "
         f"WHERE campaign_id = '{campaign_id}' AND customer_id = '{customer_id}'"
         ") t"
@@ -560,23 +631,59 @@ def _parallel_rpc(cluster: Cluster, a: dict[str, Any], b: dict[str, Any],
 
 
 def case_e(cluster: Cluster) -> None:
+    """A toma 120405 e para no INSERT; B é observado em pg_locks esperando 120405."""
     cid = "1710000005"
+    chave = "E-same|1"
     payload = doc(
-        chave_idempotencia="E-same|1",
+        chave_idempotencia=chave,
         execucao_chave="E-same",
         linhas=[linha(campaign_id=cid, impressoes=11)],
     )
-    rows = _parallel_rpc(cluster, payload, json.loads(json.dumps(payload)))
+    reset_data(cluster)
+    holder = LockHolder(cluster)
+    bucket: dict[str, Any] = {}
+    try:
+        holder.hold(LOCK_NS, LOCK_TOCTOU)
+        t_a = spawn_worker(
+            cluster, worker_sql("a", payload, hold_origem="D-1"), bucket, "a"
+        )
+        wait_advisory_waiter(cluster, LOCK_TOCTOU)
+        t_b = spawn_worker(
+            cluster,
+            worker_sql("b", json.loads(json.dumps(payload))),
+            bucket,
+            "b",
+        )
+        evidencia = wait_idemp_waiter(cluster, chave)
+        if not t_b.is_alive():
+            raise Falhou(
+                f"B concluiu antes da sobreposição no lock 120405: {evidencia} bucket={bucket}"
+            )
+        print("          EVIDENCIA_E=" + json.dumps(evidencia, ensure_ascii=False, sort_keys=True))
+        holder.release(LOCK_NS, LOCK_TOCTOU)
+        t_a.join(timeout=20)
+        t_b.join(timeout=20)
+        if t_a.is_alive() or t_b.is_alive():
+            raise Falhou(f"worker travou depois da barreira: bucket={bucket}")
+    finally:
+        holder.close()
+    rows = out_by_who(out_rows(cluster))
+    for key, val in bucket.items():
+        blob = (val.get("stdout") or "") + (val.get("stderr") or "")
+        if "23505" in blob:
+            raise Falhou(f"{key} expôs 23505 no cliente: {val}")
     oks = [r for r in rows.values() if r["ok"]]
     if len(oks) != 2:
         raise Falhou(f"as duas chamadas idênticas devem concluir: {rows}")
+    if any(r.get("sqlstate") == "23505" for r in rows.values()):
+        raise Falhou(f"23505 exposto: {rows}")
     execs = {r["payload"]["execucao_id"] for r in oks}
     if len(execs) != 1:
         raise Falhou(f"execucao_id divergiu: {execs}")
     repetidas = sorted(bool(r["payload"].get("repetida")) for r in oks)
     if repetidas != [False, True]:
         raise Falhou(f"esperado uma aplicada e uma repetida: {rows}")
-    if n_recibos(cluster, chave_idempotencia="E-same|1") != 1:
+    if n_recibos(cluster, chave_idempotencia=chave) != 1:
         raise Falhou("recibo duplicado")
     if n_fatos(cluster, campaign_id=cid) != 1:
         raise Falhou("fato duplicado")
@@ -898,12 +1005,159 @@ def case_n(cluster: Cluster) -> None:
         raise Falhou(f"NULL/zero não preservados: fato={f} raw={raw!r} parts={parts}")
 
 
+def case_o(cluster: Cluster) -> None:
+    """Empate total de conteúdo idêntico: first-writer permanece, a outra é preterida."""
+    cid = "1710000016"
+    corpo = linha_empate(cid)
+    gated = doc(
+        chave_idempotencia="O-a|1",
+        execucao_chave="O-a",
+        origem_janela="D-1",
+        linhas=[corpo],
+    )
+    first = doc(
+        chave_idempotencia="O-b|1",
+        execucao_chave="O-b",
+        origem_janela="D-1",
+        linhas=[json.loads(json.dumps(corpo))],
+    )
+    result = run_toctou(
+        cluster, inferior=gated, superior=first, hold_origem="D-1",
+        campaign_id=cid, expect_origem="D-1", expect_impressoes=11,
+    )
+    inf = result["out"]["inferior"]
+    sup = result["out"]["superior"]
+    if inf["ok"] is not True or sup["ok"] is not True:
+        raise Falhou(f"empate idêntico deve gravar dois recibos coerentes: {result['out']}")
+    if any(r.get("sqlstate") == "23505" for r in result["out"].values()):
+        raise Falhou(f"23505 no empate idêntico: {result['out']}")
+    if int(sup["payload"].get("linhas_aceitas") or 0) != 1:
+        raise Falhou(f"first-writer deveria aceitar: {sup}")
+    if int(inf["payload"].get("linhas_preteridas") or 0) != 1:
+        raise Falhou(f"segunda execução deveria ser preterida: {inf}")
+    if int(inf["payload"].get("linhas_aceitas") or 0) != 0:
+        raise Falhou(f"segunda execução não pode aceitar: {inf}")
+    f = result["fato"]
+    if f.get("execucao_id") != sup["payload"]["execucao_id"]:
+        raise Falhou(f"first-writer não permaneceu: fato={f} first={sup}")
+    if f.get("campaign_name") != "Maquininha":
+        raise Falhou(f"conteúdo idêntico foi alterado: {f}")
+    if n_recibos(cluster, chave_idempotencia="O-a|1") != 1:
+        raise Falhou("recibo do perdedor idêntico ausente")
+    if n_recibos(cluster, chave_idempotencia="O-b|1") != 1:
+        raise Falhou("recibo do first-writer ausente")
+    if n_fatos(cluster, campaign_id=cid) != 1:
+        raise Falhou("fato duplicado no empate idêntico")
+
+
+def case_p(cluster: Cluster) -> None:
+    """Empate total com conteúdo persistível divergente: recusa nominal, sem parcial."""
+    cid = "1710000017"
+    canonico = linha_empate(cid)
+    divergente = linha_empate(
+        cid,
+        campaign_name="Outra",
+        search_click_share=0.99,
+        metricas_extras={"origem_api": "search", "nota": 2},
+    )
+    gated = doc(
+        chave_idempotencia="P-div|1",
+        execucao_chave="P-div",
+        origem_janela="D-1",
+        linhas=[divergente],
+    )
+    first = doc(
+        chave_idempotencia="P-win|1",
+        execucao_chave="P-win",
+        origem_janela="D-1",
+        linhas=[canonico],
+    )
+    result = run_toctou(
+        cluster, inferior=gated, superior=first, hold_origem="D-1",
+        campaign_id=cid, expect_origem="D-1", expect_impressoes=11,
+    )
+    inf = result["out"]["inferior"]
+    sup = result["out"]["superior"]
+    if sup["ok"] is not True:
+        raise Falhou(f"first-writer deveria persistir: {sup}")
+    if inf["ok"] is not False:
+        raise Falhou(f"divergente deveria recusar: {inf}")
+    msg = json.dumps(inf.get("payload") or {}, ensure_ascii=False)
+    if "FATO_EMPATE_CONTEUDO_DIVERGENTE" not in msg:
+        raise Falhou(f"recusa precisa ser FATO_EMPATE_CONTEUDO_DIVERGENTE, não {inf}")
+    if inf.get("sqlstate") == "23505":
+        raise Falhou(f"23505 no empate divergente: {inf}")
+    if n_recibos(cluster, chave_idempotencia="P-div|1") != 0:
+        raise Falhou("perdedor divergente deixou recibo")
+    if n_recibos(cluster, chave_idempotencia="P-win|1") != 1:
+        raise Falhou("first-writer sem recibo")
+    if n_fatos(cluster, campaign_id=cid) != 1:
+        raise Falhou("fato duplicado ou órfão no empate divergente")
+    f = result["fato"]
+    if f.get("campaign_name") != "Maquininha":
+        raise Falhou(f"versão parcial do perdedor sobreviveu: {f}")
+    extras = f.get("metricas_extras") or {}
+    if extras.get("nota") is not None:
+        raise Falhou(f"metricas_extras do perdedor vazaram: {f}")
+    share = f.get("search_click_share")
+    if share is not None and abs(float(share) - 0.4) > 0.0001:
+        raise Falhou(f"share do perdedor vazou: {f}")
+
+
+def case_q(cluster: Cluster) -> None:
+    """Isolamento diferente de READ COMMITTED é recusado com nome, sem persistir."""
+    cid = "1710000018"
+    reset_data(cluster)
+
+    def recusa(who: str, level: str, chave: str) -> None:
+        payload = doc(
+            chave_idempotencia=chave,
+            execucao_chave=who,
+            linhas=[linha(campaign_id=cid, impressoes=1)],
+        )
+        sql = worker_sql(
+            who,
+            payload,
+            extra_pre=f"BEGIN;\nSET TRANSACTION ISOLATION LEVEL {level};",
+            extra_post="COMMIT;",
+        )
+        r = cluster.psql(sql, timeout=20)
+        if r.returncode != 0:
+            raise Falhou(f"{who} quebrou o psql: {r.stderr}")
+        row = out_by_who(out_rows(cluster)).get(who) or {}
+        if row.get("ok") is not False:
+            raise Falhou(f"{level} deveria ser recusado: {row}")
+        msg = json.dumps(row.get("payload") or {}, ensure_ascii=False)
+        if "ISOLAMENTO_NAO_SUPORTADO_V12_04" not in msg:
+            raise Falhou(f"{level} sem erro nominal: {row}")
+        if n_fatos(cluster, campaign_id=cid) != 0:
+            raise Falhou(f"{level} persistiu fato")
+        if n_recibos(cluster, chave_idempotencia=chave) != 0:
+            raise Falhou(f"{level} persistiu recibo")
+
+    recusa("rr", "REPEATABLE READ", "Q-rr|1")
+    recusa("sr", "SERIALIZABLE", "Q-sr|1")
+    rc = doc(
+        chave_idempotencia="Q-rc|1",
+        execucao_chave="Q-rc",
+        linhas=[linha(campaign_id=cid, impressoes=1)],
+    )
+    r = cluster.psql(worker_sql("rc", rc), timeout=20)
+    if r.returncode != 0:
+        raise Falhou(f"READ COMMITTED quebrou o psql: {r.stderr}")
+    row = out_by_who(out_rows(cluster)).get("rc") or {}
+    if row.get("ok") is not True:
+        raise Falhou(f"READ COMMITTED deveria passar: {row}")
+    if n_fatos(cluster, campaign_id=cid) != 1:
+        raise Falhou("READ COMMITTED não persistiu o fato de controle")
+
+
 CASES = [
     ("A", "D0 vs D-1: D-1 vence independente da ordem de commit", case_a),
     ("B", "D-1 vs backfill: backfill vence independente da ordem de commit", case_b),
     ("C", "mesma precedência: maior colhida_em vence", case_c),
     ("D", "inferior iniciada antes e commitada depois não rebaixa", case_d),
-    ("E", "mesma chave + mesmo payload: um recibo, mesmo execucao_id, repetida", case_e),
+    ("E", "mesma chave: espera 120405, um recibo, repetida true/false", case_e),
     ("F", "mesma chave + payload divergente: uma aceita, outra recusa nominal", case_f),
     ("G", "duas chaves no mesmo slot de lote: uma vence, sem órfão", case_g),
     ("H", "duas execuções no mesmo fato: recibo condiz com o que persistiu", case_h),
@@ -913,6 +1167,9 @@ CASES = [
     ("L", "fatos distintos não serializam a tabela", case_l),
     ("M", "repetição controlada sem deadlock", lambda c: case_m(c, 3)),
     ("N", "NULL continua NULL; zero medido continua zero", case_n),
+    ("O", "empate total idêntico: first-writer permanece, outra preterida", case_o),
+    ("P", "empate total divergente: FATO_EMPATE_CONTEUDO_DIVERGENTE, sem parcial", case_p),
+    ("Q", "isolamento ≠ READ COMMITTED recusa ISOLAMENTO_NAO_SUPORTADO_V12_04", case_q),
 ]
 
 
@@ -936,7 +1193,7 @@ def main() -> int:
         for code, titulo, fn in CASES:
             if wanted and code not in wanted:
                 continue
-            repeats = args.repeat_toctou if code in {"A", "B", "C", "D", "H", "N"} else 1
+            repeats = args.repeat_toctou if code in {"A", "B", "C", "D", "H", "N", "O", "P"} else 1
             if code == "M":
                 repeats = 1
             try:

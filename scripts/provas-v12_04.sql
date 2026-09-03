@@ -674,6 +674,88 @@ select pg_temp.tenta('CP-24e tipo de lote desconhecido é recusado',
     'tipo_lote','qualquer','linhas','[]'::jsonb
   )), false, 'TIPO_LOTE_INVALIDO');
 
+-- Isolamento: a RPC recusa tudo que não seja READ COMMITTED.
+begin;
+set transaction isolation level repeatable read;
+select pg_temp.tenta('CP-25a REPEATABLE READ é recusado com nome',
+  pg_temp.doc(jsonb_build_object(
+    'chave_idempotencia','cp25a|1','execucao_chave','cp25a',
+    'linhas', jsonb_build_array(pg_temp.linha(jsonb_build_object(
+      'campaign_id','8800000001')))
+  )), false, 'ISOLAMENTO_NAO_SUPORTADO_V12_04');
+rollback;
+
+begin;
+set transaction isolation level serializable;
+select pg_temp.tenta('CP-25b SERIALIZABLE é recusado com nome',
+  pg_temp.doc(jsonb_build_object(
+    'chave_idempotencia','cp25b|1','execucao_chave','cp25b',
+    'linhas', jsonb_build_array(pg_temp.linha(jsonb_build_object(
+      'campaign_id','8800000001')))
+  )), false, 'ISOLAMENTO_NAO_SUPORTADO_V12_04');
+rollback;
+
+select pg_temp.afirma('CP-25c recusa de isolamento não persistiu fato nem recibo',
+  (select count(*) from public.google_ads_campanha_dia
+    where campaign_id = '8800000001') = 0
+  and (select count(*) from public.trafego_coleta_execucao
+        where chave_idempotencia in ('cp25a|1','cp25b|1')) = 0);
+
+-- Empate total: mesma precedência, mesmo colhida_em, mesmo fato canônico.
+select pg_temp.tenta('CP-26a first-writer do empate idêntico',
+  pg_temp.doc(jsonb_build_object(
+    'chave_idempotencia','cp26a|1','execucao_chave','cp26a',
+    'linhas', jsonb_build_array(pg_temp.linha(jsonb_build_object(
+      'campaign_id','8800000002',
+      'colhida_em','2026-08-31T09:00:00Z',
+      'campaign_name','Maquininha',
+      'search_click_share', 0.58,
+      'metricas_extras', '{"origem_api":"search"}'::jsonb)))
+  )), true);
+
+select pg_temp.tenta('CP-26b segunda execução idêntica deixa recibo preterido',
+  pg_temp.doc(jsonb_build_object(
+    'chave_idempotencia','cp26b|1','execucao_chave','cp26b',
+    'linhas', jsonb_build_array(pg_temp.linha(jsonb_build_object(
+      'campaign_id','8800000002',
+      'colhida_em','2026-08-31T09:00:00Z',
+      'campaign_name','Maquininha',
+      'search_click_share', 0.58,
+      'metricas_extras', '{"origem_api":"search"}'::jsonb)))
+  )), true);
+
+select pg_temp.afirma('CP-26c first-writer permanece no fato',
+  (select campaign_name = 'Maquininha'
+          and execucao_id = public.volc_gads_uuid_da_chave('cp26a|1')
+          and search_click_share = 0.58
+          and metricas_extras->>'origem_api' = 'search'
+     from public.google_ads_campanha_dia where campaign_id = '8800000002'));
+
+select pg_temp.afirma('CP-26d o segundo recibo é preterido, não repetida nem aceita',
+  (select linhas_preteridas = 1 and linhas_aceitas = 0 and linhas_rejeitadas = 0
+     from public.trafego_coleta_execucao where chave_idempotencia = 'cp26b|1'));
+
+select pg_temp.tenta('CP-26e empate com conteúdo persistível divergente é recusado',
+  pg_temp.doc(jsonb_build_object(
+    'chave_idempotencia','cp26e|1','execucao_chave','cp26e',
+    'linhas', jsonb_build_array(pg_temp.linha(jsonb_build_object(
+      'campaign_id','8800000002',
+      'colhida_em','2026-08-31T09:00:00Z',
+      'campaign_name','Outra',
+      'search_click_share', 0.10,
+      'metricas_extras', '{"origem_api":"search","nota":2}'::jsonb)))
+  )), false, 'FATO_EMPATE_CONTEUDO_DIVERGENTE');
+
+select pg_temp.afirma('CP-26f recusa divergente não deixou versão parcial',
+  (select campaign_name = 'Maquininha'
+          and search_click_share = 0.58
+          and metricas_extras->>'origem_api' = 'search'
+          and metricas_extras ? 'nota' is not true
+          and execucao_id = public.volc_gads_uuid_da_chave('cp26a|1')
+     from public.google_ads_campanha_dia where campaign_id = '8800000002')
+  and (select count(*) from public.trafego_coleta_execucao
+        where chave_idempotencia = 'cp26e|1') = 0);
+
 -- Fato órfão não sobrevive ao COMMIT: a FK é DEFERRABLE, não ausente.
 do $$
 declare falhou boolean := false;
