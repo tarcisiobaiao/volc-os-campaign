@@ -165,12 +165,27 @@ def test_meta_nao_declara_nem_leitura():
 
 
 def test_recusa_de_canal_sem_construtor_diz_o_que_existe():
-    """A diferença entre "não deu certo" e uma recusa que ensina."""
+    """A diferença entre "não deu certo" e uma recusa que ensina.
+
+    ⚠️ Esta prova exigia a palavra "exceção" na recusa de Performance Max, e
+    com isso fixava uma afirmação FALSA: o engine não levanta exceção ao
+    planejar PMax — `perfil.PERFORMANCE_MAX` referencia `pmax.planejar`, e o
+    que falta é o registro no executor. Um teste que fixa a redação de um erro
+    passa a defender o erro.
+
+    O que a recusa precisa ensinar são duas coisas, e são elas que ficam
+    fixadas aqui: onde o operador PODE criar hoje, e qual é o impedimento
+    nomeado — não a mecânica interna com que ele é aplicado.
+    """
     with pytest.raises(ValueError) as exc:
         plat.exigir_construtor(plat.GOOGLE_ADS, "PERFORMANCE_MAX")
     mensagem = str(exc.value)
     assert "Search" in mensagem, "a recusa não diz o que existe"
-    assert "exceção" in mensagem or "excecao" in mensagem
+    assert "executor" in mensagem, (
+        "a recusa não nomeia o impedimento. Sem ele o operador não sabe se "
+        "falta código ou falta autorização — e as duas se resolvem com "
+        "pessoas diferentes."
+    )
 
     with pytest.raises(ValueError) as exc2:
         plat.exigir_construtor(plat.GOOGLE_ADS, "TIKTOK")
@@ -370,3 +385,105 @@ def test_o_canal_do_meta_nao_polui_o_vocabulario_do_google():
     a conta respondeu.
     """
     assert plat.META.canal not in dom.VOCABULARIO_DE_CANAL
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. O MANIFESTO NÃO PODE NEGAR O QUE O PERFIL DECLARA
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Esta seção existe por um defeito medido: até 03/09/2026 o manifesto de
+# Performance Max viajava para o navegador dizendo
+#
+#     "não há construtor de campanha para Performance Max — o engine levanta
+#      exceção."
+#
+# e o MESMO payload trazia os portões que dizem que o canal planeja e que a
+# criação está retida por decisão. As duas frases não podiam ser verdade juntas,
+# e a que o operador lia primeiro era a falsa.
+#
+# A distinção não é acadêmica: "não há construtor" manda a pessoa procurar quem
+# escreve o engine; "está fora do executor por decisão" manda a pessoa procurar
+# quem tomou a decisão. Errar a frase manda o operador à porta errada.
+
+
+def _canais_com_planejador() -> set:
+    """Canais cujo `PerfilDeCanal` referencia um planejador, lidos por AST.
+
+    AST e não import: `test_o_manifesto_nao_importa_o_engine` proíbe o
+    manifesto de importar `volc_ads`, e uma prova que precisasse do import
+    afrouxaria justamente o limite que ela deveria defender.
+    """
+    fonte = (RAIZ / "volc_ads" / "campanha" / "perfil.py").read_text(encoding="utf-8")
+    arvore = ast.parse(fonte)
+    achados = set()
+    for no in ast.walk(arvore):
+        if not isinstance(no, ast.Assign) or not isinstance(no.value, ast.Call):
+            continue
+        if getattr(no.value.func, "id", None) != "PerfilDeCanal":
+            continue
+        campos = {kw.arg: kw.value for kw in no.value.keywords}
+        planejador = campos.get("planejador")
+        # `planejador=None` é ausência declarada; qualquer outra coisa é um
+        # planejador de verdade.
+        if planejador is None or (
+            isinstance(planejador, ast.Constant) and planejador.value is None
+        ):
+            continue
+        alvo = no.targets[0]
+        if isinstance(alvo, ast.Name):
+            achados.add(alvo.id)
+    return achados
+
+
+#: Frases que afirmam ausência de CÓDIGO. Nenhuma delas pode descrever um canal
+#: que tem planejador — ali a ausência é de AUTORIZAÇÃO, e são coisas diferentes.
+NEGACOES_DE_CODIGO = (
+    "não há construtor",
+    "levanta exceção",
+    "não existe construtor",
+    "sem construtor",
+)
+
+
+def test_o_manifesto_nao_nega_construtor_de_canal_que_planeja():
+    """Um canal com planejador não pode ser descrito como código ausente.
+
+    Contraprova: se alguém reintroduzir "o engine levanta exceção" no manifesto
+    de Performance Max, este teste falha nomeando a frase — porque
+    `perfil.PERFORMANCE_MAX` continua referenciando `pmax.planejar`.
+    """
+    com_planejador = _canais_com_planejador()
+    assert "PERFORMANCE_MAX" in com_planejador, (
+        "perfil.PERFORMANCE_MAX perdeu o planejador. Se isso foi intencional, "
+        "esta prova precisa mudar junto — mas o manifesto também precisa."
+    )
+
+    for m in plat.manifestos_de(plat.GOOGLE_ADS):
+        if m.canal not in com_planejador:
+            continue
+        texto = " ".join(m.indisponibilidades).lower()
+        for frase in NEGACOES_DE_CODIGO:
+            assert frase not in texto, (
+                f"o manifesto de {m.canal} afirma ausência de código "
+                f"({frase!r}), mas `perfil.{m.canal}` declara um planejador. "
+                "A retenção deste canal é uma decisão registrada, e dizer que "
+                "o código não existe manda o operador à porta errada."
+            )
+
+
+def test_pmax_declara_a_retencao_como_decisao_e_nao_como_falta():
+    """A frase que substituiu a mentira precisa dizer QUAL é o impedimento.
+
+    Trocar um texto falso por um vago seria o mesmo defeito com outra roupa: um
+    botão cinza sem origem. O manifesto tem de nomear o executor.
+    """
+    texto = " ".join(plat.PERFORMANCE_MAX.indisponibilidades).lower()
+    assert "executor" in texto, (
+        "o manifesto de PMax precisa nomear o registro do executor como o "
+        "impedimento — é o que `plano.PMAX_FORA_DO_EXECUTOR` registra."
+    )
+    assert "criar" in texto and "validate_only" in texto, (
+        "as duas indisponibilidades de PMax são distintas (criar e provar) e "
+        "precisam aparecer separadas: elas se desbloqueiam pela mesma mudança, "
+        "mas o operador pergunta por uma de cada vez."
+    )

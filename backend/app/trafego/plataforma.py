@@ -439,10 +439,31 @@ PERFORMANCE_MAX = ManifestoDeCanal(
     rotulo="Performance Max",
     hierarquia=(CAMPANHA, ASSET_GROUP, ASSET),
     capacidades=(LER,),
+    #: ⚠️ Esta lista descreve o que Performance Max NÃO faz, e ela já mentiu.
+    #:
+    #: A redação anterior dizia "não há construtor de campanha para Performance
+    #: Max — o engine levanta exceção". Era falso nos dois termos, e chegava ao
+    #: navegador contradizendo os portões do MESMO payload: `volc_ads/campanha/
+    #: pmax.py` monta o grafo inteiro e serializa os protos v25, e
+    #: `perfil.PERFORMANCE_MAX` o referencia em `planejador=pmax.planejar` com
+    #: `acoes_permitidas=("inventariar", "planejar")`. O canal PLANEJA.
+    #:
+    #: O que ele não faz é entrar no registro do executor, e isso é uma DECISÃO
+    #: registrada — `plano.PMAX_FORA_DO_EXECUTOR` —, não uma ausência de código.
+    #: A diferença importa para o operador: ausência de código se resolve
+    #: escrevendo código; decisão registrada se resolve com quem a tomou.
+    #:
+    #: O texto abaixo é o mesmo fato que `perfil.PERFORMANCE_MAX
+    #: .acoes_indisponiveis` já declarava — dito aqui porque é ESTE manifesto
+    #: que viaja para a tela.
     indisponibilidades=(
-        "não há construtor de campanha para Performance Max — o engine levanta "
-        "exceção. O canal existe no inventário porque a conta pode ter "
-        "campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+        "criar: Performance Max não está no registro do executor. O builder "
+        "monta e serializa o plano offline; o que falta é uma decisão de "
+        "produto, não o construtor. O canal existe no inventário porque a "
+        "conta pode ter campanhas dele, e escondê-las seria mentir sobre o "
+        "que está gastando.",
+        "provar por validate_only: a prova externa exige o canal habilitado no "
+        "executor — mudança coordenada em subir.py, backend e plataforma.py.",
     ),
 )
 
