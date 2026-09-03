@@ -376,8 +376,14 @@ def test_cp12_cta_externo_e_cta_incongruente_bloqueiam():
     assert LINK_PAGO in achados
     assert "BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO" in achados
 
+    # ⚠️ A METADE "INCONGRUENTE" É RISCO, NÃO BLOQUEIO — e a demoção é o conserto
+    # de um falso bloqueio medido: no papel estrito ela reprovava CTA interno
+    # banal ("Simule agora" → /rec/calculadora-do-saque/), porque um CTA bom diz
+    # o que o leitor GANHA, não onde ele vai. A metade que importa da contraprova
+    # 12 — CTA EXTERNO — continua bloqueando, por dois códigos, acima.
     incongruente = '<p><a href="https://exemplo.com.br/r/maquininha-de-cartao/">consultar o saldo do FGTS</a></p>'
-    assert "ANCORA_INCONGRUENTE_COM_DESTINO" in pago(montar(incongruente))
+    av = elegibilidade_de_destino_de_campanha(montar(incongruente))
+    assert "ANCORA_INCONGRUENTE_COM_DESTINO" in {a.codigo for a in av.riscos}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -487,7 +493,13 @@ def test_cp16_recibo_de_versao_antiga_nao_e_reaproveitado_em_silencio():
 
 
 def test_cp16b_recibo_vencido_e_recibo_ausente_sao_defeitos_diferentes():
-    vencido = recibo_valido(observed_at_epoch=AGORA - JANELA_DE_FRESCOR_PADRAO_S - 1)
+    # A janela é sobre a OBSERVAÇÃO AO VIVO. Um recibo de artefato carimba
+    # quando o CONTEÚDO foi aprovado, e esse fato não envelhece — aplicar a
+    # janela a ele deixava uma LP publicada permanentemente inelegível, sem
+    # nenhuma rota que reemitisse o recibo. Ver `test_rc17`.
+    vencido = recibo_valido(
+        observed_at_epoch=AGORA - JANELA_DE_FRESCOR_PADRAO_S - 1, fingerprint_scope="live"
+    )
     assert "RECIBO_DE_APROVACAO_VENCIDO" in pago(montar(recibo_de_aprovacao=vencido))
     assert "RECIBO_DE_APROVACAO_AUSENTE" in pago(montar(recibo_de_aprovacao=None))
 
@@ -518,8 +530,32 @@ def test_cp16d_recibo_de_outra_pagina_nao_aprova_esta():
     Sem esta amarra a aprovação vira credencial transferível: bastava passar o
     recibo de uma página limpa junto com o HTML de outra. Também medido.
     """
-    de_outra = recibo_valido(content_fingerprint="deadbeef" * 8)
+    # `fingerprint_scope` precisa BATER para a comparação fazer sentido: o recibo
+    # do portão 2 carimba o ARTEFATO, e a barreira 3 observa a página AO VIVO
+    # (o artefato dentro do tema). Comparar entre escopos reprovava 100% das
+    # páginas corretas — ver `test_rc16`.
+    de_outra = recibo_valido(content_fingerprint="deadbeef" * 8, fingerprint_scope="live")
     assert "RECIBO_DE_OUTRO_CONTEUDO" in pago(montar(recibo_de_aprovacao=de_outra))
+
+
+def test_rc16_recibo_do_artefato_nao_e_comparado_com_a_pagina_ao_vivo():
+    """⚠️ A BARREIRA 3 NUNCA PODIA FICAR VERDE, e isso foi medido ponta a ponta.
+
+    O recibo do portão 2 carimba a impressão do ARTEFATO — o corpo que o motor
+    produziu. O portão 3 observa a página AO VIVO, que é esse artefato DENTRO do
+    tema do WordPress: cabeçalho, menu, rodapé institucional, slots de anúncio.
+    São dois documentos diferentes por construção, e as impressões nunca vão
+    bater. A amarra sem escopo emitia `RECIBO_DE_OUTRO_CONTEUDO` em toda página
+    correta.
+
+    A proteção continua valendo DENTRO do mesmo escopo — é o teste acima.
+    """
+    do_artefato = recibo_valido(
+        content_fingerprint="deadbeef" * 8, fingerprint_scope="artifact"
+    )
+    av = elegibilidade_de_destino_de_campanha(montar(recibo_de_aprovacao=do_artefato))
+    assert "RECIBO_DE_OUTRO_CONTEUDO" not in {a.codigo for a in av.bloqueios}
+    assert av.paid_destination_ready is True
 
 
 @pytest.mark.parametrize("status", [404, 410, 500, 503])
@@ -1126,3 +1162,24 @@ def test_rc15_identidade_num_documento_parcial_e_inobservavel_nao_ausente():
     campanha = elegibilidade_de_destino_de_campanha(ao_vivo)
     assert campanha.paid_destination_ready is False
     assert "identity" in {d["verificacao"] for d in campanha.desconhecidos}
+
+
+def test_rc17_recibo_do_artefato_nao_vence_com_a_janela_da_leitura_ao_vivo():
+    """⚠️ PUBLICAR HOJE E SUBIR DEPOIS DE AMANHÃ ERA IMPOSSÍVEL, PARA SEMPRE.
+
+    `observed_at_epoch` é carimbado UMA vez, no instante da publicação, e
+    nenhuma rota reemite o recibo: `/publicar/{page}` recusa página já
+    publicada, `/reler-wp` só copia o dict, `/reconciliar` só relê o disco.
+    Aplicar a janela de 24 h ao recibo do ARTEFATO deixava a LP publicada
+    permanentemente inelegível como destino de campanha.
+
+    O que envelhece é a leitura da página no ar — e a barreira 3 faz uma leitura
+    NOVA a cada chamada, então ela é fresca por construção. Carimbo no FUTURO
+    continua reprovando em qualquer escopo: isso não é idade, é inconsistência.
+    """
+    velho_artefato = recibo_valido(
+        observed_at_epoch=AGORA - 30 * 86_400, fingerprint_scope="artifact"
+    )
+    assert "RECIBO_DE_APROVACAO_VENCIDO" not in pago(montar(recibo_de_aprovacao=velho_artefato))
+    do_futuro = recibo_valido(observed_at_epoch=AGORA + 86_400, fingerprint_scope="artifact")
+    assert "RECIBO_DE_APROVACAO_VENCIDO" in pago(montar(recibo_de_aprovacao=do_futuro))

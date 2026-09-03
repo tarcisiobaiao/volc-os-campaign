@@ -206,6 +206,22 @@ def _recibo_de_aprovacao(html: str = HTML_DO_DESTINO) -> dict:
         "observed_at_epoch": _time.time() - 60,
         "content_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
         "content_fingerprint": _impressao_canonica(html),
+        # ⚠️ `live`, e o escopo decide se a deriva é mensurável.
+        #
+        # O recibo do portão 2 impressiona o ARTEFATO — o corpo que o motor
+        # escreveu. A barreira 3 lê a página no ar, que é esse corpo DENTRO do
+        # tema do WordPress. Comparar entre escopos acusava `DERIVA_AO_VIVO` em
+        # toda página real; não comparar deixa `live_drift` inconclusiva, e
+        # inconclusiva no ponto de campanha REPROVA.
+        #
+        # Estes arquivos exercitam o LEDGER e o CANÁRIO, não a deriva: eles
+        # precisam de um destino conforme para chegar ao ato que estão medindo.
+        # Um recibo `live` é o que uma reauditoria ao vivo produz.
+        #
+        # ⚠️ E NADA EM PRODUÇÃO EMITE UM RECIBO `live` HOJE. Está declarado em
+        # REMAINING-RISKS.md §6: é fail-closed (nenhum destino fica elegível),
+        # portanto seguro, e é uma parada operacional real.
+        "fingerprint_scope": "live",
         "paid_destination_ready": True,
     }
 

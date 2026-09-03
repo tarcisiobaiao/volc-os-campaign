@@ -2604,8 +2604,34 @@ def _pagina_do_destino(url: str, leituras: dict[str, dict[str, Any]], *,
         cabecalhos=dict(principal.get("headers") or {}),
         variantes_sha256=variantes,
         sha256_observado=str(principal.get("sha256") or "") or None,
-        sha256_aprovado=str((recibo or {}).get("content_sha256") or "") or None,
-        impressao_aprovada=str((recibo or {}).get("content_fingerprint") or "") or None,
+        # ⚠️ SÓ UM RECIBO DE ESCOPO `live` SERVE COMO LADO ESQUERDO DA DERIVA.
+        #
+        # O recibo do portão 2 impressiona o ARTEFATO — o corpo que o motor
+        # escreveu. A leitura aqui é a página no ar: o mesmo corpo DENTRO do
+        # tema do WordPress, com cabeçalho, menu, rodapé e slots de anúncio.
+        # São dois documentos diferentes por construção.
+        #
+        # Medido antes desta linha: comparar os dois emitia `DERIVA_AO_VIVO` em
+        # 100% das páginas reais. O `/provar` retinha o selo sempre e o `/subir`
+        # devolvia 409 sempre — nenhuma página jamais viraria destino de
+        # campanha. O próprio motor escreve o aviso contra isso na linha em que
+        # grava o recibo, e esta função fazia exatamente o que o aviso proíbe.
+        #
+        # Enquanto não existir um recibo carimbado SOBRE a leitura ao vivo, a
+        # deriva é honestamente inobservável — e `live_drift` está em
+        # `NAO_APLICAVEL_E_DESCONHECIDO_EM`, então essa ausência REPROVA a
+        # elegibilidade em vez de liberá-la em silêncio. É fail-closed, não
+        # isenção.
+        sha256_aprovado=(
+            str((recibo or {}).get("content_sha256") or "") or None
+            if str((recibo or {}).get("fingerprint_scope") or "artifact") == "live"
+            else None
+        ),
+        impressao_aprovada=(
+            str((recibo or {}).get("content_fingerprint") or "") or None
+            if str((recibo or {}).get("fingerprint_scope") or "artifact") == "live"
+            else None
+        ),
         recibo_de_aprovacao=recibo,
         avaliado_em_epoch=agora,
         # ⚠️ A JANELA É A DO CONTRATO, NUNCA A QUE O RECIBO DECLARA.

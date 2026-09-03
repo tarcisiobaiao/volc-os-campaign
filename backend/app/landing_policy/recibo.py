@@ -42,6 +42,7 @@ def emitir(
     fontes: dict[str, Any] | None = None,
     referencias_de_evidencia: list[str] | None = None,
     impressao_do_conteudo: str | None = None,
+    escopo_da_impressao: str = "artifact",
     carimbo_epoch: float | None = None,
     janela_de_frescor_s: int | None = None,
     papel_declarado: str = "",
@@ -89,6 +90,13 @@ def emitir(
         # A projeção estrutural: é ela que decide deriva, e o byte acima é a
         # evidência de igualdade. Ver `varredura.impressao_canonica`.
         "content_fingerprint": impressao_do_conteudo,
+        # ⚠️ DE QUE DOCUMENTO É ESSA IMPRESSÃO.
+        #
+        # "artifact" = o corpo que o motor produziu. "live" = a página que o
+        # WordPress serve, com o tema em volta. São documentos diferentes por
+        # construção, e comparar entre escopos reprovava 100% das páginas
+        # corretas. `varrer_recibo` só compara quando os escopos batem.
+        "fingerprint_scope": escopo_da_impressao,
         "observed_at": carimbo,
         # ⚠️ O CARIMBO COMPARÁVEL, ao lado do carimbo legível.
         #

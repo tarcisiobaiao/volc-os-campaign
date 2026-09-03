@@ -43,7 +43,7 @@ import html as _html
 import re
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from app.landing_policy.contrato import PapelDestino, PontoDePortao
 from app.landing_policy.portao import Avaliacao, avaliar, papel_do_servidor
@@ -223,7 +223,13 @@ def pagina_do_plano(plano: PlanoDaPagina, *, base_do_site: str = "") -> PaginaOb
         cnpj_esperado=plano.cnpj_esperado or (str(ident.get("cnpj")) if ident.get("cnpj") else None),
         promessa_do_anuncio=plano.promessa_do_anuncio,
         fontes_de_pesquisa=tuple(plano.fontes_de_pesquisa),
-        hosts_declarados=tuple(plano.fontes_de_pesquisa),
+        # ⚠️ HOST, não URL. `classificar_host` compara host com host; passar a
+        # URL inteira fazia `fonte_declarada` ser inalcançável pelo caminho do
+        # plano — toda fonte de pesquisa caía em `terceiro_desconhecido`.
+        hosts_declarados=tuple(
+            sorted({h for h in (urlparse(f).netloc.lower().split("@")[-1].split(":")[0]
+                                for f in plano.fontes_de_pesquisa if f) if h})
+        ),
         papel_declarado=plano.papel_pedido or plano.papel_do_motor,
     )
 

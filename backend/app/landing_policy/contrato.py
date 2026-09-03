@@ -369,10 +369,6 @@ _BLOQUEIA_NO_PAGO = frozenset({
     # monetizada deixa o leitor sem como separar conteúdo de anúncio.
     # Contraprova 7.
     "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
-    # `ANCORA_INCONGRUENTE_COM_DESTINO`: CTA que promete um assunto e leva a
-    # outro é a divergência anúncio↔destino, no menor tamanho possível.
-    # Contraprova 12.
-    "ANCORA_INCONGRUENTE_COM_DESTINO",
 })
 
 #: Códigos que são risco em toda parte — sinal real, mas não prova de violação.
@@ -383,6 +379,20 @@ _BLOQUEIA_NO_PAGO = frozenset({
 #: detectados e nunca reprovavam nada — que é a forma educada de um portão dizer
 #: "eu vi e deixei passar".
 _RISCO_SEMPRE = frozenset({
+    # ⚠️ `ANCORA_INCONGRUENTE_COM_DESTINO` FOI PROMOVIDO E DEPOIS DEVOLVIDO AQUI.
+    #
+    # A promoção durou uma revisão. Medido no papel estrito, ele reprovava CTA
+    # interno banal: "Simule agora" → /rec/calculadora-do-saque/, "Continuar" →
+    # /rec/regras-do-fgts/, "Leia mais" → qualquer coisa. A regra exige
+    # interseção de tokens entre a âncora e o caminho, e um CTA bom quase nunca
+    # repete o slug — ele diz o que o leitor GANHA, não onde ele vai.
+    #
+    # A contraprova 12 do briefing continua coberta pela metade que importa:
+    # CTA EXTERNO cai em `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` e
+    # `BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO`, os dois bloqueios. A metade
+    # "incongruente" é heurística textual, e heurística textual que reprova
+    # é como um portão perde a autoridade que precisa ter nos outros 41 códigos.
+    "ANCORA_INCONGRUENTE_COM_DESTINO",
     "REDIRECIONAMENTO_OBSERVADO",
     "SERVICE_WORKER_OU_PUSH_OBSERVADO",
     "OFUSCACAO_DE_SCRIPT_OBSERVADA",

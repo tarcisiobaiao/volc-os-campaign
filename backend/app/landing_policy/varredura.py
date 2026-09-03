@@ -596,8 +596,17 @@ _ROTULOS_PRIVACIDADE = ("privacidade", "privacy", "termos", "terms")
 #: qualificação — e é também a coisa mais fácil de um gerador de texto inventar.
 #: O `s?` do plural não é detalhe: "somos licenciados pelo Banco Central" é a
 #: forma mais natural da frase, e a versão sem plural não a pegava.
+#: ⚠️ EXIGE PRIMEIRA PESSOA, e a exigência é o conserto de um falso bloqueio.
+#:
+#: A regra é sobre a página AFIRMAR ter credencial. A versão anterior casava
+#: qualquer ocorrência do adjetivo, então ela acusava ORIENTAÇÃO AO CONSUMIDOR —
+#: "o consignado só pode ser feito por bancos autorizados pelo Banco Central",
+#: "procure sempre um correspondente bancário credenciado". São exatamente as
+#: frases que uma página honesta escreve, e ela reprovava por escrevê-las.
 _CREDENCIAL_RE = re.compile(
-    r"(?i)\b(licenciad[oa]s?|credenciad[oa]s?|autorizad[oa]s?\s+pel[oa]|parceir[oa]s?\s+oficia(l|is)|"
+    r"(?i)\b(somos|s[ãa]o|est?amos|sou|nossa\s+empresa\s+[ée]|este\s+(site|portal)\s+[ée])\s+"
+    r"(uma\s+|um\s+|os\s+|as\s+)?"
+    r"(licenciad[oa]s?|credenciad[oa]s?|autorizad[oa]s?\s+pel[oa]|parceir[oa]s?\s+oficia(l|is)|"
     r"correspondentes?\s+banc[áa]ri[oa]s?|representantes?\s+oficia(l|is)|conveniad[oa]s?)\b"
 )
 _NAO_AFILIACAO_RE = re.compile(
@@ -636,7 +645,16 @@ def _marcas_sem_lastro(texto: str, hosts_declarados: set[str]) -> list[str]:
     """
     achados: list[str] = []
     for trecho in _MOLDURA_DE_PARCERIA_RE.finditer(texto):
+        # ⚠️ O SUBSTANTIVO QUE ABRE A MOLDURA NÃO É A MARCA.
+        #
+        # `_MOLDURA_DE_PARCERIA_RE` inclui "Bancos como", "Empresas como" no
+        # `group(0)`, e `_NOME_PROPRIO_RE` colhia "Empresas" como marca de
+        # terceiro. Medido: "Empresas como a sua podem ser afetadas" reprovava a
+        # página por `MARCA_TERCEIRA_SEM_LASTRO`. A marca é o que vem DEPOIS da
+        # moldura, nunca a moldura.
         corpo = trecho.group(0)
+        abertura = trecho.group(1) or ""
+        corpo = corpo[len(abertura):] if corpo.startswith(abertura) else corpo
         for nome in _NOME_PROPRIO_RE.findall(corpo):
             if nome in _NAO_SAO_MARCAS:
                 continue
@@ -1286,13 +1304,24 @@ _OFICIALIZANTE_RE = re.compile(
     r"(?i)("
     r"liberad[oa]s?\s+pel[oa]\s+(governo|caixa|inss|receita|minist[ée]rio)"
     r"|(governo|caixa|inss|receita\s+federal|minist[ée]rio)\s+liber(a|ou|ado)"
-    r"|(site|portal|canal|p[áa]gina|consulta|sistema)\s+oficial"
+    # "consulte o canal oficial" é ORIENTAÇÃO, e é literalmente a divulgação que
+    # o contrato exige. O que acusa é a página DIZER que é o canal oficial.
+    r"|\b(este|esse|nosso|somos\s+o)\s+(site|portal|canal|p[áa]gina|sistema)\s+oficial"
+    r"|\b(site|portal|canal|sistema)\s+oficial\s+d[oae]s?\s+"
+    r"(governo|caixa|inss|receita|minist[ée]rio|fgts)"
     # ⚠️ "Portal do INSS" não casava. A regra pedia a palavra "oficial", e a
     # forma mais direta de se apresentar como o órgão é não usá-la: o nome do
     # órgão logo depois de "portal/site/central/atendimento" já entrega a
     # promessa inteira.
-    r"|(site|portal|central|atendimento|servi[çc]os?|consulta)\s+d[oae]s?\s+"
-    r"(governo|caixa|inss|receita\s+federal|minist[ée]rio|fgts|detran|senai)"
+    # ⚠️ `consulta` e `servi[çc]os?` SAÍRAM deste ramo, e `atendimento` também.
+    #
+    # Medido: "Consulta do FGTS: como ver seu saldo pelo aplicativo" é manchete
+    # editorial banal e casava. Pior — a própria frase que `_DIVULGACAO_RE`
+    # EXIGE ("consulte sempre o canal oficial") casava no ramo de cima, então
+    # uma regra acusava exatamente o que a outra pedia. Restam as construções
+    # que afirmam ser o CANAL do órgão, não falar sobre ele.
+    r"|(site|portal|central(\s+de\s+atendimento)?)\s+d[oae]s?\s+"
+    r"(governo|caixa|inss|receita\s+federal|minist[ée]rio|fgts|detran|senai)\b"
     r"|oficial\s+d[oa]\s+(governo|caixa|inss|receita|minist[ée]rio)"
     r"|novo\s+(benef[íi]cio|aux[íi]lio)\s+aprovado\s+pel[oa]"
     r")"
@@ -1986,8 +2015,27 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
     #
     # A comparação é sobre a IMPRESSÃO CANÔNICA quando ela existe nos dois
     # lados — o byte diverge por rotação de anúncio e faria falso vermelho.
+    # ⚠️ SÓ SE COMPARA IMPRESSÃO DO MESMO ESCOPO DE DOCUMENTO.
+    #
+    # O recibo do portão 2 carimba a impressão do ARTEFATO — o corpo que o motor
+    # produziu. O portão 3 observa a página AO VIVO, que é o artefato DENTRO do
+    # tema do WordPress: cabeçalho, menu, rodapé institucional, slots de anúncio.
+    # São dois documentos diferentes por construção, e eles NUNCA vão ter a mesma
+    # impressão canônica.
+    #
+    # A primeira versão desta amarra comparava os dois sem olhar o escopo, e o
+    # efeito medido foi total: `RECIBO_DE_OUTRO_CONTEUDO` em 100% das páginas
+    # corretas, ou seja, a barreira 3 nunca podia ficar verde. Um portão que
+    # nunca aprova é indistinguível de um portão quebrado.
+    #
+    # A proteção que a amarra existe para dar — recibo de OUTRA página não
+    # aprova esta — continua valendo dentro do mesmo escopo. Entre escopos
+    # diferentes a pergunta não é respondível, e a resposta honesta é registrar
+    # isso no inventário em vez de fabricar um veredito nos dois sentidos.
+    escopo_do_recibo = str(recibo.get("fingerprint_scope") or "artifact")
+    escopo_observado = "live" if pagina.sha256_observado else "artifact"
     impressao_do_recibo = str(recibo.get("content_fingerprint") or "")
-    if impressao_do_recibo and pagina.html:
+    if impressao_do_recibo and pagina.html and escopo_do_recibo == escopo_observado:
         impressao_no_ar = impressao_canonica(pagina.html)
         if impressao_do_recibo != impressao_no_ar:
             achados.append(
@@ -2019,7 +2067,24 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
         # inclusive um posto por quem quisesse comprar frescor. Um recibo que
         # diz ter sido observado amanhã não é fresco: é inconsistente, e
         # inconsistência não vira aprovação.
-        if idade < -_TOLERANCIA_DE_RELOGIO_S or idade > pagina.janela_de_frescor_s:
+        # ⚠️ A JANELA É SOBRE A OBSERVAÇÃO AO VIVO, NÃO SOBRE O ARTEFATO.
+        #
+        # Um recibo de escopo `artifact` carimba quando o CONTEÚDO foi aprovado.
+        # Esse fato não envelhece: o conteúdo aprovado continua sendo aquele.
+        # O que envelhece é a leitura da página no ar — e a barreira 3 faz uma
+        # leitura NOVA a cada chamada, então ela é fresca por construção.
+        #
+        # Medido: aplicando a janela ao recibo do artefato, publicar hoje e
+        # subir a campanha depois de amanhã produzia `RECIBO_DE_APROVACAO_VENCIDO`
+        # PARA SEMPRE, sem nenhuma rota que reemitisse o recibo. A operação
+        # ficaria com uma LP publicada que nunca mais poderia virar campanha.
+        #
+        # Carimbo no futuro continua reprovando em qualquer escopo: isso não é
+        # idade, é inconsistência.
+        vencido_por_idade = (
+            escopo_do_recibo == "live" and idade > pagina.janela_de_frescor_s
+        )
+        if idade < -_TOLERANCIA_DE_RELOGIO_S or vencido_por_idade:
             achados.append(
                 Achado(
                     "RECIBO_DE_APROVACAO_VENCIDO",
@@ -2061,7 +2126,11 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
                 "janela_s": int(pagina.janela_de_frescor_s),
                 "content_sha256_12": str(recibo.get("content_sha256") or "")[:12],
                 "content_fingerprint_12": impressao_do_recibo[:12] or None,
-                "impressao_conferida": bool(impressao_do_recibo and pagina.html),
+                "fingerprint_scope_do_recibo": escopo_do_recibo,
+                "fingerprint_scope_observado": escopo_observado,
+                "impressao_conferida": bool(
+                    impressao_do_recibo and pagina.html and escopo_do_recibo == escopo_observado
+                ),
                 "paid_destination_ready_no_recibo": bool(
                     recibo.get("paid_destination_ready")
                 ),

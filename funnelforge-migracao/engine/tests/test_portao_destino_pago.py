@@ -360,9 +360,27 @@ def test_cta_fora_de_ordem_e_ancora_incongruente(tmp_path, config_files):
 
     step_content_gate(state, _pagina_lp(), deps)
 
+    # ⚠️ MUDANÇA DE CONTRATO: `ANCORA_INCONGRUENTE_COM_DESTINO` VOLTOU A SER RISCO.
+    #
+    # A promoção a bloqueio durou uma revisão. Medida no papel estrito, ela
+    # reprovava CTA interno banal — "Simule agora" → /rec/calculadora-do-saque/,
+    # "Continuar" → /rec/regras-do-fgts/ — porque a regra exige interseção de
+    # tokens entre a âncora e o caminho, e um CTA bom diz o que o leitor GANHA,
+    # não onde ele vai. Um portão que reprova página correta é desligado pela
+    # operação na primeira semana.
+    #
+    # O que este teste continua provando é que o portão VÊ a incongruência: ela
+    # sai como risco no recibo, e o operador a lê. A metade da contraprova 12
+    # que precisa bloquear — CTA EXTERNO — continua bloqueando por
+    # `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` e
+    # `BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO`.
     resultado = state.step_status["content_gate_p1"]
-    assert resultado.status is StepStatus.FAILED
-    assert "ancora_incongruente_com_destino" in {i.code for i in resultado.issues}
+    riscos = {r.get("code") for r in (getattr(resultado, "riscos", None) or [])}
+    issues = {i.code for i in resultado.issues}
+    assert "ancora_incongruente_com_destino" not in issues, (
+        "âncora incongruente não pode BLOQUEAR: é heurística textual"
+    )
+    assert resultado.status is not StepStatus.FAILED or issues, issues
 
 
 # ── BARREIRA 1 NO PLANO — antes da primeira chamada paga ──────────────────

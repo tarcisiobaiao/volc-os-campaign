@@ -153,6 +153,19 @@ def _recibo(html: str = HTML_CONFORME, **mudancas: Any) -> dict[str, Any]:
         "observed_at_epoch": time.time() - 60,
         "content_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
         "content_fingerprint": impressao_canonica(html),
+        # ⚠️ `live`, e o escopo NÃO é detalhe de fixture.
+        #
+        # O recibo do portão 2 impressiona o ARTEFATO (o corpo que o motor
+        # escreveu). A barreira 3 lê a página no ar — o mesmo corpo DENTRO do
+        # tema do WordPress. Comparar entre escopos emitia `DERIVA_AO_VIVO` e
+        # `RECIBO_DE_OUTRO_CONTEUDO` em 100% das páginas reais, e o portão nunca
+        # ficava verde.
+        #
+        # Estas provas exercitam a DERIVA, e deriva só é mensurável contra uma
+        # aprovação do mesmo escopo. Um recibo `live` é o que uma reauditoria ao
+        # vivo produz. O caminho do recibo de artefato tem prova própria:
+        # `test_recibo_do_artefato_nao_mede_deriva_e_reprova_por_ausencia`.
+        "fingerprint_scope": "live",
         "paid_destination_ready": True,
     }
     base.update(mudancas)
@@ -740,3 +753,37 @@ def test_a_recusa_de_subir_nao_vaza_o_html_do_destino(monkeypatch: pytest.Monkey
     corpo = str(erro.value.detail)
     assert _CORPO[:60] not in corpo
     assert "<html" not in corpo
+
+
+
+def test_recibo_do_artefato_nao_mede_deriva_e_reprova_pelo_motivo_certo(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """⚠️ O ACHADO QUE A REVISÃO DE OLHOS FRESCOS MEDIU PONTA A PONTA.
+
+    O único produtor de recibo em produção é o motor, e ele carimba a impressão
+    do ARTEFATO — o corpo que ele escreveu. A barreira 3 usava esse valor como
+    `impressao_aprovada` e o comparava com a leitura ao vivo: dois documentos
+    diferentes por construção, porque o tema do WordPress envolve o artefato.
+
+    Efeito medido: `DERIVA_AO_VIVO` e `RECIBO_DE_OUTRO_CONTEUDO` em 100% das
+    páginas reais. `/provar` retinha o selo sempre, `/subir` devolvia 409
+    sempre, e nenhuma página jamais viraria destino de campanha. Um portão que
+    nunca aprova é indistinguível de um portão quebrado.
+
+    A correção não é isentar. Sem aprovação do MESMO escopo a deriva é
+    inobservável, e `live_drift` está em `NAO_APLICAVEL_E_DESCONHECIDO_EM` — a
+    ausência REPROVA. O destino continua inelegível; muda o MOTIVO, que passa a
+    ser verdadeiro e acionável ("ninguém reauditou esta página ao vivo") em vez
+    de falso ("o conteúdo mudou").
+    """
+    _instalar_portas_hermeticas(monkeypatch)
+    _instalar_linhas(monkeypatch, recibo=_recibo(fingerprint_scope="artifact"))
+    _instalar_leitura(monkeypatch)
+    d = _provar()
+
+    assert d["destino"]["elegivel"] is False
+    motivos = " ".join(d["destino"]["motivos"])
+    assert "DERIVA_AO_VIVO" not in motivos, motivos
+    assert "RECIBO_DE_OUTRO_CONTEUDO" not in motivos, motivos
+    assert "live_drift" in motivos, motivos

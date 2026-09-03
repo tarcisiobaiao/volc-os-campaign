@@ -128,6 +128,67 @@ caminho, então ela será recusada em `/provar` e em `/subir`.
 
 ---
 
+## 6bis · ⚠️ A PARADA OPERACIONAL: nada emite recibo de escopo `live`
+
+Este é o risco mais importante da lista, e ele foi encontrado pela revisão de
+olhos frescos **medindo o caminho inteiro**, não lendo código.
+
+O recibo do portão 2 carimba a impressão do **artefato** — o corpo que o motor
+escreveu. A barreira 3 lê a página **no ar**, que é esse corpo dentro do tema do
+WordPress: cabeçalho, menu, rodapé institucional, slots de anúncio. São dois
+documentos diferentes por construção, e as impressões nunca batem.
+
+A primeira versão comparava os dois. Efeito medido: `DERIVA_AO_VIVO` e
+`RECIBO_DE_OUTRO_CONTEUDO` em **100% das páginas reais** — `/provar` retinha o
+selo sempre, `/subir` devolvia 409 sempre, e **nenhuma página jamais viraria
+destino de campanha**. Um portão que nunca aprova é indistinguível de um portão
+quebrado.
+
+A correção não isenta: sem aprovação do mesmo escopo, a deriva é **inobservável**,
+e `live_drift` está em `NAO_APLICAVEL_E_DESCONHECIDO_EM`, então a ausência
+**reprova**. O destino continua inelegível; o que muda é o MOTIVO, que passa a
+ser verdadeiro e acionável ("ninguém reauditou esta página ao vivo") em vez de
+falso ("o conteúdo mudou").
+
+**A consequência operacional, dita sem suavização:** enquanto nada emitir um
+recibo de escopo `live`, **nenhum destino fica elegível para campanha**. É
+fail-closed — portanto seguro, e é o desfecho correto para "ninguém verificou
+esta página no ar". Mas é uma parada real: a operação não sobe campanha nenhuma
+até que exista o ato que registra a aprovação ao vivo.
+
+Esse ato não foi construído nesta sprint porque ele exige **escrita no
+Supabase**, que a missão proíbe. O desenho está pronto para recebê-lo: basta que
+o caminho de reauditoria emita `emitir_recibo(..., escopo_da_impressao="live")` e
+o pendure em `paginas_publicadas` pelo mesmo `anexar_recibo` que o motor usa.
+
+**Pergunta que fica para o operador:** a reauditoria ao vivo deve ser um ato
+explícito (um botão "reauditar destino") ou o próprio `/provar` deve gravar o
+recibo `live` quando a avaliação passa em tudo menos na deriva? A segunda é mais
+cômoda e é circular — ela aprova a si mesma. A primeira é mais lenta e é honesta.
+A decisão não é técnica.
+
+---
+
+## 6ter · O tema do WordPress entra na avaliação ao vivo
+
+Consequência do mesmo desalinhamento, medida na mesma revisão: qualquer
+hyperlink externo que o **tema** renderiza — crédito "Orgulhosamente com
+WordPress", ícone de rede social, link de autor — é invisível para os portões 1
+e 2 (que veem só o artefato) e vira `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` no
+portão 3.
+
+O operador recebe uma recusa que **não tem como consertar mexendo no conteúdo do
+funil**. A política interna ("recusa TODO hyperlink externo clicável") foi
+escrita pensando no corpo editorial, e o portão 3 a aplica a um documento que
+inclui a navegação do site.
+
+**Não foi consertado nesta sprint**, e enfraquecer a regra desfaria o núcleo do
+trabalho. O conserto correto é o site declarar os hosts do próprio tema — o
+contrato já tem o campo (`adtech_declarada`) e nada o preenche. É trabalho de
+uma sprint seguinte, e é pré-requisito para a operação usar a barreira 3.
+
+---
+
 ## 7 · O que fica para o integrador
 
 - Aplicar a atualização de Roadmap/curadoria **uma única vez**, a partir de

@@ -196,6 +196,26 @@ def avaliar_rascunho(
         # alguém leu o que o público vê.
         origem="pre_publication_draft",
         papel_declarado=str(papel_do_motor or ""),
+        # ⚠️ O RASCUNHO É UM FRAGMENTO, e não declarar isso reprovava TODA LP.
+        #
+        # O que o backend enxerga aqui é o CORPO da página. O rodapé de
+        # identidade — razão social, CNPJ, sobre, contato, privacidade,
+        # divulgação de monetização, aviso de não-vínculo — é renderizado pelo
+        # TEMA do WordPress. A coluna `cnpj` foi removida de `project_wordpress`
+        # exatamente por isso (`src/sql/pautador/03_perfil_enxuto.sql:11`).
+        #
+        # Medido antes desta linha: uma LP CORRETA (863 palavras, três CTAs
+        # internos, zero link externo) voltava 409 com SEIS bloqueios de
+        # identidade e disclosure — 100% das landing pages, sempre. Um portão
+        # que reprova tudo é desligado na primeira semana, e aí não protege
+        # nada.
+        #
+        # `documento_parcial` faz a varredura de identidade responder
+        # `not_applicable` — a resposta honesta para "não há rodapé neste
+        # documento". E a isenção NÃO viaja: `identity` está em
+        # `NAO_APLICAVEL_E_DESCONHECIDO_EM` no ponto de campanha, onde a página
+        # inteira está no ar e "não se aplica" não tem desculpa.
+        documento_parcial=True,
     )
     return avaliar(pagina, papel, PontoDePortao.PRE_PUBLICACAO_WORDPRESS), papel
 
