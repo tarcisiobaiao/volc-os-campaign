@@ -999,6 +999,19 @@
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
+      "id": "risk:paid_destination_policy_gap",
+      "label": "Destino pago sem portão produtivo completo",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "risk",
+      "state_label": "Risco / divergência",
+      "tier": 1,
+      "summary": "Uma LP ainda pode chegar ao WordPress ou ao Google Ads sem atravessar o contrato local de política, e conteúdo histórico não possui hash aprovado para medir deriva.",
+      "evidence": "A investigação preservada em docs/closure/hermes-redator-google-ads-policy-incident-v1 sustenta apenas parcialmente a hipótese de causa da suspensão. Nenhuma LP viva foi corrigida, nenhum recurso foi enviado e o patch de publicacao.py permanece handoff não aplicado.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
       "id": "concept:operational_event",
       "label": "Evento operacional",
       "type": "concept",
@@ -1139,6 +1152,19 @@
       "tier": 1,
       "summary": "Investigar e conter as sete superfícies públicas do n8n. Nada é desativado; indeterminado exige aceitação com prazo.",
       "evidence": "Portões de código, identidade do Hub e v8_01 foram implementados; risco de credenciais foi aceito temporariamente e o hardening/deploy final permanecem pendentes.",
+      "source": "Curadoria humana, atualizada em 2026-09-02"
+    },
+    {
+      "id": "concept:paid_destination_policy_gate",
+      "label": "Portão de política de destino pago",
+      "type": "concept",
+      "cluster": "governance",
+      "cluster_label": "Governança & operação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Avalia uma página segundo seu papel, fecha por ausência e emite recibo determinístico antes de ela poder ser publicada ou usada como URL final de mídia paga.",
+      "evidence": "d7521ba integrado em 02/09/2026: backend/app/landing_policy contém matriz de 33 regras com fonte oficial, contrato, varredura e recibos; 102 testes focais verdes e cinco evidências históricas bloqueadas. Falta ligar os três pontos produtivos: plano do motor, pré-publicação WordPress e elegibilidade de campanha, além de persistir o hash aprovado.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -1918,7 +1944,7 @@
       "state_label": "Vivo agora",
       "tier": 1,
       "summary": "Gera matriz, páginas, revisão, prova visual e publicação WordPress.",
-      "evidence": "Banco atual: 3 runs; um vínculo WordPress; páginas e artefatos persistidos.",
+      "evidence": "Banco atual: 3 runs; um vínculo WordPress; páginas e artefatos persistidos. Em 02/09/2026, o contrato local de política para destinos pagos foi integrado com 33 regras oficiais e 102 provas, mas ainda não está ligado ao plano do motor nem à rota de pré-publicação WordPress; a capacidade de gerar/publicar continua live, enquanto a proteção paid_destination permanece partial.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -2282,7 +2308,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "CWV, loader de anúncios, dataLayer, LCP, INP, CLS e correlação com receita.",
-      "evidence": "PublisherSurfaceSnapshot v1 integrado a partir de 307a3d5: scanner local read-only e determinístico inventaria identidade de página, slots GPT, reservas de espaço, lazy load, refresh, dataLayer sanitizado e divergências AdManifest × DOM. A revisão factual Gemini 3.7 Flash passou; a integração adicionou contraprovas para SSRF fail-closed, divs comuns e vazamento de valores do dataLayer. Continua parcial: REAL_TARGET_NOT_PROVEN, sem DOM renderizado, CSS externo, CrUX/RUM/CWV ou correlação com receita.",
+      "evidence": "PublisherSurfaceSnapshot v1 integrado a partir de 307a3d5: scanner local read-only e determinístico inventaria identidade de página, slots GPT, reservas de espaço, lazy load, refresh, dataLayer sanitizado e divergências AdManifest × DOM. A revisão factual Gemini 3.7 Flash passou; a integração adicionou contraprovas para SSRF fail-closed, divs comuns e vazamento de valores do dataLayer. Em 02/09/2026, d7521ba acrescentou fetch público SSRF-safe e o portão local de política de destino pago; cinco recibos sobre evidência preservada ficaram blocked e zero ficou ready. Continua parcial: o portão não está ligado à publicação/campanha, a LP viva não foi remediada, REAL_TARGET_NOT_PROVEN permanece para a prova visual e faltam DOM renderizado, CSS externo, CrUX/RUM/CWV e correlação com receita.",
       "source": "Curadoria humana, atualizada em 2026-09-02"
     },
     {
@@ -10702,6 +10728,27 @@
       "confidence": "curated"
     },
     {
+      "source": "concept:paid_destination_policy_gate",
+      "target": "cap_funnel",
+      "relation": "deve_bloquear_antes_de_publicar",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:paid_destination_policy_gate",
+      "target": "cap_publisher_quality",
+      "relation": "usa_evidencia_publica",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:paid_destination_policy_gate",
+      "target": "cap_search_birth",
+      "relation": "deve_bloquear_antes_de_usar_destino",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
       "source": "concept:pmax_observability",
       "target": "channel:PERFORMANCE_MAX",
       "relation": "precede_operacao",
@@ -11818,6 +11865,20 @@
       "source": "risk:legacy_attention_tactics",
       "target": "cap_organic_content",
       "relation": "nao_governa",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "risk:paid_destination_policy_gap",
+      "target": "cap_search_birth",
+      "relation": "bloqueia_retomada_segura",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "risk:paid_destination_policy_gap",
+      "target": "concept:paid_destination_policy_gate",
+      "relation": "e_mitigado_por",
       "evidence": "",
       "confidence": "curated"
     },

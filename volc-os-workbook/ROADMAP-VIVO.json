@@ -720,6 +720,31 @@
             "docs/closure/campaign-birth-readiness-v1/PROVA-SDK-V25.md",
             "supabase/migrations/v12_02_plano_de_mensuracao.sql"
           ]
+        },
+        {
+          "id": "P05-T13",
+          "title": "Remediar e reauditar destinos pagos /r antes de retomar mídia",
+          "status": "todo",
+          "priority": 1,
+          "proof": "02/09/2026 · lane hermes-redator-google-ads-policy-incident-v1 integrada localmente a partir de d7521ba: a evidência pública preservada produziu cinco recibos `blocked` e zero `paid_destination_ready`. O domínio Portal Mundo Mais respondeu HTTP 410 na coleta registrada; rotas históricas não possuem hash aprovado, portanto deriva ao vivo é desconhecida. A hipótese de que links para Caixa tenham causado a suspensão é apenas parcialmente sustentada: a causa literal da conta não foi obtida, e não houve evidência de cloaking nem coleta de dado pessoal nas páginas amostradas. Nenhuma LP viva foi alterada, nenhum recurso foi enviado e nenhuma campanha foi reativada.",
+          "explanation": "Conter o incidente sem transformar hipótese em fato: corrigir cada destino na origem, provar identidade, transparência, congruência, segurança e estabilidade, e somente depois pedir nova revisão humana da mídia.",
+          "acceptance": [
+            "Notificação literal da suspensão preservada e causa classificada sem inferência indevida",
+            "Cada destino pago existente possui identidade do operador, classificação de links externos, alegações sustentadas e ausência de formulário sensível não justificado",
+            "Domínio e todas as URLs finais respondem de forma estável para usuário e rastreador, sem redirecionamento cross-domain ou página-ponte",
+            "Hash aprovado é gravado na publicação e comparado novamente antes da elegibilidade da campanha",
+            "Portão emite recibo `paid_destination_ready` para cada URL usada; desconhecido e indisponível continuam fail-closed",
+            "Recurso ao Google permanece ato humano separado e só usa evidência factual revisada"
+          ],
+          "dependencies": [
+            "P08-T09",
+            "P09-T15"
+          ],
+          "links": [
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/LIVE-REMEDIATION-PLAN.md",
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/GATE-RECEIPTS.json",
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/APPEAL-EVIDENCE-PACK.md"
+          ]
         }
       ]
     },
@@ -1156,6 +1181,31 @@
             "docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md",
             "supabase/migrations/v12_01_google_inteligencia_coletas.sql",
             "deploy/google-intelligence/README.md"
+          ]
+        },
+        {
+          "id": "P09-T15",
+          "title": "Ligar o portão de política de destino pago à geração, publicação e campanha",
+          "status": "partial",
+          "priority": 1,
+          "proof": "02/09/2026 · d7521ba integrado localmente: `backend/app/landing_policy/` entrega contrato por papel, matriz de 33 regras com fonte oficial, varredura fail-closed, recibo determinístico e 102 testes focais; `publisher_quality/fetch.py` ganhou leitura pública SSRF-safe e cadeia de redirecionamento. Os cinco recibos sobre evidência preservada ficaram bloqueados, como deveriam. SEGUE PARTIAL: o módulo ainda não é chamado pelo plano do FunnelForge, pela rota de pré-publicação WordPress nem pela elegibilidade do destino no nascimento da campanha; `HANDOFF-PATCH-PUBLICACAO.md` é somente proposta e não deve ser aplicado cegamente. Nenhum hash aprovado é persistido hoje.",
+          "explanation": "O mesmo contrato precisa impedir que um artefato inseguro atravesse qualquer uma das três portas: sair do gerador, chegar ao WordPress e tornar-se URL final de mídia paga.",
+          "acceptance": [
+            "O plano do motor é avaliado antes de gerar e o HTML final é reavaliado antes de publicar",
+            "A rota WordPress recusa LP bloqueada antes de qualquer escrita e grava recibo/hash quando aprovada",
+            "O nascimento da campanha exige recibo vigente para a URL final exata",
+            "Mudança de conteúdo, redirect chain, identidade ou inventário invalida o recibo anterior",
+            "Página editorial e destino pago permanecem papéis distintos; não se resolve risco desligando o portão",
+            "Testes provam fail-closed, zero publicação e zero Google mutate em toda recusa"
+          ],
+          "dependencies": [
+            "P08-T09",
+            "P09-T03"
+          ],
+          "links": [
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/REDATOR-POLICY-CONTRACT.md",
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/ENGINE-CHANGES.md",
+            "docs/closure/hermes-redator-google-ads-policy-incident-v1/HANDOFF-PATCH-PUBLICACAO.md"
           ]
         }
       ]
