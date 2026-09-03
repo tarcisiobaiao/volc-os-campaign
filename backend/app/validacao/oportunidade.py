@@ -51,6 +51,7 @@ from app.agents.mining.paid_eligibility import (
     VazamentoDeDesfecho,
 )
 from app.agents.mining.ponte_editorial import CAMPOS_PROIBIDOS_NO_EDITORIAL
+from app.validacao.ficha import N_MINIMO_PARA_PORTAO
 
 VERSAO_DO_CONTRATO = "oportunidade/1"
 
@@ -252,11 +253,20 @@ def _rotear_formato(perguntas: List[Dict[str, Any]]) -> Tuple[Optional[str], Tup
     max_ramos = max(q["ramos"] for q in perguntas)
     decidem = sum(1 for q in perguntas if q["decide_depois"])
 
-    # ⚠️ O VETO. Se o canal oficial fecha TODAS as perguntas, não há página a
-    # construir: o widget não acrescenta nada ao balcão.
-    if fecham == n:
+    # ⚠️ O VETO, COM PISO DE N — e o piso não é enfeite.
+    #
+    # "Todas as perguntas esgotam" é uma regra VAZIA quando há poucas perguntas:
+    # 1/1 = 1,0 satisfaz qualquer unanimidade. `ficha.N_MINIMO_PARA_PORTAO`
+    # existe exatamente por isso e custou uma entidade para ser medido.
+    #
+    # A primeira versão deste roteador repetiu o defeito: o REPLAY sobre 576
+    # casos mostrou 192 em que o motor de eixos dizia `apto` com índice 0,747 e
+    # o veto matava o tema com n=2. Abaixo do piso o veto não mata — o card cai
+    # em `insuficiente`, que é o estado que significa "humano olha".
+    if fecham == n and n >= N_MINIMO_PARA_PORTAO:
         return None, (
             f"oficial_fecha_sozinho em {fecham} de {n} perguntas",
+            f"n_perguntas {n} no piso de {N_MINIMO_PARA_PORTAO}",
             f"max ramos_de_acao {max_ramos}",
         )
 
@@ -478,8 +488,9 @@ def _decidir(*, resumo: Dict[str, Any], perguntas: List[Dict[str, Any]],
     # 2 · o veto do formato: o balcão oficial já resolve
     if formato is None and perguntas:
         return INADEQUADO, (
-            "O canal oficial fecha todas as perguntas sozinho. Uma página aqui "
-            "repete o balcão sem acrescentar nada — não há funil a construir."
+            f"O canal oficial fecha todas as {len(perguntas)} perguntas sozinho. "
+            "Uma página aqui repete o balcão sem acrescentar nada — não há funil "
+            "a construir."
         )
 
     # 3 · portão do motor de medição, citado e não recalculado

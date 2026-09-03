@@ -433,12 +433,21 @@ def test_cp25_a_camada_nao_tem_efeito_externo():
                      "subprocess", "google", "googleads"):
         assert proibido not in importados, f"import proibido: {proibido!r}"
 
-    # o único acoplamento permitido é ler primitivas de estado/fronteira
+    # Acoplamento permitido, e a lista é curta de propósito:
+    #   - as duas de `mining` são a fronteira paga, importadas SOMENTE para
+    #     reusar vocabulário de estado e a guarda de vazamento (nunca decisão);
+    #   - `app.validacao.ficha` é intra-pacote: dela vem o piso de N, que é a
+    #     mesma constante medida que governa o portão. Duplicar o número aqui
+    #     criaria duas verdades sobre o mesmo piso.
     externos = {m for m in importados if m.startswith("app.")}
     assert externos <= {
         "app.agents.mining.paid_eligibility",
         "app.agents.mining.ponte_editorial",
+        "app.validacao.ficha",
     }, f"acoplamento inesperado: {externos}"
+    assert not any(m.startswith("app.entities") for m in externos), (
+        "a Camada 2 não pode importar a descoberta"
+    )
 
     chamadas = {no.func.attr for no in ast.walk(arvore)
                 if isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)}
@@ -472,3 +481,49 @@ def test_contradicao_e_reportada_nao_resolvida_em_silencio():
     r["portoes_disparados"] = ["engajamento"]  # apto com portão é contradição
     t = tese_do_resumo(r, tema="t")
     assert t.contradicoes
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Achado do REPLAY · o veto de formato tinha a mesma vacuidade que
+# `N_MINIMO_PARA_PORTAO = 3` existe para evitar
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_veto_de_formato_respeita_o_piso_de_n():
+    """"Todas as perguntas esgotam" é regra VAZIA com poucas perguntas.
+
+    `ficha.N_MINIMO_PARA_PORTAO = 3` foi medido custando uma entidade: com uma
+    pergunta só, 1/1 = 1,0 satisfaz qualquer unanimidade. O veto do roteador de
+    formato tem a MESMA forma (`fecham == n`) e o replay mostrou que ele matava
+    192 casos em que o motor de eixos dizia `apto`, com n=2.
+
+    Abaixo do piso o veto não mata: o máximo que o card recebe é
+    `insuficiente`, que é o estado que significa "humano olha".
+    """
+    from app.validacao.ficha import N_MINIMO_PARA_PORTAO
+    from app.validacao.oportunidade import _rotear_formato
+
+    fecha = {"ramos": 1, "condicoes": 0, "decide_depois": False,
+             "fecha_sozinho": True, "engajamento": "dado_unico"}
+
+    # abaixo do piso: não veta
+    for n in range(1, N_MINIMO_PARA_PORTAO):
+        formato, _ = _rotear_formato([dict(fecha) for _ in range(n)])
+        assert formato is not None, f"vetou com n={n}, abaixo do piso"
+
+    # no piso e acima: veta
+    for n in (N_MINIMO_PARA_PORTAO, N_MINIMO_PARA_PORTAO + 2):
+        formato, citacoes = _rotear_formato([dict(fecha) for _ in range(n)])
+        assert formato is None, f"não vetou com n={n}"
+        assert any(str(n) in c for c in citacoes)
+
+
+def test_abaixo_do_piso_o_card_nao_e_reprovado_por_veto():
+    r = _resumo_suporte()
+    r["ficha"]["perguntas"] = r["ficha"]["perguntas"][:2]
+    r["ficha"]["n_perguntas"] = 2
+    r["portoes_disparados"] = []
+    r["apto"] = True
+    t = tese_do_resumo(r, tema="t")
+    assert t.decisao == INSUFICIENTE, (
+        "com n abaixo do piso o veto não pode matar; o humano olha"
+    )
