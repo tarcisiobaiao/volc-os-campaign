@@ -249,6 +249,40 @@ def _leitura_do_destino(url: str, *, user_agent: str = "", timeout: int = 20,
     }
 
 
+def _factory_output_aprovado(keyword: dict) -> list:
+    """`factory_output` com o conjunto pago já APROVADO, pelo motor real.
+
+    A aprovação acontece aqui porque é o que o operador faria antes de provar:
+    conferir a impressão do conjunto e assiná-la. `congruencia="congruente"` e
+    o teto declarado entram como ENTRADA — o veredito de destino vem de fora do
+    motor, e inventá-lo depois seria mutar a decisão para limpar bloqueador.
+    """
+    from datetime import datetime, timezone
+
+    from app.agents.mining.funnel_factory import funnel_factory_com_conjuntos
+    from app.agents.mining.paid_eligibility import aprovar, impressao_do_conjunto
+
+    fila, conjuntos = funnel_factory_com_conjuntos(
+        {"funis_sugeridos": [{
+            "rank": 1, "nome_funil": "fixture", "keyword_ancora": keyword["keyword"],
+            "volume_ancora": keyword.get("volume") or 0, "metricas": {},
+            "justificativa": "", "tags": [],
+            "sub_intencoes": [{
+                "tipo": "INTENCAO", "descricao": "Busca informativa",
+                "volume_sub": keyword.get("volume") or 0, "keywords": [keyword],
+            }],
+        }]},
+        today=datetime(2026, 9, 3, tzinfo=timezone.utc),
+        teto_do_dono=5.0,
+        congruencia="congruente",
+    )
+    conjunto = conjuntos[0]
+    aprovar(conjunto, aprovado_por="fixture",
+            hash_conferido=impressao_do_conjunto(conjunto))
+    fila[0]["keywords_campanha"]["conjunto_pago"] = conjunto.como_dicionario()
+    return fila
+
+
 def _linhas_da_rota(pp):
     """Recorte mínimo da porta de leitura; o contrato depois dela é real."""
     keyword = {
@@ -285,6 +319,19 @@ def _linhas_da_rota(pp):
                     "keywords": [keyword],
                 }],
             }],
+            # ⚠️ O CONTRATO DEPOIS DA PORTA FICOU MAIOR, E A FIXTURE ACOMPANHA.
+            #
+            # `/provar` e `/subir` passaram a exigir um CONJUNTO PAGO APROVADO
+            # antes de montar qualquer coisa: critério positivo de campanha
+            # nasce só de `para_criterios_de_campanha(..., exigir_aprovacao=True)`.
+            # Sem isto a leitura hermética devolveria um cluster sem contrato e
+            # as rotas recusariam com N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED
+            # antes de chegar ao portão de escrita que estes testes exercem.
+            #
+            # O conjunto é construído pelo MOTOR REAL sobre a MESMA keyword da
+            # fixture — não há segundo algoritmo aqui, e é por isso que ele
+            # continua sendo "recorte mínimo da porta de leitura".
+            "factory_output": _factory_output_aprovado(keyword),
         },
         run={
             "id": 1,

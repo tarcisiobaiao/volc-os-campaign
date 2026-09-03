@@ -56,6 +56,7 @@ from app.entities.schemas import (
     QuestionChoiceRequest,
 )
 from app.llm import get_engine, get_grounding
+from app.agents.mining import portao_conjunto_pago as portao_pago
 from app.services.supabase_service import SupabaseService
 
 log = logging.getLogger("pautador.entities")
@@ -1276,10 +1277,33 @@ async def mine_entity(entity_id: int, body: Optional[EntityMineRequest] = Body(d
                 await supa.update_entity(entity_id, {"status": "mining"})
             except Exception:  # noqa: BLE001
                 pass
+            # ⚠️ O DESVIO PARA O n8n RETORNA ANTES DO ORQUESTRADOR PYTHON.
+            #
+            # O fluxo n8n versionado ainda carrega o defeito de origem
+            # (`dedupedKws.forEach -> allKeywordsForCampaign`, CPC/volume
+            # ausente virando zero) e NÃO produz `conjunto_pago`. O cluster que
+            # ele grava é minerável e legível, mas não é um conjunto aprovado.
+            #
+            # A autoridade operacional de elegibilidade paga é UMA:
+            # `app.agents.mining.paid_eligibility`. Este caminho continua
+            # minerando — o que ele não faz é virar campanha: o portão em
+            # `/provar` e `/subir` recusa um cluster sem contrato com
+            # N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED, antes de qualquer rede.
+            #
+            # O aviso viaja na resposta porque um operador que dispara mineração
+            # e só descobre a recusa na hora de subir campanha perdeu o ciclo
+            # inteiro por uma informação que existia desde agora.
             return EntityMineResponse(
                 entity_id=entity_id, opportunity_id=opp_id_wh, pains=[], seed_queries=[],
                 services_used=["n8n:webhook"], engine="n8n", mode="n8n", dispatched=True,
-                persisted=False, warnings=[],
+                persisted=False,
+                warnings=[
+                    f"{portao_pago.N8N_SEM_CONTRATO}: a mineração foi despachada para o "
+                    "n8n, que não produz o contrato de elegibilidade paga. O cluster "
+                    "resultante NÃO poderá virar campanha — a autoridade é "
+                    f"{portao_pago.AUTORIDADE}. Para preparar mídia paga, minere por "
+                    "este backend (desconfigure PAUTADOR_N8N_KW_WEBHOOK_URL)."
+                ],
             )
 
     result = await EntityMineOrchestrator(ctx).run(entity)

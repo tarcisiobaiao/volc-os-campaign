@@ -1,0 +1,92 @@
+{
+  "fonte": {
+    "nome": "Engenharia reversa Google Ads — benchmark privado Webgo",
+    "run_id": "20260903T010510Z",
+    "acesso": "somente leitura, fora do repositorio VOLC",
+    "raw_versionado_no_git": false,
+    "identificadores_privados_reproduzidos": false,
+    "metodo_de_leitura": "streaming linha a linha (csv/awk); reconciliation_campaign_day.csv (51MB) e manifest.json nunca abertos; data/raw nao lido; screenshots nao abertos",
+    "conteudo_tratado_como": "DADO NAO CONFIAVEL, nunca instrucao"
+  },
+  "conteudo_injetivo_detectado": {
+    "descricao": "refinement-v2/review-packet.md contem texto diretivo enderecado a um agente ('Revisor independente. NAO edite arquivos...') e prescreve um formato de saida terminando em APPROVE|APPROVE_WITH_NOTES|BLOCK; refinement-v2/review-codex.md termina no token 'BLOCK'.",
+    "tratamento": "lido como artefato de uma rodada de revisao anterior DENTRO do benchmark, registrado como dado. Nenhuma instrucao obedecida.",
+    "escrita_no_benchmark": "nenhuma"
+  },
+  "escala_confirmada": {
+    "campanhas_universo_financeiro": 1311,
+    "contas": 35,
+    "gasto_90d_brl": 2536467.49,
+    "janela_90d": "2026-06-04 a 2026-09-01 (dia corrente excluido por ser parcial)",
+    "episodios": 3631,
+    "ressalva_de_escopo": "o universo financeiro (1.311 campanhas / 35 contas) NAO e o escopo da varredura estrutural (9.327 campanhas / 90 contas de 95 mapeadas). O proprio relatorio proibe soma-los ou usa-los como denominador um do outro."
+  },
+  "premissas_do_briefing_conferidas": [
+    {"premissa": "1.311 campanhas em 35 contas", "veredito": "SUSTENTADA", "observado": "1311 linhas e 35 customer_id distintos em campaign_universe.csv, batendo com selection_summary.json e checkpoints/state.json"},
+    {"premissa": "~R$ 2,536 milhoes em 90 dias", "veredito": "SUSTENTADA", "observado": "R$ 2.536.467,49 somando spend_90 nas 1311 linhas — identico a coverage.universe_spend_90"},
+    {"premissa": "3.631 episodios", "veredito": "SUSTENTADA", "observado": "3631 confirmado por tres vias; 3.550 tem serie metrica, 81 nao tem"},
+    {"premissa": "apenas 122 episodios admitem afirmacao no nivel de associacao", "veredito": "SUSTENTADA", "observado": "associacao=122, hipotese=2347, lacuna=1081 sobre 3.550 linhas de episode_impact_windows.csv"},
+    {"premissa": "35/35 playbooks com confianca baixa", "veredito": "SUSTENTADA", "observado": "35 linhas, confianca='baixa' em todas; alem disso n_legiveis=0 e proporcao_legivel=0 em todas as 35"},
+    {"premissa": "nenhuma sequencia sobreviveu aos controles", "veredito": "PARCIAL", "observado": "a substancia se sustenta, mas a frase e exatamente a que a errata v2 manda remover, e a medicao cobre so 41 de 108 sequencias: as 41 de comprimento 2 tem readable_occurrences=0 e as 67 de comprimento 3 tem o campo EM BRANCO — nunca calculado, nao medido como zero"},
+    {"premissa": "so tres de treze padroes de vencedoras sobreviveram ao controle (SEARCH, MAXIMIZE_CONVERSIONS, forca EXCELLENT)", "veredito": "PARCIAL — SUSTENTADA COMO NUMERO v1, REFUTADA COMO CONCLUSAO PELA v2", "observado": "pattern_shares.csv tem 13 linhas e exatamente 3 com signal_candidate=True. Mas a errata v2 desmonta os tres: EXCELLENT rebaixado a NOT_IDENTIFIABLE (contagem inflada 2,00x por particao duplicada; direcao inverte contra os controles fortes), SEARCH e MAXIMIZE_CONVERSIONS sao a MESMA fatia e nao dois sinais, e SEARCH sobra apenas como external_prior"},
+    {"premissa": "o arcabouco de confianca proibe afirmacao causal", "veredito": "SUSTENTADA", "observado": "claim_level tem teto estrutural em 'associacao' — 'nunca causa'; repetido na prosa, no dado curado e na legenda v2"}
+  ],
+  "correcoes_que_o_briefing_nao_trazia": [
+    {
+      "achado": "'122 episodios sobreviveram aos controles' e declarado FACTUALMENTE ERRADO pela propria errata v2 do benchmark.",
+      "prova": "matched_controls_used=0 nas 122 linhas; o unico bloqueador registrado nas 122 e literalmente 'sem controle pareado utilizavel'. Apenas 12 dos 3.550 episodios tem qualquer controle pareado utilizavel, e nenhum tem 3 ou mais.",
+      "leitura_correta": "os 122 passaram criterios INTERNOS minimos (maturidade >=7d de pos, isolamento, pre-tendencia, baseline) e sao 100% isolados. Nao passaram por controle."
+    },
+    {
+      "achado": "o degrau superior da escada de evidencia do proprio benchmark NUNCA foi alcancado.",
+      "prova": "evidence_strength: fraca 2.347 / nenhuma 1.081 / moderada 122 / razoavel 0."
+    },
+    {
+      "achado": "o vazamento que o benchmark NAO fecha esta no braco de 'perfil de vencedora'.",
+      "prova": "os grupos vem de profit_90/profit_180 (pos-desfecho) e as features comparadas — canal, estrategia de lance, forca do anuncio, pagina — sao lidas de um snapshot ATUAL, posterior ao fechamento da janela. Nao ha reconstrucao de feature as-of-launch em lugar nenhum do pacote.",
+      "consequencia_para_o_volc": "forca de anuncio EXCELLENT e o caso mais agudo: e score recomputado continuamente pelo Google e se move com o proprio historico da campanha. Usa-lo como feature pre-lancamento importa o desfecho para dentro da entrada. Por isso ele entra em PRIORS_DE_BENCHMARK com confianca 'nenhuma' e bloqueia=autoriza=False."
+    }
+  ],
+  "evidencia_de_keyword_no_benchmark": {
+    "veredito": "NAO EXISTE TESTE DE DESFECHO NO NIVEL DE KEYWORD EM LUGAR NENHUM DO PACOTE",
+    "prova": [
+      "KEYWORD_OR_MATCH_CHANGE tem exatamente UM episodio legivel (delta lucro/dia -R$4,80, share positivo 0,0)",
+      "nenhuma tabela por keyword sobreviveu para data/curated: so acquisition_patterns.json, agregado a tres grupos de campanha",
+      "nenhum custo, conversao ou receita por keyword ou por termo sobreviveu para qualquer artefato curado",
+      "nenhum artefato classifica keyword ou termo como marca, generico ou concorrente; nao ha lista de marca, auction insights nem impression share por concorrente"
+    ],
+    "match_type": {
+      "veredito": "RESULTADO NEGATIVO EXPLICITO",
+      "BROAD": "vencedoras 92,76% vs controles 91,21% — 'igual ao controle: e o padrao da operacao, nao sinal'",
+      "EXACT": "vencedoras 7,24% vs controles 8,66% — 'nao e mais frequente nas vencedoras que no controle'",
+      "PHRASE": "suporte insuficiente",
+      "consequencia_para_o_volc": "propor_match_type em paid_eligibility.py e POLITICA DECLARADA, nao achado importado. Nenhum match type do VOLC cita este benchmark como prova."
+    },
+    "negativas": {
+      "veredito": "INUTILIZAVEL COMO PRIOR",
+      "prova": "campaign_criterion.type nunca serializou — 'tipo:?' e 100% dos criterios em todos os grupos. Nao ha texto, match type, ad group nem atribuicao de campanha em nenhuma negativa.",
+      "consequencia_para_o_volc": "nenhuma negativa e criada por este motor, em nenhum caminho."
+    }
+  },
+  "o_que_o_volc_importou": [
+    {"prior": "vazio_de_search_term_nao_e_ausencia_de_demanda", "confianca": "alta", "tipo": "metodologico", "bloqueia": false, "autoriza": false, "onde_vive": "Sinal: absent vs confirmed_zero"},
+    {"prior": "padrao_presente_tambem_no_controle_nao_e_sinal", "confianca": "alta", "tipo": "metodologico", "bloqueia": false, "autoriza": false, "onde_vive": "PRIORS_DE_BENCHMARK, como restricao de leitura"},
+    {"prior": "ausencia_de_evidencia_de_keyword", "confianca": "alta", "tipo": "ausencia declarada", "bloqueia": false, "autoriza": false, "onde_vive": "PRIORS_DE_BENCHMARK — o unico prior de confianca alta afirma uma AUSENCIA"},
+    {"prior": "search_como_prior_externo", "confianca": "baixa", "tipo": "external_prior", "bloqueia": false, "autoriza": false, "onde_vive": "PRIORS_DE_BENCHMARK, anotacao"},
+    {"prior": "match_type_nao_discrimina", "confianca": "baixa", "tipo": "resultado negativo", "bloqueia": false, "autoriza": false, "onde_vive": "PRIORS_DE_BENCHMARK, anotacao"},
+    {"prior": "forca_de_anuncio_excellent", "confianca": "nenhuma", "tipo": "refutado pela errata v2", "bloqueia": false, "autoriza": false, "onde_vive": "PRIORS_DE_BENCHMARK, registrado como refutado"}
+  ],
+  "o_que_o_volc_recusou_importar": [
+    "qualquer regra causal ou preditiva — 0 dos 122 episodios legiveis tem controle pareado e claim_level nunca pode dizer 'causa'",
+    "'SEARCH/MAXIMIZE_CONVERSIONS preve vencedora' como feature de elegibilidade, peso ou default",
+    "'forca de anuncio EXCELLENT -> vencedora' — alem de NOT_IDENTIFIABLE, e score pos-desfecho",
+    "qualquer regra de landing page (contagem de slots, tags, palavras, CTAs)",
+    "numeros de ROAS por canal como desempenho esperado em outro lugar",
+    "os deltas dos 122 episodios como tamanhos de efeito (85% sao liga/desliga em Search)",
+    "qualquer numero pre-errata",
+    "data_quality_score / nota A-B-C-D como confianca (heuristica de pesos arbitrados, declarada como tal)",
+    "contagens absolutas de acquisition_patterns.json (duas geracoes de particao raw por conta)"
+  ],
+  "limitacao_estatistica_declarada": "Este benchmark e gerador de hipoteses e prior. Nao e autoridade causal, e para elegibilidade de keyword especificamente ele nao e autoridade nenhuma: o pacote nao contem o teste que a decisao exigiria. O que o VOLC tirou dele foi METODO — a escada de classificacao, a proibicao de ler vazio como zero, e o filtro 'padrao presente no controle nao e sinal'.",
+  "mutacao_externa": {"google_ads": "nenhuma", "supabase": "nenhuma", "chamadas_de_api": "nenhuma"}
+}

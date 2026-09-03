@@ -1,0 +1,97 @@
+{
+  "versao": "pautador-paid-keyword-eligibility-v1",
+  "principio": "Oportunidade editorial e elegibilidade paga sao dois objetos. Nenhum decide o outro.",
+  "modulos": {
+    "backend/app/agents/mining/paid_eligibility.py": "estados, Sinal, arquetipos, risco, decisao por keyword, conjunto, impressao, aprovacao",
+    "backend/app/agents/mining/ponte_editorial.py": "adapta o resumo do Validador e poe as duas respostas lado a lado",
+    "backend/app/agents/mining/funnel_factory.py": "aplica elegibilidade ANTES do corte por volume e exporta exatamente o selecionado",
+    "backend/app/agents/mining/classifier.py": "regra de preco passou a exigir preco medido"
+  },
+  "estados_do_dado": {
+    "vocabulario": ["measured", "confirmed_zero", "absent", "unknown", "not_applicable", "failed", "inferred"],
+    "invariantes": [
+      "estado em (absent, unknown, not_applicable, failed) NAO pode carregar valor — o construtor levanta EstadoInvalido",
+      "confirmed_zero exige valor exatamente 0",
+      "measured e inferred exigem valor",
+      "um 0 cru vira 'unknown' a menos que o produtor declare medicao_confirmada=True"
+    ],
+    "reconciliacao": {
+      "app.validacao.orquestrador.Eixo.proveniencia": "PROVENIENCIA_EQUIVALENTE traduz os sete estados para medido|julgado|ausente",
+      "app.criativo.bancada.contrato.Ausencia": "AUSENCIA_EQUIVALENTE mapeia absent->nao_medido, unknown->nao_declarado, not_applicable->nao_aplicavel, failed->falhou; 'mismatch' NAO tem analogo e nao foi inventado",
+      "justificativa_do_terceiro_vocabulario": "nenhum dos dois anteriores expressa confirmed_zero, e sem ele demanda-medida-como-zero e demanda-nao-medida caem no mesmo lugar"
+    }
+  },
+  "OpportunityEditorialDecision": {
+    "origem": "adaptado de card.resumo gravado por app.validacao.orquestrador — NUNCA recalculado",
+    "campos": ["tema", "apto", "motivo", "indice", "cobertura", "perfil", "sensores_limpos", "eixos", "alertas", "fonte", "proveniencia"],
+    "proibicao_testada": "nenhum campo de economia paga (cpc, spread, avg_cpc, bid, lance, orcamento, budget, roas) pode aparecer — test_F2",
+    "estado_valido_declarado": "apto=true com zero keywords pagas elegiveis e um estado VALIDO, nao uma contradicao"
+  },
+  "PaidKeywordDecision": {
+    "campos": ["termo", "termo_normalizado", "fonte", "subintencao", "estagio", "arquetipos", "match_type", "volume", "cpc", "competicao", "lance_topo", "congruencia", "amplitude", "riscos", "viabilidade", "evidencias", "confianca", "decisao", "situacao", "motivos", "bloqueadores", "alertas", "selecionada"],
+    "decisoes": ["INCLUDE", "EXPERIMENT", "HOLD", "REJECT", "HUMAN_REVIEW"],
+    "situacao": "SELECIONADO | ELEGIVEL_NAO_SELECIONADO | <decisao>. Responde 'entrou no conjunto?', que e pergunta diferente de 'e elegivel?'",
+    "ordem_das_regras": [
+      "1. marca de terceiro -> HUMAN_REVIEW (decisao juridica e comercial nao e do motor)",
+      "2. intencao navegacional/suporte -> HOLD; se tambem cita entidade publica -> HUMAN_REVIEW (risco de impersonacao)",
+      "3. entidade publica isolada -> ALERTA, nunca veredito (o risco e de DESTINO e tem dono em landing_policy)",
+      "4. incongruente -> REJECT",
+      "5. volume confirmed_zero -> REJECT (o unico zero que decide)",
+      "6. volume sem numero -> HOLD (ausencia de volume nao e ausencia de demanda)",
+      "7. volume medido + CPC medido -> INCLUDE; CPC acima do teto declarado -> EXPERIMENT",
+      "8. volume medido + CPC sem medicao -> EXPERIMENT (nunca desconto)"
+    ],
+    "invariante_central": "nenhum ramo le um numero sem olhar o estado dele antes; ausencia jamais pontua melhor que medicao"
+  },
+  "CampaignKeywordSet": {
+    "campos": ["candidates", "selected_keywords", "excluded_keywords", "human_review_keywords", "negative_keywords", "owner_ceiling", "selection_policy_version", "evidence_snapshot", "selected_set_sha256", "approved_set_sha256", "aprovado_por", "ready_for_campaign_plan", "portoes_externos_pendentes", "blockers", "alertas"],
+    "impressao": {
+      "algoritmo": "SHA-256 do JSON canonico de {policy, keywords: sorted[(termo_normalizado, match_type, subintencao)]}",
+      "semantica": "CONJUNTO — decidida e testada. A ordem NAO entra (test_O); termo, match type e subintencao entram (test_I, I2, I3)"
+    },
+    "congelamento": "aprovar() confere hash_conferido contra selected_set_sha256 e recusa divergencia (HashDivergente). Depois disso acrescentar() levanta ConjuntoCongelado.",
+    "negative_keywords": "SEMPRE vazio neste motor. Negativa exige search-term evidence e revisao de overblocking, e as duas moram fora daqui.",
+    "ready_for_campaign_plan": {
+      "significa": "o conjunto pode ser PREPARADO com governanca",
+      "nao_significa": ["conta apta", "destino pago apto", "mensuracao pronta", "campanha autorizada", "autorizacao para mutate"],
+      "bloqueadores_conhecidos": ["teto_economico_desconhecido", "nenhuma_keyword_elegivel_selecionada", "congruencia_nao_avaliada"]
+    },
+    "portoes_externos": {
+      "conta": "nao_avaliado_aqui",
+      "destino_pago": "nao_avaliado_aqui",
+      "mensuracao": "nao_avaliado_aqui",
+      "aprovacao_humana": "nao_avaliado_aqui",
+      "por_que_declarados_em_vez_de_omitidos": "campo ausente seria lido como 'sem pendencia'"
+    }
+  },
+  "politica_de_selecao": {
+    "volume_threshold": 20000,
+    "min_items_por_subintencao": 3,
+    "max_items_por_subintencao": 10,
+    "origem": "copia literal do no FUNNEL FACTORY em backend/n8n_kw_pautador.json",
+    "classificacao": "default_operacional_portado",
+    "calibrado": false,
+    "justificativa_registrada": null,
+    "decisao_desta_sprint": "os numeros NAO foram alterados. Muda-los sem evidencia seria o mesmo erro na direcao oposta. O que a sprint fez foi nomea-los, versiona-los em selection_policy_version e grava-los no evidence_snapshot."
+  },
+  "ponte_para_o_lado_pago": {
+    "funcao": "para_criterios_de_campanha(conjunto, exigir_aprovacao=True)",
+    "destino": "volc_ads.campanha.criterio.Criterio — o contrato que JA EXISTE, com match_type/nivel/origem validados e Evidencia(MEDIDO|HIPOTESE)",
+    "importacao": "preguicosa; volc_ads mora fora de backend/app e e consumido por outra lane",
+    "exigencia": "sem approved_set_sha256 nao ha criterio",
+    "negativas_produzidas": 0
+  },
+  "vazamento_de_desfecho": {
+    "guarda": "_guardar_vazamento levanta VazamentoDeDesfecho quando uma Evidencia pos_lancamento da MESMA campanha e oferecida a uma decisao pre_lancamento",
+    "permitido": "evidencia pos-lancamento de OUTRA campanha entra como prior, marcada",
+    "limitacao_declarada": "a guarda depende de campanha_ref ser preenchido. Evidencia pos-lancamento sem campanha_ref declarada NAO e barrada — e um contrato de honestidade do chamador, nao uma prova."
+  },
+  "priors_de_benchmark": {
+    "regra": "nenhum prior com confianca diferente de 'alta' pode bloquear ou autorizar (test_K). Na pratica NENHUM prior, de qualquer confianca, bloqueia ou autoriza neste motor.",
+    "o_unico_de_confianca_alta_sobre_conteudo": "afirma uma AUSENCIA: o benchmark nao contem teste de desfecho no nivel de keyword"
+  },
+  "mutacao_externa": {
+    "google_ads": "nenhuma", "supabase": "nenhuma", "migration": "nenhuma",
+    "persistencia_nova": "nenhuma — o contrato viaja dentro de factory_output, que ja e List[Dict[str, Any]] em MineResponse"
+  }
+}

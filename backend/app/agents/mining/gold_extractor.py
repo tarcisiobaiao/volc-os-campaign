@@ -30,6 +30,43 @@ def _micros_to_2(micros: Any) -> float:
     return round((float(micros or 0) / _MICROS), 2)
 
 
+def _estado(metricas: Dict[str, Any], chave: str) -> str:
+    """O estado do campo, lido da PRESENÇA da chave — antes de coagir nada.
+
+    ⚠️ ESTE É O PRIMEIRO SALTO DO PIPELINE, E ERA ONDE A AUSÊNCIA MORRIA.
+
+    `int(m.get("avgMonthlySearches") or 0)` fazia uma keyword SEM bloco de
+    métricas sair byte a byte idêntica a uma com zero MEDIDO:
+
+        sem keywordIdeaMetrics   -> volume 0, cpc 0.0, competition_index 0
+        zeros medidos            -> volume 0, cpc 0.0, competition_index 0
+
+    Depois disso nenhuma camada a jusante pode recuperar a diferença — nem
+    `Sinal.de_bruto`, que é justamente o tipo criado para preservá-la. Por
+    isso o estado nasce aqui, ao LADO do número: os campos numéricos ficam
+    como estão (nada a jusante quebra) e o estado viaja junto para quem
+    souber lê-lo.
+
+    `measured` inclui o zero: quando a API devolveu o campo, o zero é
+    resposta. É a única fonte do pipeline que pode afirmar isso.
+    """
+    if chave not in metricas or metricas.get(chave) is None:
+        return "absent"
+    return "measured"
+
+
+def _bloco_de_metricas(item: Dict[str, Any]) -> bool:
+    """`keywordIdeaMetrics` chegou?
+
+    `GenerateKeywordIdeaResult.keyword_idea_metrics` é campo de MENSAGEM sem
+    `optional`: uma ideia pode chegar com o submensagem inteira não definida, e
+    aí TODOS os escalares dentro dela leem 0. Sem esta bandeira, "a API não
+    mandou métrica nenhuma" e "a API mandou zeros" são a mesma coisa a jusante.
+    Ref.: developers.google.com/google-ads/api/reference/rpc/v25/GenerateKeywordIdeaResult
+    """
+    return isinstance(item.get("keywordIdeaMetrics"), dict) and bool(item["keywordIdeaMetrics"])
+
+
 def extract_gold(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Port of the '⛏️ Gold Extractor1' Code node.
 
@@ -69,8 +106,36 @@ def extract_gold(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "cpc": _micros_to_2(m.get("averageCpcMicros")),
                 "low_bid": _micros_to_2(m.get("lowTopOfPageBidMicros")),
                 "high_bid": _micros_to_2(m.get("highTopOfPageBidMicros")),
-                "competition": str(m.get("competition") or "UNKNOWN").upper(),
+                # ⚠️ UNSPECIFIED ≠ UNKNOWN, E NENHUM DOS DOIS É "LOW".
+                #
+                # `competition` é o ÚNICO campo desta mensagem sem presença de
+                # campo (enum proto3 puro), então um valor não populado
+                # desserializa como UNSPECIFIED — "não especificado" — e é
+                # indistinguível de um UNSPECIFIED explícito. `UNKNOWN` quer
+                # dizer outra coisa: "valor que esta versão do cliente não
+                # reconhece". Marcar o ausente como UNKNOWN, como se fazia
+                # aqui, afirmava a segunda coisa tendo observado a primeira.
+                # Ref.: .../v25/KeywordPlanCompetitionLevelEnum.KeywordPlanCompetitionLevel
+                "competition": str(m.get("competition") or "UNSPECIFIED").upper(),
                 "competition_index": int(m.get("competitionIndex") or 0),
+                # O estado ao lado do número — ver `_estado`.
+                "volume_estado": _estado(m, "avgMonthlySearches"),
+                "cpc_estado": _estado(m, "averageCpcMicros"),
+                "low_bid_estado": _estado(m, "lowTopOfPageBidMicros"),
+                "high_bid_estado": _estado(m, "highTopOfPageBidMicros"),
+                # "IF NOT ENOUGH DATA IS AVAILABLE, NULL IS RETURNED" — a
+                # afirmação mais explícita de toda a superfície: ausente é
+                # dado insuficiente, 0 é 0% de preenchimento de slot MEDIDO.
+                "competition_index_estado": _estado(m, "competitionIndex"),
+                # `average_cpc_micros` só é populado com
+                # `include_average_cpc=true`, e o proto diz que ele existe
+                # "only for legacy support". A ausência dele tem um TERCEIRO
+                # sentido além de "sem dado": não solicitado.
+                "cpc_motivo_de_ausencia": (
+                    None if _estado(m, "averageCpcMicros") == "measured"
+                    else "sem_dado_ou_nao_solicitado__include_average_cpc"
+                ),
+                "bloco_de_metricas_presente": _bloco_de_metricas(item),
                 "found_in_loop": current_loop,
                 "seed_origin": current_seed,
             }

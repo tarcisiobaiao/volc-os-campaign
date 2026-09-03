@@ -436,3 +436,116 @@ export const ETAPAS_DA_MEDICAO: { rotulo: string; eixos: string[] }[] = [
   { rotulo: 'SERP e audiência', eixos: ['vacuo', 'formato_consumo'] },
   { rotulo: 'leitura da pessoa', eixos: ['ignorancia', 'engajamento', 'opacidade', 'densidade', 'producao'] },
 ];
+
+// ── elegibilidade paga ──────────────────────────────────────────────────────
+//
+// A SEGUNDA resposta. `ValidacaoResumo`, acima, responde "vale produzir
+// conteúdo sobre este tema?". Isto responde "quais termos podem entrar num
+// leilão?", e as duas não se decidem. Um tema pode ser apto a virar pauta com
+// todas as suas keywords retidas — é o caso comum de um tema institucional.
+//
+// Espelha `backend/app/agents/mining/paid_eligibility.py`. Viaja dentro de
+// `factory_output[].keywords_campanha.conjunto_pago`, sem endpoint novo e sem
+// migration: `MineResponse.factory_output` já é `List[Dict[str, Any]]`.
+
+/** O estado de um número, para que a tela nunca escreva 0 onde falta dado. */
+export type EstadoDoDado =
+  | 'measured'
+  | 'confirmed_zero'
+  | 'absent'
+  | 'unknown'
+  | 'not_applicable'
+  | 'failed'
+  | 'inferred';
+
+/** Um número de leilão com o estado que autoriza lê-lo. `valor` é `null`
+ *  sempre que o estado não comporta número — nunca 0 por omissão. */
+export interface SinalPago {
+  valor: number | null;
+  estado: EstadoDoDado;
+  fonte: string;
+  frescor: string | null;
+  motivo: string | null;
+  proveniencia: string;
+}
+
+export type DecisaoPaga = 'INCLUDE' | 'EXPERIMENT' | 'HOLD' | 'REJECT' | 'HUMAN_REVIEW';
+
+/** `situacao` responde "entrou no conjunto?", que é pergunta diferente de
+ *  `decisao` ("é elegível?"). Um termo pode ser elegível e ficar de fora por
+ *  quantidade — `ELEGIVEL_NAO_SELECIONADO`. */
+export type SituacaoPaga = 'SELECIONADO' | 'ELEGIVEL_NAO_SELECIONADO' | DecisaoPaga;
+
+export interface KeywordPaga {
+  termo: string;
+  termo_normalizado: string;
+  original?: string | null;
+  subintencao?: string | null;
+  estagio?: string;
+  arquetipos: string[];
+  match_type: string;
+  volume: SinalPago;
+  cpc: SinalPago;
+  congruencia: string;
+  amplitude: string;
+  riscos: Record<string, boolean>;
+  viabilidade: string;
+  confianca: string;
+  decisao: DecisaoPaga;
+  situacao: SituacaoPaga;
+  motivos: string[];
+  bloqueadores: string[];
+  alertas: string[];
+  selecionada: boolean;
+}
+
+export interface ConjuntoPago {
+  candidates: KeywordPaga[];
+  selected_keywords: KeywordPaga[];
+  excluded_keywords: KeywordPaga[];
+  human_review_keywords: KeywordPaga[];
+  /** Sempre vazio: negativa exige search-term evidence e revisão de
+   *  overblocking, e as duas moram fora deste motor. */
+  negative_keywords: unknown[];
+  owner_ceiling: number | null;
+  selection_policy_version: string;
+  evidence_snapshot: Record<string, unknown>;
+  selected_set_sha256: string;
+  approved_set_sha256: string | null;
+  aprovado_por: string | null;
+  /** ⚠️ Significa que o CONJUNTO pode ser preparado com governança. NÃO
+   *  significa conta apta, destino aprovado, mensuração pronta nem campanha
+   *  autorizada — `portoes_externos_pendentes` diz isso em voz alta. */
+  ready_for_campaign_plan: boolean;
+  portoes_externos_pendentes: Record<string, string>;
+  blockers: string[];
+  alertas: string[];
+}
+
+/** Um item de `factory_output`, na parte que a tela lê. */
+export interface FunilDeProducao {
+  project_name?: string | null;
+  keywords_campanha?: {
+    lista_google_ads?: string;
+    conjunto_pago?: ConjuntoPago;
+    stats?: { total_keywords?: number; total_volume?: number; avg_cpc?: string; avg_cpc_estado?: string; avg_cpc_n?: number };
+  };
+}
+
+/** O rótulo humano de cada decisão. O texto é o que a pessoa lê antes de
+ *  aprovar, então ele diz o que a decisão faz, não como ela se chama. */
+export const ROTULO_DECISAO_PAGA: Record<SituacaoPaga, { titulo: string; tom: string }> = {
+  SELECIONADO: { titulo: 'no conjunto', tom: 'text-success' },
+  ELEGIVEL_NAO_SELECIONADO: { titulo: 'elegível, fora por quantidade', tom: 'text-muted-foreground' },
+  INCLUDE: { titulo: 'elegível', tom: 'text-success' },
+  EXPERIMENT: { titulo: 'experimento', tom: 'text-warning' },
+  HOLD: { titulo: 'retida', tom: 'text-muted-foreground' },
+  REJECT: { titulo: 'recusada', tom: 'text-destructive' },
+  HUMAN_REVIEW: { titulo: 'revisão humana', tom: 'text-warning' },
+};
+
+/** Um número que talvez não exista. `—` quando não existe — nunca `0`. */
+export function leSinal(s?: SinalPago | null, casas = 0): string {
+  if (!s || s.valor === null || s.valor === undefined) return '—';
+  return casas > 0 ? s.valor.toFixed(casas) : s.valor.toLocaleString('pt-BR');
+}
