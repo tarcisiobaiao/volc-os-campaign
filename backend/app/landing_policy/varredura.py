@@ -128,6 +128,19 @@ class PaginaObservada:
     #: `NAO_APLICAVEL_E_DESCONHECIDO_EM` no ponto de campanha, então uma leitura
     #: AO VIVO nunca pode alegar "não se aplica".
     documento_parcial: bool = False
+    #: Hosts que o CHROME do site legitimamente linka — crédito do tema, rede
+    #: social da casa, autoria.
+    #:
+    #: ⚠️ CONFIGURAÇÃO DO SERVIDOR/SITE, e ela é DELIBERADAMENTE separada de
+    #: `hosts_declarados` e de `adtech_declarada`. Uma allowlist enviada pelo
+    #: cliente não autoriza host nenhum aqui, e `adtech_declarada` autoriza
+    #: RECURSO TÉCNICO (script, pixel), não navegação do leitor. Reaproveitar
+    #: qualquer uma das duas transformaria um campo de payload na chave que
+    #: abre a política de links.
+    #:
+    #: Vazio é fail-closed: sem procedência confiável, o link do tema continua
+    #: reprovando — com o código e o próximo ato dele.
+    chrome_declarado_pelo_site: tuple[str, ...] = ()
     #: Fontes de pesquisa que o motor usou naquela página. Elas pertencem ao
     #: dossiê de evidência; virar hyperlink no corpo de um destino pago é o
     #: defeito que `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` descreve.
@@ -139,6 +152,22 @@ class PaginaObservada:
 #: Folga entre relógios de máquinas diferentes. Cinco minutos absorve deriva de
 #: NTP sem absorver um carimbo posto de propósito no futuro.
 _TOLERANCIA_DE_RELOGIO_S = 300
+
+#: As regiões do documento. `corpo` é o conteúdo editorial e o CTA — o que o
+#: funil escreveu. As outras quatro são o CHROME que o tema do WordPress
+#: renderiza em volta dele.
+REGIAO_CORPO = "corpo"
+REGIAO_CABECALHO = "cabecalho"
+REGIAO_RODAPE = "rodape"
+REGIAO_NAVEGACAO = "navegacao"
+REGIAO_WIDGET = "widget"
+REGIAO_ADTECH = "adtech"
+
+#: Tudo que não é `corpo`. A distinção não LIBERA link nenhum — ela troca o
+#: código emitido e, com ele, o próximo ato e o dono do conserto.
+REGIOES_DE_CHROME = frozenset(
+    {REGIAO_CABECALHO, REGIAO_RODAPE, REGIAO_NAVEGACAO, REGIAO_WIDGET, REGIAO_ADTECH}
+)
 
 _SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript)\b.*?</\1>")
 _TAG_RE = re.compile(r"(?s)<[^>]+>")
@@ -163,6 +192,8 @@ class _Parser(HTMLParser):
         self.canonical: str | None = None
         #: `<base href>` — reescreve todo link relativo da página.
         self.base: str = ""
+        #: Pilha de regiões. O topo diz onde estamos; vazia = corpo editorial.
+        self._pilha_regiao: list[tuple[str, str]] = []
         #: ⚠️ O TÍTULO E OS CABEÇALHOS, que a v1 não colhia.
         #:
         #: `texto_visivel` achatava tudo num único texto, então o portão olhava o
@@ -187,10 +218,60 @@ class _Parser(HTMLParser):
     # trata as duas de forma diferente.
     _CLASSES_BOTAO = ("wp-block-button", "elementor-button", "su-button", "btn", "button")
 
+    #: ⚠️ REGIÕES DO DOCUMENTO, e por que elas passaram a existir.
+    #:
+    #: Um destino pago no ar não é o artefato: é o artefato DENTRO do tema do
+    #: WordPress. O crédito "Orgulhosamente com WordPress", o ícone de rede
+    #: social e o link do autor são hyperlinks externos que o TEMA renderiza, e
+    #: a política do VOLC fala do corpo editorial e do CTA.
+    #:
+    #: Sem procedência, a barreira 3 acusava esses links como se fossem
+    #: conteúdo do funil — e o operador recebia uma recusa que não tinha como
+    #: consertar mexendo no funil. Atribuir ao conteúdo um link que o conteúdo
+    #: não pôs é acusação falsa, e acusação falsa é como um portão perde a
+    #: autoridade que ele precisa ter nos outros 42 códigos.
+    #:
+    #: A procedência NÃO libera nada por si: ela troca o código e o próximo ato.
+    _TAGS_DE_CHROME = {
+        "header": REGIAO_CABECALHO,
+        "footer": REGIAO_RODAPE,
+        "nav": REGIAO_NAVEGACAO,
+        "aside": REGIAO_WIDGET,
+    }
+    #: Classe/id que o tema usa quando não usa a tag semântica. Erra para MENOS
+    #: chrome: o que não for reconhecido continua sendo CORPO, e corpo é o
+    #: regime estrito. Uma heurística de chrome que errasse para mais viraria a
+    #: porta de saída da própria política.
+    _MARCAS_DE_CHROME = (
+        ("site-header", REGIAO_CABECALHO), ("masthead", REGIAO_CABECALHO),
+        ("topbar", REGIAO_CABECALHO), ("page-header", REGIAO_CABECALHO),
+        ("site-footer", REGIAO_RODAPE), ("colophon", REGIAO_RODAPE),
+        ("footer-", REGIAO_RODAPE), ("rodape", REGIAO_RODAPE),
+        ("main-navigation", REGIAO_NAVEGACAO), ("menu-", REGIAO_NAVEGACAO),
+        ("breadcrumb", REGIAO_NAVEGACAO), ("navbar", REGIAO_NAVEGACAO),
+        ("sidebar", REGIAO_WIDGET), ("widget", REGIAO_WIDGET),
+        ("ai-viewport", REGIAO_ADTECH), ("ai-widget", REGIAO_ADTECH),
+        ("adsbygoogle", REGIAO_ADTECH), ("ad-slot", REGIAO_ADTECH),
+        ("code-block", REGIAO_ADTECH),
+    )
+
+    @property
+    def regiao(self) -> str:
+        return self._pilha_regiao[-1][1] if self._pilha_regiao else REGIAO_CORPO
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         amap = {k.lower(): (v or "") for k, v in attrs}
         t = tag.lower()
         classe = amap.get("class", "").lower()
+        marcador = f"{classe} {amap.get('id', '').lower()} {amap.get('role', '').lower()}"
+        regiao_nova = self._TAGS_DE_CHROME.get(t)
+        if regiao_nova is None:
+            for marca, alvo_regiao in self._MARCAS_DE_CHROME:
+                if marca in marcador:
+                    regiao_nova = alvo_regiao
+                    break
+        if regiao_nova is not None:
+            self._pilha_regiao.append((t, regiao_nova))
         if any(c in classe for c in self._CLASSES_BOTAO):
             self._profundidade_botao += 1
         if t == "link":
@@ -208,6 +289,7 @@ class _Parser(HTMLParser):
                 "classe": classe,
                 "em_botao": self._profundidade_botao > 0
                 or any(c in classe for c in self._CLASSES_BOTAO),
+                "regiao": self.regiao,
                 "_texto": [],
             }
             self.links.append(registro)
@@ -255,7 +337,7 @@ class _Parser(HTMLParser):
             self.links.append({
                 "href": amap.get("formaction", ""), "rel": "", "target": "",
                 "classe": classe, "em_botao": True, "origem_da_tag": t,
-                "_texto": [amap.get("value", "")],
+                "regiao": self.regiao, "_texto": [amap.get("value", "")],
             })
         elif t == "area":
             # Área clicável de mapa de imagem. É `<a href>` com outra roupa.
@@ -263,7 +345,7 @@ class _Parser(HTMLParser):
                 "href": amap.get("href", ""), "rel": amap.get("rel", ""),
                 "target": amap.get("target", ""), "classe": classe,
                 "em_botao": False, "origem_da_tag": t,
-                "_texto": [amap.get("alt", "")],
+                "regiao": self.regiao, "_texto": [amap.get("alt", "")],
             })
         elif t == "title":
             self._em_titulo = True
@@ -284,6 +366,8 @@ class _Parser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         t = tag.lower()
+        if self._pilha_regiao and self._pilha_regiao[-1][0] == t:
+            self._pilha_regiao.pop()
         if t == "title" and self._em_titulo:
             self.titulo = re.sub(r"\s+", " ", "".join(self._texto_titulo)).strip()
             self._em_titulo = False
@@ -327,6 +411,7 @@ def analisar(html: str) -> _Parser:
     for registro in p.links:
         registro["texto"] = re.sub(r"\s+", " ", "".join(registro.pop("_texto"))).strip()
         registro.setdefault("origem_da_tag", "a")
+        registro.setdefault("regiao", REGIAO_CORPO)
     return p
 
 
@@ -512,6 +597,10 @@ CLASSE_RELATIVO = "relativo"
 #: a exigência de identidade. Entra no inventário para que "permitido" e "não
 #: encontrado" não tenham a mesma aparência no recibo.
 CLASSE_CONTATO_DIRETO = "contato_direto"
+#: Host que o CHROME do site legitimamente linka, declarado pela configuração do
+#: servidor. NÃO é `fonte_declarada` (evidência de pesquisa do chamador) nem
+#: `adtech_declarada` (recurso técnico): é procedência sobre o template.
+CLASSE_CHROME_DO_SITE = "chrome_do_site"
 #: `javascript:`/`data:`/`blob:` — clicável, e com destino que não se resolve
 #: lendo o documento. É não-classificável por construção.
 CLASSE_NAO_RESOLVIVEL = "nao_resolvivel"
@@ -579,6 +668,11 @@ def classificar_host(host: str, pagina: PaginaObservada) -> str:
         return CLASSE_ADTECH_GOOGLE
     if any(_mesmo_site(host, a.lower()) for a in pagina.adtech_declarada):
         return CLASSE_ADTECH_DECLARADA
+    if any(_mesmo_site(host, c.lower()) for c in pagina.chrome_declarado_pelo_site):
+        # Chrome do site, declarado pela CONFIGURAÇÃO DO SERVIDOR — não por
+        # allowlist do cliente. Declarar com procedência é o que faz a recusa
+        # deixar de ser sobre este host; sem isso ele continua não classificado.
+        return CLASSE_CHROME_DO_SITE
     if any(_mesmo_site(host, d.lower()) for d in pagina.hosts_declarados):
         return CLASSE_FONTE_DECLARADA
     return CLASSE_TERCEIRO_DESCONHECIDO
@@ -917,6 +1011,7 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
             "rel": link.get("rel", ""),
             "oculto": href in ocultos,
             "tag": link.get("origem_da_tag", "a"),
+            "regiao": str(link.get("regiao") or REGIAO_CORPO),
         }
         inventario.append(item)
 
@@ -982,18 +1077,49 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
         # referência externa continua permitida e o achado fica registrado — o
         # papel da página decide o peso, nunca a existência do fato.
         if classe not in _CLASSES_INTERNAS and href not in ocultos:
-            achados.append(
-                Achado(
-                    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
-                    "Hyperlink externo clicável na experiência paga. A fonte fica "
-                    "no dossiê de evidência e é citada em prosa; ela não vira "
-                    "âncora no corpo de um destino que recebe clique comprado.",
-                    evidencia={"host": host, "classe": classe,
-                               "ancora": texto[:60],
-                               "em_botao": bool(link.get("em_botao")),
-                               "e_fonte_de_pesquisa": host in _hosts_de_pesquisa},
-                )
+            regiao = str(link.get("regiao") or REGIAO_CORPO)
+            no_chrome = regiao in REGIOES_DE_CHROME
+            # ⚠️ SÓ A CONFIGURAÇÃO DO SITE autoriza um host de chrome.
+            #
+            # `hosts_declarados` e `adtech_declarada` NÃO valem aqui: a primeira
+            # é a evidência de pesquisa que o chamador trouxe, a segunda
+            # autoriza recurso técnico. Nenhuma das duas é procedência sobre o
+            # template do site, e aceitar qualquer uma faria um campo de payload
+            # virar a chave que abre a política de links.
+            autorizado_no_chrome = no_chrome and any(
+                _mesmo_site(host, c.lower()) for c in pagina.chrome_declarado_pelo_site
             )
+            if autorizado_no_chrome:
+                item["chrome_declarado"] = True
+            elif no_chrome:
+                achados.append(
+                    Achado(
+                        "LINK_EXTERNO_NO_CHROME",
+                        "Hyperlink externo no chrome do site (cabeçalho, rodapé, "
+                        "navegação ou widget). Ele continua saindo do destino pago — "
+                        "e o dono do conserto é o TEMA/WordPress, não o conteúdo do "
+                        "funil: remover do template, ou declarar o host no chrome do "
+                        "site com procedência.",
+                        evidencia={"host": host, "regiao": regiao,
+                                   "ancora": texto[:60],
+                                   "proximo_ato": "tema/WordPress"},
+                    )
+                )
+            else:
+                achados.append(
+                    Achado(
+                            "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+                        "Hyperlink externo clicável no CORPO da experiência paga. A "
+                        "fonte fica no dossiê de evidência e é citada em prosa; ela "
+                        "não vira âncora no corpo de um destino que recebe clique "
+                        "comprado.",
+                        evidencia={"host": host, "classe": classe,
+                                   "regiao": regiao,
+                                   "ancora": texto[:60],
+                                   "em_botao": bool(link.get("em_botao")),
+                                   "e_fonte_de_pesquisa": host in _hosts_de_pesquisa},
+                    )
+                )
         if texto and not item["ancora_e_valor"] and _ancora_incongruente(texto, absoluto):
             achados.append(
                 Achado(

@@ -332,6 +332,11 @@ _BLOQUEIA_NO_PAGO = frozenset({
     # anunciava. A regra anterior só barrava host NÃO CLASSIFICADO — governo com
     # âncora descritiva e fonte de pesquisa declarada passavam em silêncio.
     "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+    # O PAR do código acima, para o link que o TEMA renderiza. Ele bloqueia
+    # igual — fail-closed —, e o que muda é o dono do conserto: quem escreve o
+    # funil não tem como tirar o crédito "Orgulhosamente com WordPress" do
+    # rodapé. Recusa inacionável é como um portão é desligado.
+    "LINK_EXTERNO_NO_CHROME",
     # O H1 é a promessa que o anúncio compra, e é lido antes de qualquer rodapé.
     # O aviso de não-vínculo no pé não desfaz uma manchete que diz que o governo
     # liberou algo.

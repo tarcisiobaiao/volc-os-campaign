@@ -448,6 +448,17 @@
       "result": "NOT_OBSERVED nos dois destinos lidos ao vivo em 2026-09-03 (ambos 200). A regra existe porque `status_http` era coletado e não participava de decisão nenhuma — e `volc_ads/policy/spec.py::checar_destino` modelava exatamente isto sem nunca ser chamado, 'por falta de um status HTTP que ninguém coleta'. Agora a barreira 3 coleta.",
       "confidence": "high",
       "correction": "Apontar o anúncio para uma URL que responde 200, ou pausar a campanha."
+    },
+    "LINK_EXTERNO_NO_CHROME": {
+      "policy": "Unacceptable business practices / Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/15938071",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC, e ela é o par de LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO. O destino pago no ar não é o artefato: é o artefato DENTRO do tema do WordPress. O crédito 'Orgulhosamente com WordPress', o ícone de rede social e o link do autor são hyperlinks externos que o TEMA renderiza. Eles continuam sendo hyperlink externo num destino pago — o visitante clica e sai —, mas o dono do conserto NÃO é quem escreve o funil. Emitir o mesmo código dos dois dava ao operador uma recusa que ele não tinha como consertar mexendo no conteúdo, e recusa inacionável é como um portão é desligado.",
+      "evidence": "Hyperlink externo clicável cuja procedência DOM é cabeçalho, rodapé, navegação, widget ou slot de adtech — e cujo host NÃO está no chrome declarado pela configuração do SITE (nunca por allowlist enviada pelo cliente, nunca por `adtech_declarada`, que autoriza recurso técnico e não navegação).",
+      "result": "OBSERVED na revisão de olhos frescos desta sprint: dois links de rodapé de tema (wordpress.org e facebook.com) derrubavam uma página conforme na barreira 3, com o código do corpo editorial.",
+      "confidence": "high",
+      "correction": "O dono correto é o TEMA/WordPress: remover o link do template do destino pago, ou declarar o host no chrome do site (configuração de servidor, com procedência) para que a recusa deixe de ser sobre ele."
     }
   }
 }
