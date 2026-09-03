@@ -1,0 +1,140 @@
+{
+  "access_scope": "owner_only",
+  "classification": "private_operational_evidence",
+  "custodian": "owner_private",
+  "deletion_verification": "pending_retention_review",
+  "encryption_at_rest": "not_proven",
+  "generated_at": "2026-09-03T10:28:56.029422+00:00",
+  "incident_channel": "owner_private",
+  "items": [
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756236+00:00",
+      "logical_name": "ACCOUNT-TOPOLOGY.json",
+      "sha256": "50552846438ad578d780d69c228c3d997e98a1fc7a85e44b822df3beb511adb0",
+      "size_bytes": 9780
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756272+00:00",
+      "logical_name": "CHANGE-EVENT-TIMELINE.json",
+      "sha256": "56a179bdfc4f809cf5c3aaeb0782ef53e46c95e758f81644540a7f235caac9a9",
+      "size_bytes": 155
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756287+00:00",
+      "logical_name": "CONVERSION-BIDDING-READINESS.json",
+      "sha256": "3998331676471f2bd40494f7054590339c7e6ce879e7e3fd507943f6c80768ae",
+      "size_bytes": 3397
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756300+00:00",
+      "logical_name": "CURATION-HANDOFF.json",
+      "sha256": "1b1fb17997e7da44501accb20455b9d9f440c65d764f399b0707f597542d1e8c",
+      "size_bytes": 944
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756313+00:00",
+      "logical_name": "DESTINATION-POLICY-FACTS.json",
+      "sha256": "ce3054e4207128bc57a5fdf664fb187cea903c439ff62a000c457d8e35e08378",
+      "size_bytes": 2895
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756325+00:00",
+      "logical_name": "EXECUTIVE-SUMMARY.md",
+      "sha256": "67f5f16b20a1c6c3e78120d822e0e8da1a6d6146dc40cf98d88c0eb4e5f3ba5c",
+      "size_bytes": 1674
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756338+00:00",
+      "logical_name": "GOOGLE-POLICY-SOURCES.md",
+      "sha256": "54e73d7c651149dbbe02320459c7d08fa4b0a6d531c0a6bd75281d0045810dae",
+      "size_bytes": 1055
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756355+00:00",
+      "logical_name": "GOOGLE-RECOMMENDATIONS.json",
+      "sha256": "8fb593742a2c4c317a1cc40a5e2c3e8d110db216e062433b0d166d1178e38751",
+      "size_bytes": 152
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756368+00:00",
+      "logical_name": "HANDOFF-PAID-DESTINATION.md",
+      "sha256": "7bb59eb0b891631f243011470787f4716357aa30e4801067ce00467ba532759b",
+      "size_bytes": 1860
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756381+00:00",
+      "logical_name": "HANDOFF-SEARCH-SENTINEL.md",
+      "sha256": "4728aea95084d2d6343dc71b1c8fdea6b742856ce948fbc83fcf1b3ff91762d7",
+      "size_bytes": 2189
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756392+00:00",
+      "logical_name": "HANDOFF.md",
+      "sha256": "e29e51e2d3d89f44adb94a95c4bd63e68aab5e07dd4fb0336526808ddb43ea5b",
+      "size_bytes": 1792
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756404+00:00",
+      "logical_name": "HERMES-CODEX-REVIEW.md",
+      "sha256": "80bf7da4c5ac561486206beee9d56e48bb4d9220fb6ad11959bc85e9f1aa26e7",
+      "size_bytes": 1495
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756668+00:00",
+      "logical_name": "KEYWORD-DIAGNOSTICS.json",
+      "sha256": "e8165bc92ee41810a436b20f3e3c04cbd6b4d2d71ed4b7578430a50249da7930",
+      "size_bytes": 274215
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756714+00:00",
+      "logical_name": "LIMITATIONS.md",
+      "sha256": "631ff40a02ef200033da3865a6c8f19c54d08ad998d0e5eb224a49903ca47e52",
+      "size_bytes": 810
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.756741+00:00",
+      "logical_name": "QUERY-MANIFEST.json",
+      "sha256": "a9a834286c9c734f5a91e294e9cd04b521341138ff090d388da2486ca68cd116",
+      "size_bytes": 6242
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.757108+00:00",
+      "logical_name": "SEARCH-DELIVERY-FACTS.json",
+      "sha256": "a61053af7c350338ad42f15abf9655f50025ff7c7c07d672c98cdb022ace2434",
+      "size_bytes": 388247
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.757144+00:00",
+      "logical_name": "VOLC-EARLY-WARNING-GAP.json",
+      "sha256": "bbf525d7925ac8e64187c91aa2eefbcb45b1cd9ddfa03b9d787d4eb9761d670f",
+      "size_bytes": 1650
+    },
+    {
+      "classification": "private_operational_evidence",
+      "generated_at": "2026-09-03T10:27:26.757180+00:00",
+      "logical_name": "ZERO-MUTATE-RECEIPT.json",
+      "sha256": "9694b61c12acf7aef2752749a72000e3c1371dbe11c8a7e4f5b8fe3fcb6e6183",
+      "size_bytes": 33239
+    }
+  ],
+  "private_location_label": "Hermes local private evidence vault; not versioned",
+  "retention_review_due": "2026-10-03",
+  "schema": "PrivateEvidenceManifestPublic.v1"
+}

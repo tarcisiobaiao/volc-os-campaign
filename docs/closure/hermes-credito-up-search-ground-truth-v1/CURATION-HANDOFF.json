@@ -1,0 +1,40 @@
+{
+  "forbidden_old_reference": "risk:alertas_gaql_no_render not used",
+  "generated_at": "2026-09-03T10:28:56.029422+00:00",
+  "mission": "hermes-credito-up-search-ground-truth-v1",
+  "no_done_states": true,
+  "proposals": [
+    {
+      "evidence": "Search alert operational gap is partially proven: account suspended, low delivery and below-first-page-bid were observable; complete continuous alert/reaction loop remains unproven.",
+      "id": "risk:search_delivery_early_warning_gap",
+      "state": "risk"
+    },
+    {
+      "evidence": "Do not mark done from this branch; evidence-only package.",
+      "id": "P05-T07",
+      "state": "partial"
+    },
+    {
+      "evidence": "Do not mark done from this branch; executor integration still required.",
+      "id": "P05-T08",
+      "state": "partial"
+    },
+    {
+      "evidence": "Read-only evidence supports but does not close the operational loop.",
+      "id": "P09-T14",
+      "state": "partial"
+    },
+    {
+      "evidence": "Collection/projection exists in parts; alert interpretation/delivery/reaction loop not proven end-to-end.",
+      "id": "concept:search_intelligence",
+      "state": "partial"
+    },
+    {
+      "evidence": "Destination risk remains; V2 should consume sanitized facts and private evidence hashes.",
+      "id": "risk:paid_destination_policy_gap",
+      "state": "risk"
+    }
+  ],
+  "schema": "CurationHandoff.v2.sanitized",
+  "shared_authority_direct_edits": false
+}
