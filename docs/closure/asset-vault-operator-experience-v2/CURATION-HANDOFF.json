@@ -1,0 +1,54 @@
+{
+  "_papel": "DELTA PROPOSTO. NAO aplicado. Esta missao NAO editou volc-os-workbook/ROADMAP-VIVO.json, NAO editou docs/volc-os-graph/curadoria-operacional.json e NAO reconstruiu o Mapa Vivo. Quem aplica e o integrador unico, uma vez, depois do merge.",
+  "_missao": "asset-vault-operator-experience-v2",
+  "_branch": "sprint/asset-vault-operator-experience-v2",
+  "_base_sha": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "_candidato_integrado": "5f54d25cf4375c4a43c6b8b5c819f8937106090d",
+  "_merge_sha": "caf4df9e350800e6a26ce236e8e4136b4f9a4a56",
+  "_head_medido": "verificado_por_readback_apos_push; nao_embutido_para_evitar_sha_auto_referencial_falso",
+  "_medido_em": "2026-09-03",
+  "_nenhuma_tarefa_vira_done": "Nenhuma proposta pede done. UI de operador nao e patrimonio cadastrado, nem segredo resolvido, nem AdsPower, nem publicacao.",
+  "_frescor_do_mapa_vivo": "NAO CONSERTADO. Esta missao nao tocou o grafo.",
+  "tarefas": [
+    {
+      "id": "P03-T06",
+      "titulo": "Criar a tela Cofre de Ativos e liga-la ao grafo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Sem mudanca de estado. A tela passou de pulso de cinco celulas e cadastro em grid para control plane (visao honesta, tabela, onboarding progressivo, detalhe com as duas prontidoes da uniao 5f54d25). A ligacao ao GRAFO continua aberta.",
+      "lacunas_restantes": [
+        "o Cofre nao escreve no Mapa Vivo e nao le dele",
+        "nenhum inventario real de producao foi cadastrado nesta missao"
+      ]
+    },
+    {
+      "id": "P03-T10",
+      "titulo": "Persistir referencias de credencial no Cofre sem duplicar segredo",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Sem mudanca de estado. O onboarding e o formulario de referencia deixam de pedir o endereco cru: montam o localizador so no POST a partir de cofre/item/campo e recusam MFA/senha. GET continua sem projetar o endereco.",
+      "lacunas_restantes": [
+        "nenhuma referencia REAL foi persistida nem resolvida",
+        "1Password real nao foi aberto"
+      ]
+    },
+    {
+      "id": "P03-T11",
+      "titulo": "Criar broker seguro entre 1Password e AdsPower",
+      "estado_atual": "partial",
+      "estado_proposto": "partial",
+      "prova": "Sem mudanca de codigo do broker nesta missao. O candidato 5f54d25 foi unido na feature branch; a UI distingue cofre bloqueado de autorizacao negada e nao afirma que conectado e credencial valida.",
+      "lacunas_restantes": [
+        "nenhuma chamada real ao AdsPower",
+        "nenhuma resolucao real de op run"
+      ]
+    }
+  ],
+  "_o_que_o_integrador_nao_deve_fazer": [
+    "nao promover nenhuma P03 para done por causa desta UI",
+    "nao mesclar em volc-os-v2 sem a revisao da Bia",
+    "nao tratar o double de captura como inventario real"
+  ],
+  "_zero_escrita_externa": "zero Supabase write, zero AdsPower real, zero publicacao, zero migration, zero deploy, zero kill de localhost:8080",
+  "_branch_publicada": "sprint/asset-vault-operator-experience-v2"
+}
