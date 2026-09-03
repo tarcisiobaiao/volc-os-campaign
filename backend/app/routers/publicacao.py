@@ -1960,3 +1960,241 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
                "Publique de verdade no WordPress e releia aqui para trazer o "
                "permalink." if pub.get("status_wp") != "publish" else None),
     )
+
+
+# ---------------------------------------------------------------------------
+# REAUDITORIA AO VIVO — as duas etapas que emitem o recibo de escopo `live`
+# ---------------------------------------------------------------------------
+#
+# ## O que estas duas rotas destravam
+#
+# A barreira 3 exige um recibo com `fingerprint_scope="live"`, e até aqui nenhum
+# caminho de produção emitia um: `/publicar` carimba o ARTEFATO (o corpo que o
+# motor escreveu) e a página que o AdsBot visita é esse corpo DENTRO do tema do
+# WordPress. Consequência medida em
+# `docs/closure/paid-destination-policy-spine-v2/REMAINING-RISKS.md`, seção
+# 6bis: NENHUM destino ficava elegível para campanha. Fail-closed, e parada
+# operacional total.
+#
+# ## Por que DUAS rotas e não uma
+#
+# Um portão que se autoaprova em silêncio não é portão. Se `/provar` gravasse, o
+# recibo `live` viraria efeito colateral de abrir uma tela. Então `/provar` é
+# read-only e devolve um HASH; `/confirmar` recebe aquele hash, RE-LÊ ao vivo,
+# RE-AVALIA e só então grava. Confirmar sem a impressão é 422 (o corpo nem
+# valida); confirmar com a impressão de uma prova velha é 409, porque a página
+# mudou entre as duas etapas.
+#
+# ## Por que admin
+#
+# Mesmo nível de `/publicar`: o recibo `live` é o que autoriza gastar dinheiro
+# apontando campanha para esta URL. `exigir_admin` no decorador encadeia
+# `exigir_usuario` do router.
+
+#: Teto das três leituras somadas mais a avaliação.
+#:
+#: ⚠️ `asyncio.wait_for` sobre `asyncio.to_thread` para de ESPERAR, não cancela a
+#: thread. Aqui isso é aceitável e não é sorte: o que sobra é um GET público
+#: read-only, que termina sozinho e não muta nada em lugar nenhum.
+TIMEOUT_DA_REAUDITORIA_S = 30.0
+
+
+class ConfirmarReauditoriaEntrada(BaseModel):
+    """O vínculo entre a prova e a confirmação, e nada mais.
+
+    ⚠️ O corpo NÃO aceita o recibo candidato. Se aceitasse, o cliente escolheria
+    o que vai ser gravado e o hash viraria crachá — quem tem o texto entra. O
+    recibo que a rota grava é o que ELA acabou de emitir relendo a página.
+    """
+
+    impressao_da_prova: str = Field(
+        ...,
+        min_length=64,
+        max_length=64,
+        pattern=r"^[0-9a-f]{64}$",
+        description="O `impressao_da_prova` devolvido por /provar (sha256 hex).",
+    )
+
+
+class ProvaDeReauditoriaSaida(BaseModel):
+    run_row_id: int
+    page_number: int
+    prova: Dict[str, Any]
+
+
+class ConfirmacaoDeReauditoriaSaida(BaseModel):
+    run_row_id: int
+    page_number: int
+    recibo: Dict[str, Any]
+    #: `false` quando o recibo que saiu desta chamada é idêntico ao que já
+    #: estava lá. ⚠️ Um duplo-clique normalmente devolve `true`, e isso está
+    #: certo: `observed_at` carrega o instante real da leitura e é dele que sai
+    #: o frescor — a segunda confirmação renova a evidência. O que ela NÃO faz é
+    #: rotacionar o histórico; ver `reauditoria._mesma_afirmacao`.
+    gravado: bool
+    prova: Dict[str, Any]
+
+
+async def _run_e_pagina_para_reauditar(
+    supa: SupabaseService, run_row_id: int, page_number: int
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """A linha do run e a página publicada, ou a recusa correspondente.
+
+    ⚠️ O run em andamento é recusado, e não é zelo: `worker.resumo_do_estado`
+    reescreve `paginas_publicadas` INTEIRO a partir do `state.json`. Um recibo
+    gravado enquanto o motor roda seria apagado pelo próximo resumo, em
+    silêncio — e a tela teria dito "gravado".
+    """
+    linhas = await supa.select(TABELA_RUNS, {"id": f"eq.{run_row_id}", "limit": 1})
+    if not linhas:
+        raise HTTPException(status_code=404, detail="Execução não encontrada.")
+    run = linhas[0]
+
+    if run.get("status") in ("running", "queued"):
+        raise HTTPException(
+            status_code=409,
+            detail="Esta execução ainda está rodando. O resumo do motor reescreve "
+                   "`paginas_publicadas` inteiro no fim — um recibo gravado agora "
+                   "seria apagado sem aviso.")
+
+    pagina = next((p for p in (run.get("paginas_publicadas") or [])
+                   if isinstance(p, dict)
+                   and int(p.get("page_number") or 0) == page_number), None)
+    if not pagina:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A página {page_number} não está publicada neste run. Só se "
+                   f"reaudita o que está no ar — é a página servida que a "
+                   f"reauditoria lê.")
+    if not str(pagina.get("url_wp") or "").strip():
+        raise HTTPException(
+            status_code=409,
+            detail=f"A página {page_number} não tem URL registrada. Releia do "
+                   f"WordPress para trazer o permalink antes de reauditar.")
+    return run, pagina
+
+
+async def _provar_ao_vivo(pagina: Dict[str, Any], *, esperada: Optional[str] = None):
+    """Roda a leitura ao vivo fora do loop, e traduz TODA falha em recusa.
+
+    `esperada` ausente = etapa 1 (`/provar`). Presente = etapa 2, que re-lê e
+    compara. As duas moram aqui para que a tradução de exceção em HTTP seja uma
+    só — dois `try` paralelos é como um deles ganha um ramo que o outro não tem.
+    """
+    from app.redator import reauditoria as ra
+
+    def _sincrono():
+        argumentos = dict(
+            url=str(pagina.get("url_wp") or ""),
+            papel_do_motor=str(pagina.get("role") or ""),
+            recibo_anterior=(pagina.get(ra.CHAVE_DO_RECIBO)
+                             if isinstance(pagina.get(ra.CHAVE_DO_RECIBO), dict) else None),
+        )
+        if esperada is None:
+            return ra.provar_destino(**argumentos), None
+        recibo, prova = ra.confirmar_reauditoria(prova_esperada=esperada, **argumentos)
+        return prova, recibo
+
+    try:
+        prova, recibo = await asyncio.wait_for(
+            asyncio.to_thread(_sincrono), timeout=TIMEOUT_DA_REAUDITORIA_S)
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A leitura ao vivo do destino não concluiu em "
+                   f"{TIMEOUT_DA_REAUDITORIA_S:.0f}s. Sem leitura não há prova, e "
+                   f"sem prova não há recibo.") from exc
+    except ra.ProvaDivergente as exc:
+        # ⚠️ 409 e não 422: o corpo estava BEM FORMADO. O que não bate é o
+        # estado do mundo — a página mudou entre a prova e a confirmação —, e
+        # confundir os dois faria o operador procurar erro no clique dele.
+        raise HTTPException(status_code=409, detail={
+            "erro": str(exc),
+            "esperado_12": exc.esperado[:12],
+            "observado_12": exc.observado[:12],
+            "proxima_acao": "provar de novo",
+        }) from exc
+    except ra.ReauditoriaRecusada as exc:
+        raise HTTPException(status_code=409, detail={
+            "erro": str(exc),
+            "motivos": [str(exc)],
+        }) from exc
+    return prova, recibo
+
+
+@router.post("/redator/runs/{run_row_id}/reauditar/{page_number}/provar",
+             response_model=ProvaDeReauditoriaSaida,
+             dependencies=[Depends(exigir_admin)])
+async def provar_reauditoria(run_row_id: int, page_number: int) -> ProvaDeReauditoriaSaida:
+    """Etapa 1: LÊ a página no ar, avalia e devolve a prova. ZERO escrita.
+
+    Nem Supabase, nem WordPress, nem disco. Três GETs públicos (desktop, mobile
+    e AdsBot) e aritmética sobre os bytes que voltaram.
+
+    O que a tela recebe é o veredito, o diff contra o recibo anterior, os
+    bloqueios COM O DONO de cada um, o recibo PENDENTE e o hash que amarra esta
+    prova à confirmação. Nada disso aprova coisa alguma: sem a etapa 2 não
+    existe recibo `live` em lugar nenhum.
+    """
+    supa = _supa()
+    _, pagina = await _run_e_pagina_para_reauditar(supa, run_row_id, page_number)
+    prova, _ = await _provar_ao_vivo(pagina)
+    return ProvaDeReauditoriaSaida(
+        run_row_id=run_row_id, page_number=page_number, prova=prova.para_json())
+
+
+@router.post("/redator/runs/{run_row_id}/reauditar/{page_number}/confirmar",
+             response_model=ConfirmacaoDeReauditoriaSaida,
+             dependencies=[Depends(exigir_admin)])
+async def confirmar_reauditoria_da_pagina(
+    run_row_id: int, page_number: int,
+    body: ConfirmarReauditoriaEntrada = Body(...),
+) -> ConfirmacaoDeReauditoriaSaida:
+    """Etapa 2: RE-LÊ, RE-AVALIA e grava — só o recibo, só se ainda bate.
+
+    ## O que ela revalida antes de gravar
+
+    Tudo o que o hash da prova cobre: a URL canônica, a impressão do conteúdo ao
+    vivo, as duas versões de política, o veredito, os bloqueios, os
+    desconhecidos e o inventário de links. Página alterada entre a prova e a
+    confirmação muda o hash e vira 409 com `proxima_acao: "provar de novo"`.
+
+    Ela NÃO confia na prova: a prova é o esperado, a evidência é a leitura de
+    agora. O recibo gravado é o que ESTA chamada emitiu.
+
+    ## O que ela escreve
+
+    UMA coisa: o recibo, na página casada por URL canônica dentro de
+    `pautador_funnel_runs.paginas_publicadas` — coluna jsonb que já existe
+    (`src/sql/pautador/04_matriz_do_redator.sql:60`). Zero migration, zero
+    coluna nova, zero mutação externa: nenhuma publicação, nenhuma alteração de
+    página, nenhuma campanha ativada.
+
+    O recibo anterior não some: vai para `landing_policy_receipt_anterior`. E um
+    duplo-clique não o apaga — quando o recibo novo afirma exatamente o mesmo e
+    só o carimbo mudou, ele substitui o atual e o histórico fica intacto. Ver
+    `reauditoria.aplicar_recibo`.
+    """
+    from app.redator import reauditoria as ra
+
+    supa = _supa()
+    run, pagina = await _run_e_pagina_para_reauditar(supa, run_row_id, page_number)
+    prova, recibo = await _provar_ao_vivo(pagina, esperada=body.impressao_da_prova)
+
+    try:
+        novas, mudou = ra.aplicar_recibo(
+            run.get("paginas_publicadas") or [], str(pagina.get("url_wp") or ""), recibo)
+    except ra.ReauditoriaRecusada as exc:
+        raise HTTPException(status_code=409, detail={
+            "erro": str(exc), "motivos": [str(exc)]}) from exc
+
+    if mudou:
+        # ⚠️ SÓ `paginas_publicadas` no patch. Um patch mais largo daqui — status,
+        # `lp_url`, custo — deixaria a reauditoria mexer em fatos que ela não
+        # observou, e ela observou exatamente um: o que a página serve hoje.
+        await supa.patch(TABELA_RUNS, {"id": f"eq.{run_row_id}"},
+                         {"paginas_publicadas": novas})
+
+    return ConfirmacaoDeReauditoriaSaida(
+        run_row_id=run_row_id, page_number=page_number,
+        recibo=recibo, gravado=mudou, prova=prova.para_json())

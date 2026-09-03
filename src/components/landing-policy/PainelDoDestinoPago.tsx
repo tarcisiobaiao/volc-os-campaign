@@ -36,7 +36,9 @@
  */
 import React from 'react';
 
+import { AcaoDeReauditoria } from '@/components/landing-policy/AcaoDeReauditoria';
 import { Selo } from '@/components/landing-policy/Selo';
+import type { ClienteDeReauditoria } from '@/lib/landing-policy/reauditoria';
 import {
   EXIGENCIA_DA_PERGUNTA,
   ORDEM_DAS_PERGUNTAS,
@@ -163,7 +165,22 @@ export const PainelDoDestinoPago: React.FC<{
   titulo?: string;
   compacto?: boolean;
   className?: string;
-}> = ({ leitura, titulo = 'destino pago', compacto = false, className }) => {
+  /**
+   * A ação de reauditar ao vivo, quando esta tela souber de qual run e de qual
+   * página está falando.
+   *
+   * ⚠️ Ela é OPCIONAL, e a ausência é o default por um motivo: o painel também
+   * desenha recibos que vieram de outros lugares (o portão da publicação, um
+   * cockpit de campanha), onde não existe run nem página para reauditar.
+   * Oferecer um botão que não tem o que ler seria pior que não oferecer.
+   */
+  reauditoria?: {
+    runRowId: number;
+    pageNumber: number;
+    api: ClienteDeReauditoria;
+    aoGravar?: (gravado: boolean) => void;
+  };
+}> = ({ leitura, titulo = 'destino pago', compacto = false, className, reauditoria }) => {
   const tomDoTopo = leitura.apto_para_campanha
     ? 'provado'
     : leitura.perguntas.volc === 'BLOQUEADO'
@@ -231,6 +248,19 @@ export const PainelDoDestinoPago: React.FC<{
           </ol>
         </section>
       )}
+
+      {/* ⚠️ A ação vem ANTES dos bloqueadores do recibo, e é deliberado: os
+          bloqueadores abaixo são os do recibo ARQUIVADO, e a reauditoria lê o
+          que está no ar AGORA. Ler a lista velha primeiro faria o operador
+          consertar contra evidência de outra época. */}
+      {reauditoria ? (
+        <AcaoDeReauditoria
+          runRowId={reauditoria.runRowId}
+          pageNumber={reauditoria.pageNumber}
+          api={reauditoria.api}
+          aoGravar={reauditoria.aoGravar}
+        />
+      ) : null}
 
       <Achados titulo="bloqueadores" itens={leitura.bloqueadores} tom="negado" />
       <Achados titulo="avisos" itens={leitura.avisos} tom="ignorado" />
