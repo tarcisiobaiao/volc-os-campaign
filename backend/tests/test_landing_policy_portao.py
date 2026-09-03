@@ -31,11 +31,15 @@ from app.landing_policy import (
 from app.landing_policy.contrato import (
     EXIGENCIAS_POR_PONTO,
     HOSTS_OFICIAIS,
+    POLICY_CONTRACT_VERSION,
     SEVERIDADE_BLOQUEIO,
     V_DERIVA,
     V_REDIRECIONAMENTO,
 )
 from app.landing_policy.varredura import VARREDURAS
+
+#: Congelado: comparar frescor exige uma referência estável entre execuções.
+AGORA = 1_767_225_600.0  # 2026-01-01T00:00:00Z
 
 CNPJ = "42.724.548/0001-24"
 
@@ -73,8 +77,26 @@ def pagina(html: str, **kwargs) -> PaginaObservada:
     return PaginaObservada(**base)
 
 
+#: O recibo que uma página APROVADA carrega na v2. Ele entra em `pagina_limpa`
+#: porque, a partir da espinha v2, elegibilidade de campanha sem recibo
+#: resolvível reprova — e uma "página limpa" que não conseguisse ficar verde
+#: provaria só que a fixture ficou velha.
+def recibo_valido(**kwargs) -> dict:
+    base = {
+        "policy_contract_version": POLICY_CONTRACT_VERSION,
+        "policy_source_version": versao_da_fonte(),
+        "observed_at_epoch": AGORA - 60,
+        "content_sha256": "a" * 64,
+        "paid_destination_ready": True,
+    }
+    base.update(kwargs)
+    return base
+
+
 def pagina_limpa(**kwargs) -> PaginaObservada:
     html = f"<html><body><h1>Guia informativo</h1><p>{CORPO_LONGO}</p>{RODAPE_LIMPO}</body></html>"
+    kwargs.setdefault("recibo_de_aprovacao", recibo_valido())
+    kwargs.setdefault("avaliado_em_epoch", AGORA)
     return pagina(html, **kwargs)
 
 
@@ -98,6 +120,19 @@ def test_pagina_limpa_fica_pronta_para_destino_pago():
     assert av.veredito in (Veredito.APROVADO, Veredito.APROVADO_COM_RESSALVAS)
 
 
+def test_a_mesma_pagina_limpa_sem_recibo_nao_e_elegivel():
+    """O simétrico da prova acima, e a mudança de contrato da espinha v2.
+
+    Até a v1, esta MESMA página ficava verde para campanha sem nenhum recibo —
+    o portão não tinha como saber se o que estava no ar era o que a casa
+    aprovou, e `DERIVA_AO_VIVO` saía `unavailable` nos quatro destinos reais.
+    A v2 fecha por ausência também aqui.
+    """
+    av = elegibilidade_de_destino_de_campanha(pagina_limpa(recibo_de_aprovacao=None))
+    assert av.paid_destination_ready is False
+    assert "RECIBO_DE_APROVACAO_AUSENTE" in {a.codigo for a in av.bloqueios}
+
+
 # ── fecha por ausência ─────────────────────────────────────────────────────
 
 
@@ -107,7 +142,7 @@ def test_verificacao_exigida_indisponivel_impede_o_verde():
         pagina_limpa(saltos_redirecionamento=None, variantes_sha256={})
     )
     assert av.paid_destination_ready is False
-    assert [d["verificacao"] for d in av.desconhecidos] == [V_REDIRECIONAMENTO]
+    assert [d["verificacao"] for d in av.desconhecidos] == [V_REDIRECIONAMENTO]  # noqa: E501
     assert av.veredito is Veredito.INDETERMINADO
 
 

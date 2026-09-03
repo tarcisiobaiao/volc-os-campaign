@@ -208,6 +208,103 @@ def sem_fonte_oficial(avaliacao: Avaliacao, fontes: dict[str, Any] | None = None
     return sorted(c for c in emitidos if not fonte_do_codigo(c, fontes))
 
 
+# ── autoridade do papel ────────────────────────────────────────────────────
+#
+# Ordem de RIGOR, do mais duro ao mais frouxo. É a espinha da função abaixo:
+# um pedido do cliente pode subir nesta lista, nunca descer.
+_RIGOR = (
+    PapelDestino.CONVERSION_PAGE,
+    PapelDestino.PAID_DESTINATION,
+    PapelDestino.PRESELL,
+    PapelDestino.EDITORIAL_SOLUTION,
+    PapelDestino.ORGANIC_ARTICLE,
+)
+
+#: Como o papel EDITORIAL do motor (`funnelforge.domain.models.PageRole`) mapeia
+#: para o papel de POLÍTICA. Não é sinônimo: o do motor descreve a posição no
+#: funil, o daqui descreve a exposição a clique comprado. A LP é o destino que o
+#: anúncio aponta; as interiores não recebem clique comprado direto.
+_DO_MOTOR = {
+    "LP": PapelDestino.PAID_DESTINATION,
+    "PRESELL": PapelDestino.PRESELL,
+    "SOLUTION": PapelDestino.EDITORIAL_SOLUTION,
+}
+
+
+class PapelRelaxadoPeloCliente(ValueError):
+    """O cliente pediu um papel mais frouxo que o que o servidor apurou.
+
+    É levantada em vez de ignorada em silêncio porque um pedido desses não é
+    ruído: é alguém — pessoa ou script — tentando baixar o rigor do portão pela
+    borda da API. Silenciar transformaria a tentativa em fato não registrado.
+    """
+
+
+def papel_do_servidor(
+    *,
+    e_destino_de_campanha: bool = False,
+    coleta_dado_do_visitante: bool = False,
+    papel_do_motor: str = "",
+    papel_pedido_pelo_cliente: str = "",
+) -> PapelDestino:
+    """O papel que VALE, apurado de fatos do servidor.
+
+    ## Por que esta função existe
+
+    O `HANDOFF-PATCH-PUBLICACAO.md` derivava o papel de
+    `plan.pages[].role == "LP"` — um campo que viaja no payload. Quem chama a
+    API direto escolhe o que quiser ali, e o portão inteiro passa a ser
+    desligável por configuração do chamador. É a mesma classe de defeito que
+    `elegibilidade_de_destino_de_campanha` já evitava forçando o papel, agora
+    escrita uma vez para os três pontos de portão.
+
+    ## A ordem de decisão, e o motivo de cada degrau
+
+    1. **Coleta dado do visitante** → `conversion_page`, o regime mais duro.
+       Isto é apurado do ARTEFATO (existe campo de formulário?), não declarado.
+    2. **É destino de campanha** → `paid_destination`, forçado. Uma campanha
+       apontando para uma URL faz dela um destino pago, qualquer que seja o
+       papel cadastrado.
+    3. **Papel do motor**, traduzido — a LP é quem recebe o clique comprado.
+    4. **Nada disso** → `organic_article`, o mais frouxo, porque afirmar mais
+       sem fato que sustente seria inventar rigor onde não há evidência.
+
+    ## O pedido do cliente só sobe
+
+    Ele é aceito quando pede MAIS rigor (um operador que sabe que aquela página
+    vai virar destino pago amanhã deve poder pedir a régua dura hoje) e
+    recusado quando pede menos.
+    """
+    if coleta_dado_do_visitante:
+        apurado = PapelDestino.CONVERSION_PAGE
+    elif e_destino_de_campanha:
+        apurado = PapelDestino.PAID_DESTINATION
+    else:
+        apurado = _DO_MOTOR.get(
+            str(papel_do_motor or "").strip().upper(), PapelDestino.ORGANIC_ARTICLE
+        )
+
+    pedido_bruto = str(papel_pedido_pelo_cliente or "").strip().lower()
+    if not pedido_bruto:
+        return apurado
+    try:
+        pedido = PapelDestino(pedido_bruto)
+    except ValueError:
+        # Papel desconhecido não vira default frouxo: fica o que o servidor
+        # apurou. Aceitar um valor que ninguém definiu seria deixar um erro de
+        # digitação decidir o rigor.
+        return apurado
+    if _RIGOR.index(pedido) < _RIGOR.index(apurado):
+        return pedido
+    if pedido is apurado:
+        return apurado
+    raise PapelRelaxadoPeloCliente(
+        f"O cliente pediu o papel {pedido.value!r}, mais frouxo que o papel "
+        f"{apurado.value!r} que o servidor apurou. O servidor é a autoridade: "
+        f"nada foi avaliado com a régua pedida."
+    )
+
+
 def elegibilidade_de_destino_de_campanha(
     pagina: PaginaObservada, *, fontes: dict[str, Any] | None = None
 ) -> Avaliacao:

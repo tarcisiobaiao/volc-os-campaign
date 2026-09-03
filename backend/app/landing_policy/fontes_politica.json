@@ -13,9 +13,11 @@
       "evidence": "what the gate must observe for this rule to fire",
       "result": "what was actually observed on the incident destinations on 2026-09-03",
       "confidence": "high | medium | low — confidence that the rule maps to the cited policy",
-      "correction": "the concrete correction that clears the rule"
+      "correction": "the concrete correction that clears the rule",
+      "regime": "google_literal = a regra reproduz uma cláusula publicada pelo Google. volc_interno_mais_restritivo = a regra é uma política interna do VOLC, mais dura que a do Google, ancorada na cláusula citada em `url`. Confundir as duas faria o sistema apresentar decisão da casa como proibição da plataforma."
     },
-    "scope_note": "This matrix maps engine rules to policy text. It does NOT establish the literal reason Google suspended any account; that requires the in-account/e-mail suspension notice (see ACCOUNT-EVIDENCE.md)."
+    "scope_note": "This matrix maps engine rules to policy text. It does NOT establish the literal reason Google suspended any account; that requires the in-account/e-mail suspension notice (see ACCOUNT-EVIDENCE.md).",
+    "contract_version_note": "policy_contract_version identifica a FORMA do contrato (que verificações existem, o que cada papel exige). policy_source_version é o hash desta matriz (o TEXTO das regras). As duas mudam por motivos diferentes e um recibo precisa das duas para ser reaproveitável com honestidade."
   },
   "rules": {
     "IDENTIDADE_OPERADOR_AUSENTE": {
@@ -347,6 +349,72 @@
       "result": "NOT OBSERVED in the initial preserved sample unless stated by the specific receipt.",
       "confidence": "high",
       "correction": "Remove client-side redirects from paid destinations; if a redirect is required, declare and measure it server-side before approval."
+    },
+    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO": {
+      "policy": "Unacceptable business practices / Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/15938071",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC, MAIS RESTRITIVA QUE A DO GOOGLE. O Google NÃO proíbe literalmente hyperlink externo em página de destino; ele proíbe fazer parecer que existe vínculo com outra marca, órgão ou governo, e proíbe a página-ponte que só encaminha o clique. A âncora oficial desta regra é essa cláusula. A decisão de banir TODO hyperlink externo clicável no corpo visível e no CTA de um paid_destination é do VOLC, tomada depois de sete links caixa.gov.br de âncora numérica terem ido ao ar na URL que a conta suspensa anunciava. Uma regra que dependesse de julgar caso a caso qual link 'sugere vínculo' já falhou uma vez; esta não depende.",
+      "evidence": "Link clicável (<a href>) cujo host resolvido não é o domínio canônico da própria página, no corpo visível ou em CTA. Não conta: âncora interna (#), link relativo, mesmo domínio, mailto/tel, e recurso técnico (img/script/font), que não é navegação do leitor.",
+      "result": "OBSERVED em /r/fgts-saque-aniversario/ (sete links caixa.gov.br) e em /r/antecipacao-saque-aniversario-fgts/. A regra anterior só barrava host NÃO CLASSIFICADO: um host de governo com âncora descritiva, ou uma fonte de pesquisa declarada, passavam em silêncio no destino pago.",
+      "confidence": "high",
+      "correction": "Citar a fonte em prosa e mantê-la no dossiê de evidência. Em editorial_solution / organic_article a referência externa continua permitida — o papel da página é que decide, e o achado é registrado nos dois casos."
+    },
+    "TITULO_SUGERE_ORIGEM_OFICIAL": {
+      "policy": "Unacceptable business practices — Misrepresenting affiliation",
+      "url": "https://support.google.com/adspolicy/answer/15938071",
+      "consulted_at": "2026-09-03",
+      "regime": "google_literal",
+      "applicability": "'Make it seem like you're affiliated with another brand, organization or government entity when you're not.' O H1 e o title são a promessa que o anúncio compra: eles são lidos antes de qualquer rodapé. Um aviso de não-vínculo no pé da página não desfaz uma manchete que diz que o governo liberou algo — o leitor já decidiu no primeiro segundo.",
+      "evidence": "Verbo/moldura de oficialização ('liberado pelo governo', 'site oficial', 'governo libera', 'consulta oficial', 'portal oficial') no H1, no title ou num subtítulo, junto de menção a órgão público.",
+      "result": "OBSERVED no artefato histórico do funil FGTS: H1 'Saque-Aniversário FGTS Liberado pelo Governo'. O portão de conteúdo (`calm_utility`) bania a expressão no CORPO e olhava depois do ponto em que o defeito nasceu — o plano. Ver test_landing_policy_regressao_fgts.py.",
+      "confidence": "high",
+      "correction": "Reescrever o título sem sugerir que a página é o canal oficial ou que o órgão liberou algo por meio dela, e avaliar o PLANO antes de escrever."
+    },
+    "RECIBO_DE_APROVACAO_AUSENTE": {
+      "policy": "Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/6368661",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O Google exige que o destino funcione e corresponda ao anúncio; ele não exige recibo nenhum. O recibo é o mecanismo do VOLC para saber QUAL conteúdo foi aprovado e sob QUAL versão de política — sem ele, `DERIVA_AO_VIVO` é literalmente immensurável, e foi.",
+      "evidence": "Elegibilidade de campanha pedida para uma URL sem recibo de aprovação resolvível (nenhum recibo, ou recibo de outra URL canônica).",
+      "result": "OBSERVED — nenhum dos quatro destinos preservados tinha hash aprovado gravado na publicação. `DERIVA_AO_VIVO` saiu `unavailable` nos quatro.",
+      "confidence": "high",
+      "correction": "Gravar o recibo do portão 2 na publicação e resolvê-lo pela URL canônica antes de a campanha usar o destino."
+    },
+    "RECIBO_DE_APROVACAO_VENCIDO": {
+      "policy": "Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/6368661",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. Uma página no ar muda sem avisar: plugin, tema, rotação de anúncio, edição manual no WordPress. Um recibo antigo descreve um conteúdo que pode não existir mais. Frescor não é burocracia: é a diferença entre 'estava apto' e 'está apto'.",
+      "evidence": "Recibo cuja observação é mais velha que a janela de frescor configurada.",
+      "result": "NOT_OBSERVED — não havia recibo nenhum para envelhecer.",
+      "confidence": "high",
+      "correction": "Reavaliar o destino ao vivo e emitir recibo novo antes de usar em campanha."
+    },
+    "RECIBO_DE_POLITICA_DESATUALIZADO": {
+      "policy": "Advertising policies — policy updates",
+      "url": "https://support.google.com/adspolicy/answer/6008942",
+      "consulted_at": "2026-09-03",
+      "regime": "volc_interno_mais_restritivo",
+      "applicability": "⚠️ REGRA INTERNA DO VOLC. O Google publica atualização de política com data de efeito — Government documents and services muda em 05/10/2026. Um recibo emitido contra a matriz anterior não prova nada sobre a regra nova, e reaproveitá-lo em silêncio é a forma mais barata de um sistema mentir sobre sua própria cobertura.",
+      "evidence": "Recibo cujo `policy_source_version` (hash da matriz) ou `policy_contract_version` difere do vigente.",
+      "result": "NOT_OBSERVED — a versão de contrato v2 é a primeira a existir.",
+      "confidence": "high",
+      "correction": "Reavaliar contra a matriz vigente e emitir recibo novo."
+    },
+    "CADEIA_DE_REDIRECIONAMENTO_EXCESSIVA": {
+      "policy": "Circumventing systems / Destination requirements",
+      "url": "https://support.google.com/adspolicy/answer/6020954",
+      "consulted_at": "2026-09-03",
+      "regime": "google_literal",
+      "applicability": "A política de circumventing systems descreve o uso de redirecionamento para levar o visitante a lugar diferente do revisado. Uma cadeia longa também degrada o destino: cada salto é uma chance de o revisor e o visitante verem páginas diferentes.",
+      "evidence": "Mais saltos de redirecionamento que o teto configurado até a URL final.",
+      "result": "NOT_OBSERVED nos quatro destinos preservados — zero saltos na leitura ao vivo de 2026-09-03. A regra existe porque a ausência de medição foi o buraco, não porque a cadeia foi observada.",
+      "confidence": "medium",
+      "correction": "Apontar o anúncio para a URL canônica final, sem intermediários."
     }
   }
 }

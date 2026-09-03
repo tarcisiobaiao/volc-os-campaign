@@ -33,6 +33,9 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from app.landing_policy.contrato import (
+    JANELA_DE_FRESCOR_PADRAO_S,
+    impressao,
+    POLICY_CONTRACT_VERSION,
     STATUS_AUSENCIA_CONFIRMADA,
     STATUS_INDISPONIVEL,
     STATUS_NAO_APLICAVEL,
@@ -45,9 +48,12 @@ from app.landing_policy.contrato import (
     V_GOVERNO,
     V_IDENTIDADE,
     V_LINKS_EXTERNOS,
+    V_RECIBO,
     V_REDIRECIONAMENTO,
     V_SEGURANCA,
     Verificacao,
+    TETO_DE_SALTOS_PADRAO,
+    versao_da_fonte,
 )
 
 
@@ -69,6 +75,10 @@ class PaginaObservada:
     #: SHA-256 do HTML que a casa APROVOU. Sem ele não há como falar em deriva.
     sha256_aprovado: str | None = None
     sha256_observado: str | None = None
+    #: A IMPRESSÃO CANÔNICA aprovada — a projeção estrutural, não o byte. É ela
+    #: que decide `DERIVA_AO_VIVO` quando existe; o byte vira observação de
+    #: dispositivo. Ver `impressao_canonica` para por que as duas coexistem.
+    impressao_aprovada: str | None = None
     #: Hosts que a pesquisa/declaração daquela página trouxe (não é allowlist).
     hosts_declarados: tuple[str, ...] = ()
     #: Hosts de adtech que a casa declara usar naquele site.
@@ -81,6 +91,28 @@ class PaginaObservada:
     duplicatas_entre_dominios: tuple[str, ...] = ()
     origem: str = "local_artifact"
     observado_em: str = ""
+    #: O recibo de aprovação anterior desta URL, quando existe. É o que
+    #: `varrer_recibo` confere: presença, frescor e versão de política. `None`
+    #: significa "nenhum recibo resolvível", que no destino pago reprova — não
+    #: por rigor decorativo, mas porque sem ele `DERIVA_AO_VIVO` é immensurável,
+    #: e foi exatamente essa a lacuna dos quatro destinos preservados.
+    recibo_de_aprovacao: dict[str, Any] | None = None
+    #: Instante da avaliação, em epoch UTC. Só o frescor usa; fica separado de
+    #: `observado_em` (que é texto humano) porque comparar data é aritmética e
+    #: parsear string de data em três formatos é como o frescor deixa de valer.
+    avaliado_em_epoch: float | None = None
+    #: A janela de frescor desta avaliação, em segundos.
+    janela_de_frescor_s: int = JANELA_DE_FRESCOR_PADRAO_S
+    #: Teto de saltos de redirecionamento aceito até a URL final.
+    teto_de_saltos: int = TETO_DE_SALTOS_PADRAO
+    #: Papel DECLARADO no cadastro, apenas para registro no inventário. NUNCA é
+    #: usado para decidir severidade: quem decide é o papel que o portão recebeu,
+    #: e no ponto de campanha ele é FORÇADO. Ver `portao.papel_do_servidor`.
+    papel_declarado: str = ""
+    #: Fontes de pesquisa que o motor usou naquela página. Elas pertencem ao
+    #: dossiê de evidência; virar hyperlink no corpo de um destino pago é o
+    #: defeito que `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` descreve.
+    fontes_de_pesquisa: tuple[str, ...] = ()
 
 
 # ── parsing ────────────────────────────────────────────────────────────────
@@ -106,6 +138,19 @@ class _Parser(HTMLParser):
         #: que o executa é uma cópia minificada servida pelo próprio domínio.
         self.hints: list[dict[str, str]] = []
         self.canonical: str | None = None
+        #: ⚠️ O TÍTULO E OS CABEÇALHOS, que a v1 não colhia.
+        #:
+        #: `texto_visivel` achatava tudo num único texto, então o portão olhava o
+        #: H1 apenas como mais uma frase do corpo — e uma manchete tem peso que
+        #: uma frase do meio da página não tem. Foi por aí que
+        #: "Saque-Aniversário FGTS Liberado pelo Governo" atravessou: a expressão
+        #: era banida no CORPO, e o H1 não era corpo.
+        self.titulo: str = ""
+        self.cabecalhos: list[dict[str, str]] = []
+        self._em_titulo = False
+        self._texto_titulo: list[str] = []
+        self._nivel_cabecalho = ""
+        self._texto_cabecalho: list[str] = []
         self._pilha_ancora: list[dict[str, Any]] = []
         self._profundidade_botao = 0
         self._em_script = False
@@ -171,15 +216,37 @@ class _Parser(HTMLParser):
             self.iframes.append(amap.get("src", ""))
         elif t == "img":
             self.imgs.append(amap.get("src") or amap.get("data-src") or "")
+        elif t == "title":
+            self._em_titulo = True
+            self._texto_titulo = []
+        elif t in ("h1", "h2", "h3"):
+            self._nivel_cabecalho = t
+            self._texto_cabecalho = []
 
     def handle_data(self, data: str) -> None:
         if self._em_script:
             self._texto_script.append(data)
+        if self._em_titulo:
+            self._texto_titulo.append(data)
+        if self._nivel_cabecalho:
+            self._texto_cabecalho.append(data)
         for registro in self._pilha_ancora:
             registro["_texto"].append(data)
 
     def handle_endtag(self, tag: str) -> None:
         t = tag.lower()
+        if t == "title" and self._em_titulo:
+            self.titulo = re.sub(r"\s+", " ", "".join(self._texto_titulo)).strip()
+            self._em_titulo = False
+            self._texto_titulo = []
+            return
+        if t in ("h1", "h2", "h3") and self._nivel_cabecalho == t:
+            texto = re.sub(r"\s+", " ", "".join(self._texto_cabecalho)).strip()
+            if texto:
+                self.cabecalhos.append({"nivel": t, "texto": texto})
+            self._nivel_cabecalho = ""
+            self._texto_cabecalho = []
+            return
         if t == "script" and self._em_script:
             self.scripts.append({**self._attrs_script, "texto": "".join(self._texto_script)})
             self._em_script = False
@@ -208,6 +275,71 @@ def texto_visivel(html: str) -> str:
     return re.sub(r"\s+", " ", _html.unescape(_TAG_RE.sub(" ", sem_codigo))).strip()
 
 
+# ── impressão canônica ─────────────────────────────────────────────────────
+
+
+#: Ruído que muda entre duas leituras da MESMA página aprovada: nonce de CSP,
+#: token rotativo do plugin de push, carimbo de cache, id de sessão do tema.
+#: Nenhum deles é conteúdo; todos mudam o sha256 do byte.
+_RUIDO_VOLATIL = (
+    re.compile(r"(?i)\bnonce=[\"'][^\"']{4,}[\"']"),
+    re.compile(r"(?i)\bdata-(?:time|shares|info|nonce|token|cache)=[\"'][^\"']*[\"']"),
+    re.compile(r"(?i)[?&](?:ver|v|cache|_|t|ts|rand)=[A-Za-z0-9._-]{1,40}"),
+    re.compile(r"(?i)\b[0-9a-f]{32,64}\b"),
+    re.compile(r"(?i)\b\d{10,13}\b"),
+)
+
+
+def impressao_canonica(html: str) -> str:
+    """A impressão do que a página É para o leitor, não dos bytes que a servem.
+
+    ## Por que o sha256 do byte não serve sozinho para medir DERIVA
+
+    Ele serve — e é a evidência mais forte que existe — para provar IGUALDADE:
+    foi assim que a acusação de cloaking contra `/r/fgts-saque-aniversario/` foi
+    REFUTADA, com Googlebot e usuário devolvendo 174 243 bytes idênticos.
+
+    Ele não serve para medir MUDANÇA. Na mesma leitura, desktop e mobile daquela
+    página diferiram em 27 bytes — um token rotativo do plugin de push. Um
+    portão que reprovasse por deriva a cada rotação de token seria desligado na
+    primeira semana, e aí não protegeria nada. Um que ignorasse a deriva não
+    veria a edição manual no WordPress. Os dois são o mesmo erro com sinais
+    trocados.
+
+    ## O que entra na impressão
+
+    A PROJEÇÃO ESTRUTURAL: título, cabeçalhos, texto visível normalizado, o
+    inventário de links clicáveis (host + âncora + se é botão) e o de campos de
+    formulário. É exatamente o conjunto sobre o qual as nove varreduras decidem
+    — então duas páginas com a mesma impressão canônica recebem, por construção,
+    o mesmo veredito.
+
+    O recibo carrega as DUAS: `content_sha256` (o byte, evidência) e
+    `content_fingerprint` (a estrutura, comparação). Guardar só uma seria
+    escolher entre não conseguir provar igualdade e não conseguir medir mudança.
+    """
+    limpo = html or ""
+    for padrao in _RUIDO_VOLATIL:
+        limpo = padrao.sub(" ", limpo)
+    parser = analisar(limpo)
+    projecao = {
+        "titulo": parser.titulo,
+        "cabecalhos": [c["texto"] for c in parser.cabecalhos],
+        "texto": texto_visivel(limpo).lower(),
+        "links": sorted(
+            f"{_host(urljoin('', l.get('href') or ''))}|{(l.get('texto') or '')[:60]}|"
+            f"{int(bool(l.get('em_botao')))}"
+            for l in parser.links
+            if (l.get("href") or "").strip()
+        ),
+        "campos": sorted(
+            f"{(i.get('type') or '').lower()}|{(i.get('name') or '').lower()}"
+            for i in parser.inputs
+        ),
+    }
+    return impressao(projecao)
+
+
 # ── classificação de host ──────────────────────────────────────────────────
 
 _SUFIXOS_GOVERNO = (".gov.br", ".gov", ".jus.br", ".leg.br", ".mp.br", ".gov.uk", ".gob.es")
@@ -231,6 +363,31 @@ CLASSE_ADTECH_DECLARADA = "adtech_declarada"
 CLASSE_FONTE_DECLARADA = "fonte_declarada"
 CLASSE_TERCEIRO_DESCONHECIDO = "terceiro_desconhecido"
 CLASSE_RELATIVO = "relativo"
+#: `mailto:`/`tel:` — caminho de contato, explicitamente permitido e coerente com
+#: a exigência de identidade. Entra no inventário para que "permitido" e "não
+#: encontrado" não tenham a mesma aparência no recibo.
+CLASSE_CONTATO_DIRETO = "contato_direto"
+#: `javascript:`/`data:`/`blob:` — clicável, e com destino que não se resolve
+#: lendo o documento. É não-classificável por construção.
+CLASSE_NAO_RESOLVIVEL = "nao_resolvivel"
+
+#: As classes que NÃO são navegação para fora do domínio canônico. Tudo que não
+#: está aqui é hyperlink externo clicável — e no `paid_destination` isso reprova
+#: por política interna do VOLC, mais restritiva que a do Google.
+#:
+#: `adtech_google` e `adtech_declarada` ficam de fora da regra por serem, no
+#: inventário desta casa, recurso técnico do slot de anúncio e não navegação
+#: editorial oferecida ao leitor. Quando um deles aparece como `<a href>` num
+#: botão, ele continua sendo pego por `BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO` e
+#: pelas regras de terceiro — o que não pode acontecer é uma tag de medição
+#: virar "link externo editorial" e afogar o achado que importa.
+_CLASSES_INTERNAS = frozenset({
+    CLASSE_MESMO_SITE,
+    CLASSE_RELATIVO,
+    CLASSE_CONTATO_DIRETO,
+    CLASSE_ADTECH_GOOGLE,
+    CLASSE_ADTECH_DECLARADA,
+})
 
 
 def _host(url: str) -> str:
@@ -444,10 +601,52 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
     achados: list[Achado] = []
     inventario: list[dict[str, Any]] = []
     vistos_desconhecidos: set[str] = set()
+    # Só para a EVIDÊNCIA do achado: saber que o link externo é justamente uma
+    # fonte da pesquisa daquela página torna a mensagem acionável ("mova para o
+    # dossiê") em vez de genérica ("tem link externo").
+    _hosts_de_pesquisa = {_host(f) for f in pagina.fontes_de_pesquisa if f}
 
     for link in parser.links:
         href = (link.get("href") or "").strip()
-        if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+        if not href or href.startswith("#"):
+            # Âncora interna não é navegação para fora. Não entra no inventário
+            # porque inventariá-la afogaria o que importa num sumário.
+            continue
+        if href.startswith(("mailto:", "tel:")):
+            # Permitidos e coerentes: um destino pago PRECISA de caminho de
+            # contato. Entram no inventário para que a decisão fique visível —
+            # "não achei" e "achei e permiti" não podem ter a mesma aparência.
+            inventario.append({"host": "", "classe": CLASSE_CONTATO_DIRETO,
+                               "ancora": (link.get("texto") or "")[:80],
+                               "ancora_e_valor": False,
+                               "em_botao": bool(link.get("em_botao")),
+                               "rel": link.get("rel", "")})
+            continue
+        if href.startswith(("javascript:", "data:", "blob:")):
+            # ⚠️ ANTES DA v2 ISTO CAÍA NO MESMO `continue` DA ÂNCORA INTERNA.
+            #
+            # `javascript:` é navegação clicável cujo destino o portão não tem
+            # como resolver lendo HTML — é a definição de não classificável, e
+            # não classificado reprova destino pago. Tratá-lo como âncora
+            # interna era a forma mais barata de esconder um link do inventário.
+            esquema = href.split(":", 1)[0].lower()
+            if esquema not in vistos_desconhecidos:
+                vistos_desconhecidos.add(esquema)
+                achados.append(
+                    Achado(
+                        "LINK_EXTERNO_NAO_CLASSIFICADO",
+                        f"Link clicável com esquema {esquema}: o destino não é "
+                        f"resolvível na leitura do documento, e o que não "
+                        f"classifica não aprova.",
+                        evidencia={"esquema": esquema,
+                                   "em_botao": bool(link.get("em_botao"))},
+                    )
+                )
+            inventario.append({"host": "", "classe": CLASSE_NAO_RESOLVIVEL,
+                               "ancora": (link.get("texto") or "")[:80],
+                               "ancora_e_valor": False,
+                               "em_botao": bool(link.get("em_botao")),
+                               "rel": link.get("rel", "")})
             continue
         absoluto = urljoin(pagina.url or "", href)
         host = _host(absoluto)
@@ -505,6 +704,36 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
                     "O botão principal aponta para um site de governo: para o leitor, a "
                     "página está entregando o serviço oficial.",
                     evidencia={"host": host, "ancora": texto[:60]},
+                )
+            )
+        # ── A REGRA INTERNA DO VOLC, e o motivo de ela não julgar caso a caso ──
+        #
+        # ⚠️ POLÍTICA INTERNA MAIS RESTRITIVA QUE A DO GOOGLE. O Google não
+        # proíbe hyperlink externo em página de destino; ele proíbe sugerir
+        # vínculo e proíbe a página-ponte. A decisão de banir TODO hyperlink
+        # externo clicável no corpo visível e no CTA de um `paid_destination` é
+        # da casa.
+        #
+        # Ela existe porque a regra anterior — barrar só o host NÃO CLASSIFICADO
+        # — deixava passar exatamente o que foi ao ar: `caixa.gov.br` é host de
+        # governo, classificado, e uma fonte de pesquisa declarada é
+        # `fonte_declarada`, também classificada. As duas passavam em silêncio.
+        #
+        # O achado é emitido para TODO papel; quem decide se ele reprova é
+        # `contrato.severidade()`. Em `editorial_solution` e `organic_article` a
+        # referência externa continua permitida e o achado fica registrado — o
+        # papel da página decide o peso, nunca a existência do fato.
+        if classe not in _CLASSES_INTERNAS:
+            achados.append(
+                Achado(
+                    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+                    "Hyperlink externo clicável na experiência paga. A fonte fica "
+                    "no dossiê de evidência e é citada em prosa; ela não vira "
+                    "âncora no corpo de um destino que recebe clique comprado.",
+                    evidencia={"host": host, "classe": classe,
+                               "ancora": texto[:60],
+                               "em_botao": bool(link.get("em_botao")),
+                               "e_fonte_de_pesquisa": host in _hosts_de_pesquisa},
                 )
             )
         if texto and not item["ancora_e_valor"] and _ancora_incongruente(texto, absoluto):
@@ -783,6 +1012,21 @@ _VERBO_DE_AQUISICAO = (
 )
 
 
+#: A moldura que faz o leitor concluir que a página É o canal oficial, ou que o
+#: órgão liberou algo POR MEIO dela. Não é blacklist de palavra solta: cada
+#: entrada é uma CONSTRUÇÃO — "governo" sozinho é jornalismo, "liberado pelo
+#: governo" é promessa de origem.
+_OFICIALIZANTE_RE = re.compile(
+    r"(?i)("
+    r"liberad[oa]s?\s+pel[oa]\s+(governo|caixa|inss|receita|minist[ée]rio)"
+    r"|(governo|caixa|inss|receita\s+federal|minist[ée]rio)\s+liber(a|ou|ado)"
+    r"|(site|portal|canal|p[áa]gina|consulta|sistema)\s+oficial"
+    r"|oficial\s+d[oa]\s+(governo|caixa|inss|receita|minist[ée]rio)"
+    r"|novo\s+(benef[íi]cio|aux[íi]lio)\s+aprovado\s+pel[oa]"
+    r")"
+)
+
+
 def varrer_governo(pagina: PaginaObservada) -> Verificacao:
     texto = texto_visivel(pagina.html)
     if not texto:
@@ -814,6 +1058,36 @@ def varrer_governo(pagina: PaginaObservada) -> Verificacao:
                 evidencia={"mencoes": total},
             )
         )
+    # ── O TÍTULO E OS CABEÇALHOS, e por que eles não são "mais texto" ──────
+    #
+    # O H1 é a promessa que o clique comprado paga, e o leitor o lê antes de
+    # qualquer rodapé. Um aviso de não-vínculo no pé da página não desfaz uma
+    # manchete que diz que o governo liberou algo — quando o leitor chega ao
+    # rodapé, ele já decidiu o que a página é.
+    #
+    # É por isso que este achado NÃO depende de `tem_aviso`: diferente de
+    # `AVISO_NAO_OFICIAL_AUSENTE`, ele não é sobre faltar a ressalva; é sobre a
+    # manchete afirmar uma origem que a página não tem. O funil histórico do
+    # FGTS tinha rodapé completo E o H1 "Saque-Aniversário FGTS Liberado pelo
+    # Governo": pelo contrato v1, ele passava.
+    parser = analisar(pagina.html)
+    manchetes = [{"onde": "title", "texto": parser.titulo}] if parser.titulo else []
+    manchetes += [{"onde": c["nivel"], "texto": c["texto"]} for c in parser.cabecalhos]
+    suspeitas = [
+        m for m in manchetes
+        if _OFICIALIZANTE_RE.search(m["texto"])
+        and any(orgao in m["texto"].lower() for orgao in _ORGAOS)
+    ]
+    for suspeita in suspeitas[:4]:
+        achados.append(
+            Achado(
+                "TITULO_SUGERE_ORIGEM_OFICIAL",
+                "A manchete sugere que a página é o canal oficial ou que o órgão "
+                "liberou algo por meio dela. O aviso no rodapé não desfaz isso: "
+                "o leitor decide na primeira tela.",
+                evidencia={"onde": suspeita["onde"], "texto": suspeita["texto"][:80]},
+            )
+        )
     if documentos and re.search(_VERBO_DE_AQUISICAO, texto):
         achados.append(
             Achado(
@@ -827,6 +1101,7 @@ def varrer_governo(pagina: PaginaObservada) -> Verificacao:
 
     inventario = [{"orgao": k, "mencoes": v} for k, v in sorted(mencoes.items())]
     inventario += [{"documento_restrito": d} for d in documentos]
+    inventario += [{"manchete": m["onde"], "texto": m["texto"][:80]} for m in manchetes[:12]]
     return Verificacao(
         nome=V_GOVERNO,
         status=STATUS_OBSERVADO if mencoes or documentos else STATUS_AUSENCIA_CONFIRMADA,
@@ -1067,6 +1342,24 @@ def varrer_redirecionamento(pagina: PaginaObservada) -> Verificacao:
         )
 
     origem = _host(pagina.url)
+    # A CADEIA, antes dos saltos individuais. Um salto é rotina de servidor
+    # (http→https, com/sem barra final); uma cadeia é outra coisa. Cada elo a
+    # mais é uma chance de o revisor e o visitante terminarem em páginas
+    # diferentes, que é literalmente o que a política de circumventing systems
+    # descreve.
+    if len(saltos or []) > pagina.teto_de_saltos:
+        achados.append(
+            Achado(
+                "CADEIA_DE_REDIRECIONAMENTO_EXCESSIVA",
+                "A cadeia de redirecionamento até a URL final passa do teto aceito "
+                "para um destino canônico.",
+                evidencia={
+                    "saltos": len(saltos or []),
+                    "teto": pagina.teto_de_saltos,
+                    "hosts": [_host(str(x.get("to") or "")) for x in (saltos or [])][:6],
+                },
+            )
+        )
     for salto in saltos or []:
         destino = _host(str(salto.get("to") or ""))
         achados.append(
@@ -1134,6 +1427,56 @@ def varrer_deriva(pagina: PaginaObservada) -> Verificacao:
     publicação ela nem faz sentido — daí `not_applicable` quando não há nada no
     ar para comparar, e `unavailable` quando há e falta a referência.
     """
+    # ⚠️ A IMPRESSÃO CANÔNICA TEM PRECEDÊNCIA SOBRE O BYTE.
+    #
+    # Quando a casa gravou a impressão canônica na aprovação, a comparação é
+    # feita sobre ela: duas leituras da mesma página aprovada diferem em bytes
+    # (token rotativo de push, nonce, carimbo de cache) sem diferir em nada que
+    # o leitor veja. Reprovar por deriva a cada rotação de token faria a
+    # operação desligar o portão, e um portão desligado não protege nada.
+    #
+    # Sem impressão gravada — recibo antigo, artefato de outra época — o byte
+    # continua sendo a única referência, e ele é usado assim mesmo: uma medida
+    # ruidosa é melhor que nenhuma, desde que o recibo diga QUAL foi usada.
+    if pagina.impressao_aprovada:
+        observada = impressao_canonica(pagina.html) if pagina.html else None
+        if observada is None:
+            return Verificacao(
+                nome=V_DERIVA,
+                status=STATUS_INDISPONIVEL,
+                detalhe="impressão aprovada registrada, mas nenhum HTML ao vivo para comparar",
+            )
+        divergiu = observada != pagina.impressao_aprovada
+        return Verificacao(
+            nome=V_DERIVA,
+            status=STATUS_OBSERVADO,
+            achados=(
+                [
+                    Achado(
+                        "DERIVA_AO_VIVO",
+                        "O conteúdo no ar não é o que foi aprovado — a diferença é "
+                        "estrutural, não ruído de rotação.",
+                        evidencia={
+                            "base": "impressao_canonica",
+                            "aprovado_12": pagina.impressao_aprovada[:12],
+                            "observado_12": observada[:12],
+                        },
+                    )
+                ]
+                if divergiu
+                else []
+            ),
+            inventario=[
+                {
+                    "base": "impressao_canonica",
+                    "aprovado_12": pagina.impressao_aprovada[:12],
+                    "observado_12": observada[:12],
+                    "sha256_aprovado_12": (pagina.sha256_aprovado or "")[:12],
+                    "sha256_observado_12": (pagina.sha256_observado or "")[:12],
+                }
+            ],
+        )
+
     observado = pagina.sha256_observado
     aprovado = pagina.sha256_aprovado
     if observado is None:
@@ -1168,6 +1511,147 @@ def varrer_deriva(pagina: PaginaObservada) -> Verificacao:
     )
 
 
+# ── o recibo de aprovação ──────────────────────────────────────────────────
+
+
+def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
+    """A única varredura que não olha a página: ela olha o RECIBO da aprovação.
+
+    ## Por que ela é separada de `varrer_deriva`
+
+    `live_drift` responde "o conteúdo no ar é o aprovado?". Ela pressupõe que
+    exista um aprovado. Quando não existe, ela devolve `unavailable` — verdade,
+    e insuficiente: a operação lê "não deu para comparar" e vai procurar o
+    problema na comparação, quando o problema é que ninguém aprovou nada.
+
+    São dois defeitos com consertos diferentes ("grave o hash na publicação" ×
+    "reavalie o destino"), e a operação precisa de nomes diferentes para
+    consertar o certo. Foi essa confusão que deixou `DERIVA_AO_VIVO` sair
+    `unavailable` nos quatro destinos preservados sem ninguém tratar a ausência
+    do recibo como o achado que ela era.
+
+    ## As três perguntas, nesta ordem
+
+    1. **existe?** Sem recibo resolvível, o portão não tem contra o que comparar.
+    2. **é desta política?** Recibo emitido contra outra versão do contrato ou
+       outra versão da matriz não prova nada sobre a regra vigente. Reaproveitá-lo
+       em silêncio é a forma mais barata de um sistema mentir sobre a própria
+       cobertura.
+    3. **ainda vale?** Página no ar muda sem avisar. Um recibo velho descreve um
+       conteúdo que pode não existir mais.
+
+    ## Fora do ponto de campanha ela é `not_applicable`, não `unavailable`
+
+    Antes de publicar não existe aprovação anterior a conferir. `unavailable`
+    ali diria "não consegui olhar" para algo que não tem o que ser olhado — e a
+    exigência por ponto de portão já cuida de não transformar isso em reprova.
+    A distinção existe para o recibo não carregar um "não sei" que é, na
+    verdade, um "não se aplica".
+    """
+    recibo = pagina.recibo_de_aprovacao
+    if recibo is None and pagina.sha256_observado is None:
+        # ⚠️ NADA NO AR AINDA: não há aprovação anterior a conferir.
+        #
+        # O discriminador é o MESMO de `varrer_deriva` de propósito — as duas
+        # respondem perguntas sobre uma página publicada, e usar critérios
+        # diferentes para decidir "já existe no ar?" faria as duas discordarem
+        # sobre a mesma página.
+        #
+        # Emitir `RECIBO_DE_APROVACAO_AUSENTE` aqui reprovaria toda página
+        # primeira, na geração, por uma impossibilidade estrutural — que é
+        # exatamente o erro que `EXIGENCIAS_POR_PONTO` existe para não cometer.
+        return Verificacao(
+            nome=V_RECIBO,
+            status=STATUS_NAO_APLICAVEL,
+            detalhe="nenhuma leitura ao vivo nesta avaliação: não há aprovação anterior a conferir",
+        )
+    if recibo is None:
+        return Verificacao(
+            nome=V_RECIBO,
+            status=STATUS_INDISPONIVEL,
+            achados=[
+                Achado(
+                    "RECIBO_DE_APROVACAO_AUSENTE",
+                    "Nenhum recibo de aprovação resolvível para esta URL. Sem ele "
+                    "não há hash aprovado, e sem hash aprovado a deriva do que "
+                    "está no ar é immensurável.",
+                    evidencia={"url": pagina.url[:120]},
+                )
+            ],
+            detalhe="nenhum recibo de aprovação resolvível para esta URL",
+        )
+
+    achados: list[Achado] = []
+    contrato_do_recibo = str(recibo.get("policy_contract_version") or "")
+    fonte_do_recibo = str(recibo.get("policy_source_version") or "")
+    fonte_vigente = versao_da_fonte()
+    if contrato_do_recibo != POLICY_CONTRACT_VERSION or fonte_do_recibo != fonte_vigente:
+        achados.append(
+            Achado(
+                "RECIBO_DE_POLITICA_DESATUALIZADO",
+                "O recibo foi emitido contra outra versão da política. Ele não "
+                "prova nada sobre a regra vigente.",
+                evidencia={
+                    "contrato_do_recibo": contrato_do_recibo or "ausente",
+                    "contrato_vigente": POLICY_CONTRACT_VERSION,
+                    "fonte_do_recibo": fonte_do_recibo or "ausente",
+                    "fonte_vigente": fonte_vigente,
+                },
+            )
+        )
+
+    emitido_em = recibo.get("observed_at_epoch")
+    agora = pagina.avaliado_em_epoch
+    idade: float | None = None
+    if isinstance(emitido_em, (int, float)) and isinstance(agora, (int, float)):
+        idade = float(agora) - float(emitido_em)
+        if idade > pagina.janela_de_frescor_s:
+            achados.append(
+                Achado(
+                    "RECIBO_DE_APROVACAO_VENCIDO",
+                    "A observação que sustenta este recibo é mais velha que a "
+                    "janela de frescor. 'Estava apto' não é 'está apto'.",
+                    evidencia={
+                        "idade_s": int(idade),
+                        "janela_s": int(pagina.janela_de_frescor_s),
+                    },
+                )
+            )
+    else:
+        # ⚠️ NÃO CONSEGUIR MEDIR O FRESCOR NÃO É FRESCOR CONFIRMADO.
+        #
+        # Devolver `observed` aqui faria um recibo sem carimbo parecer sempre
+        # novo — o mesmo falso verde que a doutrina inteira existe para impedir.
+        return Verificacao(
+            nome=V_RECIBO,
+            status=STATUS_INDISPONIVEL,
+            achados=achados,
+            inventario=[{"recibo_sem_carimbo_comparavel": True}],
+            detalhe=(
+                "recibo sem `observed_at_epoch` ou avaliação sem "
+                "`avaliado_em_epoch`: o frescor não pôde ser medido"
+            ),
+        )
+
+    return Verificacao(
+        nome=V_RECIBO,
+        status=STATUS_OBSERVADO,
+        achados=achados,
+        inventario=[
+            {
+                "policy_contract_version": contrato_do_recibo,
+                "policy_source_version": fonte_do_recibo,
+                "idade_s": int(idade) if idade is not None else None,
+                "janela_s": int(pagina.janela_de_frescor_s),
+                "content_sha256_12": str(recibo.get("content_sha256") or "")[:12],
+                "paid_destination_ready_no_recibo": bool(
+                    recibo.get("paid_destination_ready")
+                ),
+            }
+        ],
+    )
+
+
 VARREDURAS = {
     V_IDENTIDADE: varrer_identidade,
     V_LINKS_EXTERNOS: varrer_links,
@@ -1178,4 +1662,5 @@ VARREDURAS = {
     V_SEGURANCA: varrer_seguranca,
     V_REDIRECIONAMENTO: varrer_redirecionamento,
     V_DERIVA: varrer_deriva,
+    V_RECIBO: varrer_recibo,
 }

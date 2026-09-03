@@ -76,7 +76,33 @@ SEVERIDADE_BLOQUEIO = "blocker"
 SEVERIDADE_RISCO = "risk"
 SEVERIDADE_OBSERVACAO = "observation"
 
-SCHEMA_VERSION = "landing_policy_gate_receipt.v1"
+SCHEMA_VERSION = "landing_policy_gate_receipt.v2"
+
+#: A versão do CONTRATO — a FORMA da avaliação: quais verificações existem, o que
+#: cada papel exige, em que ponto de portão. É diferente de `versao_da_fonte()`,
+#: que é o hash do TEXTO das regras (`fontes_politica.json`).
+#:
+#: As duas mudam por motivos diferentes, e um recibo precisa das duas. Alguém pode
+#: corrigir a redação de uma regra sem mudar a forma do contrato (muda só a fonte);
+#: e alguém pode acrescentar uma verificação exigida sem tocar em regra nenhuma
+#: (muda só o contrato). Um recibo que carregasse apenas uma das duas pareceria
+#: reaproveitável depois de uma mudança que o invalidou.
+POLICY_CONTRACT_VERSION = "paid_destination_policy_spine.v2"
+
+#: Por quanto tempo uma observação AO VIVO continua valendo como prova de que o
+#: destino está apto. Não é burocracia: uma página no ar muda sem avisar — plugin,
+#: tema, rotação de anúncio, edição manual no WordPress — e um recibo de duas
+#: semanas descreve um conteúdo que pode não existir mais.
+#:
+#: 24 h é o padrão porque a operação sobe campanha no mesmo dia em que aprova a
+#: página. Quem precisar de outra janela passa `janela_de_frescor_s`; o que não
+#: existe é a opção de não ter janela.
+JANELA_DE_FRESCOR_PADRAO_S = 24 * 60 * 60
+
+#: Teto de saltos de redirecionamento até a URL final. Zero salto é o normal de um
+#: destino canônico; um salto (http→https, com/sem barra) é rotina de servidor.
+#: Acima disso a cadeia começa a ser o assunto, e não o detalhe.
+TETO_DE_SALTOS_PADRAO = 2
 
 #: Carimbo determinístico para artefato gerado a partir de arquivo local, onde
 #: "quando eu li" não é informação — é ruído que quebra a comparação byte a byte.
@@ -189,6 +215,14 @@ V_CONTEUDO = "content_originality_and_congruence"
 V_SEGURANCA = "destination_security_signals"
 V_REDIRECIONAMENTO = "redirect_and_cloaking"
 V_DERIVA = "live_drift"
+#: A décima verificação, e a única que não olha a PÁGINA: ela olha o RECIBO.
+#:
+#: Ela existe porque "o conteúdo no ar é o aprovado?" pressupõe que exista um
+#: aprovado. Sem recibo resolvível, `live_drift` responde `unavailable` e a
+#: operação lê "não deu para comparar" — verdade, mas insuficiente: o problema
+#: não é a comparação, é a ausência de aprovação. São dois defeitos diferentes e
+#: a operação precisa de nomes diferentes para consertar o certo.
+V_RECIBO = "approval_receipt"
 
 TODAS_AS_VERIFICACOES = (
     V_IDENTIDADE,
@@ -200,6 +234,7 @@ TODAS_AS_VERIFICACOES = (
     V_SEGURANCA,
     V_REDIRECIONAMENTO,
     V_DERIVA,
+    V_RECIBO,
 )
 
 #: O que precisa ter sido CONCLUSIVAMENTE verificado em cada ponto de portão,
@@ -213,8 +248,13 @@ EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
     PontoDePortao.PRE_PUBLICACAO_WORDPRESS: frozenset(
         {V_IDENTIDADE, V_LINKS_EXTERNOS, V_FORMULARIOS, V_ALEGACOES, V_GOVERNO, V_CONTEUDO}
     ),
-    # No ar, com campanha apontando: aqui redirecionamento, cloaking e deriva
-    # DEIXAM de ser inobserváveis. Não olhar vira o buraco.
+    # No ar, com campanha apontando: aqui redirecionamento, cloaking, deriva e o
+    # RECIBO DE APROVAÇÃO deixam de ser inobserváveis. Não olhar vira o buraco.
+    #
+    # O recibo entra aqui e não nos dois pontos anteriores porque antes de
+    # publicar não existe aprovação anterior para conferir — exigi-la ali
+    # reprovaria toda página primeira por uma impossibilidade estrutural, que é
+    # o mesmo erro que a tabela inteira existe para não cometer.
     PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA: frozenset(TODAS_AS_VERIFICACOES),
 }
 
@@ -254,13 +294,54 @@ _BLOQUEIA_NO_PAGO = frozenset({
     "CONTEUDO_MISTO",
     "SCRIPT_TERCEIRO_NAO_DECLARADO",
     "SCRIPT_REDIRECIONA_CLIENT_SIDE",
+    # ── a espinha v2 ────────────────────────────────────────────────────────
+    #
+    # ⚠️ POLÍTICA INTERNA DO VOLC, MAIS RESTRITIVA QUE A DO GOOGLE.
+    # O Google não proíbe hyperlink externo em destino pago; ele proíbe sugerir
+    # vínculo e proíbe a página-ponte. Banir TODO hyperlink externo clicável no
+    # `paid_destination` é decisão da casa, tomada depois que sete links
+    # `caixa.gov.br` de âncora numérica foram ao ar na URL que a conta suspensa
+    # anunciava. A regra anterior só barrava host NÃO CLASSIFICADO — governo com
+    # âncora descritiva e fonte de pesquisa declarada passavam em silêncio.
+    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
+    # O H1 é a promessa que o anúncio compra, e é lido antes de qualquer rodapé.
+    # O aviso de não-vínculo no pé não desfaz uma manchete que diz que o governo
+    # liberou algo.
+    "TITULO_SUGERE_ORIGEM_OFICIAL",
+    # Os três do recibo. Sem eles, "apto" é uma frase sem data e sem versão.
+    "RECIBO_DE_APROVACAO_AUSENTE",
+    "RECIBO_DE_APROVACAO_VENCIDO",
+    "RECIBO_DE_POLITICA_DESATUALIZADO",
+    "CADEIA_DE_REDIRECIONAMENTO_EXCESSIVA",
+    # ── promovidos de `_RISCO_SEMPRE` na v2, por contraprova ────────────────
+    #
+    # Os três já eram DETECTADOS; nenhum reprovava, em papel nenhum. O contrato
+    # v1 tratava-os como sinal. A v2 os trata como bloqueio no papel estrito, e
+    # continua tratando-os como risco no papel frouxo — o achado não some do
+    # artigo orgânico, ele muda de peso, como toda a tabela.
+    #
+    # `VALOR_MONETARIO_MALFORMADO`: "2900.00 R$" dentro de um link para o banco
+    # público é vazamento de máquina apresentado como cifra oficial. Contraprova
+    # 11 da espinha v2.
+    "VALOR_MONETARIO_MALFORMADO",
+    # `DIVULGACAO_DE_MONETIZACAO_AUSENTE`: página monetizada que não diz que é
+    # monetizada deixa o leitor sem como separar conteúdo de anúncio.
+    # Contraprova 7.
+    "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
+    # `ANCORA_INCONGRUENTE_COM_DESTINO`: CTA que promete um assunto e leva a
+    # outro é a divergência anúncio↔destino, no menor tamanho possível.
+    # Contraprova 12.
+    "ANCORA_INCONGRUENTE_COM_DESTINO",
 })
 
 #: Códigos que são risco em toda parte — sinal real, mas não prova de violação.
+#:
+#: ⚠️ Três saíram desta lista na v2 (`VALOR_MONETARIO_MALFORMADO`,
+#: `DIVULGACAO_DE_MONETIZACAO_AUSENTE`, `ANCORA_INCONGRUENTE_COM_DESTINO`) e
+#: passaram a bloquear no papel estrito. Enquanto estiveram aqui, eles eram
+#: detectados e nunca reprovavam nada — que é a forma educada de um portão dizer
+#: "eu vi e deixei passar".
 _RISCO_SEMPRE = frozenset({
-    "VALOR_MONETARIO_MALFORMADO",
-    "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
-    "ANCORA_INCONGRUENTE_COM_DESTINO",
     "REDIRECIONAMENTO_OBSERVADO",
     "SERVICE_WORKER_OU_PUSH_OBSERVADO",
     "OFUSCACAO_DE_SCRIPT_OBSERVADA",
