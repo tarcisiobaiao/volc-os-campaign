@@ -316,3 +316,86 @@ Medido na conta real: **2 de 4 contas sob o MCC são invisíveis a esse filtro.*
 Esta lane não tocou o arquivo. A sentinela contorna coletando `customer.status`
 por conta própria dentro de `volc_ads/inteligencia_google/**`, que é ownership
 dela — mas a lista de contas do produto continua cega.
+
+---
+
+## 14. Veredito da lane
+
+**`LOCAL_CLOSURE_ACCEPTED`**, com as ressalvas da seção 15 declaradas.
+
+Os catorze critérios de aceite, um a um:
+
+| # | critério | prova |
+|---|---|---|
+| 1 | status suspenso vence diagnóstico inferior | `test_01`, `test_11c`, `test_r07`, `test_p01` — e a leitura real |
+| 2 | campanha pausada não gera falso alerta | `test_02`, `test_02b` |
+| 3 | habilitada e madura sem entrega gera incidente | `test_04`; `test_03*` provam que a imatura **não** gera |
+| 4 | frescor e ausência tratados honestamente | `test_05*`, `test_06*`, `test_r04b`, `test_p14` |
+| 5 | keywords limitadas com denominador e evidência | `test_07`, `test_08`, `test_r09`, `test_r15b` |
+| 6 | redundância agrupada sem inventar intenção | `test_20*` — `credito consignado` ≠ `credito pessoal` |
+| 7 | recomendações coletadas e adjudicadas, nunca aplicadas | `test_15`, `test_r01`, `test_r06`, `test_p10`–`12` |
+| 8 | o QG mostra o incidente e o próximo ato | `veredito-da-sentinela.test.tsx`, `diagnostico-na-pagina.test.tsx` |
+| 9 | alertas idempotentes e resolvíveis | `test_13*`, `test_14*` |
+| 10 | nenhum método mutável alcançável | `test_16` (AST), `gate_sem_mutacao_google` 3/3, leitura real com trava fechada |
+| 11 | gates verdes ou diferenças herdadas provadas | `GATES.md` — 76 erros de tsc herdados, zero novos |
+| 12 | árvore limpa | `git status --porcelain` vazio |
+| 13 | Roadmap/curadoria/grafo só com handoff proposto | `CURATION-HANDOFF.json`; nenhum dos três editado |
+| 14 | nenhuma mutação externa | seção 12 |
+
+**Por que não `PARTIAL`:** o critério de rebaixamento da missão é *"se o backend
+ficar pronto mas a informação não aparecer na superfície operacional"*. Ela
+aparece: a página canônica abre com o veredito, o sino parou de mentir, e as
+duas coisas têm prova de tela.
+
+---
+
+## 15. Ressalvas honestas
+
+Nada abaixo invalida o aceite, e nada abaixo deveria ser esquecido.
+
+1. **`consolidar()` é função pura sem chamador.** A idempotência está
+   implementada e provada; nenhuma rotina de produção a invoca ainda. O
+   incidente ainda não é persistido nem exibido em fila.
+2. **`horas_ligada` é opcional no repositório.** Sem `transicoes()`, a janela do
+   guardião sai `indeterminada` — foi o que aconteceu na leitura real. A
+   sentinela é honesta a respeito, mas o guardião 72h só opera plenamente quando
+   o diário for ligado.
+3. **A fila de atenção ainda não consome o veredito.** Ela projeta o sintoma do
+   inventário; a página canônica e o sino foram integrados, a fila não.
+4. **`keyword_view` + `segments.date`** continua apagando a keyword que nunca
+   serviu na janela, e `keyword_count` é gravado como MEDIDO sobre um
+   subconjunto enviesado. Reproduzido pela recon, **não** por contraprova
+   executável desta lane — e por isso foi para handoff, não para conserto: a
+   missão exige achado reproduzido antes de correção.
+5. **`backend/app/trafego/contas.py` continua cego** a contas suspensas. Fora do
+   ownership; handoff exato na seção 13, com a medida real (2 de 4 contas).
+6. **A causa da suspensão não foi estabelecida** e não deveria ser: segue
+   `HYPOTHESIS_PARTIALLY_SUPPORTED`.
+
+---
+
+## 16. Nota de método
+
+Três defeitos meus estão registrados no histórico em vez de apagados dele,
+porque o padrão que eles formam é a informação mais útil deste pacote:
+
+- **`test_16` na primeira versão** varria o texto do arquivo e falhava por causa
+  do próprio docblock. Um teste que não distingue código de comentário não prova
+  nada sobre o que o módulo executa;
+- **cinco nomes de enum escritos de memória** — encontrados só porque a
+  conferência foi feita contra o descriptor do SDK, e não contra a lembrança de
+  ninguém. Um nome inventado nunca casa, e a causa some em silêncio;
+- **o `else` que afirma uma falta inexistente** — corrigido no eixo `campanha`
+  na primeira rodada, com um comentário explicando por que era errado, e
+  **cometido de novo** no eixo da keyword logo depois. A revisão adversarial o
+  pegou.
+
+O denominador comum dos três é o mesmo defeito que esta lane existe para
+consertar: **afirmar mais do que a evidência sustenta.** A diferença entre a
+versão inicial e a final não foi conhecimento — foi conferir.
+
+Duas medições de baseline também foram descartadas por método (`GATES.md`), e um
+`git stash pop` acidental trouxe um backup da branch `main`; o pop conflitou,
+portanto não apagou nada, a árvore foi restaurada ao HEAD sem perda e o backup
+alheio segue intacto. Registrado porque worktrees compartilham a lista de stash,
+e isso não é óbvio.

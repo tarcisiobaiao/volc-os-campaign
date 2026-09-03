@@ -8,7 +8,7 @@ Fixtures **sintéticas**: `9990001111` não corresponde a conta alguma, e
 arquivo desta lane.
 
 ```
-backend/tests/test_trafego_sentinela.py               92 provas
+backend/tests/test_trafego_sentinela.py              100 provas
 backend/tests/test_trafego_sentinela_vocabulario.py   17 provas
 backend/tests/test_google_inteligencia_persistente.py  +5 provas
 src/components/trafego/diagnostico/__tests__/veredito-da-sentinela.test.tsx  20
@@ -144,3 +144,35 @@ Duas provas passivas merecem nota:
   derivá-lo das metas observadas na coleta.
 - **Recibo de destino.** `nao_consultado` é a leitura honesta: esta lane não
   toca `landing_policy` e não persiste recibo por campanha.
+
+
+---
+
+## A verificação das correções
+
+Segunda passada do mesmo revisor, contra `ed0c9ea`. Confirmou 11 dos 12 achados
+como **CORRIGIDOS**, e encontrou **quatro** condições novas. Três já estavam
+resolvidas em `9d291ea` (aprovação ausente, `APPROVED_LIMITED`, denominadores de
+anúncio). A quarta era nova e real:
+
+| # | achado | correção | regressão |
+|---|---|---|---|
+| 13 | aprovação **ausente** era mais permissiva que `UNKNOWN` | ausente = desconhecido | `test_r13` |
+| 14 | `APPROVED_LIMITED` virou `sem_estado` — perda de informação conhecida | campo `limitados` próprio | `test_r14` |
+| 15 | quatro `Denominador` de anúncio sem a política | todos herdam; **guarda por AST** | `test_r15`, `r15b` |
+| 16 | `HEALTHY` ficou inalcançável? | **não** — e agora há prova disso | `test_r16` |
+| 17 | **cinco** motivos de keyword caíam num `else` que afirmava falta de lance sobre keyword cujo lance foi lido | ramo próprio por motivo | `test_r17`, `r17b`, `r17c` |
+
+O achado 17 merece registro: é o mesmo defeito do eixo `campanha` da primeira
+rodada — um `else` afirmando uma ausência que não existe — cometido de novo no
+eixo da keyword, **depois** de eu ter escrito o comentário explicando por que
+aquilo era errado. A frase gerada se contradizia sozinha: dizia
+*"0 de 1 vieram sem lance"* ao lado de
+*`impedimento: "lance ou estimativa de primeira página ausentes"`*.
+
+`test_r15b` e `test_r16` são de um tipo diferente dos demais: não provam um
+comportamento, provam que uma **classe** de erro não pode ser reescrita.
+`test_r15b` percorre a AST e falha se alguém construir um `Denominador` sem a
+política; `test_r16` garante que a correção do achado 4 não tornou `HEALTHY`
+inalcançável — um estado que nenhuma entrada atinge é um teste que não pode
+falhar, e um teste que não pode falhar não prova nada.
