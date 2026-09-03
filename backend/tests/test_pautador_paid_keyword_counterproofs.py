@@ -846,3 +846,75 @@ def test_R11_impressao_tem_semantica_de_conjunto_de_verdade():
     uma = impressao_de_decisoes(conjunto.selected_keywords)
     duas = impressao_de_decisoes(list(conjunto.selected_keywords) + list(conjunto.selected_keywords))
     assert uma == duas
+
+
+# ── contrato do Keyword Planner, conferido na documentação oficial ──────────
+
+
+def test_R12_competition_ausente_e_unspecified_nao_unknown():
+    """`competition` é o único campo da mensagem SEM presença de campo.
+
+    Um valor não populado desserializa como UNSPECIFIED ("não especificado").
+    `UNKNOWN` quer dizer outra coisa — "valor que esta versão do cliente não
+    reconhece". Marcar o ausente como UNKNOWN afirmava a segunda coisa tendo
+    observado a primeira. E nenhum dos dois é LOW.
+    Ref.: v25 KeywordPlanCompetitionLevelEnum.KeywordPlanCompetitionLevel
+    """
+    from app.agents.mining.gold_extractor import extract_gold
+
+    saida = extract_gold(
+        {
+            "results": [
+                {"text": "sem competicao", "keywordIdeaMetrics": {"avgMonthlySearches": 100}},
+                {"text": "com competicao", "keywordIdeaMetrics": {"competition": "LOW"}},
+            ],
+            "loop_iteration": 0,
+            "seed_keyword": "s",
+            "master_bank": [],
+        }
+    )
+    banco = {k["keyword"]: k for k in saida["master_bank"]}
+    assert banco["sem competicao"]["competition"] == "UNSPECIFIED"
+    assert banco["com competicao"]["competition"] == "LOW"
+
+
+def test_R13_bloco_de_metricas_ausente_e_registrado():
+    """`keyword_idea_metrics` é campo de MENSAGEM sem `optional`.
+
+    Uma ideia pode chegar sem o submensagem inteira, e aí TODOS os escalares
+    dentro dela leem 0. Sem a bandeira, "a API não mandou métrica nenhuma" e
+    "a API mandou zeros" são a mesma coisa a jusante.
+    """
+    from app.agents.mining.gold_extractor import extract_gold
+
+    saida = extract_gold(
+        {
+            "results": [
+                {"text": "sem bloco"},
+                {"text": "com bloco", "keywordIdeaMetrics": {"avgMonthlySearches": 0}},
+            ],
+            "loop_iteration": 0,
+            "seed_keyword": "s",
+            "master_bank": [],
+        }
+    )
+    banco = {k["keyword"]: k for k in saida["master_bank"]}
+    assert banco["sem bloco"]["bloco_de_metricas_presente"] is False
+    assert banco["sem bloco"]["volume_estado"] == "absent"
+    assert banco["com bloco"]["bloco_de_metricas_presente"] is True
+    assert banco["com bloco"]["volume_estado"] == "measured"
+
+
+def test_R14_marca_de_terceiro_separa_keyword_de_texto_de_anuncio():
+    """A política de marcas NÃO restringe usar marca como palavra-chave; ela
+    restringe usar marca no TEXTO de anúncio de concorrente direto. Quem revisa
+    precisa saber qual das duas está decidindo."""
+    from app.agents.mining.paid_eligibility import HUMAN_REVIEW, decidir_keyword
+
+    d = decidir_keyword(
+        {"keyword": "plano concorrente x", "volume": 5000, "cpc": 2.0},
+        subintencao="X",
+        marcas_de_terceiro=["concorrente x"],
+    )
+    assert d.decisao == HUMAN_REVIEW
+    assert any("texto_de_anuncio" in a for a in d.alertas)

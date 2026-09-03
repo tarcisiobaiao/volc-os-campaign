@@ -661,6 +661,15 @@ class PaidKeywordDecision:
     estagio: str = "desconhecido"
     arquetipos: Tuple[str, ...] = ()
     match_type: str = PHRASE
+    #: ⚠️ O QUE ESTE VOLUME MEDE, E O QUE ELE NÃO MEDE.
+    #:
+    #: `avg_monthly_searches` é ARREDONDADO, agrega a keyword E SUAS VARIANTES
+    #: PRÓXIMAS, e é sempre estatística de correspondência EXATA — "you'll be
+    #: shown the same exact match stats whether you use a broad, phrase, or
+    #: exact match type" (support.google.com/google-ads/answer/3022575). Não
+    #: existe volume "de PHRASE": o número ao lado de um termo PHRASE é o
+    #: volume exato do termo e das variantes que o Google junta nele.
+    #: Ele também é condicionado a geo, rede e janela de meses do pedido.
     volume: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
     cpc: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
     competicao: Sinal = field(default_factory=lambda: Sinal.ausente("nao_lido"))
@@ -801,6 +810,15 @@ def decidir_keyword(
         d.decisao = HUMAN_REVIEW
         d.motivos.append("aponta_para_marca_de_terceiro")
         d.bloqueadores.append("decisao_juridica_e_comercial_nao_e_do_motor")
+        # ⚠️ O QUE EXATAMENTE ESTÁ SENDO DECIDIDO — porque as duas coisas têm
+        # respostas diferentes na política do Google e são fáceis de colapsar.
+        #
+        # A política de marcas registradas NÃO restringe "usar marcas como
+        # palavras-chave"; ela restringe "usar marcas no TEXTO de um anúncio de
+        # concorrente direto". Ou seja, o termo pode ser elegível como keyword e
+        # o anúncio ser proibido — e quem revisa precisa saber que está
+        # decidindo o primeiro, não o segundo.
+        d.alertas.append("elegibilidade_de_keyword_e_de_texto_de_anuncio_sao_decisoes_distintas")
         return d
     # 2. INTENÇÃO ANTES DE VOLUME. É o defeito medido: os dois termos de maior
     #    volume do funil BPC/LOAS eram `meu inss login` e `inss telefone 135`.
@@ -870,6 +888,15 @@ def decidir_keyword(
         d.confianca = "baixa"
         d.motivos.append("volume_medido_mas_cpc_sem_medicao")
         d.bloqueadores.append(f"cpc_{d.cpc.estado}")
+        motivo_cpc = bruto.get("cpc_motivo_de_ausencia")
+        if motivo_cpc:
+            # `average_cpc_micros` só vem com `include_average_cpc=true`, então
+            # a ausência dele pode ser "não pedimos", não "não existe".
+            d.alertas.append(str(motivo_cpc))
+        if not d.lance_topo.tem_numero:
+            # Faixa de lance ausente = histórico de leilão recente magro nos
+            # últimos 30 dias. NÃO quer dizer que a keyword é gratuita.
+            d.alertas.append("faixa_de_lance_ausente_indica_historico_de_leilao_magro")
 
     if d.amplitude == "ampla":
         d.alertas.append("termo_amplo_pode_puxar_intencao_alheia")
