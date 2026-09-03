@@ -956,7 +956,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Registro operacional de páginas, perfis, contas, domínios, propriedades monetizadas, integrações, engines e referências seguras de credencial, com dono, estado, evidência, relações e próximo uso.",
-      "evidence": "O schema v13_01/v13_02, API administrativa e tela do Cofre estão operacionais no Supabase oficial, com segredo mantido no 1Password e somente referências governadas no banco. Em 02/09/2026 a convergência integrou prontidão visual por ativo e owner, conectada a um broker AdsPower hermético e a VisualProofJob; 187 testes focais e um gate estrutural confirmaram zero segredo, endpoint externo, driver real ou publicação. Continua partial: não há página monetizada nem perfil AdsPower real cadastrados, e a ligação bidirecional Cofre↔Mapa Vivo permanece aberta.",
+      "evidence": "O schema v13_01/v13_02 e a API administrativa estão operacionais no Supabase oficial. Em 03/09/2026 a experiência do operador passou a materializar visão com frescor, vazio honesto, inventário tabular responsivo, detalhe, prontidão operacional/visual e onboarding progressivo; 93 testes focais de frontend e o build Vite passaram no resultado integrado. As peças cofre/item/campo nunca são persistidas no browser e o localizador é formado somente em memória no POST. Continua partial: não há página monetizada, referência real ou perfil AdsPower real cadastrados, e a ligação bidirecional Cofre↔Mapa Vivo permanece aberta.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
@@ -1073,7 +1073,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "1Password guarda valores; Supabase oficial, Cofre, grafo e Roadmap guardam somente referências, propósito, owner, validade e auditoria sanitizada.",
-      "evidence": "A fronteira saiu do papel em 033e1620 (merge 4afc128), com tres mecanismos e nao com uma politica: gramatica por provider no localizador (op:// entra, texto sem forma de endereco nao), varredura recursiva de chave NORMALIZADA (accessToken, ACCESS-TOKEN e access_token colapsam) e superficie — nenhuma funcao de leitura projeta o localizador. Quatro vazamentos foram medidos e fechados no caminho: o DETAIL do Postgres, o campo input do 422 do FastAPI, a chave ecoada no conflito de idempotencia e a prosa limpa cobrindo os campos errados. LIMITE DECLARADO: sintaxe nao alcanca semantica — op://Vault/Item/password tem forma de endereco e pode ser a senha escolhida por alguem. O broker que resolve o endereco (P03-T11) nao existe.",
+      "evidence": "A fronteira saiu do papel em 033e1620 (merge 4afc128) com gramática por provider, varredura recursiva de chave normalizada e projeções de leitura sem localizador. Em 03/09/2026 o onboarding passou a persistir no browser somente metadados; cofre/item/campo ficam em memória e são descartados em fechar, concluir e remontar. O broker canônico existe em `tools/adspower-broker/` e VisualProof fala somente com sua porta VOLC, mas nenhuma referência real foi resolvida de ponta a ponta. LIMITE DECLARADO: sintaxe não alcança semântica — um localizador bem formado ainda depende de governança humana do item/campo.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
@@ -1138,7 +1138,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "GET /api/cofre/ativos/{id}/handoff RESPONDE quais engines existem, qual ativo recebe a peça, qual referência será resolvida e qual perfil de navegador está relacionado — e NÃO EXECUTA nada.",
-      "evidence": "Contrato em docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md, 01/09/2026. A assimetria é deliberada: traz provider e NOME LÓGICO, nunca o localizador, porque um handoff com endereço resolvido transformaria a rota na porta do cofre — uma sessão ADMIN comprometida enumeraria todos os endereços de uma vez. 'pronto_para_handoff' e 'bloqueios' fazem de 'faltou registrar a referência' um FATO no corpo, e não um 200 que parece sucesso. Quatro bloqueios provados por teste. O broker que resolveria op:// no host isolado NÃO existe.",
+      "evidence": "Contrato em docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md. A assimetria é deliberada: traz provider e nome lógico, nunca o localizador. `pronto_para_handoff`, prontidão operacional, prontidão visual e bloqueios tornam ausência um fato no corpo, não um 200 que parece sucesso. O broker canônico agora existe em `tools/adspower-broker/`, mas a resolução real de referência, perfil real e navegação continuam não exercitadas.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
@@ -1644,8 +1644,8 @@
       "state": "partial",
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
-      "summary": "Treze rotas sob /api/cofre em quatro camadas (domínio, aplicação, infraestrutura, rotas), todas com exigir_admin no nível do router, sem caminho de INSERT direto em tabela; inclui o handoff que responde para produção e publicação sem entregar o endereço do segredo.",
-      "evidence": "backend/app/asset_vault/, quatro camadas, 67 testes herméticos verdes em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Falha de banco vira 503 e nunca lista vazia; resposta em forma inesperada também. A mensagem do Postgres não é repassada: details e hint morrem no adapter e message só passa quando casa uma frase auditada deste projeto. Lê o corpo cru e valida à mão porque o 422 padrão do FastAPI devolve o valor recusado no campo input — defeito medido e provado em oito rotas. Nunca chamada contra o Supabase oficial, porque a v13_01 não está lá.",
+      "summary": "Quinze rotas sob /api/cofre em quatro camadas (domínio, aplicação, infraestrutura, rotas), todas com exigir_admin no nível do router e sem caminho de INSERT direto em tabela; incluem handoff e prontidões operacional/visual sem entregar o endereço do segredo.",
+      "evidence": "backend/app/asset_vault/ mantém falha de banco como indisponibilidade, nunca lista vazia, e sanitiza mensagens antes da API. Em 03/09/2026 ganhou prontidão operacional e a experiência de operador passou a consumir os contratos reais com forma defensiva; 93 testes de frontend e build Vite passaram no resultado integrado. A API não projeta localizador e o onboarding só o monta em memória no POST autenticado. O schema v13_01/v13_02 já está aplicado no Supabase oficial; esta integração não realizou escrita.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
@@ -1658,7 +1658,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Executor local e isolado de perfis de navegador para navegação agentic, screenshots e inspeção da superfície publicada.",
-      "evidence": "A convergência de 02/09/2026 integrou um broker VOLC em loopback com Bearer, allowlist, segredo somente em runtime, timeout, idempotência e recibo sanitizado, exercitado contra fake hermético. Continua partial: AdsPower MCP/Local API, chave, perfil e navegador reais não foram observados.",
+      "evidence": "A autoridade canônica única é `tools/adspower-broker/`, em loopback, com Bearer, allowlist, segredo somente em runtime, timeout, idempotência e recibo sanitizado. Em 03/09/2026 o candidato duplicado sob `backend/app/asset_vault/broker/` foi removido; um gate estrutural reprovou quatro adulterações concorrentes e preservou VisualProof como cliente apenas da porta VOLC `/v1/operacoes`. Continua partial: AdsPower MCP/Local API, chave, perfil e navegador reais não foram observados.",
       "source": "Curadoria humana, atualizada em 2026-09-03"
     },
     {
