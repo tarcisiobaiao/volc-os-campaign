@@ -6,7 +6,7 @@
 ## Base and branch
 - Base: `origin/volc-os-v2` = `207e91f1da290130e8d02b78c3ba1c8e9a761111`
 - Branch: `sprint/hermes-p09-t17-campaign-birth-authority-v1`
-- Worktree: `/root/work/volc-runs/hermes-p09-t17-campaign-birth-authority-v1`
+- Worktree: isolated local mission worktree (local path intentionally not versioned)
 
 ## What changed
 - Added `volc_ads/gads/autoridade.py`: signed, one-use birth capability with explicit proof fields.

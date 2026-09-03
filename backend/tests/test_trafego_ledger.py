@@ -45,7 +45,7 @@ def _rede_bloqueada(monkeypatch: pytest.MonkeyPatch):
 
 
 IDENTIDADE = Identidade(
-    sub="operador-sub-1", email="tarcisio@agenciavolc.com.br",
+    sub="operador-sub-1", email="operador@example.invalid",
     papel="ADMIN", origem="teste",
 )
 

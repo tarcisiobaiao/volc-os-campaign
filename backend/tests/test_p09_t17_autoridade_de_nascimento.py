@@ -90,7 +90,7 @@ def _provas_completas(**trocas):
         item_id="item-0001",
         idempotency_key="idem-0001",
         aprovador_sub="auth0|tarcisio",
-        aprovador_email="tarcisio@agenciavolc.com.br",
+        aprovador_email="operador@example.invalid",
         destino_url="https://portalmundomais.com.br/fgts",
         destino_recibo="b" * 64,
         conjunto_pago_autoridade="python:app.agents.mining.paid_eligibility",

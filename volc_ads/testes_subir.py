@@ -171,7 +171,7 @@ def autorizacao_valida(preparo: subir.Preparo, **trocas) -> aut.Autorizacao:
         item_id="item-de-prova-0001",
         idempotency_key="idem-de-prova-0001",
         aprovador_sub="auth0|prova",
-        aprovador_email="prova@agenciavolc.com.br",
+        aprovador_email="prova@example.invalid",
         destino_url="https://portalmundomais.com.br/fgts",
         destino_recibo="a" * 64,
         conjunto_pago_autoridade="python:app.agents.mining.paid_eligibility",
