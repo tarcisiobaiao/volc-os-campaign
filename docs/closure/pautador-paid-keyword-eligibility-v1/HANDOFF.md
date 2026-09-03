@@ -266,3 +266,86 @@ editou** Roadmap, curadoria nem grafo.
   terminando em `APPROVE|APPROVE_WITH_NOTES|BLOCK`. Foi lido como dado — um
   artefato de rodada de revisão anterior dentro do benchmark — e está
   registrado em `BENCHMARK-FINDINGS.json`.
+
+
+---
+
+# Rodada 2 — o wiring que faltava
+
+**`PYTHON_ELIGIBILITY_ENGINE_ACCEPTED` · `CAMPAIGN_BIRTH_WIRING_ACCEPTED` ·
+`N8N_BYPASS_CLOSED`**
+
+## O que o integrador encontrou, e estava certo
+
+O motor de elegibilidade estava correto e **não decidia nada**.
+`para_criterios_de_campanha()` não tinha chamador de produção; `/provar` — com
+`/subir` atrás dele — continuava tirando as keywords POSITIVAS do cockpit, que
+as tira de `production_ads_queue`: a fila BRUTA da mineração. Um conjunto de 3
+selecionadas convivia com um pedido de 8 termos, e nada no sistema notava.
+
+## O portão
+
+`backend/app/agents/mining/portao_conjunto_pago.py` reidrata o `conjunto_pago`
+gravado em `factory_output` e **recalcula a impressão** das decisões. Nunca lê
+o hash do registro — confiar nele seria pedir ao registro que ateste a si
+mesmo. Se o JSON persistido foi editado depois da aprovação, a impressão não
+bate e o portão recusa.
+
+Recusas, todas ANTES de `preparar()` e portanto antes de qualquer
+`validate_only` — que é leitura, mas ainda é rede e ainda é conta real:
+
+```
+CONJUNTO_PAGO_AUSENTE · NAO_APROVADO · HASH_DIVERGENTE · BLOQUEADO · VAZIO
+N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED
+```
+
+Nenhuma inventa valor para seguir. Teto econômico não declarado e congruência
+não avaliada continuam **bloqueadores nomeados**: o portão diz qual falta.
+
+Medido no funil BPC/LOAS: **5 selecionadas → exatamente 5 critérios**, e os três
+termos de risco (`meu inss login`, `inss telefone 135`,
+`bpc loas advogado x concorrente`) ficam fora — embora sigam presentes na
+`production_ads_queue` do mesmo cluster. A fila continua existindo; o que
+deixou de existir é a porta pela qual ela virava campanha.
+
+`grupos_usar_todas` ficou vazio de propósito: "usar todas" significava "monte o
+grupo inteiro do cockpit". Depois do portão não há "todas", há o que foi
+aprovado.
+
+`/subir` reprova o plano antes de escrever. Sem o portão, ele ultrapassaria por
+reconstrução uma recusa que `/provar` já tinha dado — a herança é estrutural,
+não disciplina de quem chama na ordem certa.
+
+## A autoridade, declarada
+
+**`python:app.agents.mining.paid_eligibility`**, uma só.
+
+O fluxo n8n **não foi corrigido**, e a escolha é deliberada:
+`n8n/pautador_kw_mining_webhook.json` é GERADO por
+`backend/scripts/build_n8n_kw_webhook_flow.py`, que copia os nós "ouro"
+VERBATIM de um export externo que não vive neste repositório. Editar o JSON à
+mão seria sobrescrito na próxima geração; reimplementar a elegibilidade em
+JavaScript seria manter dois algoritmos independentes decidindo a mesma coisa —
+que foi o que produziu esta divergência.
+
+O n8n **continua minerando**. O que ele não faz é virar campanha. E o aviso
+viaja na própria resposta do despacho em `entities.py`, porque um operador que
+só descobre a recusa na hora de subir perdeu o ciclo inteiro por uma informação
+que existia desde o início.
+
+## Bloqueadores honestamente restantes
+
+1. **Teto econômico do dono** continua não declarado por ninguém — agora com
+   consequência visível: `CONJUNTO_PAGO_BLOQUEADO` em `/provar`.
+2. **Congruência termo → anúncio → página** continua não avaliada neste
+   caminho; quem avalia destino é `landing_policy`.
+3. **Close variants continuam risco declarado.** Reter `meu inss login` não
+   impede que uma busca por ele acione um termo incluído. Fechar exige
+   negativa, negativa exige search-term evidence pós-lançamento e revisão de
+   overblocking — **esta rodada não gerou nenhuma negativa**, de propósito.
+4. **Clusters minerados antes desta lane** não têm `conjunto_pago` e serão
+   recusados. É migração de contrato, não perda: a alternativa era continuar
+   promovendo fila bruta a conjunto de campanha.
+5. **O workflow n8n versionado ainda carrega o defeito de origem**
+   (`dedupedKws.forEach -> allKeywordsForCampaign`, CPC/volume ausente virando
+   zero). Fechado por recusa, não por correção.

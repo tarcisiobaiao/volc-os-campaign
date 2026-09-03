@@ -108,3 +108,61 @@ Ao Gemini foi enviado apenas código do VOLC, com o run-id do benchmark e as
 estatísticas agregadas dele REDIGIDOS antes do envio (a sanitização é
 verificada por asserção no script, não por inspeção). Nenhum dataset, métrica
 privada por campanha, página privada ou dado cru do benchmark saiu da máquina.
+
+---
+
+# Rodada 2 — wiring do nascimento da campanha
+
+## Processo órfão, adjudicado
+
+`PID 32870` — o shell que esperava `codex-review.md` da PRIMEIRA execução do
+Codex, que morreu sem escrever o arquivo. Rodava havia 48 minutos num `until`
+que nunca terminaria. Encerrado, e só ele.
+
+Os 7 processos `vite` vivos pertencem a outras lanes
+(`volc-baseline-main`, `volc-estudio-criativo`, `volc-search-measurement-ux-v1`,
+`volc-design-review-global`, `volc-review-estudio-criativo`,
+`volc-integration-estudio-criativo`, `volc-runtime-current`) e seguem intactos —
+conferido antes e depois.
+
+## Gates
+
+| gate | resultado |
+|---|---|
+| focais da lane (elegibilidade + wiring + mining + api) | **101 passed** |
+| contraprovas do caminho real (`test_pautador_campaign_birth_wiring.py`) | **18 passed** |
+| ponte/tráfego (7 arquivos de trafego + volc_ads) | **249 passed, 13 skipped** |
+| integração (`backend/tests` + `motor_pautas` + `volc_ads`) | **3333 passed, 112 skipped** em 100,12s |
+| TypeScript (`tsc --noEmit`) | **sem erro** |
+| `vite build` | **ok, 12,36s** |
+| `git diff --check` | **limpo** |
+| scanner de segredos | **0 ocorrências** |
+| mutate Google introduzido | **0** |
+
+Baseline anterior: 3315 passed / 112 skipped. Agora 3333 / 112 — **+18, que são
+exatamente as contraprovas novas. Nenhum teste pré-existente mudou de
+resultado.**
+
+## Uma queda transitória, causada e resolvida
+
+Ao ligar o portão, 5 testes de `test_trafego_portoes_de_escrita.py` passaram a
+falhar com `N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED`. **Foi regressão minha,
+e o portão estava certo**: a fixture hermética `_linhas_da_rota` monta um
+cluster com `production_ads_queue` e sem `conjunto_pago` — exatamente a
+assinatura que o portão recusa.
+
+A correção foi dar à fixture o que o contrato agora exige, construído pelo
+MOTOR REAL sobre a mesma keyword da própria fixture — não um segundo algoritmo,
+e não um afrouxamento do portão. A fixture continua sendo "recorte mínimo da
+porta de leitura; o contrato depois dela é real", que é o que ela sempre
+declarou ser.
+
+## Um teste que já falhava sozinho, e não é meu
+
+`test_trafego_canario.py::test_provar_e_subir_reconstroem_o_mesmo_plano_antes_da_rede`
+falha quando o arquivo roda ISOLADO, tentando alcançar `oauth2.googleapis.com`
+por `contas.meta_de_conversao`. Conferido contra a base com `git stash`: falha
+igual, com o mesmo endereço, **sem nenhuma alteração desta lane**. É dependência
+de ordem — o autouse `_leituras_vivas_desligadas` vive noutro arquivo — e na
+suíte completa ele passa. Registrado por honestidade, não corrigido: mexer nele
+seria a rodada arquitetural que esta missão proíbe.
