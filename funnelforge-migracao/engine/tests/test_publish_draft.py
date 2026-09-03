@@ -5,6 +5,8 @@ from funnelforge.config.settings import load_settings
 from funnelforge.domain.models import Page, PageDraft, RunState
 from funnelforge.pipeline.steps import step_publish
 
+from tests.lp_conforme import conteudo_da_lp
+
 
 class _FakePublisher:
     """Captures the status/args step_publish sends, and serves a hosted URL
@@ -146,8 +148,16 @@ def test_lp_published_as_draft_with_hero_uploaded_and_rewritten(tmp_path, config
     hero = run_dir / "p1.webp"
     hero.write_bytes(b"fake-webp-bytes")
     state = RunState(run_id="r1")
+    # ⚠️ ARTEFATO CONFORME, e não mais `content="markers"`.
+    #
+    # A LP deixou de ser isenta do portão de conteúdo: `step_publish` roda o
+    # portão do destino pago ANTES de qualquer `upload_media`. Um rascunho de
+    # brinquedo agora reprova por conteúdo insuficiente e nunca chega à mecânica
+    # de herói/status que este teste mede -- que é exatamente o efeito
+    # pretendido, e o motivo de a fixture precisar ser uma LP de verdade.
     state.drafts[1] = PageDraft(page_number=1, page_type="LANDING PAGE",
-                                format="markers", content="markers")
+                                format="lp_json",
+                                content=json.dumps(conteudo_da_lp(), ensure_ascii=False))
     state.images[1] = str(hero)
     page = Page(page_number=1, page_type="LANDING PAGE", h1_title="T", slug="antecipacao")
     step_publish(state, page, deps)
@@ -172,8 +182,16 @@ def test_lp_publish_survives_missing_hero(tmp_path, config_files):
     elementor = [{"elType": "container", "elements": []}]
     (run_dir / "p1.elementor.json").write_text(json.dumps(elementor), encoding="utf-8")
     state = RunState(run_id="r1")
+    # ⚠️ ARTEFATO CONFORME, e não mais `content="markers"`.
+    #
+    # A LP deixou de ser isenta do portão de conteúdo: `step_publish` roda o
+    # portão do destino pago ANTES de qualquer `upload_media`. Um rascunho de
+    # brinquedo agora reprova por conteúdo insuficiente e nunca chega à mecânica
+    # de herói/status que este teste mede -- que é exatamente o efeito
+    # pretendido, e o motivo de a fixture precisar ser uma LP de verdade.
     state.drafts[1] = PageDraft(page_number=1, page_type="LANDING PAGE",
-                                format="markers", content="markers")
+                                format="lp_json",
+                                content=json.dumps(conteudo_da_lp(), ensure_ascii=False))
     page = Page(page_number=1, page_type="LANDING PAGE", h1_title="T", slug="antecipacao")
     step_publish(state, page, deps)
     assert pub.page_call["status"] == "draft"

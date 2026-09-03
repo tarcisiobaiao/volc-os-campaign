@@ -328,9 +328,23 @@ def papel_do_servidor(
     elif e_destino_de_campanha:
         apurado = PapelDestino.PAID_DESTINATION
     else:
-        apurado = _DO_MOTOR.get(
-            str(papel_do_motor or "").strip().upper(), PapelDestino.ORGANIC_ARTICLE
-        )
+        bruto = str(papel_do_motor or "").strip().upper()
+        if not bruto:
+            # Nenhuma informação de papel: a página não vem do motor de funil.
+            # `organic_article` é a leitura correta — e é uma afirmação fraca,
+            # que não promete nada sobre clique comprado.
+            apurado = PapelDestino.ORGANIC_ARTICLE
+        else:
+            # ⚠️ INFORMAÇÃO DADA E NÃO RECONHECIDA FECHA, NÃO ABRE.
+            #
+            # `_DO_MOTOR.get(bruto, ORGANIC_ARTICLE)` mandava qualquer valor
+            # irreconhecível para o papel MAIS FROUXO — então um erro de
+            # digitação em `role` ("LPP", "Lp ", "landing") desligava a régua
+            # inteira, em silêncio. É a mesma doutrina de
+            # `contrato.severidade()`, que trata código não classificado como
+            # bloqueio no papel estrito: o que ninguém classificou não entra em
+            # produção valendo a classificação mais permissiva.
+            apurado = _DO_MOTOR.get(bruto, PapelDestino.PAID_DESTINATION)
 
     pedido_bruto = str(papel_pedido_pelo_cliente or "").strip().lower()
     if not pedido_bruto:

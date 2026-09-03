@@ -190,6 +190,16 @@ def test_cp03_referencia_oficial_com_lastro_e_aceita_em_editorial_solution():
         PontoDePortao.ARTEFATO_DE_GERACAO,
     )
     assert av.bloqueios == [], [a.codigo for a in av.bloqueios]
+    # ⚠️ E A REGRA PRECISA TER RODADO.
+    #
+    # Achado da revisão cruzada: com só `av.bloqueios == []`, este teste passava
+    # IDÊNTICO depois de apagar `varrer_links` da tabela de varreduras — porque
+    # no papel editorial nenhum código vira bloqueio, nunca. Ele afirmava a
+    # ausência de um efeito que a regra jamais produziria ali. Exigir o achado
+    # REGISTRADO é o que prova que a varredura correu e classificou.
+    registrados = {a.codigo for a in av.bloqueios + av.riscos + av.observacoes}
+    assert LINK_PAGO in registrados, "a varredura de links não correu"
+    assert "LINK_EXTERNO_NAO_CLASSIFICADO" not in registrados, "o lastro declarado não valeu"
 
 
 def test_cp04_link_externo_desconhecido_bloqueia_por_dois_motivos():
@@ -835,8 +845,33 @@ def test_o_recibo_e_resolvido_pela_url_canonica_com_gclid():
         )
     ]
     assert recibo_da_url(publicadas, "https://exemplo.com.br/r/x/?gclid=Cj0KC") is not None
+    assert recibo_da_url(publicadas, "https://exemplo.com.br/r/x/?utm_source=g") is not None
     assert recibo_da_url(publicadas, "https://exemplo.com.br/r/outra/") is None
-    assert url_canonica("https://Exemplo.com.BR/r/x/?a=1#topo") == "https://exemplo.com.br/r/x"
+    assert url_canonica("https://Exemplo.com.BR/r/x/?gclid=z#topo") == "https://exemplo.com.br/r/x"
+
+
+def test_a_query_que_decide_conteudo_nao_colide():
+    """⚠️ ACHADO DA REVISÃO CRUZADA: a primeira versão derrubava a query INTEIRA.
+
+    Ela resolvia o problema real — `gclid` grudado — e criava outro:
+    `?produto=cartao` e `?produto=emprestimo` viravam a mesma URL canônica, e
+    `recibo_da_url` devolvia o recibo da primeira. Duas páginas materialmente
+    diferentes passavam a compartilhar uma aprovação.
+    """
+    publicadas = [
+        anexar_recibo(
+            {"url_wp": "https://exemplo.com.br/r/x/?produto=cartao"},
+            recibo_valido(content_sha256="c" * 64),
+        ),
+        anexar_recibo(
+            {"url_wp": "https://exemplo.com.br/r/x/?produto=emprestimo"},
+            recibo_valido(content_sha256="e" * 64),
+        ),
+    ]
+    achado = recibo_da_url(publicadas, "https://exemplo.com.br/r/x/?produto=emprestimo&gclid=z")
+    assert achado is not None and achado["content_sha256"] == "e" * 64
+    # E a ordem dos parâmetros não inventa duas URLs de uma.
+    assert url_canonica("https://e.com.br/x?b=2&a=1") == url_canonica("https://e.com.br/x?a=1&b=2")
 
 
 def test_o_recibo_nao_afirma_aprovacao_do_google():
@@ -851,3 +886,243 @@ def test_o_recibo_nao_afirma_aprovacao_do_google():
         "appeal_submitted": False,
         "deploy": False,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A RODADA CORRETIVA DA REVISÃO ADVERSARIAL CRUZADA
+#
+# Doze achados, todos confirmados por execução antes de virarem conserto.
+# Cada prova abaixo é o VERMELHO de um deles, e várias vêm em par com o
+# simétrico — porque metade dos achados era FALSO BLOQUEIO, e bloqueio falso é
+# como a operação desliga o portão.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_rc01_recibo_carimbado_no_futuro_nao_e_fresco():
+    """`idade > janela` deixava passar qualquer carimbo adiante do relógio.
+
+    Um recibo que diz ter sido observado amanhã não é fresco: é inconsistente,
+    e inconsistência não vira aprovação. Cinco minutos de folga absorvem deriva
+    de NTP sem absorver um carimbo posto de propósito.
+    """
+    do_futuro = recibo_valido(observed_at_epoch=AGORA + 86_400)
+    assert "RECIBO_DE_APROVACAO_VENCIDO" in pago(montar(recibo_de_aprovacao=do_futuro))
+    quase_agora = recibo_valido(observed_at_epoch=AGORA + 60)
+    assert "RECIBO_DE_APROVACAO_VENCIDO" not in pago(montar(recibo_de_aprovacao=quase_agora))
+
+
+def test_rc02_cloaking_por_javascript_e_visto_e_muda_a_impressao():
+    """⚠️ CLOAKING QUE SERVIA OS MESMOS BYTES ÀS DUAS LEITURAS.
+
+    `<script>if(!ua.includes("Googlebot")) location.assign(...)</script>`
+    redireciona só o humano. Os dois user-agents recebem HTML idêntico, então a
+    comparação rastreador/usuário não vê nada — quem decide o destino é o
+    JavaScript, depois. E `location.assign` não estava na regex, enquanto a
+    impressão canônica ignorava scripts por completo: injetar o cloak DEPOIS da
+    aprovação deixava a impressão idêntica, e a deriva não disparava.
+    """
+    limpo = f"<html><body><h1>Guia</h1><p>{CORPO}</p>{RODAPE}</body></html>"
+    cloak = (
+        '<script>if(!navigator.userAgent.includes("Googlebot"))'
+        ' location.assign("https://evil.example/")</script>'
+    )
+    com_cloak = limpo.replace("</body>", cloak + "</body>")
+    achados = pago(montar(rodape=RODAPE + cloak))
+    assert "SCRIPT_REDIRECIONA_CLIENT_SIDE" in achados or "SCRIPT_REDIRECIONA_CLIENT_SIDE" in {
+        a.codigo for a in elegibilidade_de_destino_de_campanha(montar(rodape=RODAPE + cloak)).riscos
+    }
+    assert impressao_canonica(limpo) != impressao_canonica(com_cloak), (
+        "injetar o cloak tem que mudar a impressão canônica"
+    )
+
+
+def test_rc02b_meta_refresh_e_redirecionamento_sem_javascript():
+    html_com_meta = '<meta http-equiv="refresh" content="0;url=https://evil.example/">'
+    av = elegibilidade_de_destino_de_campanha(montar(rodape=RODAPE + html_com_meta))
+    assert "SCRIPT_REDIRECIONA_CLIENT_SIDE" in {
+        a.codigo for a in av.bloqueios + av.riscos + av.observacoes
+    }
+
+
+def test_rc04_base_formaction_e_area_sao_navegacao():
+    """Três formas de navegar para fora que não são `<a href>`.
+
+    `<base href>` reescreve TODO link relativo da página: uma tag muda o destino
+    de todos os links de uma vez. `formaction` sobrepõe o `action` do formulário
+    no clique daquele botão. `<area href>` é `<a href>` com outra roupa.
+    """
+    base = '<base href="https://evil.example/"><p><a href="oferta">Ver oferta</a></p>'
+    assert LINK_PAGO in pago(montar(base)), "<base> reescrevendo o relativo"
+    formaction = '<form><button formaction="https://evil.example/x">Comprar</button></form>'
+    assert LINK_PAGO in pago(montar(formaction)), "formaction"
+    area = '<map name="m"><area href="https://evil.example/z" alt="ir"></map><img usemap="#m">'
+    assert LINK_PAGO in pago(montar(area)), "<area href>"
+
+
+def test_rc05_hyperlink_para_adtech_e_link_externo_como_qualquer_outro():
+    """`adtech_google` estava em `_CLASSES_INTERNAS` e isentava um `<a href>`.
+
+    O raciocínio original — tag de medição não é navegação editorial — está
+    certo sobre a TAG e errado sobre o efeito: `varrer_links` só enxerga
+    `<a>`, `<area>` e `formaction`. Tudo que chega ali já é clique do leitor.
+    """
+    miolo = '<p><a href="https://googleadservices.com/aclk?x=1">Ver oferta</a></p>'
+    assert LINK_PAGO in pago(montar(miolo))
+
+
+def test_rc06_esquema_mascarado_por_maiuscula_nao_vira_link_interno():
+    """`JaVaScRiPt:` escapava do `startswith` e virava host vazio = RELATIVO."""
+    miolo = "<p><a href=\"JaVaScRiPt:location='https://evil.example/'\">Comprar</a></p>"
+    assert "LINK_EXTERNO_NAO_CLASSIFICADO" in pago(montar(miolo))
+
+
+def test_rc07_campo_sensivel_com_type_search_nao_e_busca_do_site():
+    """A isenção da busca do WordPress era decidida SÓ pelo tipo.
+
+    `<input type="search" name="cpf">` entrava como busca e o CPF sumia da
+    varredura. Quando o campo carrega classe sensível, o que ele PEDE vale mais
+    que como ele foi rotulado.
+    """
+    achados = pago(montar('<form><input type="search" name="cpf"></form>'))
+    assert "FORMULARIO_DADO_SENSIVEL" in achados
+
+
+def test_rc07b_a_busca_do_wordpress_continua_isenta():
+    """O simétrico obrigatório: reprovar a busca do site seria falso bloqueio."""
+    achados = pago(montar('<form role="search"><input type="search" name="s"></form>'))
+    assert "FORMULARIO_DADO_SENSIVEL" not in achados
+
+
+@pytest.mark.parametrize(
+    "h1,perigoso",
+    [
+        ("Portal do INSS", True),
+        ("Central de atendimento da Caixa", True),
+        ("Site oficial do FGTS", True),
+        ("Saque-Aniversário FGTS Liberado pelo Governo", True),
+        ("Como funciona o saque do FGTS", False),
+        ("Guia do INSS: o que você precisa saber", False),
+    ],
+)
+def test_rc08_manchete_que_se_apresenta_como_o_orgao(h1, perigoso):
+    """"Portal do INSS" não casava: a regra exigia a palavra "oficial".
+
+    A forma mais direta de se apresentar como o órgão é justamente não usá-la —
+    o nome do órgão logo depois de "portal/site/central" já entrega a promessa.
+    """
+    achado = "TITULO_SUGERE_ORIGEM_OFICIAL" in pago(montar(h1=h1))
+    assert achado is perigoso, h1
+
+
+def test_rc10_link_externo_ESCONDIDO_nao_reprova_o_corpo_visivel():
+    """⚠️ FALSO BLOQUEIO: a regra fala do corpo VISÍVEL e lia o HTML inteiro.
+
+    Um `<div style="display:none"><a href="..."></div>` reprovava a página, e o
+    leitor nunca vê aquele link. O link não some do recibo — ele entra no
+    inventário marcado `oculto`, e host desconhecido continua caindo em
+    `LINK_EXTERNO_NAO_CLASSIFICADO`, que é regra de CLASSIFICAÇÃO, não de
+    visibilidade. Esconder um link não o torna confiável; só o tira do corpo.
+    """
+    oculto = '<div style="display:none"><a href="https://parceiro-declarado.example/x">oculto</a></div>'
+    achados = pago(montar(oculto, hosts_declarados=("parceiro-declarado.example",)))
+    assert LINK_PAGO not in achados
+    visivel = '<p><a href="https://parceiro-declarado.example/x">visível</a></p>'
+    assert LINK_PAGO in pago(montar(visivel, hosts_declarados=("parceiro-declarado.example",)))
+
+
+@pytest.mark.parametrize(
+    "texto,acusa",
+    [
+        ("Aprenda a emitir notas em cinco passos.", False),
+        ("Onde tomar a vacina e o que levar.", False),
+        ("Já tinha visto esse aviso antes.", False),
+        ("Como emitir a sua carteira de identidade nacional.", True),
+        ("Vamos emitir o seu visto americano em poucos dias.", True),
+    ],
+)
+def test_rc11_documento_restrito_exige_a_palavra_inteira(texto, acusa):
+    """`"cin"` casava dentro de "cinco" e "vacina"; `"visto"` é particípio de ver.
+
+    Com "emitir" na mesma página — um verbo banal — "Aprenda a emitir notas em
+    cinco passos" emitia `SERVICO_GOVERNAMENTAL_RESTRITO`. Texto editorial
+    reprovado por coincidência de letras é o caminho mais curto para a operação
+    desligar o portão.
+    """
+    achado = "SERVICO_GOVERNAMENTAL_RESTRITO" in pago(montar(f"<p>{texto}</p>"))
+    assert achado is acusa, texto
+
+def test_rc13_cta_sem_destino_e_inventariado_e_nao_bloqueia():
+    """⚠️ A REGRA NASCEU BLOQUEANDO E FOI REBAIXADA NO PRIMEIRO CONTATO.
+
+    A frente do motor reportou a lacuna: botão com `href` vazio não era visto
+    por varredura nenhuma. Verdade. Mas transformá-lo em bloqueio produziu
+    falso bloqueio imediato: num run `--only p1` as rotas interiores ainda não
+    existem, então TODO CTA da LP tem href vazio por ORDEM DE CONSTRUÇÃO.
+
+    A distinção "a rota ainda não resolveu" × "o botão morreu" não é observável
+    a partir do documento sozinho. Até que seja, o fato fica no inventário e a
+    decisão fica com quem tem o contexto do pipeline. Um portão que reprova
+    página correta é um portão que alguém desliga — e portão desligado não
+    protege nada.
+    """
+    from app.landing_policy.varredura import varrer_links
+
+    morto = '<div class="wp-block-button"><a class="wp-block-button__link" href="">Simular</a></div>'
+    pagina = montar(morto)
+    assert "ANCORA_INCONGRUENTE_COM_DESTINO" not in pago(pagina)
+    inventario = varrer_links(pagina).inventario
+    assert any(i.get("cta_sem_destino") for i in inventario), "o fato tem que ficar registrado"
+
+
+def test_rc14_papel_do_motor_irreconhecivel_fecha_em_vez_de_abrir():
+    """⚠️ UM ERRO DE DIGITAÇÃO EM `role` DESLIGAVA A RÉGUA INTEIRA.
+
+    `_DO_MOTOR.get(bruto, ORGANIC_ARTICLE)` mandava qualquer valor
+    irreconhecível para o papel MAIS FROUXO. É a mesma doutrina de
+    `contrato.severidade()`: o que ninguém classificou não entra em produção
+    valendo a classificação mais permissiva.
+
+    Papel AUSENTE continua sendo `organic_article` — ali não houve afirmação
+    nenhuma, e a página simplesmente não vem do motor de funil.
+    """
+    assert papel_do_servidor(papel_do_motor="LPP") is PapelDestino.PAID_DESTINATION
+    assert papel_do_servidor(papel_do_motor="landing") is PapelDestino.PAID_DESTINATION
+    assert papel_do_servidor(papel_do_motor="") is PapelDestino.ORGANIC_ARTICLE
+    assert papel_do_servidor(papel_do_motor="SOLUTION") is PapelDestino.EDITORIAL_SOLUTION
+
+
+def test_rc15_identidade_num_documento_parcial_e_inobservavel_nao_ausente():
+    """⚠️ TODA LANDING PAGE REAL SERIA REPROVADA POR IDENTIDADE.
+
+    Antes de publicar, o backend enxerga o CONTEÚDO da página; o rodapé de
+    identidade é renderizado pelo TEMA — a coluna `cnpj` foi removida de
+    `project_wordpress` exatamente por isso. Exigir identidade de um fragmento
+    reprovaria toda LP por uma impossibilidade estrutural, que é o mesmo erro
+    que `EXIGENCIAS_POR_PONTO` existe para não cometer.
+
+    E a isenção NÃO vale ao vivo: `identity` está em
+    `NAO_APLICAVEL_E_DESCONHECIDO_EM` no ponto de campanha.
+    """
+    fragmento = PaginaObservada(
+        url="https://exemplo.com.br/r/x/",
+        html=f"<html><body><h1>Guia</h1><p>{CORPO}</p></body></html>",
+        documento_parcial=True,
+    )
+    pre = avaliar(fragmento, PapelDestino.PAID_DESTINATION, PontoDePortao.PRE_PUBLICACAO_WORDPRESS)
+    assert "IDENTIDADE_OPERADOR_AUSENTE" not in {a.codigo for a in pre.bloqueios}
+    assert pre.paid_destination_ready is True
+
+    ao_vivo = PaginaObservada(
+        url="https://exemplo.com.br/r/x/",
+        html=fragmento.html,
+        documento_parcial=True,
+        status_http=200,
+        saltos_redirecionamento=[],
+        variantes_sha256={"user": SHA, "googlebot": SHA},
+        sha256_observado=SHA,
+        recibo_de_aprovacao=recibo_valido(),
+        avaliado_em_epoch=AGORA,
+    )
+    campanha = elegibilidade_de_destino_de_campanha(ao_vivo)
+    assert campanha.paid_destination_ready is False
+    assert "identity" in {d["verificacao"] for d in campanha.desconhecidos}

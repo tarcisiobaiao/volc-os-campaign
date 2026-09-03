@@ -238,18 +238,67 @@ def gutenberg_blocks(content: str, ctx: dict) -> list[Issue]:
     return issues
 
 
+# ⚠️ ERAM DOIS REQUISITOS INDEPENDENTES COLAPSADOS NUM `OU`.
+#
+# A regra anterior era `"adsense" not in low and "utilidade pública" not in low`:
+# bastava UM dos dois para a página passar. Uma página com "Adsense" no rodapé e
+# nenhum aviso de não-vínculo era aprovada — e esse é literalmente o estado de
+# `/r/antecipacao-saque-aniversario-fgts/` na evidência preservada, com
+# `AVISO_NAO_OFICIAL_AUSENTE` entre os bloqueios do recibo. O defeito está
+# nomeado na seção 5, item 2, do `ROOT-CAUSE-ANALYSIS.md`.
+#
+# São perguntas diferentes e nenhuma responde a outra: "QUEM PAGA por esta
+# página" (divulgação de monetização) e "esta página TEM VÍNCULO com o órgão que
+# cita" (aviso de utilidade pública / não-vínculo). Por isso cada ausência tem
+# código próprio: um relatório que dissesse só "falta compliance" não diria qual
+# das duas coisas escrever.
+_DIVULGACAO_DE_ANUNCIO_RE = re.compile(
+    r"(?i)(adsense|google\s+ads\b|blocos?\s+de\s+an[úu]ncios?|"
+    r"financiad[oa]\s+por\s+an[úu]ncios?|publicidade)")
+_AVISO_DE_UTILIDADE_RE = re.compile(
+    r"(?i)(utilidade\s+p[úu]blica|sem\s+v[íi]nculo|"
+    r"n[ãa]o\s+(possui|possuem|temos|tem|h[áa])\s+(nenhum\s+)?"
+    r"(v[íi]nculo|rela[çc][ãa]o|liga[çc][ãa]o))")
+
+
 def compliance(content: str, ctx: dict) -> list[Issue]:
-    if (
-        "adsense" not in content.lower()
-        and "utilidade pública" not in content.lower()
-    ):
-        return [
-            Issue(
-                code="no_compliance",
-                message="Falta bloco de compliance/aviso."
-            )
-        ]
-    return []
+    """Exige os DOIS avisos, cada ausência com seu código.
+
+    Ver o bloco de comentário acima para o `OU` que estava aqui e por que ele
+    aprovava exatamente a página que a evidência mostra reprovada.
+    """
+    issues: list[Issue] = []
+    if not _DIVULGACAO_DE_ANUNCIO_RE.search(content):
+        issues.append(Issue(
+            code="no_ad_disclosure",
+            message="Falta a divulgação de monetização por anúncios (quem paga "
+                    "por esta página). O aviso de não-vínculo NÃO substitui esta."))
+    if not _AVISO_DE_UTILIDADE_RE.search(content):
+        issues.append(Issue(
+            code="no_utility_notice",
+            message="Falta o aviso de utilidade pública / não-vínculo com os órgãos "
+                    "citados. A divulgação de anúncios NÃO substitui esta."))
+    return issues
+
+
+def plano_de_destino_pago(content: str, ctx: dict) -> list[Issue]:
+    """O portão do destino pago aplicado ao PLANO — H1, título, subtítulos, CTAs.
+
+    ⚠️ Ele IGNORA `content` de propósito. A alegação que derrubou a conta entrou
+    pelo H1 do PLANO ("Saque-Aniversário FGTS Liberado pelo Governo") e o portão
+    de conteúdo só olhava o CORPO: chegava depois do ponto em que o defeito
+    nasceu, e depois de pagar pesquisa + até três redações + juiz.
+
+    Por ignorar o texto gerado, ele é também PRÉ-VOÁVEL: `preflight.PREFLIGHT`
+    roda exatamente esta função antes da primeira chamada paga (ver
+    `retry_policy._CODIGOS_TERMINAIS` para por que reescrever não o conserta).
+
+    A regra não é escrita aqui: quem decide é `app.landing_policy`, via a ponte
+    `adapters/landing_policy_gate`. Duas regras para o mesmo fato divergem.
+    """
+    from funnelforge.adapters import landing_policy_gate  # noqa: PLC0415 - import tardio
+
+    return landing_policy_gate.reprovas_do_plano(ctx)
 
 
 def length_p1(content: str, ctx: dict) -> list[Issue]:
@@ -1611,6 +1660,7 @@ VALIDATORS: dict[str, Callable[[str, dict], list[Issue]]] = {
     "calm_utility": calm_utility,
     "gutenberg_blocks": gutenberg_blocks,
     "compliance": compliance,
+    "plano_de_destino_pago": plano_de_destino_pago,
     "length_p1": length_p1,
     "interior_min_length": interior_min_length,
     "no_trailing_buttons": no_trailing_buttons,

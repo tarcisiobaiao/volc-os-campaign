@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import pytest
 
+from tests.lp_conforme import RODAPE_INSTITUCIONAL
+
 
 @pytest.fixture(autouse=True)
 def _sem_espera_de_verdade(monkeypatch):
@@ -54,6 +56,11 @@ def config_files(tmp_path: Path) -> Path:
         "  domain: https://creditoup.com.br\n"
         "  post_type: rec\n"
         '  cnpj: "42.724.548/0001-24"\n'
+        # O rodapé que o TEMA renderiza. Sem ele o portão do destino pago
+        # reprova toda LP por identidade/aviso/monetização ausentes -- que é o
+        # comportamento correto para um site cujo rodapé ninguém mediu, e por
+        # isso o teste que prova a falha fechada limpa este campo de propósito.
+        f'  rodape_institucional: "{RODAPE_INSTITUCIONAL}"\n'
         "  author: {name: Equipe Credito Up, credential: Redacao de jornalismo de servico.}\n"
         "  authors:\n"
         "    - {name: Equipe Credito Up, credential: Redacao, profile_slug: equipe}\n"
@@ -114,7 +121,8 @@ def config_files(tmp_path: Path) -> Path:
         "  research:   {model: perplexity/sonar-deep-research, fallbacks: [], temperature: 0.2,\n"
         "               validators: [has_sources]}\n"
         "  write_p1:   {model: claude-opus-4-8, fallbacks: [], temperature: 0.7,\n"
-        "               validators: [lp_json_contract, calm_utility, language_pt,\n"
+        "               validators: [plano_de_destino_pago, lp_json_contract,\n"
+        "                            calm_utility, language_pt,\n"
         "                            critical_fact_grounding]}\n"
         "  write_page: {model: claude-opus-4-8, fallbacks: [], temperature: 0.7,\n"
         "               validators: [gutenberg_blocks, cta_style, pagespec, calm_utility,"

@@ -118,6 +118,12 @@ def test_o_worker_usa_resume_com_only_e_publish():
     que ninguém autorizou. Sem `--publish`, ela roda e não publica: o
     `config.yaml` traz `publish: false`, e o operador veria "deu certo" com a
     página ainda parada.
+
+    ⚠️ O `--publish` MUDOU DE DONO, e este teste mudou junto. Ele era montado
+    aqui e também no `executar` — dois lugares independentes, e um portão num
+    deles deixava o outro aberto. Agora quem monta é `_disparar_motor`, e é lá
+    que a flag é conferida; esta função só diz `publicar=True` e entrega a
+    autorização do portão. Ver `tests/test_barreira2_publicacao.py`.
     """
     import inspect
 
@@ -126,8 +132,10 @@ def test_o_worker_usa_resume_com_only_e_publish():
     fonte = inspect.getsource(w.publicar_pagina)
     assert '"resume", run_id' in fonte
     assert '"--only", f"p{page_number}"' in fonte
-    assert '"--publish"' in fonte
     assert '"--perfil"' in fonte
+    assert "_disparar_motor(" in fonte
+    assert "publicar=True" in fonte
+    assert '"--publish"' in inspect.getsource(w._disparar_motor)
 
 
 def test_o_worker_apaga_a_senha_do_disco():

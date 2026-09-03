@@ -7,7 +7,7 @@ from funnelforge.domain.models import (
     FunnelPlan, Issue, Page, PageRole, Route, effective_role, resolve_route,
 )
 from funnelforge.pipeline.doctrine import APPROVED_CTA_EXEMPLARS
-from funnelforge.pipeline.pagespec import _sig_tokens, pagespec_for
+from funnelforge.pipeline.pagespec import _STOP, _sig_tokens, pagespec_for
 
 # The trailing `-prN` index of a presell hub slug, used to rotate its fan-out
 # order NEUTRALLY (offset=(N-1)%n) so no solution is privileged in the hero.
@@ -33,14 +33,77 @@ def _placement(i: int, n: int) -> str:
     return "inline"
 
 
-def _anchor_for(target_h1: str, i: int) -> str:
-    """Descriptive 3rd-person anchor congruent with the target H1 (shares a
-    significant token so enforce_pagespec's anchor_congruent passes)."""
+# Sufixo POSICIONAL do slug (`-pr`, `-pr2`, `-p3`): ele diz onde a página está
+# no funil, não do que ela trata. Entrar na âncora só encompridaria o botão com
+# uma informação que o leitor não usa.
+_SUFIXO_POSICIONAL_RE = re.compile(r"^pr?\d*$")
+
+
+def _termos_do_slug(slug: str) -> list[str]:
+    """As palavras do slug, na ordem em que ele as escreve.
+
+    O slug é legível por construção (`quem-tem-direito-pr` -> "quem tem
+    direito"), então ele serve como FRASE, e não só como conjunto de tokens.
+    """
+    partes = [t for t in re.split(r"[^0-9a-zà-ü]+", slug.lower()) if t]
+    return [t for t in partes if not _SUFIXO_POSICIONAL_RE.match(t) and not t.isdigit()]
+
+
+def _token_do_h1(target_h1: str) -> str:
+    """O termo do H1 que a âncora cita: o ÚLTIMO significativo.
+
+    Manchete em português costuma terminar no substantivo do assunto ("Guia
+    Completo do FGTS" -> `fgts`; "Saque-rescisão após demissão" -> `demissao`).
+    A regra anterior pegava o PRIMEIRO em ordem alfabética — "completo",
+    "aniversário" —, um critério sem nenhuma relação com o que a página trata.
+    """
+    tokens = [t for t in re.findall(r"[a-z0-9à-ü]{4,}", (target_h1 or "").lower())
+              if t not in _STOP]
+    return tokens[-1] if tokens else ""
+
+
+def _anchor_for(target_h1: str, i: int, target_slug: str = "") -> str:
+    """Âncora descritiva do destino — derivada do H1 E do CAMINHO dele.
+
+    ⚠️ O TOKEN ERA O PRIMEIRO EM ORDEM ALFABÉTICA do H1, o que não tem relação
+    nenhuma com o destino. Medido nos funis de teste deste repositório: o H1
+    "Guia Completo do FGTS" produzia `Ver o guia de completo >>>` apontando para
+    `/rec/quem-tem-direito-pr`, e "Como Sacar o FGTS Aniversário" produzia
+    `Ver o guia de aniversário >>>` apontando para `/rec/como-sacar-p2`. As duas
+    prometem um assunto que o caminho do destino não contém — que é literalmente
+    o achado `ANCORA_INCONGRUENTE_COM_DESTINO` da política do destino pago.
+
+    Duas réguas medem esta mesma âncora e elas olham lados diferentes: o
+    `pagespec` do motor compara com o H1 do destino, e a política do destino
+    pago compara com o CAMINHO da URL. Quando H1 e slug divergem — e divergem:
+    "Guia Completo do FGTS" mora em `/rec/quem-tem-direito-pr` —, um token só não
+    satisfaz as duas. Por isso:
+
+      * com termo em comum, ele sozinho basta e é o mais LONGO (mais
+        distintivo: "aniversario" diz mais que "fgts", que o funil inteiro
+        compartilha);
+      * sem termo em comum, a âncora nomeia os DOIS — a frase do caminho e, entre
+        parênteses, o termo da manchete. É mais comprida, e é honesta: ela
+        descreve para onde vai e o que o leitor vai encontrar lá.
+    """
     base = APPROVED_CTA_EXEMPLARS[i % len(APPROVED_CTA_EXEMPLARS)]
-    tok = next(iter(sorted(_sig_tokens(target_h1))), "")
-    if not tok:
-        return base
-    return f"Ver o guia de {tok} >>>"
+    do_h1 = _sig_tokens(target_h1)
+    termos_do_slug = _termos_do_slug(target_slug)
+    do_slug = _sig_tokens(" ".join(termos_do_slug))
+    comuns = do_h1 & do_slug
+    if comuns:
+        # `-len` primeiro e o token depois: desempate estável, nunca dependente
+        # da ordem de iteração de um set.
+        return f"Ver o guia de {sorted(comuns, key=lambda t: (-len(t), t))[0]} >>>"
+    frase = " ".join(termos_do_slug)
+    do_h1_token = _token_do_h1(target_h1)
+    if frase and do_h1_token:
+        return f"Ver o guia de {frase} ({do_h1_token}) >>>"
+    if frase:
+        return f"Ver o guia de {frase} >>>"
+    if do_h1_token:
+        return f"Ver o guia de {do_h1_token} >>>"
+    return base
 
 
 def is_terminal_solution(page: Page, solutions: list[Page]) -> bool:
@@ -103,11 +166,12 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
             alvos = [*presells, *diretas][:spec.cta_max]
             if alvos:
                 routes = [Route(placement=_placement(i, len(alvos)), kind="funnel",
-                                target=t.slug, anchor=_anchor_for(t.h1_title, i))
+                                target=t.slug, anchor=_anchor_for(t.h1_title, i, t.slug))
                           for i, t in enumerate(alvos)]
             else:
                 routes = [Route(placement="hero", kind="funnel",
-                                target=page.next_page_slug, anchor=_anchor_for("", 0))]
+                                target=page.next_page_slug,
+                            anchor=_anchor_for("", 0, page.next_page_slug))]
         elif role is PageRole.PRESELL:
             # FAN-OUT (NEUTRAL): the presell is a qualifier hub that opens EVERY
             # solution. Order is a NEUTRAL ROTATION keyed on the `-prN` index
@@ -123,11 +187,12 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
                 if len(ordered) > spec.cta_max:
                     ordered = ordered[:spec.cta_max]
                 routes = [Route(placement=_placement(i, len(ordered)), kind="funnel",
-                                target=s.slug, anchor=_anchor_for(s.h1_title, i))
+                                target=s.slug, anchor=_anchor_for(s.h1_title, i, s.slug))
                           for i, s in enumerate(ordered)]
             else:
                 routes = [Route(placement="hero", kind="funnel",
-                                target=page.next_page_slug, anchor=_anchor_for("", 0))]
+                                target=page.next_page_slug,
+                            anchor=_anchor_for("", 0, page.next_page_slug))]
         else:  # SOLUTION
             if is_terminal_solution(page, solutions):
                 # Terminal: stop advancing, recirculate cross-funnel ONLY.
@@ -148,7 +213,7 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
                 idx = next(i for i, s in enumerate(solutions) if s.slug == page.slug)
                 forward = solutions[idx + 1:]
                 routes = [Route(placement="inline", kind="funnel", target=s.slug,
-                                anchor=_anchor_for(s.h1_title, i))
+                                anchor=_anchor_for(s.h1_title, i, s.slug))
                           for i, s in enumerate(forward)]
                 # O CANAL OFICIAL NÃO É DECIDIDO AQUI.
                 # Este builder roda ANTES da pesquisa (pipeline._populate_routes),

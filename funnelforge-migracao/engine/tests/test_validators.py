@@ -37,11 +37,46 @@ def test_gutenberg_blocks_flags_unbalanced():
     assert any(i.code == "unbalanced" for i in issues)
 
 
-def test_compliance_flags_when_absent_and_passes_when_present():
-    issues = run_validators(["compliance"], "texto qualquer", {})
-    assert any(i.code == "no_compliance" for i in issues)
-    ok = run_validators(["compliance"], "financiado por Google Adsense", {})
-    assert ok == []
+def test_compliance_exige_os_DOIS_avisos_e_nao_um_ou_outro():
+    """MUDANÇA DE CONTRATO: eram dois requisitos colapsados num `OU`.
+
+    A regra anterior aprovava a página se o texto contivesse "adsense" **ou**
+    "utilidade pública". Uma página com "Adsense" no rodapé passava sem nenhum
+    aviso de não-vínculo — que é exatamente o estado de
+    `/r/antecipacao-saque-aniversario-fgts/`, e o defeito 2 da seção 5 do
+    `ROOT-CAUSE-ANALYSIS.md`.
+
+    São perguntas diferentes: "quem paga por esta página" e "esta página tem
+    vínculo com o órgão que ela cita". Agora cada ausência tem seu próprio
+    código, porque um aviso não substitui o outro."""
+    nenhum = {i.code for i in run_validators(["compliance"], "texto qualquer", {})}
+    assert nenhum == {"no_ad_disclosure", "no_utility_notice"}
+
+    # SÓ a divulgação de monetização: continua faltando o aviso de não-vínculo.
+    so_anuncio = {i.code for i in
+                  run_validators(["compliance"], "financiado por Google Adsense", {})}
+    assert so_anuncio == {"no_utility_notice"}
+
+    # SÓ o aviso de utilidade pública: continua faltando dizer quem paga.
+    so_aviso = {i.code for i in
+                run_validators(["compliance"], "conteúdo de utilidade pública", {})}
+    assert so_aviso == {"no_ad_disclosure"}
+
+    # Os dois -> aprovado.
+    assert run_validators(
+        ["compliance"],
+        "Conteúdo de utilidade pública, financiado por Google Adsense.", {}) == []
+
+
+def test_aviso_canonico_satisfaz_os_dois_requisitos():
+    """O aviso que o próprio motor manda o redator escrever tem de passar.
+
+    Se `COMPLIANCE_NOTICE_TEXT` não satisfizesse a regra nova, todo artigo
+    reprovaria por um aviso que o próprio prompt dita — um portão que reprova
+    100% é um portão que alguém desliga."""
+    from funnelforge.pipeline.doctrine import COMPLIANCE_NOTICE_TEXT
+
+    assert run_validators(["compliance"], COMPLIANCE_NOTICE_TEXT, {}) == []
 
 
 def test_length_p1_flags_short_text():

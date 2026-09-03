@@ -27,6 +27,8 @@ from funnelforge.config.settings import load_settings
 from funnelforge.domain.models import PageRole, StepStatus, effective_role
 from funnelforge.pipeline.pipeline import Deps, run_pipeline
 from funnelforge.pipeline.runner import Runner
+from funnelforge.pipeline.doctrine import COMPLIANCE_NOTICE_TEXT
+from tests.lp_conforme import corpo_com_palavras
 from tests.fakes import FakeLLM, FakeScreenshotProvider
 
 _SPANISH_MARKERS = ("Ingreso", "¿Cómo", "colombia.eleicoes.org")
@@ -192,11 +194,21 @@ def _page_html_for(content: str) -> str:
     headline_match = _HEADLINE_RE.search(content)
     headline = headline_match.group(1).strip() if headline_match else "pagina"
     topic = headline.lower()
+    # ⚠️ O AVISO CANÔNICO ENTRA NO CORPO.
+    #
+    # `checks.compliance` deixou de aceitar um `OU` entre "divulgação de
+    # monetização" e "aviso de utilidade pública": agora exige os DOIS, com
+    # código próprio para cada ausência. O corpo falso precisa carregar o mesmo
+    # aviso que o prompt manda o redator escrever -- é o que uma página real
+    # traz, e antes o teste passava porque metade do requisito bastava.
     return (
         "<!-- wp:paragraph -->\n"
         f"<p>Conteúdo de utilidade pública sobre {headline}, trazendo orientações "
         f"claras, diretas e verificadas a respeito de {topic} para o leitor "
         f"brasileiro. {_filler(headline)}</p>\n"
+        "<!-- /wp:paragraph -->\n\n"
+        "<!-- wp:paragraph -->\n"
+        f"<p>{COMPLIANCE_NOTICE_TEXT}</p>\n"
         "<!-- /wp:paragraph -->\n\n"
         "<!-- wp:list -->\n"
         f'<ul class="wp-block-list"><li>Primeiro passo sobre {topic}, explicado '
@@ -238,18 +250,34 @@ IMAGE_PROMPT = (
 
 
 # The LP is now STRUCTURED JSON that fills the Elementor template (not markers).
+#
+# ⚠️ ELA PRECISA SER UMA LP DE VERDADE, e não mais quatro seções de uma linha.
+#
+# A LANDING PAGE deixou de ser isenta do portão de conteúdo (`step_content_gate`
+# abria com `if page.page_type == "LANDING PAGE": ... return`). O portão do
+# destino pago mede o piso de 600 palavras visíveis e a congruência entre o
+# texto de cada CTA e o CAMINHO do seu destino -- `cta_texts[i]` é renderizado
+# no botão cujo href é `funnel_hrefs[i]` (ver `lp_template._BUTTON_HREF`), e os
+# rótulos antigos ("Como consultar meu saldo" no botão que vai para
+# `/rec/quem-tem-direito-pr") prometiam um assunto e levavam a outro.
+#
+# `corpo_com_palavras` enche cada seção com tokens próprios, o que também mantém
+# a LP fora do radar do guarda de unicidade deste mesmo teste.
 P1_JSON = json.dumps({
     "hero_title": "Saque-Aniversário FGTS",
     "hero_subtitle": "Antecipação, regras e valores em 2026 -- toque abaixo e veja "
                       "como consultar o seu saldo",
     "article_title": "Saque-Aniversário do FGTS: como funciona a antecipação",
+    # UM único <p>: `validate_lp_content` reprova intro com mais de um parágrafo
+    # (`lp_intro_long`), então o enchimento entra DENTRO do parágrafo existente.
     "intro": "<p>Segundo a Caixa Econômica Federal (CAIXA), o Fundo de Garantia (FGTS) "
-             "permite antecipar o saque anual.</p>",
+             "permite antecipar o saque anual. "
+             + " ".join(f"introlp{i:03d}" for i in range(150)) + "</p>",
     "sections": [
-        {"title": "O que é a antecipação?", "body": "<p>Explicação factual.</p>"},
-        {"title": "3 pontos importantes", "body": "<p>1) a 2) b 3) c</p>"},
-        {"title": "Quem tem direito?", "body": "<ul><li>Requisito</li></ul>"},
-        {"title": "Regras e valores em 2026", "body": "<ul><li>Regra, segundo a CAIXA</li></ul>"},
+        {"title": "O que é a antecipação?", "body": corpo_com_palavras("antecipacao")},
+        {"title": "3 pontos importantes", "body": corpo_com_palavras("pontos")},
+        {"title": "Quem tem direito?", "body": corpo_com_palavras("direitolp")},
+        {"title": "Regras e valores em 2026", "body": corpo_com_palavras("regraslp")},
     ],
     "faq": [
         {"q": "Posso antecipar negativado?", "a": "Sim."},
@@ -259,9 +287,11 @@ P1_JSON = json.dumps({
         {"q": "É seguro?", "a": "Sim."},
     ],
     "transition": "<p>Agora veja quem tem direito no próximo passo.</p>",
-    # 3 CTAs, um por destino real (hub + as 2 soluções diretas da LP).
-    "cta_texts": ["Como consultar meu saldo »", "Ver o passo a passo »",
-                  "Como fazer a adesão »"],
+    # 3 CTAs, um por destino real (hub + as 2 soluções diretas da LP), CADA UM
+    # descrevendo o caminho para onde vai: `quem-tem-direito-pr`,
+    # `como-consultar-saldo-p1` e `como-sacar-p2`, nessa ordem.
+    "cta_texts": ["Ver quem tem direito »", "Como consultar o saldo »",
+                  "Como sacar o FGTS »"],
 }, ensure_ascii=False)
 
 
@@ -448,6 +478,11 @@ def _solution_html_with_official_link(content: str) -> str:
         "<!-- wp:paragraph -->\n"
         f'<p>Confira no canal oficial: <a href="{_OFFICIAL_URL}">portal do '
         f"governo</a>.</p>\n"
+        "<!-- /wp:paragraph -->\n\n"
+        # O aviso canônico -- `checks.compliance` passou a exigir os DOIS
+        # avisos (monetização E não-vínculo), e não mais um `OU` entre eles.
+        "<!-- wp:paragraph -->\n"
+        f"<p>{COMPLIANCE_NOTICE_TEXT}</p>\n"
         "<!-- /wp:paragraph -->\n\n"
         "<!-- wp:list -->\n"
         f'<ul class="wp-block-list"><li>Primeiro passo sobre {topic}, explicado '

@@ -37,23 +37,40 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 CHAVE_DO_RECIBO = "landing_policy_receipt"
+
+
+#: Parâmetros que a plataforma de anúncio, o e-mail e a rede social GRUDAM na
+#: URL. Eles não mudam a página; nenhum deles chega a um `WP_Query`.
+_PARAMETROS_DE_RASTREIO = frozenset({
+    "gclid", "gbraid", "wbraid", "dclid", "gad_source", "gclsrc",
+    "fbclid", "msclkid", "ttclid", "twclid", "igshid", "mc_eid", "mc_cid",
+    "_ga", "_gl", "yclid", "ref", "referrer",
+})
+_PREFIXOS_DE_RASTREIO = ("utm_",)
 
 
 def url_canonica(url: str) -> str:
     """A forma pela qual duas URLs são consideradas o MESMO destino.
 
-    ⚠️ A query sai. Um destino do Google Ads chega com `gclid` e `utm_*`
-    grudados, e um destino que só é encontrado com a query exata é um destino
-    que nunca é encontrado. O fragmento sai pelo mesmo motivo: ele nunca chega
-    ao servidor.
+    ⚠️ SÓ O RASTREIO SAI DA QUERY, e essa distinção custou um achado.
 
-    A barra final é normalizada porque o WordPress serve as duas formas e a
-    igualdade de string é o que decide se o recibo é achado. Já a diferença
-    entre `http` e `https`, e entre hosts, é PRESERVADA: ali a diferença é o
-    assunto, não ruído.
+    A primeira versão derrubava a query INTEIRA. Ela resolvia o problema real —
+    um destino do Google chega com `gclid` grudado, e um recibo só encontrável
+    com a query exata é um recibo que nunca é encontrado — e criava outro:
+    `/r/x/?produto=cartao` e `/r/x/?produto=emprestimo` colidiam, e
+    `recibo_da_url` devolvia o recibo da primeira. Duas páginas materialmente
+    diferentes passavam a compartilhar uma aprovação.
+
+    Agora saem apenas os parâmetros que a plataforma acrescenta e que não
+    chegam a decidir conteúdo. O que sobra é ordenado, para que a ordem dos
+    parâmetros não invente duas URLs de uma.
+
+    O fragmento sai inteiro: ele nunca chega ao servidor. A barra final é
+    normalizada porque o WordPress serve as duas formas. Esquema e host são
+    PRESERVADOS — ali a diferença é o assunto, não ruído.
     """
     if not url:
         return ""
@@ -61,7 +78,15 @@ def url_canonica(url: str) -> str:
     caminho = partes.path or "/"
     if len(caminho) > 1:
         caminho = caminho.rstrip("/")
-    return urlunsplit((partes.scheme.lower(), partes.netloc.lower(), caminho, "", ""))
+    mantidos = sorted(
+        (chave, valor)
+        for chave, valor in parse_qsl(partes.query, keep_blank_values=True)
+        if chave.lower() not in _PARAMETROS_DE_RASTREIO
+        and not chave.lower().startswith(_PREFIXOS_DE_RASTREIO)
+    )
+    return urlunsplit(
+        (partes.scheme.lower(), partes.netloc.lower(), caminho, urlencode(mantidos), "")
+    )
 
 
 def recibo_da_url(

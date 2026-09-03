@@ -247,3 +247,40 @@ def test_flatten_leading_boxes_never_touches_buttons():
         '<!-- /wp:button --></div><!-- /wp:buttons -->'
     )
     assert _flatten_leading_boxes(raw) == raw
+
+
+# ---------------------------------------------------------------------------
+# MOEDA pt-BR na GERAÇÃO (Fase D, item 6 do LIVE-REMEDIATION-PLAN)
+# ---------------------------------------------------------------------------
+
+
+def test_moeda_malformada_e_corrigida_na_geracao():
+    """`VALOR_MONETARIO_MALFORMADO`, fechado na origem.
+
+    Os valores estão na captura preservada de `/r/fgts-saque-aniversario/`:
+    "uma alíquota de 5 % a 50 % e soma uma parcela fixa de até 2900.00 R$".
+    `2900.00 R$` é forma inglesa com o símbolo no fim; `5 %` tem espaço antes do
+    sinal. A correção acontece na geração porque corrigir depois de publicado
+    custa uma edição manual por página.
+    """
+    from funnelforge.pipeline.enhancers.gutenberg import formatar_moeda_ptbr
+
+    assert formatar_moeda_ptbr("até 2900.00 R$ por mês") == "até R$ 2.900,00 por mês"
+    assert formatar_moeda_ptbr("R$ 2900.00") == "R$ 2.900,00"
+    assert formatar_moeda_ptbr("de 5 % a 50 %") == "de 5% a 50%"
+    assert formatar_moeda_ptbr("R$ 1.234,50") == "R$ 1.234,50"     # já correto: no-op
+    assert formatar_moeda_ptbr("R$ 2.900") == "R$ 2.900"           # inteiro: no-op
+
+
+def test_moeda_ptbr_nao_toca_bloco_de_html_cru():
+    """`wp:html` é território do widget: o normalizador não entra nele, e a
+    formatação de moeda segue a mesma regra — reescrever markup executável por
+    causa de um cifrão é como um widget quebra em silêncio."""
+    from funnelforge.pipeline.enhancers.gutenberg import normalize_gutenberg
+
+    bloco = ('<!-- wp:html -->\n<div>const teto = "2900.00 R$";</div>\n'
+             '<!-- /wp:html -->\n'
+             '<!-- wp:paragraph -->\n<p>o teto é 2900.00 R$</p>\n<!-- /wp:paragraph -->')
+    out = normalize_gutenberg(bloco)
+    assert 'const teto = "2900.00 R$"' in out
+    assert "<p>o teto é R$ 2.900,00</p>" in out

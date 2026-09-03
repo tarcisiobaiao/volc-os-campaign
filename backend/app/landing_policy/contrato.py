@@ -278,7 +278,12 @@ EXIGENCIAS_POR_PONTO: dict[PontoDePortao, frozenset[str]] = {
 }
 
 NAO_APLICAVEL_E_DESCONHECIDO_EM[PontoDePortao.ELEGIBILIDADE_DESTINO_CAMPANHA] = frozenset(
-    {V_DERIVA, V_RECIBO, V_REDIRECIONAMENTO}
+    # `V_IDENTIDADE` entra aqui por causa de `PaginaObservada.documento_parcial`:
+    # ele deixa a identidade sair `not_applicable` antes da publicação, onde o
+    # rodapé do tema ainda não existe. Numa leitura AO VIVO a página inteira
+    # está no ar — "não se aplica" ali seria a mesma isenção, aplicada ao ponto
+    # em que ela não tem desculpa.
+    {V_DERIVA, V_IDENTIDADE, V_RECIBO, V_REDIRECIONAMENTO}
 )
 
 

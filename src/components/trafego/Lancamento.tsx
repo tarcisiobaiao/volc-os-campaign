@@ -19,6 +19,20 @@
  * deliberado — o `Selo` é do payload e não da sessão, e reprovar antes de
  * escrever fecha a janela entre as duas. O preço é a chamada lenta duas vezes.
  *
+ * ## O primeiro degrau é o DESTINO, e ele não faz chamada nenhuma
+ *
+ * `destino` entra pronto, lido do recibo do portão de política pela tela que
+ * abriu esta. Quando ele não está apto, a escada PARA aqui — antes de `/provar`,
+ * que é a chamada mais cara do fluxo. Não é otimização: é que um destino não
+ * avaliado não fica melhor por passar no `validate_only`, e deixar a escada
+ * correr até o fim ensinaria que a reprovação veio da conta do Google quando ela
+ * veio da landing page.
+ *
+ * ⚠️ O predicado é `apto_para_campanha`, e não `bloqueadores.length === 0`.
+ * Testar só bloqueio ignora os `desconhecidos` — verificação exigida que não
+ * pôde ser concluída — e é exatamente por ali que uma página cuja varredura
+ * falhou viraria destino de anúncio.
+ *
  * ## O laranja só acende com recurso persistido
  *
  * `--aurora-orange` é a cor da "Primeira Faísca" do login. Aqui ela é reservada
@@ -31,6 +45,7 @@ import { AlertTriangle, Check, Loader2, Lock, X } from 'lucide-react';
 import { CartaoDoPlanoDeMensuracao } from '@/components/trafego/canais/PlanoDeMensuracao';
 import { PainelDaMensuracao } from '@/components/trafego/canais/PainelDaMensuracao';
 import { portoesDaProntidao } from '@/lib/trafego/portoes';
+import type { LeituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PautadorApiError, pautadorApi } from '@/lib/pautadorApi';
@@ -43,13 +58,17 @@ import type {
   ReciboDeLancamento, RecusaDeclarada, RespostaDaProva, SubidaIndeterminada,
 } from '@/types/trafego';
 
-type Estado = 'provando' | 'reprovada' | 'aguardando_escrita' | 'escrevendo'
-  | 'criada' | 'travada' | 'fora_do_canario' | 'indeterminado' | 'erro';
+type Estado = 'destino_reprovado' | 'provando' | 'reprovada' | 'aguardando_escrita'
+  | 'escrevendo' | 'criada' | 'travada' | 'fora_do_canario' | 'indeterminado' | 'erro';
 
 interface Props {
   pedido: PedidoDeProvaSearch;
   trava: EstadoDaTrava | null;
   titulo: string;
+  /** A prontidão do destino pago, lida do recibo do portão pela tela de cima.
+   *  Chega PRONTA: esta escada não avalia landing page, ela só se recusa a
+   *  correr quando o destino não está apto. */
+  destino: LeituraDoDestinoPago;
   /** Resumo do estágio 3, já feito. A escada não escreve copy — ela mostra o
    *  que foi escrito e lido antes de alguém clicar em lançar. */
   resumoDaCopy: string;
@@ -61,9 +80,14 @@ interface Props {
 }
 
 export const Lancamento: React.FC<Props> = ({
-  pedido, trava, titulo, resumoDaCopy, onFechar, onCriada,
+  pedido, trava, titulo, destino, resumoDaCopy, onFechar, onCriada,
 }) => {
-  const [estado, setEstado] = useState<Estado>('provando');
+  // ⚠️ O estado INICIAL já é o do destino. Nascer em `provando` e só depois
+  // recuar exibiria por um instante uma escada correndo para um destino
+  // reprovado — e é justamente esse instante que o operador lê como permissão.
+  const [estado, setEstado] = useState<Estado>(
+    destino.apto_para_campanha ? 'provando' : 'destino_reprovado',
+  );
   const [prova, setProva] = useState<RespostaDaProva | null>(null);
   const [preparoDaRecusa, setPreparoDaRecusa] = useState<Preparo | null>(null);
   const [recibo, setRecibo] = useState<ReciboDeLancamento | null>(null);
@@ -102,6 +126,13 @@ export const Lancamento: React.FC<Props> = ({
   }, [podeFechar, onFechar]);
 
   const provar = useCallback(async () => {
+    // ⚠️ NENHUMA CHAMADA. `/provar` roda `validate_only` contra a conta real e
+    // é a chamada mais lenta do fluxo; rodá-la para um destino não avaliado
+    // gastaria a espera para devolver um "aprovado" sobre a coisa errada.
+    if (!destino.apto_para_campanha) {
+      setEstado('destino_reprovado');
+      return;
+    }
     setEstado('provando');
     setErro('');
     try {
@@ -135,7 +166,7 @@ export const Lancamento: React.FC<Props> = ({
       setErro(e instanceof Error ? e.message : 'A prova falhou.');
       setEstado('erro');
     }
-  }, [pedido, trava]);
+  }, [pedido, trava, destino]);
 
   useEffect(() => { void provar(); }, [provar]);
 
@@ -254,7 +285,18 @@ export const Lancamento: React.FC<Props> = ({
         </div>
 
         <div className="mt-8 space-y-1">
-          <Degrau nome="copy" estado="ok" detalhe={resumoDaCopy} indice={0} />
+          {/* O destino é o degrau ZERO porque é a primeira pergunta de um
+              lançamento: para onde este dinheiro manda o clique. */}
+          <Degrau
+            nome="destino"
+            estado={destino.apto_para_campanha ? 'ok' : 'falhou'}
+            detalhe={destino.apto_para_campanha
+              ? 'destino pago apto · aprovação do Google desconhecida'
+              : destino.pendencias[0] ?? 'não apto'}
+            indice={0}
+          />
+
+          <Degrau nome="copy" estado="ok" detalhe={resumoDaCopy} indice={1} />
 
           <Degrau
             nome="prova"
@@ -266,7 +308,7 @@ export const Lancamento: React.FC<Props> = ({
               : p
                 ? `${p.n_operacoes} operações · nada foi criado`
                 : erro || '—'}
-            indice={1}
+            indice={2}
           >
             {/* ⚠️ A AUTOCORREÇÃO APARECE MESMO QUANDO A PROVA PASSA.
                 O motor tira keywords e pede isenção sozinho — e é justamente
@@ -355,11 +397,35 @@ export const Lancamento: React.FC<Props> = ({
               : estado === 'reprovada' ? 'não chegou aqui — nada foi enviado'
               : 'nasce PAUSADA'
             }
-            indice={2}
+            indice={3}
           />
         </div>
 
         <div className="mt-8">
+          {/* ⚠️ Vem PRIMEIRO entre os avisos, e é o único que aparece sem
+              nenhuma chamada ter sido feita. A frase diz isso explicitamente:
+              sem ela, "não apto" no meio de uma escada de lançamento é lido
+              como reprovação da conta do Google. */}
+          {estado === 'destino_reprovado' && (
+            <Aviso icone={<Lock className="h-4 w-4" aria-hidden />}
+                   titulo="A escada não correu: o destino não está apto a receber tráfego pago.">
+              Nada foi provado e nada foi criado — nenhuma chamada saiu daqui.
+              {destino.sem_recibo
+                ? ' Nenhum recibo de política chegou nesta resposta, então ninguém'
+                  + ' avaliou esta página contra as regras.'
+                : ''}
+              <br />
+              {/* A lista inteira, e não as duas primeiras: aqui há espaço, e o
+                  operador está justamente no momento de consertar. */}
+              {destino.recusas.map((r, i) => (
+                <span key={i} className="mt-1 block">· {r}</span>
+              ))}
+              <span className="mt-2 block text-white/45">
+                {destino.nota_do_google}
+              </span>
+            </Aviso>
+          )}
+
           {estado === 'reprovada' && preparoDaRecusa && (
             <Recusa p={preparoDaRecusa} />
           )}
@@ -567,7 +633,8 @@ export const Lancamento: React.FC<Props> = ({
           )}
         </div>
 
-        {(estado === 'reprovada' || estado === 'erro' || estado === 'fora_do_canario') && (
+        {(estado === 'destino_reprovado' || estado === 'reprovada' || estado === 'erro'
+          || estado === 'fora_do_canario') && (
           <Button variant="outline" onClick={onFechar}
                   className="mt-4 w-full border-white/20 bg-transparent text-white hover:bg-white/10">
             Voltar e ajustar
@@ -603,6 +670,9 @@ function dinheiro(valor: number | null | undefined): string {
 }
 
 const AVANCO: Record<Estado, number> = {
+  // O horizonte quase não sobe: nada correu, e um horizonte alto sugeriria
+  // progresso onde não houve chamada nenhuma.
+  destino_reprovado: 0.05,
   provando: 0.15,
   reprovada: 0.1,
   travada: 0.55,

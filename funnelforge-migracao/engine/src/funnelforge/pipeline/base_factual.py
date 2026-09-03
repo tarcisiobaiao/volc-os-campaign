@@ -38,6 +38,7 @@ o que o redator PODE ver.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 from funnelforge.domain.models import ResearchFacts
 from funnelforge.pipeline.validators.checks import _CRITICAL_CLAIM_RE
@@ -68,7 +69,18 @@ def _fatos_confiaveis(facts: ResearchFacts) -> list[Any]:
             if str(getattr(f, "fonte_primaria", "")) in resolvidas]
 
 
-def _bloco_de_fatos(confiaveis: list[Any]) -> str:
+def nome_da_fonte(url: str) -> str:
+    """O NOME pelo qual a fonte é citada em prosa: o host, sem `www.`.
+
+    Num destino pago é ele que o redator recebe no lugar da URL. Um host não é
+    clicável e não vira `<a href>` em tema nenhum — a URL nua vira, e é por isso
+    que ela não pode nem aparecer no que o modelo lê.
+    """
+    host = (urlparse(str(url or "")).netloc or str(url or "")).lower()
+    return host[4:] if host.startswith("www.") else host
+
+
+def _bloco_de_fatos(confiaveis: list[Any], destino_pago: bool = False) -> str:
     if not confiaveis:
         return (
             "FATOS VERIFICADOS: NENHUM.\n"
@@ -89,23 +101,41 @@ def _bloco_de_fatos(confiaveis: list[Any]) -> str:
             f"  {i}. {valor} {unidade}".rstrip(),
             f"     onde está escrito: {disp}",
             f"     vigente desde {desde} · conferido em {conferido}",
-            f"     AO USAR ESTE NÚMERO, inclua este link na MESMA frase: {fonte}",
+            # ⚠️ AQUI NASCEU O ACHADO MAIS FORTE DO INCIDENTE.
+            #
+            # A instrução era "inclua este link na MESMA frase: <url>", e o
+            # resultado está preservado: sete links `caixa.gov.br` no corpo de
+            # `/r/fgts-saque-aniversario/`, quatro deles com âncora que é só um
+            # valor. Num destino pago a fonte pertence ao DOSSIÊ e é citada em
+            # PROSA; em página editorial ela continua virando link, e é o PAPEL
+            # que decide qual das duas instruções o redator recebe.
+            (f"     AO USAR ESTE NÚMERO, cite a fonte em PROSA, com âncora "
+             f"descritiva (\"segundo o site da {nome_da_fonte(fonte)}\"). "
+             f"NÃO escreva a URL e NÃO crie link."
+             if destino_pago
+             else f"     AO USAR ESTE NÚMERO, inclua este link na MESMA frase: {fonte}"),
         ]
     return "\n".join(linhas) + "\n"
 
 
-def base_para_o_redator(facts: ResearchFacts | None) -> str:
+def base_para_o_redator(facts: ResearchFacts | None, *,
+                       destino_pago: bool = False) -> str:
     """A base factual como o redator deve recebê-la.
 
     Texto formatado, não JSON: o modelo não precisa navegar cinco campos para
     achar o que pode citar, e o que ele não pode citar simplesmente não está
     escrito em lugar nenhum.
+
+    `destino_pago=True` troca a instrução de citação: nome em prosa em vez de
+    URL para linkar, e o dossiê de evidência perde as URLs. O princípio é o
+    mesmo do resto do módulo — o que o modelo não pode usar não fica escrito
+    em lugar nenhum do que ele lê.
     """
     if facts is None:
-        return _bloco_de_fatos([])
+        return _bloco_de_fatos([], destino_pago)
 
     confiaveis = _fatos_confiaveis(facts)
-    partes = [_bloco_de_fatos(confiaveis)]
+    partes = [_bloco_de_fatos(confiaveis, destino_pago)]
 
     resumo = _podar(facts.resumo or "")
     if resumo.strip():
@@ -128,7 +158,17 @@ def base_para_o_redator(facts: ResearchFacts | None) -> str:
                       + "\n".join(f"  - {q}" for q in qualitativos))
 
     resolvidas = list(facts.fontes_resolvidas or [])
-    if resolvidas:
+    if resolvidas and destino_pago:
+        # Só os NOMES. A URL viaja no dossiê de evidência (o recibo do portão),
+        # não no que o redator lê: uma URL escrita no prompt reaparece no corpo,
+        # e no corpo de um destino pago ela vira o achado
+        # `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO`.
+        nomes = sorted({nome_da_fonte(u) for u in resolvidas if nome_da_fonte(u)})
+        partes.append(
+            "FONTES CONFIRMADAS — cite pelo NOME, em prosa (a URL fica no dossiê\n"
+            "de evidência, fora da página; nesta página nenhuma vira link):\n"
+            + "\n".join(f"  - {n}" for n in nomes))
+    elif resolvidas:
         partes.append("FONTES CONFIRMADAS (responderam a uma visita real):\n"
                       + "\n".join(f"  - {u}" for u in resolvidas))
 

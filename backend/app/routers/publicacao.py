@@ -517,6 +517,79 @@ def _run_para_saida(r: Dict[str, Any]) -> RunDoRedator:
     )
 
 
+def _portao_do_plano(paginas: List[Dict[str, Any]], *, base_do_site: str) -> str:
+    """O PONTO DE PORTÃO 1 desta API: o plano do card, antes de existir corpo.
+
+    Devolve a autorização que o worker exige para montar `--publish`; levanta
+    409 quando o plano já reprova.
+
+    ## Por que esta porta não pode usar o mesmo predicado da outra
+
+    Em `/publicar/{page}` existe artefato: o portão lê o HTML que vai virar post
+    e exige `paid_destination_ready`. Aqui não existe nada disso — o funil ainda
+    vai ser escrito, e o que o card tem é H1, slug e a lista de H2.
+
+    Um plano assim produz, sempre, sete achados de AUSÊNCIA (identidade, contato,
+    divulgação de monetização, 600 palavras…). Nenhum deles distingue "o plano
+    está errado" de "o corpo ainda não foi escrito" — que é literalmente a
+    próxima coisa que vai acontecer. Exigir prontidão aqui reprovaria 100% dos
+    disparos e ensinaria a operação a contornar o portão.
+
+    O que o plano JÁ decide são os achados de COMISSÃO — os que citam texto que
+    alguém escreveu no card. `CODIGOS_DECIDIVEIS_NO_PLANO` é essa lista, com o
+    porquê de cada código, e o H1 do incidente ("Saque-Aniversário FGTS Liberado
+    pelo Governo") é o caso que a motivou.
+
+    ## O que este portão NÃO cobre
+
+    Tudo o mais: corpo, links do texto escrito, identidade da página montada,
+    congruência com o anúncio. Nada disso existe no instante do disparo. Quem
+    fecha é o portão DENTRO do motor, página a página, com o artefato na mão —
+    e é por isso que ele não é opcional. Este aqui evita gastar ~US$ 2 e ~45 min
+    escrevendo um funil cuja manchete já nasce reprovada.
+    """
+    from app.landing_policy import PapelRelaxadoPeloCliente, impressao_do_recibo
+    from app.redator import politica_de_destino as pol
+
+    # A P1 é a LANDING PAGE do funil — é a estrutura fixa do gerador de
+    # arquitetura (ver `app/n8n_prompts/funnel_builder.py`, "CAMADA 1: LANDING
+    # PAGE (P1)"), e é ela que o anúncio aponta. As interiores não recebem
+    # clique comprado direto e são decididas contra o artefato, no motor.
+    lp = next((p for p in paginas
+               if int((p or {}).get("page_number") or 0) == 1), None) or (paginas[0] or {})
+
+    try:
+        avaliacao, papel = pol.avaliar_plano_do_card(
+            lp, base_do_site=base_do_site, papel_do_motor="LP",
+            # Um funil é escrito para receber clique comprado; a P1 é o destino
+            # que o anúncio compra. Se um dia existir funil que não vira campanha,
+            # este portão terá de PERGUNTAR em vez de assumir — e assumir para o
+            # lado do rigor é o erro barato.
+            e_destino_de_campanha=True)
+    except PapelRelaxadoPeloCliente as exc:
+        # `funnel_architecture` é gravável pela API. Um `role` mais frouxo dentro
+        # do card é uma tentativa de baixar a régua por dado, e ela vira recusa —
+        # nunca papel aceito.
+        raise HTTPException(status_code=409, detail={
+            "erro": "O plano deste card não passa no portão de política de destino.",
+            "motivos": [str(exc)],
+            "recibo": None,
+        }) from exc
+
+    motivos = pol.bloqueios_decidiveis_no_plano(avaliacao)
+    recibo = pol.recibo_do_conteudo(
+        avaliacao, pol.documento_do_plano_do_card(lp, papel_do_motor="LP"),
+        papel_declarado="LP")
+    if motivos:
+        raise HTTPException(status_code=409, detail={
+            "erro": "O plano deste card não passa no portão de política de destino.",
+            "motivos": motivos,
+            "recibo": recibo,
+        })
+
+    return f"portao_do_plano:card:{papel.value}:{impressao_do_recibo(recibo)}"
+
+
 @router.post("/redator/disparar", response_model=DispararSaida, dependencies=[Depends(exigir_admin)])
 async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     """Enfileira a escrita de um funil para um site.
@@ -525,13 +598,27 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     arquitetura? o site tem credencial? a credencial funcionou? já existe um run
     andando para esse par? Cada uma dessas descobertas custaria uma execução
     inteira se ficasse para o motor descobrir.
+
+    ## Esta é a OUTRA porta para o WordPress
+
+    Ela roda o funil INTEIRO com `--publish`. O `HANDOFF-PATCH-PUBLICACAO.md`
+    tratava só de `/publicar/{page}` e não mencionava esta rota — um portão numa
+    porta com a outra aberta. O que dá para fechar aqui, e o que não dá, está em
+    `_portao_do_plano`.
     """
     supa = _supa()
 
     # 1 · o card existe e tem funil arquitetado?
+    #
+    # ⚠️ `entity_id` entra no `select` porque ele é LIDO adiante (para carregar a
+    # entidade e enriquecer o tema). Sem a coluna pedida, PostgREST não a
+    # devolve, `.get("entity_id")` é `None`, e o ramo da entidade nunca rodava —
+    # o mesmo defeito silencioso que a rota de publicar uma página tinha com a
+    # tabela errada.
     opps = await supa.select(
         "pautador_entity_opportunities",
-        {"id": f"eq.{body.opportunity_id}", "select": "id,status,funnel_architecture", "limit": 1},
+        {"id": f"eq.{body.opportunity_id}",
+         "select": "id,status,entity_id,funnel_architecture", "limit": 1},
     )
     if not opps:
         raise HTTPException(status_code=404, detail="Card não encontrado.")
@@ -558,6 +645,15 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
             status_code=409,
             detail="Teste a conexão deste site antes de gerar o funil (engrenagem na página do projeto).",
         )
+
+    # 2b · o PLANO já reprova?
+    #
+    # Depois do perfil porque o portão precisa da base do site: sem ela, o link
+    # interno do plano (`/slug-da-proxima`) não tem contra o que ser comparado e
+    # viraria "destino de terceiro" — um achado sobre o que este código não
+    # informou, não sobre o card.
+    autorizacao_do_plano = _portao_do_plano(
+        paginas, base_do_site=str(perfil.get("wp_url") or ""))
 
     # 3 · já tem um run andando para esse par?
     andando = await supa.select(TABELA_RUNS, {
@@ -619,7 +715,11 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     # o asyncio descarta task sem referência forte no meio do caminho.
     tarefa = asyncio.create_task(w.executar(
         supa=supa, run_row_id=int(criado[0]["id"]),
-        arquitetura=arq, perfil=perfil_do_run, publicar=True))
+        arquitetura=arq, perfil=perfil_do_run, publicar=True,
+        # A prova de que este disparo passou pelo portão do plano. Sem ela o
+        # worker recusa montar `--publish` e o run termina `failed` sem publicar
+        # nada — ver `worker._disparar_motor`.
+        autorizacao=autorizacao_do_plano))
     _TAREFAS.add(tarefa)
     tarefa.add_done_callback(_TAREFAS.discard)
 
@@ -1503,6 +1603,162 @@ class PublicarPaginaSaida(BaseModel):
     publicada: Optional[Dict[str, Any]] = None
     erro: Optional[str] = None
     aviso: Optional[str] = None
+    #: O recibo do portão de política daquela passagem. Viaja no corpo porque um
+    #: veredito sem recibo é uma opinião com data — e porque a tela precisa
+    #: mostrar CONTRA O QUE a página foi medida, não só que passou.
+    recibo: Optional[Dict[str, Any]] = None
+
+
+def _artefato_avaliavel(run_dir, page_number: int,
+                        rascunho: Dict[str, Any]) -> tuple[str, str]:
+    """O HTML que o portão consegue ler, e de onde ele veio.
+
+    ## ⚠️ O RASCUNHO DA LP NÃO É HTML
+
+    `state.drafts[n].format` vale `lp_json` na LANDING PAGE e `gutenberg` nas
+    interiores (`engine/pipeline/steps.py`, `step_write_page`). O que sobe ao
+    WordPress na LP não é o `content`: é o `p1.elementor.json`, montado a partir
+    do template do designer. Entregar o JSON cru às varreduras produziria
+    "15 palavras visíveis" — um achado sobre o FORMATO, não sobre a página, e um
+    recibo que afirmaria ter avaliado o que não avaliou.
+
+    O motor grava `p1.preview.html`, que é a projeção em HTML daquele mesmo
+    Elementor (títulos, texto, imagens e botões na ordem). Não é pixel-perfeito,
+    e não precisa ser: as varreduras leem links, âncoras, manchete e contagem de
+    palavras, e é isso que a projeção preserva.
+
+    Devolve `("", motivo)` quando não há artefato legível. A string vazia não
+    vira "página limpa" em lugar nenhum: quem chama transforma ausência em
+    recusa, que é a única leitura honesta de "não consegui olhar".
+    """
+    conteudo = str((rascunho or {}).get("content") or "")
+    formato = str((rascunho or {}).get("format") or "").strip().lower()
+    # Sem `format` gravado, a forma do texto decide: JSON começa com `{`.
+    e_lp_json = formato == "lp_json" or (not formato and conteudo.lstrip().startswith("{"))
+    if not e_lp_json:
+        return conteudo, "state.drafts (gutenberg)"
+
+    preview = (run_dir / f"p{page_number}.preview.html") if run_dir else None
+    if preview is None or not preview.exists():
+        return "", (f"o rascunho da página {page_number} é `lp_json` e o "
+                    f"p{page_number}.preview.html não está no disco — sem ele "
+                    f"não há como ler o que vai ao ar")
+    try:
+        return preview.read_text(encoding="utf-8"), preview.name
+    except OSError as exc:
+        # Sem `except: pass`. O motivo sobe e vira recusa: leitura que falhou é
+        # leitura que não aconteceu.
+        return "", f"não consegui ler {preview.name}: {type(exc).__name__}"
+
+
+def _portao_de_politica(*, run_dir, estado: Dict[str, Any], page_number: int,
+                        rascunho: Dict[str, Any],
+                        perfil_wp: Optional[Dict[str, Any]]) -> tuple[Dict[str, Any], str]:
+    """O PONTO DE PORTÃO 2 desta API: o artefato, antes de virar post.
+
+    Devolve `(recibo, autorização)` quando a página pode seguir e levanta 409
+    quando não pode. Nos dois caminhos o recibo é gravado na pasta do run — uma
+    recusa sem rastro é indistinguível de uma publicação que ninguém tentou.
+
+    ## O predicado é `paid_destination_ready`, e não `bloqueios`
+
+    O `HANDOFF-PATCH-PUBLICACAO.md` propunha `if _avaliacao.bloqueios:`. Testar
+    só bloqueios ignora os DESCONHECIDOS — verificação exigida que não pôde ser
+    concluída — e é assim que uma página cuja varredura FALHOU seria publicada
+    como se estivesse limpa. `paid_destination_ready` é falso nos dois casos, e
+    é por isso que ele é o predicado.
+
+    ## O papel vem do servidor
+
+    O mesmo handoff derivava o papel de `plan.pages[].role == "LP"`. Aqui ele sai
+    de `papel_do_servidor`, com o papel do motor lido do `state.json` e
+    sanitizado: `role` fora dos três valores que o motor escreve volta a ser
+    derivado do slug, porque papel desconhecido vira o papel MAIS FROUXO no
+    contrato — um erro de digitação não pode baixar a régua.
+
+    ## ⚠️ O que este portão NÃO vê, dito antes que alguém confie demais nele
+
+    O artefato é o CONTEÚDO da página, sem o rodapé do tema do WordPress. CNPJ,
+    contato, política de privacidade e divulgação de monetização são renderizados
+    pelo TEMA (é a decisão registrada em `src/sql/pautador/03_perfil_enxuto.sql`,
+    que removeu a coluna `cnpj` justamente por isso). Consequência prática, e ela
+    é grande: uma LP real é RECUSADA aqui por identidade ausente, porque a
+    identidade não está no que o backend consegue ler.
+
+    Isso não é rigor decorativo nem defeito deste portão: é a evidência de que o
+    artefato visível ao backend não é a página que o leitor vê. Aprovar mesmo
+    assim seria dizer "não olhei, logo está bom" — a frase que esta espinha
+    inteira existe para não deixar ninguém escrever. Quem fecha essa lacuna é o
+    portão DENTRO do motor, que monta a página com o tema antes de publicar.
+    """
+    from app.landing_policy import (
+        PapelRelaxadoPeloCliente,
+        gravar_recibo_local,
+        impressao_do_recibo,
+        nome_do_recibo,
+    )
+    from app.redator import politica_de_destino as pol
+
+    pagina_do_plano = pol.pagina_do_plano_no_estado(estado, page_number)
+    papel_do_motor = pol.papel_do_motor_no_disco(pagina_do_plano)
+    html, procedencia = _artefato_avaliavel(run_dir, page_number, rascunho)
+    url = pol.url_da_pagina(perfil_wp, pagina_do_plano, papel_do_motor)
+
+    try:
+        avaliacao, papel = pol.avaliar_rascunho(
+            html=html, url=url, papel_do_motor=papel_do_motor)
+    except PapelRelaxadoPeloCliente as exc:
+        # Tentativa de baixar a régua pela borda da API. Ela não é ignorada em
+        # silêncio: vira recusa com o texto do contrato.
+        raise HTTPException(status_code=409, detail={
+            "erro": f"A página {page_number} não passa no portão de política de destino.",
+            "motivos": [str(exc)],
+            "recibo": None,
+        }) from exc
+
+    recibo = pol.recibo_do_conteudo(avaliacao, html, papel_declarado=papel_do_motor)
+    # A procedência do artefato entra no recibo: seis semanas depois, "o que foi
+    # avaliado?" precisa ter resposta sem reabrir o run.
+    recibo["evidence_refs"] = sorted(set(recibo.get("evidence_refs") or []) | {procedencia})
+
+    liberado = avaliacao.paid_destination_ready
+    motivos = list(avaliacao.motivos)
+    if not html:
+        # Artefato ilegível NUNCA vira verde. Vale inclusive para papel frouxo,
+        # em que `bloqueios` sai vazio por construção: sem conteúdo lido, não há
+        # o que aprovar.
+        liberado = False
+        motivos = [f"desconhecido artefato: {procedencia}"] + motivos
+    elif not pol.papel_e_estrito(papel):
+        # Página interior: o achado é REGISTRADO e não barra. Ela não recebe o
+        # clique comprado, e reprová-la com a régua do destino pago seria medir
+        # com uma régua que não é a dela — a diferença de PESO por papel é do
+        # contrato, e está na tabela de severidade, não aqui.
+        #
+        # ⚠️ Mas o DESCONHECIDO continua fechando, em qualquer papel. Peso de
+        # achado depende do papel; varredura que não concluiu não é achado leve,
+        # é leitura que não houve.
+        liberado = not avaliacao.desconhecidos
+
+    if run_dir:
+        # ⚠️ Sem `try` em volta, de propósito. Se o disco não aceita o recibo, a
+        # requisição sobe 500 e NADA é publicado — que é o desfecho certo. Um
+        # `except` aqui trocaria "não consegui registrar o que decidi" por uma
+        # publicação sem rastro, e é o rastro que faz o portão valer alguma coisa
+        # seis semanas depois.
+        gravar_recibo_local(
+            run_dir / nome_do_recibo(page_number, recusado=not liberado), recibo)
+
+    if not liberado:
+        raise HTTPException(status_code=409, detail={
+            "erro": f"A página {page_number} não passa no portão de política de destino.",
+            "motivos": motivos,
+            "recibo": recibo,
+        })
+
+    # A autorização que o worker exige para montar `--publish`. É a impressão do
+    # recibo, e não um booleano: um booleano não diz QUAL avaliação liberou.
+    return recibo, f"portao_de_publicacao:p{page_number}:{impressao_do_recibo(recibo)}"
 
 
 @router.post("/redator/runs/{run_row_id}/publicar/{page_number}",
@@ -1537,7 +1793,11 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
     3. **Página barrada** → 409. Portão reprovado é conteúdo que a casa decidiu
        não publicar. A rota não é um caminho para contornar o portão.
     4. **Sem artigo** → 409. Sem rascunho no disco não há o que enviar.
-    5. **Credencial ausente ou não testada** → 409, com o mesmo texto do
+    5. **Política de destino** → 409. As quatro acima protegem a INTEGRIDADE da
+       publicação; nenhuma olha o CONTEÚDO sob a política de anúncio — e foi por
+       aí que uma LP com sete links `caixa.gov.br` de âncora numérica foi ao ar
+       e virou destino de campanha. Ver `_portao_de_politica`.
+    6. **Credencial ausente ou não testada** → 409, com o mesmo texto do
        disparo: o operador precisa reconhecer o erro que já conhece.
     """
     supa = _supa()
@@ -1589,7 +1849,19 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
             status_code=409,
             detail=f"A página {page_number} não tem artigo escrito no disco.")
 
+    # ⚠️ A LEITURA DO PERFIL SOBE PARA CÁ, e é UMA só.
+    #
+    # O portão de política precisa da base do site e do post type para montar a
+    # URL que vai para o recibo. O `HANDOFF-PATCH-PUBLICACAO.md` resolvia isso
+    # chamando `_buscar` uma segunda vez dentro de uma expressão `if False else`
+    # — uma requisição extra ao Supabase por publicação, e duas fontes para o
+    # mesmo dado na mesma função.
     perfil_wp = await _buscar(supa, int(run.get("project_id") or 0))
+
+    recibo_do_portao, autorizacao = _portao_de_politica(
+        run_dir=run_dir, estado=estado, page_number=page_number,
+        rascunho=rascunho or {}, perfil_wp=perfil_wp)
+
     if not perfil_wp or not perfil_wp.get("wp_app_password_enc"):
         raise HTTPException(status_code=409,
                             detail="Este projeto não tem Application Password cadastrado.")
@@ -1601,10 +1873,26 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
 
     # A arquitetura vem do card, como no disparo: `montar_perfil` a exige para o
     # tema e recusa card sem funil.
+    #
+    # ⚠️ A TABELA ERA A ERRADA, E O RAMO INTEIRO ESTAVA MORTO.
+    #
+    # Isto lia `pautador_opportunities`. `funnel_architecture` só existe em
+    # `pautador_entity_opportunities` — é de lá que `disparar_redator` lê. O
+    # `select` não dá erro: PostgREST responde a outra tabela, `arq` fica `{}`,
+    # e a execução caía SEMPRE no esqueleto abaixo. Consequência medida no
+    # código: `entidade` nunca era carregada, então o tema do run de retomada
+    # perdia os termos e o canal oficial da entidade — em silêncio, porque
+    # `.get` devolve `None` e ninguém compara com nada.
+    #
+    # ⚠️ E `entity_id` PRECISA estar no `select`. Sem ele, PostgREST não devolve
+    # a coluna e o `if` abaixo é falso mesmo com a entidade existindo — o mesmo
+    # defeito, uma linha adiante.
     arq: Dict[str, Any] = {}
     entidade = None
-    opps = await supa.select("pautador_opportunities",
-                             {"id": f"eq.{run.get('opportunity_id')}", "limit": 1})
+    opps = await supa.select(
+        "pautador_entity_opportunities",
+        {"id": f"eq.{run.get('opportunity_id')}",
+         "select": "id,entity_id,funnel_architecture", "limit": 1})
     if opps:
         arq = opps[0].get("funnel_architecture") or {}
         if opps[0].get("entity_id"):
@@ -1615,6 +1903,11 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
         # O motor só precisa da arquitetura para o TEMA na retomada — o plano
         # já está gravado no `state.json`. Um esqueleto satisfaz `montar_perfil`
         # sem inventar conteúdo nenhum.
+        #
+        # ⚠️ E é por isso que o PAPEL do portão acima NÃO sai daqui. `arq` pode
+        # ser este esqueleto — `[{}]`, uma página sem slug e sem papel — e um
+        # papel derivado de dicionário vazio seria o mais frouxo do contrato.
+        # O papel vem do `state.json`, que é o que o motor escreveu.
         arq = {"pages": (estado.get("plan") or {}).get("pages") or [{}]}
 
     from app.redator import PerfilIncompleto, montar_perfil
@@ -1627,14 +1920,42 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
 
     resultado = await w.publicar_pagina(
         supa=supa, run_row_id=run_row_id, run_id=run_id,
-        page_number=page_number, perfil=perfil_do_run)
+        page_number=page_number, perfil=perfil_do_run,
+        # A prova de que esta chamada passou pelo portão. Sem ela o worker se
+        # recusa a montar `--publish` — ver `worker._disparar_motor`.
+        autorizacao=autorizacao)
 
     if not resultado.get("ok"):
-        return PublicarPaginaSaida(ok=False, erro=resultado.get("erro"))
+        # ⚠️ ISTO DEVOLVIA HTTP 200 COM `ok: false`.
+        #
+        # Toda outra recusa desta rota levanta 409. Uma publicação que FALHOU
+        # saindo com 200 é lida como sucesso por qualquer automação que ramifique
+        # por status — inclusive por um retry que só olha `resp.ok`, que
+        # tentaria de novo achando que a primeira deu certo, ou por um painel que
+        # marcaria a página como no ar.
+        #
+        # 502 e não 409: o pedido era válido e o portão liberou; quem não
+        # completou foi o motor/WordPress, rio abaixo. E não 500, que diria que
+        # o defeito é deste backend. O corpo continua informativo — `erro` traz o
+        # motivo que o worker extraiu do `state.json`, e `mensagem` existe porque
+        # é o campo que o cliente da tela lê de um `detail` que é objeto.
+        raise HTTPException(status_code=502, detail={
+            "ok": False,
+            "erro": resultado.get("erro"),
+            "mensagem": resultado.get("erro"),
+            "page_number": page_number,
+            "recibo": recibo_do_portao,
+        })
 
     pub = resultado.get("publicada") or {}
     return PublicarPaginaSaida(
         ok=True, publicada=pub,
+        # O recibo do portão viaja com o desfecho. ⚠️ Ele NÃO é o recibo que o
+        # portão 3 vai procurar em `paginas_publicadas`: aquele é gravado dentro
+        # de `state.published[n]` por quem publica (o motor), e chega ao banco
+        # por `worker.resumo_do_estado`. Este aqui é o do portão da API, e a
+        # cópia dele em disco fica na pasta do run.
+        recibo=recibo_do_portao,
         aviso=("A página subiu como RASCUNHO — é assim que o motor trabalha. "
                "Publique de verdade no WordPress e releia aqui para trazer o "
                "permalink." if pub.get("status_wp") != "publish" else None),

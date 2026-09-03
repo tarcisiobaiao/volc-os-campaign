@@ -144,6 +144,95 @@ def _cliente_google_sem_rede():
     return cliente
 
 
+# ── o DESTINO da campanha, hermético ───────────────────────────────────────
+#
+# ⚠️ ESTE BLOCO NASCEU EM 03/09/2026, quando `/provar` e `/subir` passaram a ler
+# a página de destino AO VIVO antes de cunhar a impressão aprovável (barreira 3).
+# A rota ganhou uma dependência nova; um teste hermético que não a dubla passa a
+# provar a ausência da rede, não a rota — foi por isso que `RepoDePlanoDeTeste`
+# também precisou existir quando o plano de mensuração virou pré-requisito.
+#
+# O que a página abaixo carrega é o mínimo que o papel `paid_destination` exige:
+# CNPJ do operador, contato, privacidade, aviso de não-vínculo, divulgação de
+# monetização e corpo acima do piso de palavras. Cada ausência dessas é um
+# BLOQUEIO — uma "página limpa" que não conseguisse ficar verde provaria só que
+# a fixture envelheceu.
+
+_RODAPE_DO_DESTINO = """
+<p>Sobre o nosso site: portal informativo independente.</p>
+<p>Os conteudos aqui publicados sao de carater informativo e nao possuem vinculo,
+parceria ou qualquer ligacao com orgaos publicos ou entidades governamentais.</p>
+<p>O site e financiado por blocos de anuncios em parceria com o Google Adsense.</p>
+<p>Projeto da Volc Negocios Digitais 42.724.548/0001-24.</p>
+<a href="/sobre">Sobre</a> <a href="/contato">Contato</a>
+<a href="/politica-de-privacidade">Politica de Privacidade</a> <a href="/termos">Termos</a>
+"""
+
+_CORPO_DO_DESTINO = " ".join(
+    [
+        "O texto explica com calma as regras vigentes e como o leitor confere cada",
+        "informacao no canal oficial, sem prometer resultado nenhum.",
+    ]
+    * 90
+)
+
+HTML_DO_DESTINO = (
+    "<html><head><title>Guia informativo</title></head><body>"
+    f"<h1>Guia informativo</h1><p>{_CORPO_DO_DESTINO}</p>"
+    f"{_RODAPE_DO_DESTINO}</body></html>"
+)
+
+from app.landing_policy import (  # noqa: E402  (depois do HTML que ele carimba)
+    CHAVE_DO_RECIBO as _CHAVE_DO_RECIBO,
+    POLICY_CONTRACT_VERSION as _CONTRATO_DA_POLITICA,
+    impressao_canonica as _impressao_canonica,
+    versao_da_fonte as _versao_da_fonte,
+)
+
+
+def _recibo_de_aprovacao(html: str = HTML_DO_DESTINO) -> dict:
+    """O recibo que a barreira 2 pendura na página publicada.
+
+    ⚠️ `observed_at_epoch` é relativo a AGORA. A janela de frescor é de 24 h, e
+    um carimbo congelado faria estes arquivos começarem a reprovar sozinhos no
+    dia seguinte — por um motivo que não é o deles.
+    """
+    import hashlib
+    import time as _time
+
+    return {
+        "policy_contract_version": _CONTRATO_DA_POLITICA,
+        "policy_source_version": _versao_da_fonte(),
+        "observed_at_epoch": _time.time() - 60,
+        "content_sha256": hashlib.sha256(html.encode("utf-8")).hexdigest(),
+        "content_fingerprint": _impressao_canonica(html),
+        "paid_destination_ready": True,
+    }
+
+
+def _leitura_do_destino(url: str, *, user_agent: str = "", timeout: int = 20,
+                        max_bytes: int = 2_000_000) -> dict:
+    """Dublê de `fetch_public_https_chain`, com a forma EXATA da função real.
+
+    Todas as variantes recebem o mesmo HTML: é o caso "sem cloaking, sem
+    redirecionamento, sem deriva". Quem quer exercitar cada uma dessas falhas
+    dubla por conta própria — ver `tests/test_barreira3_destino_de_campanha.py`.
+    """
+    import hashlib
+
+    return {
+        "url": url,
+        "final_url": url,
+        "status": 200,
+        "hops": [],
+        "headers": {"content-type": "text/html; charset=utf-8"},
+        "user_agent": user_agent,
+        "sha256": hashlib.sha256(HTML_DO_DESTINO.encode("utf-8")).hexdigest(),
+        "bytes": len(HTML_DO_DESTINO.encode("utf-8")),
+        "html": HTML_DO_DESTINO,
+    }
+
+
 def _linhas_da_rota(pp):
     """Recorte mínimo da porta de leitura; o contrato depois dela é real."""
     keyword = {
@@ -193,6 +282,14 @@ def _linhas_da_rota(pp):
                 "url_wp": "https://portalmundomais.com.br/saque-anual/",
                 "status_wp": "publish",
                 "page_number": 1,
+                # ⚠️ O RECIBO DE APROVAÇÃO, dentro do dict da página publicada.
+                #
+                # Desde 03/09/2026 `/provar` e `/subir` avaliam o destino ao
+                # vivo, e destino de campanha sem recibo resolvível REPROVA —
+                # `recibo_da_url` procura exatamente aqui. Uma fixture sem
+                # recibo passaria a representar "a casa nunca aprovou esta
+                # página", que não é o cenário que estes arquivos exercitam.
+                _CHAVE_DO_RECIBO: _recibo_de_aprovacao(),
             }],
         },
         entidade={
@@ -264,8 +361,14 @@ def _payload_da_rota(**mudancas):
 
 
 def _instalar_portas_hermeticas(monkeypatch: pytest.MonkeyPatch):
-    """Isola Supabase e Google; Escolha, ponte, Brief e Search ficam reais."""
+    """Isola Supabase, Google e a leitura do destino; o resto do contrato é real.
+
+    Real de propósito: `Escolha`, a ponte do Pautador, o `Brief`, o builder de
+    Search e o PORTÃO DE DESTINO. O que é dublado são só as portas de saída —
+    quem dubla o portão prova o dublê.
+    """
     pytest.importorskip("google.ads.googleads")
+    from app.publisher_quality import fetch as pqf
     from volc_ads import pautador_ponte as pp
     from volc_ads import subir as sb
     from volc_ads.campanha import search
@@ -308,6 +411,10 @@ def _instalar_portas_hermeticas(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(pp, "carregar", carregar)
     monkeypatch.setattr(search, "cliente", cliente_sem_rede)
     monkeypatch.setattr(sb, "validar_mutacoes", validar_mutacoes)
+    # A leitura pública do destino (barreira 3). Sem o dublê, as rotas abririam
+    # socket de verdade — e a fixture de rede derrubaria o arquivo inteiro por um
+    # motivo que não é o dele.
+    monkeypatch.setattr(pqf, "fetch_public_https_chain", _leitura_do_destino)
     monkeypatch.setattr(
         trafego.escopo,
         "conta_da_casa",

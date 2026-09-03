@@ -36,16 +36,6 @@ def _placement(i: int, n: int) -> str:
     return "inline"
 
 
-def _anchor_for(target_h1: str, i: int) -> str:
-    """Descriptive 3rd-person anchor congruent with the target H1 (shares a
-    significant token so enforce_pagespec's anchor_congruent passes)."""
-    base = APPROVED_CTA_EXEMPLARS[i % len(APPROVED_CTA_EXEMPLARS)]
-    tok = next(iter(sorted(_sig_tokens(target_h1))), "")
-    if not tok:
-        return base
-    return f"Ver o guia de {tok} >>>"
-
-
 def _settings():
     # Honest graph (Plano A): LP -> 3 distinct pre-sells; each pre-sell fans out
     # to every solution (lead first); mid solutions advance forward-only + an

@@ -127,6 +127,24 @@ class SiteConfig(BaseModel):
     author_name: str = ""
     author_credential: str = ""
     cnpj: str = ""
+    # O RODAPÉ INSTITUCIONAL QUE O TEMA DO WORDPRESS RENDERIZA EM TODA PÁGINA.
+    #
+    # ⚠️ É DECLARAÇÃO, não observação. O motor produz o CORPO; identidade,
+    # aviso de não-vínculo e divulgação de monetização vêm do tema, e nenhum
+    # artefato local os contém. Sem este campo, o portão do destino pago
+    # reprovaria toda LP por `IDENTIDADE_OPERADOR_AUSENTE` +
+    # `AVISO_NAO_OFICIAL_AUSENTE` + `DIVULGACAO_DE_MONETIZACAO_AUSENTE` — e um
+    # portão que reprova 100% das páginas é um portão que alguém desliga.
+    #
+    # A declaração é rastreável: o texto em `config.yaml` é a transcrição do
+    # rodapé MEDIDO na captura preservada de `/r/fgts-saque-aniversario/`
+    # (`docs/closure/.../evidence-public/common_desktop-7c674d1d7daf.html`), a
+    # mesma URL cujos bloqueios em `GATE-RECEIPTS.json` não incluem nenhum
+    # daqueles três códigos.
+    #
+    # VAZIO (o padrão) é fail-closed de propósito: um site novo, cujo rodapé
+    # ninguém mediu, reprova por identidade ausente — que é a verdade.
+    rodape_institucional: str = ""
     authors: list[AuthorConfig] = []
     # PREFERENCIA de canal oficial -- nunca autorizacao. Aceita dominio
     # ("caixa.gov.br") ou o NOME do orgao/empresa como vem do `official_source`

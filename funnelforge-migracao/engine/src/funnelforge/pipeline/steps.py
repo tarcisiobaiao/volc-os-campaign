@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 from pydantic import ValidationError
 
+from funnelforge.adapters import landing_policy_gate as lp_gate
 from funnelforge.config.settings import ScreenshotConfig
 from funnelforge.pipeline.admanifest import build_ad_manifest, vignette_meta
 from funnelforge.pipeline.base_factual import base_para_o_redator
@@ -41,6 +42,7 @@ from funnelforge.pipeline.doctrine import doctrine_context
 from funnelforge.pipeline.engajamento import canon_engajamento
 from funnelforge.pipeline.enhancers.gutenberg import (
     finalize_compliance_notice,
+    formatar_moeda_em_estrutura,
     normalize_gutenberg,
 )
 from funnelforge.pipeline import canal_profundo
@@ -1253,6 +1255,17 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         "research_hosts": research_hosts(facts),
         "slug": page.slug,
         "cnpj": deps.settings.site.cnpj,
+        # OS CAMPOS DO PLANO — o que a página promete ANTES de ter corpo.
+        # `plano_de_destino_pago` (validador e pré-voo) lê daqui: a alegação que
+        # derrubou a conta entrou pelo H1 do plano, e um ctx que só carrega o
+        # corpo não tem como reprovar o que não está no corpo.
+        "h1": page.h1_title,
+        "page_type": page.page_type,
+        "subtitulos": list(page.main_content_structure),
+        "lp_post_type": deps.settings.site.lp_post_type,
+        # A identidade/divulgação que o TEMA renderiza. Declaração, não
+        # observação — ver `SiteConfig.rodape_institucional`.
+        "rodape_institucional": deps.settings.site.rodape_institucional,
         "facts": facts,
         # O rótulo DECLARADO, canonizado e com a escala binária já traduzida
         # (ver `engajamento_declarado`). Passar `page.engajamento` cru era o que
@@ -1384,7 +1397,11 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             skeleton="\n".join(page.main_content_structure),
             keywords=", ".join(page.target_keywords),
             cta_text=page.hook_to_next_page,
-            facts=base_para_o_redator(facts),
+            # A LP é o destino que recebe o clique COMPRADO: a fonte da pesquisa
+            # chega ao redator como NOME para citar em prosa, nunca como URL
+            # para embutir. Ver `base_factual` para o achado que essa instrução
+            # produziu na página que foi ao ar.
+            facts=base_para_o_redator(facts, destino_pago=True),
             lp_destinations=lp_destinations,
             today=date.today().strftime("%d/%m/%Y"),
         )
@@ -1405,6 +1422,10 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             res.issues = list(res.issues) + [
                 Issue(code="parse_error", message=f"LP JSON inválido: {exc}")]
             content_obj = {}
+        # MOEDA pt-BR na LP. `normalize_gutenberg` nunca toca a LP (ela é JSON,
+        # não Gutenberg), e foi exatamente no corpo da LP que os valores
+        # malformados foram medidos: "de 5 % a 50 %" e "até 2900.00 R$".
+        content_obj = formatar_moeda_em_estrutura(content_obj)
         content = json.dumps(content_obj, ensure_ascii=False)
         # O contrato da LP roda DENTRO do runner quando `lp_json_contract` está
         # em write_p1.validators: lá ele ganha retry com feedback e o modelo tem
@@ -2511,19 +2532,133 @@ def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) 
     return issues
 
 
+# ---------------------------------------------------------------------------
+# O PORTÃO DO DESTINO PAGO — a barreira que a LP não tinha
+#
+# Até aqui `step_content_gate` abria com um `if page.page_type == "LANDING PAGE":
+# ... return`: a LP, que é o destino do clique COMPRADO, era a única página do
+# sistema isenta do portão de conteúdo. Ela era marcada OK sem que validador
+# nenhum rodasse, e `step_publish` completava o buraco — o ramo Elementor nunca
+# chamava `_final_content_issues`.
+#
+# O portão que entra no lugar não é uma regra nova escrita aqui: é o contrato de
+# `backend/app/landing_policy`, consumido pela ponte
+# `adapters/landing_policy_gate`. Duas regras para o mesmo fato divergem no
+# primeiro mês; uma só não tem como discordar de si mesma.
+# ---------------------------------------------------------------------------
+
+
+def _lp_hrefs(page: Page, deps: Any) -> list[str]:
+    """Os destinos REAIS dos botões da LP, formados por `resolve_route`.
+
+    Mesma fonte que `step_build` usa para renderizar o Elementor, então o portão
+    avalia o mesmo destino que o leitor vai clicar. Rota que não resolve NÃO vira
+    href vazio silencioso: ela some da lista e o CTA correspondente chega ao
+    portão sem destino, que é o que `bare_rec`/incongruência descrevem.
+    """
+    hrefs: list[str] = []
+    for route in page.routes:
+        if route.kind != "funnel":
+            continue
+        try:
+            hrefs.append(resolve_route(route, domain=deps.settings.site.domain,
+                                       post_type=deps.settings.site.post_type))
+        except ValueError:
+            hrefs.append("")
+    return hrefs
+
+
+def _portao_da_lp(state: RunState, page: Page, deps: Any, *,
+                  carimbo_epoch: float | None = None,
+                  carimbo: str | None = None) -> lp_gate.ResultadoDoPortao:
+    """Avalia o ARTEFATO da LP no ponto de portão de geração.
+
+    O papel sai de `papel_do_servidor` dentro do contrato: `e_destino_de_campanha`
+    é apurado do TIPO da página (a LP é a URL para onde o anúncio aponta) e
+    `coleta_dado_do_visitante` é apurado do artefato (existe campo de
+    formulário?). Nenhum dos dois vem de campo do chamador — é a diferença entre
+    um portão e uma configuração.
+    """
+    draft = state.drafts.get(page.page_number)
+    if draft is None or not draft.content.strip():
+        return lp_gate.ResultadoDoPortao(
+            pronto=False,
+            issues=[Issue(code="missing_final_draft", message="Rascunho final ausente.")],
+        )
+    try:
+        conteudo = json.loads(draft.content)
+    except (ValueError, json.JSONDecodeError, TypeError) as exc:
+        # JSON ilegível não é página limpa: sem artefato não há o que avaliar, e
+        # "não deu para ler" reprova pelo mesmo motivo que uma varredura que
+        # explode reprova dentro do contrato.
+        return lp_gate.ResultadoDoPortao(
+            pronto=False,
+            issues=[Issue(code="lp_json_ilegivel",
+                          message=f"O artefato da LP não é JSON legível: {exc}")],
+        )
+    if not isinstance(conteudo, dict):
+        return lp_gate.ResultadoDoPortao(
+            pronto=False,
+            issues=[Issue(code="lp_json_ilegivel",
+                          message="O artefato da LP não é um objeto JSON.")],
+        )
+    # O Elementor já renderizado entra na apuração de campo de formulário: o
+    # template é fixo e desenhado à mão hoje, mas um widget de formulário
+    # acrescentado nele amanhã tem de subir o papel sozinho.
+    elementor_bruto = ""
+    run_dir = getattr(getattr(deps, "runner", None), "runs_dir", None)
+    if run_dir is not None:
+        caminho = Path(run_dir) / state.run_id / "p1.elementor.json"
+        if caminho.exists():
+            elementor_bruto = caminho.read_text(encoding="utf-8")
+    try:
+        plano = lp_gate.plano_da_landing_page(
+            conteudo=conteudo,
+            settings=deps.settings,
+            slug=page.slug,
+            papel_do_motor=effective_role(page).value,
+            hrefs=_lp_hrefs(page, deps),
+            fontes_de_pesquisa=state.official_links.get(page.page_number, []),
+            elementor_bruto=elementor_bruto,
+        )
+        return lp_gate.avaliar_plano_de_destino(
+            plano,
+            settings=deps.settings,
+            e_destino_de_campanha=page.page_type == "LANDING PAGE",
+            papel_declarado=effective_role(page).value,
+            carimbo_epoch=carimbo_epoch,
+            carimbo=carimbo,
+        )
+    except lp_gate.PortaoIndisponivel as exc:
+        return lp_gate.indisponivel(exc)
+
+
 def step_content_gate(state: RunState, page: Page, deps: Any) -> None:
     """Validate the exact Gutenberg draft that may be handed to WordPress.
 
     This is intentionally after normalization, build and widget injection.
     Validators configured on the LLM runner only see the model's pre-normalized
     response; this second, non-optional gate closes that transformation gap.
+
+    A LANDING PAGE não é mais isenta: ela passa pelo portão do destino pago, que
+    lê o JSON estruturado como PLANO (título, H1, subtítulos, CTAs e destinos são
+    campos, não corpo — e um portão que só recebe corpo não reprova o que não
+    está no corpo).
     """
-    if page.page_type == "LANDING PAGE":
-        key = f"content_gate_p{page.page_number}"
-        state.step_status[key] = StepResult(
-            step=key, status=StepStatus.OK, attempts=1)
-        return  # LP has its own structured JSON + Elementor template contract
     key = f"content_gate_p{page.page_number}"
+    if page.page_type == "LANDING PAGE":
+        resultado = _portao_da_lp(state, page, deps)
+        state.step_status[key] = StepResult(
+            step=key,
+            # ⚠️ O predicado é `paid_destination_ready`, nunca `if bloqueios`.
+            # Testar só bloqueios ignora DESCONHECIDO (verificação exigida que
+            # não pôde ser concluída) e transforma varredura quebrada em página
+            # limpa.
+            status=StepStatus.OK if resultado.pronto else StepStatus.FAILED,
+            attempts=1,
+            issues=resultado.issues,
+        )
+        return
     draft = state.drafts.get(page.page_number)
     if draft is None or not draft.content.strip():
         state.step_status[key] = StepResult(
@@ -2741,6 +2876,58 @@ def _embed_official_screenshots(state: RunState, page: Page, deps: Any, html: st
     return html
 
 
+def _portao_de_publicacao(state: RunState, page: Page,
+                          deps: Any) -> lp_gate.ResultadoDoPortao:
+    """O portão da BARREIRA 2, rodado ANTES de qualquer upload.
+
+    LANDING PAGE -> o portão do destino pago sobre o artefato, com carimbo REAL
+    (a hora aqui é evidência de frescor, não ruído: é ela que `varrer_recibo`
+    compara contra a janela).
+
+    Páginas interiores -> `_final_content_issues` sobre o corpo já com o aviso
+    reposicionado. Ele roda DE NOVO depois das decorações de mídia (é o artefato
+    exato entregue ao REST); esta passagem é a que impede que uma reprovação
+    determinística deixe imagem e print órfãos no site antes de ser descoberta.
+    """
+    if page.page_type == "LANDING PAGE":
+        return _portao_da_lp(
+            state, page, deps,
+            carimbo_epoch=time.time(),
+            carimbo=datetime.now(timezone.utc).isoformat(),
+        )
+    draft = state.drafts.get(page.page_number)
+    conteudo = finalize_compliance_notice(draft.content) if draft else ""
+    issues = _final_content_issues(state, page, deps, conteudo)
+    return lp_gate.ResultadoDoPortao(pronto=not issues, issues=issues)
+
+
+def _registrar_recusa_de_publicacao(state: RunState, page: Page, deps: Any,
+                                    portao: lp_gate.ResultadoDoPortao) -> None:
+    """Marca a recusa nos dois passos e grava o recibo em disco.
+
+    Sem publicação não há linha de `paginas_publicadas` onde pendurar o recibo —
+    e uma recusa sem rastro é indistinguível de uma publicação que ninguém
+    tentou, que é justamente a dúvida que o recibo existe para não deixar
+    sobrar.
+    """
+    numero = page.page_number
+    state.step_status[f"content_gate_p{numero}"] = StepResult(
+        step=f"content_gate_p{numero}", status=StepStatus.FAILED,
+        attempts=1, issues=portao.issues)
+    state.step_status[f"publish_p{numero}"] = StepResult(
+        step=f"publish_p{numero}", status=StepStatus.FAILED, attempts=1,
+        issues=[Issue(code="final_artifact_rejected",
+                      message="Portão do destino pago REPROVOU o artefato final: "
+                              "nada foi escrito no WordPress.")] + portao.issues)
+    run_dir = getattr(getattr(deps, "runner", None), "runs_dir", None)
+    if portao.recibo is None or run_dir is None:
+        # Sem recibo (portão indisponível) ou sem pasta de run não há onde
+        # gravar. A recusa continua registrada em `step_status`, que é o que o
+        # relatório e o `_page_blocked` leem — nada fica aprovado por omissão.
+        return
+    lp_gate.gravar_recibo_de_recusa(Path(run_dir) / state.run_id, numero, portao.recibo)
+
+
 def step_publish(state: RunState, page: Page, deps: Any) -> None:
     """Publish the page via `deps.publisher`. No-op if publisher is None --
     callers should only invoke this when `publish=True` AND a publisher was
@@ -2754,6 +2941,19 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
     draft = state.drafts.get(page.page_number)
     if draft is None:
         return
+
+    # ── O PORTÃO, ACIMA DE QUALQUER ESCRITA NO SITE ───────────────────────
+    #
+    # Ele é a PRIMEIRA instrução do passo, antes de `_upload_hero_and_rewrite`,
+    # `_upload_featured` e `_embed_official_screenshots`. Até aqui
+    # `_final_content_issues` rodava DEPOIS de três `upload_media`: uma página
+    # recusada já tinha deixado mídia órfã no site ao vivo, e "zero publicação
+    # parcial" é incompatível com isso.
+    portao = _portao_de_publicacao(state, page, deps)
+    if not portao.pronto:
+        _registrar_recusa_de_publicacao(state, page, deps, portao)
+        return
+
     seo = state.seo.get(page.page_number, {})
     status = deps.settings.run.publish_status
 
@@ -2841,6 +3041,23 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
         "status_wp": status,
         "publicado_em": datetime.now(timezone.utc).isoformat(),
     }
+    # ── O RECIBO DA APROVAÇÃO, DENTRO DO REGISTRO DA PUBLICAÇÃO ───────────
+    #
+    # É o lado esquerdo que não existia da comparação de deriva: `sha256_aprovado`
+    # não era gravado por nada fora dos testes, então `DERIVA_AO_VIVO` saiu
+    # `unavailable` nos cinco recibos preservados. Sem migration e sem tabela
+    # nova: `worker.resumo_do_estado` leva `state.published` verbatim para
+    # `pautador_funnel_runs.paginas_publicadas`, que já existe.
+    #
+    # ⚠️ A impressão gravada é a do ARTEFATO que este motor produziu (o corpo),
+    # não a do HTML que o tema renderiza em volta dele. Quem ligar o portão 3
+    # precisa saber disso antes de usá-la como `impressao_aprovada` de uma
+    # leitura ao vivo — comparar as duas formas acusaria deriva em toda página.
+    # O recibo diz de qual ponto de portão ele veio (`gate_point`), que é o que
+    # torna essa diferença auditável em vez de silenciosa.
+    if portao.recibo is not None:
+        state.published[page.page_number] = lp_gate.anexar_recibo(
+            state.published[page.page_number], portao.recibo)
     yoast_pt = (deps.settings.site.lp_post_type
                 if page.page_type == "LANDING PAGE"
                 else deps.settings.site.post_type)

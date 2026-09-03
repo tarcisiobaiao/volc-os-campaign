@@ -133,6 +133,16 @@ _CODIGOS_TERMINAIS: frozenset[str] = frozenset({
     # gate da pesquisa: é fiação/configuração (nenhum verificador ao vivo
     # ligado), não um texto que possa melhorar.
     "fact_source_verifier_missing",
+    # O PORTÃO DO DESTINO PAGO SOBRE O PLANO. `plano_de_destino_pago` ignora o
+    # texto gerado por construção: ele lê H1, título, subtítulos e âncoras de
+    # CTA, que o redator não escreve. Reprovou uma vez, reprova igual nas três —
+    # a alegação do incidente estava no H1 do plano, e nenhuma redação a muda.
+    "titulo_sugere_origem_oficial",
+    "servico_governamental_restrito",
+    "ancora_incongruente_com_destino",
+    # E o portão que não pôde ser consultado: reescrever o texto não conserta um
+    # import quebrado.
+    "portao_de_destino_indisponivel",
 })
 
 

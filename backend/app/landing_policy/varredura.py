@@ -28,6 +28,7 @@ import html as _html
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from functools import lru_cache
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
@@ -109,6 +110,24 @@ class PaginaObservada:
     #: usado para decidir severidade: quem decide é o papel que o portão recebeu,
     #: e no ponto de campanha ele é FORÇADO. Ver `portao.papel_do_servidor`.
     papel_declarado: str = ""
+    #: O documento é um FRAGMENTO, não a página que o visitante recebe.
+    #:
+    #: ⚠️ Campo de SERVIDOR, apurado do formato do artefato — nunca vindo do
+    #: cliente. Antes de publicar, o backend enxerga o CONTEÚDO da página; o
+    #: rodapé de identidade (razão social, CNPJ, sobre, contato, privacidade,
+    #: divulgação de monetização) é renderizado pelo TEMA do WordPress. A coluna
+    #: `cnpj` foi removida de `project_wordpress` exatamente por isso — ver
+    #: `src/sql/pautador/03_perfil_enxuto.sql:11`.
+    #:
+    #: Exigir identidade de um fragmento reprovaria TODA landing page por uma
+    #: impossibilidade estrutural, que é o mesmo erro que `EXIGENCIAS_POR_PONTO`
+    #: existe para não cometer com redirecionamento e cloaking. E bloqueio falso
+    #: é como a operação desliga o portão.
+    #:
+    #: A lacuna é fechada na barreira 3: `identity` está em
+    #: `NAO_APLICAVEL_E_DESCONHECIDO_EM` no ponto de campanha, então uma leitura
+    #: AO VIVO nunca pode alegar "não se aplica".
+    documento_parcial: bool = False
     #: Fontes de pesquisa que o motor usou naquela página. Elas pertencem ao
     #: dossiê de evidência; virar hyperlink no corpo de um destino pago é o
     #: defeito que `LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO` descreve.
@@ -116,6 +135,10 @@ class PaginaObservada:
 
 
 # ── parsing ────────────────────────────────────────────────────────────────
+
+#: Folga entre relógios de máquinas diferentes. Cinco minutos absorve deriva de
+#: NTP sem absorver um carimbo posto de propósito no futuro.
+_TOLERANCIA_DE_RELOGIO_S = 300
 
 _SCRIPT_STYLE_RE = re.compile(r"(?is)<(script|style|noscript)\b.*?</\1>")
 _TAG_RE = re.compile(r"(?s)<[^>]+>")
@@ -138,6 +161,8 @@ class _Parser(HTMLParser):
         #: que o executa é uma cópia minificada servida pelo próprio domínio.
         self.hints: list[dict[str, str]] = []
         self.canonical: str | None = None
+        #: `<base href>` — reescreve todo link relativo da página.
+        self.base: str = ""
         #: ⚠️ O TÍTULO E OS CABEÇALHOS, que a v1 não colhia.
         #:
         #: `texto_visivel` achatava tudo num único texto, então o portão olhava o
@@ -216,6 +241,30 @@ class _Parser(HTMLParser):
             self.iframes.append(amap.get("src", ""))
         elif t == "img":
             self.imgs.append(amap.get("src") or amap.get("data-src") or "")
+        elif t == "base":
+            # ⚠️ `<base href>` REESCREVE TODO LINK RELATIVO DA PÁGINA.
+            #
+            # Sem colhê-lo, `<base href="https://evil.example/">` seguido de
+            # `<a href="oferta">` era resolvido contra a URL da própria página e
+            # classificado como MESMO SITE. Uma tag muda o destino de todos os
+            # links de uma vez, e ela era invisível para a varredura.
+            self.base = amap.get("href") or self.base
+        elif t in ("button", "input") and amap.get("formaction"):
+            # `formaction` sobrepõe o `action` do formulário no clique daquele
+            # botão. É navegação disparada por clique, com destino próprio.
+            self.links.append({
+                "href": amap.get("formaction", ""), "rel": "", "target": "",
+                "classe": classe, "em_botao": True, "origem_da_tag": t,
+                "_texto": [amap.get("value", "")],
+            })
+        elif t == "area":
+            # Área clicável de mapa de imagem. É `<a href>` com outra roupa.
+            self.links.append({
+                "href": amap.get("href", ""), "rel": amap.get("rel", ""),
+                "target": amap.get("target", ""), "classe": classe,
+                "em_botao": False, "origem_da_tag": t,
+                "_texto": [amap.get("alt", "")],
+            })
         elif t == "title":
             self._em_titulo = True
             self._texto_titulo = []
@@ -277,6 +326,7 @@ def analisar(html: str) -> _Parser:
     p.feed(html or "")
     for registro in p.links:
         registro["texto"] = re.sub(r"\s+", " ", "".join(registro.pop("_texto"))).strip()
+        registro.setdefault("origem_da_tag", "a")
     return p
 
 
@@ -407,6 +457,30 @@ def impressao_canonica(html: str) -> str:
             f"{(i.get('type') or '').lower()}|{(i.get('name') or '').lower()}"
             for i in parser.inputs
         ),
+        # ⚠️ O SCRIPT ENTRA NA IMPRESSÃO, e ele faltava.
+        #
+        # Sem isto, injetar um `<script>` que redireciona só quem não é
+        # Googlebot deixava a impressão canônica IDÊNTICA — e como a deriva tem
+        # precedência sobre o byte, a página continuava "sem deriva" depois de
+        # ganhar um cloaking inteiro. O que decide o destino do visitante é
+        # conteúdo, mesmo quando não é texto.
+        #
+        # Entra o DIGEST, não o corpo: script minificado muda de nome de
+        # variável a cada build, e guardar o texto faria deriva de rotina.
+        "scripts": sorted(
+            impressao(
+                {
+                    "src": _normalizar_href(sc.get("src") or ""),
+                    "tem_redirecionamento": bool(
+                        _REDIRECIONA_CLIENTE_RE.search(sc.get("texto") or "")
+                    ),
+                    "tem_ofuscacao": bool(_OFUSCACAO_RE.search(sc.get("texto") or "")),
+                    "tamanho": len(sc.get("texto") or "") // 256,
+                }
+            )[:16]
+            for sc in parser.scripts
+        ),
+        "meta_refresh": bool(_META_REFRESH_RE.search(limpo)),
     }
     return impressao(projecao)
 
@@ -452,12 +526,20 @@ CLASSE_NAO_RESOLVIVEL = "nao_resolvivel"
 #: botão, ele continua sendo pego por `BOTAO_PARA_TERCEIRO_NAO_AUTORIZADO` e
 #: pelas regras de terceiro — o que não pode acontecer é uma tag de medição
 #: virar "link externo editorial" e afogar o achado que importa.
+#: ⚠️ `adtech_google` e `adtech_declarada` SAÍRAM DESTA LISTA.
+#:
+#: O raciocínio original era que uma tag de medição não é navegação editorial.
+#: Ele estava certo sobre a tag — e errado sobre o efeito: `varrer_links` só
+#: enxerga `<a href>`, `<area href>` e `formaction`. Tudo que chega aqui JÁ É
+#: clique do leitor. Então `<a href="https://googleadservices.com/aclk">` ficava
+#: verde por ser "recurso técnico", sendo um hyperlink visível para fora.
+#:
+#: Script, imagem e fonte continuam de fora da regra porque nunca entram no
+#: inventário de links — eles são colhidos separadamente por `varrer_seguranca`.
 _CLASSES_INTERNAS = frozenset({
     CLASSE_MESMO_SITE,
     CLASSE_RELATIVO,
     CLASSE_CONTATO_DIRETO,
-    CLASSE_ADTECH_GOOGLE,
-    CLASSE_ADTECH_DECLARADA,
 })
 
 
@@ -567,6 +649,18 @@ def _marcas_sem_lastro(texto: str, hosts_declarados: set[str]) -> list[str]:
 
 
 def varrer_identidade(pagina: PaginaObservada) -> Verificacao:
+    if pagina.documento_parcial:
+        # Não há rodapé para observar num fragmento. `not_applicable` é a
+        # resposta honesta — e ela é conclusiva antes da publicação e DEIXA de
+        # ser conclusiva no ponto de campanha, onde a página inteira está no ar.
+        return Verificacao(
+            nome=V_IDENTIDADE,
+            status=STATUS_NAO_APLICAVEL,
+            detalhe=(
+                "documento parcial: o rodapé de identidade é renderizado pelo tema "
+                "e não existe no artefato. Verificável apenas na leitura ao vivo."
+            ),
+        )
     parser = analisar(pagina.html)
     texto = texto_visivel(pagina.html)
     baixo = texto.lower()
@@ -693,6 +787,23 @@ def _ancora_e_valor(texto: str) -> bool:
 
 def varrer_links(pagina: PaginaObservada) -> Verificacao:
     parser = analisar(pagina.html)
+    # ⚠️ A REGRA DO VOLC FALA DO CORPO VISÍVEL, e a varredura lia o HTML inteiro.
+    #
+    # Um `<div style="display:none"><a href="...">` reprovava a página por
+    # "hyperlink externo na experiência paga" — e o leitor nunca vê aquele link.
+    # Bloqueio falso é como a operação desliga o portão.
+    #
+    # O link escondido NÃO some: ele entra no inventário marcado `oculto`, e um
+    # host desconhecido continua caindo em `LINK_EXTERNO_NAO_CLASSIFICADO` —
+    # essa regra é sobre CLASSIFICAÇÃO, não sobre visibilidade. Esconder um link
+    # não o torna confiável; só o tira do corpo visível.
+    ocultos = {
+        (l.get("href") or "").strip()
+        for l in analisar(_ESCONDIDO_RE.sub(" ", pagina.html or "")).links
+    }
+    ocultos = {
+        (l.get("href") or "").strip() for l in parser.links
+    } - ocultos
     achados: list[Achado] = []
     inventario: list[dict[str, Any]] = []
     vistos_desconhecidos: set[str] = set()
@@ -703,11 +814,39 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
 
     for link in parser.links:
         href = (link.get("href") or "").strip()
-        if not href or href.startswith("#"):
+        # ⚠️ MINÚSCULAS ANTES DE COMPARAR ESQUEMA.
+        #
+        # `startswith(("javascript:", ...))` era case-sensitive, e
+        # `JaVaScRiPt:` escapava — depois `urljoin`/`_host` devolviam host
+        # vazio, que `classificar_host` lê como link RELATIVO. Ou seja: a
+        # capitalização transformava um esquema não resolvível em link interno.
+        esquema_baixo = href.lower()
+        # ⚠️ CTA COM DESTINO VAZIO: DETECTADO, INVENTARIADO, E NÃO BLOQUEADO.
+        #
+        # A frente do motor reportou a lacuna: um botão cujo `href` é vazio saía
+        # por este mesmo `continue` e nenhuma varredura o via. É lacuna real.
+        #
+        # Uma primeira versão desta linha o transformou em bloqueio — e o
+        # primeiro contato com a realidade foi um FALSO BLOQUEIO: num run
+        # `--only p1` as rotas interiores ainda não existem, então TODO CTA da
+        # LP tem href vazio por ordem de construção, não por defeito. O portão
+        # reprovou uma página correta, que é como a operação desliga o portão.
+        #
+        # A distinção que faltaria — "a rota ainda não resolveu" × "o botão
+        # morreu" — não é observável a partir do documento sozinho. Enquanto ela
+        # não existir, o fato entra no inventário e a decisão fica com quem tem
+        # o contexto do pipeline. Ver REMAINING-RISKS.md §4.
+        if link.get("em_botao") and href.strip() in ("", "#"):
+            inventario.append({
+                "host": "", "classe": CLASSE_NAO_RESOLVIVEL,
+                "ancora": (link.get("texto") or "")[:80], "ancora_e_valor": False,
+                "em_botao": True, "rel": "", "cta_sem_destino": True,
+            })
+        if not href or esquema_baixo.startswith("#"):
             # Âncora interna não é navegação para fora. Não entra no inventário
             # porque inventariá-la afogaria o que importa num sumário.
             continue
-        if href.startswith(("mailto:", "tel:")):
+        if esquema_baixo.startswith(("mailto:", "tel:")):
             # Permitidos e coerentes: um destino pago PRECISA de caminho de
             # contato. Entram no inventário para que a decisão fique visível —
             # "não achei" e "achei e permiti" não podem ter a mesma aparência.
@@ -717,14 +856,14 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
                                "em_botao": bool(link.get("em_botao")),
                                "rel": link.get("rel", "")})
             continue
-        if href.startswith(("javascript:", "data:", "blob:")):
+        if esquema_baixo.startswith(("javascript:", "data:", "blob:", "vbscript:", "file:")):
             # ⚠️ ANTES DA v2 ISTO CAÍA NO MESMO `continue` DA ÂNCORA INTERNA.
             #
             # `javascript:` é navegação clicável cujo destino o portão não tem
             # como resolver lendo HTML — é a definição de não classificável, e
             # não classificado reprova destino pago. Tratá-lo como âncora
             # interna era a forma mais barata de esconder um link do inventário.
-            esquema = href.split(":", 1)[0].lower()
+            esquema = esquema_baixo.split(":", 1)[0]
             if esquema not in vistos_desconhecidos:
                 vistos_desconhecidos.add(esquema)
                 achados.append(
@@ -743,7 +882,11 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
                                "em_botao": bool(link.get("em_botao")),
                                "rel": link.get("rel", "")})
             continue
-        absoluto = urljoin(pagina.url or "", href)
+        # A base do documento tem precedência sobre a URL da página — é
+        # exatamente para isso que `<base href>` existe, e ignorá-la fazia um
+        # link relativo apontar para outro domínio parecer interno.
+        base = urljoin(pagina.url or "", parser.base) if parser.base else (pagina.url or "")
+        absoluto = urljoin(base, href)
         host = _host(absoluto)
         classe = classificar_host(host, pagina)
         texto = link.get("texto") or ""
@@ -754,6 +897,8 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
             "ancora_e_valor": _ancora_e_valor(texto),
             "em_botao": bool(link.get("em_botao")),
             "rel": link.get("rel", ""),
+            "oculto": href in ocultos,
+            "tag": link.get("origem_da_tag", "a"),
         }
         inventario.append(item)
 
@@ -818,7 +963,7 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
         # `contrato.severidade()`. Em `editorial_solution` e `organic_article` a
         # referência externa continua permitida e o achado fica registrado — o
         # papel da página decide o peso, nunca a existência do fato.
-        if classe not in _CLASSES_INTERNAS:
+        if classe not in _CLASSES_INTERNAS and href not in ocultos:
             achados.append(
                 Achado(
                     "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO",
@@ -938,10 +1083,21 @@ def varrer_formularios(pagina: PaginaObservada) -> Verificacao:
             {
                 "tag": campo.get("tag"),
                 "tipo": tipo,
-                "busca_do_site": busca,
+                "busca_do_site": busca and not classes,
                 "classes_sensiveis": sorted(set(classes)),
             }
         )
+        # ⚠️ `type="search"` NÃO É PASSE LIVRE.
+        #
+        # A isenção existe porque a busca do WordPress (`<input name="s">`) não
+        # é coleta de dado, e reprovar por causa dela seria falso bloqueio. Mas
+        # ela era decidida SÓ pelo tipo: `<input type="search" name="cpf">`
+        # entrava como busca e o CPF sumia da varredura.
+        #
+        # Quando o campo carrega classe sensível, o que ele pede vale mais que
+        # como ele foi rotulado — nome e placeholder são o que o visitante lê.
+        if busca and classes:
+            busca = False
         if busca or not classes:
             continue
         campos_sensiveis.extend(classes)
@@ -1095,10 +1251,25 @@ _ORGAOS = (
 )
 #: Documento/serviço que a política "Government documents and services" nomeia
 #: como restrito à aquisição direta por provedor certificado/autorizado.
+#: ⚠️ DOIS TERMOS SAÍRAM DA LISTA, e a saída é o conserto de um falso bloqueio.
+#:
+#: "cin" casava por substring dentro de "cinco" e "vacina"; "visto" é, em
+#: português, o particípio mais comum de "ver". Com "emitir" na mesma página —
+#: um verbo banal — a frase "Aprenda a emitir notas em cinco passos" emitia
+#: `SERVICO_GOVERNAMENTAL_RESTRITO`. Texto editorial comum reprovado por
+#: coincidência de letras é o caminho mais curto para a operação desligar o
+#: portão, e portão desligado não protege nada.
+#:
+#: Os dois voltam pela forma NÃO ambígua: "CIN" só como sigla escrita por
+#: extenso ao lado do nome do documento, e "visto" só com o qualificador que o
+#: torna documento ("visto americano", "visto consular", "visto de trabalho").
 _DOCUMENTOS_RESTRITOS = (
-    "carteira de identidade", "identidade nacional", "cin", "rg digital", "passaporte",
-    "cnh", "carteira de motorista", "certidão de nascimento", "certidão de óbito",
-    "título de eleitor", "cpf", "licenciamento de veículo", "visto",
+    "carteira de identidade", "identidade nacional", "carteira de identidade nacional",
+    "rg digital", "passaporte", "cnh", "carteira de motorista",
+    "certidão de nascimento", "certidão de óbito", "título de eleitor", "cpf",
+    "licenciamento de veículo",
+    "visto americano", "visto consular", "visto de trabalho", "visto de turismo",
+    "visto de estudante", "visto permanente",
 )
 #: Verbo que promete EXECUTAR o serviço no lugar do leitor, e não explicá-lo.
 _VERBO_DE_AQUISICAO = (
@@ -1116,10 +1287,33 @@ _OFICIALIZANTE_RE = re.compile(
     r"liberad[oa]s?\s+pel[oa]\s+(governo|caixa|inss|receita|minist[ée]rio)"
     r"|(governo|caixa|inss|receita\s+federal|minist[ée]rio)\s+liber(a|ou|ado)"
     r"|(site|portal|canal|p[áa]gina|consulta|sistema)\s+oficial"
+    # ⚠️ "Portal do INSS" não casava. A regra pedia a palavra "oficial", e a
+    # forma mais direta de se apresentar como o órgão é não usá-la: o nome do
+    # órgão logo depois de "portal/site/central/atendimento" já entrega a
+    # promessa inteira.
+    r"|(site|portal|central|atendimento|servi[çc]os?|consulta)\s+d[oae]s?\s+"
+    r"(governo|caixa|inss|receita\s+federal|minist[ée]rio|fgts|detran|senai)"
     r"|oficial\s+d[oa]\s+(governo|caixa|inss|receita|minist[ée]rio)"
     r"|novo\s+(benef[íi]cio|aux[íi]lio)\s+aprovado\s+pel[oa]"
     r")"
 )
+
+
+@lru_cache(maxsize=512)
+def _padrao_de_termo(termo: str) -> re.Pattern[str]:
+    """Termo com fronteira de palavra nas pontas alfanuméricas.
+
+    `re.escape` cuida do ponto de "gov.br" e da barra de "pis/pasep"; o `\b`
+    só entra onde a ponta é alfanumérica, senão ele nunca casaria.
+    """
+    corpo = re.escape(termo)
+    inicio = r"\b" if termo[:1].isalnum() else ""
+    fim = r"\b" if termo[-1:].isalnum() else ""
+    return re.compile(f"(?i){inicio}{corpo}{fim}")
+
+
+def _contar_termo(texto: str, termo: str) -> int:
+    return len(_padrao_de_termo(termo).findall(texto))
 
 
 def varrer_governo(pagina: PaginaObservada) -> Verificacao:
@@ -1131,8 +1325,15 @@ def varrer_governo(pagina: PaginaObservada) -> Verificacao:
     baixo = texto.lower()
     achados: list[Achado] = []
 
-    mencoes = {orgao: baixo.count(orgao) for orgao in _ORGAOS if orgao in baixo}
-    documentos = sorted({d for d in _DOCUMENTOS_RESTRITOS if d in baixo})
+    # ⚠️ FRONTEIRA DE PALAVRA, e ela faltava nos dois.
+    #
+    # `_ORGAOS` contém "pis" e `_DOCUMENTOS_RESTRITOS` contém "cin" e "visto".
+    # Por substring, "cin" casa dentro de "cinco" e "visto" é o particípio de
+    # "ver" — então "Aprenda a emitir notas em cinco passos" emitia
+    # `SERVICO_GOVERNAMENTAL_RESTRITO`. Falso bloqueio em texto editorial comum
+    # é o caminho mais curto para a operação desligar o portão.
+    mencoes = {orgao: n for orgao in _ORGAOS if (n := _contar_termo(baixo, orgao))}
+    documentos = sorted({d for d in _DOCUMENTOS_RESTRITOS if _contar_termo(baixo, d)})
     tem_aviso = bool(_NAO_AFILIACAO_RE.search(texto))
     total = sum(mencoes.values())
 
@@ -1281,6 +1482,23 @@ def varrer_conteudo(pagina: PaginaObservada) -> Verificacao:
 # ── sinais de segurança do destino ─────────────────────────────────────────
 
 _OFUSCACAO_RE = re.compile(r"\beval\s*\(|new\s+Function\s*\(|String\.fromCharCode\s*\(")
+#: Redirecionamento disparado pelo cliente. `location.assign` faltava, e com ele
+#: cabia um cloaking inteiro: um script que só redireciona quem NÃO é Googlebot
+#: serve os mesmos bytes às duas leituras, então a comparação rastreador/usuário
+#: não vê nada — quem decide o destino é o JavaScript, depois.
+_REDIRECIONA_CLIENTE_RE = re.compile(
+    r"(?i)(window|document)\s*\.\s*location\s*="
+    r"|\blocation\s*\.\s*(href|hash|pathname)\s*="
+    r"|\blocation\s*\.\s*(replace|assign)\s*\("
+    r"|\blocation\s*="
+    r"|\bwindow\s*\.\s*open\s*\("
+    r"|\bnavigation\s*\.\s*navigate\s*\("
+)
+#: `<meta http-equiv="refresh" content="0;url=...">` — redirecionamento sem uma
+#: linha de JavaScript, e a varredura não o enxergava de jeito nenhum.
+_META_REFRESH_RE = re.compile(
+    r"(?is)<meta[^>]+http-equiv\s*=\s*[\"']?refresh[\"']?[^>]*>"
+)
 _SERVICE_WORKER_RE = re.compile(
     r"(?i)serviceworker|service-worker|firebase-messaging|pushmanager|"
     r"notification\.requestpermission|web[_-]?push"
@@ -1345,11 +1563,25 @@ def varrer_seguranca(pagina: PaginaObservada) -> Verificacao:
                 evidencia={"hosts": mistos[:6]},
             )
         )
-    if re.search(r"(?i)(window|document)\.location\s*=|location\.href\s*=|location\.replace\s*\(", corpo_scripts):
+    achado_de_redirecionamento = _REDIRECIONA_CLIENTE_RE.search(corpo_scripts)
+    if achado_de_redirecionamento:
         achados.append(
             Achado(
                 "SCRIPT_REDIRECIONA_CLIENT_SIDE",
-                "JavaScript de redirecionamento client-side observado após o carregamento.",
+                "JavaScript de redirecionamento client-side observado. Ele decide o "
+                "destino DEPOIS da leitura, então servir os mesmos bytes aos dois "
+                "user-agents não prova que os dois terminam no mesmo lugar.",
+                evidencia={"construcao": achado_de_redirecionamento.group(0)[:60]},
+            )
+        )
+    meta_refresh = _META_REFRESH_RE.search(pagina.html or "")
+    if meta_refresh:
+        achados.append(
+            Achado(
+                "SCRIPT_REDIRECIONA_CLIENT_SIDE",
+                "`meta http-equiv=refresh` observado: a página redireciona sem uma "
+                "linha de JavaScript, e sem aparecer na cadeia HTTP.",
+                evidencia={"tag": meta_refresh.group(0)[:80]},
             )
         )
 
@@ -1781,15 +2013,23 @@ def varrer_recibo(pagina: PaginaObservada) -> Verificacao:
     idade: float | None = None
     if isinstance(emitido_em, (int, float)) and isinstance(agora, (int, float)):
         idade = float(agora) - float(emitido_em)
-        if idade > pagina.janela_de_frescor_s:
+        # ⚠️ IDADE NEGATIVA É RECIBO DO FUTURO, e ele passava.
+        #
+        # `idade > janela` deixa passar qualquer carimbo adiante do relógio —
+        # inclusive um posto por quem quisesse comprar frescor. Um recibo que
+        # diz ter sido observado amanhã não é fresco: é inconsistente, e
+        # inconsistência não vira aprovação.
+        if idade < -_TOLERANCIA_DE_RELOGIO_S or idade > pagina.janela_de_frescor_s:
             achados.append(
                 Achado(
                     "RECIBO_DE_APROVACAO_VENCIDO",
-                    "A observação que sustenta este recibo é mais velha que a "
-                    "janela de frescor. 'Estava apto' não é 'está apto'.",
+                    "A observação que sustenta este recibo está fora da janela de "
+                    "frescor. 'Estava apto' não é 'está apto' — e um carimbo no "
+                    "futuro não é frescor, é inconsistência.",
                     evidencia={
                         "idade_s": int(idade),
                         "janela_s": int(pagina.janela_de_frescor_s),
+                        "no_futuro": idade < 0,
                     },
                 )
             )

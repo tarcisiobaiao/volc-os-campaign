@@ -18,13 +18,35 @@
  * | ação real numa coluna de 320px, botão nascendo morto | barra fixa no topo, com o que falta escrito |
  * | linguagem visual de outro produto | `card-volc`, badges e aurora — a mesma de Integrações |
  *
- * ## As travas são binárias
+ * ## As travas são binárias, e quem as declara é o servidor
  *
- * `LP_EM_RASCUNHO` e `URL_PROVISORIA` deixaram de ser aviso e passaram a BARRAR.
- * Não é porque a campanha gastaria — ela nasce pausada, então não gasta. É
- * porque ela seria criada apontando para `?post_type=r&p=2152`, e quando a
- * página for publicada o permalink muda: sobra uma campanha com destino errado
- * cuja falha some de vista. Portão é binário; o conserto é publicar a LP.
+ * A versão anterior tinha um `Set(['LP_EM_RASCUNHO','URL_PROVISORIA'])` aqui
+ * dentro: o cliente escolhia quais códigos barravam. Qualquer código de
+ * política que não estivesse na lista virava observação recolhida enquanto
+ * `podeLancar` seguia verdadeiro — e a lista nunca cresceu junto com as regras.
+ * Agora a decisão é do servidor por duas vias: a severidade do aviso (não
+ * reconhecida BARRA, ver `avisoBarraOLancamento`) e o recibo do portão de
+ * destino pago.
+ *
+ * O caso concreto continua barrando pelo mesmo motivo de sempre: a campanha
+ * nasce pausada e não gasta, mas nasce apontando para `?post_type=r&p=2152`, e
+ * quando a página for publicada o permalink muda — sobra uma campanha com
+ * destino errado cuja falha some de vista. Só que quem diz isso agora é o
+ * estado da publicação lido do WordPress, não uma lista de códigos no browser.
+ *
+ * ## O verde que este arquivo parou de pintar
+ *
+ * Medido nesta linha, na versão anterior:
+ *
+ * ```ts
+ * estado={status_wp === 'draft' ? 'LP em rascunho' : 'LP no ar'}
+ * pronto={status_wp !== 'draft'}
+ * ```
+ *
+ * `status_wp` é `string | null`, e `null` significa "o servidor NUNCA leu o
+ * WordPress". As duas linhas transformavam esse "ninguém leu" em "LP no ar" com
+ * a etapa marcada como pronta. Agora o cartão lê a prontidão do destino, e
+ * ausência de leitura é INDETERMINADO — que não abre nada.
  */
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -46,7 +68,13 @@ import { Lancamento } from '@/components/trafego/Lancamento';
 import { ListaDeKeywords } from '@/components/trafego/ListaDeKeywords';
 import { ReguaDeLeilao, achatar } from '@/components/trafego/ReguaDeLeilao';
 import { MesaDeCriterios } from '@/components/trafego/MesaDeCriterios';
+import {
+  FaixaDoDestinoPago, PainelDoDestinoPago,
+} from '@/components/landing-policy/PainelDoDestinoPago';
 import { pautadorApi } from '@/lib/pautadorApi';
+import {
+  avisoBarraOLancamento, leituraDoDestinoPago, pendenciasDoDestino, resumoDoDestino,
+} from '@/lib/landing-policy/prontidao';
 import { chave } from '@/lib/trafego/criterios';
 import { cn } from '@/lib/utils';
 import { DECORRE_DA_ESTRATEGIA } from '@/types/trafego';
@@ -58,11 +86,9 @@ import type {
 
 const chaveDe = (grupo: string, texto: string) => `${grupo}:${texto}`;
 
-/** ⚠️ Estes dois códigos BARRAM, não avisam. Ver o cabeçalho: a campanha nasce
- *  pausada e não gasta, mas nasce apontando para uma URL que vai mudar. */
-const BARRAM = new Set(['LP_EM_RASCUNHO', 'URL_PROVISORIA']);
-
-const barra = (a: AvisoDoCockpit) => a.severidade === 'bloqueio' || BARRAM.has(a.codigo);
+/** ⚠️ O cliente não decide mais o que barra — ver o cabeçalho. A severidade vem
+ *  do servidor e a regra é fail-closed: só `informacao` e `atencao` passam. */
+const barra = (a: AvisoDoCockpit) => avisoBarraOLancamento(a.severidade);
 
 const NovaCampanhaPage: React.FC = () => {
   const { opportunityId } = useParams<{ opportunityId: string }>();
@@ -283,11 +309,36 @@ const NovaCampanhaPage: React.FC = () => {
   const bloqueios = (cockpit?.avisos ?? []).filter(barra);
   const observacoes = (cockpit?.avisos ?? []).filter((a) => !barra(a));
 
+  // ⚠️ A PRONTIDÃO DO DESTINO PAGO, LIDA DO SERVIDOR — não inferida daqui.
+  //
+  // O recibo do portão viaja dentro de `origem`, sob `landing_policy_receipt`.
+  // `origem` é tipada em `types/trafego.ts` sem esse campo (o tipo é de outro
+  // dono), então o portador entra como `unknown` e o adaptador o abre — que é
+  // também o comportamento certo para o dia em que ele não vier: recibo ausente
+  // sai como INDETERMINADO, nunca como apto.
+  //
+  // ⚠️ `exige_ponto_de_campanha` é `true` aqui e não é decoração: esta tela É o
+  // momento da elegibilidade de destino de campanha, onde o papel é FORÇADO
+  // para destino pago. Um recibo emitido antes de publicar foi medido com rigor
+  // menor e não responde a pergunta desta página.
+  const destino = useMemo(
+    () => leituraDoDestinoPago(cockpit?.origem as unknown, {
+      status_wp: cockpit?.origem?.status_wp,
+      exige_ponto_de_campanha: true,
+    }),
+    [cockpit],
+  );
+
   const pendencias: string[] = [];
   if (!conta?.vinculada) pendencias.push('vincular a conta');
   if (gruposEscolhidos.length === 0) pendencias.push('marcar ao menos uma keyword');
   if (escrita?.status !== 'done') pendencias.push('escrever a copy');
   for (const b of bloqueios) pendencias.push(b.titulo.toLowerCase());
+  // ⚠️ O destino entra nas pendências INTEIRO, e não só quando há bloqueio.
+  // Testar apenas `bloqueadores.length` ignoraria os `desconhecidos` — a
+  // verificação exigida que não pôde ser concluída — e foi assim que o handoff
+  // anterior deixaria lançar contra uma página cuja varredura falhou.
+  for (const r of pendenciasDoDestino(destino)) pendencias.push(r);
 
   const podeLancar = pendencias.length === 0;
   // O que este funil já produziu. Decide se a barra oferece "Lançar campanha"
@@ -491,17 +542,33 @@ const NovaCampanhaPage: React.FC = () => {
               </section>
             )}
 
+            {/* A faixa vem antes do painel de lançamento porque a primeira
+                pergunta de um lançamento é PARA ONDE ele manda o clique. Ela é
+                curta de propósito: o painel inteiro está no cartão 01. */}
+            <FaixaDoDestinoPago leitura={destino} className="reveal"
+                                key="faixa-destino" />
+
             <PainelDoLancamento cockpit={cockpit} trava={trava}
                                 gruposEscolhidos={gruposEscolhidos} budget={budget}
                                 estrategia={estrategia} />
 
+            {/* ⚠️ `estado` e `pronto` vinham de `status_wp !== 'draft'`, que
+                pintava "LP no ar" e marcava a etapa como pronta quando o
+                servidor NUNCA tinha lido o WordPress (`status_wp: null`). Agora
+                os dois vêm da leitura do destino, onde ausência é
+                INDETERMINADO — e INDETERMINADO não abre nada. */}
             <Cartao n={1} titulo="de onde vem" indice={2}
-                    estado={cockpit.origem.status_wp === 'draft' ? 'LP em rascunho' : 'LP no ar'}
-                    pronto={cockpit.origem.status_wp !== 'draft'}>
+                    estado={resumoDoDestino(destino)}
+                    pronto={destino.apto_para_campanha}>
               <a href={cockpit.origem.url_final} target="_blank" rel="noreferrer"
                  className="tabular break-all text-sm underline-offset-4 hover:underline">
                 {cockpit.origem.url_final}
               </a>
+
+              {/* O painel inteiro mora aqui, no cartão da origem, porque é aqui
+                  que o operador olha para a landing page. A faixa no topo da
+                  página é só o resumo dele. */}
+              <PainelDoDestinoPago leitura={destino} className="mt-4" />
               {cockpit.origem.vertical_declarada
                 && cockpit.origem.vertical_declarada !== cockpit.origem.vertical && (
                 <p className="mt-2 text-[11px] text-muted-foreground">
@@ -724,6 +791,7 @@ const NovaCampanhaPage: React.FC = () => {
           pedido={pedido}
           trava={trava}
           titulo={titulo}
+          destino={destino}
           resumoDaCopy={escrita
             ? `${escrita.copy.headlines.length} títulos · ${escrita.copy.descriptions.length} descrições · ${escrita.segundos.toFixed(0)}s`
             : '—'}
