@@ -1,0 +1,164 @@
+{
+  "field_rules": [
+    {
+      "id": "V26_ADVANTAGE_AUDIENCE_HECF",
+      "rule": "If special_ad_categories intersects HEC-F and targeting is constrained/relaxable, require explicit advantage_audience in targeting_automation; omission is stable error META_V26_ADVANTAGE_AUDIENCE_REQUIRED.",
+      "source": {
+        "endpoint_or_field": "targeting_automation.advantage_audience",
+        "object": "AdSet",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Frontend/backend must require explicit 1/0 for Housing, Employment, Financial Products/Services with constrained targeting."
+      }
+    },
+    {
+      "id": "V26_INSTAGRAM_EXPLORE_REMOVED",
+      "rule": "Reject instagram_positions containing explore; suggest eligible alternatives; never silently send removed placement.",
+      "source": {
+        "endpoint_or_field": "instagram_positions=explore",
+        "object": "AdSet targeting",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Do not offer Instagram Explore Feed placement."
+      }
+    },
+    {
+      "id": "V26_MESSENGER_STORIES_DEPRECATED",
+      "rule": "Warn/block messenger_positions story in manual placements unless explicitly modeled as unsupported; read-back effective placements is mandatory.",
+      "source": {
+        "endpoint_or_field": "messenger_positions=story",
+        "object": "AdSet targeting",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Do not rely on Messenger Stories; v26 silently removes story."
+      }
+    },
+    {
+      "id": "V26_POLL_CREATIVE_REJECTED",
+      "rule": "Reject poll_spec and interactive_components_spec.type=poll in local validation.",
+      "source": {
+        "endpoint_or_field": "interactive_components_spec.poll_spec/type=poll",
+        "object": "AdCreative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Creative copilot and ZIP manifest must reject poll creatives."
+      }
+    },
+    {
+      "id": "V26_WEB_APP_WEB_ONLY_RESTRICTED",
+      "rule": "If campaign conversion locations are Website+App, creative.applink_treatment cannot be web_only.",
+      "source": {
+        "endpoint_or_field": "applink_treatment=web_only with Website+App",
+        "object": "Ad/AdCreative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "UI must not allow incompatible destination combination."
+      }
+    },
+    {
+      "id": "V26_DELIVERY_ESTIMATE_FIELDS_REMOVED",
+      "rule": "Contracts may read delivery_estimate only without removed fields; no replacement API; no outcome promise.",
+      "source": {
+        "endpoint_or_field": "daily_outcomes_curve,budget_guardrail,estimate_dau",
+        "object": "Delivery Estimate",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Do not build UI promises/reach forecasts on removed fields."
+      }
+    },
+    {
+      "id": "V26_SHOP_ADS_DEFAULTING",
+      "rule": "For eligible shop advertisers, require explicit destination choice; do not inherit WEBSITE_AND_SHOP silently.",
+      "source": {
+        "endpoint_or_field": "destination_spec.destination_type",
+        "object": "AdCreative/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Future Sales/shop work must make opt-out explicit when advertiser has shop."
+      }
+    }
+  ],
+  "surfaces": [
+    "/trafego?plataforma=meta",
+    "/trafego/meta/campanhas",
+    "/trafego/campanhas/:volcCampaignId",
+    "/settings/campaigns",
+    "/settings/cofre-ativos"
+  ],
+  "wizard_steps": [
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Conta e projeto",
+      "server_authority": true,
+      "step": 1
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Objetivo e mensuração",
+      "server_authority": true,
+      "step": 2
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Destino e compliance",
+      "server_authority": true,
+      "step": 3
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Estratégia criativa",
+      "server_authority": true,
+      "step": 4
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "ZIP/assets",
+      "server_authority": true,
+      "step": 5
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Público e placements",
+      "server_authority": true,
+      "step": 6
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Orçamento, lance e agenda",
+      "server_authority": true,
+      "step": 7
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Revisão do payload",
+      "server_authority": true,
+      "step": 8
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Validação",
+      "server_authority": true,
+      "step": 9
+    },
+    {
+      "frontend_cannot_decide_alone": true,
+      "name": "Criação em PAUSED e read-back",
+      "server_authority": true,
+      "step": 10
+    }
+  ]
+}
