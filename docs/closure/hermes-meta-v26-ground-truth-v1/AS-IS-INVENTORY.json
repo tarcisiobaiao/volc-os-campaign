@@ -6,7 +6,8 @@
       "Meta Marketing API adapter",
       "Meta account sync",
       "Meta campaign/adset/ad/creative read models",
-      "Meta create paused"
+      "Meta create paused",
+      "Meta ledger identity derivation / canonical campaign read route implementation"
     ],
     "BLOQUEADA_EXTERNAMENTE": [
       "real Meta account read",
@@ -16,16 +17,19 @@
     "PARCIAL": [
       "provider-neutral traffic inventory schema",
       "creative studio/parque assets",
-      "Google multichannel manifests/builders"
+      "Google multichannel manifests/builders",
+      "v10 intent/blueprint/lote/receipt schema is Meta-aware at platform vocabulary level"
     ],
     "PLACEHOLDER": [
       "Meta Ads manifest/navigation state"
     ],
     "REAL": [
       "Google Search traffic inventory/proposal/write paths in existing code",
-      "Meta CAPI site event configuration (not Ads buying)"
+      "Meta CAPI site event configuration (not Ads buying)",
+      "Meta CAPI site/event forwarding is real but separate from Ads buying"
     ]
   },
+  "delegated_evidence_integrated": true,
   "documents_read": [
     "AGENTS.md",
     "PRODUCT.md",
@@ -33,7 +37,26 @@
     "docs/volc-os-graph/volc-os-graph.json",
     "volc-os-workbook/ROADMAP-VIVO.json",
     "supabase/migrations/v9_01_trafego_inventario.sql",
-    "backend/app/trafego/plataforma.py"
+    "backend/app/trafego/plataforma.py",
+    "backend/app/trafego/contrato_canais.py",
+    "supabase/migrations/v10_01_intencao_e_lote.sql",
+    "backend/app/trafego/intencao.py",
+    "backend/app/trafego/lote.py",
+    "backend/app/trafego/ledger.py",
+    "backend/app/routers/trafego_inventario.py",
+    "backend/app/routers/trafego.py",
+    "src/components/trafego/hub/contrato.ts",
+    "src/components/trafego/hub/adaptacao.ts",
+    "src/pages/trafego/HubDeTrafegoPage.tsx",
+    "src/lib/trafego/canais.ts",
+    "src/pages/settings/CampaignsSettings.tsx",
+    "src/hooks/useCampaignComparisons.ts",
+    "src/services/supabaseDataService.ts",
+    "src/lib/supabase.ts",
+    "supabase/migrations/v13_01_cofre_de_ativos.sql",
+    "api/_lib/metaCapiSites.js",
+    "api/_lib/capiCrypto.js",
+    "supabase/functions/capi-router/index.ts"
   ],
   "graph_freshness": "GRAPHIFY_CLI_AND_GRAPHIFY_OUT_NOT_AVAILABLE; curation/generated graph/roadmap read-only were used",
   "items": [
@@ -92,13 +115,6 @@
       "line": 436,
       "path": "backend/app/trafego/plataforma.py",
       "symbol": "PERFORMANCE_MAX ManifestoDeCanal"
-    },
-    {
-      "evidence": "Creates trafego_linhagem, trafego_campanha, trafego_campanha_espelho, trafego_snapshot_conta, trafego_vinculo, trafego_evento and read projections.",
-      "impact": "Provider-neutral identity/snapshot/event foundation should be reused for Meta.",
-      "line": 16,
-      "path": "supabase/migrations/v9_01_trafego_inventario.sql",
-      "symbol": "trafego_* inventory tables"
     },
     {
       "evidence": "No number without freshness; absence is NULL, never zero; account failures isolated per row.",
@@ -169,6 +185,83 @@
       "line": 1,
       "path": "api/_lib/metaCapiSites.js",
       "symbol": "Meta CAPI API lib"
+    },
+    {
+      "evidence": "v9 inventory columns are customer_id/campaign_id and checks require Google-shaped numeric IDs; no platform column in this identity table.",
+      "impact": "v9 pattern is reusable for freshness/mirror/event discipline, but the concrete identity schema is Google-shaped and needs Meta extension/provider-neutral migration.",
+      "line": 240,
+      "path": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "symbol": "trafego_campanha"
+    },
+    {
+      "evidence": "Intent layer has plataforma IN (GOOGLE_ADS,META_ADS); Google account format is enforced only when platform is Google.",
+      "impact": "v10 is materially more Meta-ready than v9 and should be the mutation/blueprint entrypoint.",
+      "line": 215,
+      "path": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "symbol": "trafego_intencao"
+    },
+    {
+      "evidence": "Receipt written before external mutate; sem_resposta differs from erro; one success per idempotency_key/operacao.",
+      "impact": "Direct safety substrate for future Meta CREATE_PAUSED.",
+      "line": 772,
+      "path": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "symbol": "trafego_recibo"
+    },
+    {
+      "evidence": "Current channel cockpit always calls plat.manifesto(plat.GOOGLE_ADS, canal).",
+      "impact": "Despite platform vocabulary, channel cockpit is Google-only until a Meta branch/adapter exists.",
+      "line": 1588,
+      "path": "backend/app/trafego/contrato_canais.py",
+      "symbol": "contrato()"
+    },
+    {
+      "evidence": "Raises unless plataforma == GOOGLE_ADS and delegates identity to Google synchronizer.",
+      "impact": "Meta successful receipt closing into trafego_campanha is blocked until Meta identity derivation is implemented.",
+      "line": 118,
+      "path": "backend/app/trafego/ledger.py",
+      "symbol": "volc_campaign_id_de"
+    },
+    {
+      "evidence": "Canonical campaign route returns identity but currently hardcodes plataforma GOOGLE_ADS.",
+      "impact": "Route shape is reusable; implementation is not Meta-ready.",
+      "line": 441,
+      "path": "backend/app/routers/trafego_inventario.py",
+      "symbol": "/campanhas/{volc_campaign_id}"
+    },
+    {
+      "evidence": "Proof route is Google validate_only semantics; Demand Gen has special gate; no Meta proof route exists.",
+      "impact": "Meta needs local validation and separately-authorized remote validation semantics, not copied Google validate_only.",
+      "line": 2874,
+      "path": "backend/app/routers/trafego.py",
+      "symbol": "/provar"
+    },
+    {
+      "evidence": "Code states Meta has no endpoint and does not query Google inventory pretending it is Meta.",
+      "impact": "Correct no-fake-data policy to preserve.",
+      "line": 4,
+      "path": "src/components/trafego/hub/adaptacao.ts",
+      "symbol": "Meta fallback policy"
+    },
+    {
+      "evidence": "UI-only visual pending state is invented when reconciliation is missing/null.",
+      "impact": "Must remain visual-only; server must not accept browser-invented operational state.",
+      "line": 64,
+      "path": "src/components/trafego/hub/contrato.ts",
+      "symbol": "EstadoVisualDeReconciliacao.pendente"
+    },
+    {
+      "evidence": "Asset vault supports facebook_page, meta_business_portfolio, meta_ad_account kinds.",
+      "impact": "Can seed Meta account/project selection metadata, but no traffic adapter consumes it yet.",
+      "line": 338,
+      "path": "supabase/migrations/v13_01_cofre_de_ativos.sql",
+      "symbol": "cofre_tipo"
+    },
+    {
+      "evidence": "CAPI stores encrypted token with AES-GCM pattern; wizard clears plaintext token from memory.",
+      "impact": "Useful security precedent, but Marketing API token contract still prefers opaque 1Password reference.",
+      "line": 139,
+      "path": "api/_lib/capiCrypto.js",
+      "symbol": "CAPI token encryption"
     }
   ],
   "verdict": "META_ADS_AS_IS_PLACEHOLDER"
