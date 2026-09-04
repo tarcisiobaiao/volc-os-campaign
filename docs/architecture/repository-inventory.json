@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-04T11:25:34-03:00",
+  "generated_at": "2026-09-04T12:01:32-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 630,
-    "markdown": 460,
+    "files": 631,
+    "markdown": 461,
     "sql": 170,
-    "tracked": 630,
+    "tracked": 631,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 23,
-      "documentation": 313,
+      "documentation": 314,
       "generated": 2,
       "module-guide": 36,
       "product-document": 22,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 20404,
       "lines": 281,
-      "sha256": "d6bd93045f63298c7de951bef644bfeecca4adc03d16219f17f02cf6099bfba5",
+      "sha256": "07625136777cf892c1c3abd43fc1e5f852b7d9a32c4ce04b39e1f0581d05acea",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3178,6 +3178,18 @@
       "bytes": 10071,
       "lines": 200,
       "sha256": "6e7d73fbc8952f3c192dcc01564c40f95dee1342768ca45b13e85e36b97f0561",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-operator-preview-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2526,
+      "lines": 68,
+      "sha256": "84333471984fcceee61848bd4390a557b94dfc637e530ebcb0755769b6121e14",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

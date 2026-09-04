@@ -111,7 +111,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Fundação contratual e técnica para briefing, criativo, integração segura, inventário e futura criação governada de campanha, conjunto e anúncio Meta, mantida separada de retenção e do inventário Google.",
-      "evidence": "Em 04/09/2026, o contrato Meta Marketing API v26 foi adjudicado em 44 capacidades, 10 etapas do operador e 18 bindings UI/API. A v15_01 preparada localmente cria read model Meta isolado, RLS forçada, identidade determinística, sincronização hierárquica GET-only e resolvedor de segredo fail-closed; 24 testes focais e ciclo PostgreSQL 15 descartável passaram. O Hub passou a isolar rede=meta sem consultar dados Google. Continua partial: migration oficial, system user/token real, adapter Supabase, rotas de leitura, insights, criativos runtime e criação PAUSED Meta não foram executados.",
+      "evidence": "Em 04/09/2026, o contrato Meta Marketing API v26 foi adjudicado em 44 capacidades, 10 etapas do operador e 18 bindings UI/API. A fundação v15_01 mantém read model isolado e sincronização GET-only. A lane operacional passou a exibir inventários demonstrativos e páginas canônicas navegáveis para campanha, conjunto, anúncio e criativo, além de uma bancada de criação em oito decisões. Um atalho provisório ADMIN, restrito a localhost no macOS, valida /me e /me/adaccounts e cifra o token no Chaveiro somente após leitura válida, sem browser storage, Supabase ou mutate. Continua partial: nenhum token/conta real foi testado, as telas ainda usam dados fictícios, a migration oficial não foi aplicada e não há executor de criação PAUSED.",
       "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
@@ -358,7 +358,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Contrato criativo → campanha → conjunto → anúncio → site, com fundação de leitura isolada e gestão futura no Hub de Tráfego.",
-      "evidence": "A direção declarada pelo dono ganhou contrato v26 adjudicado, esquema local preparado, domínio de hierarquia e sincronização GET-only hermética. O Hub diferencia Meta de Google e falha fechado quando Meta não está configurada. Integração real, inventário vivo, insights, criação e gestão externa ainda não foram implementados.",
+      "evidence": "A direção declarada pelo dono ganhou contrato v26 adjudicado, esquema local preparado, domínio de hierarquia e sincronização GET-only hermética. O Hub diferencia Meta de Google; sem integração real, oferece um cenário demonstrativo explicitamente fictício com inventário, páginas por nível e criação guiada, sem fabricar procedência. Integração real, inventário vivo, insights, persistência do blueprint e gestão externa ainda não foram implementados.",
       "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
