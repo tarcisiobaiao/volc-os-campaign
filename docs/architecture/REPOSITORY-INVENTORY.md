@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-03T18:39:53-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-04T11:15:39-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 596 arquivos: 428 Markdown e 168 SQL;
-- 596 versionados e 0 ainda não versionados;
+- 630 arquivos: 460 Markdown e 170 SQL;
+- 628 versionados e 2 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 107 SQL com palavras de mutação de alto risco.
+- 109 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,17 +17,17 @@ Gerado em `2026-09-03T18:39:53-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 23 |
-| `documentation` | 283 |
+| `documentation` | 313 |
 | `generated` | 2 |
-| `module-guide` | 35 |
-| `product-document` | 21 |
+| `module-guide` | 36 |
+| `product-document` | 22 |
 | `project-control` | 4 |
 | `reference` | 12 |
 | `runtime-contract` | 20 |
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 55 |
+| `sql-needs-review` | 57 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -137,6 +137,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v14_01_publicacao_organica.sql` | `sql-needs-review` | 30 | 114 |
 | `supabase/migrations/v14_99_publicacao_organica_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v15_01_meta_ads_read_model.sql` | `sql-needs-review` | 8 | 25 |
+| `supabase/migrations/v15_99_meta_ads_read_model_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |
@@ -266,13 +268,13 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v13_99_cofre_de_ativos_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v14_01_publicacao_organica.sql` | `sql-needs-review` | high | 30 | 114 |
 | `supabase/migrations/v14_99_publicacao_organica_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v15_01_meta_ads_read_model.sql` | `sql-needs-review` | high | 8 | 25 |
+| `supabase/migrations/v15_99_meta_ads_read_model_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_04_users_grants.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_05_users_safe_view.sql` | `sql-needs-review` | high | 2 | 3 |
-| `supabase/migrations/v8_06_users_sensitive_columns_revoke.sql` | `sql-needs-review` | medium | 1 | 0 |
-| `supabase/migrations/v8_07_default_privileges_hardening.OPCIONAL.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

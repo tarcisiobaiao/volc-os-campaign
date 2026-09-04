@@ -1,0 +1,17 @@
+{
+  "verdict": "META_V26_READ_FOUNDATION_LOCAL_ACCEPTED",
+  "roadmap": [
+    {"task": "P11-T02", "state": "partial"},
+    {"task": "P11-T03", "state": "partial"},
+    {"task": "P11-T05", "state": "todo"},
+    {"task": "P11-T06", "state": "partial"}
+  ],
+  "graph_nodes": [
+    {"id": "cap_meta_ads", "state": "partial"},
+    {"id": "concept:meta_direct_traffic", "state": "partial"}
+  ],
+  "external_mutation": false,
+  "official_migration_applied": false,
+  "real_meta_read": false,
+  "real_meta_mutate": false
+}

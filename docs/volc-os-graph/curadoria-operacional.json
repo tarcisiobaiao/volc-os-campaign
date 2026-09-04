@@ -5,7 +5,7 @@
     "papel": "FONTE HUMANA. Editável à mão. O pipeline lê este arquivo e NUNCA o sobrescreve.",
     "saida_gerada": "docs/volc-os-graph/volc-os-graph.json",
     "snapshot_date": "2026-08-22",
-    "curadoria_atualizada_em": "2026-09-03",
+    "curadoria_atualizada_em": "2026-09-04",
     "method": "Código + PostgREST vivo + inventário n8n + ClickUp + fontes oficiais + decisões do dono",
     "warning": "Ativo declarado no n8n não equivale a execução comprovada."
   },
@@ -270,9 +270,9 @@
       "id": "cap_meta_ads",
       "label": "Operação Meta Ads",
       "cluster": "acquisition",
-      "state": "todo",
-      "summary": "Contrato de briefing, jornada, criação de imagens e vídeos, integração por system user, campanha, conjunto, anúncio, criativo, análise e gestão assistida.",
-      "evidence": "Estratégia de tráfego direto declarada pelo dono em 26/08/2026 e material externo em /Users/mac/Downloads/Co-Piloto de Criação Meta Ads. Meta CAPI não equivale à compra de mídia; os documentos antigos de chat e LTV pertencem a cap_meta_retention, não a esta capacidade."
+      "state": "partial",
+      "summary": "Fundação contratual e técnica para briefing, criativo, integração segura, inventário e futura criação governada de campanha, conjunto e anúncio Meta, mantida separada de retenção e do inventário Google.",
+      "evidence": "Em 04/09/2026, o contrato Meta Marketing API v26 foi adjudicado em 44 capacidades, 10 etapas do operador e 18 bindings UI/API. A v15_01 preparada localmente cria read model Meta isolado, RLS forçada, identidade determinística, sincronização hierárquica GET-only e resolvedor de segredo fail-closed; 24 testes focais e ciclo PostgreSQL 15 descartável passaram. O Hub passou a isolar rede=meta sem consultar dados Google. Continua partial: migration oficial, system user/token real, adapter Supabase, rotas de leitura, insights, criativos runtime e criação PAUSED Meta não foram executados."
     },
     {
       "id": "cap_creative_engines",
@@ -592,9 +592,9 @@
       "id": "concept:meta_direct_traffic",
       "label": "Meta direto para o site",
       "cluster": "acquisition",
-      "state": "todo",
-      "summary": "Contrato criativo → campanha → conjunto → anúncio → site, com gestão e análise no Hub de Tráfego.",
-      "evidence": "Direção atual declarada pelo dono; o chassi Meta existe no Hub, mas integração, criação e gestão reais ainda não estão implementadas."
+      "state": "partial",
+      "summary": "Contrato criativo → campanha → conjunto → anúncio → site, com fundação de leitura isolada e gestão futura no Hub de Tráfego.",
+      "evidence": "A direção declarada pelo dono ganhou contrato v26 adjudicado, esquema local preparado, domínio de hierarquia e sincronização GET-only hermética. O Hub diferencia Meta de Google e falha fechado quando Meta não está configurada. Integração real, inventário vivo, insights, criação e gestão externa ainda não foram implementados."
     },
     {
       "id": "concept:meta_chat_retention",

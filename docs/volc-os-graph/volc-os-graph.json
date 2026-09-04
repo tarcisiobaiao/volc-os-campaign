@@ -2,7 +2,7 @@
   "meta": {
     "title": "Curadoria operacional VOLC O.S.",
     "snapshot_date": "2026-08-22",
-    "curadoria_atualizada_em": "2026-09-03",
+    "curadoria_atualizada_em": "2026-09-04",
     "method": "Código + PostgREST vivo + inventário n8n + ClickUp + fontes oficiais + decisões do dono",
     "warning": "Ativo declarado no n8n não equivale a execução comprovada.",
     "gerado": true,
@@ -47,7 +47,7 @@
       "tier": 1,
       "summary": "Evolui o núcleo Search para operar Display, Demand Gen, Performance Max, Vídeo e Shopping por perfis e adaptadores de canal, sem duplicar o Hub.",
       "evidence": "Display deixou de ser reconhecimento e virou construtor: volc_ads/campanha/display.py monta o grafo completo num mutate — budget, campanha, geo, idioma, ad group e responsive display ad — com 51 testes próprios. Desde 3eeafbc/07dfe3c o mesmo mutate carrega o ASSET DE IMAGEM: MutateOperation.asset_operation nasce ali, com os bytes dentro (ImageAsset.data é mutate-only), referenciado pelo anúncio por id temporário de faixa própria; sem duas fases, não existe o estado 'o asset subiu e a campanha não'. O perfil de canal (volc_ads/campanha/perfil.py) declara cada fato UMA vez no módulo do canal e é referenciado por identidade, não copiado; a coerência com o manifesto do Hub é provada por leitura de árvore sintática, sem o backend importar o SDK do Google. FALTA validate_only contra a conta real — nenhuma prova nesta capability tocou a conta, e é isso que impede `implemented`. Falta também a ligação HTTP dos assets: a fronteira de criativo existe desde db39f0b e só é alcançável por linha de comando do operador, porque `ProvarEntrada` não tem campo de imagem. Demand Gen e PMax continuam sem construtor, e o manifesto declara isso. Segmentação positiva por placement ficou de fora: a documentação oficial se contradiz e a prova exigiria validate_only na conta real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_traffic_queue",
@@ -60,7 +60,7 @@
       "tier": 1,
       "summary": "Fila de oportunidades, campanhas já no ar, alertas de entrega e política.",
       "evidence": "Rota /trafego e backend /api/trafego/*.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_inventario_trafego",
@@ -73,7 +73,7 @@
       "tier": 1,
       "summary": "O Hub de Tráfego responde, com dado real: o que existe nas contas, em que estado, quão recente é a leitura e o que pede atenção. Três abas, inventário agrupado por conta, busca e filtros resolvidos no servidor sobre o universo.",
       "evidence": "VALIDADO EM NAVEGADOR em 25/08/2026, autenticado, com as 84 campanhas reais de 3 contas. v9_01 e v9_02 aplicadas no Supabase oficial; PostgREST real validado; primeira varredura real concluída (Crédito Up 5, PMUNDO+ 74, Portal Mundo Mais 5 — zero falha, GAQL somente SELECT, trava de escrita fechada). ATENÇÃO CONCORDA EM TRÊS LUGARES: API `totais.atencao`=2, rótulo da aba `atenção2`, e a fila com Maquininha e FGTS — as duas únicas ENABLED, ligadas e sem clique. As 79 removidas ficam no inventário como histórico, não na fila. BUSCA E FILTROS sobre o universo, provados no navegador: busca=FGTS→3 de 84, busca=Maquininha→2 (ativa e removida), conta=Crédito Up→5 (as que a paginação escondia), atencao=1→2. Zero erro de console, zero overflow horizontal em desktop e mobile, aria-expanded na expansão inline. Gates: frontend 518, backend 647, volc_ads 218, tipos 76 (composição idêntica ao baseline), build em árvore limpa verde, zero GAQL no render, nenhum JWT privilegiado no bundle. Commits dc9b29f, e5a0118, 87c00fc, 42e3afd, 30cc5c4.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_meta_retention",
@@ -86,7 +86,7 @@
       "tier": 1,
       "summary": "Vertical separada do Meta direto: captura consentida por conversa, relacionamento, retorno ao conteúdo e atribuição de clique e receita por página e lead.",
       "evidence": "ChatPion publicado respondeu HTTP 200 em 26/08/2026; Black Book Meta descreve arquitetura, schema e agentes. O dono informa que a operação nunca rodou e os workflows encontrados estão desativados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_search_birth",
@@ -99,7 +99,7 @@
       "tier": 1,
       "summary": "Origem, keyword, copy, conta, lance, prova real, criação pausada e recibo.",
       "evidence": "Cockpit /trafego/nova/:opportunityId e engine Google Ads v25.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_meta_ads",
@@ -107,12 +107,12 @@
       "type": "capability",
       "cluster": "acquisition",
       "cluster_label": "Aquisição & campanhas",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
-      "summary": "Contrato de briefing, jornada, criação de imagens e vídeos, integração por system user, campanha, conjunto, anúncio, criativo, análise e gestão assistida.",
-      "evidence": "Estratégia de tráfego direto declarada pelo dono em 26/08/2026 e material externo em /Users/mac/Downloads/Co-Piloto de Criação Meta Ads. Meta CAPI não equivale à compra de mídia; os documentos antigos de chat e LTV pertencem a cap_meta_retention, não a esta capacidade.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "summary": "Fundação contratual e técnica para briefing, criativo, integração segura, inventário e futura criação governada de campanha, conjunto e anúncio Meta, mantida separada de retenção e do inventário Google.",
+      "evidence": "Em 04/09/2026, o contrato Meta Marketing API v26 foi adjudicado em 44 capacidades, 10 etapas do operador e 18 bindings UI/API. A v15_01 preparada localmente cria read model Meta isolado, RLS forçada, identidade determinística, sincronização hierárquica GET-only e resolvedor de segredo fail-closed; 24 testes focais e ciclo PostgreSQL 15 descartável passaram. O Hub passou a isolar rede=meta sem consultar dados Google. Continua partial: migration oficial, system user/token real, adapter Supabase, rotas de leitura, insights, criativos runtime e criação PAUSED Meta não foram executados.",
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:channel_adapter",
@@ -125,7 +125,7 @@
       "tier": 1,
       "summary": "Traduz entre o núcleo e a API de cada canal: o que ler na varredura e como escrever no mutate. O núcleo nunca importa um tipo de canal.",
       "evidence": "adaptador_search.py colhe a conta e preserva url_final; o núcleo não importa tipos específicos. Adaptadores dos demais canais ainda não existem.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:campaign_instance",
@@ -138,7 +138,7 @@
       "tier": 1,
       "summary": "Identidade interna 1:1 com uma campanha externa: endereço estável, auditoria e recibo. Identidade externa continua sendo (customer_id, campaign_id).",
       "evidence": "H0 canônico implementado em /trafego/campanhas/:volcCampaignId; id externo não abre a rota e a página não percorre o inventário. Validado em navegador em 26/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "channel:DEMAND_GEN",
@@ -151,7 +151,7 @@
       "tier": 1,
       "summary": "Audiências, assets, formatos, feed e vídeo/imagem.",
       "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado. 2026-08-30 eec859e: fronteira fail-closed em /provar e /subir; Demand Gen relabelado como Search recusado antes de escopo, ponte, cliente e trava; rota produtiva segue recusada (403). Estado permanece todo: o aceite de P04-T09 declara partial como maximo e tres de cinco criterios seguem sem prova.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "channel:DISPLAY",
@@ -164,7 +164,7 @@
       "tier": 1,
       "summary": "Públicos, placements, exclusões, formatos e criativos.",
       "evidence": "CORRIGIDO em 27/08/2026: a evidência anterior dizia 'SEM construtor de grafo, não implementado', e isso é comprovadamente falso desde 646d25e. volc_ads/campanha/display.py constrói o grafo completo — budget, campanha (DISPLAY, PAUSED, maximize_conversions, rede de conteúdo), geo, idioma, ad group DISPLAY_STANDARD e responsive display ad — e desde 3eeafbc/07dfe3c emite também o asset de imagem no mesmo mutate atômico. 51 testes. Fica `partial` e não `implemented` por uma razão só: nenhuma prova tocou a conta real. validate_only está implementado e exercitado com cliente falso; contra a conta ele exige autorização. Segmentação positiva por placement está declarada como indisponibilidade explicada — a documentação oficial se contradiz e a prova exigiria validate_only real. Em db39f0b a fronteira de criativo passou a existir (volc_ads/criativo_ponte.py) e a procedência viaja como `Linhagem` até o recibo, conferida contra os bytes que vão sair. Isso NÃO muda o estado deste canal, e a razão é dupla: continua sem qualquer prova contra a conta real, e o caminho HTTP não chega à ponte — `ProvarEntrada` não tem campo de imagem no corpo, então toda campanha de Display nascida pela API hoje sobe SEM imagem e com `linhagem: []`. Testes de campanha/testes_display.py: 51 → 62.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "channel:PERFORMANCE_MAX",
@@ -177,7 +177,7 @@
       "tier": 1,
       "summary": "Asset groups, sinais, metas, listing groups e criativos.",
       "evidence": "NÃO EXISTE: comum.py levanta ValueError. O front declara PMAX, a taxonomia declara PERFORMANCE_MAX (E-21).",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "channel:SEARCH",
@@ -190,7 +190,7 @@
       "tier": 1,
       "summary": "Keywords, termos de busca, match type, negativas, RSA e CPC. Nasce PAUSED, CPC manual, phrase.",
       "evidence": "Único construtor de grafo: volc_ads/campanha/search.py (E-21).",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "channel:SHOPPING",
@@ -203,7 +203,7 @@
       "tier": 1,
       "summary": "Campanhas baseadas em feed, Merchant Center, produtos, listing groups e objetivos de comércio.",
       "evidence": "Vocabulário canônico aceito pelo contrato U0 em 26/08/2026; builder e perfil funcional ainda não existem.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "channel:VIDEO",
@@ -216,7 +216,7 @@
       "tier": 1,
       "summary": "Campanhas de vídeo e inventário YouTube, com assets, públicos, formatos e objetivos próprios.",
       "evidence": "Vocabulário canônico aceito pelo contrato U0 em 26/08/2026; builder e perfil funcional ainda não existem.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:search_paused_canary",
@@ -229,7 +229,7 @@
       "tier": 1,
       "summary": "Marco de nascimento Search real concluído: criação única, releitura e estado PAUSED foram provados; ativação continuou fora do ato. Mensuração, vínculo, H0 e reconciliação permanecem em capacidades próprias ainda parciais.",
       "evidence": "Canário real executado em 28/08/2026 na Portal Mundo Mais 547-809-6539. validate_only aceitou 72 operações; a mutação atômica criou a campanha 24183717006 e a releitura confirmou SEARCH, R$ 10/dia e campanha-mãe PAUSED, em REVIEW_IN_PROGRESS. Crédito Up não foi tocada. Faltam ledger v10_01 ligado, persistência da intenção, vínculo e reconciliação no inventário/H0 e decisão final de política antes de qualquer ativação. Em 31/08/2026, na sprint search-production-closure-v1 (não integrada à main, nada aplicado em banco), o contrato do ledger passou a existir em código: a v10_03 fecha um defeito reproduzido — abrir recibo não passava por gatilho nenhum, e dois recibos em_voo simultâneos no mesmo item eram aceitos — e /subir passou a gravar aprovação vinculada ao plano e recibo em_voo antes do mutate, recusando a escrita quando o ledger está ausente. Em 31/08/2026 a mesma sprint reproduziu e fechou cinco defeitos que tornavam o fluxo inoperante ou inescapável: o plano ia ao ledger com dinheiro em float e derrubava /subir com 500 antes de existir recibo; a rota nunca lia recibo.estado, então recusa RESPONDIDA pelo Google virava 200 'a campanha existe'; havia duas derivações de volc_campaign_id para o mesmo par externo; a reconciliação não tinha chamador de produção; e a prova de concorrência passava sem provar sobreposição. Uma revisão adversarial externa (Codex Sol, read-only) reprovou o primeiro candidato e apontou que o instante do carimbo entrava na identidade — re-provar o mesmo plano gerava outra chave E outra marca remota, cegando as duas defesas contra duplicidade ao mesmo tempo. Puxando esse fio apareceu o defeito mais grave e mais antigo: a reconciliação, única saída de um item indeterminado, ABORTAVA no caminho real — `fechar(sem_resposta)` põe o lote em `interrompido` e a função tenta `interrompido->concluido`, transição que a máquina de estados da v10_01 não tem. Nenhum item indeterminado jamais poderia ser destravado sem UPDATE à mão, e a prova SQL escondia isso testando o caso fácil. A v10_04 corrige, com rollback provado, e está PREPARADA e NÃO APLICADA. Uma segunda rodada focal encontrou na própria v10_04 o defeito que a missão manda procurar nas migrations alheias — o CREATE OR REPLACE apagara quatro guardas da v10_01 em silêncio, e a verificação escrita junto não pegava porque procurava a substring da transição nova. Corrigido e provado. 85 provas SQL (com sobreposição medida por bloqueio observado em wait_event_type='Lock') e 2258 testes backend. Continua parcial: sem migration aplicada e sem canário novo, os cinco gates de governança seguem sem prova em produção. Em 01/09/2026 as migrations v10_01, v10_03 e v10_04 FORAM APLICADAS no Supabase oficial (database.agenciavolc.com.br), com backup restaurável conferido por tamanho, sha256 e pg_restore -l, e oito contraprovas verdes — incluindo a que confere que o CREATE OR REPLACE da v10_04 não apagou as quatro guardas da v10_01. A v10_02 ficou deliberadamente fora da janela. Na mesma data, dois defeitos de contrato foram fechados antes de qualquer canário novo: a seleção de keywords do operador era descartada em silêncio (duas viravam oito, cinco de concorrentes, com DKI na primeira headline) e a rede de pesquisa era literal no builder, com Search Partners ligado sem ninguém escolher e invisível na impressão que o humano aprova. CONTINUA PARCIAL: nenhum canário com o ledger v10 foi criado, nenhum mutate saiu, nenhum recibo existe no banco e a reconciliação pós-criação nunca foi exercida contra campanha real. O próximo canário é o primeiro COM LEDGER v10 COMPLETO — o primeiro canário Google foi em 28/08/2026, campanha 24183717006. Em 01/09/2026 o canário foi isolado de risco de marca: a copy aprovada citava dez concorrentes em todos os assets, inclusive um structured snippet que era lista de modelos alheios, e com DKI na primeira headline isso viraria teste de marca em vez de teste de infraestrutura. Copy reescrita só com fatos da landing page, payload e dossiê versionados. Corrigido também um erro de RELATÓRIO da entrega anterior: declarou-se prontidão de nascimento sem existir campanha; agora `creation_plan_ready` e `campaign_birth` são campos distintos, e o segundo só fica pronto depois de mutate, recibo e releitura. Continua parcial: nenhum mutate, nenhum recibo, nenhuma reconciliação real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-arba-reference",
@@ -242,7 +242,7 @@
       "tier": 1,
       "summary": "Ad Rank Booster para causas de perda de escala e componentes de Quality Score.",
       "evidence": "Repo ativo, Apache-2.0, com Gaarf/BigQuery/Looker/Vertex. Aceito para spike de consultas e regras, não implantação integral.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-negative-keyword-cleaner-reference",
@@ -255,7 +255,7 @@
       "tier": 1,
       "summary": "Detecta negativas existentes que bloqueiam tráfego; não é minerador de novos termos a negativar.",
       "evidence": "Finalidade corrigida pela leitura do README oficial em 27/08/2026. Deve inspirar auditoria de conflito/desnegativação com aprovação.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-pmaximizer-reference",
@@ -268,7 +268,7 @@
       "tier": 1,
       "summary": "Dashboard de PMax e qualidade/cobertura de assets sobre Gaarf, BigQuery e Looker Studio.",
       "evidence": "Repo ativo conferido em 27/08/2026. Spike somente quando o VOLC tiver dados PMax reais.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:campaign_onboarding_guard",
@@ -281,7 +281,7 @@
       "tier": 1,
       "summary": "Diagnostica maturidade, aprovação, entrega, conversão, lance, verba, anúncio, termos e leilão de campanha nova sem usar remédio fixo ou executar mudança.",
       "evidence": "O flow gads-new-campaign-validation preserva NEXUS v3.0 e v4.9 incompatíveis. nexus_guardiao_72h existe somente como política sintética do Lab e não é sucessor produtivo; nenhum guardião real canônico foi implementado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:media_hub",
@@ -294,7 +294,7 @@
       "tier": 1,
       "summary": "O destino da camada de Tráfego: inventariar, reconciliar, diagnosticar e atuar sobre toda mídia comprada, sob governança e em qualquer canal.",
       "evidence": "Fundação U0/H0 validada contra o Supabase oficial em 26/08/2026: 84 campanhas reais, histórico lazy, atenção 2, H0 canônico e zero GAQL no render. O destino multicanal e a atuação ainda não estão completos.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:multichannel_inventory",
@@ -307,7 +307,7 @@
       "tier": 1,
       "summary": "Lista reconciliada contra a conta, agrupada por conta, com estado de presença, procedência, vínculo e frescor. Canal é coluna, não tela separada.",
       "evidence": "Inventário real agrupado por conta, com histórico, filtros, presença e frescor, validado com 84 campanhas. Vocabulário de seis canais existe no front; somente Search possui adaptador funcional.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:campaign_lineage",
@@ -320,7 +320,7 @@
       "tier": 1,
       "summary": "Agrupa a intenção operacional: testes, relançamentos e substituições. É o sinal de intenção que autoriza bloquear duplicidade.",
       "evidence": "Instância canônica e sinais de lançamento existem; agrupamento explícito de testes, relançamentos e substituições ainda não está fechado. A FGTS possui três campanhas externas e a Maquininha, duas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:rsa_asset_experiment_loop",
@@ -333,7 +333,7 @@
       "tier": 1,
       "summary": "Observa assets com identidade completa, suficiência e sinais oficiais, propõe um diff e mede um eixo por experimento pelo executor canônico.",
       "evidence": "Copy engine e propostas existem. RSA Darwin está inativo e perdia ad group/ad/asset antes de mutar sem validate_only, aprovação, idempotência ou rollback.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:search_terms_workbench",
@@ -346,7 +346,7 @@
       "tier": 1,
       "summary": "Coleta termos e critérios para propor promover, negativar, preservar, despromover ou desfazer negativa conflitante com base em evidência e margem.",
       "evidence": "Criterio tipado e Mesa de Critérios existem. O flow histórico de 636 linhas está inativo; faltam coleta v25.1, persistência, margem, conflito reverso, aprovação e recibo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:meta_direct_traffic",
@@ -354,12 +354,12 @@
       "type": "concept",
       "cluster": "acquisition",
       "cluster_label": "Aquisição & campanhas",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
-      "summary": "Contrato criativo → campanha → conjunto → anúncio → site, com gestão e análise no Hub de Tráfego.",
-      "evidence": "Direção atual declarada pelo dono; o chassi Meta existe no Hub, mas integração, criação e gestão reais ainda não estão implementadas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "summary": "Contrato criativo → campanha → conjunto → anúncio → site, com fundação de leitura isolada e gestão futura no Hub de Tráfego.",
+      "evidence": "A direção declarada pelo dono ganhou contrato v26 adjudicado, esquema local preparado, domínio de hierarquia e sincronização GET-only hermética. O Hub diferencia Meta de Google e falha fechado quando Meta não está configurada. Integração real, inventário vivo, insights, criação e gestão externa ainda não foram implementados.",
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:meta_chat_retention",
@@ -372,7 +372,7 @@
       "tier": 1,
       "summary": "Comentário ou mensagem consentida → ChatPion → identidade → relacionamento → retorno ao conteúdo ou oferta → atribuição.",
       "evidence": "Arquitetura documentada no Black Book Meta e infraestrutura ChatPion publicada; nenhuma operação ponta a ponta foi comprovada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:alertas_gaql_no_render",
@@ -385,7 +385,7 @@
       "tier": 1,
       "summary": "FECHADO em 25/08/2026. `GET /api/trafego/alertas` foi REMOVIDA — não mantida como atalho, porque enquanto existisse um consumidor esquecido continuaria pagando a cota. No lugar, `GET /api/trafego/inventario/alertas` projeta o snapshot já gravado, mesma fonte da aba Atenção.",
       "evidence": "Quatro provas de zero GAQL, uma por caminho: render de /trafego, render do sino, abertura da aba Atenção, e a prova de que a atualização explícita é o único caminho que consulta. São armadilhas de import, não asserção sobre intenção. O que não é derivável do snapshot (`aprovacao_do_anuncio`, `origem`, `quem`) sai como null e a tela diz que não sabe, em vez de inventar a partir do espelho. Commit 5412519.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:pmax_observability",
@@ -398,7 +398,7 @@
       "tier": 1,
       "summary": "Leitura de asset groups, cobertura e qualidade de assets, resultados e riscos de PMax antes de liberar criação ou atuação.",
       "evidence": "O kernel, o portão independente e o coletor produtivo existem. Em 2d1895d, leitura real v25 consultou 13/13 contas, encontrou 12 campanhas PMax e mediu sete famílias separadamente; FieldService + GAQL removeram campos incompatíveis e confirmaram performance_label como NOT_SUPPORTED_IN_V25. Em 14f4101, integrado em 02/09/2026, entraram v12_03, persistência e releitura com identidade completa e detecção de truncamento; o ciclo hermético passou 171/171. Continua partial porque v12_03 não foi aplicada no Supabase oficial, nenhuma fotografia real foi persistida/relida e o portão permanece fechado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "wave:P0-A",
@@ -411,7 +411,7 @@
       "tier": 1,
       "summary": "Bateria somente leitura para explicar por que duas campanhas ligadas há cinco dias não gastam.",
       "evidence": "A aba Atenção explica as duas campanhas ligadas sem clique e sugere a próxima ação segura; diagnóstico aprofundado de aprovação, leilão e volume ainda não forma uma bateria completa no produto.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "wave:P0-D",
@@ -424,7 +424,7 @@
       "tier": 1,
       "summary": "Prova por composição de sinais, contrato de persistência corrigido e evento operacional.",
       "evidence": "FGTS e Maquininha não recebem mais ação de montagem; linhagem explícita, confirmação e evento operacional completo ainda faltam.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "wave:P0-F",
@@ -437,7 +437,7 @@
       "tier": 1,
       "summary": "Carimbo por fonte e atualização manual limitada por escopo e frequência.",
       "evidence": "Carimbo e estado de frescor atravessam schema, API e front; v9_03/v9_04 aplicadas e três contas relidas sem mutação em 26/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "wave:P0-R",
@@ -450,7 +450,7 @@
       "tier": 1,
       "summary": "Sugestão por URL final e confirmação humana obrigatória, com auditoria e reversibilidade.",
       "evidence": "Sugestão por URL final e confirmação no contrato existem; FGTS e Maquininha são correspondências prováveis. Nenhuma linha foi confirmada em trafego_vinculo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "wave:P0-T",
@@ -463,7 +463,7 @@
       "tier": 1,
       "summary": "Identidade, linhagem, sincronizador, inventário na tela, estados de presença e degradação honesta.",
       "evidence": "Validado em 26/08/2026 com 84 campanhas reais, 3 contas, 5 operacionais, 79 históricas, estados de presença, frescor, filtros e degradação honesta.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:channel_profile",
@@ -476,7 +476,7 @@
       "tier": 1,
       "summary": "Declara, de forma tipada, que estágios o cockpit mostra, que painéis injeta, que campos o pedido carrega, que provas rodam e que tipos de proposta existem.",
       "evidence": "Contrato e manifesto de canal existem; Search está operado e os demais canais devolvem ausência honesta. Perfis verticais de Display, Demand Gen, Performance Max, Vídeo e Shopping continuam pendentes.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:duplicity_proof",
@@ -489,7 +489,7 @@
       "tier": 1,
       "summary": "Prova somente leitura na conta antes de subir. Bloqueio exige mesma conta e dois sinais fortes, um deles de intenção.",
       "evidence": "A reconciliação real bloqueia montagem da FGTS e da Maquininha; prova por composição de sinais existe, mas vínculo confirmado e linhagem completa continuam pendentes.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:reconciliation",
@@ -502,7 +502,7 @@
       "tier": 1,
       "summary": "O sistema sugere pela URL final; o operador confirma. Vínculo auditável, corrigível e reversível.",
       "evidence": "FGTS e Maquininha aparecem como correspondência provável e não liberam montagem duplicada; endpoint de confirmação existe, mas trafego_vinculo permanece vazia.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:snapshot_freshness",
@@ -515,7 +515,7 @@
       "tier": 1,
       "summary": "A tela lê snapshot com carimbo, nunca a API. Dado velho aparece com a idade; conta não lida aparece como não lida.",
       "evidence": "v9_01..v9_04 aplicadas; inventário projeta carimbo, ausência e degradação sem consultar Google Ads no render. Três contas relidas em 26/08/2026 com zero falha e trava fechada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:search_intelligence",
@@ -528,7 +528,7 @@
       "tier": 1,
       "summary": "Diagnóstico unificado de escala, Quality Score, impression share, termos, negativas candidatas e negativas existentes que bloqueiam tráfego.",
       "evidence": "Em 03/09/2026, a Search Delivery Sentinel passou a ordenar 16 estados causais, ler lost rank/lost budget separadamente e distinguir keyword estrutural de métrica temporal; a leitura sanitizada da Crédito Up confirmou conta suspensa e sinais de baixa entrega sem expor termos. Continua partial: faltam sensor de demanda, alguns componentes reais de Quality Score/policy, negativas candidatas e caminho inverso de conflito.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_source_truth",
@@ -541,7 +541,7 @@
       "tier": 1,
       "summary": "O Supabase self-hosted em database.agenciavolc.com.br é a única autoridade operacional do VOLC O.S.; nenhum Supabase hospedado é alternativa válida.",
       "evidence": "Decisão explícita do dono em 27/08/2026, registrada em ADR: frontend, Node, FastAPI e ambientes vivos apontam para https://database.agenciavolc.com.br. As 271 referências hospedadas inventariadas permanecem dívida de migração ou aposentadoria, não uma segunda fonte de verdade.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_knowledge_graph",
@@ -554,7 +554,7 @@
       "tier": 1,
       "summary": "Curadoria humana, extração técnica, grafo híbrido e exports para agentes, Obsidian, GraphML, Cypher e HTML. A infraestrutura é permanente; a cobertura estratégica e o snapshot técnico ainda precisam convergir.",
       "evidence": "Pipeline em scripts/atualizar_grafo_volc_os.py e arquitetura em docs/volc-os-graph/ARQUITETURA-PERMANENTE.md. Em 26/08/2026, a curadoria do ecossistema de atenção foi incorporada e o híbrido reconstruído reutilizando a camada técnica; UPDATE_STATUS voltou a current=true.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-argon-reference",
@@ -567,7 +567,7 @@
       "tier": 1,
       "summary": "Conector histórico de relatórios CM360/DV360 para BigQuery.",
       "evidence": "Repo arquivado/deprecated; referência de arquitetura apenas, nunca instalação.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-crystalvalue-reference",
@@ -580,7 +580,7 @@
       "tier": 1,
       "summary": "Biblioteca de pLTV com Vertex AI.",
       "evidence": "Repo ativo, Apache-2.0. Fora do cérebro de arbitragem editorial imediato; reavaliar para leads/recorrência.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-ga4-dataform-reference",
@@ -593,7 +593,7 @@
       "tier": 1,
       "summary": "Modelos Dataform para transformar exportação GA4 no BigQuery.",
       "evidence": "Repo ativo, Apache-2.0. Spike condicionado à existência de exportação GA4/BigQuery real e decisão de infraestrutura.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:mmm_weekly_dataset",
@@ -606,7 +606,7 @@
       "tier": 1,
       "summary": "Snapshot reprodutível no grão semana × geo × canal, com mídia, spend, KPI somável, controles, moeda, cobertura, imputações e linhagem.",
       "evidence": "Contrato proposto em SPEC-MERIDIAN-MMM-VOLC.md. As fontes existem de forma parcial e com frescor divergente; nenhuma tabela ou exportação canônica para Meridian foi implementada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_execution",
@@ -619,7 +619,7 @@
       "tier": 1,
       "summary": "Aplica mudança no Google Ads e registra o resultado.",
       "evidence": "A esteira existe desenhada e provada em cluster descartável (19 tabelas), com idempotência para \"timeout mas criou\" e T2 ausente. O canário Search restringe conta, MCC, canal, status PAUSED, tetos e duplicidade remota. A auditoria registra exatamente três famílias de snapshots com mutate (Webhook, Form Triggers e ClickUp); active:true é estado do snapshot, não prova de execução viva. Continua parcial, mas NÃO mais por falta de migration: em 01/09/2026 a v10_01, a v10_03 e a v10_04 foram APLICADAS no Supabase oficial (a v10_02 ficou fora da janela, por decisão), e no mesmo dia o primeiro canário COM LEDGER v10 nasceu — campanha 24195821946, PAUSED, com recibo 5526a821-d843-4221-94a6-cdeb9a174dd4 fechado como sucesso e identidade bfd10e8f-7028-5ec4-885b-efa1dc7bf96e. O que sustenta o `partial` agora é outra coisa: a campanha PAUSED não aparece no espelho H0 (o coletor contínuo lê só ENABLED), o vínculo editorial funil × campanha tem zero linhas, e a reconciliação nunca foi exercida contra um item indeterminado real. A ligação às rotas deixou de faltar em código: em 31/08/2026 a sprint search-production-closure-v1 entregou o writer produtivo (backend/app/trafego/ledger.py) e a v10_03, com recibo em_voo anterior ao mutate e recusa da escrita quando o ledger está ausente — mas isso vive numa branch não integrada e não alcança banco nenhum. As superfícies legadas ainda precisam ser autenticadas ou aposentadas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_bia_copilot",
@@ -632,7 +632,7 @@
       "tier": 1,
       "summary": "Camada conversacional contextual sobre o VOLC O.S.: interpreta fatos, frescor, relações, playbooks e decisões; começa somente leitura e nunca executa ação externa sem confirmação.",
       "evidence": "Hermes Agent declarado pelo dono em 26/08/2026, rodando em VPS com API compatível com /v1/chat/completions. Integração VOLC, gateway e contratos ainda não implementados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_incrementality_mmm",
@@ -645,7 +645,7 @@
       "tier": 1,
       "summary": "Camada estratégica de MMM para estimar contribuição incremental, ROI marginal, saturação e cenários de orçamento por canal e, quando houver suficiência, por geo.",
       "evidence": "Decisão arquitetural registrada em 27/08/2026 após revisão do Google Meridian 1.6.1 e da documentação oficial. Nenhum mart semanal, EDA, modelo treinado, calibração ou cenário VOLC existe ainda; portanto a capacidade permanece `todo`.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_decision",
@@ -658,7 +658,7 @@
       "tier": 1,
       "summary": "Heurísticas, BEAST, ORAKUL, orientação diária e fila conceitual de ações.",
       "evidence": "Nove workflows proprietários foram resgatados e congelados em 28/08/2026. ORAKUL tem mutações históricas e cinco famílias defensáveis de política, mas continua misturado a I/O, literais e caminhos mortos; NEXUS possui duas versões incompatíveis; Search Terms e RSA Darwin podiam mutar fora do portão canônico. As 19 políticas herdadas seguem como proposta e zero são publicáveis sem frescor, owner, replay, limite e rollback.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_forecast",
@@ -671,7 +671,7 @@
       "tier": 1,
       "summary": "Projeta comportamento futuro e deveria comparar previsão com ocorrido.",
       "evidence": "Bola de Cristal está inativa e manual: 46 nós, 1.102 linhas, três rotas A/B/C, campanha/data hardcoded, zero persistência. A ideia planned_spend é útil, mas a implementação tem target leakage, avaliação desalinhada e intervalo não calibrado. Registry, predictions, evaluations, drift e schema v12 continuam somente propostas; nenhuma previsão shadow foi persistida no Supabase oficial. 2026-08-30: permanece inactive. O candidato 7ee202e fechou D1, D3, D4 e a normalizacao idempotente, mas foi rejeitado para integracao por procedencia forjavel; nada disso esta na fonte.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:beast_meta_lab",
@@ -684,7 +684,7 @@
       "tier": 1,
       "summary": "Pacote experimental de precheck, observação, avaliação, decisão e rotação criativa que pode fornecer padrões, testes e contratos, mas não política pronta de automação.",
       "evidence": "Encontrados 4 workflows legados e 5 V2, todos active=false, além de SQL com 14 tabelas e 2 views. O mestre anuncia sete agentes, mas os artefatos presentes não comprovam todos eles nem execuções reais.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:decision-lab-l6-surface",
@@ -697,7 +697,7 @@
       "tier": 1,
       "summary": "Projeta evidência, suficiência, diagnóstico, proposta e bloqueio sem recalcular regra ou autorização no navegador.",
       "evidence": "3f9e22a e 9c1c907 foram integrados em 9f10d39 com 44 provas; fixtures sintéticas não podem afirmar dado real. Falta bundle shadow verdadeiro do backend e GoogleAdsRow real atravessando o normalizador.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-causmos-reference",
@@ -710,7 +710,7 @@
       "tier": 1,
       "summary": "Web app de Causal Impact para comparar KPI observado com contrafactual após uma intervenção.",
       "evidence": "Repo ativo, Apache-2.0, README conferido em 27/08/2026. Candidato a spike isolado, não substituto de experimento randomizado ou Meridian.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-feedx-reference",
@@ -723,7 +723,7 @@
       "tier": 1,
       "summary": "Desenho e análise de experimentos de feed com MDE, CUPED, crossover, washout e trimming.",
       "evidence": "Repo ativo, Apache-2.0. Referência de método; não serve para budget/bid e normalmente exige muitos itens.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-fractional-uplift-reference",
@@ -736,7 +736,7 @@
       "tier": 1,
       "summary": "Modelagem de uplift sensível a custo.",
       "evidence": "Repo arquivado em 2026. Leitura técnica apenas; não será base produtiva.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-if-this-then-ad-reference",
@@ -749,7 +749,7 @@
       "tier": 1,
       "summary": "Regras que consultam APIs/eventos e podem controlar entidades Google Ads ou DV360.",
       "evidence": "Repo ativo e mutation-capable. O VOLC extrairá o padrão evento→recomendação; alvo direto e instalação foram recusados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:orakul_policy_kernel",
@@ -762,7 +762,7 @@
       "tier": 1,
       "summary": "Pacote Python puro que transforma fatos em features, políticas versionadas, arbitragem e proposta, sem I/O nem mutação.",
       "evidence": "ORAKUL histórico contém maturidade, histerese, piso/teto, evento externo, lance por RPC e fila de ações. REPORT, SPEC e AUDIT Fable confirmam que o conhecimento permanece em 1.678 linhas misturadas a I/O, inputs mortos e execução paralela; as políticas do Lab são calibração sintética e zero régua histórica foi promovida como política publicável.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:decision_intelligence_lab",
@@ -775,7 +775,7 @@
       "tier": 1,
       "summary": "Fatia sintética e determinística que normaliza projeções raw com recibo e linhagem, combina sinais de escala, saúde e eventos com políticas NEXUS/ORAKUL e prova diagnóstico causal, recomendação, conflito, decisão humana e recibo antes de tocar dados reais.",
       "evidence": "Integrado em c846b56 e blindado em 6ff6fa7: oito cenários sintéticos, 28 contraprovas fail-closed e 10 provas de UI. A fronteira raw sintética → contrato VOLC entrou em 51437f3..7f0b768 após quatro recusas adversariais; possui normalizador hermético, cobertura, linhagem, fingerprint, ausência diferente de zero e 134 contraprovas próprias. Kernel + fronteira: 162 provas; gates amplos: 1.195 backend e 518 volc_ads. REPORT/AUDIT Fable reproduziram 8/8 e confirmaram que a crítica LLM não altera a decisão. Permanece partial: nenhum GoogleAdsRow real atravessou a fronteira; zero shadow real foi persistido e faltam ledger, replay futuro, aprovação e recibo produtivo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:forecast_lifecycle",
@@ -788,7 +788,7 @@
       "tier": 1,
       "summary": "Versiona modelos e previsões, mede erro futuro, calibra intervalos, detecta drift e promove challengers somente após vencer baseline com aprovação.",
       "evidence": "Não existem model registry, prediction ledger, evaluator ou drift events no banco oficial; schema v12, fotografia, previsão e realizado continuam proposta não aplicada. Bola de Cristal não persiste previsões e possui vazamento de futuro. 2026-08-30: P14-T10 BLOQUEADO. Nada entrou na linha oficial; services/orakul_predictive em eec859e e byte-identico a 51b4e2e. Nao existe ponte confiavel coleta->Core: ObservacaoDiaria so nasce de fixture e de teste, nada converte DocumentoColeta, e o coletor nao modela receita diaria. SPEC v5 rejeitada na revisao adversarial. Proibido promover fixture, replay ou shadow a dado real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:mmm_shadow_mode",
@@ -801,7 +801,7 @@
       "tier": 1,
       "summary": "Cenários e recomendações do MMM são registrados, comparados com decisões e resultados posteriores e nunca ganham autoridade direta de escrita.",
       "evidence": "Decisão de governança de 27/08/2026. Depende de dataset, modelo aceito, intervalos explícitos e retrospectiva; nada implementado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:opportunity_thesis",
@@ -814,7 +814,7 @@
       "tier": 1,
       "summary": "Camada intermediária entre a medição editorial e a elegibilidade paga: explica se vale aprofundar, experimentar, reter ou descartar, preservando proveniência e incomparabilidade.",
       "evidence": "DECISION-CONTRACT/1 e app.validacao.oportunidade. Priors Webgo são hipóteses não decisórias por construção e mutação; score do LLM não alcança valor, transporte ou código desta camada. A UI real ainda precisa ser exercitada no fluxo autenticado do Kanban.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:decision_timeline",
@@ -827,7 +827,7 @@
       "tier": 1,
       "summary": "Apresenta fato, evidência, diagnóstico, previsão, proposta, autorização, aplicação, follow-up e reversão como objetos distintos.",
       "evidence": "Schema v10 e partes do frontend existem, mas writer, aprovação, ledger e executor não fecham ponta a ponta. O writer ORAKUL grava no Supabase legado enquanto o front lê orientacao_* no self-hosted oficial.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:adaptive_budget_allocator",
@@ -840,7 +840,7 @@
       "tier": 1,
       "summary": "Aloca orçamento global entre unidades de mídia elegíveis com restrições explícitas de ROI, risco e gasto, inicialmente por replay e shadow, sem substituir Smart Bidding ou executar mutações.",
       "evidence": "SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md confronta o paper arXiv:2302.01523 com ORAKUL, Decision Lab e Meridian. Nenhum allocator foi implementado; campanhas que não consomem budget são explicitamente inelegíveis.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:intervention_impact_lab",
@@ -853,7 +853,7 @@
       "tier": 1,
       "summary": "Laboratório de hipóteses, desenho experimental, potência, controle/tratamento, intervenção, washout e efeito com intervalo.",
       "evidence": "Causmos e FeedX foram aceitos como referências complementares; nenhum contrato de experimento ou análise causal de intervenção existe no runtime VOLC.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_discovery",
@@ -866,7 +866,7 @@
       "tier": 1,
       "summary": "Entidades, países, dores, eixos, oportunidades, validação e inteligência cultural.",
       "evidence": "Banco atual: 20 entidades, 20 oportunidades, 88 eixos e 40 dores. Em 03/09/2026, a Camada 2 do Validador passou a derivar uma tese determinística a partir do resumo já medido, com sete estados fechados, fatos/hipóteses/desconhecidos disjuntos, formato e próximo experimento. Replay reproduzível de 1.152 casos e 186 testes focais provaram que priors Webgo e score do LLM não movem decisão ou ranking nesta camada. A capacidade permanece live, mas a nova experiência é partial até o arraste real ser exercitado com sessão e dados oficiais.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_paid_keyword_eligibility",
@@ -879,7 +879,7 @@
       "tier": 1,
       "summary": "Decide por termo se ele pode entrar numa campanha Search, preservando estado do dado, intenção, risco, match type, origem e impressão aprovada; não autoriza lançamento.",
       "evidence": "sprint/pautador-paid-keyword-eligibility-v1 integrada em 03/09/2026: 61 contraprovas de elegibilidade + 33 do caminho real e 228 provas de coexistência com o portão de destino. /provar e /subir falham antes da rede diante de conjunto ausente, divergente, bloqueado ou mutado pelo envelope HTTP.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_keyword_mining",
@@ -892,7 +892,7 @@
       "tier": 1,
       "summary": "Valida demanda, cria seeds, clusters e hipóteses de funil.",
       "evidence": "Banco atual: 143 seed queries, 3 clusters e 11 validações. Em 03/09/2026, a mineração passou a carregar também o conjunto pago aprovado, sem confundir oportunidade editorial com elegibilidade para mídia. O conjunto positivo materializado em /provar e /subir é exatamente o aprovado e não pode ser ampliado ou reduzido pelo corpo HTTP.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_opportunity_validation",
@@ -905,7 +905,7 @@
       "tier": 1,
       "summary": "Transforma a medição já gravada em tese explicável, formato de funil e próximo experimento, sem recalcular sensores, confiar em score de LLM ou promover benchmark externo a regra.",
       "evidence": "Integrada em 03/09/2026 pela sprint pautador-psychological-validation-v2: app.validacao.oportunidade, POST /api/pautador/entity-opportunities/teses, TeseDaOportunidade e ComparadorDeOportunidades. Verificação do integrador reproduziu 186 testes focais, 15 de interface, build e replay byte-idêntico de 1.152 casos. Continua partial: fluxo real de arraste não exercitado; CPC->densidade e score opaco na descoberta continuam dívidas a montante.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-ml-toast-reference",
@@ -918,7 +918,7 @@
       "tier": 1,
       "summary": "Clustering semântico multilíngue de search terms em janelas diferentes.",
       "evidence": "Repo arquivado; último push observado em 2024. Referência conceitual, nunca dependência produtiva.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-topic-mine-reference",
@@ -931,7 +931,7 @@
       "tier": 1,
       "summary": "Identifica tópicos a partir de dados próprios/externos e usa Gemini para keywords e textos.",
       "evidence": "Repo ativo, Apache-2.0. Deve ser confrontado com o Pautador; proibido criar um segundo motor de pauta.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:topic_radar",
@@ -944,7 +944,7 @@
       "tier": 1,
       "summary": "Consolida tendências, Search Console, GA4, termos, RPM, geo, sazonalidade e risco numa prioridade de pauta/campanha sem duplicar o Pautador.",
       "evidence": "Pautador e mineração de keywords existem. Topic Mine foi aceito apenas para gap analysis; a saída unificada e seu histórico ainda não existem.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_asset_vault",
@@ -957,7 +957,7 @@
       "tier": 1,
       "summary": "Registro operacional de páginas, perfis, contas, domínios, propriedades monetizadas, integrações, engines e referências seguras de credencial, com dono, estado, evidência, relações e próximo uso.",
       "evidence": "O schema v13_01/v13_02 e a API administrativa estão operacionais no Supabase oficial. Em 03/09/2026 a experiência do operador passou a materializar visão com frescor, vazio honesto, inventário tabular responsivo, detalhe, prontidão operacional/visual e onboarding progressivo; 93 testes focais de frontend e o build Vite passaram no resultado integrado. As peças cofre/item/campo nunca são persistidas no browser e o localizador é formado somente em memória no POST. Continua partial: não há página monetizada, referência real ou perfil AdsPower real cadastrados, e a ligação bidirecional Cofre↔Mapa Vivo permanece aberta.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_finance",
@@ -970,7 +970,7 @@
       "tier": 1,
       "summary": "Normaliza a economia da operação e o resultado líquido.",
       "evidence": "Taxa e câmbio têm estrutura; histórico de câmbio termina em 18/02 e custos operacionais estão vazios.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_identidade_hub",
@@ -983,7 +983,7 @@
       "tier": 1,
       "summary": "Toda rota do backend exige identidade comprovada no servidor: sessão do Supabase para o navegador, credencial própria para serviço. O papel vem de app_auth.user_roles, fora do alcance do REST.",
       "evidence": "v8_01 aplicada em produção em 24/08/2026 (executor supabase_admin): public.volc_role_of(uuid) existe, 1 ADMIN ativo casando com o sub de auth.users, RPC via service_role devolve ADMIN e via anon devolve 401 permission denied. app_auth fora de PGRST_DB_SCHEMAS, sem USAGE para anon/authenticated/service_role. No código: api/_lib/identidade.js e backend/app/seguranca/identidade.py, com portão no APIRouter — 66 rotas, 14 admin, 2 abertas (/health e /). Commits 4a08ef2, 020cbc4, ef5cdf0.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_health",
@@ -996,7 +996,7 @@
       "tier": 1,
       "summary": "Sino, alertas de entrega, data status, timestamps e force update.",
       "evidence": "Em 03/09/2026, a Search Delivery Sentinel integrou veredito causal, frescor, janela 72h e próximo ato na página canônica; o sino ganhou estado lista_incompleta. Continua partial porque a fila de atenção não consome o incidente, consolidar() não tem chamador/persistência e falta visão de carteira e heartbeat.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_people",
@@ -1009,7 +1009,7 @@
       "tier": 1,
       "summary": "Usuários, acesso, comissões e payouts. ⚠️ O RBAC legado NÃO é portão confiável.",
       "evidence": "Medido em 24/08/2026: get_current_user_role lê current_setting que ninguém define; public.users sem RLS, zero policies, anon com escrita; proxies com service_role sem autenticação. Segue em risco depois de v8_01: a fonte de autorização do Hub passou a existir, mas public.users continua com RLS desligada e anon com escrita — isso só cai com v8_02..v8_06, que NÃO foram aplicadas (autorização do dono cobriu apenas v8_01).",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_work_road",
@@ -1022,7 +1022,7 @@
       "tier": 1,
       "summary": "Sala de comando que lê a fonte versionada do Work Road, mostra prioridades, ondas, tarefas, provas e progresso, e falha fechado se a fonte não puder ser validada.",
       "evidence": "Integração Codex em 29/08/2026: /settings/qg-agentico tem Agora, Timeline, Kanban, Lista, Grafo, Execuções e Inbox; cada tarefa tem URL própria; exporta JSON/HTML/PDF selecionável. O Inbox é serializado entre processos, append-only por recibo e separado do percentual; reordenação ADMIN usa hash esperado e recusa sobrescrever uma fonte nova. Commits d2ed5cb, 5445c5e, 230214c, 28b7b50, 81f9f69, e4699a9 e 0f3bf60. A edição completa de conteúdo das tarefas pela interface e o heartbeat unificado de todos os provedores continuam pendentes; por isso permanece partial.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:contencao_1a",
@@ -1035,7 +1035,7 @@
       "tier": 1,
       "summary": "Fechamento da superfície privilegiada. O REPOSITÓRIO está fechado; a PRODUÇÃO não. Os proxies genéricos foram removidos, o X-API-Key saiu do bundle e as 66 rotas do FastAPI ganharam portão — mas nada disso foi publicado, e no banco só v8_01 rodou.",
       "evidence": "APLICADO EM PRODUÇÃO: v8_01 em 24/08/2026 14:48-03 (executor supabase_admin) — cria app_auth, semeia 1 ADMIN e publica public.volc_role_of(), que é a autoridade do portão. PENDENTE NO BANCO: v8_02..v8_06 e a v8_07 opcional NÃO foram aplicadas. PENDENTE NO DEPLOY: nada foi publicado na Vercel; o deployment de produção continua sendo o de 16/02/2026. NO REPOSITÓRIO: commits 4a08ef2 (proxies removidos), 020cbc4 (login) e ef5cdf0 (portão nas 66 rotas); backend/tests/test_seguranca_hub.py com 48 testes verdes.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:operational_event",
@@ -1048,7 +1048,7 @@
       "tier": 1,
       "summary": "Registro append-only com chave de agrupamento opaca. É o que o P0 entrega; o P1 promove a Ocorrência e agrega em Incidente.",
       "evidence": "ADR-14. Nenhuma tabela de alerta, incidente ou recibo existe no banco (E-06).",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:work_road_source",
@@ -1061,7 +1061,7 @@
       "tier": 1,
       "summary": "Fonte estruturada e versionada para iniciativas, estados, dependências, tarefas e provas. Alimenta QG, grafo e Workbook sem manter um snapshot paralelo no navegador.",
       "evidence": "volc-os-workbook/ROADMAP-VIVO.json continua a fonte editorial, validada por backend/app/routers/work_road.py e relida automaticamente pelo QG. INBOX-ROADMAP.json é a fila anterior, tem recibos e não entra no percentual. Reordenação exige ADMIN, permutação exata e expected_sha256; alteração concorrente responde conflito em vez de apagar trabalho. A ingestão automática de commits continua fora deste fechamento.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:secret-reference-boundary",
@@ -1074,7 +1074,7 @@
       "tier": 1,
       "summary": "1Password guarda valores; Supabase oficial, Cofre, grafo e Roadmap guardam somente referências, propósito, owner, validade e auditoria sanitizada.",
       "evidence": "A fronteira saiu do papel em 033e1620 (merge 4afc128) com gramática por provider, varredura recursiva de chave normalizada e projeções de leitura sem localizador. Em 03/09/2026 o onboarding passou a persistir no browser somente metadados; cofre/item/campo ficam em memória e são descartados em fechar, concluir e remontar. O broker canônico existe em `tools/adspower-broker/` e VisualProof fala somente com sua porta VOLC, mas nenhuma referência real foi resolvida de ponta a ponta. LIMITE DECLARADO: sintaxe não alcança semântica — um localizador bem formado ainda depende de governança humana do item/campo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "gate-agenda-unica-gads",
@@ -1087,7 +1087,7 @@
       "tier": 1,
       "summary": "Confere artefatos de agenda/systemd e workflows active:false; declara lacuna da instância n8n viva.",
       "evidence": "scripts/gate_agenda_unica_gads.py: 14 provas, 0 falhas, 1 pulado REAL_N8N_READ_NOT_PROVEN.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:agent_completion_protocol",
@@ -1100,7 +1100,7 @@
       "tier": 1,
       "summary": "Obriga Codex, Claude, Grok e workers ADK a devolver tarefa, nós, evidência, lacunas e estado honesto para um curador único após a integração.",
       "evidence": "AGENTS.md, CLAUDE.md, PROTOCOLO-FECHAMENTO-AGENTES.md e o schema writer-result exigem curation_handoff. Ainda falta o curador automático pós-merge e o recibo correspondente no QG.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "gate-workflows-n8n-gads",
@@ -1113,7 +1113,7 @@
       "tier": 1,
       "summary": "Valida workflows D0/D-1 nó a nó, expressões, topologia, round trip e varreduras.",
       "evidence": "scripts/validar_workflows_n8n_gads.py: 339 provas, 0 falhas, 0 pulados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:cofre-schema-v13-02",
@@ -1126,7 +1126,7 @@
       "tier": 1,
       "summary": "Gatilho BEFORE INSERT/UPDATE em cofre_credencial_referencia que recusa referência incompleta citando o NOME do campo ausente, para que a NOT NULL não dispare e anexe a linha inteira — que carrega o localizador op://.",
       "evidence": "Defeito reproduzido no Supabase oficial em 02/09/2026, transacionalmente, com localizador sintetico: uma ficha sem owner_nome deixava a NOT NULL disparar e o `DETAIL: Failing row contains (...)` levava o op:// junto. A v13_01 ja guardava esse risco no caminho da CHECK do localizador (1888-1895), mas nao nos demais campos obrigatorios. ALCANCE HONESTO: backend/app/asset_vault/infraestrutura.py:94 ja descarta mensagem do banco com DETAIL/Failing row/op://, entao pela API isto nao chegava ao browser; sobrava o LOG do Postgres e qualquer consumidor futuro que fale com o banco sem passar por aquele adapter. A v13_01 nao foi editada — migration aplicada nao se reescreve. Backup previo com sha256 conferido e pg_restore -l com 2.422 itens. Nove contraprovas transacionais verdes: a recusa nomeia owner_nome, nao ecoa op:// nem 'Failing row', o UPDATE que apaga campo obrigatorio tambem e recusado, e os 7 engines seguem intactos.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:cofre-handoff",
@@ -1139,7 +1139,7 @@
       "tier": 1,
       "summary": "GET /api/cofre/ativos/{id}/handoff RESPONDE quais engines existem, qual ativo recebe a peça, qual referência será resolvida e qual perfil de navegador está relacionado — e NÃO EXECUTA nada.",
       "evidence": "Contrato em docs/architecture/COFRE-HANDOFF-PRODUCAO-E-PUBLICACAO.md. A assimetria é deliberada: traz provider e nome lógico, nunca o localizador. `pronto_para_handoff`, prontidão operacional, prontidão visual e bloqueios tornam ausência um fato no corpo, não um 200 que parece sucesso. O broker canônico agora existe em `tools/adspower-broker/`, mas a resolução real de referência, perfil real e navegação continuam não exercitadas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:remotion-license",
@@ -1152,7 +1152,7 @@
       "tier": 1,
       "summary": "A decisão de licença e custo precisa anteceder faturamento ou operação comercial do motor de vídeo.",
       "evidence": "Risco registrado no handoff da bancada; não existe ainda decisão operacional versionada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:gates_nao_versionados",
@@ -1165,7 +1165,7 @@
       "tier": 1,
       "summary": "FECHADO em 30/08/2026. Os arquivos necessários ao gate estão versionados e o vocabulário oficial do Pytest coleta test_*, teste_* e prova_*; a contraprova deliberada demonstra que o gate falha de verdade.",
       "evidence": "O diagnóstico de 27/08 era factual, mas foi superado. `git ls-files` agora inclui pytest.ini e backend/app/routers/publicacao.py. No piloto supervisionado P01-T10, antes da mudança, volc_ads/testes_pautador_ponte.py coletava 1 prova e a suíte volc_ads coletava 549; depois de `python_functions = test_* teste_* prova_*`, passou a 33 e 581, delta exato de 32. Gates independentes: 581 passed; runner manual `python -m volc_ads.testes_pautador_ponte` 33/33; uma função temporária `teste_falha_deliberada` devolveu 1 failed e foi removida. O commit candidato f0dc375 foi aceito por reviewer gpt-5.5/xhigh e integrado como 7eba666. A forma correta de executar testes_subir continua sendo `python -m volc_ads.testes_subir`; isso é uma instrução de invocação, não ausência do gate.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "wave:P0-S",
@@ -1178,7 +1178,7 @@
       "tier": 1,
       "summary": "Investigar e conter as sete superfícies públicas do n8n. Nada é desativado; indeterminado exige aceitação com prazo.",
       "evidence": "Portões de código, identidade do Hub e v8_01 foram implementados; risco de credenciais foi aceito temporariamente e o hardening/deploy final permanecem pendentes.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:paid_destination_policy_gate",
@@ -1191,7 +1191,7 @@
       "tier": 1,
       "summary": "Avalia uma página segundo seu papel, fecha por ausência e emite recibo determinístico antes de ela poder ser publicada ou usada como URL final de mídia paga.",
       "evidence": "Em 03/09/2026, a espinha v2 ligou o contrato ao plano do motor, às duas portas de publicação e a /provar+/subir; reauditoria ao vivo em duas etapas produz recibo live somente após confirmação humana do mesmo hash. Continua partial porque a gravação nunca foi exercida no Supabase oficial, o CLI direto ainda alcança a credencial e o fingerprint não cobre detectores/severidades.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:video-publication-gate",
@@ -1204,7 +1204,7 @@
       "tier": 1,
       "summary": "QA técnico e visual, ledger, licenças, disclosure, congelamento por hash, metadados, pacote e log impedem que um MP4 apenas renderizado seja tratado como publicável.",
       "evidence": "motor/{qa.py,qa_visual.py,finish.py,publicar.py}; 20 relatórios técnicos, 4 visuais e 2 snapshots congelados observados. Cobertura ainda parcial e nenhum portão integrado ao VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:portao_falha_aberta",
@@ -1217,7 +1217,7 @@
       "tier": 1,
       "summary": "require_api_key retornava sem erro quando PAUTADOR_API_KEY não estava setada, e a mesma chave era exposta ao navegador por VITE_PAUTADOR_API_KEY. APOSENTADO no repositório em 24/08/2026: a função não existe mais e um teste impede que volte, nem consertada — um portão consertado continuaria sendo autenticação por segredo compartilhado com o navegador. NÃO PUBLICADO: o deployment em produção ainda carrega o código antigo.",
       "evidence": "Era backend/app/deps.py:17-23 e src/lib/pautadorApi.ts:37,97,682. Hoje: deps.py não exporta a função, o bundle não contém X-API-Key nem VITE_PAUTADOR_API_KEY, e test_seguranca_hub.py::test_require_api_key_foi_APOSENTADA varre o código atrás de reincidência. No lugar, exigir_usuario/exigir_admin/exigir_servico, com portão no APIRouter: 66 rotas, 14 admin, 2 abertas (/health e /). Commit ef5cdf0. Nenhum deploy realizado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:published_surface_visual_gate",
@@ -1230,7 +1230,7 @@
       "tier": 1,
       "summary": "Após publicar, abre a URL no perfil isolado correto, registra screenshot, DOM, console e sinais de layout e devolve aprovado, corrigir ou indeterminado ao Redator.",
       "evidence": "Em 02/09/2026 foram integrados VisualProofJob, prontidão por ativo/owner, contrato de screenshot/hash, viewport, console e veredito aprovado/corrigir/indeterminado, ligados a broker AdsPower hermético. Passou 187 testes focais e gate estrutural. Continua partial: nenhuma página, perfil, navegador ou screenshot real foi exercitado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:execution-receipt",
@@ -1243,7 +1243,7 @@
       "tier": 1,
       "summary": "Prova append-only que liga intenção, reivindicação, executor, artefato, validação, custo e desfecho sem permitir que um resultado concluído seja reescrito.",
       "evidence": "A bancada local e a migration v11_03 barram troca de dono e forja do recibo em provas adversariais. Em 6caaece, uma porta única e 36 asserções idênticas fecharam a divergência entre SQLite e Postgres; worker de imagem, lease e retomada também foram provados. A garantia produtiva permanece partial porque v11_03 não está aplicada no Supabase oficial, vídeo e storage remoto seguem abertos e onze campos do recibo ainda não possuem produtor completo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:remotion-network-fonts",
@@ -1256,7 +1256,7 @@
       "tier": 1,
       "summary": "Um render pode baixar famílias que não pertencem à composição pedida; sem rede, a execução falha duro.",
       "evidence": "A medição do Template Lab observou 34 chamadas em 11 famílias e até 15 composições. O modo hermético é viável, mas as fontes locais e o carregamento seletivo ainda não foram incorporados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:paid_destination_policy_gap",
@@ -1269,7 +1269,7 @@
       "tier": 1,
       "summary": "As três barreiras existem, mas o CLI direto do motor ainda alcança a credencial WordPress, pode haver criação de campanha fora de /subir e recibos históricos/live ainda não foram provados no ambiente oficial.",
       "evidence": "paid-destination-policy-spine-v2 integrada em 03/09/2026. O risco deixou de ser ausência de chamador e passou a ser contorno de autoridade, falta de aplicação real e fingerprint incompleto. A hipótese da suspensão continua apenas parcialmente sustentada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:cofre-schema-v13-01",
@@ -1282,7 +1282,7 @@
       "tier": 1,
       "summary": "Nove tabelas cofre_* em public com escrita só por função SECURITY DEFINER, allowlist de campo, blocklist de chave sensível normalizada, idempotência por chave derivada do ato e trilha append-only.",
       "evidence": "APLICADA no Supabase oficial (database.agenciavolc.com.br, PostgreSQL 15.8) em 02/09/2026, depois de backup pg_dump -Fc verificado por sha256 e por pg_restore -l legivel. Contraprovas medidas no catalogo do proprio Postgres, nao presumidas da NOTICE da migration: 9 tabelas, RLS habilitada E forcada nas 9, 0 policies, 0 grant de tabela a PUBLIC/anon/authenticated/service_role (so postgres), 29 funcoes todas com search_path fixo e ZERO SECURITY DEFINER sem ele, EXECUTE so para postgres e 12 RPCs governadas a service_role, 0 EXECUTE a PUBLIC, 9 gatilhos de append-only e anti-segredo. Comportamento em transacao com ROLLBACK: escrita e leitura diretas por service_role recusadas (42501), anon/authenticated sem EXECUTE, os sete tipos de segredo recusados SEM eco do valor, trilha append-only, idempotencia por chave+autor, e nenhuma funcao de leitura devolve op:// — com o localizador comprovadamente persistido, para a prova nao ser vacua. Zero fixture residual. O ciclo descartavel segue com 92 provas; um defeito foi corrigido nele: a espera largava no servidor TEMPORARIO do initdb e o primeiro psql caia no intervalo entre os dois servidores.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:supabase_demo_jwt_secret",
@@ -1295,7 +1295,7 @@
       "tier": 1,
       "summary": "A configuração viva foi comparada por hash com o exemplo publicado e permanece sob aceite temporário de risco; a rotação é gate pré-lançamento.",
       "evidence": "Auditoria sanitizada em docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json e REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md. O grafo registra somente classe, comparação e owner P02-T05; nunca o valor.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "simulador-gads-ledger-v12",
@@ -1308,7 +1308,7 @@
       "tier": 1,
       "summary": "Executa JavaScript real dos Code nodes com relógio e runtime n8n dublados, zero rede.",
       "evidence": "scripts/simular_gads_ledger_v12.mjs: 65 provas, 0 falhas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "tool:onepassword-mcp-smoke",
@@ -1321,7 +1321,7 @@
       "tier": 1,
       "summary": "Fala o protocolo MCP direto com o binário do app, por stdio, e prova que a resposta traz apenas nomes de Environment e de variável — nunca valores.",
       "evidence": "Criado nesta missao porque P03-T09 fala em MCP e o instrumento anterior so cobria a CLI. Prova handshake, tools/list, authenticate, list_environments e list_variables contra o servidor real (rmcp 1.1.0). A ausencia de valor e provada pela mesma inversao do smoke da CLI: o pai nao pode procurar pelo segredo, porque procurar exigiria possui-lo — entao vale lista-branca estrita, e qualquer token opaco de 24+ caracteres nao declarado derruba a prova; o achado sai como token_opaco[<tamanho>], nunca o texto. Nenhuma ferramenta de escrita e chamada. Um falso verde PROPRIO foi encontrado e corrigido: list_environments e list_variables EXIGEM accountId, o instrumento chamava sem, e o erro JSON-RPC virava {} — dois bytes lidos como 'listou e nao havia nada'. O recibo saia ok sem ter listado nada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "tool:onepassword-smoke",
@@ -1334,7 +1334,7 @@
       "tier": 1,
       "summary": "Prova, num processo descartável, a cadeia CLI → app → sessão → injeção do 1Password, sem revelar, medir ou derivar o valor do segredo; DEZ estados tipados com exit code próprio e nenhum caminho de falso sucesso.",
       "evidence": "Exercitado contra o 1Password REAL em 01-02/09/2026: ok, exit 0, injecao confirmada por presenca booleana em processo descartavel, varredura interna sem eco, zero bytes inesperados nos dois filhos. Percorreu toda a escada no caminho: cli_ausente (10) -> sem_sessao (12) -> referencia_ausente (14) -> ok (0). Autoteste: 8 provas, 0 falhas. Dois defeitos corrigidos: (a) o veredito de eco vinha ANTES da classificacao por rc, e como qualquer saida fora da linha canonica conta como suspeita, toda falha do `op run` caia em falha/vazamento — os estados 12 e 13 eram CODIGO MORTO e travar o cofre saia como VAZAMENTO (teste mutante confirma); (b) o cache do `op` vem ligado por padrao e satisfazia os degraus de listagem depois do lock, entao a prova de revogacao media o cache, nao o acesso — agora todas as invocacoes usam --cache=false. Terceira melhoria: --referencia-arquivo tira o localizador op:// do argv, onde ficava visivel em `ps`; o recibo declara origem_da_referencia. O contador 'nove estados' desta curadoria estava errado: sao DEZ, e o erro sobreviveria ao proximo rebuild. NAO cobre o MCP — isso e tool:onepassword-mcp-smoke.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:superficie_privilegiada",
@@ -1347,7 +1347,7 @@
       "tier": 1,
       "summary": "Endpoints com service_role, sem autenticação, aceitando tabela e RPC arbitrários, com Allow-Origin *. Alcançam public.users, incluindo password_hash e tokens de primeiro acesso. REMOVIDOS DO REPOSITÓRIO em 24/08/2026 — e ainda no ar, porque o deployment de produção não foi atualizado. Risco ATUAL: o que protege hoje é ninguém ter descoberto, não o código novo.",
       "evidence": "Medido em 24/08/2026. NO CÓDIGO (corrigido, commit 4a08ef2): api/supabase/{query,insert,update,rpc}.js e api/users/{query,create}.js foram REMOVIDOS, junto com os equivalentes do Express (inclusive o delete, que só existia lá). No lugar: rotas nomeadas onde nenhum identificador de banco vem da requisição. EM PRODUÇÃO (aberto): deployment dpl_49TwodSU7GvKGcoAeGFbL9AftB27, de 16/02/2026, publicado há 189 dias com essas funções — e com SUPABASE_SERVICE_ROLE_KEY no ambiente do projeto. Zero deploy foi feito. O vínculo local apontava para o projeto webgo e foi corrigido para volc-os-campaign (prj_tn56w79cDSALjzdqLruqeGYKMaVs); scripts/guarda-vercel.sh recusa deploy divergente. Exploração INDETERMINADA: vercel logs só transmite logs novos. Ver docs/seguranca/EXPOSICAO-VERCEL.md.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:legacy_attention_tactics",
@@ -1360,7 +1360,7 @@
       "tier": 1,
       "summary": "Projeções fixas, aquecimento artificial, pods, disfarce de padrão, rotação para contornar bloqueio, manipulação editorial e automações sem consentimento aparecem nos documentos antigos e não governam o produto.",
       "evidence": "Trechos identificados em VOS PRIME, Organic Attention Matrix e Meta Programmatic. Exigem revisão de política, plataforma, consentimento, segurança e evidência antes de qualquer reaproveitamento.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "risk:grants_anon",
@@ -1373,7 +1373,7 @@
       "tier": 1,
       "summary": "public.users e public.system_settings estão com RLS desabilitada, zero policies, e anon com SELECT/INSERT/UPDATE/DELETE/TRUNCATE. A anon key vai no bundle por desenho, então fechar os proxies sem a migration deixa a janela aberta.",
       "evidence": "information_schema.role_table_grants em 24/08/2026, verificado duas vezes. Reconfirmado no preflight de v8_01: public.users com relrowsecurity=f, zero policies e anon com escrita. A auditoria ORAKUL B2 amplia o gate às seis tabelas operacionais: REVOKE/RLS e smoke anônimo sem escrita continuam pendentes. v8_01 cria a fonte de autorização, não fecha essas superfícies.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_attribution",
@@ -1386,7 +1386,7 @@
       "tier": 1,
       "summary": "Conecta origem de mídia, campanha, funil, URL e comportamento.",
       "evidence": "1 de 4 campanhas tem funnel_run_id; a campanha nova tem 0 URLs em campaign_funnel_urls.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_campaign_cockpit",
@@ -1399,7 +1399,7 @@
       "tier": 1,
       "summary": "Visão por campanha com custo, receita, lucro, ROAS, ROI, CTR, CPC, conversões, GAM, orientação, otimização, funil e Display.",
       "evidence": "CampaignDetailDashboard.tsx possui mais de dez famílias de métricas e ações.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_cost_ingestion",
@@ -1412,7 +1412,7 @@
       "tier": 1,
       "summary": "Atualiza campanha, gasto, leilão, conversões e placements.",
       "evidence": "P10-T16 definiu N8N_IS_SCHEDULE_AUTHORITY, trouxe fato canônico campanha-dia + ledger + RPC e workflows D0/D-1 active:false. Em 03/09/2026, P10-T17 fechou a concorrência local com 17/0 provas A–Q: UPSERT condicional, locks por idempotência e execução, fechamento contra lote em voo, empate divergente e isolamento nomeados. Permanece partial: v12_04 não aplicada oficialmente, REAL_N8N_READ_NOT_PROVEN, REAL_GOOGLE_ADS_READ_NOT_PROVEN, credenciais/retry/canário/heartbeat/ativação ainda não exercitados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_revenue_ingestion",
@@ -1425,7 +1425,7 @@
       "tier": 1,
       "summary": "Une AdSense, GAM e JoinAds por projeto, campanha, URL e placement.",
       "evidence": "daily_project_metrics chegou a 22/08; tabelas GAM/JoinAds estão vazias e AdSense parou em fevereiro.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_offline_conversion",
@@ -1438,7 +1438,7 @@
       "tier": 1,
       "summary": "Transforma visitas identificadas em sinais enviados ao Google Ads.",
       "evidence": "9.407 visitas com GCLID; 9.468 pendentes; fila, lotes e valores calculados permanecem zerados. Em 01/09/2026 a doutrina oficial da Data Manager API foi fixada em docs/architecture/evidence/GOOGLE-ADS-DOCS-2026-09-01.md (endpoint, validateOnly no corpo, diagnóstico assíncrono, limites, e a confirmação de que ela NÃO cria campanha nem seleciona goal). NADA foi promovido: continua `empty` porque não há fila, não há lote, não há envio e nenhum evento foi enviado — nem em validateOnly.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_display",
@@ -1451,7 +1451,7 @@
       "tier": 1,
       "summary": "Cruza custo e receita por placement e permite negativação.",
       "evidence": "UI existe; tabelas de placements e view de ROI estão vazias hoje.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_search_delivery_sentinel",
@@ -1464,7 +1464,7 @@
       "tier": 1,
       "summary": "Domínio read-only que ordena causas de não entrega, separa estrutura de desempenho e aplica janelas versionadas sem transformar desconhecido em zero.",
       "evidence": "sprint/search-delivery-sentinel-72h-v1 integrada em 03/09/2026: 109 provas focais, vocabulário conferido no SDK v25, TARGET_IMPRESSION_SHARE corretamente fora das estratégias dependentes de conversão e inventário de keywords separado de keyword_view temporal. Operação contínua e incidentes persistidos seguem em tarefas parciais.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_behavior",
@@ -1477,7 +1477,7 @@
       "tier": 1,
       "summary": "Mede sessão, scroll, engajamento, clique interno, dead/rage click e comportamento por página/funil.",
       "evidence": "923 eventos brutos até 22/08 e 671 fatos de página; 34 linhas já têm ad views.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:behavioral_policy_aggregator",
@@ -1490,7 +1490,7 @@
       "tier": 1,
       "summary": "Transforma scroll, engagement, viewability, CTA e dead/rage clicks em observações e alertas versionados com amostra, janela e frescor.",
       "evidence": "Sensor, fatos e RPCs existem; GHMVIgFAv6oytKuj está inativo, contém 888 linhas, datas fixas e heurísticas ainda não governadas por policy/version/owner.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "gads-fato-campanha-dia",
@@ -1503,7 +1503,7 @@
       "tier": 1,
       "summary": "Schema/RPC de campanha-dia para D0/D-1 com ledger de execução, idempotência e projeção compatível legada.",
       "evidence": "v12_04 integrada mas não aplicada oficialmente. P10-T17: matriz concorrente A–Q 17/0, ciclo apply→operate→rollback→reapply 116/0, locks 120405→120404, precedência D0<D-1<backfill e fechamento/lote em voo protegidos.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-analytics-utilities-reference",
@@ -1516,7 +1516,7 @@
       "tier": 1,
       "summary": "Inventário de configurações, contas, propriedades e recursos GA4.",
       "evidence": "Repo ativo, Apache-2.0. Aceito como referência para o Tracking Control Plane em leitura.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-ga4-gtm-utilities-reference",
@@ -1529,7 +1529,7 @@
       "tier": 1,
       "summary": "Apps Script/Sheets para listar e modificar tags, parâmetros, properties e variáveis do GTM.",
       "evidence": "Repo ativo, Apache-2.0. Somente o inventário é aceito agora; qualquer escrita futura precisa proposta, diff, aprovação e recibo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:google_ads_collection_ledger",
@@ -1542,7 +1542,7 @@
       "tier": 1,
       "summary": "Separa recibo, item e métrica da inteligência Google Ads por conta, campanha, fonte, janela, versão e frescor sem colapsar zero, ausência, inelegibilidade, vazio confirmado e falha.",
       "evidence": "A v12_01 está aplicada e preserva estados semânticos. P10-T16 adicionou o fato campanha-dia v12_04 e workflows D0/D-1 inativos. Em 03/09/2026, P10-T17 provou concorrência A–Q 17/0 e removeu o bloqueio estrutural de corrida; o conceito permanece partial porque v12_04 e os workflows não foram aplicados/ativados no ambiente oficial e faltam leitura viva, canário e heartbeat.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:interactive_monetization",
@@ -1555,7 +1555,7 @@
       "tier": 1,
       "summary": "Hipótese de que ativos interativos elevem valor por sessão e qualidade de sinal; interstitial e offerwall exigem teste de experiência, política e receita incremental.",
       "evidence": "Hipótese do caderno humano; nenhum teste controlado foi apresentado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:campaign_measurement_plan",
@@ -1568,7 +1568,7 @@
       "tier": 1,
       "summary": "Declara antes do nascimento qual meta efetiva governa a campanha, qual ação a mede, quem é o dono, por onde o sinal pode chegar, o que foi realmente observado e quais bloqueios impedem ativação ou Smart Bidding.",
       "evidence": "Implementado em 349e1a9..70e1382 com cinco leituras Google Ads somente-SELECT, contrato tipado, projeção no cockpit e portões falsificáveis. Em 2026-09-01 (57028f2..48fd4d1, integrado em volc-os-v2 por fast-forward) o caminho PRODUTIVO foi fechado: RepositorioDePlanoDeMensuracao tinha ZERO chamadores de produção e agora /subir grava o plano pela única RPC governada entre ledger.despachar e sb.subir — falha de gravação IMPEDE o mutate. O vínculo pós-nascimento preserva a mesma chave_intencao em linha nova (append-only, sem UPDATE) e a reconciliação tardia religa sem criar segunda intenção. /provar continua sem escrever e declara isso em campo próprio. A v12_02 FOI APLICADA no Supabase oficial em 2026-09-01T18:32:18Z, com backup validado antes e 11 contraprovas pós-aplicação verdes; a RPC foi provada em transação controlada com ROLLBACK (INSERT aceito, idempotência pela impressão, escrita direta recusada, append-only recusando UPDATE/DELETE) e a tabela ficou em ZERO linhas. Gates: 2736 testes Python, 1173 de front, 54 contraprovas do caminho produtivo, ciclo v12_02 55/0. PERMANECE PARTIAL: não existe plano real durável de campanha nova — a tabela está vazia e a primeira linha nascerá no primeiro /subir autorizado —, Data Manager continua não provado em operação e os portões de ativação/Smart Bidding seguem avaliados só por /provar. · 02/09/2026 · 4c34128 (merge nao destrutivo de 289049e sobre 36bec04): o caminho de ESCRITA ganhou portao. Reproduzido antes de corrigido: /provar dizia smart_bidding_eligible=False com 5 bloqueadores e /subir criava a campanha em MAXIMIZE_CONVERSIONS do mesmo jeito — /subir nunca chamava prontidao.avaliar, e o estrategia_lance do corpo atravessava ate o executor sem passar por nada; o risco ficava contido so porque a campanha nasce PAUSED por literal e o engine nao tem funcao de ativacao. Agora exigir_para_criacao RECUSA (409) estrategia incompativel com measurement_ready, antes de ledger.abrir e sem tocar o Google, e a estrategia desconhecida falha FECHADA. Passaram a existir os SETE portoes nomeados — creation_plan_ready, campaign_birth, measurement_ready, observability_ready, activation_ready, smart_bidding_ready e data_manager_ready — com os dois novos como propriedades DERIVADAS, de modo que 'PRONTO ao lado de bloqueador material' e 'estado discordando do booleano' nao sao expressaveis; data_manager_ready passou a exigir destino resolvido (antes saia PRONTO com operante=True e nenhuma acao eleita). O perfil de mensuracao passou a existir e a entrar na impressao do plano pela chave, sem reescrever o passado. A releitura governada existe (GET /api/trafego/plano-de-mensuracao) e confere conta E MCC do PAYLOAD, nao so da coluna. A reconciliacao tardia ganhou o portao de conta que faltava. Revisao adversarial Codex gpt-5.6-sol reprovou a primeira integracao com 10 achados, todos procedentes e corrigidos numa rodada. Gates integrados: 2995 Python, 1210 front, tsc 76 igual ao baseline, build verde, zero mutacao Google 3/3. ⚠️ PERMANECE PARTIAL pelas MESMAS tres razoes: nao existe plano real duravel (tabela vazia), Data Manager segue nao provado em operacao (nenhum evento, nem validateOnly contra a API real) e a coleta pos-criacao segue nao exercida (literal False). Nenhum dos quatro portoes de prontidao real foi promovido.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:ads_health_monitor",
@@ -1581,7 +1581,7 @@
       "tier": 1,
       "summary": "Camada de saúde de mídia com séries, baselines, severidade, deduplicação, resolução e links de investigação por conta e entidade.",
       "evidence": "A Search Delivery Sentinel agora serve um veredito causal por campanha com janela e frescor e impede falsos alertas de keyword sem inventário estrutural. A máquina pura de incidentes preserva repetição/resolução/reabertura. Ainda faltam chamador produtivo, persistência, visão de carteira, heartbeat e calibração sazonal.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:tracking_control_plane",
@@ -1594,7 +1594,7 @@
       "tier": 1,
       "summary": "Inventário e governança de GA4, GTM, UTMs, eventos, conversões, streams, dimensões, vínculos e drift antes de qualquer alteração.",
       "evidence": "A primeira fatia canônica existe em 349e1a9..70e1382: InventarioDeMarcacao distingue auto-tagging, importações e caminhos declarados de sinais realmente observados; lê dono da ação, click IDs, consentimento e frescor sem transformar capacidade em conversão. Em 2026-09-01 o schema que guarda esse inventário passou a existir no banco oficial (v12_02 aplicada, RPC provada em transação com rollback). O controle amplo de GA4/GTM/UTMs/streams e drift continua NÃO construído, e a operação do Data Manager continua NÃO provada — nenhum evento foi enviado, nem em validateOnly. Em 02/09/2026 (4c34128) a metade de TRAFEGO passou a existir: identidade canonica do que se mede (perfil de mensuracao, com decisao separada de observacao e sem nenhum campo de nome humano da acao), vinculo campanha -> intencao -> perfil, releitura governada do plano persistido, os sete portoes nomeados e a fronteira validateOnly da Data Manager. As tabelas vivas conversion_queue e conversion_batches foram AUDITADAS e RECUSADAS como autoridade — faltam destino (conta dona + id numerico), customer_id, wbraid/gbraid, consentimento e chave de deduplicacao, e nenhuma das duas tem DDL no repositorio. NENHUMA fila nova foi criada e NENHUM schema foi tocado: o que falta exige migration, que e decisao de dono. ⚠️ O controle amplo de GA4/GTM/UTMs/streams/eventos/dimensoes e drift continua NAO construido, e a operacao do Data Manager continua NAO provada — nenhum evento foi enviado, nem em validateOnly contra a API real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_capi",
@@ -1607,7 +1607,7 @@
       "tier": 1,
       "summary": "Wizard de configuração por site e Edge Function de roteamento.",
       "evidence": "MetaCapiWizard e supabase/functions/capi-router existem no repositório.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_workflows",
@@ -1620,7 +1620,7 @@
       "tier": 1,
       "summary": "n8n, pg_cron, webhooks e tarefas ClickUp coordenam ingestão e atuação.",
       "evidence": "Inventário read-only atualizado em 28/08/2026: 33 workflows no núcleo e 23 ativos declarados. Os dois GADS REPORT da operação Webgo foram preservados como referência; somente os dois alvos VOLC autorizados foram editados, ficaram inativos e possuem backup privado reversível. Nove legados possuem manifesto de SHA-256, classificação e sucessor. Estado ativo continua sendo declaração, não prova de execução ou saúde.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:onepassword-mcp",
@@ -1633,7 +1633,7 @@
       "tier": 1,
       "summary": "Autoridade local de segredos para agentes e ferramentas de desenvolvimento, capaz de montar variáveis sem revelar o valor ao modelo ou gravá-lo no repositório.",
       "evidence": "Provado em 01-02/09/2026 contra o servidor REAL do app, nao mais ausente. 1Password 8.12.34 e op 2.39.0 instalados (AgileBits, notarizados); o binario 1password-mcp vive DENTRO do bundle, nao no PATH. Handshake concluido (rmcp 1.1.0, protocolo 2024-11-05), as 8 ferramentas documentadas presentes, authenticate aceito e devolvendo o account_id que toda leitura exige. O escopo e por conta: com id errado o servidor responde 'Missing required scope: environments:list'. list_variables devolve o campo `variableNames` — NOMES: a garantia publicada ('never returns the secrets') deixou de ser citacao e virou medicao. Environment VOLC_OS_LOCAL criado pelo proprio MCP; nenhum valor escrito por ferramenta (append_variables nunca e chamada). Revogacao pelo lock medida como ciclo fechado: destrancado ok, TRANCADO blocked/aprovacao_negada (13), reautorizado ok. Instrumento: tools/onepassword-mcp-smoke/run.py. Evidencia: docs/closure/onepassword-cofre-operational-closure-v1/PROVA-REVOGACAO.md.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:cofre-api-administrativa",
@@ -1646,7 +1646,7 @@
       "tier": 1,
       "summary": "Quinze rotas sob /api/cofre em quatro camadas (domínio, aplicação, infraestrutura, rotas), todas com exigir_admin no nível do router e sem caminho de INSERT direto em tabela; incluem handoff e prontidões operacional/visual sem entregar o endereço do segredo.",
       "evidence": "backend/app/asset_vault/ mantém falha de banco como indisponibilidade, nunca lista vazia, e sanitiza mensagens antes da API. Em 03/09/2026 ganhou prontidão operacional e a experiência de operador passou a consumir os contratos reais com forma defensiva; 93 testes de frontend e build Vite passaram no resultado integrado. A API não projeta localizador e o onboarding só o monta em memória no POST autenticado. O schema v13_01/v13_02 já está aplicado no Supabase oficial; esta integração não realizou escrita.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:adspower-browser-mcp",
@@ -1659,7 +1659,7 @@
       "tier": 1,
       "summary": "Executor local e isolado de perfis de navegador para navegação agentic, screenshots e inspeção da superfície publicada.",
       "evidence": "A autoridade canônica única é `tools/adspower-broker/`, em loopback, com Bearer, allowlist, segredo somente em runtime, timeout, idempotência e recibo sanitizado. Em 03/09/2026 o candidato duplicado sob `backend/app/asset_vault/broker/` foi removido; um gate estrutural reprovou quatro adulterações concorrentes e preservou VisualProof como cliente apenas da porta VOLC `/v1/operacoes`. Continua partial: AdsPower MCP/Local API, chave, perfil e navegador reais não foram observados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:schedule_authority",
@@ -1672,7 +1672,7 @@
       "tier": 1,
       "summary": "N8N_IS_SCHEDULE_AUTHORITY: n8n é a única autoridade de agenda da ingestão contínua Google Ads; Python fica biblioteca/one-shot/fallback/diagnóstico; systemd/timers ficam desinstalados.",
       "evidence": "ADR-N8N-AUTORIDADE-DE-AGENDA.md integrada em P10-T16. Gate de agenda única no resultado integrado: 14 provas, 0 falhas, 1 pulado declarado (REAL_N8N_READ_NOT_PROVEN). Ativação real depende de inventariar/desligar agendas vivas conflitantes e executar AUTORIZACAO-ATIVACAO.md.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:blotato",
@@ -1685,7 +1685,7 @@
       "tier": 1,
       "summary": "Candidato histórico a autopost multicanal, substituído pelo Postiz como escolha principal e preservado apenas para comparação futura baseada em evidência.",
       "evidence": "Nome anotado no caderno humano. Em 28/08/2026 Postiz foi escolhido por possuir self-hosting, API pública, CLI e integração n8n verificadas; Blotato não foi inventariado ou executado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:chatpion",
@@ -1698,7 +1698,7 @@
       "tier": 1,
       "summary": "Plataforma self-hosted disponível para fluxos de conversa e relacionamento; deve entrar no VOLC O.S. por inventário, contrato e governança, não por acoplamento direto de segredos.",
       "evidence": "https://chatpion.agenciavolc.com.br/ respondeu HTTP 200 em 26/08/2026. Configuração funcional, páginas conectadas, permissões, fluxos e entregabilidade não foram verificados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:deepseek-v4-flash",
@@ -1711,7 +1711,7 @@
       "tier": 1,
       "summary": "Modelo candidato de baixo custo para microdiagnósticos e reparos tipados, acessado por API compatível e nunca tratado como autoridade de decisão ou escrita.",
       "evidence": "Em 28/08/2026, 8 chamadas reais e sanitizadas ao deepseek-v4-flash com thinking ligado e effort low produziram 7 propostas aceitas pela guarda e zero escrita externa. O reparo Python fez 4/4 com allowlist, AST e prova funcional. Copy não recebeu aceite semântico humano e permanece sem autoaplicação. O adapter ADK/LiteLLM testado perdeu a resposta final ao mapear o thinking; a prova válida usou o endpoint oficial OpenAI-compatible. Evidência: docs/architecture/evidence/DEEPSEEK-AUTOREPAIR-SNIPER-SMOKE-2026-08-28.json.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-adk-runtime",
@@ -1724,7 +1724,7 @@
       "tier": 1,
       "summary": "Candidato a orquestrador de agentes pequenos dentro da API do VOLC para diagnóstico, recuperação limitada, ferramentas tipadas e confirmação humana.",
       "evidence": "Google ADK 2.8.0 está instalado no harness local de desenvolvimento e já orquestra CLIs; não existe runtime ADK no backend do produto, adapter do Redator, ledger ou ferramenta de produção.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-ads-monitor-reference",
@@ -1737,7 +1737,7 @@
       "tier": 1,
       "summary": "Google Ads API via Gaarf exporter, Prometheus, Grafana e Alertmanager para saúde e alertas.",
       "evidence": "Repo ativo, Apache-2.0, README e metadados conferidos em 27/08/2026. Extrair padrões; stack inteira não é requisito imediato.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-skills-reference",
@@ -1750,7 +1750,7 @@
       "tier": 1,
       "summary": "Skills de engenharia para Ads, Data Manager, Analytics, BigQuery, lineage, monitoring e segurança agêntica.",
       "evidence": "Repo google/skills ativo, Apache-2.0. Serve a implementação e checklists; não prova nenhuma feature do VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-crmint-reference",
@@ -1763,7 +1763,7 @@
       "tier": 1,
       "summary": "UI e engine para criar, executar e agendar pipelines de integração e processamento.",
       "evidence": "Repo ativo conferido em 27/08/2026. Referência para o Data Pipeline Registry; instalação integral recusada por sobreposição com n8n e VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-meridian",
@@ -1776,7 +1776,7 @@
       "tier": 1,
       "summary": "Framework open-source de Marketing Mix Modeling escolhido como candidato oficial para a camada analítica estratégica do VOLC O.S.",
       "evidence": "Projeto oficial google/meridian, licença Apache-2.0 e release 1.6.1 observada em 27/08/2026. Não instalado nem integrado ao runtime VOLC; execução futura será isolada do backend transacional.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:hermes",
@@ -1789,7 +1789,7 @@
       "tier": 1,
       "summary": "Runtime do agente Bia, com API compatível com chat completions e acesso a skills e cérebros operacionais.",
       "evidence": "Serviço e endpoint local 127.0.0.1:8642 declarados pela proprietária do agente em 26/08/2026; conectividade a partir do VOLC O.S. ainda não foi provada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:multipost",
@@ -1802,7 +1802,7 @@
       "tier": 1,
       "summary": "Extensão Apache-2.0 para publicar texto, imagem e vídeo usando sessões já abertas; reservada para canais sem adapter confiável no núcleo.",
       "evidence": "README e site oficiais consultados em 28/08/2026 declaram mais de dez plataformas, Extension API e REST API. Não foram provadas idempotência, reconciliação, cobertura dos canais VOLC nem execução local.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:postiz",
@@ -1815,7 +1815,7 @@
       "tier": 1,
       "summary": "Serviço self-hosted escolhido para calendário, drafts, agendamento, publicação e analytics multicanal, acessado por uma porta VOLC.",
       "evidence": "Porta VOLC e pacote self-hosted integrados em 02/09/2026. `deploy/postiz/` contém compose, rede, healthchecks, backup/restore, upgrade/rollback e menor privilégio; o validador aprovou o pacote e reprovou 18 mutações conhecidas. Continua sem instância, healthcheck vivo, credencial ou destino real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:facebook_page_monetized",
@@ -1828,7 +1828,7 @@
       "tier": 1,
       "summary": "Primeiro ativo social real para onboarding no Cofre e piloto de conteúdo orgânico.",
       "evidence": "Existência, aquisição há mais de um mês e monetização declaradas pelo dono em 26/08/2026. Nome, page_id, propriedade, acesso e monetização ainda não foram inventariados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:creative-engine-registry",
@@ -1841,7 +1841,7 @@
       "tier": 1,
       "summary": "Catálogo canônico de motores, versões, entradas, saídas, formatos, provas, limitações e adaptadores; diz quem sabe fazer o quê sem acoplar o Hub a um projeto de cliente.",
       "evidence": "Manifesto externo em docs/creative-engines/motores-de-imagem.json e Catalogo interno em memória no commit 6eed77f. Persistência, leitura runtime e adaptadores dos três motores auditados ainda não existem.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:n8n_ip_rescue",
@@ -1854,7 +1854,7 @@
       "tier": 1,
       "summary": "Preserva a genealogia dos workflows, extrai contratos e políticas defensáveis e declara um sucessor sem reativar automações perigosas.",
       "evidence": "Nove flows receberam export privado atualizado, SHA-256, classificação, sucessor, análise individual e tarefas em 28/08/2026. Fórmulas ainda não foram extraídas para módulos privados e o registry de jobs não está completo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:agentic-recovery-runtime",
@@ -1867,7 +1867,7 @@
       "tier": 1,
       "summary": "Camada limitada que recebe falha sanitizada, recorte do grafo e ferramentas allowlisted para explicar, reparar em sandbox, revalidar ou escalar sem assumir o lugar do motor determinístico.",
       "evidence": "Smoke real com DeepSeek executou oito chamadas: o reparo mínimo de identificadores Python passou em 4/4 pela allowlist, AST e asserção funcional; copy passou estruturalmente em 3/4, mas 0/4 na aceitação semântica humana. O runtime segue fora do produto e ainda precisa de recipes, equipe multiagente especializada, revisor independente, ledger e promoção candidate→shadow→enabled.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:ads_agent_gateway",
@@ -1880,7 +1880,7 @@
       "tier": 1,
       "summary": "Gateway backend para consultas contextuais e auditadas da Bia/Hermes ao Google Ads, inicialmente somente leitura.",
       "evidence": "Google Ads MCP e google/skills foram aceitos como referência. Não há gateway, escopo contextual, telemetria ou integração no VOLC O.S.; mutate e segredo no navegador continuam proibidos.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:data_pipeline_registry",
@@ -1893,7 +1893,7 @@
       "tier": 1,
       "summary": "Catálogo operacional de fontes, jobs, runs, schedules, owner, heartbeat, retry, destino, recibo e último sucesso/erro.",
       "evidence": "Inventário n8n e recibos parciais já existem. O ledger v12 e o coletor Google Ads v3 estão provados no Supabase oficial, mas os workflows D0/D-1 ainda usam o contrato legado e nenhuma agenda contínua foi ativada. Falta decidir uma única autoridade de schedule — preferencialmente n8n, por já ser o plano operacional — e ligar heartbeat, retry, idempotência e recibo sem concorrer com systemd.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "n8n-gads-campanha-dia-d1",
@@ -1906,7 +1906,7 @@
       "tier": 1,
       "summary": "Workflow D-1 gerado, importável e active:false, com agenda proposta 06:00 America/Sao_Paulo.",
       "evidence": "n8n/volc_gads_campanha_dia_d1.json validado nó a nó; não importado nem ativado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "n8n-gads-campanha-dia-d0",
@@ -1919,7 +1919,7 @@
       "tier": 1,
       "summary": "Workflow D0 gerado, importável e active:false, com agenda proposta 06/12/18/23 America/Sao_Paulo.",
       "evidence": "n8n/volc_gads_campanha_dia_d0.json validado nó a nó; não importado nem ativado.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_bancada_criativa",
@@ -1932,7 +1932,7 @@
       "tier": 1,
       "summary": "Executa trabalhos tipados de imagem e vídeo com reivindicação, lease, retomada, cancelamento, validação, artefato e recibo sem acoplar a fábrica ao processo web.",
       "evidence": "A convergência operacional de 02/09/2026 integrou a espinha de go-live da fábrica: porta SQLite/Postgres única, worker em subprocesso, fencing por operário+tentativa, MIME e geometria medidos, matriz de 21 destinos e canário verificável. O ciclo v11_03 passou 178/178, o contrato Postgres 77/77 sem skip, e imagem/vídeo/Remotion reproduziram goldens e hashes. Continua partial: v11_03 não foi aplicada no Supabase oficial, não há worker hospedado nem bucket privado remoto, licença Remotion e equivalência Linux seguem abertas, e nenhuma aprovação humana/publicação real ocorreu.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_creative_engines",
@@ -1945,7 +1945,7 @@
       "tier": 1,
       "summary": "Parque externo comprovado de geração agentic, composição com foto real, render determinístico de imagem e fábrica contratual de vídeo, ligado a uma primeira porta interna com procedência e validação. Adaptadores e operação runtime ainda faltam.",
       "evidence": "Imagem está fotografada em pacote reproduzível com 64 renders classificados. Vídeo está fotografado em docs/creative-engines/snapshots/motor-video-2026-08-26.json: 17 formatos, 15 skins, 38 MP4s 1080x1920, 20 QAs técnicos, 4 QAs visuais e 2 snapshots de publicação; a execução continua em /Users/mac/volc-factory e não foi provada integralmente pela raiz organizada. A porta volc_ads/criativo mantém identidade, procedência, dedup e falha por asset. Desde 3eeafbc/07dfe3c existe a porta de entrada no construtor: `ImagemParaSubir` em brief.imagens_display, que deliberadamente NÃO importa volc_ads/criativo — são donos diferentes. CORRIGIDO em 27/08/2026 (db39f0b), e a correção vale nos DOIS EIXOS, porque a evidência anterior era ambígua entre eles. PRIMEIRO EIXO: volc_ads/criativo/validacao.py DEIXOU de ser capacidade sem chamador — volc_ads/criativo_ponte.py chama `validar_lote()` fora de teste, antes de existir qualquer payload, e um lote reprovado não produz `ImagensDisplay` nenhum; a garantia é estrutural, não disciplinar. SEGUNDO EIXO, e ele NÃO mudou: nenhum caminho HTTP alcança essa validação, e é mais forte do que se pensava — o corpo `ProvarEntrada` de backend/app/routers/trafego.py NÃO TEM CAMPO DE IMAGEM NENHUM, então não é só `pautador_ponte.montar_brief` que não preenche `imagens_display`: o contrato HTTP não tem onde receber. Consequência medida: `Preparo.linhagem` e `Recibo.linhagem` chegam ao JSON de /provar e /subir como CHAVE EXISTENTE E VALOR SEMPRE VAZIO. O único consumidor é o OPERADOR, por linha de comando (`python -m volc_ads.criativo_ponte --pasta … --motor … --insumo …`), offline: o módulo não importa `gads` e não tem como falar com o Google. E `criativo_ponte` não é importado por nenhum módulo de produção — só por testes. O construtor de Display continua AVISANDO e não recusando; a mensagem mudou de 'não foi medida' para 'sem linhagem' / 'linhagem incompleta', e a escolha é deliberada: `display` não sabe geometria, e um segundo juiz dela criaria as duas verdades que se quer evitar. A ponta de `procedencia` fechou por SUBSTITUIÇÃO e não por leitura: `ImagemParaSubir.procedencia:str` foi removida — não tinha um único produtor nem consumidor, nem nos testes — e trocada por `Linhagem`, que subir.py deriva DO PAYLOAD (`_linhagem_do_payload`) e reconfere contra os bytes que vão sair, com `confirmada` como propriedade calculada e nunca campo gravado. Medido: volc_ads 354 → 458 passed; testes_subir 23/24 pelo harness próprio (`python -m volc_ads.testes_subir`, que NÃO entra nos 458 — ele contribui 4 testes para a coleta do pytest), com o mesmo único reprovado herdado; trava fechada antes e depois; zero chamada à Ads API. Requisitos de vídeo por canal, adapters e runtime persistido continuam pendentes.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_incubator",
@@ -1958,7 +1958,7 @@
       "tier": 1,
       "summary": "Configura sites, títulos, calendário, artigos, publicação e logs de pipeline.",
       "evidence": "Telas e schema existem; tabelas da incubadora estão vazias no banco atual.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_interactive_journeys",
@@ -1971,7 +1971,7 @@
       "tier": 1,
       "summary": "Quiz, calculadora, simulador, mini game e blocos enriquecidos que ajudam o leitor e produzem sinais de navegação e monetização mensuráveis.",
       "evidence": "O caderno propõe a capacidade; FunnelForge já possui infraestrutura e testes para widgets/calculadora e o sensor comportamental mede interação. Não há catálogo, publicação e loop de resultado integrados como produto.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_organic_content",
@@ -1984,7 +1984,7 @@
       "tier": 1,
       "summary": "Transforma pauta em peças próprias para cada canal, passa por aprovação, publica em ativos sociais e devolve métricas e aprendizado para o sistema.",
       "evidence": "Em 02/09/2026 deixou de ser apenas desenho: v14_01, domínio, porta Postiz, jobs, operações, recibos, idempotência, fencing, reconciliação, UI e pacote self-hosted foram integrados. O ciclo SQL aplicar→operar→rollback→reaplicar, corrida real, 128 testes backend, 112 frontend e 18 mutações do pacote passaram. Continua partial: Postiz não foi implantado, não há destino real, postagem real, mídia anexada, aprendizado nem QA visual em página viva.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_funnel",
@@ -1997,7 +1997,7 @@
       "tier": 1,
       "summary": "Gera matriz, páginas, revisão, prova visual e publicação WordPress.",
       "evidence": "Banco atual: 3 runs; um vínculo WordPress; páginas e artefatos persistidos. Em 03/09/2026, o contrato de destino pago passou a governar preflight do plano, conteúdo da LANDING PAGE, ambas as portas de publicação e nascimento da campanha. A reauditoria ao vivo em duas etapas existe e exige confirmação humana do mesmo hash. Continua sem prova de escrita no Supabase oficial e o CLI do motor ainda alcança a credencial WordPress fora da porta governada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:aprova-ad-studio",
@@ -2010,7 +2010,7 @@
       "tier": 1,
       "summary": "Produto Vite/React + FastAPI que pesquisa, cria blueprints e gera a peça inteira por LLM para dimensões exatas, com providers, progresso real e pacote de variações.",
       "evidence": "Autoridade corrigida para o projeto IESDE/2026, HEAD a1d9ae6. O request aceita dimensions; o provider gpt-image-2 mapeia o alvo para tamanho nativo, compõe na proporção e entrega pixels exatos com resize/cover. Oito presets de UI e 12 mappings de backend foram observados; o contrato não se limita aos presets. Ainda externo ao VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:organic_distribution_channels",
@@ -2023,7 +2023,7 @@
       "tier": 1,
       "summary": "Facebook, Instagram, TikTok, Kwai, YouTube Shorts e Pinterest como destinos possíveis de peças adaptadas por plataforma.",
       "evidence": "Canais listados no caderno; apenas uma página de Facebook foi declarada como ativo real. Postiz foi escolhido como control plane externo e MultiPost como fallback experimental; nenhum destino foi conectado ou publicado por esse caminho.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:creative-storage-lifecycle",
@@ -2036,7 +2036,7 @@
       "tier": 1,
       "summary": "Move um artefato de local para enviado e verificado, preservando chave canônica, bytes e hash e tornando divergência terminal.",
       "evidence": "Em 6caaece, armazenamento_verificado.py implementa e prova LOCAL → UPLOADED_UNVERIFIED → VERIFIED_OK|VERIFIED_MISMATCH com chave canônica, releitura, bytes e sha256; objeto ausente, bucket ausente e falha de rede não colapsam no mesmo estado. Continua partial: bucket, uploader e reconciliação remotos não foram autorizados nem provados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:content_shortcut",
@@ -2049,7 +2049,7 @@
       "tier": 1,
       "summary": "A peça deve economizar tempo, dinheiro ou esforço, usando brevidade inteligente, clareza e progressão em vez de parede de texto ou clickbait vazio.",
       "evidence": "Princípio editorial explícito na página 6 do caderno humano.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:creative-job-contract",
@@ -2062,7 +2062,7 @@
       "tier": 1,
       "summary": "Envelope versionado de briefing, brand pack, assets, destinos, variantes, gates, custo, aprovação e vínculo com campanha ou publicação.",
       "evidence": "Em 02/09/2026 a espinha de go-live passou a produzir e verificar imagem e vídeo em subprocesso, medir MIME/geometria, preservar fencing e materializar uma matriz de capacidade por destino. O canário confere 14 afirmações e os ciclos integrados estão verdes. Continua partial: não há pacote UI/endpoint por destino, storage remoto, aprovação humana ou publicação real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:video-production-contract",
@@ -2075,7 +2075,7 @@
       "tier": 1,
       "summary": "Envelope que resolve tema, fatos, nicho, skin, voz, idioma, hook, beats, assets, identidade, CTA, publicação e compliance antes da composição.",
       "evidence": "contrato/motor/mapa.json versão 1.2.1 e contrato/schema/contrato.schema.json no Motor de Vídeo. O mapa possui 15 regras globais, 15 skins e três famílias de hook; ainda não é consumido por CreativeJob do VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:organic_publication_control_plane",
@@ -2088,7 +2088,7 @@
       "tier": 1,
       "summary": "O VOLC governa pauta, aprovação, linhagem e aprendizado; um serviço isolado agenda e publica por canal, devolvendo IDs, URLs e recibos sem se tornar a fonte de verdade.",
       "evidence": "Decisão de 28/08/2026 materializada em 02/09/2026: v14_01 e a porta `backend/app/publicacao_organica/` governam draft, schedule, now, recibo, retry e reconciliação sem depender do banco interno do Postiz. Provas herméticas e ciclo PostgreSQL passaram; falta instância Postiz, destino e ato real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:semantic_recommender_convergence",
@@ -2101,7 +2101,7 @@
       "tier": 1,
       "summary": "Mantém uma única rota semântica no Redator/FunnelForge, com sitemap real, preview, aprovação, renderer determinístico e resultado de clique.",
       "evidence": "O subflow NlDpiKPIqHCDblto está ativo declarado, porém o caminho de match não persiste nem retorna ao loop e duplica uma capacidade mais madura do FunnelForge.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:typography-only-creative",
@@ -2114,7 +2114,7 @@
       "tier": 1,
       "summary": "Peça ou carrossel em que todos os pixels vêm de tipografia real, formas, gráficos e atmosfera determinística; nenhum provider de imagem é necessário.",
       "evidence": "spec_carrossel.json não possui assets e gerou 20 PNGs do Método 90 em base, FX, FXD, Titanium e Dossier. Snapshot registra 26 saídas typography_only e 12 com gráficos determinísticos; integração runtime no VOLC O.S. ainda não existe.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:creative_channel_boundary",
@@ -2127,7 +2127,7 @@
       "tier": 1,
       "summary": "O único lugar que conhece os dois lados: valida o lote pela régua do canal antes de existir payload, reconfere o sha256 dos bytes contra o hash declarado, e projeta a procedência numa linhagem que viaja até o recibo. Nenhum dos dois pacotes importa o outro.",
       "evidence": "volc_ads/criativo_ponte.py em db39f0b valida antes do payload, e 6caaece acrescenta destinos tipados, goldens e procedência sanitizada sem acoplar os pacotes. Lote reprovado não produz ImagensDisplay; hash, MIME e dimensão são reconferidos contra os bytes. Fica partial porque o contrato HTTP de lançamento ainda não recebe a imagem por essa fronteira e nenhuma peça atravessou publicação real.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-adios-reference",
@@ -2140,7 +2140,7 @@
       "tier": 1,
       "summary": "Gestão de image assets: geração, aprovação, biblioteca, vínculo e experimento.",
       "evidence": "Repo ativo, Apache-2.0. Gap analysis prioritário com Estúdio/linhagem; não substitui engines próprios.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-copycat-reference",
@@ -2153,7 +2153,7 @@
       "tier": 1,
       "summary": "Geração de anúncios Search alinhados ao estilo da marca.",
       "evidence": "Repo ativo, Apache-2.0. Gap analysis com o engine Search VOLC; não vira segunda fábrica de RSA.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-feedgen-reference",
@@ -2166,7 +2166,7 @@
       "tier": 1,
       "summary": "Otimização generativa de Shopping feeds.",
       "evidence": "Repo ativo, Apache-2.0. Fora do caminho atual de arbitragem; scoring de conteúdo pode ser revisto depois.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:google-vigenair-reference",
@@ -2179,7 +2179,7 @@
       "tier": 1,
       "summary": "Recrafting de vídeo ads com IA para formatos, orientações e durações diferentes.",
       "evidence": "Repo ativo, Apache-2.0. Gap analysis com Motor de Vídeo; não será novo core de vídeo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "tool:importador-engines-cofre",
@@ -2192,7 +2192,7 @@
       "tier": 1,
       "summary": "Lê os manifestos versionados dos parques criativos e emite payloads para cofre_cadastrar_ativo, marcando cada campo como FONTE, DERIVADO, DECLARADO ou AUSENTE.",
       "evidence": "scripts/importar_engines_no_cofre.py, 1047 linhas; 7 engines emitidos e 248 asserções no autoteste em 01/09/2026, integrado ao volc-os-v2 em 033e1620 (merge 4afc128). Não escreve no banco e não faz rede; roda duas vezes com bytes idênticos. A sanitização de caminho do Google Drive LEVANTA se /Users/, CloudStorage, GoogleDrive ou @ sobreviverem, porque sanitização que falha calada publica com ar de segurança. Nenhum engine recebe estado 'integrado'.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:cta_experiment_lab",
@@ -2205,7 +2205,7 @@
       "tier": 1,
       "summary": "Converte congruência termo→página→CTA em hipótese com controle, variante, aprovação, guardrails e outcome, nunca edição automática.",
       "evidence": "O flow awNXK3BdPTplsmKy está inativo, usa identidade frágil e gera alternativas/ClickUp; não existe experimento causal canônico.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:asset_lineage",
@@ -2218,7 +2218,7 @@
       "tier": 1,
       "summary": "De onde veio ESTE arquivo — motor, versão, insumo, pedido, instante, medida, custo e régua — achatada em campos JSON-nativos, derivada do payload que vai sair e não da intenção do brief, com `confirmada` como propriedade calculada.",
       "evidence": "campanha/brief.Linhagem em db39f0b. Guarda de regressão recusa `datetime` em `quando`, porque o recibo serializa com json.dumps SEM `default=` e a primeira gravação acontece DENTRO do `with modo.destravar(...)` — o melhor lugar para descobrir que a procedência não serializa não é com a trava aberta. Medida ausente é None e nunca 0; custo ausente é None e nunca 0.0. `confere(bytes)` devolve False quando não há hash declarado, porque não se confirma o que não foi afirmado. subir.py a deriva com `_linhagem_do_payload`, que reconcilia por BYTES e não por nome: linhagem que afirma hash falso vira `Linhagem.desconhecida`, linhagem sem hash sobrevive só como nome e papel, e mime ou dimensão que contradizem os bytes também derrubam a atribuição. A CHAVE `linhagem` existe no JSON de /provar e /subir por backend/app/trafego/projecao.py, cujo `_linhagem` NAO levanta: um item que nao sabe virar JSON vira `confirmada: null` mais `erro_de_projecao`, porque essa funcao roda no `/subir` ANTES de `_registrar_campanha` e fora do try — uma excecao ali viraria 500 depois de a campanha existir na conta e antes de ela ser gravada no banco. O VALOR e sempre vazio por esse caminho, porque o corpo HTTP não recebe imagem. NÃO chega à tela. ⚠️ NÃO CONFUNDIR com concept:campaign_lineage: aquela é `campaign_lineage_id`, do inventário, e JÁ é renderizada com o rótulo 'linhagem' em src/components/trafego/inventario/LinhaDeCampanha.tsx. Quando esta aqui chegar à interface, os dois nomes colidem na mesma tela.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:creative-production-modes",
@@ -2231,7 +2231,7 @@
       "tier": 1,
       "summary": "O job escolhe explicitamente entre tipografia pura, gráfico determinístico, full-LLM multi-formato, foto real preservada, PRENSA híbrida ou geração full-LLM finalizada pela PRENSA.",
       "evidence": "Implementações observadas no Aprova/Positivo e provas da PRENSA, consolidadas no ADR-001 e no catálogo PRENSA em 26/08/2026. A seleção por job ainda não existe no runtime do VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:motor-imagem-volc",
@@ -2244,7 +2244,7 @@
       "tier": 1,
       "summary": "Parque de contratos, brand packs, destinos, renderizadores, gates e laboratórios que separa pixels variáveis por IA de pixels exatos controlados por código.",
       "evidence": "Snapshot reproduzível em docs/creative-engines/snapshots/motor-imagem-2026-08-26.json: 856 arquivos lidos, 443 fontes/contratos hasheados, 18 specs, 7 skins e 94 imagens no out canônico. Entre 64 renders, 26 são tipografia pura, 12 são gráfico+tipografia por código e 26 são híbridos com asset de IA. Não é um repo ou serviço único.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:motor-video-volc",
@@ -2257,7 +2257,7 @@
       "tier": 1,
       "summary": "Fábrica contratual de vídeos verticais que combina roteiro, hooks por vídeo/avatar/imagem, assets, voz, som, legendas, Remotion, QA, ledger e portão de publicação.",
       "evidence": "Snapshot reproduzível em docs/creative-engines/snapshots/motor-video-2026-08-26.json: contrato 1.2.1, 17 formatos, 15 skins, 15 nichos, 14 vozes e 38 MP4s 1080x1920 observados na fábrica /Users/mac/volc-factory. Há 20 QAs técnicos, 4 visuais e 2 snapshots congelados; um render tem QA técnico FAIL. A raiz organizada ainda não provou render integral e não existe adapter ou runtime no VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:prensa",
@@ -2270,7 +2270,7 @@
       "tier": 1,
       "summary": "Renderer e pipeline de qualidade que resolve tokens, mede tipografia real no Chromium, aplica layers físicos, recompõe variantes e falha fechado quando DOM ou pixels finais não passam.",
       "evidence": "Código e POC auditados em /Users/mac/Desktop/Volc Mídia Global/motor-imagem/{prensa,compartilhado/prensa-poc}. Além de iPhone e Kintsugi, o carrossel Método 90 prova 20 saídas sem assets de imagem e Anderson prova gráficos SVG determinísticos. Snapshot conta 47 pixel gates aprovados. Ainda é biblioteca/CLI, sem gateway runtime no VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:volc-creative-port",
@@ -2283,7 +2283,7 @@
       "tier": 1,
       "summary": "Contrato, requisitos por canal, validação, catálogo por conteúdo e Protocol assíncrono que permitem receber motores sem acoplar o núcleo ao projeto externo.",
       "evidence": "Implementado em volc_ads/criativo no commit 6eed77f: 80 testes, adaptador de imagem FunnelForge e motor falso; zero Google, upload ou segredo. Aprova, Positivo e PRENSA ainda não possuem adaptadores. Em db39f0b a porta ganhou saída própria: criativo/adaptadores/medir_imagem.py mede PNG/JPEG/GIF só com stdlib (`struct`), sem Pillow — que está no venv e NÃO está em requirements algum, e cujo modo de falha seria devolver medida ausente em silêncio. E criativo/requisitos.exigencia_binaria_de() projeta a exigência do canal SÓ na parte de arquivo. Essa projeção não é conveniência: validar um lote de imagens contra a exigência completa de DISPLAY produzia `Q1.faltam` de severidade erro para headline, headline_longa, descricao e nome_da_empresa, e `ResultadoDeValidacao.ok` seria False SEMPRE — um portão que reprova 100% das vezes por um motivo que não é dele é um portão que alguém desliga na primeira semana. A saída é consumida por volc_ads/criativo_ponte.py, que mora fora dos dois pacotes. Aprova, Positivo e PRENSA continuam sem adaptadores.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "system:positivo-ad-studio",
@@ -2296,7 +2296,7 @@
       "tier": 1,
       "summary": "Produto criativo que tanto gera a peça inteira por LLM em dimensões exatas quanto preserva foto real e compõe ao redor dela por estratégias nativa, visão, chroma e híbrida.",
       "evidence": "Path oficial auditado, HEAD 9d0035d. O request aceita dimensions, com 11 presets no front e 14 mappings no backend; a família de utilities/provider entrega pixels exatos. PhotoAnalyzer, VisionZoneAgent, CoordinateCompositor e PhotoAdComposer implementam as alternativas com foto. Ainda externo ao VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:asset-provenance",
@@ -2309,7 +2309,7 @@
       "tier": 1,
       "summary": "Mantém briefing, motor, versão, parâmetros, seed, hashes, medidas, validações, armazenamento e destino associados a cada peça.",
       "evidence": "O contrato e o parque criativo viajam com identidade e recibo no laboratório integrado. Nenhuma peça real completou ainda produção, storage remoto verificado, aprovação e vínculo ao destino pelo contrato novo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:deterministic-creative-render",
@@ -2322,7 +2322,7 @@
       "tier": 1,
       "summary": "Código pode controlar sozinho fonte, texto, gráficos, geometria, layers, contraste, formatos e aprovação; quando há imagem, ela entra como asset opcional e separado.",
       "evidence": "Além do snapshot PRENSA, a convergência de 02/09/2026 exercitou o runtime integrado: goldens de imagem e vídeo, Remotion 13/13 e render hermético 17/17, com sha256 bit a bit reproduzido em instalação nova. Continua partial: worker hospedado, pré-aquecimento Linux, licença Remotion e equivalência entre plataformas ainda não foram fechados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:visual_asset_governance",
@@ -2335,7 +2335,7 @@
       "tier": 1,
       "summary": "Governa geração, adaptação, biblioteca, aprovação, linhagem, associação a canais, experimento e resultado de imagens e vídeos.",
       "evidence": "Porta criativa, linhagem e Estúdio existem em graus diferentes. Adios, Copycat e Vigenair foram classificados para gap analysis, sem substituir PRENSA, Motor de Imagem ou Motor de Vídeo.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:volc-gold-site-factory",
@@ -2348,7 +2348,7 @@
       "tier": 1,
       "summary": "Golden path futuro para domínio, infraestrutura, WordPress, identidade visual, tema, tracking, QA, rollback e recibo por adapters governados.",
       "evidence": "Visão declarada pelo dono e estacionada no P16 em 28/08/2026. Não há CLI, contrato de compra, adapter de provedor, ambiente descartável ou prova de GoDaddy MCP/API.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_publisher_quality",
@@ -2361,7 +2361,7 @@
       "tier": 1,
       "summary": "CWV, loader de anúncios, dataLayer, LCP, INP, CLS e correlação com receita.",
       "evidence": "PublisherSurfaceSnapshot v1 integrado a partir de 307a3d5: scanner local read-only e determinístico inventaria identidade de página, slots GPT, reservas de espaço, lazy load, refresh, dataLayer sanitizado e divergências AdManifest × DOM. A revisão factual Gemini 3.7 Flash passou; a integração adicionou contraprovas para SSRF fail-closed, divs comuns e vazamento de valores do dataLayer. Em 02/09/2026, d7521ba acrescentou fetch público SSRF-safe e o portão local de política de destino pago; cinco recibos sobre evidência preservada ficaram blocked e zero ficou ready. Continua parcial: o portão não está ligado à publicação/campanha, a LP viva não foi remediada, REAL_TARGET_NOT_PROVEN permanece para a prova visual e faltam DOM renderizado, CSS externo, CrUX/RUM/CWV e correlação com receita.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_owned_audience_retention",
@@ -2374,7 +2374,7 @@
       "tier": 1,
       "summary": "Transforma uma visita ou interação consentida em possibilidade de retorno por um canal próprio, com opt-out, frequência, identidade e resultado mensuráveis.",
       "evidence": "O caderno de 21/06/2026 lista push, e-mail, SMS, WhatsApp, Telegram e Messenger. Meta/ChatPion é uma implementação parcial dessa visão; não existe ainda uma capacidade geral no VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_portfolio",
@@ -2387,7 +2387,7 @@
       "tier": 1,
       "summary": "Dashboard geral, projetos, relatórios, custos, impostos, câmbio e permissões.",
       "evidence": "Rotas /, /dashboard/project/:id, /reports e configurações existem no front. A revisão visual global a407381..7cad5ec integrou o shell e as superfícies herdadas ao contrato canônico, com 1080 testes, build verde e 48 combinações visuais sem falha de contraste ou overflow. O aceite é visual: falhas de RPC convertidas em zero, estados ausentes e desvios silenciosos de permissão continuam como dívidas funcionais abertas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "cap_affiliate_promotions",
@@ -2400,7 +2400,7 @@
       "tier": 1,
       "summary": "Capta ofertas por API, valida condição, produz mensagens e distribui em canais próprios de WhatsApp ou Telegram com rastreio de clique e resultado.",
       "evidence": "Protótipo n8n declarado pelo dono em 26/08/2026. A raiz de fluxos.agenciavolc.com.br respondeu HTTP 200, mas a rota direta hA1hLumyH33xH549 respondeu 404 sem sessão; conteúdo e execução não foram verificados.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:attention_ecosystem",
@@ -2413,7 +2413,7 @@
       "tier": 1,
       "summary": "Visão que conecta mídia paga, conteúdo orgânico, ativos próprios, retenção e monetização sem confundir suas regras operacionais.",
       "evidence": "Síntese curada de VOS PRIME, Organic Attention Matrix, Meta Programmatic e declarações do dono em 26/08/2026. A visão foi aceita como mapa; módulos e projeções dos documentos não foram aceitos automaticamente.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:strategy_intake",
@@ -2426,7 +2426,7 @@
       "tier": 1,
       "summary": "Fila explícita para estratégias, engines, documentos e ideias ainda não incorporados. Nada recebe percentual nem prioridade definitiva antes de ser classificado e ligado ao grafo.",
       "evidence": "O dono declarou em 26/08/2026 que possui muitas capacidades prontas e validadas ainda fora do VOLC O.S.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:low_ticket_reserved",
@@ -2439,7 +2439,7 @@
       "tier": 1,
       "summary": "Espaço reservado no mapa para futura engenharia de infoprodutos baseada em análise de dados; sem backlog até novos insumos.",
       "evidence": "O dono pediu explicitamente em 26/08/2026 que a frente seja apenas preservada e detalhada depois.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:affiliate_promo_loop",
@@ -2452,7 +2452,7 @@
       "tier": 1,
       "summary": "Oferta por API → validação → peça → canal próprio → clique atribuído → resultado, preservado como frente separada de mídia paga e conteúdo editorial.",
       "evidence": "Direção e protótipo declarados pelo dono; workflow ainda não foi exportado ou inspecionado nesta curadoria.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:attention_map",
@@ -2465,7 +2465,7 @@
       "tier": 1,
       "summary": "Lente que mostra origem da atenção, pouso, avanço, retorno, receita e aprendizado sem reduzir toda a operação a campanha ou keyword.",
       "evidence": "Conceito central das oito páginas do caderno humano de 21/06/2026, promovido à curadoria em 26/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:brand_media_ecosystem",
@@ -2478,7 +2478,7 @@
       "tier": 1,
       "summary": "Cada projeto pode reunir portal, ativos sociais, canais de vídeo e meios de retorno sob uma identidade e economia comuns.",
       "evidence": "O caderno usa Crédito Up como exemplo concreto; propriedade e estado dos satélites ainda precisam do Cofre de Ativos.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:micro_saas_reserved",
@@ -2491,7 +2491,7 @@
       "tier": 1,
       "summary": "Família futura de receita própria derivada de audiência e ferramentas úteis; preservada sem backlog.",
       "evidence": "Citada no caderno humano junto de low ticket e afiliados, sem produto, escopo ou prova operacional.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:google_technology_radar",
@@ -2504,7 +2504,7 @@
       "tier": 1,
       "summary": "Registro vivo que classifica referências Google em padrão a extrair, spike, referência ou estacionamento, sem transformar descoberta em feature ou instalação automática.",
       "evidence": "docs/architecture/RADAR-GOOGLE-OPEN-SOURCE-VOLC.md revisa 22 repositórios em 27/08/2026 e corrige a finalidade do negative_keyword_cleaner; nenhuma instalação, credencial ou mutação foi autorizada.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:retention_capture_model",
@@ -2517,7 +2517,7 @@
       "tier": 1,
       "summary": "Ordena mecanismos de retorno por fricção: opt-in leve versus identidade recebida em troca de uma isca útil; política e consentimento continuam sendo portões externos.",
       "evidence": "Taxonomia criada no caderno humano; não equivale a autorização de captura ou envio.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "concept:topic_ecosystem",
@@ -2530,7 +2530,7 @@
       "tier": 1,
       "summary": "Um tema pode gerar busca, página, vídeo, post, criativo, isca, grupo e entidade semântica; keyword continua sendo uma expressão, não o universo inteiro.",
       "evidence": "Decisão estratégica registrada no caderno humano; ainda não existe modelo canônico que una todas as manifestações do tema.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "backend:trafego",
@@ -2541,7 +2541,7 @@
       "state": "implemented",
       "state_label": "Implementado",
       "tier": 2,
-      "summary": "Módulo FastAPI com 22 endpoints.",
+      "summary": "Módulo FastAPI com 23 endpoints.",
       "evidence": "Endpoints medidos no código.",
       "source": "backend/app/routers/trafego.py",
       "endpoints": [
@@ -2556,6 +2556,7 @@
         "GET /candidatos/{opportunity_id}",
         "GET /copy/{opportunity_id}",
         "POST /copy",
+        "POST /planejar-pmax",
         "POST /provar",
         "POST /subir",
         "GET /plano-de-mensuracao",
@@ -4495,7 +4496,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:meta-copilot",
@@ -4508,7 +4509,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:trafego-evidencias",
@@ -4521,7 +4522,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:meta-programmatic-retention",
@@ -4534,7 +4535,7 @@
       "tier": 3,
       "summary": "Fonte histórica da tese Meta → conversa → identidade → retorno → monetização.",
       "evidence": "Os DOCX BLACK BOOK e VOLC META PROGRAMMATIC têm texto extraído idêntico; são uma referência lógica duplicada, não duas arquiteturas.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:trafego-prd",
@@ -4547,7 +4548,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:trafego-p0a",
@@ -4560,7 +4561,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:front-campaigns",
@@ -4573,7 +4574,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:trafego-spec-p0",
@@ -4586,7 +4587,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:trafego-porta",
@@ -4599,7 +4600,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "db:campaign_funnel_urls",
@@ -4823,7 +4824,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "db:bucket_weights",
@@ -4958,7 +4959,7 @@
       "tier": 3,
       "summary": "Mestre, SQL e workflows de uma automação experimental de observação, avaliação, decisão e rotação criativa.",
       "evidence": "Pacote analisado em 26/08/2026: 9 JSON desativados e schema não comprovado no banco oficial.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:orakul-decision-intelligence",
@@ -4971,7 +4972,7 @@
       "tier": 3,
       "summary": "Pacote documental que separa laboratório sintético, kernel legado, runtime durável, shadow real e execução governada.",
       "evidence": "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md, SPEC-ORAKUL-DECISION-INTELLIGENCE-V1.md, ADR-RUNTIME-ORAKUL-E-WORKERS.md e ORAKUL-DECISION-INTELLIGENCE-AUDIT.json, versionados em 40358dd. São auditoria e proposta; não promovem capacidade nem aplicam migration.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:bia-proposal",
@@ -4984,7 +4985,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:n8n-orakul-predictive-rescue",
@@ -4997,7 +4998,7 @@
       "tier": 3,
       "summary": "Análise individual dos nove workflows, valor proprietário, riscos, destino arquitetural, modelo de dados, superfícies e rollout governado.",
       "evidence": "docs/architecture/RESGATE-INTELIGENCIA-N8N-ORAKUL-PREDITIVO.md e docs/growth-engine/legado-n8n/MANIFESTO-PROPRIEDADE.json, produzidos a partir do inventário sanitizado atualizado via API read-only em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:meridian-mmm-spec",
@@ -5010,7 +5011,7 @@
       "tier": 3,
       "summary": "Posiciona Meridian como camada estratégica de incrementalidade, saturação e cenários, separada do controle operacional de campanhas.",
       "evidence": "docs/architecture/SPEC-MERIDIAN-MMM-VOLC.md, fundamentado em fontes oficiais consultadas em 27/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:budget-roi-allocator-spec",
@@ -5023,7 +5024,7 @@
       "tier": 3,
       "summary": "Traduz com limites explícitos o SGD-UCB multicanal do paper para um allocator VOLC em replay e shadow mode.",
       "evidence": "docs/architecture/SPEC-BUDGET-ROI-ALLOCATOR-VOLC.md, fundamentado no arXiv:2302.01523 e confrontado com a arquitetura real em 29/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:smart-bidding",
@@ -5036,7 +5037,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "db:bid_actions",
@@ -6053,7 +6054,7 @@
       "tier": 3,
       "summary": "Decide a autoridade de segredos, o broker seguro do AdsPower, o envelope ADK/DeepSeek e o estacionamento da VOLC Gold Site Factory.",
       "evidence": "docs/architecture/ADR-1PASSWORD-ADSPOWER-E-RECUPERACAO-AGENTICA.md e docs/architecture/contracts/agentic-recovery-smoke-v1.json, fundamentados em fontes oficiais consultadas em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:work-road",
@@ -6066,7 +6067,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:trafego-p0s",
@@ -6079,7 +6080,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:v11-03",
@@ -6092,7 +6093,7 @@
       "tier": 3,
       "summary": "Migration e rollback da fila criativa Postgres com RLS, papéis, guardas de transição e recibo imutável.",
       "evidence": "supabase/migrations/v11_03_execucao_criativa.sql e v11_03_rollback.sql passaram o ciclo aplicar→operar→reverter→reaplicar com 129/129; não foram aplicadas no Supabase oficial.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "db:exchange_rate_history",
@@ -6635,7 +6636,7 @@
       "tier": 3,
       "summary": "Registra a adaptação reversível dos coletores VOLC e a migration necessária para identidade, granularidade, frescor e recibo.",
       "evidence": "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md, medido contra os quatro workflows n8n e o OpenAPI do Supabase oficial em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "db:adsense_daily_snapshots",
@@ -7258,7 +7259,7 @@
       "tier": 3,
       "summary": "Decide extrair um serviço dentro do monorepo, com runtime separável e seis modos, sem transformar o Positivo em núcleo permanente.",
       "evidence": "docs/creative-engines/ADR-001-SERVICO-CRIATIVO-VOLC.md",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:adspower-browser-mcp",
@@ -7271,7 +7272,7 @@
       "tier": 3,
       "summary": "Skill, CLI e servidor MCP oficiais para a Local API do AdsPower.",
       "evidence": "https://github.com/AdsPower/adspower-browser e artigo oficial do AdsPower, consultados em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:n8n-map",
@@ -7284,7 +7285,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:multipost-official",
@@ -7297,7 +7298,7 @@
       "tier": 3,
       "summary": "Fonte da alternativa browser-assisted para publicação multicanal.",
       "evidence": "https://github.com/leaperone/MultiPost-Extension e https://multipost.app/, consultados em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:postiz-official",
@@ -7310,7 +7311,7 @@
       "tier": 3,
       "summary": "Fonte do contrato self-hosted, API, CLI, integrações, providers e licença do núcleo de publicação escolhido.",
       "evidence": "https://github.com/gitroomhq/postiz-app e https://docs.postiz.com/public-api/introduction, consultados em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "rpc:auto_create_project_by_url",
@@ -7440,7 +7441,7 @@
       "tier": 3,
       "summary": "Define Postiz como núcleo isolado, MultiPost como fallback e AdsPower MCP como executor do portão visual pós-publicação.",
       "evidence": "docs/architecture/ADR-DISTRIBUICAO-ORGANICA-E-QA-VISUAL.md, com fontes oficiais consultadas em 28/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:prensa-catalog",
@@ -7453,7 +7454,7 @@
       "tier": 3,
       "summary": "Inventário reproduzível de specs, skins, famílias, modos, gates, módulos reutilizáveis e provas antes/depois do Motor de Imagem.",
       "evidence": "docs/creative-engines/CATALOGO-PRENSA-E-MOTOR-IMAGEM.md, PACOTE-REUSO-MOTOR-IMAGEM.json e snapshots/motor-imagem-2026-08-26.json.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:video-engine-catalog",
@@ -7466,7 +7467,7 @@
       "tier": 3,
       "summary": "Inventário reproduzível de contrato, formatos, skins, hooks, providers, gates, renders observados, dívidas e pacote de extração do Motor de Vídeo.",
       "evidence": "docs/creative-engines/CATALOGO-MOTOR-DE-VIDEO.md, motores-de-video.json, PACOTE-REUSO-MOTOR-VIDEO.json, ADR-002-INTEGRACAO-MOTOR-VIDEO.md e snapshots/motor-video-2026-08-26.json.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:template-lab-handoff",
@@ -7479,7 +7480,7 @@
       "tier": 3,
       "summary": "Separa o que está integrado localmente do que ainda depende de Postgres, worker, storage e render hermético.",
       "evidence": "docs/architecture/HANDOFF-CURADORIA-BANCADA-10-13-15-16.md, docs/closure/creative-factory-production-spine-v1/RELATORIO-DE-ENTREGA.md e commits integrados até 6caaece.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:creative-engines-inventory",
@@ -7492,7 +7493,7 @@
       "tier": 3,
       "summary": "Leitura humana e manifesto estruturado dos motores Aprova, Positivo, Motor de Imagem e PRENSA, com autoridade, capacidades, provas, riscos e ordem de integração.",
       "evidence": "docs/creative-engines/INVENTARIO-MOTORES-DE-IMAGEM.md, motores-de-imagem.json, CATALOGO-PRENSA-E-MOTOR-IMAGEM.md e snapshot reproduzível, auditados em 26/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:organic-attention-matrix",
@@ -7505,7 +7506,7 @@
       "tier": 3,
       "summary": "Catálogo estratégico de perfis, pilares editoriais e adaptação por canal; não é inventário de ativos possuídos.",
       "evidence": "Analisado em 26/08/2026; handles, quantidades, metas e projeções foram mantidos como hipóteses.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "db:incubator_articles",
@@ -7702,7 +7703,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "clickup:86ak19uk3",
@@ -7869,7 +7870,7 @@
       "tier": 3,
       "summary": "Oito páginas manuscritas sobre atenção, jornada, retenção, canais, automações e diversificação, depuradas para o roadmap.",
       "evidence": "Transcrições em /Users/mac/Desktop/Volc-2-Brain/_oficina-codex/arbitragem/insights-humanos/2026-06-21-caderno e síntese em docs/volc-os-graph/INGESTAO-CADERNO-HUMANO-2026-06-21.md.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:strategy-inbox",
@@ -7882,7 +7883,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:attention-ingestion",
@@ -7895,7 +7896,7 @@
       "tier": 3,
       "summary": "Matriz factual que separa aquisição direta, conteúdo orgânico, retenção, afiliados e itens reservados.",
       "evidence": "docs/volc-os-graph/INGESTAO-ECOSSISTEMA-ATENCAO-2026-08-26.md",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:prd",
@@ -7908,7 +7909,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:blueprint",
@@ -7921,7 +7922,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:google-open-source-radar",
@@ -7934,7 +7935,7 @@
       "tier": 3,
       "summary": "Revisão item a item que converte referências Google em padrões, spikes, referências ou estacionamento e as liga ao Roadmap Vivo.",
       "evidence": "docs/architecture/RADAR-GOOGLE-OPEN-SOURCE-VOLC.md, baseado no DOCX recebido e em READMEs/metadados oficiais conferidos em 27/08/2026.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:spec",
@@ -7947,7 +7948,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:second-brain",
@@ -7960,7 +7961,7 @@
       "tier": 3,
       "summary": "Fonte de contexto, regra ou arquitetura.",
       "evidence": "Incluída na cartografia global.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     },
     {
       "id": "doc:vos-prime",
@@ -7973,7 +7974,7 @@
       "tier": 3,
       "summary": "Documento histórico que descreve o ciclo observar, interpretar, criar, publicar, monetizar, proteger e aprender.",
       "evidence": "Analisado em 26/08/2026; arquitetura e linguagem são aspiracionais, e números e módulos não comprovam implementação.",
-      "source": "Curadoria humana, atualizada em 2026-09-03"
+      "source": "Curadoria humana, atualizada em 2026-09-04"
     }
   ],
   "edges": [
