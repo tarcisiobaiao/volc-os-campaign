@@ -13,6 +13,13 @@ export interface ObjetoMetaDemo {
   resultado?: string;
   custo?: string;
   detalhe?: string;
+  /** Projeto/site VOLC ao qual o objeto está vinculado — mesma noção que `Campaign.projectId` no Google Ads. */
+  projeto?: string;
+  site?: string;
+  /** Data de criação, ISO `YYYY-MM-DD`. Ausente apenas quando o objeto nunca foi de fato criado na plataforma. */
+  criadoEm?: string;
+  /** `null` = sem término definido (contínua). Nunca inventado quando a campanha nunca rodou. */
+  terminaEm?: string | null;
 }
 
 export interface MetaInsightDiarioDemo {
@@ -53,16 +60,19 @@ export const META_DEMO: Record<TipoMeta, ObjetoMetaDemo[]> = {
       id: 'campanha-descoberta-01', tipo: 'campanhas', nome: 'Guia Encceja · Descoberta',
       status: 'ATIVO', objetivo: 'Tráfego', entrega: 'Estável', orcamento: 'R$ 120/dia',
       resultado: '1.842 sessões', custo: 'R$ 684,20', detalhe: 'Menor custo · lance',
+      projeto: 'Foco Genial', site: 'focogenial.com.br', criadoEm: '2026-07-22', terminaEm: null,
     },
     {
       id: 'campanha-beneficios-02', tipo: 'campanhas', nome: 'Benefícios · Conteúdo útil',
       status: 'PAUSADO', objetivo: 'Tráfego', entrega: 'Sem veiculação', orcamento: 'R$ 80/dia',
       resultado: '—', custo: 'R$ 0,00', detalhe: 'Menor custo · lance',
+      projeto: 'Foco Genial', site: 'focogenial.com.br', criadoEm: '2026-08-05', terminaEm: null,
     },
     {
       id: 'campanha-retargeting-03', tipo: 'campanhas', nome: 'Leitores engajados · Retorno',
       status: 'RASCUNHO', objetivo: 'Engajamento', entrega: 'Ainda não enviado', orcamento: 'R$ 45/dia',
       resultado: '—', custo: '—', detalhe: 'Menor custo · lance',
+      projeto: 'Foco Genial', site: 'focogenial.com.br', criadoEm: '2026-08-29', terminaEm: null,
     },
   ],
   conjuntos: [
