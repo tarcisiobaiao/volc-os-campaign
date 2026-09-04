@@ -1,0 +1,25 @@
+{
+  "evidence": [
+    "No matching local workflow JSON found by id.",
+    "No N8N environment variable names available in process or /root/.hermes/.env."
+  ],
+  "matrix": [],
+  "prohibited_actions": [
+    "activate",
+    "deactivate",
+    "save",
+    "import",
+    "edit",
+    "execute",
+    "credential changes",
+    "webhook calls"
+  ],
+  "status": "N8N_READ_NOT_AVAILABLE",
+  "workflow_ids": [
+    "kGOMtOQ6MQsw1Equ",
+    "dv9BOaRlFL6oAW9i",
+    "HiRWa4Q1Ljp77bEA",
+    "MkgofL00cmOmqUTT",
+    "W70fFnVwNftmkviv"
+  ]
+}

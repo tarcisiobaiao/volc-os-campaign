@@ -1,0 +1,24 @@
+{
+  "executor_requirements": [
+    "inventory files without copying secrets",
+    "hash files",
+    "extract only reusable concepts",
+    "record provenance",
+    "do not claim content until read locally"
+  ],
+  "expected_paths": [
+    "/Users/mac/Downloads/Co-Piloto de Criação Meta Ads",
+    "/Users/mac/Downloads/Meta MVP Webgo"
+  ],
+  "output_schema": [
+    "source_path",
+    "exists",
+    "sha256",
+    "file_type",
+    "concepts",
+    "product_references",
+    "risks",
+    "reuse_route"
+  ],
+  "status": "LOCAL_INPUT_NOT_AVAILABLE"
+}

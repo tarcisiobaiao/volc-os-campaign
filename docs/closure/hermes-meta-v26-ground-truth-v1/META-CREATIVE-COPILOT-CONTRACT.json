@@ -1,0 +1,35 @@
+{
+  "limits": [
+    "does not choose budget silently",
+    "does not activate campaign",
+    "does not invent facts",
+    "does not use benchmark as causality",
+    "does not replace human approval",
+    "does not ignore policy",
+    "does not reuse creative without lineage"
+  ],
+  "local_sources_status": "LOCAL_INPUT_NOT_AVAILABLE",
+  "typed_outputs": [
+    "psychological_state",
+    "consciousness_level",
+    "intent",
+    "hypothesis",
+    "angle",
+    "mechanism",
+    "hook",
+    "format",
+    "primary_text",
+    "headline",
+    "description",
+    "cta",
+    "journey_stage",
+    "placement",
+    "audience_hypothesis",
+    "landing_page_congruence",
+    "compliance",
+    "risk",
+    "variation",
+    "lineage",
+    "evidence_source"
+  ]
+}
