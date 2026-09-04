@@ -1,0 +1,296 @@
+{
+  "as_is_summary": [
+    {
+      "evidence": "Requires graphify query/explain/affected when available; fallback to JSON when venv unavailable.",
+      "impact": "graphify CLI unavailable; use curation and generated operational graph read-only.",
+      "line": 8,
+      "path": "AGENTS.md",
+      "symbol": "graphify policy"
+    },
+    {
+      "evidence": "Hub must prove campaigns against deterministic rules and real account, without inventing data or automating spend without human decision.",
+      "impact": "Meta contract must separate observation/proposal/validation/mutation and declare absence.",
+      "line": 13,
+      "path": "PRODUCT.md",
+      "symbol": "Hub de Tráfego purpose"
+    },
+    {
+      "evidence": "GOOGLE_ADS and META_ADS are the only declared media-buying platforms.",
+      "impact": "Meta already exists as navigation/platform vocabulary, not implementation.",
+      "line": 73,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "META_ADS"
+    },
+    {
+      "evidence": "Meta manifest has capacidades=() and says no credential, adapter, or linked account exists; zero campaigns would be false.",
+      "impact": "Current Meta Ads operation is PLACEHOLDER/BLOQUEADA_EXTERNAMENTE.",
+      "line": 460,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "META ManifestoDeCanal"
+    },
+    {
+      "evidence": "Search supports fields, proofs, and mutation real for Google Ads.",
+      "impact": "Existing action ladder/proofs are reusable for Meta, but Google-specific adapter is not.",
+      "line": 350,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "SEARCH ManifestoDeCanal"
+    },
+    {
+      "evidence": "Display has fields and permits mutation real in current manifest.",
+      "impact": "Manifest-driven UI pattern reusable; contents are Google-specific.",
+      "line": 373,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "DISPLAY ManifestoDeCanal"
+    },
+    {
+      "evidence": "Demand Gen has fields/proof but permite_mutacao_real=False in base.",
+      "impact": "Demonstrates a channel can be proposed/validated without write authorization.",
+      "line": 408,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "DEMAND_GEN ManifestoDeCanal"
+    },
+    {
+      "evidence": "PMax capabilities=(LER,) and no constructor in base.",
+      "impact": "Do not infer Meta write from platform listing.",
+      "line": 436,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "PERFORMANCE_MAX ManifestoDeCanal"
+    },
+    {
+      "evidence": "Creates trafego_linhagem, trafego_campanha, trafego_campanha_espelho, trafego_snapshot_conta, trafego_vinculo, trafego_evento and read projections.",
+      "impact": "Provider-neutral identity/snapshot/event foundation should be reused for Meta.",
+      "line": 16,
+      "path": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "symbol": "trafego_* inventory tables"
+    },
+    {
+      "evidence": "No number without freshness; absence is NULL, never zero; account failures isolated per row.",
+      "impact": "Meta insights and sync must carry read timestamp and distinguish absent/failed/zero.",
+      "line": 51,
+      "path": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "symbol": "freshness and null rules"
+    },
+    {
+      "evidence": "v10 series introduces proposal/execution structures for traffic operations.",
+      "impact": "Meta creation should enter provider-neutral intent/blueprint/lote/validacao/recibo path, not legacy campaigns.",
+      "line": 1,
+      "path": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "symbol": "intenção/lote/blueprint family"
+    },
+    {
+      "evidence": "Atomic receipt prevents concurrent creation attempts for the same item.",
+      "impact": "Meta CREATE_PAUSED must use idempotency key + receipt + read-back.",
+      "line": 17,
+      "path": "supabase/migrations/v10_03_recibo_atomico.sql",
+      "symbol": "trafego_recibo / one in-flight receipt"
+    },
+    {
+      "evidence": "Canonical daily facts exist for GAds.",
+      "impact": "Meta daily insights need parallel normalized table or provider-keyed fact model; do not overload legacy daily_campaign_metrics silently.",
+      "line": 1,
+      "path": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+      "symbol": "Google daily fact model"
+    },
+    {
+      "evidence": "Settings page can call updateCampaignStatus active/paused and labels Google Ads.",
+      "impact": "Legacy campaigns UI is not safe surface for Meta mutations.",
+      "line": 254,
+      "path": "src/pages/settings/CampaignsSettings.tsx",
+      "symbol": "legacy settings campaign actions"
+    },
+    {
+      "evidence": "Settings exposes Google Ads and Meta CAPI; CAPI is server event sending, not paid media buying.",
+      "impact": "Do not confuse Meta CAPI with Meta Ads operation.",
+      "line": 75,
+      "path": "src/pages/settings/IntegrationsSettings.tsx",
+      "symbol": "Meta CAPI tab"
+    },
+    {
+      "evidence": "Meta placeholder component exists in traffic hub component tree.",
+      "impact": "UI can render blocked/not configured state; must not show zero synced campaigns.",
+      "line": 1,
+      "path": "src/components/trafego/hub/MetaNaoConfigurada.tsx",
+      "symbol": "Meta placeholder component"
+    },
+    {
+      "evidence": "Frontend has multichannel fixtures/tests for traffic hub.",
+      "impact": "Executor should replace fixture-driven Meta states with server read models.",
+      "line": 1,
+      "path": "src/components/trafego/hub/fixtureMulticanal.ts",
+      "symbol": "multichannel fixtures"
+    },
+    {
+      "evidence": "Existing Meta code is CAPI/site event integration, not Marketing API.",
+      "impact": "Reusable only for credential/reference/security patterns, not campaign hierarchy.",
+      "line": 1,
+      "path": "src/sql/v7_13_meta_capi_sites.sql",
+      "symbol": "Meta CAPI sites"
+    },
+    {
+      "evidence": "Existing JS lib handles Meta CAPI sites.",
+      "impact": "Not an Ads data plane; keep separate from Meta Ads credentials.",
+      "line": 1,
+      "path": "api/_lib/metaCapiSites.js",
+      "symbol": "Meta CAPI API lib"
+    }
+  ],
+  "base": "0aa090eb6a97e66b5ebdeb1c288d214003b06cbf",
+  "branch": "sprint/hermes-meta-v26-ground-truth-v1",
+  "breaking_rules": [
+    {
+      "id": "V26_ADVANTAGE_AUDIENCE_HECF",
+      "rule": "If special_ad_categories intersects HEC-F and targeting is constrained/relaxable, require explicit advantage_audience in targeting_automation; omission is stable error META_V26_ADVANTAGE_AUDIENCE_REQUIRED.",
+      "source": {
+        "endpoint_or_field": "targeting_automation.advantage_audience",
+        "object": "AdSet",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Frontend/backend must require explicit 1/0 for Housing, Employment, Financial Products/Services with constrained targeting."
+      }
+    },
+    {
+      "id": "V26_INSTAGRAM_EXPLORE_REMOVED",
+      "rule": "Reject instagram_positions containing explore; suggest eligible alternatives; never silently send removed placement.",
+      "source": {
+        "endpoint_or_field": "instagram_positions=explore",
+        "object": "AdSet targeting",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Do not offer Instagram Explore Feed placement."
+      }
+    },
+    {
+      "id": "V26_MESSENGER_STORIES_DEPRECATED",
+      "rule": "Warn/block messenger_positions story in manual placements unless explicitly modeled as unsupported; read-back effective placements is mandatory.",
+      "source": {
+        "endpoint_or_field": "messenger_positions=story",
+        "object": "AdSet targeting",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Do not rely on Messenger Stories; v26 silently removes story."
+      }
+    },
+    {
+      "id": "V26_POLL_CREATIVE_REJECTED",
+      "rule": "Reject poll_spec and interactive_components_spec.type=poll in local validation.",
+      "source": {
+        "endpoint_or_field": "interactive_components_spec.poll_spec/type=poll",
+        "object": "AdCreative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Creative copilot and ZIP manifest must reject poll creatives."
+      }
+    },
+    {
+      "id": "V26_WEB_APP_WEB_ONLY_RESTRICTED",
+      "rule": "If campaign conversion locations are Website+App, creative.applink_treatment cannot be web_only.",
+      "source": {
+        "endpoint_or_field": "applink_treatment=web_only with Website+App",
+        "object": "Ad/AdCreative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "UI must not allow incompatible destination combination."
+      }
+    },
+    {
+      "id": "V26_DELIVERY_ESTIMATE_FIELDS_REMOVED",
+      "rule": "Contracts may read delivery_estimate only without removed fields; no replacement API; no outcome promise.",
+      "source": {
+        "endpoint_or_field": "daily_outcomes_curve,budget_guardrail,estimate_dau",
+        "object": "Delivery Estimate",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Do not build UI promises/reach forecasts on removed fields."
+      }
+    },
+    {
+      "id": "V26_SHOP_ADS_DEFAULTING",
+      "rule": "For eligible shop advertisers, require explicit destination choice; do not inherit WEBSITE_AND_SHOP silently.",
+      "source": {
+        "endpoint_or_field": "destination_spec.destination_type",
+        "object": "AdCreative/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Future Sales/shop work must make opt-out explicit when advertiser has shop."
+      }
+    }
+  ],
+  "capability_ids": [
+    "META_BUSINESS_REFERENCE",
+    "META_SYSTEM_USER_REFERENCE",
+    "META_APP_REFERENCE",
+    "META_AD_ACCOUNT_REFERENCE",
+    "META_PAGE_REFERENCE",
+    "META_INSTAGRAM_ACCOUNT_REFERENCE",
+    "META_PIXEL_DATASET_REFERENCE",
+    "META_PROJECT_BINDING",
+    "META_CAMPAIGN_READ",
+    "META_CAMPAIGN_CREATE_PAUSED",
+    "META_CAMPAIGN_ADVANTAGE_BUDGET",
+    "META_ADSET_READ",
+    "META_ADSET_CREATE_TRAFFIC_LPV",
+    "META_AD_READ",
+    "META_AD_CREATE_PAUSED",
+    "META_CREATIVE_READ",
+    "META_CREATIVE_CREATE_LINK_IMAGE",
+    "META_DYNAMIC_CREATIVE_ASSET_FEED",
+    "META_IMAGE_UPLOAD",
+    "META_VIDEO_UPLOAD",
+    "META_INSIGHTS_SPEND",
+    "META_INSIGHTS_IMPRESSIONS",
+    "META_INSIGHTS_CLICKS",
+    "META_INSIGHTS_REACH",
+    "META_INSIGHTS_FREQUENCY",
+    "META_INSIGHTS_CPM",
+    "META_INSIGHTS_CPC",
+    "META_INSIGHTS_CTR",
+    "META_INSIGHTS_ACTIONS",
+    "META_INSIGHTS_ACTION_VALUES",
+    "META_INSIGHTS_LANDING_PAGE_VIEWS",
+    "META_INSIGHTS_CURRENCY",
+    "META_INSIGHTS_TIMEZONE",
+    "META_INSIGHTS_BREAKDOWNS",
+    "META_INSIGHTS_ASYNC_INSIGHTS",
+    "META_INSIGHTS_PAGINATION",
+    "META_INSIGHTS_FRESHNESS",
+    "META_PAUSE",
+    "META_ENABLE",
+    "META_CHANGE_BUDGET",
+    "META_CHANGE_BID",
+    "META_RENAME",
+    "META_DUPLICATE",
+    "META_ARCHIVE"
+  ],
+  "local_refs": "LOCAL_INPUT_NOT_AVAILABLE",
+  "mcp_boundary": "MCP not data/mutation plane; prompt injection risk",
+  "mission": "Meta Ads Marketing API v26 ground truth + execution contract for VOLC OS",
+  "n8n_status": "N8N_READ_NOT_AVAILABLE",
+  "no_secrets": true,
+  "official_sources": {
+    "basic_creation": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+    "basic_targeting": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/audiences/reference/basic-targeting",
+    "manage_campaigns": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+    "marketing_api_home": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+    "mcp": "https://developers.facebook.com/documentation/mcp",
+    "optimization": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+    "placement": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/audiences/reference/placement-targeting",
+    "v26_blog": "https://developers.facebook.com/blog/post/2026/07/29/introducing-graph-api-v26-and-marketing-api-v26/",
+    "v26_changelog": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"
+  },
+  "schema_decision": "C reuse provider-neutral core with Meta extensions",
+  "zero_external_mutation": true
+}
