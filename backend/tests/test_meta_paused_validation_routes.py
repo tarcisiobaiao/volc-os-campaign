@@ -46,6 +46,12 @@ class _GraphFake:
                 'width': 1080, 'height': 1080,
                 'url_128': 'https://scontent.example.fbcdn.net/preview.jpg',
             }]})
+        if url.endswith('/advideos'):
+            return _Resposta({'data': [{
+                'id': '55443322', 'name': 'Vídeo teste',
+                'created_time': '2026-09-01T12:00:00+0000',
+                'picture': 'https://scontent.example.fbcdn.net/thumb.jpg',
+            }]})
         raise AssertionError(url)
 
 

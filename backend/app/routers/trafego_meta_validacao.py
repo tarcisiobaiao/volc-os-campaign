@@ -65,6 +65,10 @@ class PedidoPlanoMetaPausado(BaseModel):
     # UI contract. Meta requires the value explicitly; omission means the safe
     # Ad Set budget behavior, never an implicit opt-in to sharing.
     is_adset_budget_sharing_enabled: bool = False
+    # Mesma classe de campo: desde a v23.0 a Meta assume 1 quando o Ad Set nasce
+    # sem `targeting_automation.advantage_audience`. O padrão seguro aqui é a
+    # recusa explícita, nunca a omissão.
+    advantage_audience: bool = False
     call_to_action_type: str = Field(default="LEARN_MORE", min_length=3, max_length=40)
     variations: list[PedidoVariacaoEstaticaMeta] = Field(default_factory=list, max_length=10)
 
@@ -105,6 +109,7 @@ def _plano(payload: PedidoPlanoMetaPausado) -> PlanoMetaPausado:
         special_ad_categories=tuple(payload.special_ad_categories),
         special_categories_confirmed=payload.special_categories_confirmed,
         is_adset_budget_sharing_enabled=payload.is_adset_budget_sharing_enabled,
+        advantage_audience=payload.advantage_audience,
         call_to_action_type=payload.call_to_action_type,
         variacoes_estaticas=tuple(
             VariacaoEstaticaMeta(
@@ -147,10 +152,12 @@ async def capacidades(
     return {
         "ok": True,
         "api_version": "v26.0",
-        "receita": "OUTCOME_TRAFFIC_WEBSITE_LPV_STATIC_PAUSED",
+        "receita": "OUTCOME_TRAFFIC_LPV_STATIC_PAUSED",
         "read_assets": "AVAILABLE_WITH_LOCAL_KEYCHAIN",
         "single_static": "AVAILABLE",
         "static_batch": "AVAILABLE_UP_TO_10",
+        "video_creative": "BLOCKED_UNTIL_VIDEO_THUMBNAIL_CONTRACT_PROVEN",
+        "video_inventory": "AVAILABLE_READ_ONLY",
         "flexible_creative": "BLOCKED_UNTIL_ASSET_FEED_SPEC_PROVEN",
         "validate_only": (
             "ENABLED" if os.environ.get("META_VALIDATE_ONLY_ENABLED") == "1"
@@ -158,6 +165,31 @@ async def capacidades(
         ),
         "create_paused": "NOT_MOUNTED",
         "activation": "NOT_IMPLEMENTED",
+        # Causa verificável de cada bloqueio, em linguagem de operador. A tela
+        # mostra isto no lugar do nome de qualquer variável de ambiente.
+        "bloqueios": {
+            "video_creative": (
+                "A miniatura do criativo de vídeo precisa ser um image_hash da biblioteca "
+                "da conta ou uma URL hospedada por nós; a documentação oficial proíbe usar "
+                "a URL de miniatura devolvida pelo CDN da Meta, e enviar uma imagem nova "
+                "seria uma escrita de ativo não autorizada nesta missão."
+            ),
+            "flexible_creative": (
+                "Está provado que asset_feed_spec exige ad_formats, link_urls e "
+                "call_to_action_types, que as imagens usam a chave hash e que "
+                "is_dynamic_creative vive no conjunto. Falta prova oficial de como a Página "
+                "viaja junto do asset_feed_spec: nenhum exemplo da Meta mostra "
+                "object_story_spec e asset_feed_spec no mesmo criativo."
+            ),
+            "validate_only": (
+                "A validação remota está fechada neste servidor. Um administrador precisa "
+                "liberá-la antes de qualquer chamada à Meta."
+            ),
+            "create_paused": (
+                "A criação real não tem rota montada: ela depende de autorização separada "
+                "para o registro durável e para a escrita na Meta."
+            ),
+        },
     }
 
 

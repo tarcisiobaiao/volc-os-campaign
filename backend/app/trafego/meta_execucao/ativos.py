@@ -118,7 +118,12 @@ class ResolvedorAtivosMeta:
 
     async def _inventario_interno(
         self, account_ref: str, segredo: SegredoEfemero,
-    ) -> tuple[dom.ContaMetaDescoberta, list[_AtivoResolvido], list[_AtivoResolvido]]:
+    ) -> tuple[
+        dom.ContaMetaDescoberta,
+        list[_AtivoResolvido],
+        list[_AtivoResolvido],
+        list[_AtivoResolvido],
+    ]:
         try:
             conta = await self._conta(account_ref, segredo)
         except ErroDeLeituraMeta as exc:
@@ -128,6 +133,12 @@ class ResolvedorAtivosMeta:
             f"{base}/promote_pages", segredo, fields="id,name")
         imagens_raw = await self._listar(
             f"{base}/adimages", segredo, fields="hash,name,width,height,url_128,url")
+        # Somente campos comprovados na referência oficial do nó Video: o título
+        # se chama `name`, e `status` não aparece entre os campos legíveis desta
+        # edge — por isso a prontidão do vídeo não é afirmada aqui.
+        # https://developers.facebook.com/docs/marketing-api/reference/video/
+        videos_raw = await self._listar(
+            f"{base}/advideos", segredo, fields="id,name,created_time,updated_time,picture")
         paginas: list[_AtivoResolvido] = []
         for item in paginas_raw:
             try:
@@ -167,12 +178,32 @@ class ResolvedorAtivosMeta:
                 id_externo=image_hash,
                 preview_url=preview_url,
             ))
-        return conta, paginas, imagens
+        videos: list[_AtivoResolvido] = []
+        for item in videos_raw:
+            try:
+                externo = dom.id_externo(item.get("id"), campo="video.id")
+            except dom.ContratoMetaInvalido:
+                continue
+            thumb = str(item.get("picture") or "").strip() or None
+            videos.append(_AtivoResolvido(
+                publico=AtivoDeCriacaoMeta(
+                    referencia_opaca=dom.referencia_opaca_objeto(
+                        conta.id_externo, "video", externo),
+                    nome=dom.texto_opcional(item.get("name")) or "Vídeo sem nome",
+                    tipo="video_asset",
+                    id_mascarado=dom.mascarar_id(externo),
+                    preview_disponivel=thumb is not None,
+                ),
+                id_externo=externo,
+                preview_url=thumb,
+            ))
+        return conta, paginas, imagens, videos
 
     async def inventariar(
         self, account_ref: str, segredo: SegredoEfemero,
     ) -> Mapping[str, Any]:
-        conta, paginas, imagens = await self._inventario_interno(account_ref, segredo)
+        conta, paginas, imagens, videos = await self._inventario_interno(
+            account_ref, segredo)
         return {
             "ok": True,
             "api_version": "v26.0",
@@ -180,7 +211,8 @@ class ResolvedorAtivosMeta:
             "conta": conta.publico(),
             "paginas": [item.publico.publico() for item in paginas],
             "imagens": [item.publico.publico() for item in imagens],
-            "receita": "OUTCOME_TRAFFIC_WEBSITE_LPV_STATIC_PAUSED",
+            "videos": [item.publico.publico() for item in videos],
+            "receita": "OUTCOME_TRAFFIC_LPV_STATIC_PAUSED",
         }
 
     async def resolver(
@@ -212,7 +244,7 @@ class ResolvedorAtivosMeta:
                 "META_STATIC_BATCH_INVALID",
                 "o lote precisa declarar entre 1 e 10 referencias de imagem",
             )
-        conta, paginas, imagens = await self._inventario_interno(account_ref, segredo)
+        conta, paginas, imagens, _ = await self._inventario_interno(account_ref, segredo)
         pagina = next((item for item in paginas if item.publico.referencia_opaca == page_ref), None)
         if pagina is None:
             raise ErroDeNascimentoMeta(
@@ -242,16 +274,17 @@ class ResolvedorAtivosMeta:
         asset_ref: str,
         segredo: SegredoEfemero,
     ) -> str:
-        _, _, imagens = await self._inventario_interno(account_ref, segredo)
-        imagem = next(
-            (item for item in imagens if item.publico.referencia_opaca == asset_ref), None)
-        if imagem is None:
+        _, _, imagens, videos = await self._inventario_interno(account_ref, segredo)
+        ativo = next(
+            (item for item in [*imagens, *videos]
+             if item.publico.referencia_opaca == asset_ref), None)
+        if ativo is None:
             raise ErroDeNascimentoMeta(
-                "META_ASSET_REFERENCE_UNKNOWN", "a imagem nao pertence a conta Meta selecionada")
-        if not imagem.preview_url:
+                "META_ASSET_REFERENCE_UNKNOWN", "a peça nao pertence a conta Meta selecionada")
+        if not ativo.preview_url:
             raise ErroDeNascimentoMeta(
-                "META_ASSET_PREVIEW_UNAVAILABLE", "a Meta nao devolveu previa para esta imagem")
-        return imagem.preview_url
+                "META_ASSET_PREVIEW_UNAVAILABLE", "a Meta nao devolveu previa para esta peça")
+        return ativo.preview_url
 
 
 def _inteiro_opcional(valor: Any) -> int | None:
