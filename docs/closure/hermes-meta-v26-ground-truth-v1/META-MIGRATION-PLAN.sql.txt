@@ -1,0 +1,9 @@
+-- DRAFT ONLY — NOT A MIGRATION, DO NOT APPLY
+-- Proposed sequence:
+-- 1. create trafego_meta_business, trafego_meta_ad_account, trafego_meta_project_binding
+-- 2. create trafego_meta_adset, trafego_meta_ad, trafego_meta_creative, trafego_meta_ad_creative_binding
+-- 3. create trafego_meta_asset, trafego_meta_insight_daily, trafego_meta_sync_run
+-- 4. enable + force RLS, revoke anon/authenticated direct writes, grant backend/service_role only
+-- 5. create safe read views/RPCs for frontend after policy review
+-- 6. add constraints: unique(account_external_id, external_id), no empty ids, no raw token columns
+-- 7. never apply from this file; convert to numbered migration only in an implementation mission.
