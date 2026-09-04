@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-04T11:15:39-03:00",
+  "generated_at": "2026-09-04T11:25:34-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 630,
     "markdown": 460,
     "sql": 170,
-    "tracked": 628,
-    "untracked": 2,
+    "tracked": 630,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 20404,
       "lines": 281,
-      "sha256": "ad4a8b7b9c3a5e84eb5e374d6797663328c58881a8b50ad08a62b8eed83bafec",
+      "sha256": "d6bd93045f63298c7de951bef644bfeecca4adc03d16219f17f02cf6099bfba5",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3186,7 +3186,7 @@
       "path": "docs/closure/meta-v26-read-foundation-v1/GATES.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 509,
       "lines": 12,
       "sha256": "bab5168cb020f1b0c5712d6ee25a610f38630220c30666d49df19c61a3c24906",
@@ -3198,7 +3198,7 @@
       "path": "docs/closure/meta-v26-read-foundation-v1/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 1509,
       "lines": 37,
       "sha256": "59ad1bb056a2b37d9d04eba2985bc36770977baeb516cdc577414abab3e85f8a",
