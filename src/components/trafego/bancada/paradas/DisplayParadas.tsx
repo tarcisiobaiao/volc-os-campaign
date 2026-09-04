@@ -232,7 +232,7 @@ export const ParadaDisplayRevisao: React.FC<{
         <p className="kicker text-muted-foreground">revisão Display</p>
         <h3 className="mt-1 font-display text-xl font-semibold">Pedido visual em preparação</h3>
         <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-          A criação pausada só aparece quando assets, destino e portão do servidor convergirem. Esta tela ainda não envia nada ao Google.
+          A prova envia o payload com validate_only após seu clique. A API confere e descarta; criação real continua fechada.
         </p>
       </div>
       <span className="shrink-0 rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">preparação</span>
@@ -242,6 +242,6 @@ export const ParadaDisplayRevisao: React.FC<{
       <LinhaDeFato rotulo="Criação real" valor={null} fonte="depende do portão do servidor" />
     </dl>
     {faltas.length > 0 && <p className="text-sm text-muted-foreground">Próximo: {faltas[0]}</p>}
-    <AcaoDeProva estado={estadoDaProva} mensagem={mensagemDaProva} desabilitada={faltas.length > 0} motivo={faltas[0] ?? null} onProvar={onProvar} somenteLocal />
+    <AcaoDeProva estado={estadoDaProva} mensagem={mensagemDaProva} desabilitada={faltas.length > 0} motivo={faltas[0] ?? null} onProvar={onProvar} />
   </section>
 );

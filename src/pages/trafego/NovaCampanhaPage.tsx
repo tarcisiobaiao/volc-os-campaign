@@ -94,6 +94,7 @@ import type {
   AssetDemandGen, CanalComManifesto, Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword, EstadoDaTrava,
   EstrategiaDeLance, LinhaDoPedido, MatchType, ParadaDaBancada,
   PedidoDeProva, PedidoDeProvaDemandGen, PedidoDeProvaDisplay,
+  PedidoDePlanejamentoPMax,
   PedidoDeProvaSearch, ReciboDeLancamento, RevisaoDoConjuntoPago, VerticalDePolitica,
 } from '@/types/trafego';
 
@@ -166,6 +167,10 @@ const NovaCampanhaPage: React.FC = () => {
     'ociosa' | 'provando' | 'aprovada' | 'recusada'
   >('ociosa');
   const [mensagemDaProvaMulticanal, setMensagemDaProvaMulticanal] = useState<string | null>(null);
+  const [estadoDoPlanoPMax, setEstadoDoPlanoPMax] = useState<
+    'ociosa' | 'provando' | 'aprovada' | 'recusada'
+  >('ociosa');
+  const [mensagemDoPlanoPMax, setMensagemDoPlanoPMax] = useState<string | null>(null);
 
   // ── carga ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -288,6 +293,14 @@ const NovaCampanhaPage: React.FC = () => {
     business_name: rascunho.demandNomeEmpresa.trim(),
     sitelinks: [], callouts: [], snippet: null,
   }), [rascunho.demandTitulos, rascunho.demandDescricoes, rascunho.demandNomeEmpresa]);
+  const copyPMax = useMemo<CopyGerada>(() => ({
+    headlines: itensDoTexto(rascunho.pmaxTitulos),
+    long_headlines: itensDoTexto(rascunho.pmaxTitulosLongos),
+    descriptions: itensDoTexto(rascunho.pmaxDescricoes),
+    business_name: rascunho.pmaxNomeEmpresa.trim(),
+    sitelinks: [], callouts: [], snippet: null,
+  }), [rascunho.pmaxTitulos, rascunho.pmaxTitulosLongos,
+      rascunho.pmaxDescricoes, rascunho.pmaxNomeEmpresa]);
 
   const multicanal = useMemo(() => {
     const displayTitulos = copyDisplay.headlines;
@@ -624,8 +637,6 @@ const NovaCampanhaPage: React.FC = () => {
         estrategia_lance: 'MAXIMIZE_CONVERSIONS',
         assets_display: assetsDisplay,
         tcpa: numeroDigitado(rascunho.displayTcpa),
-        criterios: negativas,
-        keywords_fora: rascunho.keywordsFora,
         vertical: rascunho.vertical || cockpit.origem?.vertical,
         certificacoes: rascunho.certificacoes,
         url_final: cockpit.origem?.url_final,
@@ -633,7 +644,7 @@ const NovaCampanhaPage: React.FC = () => {
       : null
   ), [canal, cockpit, oid, runId, orcamento, multicanal.displayCriativo,
     multicanal.displayEconomia, copyDisplay, assetsDisplay, rascunho.displayTcpa,
-    rascunho.keywordsFora, rascunho.vertical, rascunho.certificacoes, negativas]);
+    rascunho.vertical, rascunho.certificacoes]);
 
   const pedidoDemand: PedidoDeProvaDemandGen | null = useMemo(() => {
     if (canal !== 'DEMAND_GEN' || !cockpit || !oid || orcamento == null
@@ -664,26 +675,104 @@ const NovaCampanhaPage: React.FC = () => {
         exclusoes_de_audiencia: [],
       },
       assets_demand_gen: assetsDemand,
-      criterios: negativas,
-      keywords_fora: rascunho.keywordsFora,
       vertical: rascunho.vertical || cockpit.origem?.vertical,
       certificacoes: rascunho.certificacoes,
       url_final: cockpit.origem?.url_final,
     };
   }, [canal, cockpit, oid, runId, orcamento, multicanal, rascunho,
-    copyDemand, assetsDemand, negativas]);
+    copyDemand, assetsDemand]);
 
-  const prepararProvaMulticanal = () => {
+  const pedidoPMax: PedidoDePlanejamentoPMax | null = useMemo(() => {
+    if (canal !== 'PERFORMANCE_MAX' || !cockpit || !oid || orcamento == null
+        || !multicanal.pmaxAssetGroup || !multicanal.pmaxSinais
+        || !multicanal.pmaxMarca || !multicanal.pmaxEconomia
+        || rascunho.pmaxBrandGuidelines == null) return null;
+    const meta = numeroDigitado(rascunho.pmaxMeta);
+    return {
+      opportunity_id: oid,
+      run_id: runId ?? null,
+      customer_id: cockpit.conta?.customer_id ?? '',
+      login_customer_id: cockpit.conta?.login_customer_id ?? '',
+      copy: copyPMax,
+      budget_diario: orcamento,
+      estrategia_lance: rascunho.pmaxEstrategia,
+      tcpa: rascunho.pmaxEstrategia === 'MAXIMIZE_CONVERSIONS' ? meta : null,
+      target_roas: rascunho.pmaxEstrategia === 'MAXIMIZE_CONVERSION_VALUE' ? meta : null,
+      vertical: rascunho.vertical || cockpit.origem?.vertical,
+      certificacoes: rascunho.certificacoes,
+      url_final: cockpit.origem?.url_final,
+      pmax: {
+        brand_guidelines_enabled: rascunho.pmaxBrandGuidelines,
+        audiencias: itensDoTexto(rascunho.pmaxAudiencias),
+        search_themes: itensDoTexto(rascunho.pmaxSearchThemes),
+        negativas: itensDoTexto(rascunho.pmaxNegativas),
+        nome_do_asset_group: rascunho.pmaxNomeAssetGroup.trim(),
+        videos_youtube: itensDoTexto(rascunho.pmaxVideosYoutube),
+      },
+      assets_pmax: assetsPMax,
+    };
+  }, [canal, cockpit, oid, runId, orcamento, multicanal, rascunho,
+    copyPMax, assetsPMax]);
+
+  const prepararProvaMulticanal = async () => {
     const montado = canal === 'DISPLAY' ? pedidoDisplay : pedidoDemand;
     if (!montado) {
       setEstadoDaProvaMulticanal('recusada');
       setMensagemDaProvaMulticanal('O pedido ainda tem campos obrigatórios incompletos.');
       return;
     }
-    setEstadoDaProvaMulticanal('aprovada');
-    setMensagemDaProvaMulticanal(
-      'Contrato local completo. O validate_only na conta real não foi executado nesta sessão.',
-    );
+    if (estadoDaProvaMulticanal === 'provando') return;
+    setEstadoDaProvaMulticanal('provando');
+    setMensagemDaProvaMulticanal(null);
+    try {
+      const resposta = await pautadorApi.provarCampanha(montado);
+      if (resposta.preparo.aprovado && resposta.preparo.selo) {
+        setEstadoDaProvaMulticanal('aprovada');
+        setMensagemDaProvaMulticanal(
+          `Google Ads aceitou o payload em validate_only: ${resposta.preparo.n_operacoes} operações conferidas e nenhuma criação.`,
+        );
+        return;
+      }
+      const motivo = resposta.preparo.recusa_local?.resumo
+        || resposta.preparo.falha_validacao?.resumo
+        || 'O payload foi recusado sem uma causa legível.';
+      setEstadoDaProvaMulticanal('recusada');
+      setMensagemDaProvaMulticanal(motivo);
+    } catch (e) {
+      setEstadoDaProvaMulticanal('recusada');
+      setMensagemDaProvaMulticanal(
+        e instanceof PautadorApiError ? e.message : 'Não foi possível concluir o validate_only.',
+      );
+    }
+  };
+
+  const montarPlanoPMax = async () => {
+    if (!pedidoPMax) {
+      setEstadoDoPlanoPMax('recusada');
+      setMensagemDoPlanoPMax('O plano ainda tem campos obrigatórios incompletos.');
+      return;
+    }
+    if (estadoDoPlanoPMax === 'provando') return;
+    setEstadoDoPlanoPMax('provando');
+    setMensagemDoPlanoPMax(null);
+    try {
+      const resposta = await pautadorApi.planejarPMax(pedidoPMax);
+      const bloqueios = resposta.plano.bloqueios;
+      if (bloqueios.length > 0) {
+        setEstadoDoPlanoPMax('recusada');
+        setMensagemDoPlanoPMax(
+          `${bloqueios[0].codigo}: ${bloqueios[0].causa} (${bloqueios.length} bloqueio(s) no plano; nenhuma chamada ao Google).`,
+        );
+        return;
+      }
+      setEstadoDoPlanoPMax('aprovada');
+      setMensagemDoPlanoPMax('Plano PMax montado localmente. Nenhuma chamada ao Google e nenhuma criação.');
+    } catch (e) {
+      setEstadoDoPlanoPMax('recusada');
+      setMensagemDoPlanoPMax(
+        e instanceof PautadorApiError ? e.message : 'Não foi possível montar o plano PMax.',
+      );
+    }
   };
 
   // ── atos ──────────────────────────────────────────────────────────────────
@@ -855,7 +944,7 @@ const NovaCampanhaPage: React.FC = () => {
                 faltas={faltas.map((f) => f.texto)}
                 estadoDaProva={estadoDaProvaMulticanal}
                 mensagemDaProva={mensagemDaProvaMulticanal}
-                onProvar={prepararProvaMulticanal}
+                onProvar={() => void prepararProvaMulticanal()}
               />
             ) : etapa === 'demand_resultado' ? (
               <ParadaDemandResultado cockpit={cockpit} destino={destino} />
@@ -899,7 +988,7 @@ const NovaCampanhaPage: React.FC = () => {
                 faltas={faltas.map((f) => f.texto)}
                 estadoDaProva={estadoDaProvaMulticanal}
                 mensagemDaProva={mensagemDaProvaMulticanal}
-                onProvar={prepararProvaMulticanal}
+                onProvar={() => void prepararProvaMulticanal()}
               />
             ) : etapa === 'pmax_objetivo' ? (
               <ParadaPMaxObjetivo cockpit={cockpit} />
@@ -955,6 +1044,9 @@ const NovaCampanhaPage: React.FC = () => {
               <ParadaPMaxRevisao
                 url={cockpit.origem?.url_final ?? null}
                 faltas={faltas.map((f) => f.texto)}
+                estadoDoPlano={estadoDoPlanoPMax}
+                mensagemDoPlano={mensagemDoPlanoPMax}
+                onPlanejar={() => void montarPlanoPMax()}
               />
             ) : etapa === 'destino' ? (
               <ParadaDestino cockpit={cockpit} destino={destino} />

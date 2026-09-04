@@ -1755,10 +1755,12 @@ class Brief:
                 "`keywords=[]`."
             )
         if (not self.keywords and not self.sub_intencoes
+                and self.imagens_display is None
                 and self.demand_gen is None and self.pmax is None):
             raise ValueError(
                 "brief sem keyword: preencha `keywords`/`sub_intencoes` ou o "
-                "contrato `demand_gen`/`pmax`; ausência não escolhe um canal"
+                "contrato visual `imagens_display`/`demand_gen`/`pmax`; "
+                "ausência não escolhe um canal"
             )
         # ⚠️ PMax entra na isenção pelo motivo OPOSTO ao de Demand Gen, e a
         # diferença importa. Demand Gen simplesmente não opera keyword. PMax

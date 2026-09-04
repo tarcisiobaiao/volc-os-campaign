@@ -1197,6 +1197,63 @@ export type PedidoDeProva =
   | PedidoDeProvaDisplay
   | PedidoDeProvaDemandGen;
 
+/** PMax nesta onda só atravessa a fronteira de planejamento local. O tipo não
+ * pertence a `PedidoDeProva` justamente para impedir que alguém o encaminhe a
+ * `/provar` por analogia com Display/Demand Gen. */
+export interface PedidoDePlanejamentoPMax {
+  opportunity_id: number;
+  customer_id: string;
+  login_customer_id: string;
+  run_id?: number | null;
+  copy: CopyGerada;
+  budget_diario: number;
+  estrategia_lance: 'MAXIMIZE_CONVERSIONS' | 'MAXIMIZE_CONVERSION_VALUE';
+  tcpa?: number | null;
+  target_roas?: number | null;
+  vertical?: string | null;
+  certificacoes?: string[];
+  url_final?: string | null;
+  pmax: {
+    brand_guidelines_enabled: boolean;
+    audiencias: string[];
+    search_themes: string[];
+    negativas: string[];
+    nome_do_asset_group: string;
+    videos_youtube: string[];
+  };
+  assets_pmax: AssetDemandGen[];
+}
+
+export interface AchadoDoPlanoPMax {
+  codigo: string;
+  campo: string;
+  causa: string;
+  valor: unknown;
+}
+
+export interface RespostaDoPlanejamentoPMax {
+  plano: {
+    canal: 'PERFORMANCE_MAX';
+    url_final: string;
+    bloqueios: AchadoDoPlanoPMax[];
+    avisos: AchadoDoPlanoPMax[];
+    codigos_de_bloqueio: string[];
+    prontidao: {
+      monta: boolean;
+      pode_provar: boolean;
+      pode_criar: boolean;
+      motivo_nao_monta?: string;
+      motivo_nao_prova?: string;
+      motivo_nao_cria?: string;
+    };
+    operacoes: { quantidade: number; tipos: string[]; bytes: number; impressao: string };
+  };
+  chamada_google: 'nenhuma';
+  nada_foi_criado: true;
+  validate_only: false;
+  proximo_ato: string;
+}
+
 /** Onde a mídia é comprada. Uma terceira entra quando houver conta,
  *  credencial e leitura — não quando alguém a mencionar. */
 export type Plataforma = 'GOOGLE_ADS' | 'META_ADS';

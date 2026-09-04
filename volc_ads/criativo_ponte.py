@@ -69,6 +69,7 @@ from .campanha.brief import (
     ImagemParaSubir,
     ImagensDemandGen,
     ImagensDisplay,
+    ImagensPMax,
     Linhagem,
     ReciboAssetAprovado,
     _emitir_recibo_asset_aprovado,
@@ -91,6 +92,7 @@ from .criativo.validacao import ResultadoDeValidacao
 
 CANAL_DISPLAY = "DISPLAY"
 CANAL_DEMAND_GEN = "DEMAND_GEN"
+CANAL_PMAX = "PERFORMANCE_MAX"
 
 
 # ── a tabela de papéis, e a armadilha que ela desarma ───────────────────────
@@ -119,6 +121,14 @@ PAPEL_POR_TIPO_DEMAND_GEN: dict[TipoDeAsset, str] = {
     TipoDeAsset.IMAGEM_MARKETING_RETRATO: "marketing_retrato",
     TipoDeAsset.IMAGEM_MARKETING_RETRATO_ALTO: "marketing_retrato_alto",
     TipoDeAsset.LOGO_QUADRADO: "logo_quadrado",
+}
+
+PAPEL_POR_TIPO_PMAX: dict[TipoDeAsset, str] = {
+    TipoDeAsset.IMAGEM_MARKETING: "marketing",
+    TipoDeAsset.IMAGEM_MARKETING_QUADRADA: "marketing_quadrada",
+    TipoDeAsset.IMAGEM_MARKETING_RETRATO: "marketing_retrato",
+    TipoDeAsset.LOGO_QUADRADO: "logo",
+    TipoDeAsset.LOGO_PAISAGEM: "logo_paisagem",
 }
 
 
@@ -207,7 +217,7 @@ class Entrega:
     """
 
     veredito: ResultadoDeValidacao
-    imagens: ImagensDisplay | ImagensDemandGen | None = None
+    imagens: ImagensDisplay | ImagensDemandGen | ImagensPMax | None = None
     linhagem: tuple[Linhagem, ...] = ()
     #: O que a ponte descartou e por quê — bytes ausentes, hash divergente,
     #: asset já na conta, tipo sem papel neste canal, natureza não publicável.
@@ -431,6 +441,40 @@ def imagens_de_demand_gen(
     # Demand Gen não aceita uma entrega que descartou parte do pedido. O caller
     # não tem como distinguir "a primeira duplicata venceu" de "tudo entrou"
     # olhando só para ImagensDemandGen, e esta rodada exige recusa explícita.
+    if entrega.imagens is not None and entrega.recusas:
+        return Entrega(
+            veredito=entrega.veredito,
+            imagens=None,
+            linhagem=(),
+            recusas=entrega.recusas,
+            destino=entrega.destino,
+            naturezas=entrega.naturezas,
+            avisos=entrega.avisos,
+        )
+    return entrega
+
+
+def imagens_de_pmax(
+    lote: LoteDeAssets,
+    conteudo_por_identidade: Mapping[str, bytes],
+    *,
+    exigencia: ExigenciaDeCanal | None = None,
+    destino: Destino = Destino.PRODUCAO,
+) -> Entrega:
+    """Valida e projeta os cinco papéis visuais do Asset Group PMax."""
+    if lote.canal != CANAL_PMAX:
+        raise PonteIncompleta(
+            f"imagens_de_pmax recebeu lote {lote.canal!r}; esperado "
+            f"{CANAL_PMAX!r}"
+        )
+    entrega = _imagens_de(
+        lote,
+        conteudo_por_identidade,
+        exigencia=exigencia,
+        classe_imagens=ImagensPMax,
+        papel_por_tipo=PAPEL_POR_TIPO_PMAX,
+        destino=destino,
+    )
     if entrega.imagens is not None and entrega.recusas:
         return Entrega(
             veredito=entrega.veredito,

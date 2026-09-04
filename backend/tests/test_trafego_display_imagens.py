@@ -14,11 +14,13 @@ from __future__ import annotations
 import base64
 import hashlib
 import struct
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
 from app.routers import trafego
+from volc_ads import pautador_ponte
 
 
 def _png(largura: int, altura: int, nome: str) -> bytes:
@@ -153,6 +155,117 @@ def test_lote_valido_vira_imagens_display_com_papel():
     assert len(imagens.marketing) == 1
     assert len(imagens.marketing_quadrada) == 1
     assert not imagens.logo
+
+
+def test_plano_display_nao_exige_keyword_do_search():
+    body = trafego.ProvarEntrada.model_validate(_corpo(
+        budget_diario=25,
+        copy={
+            "headlines": ["Entenda o benefício"],
+            "long_headlines": ["Entenda o benefício antes de decidir"],
+            "descriptions": ["Veja regras, prazos e condições."],
+            "business_name": "VOLC",
+        },
+        assets_display=[
+            _asset("imagem_marketing", "banner", 600, 314),
+            _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+        ],
+    ))
+    origem = SimpleNamespace(
+        pais="BR", idioma="pt", vertical="informativo",
+        url_final="https://example.com/r/pauta/", nicho="pauta",
+        slug="pauta",
+    )
+    cockpit = SimpleNamespace(origem=origem, bloqueios=(), avisos=())
+    escolha = pautador_ponte.Escolha(
+        budget_diario=25,
+        estrategia_lance="MAXIMIZE_CONVERSIONS",
+        vertical="informativo",
+    )
+
+    plano = trafego._montar_plano_display(
+        pautador_ponte, cockpit, escolha,
+        trafego._copy_do_corpo(body.texto_do_anuncio), body,
+    )
+
+    assert plano.brief.keywords == []
+    assert plano.brief.sub_intencoes == []
+    assert plano.brief.criterios == []
+    assert plano.brief.imagens_display is not None
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("criterios", [{"texto": "termo", "negativa": True}]),
+        ("keywords_fora", ["termo"]),
+        ("cpc_inicial", 0.12),
+        ("match_type", "PHRASE"),
+    ],
+)
+def test_display_recusa_campos_search_sem_descartar(campo, valor):
+    body = trafego.ProvarEntrada.model_validate(_corpo(**{campo: valor}))
+    with pytest.raises(ValueError, match=campo):
+        trafego._recusar_campos_nao_operados_display(body)
+
+
+def test_planejamento_pmax_nomeia_mensuracao_sem_chamar_google(monkeypatch):
+    """A tela pode montar o contrato; isso não autoriza nem simula a prova."""
+    from volc_ads.campanha import pmax
+
+    body = trafego.PlanejarPMaxEntrada.model_validate({
+        "opportunity_id": 1,
+        "customer_id": "8017851692",
+        "login_customer_id": "6016739364",
+        "copy": {
+            "headlines": ["Título um", "Título dois", "Título três"],
+            "long_headlines": ["Um título longo para a campanha"],
+            "descriptions": [
+                "Descrição curta para o anúncio.",
+                "Outra descrição completa para o anúncio.",
+            ],
+            "business_name": "VOLC",
+        },
+        "budget_diario": 20,
+        "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+        "vertical": "informativo",
+        "url_final": "https://example.com/r/pauta/",
+        "pmax": {
+            "brand_guidelines_enabled": False,
+            "audiencias": [],
+            "search_themes": ["tema informativo"],
+            "negativas": [],
+            "nome_do_asset_group": "Grupo principal",
+            "videos_youtube": [],
+        },
+        "assets_pmax": [
+            _asset("imagem_marketing", "banner", 600, 314),
+            _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+            _asset("logo_quadrado", "logo", 128, 128),
+        ],
+    })
+    origem = SimpleNamespace(
+        pais="BR", idioma="pt", vertical="informativo",
+        url_final="https://example.com/r/pauta/", nicho="pauta", slug="pauta",
+    )
+    cockpit = SimpleNamespace(origem=origem, bloqueios=(), avisos=())
+    brief = trafego._brief_pmax_offline(pautador_ponte, cockpit, body)
+
+    monkeypatch.setattr(
+        pmax,
+        "cliente",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            AssertionError("planejamento offline não pode abrir cliente Google")
+        ),
+    )
+    plano = pmax.planejar(
+        "8017851692", brief, login_customer_id="6016739364"
+    )
+
+    assert plano.canal == "PERFORMANCE_MAX"
+    assert "MENSURACAO_INADEQUADA" in plano.codigos_de_bloqueio
+    assert "PMAX_FORA_DO_EXECUTOR" in plano.codigos_de_bloqueio
+    assert plano.n_operacoes == 0
 
 
 # ── os tetos da fronteira ───────────────────────────────────────────────────

@@ -9,6 +9,9 @@
 #                                  ⚠️ ABRE A TRAVA DE ESCRITA do Google Ads.
 #                                  Sem esta flag, `/subir` prova o payload e
 #                                  recusa criar — que é o padrão e o certo.
+#   ./start-dev.sh --demand-gen-validate-only
+#                                  abre SOMENTE a conferência Demand Gen. A
+#                                  chamada ainda exige clique e nunca cria.
 #
 # Portas: front 8080  ·  api Node 3001  ·  backend Pautador 8010
 # O Vite faz proxy de /api e /health -> Express (3001), que fala com o Supabase
@@ -43,8 +46,10 @@ libera_porta() {
 # linha de comando — não algo que ficou ligado num `.env` e ninguém lembra.
 # Ela não sobrevive ao próximo boot: reiniciar sem a flag fecha a trava.
 PERMITIR_ESCRITA=0
+PERMITIR_PROVA_DEMAND_GEN=0
 for arg in "$@"; do
   if [ "$arg" = "--permitir-escrita" ]; then PERMITIR_ESCRITA=1; fi
+  if [ "$arg" = "--demand-gen-validate-only" ]; then PERMITIR_PROVA_DEMAND_GEN=1; fi
 done
 if [ "$PERMITIR_ESCRITA" -eq 1 ]; then
   export FORGE_PERMITIR_ESCRITA=1
@@ -54,6 +59,10 @@ if [ "$PERMITIR_ESCRITA" -eq 1 ]; then
   echo "     Ela nasce PAUSADA, mas persiste e aparece na conta."
   echo "     Feche reiniciando sem --permitir-escrita."
   echo ""
+fi
+if [ "$PERMITIR_PROVA_DEMAND_GEN" -eq 1 ]; then
+  export VOLC_DEMAND_GEN_VALIDATE_ONLY=on
+  echo "  ✓ Demand Gen validate_only habilitado: somente após clique; zero criação."
 fi
 
 # --stop: encerra tudo e sai

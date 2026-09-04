@@ -101,25 +101,31 @@ estado nesta branch:
   carrossel, vídeo responsivo e produto seguem nomeados como não operados.
 - Performance Max: asset group, brand guidelines, audience signals, search
   themes, negativas, cobertura por papel, bidding e alvo econômico ficaram
-  editáveis no rascunho. Final URL expansion continua travada em OFF. Não há
-  CTA de prova/criação porque a ponte HTTP e o executor PMax ainda não existem.
+  editáveis no rascunho. Final URL expansion continua travada em OFF. A CTA
+  monta o plano **offline** pela fronteira tipada e expõe os bloqueios estáveis;
+  ela não lê Google, não chama `validate_only` e não cria. O recibo de
+  mensuração e o executor PMax continuam abertos como próximos contratos.
 - Display não ganhou seletores falsos de audience/placement/brand safety: o
   próprio builder declara essas superfícies como não operadas e inventário
   aberto. A interface agora diz isso literalmente.
 - Assets vivem apenas na montagem da página; metadados do formulário ficam no
   `sessionStorage`, mas bytes precisam ser reanexados após F5. Nenhuma peça ou
   id de conta é inventado.
-- Nesta execução, a CTA multicanal apenas confere a completude e a montagem do
-  contrato local. `validate_only` real permanece um ato externo separado, não
-  autorizado por este pente-fino.
-- Bloqueante descoberto e **não afrouxado**: `/provar` ainda atravessa o portão
-  do conjunto pago antes de bifurcar por canal. Isso é coerente com Search,
-  mas cria um requisito de keywords para Demand Gen que o próprio adaptador
-  declara irrelevante. A correção precisa de autorização separada porque muda
-  a alcançabilidade do `validate_only` real; até lá, o botão faz somente a
-  conferência local e não promete que a prova remota está liberada.
+- Display e Demand Gen agora chamam `POST /api/trafego/provar` **somente no
+  clique explícito** da revisão. O resultado vem do `validate_only` real, que
+  valida e descarta o payload; não há CTA de criação para esses canais.
+- O bloqueante do portão Search foi fechado: somente Search atravessa
+  `criterios_do_cluster`. Display e Demand Gen montam seus briefs sem keyword
+  positiva, coerentes com seus builders. Campos Search enviados a esses canais
+  são recusados em vez de descartados.
+- Demand Gen continua atrás da capacidade estreita
+  `VOLC_DEMAND_GEN_VALIDATE_ONLY=on`. `start-dev.sh
+  --demand-gen-validate-only` a abre sem abrir `FORGE_PERMITIR_ESCRITA`.
+- Nenhuma chamada real foi disparada durante esta implementação: a autorização
+  habilita o caminho, mas o ato externo permanece exclusivamente no botão do
+  operador.
 
-Evidência mínima: build Vite verde; 43 testes focais frontend verdes; 104
-testes dos builders Display/Demand Gen/multicanal verdes; 98 testes das pontes
-HTTP e nascimento verdes; `git diff --check` limpo. Nenhuma chamada Google Ads,
-Supabase, n8n ou WordPress ocorreu.
+Evidência mínima desta correção: build Vite verde; 44 testes focais frontend
+verdes; 70 testes das pontes Display/Demand Gen verdes; 54 testes de PMax e
+multicanal verdes. Nenhuma chamada Google Ads, Supabase write, n8n ou WordPress
+ocorreu. P04-T05, P04-T07 e P04-T09 permanecem `partial`.

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { LinhaDeFato } from '../BlocoDeEvidencia';
 import { Input } from '@/components/ui/input';
 import {
-  CampoDeTexto, EditorDeLista, EscolhaExplicita, IrParaEstudio, SeletorDeAsset,
+  AcaoDeProva, CampoDeTexto, EditorDeLista, EscolhaExplicita, IrParaEstudio, SeletorDeAsset,
 } from './ControlesMulticanal';
 
 export const ParadaPMaxObjetivo: React.FC<{ cockpit: Cockpit }> = ({ cockpit }) => (
@@ -235,13 +235,19 @@ export const ParadaPMaxEconomia: React.FC<{
   </section>
 );
 
-export const ParadaPMaxRevisao: React.FC<{ url: string | null; faltas: string[] }> = ({ url, faltas }) => (
+export const ParadaPMaxRevisao: React.FC<{
+  url: string | null;
+  faltas: string[];
+  estadoDoPlano: 'ociosa' | 'provando' | 'aprovada' | 'recusada';
+  mensagemDoPlano: string | null;
+  onPlanejar: () => void;
+}> = ({ url, faltas, estadoDoPlano, mensagemDoPlano, onPlanejar }) => (
   <section className="space-y-6">
     <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
       <div>
         <p className="kicker text-muted-foreground">revisão PMax</p>
         <h3 className="mt-1 font-display text-xl font-semibold">Plano local, criação ainda fechada</h3>
-        <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">O asset group pode ser desenhado, mas a ponte HTTP desta lane ainda não autoriza criar. Nenhum botão de mutate é exibido.</p>
+        <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">O asset group pode ser projetado pelo contrato real, mas esta ação não lê a conta, não chama validate_only e não cria. Nenhum botão de mutate é exibido.</p>
       </div>
       <span className="shrink-0 rounded-full border border-info/30 bg-info/10 px-3 py-1 text-xs font-semibold text-info">planejamento</span>
     </div>
@@ -250,5 +256,13 @@ export const ParadaPMaxRevisao: React.FC<{ url: string | null; faltas: string[] 
       <LinhaDeFato rotulo="Expansão de URL" valor="desligada" fonte="contrato PMax" />
     </dl>
     {faltas.length > 0 && <p className="text-sm text-muted-foreground">Próximo: {faltas[0]}</p>}
+    <AcaoDeProva
+      estado={estadoDoPlano}
+      mensagem={mensagemDoPlano}
+      desabilitada={faltas.length > 0}
+      motivo={faltas[0] ?? null}
+      onProvar={onPlanejar}
+      somenteLocal
+    />
   </section>
 );

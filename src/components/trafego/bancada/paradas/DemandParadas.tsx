@@ -292,9 +292,9 @@ export const ParadaDemandRevisao: React.FC<{
     </div>
     <dl className="grid gap-4 sm:grid-cols-2">
       <LinhaDeFato rotulo="Destino" valor={url} fonte="funil" />
-      <LinhaDeFato rotulo="Ato disponível" valor="preparar" fonte="interface local" />
+      <LinhaDeFato rotulo="Ato disponível" valor="validate_only" fonte="Google Ads; nada é criado" />
     </dl>
     {faltas.length > 0 && <p className="text-sm text-muted-foreground">Próximo: {faltas[0]}</p>}
-    <AcaoDeProva estado={estadoDaProva} mensagem={mensagemDaProva} desabilitada={faltas.length > 0} motivo={faltas[0] ?? null} onProvar={onProvar} somenteLocal />
+    <AcaoDeProva estado={estadoDaProva} mensagem={mensagemDaProva} desabilitada={faltas.length > 0} motivo={faltas[0] ?? null} onProvar={onProvar} />
   </section>
 );

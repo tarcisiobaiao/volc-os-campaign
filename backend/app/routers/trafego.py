@@ -1387,6 +1387,64 @@ TETO_BYTES_ASSET_DISPLAY = TETO_BYTES_ASSET_DEMAND_GEN
 TETO_BYTES_LOTE_DISPLAY = TETO_BYTES_LOTE_DEMAND_GEN
 TETO_BASE64_ASSET_DISPLAY = TETO_BASE64_ASSET_DEMAND_GEN
 
+# PMax aceita até 20 peças em cada família de marketing, 5 logos quadrados e
+# 20 logos paisagem no formulário desta onda. O teto HTTP só protege memória;
+# a cardinalidade real por papel continua na autoridade do Estúdio/PMax.
+TETO_QUANTIDADE_ASSETS_PMAX = 85
+TETO_BYTES_ASSET_PMAX = TETO_BYTES_ASSET_DEMAND_GEN
+TETO_BYTES_LOTE_PMAX = TETO_BYTES_LOTE_DEMAND_GEN
+TETO_BASE64_ASSET_PMAX = TETO_BASE64_ASSET_DEMAND_GEN
+
+
+class ConfiguracaoPMaxEntrada(BaseModel):
+    brand_guidelines_enabled: bool
+    audiencias: List[str] = Field(default_factory=list)
+    search_themes: List[str] = Field(default_factory=list)
+    negativas: List[str] = Field(default_factory=list)
+    nome_do_asset_group: str = ""
+    videos_youtube: List[str] = Field(default_factory=list)
+
+
+class PlanejarPMaxEntrada(BaseModel):
+    """Pedido de projeção local PMax; não é uma autorização de prova externa."""
+
+    opportunity_id: int
+    customer_id: str
+    login_customer_id: str
+    run_id: Optional[int] = None
+    texto_do_anuncio: Annotated[Optional[CopyEntrada], Field(alias="copy")] = None
+    budget_diario: float
+    estrategia_lance: str
+    tcpa: Optional[float] = None
+    target_roas: Optional[float] = None
+    vertical: Optional[str] = None
+    certificacoes: List[str] = Field(default_factory=list)
+    url_final: Optional[str] = None
+    prefixo_nome: str = "FORGE"
+    carimbo_nome: Optional[str] = None
+    pmax: ConfiguracaoPMaxEntrada
+    assets_pmax: List[AssetDemandGenEntrada] = Field(
+        default_factory=list,
+        max_length=TETO_QUANTIDADE_ASSETS_PMAX,
+    )
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    @model_validator(mode="after")
+    def _alvo_compativel_com_estrategia(self):
+        if self.estrategia_lance not in {
+            "MAXIMIZE_CONVERSIONS", "MAXIMIZE_CONVERSION_VALUE"
+        }:
+            raise ValueError(
+                "PMax aceita MAXIMIZE_CONVERSIONS ou "
+                "MAXIMIZE_CONVERSION_VALUE"
+            )
+        if self.estrategia_lance == "MAXIMIZE_CONVERSIONS" and self.target_roas is not None:
+            raise ValueError("target_roas não pertence a MAXIMIZE_CONVERSIONS")
+        if self.estrategia_lance == "MAXIMIZE_CONVERSION_VALUE" and self.tcpa is not None:
+            raise ValueError("tcpa não pertence a MAXIMIZE_CONVERSION_VALUE")
+        return self
+
 
 class ProvarEntrada(BaseModel):
     opportunity_id: int
@@ -1707,6 +1765,35 @@ def _recusar_campos_nao_operados_demand_gen(body: ProvarEntrada) -> None:
         )
 
 
+def _recusar_campos_nao_operados_display(body: ProvarEntrada) -> None:
+    """Impede Display de herdar decisões exclusivas da fronteira Search."""
+    recusados: list[str] = []
+    explicitos = _campos_explicitos(body)
+    for campo in ("cpc_inicial", "match_type", "graduacao_em_conversoes"):
+        if campo in explicitos:
+            recusados.append(campo)
+    for campo in (
+        "grupos",
+        "keywords_fora",
+        "criterios",
+        "negativas_campanha",
+        "negativas_adgroup",
+    ):
+        if getattr(body, campo):
+            recusados.append(campo)
+    if body.ai_max:
+        recusados.append("ai_max")
+    if body.demand_gen is not None or body.assets_demand_gen is not None:
+        recusados.append("demand_gen/assets_demand_gen")
+    if recusados:
+        raise ValueError(
+            "DISPLAY recebeu campos que o builder não materializa e por isso "
+            "não os descarta em silêncio: "
+            + ", ".join(sorted(set(recusados)))
+            + ". Remova-os do pedido ou use um canal que os opere."
+        )
+
+
 def _assets_decodificados(
     itens: List[AssetDemandGenEntrada],
     *,
@@ -1795,6 +1882,20 @@ def _assets_decodificados_display(
         teto_base64=TETO_BASE64_ASSET_DISPLAY,
         teto_por_item=TETO_BYTES_ASSET_DISPLAY,
         teto_do_lote=TETO_BYTES_LOTE_DISPLAY,
+    )
+
+
+def _assets_decodificados_pmax(
+    itens: List[AssetDemandGenEntrada],
+):
+    """Os tetos de memória da fronteira PMax, sem duplicar regra de papel."""
+    return _assets_decodificados(
+        itens,
+        campo="assets_pmax",
+        teto_quantidade=TETO_QUANTIDADE_ASSETS_PMAX,
+        teto_base64=TETO_BASE64_ASSET_PMAX,
+        teto_por_item=TETO_BYTES_ASSET_PMAX,
+        teto_do_lote=TETO_BYTES_LOTE_PMAX,
     )
 
 
@@ -2193,6 +2294,96 @@ def _instante_ou_none(s: Optional[str]):
         ) from exc
 
 
+def _montar_plano_display(
+    pp: Any,
+    cockpit: Any,
+    escolha: Any,
+    copy: Any,
+    body: ProvarEntrada,
+) -> Any:
+    """Monta Display sem transformar a mineração Search em pré-requisito."""
+    from volc_ads.campanha.brief import Brief, Copy
+
+    _recusar_campos_nao_operados_display(body)
+    manual = str(escolha.url_final or "").strip()
+    ignorados_como_bloqueio = {"SEM_CLUSTER", "SEM_FILA_DE_ANUNCIO"}
+    bloqueios = [
+        aviso
+        for aviso in cockpit.bloqueios
+        if aviso.codigo not in ignorados_como_bloqueio
+        and not (manual and aviso.codigo in {"SEM_LP", "SEM_FUNIL"})
+    ]
+    if bloqueios:
+        raise pp.PonteIncompleta(
+            "o cockpit tem bloqueio aplicável a Display: "
+            + " | ".join(
+                f"{a.codigo}: {a.titulo} — {a.detalhe}" for a in bloqueios
+            )
+        )
+
+    origem = cockpit.origem
+    if origem is None:
+        raise pp.PonteIncompleta(
+            "Display exige origem publicada com país, idioma e vertical; "
+            "uma URL manual não pode inventar targeting"
+        )
+    pais = str(origem.pais or "").strip()
+    idioma = str(origem.idioma or "").strip()
+    vertical = str(escolha.vertical or origem.vertical or "").strip()
+    if not pais or not idioma or not vertical:
+        raise pp.PonteIncompleta(
+            "origem Display sem país, idioma ou vertical confirmada"
+        )
+    url = str(manual or origem.url_final or "").strip()
+    if not url.startswith("https://"):
+        raise ValueError(f"destino Display {url!r} não é https")
+
+    imagens, avisos_da_ponte = _imagens_de_display(
+        body, nicho=origem.nicho or "sem nicho declarado"
+    )
+    brief = Brief(
+        nicho=origem.nicho or "sem nicho declarado",
+        slug=origem.slug or "",
+        url_final=url,
+        copy=copy or Copy(),
+        pais=pais,
+        idioma=idioma,
+        budget_diario=body.budget_diario,
+        tcpa=body.tcpa,
+        estrategia_lance=body.estrategia_lance,
+        vertical=vertical,
+        certificacoes=set(escolha.certificacoes),
+        prefixo_nome=escolha.prefixo_nome or "FORGE",
+        carimbo_nome=escolha.carimbo_nome,
+        conversao=escolha.conversao or "",
+        keywords=[],
+        sub_intencoes=[],
+        criterios=[],
+        negativas_campanha=[],
+        negativas_adgroup=[],
+        imagens_display=imagens,
+    )
+    avisos = tuple(
+        aviso
+        for aviso in cockpit.avisos
+        if aviso.codigo not in ignorados_como_bloqueio
+    )
+    if manual:
+        avisos += (
+            pp.Aviso(
+                "URL_MANUAL",
+                "atencao",
+                "Destino colado à mão",
+                "A campanha perde a herança do funil e o cruzamento anúncio × página.",
+            ),
+        )
+    return pp.Plano(
+        brief=brief,
+        grupos=(),
+        avisos=avisos + tuple(avisos_da_ponte),
+    )
+
+
 def _montar_plano_demand_gen(
     pp: Any,
     cockpit: Any,
@@ -2407,6 +2598,175 @@ def _montar_plano_demand_gen(
     return pp.Plano(
         brief=brief, grupos=(), avisos=avisos + _avisos_da_ponte(entrega)
     )
+
+
+def _brief_pmax_offline(
+    pp: Any,
+    cockpit: Any,
+    body: PlanejarPMaxEntrada,
+) -> Any:
+    """Traduz a bancada para o contrato PMax sem ler conta nem chamar Google.
+
+    A mensuração fica deliberadamente ``None``. Só ``pmax.ler_mensuracao``
+    pode emitir esse recibo e esta rota é de planejamento local; assim o plano
+    nomeia ``MENSURACAO_INADEQUADA`` em vez de transformar uma meta exibida no
+    cockpit em prova autoatestável.
+    """
+    from datetime import datetime
+
+    from volc_ads import criativo_ponte
+    from volc_ads.campanha.brief import (
+        Brief,
+        ConfiguracaoPMax,
+        Copy,
+        SinalDeAudiencia,
+    )
+    from volc_ads.criativo.adaptadores import medir_imagem
+    from volc_ads.criativo.contrato import (
+        Asset,
+        LoteDeAssets,
+        Origem,
+        Procedencia,
+        TipoDeAsset,
+    )
+
+    origem = cockpit.origem
+    if origem is None:
+        raise pp.PonteIncompleta(
+            "PMax exige origem publicada com país, idioma e vertical"
+        )
+    pais = str(origem.pais or "").strip()
+    idioma = str(origem.idioma or "").strip()
+    vertical = str(body.vertical or origem.vertical or "").strip()
+    url = str(body.url_final or origem.url_final or "").strip()
+    if not pais or not idioma or not vertical:
+        raise pp.PonteIncompleta(
+            "origem PMax sem país, idioma ou vertical confirmada"
+        )
+    if not url.startswith("https://"):
+        raise ValueError(f"destino PMax {url!r} não é https")
+
+    assets = []
+    conteudo_por_identidade: Dict[str, bytes] = {}
+    for item, dados in _assets_decodificados_pmax(body.assets_pmax):
+        try:
+            quando = datetime.fromisoformat(
+                item.procedencia.quando.replace("Z", "+00:00")
+            )
+            tipo = TipoDeAsset(item.tipo)
+            origem_asset = Origem(item.origem)
+        except ValueError as exc:
+            raise ValueError(
+                f"asset {item.nome!r}: contrato inválido — {exc}"
+            ) from exc
+        medida = medir_imagem.medir(dados)
+        asset = Asset(
+            tipo=tipo,
+            procedencia=Procedencia(
+                motor=item.procedencia.motor,
+                versao_do_motor=item.procedencia.versao_do_motor,
+                insumo=item.procedencia.insumo,
+                quando=quando,
+                pedido=item.procedencia.pedido,
+                custo_usd=item.procedencia.custo_usd,
+            ),
+            conteudo_hash=item.conteudo_hash,
+            origem=origem_asset,
+            bytes_totais=medida.bytes_totais,
+            mime=medida.mime,
+            largura=medida.largura,
+            altura=medida.altura,
+            rotulo=item.nome,
+        )
+        assets.append(asset)
+        conteudo_por_identidade[asset.identidade] = dados
+
+    nicho = str(origem.nicho or "sem nicho declarado")
+    entrega = criativo_ponte.imagens_de_pmax(
+        LoteDeAssets(
+            canal="PERFORMANCE_MAX",
+            assets=tuple(assets),
+            intencao=nicho,
+        ),
+        conteudo_por_identidade,
+    )
+    if not entrega.ok or entrega.imagens is None:
+        raise ValueError(
+            "assets PMax recusados pela fronteira do Estúdio:\n"
+            + entrega.resumo()
+        )
+    entrega.imagens.videos_youtube = list(body.pmax.videos_youtube)
+
+    sinais = tuple(
+        [SinalDeAudiencia("audience", valor) for valor in body.pmax.audiencias]
+        + [SinalDeAudiencia("search_theme", valor) for valor in body.pmax.search_themes]
+    )
+    configuracao = ConfiguracaoPMax(
+        brand_guidelines_enabled=body.pmax.brand_guidelines_enabled,
+        mensuracao=None,
+        sinais=sinais,
+        negativas=tuple(body.pmax.negativas),
+        nome_do_asset_group=body.pmax.nome_do_asset_group,
+    )
+    return Brief(
+        nicho=nicho,
+        slug=origem.slug or "",
+        url_final=url,
+        copy=_copy_do_corpo(body.texto_do_anuncio) or Copy(),
+        pais=pais,
+        idioma=idioma,
+        budget_diario=body.budget_diario,
+        tcpa=body.tcpa,
+        target_roas=body.target_roas,
+        estrategia_lance=body.estrategia_lance,
+        vertical=vertical,
+        certificacoes=set(body.certificacoes),
+        prefixo_nome=body.prefixo_nome or "FORGE",
+        carimbo_nome=body.carimbo_nome,
+        keywords=[],
+        sub_intencoes=[],
+        criterios=[],
+        negativas_campanha=[],
+        negativas_adgroup=[],
+        imagens_pmax=entrega.imagens,
+        pmax=configuracao,
+    )
+
+
+@router.post("/planejar-pmax")
+async def planejar_pmax(
+    body: PlanejarPMaxEntrada = Body(...),
+    _identidade: Identidade = Depends(exigir_usuario),
+) -> Dict[str, Any]:
+    """Projeta PMax localmente; zero leitura Google, validate_only ou mutate."""
+    cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
+    pp, _sb = _ponte()
+    try:
+        linhas = await asyncio.to_thread(
+            pp.carregar, body.opportunity_id, run_id=body.run_id
+        )
+        cockpit = pp.montar_cockpit(linhas)
+        brief = _brief_pmax_offline(pp, cockpit, body)
+        from volc_ads.campanha import pmax
+
+        plano_pmax = await asyncio.to_thread(
+            pmax.planejar, cid, brief, login_customer_id=mid
+        )
+    except pp.PonteIncompleta as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "plano": plano_pmax.para_json(),
+        "chamada_google": "nenhuma",
+        "nada_foi_criado": True,
+        "validate_only": False,
+        "proximo_ato": (
+            "Ler a mensuração da conta em ato separado antes de habilitar "
+            "qualquer prova externa de PMax."
+        ),
+    }
 
 
 def _recusa_de_canal(canal: Any, exc: Exception) -> Dict[str, Any]:
@@ -2896,6 +3256,11 @@ async def provar(
     do desenho da página.
     """
     canal_pedido = str(body.canal or "SEARCH").strip().upper()
+    if canal_pedido == "DISPLAY":
+        try:
+            _recusar_campos_nao_operados_display(body)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     if canal_pedido == "DEMAND_GEN":
         # O contrato é julgado antes do escopo, da ponte e de qualquer cliente.
         # A mesma guarda é repetida no adaptador para chamadas internas diretas.
@@ -2960,10 +3325,15 @@ async def provar(
         # bloqueador em aberto recusa AQUI — antes de `preparar()`, portanto
         # antes de qualquer `validate_only`, que é leitura mas ainda é rede e
         # ainda é conta real.
-        conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
-            getattr(linhas, "cluster", None)
-        )
         cockpit = pp.montar_cockpit(linhas)
+        conjunto = None
+        criterios_do_conjunto = ()
+        selecao_aprovada = {}
+        if canal_resolvido == "SEARCH":
+            conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
+                getattr(linhas, "cluster", None)
+            )
+            selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
         # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
         # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
         # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -2978,7 +3348,6 @@ async def provar(
         # "monte o grupo inteiro do cockpit", que é justamente promover a fila
         # bruta a conjunto de campanha. Depois do portão isso deixa de existir
         # — não há mais "todas", há o que foi aprovado.
-        selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
         escolha = pp.Escolha(
             grupos=tuple(selecao_aprovada.keys()),
             keywords_por_grupo=selecao_aprovada,
@@ -2986,8 +3355,10 @@ async def provar(
             rede=_rede_do_corpo(body),
             # Recusa fechada: depois da impressão emitida, retirar keyword
             # mudaria o conjunto sem mudar o selo.
-            keywords_fora=portao_pago.recusar_keywords_fora(
-                body.keywords_fora, conjunto),
+            keywords_fora=(
+                portao_pago.recusar_keywords_fora(body.keywords_fora, conjunto)
+                if conjunto is not None else frozenset()
+            ),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,
             cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
@@ -3002,8 +3373,14 @@ async def provar(
             # POSITIVAS: só do conjunto aprovado. Do corpo, só NEGATIVAS —
             # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
             # uma quarta positiva entrava e trocava o match type aprovado.
-            criterios=tuple(criterios_do_conjunto) + tuple(
-                portao_pago.somente_negativas_do_corpo(_criterios_do_corpo(body, pp))),
+            criterios=(
+                tuple(criterios_do_conjunto) + tuple(
+                    portao_pago.somente_negativas_do_corpo(
+                        _criterios_do_corpo(body, pp)
+                    )
+                )
+                if canal_resolvido == "SEARCH" else ()
+            ),
             negativas_campanha=(),
             negativas_adgroup=(),
             vertical=body.vertical,
@@ -3023,29 +3400,17 @@ async def provar(
             plano = _montar_plano_demand_gen(
                 pp, cockpit, escolha, copy, body
             )
+        elif canal_resolvido == "DISPLAY":
+            plano = _montar_plano_display(pp, cockpit, escolha, copy, body)
         else:
             plano = pp.montar_brief(cockpit, escolha, copy=copy)
-            if canal_resolvido == "DISPLAY":
-                # ⚠️ Depois de `montar_brief`, e não dentro dele: o construtor
-                # do brief é do Pautador (outro dono) e não conhece o envelope
-                # HTTP. O que ele monta é o brief comum; o que falta é a única
-                # coisa que só o pedido sabe — quais peças o operador aprovou.
-                origem = getattr(cockpit, "origem", None)
-                imagens, avisos_da_ponte = _imagens_de_display(
-                    body,
-                    nicho=getattr(origem, "nicho", None) or "sem nicho declarado",
-                )
-                plano.brief.imagens_display = imagens
-                if avisos_da_ponte:
-                    plano = _dataclasses.replace(
-                        plano, avisos=plano.avisos + avisos_da_ponte
-                    )
         # A PÓS-CONDIÇÃO, sobre o artefato que de fato vai ao Google.
         # Conferir a entrada que a rota montou não basta: o que importa é o
         # brief final, depois de todo adaptador. Multiconjunto, não conjunto —
         # cardinalidade é o que o defeito alterava.
-        portao_pago.conferir_positivas_do_brief(
-            plano.brief, criterios_do_conjunto, grupo_colapsado=True)
+        if canal_resolvido == "SEARCH":
+            portao_pago.conferir_positivas_do_brief(
+                plano.brief, criterios_do_conjunto, grupo_colapsado=True)
         # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
         # id colado do painel do Google vem `801-785-1692`, com hífen.
         preparo = sb.preparar(

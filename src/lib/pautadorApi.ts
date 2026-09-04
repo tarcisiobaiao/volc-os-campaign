@@ -108,6 +108,7 @@ import type {
   CopyGerada, CopyPersistida, VereditoDePolitica, VerticalDePolitica,
   PedidoDeProva, PedidoDeProvaSearch, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
   RespostaDaCopy, RespostaDaProva, ReciboDeLancamento,
+  PedidoDePlanejamentoPMax, RespostaDoPlanejamentoPMax,
   RevisaoDoConjuntoPago, AprovacaoDoConjuntoPago,
 } from '@/types/trafego';
 import type { RespostaDoDiagnostico } from '@/types/diagnostico';
@@ -973,6 +974,16 @@ export const pautadorApi = {
   // descarta, sem criar nada. Pode demorar — o backend corta em 120s.
   provarCampanha(pedido: PedidoDeProva): Promise<RespostaDaProva> {
     return request('/api/trafego/provar', { method: 'POST', body: JSON.stringify(pedido) });
+  },
+
+  // PMax fica fora de `/provar`: este ato só projeta o contrato local e torna
+  // visíveis os bloqueios. Não lê conta Google, não chama validate_only e não
+  // cria nada.
+  planejarPMax(pedido: PedidoDePlanejamentoPMax): Promise<RespostaDoPlanejamentoPMax> {
+    return request('/api/trafego/planejar-pmax', {
+      method: 'POST',
+      body: JSON.stringify(pedido),
+    });
   },
 
   // O caminho de escrita. Exige `motivo` (vai para o recibo) e só funciona com
