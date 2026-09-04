@@ -739,13 +739,13 @@ def test_validar_localmente_recusado_faz_zero_chamadas(
     assert not resultado.ok and falha is None and quantidade == 0
 
 
-def test_perfil_prova_demand_gen_mas_registry_real_e_executor_recusam(
+def test_perfil_prova_demand_gen_e_registry_real_aceita_criacao_pausada(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     assert perfil.DEMAND_GEN.sabe_provar is True
-    assert perfil.DEMAND_GEN.sabe_criar is False
+    assert perfil.DEMAND_GEN.sabe_criar is True
     assert "DEMAND_GEN" in motor.PROVADORES_POR_CANAL
-    assert "DEMAND_GEN" not in motor.CONSTRUTORES_POR_CANAL
+    assert "DEMAND_GEN" in motor.CONSTRUTORES_POR_CANAL
     assert motor.resolver_provador(" demand_gen ")[0] == "DEMAND_GEN"
 
     monkeypatch.setattr(motor, "validar_mutacoes", lambda *_a, **_k: None)

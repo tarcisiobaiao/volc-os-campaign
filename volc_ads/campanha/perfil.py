@@ -289,26 +289,15 @@ DEMAND_GEN = PerfilDeCanal(
     opcoes=demand_gen.OPCOES,
     provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
-    permite_mutacao_real=False,
-    acoes_permitidas=("inventariar", "montar", "provar"),
+    permite_mutacao_real=True,
+    acoes_permitidas=("inventariar", "montar", "provar", "subir"),
     acoes_indisponiveis=demand_gen.NAO_OPERADO,
 )
 
-#: ⚠️ **`construtor` e `validador` continuam `None`, e isso é uma DECISÃO.**
-#:
-#: `campanha/pmax.py` existe, monta o grafo completo, serializa os protos v25 e
-#: devolve plano — está referenciado abaixo em `planejador`. O que ele NÃO faz é
-#: entrar no registro do executor, e o motivo é mecânico: `sabe_provar` deriva de
-#: `construtor is not None`, `subir.py` compara `PROVADORES_POR_CANAL` com
-#: `canais_que_provam()` **no import** e levanta se divergirem. Preencher
-#: `construtor` aqui sem mexer em `subir.py`, no backend e em `plataforma.py`
-#: derrubaria a rota HTTP dos QUATRO canais — trocar um canal novo por uma
-#: regressão nos três que funcionam.
-#:
-#: `planejador` é o campo que permite dizer a verdade inteira: PMax **planeja** e
-#: não **prova**. Sem ele, a única forma de expressar "este canal faz alguma
-#: coisa" seria ligar o construtor, e a única forma de expressar "não pode
-#: gastar" seria não fazer nada.
+#: PMax entra no mesmo executor de prova/criação que Search, Display e Demand
+#: Gen. O portão que continua protegendo o canal é de conteúdo: mensuração lida,
+#: asset bundle tipado e controle explícito de URL final. Sem esses fatos o
+#: builder retorna bloqueios locais e nada chega a `validate_only`.
 PERFORMANCE_MAX = PerfilDeCanal(
     canal=pmax.CANAL,
     rotulo="Performance Max",
@@ -324,6 +313,8 @@ PERFORMANCE_MAX = PerfilDeCanal(
         "pmax.nome_do_asset_group", "url_final", "budget_diario", "tcpa",
         "target_roas", "estrategia_lance",
     ),
+    construtor=pmax.construir,
+    validador=pmax.validar,
     planejador=pmax.planejar,
     coletor="volc_ads/observabilidade_pmax (kernel read-only, GAQL v25)",
     recursos_criativos=(
@@ -332,19 +323,11 @@ PERFORMANCE_MAX = PerfilDeCanal(
     ),
     lances_permitidos=pmax.LANCES_PERMITIDOS,
     opcoes=pmax.OPCOES,
+    provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
-    permite_mutacao_real=False,
-    acoes_permitidas=("inventariar", "planejar"),
-    acoes_indisponiveis=(
-        "criar: Performance Max não está no registro do executor "
-        "(`subir.CONSTRUTORES_POR_CANAL`). O canal existe no inventário porque "
-        "a conta pode ter campanhas dele, e escondê-las seria mentir sobre o "
-        "que está gastando.",
-        "provar por validate_only: o builder monta e serializa offline, e a "
-        "prova externa exige o canal habilitado no executor — mudança "
-        "coordenada em subir.py, backend e plataforma.py. Ver "
-        "`plano.PMAX_FORA_DO_EXECUTOR`.",
-    ) + pmax.NAO_OPERADO,
+    permite_mutacao_real=True,
+    acoes_permitidas=("inventariar", "montar", "provar", "subir"),
+    acoes_indisponiveis=pmax.NAO_OPERADO,
 )
 
 PERFIS: Dict[str, PerfilDeCanal] = {

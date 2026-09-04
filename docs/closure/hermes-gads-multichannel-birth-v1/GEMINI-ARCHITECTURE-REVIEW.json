@@ -1,0 +1,254 @@
+{
+  "meta": {
+    "model_requested": "gemini-3.1-pro-preview",
+    "model_effective": "gemini-3.1-pro-preview",
+    "sdk": "google-genai",
+    "sdk_version": "2.22.0",
+    "finish_reason": "FinishReason.STOP",
+    "response_usable": true
+  },
+  "review": {
+    "model": "gemini-3.1-pro-preview",
+    "channel_blueprints": {
+      "DISPLAY": {
+        "format": "Responsive Display Ad (RDA)",
+        "bidding": "MAXIMIZE_CONVERSIONS",
+        "status": "PAUSED",
+        "hierarchy": [
+          "CAMPANHA",
+          "AD_GROUP",
+          "ANUNCIO_RDA",
+          "ASSET_DE_ANUNCIO"
+        ],
+        "capabilities": [
+          "montar",
+          "provar",
+          "subir"
+        ],
+        "limitations": [
+          "Does not support keyword matching / DKI",
+          "No target placements mounted due to documentation contradictions",
+          "Uses single AdGroup to prevent budget splitting without audience partition",
+          "ai_max setting strictly rejected"
+        ]
+      },
+      "PERFORMANCE_MAX": {
+        "format": "Asset Group based (No AdGroup, No Ad)",
+        "bidding": [
+          "MAXIMIZE_CONVERSIONS",
+          "MAXIMIZE_CONVERSION_VALUE"
+        ],
+        "status": "PAUSED",
+        "hierarchy": [
+          "CAMPANHA",
+          "asset_group",
+          "asset_group_asset",
+          "asset_group_signal",
+          "ASSET_DE_CAMPANHA"
+        ],
+        "capabilities": [
+          "inventariar",
+          "planejar"
+        ],
+        "limitations": [
+          "Constructor is intentionally None to prevent real creation / execution",
+          "Prohibits MANUAL_CPC and portfolio strategies",
+          "Retail/Shopping settings not mounted",
+          "Requires explicit brand_guidelines_enabled boolean",
+          "Requires explicit measurement receipt (AcaoDeConversao)"
+        ]
+      },
+      "DEMAND_GEN": {
+        "format": "DemandGenMultiAssetAdInfo",
+        "bidding": "MAXIMIZE_CONVERSIONS",
+        "status": "PAUSED",
+        "hierarchy": [
+          "CAMPANHA",
+          "AD_GROUP",
+          "ANUNCIO_DEMAND_GEN_MULTI_ASSET",
+          "ASSET_DE_ANUNCIO"
+        ],
+        "capabilities": [
+          "inventariar",
+          "montar",
+          "provar"
+        ],
+        "limitations": [
+          "Real mutate is strictly prohibited (permite_mutacao_real=False)",
+          "Only handles DemandGenMultiAssetAd, rejects carousel or product feeds",
+          "Intent and exclusion audiences mapped but require SDK/documentation proof via validate_only"
+        ]
+      }
+    },
+    "required_resources_in_order": [
+      {
+        "channel": "DISPLAY",
+        "sequence": [
+          "CampaignBudget (-1)",
+          "Campaign (DISPLAY, PAUSED) (-2)",
+          "CampaignCriterion (Geo, Language)",
+          "AdGroup (DISPLAY_STANDARD, PAUSED) (-3)",
+          "Asset (Images created inline via temp ids)",
+          "AdGroupAd (ResponsiveDisplayAd)"
+        ]
+      },
+      {
+        "channel": "DEMAND_GEN",
+        "sequence": [
+          "CampaignBudget",
+          "Campaign (DEMAND_GEN, PAUSED)",
+          "CampaignCriterion (Geo, Language)",
+          "AdGroup (PAUSED)",
+          "Asset (Images created inline)",
+          "AdGroupAd (DemandGenMultiAssetAd)"
+        ]
+      },
+      {
+        "channel": "PERFORMANCE_MAX",
+        "sequence": [
+          "CampaignBudget",
+          "Campaign (PERFORMANCE_MAX, PAUSED)",
+          "CampaignCriterion (Geo, Language, Negative Keywords)",
+          "CampaignAsset (Logo/Business Name IF brand_guidelines=True)",
+          "AssetGroup (PAUSED)",
+          "AssetGroupAsset (Images/Text mapping)",
+          "AssetGroupSignal (Audience / Search Theme)"
+        ]
+      }
+    ],
+    "required_and_optional_fields": [
+      {
+        "channel": "DISPLAY",
+        "required": [
+          "copy.business_name (<=25)",
+          "copy.long_headlines (1 item <=90)",
+          "marketing_images (>=1)",
+          "square_marketing_images (>=1)"
+        ],
+        "optional": [
+          "logo",
+          "logo_quadrado",
+          "videos"
+        ],
+        "not_supported": [
+          "estrategia_lance=MANUAL_CPC",
+          "DKI macros",
+          "ai_max"
+        ]
+      },
+      {
+        "channel": "DEMAND_GEN",
+        "required": [
+          "assets_demand_gen (explicit list, cannot be null)",
+          "estrategia_lance=MAXIMIZE_CONVERSIONS",
+          "upgraded_targeting"
+        ],
+        "optional": [
+          "marketing_retrato",
+          "marketing_retrato_alto"
+        ],
+        "not_supported": [
+          "cpc_inicial",
+          "match_type",
+          "carousel formats",
+          "product formats"
+        ]
+      },
+      {
+        "channel": "PERFORMANCE_MAX",
+        "required": [
+          "brand_guidelines_enabled (explicit boolean)",
+          "mensuracao (ReciboDeMensuracao)"
+        ],
+        "optional": [
+          "nome_do_asset_group",
+          "sinais (tuple or empty)",
+          "negativas (tuple or empty)",
+          "videos_youtube (resource_names)"
+        ],
+        "not_supported": [
+          "AdGroup",
+          "Ad",
+          "CampaignConversionGoal overrides",
+          "text_guidelines",
+          "asset_automation_settings",
+          "TRAVEL_GOALS",
+          "Local Services PMax"
+        ]
+      }
+    ],
+    "atomicity_strategy": {
+      "mutation_type": "GoogleAdsService.Mutate",
+      "partial_failure": "NOT SUPPORTED (explicitly for PMax, implicitly enforced across others to maintain graph integrity)",
+      "temporary_ids": "Pre-allocated distinct ranges per scope (Budget=-1, Campaign=-2, AdGroup=-3). Assets use separate block (e.g., <= -100) to avoid overlap with existing remote entity pointers.",
+      "execution_gate": "Selo (Seal) pattern required. Pre-flight validation offline, followed by explicit validate_only proof. Real mutate locks environment and verifies MCC/hashes before emitting Recibo."
+    },
+    "asset_requirements": {
+      "lineage": "Mandatory 'linhagem' tracking for all ImagemParaSubir. Rejects raw strings for DemandGen and PMax to enforce geometry/hash pre-checks.",
+      "image_shapes_display": {
+        "marketing": "1.91:1",
+        "marketing_quadrada": "1:1",
+        "logo": "4:1",
+        "logo_quadrado": "1:1"
+      },
+      "image_shapes_demand_gen": {
+        "marketing": "1.91:1",
+        "marketing_quadrada": "1:1",
+        "marketing_retrato": "4:5",
+        "marketing_retrato_alto": "9:16",
+        "logo_quadrado": "1:1"
+      },
+      "image_shapes_pmax": "Strict mapping to AssetFieldTypeEnum natively checked against Observability coverage table (PMaxAssetGroupDTO) before payload generation.",
+      "video_assets": "Passed as str (YouTube video resource names) as bytes are not available to validate locally."
+    },
+    "bidding_constraints": {
+      "MANUAL_CPC": "Strictly refused in Display, Demand Gen, and PMax. No search-engine signaling exists to filter broad inventory without intent queries.",
+      "MAXIMIZE_CONVERSIONS": "Required / allowed base for Display, Demand Gen, PMax.",
+      "MAXIMIZE_CONVERSION_VALUE": "Allowed for Performance Max."
+    },
+    "final_url_controls": {
+      "DISPLAY": "Mounted strictly on Campaign.final_url_suffix without {keyword} or {matchtype} parameters.",
+      "PERFORMANCE_MAX": "Final URLs added natively to AssetGroup. Expansion (AssetAutomationSettings) is explicitly excluded from the builder to avoid cross-field dependency failures.",
+      "DEMAND_GEN": "Mounted in DemandGenMultiAssetAd final_urls."
+    },
+    "observability_contract": {
+      "pmax_coverage": "Reuses `evaluate_asset_group_coverage` against a synthetic `PMaxAssetGroupDTO`. The creation gate uses the exact same yardstick as the downstream observer to prevent self-rejection of birthed campaigns.",
+      "measurement_receipt": "PMax strictly requires a valid `ReciboDeMensuracao`. A warning is emitted if the reading is > 24 hours old (`IDADE_MAXIMA_DA_MENSURACAO`), treating stale proofs differently from total absence."
+    },
+    "http_contract_delta": {
+      "boundary_enforcement": "Pydantic @model_validator discriminates fields (assets_display vs assets_demand_gen). DemandGen fields in a Search payload raise explicit ValueErrors rather than silently dropping.",
+      "strict_omission": "Empty list `[]` for DemandGen assets explicitly signifies intent (and triggers an error) whereas `None` signifies non-participation.",
+      "alias_protection": "Safeguards `copy` as field alias in Pydantic to prevent collisions with `BaseModel.copy()` method."
+    },
+    "risks_and_contradictions": [
+      "Contradiction: Display Placements (Positive). API docs label positive Placement as valid, but Campaign.network_settings matrix implies placement negatives only. Handled by omitting positives and requiring a real validate_only trial.",
+      "Risk: AssetGroupSignal audience types in Demand Gen upgraded_targeting lack robust local SDK documentation verification, requiring validate_only probing.",
+      "Contradiction: `brand_guidelines_enabled` defaults. V21 API defaults this to true silently, which shifts Logo/Business Name to CampaignAsset. Left to implicit default, entities would spawn in the wrong tier. Forced explicit bool.",
+      "Contradiction: `selective_optimization.conversion_actions` is for APP campaigns only, contrary to legacy internal assumptions. Goal overrides require `CampaignConversionGoal` objects, explicitly omitted in this MVP."
+    ],
+    "source_evidence": [
+      "display.py:12-81 (Refusals of MANUAL_CPC, DKI, ai_max; omission of placement)",
+      "demand_gen.py:94-222 (SuporteProtoV25 direct probing without credentials)",
+      "pmax.py:5-76 (Explanation of absent AdGroup/Ad, atomic necessity, conversion requirement)",
+      "brief_assets.py:449-502 (ImagemParaSubir design handling inline asset creation vs remote strings)",
+      "http_contract.py:1498-1603 (Demand Gen strict frontier separation logic)"
+    ],
+    "implementation_order": [
+      "1. Deploy HTTP Request Pydantic boundary splitting (assets_display vs assets_demand_gen)",
+      "2. Implement proto reflection tests (sondar_proto_v25) for Demand Gen V25 safety",
+      "3. Stand up Display RDA builder using single Mutate transaction with inline ImagemParaSubir assets",
+      "4. Plumb Performance Max validation logic against observabilidade_pmax DTO and ReciboDeMensuracao",
+      "5. Expose Demand Gen under validate_only strict isolation (permite_mutacao_real=False)",
+      "6. Perform exhaustive HTTP endpoint reject-testing for polluted payloads (e.g. Search params in PMax body)"
+    ],
+    "acceptance_tests": [
+      "Verify HTTP 400 is raised if `assets_display` is provided when `canal=SEARCH`.",
+      "Verify HTTP 400 is raised if Display RDA is attempted without 1.91:1 and 1:1 image roles.",
+      "Validate PMax builder correctly throws error if `brand_guidelines_enabled` is None.",
+      "Verify PMax payload correctly attaches `BUSINESS_NAME` to `CampaignAsset` if guidelines=True, and `AssetGroupAsset` if False.",
+      "Assert PMax refuses to build if `mensuracao` is missing.",
+      "Assert Demand Gen builds locally but fails at `subir()` step prior to API Mutate due to `permite_mutacao_real=False` constraint.",
+      "Run `validate_only` against Google Ads API using generated Demand Gen and Display graph payloads; assert zero API-level contract rejections."
+    ]
+  }
+}
