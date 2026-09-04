@@ -209,3 +209,53 @@ def test_texto_do_provedor_nunca_carrega_segredo_nem_ativo_opaco(bruto: str) -> 
     assert "EAABsbCS1iHgBO7ZC8ZDZDdeadbeef" not in saida
     assert "8f2b1c9e4a7d6b3f0c5e8a1d4b7f2c9e6a3d0b5f" not in saida
     assert "[redacted]" in saida
+
+
+def test_manifesto_de_passos_espelha_o_plano_e_serve_a_migration() -> None:
+    """O `steps_expected` da aprovação durável nasce do plano, não da mão.
+
+    A migration candidata recusa preparar um passo fora do manifesto; se a
+    futura rota de aprovação montasse a lista sozinha, ela poderia autorizar um
+    conjunto diferente do que o operador conferiu.
+    """
+    from app.trafego.meta_execucao.contrato import VariacaoEstaticaMeta
+
+    singular = compilar_plano_pausado(_plano(), _refs())
+    assert singular.manifesto_de_passos == ("campaign", "adset", "creative", "ad")
+
+    variacoes = tuple(
+        VariacaoEstaticaMeta(
+            variation_key=f"v{i}", creative_name=f"Criativo {i}", ad_name=f"Anuncio {i}",
+            asset_ref="metaasset_exemplo", message=f"Mensagem {i}",
+            headline=f"Titulo {i}", description=f"Descricao {i}",
+        )
+        for i in (1, 2)
+    )
+    lote = compilar_plano_pausado(_plano(variacoes_estaticas=variacoes), _refs())
+    assert lote.manifesto_de_passos == (
+        "campaign", "adset", "creative:v1", "ad:v1", "creative:v2", "ad:v2")
+    # Sem repetição e dentro do limite que a migration aceita.
+    assert len(set(lote.manifesto_de_passos)) == len(lote.manifesto_de_passos)
+    assert 1 <= len(lote.manifesto_de_passos) <= 22
+
+
+@pytest.mark.parametrize(
+    ("lido", "enviado", "igual"),
+    [
+        ("https://example.com/oferta/", "https://example.com/oferta", True),
+        ("https://EXAMPLE.com/oferta", "https://example.com/oferta/", True),
+        ("https://example.com/oferta?x=1", "https://example.com/oferta?x=1", True),
+        ("https://example.com/outra", "https://example.com/oferta", False),
+        ("https://outro.com/oferta", "https://example.com/oferta", False),
+        ("https://example.com/oferta?x=2", "https://example.com/oferta?x=1", False),
+        ("", "https://example.com/oferta", False),
+        (None, "https://example.com/oferta", False),
+    ],
+)
+def test_destino_do_readback_tolera_normalizacao_sem_afrouxar(
+    lido: object, enviado: str, igual: bool,
+) -> None:
+    """A Meta pode devolver a barra final normalizada; destino diferente, não."""
+    from app.trafego.meta_execucao.executor import _mesmo_destino
+
+    assert _mesmo_destino(lido, enviado) is igual

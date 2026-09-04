@@ -55,6 +55,17 @@ class PlanoCompiladoMeta:
         """Conta resolvida, derivada do endpoint. Nunca sai em resposta pública."""
         return self.operacoes[0].endpoint.split("/act_", 1)[1].split("/", 1)[0]
 
+    @property
+    def manifesto_de_passos(self) -> tuple[str, ...]:
+        """A lista ordenada de passos que a aprovação durável precisa fixar.
+
+        É o mesmo `steps_expected` de `trafego_meta_create_approval`. Derivar
+        do plano compilado — em vez de montar à mão na futura rota de
+        aprovação — impede que a autoridade persistente autorize um conjunto de
+        passos diferente do que o operador conferiu.
+        """
+        return tuple(op.chave for op in self.operacoes)
+
     def publico(self) -> Mapping[str, Any]:
         return {
             "account_ref": self.account_ref,

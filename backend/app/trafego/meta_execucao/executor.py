@@ -101,6 +101,22 @@ def _advantage_audience(alvo: Any) -> int | None:
         return None
 
 
+def _mesmo_destino(lido: Any, enviado: Any) -> bool:
+    """Compara duas URLs pela forma canônica, sem afrouxar host nem caminho."""
+    def canonica(valor: Any) -> tuple[str, str, str, str] | None:
+        texto = str(valor or "").strip()
+        if not texto:
+            return None
+        partes = urlparse(texto)
+        if not partes.scheme or not partes.hostname:
+            return None
+        caminho = partes.path.rstrip("/") or "/"
+        return (
+            partes.scheme.lower(), partes.hostname.lower(), caminho, partes.query)
+    a, b = canonica(lido), canonica(enviado)
+    return a is not None and a == b
+
+
 def _mesmo_instante(lido: Any, enviado: Any) -> bool:
     """A Meta devolve o horário no fuso da conta; o instante é que precisa bater."""
     if enviado in (None, ""):
@@ -558,8 +574,16 @@ class ExecutorMetaPausado:
                     if not isinstance(lido, Mapping):
                         divergiu("object_story_spec.link_data")
                         return
-                    for campo in ("image_hash", "link", "message", "name", "description"):
+                    for campo in ("image_hash", "message", "name", "description"):
                         if campo in enviado and str(lido.get(campo) or "") != str(
                             enviado[campo] or ""
                         ):
                             divergiu(f"object_story_spec.link_data.{campo}")
+                    # O destino compara por forma canônica: a Meta pode devolver
+                    # o mesmo endereço com a barra final normalizada, e tratar
+                    # isso como divergência pararia a saga por nada. Um destino
+                    # DIFERENTE continua divergindo.
+                    if "link" in enviado and not _mesmo_destino(
+                        lido.get("link"), enviado["link"]
+                    ):
+                        divergiu("object_story_spec.link_data.link")
