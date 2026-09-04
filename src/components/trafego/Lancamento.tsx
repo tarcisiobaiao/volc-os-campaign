@@ -77,10 +77,19 @@ interface Props {
    *  ler o veredito de política sem o operador copiar id à mão — e enquanto
    *  `campaigns` não é gravada no `/subir`, o recibo é a única fonte dele. */
   onCriada?: (campaignId: string) => void;
+  /** ⚠️ O recibo, ENTREGUE PARA FORA — e é isso que o faz sobreviver.
+   *
+   *  Até 03/09/2026 ele era `useState` deste modal, e `onFechar` desmontava o
+   *  componente: fechar a escada por reflexo jogava fora o `request_id`, o
+   *  `recibo_id`, o `item_id`, a impressão do plano e o motivo declarado —
+   *  exatamente o conjunto de que se precisa quando o desfecho é `indeterminado`
+   *  e a única saída é reconciliar por identidade. A página guarda; o modal
+   *  apenas informa. */
+  onRecibo?: (recibo: ReciboDeLancamento) => void;
 }
 
 export const Lancamento: React.FC<Props> = ({
-  pedido, trava, titulo, destino, resumoDaCopy, onFechar, onCriada,
+  pedido, trava, titulo, destino, resumoDaCopy, onFechar, onCriada, onRecibo,
 }) => {
   // ⚠️ O estado INICIAL já é o do destino. Nascer em `provando` e só depois
   // recuar exibiria por um instante uma escada correndo para um destino
@@ -223,6 +232,10 @@ export const Lancamento: React.FC<Props> = ({
         confirmar_criacao_pausada: true,
       });
       setRecibo(r.recibo);
+      // Para FORA antes de qualquer outra coisa: se `idExternoDaCampanha` ou o
+      // `onCriada` levantarem, o recibo já está salvo na página que sobrevive a
+      // este modal.
+      onRecibo?.(r.recibo);
       // ⚠️ ESTA LEITURA ESTAVA QUEBRADA, E EM SILÊNCIO.
       //
       // Ela buscava `recibo.campaign_id` / `recibo.campanha_id` — duas chaves

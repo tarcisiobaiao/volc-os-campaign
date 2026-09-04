@@ -1,15 +1,25 @@
 // @vitest-environment jsdom
 /**
- * As duas telas têm de saber que a campanha já existe.
+ * A Bancada tem de saber que a campanha já existe.
  *
  * ⚠️ Medido em 19/08/2026: depois de publicar, `/trafego` continuava dizendo
  * "montar campanha" e `/trafego/nova/74?run=7` continuava com "Lançar campanha"
  * como ação primária. A campanha existia no Google Ads e nas duas telas era
  * como se nada tivesse acontecido.
  *
- * A raiz era o `/subir` não gravar nada. Mas mesmo depois de gravar, eu tinha
- * acrescentado um CARTÃO e não mexido no BOTÃO — e é o botão que o operador
- * olha. Estes testes travam o comportamento, não a existência do cartão.
+ * A raiz era o `/subir` não gravar nada. Mas mesmo depois de gravar, o cartão
+ * tinha sido acrescentado e o BOTÃO não — e é o botão que o operador olha.
+ *
+ * ## O que mudou em 03/09/2026, e o que continua igual
+ *
+ * A ação dominante deixou de se chamar "Lançar campanha": na Bancada ela é
+ * **"Provar contra a conta"**, na parada Revisão, porque provar não lança —
+ * `validate_only` confere e descarta. A antiga etiqueta prometia o ato errado.
+ *
+ * O que este arquivo protege NÃO era a etiqueta: era o operador SABER que já
+ * existe campanha deste funil antes de criar outra. Isso continua trancado
+ * aqui, e agora com o fato mais forte — o id externo e o aviso de que duas
+ * campanhas do mesmo funil competem entre si no mesmo leilão.
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -27,10 +37,24 @@ vi.mock('@/lib/pautadorApi', () => ({
       motivo: '', explicacao: '',
     }),
     verticaisEPortoes: async () => ({ verticais: [
-      { id: 'informativo', titulo: 'Informativo', descricao: '', exige: null,
+      { id: 'financeiro', titulo: 'Financeiro', descricao: '', exige: null,
         severidade: null, paises_exigem: [] },
     ] }),
+    revisarConjuntoPago: async () => ({
+      opportunity_id: 74, cluster_id: 1,
+      selecionadas: [], excluidas: [], em_revisao_humana: [], negativas: [],
+      selected_set_sha256: 'c'.repeat(64), approved_set_sha256: 'c'.repeat(64),
+      aprovado_por: 'operador@volc', selection_policy_version: 'v1',
+      blockers: [], alertas: [], pode_aprovar: false, porque_nao: 'já aprovado',
+    }),
+    aprovarConjuntoPago: vi.fn(),
+    planoDeMensuracaoVigente: async () => { throw new Error('sem plano gravado'); },
+    escreverCopy: vi.fn(),
+    salvarCopyEditada: vi.fn(),
+    provarCampanha: vi.fn(),
+    subirCampanha: vi.fn(),
   },
+  PautadorApiError: class extends Error { corpo?: unknown; status = 0; },
 }));
 
 vi.mock('@/components/layout/Layout', () => ({
@@ -39,7 +63,7 @@ vi.mock('@/components/layout/Layout', () => ({
 
 import NovaCampanhaPage from '../NovaCampanhaPage';
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); window.sessionStorage.clear(); vi.clearAllMocks(); });
 
 const base = (campanhas: unknown[]) => ({
   opportunity_id: 74, cluster_id: 1,
@@ -59,22 +83,24 @@ const base = (campanhas: unknown[]) => ({
   campanhas_lancadas: campanhas,
 });
 
-const montar = () => render(
-  <MemoryRouter initialEntries={['/trafego/nova/74?run=7']}>
+const montar = (etapa = 'revisao') => render(
+  <MemoryRouter initialEntries={[`/trafego/nova/74?run=7&etapa=${etapa}`]}>
     <Routes><Route path="/trafego/nova/:opportunityId" element={<NovaCampanhaPage />} /></Routes>
   </MemoryRouter>,
 );
 
-describe('a barra de ação sincroniza com o que já foi lançado', () => {
-  it('sem campanha, a ação primária é "Lançar campanha"', async () => {
+describe('a Bancada sincroniza com o que já foi lançado', () => {
+  it('sem campanha, nada afirma que existe uma no ar', async () => {
     cockpitDeTrafego.mockResolvedValue(base([]));
     lerCopy.mockResolvedValue({ existe: false });
     montar();
-    await waitFor(() => expect(screen.getByText('Lançar campanha')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Maquininha de Cartão')).toBeTruthy());
+    // A ação dominante é a prova, e ela não promete criar.
+    expect(screen.getByRole('button', { name: /Provar contra a conta/ })).toBeTruthy();
     expect(screen.queryByText(/campanha no ar/)).toBeNull();
   });
 
-  it('com campanha pausada, avisa que está no ar e a ação vira "Lançar outra"', async () => {
+  it('com campanha pausada, a Bancada avisa que já existe uma no ar', async () => {
     cockpitDeTrafego.mockResolvedValue(base([{
       campaign_id: '24155134757', campaign_name: 'BR - … / Maquininha / https://…',
       status: 'Paused', google_ads_status: 'PAUSED',
@@ -82,9 +108,12 @@ describe('a barra de ação sincroniza com o que já foi lançado', () => {
     }]));
     lerCopy.mockResolvedValue({ existe: false });
     montar();
-    await waitFor(() => expect(screen.getByText(/campanha no ar/)).toBeTruthy());
-    expect(screen.getByText('Lançar outra')).toBeTruthy();
-    expect(screen.queryByText('Lançar campanha')).toBeNull();
+    // ⚠️ O fato que importa: o operador vê que já existe ANTES de criar outra.
+    // Ele aparece em DOIS lugares de propósito — no Pedido, que é a projeção
+    // que ele lê antes de agir, e no cartão, que traz o id para conferir.
+    await waitFor(() => expect(screen.getByText(/esta pauta já virou campanha/)).toBeTruthy());
+    expect(screen.getAllByText('campanhas deste funil já no ar').length).toBeGreaterThan(0);
+    expect(screen.getByText('24155134757')).toBeTruthy();
   });
 
   it('o cartão do que está no ar aparece com o id e o aviso de duplicidade', async () => {

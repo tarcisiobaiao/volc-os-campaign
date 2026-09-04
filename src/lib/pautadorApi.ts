@@ -97,6 +97,7 @@ import type {
   PublicacaoDePagina,
 } from '@/types/publicacao';
 import type { RespostaDosCanais } from '@/lib/trafego/canais';
+import type { PlanoVigenteResposta } from '@/lib/trafego/portoes';
 import type { MatrizDoRun, RespostaDaMatriz } from '@/types/redator';
 import type { FunilEscrito } from '@/types/redatorPaginas';
 import type { ConfiguracaoDoRedator, QuadroDoRedator } from '@/types/redatorQuadro';
@@ -871,6 +872,26 @@ export const pautadorApi = {
     if (opts?.comTextoDaLp) q.set('com_texto_da_lp', 'true');
     const s = q.toString();
     return request(`/api/trafego/candidatos/${opportunityId}${s ? `?${s}` : ''}`);
+  },
+
+  // O plano de mensuração GRAVADO desta conta, com os sete portões.
+  //
+  // ⚠️ ZERO REDE ao Google — o backend lê o que já está persistido. É por isso
+  // que a parada Economia pode mostrar os portões ANTES da prova: `/provar`
+  // gasta até cinco GAQL por clique e é a chamada mais lenta do fluxo, e um
+  // operador não deve precisar pagá-la para descobrir que a conta não tem meta.
+  //
+  // `vigente_da_conta` e `vigente_da_campanha` ficaram sem chamador de produção
+  // até 02/09/2026: a v12_02 foi aplicada com backup e onze contraprovas para
+  // que alguém pudesse conferir o que ficou gravado, e não havia por onde.
+  planoDeMensuracaoVigente(
+    customerId: string, loginCustomerId: string, campaignId?: string | null,
+  ): Promise<PlanoVigenteResposta> {
+    const q = new URLSearchParams({
+      customer_id: customerId, login_customer_id: loginCustomerId,
+    });
+    if (campaignId) q.set('campaign_id', campaignId);
+    return request(`/api/trafego/plano-de-mensuracao?${q.toString()}`);
   },
 
   // ── o conjunto pago: conferir, e depois congelar ──────────────────────────

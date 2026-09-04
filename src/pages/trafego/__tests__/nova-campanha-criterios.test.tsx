@@ -1,15 +1,29 @@
 // @vitest-environment jsdom
 /**
- * O cockpit manda o contrato TIPADO — e ele descreve o que a tela mostrou.
+ * O pedido que a Bancada monta — e, sobretudo, o que ele NÃO leva.
  *
- * ⚠️ O defeito que este arquivo trava: a tela não tinha onde escrever uma
- * exclusão, e o match type que ela exibia era derivado da estratégia, igual
- * para todas as keywords. O que o operador via e o que ia para o Google eram
- * duas coisas diferentes, e nada denunciava a diferença.
+ * ## A inversão que este arquivo sofreu, e por quê
  *
- * O `Lancamento` é substituído por um espião: o que se prova aqui é o PEDIDO
- * que a página monta, não o diálogo de lançamento — e provar o pedido é provar
- * que a revisão na tela e o payload contam a mesma história.
+ * Ele afirmava, com seis testes, que a página "leva as positivas tipadas, uma
+ * por keyword marcada". Estava certo sobre o código e errado sobre o produto: o
+ * backend RECUSA positivas vindas do corpo. `somente_negativas_do_corpo`
+ * (`portao_conjunto_pago.py:250`) levanta `POSITIVA_DO_CORPO` para qualquer
+ * critério com `negativa: false`, e `conferir_positivas_do_brief` (:308) confere
+ * de novo depois. As positivas saem de `keywords_por_grupo(<conjunto aprovado>)`
+ * — a marcação do operador nunca entrou na conta.
+ *
+ * Ou seja: a tela mandava um payload que o servidor recusa, e a mesa escrevia
+ * "o que você vê é o que vai para o Google", que não era verdade. Os testes
+ * trancavam as duas coisas.
+ *
+ * A ordem de checagem no `_preparar` escondia isso: `criterios_do_cluster` roda
+ * ANTES (`trafego.py:2959`), então o 409 que aparecia era
+ * `CONJUNTO_PAGO_NAO_APROVADO` e `POSITIVA_DO_CORPO` só apareceria depois de o
+ * conjunto ser aprovado. Dois defeitos empilhados, e o de cima escondia o de
+ * baixo.
+ *
+ * Agora estes testes provam o contrário: o pedido leva SÓ negativas, e o
+ * conjunto positivo é autoridade da mineração.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -35,6 +49,20 @@ vi.mock('@/components/trafego/Lancamento', () => ({
   },
 }));
 
+/** O conjunto pago APROVADO — é ele que carrega as positivas, não a tela. */
+const CONJUNTO = {
+  opportunity_id: 73, cluster_id: 4,
+  selecionadas: KW.map((termo) => ({
+    termo, termo_normalizado: termo, match_type: 'PHRASE' as const,
+    subintencao: 'ACESSO', volume: 27100, cpc: null, motivo: null,
+  })),
+  excluidas: [], em_revisao_humana: [], negativas: [],
+  selected_set_sha256: 'b'.repeat(64),
+  approved_set_sha256: 'b'.repeat(64),
+  aprovado_por: 'operador@volc', selection_policy_version: 'v1',
+  blockers: [], alertas: [], pode_aprovar: false, porque_nao: 'já aprovado',
+};
+
 vi.mock('@/lib/pautadorApi', () => ({
   pautadorApi: {
     cockpitDeTrafego,
@@ -42,9 +70,23 @@ vi.mock('@/lib/pautadorApi', () => ({
       escrita_permitida: false, destravado_no_codigo: false, env_presente: false,
       motivo: '', explicacao: 'A trava é de dois fatores.',
     }),
-    verticaisEPortoes: async () => ({ verticais: [] }),
-    // A copy PRONTA — sem ela o botão de lançar nasce desabilitado e o
-    // pedido nunca é montado, que era o que este arquivo quer inspecionar.
+    // ⚠️ A lista NÃO pode vir vazia neste dublê, e isso é contrato, não
+    // conveniência: uma lista vazia significa "os portões de política não foram
+    // lidos do servidor", e ausência de regra nunca é verde. A Bancada barra
+    // nesse caso — fail-closed, como o resto da casa —, então um teste sobre o
+    // PEDIDO precisa de uma vertical de fato adjudicada.
+    verticaisEPortoes: async () => ({
+      verticais: [
+        { id: 'informativo', titulo: 'Informativo',
+          descricao: 'O site explica e compara.', exige: null,
+          severidade: null, paises_exigem: [] },
+      ],
+    }),
+    revisarConjuntoPago: async () => CONJUNTO,
+    aprovarConjuntoPago: vi.fn(),
+    planoDeMensuracaoVigente: async () => { throw new Error('sem plano gravado'); },
+    // A copy PRONTA — sem ela a ação dominante nasce desabilitada e o pedido
+    // nunca é montado, que é o que este arquivo quer inspecionar.
     lerCopy: async () => ({
       existe: true, status: 'done', perdida: false,
       opportunity_id: 73, run_id: 6, keywords: [...KW],
@@ -59,6 +101,7 @@ vi.mock('@/lib/pautadorApi', () => ({
       segundos: 10, erro: null,
       criado_em: '2026-08-27T00:00:00Z', atualizado_em: '2026-08-27T00:00:00Z',
     }),
+    salvarCopyEditada: vi.fn(),
     escreverCopy: vi.fn(),
     provarCampanha: vi.fn(),
     subirCampanha: vi.fn(),
@@ -72,6 +115,7 @@ import { reciboApto } from '@/lib/landing-policy/__tests__/recibos';
 afterEach(() => {
   cleanup();
   pedidoEspiado.atual = null;
+  window.sessionStorage.clear();
   vi.clearAllMocks();
 });
 
@@ -87,10 +131,9 @@ function cockpitLimpo(): Cockpit {
       vertical: 'informativo', vertical_declarada: 'informativo',
       resumo_da_pesquisa: '', fatos: [], tem_texto_da_lp: true,
       // O RECIBO DO PORTÃO DE DESTINO PAGO — pela mesma razão que a copy chega
-      // pronta neste arquivo: sem ele o botão de lançar nasce desabilitado e o
-      // pedido nunca é montado, que é o que este teste quer inspecionar. Um
-      // destino publicado e sem avaliação é INDETERMINADO, e indeterminado não
-      // abre nada.
+      // pronta neste arquivo: sem ele a ação nasce desabilitada e o pedido nunca
+      // é montado. Um destino publicado e sem avaliação é INDETERMINADO, e
+      // indeterminado não abre nada.
       landing_policy_receipt: reciboApto({
         url: 'https://creditoup.com.br/r/saque/',
       }, { agora_epoch: Date.now() / 1000 }),
@@ -120,100 +163,99 @@ function cockpitLimpo(): Cockpit {
   } as unknown as Cockpit;
 }
 
-const renderizar = () =>
+/** Orçamento e lance declarados: sem eles a Economia barra, e é correto. */
+function comEconomiaDeclarada() {
+  window.sessionStorage.setItem('volc.bancada.rascunho.73.sem-run', JSON.stringify({
+    orcamento: '10', lance: '0,12', estrategia: 'MANUAL_CPC', graduacao: 30,
+    certificacoes: [], negativasCampanha: [], negativasAdgroup: [],
+    matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
+  }));
+}
+
+const renderizar = (etapa = 'revisao') =>
   render(
-    <MemoryRouter initialEntries={['/trafego/nova/73']}>
+    <MemoryRouter initialEntries={[`/trafego/nova/73?etapa=${etapa}`]}>
       <Routes>
         <Route path="/trafego/nova/:opportunityId" element={<NovaCampanhaPage />} />
       </Routes>
     </MemoryRouter>,
   );
 
-async function abrirMesa() {
+async function provar() {
+  comEconomiaDeclarada();
   cockpitDeTrafego.mockResolvedValue(cockpitLimpo());
-  renderizar();
-  // As keywords vêm pré-marcadas pela triagem, então a mesa monta sozinha.
-  await waitFor(() => expect(screen.getByLabelText('Palavras que ativam')).toBeTruthy());
+  renderizar('revisao');
+  const botao = await screen.findByRole('button', { name: /Provar contra a conta/ });
+  await waitFor(() => expect((botao as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(botao);
+  await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
 }
 
-describe('o pedido que a página monta', () => {
-  it('a mesa aparece assim que existe keyword marcada', async () => {
-    await abrirMesa();
-    expect(screen.getByLabelText('Palavras a excluir')).toBeTruthy();
-    expect(screen.getByLabelText('Revisão')).toBeTruthy();
-  });
+describe('o pedido que a Bancada monta', () => {
+  it('NÃO leva positiva nenhuma no corpo — o conjunto é autoridade da mineração', async () => {
+    // ⚠️ A CONTRAPROVA. `somente_negativas_do_corpo` recusa qualquer critério com
+    // `negativa: false`; mandar positivas era montar um payload que o servidor
+    // rejeita, e a tela nem sabia disso porque outro 409 chegava primeiro.
+    await provar();
 
-  it('leva as positivas tipadas, uma por keyword marcada', async () => {
-    await abrirMesa();
-    fireEvent.click(screen.getByRole('button', { name: /Lançar campanha/i }));
-
-    await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
     const crits = pedidoEspiado.atual!.criterios ?? [];
     const positivas = crits.filter((c) => !c.negativa);
-    expect(positivas.map((c) => c.texto).sort()).toEqual([...KW].sort());
-    // sob MANUAL_CPC (o padrão da casa) o match type é PHRASE
-    expect(positivas.every((c) => c.match_type === 'PHRASE')).toBe(true);
-    expect(positivas.every((c) => c.grupo === 'ACESSO')).toBe(true);
+    expect(positivas).toHaveLength(0);
+    // E `grupos` também vai vazio: as positivas saem de
+    // `keywords_por_grupo(<conjunto aprovado>)`, no servidor.
+    expect(pedidoEspiado.atual!.grupos).toHaveLength(0);
   });
 
   it('leva a exclusão que o operador escreveu, com nível e match type dela', async () => {
-    await abrirMesa();
+    comEconomiaDeclarada();
+    cockpitDeTrafego.mockResolvedValue(cockpitLimpo());
+    renderizar('termos');
+    await screen.findByLabelText('Termo a excluir');
 
     fireEvent.change(screen.getByLabelText('Termo a excluir'), {
       target: { value: 'simulador' },
     });
-    fireEvent.change(screen.getByLabelText('Correspondência da exclusão'), {
-      target: { value: 'EXACT' },
-    });
-    fireEvent.change(screen.getByLabelText(/^Motivo/), {
-      target: { value: 'nao vendemos simulacao' },
-    });
     fireEvent.click(screen.getByRole('button', { name: /Adicionar exclusão/ }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Lançar campanha/i }));
+    // Navega para a Revisão e prova.
+    fireEvent.click(screen.getByRole('link', { name: /Revisão/ }));
+    const botao = await screen.findByRole('button', { name: /Provar contra a conta/ });
+    await waitFor(() => expect((botao as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(botao);
     await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
 
     const negativas = (pedidoEspiado.atual!.criterios ?? []).filter((c) => c.negativa);
-    expect(negativas).toHaveLength(1);
-    expect(negativas[0]).toMatchObject({
-      texto: 'simulador', match_type: 'EXACT', nivel: 'CAMPAIGN',
-      grupo: null, origem: 'MANUAL', motivo: 'nao vendemos simulacao',
-    });
-    expect(negativas[0].evidencia).toBeNull();
-  });
-
-  it('o match type trocado numa keyword sobrevive até o pedido', async () => {
-    await abrirMesa();
-    fireEvent.change(screen.getByLabelText(`Correspondência de ${KW[0]}`), {
-      target: { value: 'EXACT' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Lançar campanha/i }));
-    await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
-
-    const crits = pedidoEspiado.atual!.criterios ?? [];
-    const porTexto = Object.fromEntries(crits.map((c) => [c.texto, c.match_type]));
-    expect(porTexto[KW[0]]).toBe('EXACT');
-    // e a OUTRA keyword continua no padrão — trocar uma não troca todas
-    expect(porTexto[KW[1]]).toBe('PHRASE');
-  });
-
-  it('desmarcar uma keyword a tira do contrato tipado', async () => {
-    await abrirMesa();
-    // desmarca a primeira keyword na lista de seleção
-    const ativam = screen.getByLabelText('Palavras que ativam');
-    expect(ativam.textContent).toContain(KW[1]);
-
-    fireEvent.click(screen.getByRole('button', { name: `marcar todas de ACESSO` }));
-    await waitFor(() => expect(screen.queryByLabelText('Palavras que ativam')).toBeNull());
+    expect(negativas.map((c) => c.texto)).toContain('simulador');
+    expect(negativas.every((c) => c.negativa)).toBe(true);
+    expect(negativas.every((c) => c.origem === 'MANUAL')).toBe(true);
   });
 
   it('continua mandando `match_type` como padrão do pedido', async () => {
-    await abrirMesa();
-    fireEvent.click(screen.getByRole('button', { name: /Lançar campanha/i }));
-    await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
-    // o campo antigo continua no pedido: é ele que preenche a lacuna de quem
-    // não declara critério, e o backend só ignora quando `criterios` vem cheio
+    await provar();
+    // O campo antigo continua no pedido: é ele que preenche a lacuna de quem
+    // não declara critério, e sob MANUAL_CPC o padrão da casa é PHRASE.
     expect(pedidoEspiado.atual!.match_type).toBe('PHRASE');
+  });
+
+  it('leva o orçamento e o lance DIGITADOS, e não um default de máquina', async () => {
+    // ⚠️ `Number(budget) || 0` transformava texto inválido — e a vírgula que o
+    // teclado brasileiro produz — em `0`, silenciosamente. Um orçamento zero é
+    // um pedido que o operador não fez.
+    await provar();
+    expect(pedidoEspiado.atual!.budget_diario).toBe(10);
+    expect(pedidoEspiado.atual!.cpc_inicial).toBe(0.12);
+  });
+
+  it('a ação dominante NÃO abre a ignição enquanto falta alguma coisa', async () => {
+    // Sem rascunho: orçamento e lance não declarados. A Economia barra, e a
+    // Revisão mostra a falta em vez de deixar provar um pedido incompleto.
+    cockpitDeTrafego.mockResolvedValue(cockpitLimpo());
+    renderizar('revisao');
+    const botao = await screen.findByRole('button', { name: /Provar contra a conta/ });
+    expect((botao as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByText(/declarar o orçamento diário/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/declarar o lance inicial/).length).toBeGreaterThan(0);
+    fireEvent.click(botao);
+    expect(pedidoEspiado.atual).toBeNull();
   });
 });

@@ -976,3 +976,36 @@
   .ignicao { animation: none; }
   .ignicao-hz, .ignicao-fogo { transition: none; }
 }
+
+/* ── a Bancada Guiada ────────────────────────────────────────────────────────
+ *
+ * O Pedido vira coluna quando a LARGURA DO CONTEÚDO passa de 1100px — e não
+ * quando a janela passa. A distinção não é preciosismo: a barra lateral do
+ * shell alterna entre 320px e 64px, então uma janela de 1440px com a barra
+ * aberta deixa ~1056px de conteúdo. Um limiar de viewport colocaria a coluna
+ * exatamente onde ela não cabe, e a mesa de termos ficaria espremida.
+ *
+ * Tailwind aqui é 3.4.11 sem `@tailwindcss/container-queries`, então isto é CSS
+ * cru de propósito — instalar o plugin seria upgrade de dependência fora do
+ * escopo desta entrega.
+ */
+.bancada-shell {
+  container-type: inline-size;
+  container-name: bancada;
+}
+
+@container bancada (min-width: 1100px) {
+  .bancada-grid {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+/* Navegadores sem suporte a container query caem neste limiar de viewport, que
+ * é mais alto de propósito: melhor uma coluna a menos do que uma espremida. */
+@supports not (container-type: inline-size) {
+  @media (min-width: 1500px) {
+    .bancada-grid {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+  }
+}
