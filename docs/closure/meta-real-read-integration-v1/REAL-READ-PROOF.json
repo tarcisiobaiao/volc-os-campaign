@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "executed_at": "2026-09-04T16:57:57Z",
+  "platform": "META_ADS",
+  "graph_api_version": "v26.0",
+  "operation": "READ_ONLY_PREFLIGHT",
+  "credential_boundary": "macOS Keychain -> backend memory -> Meta Graph GET",
+  "accounts": {
+    "discovered": 4,
+    "preflighted": 4,
+    "errors": 0
+  },
+  "observed_totals": {
+    "campaigns": 16,
+    "adsets": 56,
+    "ads": 272,
+    "creatives": 2095,
+    "pages": 6,
+    "instagram_profiles": 4,
+    "pixels_or_datasets": 12,
+    "custom_conversions": 1,
+    "insight_rows_today": 0
+  },
+  "capabilities": {
+    "read_accounts": "PROVEN",
+    "read_hierarchy": "PROVEN",
+    "read_pages_instagram": "PROVEN",
+    "read_pixels_or_datasets": "PROVEN",
+    "read_custom_conversions": "PROVEN",
+    "read_insights": "PROVEN_EMPTY_TODAY",
+    "create_paused": "BLOCKED_NOT_IMPLEMENTED",
+    "enable": "BLOCKED_NOT_IMPLEMENTED",
+    "mutate": "BLOCKED_NOT_IMPLEMENTED"
+  },
+  "safety": {
+    "token_exposed": false,
+    "raw_external_ids_persisted": false,
+    "meta_mutations": 0,
+    "supabase_writes": 0,
+    "migrations_applied": 0,
+    "deploys": 0
+  }
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -191,6 +192,119 @@ def test_insights_preservam_null_e_actions_nao_sao_achatadas() -> None:
     assert fato["impressions"] is None
     assert acao["action_type"] == "lead"
     assert acao["value"] is None
+
+
+def test_time_range_de_insights_vai_como_json_e_resposta_invalida_e_sanitizada() -> None:
+    async def cenario() -> None:
+        cliente = ClienteGraphFake({
+            "insights": [pagina([{
+                "account_id": "123456789012",
+                "date_start": "2026-09-01",
+                "date_stop": "2026-09-01",
+                "spend": "1.25",
+            }])],
+        })
+        adaptador = AdaptadorMetaSomenteLeitura(cliente)  # type: ignore[arg-type]
+        fatos, _ = await adaptador.ler_insights(
+            "123456789012",
+            SegredoEfemero(TOKEN),
+            nivel="account",
+            periodo_inicio=date(2026, 9, 1),
+            periodo_fim=date(2026, 9, 1),
+        )
+        assert fatos[0].spend == Decimal("1.25")
+        assert cliente.chamadas[0]["params"]["time_range"] == (
+            '{"since":"2026-09-01","until":"2026-09-01"}')
+
+        ruim = ClienteGraphFake({
+            "insights": [pagina([{
+                "account_id": "123456789012",
+                "date_start": "nao-e-data",
+                "date_stop": "2026-09-01",
+            }])],
+        })
+        with pytest.raises(ErroDeLeituraMeta) as erro:
+            await AdaptadorMetaSomenteLeitura(ruim).ler_insights(  # type: ignore[arg-type]
+                "123456789012",
+                SegredoEfemero(TOKEN),
+                nivel="account",
+                periodo_inicio=date(2026, 9, 1),
+                periodo_fim=date(2026, 9, 1),
+            )
+        assert erro.value.codigo == "META_INVALID_RESPONSE"
+        assert "nao-e-data" not in erro.value.mensagem_segura
+
+    asyncio.run(cenario())
+
+
+def test_custom_conversions_sao_sanitizadas_e_classificadas_sem_regra() -> None:
+    async def cenario() -> None:
+        cliente = ClienteGraphFake({
+            "customconversions": [pagina([
+                {
+                    "id": "555500001111",
+                    "name": "Lead qualificado",
+                    "custom_event_type": "LEAD",
+                    "event_source_type": "PIXEL",
+                    "event_source_id": "777700001111",
+                    "is_archived": False,
+                    "is_unavailable": False,
+                    "first_fired_time": "2026-08-01T10:00:00+0000",
+                    "last_fired_time": "2026-09-04T10:00:00+0000",
+                    "rule": "nao pode sair",
+                },
+                {
+                    "id": "555500002222",
+                    "name": "Nunca disparou",
+                    "custom_event_type": "OTHER",
+                    "is_archived": False,
+                    "is_unavailable": False,
+                },
+            ])],
+        })
+        adaptador = AdaptadorMetaSomenteLeitura(cliente)  # type: ignore[arg-type]
+        itens, paginas = await adaptador.ler_conversoes_personalizadas(
+            "123456789012", SegredoEfemero(TOKEN))
+        assert paginas == 1
+        assert itens[0]["estado"] == "AVAILABLE_FIRED"
+        assert itens[1]["estado"] == "AVAILABLE_NEVER_FIRED"
+        assert "rule" not in itens[0]
+        assert "555500001111" not in str(itens)
+        assert itens[0]["event_source_id_mascarado"] == "••••1111"
+
+    asyncio.run(cenario())
+
+
+def test_identidade_de_insight_nao_depende_da_ordem_da_lista() -> None:
+    observado = datetime.now(timezone.utc)
+    primeiro = dom.InsightMeta(
+        provider=dom.META_ADS,
+        conta_externa="123456789012",
+        nivel="account",
+        objeto_externo="123456789012",
+        periodo_inicio=date(2026, 9, 1),
+        periodo_fim=date(2026, 9, 1),
+        janela_atribuicao="default",
+        breakdown="none",
+        observado_em=observado,
+    )
+    segundo = dom.InsightMeta(
+        provider=dom.META_ADS,
+        conta_externa="123456789012",
+        nivel="campaign",
+        objeto_externo="400000000001",
+        periodo_inicio=date(2026, 9, 1),
+        periodo_fim=date(2026, 9, 1),
+        janela_atribuicao="default",
+        breakdown="none",
+        observado_em=observado,
+    )
+    a = linhas_de_insights([primeiro, segundo], conta_ativo_id="ativo-meta")
+    b = linhas_de_insights([segundo, primeiro], conta_ativo_id="ativo-meta")
+    ids_a = {item["meta_insight_daily_id"] for item in a["trafego_meta_insight_daily"]}
+    ids_b = {item["meta_insight_daily_id"] for item in b["trafego_meta_insight_daily"]}
+    assert ids_a == ids_b
+    assert all(item.startswith("meta_insight_") for item in ids_a)
 
 
 def app_cliente(chaveiro: Any) -> TestClient:

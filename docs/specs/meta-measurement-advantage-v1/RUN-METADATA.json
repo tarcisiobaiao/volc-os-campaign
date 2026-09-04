@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "executed_at": "2026-09-04",
+  "requested_model": "gemini-3.8-flash",
+  "initial_effective_model": "gemini-3.5-flash",
+  "adjudication_effective_model": "gemini-3.1-pro-preview-customtools",
+  "initial_session_id": "44d37919-b524-4831-bb6d-b3956f284f10",
+  "execution_mode": "read_only_plan",
+  "web_search": {
+    "gemini_tool_result": "unavailable_http_500",
+    "external_official_source_snapshot": true,
+    "developers_facebook_result": "rate_limited_http_429",
+    "official_sdk_repository_result": "available"
+  },
+  "security": {
+    "gemini_credential_only_in_child_environment": true,
+    "meta_token_available_to_model": false,
+    "repository_files_modified_by_model": false,
+    "meta_api_called_by_model": false
+  },
+  "disposition": "RAW_OUTPUT_ADJUDICATED_BEFORE_USE"
+}

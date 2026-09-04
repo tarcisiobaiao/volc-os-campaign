@@ -60,7 +60,7 @@ CREATE TABLE public.trafego_meta_business (
 
 CREATE TABLE public.trafego_meta_ad_account (
   cofre_ativo_id       text PRIMARY KEY REFERENCES public.cofre_ativo (ativo_id) ON DELETE RESTRICT,
-  business_ativo_id    text NOT NULL REFERENCES public.trafego_meta_business (cofre_ativo_id) ON DELETE RESTRICT,
+  business_ativo_id    text REFERENCES public.trafego_meta_business (cofre_ativo_id) ON DELETE RESTRICT,
   account_external_id  text NOT NULL UNIQUE,
   nome_observado       text,
   moeda                text,

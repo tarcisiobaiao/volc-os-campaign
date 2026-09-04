@@ -154,14 +154,59 @@ export interface ResultadoDoTesteMetaLocal {
   api_version: 'v26.0';
   salvo_em?: string;
   ator: { nome: string; id_mascarado: string | null };
-  contas: Array<{
-    nome: string;
-    id_mascarado: string | null;
-    status: number | null;
-    moeda: string | null;
-    fuso: string | null;
-  }>;
+  contas: ContaMetaLocal[];
   contas_acessiveis: number;
+}
+
+export interface ContaMetaLocal {
+  referencia_opaca: string;
+  nome: string;
+  id_mascarado: string | null;
+  status: string | null;
+  moeda: string | null;
+  fuso: string | null;
+  prontidao_leitura: 'READY_FOR_READ';
+  business: { id_mascarado: string | null; nome: string | null } | null;
+}
+
+export interface ResultadoDasContasMetaLocal {
+  ok: true;
+  api_version: 'v26.0';
+  armazenamento: 'macOS Keychain';
+  contas: ContaMetaLocal[];
+  contas_acessiveis: number;
+  proxima_acao: 'preflight_somente_leitura';
+}
+
+export interface ConversaoPersonalizadaMetaLocal {
+  referencia_opaca: string;
+  id_mascarado: string | null;
+  nome: string;
+  custom_event_type: string | null;
+  event_source_type: string | null;
+  event_source_id_mascarado: string | null;
+  first_fired_time: string | null;
+  last_fired_time: string | null;
+  estado: 'AVAILABLE_FIRED' | 'AVAILABLE_NEVER_FIRED' | 'ARCHIVED' | 'UNAVAILABLE';
+}
+
+export interface ResultadoDoPreflightMetaLocal {
+  ok: true;
+  api_version: 'v26.0';
+  referencia_opaca: string;
+  conta: ContaMetaLocal;
+  contagens: Record<string, number | null>;
+  estados: { readiness: string; persistencia: 'NAO_PERSISTIDO' };
+  capacidades_disponiveis: string[];
+  capacidades_ausentes: string[];
+  frescor: string;
+  paginas_lidas: number;
+  erros: Array<{ capability: string; codigo: string; mensagem: string }>;
+  mensuracao: {
+    pixels_ou_datasets: number | null;
+    conversoes_personalizadas: ConversaoPersonalizadaMetaLocal[];
+  };
+  proxima_acao: string;
 }
 
 function url(path: string): string {
@@ -266,6 +311,17 @@ export const pautadorApi = {
 
   testarMetaLocal(): Promise<ResultadoDoTesteMetaLocal> {
     return request('/api/trafego/meta/local/testar', { method: 'POST' });
+  },
+
+  contasMetaLocal(): Promise<ResultadoDasContasMetaLocal> {
+    return request('/api/trafego/meta/local/contas');
+  },
+
+  preflightMetaLocal(referenciaOpaca: string): Promise<ResultadoDoPreflightMetaLocal> {
+    return request('/api/trafego/meta/local/preflight', {
+      method: 'POST',
+      body: JSON.stringify({ referencia_opaca: referenciaOpaca }),
+    });
   },
 
   removerMetaLocal(): Promise<{ removido: boolean }> {

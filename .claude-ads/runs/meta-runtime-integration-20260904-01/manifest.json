@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "run_id": "meta-runtime-integration-20260904-01",
+  "created_at": "2026-09-04T00:00:00-03:00",
+  "objective": "Integrar o candidato Meta real read model na branch operacional, fechar gaps P0 seguros e provar leitura real sem Meta mutate.",
+  "platform": "META_ADS",
+  "network": "META",
+  "geography": "BR",
+  "currency": "BRL",
+  "branch": "execution/volc-os-operacao-80-20",
+  "starting_head": "cd23428cbda48d907cc25f68a948692624bc63eb",
+  "candidate_branch": "sprint/hermes-meta-real-read-model-v1",
+  "candidate_head": "b118d912fa75e85bd6981f693d24e898f0328b96",
+  "authority": {
+    "local_code_changes": true,
+    "read_only_meta": true,
+    "meta_mutate": false,
+    "supabase_write": false,
+    "migration_apply": false,
+    "deploy": false
+  },
+  "reviewers": ["claude-cli", "gemini-api-cli"],
+  "credential_policy": "Resolve Meta token only from macOS Keychain in the backend process; never expose it to reviewers, files, logs or browser.",
+  "status": "completed_read_only",
+  "result": {
+    "accounts_discovered": 4,
+    "accounts_preflighted": 4,
+    "preflight_errors": 0,
+    "custom_conversions_observed": 1,
+    "meta_mutations": 0,
+    "supabase_writes": 0,
+    "token_exposed": false
+  },
+  "review_disposition": {
+    "claude": "partial_outputs_adjudicated",
+    "gemini": "stale_base_output_rejected_as_acceptance_authority",
+    "lead": "code_and_real_read_evidence_are_authoritative"
+  }
+}

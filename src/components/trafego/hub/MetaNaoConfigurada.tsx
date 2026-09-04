@@ -6,12 +6,16 @@ import { ArrowRight, CheckCircle2, CircleAlert } from 'lucide-react';
 import { rotuloDoNivelMeta } from './perfilDeCanal';
 import type { NivelMeta } from './contrato';
 import { MetaInventarioDemo } from '@/components/trafego/meta/MetaInventarioDemo';
+import { MetaReadPreview } from '@/components/trafego/meta/MetaReadPreview';
 
 export const MetaNaoConfigurada: React.FC<{
   nivel: NivelMeta;
   secao?: 'campanhas' | 'preparar' | 'atencao';
 }> = ({ nivel, secao = 'campanhas' }) => secao === 'campanhas' ? (
-  <MetaInventarioDemo nivel={nivel} />
+  <>
+    <MetaReadPreview />
+    <MetaInventarioDemo nivel={nivel} />
+  </>
 ) : secao === 'preparar' ? (
   <section className="rounded-md border border-border bg-card p-5 shadow-card">
     <p className="kicker">Estúdio de criação Meta</p>

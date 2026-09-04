@@ -18,6 +18,7 @@ from app.asset_vault.dominio import PayloadRecusado, recusar_chave_sensivel
 
 META_ADS = "META_ADS"
 TIPOS_DE_OBJETO = ("campaign", "adset", "ad", "creative")
+TIPOS_DE_IDENTIDADE = TIPOS_DE_OBJETO + ("business", "account", "insight")
 NIVEIS_DE_INSIGHT = ("account", "campaign", "adset", "ad")
 ESTADOS_DE_PRONTIDAO = (
     "CONFIG_MISSING",
@@ -66,7 +67,7 @@ def id_interno(*, conta_externa: str, tipo: str, id_externo_meta: str) -> str:
     collision between two different Meta namespaces.
     """
     conta = conta_canonica(conta_externa)
-    if tipo not in TIPOS_DE_OBJETO:
+    if tipo not in TIPOS_DE_IDENTIDADE:
         raise ContratoMetaInvalido(f"tipo Meta desconhecido: {tipo!r}")
     externo = id_externo(id_externo_meta)
     return str(uuid.uuid5(_NAMESPACE_META, f"{META_ADS}:{conta}:{tipo}:{externo}"))
@@ -82,6 +83,19 @@ def referencia_opaca_conta(conta_externa: str) -> str:
     conta = conta_canonica(conta_externa)
     digest = hashlib.sha256(f"{META_ADS}:account:{conta}".encode("utf-8")).hexdigest()[:24]
     return f"metaacct_{digest}"
+
+
+def referencia_opaca_objeto(conta_externa: str, tipo: str, id_externo_meta: str) -> str:
+    """Opaque browser handle scoped by provider, account and object kind."""
+    conta = conta_canonica(conta_externa)
+    externo = id_externo(id_externo_meta)
+    tipo_limpo = str(tipo or "").strip().lower()
+    if not re.fullmatch(r"[a-z_]{2,40}", tipo_limpo):
+        raise ContratoMetaInvalido("tipo de referencia Meta invalido")
+    digest = hashlib.sha256(
+        f"{META_ADS}:{conta}:{tipo_limpo}:{externo}".encode("utf-8")
+    ).hexdigest()[:24]
+    return f"metaobj_{digest}"
 
 
 def mascarar_id(valor: Any) -> str | None:

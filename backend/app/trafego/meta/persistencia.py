@@ -7,6 +7,7 @@ adapter must implement the same single-operation commit against reviewed SQL.
 from __future__ import annotations
 
 import copy
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -42,7 +43,7 @@ def linhas_de_contas(
         if conta.business is not None:
             business_ativo_id = "meta_business_" + dom.id_interno(
                 conta_externa=conta.id_externo,
-                tipo="campaign",
+                tipo="business",
                 id_externo_meta=conta.business.id_externo,
             )
             if business_ativo_id not in vistos_business:
@@ -168,12 +169,20 @@ def linhas_de_insights(
     if not conta_ativo_id.strip():
         raise dom.ContratoMetaInvalido("ativo da conta Meta vazio")
     saida = {"trafego_meta_insight_daily": [], "trafego_meta_insight_action": []}
-    for idx, insight in enumerate(insights):
-        fato_id = dom.id_interno(
-            conta_externa=insight.conta_externa,
-            tipo="campaign" if insight.nivel == "account" else "campaign" if insight.nivel == "campaign" else "adset" if insight.nivel == "adset" else "ad",
-            id_externo_meta=insight.objeto_externo if insight.nivel != "account" else insight.conta_externa,
-        ) + f":{insight.periodo_inicio}:{insight.periodo_fim}:{insight.nivel}:{idx}"
+    for insight in insights:
+        identidade = "|".join((
+            insight.provider,
+            insight.conta_externa,
+            insight.nivel,
+            insight.objeto_externo,
+            insight.periodo_inicio.isoformat(),
+            insight.periodo_fim.isoformat(),
+            insight.janela_atribuicao,
+            insight.breakdown,
+            insight.observado_em.isoformat(),
+        ))
+        fato_id = "meta_insight_" + hashlib.sha256(
+            identidade.encode("utf-8")).hexdigest()
         saida["trafego_meta_insight_daily"].append({
             "meta_insight_daily_id": fato_id,
             "ad_account_ativo_id": conta_ativo_id,

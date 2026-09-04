@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "status": "PROPOSED_PARTIAL",
+  "target_graph_api_version": "v26.0",
+  "generated_from_head": "cd23428cbda48d907cc25f68a948692624bc63eb",
+  "graph_freshness": {
+    "graphify_built_at_commit": "462e2ff9f7e9c4638d84e6f6adfcfccd1e75037d",
+    "current_head_at_analysis": "cd23428cbda48d907cc25f68a948692624bc63eb",
+    "state": "STALE_AUXILIARY_ONLY"
+  },
+  "evidence_status_values": [
+    "PROVEN_LOCAL",
+    "PROVEN_OFFICIAL_SDK",
+    "OBSERVED_READ_ONLY",
+    "INFERENCE",
+    "NEEDS_OFFICIAL_CONFIRMATION",
+    "PROPOSED"
+  ],
+  "nodes": [
+    {
+      "id": "meta.system_user_credential",
+      "kind": "CredentialReference",
+      "authority": "macOS Keychain provisório; Cofre VOLC futuro",
+      "mutable": true,
+      "identity_fields": ["operator_subject"],
+      "observed_state": "CONFIGURED_LOCALLY",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.business",
+      "kind": "BusinessPortfolio",
+      "authority": "Meta Graph API",
+      "mutable": false,
+      "identity_fields": ["business_external_id"],
+      "observed_state": "READABLE",
+      "evidence_status": "OBSERVED_READ_ONLY"
+    },
+    {
+      "id": "meta.ad_account",
+      "kind": "AdAccount",
+      "authority": "Meta Graph API",
+      "mutable": false,
+      "identity_fields": ["account_external_id"],
+      "observed_state": "FOUR_ACCOUNTS_READABLE",
+      "evidence_status": "OBSERVED_READ_ONLY"
+    },
+    {
+      "id": "meta.event_source",
+      "kind": "AdsPixelOrDatasetReference",
+      "authority": "Meta Graph API",
+      "mutable": false,
+      "identity_fields": ["event_source_external_id", "account_external_id"],
+      "observed_state": "READABLE_NOT_PERSISTED_IN_V15_01",
+      "evidence_status": "OBSERVED_READ_ONLY"
+    },
+    {
+      "id": "meta.browser_event",
+      "kind": "BrowserEvent",
+      "authority": "Site/Pixel",
+      "mutable": true,
+      "identity_fields": ["event_name", "event_id"],
+      "observed_state": "NOT_INVENTORIED_BY_META_ADS_ENGINE",
+      "evidence_status": "PROPOSED"
+    },
+    {
+      "id": "meta.server_event",
+      "kind": "ConversionsApiEvent",
+      "authority": "CAPI endpoint",
+      "mutable": true,
+      "identity_fields": ["event_name", "event_id"],
+      "observed_state": "LEGACY_V21_TWO_EVENTS_ONLY",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.custom_conversion",
+      "kind": "CustomConversion",
+      "authority": "Meta Graph API",
+      "mutable": true,
+      "identity_fields": ["custom_conversion_external_id", "account_external_id"],
+      "observed_state": "READABLE_NOT_PERSISTED_IN_V15_01",
+      "evidence_status": "OBSERVED_READ_ONLY"
+    },
+    {
+      "id": "volc.intent",
+      "kind": "TrafficIntent",
+      "authority": "VOLC OS",
+      "mutable": true,
+      "identity_fields": ["intencao_id"],
+      "observed_state": "IMPLEMENTED",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "volc.blueprint",
+      "kind": "CampaignBlueprint",
+      "authority": "VOLC OS",
+      "mutable": true,
+      "identity_fields": ["blueprint_id", "impression_hash"],
+      "observed_state": "IMPLEMENTED_PROVIDER_GAPS_REMAIN",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "volc.batch",
+      "kind": "PlannedBatch",
+      "authority": "VOLC OS",
+      "mutable": true,
+      "identity_fields": ["lote_id", "idempotency_key"],
+      "observed_state": "IMPLEMENTED",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "volc.ledger",
+      "kind": "MutationLedger",
+      "authority": "VOLC OS",
+      "mutable": true,
+      "identity_fields": ["item_id", "operation", "idempotency_key"],
+      "observed_state": "IMPLEMENTED_GOOGLE_SHAPED_META_ADAPTATION_REQUIRED",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.campaign",
+      "kind": "Campaign",
+      "authority": "Meta Graph API",
+      "mutable": true,
+      "identity_fields": ["account_external_id", "campaign_external_id"],
+      "observed_state": "READ_ONLY_SYNC_IMPLEMENTED_CREATE_ABSENT",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.advantage_state_info",
+      "kind": "CampaignReadbackState",
+      "authority": "Meta Graph API",
+      "mutable": false,
+      "identity_fields": ["campaign_external_id"],
+      "observed_state": "READABLE_NOT_YET_IN_CANONICAL_READ_MODEL",
+      "evidence_status": "OBSERVED_READ_ONLY"
+    },
+    {
+      "id": "meta.adset",
+      "kind": "AdSet",
+      "authority": "Meta Graph API",
+      "mutable": true,
+      "identity_fields": ["campaign_external_id", "adset_external_id"],
+      "observed_state": "READ_ONLY_SYNC_IMPLEMENTED_CREATE_ABSENT",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.promoted_object",
+      "kind": "AdPromotedObject",
+      "authority": "Meta Graph API",
+      "mutable": true,
+      "identity_fields": ["adset_external_id"],
+      "observed_state": "COMPILER_ABSENT",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.creative",
+      "kind": "AdCreative",
+      "authority": "Meta Graph API",
+      "mutable": true,
+      "identity_fields": ["account_external_id", "creative_external_id"],
+      "observed_state": "READ_ONLY_SYNC_IMPLEMENTED_CREATE_ABSENT",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "meta.ad",
+      "kind": "Ad",
+      "authority": "Meta Graph API",
+      "mutable": true,
+      "identity_fields": ["adset_external_id", "ad_external_id"],
+      "observed_state": "READ_ONLY_SYNC_IMPLEMENTED_CREATE_ABSENT",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "id": "volc.receipt",
+      "kind": "AppendOnlyReceipt",
+      "authority": "VOLC OS",
+      "mutable": false,
+      "identity_fields": ["receipt_id", "impression_hash"],
+      "observed_state": "IMPLEMENTED_META_RECEIPT_SHAPE_REQUIRED",
+      "evidence_status": "PROVEN_LOCAL"
+    }
+  ],
+  "edges": [
+    {
+      "from": "meta.system_user_credential",
+      "to": "meta.business",
+      "relation": "authenticates",
+      "guard": "resolve only on server; never return token to browser",
+      "readback": "GET /me",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "from": "meta.business",
+      "to": "meta.ad_account",
+      "relation": "grants_access_to",
+      "guard": "account must be returned by authenticated inventory",
+      "readback": "GET /me/adaccounts or business-scoped account edge",
+      "evidence_status": "OBSERVED_READ_ONLY"
+    },
+    {
+      "from": "meta.ad_account",
+      "to": "meta.event_source",
+      "relation": "can_use",
+      "guard": "event source must be visible to the selected account",
+      "readback": "GET account event-source inventory",
+      "evidence_status": "NEEDS_OFFICIAL_CONFIRMATION"
+    },
+    {
+      "from": "meta.event_source",
+      "to": "meta.browser_event",
+      "relation": "receives",
+      "guard": "same occurrence uses same event_name and event_id as server event",
+      "readback": "event diagnostics, not implemented",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "from": "meta.event_source",
+      "to": "meta.server_event",
+      "relation": "receives_via_capi",
+      "guard": "event_time is occurrence time; PII handling is field-specific",
+      "readback": "event diagnostics, not implemented",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "from": "meta.event_source",
+      "to": "meta.custom_conversion",
+      "relation": "is_source_for",
+      "guard": "archived, unavailable and never-fired are distinct states",
+      "readback": "CustomConversion fields",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "from": "volc.intent",
+      "to": "volc.blueprint",
+      "relation": "compiles_to",
+      "guard": "explicit account, objective, budget authority and measurement choice",
+      "readback": "canonical impression hash",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "from": "volc.blueprint",
+      "to": "volc.batch",
+      "relation": "freezes_into",
+      "guard": "approved hash must equal execution hash",
+      "readback": "local persisted batch",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "from": "volc.batch",
+      "to": "volc.ledger",
+      "relation": "opens_mutation_receipt",
+      "guard": "one in-flight operation per canonical identity",
+      "readback": "ledger state",
+      "evidence_status": "PROVEN_LOCAL"
+    },
+    {
+      "from": "volc.ledger",
+      "to": "meta.campaign",
+      "relation": "may_create_paused",
+      "guard": "remote validation first; creation is separately authorized; status PAUSED",
+      "readback": "campaign status, objective, budget and advantage_state_info",
+      "evidence_status": "PROPOSED"
+    },
+    {
+      "from": "meta.campaign",
+      "to": "meta.advantage_state_info",
+      "relation": "exposes",
+      "guard": "read outcome only; never synthesize overall state from toggles",
+      "readback": "campaign.advantage_state_info",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "from": "meta.campaign",
+      "to": "meta.adset",
+      "relation": "owns",
+      "guard": "campaign budget and ad-set budget authority cannot be ambiguous",
+      "readback": "adset budget, optimization, destination, targeting and promoted_object",
+      "evidence_status": "PROPOSED"
+    },
+    {
+      "from": "meta.adset",
+      "to": "meta.promoted_object",
+      "relation": "optimizes_against",
+      "guard": "compile from selected event source/event/custom conversion; validate remotely",
+      "readback": "adset.promoted_object",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "from": "meta.creative",
+      "to": "meta.ad",
+      "relation": "is_referenced_by",
+      "guard": "creative must belong to the same account and pass creative validation",
+      "readback": "ad.creative and creative fields",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "from": "meta.adset",
+      "to": "meta.ad",
+      "relation": "owns",
+      "guard": "ad and parent remain PAUSED at birth",
+      "readback": "configured_status and effective_status",
+      "evidence_status": "PROPOSED"
+    },
+    {
+      "from": "meta.campaign",
+      "to": "volc.receipt",
+      "relation": "is_confirmed_by",
+      "guard": "receipt is green only after factual read-back",
+      "readback": "provider IDs masked in UI and exact server-side",
+      "evidence_status": "PROPOSED"
+    }
+  ],
+  "flows": {
+    "discovery": [
+      "resolve credential server-side",
+      "read accessible accounts",
+      "read account-scoped event sources",
+      "read account-scoped custom conversions",
+      "persist freshness and unavailable/archived/fired states without collapsing null to zero"
+    ],
+    "measurement": [
+      "create a unique event_id per real occurrence",
+      "reuse the same event_name and event_id for browser/server copies",
+      "send actual occurrence event_time",
+      "preserve event-source and custom-conversion lineage",
+      "observe diagnostics before declaring the signal healthy"
+    ],
+    "create_paused": [
+      "freeze approved blueprint and impression hash",
+      "open ledger operation",
+      "run local structural guard",
+      "run provider validate_only where supported",
+      "require explicit operator approval for real creation",
+      "create Campaign, AdSet, Creative and Ad as PAUSED",
+      "read back every created object",
+      "close receipt only after exact reconciliation"
+    ],
+    "activate_separately": [
+      "require a separately authorized action",
+      "re-read budget, policy, measurement health and current object state",
+      "activate only the explicitly selected hierarchy"
+    ],
+    "reconcile": [
+      "read provider hierarchy and advantage outcome",
+      "compare to canonical impression",
+      "mark divergence or unknown without automatic duplicate creation"
+    ]
+  },
+  "forbidden_shortcuts": [
+    "never expose token or raw credential locator to the browser",
+    "never create a Custom Conversion implicitly during campaign creation",
+    "never treat CAPI delivery as proof that a Custom Conversion exists",
+    "never treat Custom Conversion existence as proof that it has fired",
+    "never infer overall Advantage+ state from requested components",
+    "never create ACTIVE at birth",
+    "never retry an ambiguous remote creation as a fresh creation",
+    "never collapse absent, unavailable, never-fired, stale or zero into one state"
+  ],
+  "source_registry": [
+    {
+      "id": "official_sdk_repository",
+      "url": "https://github.com/facebook/facebook-python-business-sdk",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "official_custom_conversion",
+      "url": "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/customconversion.py",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "official_capi_event",
+      "url": "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/serverside/event.py",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "official_promoted_object",
+      "url": "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adpromotedobject.py",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "official_campaign",
+      "url": "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/campaign.py",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "official_adset",
+      "url": "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/adset.py",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "official_targeting_automation",
+      "url": "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/targetingautomation.py",
+      "evidence_status": "PROVEN_OFFICIAL_SDK"
+    },
+    {
+      "id": "local_ground_truth",
+      "path": "docs/closure/hermes-meta-v26-ground-truth-v1/",
+      "evidence_status": "PROVEN_LOCAL"
+    }
+  ]
+}

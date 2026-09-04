@@ -6,6 +6,7 @@ keeps tests hermetic and prevents the package from touching Meta by import.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Mapping
@@ -48,6 +49,7 @@ _CAPABILIDADES_DE_LEITURA = {
     "instagram": "META_READ_INSTAGRAM",
     "pixel": "META_READ_PIXEL_DATASET",
     "insights": "META_READ_INSIGHTS",
+    "custom_conversion": "META_READ_CUSTOM_CONVERSIONS",
 }
 
 
@@ -148,6 +150,21 @@ class AdaptadorMetaSomenteLeitura:
                 ausentes.append(_CAPABILIDADES_DE_LEITURA[capability])
                 erros.append({"capability": _CAPABILIDADES_DE_LEITURA[capability], "codigo": exc.codigo, "mensagem": exc.mensagem_segura})
         try:
+            conversoes, paginas = await self.ler_conversoes_personalizadas(
+                conta.id_externo, segredo)
+            contagens["custom_conversion"] = len(conversoes)
+            paginas_lidas += paginas
+            disponiveis.append("META_READ_CUSTOM_CONVERSIONS")
+        except ErroDeLeituraMeta as exc:
+            conversoes = ()
+            contagens["custom_conversion"] = None
+            ausentes.append("META_READ_CUSTOM_CONVERSIONS")
+            erros.append({
+                "capability": "META_READ_CUSTOM_CONVERSIONS",
+                "codigo": exc.codigo,
+                "mensagem": exc.mensagem_segura,
+            })
+        try:
             insights, paginas = await self.ler_insights(
                 conta.id_externo,
                 segredo,
@@ -174,8 +191,72 @@ class AdaptadorMetaSomenteLeitura:
             "frescor": datetime.now(timezone.utc).isoformat(),
             "paginas_lidas": paginas_lidas,
             "erros": erros,
+            "mensuracao": {
+                "pixels_ou_datasets": contagens.get("pixel"),
+                "conversoes_personalizadas": [dict(item) for item in conversoes],
+            },
             "proxima_acao": "preparar_sincronizacao" if not erros else "corrigir_capacidades_ausentes",
         }
+
+    async def ler_conversoes_personalizadas(
+        self, conta_externa: str, segredo: SegredoEfemero,
+    ) -> tuple[tuple[Mapping[str, Any], ...], int]:
+        """Read a sanitized custom-conversion inventory for operator preflight.
+
+        The rule itself is deliberately not returned to the browser. Availability
+        and firing timestamps are enough for planning; creation remains a
+        separate, absent mutation.
+        """
+        conta = dom.conta_canonica(conta_externa)
+        linhas, paginas = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{conta}/customconversions",
+            segredo,
+            fields=(
+                "id,name,custom_event_type,event_source_type,event_source_id,"
+                "is_archived,is_unavailable,first_fired_time,last_fired_time"
+            ),
+            limite=min(self._limite, 100),
+        )
+        saida: list[Mapping[str, Any]] = []
+        for linha in linhas:
+            if not isinstance(linha, dict):
+                raise ErroDeLeituraMeta(
+                    "META_INVALID_RESPONSE", "conversao personalizada invalida", True)
+            try:
+                identificador = dom.id_externo(
+                    linha.get("id"), campo="custom_conversion.id")
+                fonte = linha.get("event_source_id")
+                fonte_mascarada = dom.mascarar_id(
+                    dom.id_externo(fonte, campo="custom_conversion.event_source_id")
+                ) if fonte not in (None, "") else None
+            except dom.ContratoMetaInvalido as exc:
+                raise ErroDeLeituraMeta(
+                    "META_INVALID_RESPONSE", str(exc), True) from None
+            arquivada = bool(linha.get("is_archived"))
+            indisponivel = bool(linha.get("is_unavailable"))
+            primeiro = dom.texto_opcional(linha.get("first_fired_time"))
+            ultimo = dom.texto_opcional(linha.get("last_fired_time"))
+            if arquivada:
+                estado = "ARCHIVED"
+            elif indisponivel:
+                estado = "UNAVAILABLE"
+            elif ultimo is None:
+                estado = "AVAILABLE_NEVER_FIRED"
+            else:
+                estado = "AVAILABLE_FIRED"
+            saida.append({
+                "referencia_opaca": dom.referencia_opaca_objeto(
+                    conta, "custom_conversion", identificador),
+                "id_mascarado": dom.mascarar_id(identificador),
+                "nome": dom.texto_opcional(linha.get("name")) or "Conversao sem nome",
+                "custom_event_type": dom.texto_opcional(linha.get("custom_event_type")),
+                "event_source_type": dom.texto_opcional(linha.get("event_source_type")),
+                "event_source_id_mascarado": fonte_mascarada,
+                "first_fired_time": primeiro,
+                "last_fired_time": ultimo,
+                "estado": estado,
+            })
+        return tuple(saida), paginas
 
     async def ler_hierarquia(
         self, conta_externa: str, segredo: SegredoEfemero,
@@ -210,7 +291,12 @@ class AdaptadorMetaSomenteLeitura:
         conta = dom.conta_canonica(conta_externa)
         params_extra: dict[str, Any] = {
             "level": nivel,
-            "time_range": {"since": periodo_inicio.isoformat(), "until": periodo_fim.isoformat()},
+            # Graph accepts JSON here. httpx coercion of a Python dict emits
+            # single quotes and the remote API rejects it.
+            "time_range": json.dumps(
+                {"since": periodo_inicio.isoformat(), "until": periodo_fim.isoformat()},
+                separators=(",", ":"),
+            ),
             "fields": "account_id,campaign_id,adset_id,ad_id,date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,cpm,cpc,ctr,actions",
             "limit": self._limite,
         }
@@ -228,40 +314,47 @@ class AdaptadorMetaSomenteLeitura:
         for linha in linhas:
             if not isinstance(linha, dict):
                 raise ErroDeLeituraMeta("META_INVALID_RESPONSE", "insight invalido", True)
-            objeto = linha.get(f"{nivel}_id") or linha.get("account_id") or conta
-            actions = tuple(
-                dom.AcaoInsightMeta(
-                    action_type=str(a.get("action_type") or "unknown"),
-                    value=dom.decimal_opcional(a.get("value"), campo="action.value"),
-                    attribution_window=str(a.get("attribution_window") or janela_atribuicao),
-                    object_level=nivel,
-                    date_start=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
-                    date_stop=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
+            try:
+                objeto = linha.get(f"{nivel}_id") or linha.get("account_id") or conta
+                actions = tuple(
+                    dom.AcaoInsightMeta(
+                        action_type=str(a.get("action_type") or "unknown"),
+                        value=dom.decimal_opcional(a.get("value"), campo="action.value"),
+                        attribution_window=str(a.get("attribution_window") or janela_atribuicao),
+                        object_level=nivel,
+                        date_start=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
+                        date_stop=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
+                    )
+                    for a in (linha.get("actions") or []) if isinstance(a, dict)
                 )
-                for a in (linha.get("actions") or []) if isinstance(a, dict)
-            )
-            saida.append(dom.InsightMeta(
-                provider=dom.META_ADS,
-                conta_externa=conta,
-                nivel=nivel,
-                objeto_externo=str(objeto),
-                periodo_inicio=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
-                periodo_fim=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
-                janela_atribuicao=janela_atribuicao,
-                breakdown=breakdown,
-                observado_em=observacao,
-                spend=dom.decimal_opcional(linha.get("spend"), campo="spend"),
-                impressions=_int_opcional(linha.get("impressions")),
-                reach=_int_opcional(linha.get("reach")),
-                frequency=dom.decimal_opcional(linha.get("frequency"), campo="frequency"),
-                clicks=_int_opcional(linha.get("clicks")),
-                inline_link_clicks=_int_opcional(linha.get("inline_link_clicks")),
-                landing_page_views=_landing_page_views(actions),
-                cpm=dom.decimal_opcional(linha.get("cpm"), campo="cpm"),
-                cpc=dom.decimal_opcional(linha.get("cpc"), campo="cpc"),
-                ctr=dom.decimal_opcional(linha.get("ctr"), campo="ctr"),
-                actions=actions,
-            ))
+                saida.append(dom.InsightMeta(
+                    provider=dom.META_ADS,
+                    conta_externa=conta,
+                    nivel=nivel,
+                    objeto_externo=str(objeto),
+                    periodo_inicio=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
+                    periodo_fim=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
+                    janela_atribuicao=janela_atribuicao,
+                    breakdown=breakdown,
+                    observado_em=observacao,
+                    spend=dom.decimal_opcional(linha.get("spend"), campo="spend"),
+                    impressions=_int_opcional(linha.get("impressions")),
+                    reach=_int_opcional(linha.get("reach")),
+                    frequency=dom.decimal_opcional(linha.get("frequency"), campo="frequency"),
+                    clicks=_int_opcional(linha.get("clicks")),
+                    inline_link_clicks=_int_opcional(linha.get("inline_link_clicks")),
+                    landing_page_views=_landing_page_views(actions),
+                    cpm=dom.decimal_opcional(linha.get("cpm"), campo="cpm"),
+                    cpc=dom.decimal_opcional(linha.get("cpc"), campo="cpc"),
+                    ctr=dom.decimal_opcional(linha.get("ctr"), campo="ctr"),
+                    actions=actions,
+                ))
+            except (ValueError, TypeError, dom.ContratoMetaInvalido) as exc:
+                raise ErroDeLeituraMeta(
+                    "META_INVALID_RESPONSE",
+                    f"insight Meta invalido: {type(exc).__name__}",
+                    True,
+                ) from None
         return tuple(saida), paginas
 
     async def _listar_edge(
