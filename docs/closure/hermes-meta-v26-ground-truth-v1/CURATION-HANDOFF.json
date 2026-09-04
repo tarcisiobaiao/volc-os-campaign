@@ -1,0 +1,32 @@
+{
+  "do_not_apply_here": true,
+  "roadmap_updates_suggested": [
+    {
+      "task": "P11-T02",
+      "suggested_state": "partial",
+      "evidence": "Meta creative/copilot contract drafted; local source materials unavailable."
+    },
+    {
+      "task": "P11-T03",
+      "suggested_state": "partial",
+      "evidence": "Secure onboarding contract drafted; no real system user/token configured."
+    },
+    {
+      "task": "P11-T05",
+      "suggested_state": "todo",
+      "evidence": "Create PAUSED contract drafted only; no implementation/mutation."
+    },
+    {
+      "task": "P11-T06",
+      "suggested_state": "partial",
+      "evidence": "UI PDR drafted; no UI implementation."
+    }
+  ],
+  "graph_nodes": [
+    "cap_meta_ads",
+    "concept:media_hub",
+    "cap_asset_vault",
+    "cap_creative_engines"
+  ],
+  "freshness": "graphify-out unavailable; curation/read-only graph used"
+}
