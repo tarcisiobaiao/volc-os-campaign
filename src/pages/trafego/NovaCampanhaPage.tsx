@@ -67,13 +67,30 @@ import { ParadaTermos } from '@/components/trafego/bancada/paradas/Termos';
 import { ParadaAnuncio } from '@/components/trafego/bancada/paradas/Anuncio';
 import { ParadaEconomia } from '@/components/trafego/bancada/paradas/Economia';
 import { ParadaRevisao } from '@/components/trafego/bancada/paradas/Revisao';
+import {
+  ParadaDisplayAudiencia, ParadaDisplayCriativo, ParadaDisplayDestino,
+  ParadaDisplayEconomia, ParadaDisplayGeografia, ParadaDisplayInventario,
+  ParadaDisplayRevisao,
+} from '@/components/trafego/bancada/paradas/DisplayParadas';
+import {
+  ParadaDemandAudiencia, ParadaDemandEconomia, ParadaDemandKit,
+  ParadaDemandMensagem, ParadaDemandResultado, ParadaDemandRevisao,
+  ParadaDemandSuperficies,
+} from '@/components/trafego/bancada/paradas/DemandParadas';
+import {
+  ParadaPMaxAssetGroup, ParadaPMaxEconomia, ParadaPMaxLp, ParadaPMaxMarca,
+  ParadaPMaxObjetivo, ParadaPMaxRevisao, ParadaPMaxSinais,
+} from '@/components/trafego/bancada/paradas/PMaxParadas';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { idExternoDaCampanha } from '@/lib/trafego/lancamento';
 import type { PlanoVigenteResposta } from '@/lib/trafego/portoes';
-import { DECORRE_DA_ESTRATEGIA, PARADAS_DA_BANCADA } from '@/types/trafego';
+import {
+  CANAIS_COM_MANIFESTO, canalCanonico, DECORRE_DA_ESTRATEGIA,
+  PARADAS_DA_BANCADA,
+} from '@/types/trafego';
 import type {
-  Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword, EstadoDaTrava,
+  CanalComManifesto, Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword, EstadoDaTrava,
   EstrategiaDeLance, LinhaDoPedido, MatchType, ParadaDaBancada,
   PedidoDeProvaSearch, ReciboDeLancamento, RevisaoDoConjuntoPago, VerticalDePolitica,
 } from '@/types/trafego';
@@ -86,6 +103,13 @@ function etapaDaUrl(bruto: string | null): ParadaDaBancada | null {
     : null;
 }
 
+function canalDaBancada(bruto: string | null): CanalComManifesto {
+  const canonico = canalCanonico(bruto ?? 'SEARCH');
+  return canonico && (CANAIS_COM_MANIFESTO as readonly string[]).includes(canonico)
+    ? canonico as CanalComManifesto
+    : 'SEARCH';
+}
+
 const NovaCampanhaPage: React.FC = () => {
   const { opportunityId } = useParams<{ opportunityId: string }>();
   const [params, setParams] = useSearchParams();
@@ -95,7 +119,7 @@ const NovaCampanhaPage: React.FC = () => {
   // esqueleto para sempre, sem uma palavra. Agora a ausência é ausência.
   const oidBruto = Number(opportunityId);
   const oid = Number.isInteger(oidBruto) && oidBruto > 0 ? oidBruto : null;
-  const canal = (params.get('canal') || 'SEARCH').toUpperCase();
+  const canal = canalDaBancada(params.get('canal'));
 
   // ── estado remoto: o servidor é autoridade de tudo aqui ───────────────────
   const [cockpit, setCockpit] = useState<Cockpit | null>(null);
@@ -237,21 +261,33 @@ const NovaCampanhaPage: React.FC = () => {
   const lance = numeroDigitado(rascunho.lance);
   const estrategia = rascunho.estrategia as EstrategiaDeLance;
 
+  const paradasDoCanal: readonly ParadaDaBancada[] = useMemo(() => {
+    switch (canal) {
+      case 'DISPLAY': return ['display_destino', 'display_geografia', 'display_audiencia', 'display_criativo', 'display_inventario', 'display_economia', 'display_revisao'];
+      case 'DEMAND_GEN': return ['demand_resultado', 'demand_superficies', 'demand_audiencia', 'demand_kit', 'demand_mensagem', 'demand_economia', 'demand_revisao'];
+      case 'PERFORMANCE_MAX': return ['pmax_objetivo', 'pmax_lp', 'pmax_asset_group', 'pmax_sinais', 'pmax_marca', 'pmax_economia', 'pmax_revisao'];
+      default: return ['destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao'];
+    }
+  }, [canal]);
+
   const fatos: FatosDaBancada = useMemo(() => ({
     cockpit, destino, conjunto, copy, verticais, orcamento, lance,
     certificacoes: rascunho.certificacoes,
   }), [cockpit, destino, conjunto, copy, verticais, orcamento, lance,
        rascunho.certificacoes]);
 
-  const faltas = useMemo(() => faltasDaBancada(fatos), [fatos]);
+  const faltas = useMemo(() => faltasDaBancada(fatos, paradasDoCanal), [fatos, paradasDoCanal]);
   const bloqueios = useMemo(() => bloqueiosDoCockpit(cockpit), [cockpit]);
 
-  const etapaPedida = etapaDaUrl(params.get('etapa'));
+  const etapaPedidaBruta = etapaDaUrl(params.get('etapa'));
+  const etapaPedida = etapaPedidaBruta && paradasDoCanal.includes(etapaPedidaBruta)
+    ? etapaPedidaBruta
+    : null;
   // ⚠️ SEM viés de `atual`. Projetar com uma parada promovida a `atual` faria
   // `primeiraNaoConfirmada` devolver justamente essa parada — e a entrada sem
   // `?etapa` ficaria presa na primeira para sempre.
   const paradasSemAtual = useMemo(
-    () => projetarParadas(fatos, SEM_PARADA_ATUAL), [fatos]);
+    () => projetarParadas(fatos, SEM_PARADA_ATUAL, paradasDoCanal), [fatos, paradasDoCanal]);
   /**
    * ⚠️ A ETAPA É DERIVADA UMA VEZ E FIXADA. Derivá-la a cada render corrompia
    * dinheiro.
@@ -276,8 +312,11 @@ const NovaCampanhaPage: React.FC = () => {
    * arquivo já prometia.
    */
   const [etapaFixada, setEtapaFixada] = useState<ParadaDaBancada | null>(null);
+  const etapaFixadaValida = etapaFixada && paradasDoCanal.includes(etapaFixada)
+    ? etapaFixada
+    : null;
   const etapa: ParadaDaBancada =
-    etapaPedida ?? etapaFixada ?? primeiraNaoConfirmada(paradasSemAtual);
+    etapaPedida ?? etapaFixadaValida ?? primeiraNaoConfirmada(paradasSemAtual);
 
   useEffect(() => {
     // Só depois do cockpit: antes dele TODAS as paradas são `indeterminada`, e
@@ -290,7 +329,7 @@ const NovaCampanhaPage: React.FC = () => {
     q.set('etapa', p);
     setParams(q, { replace: true });
   }, [etapaPedida, etapaFixada, cockpit, paradasSemAtual, params, canal, setParams]);
-  const paradas = useMemo(() => projetarParadas(fatos, etapa), [fatos, etapa]);
+  const paradas = useMemo(() => projetarParadas(fatos, etapa, paradasDoCanal), [fatos, etapa, paradasDoCanal]);
 
   const hrefDaParada = useCallback((p: ParadaDaBancada) => {
     const q = new URLSearchParams(params);
@@ -313,6 +352,22 @@ const NovaCampanhaPage: React.FC = () => {
   const linhasDoPedido: LinhaDoPedido[] = useMemo(() => {
     const c = cockpit?.conta;
     const brl = (n: number | null) => (n == null ? null : `R$ ${n.toFixed(2).replace('.', ',')}`);
+    if (canal !== 'SEARCH') {
+      const linhas: LinhaDoPedido[] = [
+        { rotulo: 'conta', valor: c?.customer_id ?? null, fonte: 'o projeto' },
+        { rotulo: 'canal', valor: canal.replace('_', ' '), fonte: 'esta rota' },
+        { rotulo: 'destino', valor: cockpit?.origem?.url_final ?? null, fonte: 'o funil' },
+        { rotulo: 'kit de mídia', valor: null, fonte: 'o Estúdio ainda não entregou recibo' },
+        { rotulo: 'orçamento diário', valor: brl(orcamento), fonte: 'rascunho local' },
+        { rotulo: 'estado ao nascer', valor: 'PAUSED', fonte: 'contrato do engine' },
+      ];
+      if (canal === 'PERFORMANCE_MAX') {
+        linhas.splice(3, 0, {
+          rotulo: 'expansão da URL final', valor: 'DESLIGADA', fonte: 'trava do contrato PMax',
+        });
+      }
+      return linhas;
+    }
     return [
       { rotulo: 'conta', valor: c?.customer_id ?? null, fonte: 'o projeto' },
       { rotulo: 'canal', valor: canal, fonte: 'esta rota' },
@@ -356,8 +411,11 @@ const NovaCampanhaPage: React.FC = () => {
 
   const proximoAto = useMemo(() => {
     if (faltas.length > 0) return `Resolver: ${faltas[0].texto}.`;
+    if (canal === 'DISPLAY') return 'Completar o kit de mídia e reler o portão de criação pausada.';
+    if (canal === 'DEMAND_GEN') return 'Completar o kit de mídia para preparar a conferência; criação real segue fechada.';
+    if (canal === 'PERFORMANCE_MAX') return 'Completar o asset group e a ponte tipada; criação real segue fechada.';
     return 'Provar o pedido contra a conta. A prova não cria nada.';
-  }, [faltas]);
+  }, [faltas, canal]);
 
   // ── o pedido que vai para /provar e /subir ────────────────────────────────
   //
@@ -402,7 +460,7 @@ const NovaCampanhaPage: React.FC = () => {
    */
   const temCockpit = cockpit !== null;
   const pedido: PedidoDeProvaSearch | null = useMemo(() => (
-    (cockpit && oid && orcamento != null && lance != null)
+    (canal === 'SEARCH' && cockpit && oid && orcamento != null && lance != null)
       ? {
         opportunity_id: oid,
         run_id: runId ?? null,
@@ -435,7 +493,7 @@ const NovaCampanhaPage: React.FC = () => {
     // pedido e re-dispararia `/provar` justamente no instante em que a campanha
     // acabou de nascer, apagando o recibo da tela. Só os campos que o payload
     // de fato usa entram, e todos são primitivos: identidade estável.
-    temCockpit,
+    canal, temCockpit,
     cockpit?.conta?.customer_id, cockpit?.conta?.login_customer_id,
     cockpit?.conta?.meta_conversao?.primaria?.id, cockpit?.origem?.vertical,
     cockpit?.origem?.url_final, oid, runId, orcamento, lance,
@@ -568,12 +626,63 @@ const NovaCampanhaPage: React.FC = () => {
 
             {/* Os bloqueios do servidor ficam PERTO da decisão, e não no rodapé.
                 Fora da Revisão, que já os desenha por dentro. */}
-            {etapa !== 'revisao' && (
+            {etapa !== 'revisao' && !etapa.endsWith('_revisao') && (
               <PainelDeBloqueio bloqueios={bloqueios} lidoEm={cockpit?.lido_em ?? null} />
             )}
 
             {!cockpit ? (
               <p className="text-sm text-muted-foreground">Lendo a oportunidade…</p>
+            ) : etapa === 'display_destino' ? (
+              <ParadaDisplayDestino cockpit={cockpit} destino={destino} />
+            ) : etapa === 'display_geografia' ? (
+              <ParadaDisplayGeografia cockpit={cockpit} />
+            ) : etapa === 'display_audiencia' ? (
+              <ParadaDisplayAudiencia />
+            ) : etapa === 'display_criativo' ? (
+              <ParadaDisplayCriativo />
+            ) : etapa === 'display_inventario' ? (
+              <ParadaDisplayInventario />
+            ) : etapa === 'display_economia' ? (
+              <ParadaDisplayEconomia cockpit={cockpit} orcamento={orcamento} />
+            ) : etapa === 'display_revisao' ? (
+              <ParadaDisplayRevisao
+                url={cockpit.origem?.url_final ?? null}
+                faltas={faltas.map((f) => f.texto)}
+              />
+            ) : etapa === 'demand_resultado' ? (
+              <ParadaDemandResultado cockpit={cockpit} destino={destino} />
+            ) : etapa === 'demand_superficies' ? (
+              <ParadaDemandSuperficies />
+            ) : etapa === 'demand_audiencia' ? (
+              <ParadaDemandAudiencia />
+            ) : etapa === 'demand_kit' ? (
+              <ParadaDemandKit />
+            ) : etapa === 'demand_mensagem' ? (
+              <ParadaDemandMensagem />
+            ) : etapa === 'demand_economia' ? (
+              <ParadaDemandEconomia cockpit={cockpit} orcamento={orcamento} />
+            ) : etapa === 'demand_revisao' ? (
+              <ParadaDemandRevisao
+                url={cockpit.origem?.url_final ?? null}
+                faltas={faltas.map((f) => f.texto)}
+              />
+            ) : etapa === 'pmax_objetivo' ? (
+              <ParadaPMaxObjetivo cockpit={cockpit} />
+            ) : etapa === 'pmax_lp' ? (
+              <ParadaPMaxLp cockpit={cockpit} destino={destino} />
+            ) : etapa === 'pmax_asset_group' ? (
+              <ParadaPMaxAssetGroup />
+            ) : etapa === 'pmax_sinais' ? (
+              <ParadaPMaxSinais />
+            ) : etapa === 'pmax_marca' ? (
+              <ParadaPMaxMarca />
+            ) : etapa === 'pmax_economia' ? (
+              <ParadaPMaxEconomia cockpit={cockpit} orcamento={orcamento} />
+            ) : etapa === 'pmax_revisao' ? (
+              <ParadaPMaxRevisao
+                url={cockpit.origem?.url_final ?? null}
+                faltas={faltas.map((f) => f.texto)}
+              />
             ) : etapa === 'destino' ? (
               <ParadaDestino cockpit={cockpit} destino={destino} />
             ) : etapa === 'politica' ? (
@@ -703,7 +812,7 @@ const NovaCampanhaPage: React.FC = () => {
         </div>
       </div>
 
-      {lancando && pedido && (
+      {canal === 'SEARCH' && lancando && pedido && (
         <Lancamento
           pedido={pedido}
           trava={trava}

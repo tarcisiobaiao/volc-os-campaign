@@ -184,9 +184,9 @@ function copiaPronta(over: Partial<CopyPersistida> = {}): CopyPersistida {
 }
 
 /** `etapa` explícita: a Bancada guarda o estado na URL. */
-const renderizar = (etapa?: string) =>
+const renderizar = (etapa?: string, canal = 'SEARCH') =>
   render(
-    <MemoryRouter initialEntries={[`/trafego/nova/73?run=6${etapa ? `&etapa=${etapa}` : ''}`]}>
+    <MemoryRouter initialEntries={[`/trafego/nova/73?run=6&canal=${canal}${etapa ? `&etapa=${etapa}` : ''}`]}>
       <Routes>
         <Route path="/trafego/nova/:opportunityId" element={<NovaCampanhaPage />} />
       </Routes>
@@ -202,6 +202,28 @@ afterEach(() => {
 });
 
 describe('a Bancada Guiada', () => {
+  it('abre jornadas próprias para Display, Demand Gen e o alias PMAX', async () => {
+    cockpitDeTrafego.mockResolvedValue(cockpitDoCard73([], ORIGEM_APTA));
+    lerCopy.mockResolvedValue({ existe: false });
+    revisarConjuntoPago.mockResolvedValue(CONJUNTO_APROVADO);
+
+    renderizar('display_criativo', 'DISPLAY');
+    expect(await screen.findByText('Cobertura criativa')).toBeTruthy();
+    expect(screen.getByText('Quais imagens e textos formam o criativo responsivo?')).toBeTruthy();
+    cleanup();
+
+    renderizar('demand_superficies', 'DEMAND_GEN');
+    expect(await screen.findByText('Escolha de superfícies é uma decisão explícita')).toBeTruthy();
+    expect(screen.getByText('Em quais superfícies este anúncio vai rodar?')).toBeTruthy();
+    cleanup();
+
+    // O alias legado precisa abrir a identidade canônica, não cair em Search.
+    renderizar('pmax_marca', 'PMAX');
+    expect(await screen.findByText('O Google pode combinar assets, não trocar o destino')).toBeTruthy();
+    expect(screen.getByText(/Missão de lançamento · PERFORMANCE_MAX/)).toBeTruthy();
+    expect(screen.getAllByText('DESLIGADA').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('monta com as seis paradas e o estado na URL', async () => {
     cockpitDeTrafego.mockResolvedValue(cockpitDoCard73());
     lerCopy.mockResolvedValue({ existe: false });

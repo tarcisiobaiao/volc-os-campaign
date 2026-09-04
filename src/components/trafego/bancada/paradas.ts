@@ -32,6 +32,7 @@ import type {
   AvisoDoCockpit, Cockpit, CopyPersistida, EstadoDaParada, ParadaDaBancada,
   ParadaProjetada, RevisaoDoConjuntoPago, VerticalDePolitica,
 } from '@/types/trafego';
+import { PARADAS_SEARCH } from '@/types/trafego';
 import type { LeituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 
 export const ROTULO_DA_PARADA: Record<ParadaDaBancada, string> = {
@@ -41,6 +42,27 @@ export const ROTULO_DA_PARADA: Record<ParadaDaBancada, string> = {
   anuncio: 'Anúncio',
   economia: 'Economia',
   revisao: 'Revisão',
+  display_destino: 'Objetivo e destino',
+  display_geografia: 'Alcance geográfico',
+  display_audiencia: 'Audiência e contexto',
+  display_criativo: 'Criativo responsivo',
+  display_inventario: 'Brand safety',
+  display_economia: 'Economia',
+  display_revisao: 'Revisão',
+  demand_resultado: 'Resultado esperado',
+  demand_superficies: 'Superfícies',
+  demand_audiencia: 'Audiência',
+  demand_kit: 'Kit de mídia',
+  demand_mensagem: 'Mensagem',
+  demand_economia: 'Economia',
+  demand_revisao: 'Revisão',
+  pmax_objetivo: 'Objetivo',
+  pmax_lp: 'Destino aprovado',
+  pmax_asset_group: 'Asset Group',
+  pmax_sinais: 'Sinais',
+  pmax_marca: 'Expansão e marca',
+  pmax_economia: 'Economia',
+  pmax_revisao: 'Revisão',
 };
 
 /** A pergunta que a parada responde. É o H2 da coluna de decisão. */
@@ -51,6 +73,27 @@ export const PERGUNTA_DA_PARADA: Record<ParadaDaBancada, string> = {
   anuncio: 'O que o anúncio vai dizer?',
   economia: 'Quanto isto pode gastar por dia?',
   revisao: 'É isto que você quer criar?',
+  display_destino: 'Qual a conta, o objetivo e o destino aprovado?',
+  display_geografia: 'Onde, em qual idioma e em quais redes o anúncio aparece?',
+  display_audiencia: 'Qual é o contexto e o público-alvo?',
+  display_criativo: 'Quais imagens e textos formam o criativo responsivo?',
+  display_inventario: 'Quais exclusões de inventário protegem a marca?',
+  display_economia: 'Qual o orçamento e a conversão observada?',
+  display_revisao: 'O criativo e as segmentações estão prontos?',
+  demand_resultado: 'Qual o resultado, a conta e o destino?',
+  demand_superficies: 'Em quais superfícies este anúncio vai rodar?',
+  demand_audiencia: 'Quais sinais e audiências direcionam a campanha?',
+  demand_kit: 'O kit de mídia visual atende aos requisitos do canal?',
+  demand_mensagem: 'Como a mensagem se apresenta no formato nativo?',
+  demand_economia: 'Quanto isso vai custar e como será medido?',
+  demand_revisao: 'A composição final pode ser submetida?',
+  pmax_objetivo: 'Qual o objetivo e a conta desta automação?',
+  pmax_lp: 'Qual a URL de destino exclusiva deste funil?',
+  pmax_asset_group: 'Quais recursos formam a cobertura de mídia?',
+  pmax_sinais: 'Quais sinais de audiência vão alimentar o algoritmo?',
+  pmax_marca: 'Como a marca e a expansão de URL estão configuradas?',
+  pmax_economia: 'Qual o orçamento e a elegibilidade da medição?',
+  pmax_revisao: 'O mapa de cobertura e as regras estão corretos?',
 };
 
 /**
@@ -210,42 +253,96 @@ export function faltasDaParada(
       if (f.lance == null || f.lance <= 0) add('declarar o lance inicial');
       break;
     }
-    case 'revisao':
+    case 'revisao': {
+      // Revisão nunca adiciona faltas próprias, ela é o agregado final das outras.
+      break;
+    }
+
+    // -- Display
+    case 'display_destino':
+      if (!f.destino.apto_para_campanha) {
+        if (f.destino.sem_recibo) { add('avaliar o destino desta campanha', true); }
+        else { for (const p of f.destino.pendencias) add(p, f.destino.desconhecidos.length > 0 && f.destino.bloqueadores.length === 0); }
+      }
+      break;
+    case 'display_geografia':
+    case 'display_audiencia':
+    case 'display_criativo':
+    case 'display_inventario':
+    case 'display_economia':
+    case 'display_revisao':
+      break;
+
+    // -- Demand Gen
+    case 'demand_resultado':
+      if (!f.destino.apto_para_campanha) {
+        if (f.destino.sem_recibo) { add('avaliar o destino desta campanha', true); }
+        else { for (const p of f.destino.pendencias) add(p, f.destino.desconhecidos.length > 0 && f.destino.bloqueadores.length === 0); }
+      }
+      break;
+    case 'demand_superficies':
+    case 'demand_audiencia':
+    case 'demand_kit':
+    case 'demand_mensagem':
+    case 'demand_economia':
+    case 'demand_revisao':
+      break;
+
+    // -- PMax
+    case 'pmax_objetivo':
+    case 'pmax_lp':
+      if (!f.destino.apto_para_campanha) {
+        if (f.destino.sem_recibo) { add('avaliar o destino desta campanha', true); }
+        else { for (const p of f.destino.pendencias) add(p, f.destino.desconhecidos.length > 0 && f.destino.bloqueadores.length === 0); }
+      }
+      break;
+    case 'pmax_asset_group':
+    case 'pmax_sinais':
+    case 'pmax_marca':
+    case 'pmax_economia':
+    case 'pmax_revisao':
       break;
   }
   return faltas;
 }
-
 /**
  * Todas as faltas da Bancada, na ordem das paradas.
  *
  * É esta lista, e só ela, que decide se a ação dominante da Revisão acende. Uma
  * segunda expressão booleana em qualquer lugar da tela seria a quarta régua.
  */
-export function faltasDaBancada(f: FatosDaBancada): FaltaDaParada[] {
+export function faltasDaBancada(
+  f: FatosDaBancada,
+  paradasDoCanal: readonly ParadaDaBancada[] = PARADAS_SEARCH,
+): FaltaDaParada[] {
   const das: FaltaDaParada[] = [];
-  for (const p of ['destino', 'politica', 'termos', 'anuncio', 'economia'] as ParadaDaBancada[]) {
+  // Exclui a revisão da enumeração normal porque ela é o agregado final
+  const paradasDeTrabalho = paradasDoCanal.filter(p => p !== 'revisao' && !p.endsWith('_revisao'));
+  for (const p of paradasDeTrabalho) {
     das.push(...faltasDaParada(p, f));
   }
   // Os bloqueios que o servidor adjudicou entram como faltas da Revisão: eles
   // não pertencem a uma parada só, e escondê-los numa delas os tiraria da conta.
   for (const b of bloqueiosDoCockpit(f.cockpit)) {
-    das.push({ parada: 'revisao', texto: b.titulo.toLowerCase(), indeterminada: false });
+    // Pegamos a parada de revisão da lista, se existir
+    const revisao = paradasDoCanal.find(p => p === 'revisao' || p.endsWith('_revisao')) || 'revisao';
+    das.push({ parada: revisao, texto: b.titulo.toLowerCase(), indeterminada: false });
   }
   return das;
 }
 
 /** O estado de cada parada, para o mapa. */
 export function projetarParadas(
-  f: FatosDaBancada, atual: ParadaDaBancada,
+  f: FatosDaBancada,
+  atual: ParadaDaBancada,
+  paradasDoCanal: readonly ParadaDaBancada[] = PARADAS_SEARCH,
 ): ParadaProjetada[] {
   // ⚠️ Enquanto o cockpit não chegou, NADA é confirmado. Pintar verde sobre um
   // payload ausente é o defeito de origem desta tela: o trilho antigo passava
   // `origem` como literal `true` e ficava verde com o destino bloqueado.
   const lendo = f.cockpit === null;
 
-  return (['destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao'] as ParadaDaBancada[])
-    .map((parada) => {
+  return paradasDoCanal.map((parada) => {
       const rotulo = ROTULO_DA_PARADA[parada];
       if (lendo) {
         return { parada, rotulo, estado: 'indeterminada' as EstadoDaParada, causa: 'lendo…' };
@@ -255,7 +352,7 @@ export function projetarParadas(
       let estado: EstadoDaParada;
       let causa: string | null = null;
 
-      if (parada === 'revisao') {
+      if (parada === 'revisao' || parada.endsWith('_revisao')) {
         // ⚠️ A REVISÃO NUNCA É BLOQUEADA, e isso não é indulgência.
         //
         // Ela não tem falta própria: reflete o resto. E o trabalho dela é
@@ -266,7 +363,7 @@ export function projetarParadas(
         //
         // Quem bloqueia é a AÇÃO dentro dela, que nasce desabilitada com as
         // faltas enumeradas ao lado. Parada alcançável, ato fechado.
-        const anteriores = faltasDaBancada(f);
+        const anteriores = faltasDaBancada(f, paradasDoCanal);
         if (anteriores.length === 0) estado = 'confirmada';
         else {
           const soIndeterminadas = anteriores.every((x) => x.indeterminada);
@@ -309,7 +406,7 @@ export function projetarParadas(
  */
 export function primeiraNaoConfirmada(paradas: ParadaProjetada[]): ParadaDaBancada {
   const p = paradas.find((x) => x.estado !== 'confirmada' && x.estado !== 'atual');
-  return p?.parada ?? 'revisao';
+  return p?.parada ?? paradas.at(-1)?.parada ?? 'revisao';
 }
 
 /**

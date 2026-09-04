@@ -59,7 +59,7 @@ export const PainelDeBloqueio: React.FC<{
   return (
     <section
       aria-labelledby={idTitulo}
-      className="relative overflow-hidden rounded-lg border border-destructive/25 bg-destructive/[0.045] p-4 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-destructive before:content-['']"
+      className="shadow-card relative overflow-hidden rounded-lg border border-destructive/25 bg-destructive/[0.045] p-4 before:absolute before:left-0 before:top-0 before:h-[2px] before:w-full before:bg-destructive before:content-['']"
     >
       <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2 gap-y-3">
         <div className="flex h-6 items-center justify-center">

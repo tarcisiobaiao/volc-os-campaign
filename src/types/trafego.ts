@@ -260,9 +260,24 @@ export interface Cockpit {
  * dimensiona a aposta. Revisão não decide nada: confere e dispara a prova.
  */
 export type ParadaDaBancada =
-  | 'destino' | 'politica' | 'termos' | 'anuncio' | 'economia' | 'revisao';
+  // Search
+  | 'destino' | 'politica' | 'termos' | 'anuncio' | 'economia' | 'revisao'
+  // Display
+  | 'display_destino' | 'display_geografia' | 'display_audiencia' | 'display_criativo' | 'display_inventario' | 'display_economia' | 'display_revisao'
+  // Demand Gen
+  | 'demand_resultado' | 'demand_superficies' | 'demand_audiencia' | 'demand_kit' | 'demand_mensagem' | 'demand_economia' | 'demand_revisao'
+  // PMax
+  | 'pmax_objetivo' | 'pmax_lp' | 'pmax_asset_group' | 'pmax_sinais' | 'pmax_marca' | 'pmax_economia' | 'pmax_revisao';
 
-export const PARADAS_DA_BANCADA: readonly ParadaDaBancada[] =
+export const PARADAS_DA_BANCADA: readonly ParadaDaBancada[] = [
+  'destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao',
+  'display_destino', 'display_geografia', 'display_audiencia', 'display_criativo', 'display_inventario', 'display_economia', 'display_revisao',
+  'demand_resultado', 'demand_superficies', 'demand_audiencia', 'demand_kit', 'demand_mensagem', 'demand_economia', 'demand_revisao',
+  'pmax_objetivo', 'pmax_lp', 'pmax_asset_group', 'pmax_sinais', 'pmax_marca', 'pmax_economia', 'pmax_revisao'
+];
+
+/** A jornada Search original, preservada como recuo para consumidores legados. */
+export const PARADAS_SEARCH: readonly ParadaDaBancada[] =
   ['destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao'];
 
 /**
