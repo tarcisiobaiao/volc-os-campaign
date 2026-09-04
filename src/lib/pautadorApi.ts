@@ -236,7 +236,7 @@ export interface InventarioMetaPersistido<T = Record<string, unknown>> {
 export interface AtivoCriacaoMeta {
   referencia_opaca: string;
   nome: string;
-  tipo: 'page' | 'image_asset';
+  tipo: 'page' | 'image_asset' | 'video_asset';
   id_mascarado: string | null;
   largura: number | null;
   altura: number | null;
@@ -250,7 +250,10 @@ export interface InventarioCriacaoMeta {
   conta: ContaMetaLocal;
   paginas: AtivoCriacaoMeta[];
   imagens: AtivoCriacaoMeta[];
-  receita: 'OUTCOME_TRAFFIC_WEBSITE_LPV_STATIC_PAUSED';
+  /** Vídeos existentes da conta. Leitura apenas: a emissão de criativo de
+   *  vídeo continua bloqueada enquanto a miniatura não tiver caminho provado. */
+  videos: AtivoCriacaoMeta[];
+  receita: string;
 }
 
 export interface PlanoMetaPausadoInput {
@@ -270,6 +273,8 @@ export interface PlanoMetaPausadoInput {
   special_ad_categories: string[];
   special_categories_confirmed: boolean;
   is_adset_budget_sharing_enabled: boolean;
+  /** Desde a v23.0 a Meta assume 1 quando o campo não viaja: a escolha é sempre explícita. */
+  advantage_audience: boolean;
   call_to_action_type: string;
   variations?: Array<{
     variation_key: string;

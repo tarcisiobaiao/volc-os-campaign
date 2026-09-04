@@ -36,13 +36,15 @@ describe('Meta demonstrativa navegável', () => {
     );
     expect(screen.getByRole('heading', { name: 'Nova campanha Meta' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Etapas da criação Meta' })).toBeTruthy();
-    for (const etapa of ['Base', 'Campanha', 'Orçamento', 'Conjunto', 'Público', 'Anúncio', 'Mensuração', 'Revisão']) {
-      expect(screen.getByRole('button', { name: new RegExp(etapa, 'i') })).toBeTruthy();
+    for (const etapa of ['Base', 'Campanha', 'Orçamento', 'Conjunto', 'Público', 'Anúncios', 'Mensuração', 'Revisão']) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${etapa}`, 'i') })).toBeTruthy();
     }
-    fireEvent.click(screen.getByRole('button', { name: /revisãoplano verificável/i }));
-    expect(screen.getByText('Pedido verificável para nascimento pausado')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Criar campanha pausada' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText(/criação real não está montada/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+    expect(screen.getByText('O que será enviado à Meta')).toBeTruthy();
+    // Não existe botão de criar: um primário desabilitado sugeriria que o ato
+    // existe e está apenas indisponível. Ele não existe nesta rota.
+    expect(screen.queryByRole('button', { name: /criar campanha/i })).toBeNull();
+    expect(screen.getByText(/criar de verdade é outro ato/i)).toBeTruthy();
   });
 
   it('expõe lote estático explícito e não finge criativo flexível', () => {
@@ -54,7 +56,7 @@ describe('Meta demonstrativa navegável', () => {
     expect(screen.getByRole('radiogroup', { name: 'Modo de criativo' })).toBeTruthy();
     expect(screen.getByRole('radio', { name: /lote controlado/i })).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /flexível/i }));
-    expect(screen.getByText('Criativo flexível está modelado, mas não será fingido')).toBeTruthy();
+    expect(screen.getByText('Criativo flexível não emite payload')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /adicionar outro anúncio ao lote/i })).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
     fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio ao lote/i }));
