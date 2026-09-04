@@ -1,0 +1,25 @@
+{
+  "rules": [
+    {
+      "check": "sha256 over bytes required",
+      "failure": "META_ASSET_HASH_REQUIRED",
+      "id": "ASSET_SHA256",
+      "phase": "MVP_NOW",
+      "type": "image_video"
+    },
+    {
+      "check": "sniff MIME and compare extension/declared MIME",
+      "failure": "META_ASSET_MIME_MISMATCH",
+      "id": "ASSET_MIME_SNIFF",
+      "phase": "MVP_NOW",
+      "type": "image_video"
+    },
+    {
+      "check": "placement-specific size/aspect constraints must cite source/date; volatile specs not frozen without source",
+      "failure": "META_ASSET_PLACEMENT_INCOMPATIBLE",
+      "id": "ASSET_PLACEMENT_COMPAT",
+      "phase": "MVP_NEXT",
+      "type": "image_video"
+    }
+  ]
+}
