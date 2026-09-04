@@ -63,9 +63,14 @@ CREATE TABLE public.trafego_meta_create_approval (
   -- CHECK nao aceita subconsulta, entao o tamanho mora aqui e a unicidade e o
   -- formato de cada passo sao validados em trafego_meta_create_approve — a
   -- UNICA porta de escrita, ja que nenhum papel tem INSERT nesta tabela.
+  -- ⚠️ cardinality, nao array_length: array_length de ARRAY[] devolve NULL, e
+  -- CHECK aceita NULL. Sem isto, uma aprovacao com manifesto VAZIO seria
+  -- gravada como APPROVED e nenhum passo poderia ser preparado depois.
   CONSTRAINT trafego_meta_create_approval_manifesto CHECK (
-    array_length(steps_expected, 1) BETWEEN 1 AND 22
+    cardinality(steps_expected) BETWEEN 1 AND 22
     AND array_ndims(steps_expected) = 1
+    AND array_lower(steps_expected, 1) = 1
+    AND array_position(steps_expected, NULL) IS NULL
   ),
   CONSTRAINT trafego_meta_create_approval_expiry CHECK (expires_at > approved_at),
   CONSTRAINT trafego_meta_create_approval_revocation CHECK (
@@ -158,8 +163,11 @@ DECLARE
   v_distintos integer;
 BEGIN
   PERFORM public.trafego_meta_exigir_service_role();
+  IF p_steps_expected IS NULL OR cardinality(p_steps_expected) = 0 THEN
+    RAISE EXCEPTION 'META_APPROVAL_MANIFEST_EMPTY';
+  END IF;
   SELECT count(DISTINCT passo) INTO v_distintos FROM unnest(p_steps_expected) AS passo;
-  IF v_distintos <> coalesce(array_length(p_steps_expected, 1), 0) THEN
+  IF v_distintos <> cardinality(p_steps_expected) THEN
     RAISE EXCEPTION 'META_APPROVAL_MANIFEST_DUPLICATE';
   END IF;
   IF EXISTS (

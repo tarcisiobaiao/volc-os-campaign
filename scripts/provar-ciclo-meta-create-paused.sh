@@ -157,6 +157,35 @@ BEGIN
   END IF;
   v_ref := (v_passo->>'step_ref')::uuid;
 
+  -- Manifesto vazio nao pode virar aprovacao: ela ficaria APPROVED e inutil,
+  -- porque nenhum passo poderia ser preparado depois.
+  BEGIN
+    PERFORM public.trafego_meta_create_approve(
+      p_plan_sha256 => repeat('f', 64),
+      p_account_ref => 'metaacct_prova_local',
+      p_actor_id => 'operador-local',
+      p_daily_budget_minor => 1000,
+      p_expires_at => clock_timestamp() + interval '1 hour',
+      p_steps_expected => ARRAY[]::text[]);
+    RAISE EXCEPTION 'manifesto vazio foi aceito';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'META_APPROVAL_MANIFEST_EMPTY' THEN RAISE; END IF;
+  END;
+
+  -- Manifesto com passo repetido tambem nao.
+  BEGIN
+    PERFORM public.trafego_meta_create_approve(
+      p_plan_sha256 => repeat('f', 64),
+      p_account_ref => 'metaacct_prova_local',
+      p_actor_id => 'operador-local',
+      p_daily_budget_minor => 1000,
+      p_expires_at => clock_timestamp() + interval '1 hour',
+      p_steps_expected => ARRAY['campaign','campaign']);
+    RAISE EXCEPTION 'manifesto com passo repetido foi aceito';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'META_APPROVAL_MANIFEST_DUPLICATE' THEN RAISE; END IF;
+  END;
+
   -- Um passo fora de ordem nao pode ser preparado antes do anterior fechar.
   BEGIN
     PERFORM public.trafego_meta_create_prepare_step(

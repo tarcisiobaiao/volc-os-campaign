@@ -340,13 +340,13 @@ const MetaCriacaoPage: React.FC = () => {
     });
     invalidar();
   };
-  /** Trocar de modo muda o que será emitido, então o rascunho acompanha. */
+  /** Trocar de modo muda o que será EMITIDO, não o que está guardado.
+   *
+   * ⚠️ Truncar o rascunho aqui apagaria nove variações sem confirmação quando o
+   * operador só quisesse conferir o payload individual. `variacoesEmitidas` já
+   * limita a projeção; o lote continua inteiro e volta ao trocar de novo. */
   const mudarModo = (modo: Draft['creativeMode']) => {
-    setDraft((atual) => ({
-      ...atual,
-      creativeMode: modo,
-      variations: modo === 'single' ? atual.variations.slice(0, 1) : atual.variations,
-    }));
+    setDraft((atual) => ({ ...atual, creativeMode: modo }));
     invalidar();
   };
   function pecaPadrao(atual: Draft): Partial<VariacaoDraft> {
@@ -956,7 +956,12 @@ const MetaCriacaoPage: React.FC = () => {
             </header>
 
             <div className="space-y-5 p-4 md:p-6">
-              <PainelDeBloqueio bloqueios={avisos} titulo="A operação não foi concluída" />
+              {/* ⚠️ Região viva: a falha de compilar ou validar chega depois do
+                  clique, e sem isto ela aparece na tela sem ser anunciada a
+                  quem usa leitor de tela. */}
+              <div role="alert" aria-live="assertive">
+                <PainelDeBloqueio bloqueios={avisos} titulo="A operação não foi concluída" />
+              </div>
               {conteudo}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
                 <Button type="button" variant="outline" disabled={indice === 0}

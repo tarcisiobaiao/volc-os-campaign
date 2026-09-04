@@ -71,11 +71,22 @@ def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
     texto = re.sub(
         r"(?i)(access[_ ]?token\s*(?:=|:|\s)\s*)[^&\s\"']+", r"\1[redacted]", texto)
     texto = re.sub(r"\bEAA[A-Za-z0-9_\-]{8,}\b", "[redacted]", texto)
-    # Qualquer cadeia opaca longa — token, image_hash, assinatura de CDN.
-    texto = re.sub(r"\b[A-Za-z0-9_\-]{28,}\b", "[redacted]", texto)
+    # Cadeia opaca longa — token, image_hash, assinatura de CDN. ⚠️ Nomes de
+    # campo da Marketing API também são longos (`is_adset_budget_sharing_enabled`
+    # tem 31 caracteres) e apagá-los tiraria do operador exatamente o campo que
+    # ele precisa corrigir. Identificador snake_case é preservado.
+    texto = re.sub(r"\b[A-Za-z0-9_\-]{28,}\b", _mascarar_cadeia_opaca, texto)
     texto = re.sub(r"\bact_([0-9]{4,40})\b", lambda m: f"act_••••{m.group(1)[-4:]}", texto)
     texto = re.sub(r"\b([0-9]{7,40})\b", lambda m: f"••••{m.group(1)[-4:]}", texto)
     return texto[:limite]
+
+
+_IDENTIFICADOR_DE_CAMPO = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
+
+
+def _mascarar_cadeia_opaca(achado: "re.Match[str]") -> str:
+    texto = achado.group(0)
+    return texto if _IDENTIFICADOR_DE_CAMPO.fullmatch(texto) else "[redacted]"
 
 
 def _paises(alvo: Mapping[str, Any]) -> tuple[str, ...]:
@@ -103,7 +114,7 @@ def _advantage_audience(alvo: Any) -> int | None:
 
 def _mesmo_destino(lido: Any, enviado: Any) -> bool:
     """Compara duas URLs pela forma canônica, sem afrouxar host nem caminho."""
-    def canonica(valor: Any) -> tuple[str, str, str, str] | None:
+    def canonica(valor: Any) -> tuple[str, ...] | None:
         texto = str(valor or "").strip()
         if not texto:
             return None
@@ -111,8 +122,18 @@ def _mesmo_destino(lido: Any, enviado: Any) -> bool:
         if not partes.scheme or not partes.hostname:
             return None
         caminho = partes.path.rstrip("/") or "/"
+        esquema = partes.scheme.lower()
+        # Porta e fragmento entram: uma porta não padrão ou outra rota de
+        # cliente levam o clique a outro lugar.
+        try:
+            porta = partes.port
+        except ValueError:
+            return None
+        padrao = {"https": 443, "http": 80}.get(esquema)
         return (
-            partes.scheme.lower(), partes.hostname.lower(), caminho, partes.query)
+            esquema, partes.hostname.lower(),
+            str(porta if porta is not None else padrao),
+            caminho, partes.query, partes.fragment)
     a, b = canonica(lido), canonica(enviado)
     return a is not None and a == b
 
@@ -353,6 +374,7 @@ class ExecutorMetaPausado:
         *,
         exige_id: bool,
     ) -> Mapping[str, Any]:
+        validacao = "execution_options" in payload
         try:
             resposta = await self._cliente.post(
                 f"{self._base}/{self._versao}{operacao.endpoint}",
@@ -363,13 +385,22 @@ class ExecutorMetaPausado:
             raise
         except httpx.HTTPError as exc:
             raise ErroRemotoMeta(
-                "META_TRANSPORT_ERROR", "a Meta nao respondeu ao pedido", retryable=True) from exc
+                "META_TRANSPORT_ERROR", "a Meta nao respondeu ao pedido",
+                # Só a validação pode ser repetida sozinha: ela não cria nada.
+                # Um transporte que cai depois de despachar uma CRIAÇÃO pode ter
+                # criado o objeto, e repetir duplicaria a campanha.
+                retryable=validacao) from exc
         try:
             corpo = resposta.json()
         except (ValueError, TypeError):
             corpo = {}
         if resposta.status_code >= 400 or (isinstance(corpo, Mapping) and corpo.get("error")):
             erro = corpo.get("error") if isinstance(corpo, Mapping) else None
+            # Descarte só é PROVADO quando a própria Meta responde 4xx com um
+            # objeto de erro reconhecível. Um 400 de gateway, com corpo vazio ou
+            # HTML, pode ter chegado depois do encaminhamento: fica ambíguo.
+            recusa_da_meta = isinstance(erro, Mapping) and (
+                erro.get("code") is not None or erro.get("message") is not None)
             codigo = str(erro.get("code") or resposta.status_code) if isinstance(erro, Mapping) else str(resposta.status_code)
             subcodigo = _texto_seguro_do_provedor(
                 erro.get("error_subcode") if isinstance(erro, Mapping) else None)
@@ -381,12 +412,11 @@ class ExecutorMetaPausado:
                         explicacoes.append(valor)
             complemento = f": {' — '.join(explicacoes)}" if explicacoes else ""
             raise ErroRemotoMeta(
-                "META_REMOTE_VALIDATION_FAILED" if "execution_options" in payload else "META_REMOTE_CREATE_FAILED",
+                "META_REMOTE_VALIDATION_FAILED" if validacao else "META_REMOTE_CREATE_FAILED",
                 f"a Meta recusou {operacao.chave} (código {codigo}{f'/{subcodigo}' if subcodigo else ''}){complemento}",
-                retryable=resposta.status_code >= 500,
-                # 4xx com corpo de erro é recusa provada: nada foi criado.
-                # 5xx pode ter criado antes de falhar e continua ambíguo.
-                criacao_descartada=400 <= resposta.status_code < 500,
+                retryable=validacao and resposta.status_code >= 500,
+                criacao_descartada=(
+                    recusa_da_meta and 400 <= resposta.status_code < 500),
                 detalhe_provedor={
                     "code": codigo,
                     "error_subcode": subcodigo,
@@ -469,9 +499,11 @@ class ExecutorMetaPausado:
 
         if str(dados.get("id") or "") != identificador:
             divergiu("id")
-        # O objeto precisa pertencer à mesma conta que o plano resolveu.
+        # O objeto precisa pertencer à mesma conta que o plano resolveu, e a
+        # ausência do campo não vale como pertencimento: uma resposta parcial
+        # com id, nome e status certos passaria sem provar a fronteira.
         conta_lida = str(dados.get("account_id") or "").removeprefix("act_").strip()
-        if conta_lida and conta_lida != conta_externa:
+        if not conta_lida or conta_lida != conta_externa:
             divergiu("account_id")
         if nome in {"campaign", "adset", "ad"}:
             estado = dados.get("configured_status") or dados.get("status")
@@ -587,3 +619,29 @@ class ExecutorMetaPausado:
                         lido.get("link"), enviado["link"]
                     ):
                         divergiu("object_story_spec.link_data.link")
+                    # A chamada para ação é uma decisão do operador: tipo e
+                    # destino dela precisam voltar iguais.
+                    cta_enviado = enviado.get("call_to_action")
+                    if isinstance(cta_enviado, Mapping):
+                        cta_lido = lido.get("call_to_action")
+                        if not isinstance(cta_lido, Mapping):
+                            divergiu("object_story_spec.link_data.call_to_action")
+                            return
+                        if str(cta_lido.get("type") or "") != str(
+                            cta_enviado.get("type") or ""
+                        ):
+                            divergiu("object_story_spec.link_data.call_to_action.type")
+                        destino_enviado = cta_enviado.get("value")
+                        destino_lido = cta_lido.get("value")
+                        if isinstance(destino_enviado, Mapping) and "link" in destino_enviado:
+                            if not isinstance(destino_lido, Mapping) or not _mesmo_destino(
+                                destino_lido.get("link"), destino_enviado["link"]
+                            ):
+                                divergiu(
+                                    "object_story_spec.link_data.call_to_action.value.link")
+                # O ator do Instagram é identidade: se a Meta devolver outro, o
+                # anúncio não é mais o que foi aprovado.
+                if str(historia_lida.get("instagram_actor_id") or "") != str(
+                    historia_enviada.get("instagram_actor_id") or ""
+                ):
+                    divergiu("object_story_spec.instagram_actor_id")

@@ -179,3 +179,45 @@ describe('Bancada de criação Meta — contrato do rascunho', () => {
     expect(container.innerHTML).not.toContain('META_VALIDATE_ONLY_ENABLED');
   });
 });
+
+describe('Bancada de criação Meta — correções adversariais', () => {
+  it('recusa orçamento negativo em vez de torná-lo positivo', async () => {
+    abrir('orcamento');
+    await esperarAtivos();
+    fireEvent.change(screen.getByLabelText(/orçamento diário/i), {
+      target: { value: '-10,00' },
+    });
+    // Sem verba válida a conferência não pode ser liberada.
+    confirmarEnquadramento();
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+    const botao = await screen.findByRole('button', { name: /conferir o plano/i });
+    expect(botao.hasAttribute('disabled')).toBe(true);
+    expect(screen.getAllByText(/orçamento diário maior que zero/i).length).toBeGreaterThan(0);
+    expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
+  });
+
+  it('conferir o payload individual não apaga o lote montado', async () => {
+    abrir('criativo');
+    await esperarAtivos();
+    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio/i }));
+    await waitFor(() => expect(screen.getByText('3 de 10')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /individual/i }));
+    await waitFor(() => expect(screen.getByText('1 de 10')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
+    await waitFor(() => expect(screen.getByText('3 de 10')).toBeTruthy());
+  });
+
+  it('anuncia a falha da operação a quem usa leitor de tela', async () => {
+    api.compilarPlanoMeta.mockRejectedValueOnce(new Error('a Meta recusou o plano'));
+    abrir('revisao');
+    await esperarAtivos();
+    await esperarAtivos();
+    confirmarEnquadramento();
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
+    const alerta = await screen.findByRole('alert');
+    await waitFor(() => expect(alerta.textContent).toContain('a Meta recusou o plano'));
+  });
+});

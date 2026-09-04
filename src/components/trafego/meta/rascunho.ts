@@ -76,7 +76,11 @@ export const CAPACIDADES_FECHADAS: CapacidadesDaBancada = {
  * apareça antes de virar orçamento.
  */
 export function reaisParaMinor(entrada: string): number {
-  const limpo = String(entrada ?? '').replace(/[^\d.,]/g, '');
+  const bruto = String(entrada ?? '').trim();
+  // ⚠️ Um sinal negativo não pode ser apagado em silêncio: "-10,00" viraria
+  // dez reais de orçamento. Entrada com sinal é entrada inválida.
+  if (/[-\u2212]/.test(bruto)) return 0;
+  const limpo = bruto.replace(/[^\d.,]/g, '');
   if (!limpo) return 0;
   const ultimaVirgula = limpo.lastIndexOf(',');
   const ultimoPonto = limpo.lastIndexOf('.');
@@ -115,14 +119,26 @@ export function proximaChave(existentes: readonly string[]): string {
   return `variation-${Date.now()}`;
 }
 
+/** Limite do contrato backend para nome de criativo e de anúncio. */
+export const LIMITE_NOME = 400;
+
+/** O backend compara nomes JÁ aparados: " Criativo " e "Criativo" colidem lá.
+ *  Comparar cru aqui deixaria a revisão dizer "pronto" sobre um lote que o
+ *  compilador recusa com META_STATIC_BATCH_DUPLICATE_NAME. */
+export function nomeCanonico(nome: string): string {
+  return String(nome ?? '').trim();
+}
+
 export function nomeUnico(base: string, existentes: readonly string[]): string {
-  const usados = new Set(existentes);
-  if (!usados.has(base)) return base;
+  const usados = new Set(existentes.map(nomeCanonico));
+  const raiz = nomeCanonico(base);
+  if (raiz && !usados.has(raiz)) return raiz.slice(0, LIMITE_NOME);
   for (let i = 2; i <= 999; i += 1) {
-    const candidato = `${base} · ${i}`;
+    const sufixo = ` · ${i}`;
+    const candidato = `${raiz.slice(0, LIMITE_NOME - sufixo.length)}${sufixo}`;
     if (!usados.has(candidato)) return candidato;
   }
-  return `${base} · ${Date.now()}`;
+  return `${raiz.slice(0, LIMITE_NOME - 16)} · ${existentes.length + 1}`;
 }
 
 export function variacaoInicial(chave: string, numero: number): VariacaoDraft {
@@ -235,9 +251,16 @@ export function prontidaoDasEtapas(
   const criativoBloqueado = draft.creativeMode === 'flexible'
     || (draft.creativeMode === 'batch' && !contexto.capacidades.loteEstatico)
     || emitidas.some((item) => item.midia === 'video' && !contexto.capacidades.video);
+  const criativos = emitidas.map((item) => nomeCanonico(item.creativeName));
+  const anuncios = emitidas.map((item) => nomeCanonico(item.adName));
+  const nomesOk = new Set(criativos).size === criativos.length
+    && new Set(anuncios).size === anuncios.length
+    && [...criativos, ...anuncios].every(
+      (nome) => nome.length > 0 && nome.length <= LIMITE_NOME);
   const criativoPronto = emitidas.length > 0
     && emitidas.length <= LIMITE_VARIACOES
-    && emitidas.every(variacaoCompleta);
+    && emitidas.every(variacaoCompleta)
+    && nomesOk;
   return {
     base: draft.accountRef && draft.pageRef ? 'pronto' : 'pendente',
     campanha: draft.campaignName.trim() && draft.categoryConfirmed ? 'pronto' : 'pendente',

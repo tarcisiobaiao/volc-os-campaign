@@ -259,3 +259,103 @@ def test_destino_do_readback_tolera_normalizacao_sem_afrouxar(
     from app.trafego.meta_execucao.executor import _mesmo_destino
 
     assert _mesmo_destino(lido, enviado) is igual
+
+
+@pytest.mark.asyncio
+async def test_criacao_nunca_volta_como_repetivel_apos_despacho() -> None:
+    """5xx numa CRIAÇÃO pode ter criado o objeto; repetir duplicaria a campanha."""
+    async def responder(request: httpx.Request) -> httpx.Response:
+        if b"execution_options" in request.content:
+            return httpx.Response(200, json={"success": True})
+        return httpx.Response(503, json={"error": {"code": 2, "message": "instabilidade"}})
+
+    compilado = compilar_plano_pausado(_plano(), _refs())
+    registro = _Registro()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(responder)) as cliente:
+        with pytest.raises(ErroRemotoMeta) as erro:
+            await ExecutorMetaPausado(cliente, registro=registro).criar_pausada(
+                compilado, SegredoEfemero(TOKEN), _autorizacao(compilado.plano_sha256))
+    assert erro.value.retryable is False
+    assert erro.value.criacao_descartada is False
+    assert ("ambiguo", "passo_1") in registro.eventos
+
+
+@pytest.mark.asyncio
+async def test_4xx_sem_erro_reconhecivel_da_meta_fica_ambiguo() -> None:
+    """Um 400 de gateway, com corpo que não é erro Meta, não prova descarte."""
+    async def responder(request: httpx.Request) -> httpx.Response:
+        if b"execution_options" in request.content:
+            return httpx.Response(200, json={"success": True})
+        return httpx.Response(400, text="<html>Bad Request</html>")
+
+    compilado = compilar_plano_pausado(_plano(), _refs())
+    registro = _Registro()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(responder)) as cliente:
+        with pytest.raises(ErroRemotoMeta) as erro:
+            await ExecutorMetaPausado(cliente, registro=registro).criar_pausada(
+                compilado, SegredoEfemero(TOKEN), _autorizacao(compilado.plano_sha256))
+    assert erro.value.criacao_descartada is False
+    assert ("ambiguo", "passo_1") in registro.eventos
+    assert all(nome != "falhar" for nome, _ in registro.eventos)
+
+
+def test_sanitizacao_preserva_o_nome_do_campo_que_o_operador_precisa_corrigir() -> None:
+    bruto = (
+        "Invalid parameter: is_adset_budget_sharing_enabled must be true or false; "
+        "token EAABsbCS1iHgBO7ZC8ZDZDdeadbeefdeadbeef"
+    )
+    saida = _texto_seguro_do_provedor(bruto) or ""
+    assert "is_adset_budget_sharing_enabled" in saida
+    assert "EAABsbCS1iHgBO7ZC8ZDZDdeadbeefdeadbeef" not in saida
+
+
+@pytest.mark.parametrize(
+    ("lido", "enviado", "igual"),
+    [
+        ("https://example.com:8443/a", "https://example.com/a", False),
+        ("https://example.com:443/a", "https://example.com/a", True),
+        ("https://example.com/a#um", "https://example.com/a#dois", False),
+    ],
+)
+def test_destino_considera_porta_e_fragmento(lido: str, enviado: str, igual: bool) -> None:
+    from app.trafego.meta_execucao.executor import _mesmo_destino
+
+    assert _mesmo_destino(lido, enviado) is igual
+
+
+@pytest.mark.asyncio
+async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica() -> None:
+    """Um token sem leitura de vídeo não pode impedir uma campanha de imagens."""
+    from app.trafego.meta.credenciais import SegredoEfemero as Segredo
+    from app.trafego.meta import dominio as meta_dom
+    from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
+
+    async def responder(request: httpx.Request) -> httpx.Response:
+        caminho = request.url.path
+        if caminho.endswith("/me/adaccounts"):
+            return httpx.Response(200, json={"data": [{
+                "id": "act_1234567890", "name": "Conta", "currency": "BRL",
+                "account_status": 1}]})
+        if caminho.endswith("/promote_pages"):
+            return httpx.Response(200, json={"data": [{"id": "2222222222", "name": "Pagina"}]})
+        if caminho.endswith("/adimages"):
+            return httpx.Response(200, json={"data": [{"hash": "hash_um", "name": "Um"}]})
+        if caminho.endswith("/advideos"):
+            return httpx.Response(403, json={"error": {"code": 200, "message": "sem permissao"}})
+        raise AssertionError(request.url)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(responder)) as cliente:
+        resolvedor = ResolvedorAtivosMeta(cliente)
+        inventario = await resolvedor.inventariar(
+            meta_dom.referencia_opaca_conta("1234567890"), Segredo(TOKEN))
+        # A leitura de imagens segue inteira e a compilação continua possível.
+        assert len(inventario["imagens"]) == 1
+        assert inventario["videos"] == []
+        assert inventario["videos_indisponiveis"] == "META_ASSET_READ_FAILED"
+        resolvidas = await resolvedor.resolver_lote(
+            account_ref=inventario["account_ref"],
+            page_ref=inventario["paginas"][0]["referencia_opaca"],
+            asset_refs=(inventario["imagens"][0]["referencia_opaca"],),
+            segredo=Segredo(TOKEN),
+        )
+    assert resolvidas.image_hash == "hash_um"

@@ -155,6 +155,10 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
                     "message": "Descubra as informacoes importantes antes de decidir.",
                     "name": "Entenda como funciona",
                     "description": "Conteudo informativo e independente.",
+                    "call_to_action": {
+                        "type": "LEARN_MORE",
+                        "value": {"link": "https://example.com/oferta/"},
+                    },
                 },
             },
         })

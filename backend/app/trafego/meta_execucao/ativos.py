@@ -123,6 +123,7 @@ class ResolvedorAtivosMeta:
         list[_AtivoResolvido],
         list[_AtivoResolvido],
         list[_AtivoResolvido],
+        str | None,
     ]:
         try:
             conta = await self._conta(account_ref, segredo)
@@ -133,12 +134,24 @@ class ResolvedorAtivosMeta:
             f"{base}/promote_pages", segredo, fields="id,name")
         imagens_raw = await self._listar(
             f"{base}/adimages", segredo, fields="hash,name,width,height,url_128,url")
+        # ⚠️ O inventário de vídeo é ACESSÓRIO e não pode derrubar a receita
+        # estática. Um token sem permissão de leitura de vídeo, ou uma edge
+        # indisponível, não podem impedir compilar e validar uma campanha feita
+        # só de imagens. A indisponibilidade vira lista vazia e é declarada
+        # separadamente por `videos_indisponiveis`.
+        #
         # Somente campos comprovados na referência oficial do nó Video: o título
         # se chama `name`, e `status` não aparece entre os campos legíveis desta
         # edge — por isso a prontidão do vídeo não é afirmada aqui.
         # https://developers.facebook.com/docs/marketing-api/reference/video/
-        videos_raw = await self._listar(
-            f"{base}/advideos", segredo, fields="id,name,created_time,updated_time,picture")
+        videos_indisponivel: str | None = None
+        try:
+            videos_raw = await self._listar(
+                f"{base}/advideos", segredo,
+                fields="id,name,created_time,updated_time,picture")
+        except ErroDeNascimentoMeta as exc:
+            videos_raw = []
+            videos_indisponivel = exc.codigo
         paginas: list[_AtivoResolvido] = []
         for item in paginas_raw:
             try:
@@ -197,12 +210,12 @@ class ResolvedorAtivosMeta:
                 id_externo=externo,
                 preview_url=thumb,
             ))
-        return conta, paginas, imagens, videos
+        return conta, paginas, imagens, videos, videos_indisponivel
 
     async def inventariar(
         self, account_ref: str, segredo: SegredoEfemero,
     ) -> Mapping[str, Any]:
-        conta, paginas, imagens, videos = await self._inventario_interno(
+        conta, paginas, imagens, videos, videos_indisponivel = await self._inventario_interno(
             account_ref, segredo)
         return {
             "ok": True,
@@ -212,6 +225,9 @@ class ResolvedorAtivosMeta:
             "paginas": [item.publico.publico() for item in paginas],
             "imagens": [item.publico.publico() for item in imagens],
             "videos": [item.publico.publico() for item in videos],
+            # `null` = leitura de vídeo bem-sucedida. Um código aqui declara que
+            # a lista está vazia por falha de leitura, não por ausência de peça.
+            "videos_indisponiveis": videos_indisponivel,
             "receita": "OUTCOME_TRAFFIC_LPV_STATIC_PAUSED",
         }
 
@@ -244,7 +260,7 @@ class ResolvedorAtivosMeta:
                 "META_STATIC_BATCH_INVALID",
                 "o lote precisa declarar entre 1 e 10 referencias de imagem",
             )
-        conta, paginas, imagens, _ = await self._inventario_interno(account_ref, segredo)
+        conta, paginas, imagens, _, _ = await self._inventario_interno(account_ref, segredo)
         pagina = next((item for item in paginas if item.publico.referencia_opaca == page_ref), None)
         if pagina is None:
             raise ErroDeNascimentoMeta(
@@ -274,7 +290,7 @@ class ResolvedorAtivosMeta:
         asset_ref: str,
         segredo: SegredoEfemero,
     ) -> str:
-        _, _, imagens, videos = await self._inventario_interno(account_ref, segredo)
+        _, _, imagens, videos, _ = await self._inventario_interno(account_ref, segredo)
         ativo = next(
             (item for item in [*imagens, *videos]
              if item.publico.referencia_opaca == asset_ref), None)
