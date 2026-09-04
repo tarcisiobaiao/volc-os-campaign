@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import httpx
 
@@ -22,6 +22,7 @@ class AtivoDeCriacaoMeta:
     id_mascarado: str | None = None
     largura: int | None = None
     altura: int | None = None
+    preview_disponivel: bool = False
 
     def publico(self) -> Mapping[str, Any]:
         return {
@@ -31,6 +32,7 @@ class AtivoDeCriacaoMeta:
             "id_mascarado": self.id_mascarado,
             "largura": self.largura,
             "altura": self.altura,
+            "preview_disponivel": self.preview_disponivel,
         }
 
 
@@ -38,6 +40,7 @@ class AtivoDeCriacaoMeta:
 class _AtivoResolvido:
     publico: AtivoDeCriacaoMeta
     id_externo: str
+    preview_url: str | None = None
 
     def __repr__(self) -> str:
         return "_AtivoResolvido(<oculto>)"
@@ -124,7 +127,7 @@ class ResolvedorAtivosMeta:
         paginas_raw = await self._listar(
             f"{base}/promote_pages", segredo, fields="id,name")
         imagens_raw = await self._listar(
-            f"{base}/adimages", segredo, fields="hash,name,width,height")
+            f"{base}/adimages", segredo, fields="hash,name,width,height,url_128,url")
         paginas: list[_AtivoResolvido] = []
         for item in paginas_raw:
             try:
@@ -146,6 +149,7 @@ class ResolvedorAtivosMeta:
             image_hash = str(item.get("hash") or "").strip()
             if not image_hash:
                 continue
+            preview_url = str(item.get("url_128") or item.get("url") or "").strip() or None
             # image hashes are not numeric, so the opaque handle is derived
             # from a stable digest and never exposes the provider hash.
             digest = hashlib.sha256(
@@ -158,8 +162,10 @@ class ResolvedorAtivosMeta:
                     tipo="image_asset",
                     largura=_inteiro_opcional(item.get("width")),
                     altura=_inteiro_opcional(item.get("height")),
+                    preview_disponivel=preview_url is not None,
                 ),
                 id_externo=image_hash,
+                preview_url=preview_url,
             ))
         return conta, paginas, imagens
 
@@ -185,20 +191,67 @@ class ResolvedorAtivosMeta:
         asset_ref: str,
         segredo: SegredoEfemero,
     ) -> ReferenciasMetaResolvidas:
+        return await self.resolver_lote(
+            account_ref=account_ref,
+            page_ref=page_ref,
+            asset_refs=(asset_ref,),
+            segredo=segredo,
+        )
+
+    async def resolver_lote(
+        self,
+        *,
+        account_ref: str,
+        page_ref: str,
+        asset_refs: Sequence[str],
+        segredo: SegredoEfemero,
+    ) -> ReferenciasMetaResolvidas:
+        referencias = tuple(dict.fromkeys(str(item or "").strip() for item in asset_refs))
+        if not referencias or len(referencias) > 10 or any(not item for item in referencias):
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_BATCH_INVALID",
+                "o lote precisa declarar entre 1 e 10 referencias de imagem",
+            )
         conta, paginas, imagens = await self._inventario_interno(account_ref, segredo)
         pagina = next((item for item in paginas if item.publico.referencia_opaca == page_ref), None)
-        imagem = next((item for item in imagens if item.publico.referencia_opaca == asset_ref), None)
         if pagina is None:
             raise ErroDeNascimentoMeta(
                 "META_PAGE_REFERENCE_UNKNOWN", "a pagina nao pertence a conta Meta selecionada")
-        if imagem is None:
+        imagens_por_ref = {item.publico.referencia_opaca: item for item in imagens}
+        faltantes = [referencia for referencia in referencias if referencia not in imagens_por_ref]
+        if faltantes:
             raise ErroDeNascimentoMeta(
-                "META_ASSET_REFERENCE_UNKNOWN", "a imagem nao pertence a conta Meta selecionada")
+                "META_ASSET_REFERENCE_UNKNOWN",
+                "uma imagem do lote nao pertence a conta Meta selecionada",
+            )
+        primeira = imagens_por_ref[referencias[0]]
         return ReferenciasMetaResolvidas(
             account_id=conta.id_externo,
             page_id=pagina.id_externo,
-            image_hash=imagem.id_externo,
+            image_hash=primeira.id_externo,
+            image_hashes_by_ref={
+                referencia: imagens_por_ref[referencia].id_externo
+                for referencia in referencias
+            },
         )
+
+    async def preview_url(
+        self,
+        *,
+        account_ref: str,
+        asset_ref: str,
+        segredo: SegredoEfemero,
+    ) -> str:
+        _, _, imagens = await self._inventario_interno(account_ref, segredo)
+        imagem = next(
+            (item for item in imagens if item.publico.referencia_opaca == asset_ref), None)
+        if imagem is None:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_REFERENCE_UNKNOWN", "a imagem nao pertence a conta Meta selecionada")
+        if not imagem.preview_url:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_PREVIEW_UNAVAILABLE", "a Meta nao devolveu previa para esta imagem")
+        return imagem.preview_url
 
 
 def _inteiro_opcional(valor: Any) -> int | None:

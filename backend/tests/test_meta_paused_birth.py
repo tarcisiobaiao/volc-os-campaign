@@ -69,6 +69,7 @@ def plano(**mudancas: object) -> PlanoMetaPausado:
         start_time=datetime(2027, 1, 2, 12, 0, tzinfo=timezone.utc),
         special_ad_categories=(),
         special_categories_confirmed=True,
+        is_adset_budget_sharing_enabled=False,
     )
     return replace(base, **mudancas)
 
@@ -120,6 +121,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
             "configured_status": "PAUSED",
             "effective_status": "PAUSED",
             "special_ad_categories": [],
+            "is_adset_budget_sharing_enabled": False,
             "advantage_state_info": {"advantage_state": "DISABLED"},
         })
     elif nome == "adset":
@@ -175,6 +177,7 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
     assert [op.nome for op in saida.operacoes] == ["campaign", "adset", "creative", "ad"]
     campanha, conjunto, criativo, anuncio = saida.operacoes
     assert campanha.payload["status"] == "PAUSED"
+    assert campanha.payload["is_adset_budget_sharing_enabled"] is False
     assert "daily_budget" not in campanha.payload
     assert conjunto.payload["daily_budget"] == 1000
     assert conjunto.payload["status"] == "PAUSED"
@@ -218,6 +221,18 @@ def test_autorizacao_e_vinculada_a_hash_e_ato_exatos() -> None:
         autorizacao(saida.plano_sha256, permitir_criar_pausada=False).exigir(
             plano_sha256=saida.plano_sha256, ato="create_paused")
     assert negada.value.codigo == "META_ACTION_NOT_AUTHORIZED"
+
+
+def test_erro_meta_preserva_diagnostico_util_sem_token_ou_id_bruto() -> None:
+    from app.trafego.meta_execucao.executor import _texto_seguro_do_provedor
+
+    seguro = _texto_seguro_do_provedor(
+        "Invalid parameter act_123456789 access_token=EAABCDEF12345678901234567890")
+    assert seguro is not None
+    assert "123456789" not in seguro
+    assert "EAABCDEF" not in seguro
+    assert "act_••••6789" in seguro
+    assert "access_token=[redacted]" in seguro
 
 
 @pytest.mark.asyncio

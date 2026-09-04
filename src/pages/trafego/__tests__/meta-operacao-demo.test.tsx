@@ -44,4 +44,21 @@ describe('Meta demonstrativa navegável', () => {
     expect(screen.getByRole('button', { name: 'Criar campanha pausada' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByText(/criação real não está montada/i)).toBeTruthy();
   });
+
+  it('expõe lote estático explícito e não finge criativo flexível', () => {
+    render(
+      <MemoryRouter initialEntries={['/trafego/meta/nova?modo=demo&etapa=criativo']}>
+        <MetaCriacaoPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('radiogroup', { name: 'Modo de criativo' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /lote controlado/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /flexível/i }));
+    expect(screen.getByText('Criativo flexível está modelado, mas não será fingido')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /adicionar outro anúncio ao lote/i })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio ao lote/i }));
+    expect(screen.getByText('2 de 10')).toBeTruthy();
+    expect(screen.getByText('Anúncio 2')).toBeTruthy();
+  });
 });

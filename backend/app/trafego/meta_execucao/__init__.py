@@ -10,6 +10,7 @@ from .contrato import (
     ErroDeNascimentoMeta,
     PlanoMetaPausado,
     ReferenciasMetaResolvidas,
+    VariacaoEstaticaMeta,
 )
 from .compilador import PlanoCompiladoMeta, compilar_plano_pausado
 from .ativos import AtivoDeCriacaoMeta, ResolvedorAtivosMeta
@@ -20,6 +21,7 @@ __all__ = [
     "ErroDeNascimentoMeta",
     "PlanoMetaPausado",
     "ReferenciasMetaResolvidas",
+    "VariacaoEstaticaMeta",
     "PlanoCompiladoMeta",
     "compilar_plano_pausado",
     "AtivoDeCriacaoMeta",

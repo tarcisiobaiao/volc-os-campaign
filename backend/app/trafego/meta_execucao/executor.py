@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 from urllib.parse import urlparse
@@ -43,12 +44,26 @@ class ErroRemotoMeta(RuntimeError):
         *,
         retryable: bool = False,
         objetos_criados: tuple[str, ...] = (),
+        detalhe_provedor: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(mensagem)
         self.codigo = codigo
         self.retryable = retryable
         # Names only. Provider ids remain backend-private even on failures.
         self.objetos_criados = objetos_criados
+        self.detalhe_provedor = dict(detalhe_provedor or {})
+
+
+def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
+    """Keep actionable Meta diagnostics without leaking tokens or raw ids."""
+    texto = str(valor or "").strip()
+    if not texto:
+        return None
+    texto = re.sub(
+        r"(?i)(access_token(?:=|\s+))[^&\s]+", r"\1[redacted]", texto)
+    texto = re.sub(r"\bact_([0-9]{4,40})\b", lambda m: f"act_••••{m.group(1)[-4:]}", texto)
+    texto = re.sub(r"\b([0-9]{7,40})\b", lambda m: f"••••{m.group(1)[-4:]}", texto)
+    return texto[:limite]
 
 
 def _form(payload: Mapping[str, Any]) -> dict[str, str]:
@@ -91,7 +106,7 @@ class ExecutorMetaPausado:
         pendentes: list[str] = []
         for operacao in plano.operacoes:
             if not operacao.validavel_sem_criar_pai:
-                pendentes.append(operacao.nome)
+                pendentes.append(operacao.chave)
                 continue
             payload = dict(operacao.payload)
             payload["execution_options"] = ["validate_only"]
@@ -99,9 +114,9 @@ class ExecutorMetaPausado:
             if resposta.get("success") is not True:
                 raise ErroRemotoMeta(
                     "META_REMOTE_RESULT_AMBIGUOUS",
-                    f"validate_only de {operacao.nome} nao devolveu sucesso explicito",
+                    f"validate_only de {operacao.chave} nao devolveu sucesso explicito",
                 )
-            validadas.append(operacao.nome)
+            validadas.append(operacao.chave)
         return ResultadoValidacaoMeta(
             aceito=True,
             cobertura="INDEPENDENT_ROOTS_ONLY",
@@ -129,12 +144,13 @@ class ExecutorMetaPausado:
             )
         ids: dict[str, str] = {}
         read_back: dict[str, Mapping[str, Any]] = {}
+        tipos: dict[str, str] = {}
         try:
             for operacao in plano.operacoes:
                 payload = resolver_dependencias(operacao.payload, ids)
-                if operacao.nome in {"campaign", "adset", "ad"} and payload.get("status") != "PAUSED":
+                if operacao.tipo_objeto in {"campaign", "adset", "ad"} and payload.get("status") != "PAUSED":
                     raise ErroDeNascimentoMeta(
-                        "META_NOT_PAUSED", f"{operacao.nome} nao esta PAUSED no payload aprovado")
+                        "META_NOT_PAUSED", f"{operacao.chave} nao esta PAUSED no payload aprovado")
                 validacao = dict(payload)
                 validacao["execution_options"] = ["validate_only"]
                 validado = await self._post(
@@ -142,7 +158,7 @@ class ExecutorMetaPausado:
                 if validado.get("success") is not True:
                     raise ErroRemotoMeta(
                         "META_REMOTE_RESULT_AMBIGUOUS",
-                        f"validate_only de {operacao.nome} nao devolveu sucesso explicito",
+                        f"validate_only de {operacao.chave} nao devolveu sucesso explicito",
                     )
                 payload_sha256 = hashlib.sha256(
                     json.dumps(
@@ -153,16 +169,16 @@ class ExecutorMetaPausado:
                     plano_sha256=plano.plano_sha256,
                     approval_id=autorizacao.approval_id,
                     ator=autorizacao.ator,
-                    nome=operacao.nome,
+                    nome=operacao.chave,
                     payload_sha256=payload_sha256,
                 )
                 if passo.estado == "AMBIGUO":
                     raise ErroRemotoMeta(
                         "META_RECONCILIATION_REQUIRED",
-                        f"o passo {operacao.nome} esta ambiguo; reconciliar antes de continuar",
+                        f"o passo {operacao.chave} esta ambiguo; reconciliar antes de continuar",
                     )
                 if passo.estado == "CRIADO":
-                    ids[operacao.nome] = str(passo.id_externo)
+                    ids[operacao.chave] = str(passo.id_externo)
                 else:
                     try:
                         resposta = await self._post(
@@ -177,11 +193,11 @@ class ExecutorMetaPausado:
                         await self._registro.falhar_passo(
                             passo_ref=passo.passo_ref, codigo=exc.codigo)
                         raise
-                    ids[operacao.nome] = str(resposta["id"])
+                    ids[operacao.chave] = str(resposta["id"])
                     try:
                         await self._registro.fechar_passo(
                             passo_ref=passo.passo_ref,
-                            id_externo=ids[operacao.nome],
+                            id_externo=ids[operacao.chave],
                         )
                     except Exception as exc:
                         try:
@@ -195,15 +211,16 @@ class ExecutorMetaPausado:
                 # Confirm each durable step before allowing the next dependent
                 # object to be created. A mismatch stops the saga immediately.
                 dados = await self._read_one(
-                    operacao.nome, ids[operacao.nome], segredo)
+                    operacao.tipo_objeto, ids[operacao.chave], segredo)
                 self._validar_read_back(
-                    operacao.nome,
+                    operacao.tipo_objeto,
                     dados,
                     payload=payload,
-                    identificador=ids[operacao.nome],
+                    identificador=ids[operacao.chave],
                     ids=ids,
                 )
-                read_back[operacao.nome] = dados
+                read_back[operacao.chave] = dados
+                tipos[operacao.chave] = operacao.tipo_objeto
         except httpx.TimeoutException as exc:
             raise ErroRemotoMeta(
                 "META_REMOTE_RESULT_AMBIGUOUS",
@@ -222,16 +239,16 @@ class ExecutorMetaPausado:
             ) from exc
         conta_externa = plano.operacoes[0].endpoint.split("/act_", 1)[1].split("/", 1)[0]
         opacas = {
-            nome: meta_dom.referencia_opaca_objeto(
-                conta_externa, nome, identificador)
-            for nome, identificador in ids.items()
+            chave: meta_dom.referencia_opaca_objeto(
+                conta_externa, tipos[chave], identificador)
+            for chave, identificador in ids.items()
         }
         return ResultadoNascimentoMeta(
             desfecho="CREATED_PAUSED",
             plano_sha256=plano.plano_sha256,
             referencias_opacas=opacas,
             read_back={
-                nome: {
+                chave: {
                     "status": dados.get("configured_status") or dados.get("status"),
                     "effective_status": dados.get("effective_status"),
                     "objective": dados.get("objective"),
@@ -239,7 +256,7 @@ class ExecutorMetaPausado:
                     "destination_type": dados.get("destination_type"),
                     "advantage_state_info": dados.get("advantage_state_info"),
                 }
-                for nome, dados in read_back.items()
+                for chave, dados in read_back.items()
             },
             retry_permitido=False,
         )
@@ -270,10 +287,26 @@ class ExecutorMetaPausado:
         if resposta.status_code >= 400 or (isinstance(corpo, Mapping) and corpo.get("error")):
             erro = corpo.get("error") if isinstance(corpo, Mapping) else None
             codigo = str(erro.get("code") or resposta.status_code) if isinstance(erro, Mapping) else str(resposta.status_code)
+            subcodigo = _texto_seguro_do_provedor(
+                erro.get("error_subcode") if isinstance(erro, Mapping) else None)
+            explicacoes = []
+            if isinstance(erro, Mapping):
+                for campo in ("error_user_title", "error_user_msg", "message"):
+                    valor = _texto_seguro_do_provedor(erro.get(campo))
+                    if valor and valor not in explicacoes:
+                        explicacoes.append(valor)
+            complemento = f": {' — '.join(explicacoes)}" if explicacoes else ""
             raise ErroRemotoMeta(
                 "META_REMOTE_VALIDATION_FAILED" if "execution_options" in payload else "META_REMOTE_CREATE_FAILED",
-                f"a Meta recusou {operacao.nome} (codigo {codigo})",
+                f"a Meta recusou {operacao.chave} (código {codigo}{f'/{subcodigo}' if subcodigo else ''}){complemento}",
                 retryable=resposta.status_code >= 500,
+                detalhe_provedor={
+                    "code": codigo,
+                    "error_subcode": subcodigo,
+                    "type": _texto_seguro_do_provedor(
+                        erro.get("type") if isinstance(erro, Mapping) else None),
+                    "messages": explicacoes,
+                },
             )
         if not isinstance(corpo, Mapping):
             raise ErroRemotoMeta("META_INVALID_RESPONSE", "resposta Meta invalida")
@@ -282,7 +315,7 @@ class ExecutorMetaPausado:
             if not identificador.isdigit():
                 raise ErroRemotoMeta(
                     "META_REMOTE_RESULT_AMBIGUOUS",
-                    f"a criacao de {operacao.nome} nao devolveu id confirmado",
+                    f"a criacao de {operacao.chave} nao devolveu id confirmado",
                 )
         return corpo
 
@@ -290,7 +323,7 @@ class ExecutorMetaPausado:
         self, nome: str, identificador: str, segredo: SegredoEfemero,
     ) -> Mapping[str, Any]:
         campos = {
-            "campaign": "id,account_id,name,objective,status,configured_status,effective_status,bid_strategy,special_ad_categories,advantage_state_info",
+            "campaign": "id,account_id,name,objective,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info",
             "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,bid_strategy,billing_event,optimization_goal,destination_type,targeting,promoted_object",
             "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
             "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative",
@@ -356,6 +389,10 @@ class ExecutorMetaPausado:
             categorias = tuple(dados.get("special_ad_categories") or ())
             if categorias != tuple(payload.get("special_ad_categories") or ()):
                 divergiu("special_ad_categories")
+            if bool(dados.get("is_adset_budget_sharing_enabled")) is not bool(
+                payload.get("is_adset_budget_sharing_enabled")
+            ):
+                divergiu("is_adset_budget_sharing_enabled")
         elif nome == "adset":
             if str(dados.get("campaign_id") or "") != ids.get("campaign"):
                 divergiu("campaign_id")
@@ -376,5 +413,10 @@ class ExecutorMetaPausado:
                 divergiu("adset_id")
             criativo = dados.get("creative")
             creative_id = criativo.get("id") if isinstance(criativo, Mapping) else None
-            if str(creative_id or "") != ids.get("creative"):
+            criativo_esperado = payload.get("creative")
+            esperado = (
+                criativo_esperado.get("creative_id")
+                if isinstance(criativo_esperado, Mapping) else None
+            )
+            if str(creative_id or "") != str(esperado or ""):
                 divergiu("creative.id")

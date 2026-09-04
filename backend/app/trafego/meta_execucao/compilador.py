@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .contrato import PlanoMetaPausado, ReferenciasMetaResolvidas
+from .contrato import PlanoMetaPausado, ReferenciasMetaResolvidas, VariacaoEstaticaMeta
 
 
 _CAMPAIGN = "$campaign.id"
 _ADSET = "$adset.id"
-_CREATIVE = "$creative.id"
 
 
 def _canonico(valor: Any) -> str:
@@ -25,6 +25,15 @@ class OperacaoMeta:
     payload: Mapping[str, Any]
     depende_de: tuple[str, ...] = ()
     validavel_sem_criar_pai: bool = False
+    tipo: str | None = None
+
+    @property
+    def chave(self) -> str:
+        return self.nome
+
+    @property
+    def tipo_objeto(self) -> str:
+        return self.tipo or self.nome.split(":", 1)[0]
 
 
 @dataclass(frozen=True)
@@ -46,6 +55,8 @@ class PlanoCompiladoMeta:
             "operacoes": [
                 {
                     "nome": op.nome,
+                    "chave": op.chave,
+                    "tipo": op.tipo_objeto,
                     "endpoint": (
                         f"/act_<conta>/{op.endpoint.rsplit('/', 1)[-1]}"
                         if op.endpoint.startswith("/act_") else op.endpoint
@@ -69,6 +80,7 @@ def compilar_plano_pausado(
         "objective": plano.objective,
         "buying_type": "AUCTION",
         "special_ad_categories": list(plano.special_ad_categories),
+        "is_adset_budget_sharing_enabled": plano.is_adset_budget_sharing_enabled,
         "status": "PAUSED",
     }
     targeting: dict[str, Any] = {
@@ -88,45 +100,82 @@ def compilar_plano_pausado(
         "targeting": targeting,
         "status": "PAUSED",
     }
-    story: dict[str, Any] = {
-        "page_id": referencias.page_id,
-        "link_data": {
-            "image_hash": referencias.image_hash,
-            "link": plano.destination_url,
-            "message": plano.message,
-            "name": plano.headline,
-            "description": plano.description,
-            "call_to_action": {
-                "type": plano.call_to_action_type,
-                "value": {"link": plano.destination_url},
-            },
-        },
-    }
-    if referencias.instagram_actor_id is not None:
-        story["instagram_actor_id"] = referencias.instagram_actor_id
-    creative = {"name": plano.creative_name, "object_story_spec": story}
-    ad = {
-        "name": plano.ad_name,
-        "adset_id": _ADSET,
-        "creative": {"creative_id": _CREATIVE},
-        "status": "PAUSED",
-    }
-    operacoes = (
+    operacoes_base = (
         OperacaoMeta("campaign", f"/act_{conta}/campaigns", campaign,
-                     validavel_sem_criar_pai=True),
+                     validavel_sem_criar_pai=True, tipo="campaign"),
         OperacaoMeta("adset", f"/act_{conta}/adsets", adset,
-                     depende_de=("campaign",)),
-        OperacaoMeta("creative", f"/act_{conta}/adcreatives", creative,
-                     validavel_sem_criar_pai=True),
-        OperacaoMeta("ad", f"/act_{conta}/ads", ad,
-                     depende_de=("adset", "creative")),
+                     depende_de=("campaign",), tipo="adset"),
     )
+    variacoes = plano.variacoes_estaticas or (
+        VariacaoEstaticaMeta(
+            variation_key="legacy",
+            creative_name=plano.creative_name,
+            ad_name=plano.ad_name,
+            asset_ref=plano.asset_ref,
+            message=plano.message,
+            headline=plano.headline,
+            description=plano.description,
+            call_to_action_type=plano.call_to_action_type,
+        ),
+    )
+    lote_explicito = bool(plano.variacoes_estaticas)
+    operacoes_variacoes: list[OperacaoMeta] = []
+    for variacao in variacoes:
+        sufixo = f":{variacao.variation_key}" if lote_explicito else ""
+        chave_criativo = f"creative{sufixo}"
+        chave_anuncio = f"ad{sufixo}"
+        story: dict[str, Any] = {
+            "page_id": referencias.page_id,
+            "link_data": {
+                "image_hash": referencias.image_hash_for(
+                    variacao.asset_ref, fallback_ref=plano.asset_ref),
+                "link": plano.destination_url,
+                "message": variacao.message,
+                "name": variacao.headline,
+                "description": variacao.description,
+                "call_to_action": {
+                    "type": variacao.call_to_action_type,
+                    "value": {"link": plano.destination_url},
+                },
+            },
+        }
+        if referencias.instagram_actor_id is not None:
+            story["instagram_actor_id"] = referencias.instagram_actor_id
+        creative = {"name": variacao.creative_name, "object_story_spec": story}
+        ad = {
+            "name": variacao.ad_name,
+            "adset_id": _ADSET,
+            "creative": {"creative_id": f"${chave_criativo}.id"},
+            "status": "PAUSED",
+        }
+        operacoes_variacoes.extend((
+            OperacaoMeta(
+                chave_criativo,
+                f"/act_{conta}/adcreatives",
+                creative,
+                validavel_sem_criar_pai=True,
+                tipo="creative",
+            ),
+            OperacaoMeta(
+                chave_anuncio,
+                f"/act_{conta}/ads",
+                ad,
+                depende_de=("adset", chave_criativo),
+                tipo="ad",
+            ),
+        ))
+    operacoes = operacoes_base + tuple(operacoes_variacoes)
     materia = {
         "api_version": "v26.0",
         "account_ref": plano.account_ref,
         "destination_url": plano.destination_url,
         "operations": [
-            {"name": op.nome, "endpoint": op.endpoint, "payload": op.payload}
+            {
+                "key": op.chave,
+                "type": op.tipo_objeto,
+                "endpoint": op.endpoint,
+                "payload": op.payload,
+            }
             for op in operacoes
         ],
     }
@@ -141,12 +190,14 @@ def compilar_plano_pausado(
 def resolver_dependencias(payload: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, Any]:
     """Resolve only compiler-owned placeholders, recursively and without eval."""
     def visitar(valor: Any) -> Any:
-        if valor == _CAMPAIGN:
-            return ids["campaign"]
-        if valor == _ADSET:
-            return ids["adset"]
-        if valor == _CREATIVE:
-            return ids["creative"]
+        if isinstance(valor, str) and valor.startswith("$") and valor.endswith(".id"):
+            chave = valor[1:-3]
+            if chave in ids:
+                return ids[chave]
+            if chave in {"campaign", "adset", "creative"} or re.fullmatch(
+                r"(?:creative|ad):[a-z0-9][a-z0-9_-]{0,31}", chave
+            ):
+                raise KeyError(chave)
         if isinstance(valor, Mapping):
             return {str(k): visitar(v) for k, v in valor.items()}
         if isinstance(valor, (list, tuple)):

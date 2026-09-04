@@ -43,6 +43,37 @@ def _url_https(valor: str) -> str:
 
 
 @dataclass(frozen=True)
+class VariacaoEstaticaMeta:
+    """One independently named static creative/ad pair in a controlled batch."""
+
+    variation_key: str
+    creative_name: str
+    ad_name: str
+    asset_ref: str
+    message: str
+    headline: str
+    description: str
+    call_to_action_type: str = "LEARN_MORE"
+
+    def __post_init__(self) -> None:
+        chave = str(self.variation_key or "").strip().lower()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,31}", chave):
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_VARIATION_KEY_INVALID",
+                "variation_key precisa ser uma chave curta, estavel e opaca",
+            )
+        object.__setattr__(self, "variation_key", chave)
+        for campo, limite in (
+            ("creative_name", 400), ("ad_name", 400),
+            ("message", 2200), ("headline", 255), ("description", 255),
+        ):
+            object.__setattr__(self, campo, _texto(getattr(self, campo), campo, maximo=limite))
+        object.__setattr__(self, "asset_ref", _referencia(self.asset_ref, "asset_ref"))
+        if self.call_to_action_type not in _CTA:
+            raise ErroDeNascimentoMeta("META_CTA_INVALID", "CTA fora da allowlist P0")
+
+
+@dataclass(frozen=True)
 class PlanoMetaPausado:
     """Operator-approved, account-opaque blueprint for the P0 recipe.
 
@@ -66,6 +97,7 @@ class PlanoMetaPausado:
     start_time: datetime
     special_ad_categories: tuple[str, ...]
     special_categories_confirmed: bool
+    is_adset_budget_sharing_enabled: bool
     instagram_actor_ref: str | None = None
     call_to_action_type: str = "LEARN_MORE"
     objective: str = "OUTCOME_TRAFFIC"
@@ -81,6 +113,7 @@ class PlanoMetaPausado:
     currency: str = "BRL"
     promoted_object: Mapping[str, Any] | None = None
     advantage_audience: bool | None = None
+    variacoes_estaticas: tuple[VariacaoEstaticaMeta, ...] = ()
 
     def __post_init__(self) -> None:
         for campo, limite in (
@@ -122,6 +155,11 @@ class PlanoMetaPausado:
         if self.currency != "BRL":
             raise ErroDeNascimentoMeta(
                 "META_CURRENCY_UNSUPPORTED", "a primeira receita esta limitada a contas BRL")
+        if not isinstance(self.is_adset_budget_sharing_enabled, bool):
+            raise ErroDeNascimentoMeta(
+                "META_BUDGET_SHARING_INVALID",
+                "is_adset_budget_sharing_enabled precisa ser True ou False",
+            )
         if not self.special_categories_confirmed:
             raise ErroDeNascimentoMeta(
                 "META_SPECIAL_CATEGORY_NOT_CONFIRMED",
@@ -135,6 +173,28 @@ class PlanoMetaPausado:
         object.__setattr__(self, "special_ad_categories", categorias)
         if self.call_to_action_type not in _CTA:
             raise ErroDeNascimentoMeta("META_CTA_INVALID", "CTA fora da allowlist P0")
+        variacoes = tuple(self.variacoes_estaticas)
+        if len(variacoes) > 10:
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_BATCH_LIMIT_EXCEEDED",
+                "o lote Meta aceita no maximo 10 variacoes estaticas",
+            )
+        if any(not isinstance(item, VariacaoEstaticaMeta) for item in variacoes):
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_BATCH_INVALID", "variacoes_estaticas contem item invalido")
+        nomes_criativos = [item.creative_name for item in variacoes]
+        nomes_anuncios = [item.ad_name for item in variacoes]
+        chaves = [item.variation_key for item in variacoes]
+        if len(set(chaves)) != len(chaves):
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_BATCH_DUPLICATE_KEY", "variation_key precisa ser unica no lote")
+        if len(set(nomes_criativos)) != len(nomes_criativos):
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_BATCH_DUPLICATE_NAME", "nomes de criativos precisam ser unicos")
+        if len(set(nomes_anuncios)) != len(nomes_anuncios):
+            raise ErroDeNascimentoMeta(
+                "META_STATIC_BATCH_DUPLICATE_NAME", "nomes de anuncios precisam ser unicos")
+        object.__setattr__(self, "variacoes_estaticas", variacoes)
         if not self.countries or any(not re.fullmatch(r"[A-Z]{2}", c) for c in self.countries):
             raise ErroDeNascimentoMeta("META_TARGETING_INVALID", "countries invalido")
         if self.age_min < 18 or self.age_max > 65 or self.age_min > self.age_max:
@@ -152,6 +212,7 @@ class ReferenciasMetaResolvidas:
     page_id: str
     image_hash: str
     instagram_actor_id: str | None = None
+    image_hashes_by_ref: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for campo in ("account_id", "page_id"):
@@ -169,6 +230,26 @@ class ReferenciasMetaResolvidas:
         if not re.fullmatch(r"[A-Za-z0-9_-]{6,160}", imagem):
             raise ErroDeNascimentoMeta("META_RESOLVED_REFERENCE_INVALID", "image_hash invalido")
         object.__setattr__(self, "image_hash", imagem)
+        hashes: dict[str, str] = {}
+        for referencia, hash_imagem in self.image_hashes_by_ref.items():
+            ref = _referencia(str(referencia), "asset_ref")
+            valor = str(hash_imagem or "").strip()
+            if not re.fullmatch(r"[A-Za-z0-9_-]{6,160}", valor):
+                raise ErroDeNascimentoMeta(
+                    "META_RESOLVED_REFERENCE_INVALID", "image_hash do lote invalido")
+            hashes[ref] = valor
+        object.__setattr__(self, "image_hashes_by_ref", hashes)
+
+    def image_hash_for(self, asset_ref: str, *, fallback_ref: str) -> str:
+        if asset_ref == fallback_ref:
+            return self.image_hashes_by_ref.get(asset_ref, self.image_hash)
+        try:
+            return self.image_hashes_by_ref[asset_ref]
+        except KeyError:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_REFERENCE_UNRESOLVED",
+                "uma imagem do lote nao foi resolvida pelo backend",
+            ) from None
 
     def __repr__(self) -> str:
         return "ReferenciasMetaResolvidas(<ocultas>)"

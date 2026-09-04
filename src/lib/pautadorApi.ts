@@ -240,6 +240,7 @@ export interface AtivoCriacaoMeta {
   id_mascarado: string | null;
   largura: number | null;
   altura: number | null;
+  preview_disponivel: boolean;
 }
 
 export interface InventarioCriacaoMeta {
@@ -268,7 +269,18 @@ export interface PlanoMetaPausadoInput {
   start_time: string;
   special_ad_categories: string[];
   special_categories_confirmed: boolean;
+  is_adset_budget_sharing_enabled: boolean;
   call_to_action_type: string;
+  variations?: Array<{
+    variation_key: string;
+    asset_ref: string;
+    creative_name: string;
+    ad_name: string;
+    message: string;
+    headline: string;
+    description: string;
+    call_to_action_type: string;
+  }>;
 }
 
 export interface ResultadoCompilacaoMeta {
@@ -281,7 +293,8 @@ export interface ResultadoCompilacaoMeta {
     plano_sha256: string;
     estado_ao_nascer: 'PAUSED';
     operacoes: Array<{
-      nome: 'campaign' | 'adset' | 'creative' | 'ad';
+      nome: string;
+      tipo?: 'campaign' | 'adset' | 'creative' | 'ad';
       endpoint: string;
       depende_de: string[];
       validavel_sem_criar_pai: boolean;
@@ -452,6 +465,12 @@ export const pautadorApi = {
   ativosCriacaoMeta(accountRef: string): Promise<InventarioCriacaoMeta> {
     return request(
       `/api/trafego/meta/local/criacao/ativos?account_ref=${encodeURIComponent(accountRef)}`,
+    );
+  },
+
+  previewAtivoMeta(accountRef: string, assetRef: string): Promise<string> {
+    return baixarComoBlobUrl(
+      `/api/trafego/meta/local/criacao/ativos/preview?account_ref=${encodeURIComponent(accountRef)}&asset_ref=${encodeURIComponent(assetRef)}`,
     );
   },
 

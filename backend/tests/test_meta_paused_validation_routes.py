@@ -44,6 +44,7 @@ class _GraphFake:
             return _Resposta({'data': [{
                 'hash': 'hashImagem_123456', 'name': 'Imagem teste',
                 'width': 1080, 'height': 1080,
+                'url_128': 'https://scontent.example.fbcdn.net/preview.jpg',
             }]})
         raise AssertionError(url)
 
@@ -100,6 +101,38 @@ def test_validate_only_fechado_recusa_antes_de_ler_token_ou_rede(monkeypatch) ->
     assert resposta.json()['detail']['codigo'] == 'META_VALIDATE_ONLY_BLOCKED'
 
 
+def test_payload_de_aba_antiga_assume_compartilhamento_false_e_aceita_lote() -> None:
+    base = {
+        'account_ref': 'metaacct_exemplo', 'page_ref': 'metapage_exemplo',
+        'asset_ref': 'metaasset_exemplo', 'campaign_name': 'Campanha',
+        'adset_name': 'Conjunto', 'creative_name': 'Criativo 1', 'ad_name': 'Anuncio 1',
+        'destination_url': 'https://example.com/', 'message': 'Mensagem',
+        'headline': 'Titulo', 'description': 'Descricao', 'daily_budget_minor': 1000,
+        'start_time': '2027-01-01T12:00:00Z', 'special_ad_categories': [],
+        'special_categories_confirmed': True, 'call_to_action_type': 'LEARN_MORE',
+        'variations': [
+            {
+                'variation_key': 'variation-001', 'asset_ref': 'metaasset_exemplo',
+                'creative_name': 'Criativo 1', 'ad_name': 'Anuncio 1',
+                'message': 'Mensagem 1', 'headline': 'Titulo 1',
+                'description': 'Descricao 1', 'call_to_action_type': 'LEARN_MORE',
+            },
+            {
+                'variation_key': 'variation-002', 'asset_ref': 'metaasset_segundo',
+                'creative_name': 'Criativo 2', 'ad_name': 'Anuncio 2',
+                'message': 'Mensagem 2', 'headline': 'Titulo 2',
+                'description': 'Descricao 2', 'call_to_action_type': 'LEARN_MORE',
+            },
+        ],
+    }
+    pedido = trafego_meta_validacao.PedidoPlanoMetaPausado.model_validate(base)
+    plano = trafego_meta_validacao._plano(pedido)
+    assert plano.is_adset_budget_sharing_enabled is False
+    assert [item.variation_key for item in plano.variacoes_estaticas] == [
+        'variation-001', 'variation-002',
+    ]
+
+
 def test_inventario_de_criacao_so_devolve_referencias_opacas() -> None:
     async def cenario() -> None:
         graph = _GraphFake()
@@ -117,8 +150,29 @@ def test_inventario_de_criacao_so_devolve_referencias_opacas() -> None:
         assert 'hashImagem_123456' not in texto
         assert publico['paginas'][0]['referencia_opaca'].startswith('metaobj_')
         assert publico['imagens'][0]['referencia_opaca'].startswith('metaasset_')
+        assert publico['imagens'][0]['preview_disponivel'] is True
+        assert 'fbcdn.net' not in texto
         assert all(headers == {'Authorization': 'Bearer token-meta-falso-seguro'}
                    for _, headers in graph.chamadas)
+    asyncio.run(cenario())
+
+
+def test_preview_url_fica_interna_e_e_resolvida_por_referencia_opaca() -> None:
+    async def cenario() -> None:
+        from app.trafego.meta.dominio import referencia_opaca_conta
+        graph = _GraphFake()
+        resolvedor = ResolvedorAtivosMeta(graph)  # type: ignore[arg-type]
+        segredo = SegredoEfemero('token-meta-falso-seguro')
+        inventario = await resolvedor.inventariar(
+            referencia_opaca_conta('123456789'), segredo)
+        url = await resolvedor.preview_url(
+            account_ref=referencia_opaca_conta('123456789'),
+            asset_ref=inventario['imagens'][0]['referencia_opaca'],
+            segredo=segredo,
+        )
+        assert url == 'https://scontent.example.fbcdn.net/preview.jpg'
+        assert url not in str(inventario)
+
     asyncio.run(cenario())
 
 

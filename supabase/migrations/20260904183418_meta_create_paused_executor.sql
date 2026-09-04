@@ -78,8 +78,10 @@ CREATE TABLE public.trafego_meta_create_step (
   prepared_at          timestamptz NOT NULL DEFAULT clock_timestamp(),
   closed_at            timestamptz,
   updated_at           timestamptz NOT NULL DEFAULT clock_timestamp(),
-  CONSTRAINT trafego_meta_create_step_name CHECK (step_name IN ('campaign','adset','creative','ad')),
-  CONSTRAINT trafego_meta_create_step_ordinal CHECK (ordinal BETWEEN 1 AND 4),
+  CONSTRAINT trafego_meta_create_step_name CHECK (
+    step_name ~ '^(campaign|adset|creative(?::[a-z0-9][a-z0-9_-]{0,31})?|ad(?::[a-z0-9][a-z0-9_-]{0,31})?)$'
+  ),
+  CONSTRAINT trafego_meta_create_step_ordinal CHECK (ordinal BETWEEN 1 AND 22),
   CONSTRAINT trafego_meta_create_step_hash CHECK (payload_sha256 ~ '^[a-f0-9]{64}$'),
   CONSTRAINT trafego_meta_create_step_state CHECK (state IN ('IN_FLIGHT','CREATED','AMBIGUOUS','FAILED')),
   CONSTRAINT trafego_meta_create_step_external_id CHECK (
@@ -189,10 +191,7 @@ BEGIN
   IF v_approval.actor_id <> p_actor_id THEN
     RAISE EXCEPTION 'META_APPROVAL_ACTOR_DIVERGED';
   END IF;
-  v_ordinal := CASE p_step_name
-    WHEN 'campaign' THEN 1 WHEN 'adset' THEN 2
-    WHEN 'creative' THEN 3 WHEN 'ad' THEN 4 ELSE NULL END;
-  IF v_ordinal IS NULL THEN
+  IF p_step_name !~ '^(campaign|adset|creative(?::[a-z0-9][a-z0-9_-]{0,31})?|ad(?::[a-z0-9][a-z0-9_-]{0,31})?)$' THEN
     RAISE EXCEPTION 'META_STEP_UNKNOWN';
   END IF;
 
@@ -220,6 +219,13 @@ BEGIN
       RETURN jsonb_build_object('step_ref', v_step.step_id::text, 'state', 'AMBIGUO');
     END IF;
     RAISE EXCEPTION 'META_STEP_PREVIOUSLY_FAILED';
+  END IF;
+
+  SELECT (coalesce(max(ordinal), 0) + 1)::smallint INTO v_ordinal
+    FROM public.trafego_meta_create_step
+   WHERE approval_id = p_approval_id;
+  IF v_ordinal > 22 THEN
+    RAISE EXCEPTION 'META_STEP_LIMIT_EXCEEDED';
   END IF;
 
   INSERT INTO public.trafego_meta_create_step (

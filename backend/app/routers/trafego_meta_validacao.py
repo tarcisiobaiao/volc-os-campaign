@@ -10,9 +10,10 @@ import os
 import uuid
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.routers.meta_local import _credencial_salva, _exigir_host_local
@@ -24,12 +25,24 @@ from app.trafego.meta_execucao.contrato import (
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
     PlanoMetaPausado,
+    VariacaoEstaticaMeta,
 )
 from app.trafego.meta_execucao.executor import ErroRemotoMeta, ExecutorMetaPausado
 
 
 router = APIRouter(prefix="/api/trafego/meta/local/criacao", tags=["meta-validate-paused"])
 TIMEOUT_META = 20.0
+
+
+class PedidoVariacaoEstaticaMeta(BaseModel):
+    variation_key: str = Field(min_length=1, max_length=32)
+    asset_ref: str = Field(min_length=8, max_length=180)
+    creative_name: str = Field(min_length=1, max_length=400)
+    ad_name: str = Field(min_length=1, max_length=400)
+    message: str = Field(min_length=1, max_length=2200)
+    headline: str = Field(min_length=1, max_length=255)
+    description: str = Field(min_length=1, max_length=255)
+    call_to_action_type: str = Field(default="LEARN_MORE", min_length=3, max_length=40)
 
 
 class PedidoPlanoMetaPausado(BaseModel):
@@ -48,7 +61,12 @@ class PedidoPlanoMetaPausado(BaseModel):
     start_time: datetime
     special_ad_categories: list[str] = Field(default_factory=list, max_length=6)
     special_categories_confirmed: bool
+    # Backward-compatible default for tabs opened before this field entered the
+    # UI contract. Meta requires the value explicitly; omission means the safe
+    # Ad Set budget behavior, never an implicit opt-in to sharing.
+    is_adset_budget_sharing_enabled: bool = False
     call_to_action_type: str = Field(default="LEARN_MORE", min_length=3, max_length=40)
+    variations: list[PedidoVariacaoEstaticaMeta] = Field(default_factory=list, max_length=10)
 
 
 class PedidoValidarMeta(BaseModel):
@@ -64,6 +82,7 @@ def _erro(exc: Exception) -> HTTPException:
             "codigo": exc.codigo,
             "mensagem": str(exc),
             "retry_permitido": exc.retryable,
+            "provedor": exc.detalhe_provedor,
         })
     return HTTPException(status_code=500, detail="Falha interna no controle Meta.")
 
@@ -85,7 +104,21 @@ def _plano(payload: PedidoPlanoMetaPausado) -> PlanoMetaPausado:
         start_time=payload.start_time,
         special_ad_categories=tuple(payload.special_ad_categories),
         special_categories_confirmed=payload.special_categories_confirmed,
+        is_adset_budget_sharing_enabled=payload.is_adset_budget_sharing_enabled,
         call_to_action_type=payload.call_to_action_type,
+        variacoes_estaticas=tuple(
+            VariacaoEstaticaMeta(
+                variation_key=item.variation_key,
+                asset_ref=item.asset_ref,
+                creative_name=item.creative_name,
+                ad_name=item.ad_name,
+                message=item.message,
+                headline=item.headline,
+                description=item.description,
+                call_to_action_type=item.call_to_action_type,
+            )
+            for item in payload.variations
+        ),
     )
 
 
@@ -94,10 +127,11 @@ async def _compilar(
     segredo: SegredoEfemero,
 ) -> PlanoCompiladoMeta:
     async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
-        referencias = await ResolvedorAtivosMeta(cliente).resolver(
+        asset_refs = [item.asset_ref for item in payload.variations] or [payload.asset_ref]
+        referencias = await ResolvedorAtivosMeta(cliente).resolver_lote(
             account_ref=payload.account_ref,
             page_ref=payload.page_ref,
-            asset_ref=payload.asset_ref,
+            asset_refs=asset_refs,
             segredo=segredo,
         )
     return compilar_plano_pausado(_plano(payload), referencias)
@@ -115,6 +149,9 @@ async def capacidades(
         "api_version": "v26.0",
         "receita": "OUTCOME_TRAFFIC_WEBSITE_LPV_STATIC_PAUSED",
         "read_assets": "AVAILABLE_WITH_LOCAL_KEYCHAIN",
+        "single_static": "AVAILABLE",
+        "static_batch": "AVAILABLE_UP_TO_10",
+        "flexible_creative": "BLOCKED_UNTIL_ASSET_FEED_SPEC_PROVEN",
         "validate_only": (
             "ENABLED" if os.environ.get("META_VALIDATE_ONLY_ENABLED") == "1"
             else "BLOCKED_BY_SERVER_FLAG"
@@ -135,6 +172,47 @@ async def ativos(
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             return dict(await ResolvedorAtivosMeta(cliente).inventariar(account_ref, segredo))
+    except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
+        raise _erro(exc) from None
+
+
+@router.get("/ativos/preview")
+async def preview_ativo(
+    request: Request,
+    account_ref: str = Query(min_length=8, max_length=180),
+    asset_ref: str = Query(min_length=8, max_length=180),
+    quem: Identidade = Depends(exigir_admin),
+) -> Response:
+    """Proxy an authenticated preview without exposing Meta's signed URL."""
+    _exigir_host_local(request)
+    segredo = SegredoEfemero(_credencial_salva(quem).token)
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+            preview_url = await ResolvedorAtivosMeta(cliente).preview_url(
+                account_ref=account_ref, asset_ref=asset_ref, segredo=segredo)
+            partes = urlparse(preview_url)
+            host = (partes.hostname or "").lower()
+            if partes.scheme != "https" or not host.endswith(".fbcdn.net"):
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_PREVIEW_HOST_REJECTED",
+                    "a URL de preview devolvida pela Meta nao pertence ao CDN permitido",
+                )
+            imagem = await cliente.get(preview_url)
+            if imagem.status_code >= 400:
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_PREVIEW_FAILED", "a Meta recusou o download da previa")
+            tipo = imagem.headers.get("content-type", "").split(";", 1)[0].lower()
+            if not tipo.startswith("image/") or len(imagem.content) > 12_000_000:
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_PREVIEW_INVALID", "a previa nao e uma imagem segura")
+            return Response(
+                content=imagem.content,
+                media_type=tipo,
+                headers={
+                    "Cache-Control": "private, max-age=300",
+                    "X-Content-Type-Options": "nosniff",
+                },
+            )
     except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
         raise _erro(exc) from None
 
