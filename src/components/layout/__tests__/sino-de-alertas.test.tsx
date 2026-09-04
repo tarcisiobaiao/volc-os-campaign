@@ -119,7 +119,9 @@ describe('isolamento por rede', () => {
       montar(endereco);
       expect(inventarioHabilitado).toBe(false);
       expect(notificacoesHabilitadas).toBe(false);
-      expect(screen.getByRole('button', { name: /não foi possível consultar/i })).toBeTruthy();
+      const gatilho = screen.getByRole('button', { name: /notificações google ocultas/i });
+      fireEvent.click(gatilho);
+      expect(screen.getByText(/isso não indica que o VOLC O\.S\. esteja offline/i)).toBeTruthy();
     },
   );
 });

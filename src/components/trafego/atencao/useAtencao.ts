@@ -44,6 +44,8 @@ import type { OcorrenciaOperacional } from '@/components/trafego/inventario/erro
 import { projetarAtencao, type Projecao } from './projecao';
 
 export interface LeituraDaAtencao extends Projecao {
+  /** A central pertence a outra rede nesta tela; não é falha de conexão. */
+  foraDeEscopo: boolean;
   /** Primeira consulta desta sessão: ainda não há nada na mão. */
   carregando: boolean;
   /** Há consulta em curso por cima do que já está na tela. */
@@ -119,9 +121,10 @@ export function useAtencao(habilitado = true): LeituraDaAtencao {
   if (!leituraHabilitada) {
     return {
       ...projecao,
+      foraDeEscopo: true,
       carregando: false,
       atualizando: false,
-      indisponivel: true,
+      indisponivel: false,
       ultimoEstadoConhecido: false,
       parcial: false,
       motivos: ['a central de atenção ainda não está disponível para Meta Ads'],
@@ -132,6 +135,7 @@ export function useAtencao(habilitado = true): LeituraDaAtencao {
 
   return {
     ...projecao,
+    foraDeEscopo: false,
     carregando: (notificacoes.isLoading || inventario.carregando) && nenhumaFonte,
     atualizando: notificacoes.isFetching || inventario.atualizando,
     indisponivel: nenhumaFonte && alguemFalhou,
@@ -154,7 +158,7 @@ export function useAtencao(habilitado = true): LeituraDaAtencao {
  */
 export function useContadorDeAtencao(habilitado = true): number | null {
   const atencao = useAtencao(habilitado);
-  if (atencao.carregando || atencao.indisponivel) return null;
+  if (atencao.foraDeEscopo || atencao.carregando || atencao.indisponivel) return null;
 
   // ⚠️ O contador conta CAMPANHAS, não itens da fila.
   //
@@ -177,6 +181,7 @@ export function useContadorDeAtencao(habilitado = true): number | null {
 
 /** Qual dos cinco estados está em cena. Um só, sempre — nunca dois. */
 export type EstadoDoSino =
+  | 'fora_de_escopo'
   | 'sem_condicao'
   | 'com_condicao'
   | 'consultando'
@@ -198,12 +203,15 @@ export type EstadoDoSino =
   | 'lista_incompleta';
 
 export function estadoDoSino(leitura: {
+  foraDeEscopo?: boolean;
   carregando: boolean;
   indisponivel: boolean;
   ultimoEstadoConhecido: boolean;
   quantos: number;
   parcial?: boolean;
 }): EstadoDoSino {
+  // A central Google não estar ativa numa tela Meta é escopo, não pane.
+  if (leitura.foraDeEscopo) return 'fora_de_escopo';
   // A ordem é a regra. "Não consegui perguntar" vem antes de qualquer contagem,
   // porque uma contagem apurada sobre nada é uma afirmação sobre nada.
   if (leitura.indisponivel) return 'indisponivel';

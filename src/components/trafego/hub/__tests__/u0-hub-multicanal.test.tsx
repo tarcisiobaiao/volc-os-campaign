@@ -198,8 +198,8 @@ describe('8–9 · seletor e filtros persistem na URL', () => {
 describe('11 · Meta não finge integração', () => {
   it('escolhe Meta e declara que a leitura ainda não existe', () => {
     montar('/trafego?rede=meta');
-    expect(screen.getByRole('heading', { name: 'Integração ainda não configurada' })).toBeTruthy();
-    expect(screen.getByText(/não há número de desempenho/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Fundação instalada · conexão real pendente' })).toBeTruthy();
+    expect(screen.getByText(/não inventa campanhas ou desempenho/)).toBeTruthy();
     expect(screen.queryByText(/ROAS/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Carregar mais' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Atualizar dados' })).toBeNull();
@@ -211,7 +211,7 @@ describe('11 · Meta não finge integração', () => {
 
   it('aceita plataforma=meta sem projetar a situação do Google', () => {
     montar('/trafego?plataforma=meta');
-    expect(screen.getByRole('heading', { name: 'Integração ainda não configurada' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Fundação instalada · conexão real pendente' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Atualizar dados' })).toBeNull();
     expect(chamadas.inventario.every((habilitado) => habilitado === false)).toBe(true);
     expect(screen.getByTestId('endereco').textContent).toContain('rede=meta');

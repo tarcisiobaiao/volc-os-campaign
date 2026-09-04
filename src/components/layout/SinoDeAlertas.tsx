@@ -81,6 +81,8 @@ interface SinoDeAlertasProps {
 export function rotuloDoSino(estado: EstadoDoSino, quantos: number): string {
   const contagem = quantos === 1 ? '1 condição ativa' : `${quantos} condições ativas`;
   switch (estado) {
+    case 'fora_de_escopo':
+      return 'Notificações Google ocultas enquanto você está em Meta Ads.';
     case 'indisponivel':
       return 'Notificações: não foi possível consultar. Abrir central.';
     case 'consultando':
@@ -139,6 +141,8 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
               qualquer cor, e sobrevive a um print em preto e branco. */}
           {estado === 'indisponivel' ? (
             <WifiOff className="h-4 w-4 text-destructive" aria-hidden />
+          ) : estado === 'fora_de_escopo' ? (
+            <CircleHelp className="h-4 w-4 text-muted-foreground" aria-hidden />
           ) : (
             <Bell className="h-4 w-4" aria-hidden />
           )}
@@ -184,7 +188,9 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
           <div className="min-w-0">
             <h2 className="text-sm font-semibold">Atenção</h2>
             <p className="text-[11px] text-muted-foreground">
-              {estado === 'indisponivel'
+              {estado === 'fora_de_escopo'
+                ? 'central Google fora desta rede'
+                : estado === 'indisponivel'
                 ? 'não foi possível consultar'
                 : estado === 'consultando'
                   ? 'consultando a operação'
@@ -222,6 +228,17 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
 
         <div className="max-h-[min(26rem,60vh)] overflow-y-auto">
           {estado === 'consultando' && <Carregando />}
+
+          {estado === 'fora_de_escopo' && (
+            <div className="px-4 py-5" role="status">
+              <CircleHelp className="mb-3 h-5 w-5 text-muted-foreground" aria-hidden />
+              <p className="text-sm font-medium">Você está operando Meta Ads</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Esta central acompanha condições do Google Ads e fica neutra nesta rede.
+                Isso não indica que o VOLC O.S. esteja offline.
+              </p>
+            </div>
+          )}
 
           {estado === 'indisponivel' && (
             <div className="px-4 py-5" role="alert">
