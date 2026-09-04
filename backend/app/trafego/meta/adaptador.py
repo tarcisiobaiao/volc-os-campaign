@@ -7,6 +7,7 @@ keeps tests hermetic and prevents the package from touching Meta by import.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
@@ -38,6 +39,16 @@ _EDGES: Mapping[str, str] = {
     "ad": "ads",
     "creative": "adcreatives",
 }
+_CAPABILIDADES_DE_LEITURA = {
+    "campaign": "META_READ_CAMPAIGNS",
+    "adset": "META_READ_ADSETS",
+    "ad": "META_READ_ADS",
+    "creative": "META_READ_CREATIVES",
+    "page": "META_READ_PAGES",
+    "instagram": "META_READ_INSTAGRAM",
+    "pixel": "META_READ_PIXEL_DATASET",
+    "insights": "META_READ_INSIGHTS",
+}
 
 
 class AdaptadorMetaSomenteLeitura:
@@ -63,6 +74,109 @@ class AdaptadorMetaSomenteLeitura:
         self._limite = limite_por_pagina
         self._max_paginas = max_paginas_por_edge
 
+    async def descobrir_contas(self, segredo: SegredoEfemero) -> tuple[dom.ContaMetaDescoberta, ...]:
+        linhas, _ = await self._listar_url(
+            f"{self._base}/{self._versao}/me/adaccounts",
+            segredo,
+            fields="id,name,account_status,currency,timezone_name,business{id,name}",
+            limite=min(self._limite, 100),
+        )
+        contas: list[dom.ContaMetaDescoberta] = []
+        for linha in linhas:
+            if not isinstance(linha, dict):
+                raise ErroDeLeituraMeta("META_INVALID_RESPONSE", "conta Meta invalida", True)
+            business = linha.get("business")
+            conta_business = None
+            if isinstance(business, dict) and business.get("id"):
+                conta_business = dom.BusinessMeta(
+                    id_externo=str(business.get("id")), nome=business.get("name"))
+            try:
+                contas.append(dom.ContaMetaDescoberta(
+                    id_externo=str(linha.get("id")),
+                    nome=linha.get("name"),
+                    status=dom.texto_opcional(linha.get("account_status")),
+                    moeda=linha.get("currency"),
+                    fuso=linha.get("timezone_name"),
+                    business=conta_business,
+                ))
+            except dom.ContratoMetaInvalido as exc:
+                raise ErroDeLeituraMeta("META_INVALID_RESPONSE", str(exc), True) from None
+        return tuple(contas)
+
+    @staticmethod
+    def resolver_referencia_opaca(
+        contas: tuple[dom.ContaMetaDescoberta, ...], referencia_opaca: str,
+    ) -> dom.ContaMetaDescoberta:
+        for conta in contas:
+            if conta.referencia_opaca == referencia_opaca:
+                return conta
+        raise dom.ContratoMetaInvalido("referencia opaca Meta desconhecida para este operador")
+
+    async def preflight_conta(
+        self, referencia_opaca: str, segredo: SegredoEfemero,
+    ) -> Mapping[str, Any]:
+        contas = await self.descobrir_contas(segredo)
+        conta = self.resolver_referencia_opaca(contas, referencia_opaca)
+        disponiveis: list[str] = ["META_READ_ACCOUNT"]
+        ausentes: list[str] = ["META_CREATE_PAUSED", "META_ENABLE", "META_MUTATE"]
+        erros: list[Mapping[str, str]] = []
+        contagens: dict[str, int | None] = {}
+        paginas_lidas = 0
+        for tipo in dom.TIPOS_DE_OBJETO:
+            try:
+                objetos, paginas = await self._listar_edge(conta.id_externo, tipo, segredo)
+                contagens[tipo] = len(objetos)
+                paginas_lidas += paginas
+                disponiveis.append(_CAPABILIDADES_DE_LEITURA[tipo])
+            except ErroDeLeituraMeta as exc:
+                contagens[tipo] = None
+                ausentes.append(_CAPABILIDADES_DE_LEITURA[tipo])
+                erros.append({"capability": _CAPABILIDADES_DE_LEITURA[tipo], "codigo": exc.codigo, "mensagem": exc.mensagem_segura})
+        for capability, edge in (("page", "promote_pages"), ("instagram", "instagram_accounts"), ("pixel", "adspixels")):
+            try:
+                linhas, paginas = await self._listar_url(
+                    f"{self._base}/{self._versao}/act_{conta.id_externo}/{edge}",
+                    segredo,
+                    fields="id,name",
+                    limite=25,
+                )
+                contagens[capability] = len(linhas)
+                paginas_lidas += paginas
+                disponiveis.append(_CAPABILIDADES_DE_LEITURA[capability])
+            except ErroDeLeituraMeta as exc:
+                contagens[capability] = None
+                ausentes.append(_CAPABILIDADES_DE_LEITURA[capability])
+                erros.append({"capability": _CAPABILIDADES_DE_LEITURA[capability], "codigo": exc.codigo, "mensagem": exc.mensagem_segura})
+        try:
+            insights, paginas = await self.ler_insights(
+                conta.id_externo,
+                segredo,
+                nivel="account",
+                periodo_inicio=date.today(),
+                periodo_fim=date.today(),
+            )
+            contagens["insights"] = len(insights)
+            paginas_lidas += paginas
+            disponiveis.append("META_READ_INSIGHTS")
+        except ErroDeLeituraMeta as exc:
+            contagens["insights"] = None
+            ausentes.append("META_READ_INSIGHTS")
+            erros.append({"capability": "META_READ_INSIGHTS", "codigo": exc.codigo, "mensagem": exc.mensagem_segura})
+        return {
+            "ok": True,
+            "api_version": self._versao,
+            "referencia_opaca": conta.referencia_opaca,
+            "conta": conta.publico(),
+            "contagens": contagens,
+            "estados": {"readiness": conta.prontidao_leitura, "persistencia": "NAO_PERSISTIDO"},
+            "capacidades_disponiveis": sorted(set(disponiveis)),
+            "capacidades_ausentes": sorted(set(ausentes)),
+            "frescor": datetime.now(timezone.utc).isoformat(),
+            "paginas_lidas": paginas_lidas,
+            "erros": erros,
+            "proxima_acao": "preparar_sincronizacao" if not erros else "corrigir_capacidades_ausentes",
+        }
+
     async def ler_hierarquia(
         self, conta_externa: str, segredo: SegredoEfemero,
     ) -> dom.LeituraDaHierarquia:
@@ -82,22 +196,115 @@ class AdaptadorMetaSomenteLeitura:
             paginas_lidas=paginas,
         )
 
+    async def ler_insights(
+        self,
+        conta_externa: str,
+        segredo: SegredoEfemero,
+        *,
+        nivel: str,
+        periodo_inicio: date,
+        periodo_fim: date,
+        breakdown: str = "none",
+        janela_atribuicao: str = "default",
+    ) -> tuple[tuple[dom.InsightMeta, ...], int]:
+        conta = dom.conta_canonica(conta_externa)
+        params_extra: dict[str, Any] = {
+            "level": nivel,
+            "time_range": {"since": periodo_inicio.isoformat(), "until": periodo_fim.isoformat()},
+            "fields": "account_id,campaign_id,adset_id,ad_id,date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,cpm,cpc,ctr,actions",
+            "limit": self._limite,
+        }
+        if breakdown != "none":
+            params_extra["breakdowns"] = breakdown
+        linhas, paginas = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{conta}/insights",
+            segredo,
+            fields=None,
+            limite=self._limite,
+            parametros_extra=params_extra,
+        )
+        observacao = datetime.now(timezone.utc)
+        saida: list[dom.InsightMeta] = []
+        for linha in linhas:
+            if not isinstance(linha, dict):
+                raise ErroDeLeituraMeta("META_INVALID_RESPONSE", "insight invalido", True)
+            objeto = linha.get(f"{nivel}_id") or linha.get("account_id") or conta
+            actions = tuple(
+                dom.AcaoInsightMeta(
+                    action_type=str(a.get("action_type") or "unknown"),
+                    value=dom.decimal_opcional(a.get("value"), campo="action.value"),
+                    attribution_window=str(a.get("attribution_window") or janela_atribuicao),
+                    object_level=nivel,
+                    date_start=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
+                    date_stop=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
+                )
+                for a in (linha.get("actions") or []) if isinstance(a, dict)
+            )
+            saida.append(dom.InsightMeta(
+                provider=dom.META_ADS,
+                conta_externa=conta,
+                nivel=nivel,
+                objeto_externo=str(objeto),
+                periodo_inicio=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
+                periodo_fim=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
+                janela_atribuicao=janela_atribuicao,
+                breakdown=breakdown,
+                observado_em=observacao,
+                spend=dom.decimal_opcional(linha.get("spend"), campo="spend"),
+                impressions=_int_opcional(linha.get("impressions")),
+                reach=_int_opcional(linha.get("reach")),
+                frequency=dom.decimal_opcional(linha.get("frequency"), campo="frequency"),
+                clicks=_int_opcional(linha.get("clicks")),
+                inline_link_clicks=_int_opcional(linha.get("inline_link_clicks")),
+                landing_page_views=_landing_page_views(actions),
+                cpm=dom.decimal_opcional(linha.get("cpm"), campo="cpm"),
+                cpc=dom.decimal_opcional(linha.get("cpc"), campo="cpc"),
+                ctr=dom.decimal_opcional(linha.get("ctr"), campo="ctr"),
+                actions=actions,
+            ))
+        return tuple(saida), paginas
+
     async def _listar_edge(
         self, conta: str, tipo: str, segredo: SegredoEfemero,
     ) -> tuple[tuple[dom.ObjetoMeta, ...], int]:
-        url = f"{self._base}/{self._versao}/act_{conta}/{_EDGES[tipo]}"
-        cursor: str | None = None
-        vistos: set[str] = set()
+        linhas, paginas = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{conta}/{_EDGES[tipo]}",
+            segredo,
+            fields=_FIELDS[tipo],
+            limite=self._limite,
+        )
         objetos: list[dom.ObjetoMeta] = []
+        vistos: set[str] = set()
+        for linha in linhas:
+            obj = self._normalizar(tipo, linha)
+            if obj.id_externo in vistos:
+                raise ErroDeLeituraMeta(
+                    "META_DUPLICATE_OBJECT", "objeto repetido entre paginas", True)
+            vistos.add(obj.id_externo)
+            objetos.append(obj)
+        return tuple(objetos), paginas
+
+    async def _listar_url(
+        self,
+        url: str,
+        segredo: SegredoEfemero,
+        *,
+        fields: str | None,
+        limite: int,
+        parametros_extra: Mapping[str, Any] | None = None,
+    ) -> tuple[list[Any], int]:
+        cursor: str | None = None
+        linhas: list[Any] = []
         paginas = 0
         while True:
             if paginas >= self._max_paginas:
                 raise ErroDeLeituraMeta(
                     "META_PAGINATION_LIMIT", "limite seguro de paginas excedido", True)
-            params: dict[str, Any] = {
-                "fields": _FIELDS[tipo],
-                "limit": self._limite,
-            }
+            params: dict[str, Any] = {"limit": limite}
+            if fields is not None:
+                params["fields"] = fields
+            if parametros_extra:
+                params.update(parametros_extra)
             if cursor:
                 params["after"] = cursor
             try:
@@ -121,16 +328,10 @@ class AdaptadorMetaSomenteLeitura:
             if not isinstance(corpo, dict) or not isinstance(corpo.get("data"), list):
                 raise ErroDeLeituraMeta(
                     "META_INVALID_RESPONSE", "resposta sem lista data", True)
-            for linha in corpo["data"]:
-                obj = self._normalizar(tipo, linha)
-                if obj.id_externo in vistos:
-                    raise ErroDeLeituraMeta(
-                        "META_DUPLICATE_OBJECT", "objeto repetido entre paginas", True)
-                vistos.add(obj.id_externo)
-                objetos.append(obj)
+            linhas.extend(corpo["data"])
             proximo = self._cursor(corpo)
             if proximo is None:
-                return tuple(objetos), paginas
+                return linhas, paginas
             if proximo == cursor:
                 raise ErroDeLeituraMeta(
                     "META_PAGINATION_LOOP", "cursor de paginacao nao avancou", True)
@@ -201,3 +402,19 @@ class AdaptadorMetaSomenteLeitura:
                 "META_REMOTE_FAILURE", "Meta indisponivel temporariamente", True)
         return ErroDeLeituraMeta(
             "META_REQUEST_REJECTED", f"Meta recusou a leitura (HTTP {status})", False)
+
+
+def _int_opcional(valor: Any) -> int | None:
+    if valor is None or valor == "":
+        return None
+    return int(valor)
+
+
+def _landing_page_views(actions: tuple[dom.AcaoInsightMeta, ...]) -> int | None:
+    total = 0
+    achou = False
+    for acao in actions:
+        if acao.action_type in {"landing_page_view", "offsite_conversion.fb_pixel_view_content"}:
+            achou = True
+            total += int(acao.value or 0)
+    return total if achou else None

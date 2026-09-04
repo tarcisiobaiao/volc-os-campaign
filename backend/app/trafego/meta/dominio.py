@@ -6,16 +6,19 @@ reliability rules is useful, pretending the storage identity is neutral is not.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Mapping, Sequence
 
 from app.asset_vault.dominio import PayloadRecusado, recusar_chave_sensivel
 
 META_ADS = "META_ADS"
 TIPOS_DE_OBJETO = ("campaign", "adset", "ad", "creative")
+NIVEIS_DE_INSIGHT = ("account", "campaign", "adset", "ad")
 ESTADOS_DE_PRONTIDAO = (
     "CONFIG_MISSING",
     "REFERENCE_PRESENT",
@@ -69,6 +72,25 @@ def id_interno(*, conta_externa: str, tipo: str, id_externo_meta: str) -> str:
     return str(uuid.uuid5(_NAMESPACE_META, f"{META_ADS}:{conta}:{tipo}:{externo}"))
 
 
+def referencia_opaca_conta(conta_externa: str) -> str:
+    """Stable non-secret account handle safe for the browser.
+
+    The handle is deterministic so the UI can hold a reference, but it is not a
+    reversible account-id map kept in the browser. The backend must re-read the
+    accessible accounts and resolve this handle internally on every operation.
+    """
+    conta = conta_canonica(conta_externa)
+    digest = hashlib.sha256(f"{META_ADS}:account:{conta}".encode("utf-8")).hexdigest()[:24]
+    return f"metaacct_{digest}"
+
+
+def mascarar_id(valor: Any) -> str | None:
+    texto = str(valor or "").removeprefix("act_").strip()
+    if not texto:
+        return None
+    return f"••••{texto[-4:]}"
+
+
 def instante_utc(valor: datetime, *, campo: str) -> datetime:
     if valor.tzinfo is None or valor.utcoffset() is None:
         raise ContratoMetaInvalido(f"{campo} precisa de timezone")
@@ -80,6 +102,69 @@ def texto_opcional(valor: Any) -> str | None:
         return None
     texto = str(valor).strip()
     return texto or None
+
+
+def decimal_opcional(valor: Any, *, campo: str) -> Decimal | None:
+    if valor is None or valor == "":
+        return None
+    try:
+        return Decimal(str(valor))
+    except Exception as exc:  # pragma: no cover - branch defensive
+        raise ContratoMetaInvalido(f"{campo} precisa ser decimal") from exc
+
+
+@dataclass(frozen=True)
+class BusinessMeta:
+    id_externo: str
+    nome: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "id_externo", id_externo(self.id_externo, campo="business.id"))
+        object.__setattr__(self, "nome", texto_opcional(self.nome))
+
+    def publico(self) -> Mapping[str, Any]:
+        return {"id_mascarado": mascarar_id(self.id_externo), "nome": self.nome}
+
+
+@dataclass(frozen=True)
+class ContaMetaDescoberta:
+    id_externo: str
+    nome: str | None
+    status: str | None
+    moeda: str | None
+    fuso: str | None
+    business: BusinessMeta | None = None
+
+    def __post_init__(self) -> None:
+        conta = conta_canonica(self.id_externo)
+        object.__setattr__(self, "id_externo", conta)
+        object.__setattr__(self, "nome", texto_opcional(self.nome))
+        object.__setattr__(self, "status", texto_opcional(self.status))
+        moeda = texto_opcional(self.moeda)
+        if moeda is not None and not re.fullmatch(r"[A-Z]{3}", moeda):
+            raise ContratoMetaInvalido("moeda Meta precisa ser ISO-4217")
+        object.__setattr__(self, "moeda", moeda)
+        object.__setattr__(self, "fuso", texto_opcional(self.fuso))
+
+    @property
+    def referencia_opaca(self) -> str:
+        return referencia_opaca_conta(self.id_externo)
+
+    @property
+    def prontidao_leitura(self) -> str:
+        return "READY_FOR_READ"
+
+    def publico(self) -> Mapping[str, Any]:
+        return {
+            "referencia_opaca": self.referencia_opaca,
+            "nome": self.nome or "Conta sem nome",
+            "id_mascarado": mascarar_id(self.id_externo),
+            "status": self.status,
+            "moeda": self.moeda,
+            "fuso": self.fuso,
+            "business": self.business.publico() if self.business else None,
+            "prontidao_leitura": self.prontidao_leitura,
+        }
 
 
 @dataclass(frozen=True)
@@ -143,6 +228,70 @@ class LeituraDaHierarquia:
     @property
     def objetos(self) -> tuple[ObjetoMeta, ...]:
         return self.campanhas + self.conjuntos + self.anuncios + self.criativos
+
+
+@dataclass(frozen=True)
+class AcaoInsightMeta:
+    action_type: str
+    value: Decimal | int | str | None
+    attribution_window: str
+    object_level: str
+    date_start: date
+    date_stop: date
+
+    def __post_init__(self) -> None:
+        if not self.action_type.strip() or not self.attribution_window.strip():
+            raise ContratoMetaInvalido("acao de insight incompleta")
+        if self.object_level not in NIVEIS_DE_INSIGHT:
+            raise ContratoMetaInvalido("nivel de insight desconhecido")
+        if self.date_stop < self.date_start:
+            raise ContratoMetaInvalido("periodo de action invalido")
+        if self.value is not None:
+            object.__setattr__(self, "value", decimal_opcional(self.value, campo="action.value"))
+
+
+@dataclass(frozen=True)
+class InsightMeta:
+    provider: str
+    conta_externa: str
+    nivel: str
+    objeto_externo: str
+    periodo_inicio: date
+    periodo_fim: date
+    janela_atribuicao: str
+    breakdown: str
+    observado_em: datetime
+    spend: Decimal | int | str | None = None
+    impressions: int | None = None
+    reach: int | None = None
+    frequency: Decimal | int | str | None = None
+    clicks: int | None = None
+    inline_link_clicks: int | None = None
+    landing_page_views: int | None = None
+    cpm: Decimal | int | str | None = None
+    cpc: Decimal | int | str | None = None
+    ctr: Decimal | int | str | None = None
+    actions: tuple[AcaoInsightMeta, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.provider != META_ADS:
+            raise ContratoMetaInvalido("provider de insight precisa ser META_ADS")
+        object.__setattr__(self, "conta_externa", conta_canonica(self.conta_externa))
+        if self.nivel not in NIVEIS_DE_INSIGHT:
+            raise ContratoMetaInvalido("nivel de insight desconhecido")
+        if self.nivel != "account":
+            object.__setattr__(self, "objeto_externo", id_externo(self.objeto_externo, campo="objeto_externo"))
+        elif not str(self.objeto_externo).strip():
+            raise ContratoMetaInvalido("objeto account vazio")
+        if self.periodo_fim < self.periodo_inicio:
+            raise ContratoMetaInvalido("periodo de insight invalido")
+        instante_utc(self.observado_em, campo="observado_em")
+        for campo in ("spend", "frequency", "cpm", "cpc", "ctr"):
+            object.__setattr__(self, campo, decimal_opcional(getattr(self, campo), campo=campo))
+        for campo in ("impressions", "reach", "clicks", "inline_link_clicks", "landing_page_views"):
+            valor = getattr(self, campo)
+            if valor is not None and int(valor) < 0:
+                raise ContratoMetaInvalido(f"{campo} nao pode ser negativo")
 
 
 @dataclass(frozen=True)
