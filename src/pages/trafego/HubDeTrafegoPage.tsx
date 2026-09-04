@@ -600,7 +600,12 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
         <Tabs value={aba} onValueChange={trocarAba} className="mt-0">
           <TabsList
             aria-label="seções do tráfego"
-            className="h-auto w-full justify-start gap-1 rounded-lg border border-border bg-muted p-1"
+            /* ⚠️ `overflow-x-auto` E `w-max` no poço: em 375px as quatro abas
+               não cabem, e os dois ancestrais (`overflow-x-clip` nesta página e
+               `overflow-hidden` no Layout) RECORTAM em vez de rolar — a última
+               aba ficava cortada ao meio, inalcançável no telefone. Rolar é a
+               única saída que não esconde navegação. */
+            className="h-auto w-full max-w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-muted p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <TabsTrigger value="campanhas" className={gatilho}>
               <RotuloDaAba

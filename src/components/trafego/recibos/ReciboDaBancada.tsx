@@ -28,7 +28,8 @@ import { CircleCheck, CircleOff, CircleHelp, Copy, Check, Pause } from 'lucide-r
 import { cn } from '@/lib/utils';
 import { CartaoDeRecibo } from './CartaoDeRecibo';
 import { lerRecibo } from './recibo';
-import { idExternoDaCampanha, proximoAtoSeguro, type ProximoAto } from '@/lib/trafego/lancamento';
+import { idExternoDaCampanha, proximoAtoSeguro } from '@/lib/trafego/lancamento';
+import type { ProximoAto } from '@/lib/trafego/lancamento';
 import type { ReciboDeLancamento } from '@/types/trafego';
 
 /**
@@ -149,8 +150,43 @@ const IdCopiavel: React.FC<{ rotulo: string; valor: string | null }> = ({ rotulo
   );
 };
 
+/**
+ * O desfecho DECLARADO pelo servidor quando não houve recibo.
+ *
+ * ⚠️ ESTE É O CASO PARA O QUAL O RECIBO PERSISTENTE FOI ESCRITO, e era
+ * justamente o que não chegava até aqui.
+ *
+ * Quando `/subir` termina em 504 `indeterminado` ou 502 `recusado`, NÃO existe
+ * `ReciboDeLancamento` nenhum — o servidor devolve `{estado, mensagem,
+ * recibo_id, item_id, …}` e o modal guardava isso em estado próprio, que morria
+ * no fechamento. Ou seja: a região que existe para preservar `recibo_id` e
+ * `item_id` funcionava no caminho feliz e falhava exatamente onde eles importam,
+ * que é quando ninguém sabe se a campanha existe.
+ */
+export interface DesfechoDeclarado {
+  estado: 'indeterminado' | 'recusado';
+  mensagem: string;
+  recibo_id: string | null;
+  item_id: string | null;
+  erro_codigo?: string | null;
+  request_id?: string | null;
+  /** ⚠️ `VOLC-CANARY-<impressao[:12]>`, derivada do plano APROVADO.
+   *
+   *  Sem `campaign_id`, o validador de `ReconciliarEntrada`
+   *  (`routers/trafego.py:4213-4219`) recusa o corpo: "reconciliar exige
+   *  `campaign_id` OU `marca`". E o caso que mais precisa da rota e justamente
+   *  o que nao tem id externo, porque a chamada nunca respondeu — logo a marca
+   *  e a unica chave possivel ali. Ela e estavel entre tentativas. */
+  marca?: string | null;
+}
+
 export interface ReciboDaBancadaProps {
-  recibo: ReciboDeLancamento;
+  /** O recibo completo, quando `/subir` respondeu com um. */
+  recibo?: ReciboDeLancamento | null;
+  /** O desfecho declarado, quando não houve recibo. Ver `DesfechoDeclarado`. */
+  declarado?: DesfechoDeclarado | null;
+  /** A conta do pedido. Necessária para reconciliar quando não há recibo. */
+  customerId?: string | null;
   canal: string;
   /** Se o usuário atual pode chamar `POST /reconciliar` — que exige admin. */
   podeReconciliar: boolean;
@@ -160,17 +196,31 @@ export interface ReciboDaBancadaProps {
 }
 
 export const ReciboDaBancada: React.FC<ReciboDaBancadaProps> = ({
-  recibo, canal, podeReconciliar, onReconciliar, className,
+  recibo, declarado, customerId, canal, podeReconciliar, onReconciliar, className,
 }) => {
-  const desfecho = desfechoDoRecibo(recibo);
+  if (!recibo && !declarado) return null;
+
+  // Um desfecho declarado sem recibo é SEMPRE ignorância ou recusa — nunca
+  // sucesso. `recusado` fecha como erro respondido; `indeterminado` como
+  // "não sei se criou".
+  const desfecho: DesfechoDoRecibo = recibo
+    ? desfechoDoRecibo(recibo)
+    : declarado!.estado === 'recusado' ? 'erro' : 'sem_resposta';
   const ap = APRESENTACAO[desfecho];
   const Glifo = ap.glifo;
-  const proximo = proximoAtoSeguro(recibo);
-  const idExterno = idExternoDaCampanha(recibo) || null;
+  // Sem recibo não há ledger para consultar, e a única saída segura é
+  // reconciliar por identidade.
+  const proximo: ProximoAto = recibo ? proximoAtoSeguro(recibo) : 'reconciliar_na_conta';
+  const idExterno = recibo ? (idExternoDaCampanha(recibo) || null) : null;
+  const conta = recibo?.customer_id || customerId || '';
+  const reciboId = recibo?.ledger?.recibo_id ?? declarado?.recibo_id ?? null;
+  const itemId = recibo?.ledger?.item_id ?? declarado?.item_id ?? null;
+  const requestId = recibo?.request_id || declarado?.request_id || null;
   // O cartão completo só monta quando o recibo tem o mínimo para ser um recibo
-  // (`carimbo` e `impressao`). Sem eles, a região continua existindo com o
-  // desfecho e os identificadores — que é justamente o que salva um caso ruim.
-  const detalhado = lerRecibo(recibo as unknown);
+  // (`carimbo` e `impressao`). Sem eles — e sem recibo nenhum — a região
+  // continua existindo com o desfecho e os identificadores, que é justamente o
+  // que salva um caso ruim.
+  const detalhado = recibo ? lerRecibo(recibo as unknown) : null;
 
   return (
     <section
@@ -192,6 +242,13 @@ export const ReciboDaBancada: React.FC<ReciboDaBancadaProps> = ({
           <p className="mt-2 max-w-[70ch] text-sm leading-6 text-foreground text-pretty">
             {ap.explicacao}
           </p>
+          {/* A frase do servidor, quando ele mandou uma. Ela nomeia o caso
+              concreto; a explicação acima nomeia a CLASSE do desfecho. */}
+          {declarado?.mensagem && (
+            <p className="mt-2 max-w-[70ch] text-sm leading-6 text-muted-foreground text-pretty">
+              {declarado.mensagem}
+            </p>
+          )}
         </div>
         {/* PAUSED aparece LITERAL, e só no desfecho em que é um fato. Escrevê-lo
             num recibo indeterminado seria afirmar um estado que ninguém leu. */}
@@ -210,16 +267,22 @@ export const ReciboDaBancada: React.FC<ReciboDaBancadaProps> = ({
       <dl className="mt-5 grid gap-x-6 gap-y-4 sm:grid-cols-2">
         <div className="min-w-0">
           <dt className="text-xs text-muted-foreground">conta</dt>
-          <dd className="tabular text-sm text-foreground">{recibo.customer_id || 'não declarada'}</dd>
+          <dd className="tabular text-sm text-foreground">{conta || 'não declarada'}</dd>
         </div>
         <div className="min-w-0">
           <dt className="text-xs text-muted-foreground">canal</dt>
           <dd className="text-sm text-foreground">{canal}</dd>
         </div>
         <IdCopiavel rotulo="id da campanha na conta" valor={idExterno} />
-        <IdCopiavel rotulo="request id" valor={recibo.request_id} />
-        <IdCopiavel rotulo="recibo em aberto" valor={recibo.ledger?.recibo_id ?? null} />
-        <IdCopiavel rotulo="item do ledger" valor={recibo.ledger?.item_id ?? null} />
+        <IdCopiavel rotulo="request id" valor={requestId} />
+        <IdCopiavel rotulo="recibo em aberto" valor={reciboId} />
+        <IdCopiavel rotulo="item do ledger" valor={itemId} />
+        {declarado?.erro_codigo && (
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">código do erro</dt>
+            <dd className="text-sm text-foreground">{declarado.erro_codigo}</dd>
+          </div>
+        )}
       </dl>
 
       <div className="mt-5 rounded-md border border-border/60 bg-muted/20 p-3">

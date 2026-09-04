@@ -52,6 +52,7 @@ import { JaNoAr } from '@/components/trafego/JaNoAr';
 import { VereditoDePolitica } from '@/components/trafego/VereditoDePolitica';
 import { Lancamento } from '@/components/trafego/Lancamento';
 import { ReciboDaBancada } from '@/components/trafego/recibos/ReciboDaBancada';
+import type { DesfechoDeclarado } from '@/components/trafego/recibos/ReciboDaBancada';
 import {
   MapaDeParadas, PainelDeBloqueio, Pedido,
 } from '@/components/trafego/bancada';
@@ -125,6 +126,9 @@ const NovaCampanhaPage: React.FC = () => {
   const [aprovando, setAprovando] = useState(false);
   const [lancando, setLancando] = useState(false);
   const [recibo, setRecibo] = useState<ReciboDeLancamento | null>(null);
+  /** O desfecho declarado quando NAO houve recibo — 504 indeterminado ou 502
+   *  recusado. Ver `DesfechoDeclarado`: e o caso em que os ids mais importam. */
+  const [declarado, setDeclarado] = useState<DesfechoDeclarado | null>(null);
   const [campanhaCriada, setCampanhaCriada] = useState<string | null>(null);
 
   // ── carga ─────────────────────────────────────────────────────────────────
@@ -191,13 +195,13 @@ const NovaCampanhaPage: React.FC = () => {
   // As capacidades desta sessão. Só é lida quando existe recibo para fechar —
   // antes disso a resposta não muda nada na tela.
   useEffect(() => {
-    if (!recibo) return;
+    if (!recibo && !declarado) return;
     let ativo = true;
     void pautadorApi.capacidades()
       .then((c) => { if (ativo) setPodeReconciliar(Boolean(c.is_admin)); })
       .catch(() => { if (ativo) setPodeReconciliar(false); });
     return () => { ativo = false; };
-  }, [recibo]);
+  }, [recibo, declarado]);
 
   // O plano gravado da conta. Zero rede ao Google — ver o comentário do cliente.
   useEffect(() => {
@@ -235,7 +239,9 @@ const NovaCampanhaPage: React.FC = () => {
 
   const fatos: FatosDaBancada = useMemo(() => ({
     cockpit, destino, conjunto, copy, verticais, orcamento, lance,
-  }), [cockpit, destino, conjunto, copy, verticais, orcamento, lance]);
+    certificacoes: rascunho.certificacoes,
+  }), [cockpit, destino, conjunto, copy, verticais, orcamento, lance,
+       rascunho.certificacoes]);
 
   const faltas = useMemo(() => faltasDaBancada(fatos), [fatos]);
   const bloqueios = useMemo(() => bloqueiosDoCockpit(cockpit), [cockpit]);
@@ -246,7 +252,44 @@ const NovaCampanhaPage: React.FC = () => {
   // `?etapa` ficaria presa na primeira para sempre.
   const paradasSemAtual = useMemo(
     () => projetarParadas(fatos, SEM_PARADA_ATUAL), [fatos]);
-  const etapa: ParadaDaBancada = etapaPedida ?? primeiraNaoConfirmada(paradasSemAtual);
+  /**
+   * ⚠️ A ETAPA É DERIVADA UMA VEZ E FIXADA. Derivá-la a cada render corrompia
+   * dinheiro.
+   *
+   * O único caminho de entrada não traz `?etapa`
+   * (`QuadroDeOportunidades.tsx:339` linka `/trafego/nova/:id?run=:run`), e com
+   * ela ausente `etapa` virava função de `fatos` — que inclui `orcamento` e
+   * `lance`, vindos do rascunho, atualizados a cada TECLA.
+   *
+   * Consequência medida: o operador na parada Economia digita "50" no orçamento.
+   * No primeiro caractere, "5", `faltasDaParada('economia')` esvazia,
+   * `primeiraNaoConfirmada` passa a devolver `'revisao'`, e `<ParadaEconomia>`
+   * DESMONTA no meio da digitação. Fica gravado `orcamento: '5'` — e é esse 5
+   * que entra em `budget_diario`. A Revisão que sobe no lugar já mostra "Provar
+   * contra a conta" habilitado, porque a régua considera a economia completa.
+   *
+   * Havia ainda o efeito visível na carga: cockpit, conjunto e copy chegam em
+   * efeitos separados, e o painel central trocava sozinho até três vezes.
+   *
+   * A correção fixa a parada de entrada assim que o cockpit aterrissa e a
+   * escreve na URL — que passa a ser a autoridade, como o cabeçalho deste
+   * arquivo já prometia.
+   */
+  const [etapaFixada, setEtapaFixada] = useState<ParadaDaBancada | null>(null);
+  const etapa: ParadaDaBancada =
+    etapaPedida ?? etapaFixada ?? primeiraNaoConfirmada(paradasSemAtual);
+
+  useEffect(() => {
+    // Só depois do cockpit: antes dele TODAS as paradas são `indeterminada`, e
+    // fixar aí prenderia o operador em `destino` para sempre.
+    if (etapaPedida || etapaFixada || !cockpit) return;
+    const p = primeiraNaoConfirmada(paradasSemAtual);
+    setEtapaFixada(p);
+    const q = new URLSearchParams(params);
+    q.set('canal', canal);
+    q.set('etapa', p);
+    setParams(q, { replace: true });
+  }, [etapaPedida, etapaFixada, cockpit, paradasSemAtual, params, canal, setParams]);
   const paradas = useMemo(() => projetarParadas(fatos, etapa), [fatos, etapa]);
 
   const hrefDaParada = useCallback((p: ParadaDaBancada) => {
@@ -336,31 +379,69 @@ const NovaCampanhaPage: React.FC = () => {
     [rascunho.negativas],
   );
 
-  const pedido: PedidoDeProvaSearch | null = (cockpit && oid && orcamento != null && lance != null)
-    ? {
-      opportunity_id: oid,
-      run_id: runId ?? null,
-      customer_id: cockpit.conta?.customer_id ?? '',
-      login_customer_id: cockpit.conta?.login_customer_id ?? '',
-      // ⚠️ Vazio de propósito: as positivas vêm do conjunto aprovado, no
-      // servidor. `keywords_por_grupo(<conjunto aprovado>)` é quem as monta.
-      grupos: [],
-      copy: copy?.copy ?? null,
-      budget_diario: orcamento,
-      cpc_inicial: lance,
-      rede: { google_search: true, search_partners: false, display_expansion: false },
-      match_type: DECORRE_DA_ESTRATEGIA[estrategia].match_type,
-      criterios: negativas,
-      keywords_fora: rascunho.keywordsFora,
-      canal: 'SEARCH' as const,
-      estrategia_lance: estrategia,
-      graduacao_em_conversoes: estrategia === 'MANUAL_CPC' ? rascunho.graduacao : 0,
-      meta_conversao_id: cockpit.conta?.meta_conversao?.primaria?.id ?? null,
-      vertical: rascunho.vertical || cockpit.origem?.vertical,
-      certificacoes: rascunho.certificacoes,
-      url_final: cockpit.origem?.url_final,
-    }
-    : null;
+  /**
+   * ⚠️ MEMOIZADO, E ISSO NÃO É OTIMIZAÇÃO — É SEGURANÇA.
+   *
+   * `pedido` é prop de `<Lancamento>`. Lá dentro, `provar` é um `useCallback`
+   * com deps `[pedido, trava, destino]`, e existe
+   * `useEffect(() => { void provar(); }, [provar])`.
+   *
+   * Um objeto literal recriado a cada render dá identidade nova a cada render →
+   * `provar` muda de identidade → o efeito dispara de novo. Ou seja: QUALQUER
+   * re-render da página com o modal aberto rodava `POST /provar` outra vez — a
+   * chamada mais lenta e mais cara do fluxo — e, pior, `provar()` começa com
+   * `setEstado('provando')`: a escada VOLTAVA para o começo.
+   *
+   * O caminho concreto que isto fecha: `setRecibo` dispara o efeito de
+   * capacidades, que faz `setPodeReconciliar`, que re-renderiza a página logo
+   * DEPOIS da criação — e a máquina saía de `criada` para `provando`, apagando
+   * da tela o recibo da campanha que acabou de nascer.
+   *
+   * As deps abaixo são exatamente o que compõe o payload. Nada de `cockpit`
+   * inteiro: ele muda por releitura e não mudaria o pedido.
+   */
+  const temCockpit = cockpit !== null;
+  const pedido: PedidoDeProvaSearch | null = useMemo(() => (
+    (cockpit && oid && orcamento != null && lance != null)
+      ? {
+        opportunity_id: oid,
+        run_id: runId ?? null,
+        customer_id: cockpit.conta?.customer_id ?? '',
+        login_customer_id: cockpit.conta?.login_customer_id ?? '',
+        // ⚠️ Vazio de propósito: as positivas vêm do conjunto aprovado, no
+        // servidor. `keywords_por_grupo(<conjunto aprovado>)` é quem as monta.
+        grupos: [],
+        copy: copy?.copy ?? null,
+        budget_diario: orcamento,
+        cpc_inicial: lance,
+        rede: { google_search: true, search_partners: false, display_expansion: false },
+        match_type: DECORRE_DA_ESTRATEGIA[estrategia].match_type,
+        criterios: negativas,
+        keywords_fora: rascunho.keywordsFora,
+        canal: 'SEARCH' as const,
+        estrategia_lance: estrategia,
+        graduacao_em_conversoes: estrategia === 'MANUAL_CPC' ? rascunho.graduacao : 0,
+        meta_conversao_id: cockpit.conta?.meta_conversao?.primaria?.id ?? null,
+        vertical: rascunho.vertical || cockpit.origem?.vertical,
+        certificacoes: rascunho.certificacoes,
+        url_final: cockpit.origem?.url_final,
+      }
+      : null
+  ), [
+    // ⚠️ NUNCA `cockpit` INTEIRO nesta lista.
+    //
+    // `onCriada` relê o cockpit depois da criação — objeto novo, mesma
+    // informação. Com `cockpit` aqui, essa releitura daria identidade nova ao
+    // pedido e re-dispararia `/provar` justamente no instante em que a campanha
+    // acabou de nascer, apagando o recibo da tela. Só os campos que o payload
+    // de fato usa entram, e todos são primitivos: identidade estável.
+    temCockpit,
+    cockpit?.conta?.customer_id, cockpit?.conta?.login_customer_id,
+    cockpit?.conta?.meta_conversao?.primaria?.id, cockpit?.origem?.vertical,
+    cockpit?.origem?.url_final, oid, runId, orcamento, lance,
+    copy?.copy, negativas, estrategia, rascunho.keywordsFora, rascunho.graduacao,
+    rascunho.vertical, rascunho.certificacoes,
+  ]);
 
   // ── atos ──────────────────────────────────────────────────────────────────
   const aprovarConjunto = async (motivo: string) => {
@@ -539,20 +620,32 @@ const NovaCampanhaPage: React.FC = () => {
             )}
 
             {/* O recibo FICA. Ele não morre quando a escada fecha. */}
-            {recibo && (
+            {(recibo || declarado) && (
               <ReciboDaBancada
                 recibo={recibo}
+                declarado={declarado}
+                customerId={cockpit?.conta?.customer_id ?? null}
                 canal={canal}
-                podeReconciliar={podeReconciliar && Boolean(recibo.ledger?.item_id)}
+                podeReconciliar={podeReconciliar
+                  && Boolean(recibo?.ledger?.item_id ?? declarado?.item_id)}
                 onReconciliar={() => {
-                  const item = recibo.ledger?.item_id;
-                  if (!item) return;
+                  const item = recibo?.ledger?.item_id ?? declarado?.item_id;
+                  const conta = recibo?.customer_id || cockpit?.conta?.customer_id;
+                  if (!item || !conta) return;
+                  const idExterno = recibo ? (idExternoDaCampanha(recibo) || null) : null;
                   void pautadorApi.reconciliarLancamento({
                     item_id: item,
-                    customer_id: recibo.customer_id,
-                    // Opcional de propósito: o item que mais precisa de
-                    // reconciliação é o que NÃO tem id externo.
-                    campaign_id: idExternoDaCampanha(recibo) || null,
+                    customer_id: conta,
+                    // ⚠️ SEM `campaign_id`, A `marca` É OBRIGATÓRIA.
+                    //
+                    // `ReconciliarEntrada` aceita os dois como opcionais, mas o
+                    // validador do backend recusa o corpo em que NENHUM dos dois
+                    // vem — e o caso que mais precisa desta rota é justamente o
+                    // que não tem id externo, porque a chamada nunca respondeu.
+                    // A marca é derivada do plano aprovado e estável entre
+                    // tentativas: `VOLC-CANARY-<impressao[:12]>`.
+                    campaign_id: idExterno,
+                    marca: idExterno ? null : (declarado?.marca ?? null),
                   })
                     .then(() => {
                       if (oid) {
@@ -603,6 +696,15 @@ const NovaCampanhaPage: React.FC = () => {
             if (oid) void pautadorApi.cockpitDeTrafego(oid, { runId }).then(setCockpit).catch(() => {});
           }}
           onRecibo={setRecibo}
+          onDesfechoDeclarado={(d) => setDeclarado({
+            estado: d.estado === 'recusado' ? 'recusado' : 'indeterminado',
+            mensagem: d.mensagem,
+            recibo_id: d.recibo_id,
+            item_id: d.item_id,
+            erro_codigo: 'erro_codigo' in d ? d.erro_codigo : null,
+            request_id: 'request_id' in d ? d.request_id : null,
+            marca: d.marca,
+          })}
         />
       )}
     </Layout>

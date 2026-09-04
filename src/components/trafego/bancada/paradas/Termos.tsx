@@ -314,6 +314,7 @@ export const ParadaTermos: React.FC<{
         onMatchPorKeyword={onMatchPorKeyword}
         negativas={negativas}
         onNegativas={onNegativas}
+        positivasSomenteLeitura
       />
     </div>
   );

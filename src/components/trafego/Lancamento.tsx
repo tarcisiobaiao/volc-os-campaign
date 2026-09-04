@@ -86,10 +86,21 @@ interface Props {
    *  e a única saída é reconciliar por identidade. A página guarda; o modal
    *  apenas informa. */
   onRecibo?: (recibo: ReciboDeLancamento) => void;
+  /** ⚠️ O DESFECHO SEM RECIBO — e é o caso que mais precisa sobreviver.
+   *
+   *  Em 504 `indeterminado` e 502 `recusado` NÃO existe `ReciboDeLancamento`:
+   *  o servidor devolve `{estado, mensagem, recibo_id, item_id, …}`. Sem esta
+   *  saída, `onRecibo` nunca disparava nesses ramos e a região persistente do
+   *  recibo — escrita justamente para preservar `recibo_id` e `item_id` quando
+   *  ninguém sabe se a campanha existe — só funcionava no caminho feliz. */
+  onDesfechoDeclarado?: (
+    d: (SubidaIndeterminada | RecusaDeclarada) & { marca: string | null },
+  ) => void;
 }
 
 export const Lancamento: React.FC<Props> = ({
   pedido, trava, titulo, destino, resumoDaCopy, onFechar, onCriada, onRecibo,
+  onDesfechoDeclarado,
 }) => {
   // ⚠️ O estado INICIAL já é o do destino. Nascer em `provando` e só depois
   // recuar exibiria por um instante uma escada correndo para um destino
@@ -211,6 +222,16 @@ export const Lancamento: React.FC<Props> = ({
 
   useEffect(() => { void provar(); }, [provar]);
 
+  /** A marca do canario deste pedido: `VOLC-CANARY-<impressao[:12]>`.
+   *
+   *  ⚠️ Derivada do plano APROVADO, e por isso estavel entre tentativas — e e
+   *  por isso que ela serve de chave de busca quando nao ha id externo. So o
+   *  modal conhece a impressao (ela vem da prova), entao e daqui que ela sai. */
+  const marcaDoCanario = (): string | null => {
+    const imp = prova?.autorizacao?.plano_impressao;
+    return imp ? `VOLC-CANARY-${imp.slice(0, 12)}` : null;
+  };
+
   const escrever = async () => {
     // ⚠️ PRIMEIRA LINHA, E SÍNCRONA. Ver o comentário de `escrevendoAgora`.
     if (escrevendoAgora.current) return;
@@ -273,6 +294,8 @@ export const Lancamento: React.FC<Props> = ({
       const declarada = indeterminacaoDeclarada(e);
       if (declarada) {
         setIndeterminacao(declarada);
+        // Para FORA: a página guarda os ids, e eles sobrevivem ao fechamento.
+        onDesfechoDeclarado?.({ ...declarada, marca: marcaDoCanario() });
         setErro(declarada.mensagem);
         setEstado('indeterminado');
         return;
@@ -289,6 +312,7 @@ export const Lancamento: React.FC<Props> = ({
       const recusadaPeloGoogle = recusaDeclarada(e);
       if (recusadaPeloGoogle) {
         setRecusa(recusadaPeloGoogle);
+        onDesfechoDeclarado?.({ ...recusadaPeloGoogle, marca: marcaDoCanario() });
         setErro(recusadaPeloGoogle.mensagem);
         setEstado('erro');
         return;
@@ -320,7 +344,20 @@ export const Lancamento: React.FC<Props> = ({
     faltasParaEscrever.push('confirmar a autorização de criação pausada');
 
   return (
-    <div className="ignicao" data-estado={estado} role="dialog" aria-modal="true"
+    /* ⚠️ `dark` NA RAIZ DO OVERLAY, e isto não é cosmética: é correção de
+       legibilidade.
+
+       A Ignição é uma superfície quase preta (`--aurora` sobre `hsl(222 30% 4%)`),
+       e ela monta DOIS componentes que passaram a falar em token semântico
+       (`CartaoDoPlanoDeMensuracao` e `PainelDaMensuracao`). Token semântico
+       resolve pelo TEMA: sem contexto escuro, `text-foreground` vira a tinta do
+       tema claro (`#1A1C1E`) e o bloco inteiro fica em ~1,2:1 contra o preto —
+       ilegível, logo acima do botão que cria a campanha.
+
+       `darkMode: ["class"]` (tailwind.config.ts:4) faz `.dark` redefinir os
+       tokens (src/index.css:163). Declarar a classe aqui é dizer a verdade sobre
+       a superfície: ela É escura, e tudo dentro dela deve resolver assim. */
+    <div className="ignicao dark" data-estado={estado} role="dialog" aria-modal="true"
          aria-label={`Lançamento de ${titulo}`}>
       <div className="ignicao-horizonte" aria-hidden>
         <div className="ignicao-hz ignicao-hz-1" style={{ ['--avanco' as string]: avanco }} />

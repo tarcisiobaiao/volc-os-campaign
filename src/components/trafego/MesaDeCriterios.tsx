@@ -79,6 +79,21 @@ interface Props {
   /** As negativas. Estado de verdade — o operador as escreveu. */
   negativas: CriterioDeKeyword[];
   onNegativas: (n: CriterioDeKeyword[]) => void;
+  /**
+   * ⚠️ QUANDO A CORRESPONDÊNCIA DAS POSITIVAS NÃO É EDITÁVEL AQUI.
+   *
+   * Na Bancada Guiada o conjunto positivo é o APROVADO na mineração, e ele é
+   * autoridade: `/provar` monta a `Escolha` com
+   * `keywords_por_grupo(<conjunto aprovado>)`, e o corpo do pedido recusa
+   * qualquer positiva (`CRITERIO_POSITIVO_DO_CORPO_RECUSADO`). Ou seja: o
+   * seletor de correspondência por keyword é um controle VIVO cujo efeito é
+   * descartado antes de sair da tela — o operador troca EXACT por PHRASE, a
+   * linha muda na frente dele, e o Google recebe outra coisa.
+   *
+   * Com `positivasSomenteLeitura`, a correspondência aparece como fato lido, sem
+   * `<select>`. Um controle que não controla é pior que nenhum.
+   */
+  positivasSomenteLeitura?: boolean;
 }
 
 export function MesaDeCriterios({
@@ -90,6 +105,7 @@ export function MesaDeCriterios({
   onMatchPorKeyword,
   negativas,
   onNegativas,
+  positivasSomenteLeitura = false,
 }: Props) {
   const positivas = useMemo<CriterioDeKeyword[]>(
     () =>
@@ -131,6 +147,7 @@ export function MesaDeCriterios({
         permitirBroadPositivo={permitirBroadPositivo}
         anuladas={anuladas}
         onMatch={trocarMatch}
+        somenteLeitura={positivasSomenteLeitura}
       />
       <PalavrasAExcluir
         negativas={negativas}
@@ -150,19 +167,25 @@ function PalavrasQueAtivam({
   permitirBroadPositivo,
   anuladas,
   onMatch,
+  somenteLeitura = false,
 }: {
   positivas: CriterioDeKeyword[];
   volumePorKeyword?: Record<string, number>;
   permitirBroadPositivo: boolean;
   anuladas: Set<string>;
   onMatch: (texto: string, mt: MatchType) => void;
+  somenteLeitura?: boolean;
 }) {
   if (positivas.length === 0) {
     return (
       <Bloco titulo="Palavras que ativam" contagem={0}>
         <p className="text-sm text-muted-foreground">
-          Nenhuma keyword marcada ainda. Marque na lista acima para que elas
-          apareçam aqui com a correspondência de cada uma.
+          {somenteLeitura
+            /* ⚠️ A Bancada não tem "lista acima" para marcar: o conjunto vem da
+               mineração. A frase antiga mandava o operador a um lugar que não
+               existe mais nesta tela. */
+            ? 'O conjunto positivo aprovado está vazio. Não há o que conferir aqui.'
+            : 'Nenhuma keyword marcada ainda. Marque na lista acima para que elas apareçam aqui com a correspondência de cada uma.'}
         </p>
       </Bloco>
     );
@@ -202,17 +225,34 @@ function PalavrasQueAtivam({
                   {vol == null ? 'volume não medido' : `${vol.toLocaleString('pt-BR')} buscas/mês`}
                 </p>
               </div>
-              <SeletorDeMatch
-                valor={c.match_type}
-                rotulo={`Correspondência de ${c.texto}`}
-                opcoes={permitirBroadPositivo ? MATCH_TYPES : MATCH_TYPES.filter((m) => m !== 'BROAD')}
-                onChange={(mt) => onMatch(c.texto, mt)}
-              />
+              {/* ⚠️ Ver `positivasSomenteLeitura`: na Bancada a correspondência
+                  das positivas vem do conjunto APROVADO e não é editável aqui.
+                  Um `<select>` que muda a linha e não muda o pedido é pior que
+                  um rótulo. */}
+              {somenteLeitura ? (
+                <span className="shrink-0 text-sm text-muted-foreground md:w-32 md:text-right">
+                  {c.match_type}
+                </span>
+              ) : (
+                <SeletorDeMatch
+                  valor={c.match_type}
+                  rotulo={`Correspondência de ${c.texto}`}
+                  opcoes={permitirBroadPositivo ? MATCH_TYPES : MATCH_TYPES.filter((m) => m !== 'BROAD')}
+                  onChange={(mt) => onMatch(c.texto, mt)}
+                />
+              )}
             </li>
           );
         })}
       </ul>
-      {!permitirBroadPositivo && (
+      {somenteLeitura && (
+        <p className="mt-3 max-w-[74ch] text-sm leading-relaxed text-muted-foreground">
+          A correspondência de cada positiva é a que a mineração aprovou. Ela não
+          se edita aqui: o conjunto positivo é autoridade, e o pedido não carrega
+          positivas.
+        </p>
+      )}
+      {!somenteLeitura && !permitirBroadPositivo && (
         <p className="mt-3 max-w-[74ch] text-[11px] leading-relaxed text-muted-foreground">
           <b>Ampla não está disponível</b> porque a campanha nasce com CPC
           manual. Broad sem lance automático não tem sinal de leilão que filtre

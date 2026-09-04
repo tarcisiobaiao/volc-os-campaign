@@ -176,7 +176,26 @@ export const ParadaEconomia: React.FC<{
           <>
             <ul className="grid gap-3 sm:grid-cols-2">
               {ORDEM_DOS_PORTOES.map((p) => {
-                const estado = plano.portoes[p];
+                // ⚠️ FALLBACK OBRIGATÓRIO, e não defensividade decorativa.
+                //
+                // `PortoesDaMensuracao` declara os sete, mas o payload vem do
+                // servidor e um portão ausente daria `estado === undefined` —
+                // e aí `GLIFO_DO_ESTADO[undefined]` é `undefined`, que o React
+                // tenta renderizar como componente e derruba a tela inteira com
+                // "Element type is invalid". Uma leitura incompleta não pode
+                // custar a página.
+                //
+                // O fallback é INDETERMINADO, nunca PRONTO: "o servidor não
+                // respondeu sobre este portão" é ignorância, e ignorância não
+                // pinta verde.
+                //
+                // ⚠️ E a guarda testa a TABELA, não só `?? `. Um estado NOVO do
+                // servidor (`'PARCIALMENTE_PRONTO'`, digamos) passaria pelo
+                // `??` e daria o mesmo `undefined` no glifo. Aqui, o que a
+                // tabela não conhece vira "não se sabe" — fail-closed, e a tela
+                // continua de pé.
+                const cru = plano.portoes[p];
+                const estado = cru in GLIFO_DO_ESTADO ? cru : 'INDETERMINADO';
                 return (
                   <li key={p} className="rounded-md border border-border/60 bg-muted/20 p-3">
                     <div className="flex flex-wrap items-center gap-2">

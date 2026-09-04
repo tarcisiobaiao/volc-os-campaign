@@ -75,6 +75,9 @@ export interface FatosDaBancada {
   /** O orçamento e o lance que o operador digitou, já normalizados. */
   orcamento: number | null;
   lance: number | null;
+  /** As habilitações que o operador declarou. Elas SATISFAZEM o portão da
+   *  vertical — sem elas aqui, a Bancada criaria um bloqueio sem saída. */
+  certificacoes: string[];
 }
 
 /**
@@ -86,8 +89,29 @@ export interface FatosDaBancada {
  * anúncios sem veicular em 39 contas. Anúncio que não veicula é reprovação com
  * outro nome, e agora a régua é uma só.
  */
-export function politicaBarra(v: VerticalDePolitica | null | undefined): boolean {
-  return v?.severidade === 'bloqueio' || v?.severidade === 'limitacao';
+export function politicaBarra(
+  v: VerticalDePolitica | null | undefined,
+  pais?: string | null,
+  certificacoes: string[] = [],
+): boolean {
+  if (!v?.exige) return false;
+  // ⚠️ O PORTÃO É POR PAÍS, E A CERTIFICAÇÃO O SATISFAZ.
+  //
+  // A primeira versão desta função olhava só `severidade`, e isso era uma régua
+  // NOVA do navegador — mais dura que a do produto e cega a duas coisas que
+  // `PortaoDePolitica.tsx:48-50` já tratava certo desde sempre:
+  //
+  //   1. `paises_exigem` — verificar no Brasil não habilita o México, e uma
+  //      vertical marcada `bloqueio` que NÃO exige neste país não barra nada;
+  //   2. `certificacoes` — quando a conta já declarou a habilitação exigida, o
+  //      portão está cumprido.
+  //
+  // Sem isso, a Bancada criava um bloqueio sem saída: o operador marcava a
+  // certificação na própria parada e continuava barrado.
+  const exigeAqui = (v.paises_exigem || []).includes(pais ?? '');
+  if (!exigeAqui) return false;
+  if (certificacoes.includes(v.exige)) return false;
+  return v.severidade === 'bloqueio' || v.severidade === 'limitacao';
 }
 
 /** A vertical desta oportunidade, quando o servidor a reconhece. */
@@ -157,7 +181,9 @@ export function faltasDaParada(
       if (!f.cockpit?.origem?.vertical) add('resolver a vertical desta oportunidade', true);
       else if (f.verticais.length === 0) add('ler os portões de política do servidor', true);
       else if (!v) add(`adjudicar a vertical "${f.cockpit.origem.vertical}"`, true);
-      else if (politicaBarra(v)) add(v.exige ? `cumprir: ${v.exige}` : 'liberar o portão desta vertical');
+      else if (politicaBarra(v, f.cockpit?.origem?.pais, f.certificacoes)) {
+        add(v.exige ? `declarar a habilitação: ${v.exige}` : 'liberar o portão desta vertical');
+      }
       break;
     }
     case 'termos': {

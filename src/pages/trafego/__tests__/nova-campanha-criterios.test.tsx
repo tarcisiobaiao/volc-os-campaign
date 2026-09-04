@@ -297,3 +297,40 @@ describe('o pedido que a Bancada monta', () => {
     expect(pedidoEspiado.atual).toBeNull();
   });
 });
+
+describe('a prova NÃO é re-disparada por re-render', () => {
+  it('o pedido tem identidade estável entre renders da página', async () => {
+    // ⚠️ O BLOQUEANTE QUE ISTO FECHA.
+    //
+    // `pedido` era um objeto literal recriado a CADA render. Ele é prop de
+    // `<Lancamento>`, onde `provar` é um `useCallback` com deps
+    // `[pedido, trava, destino]` e existe
+    // `useEffect(() => { void provar(); }, [provar])`.
+    //
+    // Identidade nova a cada render → `provar` novo → o efeito dispara de novo →
+    // `POST /provar` outra vez, que é a chamada mais lenta e mais cara do fluxo.
+    // Pior: `provar()` começa com `setEstado('provando')`, então a escada
+    // VOLTAVA ao começo — inclusive depois de `criada`, apagando da tela o
+    // recibo da campanha que acabou de nascer.
+    //
+    // O caminho concreto: `setRecibo` dispara o efeito de capacidades, que faz
+    // `setPodeReconciliar`, que re-renderiza a página logo DEPOIS da criação.
+    comEconomiaDeclarada();
+    cockpitDeTrafego.mockResolvedValue(cockpitLimpo());
+    renderizar('revisao');
+    const botao = await screen.findByRole('button', { name: /Provar contra a conta/ });
+    await waitFor(() => expect((botao as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(botao);
+    await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
+
+    const primeiro = pedidoEspiado.atual;
+    // Força re-renders da página sem mudar nada que componha o pedido.
+    for (let i = 0; i < 3; i += 1) {
+      fireEvent.click(screen.getByTestId('lancamento-aberto'));
+      await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
+    }
+    // MESMA referência: `useMemo` não recomputou, então `provar` não mudou de
+    // identidade e o efeito não re-disparou.
+    expect(pedidoEspiado.atual).toBe(primeiro);
+  });
+});

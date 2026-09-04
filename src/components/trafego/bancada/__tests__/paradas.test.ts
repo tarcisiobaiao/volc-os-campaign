@@ -56,6 +56,7 @@ const COPY_OK = { status: 'done', copy: { headlines: [], descriptions: [] } } as
 const TUDO_PRONTO: FatosDaBancada = {
   cockpit: cockpit(), destino: DESTINO_APTO, conjunto: CONJUNTO_OK,
   copy: COPY_OK, verticais: VERTICAL_LIMPA, orcamento: 10, lance: 0.12,
+  certificacoes: [],
 };
 
 describe('a severidade tem uma régua só, e limitacao BARRA', () => {
@@ -65,10 +66,19 @@ describe('a severidade tem uma régua só, e limitacao BARRA', () => {
     // `limitacao` entre as severidades que barram — o efeito FULLY_LIMITED
     // deixou 57 anúncios sem veicular em 39 contas. Anúncio que não veicula é
     // reprovação com outro nome.
-    expect(politicaBarra({ severidade: 'limitacao' } as never)).toBe(true);
-    expect(politicaBarra({ severidade: 'bloqueio' } as never)).toBe(true);
-    expect(politicaBarra({ severidade: null } as never)).toBe(false);
-    expect(politicaBarra(null)).toBe(false);
+    // O portão só existe quando a vertical EXIGE algo neste país — ver o teste
+    // do país logo abaixo. Aqui o que se isola é a severidade.
+    const exigindo = (severidade: string | null) => ({
+      id: 'x', titulo: 'X', descricao: '', exige: 'habilitacao_x',
+      severidade, paises_exigem: ['BR'],
+    }) as never;
+    expect(politicaBarra(exigindo('limitacao'), 'BR', [])).toBe(true);
+    expect(politicaBarra(exigindo('bloqueio'), 'BR', [])).toBe(true);
+    expect(politicaBarra(exigindo(null), 'BR', [])).toBe(false);
+    expect(politicaBarra(null, 'BR', [])).toBe(false);
+    // Sem `exige`, não há portão nenhum a cumprir.
+    expect(politicaBarra({ severidade: 'bloqueio', exige: null } as never, 'BR', []))
+      .toBe(false);
   });
 
   it('prefere os `bloqueios` que o servidor já filtrou', () => {
@@ -90,6 +100,39 @@ describe('a severidade tem uma régua só, e limitacao BARRA', () => {
       ],
     });
     expect(bloqueiosDoCockpit(c).map((b) => b.codigo).sort()).toEqual(['B', 'C']);
+  });
+});
+
+describe('o portão de política é POR PAÍS, e a certificação o satisfaz', () => {
+  const FINANCEIRO = [{
+    id: 'financeiro', titulo: 'Financeiro', descricao: '',
+    exige: 'verificacao_servicos_financeiros', severidade: 'bloqueio',
+    paises_exigem: ['BR', 'MX'],
+  }] as never;
+
+  it('vertical que NÃO exige neste país não barra', () => {
+    // ⚠️ Verificar no Brasil não habilita o México — e o inverso também vale:
+    // uma vertical marcada `bloqueio` que não exige AQUI não barra nada.
+    // A primeira versão de `politicaBarra` olhava só a severidade e barrava
+    // sempre, criando um bloqueio que o operador não tinha como resolver.
+    expect(politicaBarra(FINANCEIRO[0], 'PT', [])).toBe(false);
+    expect(politicaBarra(FINANCEIRO[0], 'BR', [])).toBe(true);
+  });
+
+  it('a certificação declarada CUMPRE o portão', () => {
+    expect(politicaBarra(FINANCEIRO[0], 'BR', ['verificacao_servicos_financeiros']))
+      .toBe(false);
+  });
+
+  it('a parada some da lista de faltas quando o operador declara a habilitação', () => {
+    const base = {
+      ...TUDO_PRONTO, verticais: FINANCEIRO,
+      cockpit: cockpit({ origem: { vertical: 'financeiro', pais: 'BR', status_wp: 'publish' } }),
+    };
+    expect(faltasDaParada('politica', base)).toHaveLength(1);
+    expect(faltasDaParada('politica', {
+      ...base, certificacoes: ['verificacao_servicos_financeiros'],
+    })).toHaveLength(0);
   });
 });
 
