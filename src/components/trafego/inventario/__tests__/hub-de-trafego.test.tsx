@@ -139,7 +139,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe('as cinco abas', () => {
+describe('as quatro abas', () => {
   it('Campanhas é a aba padrão', () => {
     montar();
     const campanhas = screen.getByRole('tab', { name: /campanhas/ });
@@ -148,23 +148,27 @@ describe('as cinco abas', () => {
     expect(screen.queryByText('quadro de oportunidades')).toBeNull();
   });
 
-  it('tem exatamente cinco abas, na ordem do fluxo de trabalho', () => {
+  it('tem exatamente quatro abas, na ordem do fluxo de trabalho', () => {
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    // A ordem é a do trabalho: o que já gasta, o que cada CANAL pode fazer, o
-    // que está pronto para virar campanha, como criar, e o que pede decisão.
+    // A ordem é a do trabalho: o que já gasta, o que está pronto para virar
+    // campanha, como criar, e o que pede decisão hoje.
     //
-    // ⚠️ `Canais` entrou em 01/09/2026 e ficou em segundo de propósito: a
-    // pergunta "este canal pode?" precede a de montar um pedido nele, e
-    // descobrir a recusa depois de montar é o desperdício que os quatro
-    // portões existem para evitar.
+    // ⚠️ `Canais` SAIU em 03/09/2026, e a razão é que ela e `criar` respondiam
+    // à MESMA pergunta — "o que cada canal pode?" — de fontes que podiam se
+    // contradizer. `canais` lia o veredito pronto do servidor; `criar` derivava
+    // no cliente por `canal/jornada.ts`, sobre seis canais, sem consultar a
+    // janela do canário. A divergência era medível: Display saía com botão
+    // primário "Começar campanha" porque `plataforma.py:373` declara
+    // `sabe_criar=True`, enquanto o servidor recusa `criavel_pausada` com
+    // `fora_da_janela_do_canario`. Simetria falsa entre um canal que cria e um
+    // que não cria. Agora existe uma aba só, e ela lê o servidor.
     //
-    // ⚠️ Nem `canais` nem `criar` têm contador, e a ausência é conteúdo:
-    // "quantos canais" seria um número sem pergunta, e "quantas campanhas dá
-    // para criar" não é um número que exista. As outras duas só têm porque a
+    // ⚠️ `criar` não tem contador, e a ausência é conteúdo: "quantas campanhas
+    // dá para criar" não é um número que exista. As outras duas só têm porque a
     // leitura as mediu.
     expect(abas).toEqual([
-      'campanhas7', 'Canais', 'preparar', 'criar', 'atenção2',
+      'campanhas7', 'preparar', 'criar', 'atenção2',
     ]);
   });
 
@@ -182,7 +186,7 @@ describe('as cinco abas', () => {
     contadorDeAtencao = null;
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    expect(abas).toEqual(['campanhas', 'Canais', 'preparar', 'criar', 'atenção']);
+    expect(abas).toEqual(['campanhas', 'preparar', 'criar', 'atenção']);
   });
 
   it('troca de aba pelo ponteiro e preserva o quadro de oportunidades', () => {
@@ -204,7 +208,9 @@ describe('as cinco abas', () => {
     expect(nova.className).toMatch(/bg-primary/);
     fireEvent.click(nova);
     expect(screen.getByRole('tab', { name: /criar/ }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByText('estúdio de criação')).toBeTruthy();
+    // ⚠️ A aba `criar` passou a montar o veredito do SERVIDOR, e não mais o
+    // estúdio derivado no cliente. Ver o ⚠️ da contagem de abas acima.
+    expect(screen.getByText('painel dos canais')).toBeTruthy();
   });
 });
 
@@ -214,16 +220,16 @@ describe('navegação por teclado', () => {
     // percorrem dentro. É o que evita que três abas custem três Tabs para
     // quem só quer chegar à tabela.
     montar();
-    // ⚠️ A seta anda UMA casa, e a casa seguinte passou a ser Canais. Pular
-    // para Preparar aqui provaria uma navegação que o teclado não faz.
-    const [campanhas, canais, preparar] = screen.getAllByRole('tab');
+    // ⚠️ A seta anda UMA casa. Com `Canais` consolidada em `criar`, a casa
+    // seguinte a Campanhas voltou a ser Preparar.
+    const [campanhas, preparar, criar] = screen.getAllByRole('tab');
     campanhas.focus();
     fireEvent.keyDown(campanhas, { key: 'ArrowRight' });
 
     await waitFor(() => {
-      expect(canais.getAttribute('aria-selected')).toBe('true');
+      expect(preparar.getAttribute('aria-selected')).toBe('true');
     });
-    expect(canais.getAttribute('tabindex')).toBe('0');
+    expect(preparar.getAttribute('tabindex')).toBe('0');
     expect(campanhas.getAttribute('tabindex')).toBe('-1');
 
     // ⚠️ O foco precisa ACOMPANHAR antes da segunda seta. No navegador o
@@ -231,12 +237,12 @@ describe('navegação por teclado', () => {
     // seguinte é o que reproduz isso. Sem ele, a segunda tecla chega a um
     // elemento que não está focado e o teste falharia por um motivo que não é
     // o que ele investiga.
-    canais.focus();
-    fireEvent.keyDown(canais, { key: 'ArrowRight' });
+    preparar.focus();
+    fireEvent.keyDown(preparar, { key: 'ArrowRight' });
     await waitFor(() => {
-      expect(preparar.getAttribute('aria-selected')).toBe('true');
+      expect(criar.getAttribute('aria-selected')).toBe('true');
     });
-    expect(screen.getByText('quadro de oportunidades')).toBeTruthy();
+    expect(screen.getByText('painel dos canais')).toBeTruthy();
   });
 
   it('a lista de abas se anuncia, e o painel ativo pertence à aba ativa', () => {

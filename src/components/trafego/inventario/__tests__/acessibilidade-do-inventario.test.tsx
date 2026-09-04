@@ -171,8 +171,11 @@ describe('as cinco abas', () => {
     expect(lista.getAttribute('aria-label')).toBe('seções do tráfego');
 
     const abas = screen.getAllByRole('tab');
-    // Cinco desde 01/09/2026: Canais entrou entre Campanhas e Preparar.
-    expect(abas.length).toBe(5);
+    // ⚠️ Quatro desde 03/09/2026: `Canais` foi consolidada em `criar`. As duas
+    // respondiam à mesma pergunta de fontes diferentes — o veredito do servidor
+    // e uma derivação no cliente que nunca consultava a janela do canário —, e
+    // a divergência aparecia como simetria falsa em Display.
+    expect(abas.length).toBe(4);
 
     const painel = screen.getByRole('tabpanel');
     const ativa = abas.find((a) => a.getAttribute('aria-selected') === 'true');

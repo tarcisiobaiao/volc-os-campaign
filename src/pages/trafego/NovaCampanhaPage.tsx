@@ -57,7 +57,7 @@ import {
 } from '@/components/trafego/bancada';
 import {
   PERGUNTA_DA_PARADA, bloqueiosDoCockpit, faltasDaBancada, paradaAlcancavel,
-  primeiraNaoConfirmada, projetarParadas, type FatosDaBancada,
+  primeiraNaoConfirmada, projetarParadas, SEM_PARADA_ATUAL, type FatosDaBancada,
 } from '@/components/trafego/bancada/paradas';
 import { numeroDigitado, useRascunho } from '@/components/trafego/bancada/useRascunho';
 import { ParadaDestino } from '@/components/trafego/bancada/paradas/Destino';
@@ -68,6 +68,7 @@ import { ParadaEconomia } from '@/components/trafego/bancada/paradas/Economia';
 import { ParadaRevisao } from '@/components/trafego/bancada/paradas/Revisao';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
+import { idExternoDaCampanha } from '@/lib/trafego/lancamento';
 import type { PlanoVigenteResposta } from '@/lib/trafego/portoes';
 import { DECORRE_DA_ESTRATEGIA, PARADAS_DA_BANCADA } from '@/types/trafego';
 import type {
@@ -105,6 +106,18 @@ const NovaCampanhaPage: React.FC = () => {
   const [plano, setPlano] = useState<PlanoVigenteResposta | null>(null);
   const [planoIndisponivel, setPlanoIndisponivel] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  /**
+   * ⚠️ Quem pode FECHAR o próprio recibo.
+   *
+   * `POST /reconciliar` exige admin (`routers/trafego.py:4442`,
+   * `Depends(exigir_admin)`) enquanto todo o resto do fluxo exige apenas
+   * usuário. Ou seja: o operador que cria a campanha NÃO fecha o recibo dela.
+   *
+   * O default é `false` e não `true`: sem leitura de capacidades, esconder o
+   * botão e dizer quem pode é melhor que oferecer uma ação que vai voltar 403 —
+   * um botão que falha ensina o operador a desconfiar dos que funcionam.
+   */
+  const [podeReconciliar, setPodeReconciliar] = useState(false);
 
   // ── estado local: o que o operador está fazendo ───────────────────────────
   const { rascunho, alterar } = useRascunho(oid ?? 0, runId);
@@ -175,6 +188,17 @@ const NovaCampanhaPage: React.FC = () => {
 
   useEffect(() => { void lerConjunto(); }, [lerConjunto]);
 
+  // As capacidades desta sessão. Só é lida quando existe recibo para fechar —
+  // antes disso a resposta não muda nada na tela.
+  useEffect(() => {
+    if (!recibo) return;
+    let ativo = true;
+    void pautadorApi.capacidades()
+      .then((c) => { if (ativo) setPodeReconciliar(Boolean(c.is_admin)); })
+      .catch(() => { if (ativo) setPodeReconciliar(false); });
+    return () => { ativo = false; };
+  }, [recibo]);
+
   // O plano gravado da conta. Zero rede ao Google — ver o comentário do cliente.
   useEffect(() => {
     const c = cockpit?.conta;
@@ -217,8 +241,11 @@ const NovaCampanhaPage: React.FC = () => {
   const bloqueios = useMemo(() => bloqueiosDoCockpit(cockpit), [cockpit]);
 
   const etapaPedida = etapaDaUrl(params.get('etapa'));
+  // ⚠️ SEM viés de `atual`. Projetar com uma parada promovida a `atual` faria
+  // `primeiraNaoConfirmada` devolver justamente essa parada — e a entrada sem
+  // `?etapa` ficaria presa na primeira para sempre.
   const paradasSemAtual = useMemo(
-    () => projetarParadas(fatos, etapaPedida ?? 'destino'), [fatos, etapaPedida]);
+    () => projetarParadas(fatos, SEM_PARADA_ATUAL), [fatos]);
   const etapa: ParadaDaBancada = etapaPedida ?? primeiraNaoConfirmada(paradasSemAtual);
   const paradas = useMemo(() => projetarParadas(fatos, etapa), [fatos, etapa]);
 
@@ -294,20 +321,19 @@ const NovaCampanhaPage: React.FC = () => {
   // ⚠️ SEM POSITIVAS. `criterios` leva SÓ as negativas que o operador declarou.
   // O conjunto positivo é o aprovado na mineração, e `somente_negativas_do_corpo`
   // recusa qualquer critério com `negativa: false`.
+  // ⚠️ As exclusões vêm INTEIRAS do rascunho — com a correspondência e o motivo
+  // que o operador declarou. A primeira versão desta página as remontava a
+  // partir de `string[]` com `match_type: 'PHRASE'` fixo, e perdia as duas
+  // coisas: excluir `simulador` em EXACT bloqueia um termo e em PHRASE bloqueia
+  // uma família, e o motivo é o que responde "por que este termo está fora?"
+  // três meses depois.
+  //
+  // O filtro é uma guarda, não uma conversão: se algo positivo entrasse aqui, o
+  // servidor recusaria com `CRITERIO_POSITIVO_DO_CORPO_RECUSADO`, e é melhor a
+  // tela nunca montar esse pedido do que descobrir no 409.
   const negativas: CriterioDeKeyword[] = useMemo(
-    () => [
-      ...rascunho.negativasCampanha.map((texto) => ({
-        texto, match_type: 'PHRASE' as MatchType, negativa: true,
-        nivel: 'CAMPAIGN' as const, grupo: null, origem: 'MANUAL' as const,
-        motivo: null, evidencia: null, observado_em: null, aprovado_por: null,
-      })),
-      ...rascunho.negativasAdgroup.map((texto) => ({
-        texto, match_type: 'PHRASE' as MatchType, negativa: true,
-        nivel: 'AD_GROUP' as const, grupo: null, origem: 'MANUAL' as const,
-        motivo: null, evidencia: null, observado_em: null, aprovado_por: null,
-      })),
-    ],
-    [rascunho.negativasCampanha, rascunho.negativasAdgroup],
+    () => rascunho.negativas.filter((c) => c.negativa),
+    [rascunho.negativas],
   );
 
   const pedido: PedidoDeProvaSearch | null = (cockpit && oid && orcamento != null && lance != null)
@@ -467,10 +493,9 @@ const NovaCampanhaPage: React.FC = () => {
                 matchPorKeyword={rascunho.matchPorKeyword as Record<string, MatchType>}
                 onMatchPorKeyword={(m) => alterar('matchPorKeyword', m)}
                 negativas={negativas}
-                onNegativas={(n) => {
-                  alterar('negativasCampanha', n.filter((c) => c.nivel === 'CAMPAIGN').map((c) => c.texto));
-                  alterar('negativasAdgroup', n.filter((c) => c.nivel === 'AD_GROUP').map((c) => c.texto));
-                }}
+                // Guarda o que a mesa devolveu, INTEIRO. Reconstruir aqui é o
+                // que perdia correspondência e motivo — ver o ⚠️ de `negativas`.
+                onNegativas={(n) => alterar('negativas', n)}
               />
             ) : etapa === 'anuncio' ? (
               <ParadaAnuncio
@@ -518,7 +543,27 @@ const NovaCampanhaPage: React.FC = () => {
               <ReciboDaBancada
                 recibo={recibo}
                 canal={canal}
-                podeReconciliar={false}
+                podeReconciliar={podeReconciliar && Boolean(recibo.ledger?.item_id)}
+                onReconciliar={() => {
+                  const item = recibo.ledger?.item_id;
+                  if (!item) return;
+                  void pautadorApi.reconciliarLancamento({
+                    item_id: item,
+                    customer_id: recibo.customer_id,
+                    // Opcional de propósito: o item que mais precisa de
+                    // reconciliação é o que NÃO tem id externo.
+                    campaign_id: idExternoDaCampanha(recibo) || null,
+                  })
+                    .then(() => {
+                      if (oid) {
+                        void pautadorApi.cockpitDeTrafego(oid, { runId })
+                          .then(setCockpit).catch(() => {});
+                      }
+                    })
+                    .catch((e) => setErro(e instanceof Error
+                      ? e.message
+                      : 'A reconciliação não pôde ser feita.'));
+                }}
               />
             )}
 

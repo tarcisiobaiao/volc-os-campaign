@@ -22,6 +22,16 @@
  * Inclusive os que não criam nada. A conta tem campanhas de Performance Max
  * gastando dinheiro, e esconder o canal faria a tela mentir por omissão. A
  * ausência declarada — com o motivo — é conteúdo, não lacuna.
+ *
+ * ## Os três planos desta tela
+ *
+ * `design.md:143-152` — canvas, superfície de trabalho, poço. O cartão do canal
+ * é a ÚNICA superfície elevada (`bg-card` + `shadow-card`); tudo que mora
+ * dentro dele — assets, mensuração, observabilidade, canário — é poço
+ * (`bg-muted/20`, borda de 1px, sem sombra). Antes eram todos caixas de borda
+ * cinza sem plano nenhum, o que fazia o cartão do canal desaparecer no fundo da
+ * página: `--background` (#F3F5F7) e `--card` (#FAFBFC) são quase a mesma
+ * tinta, e um `bg-card` chapado sobre o canvas é invisível (`design.md:95`).
  */
 import React from 'react';
 import {
@@ -42,36 +52,18 @@ import {
   portoesAbertos,
   ROTULO_DA_MENSURACAO,
   type ContratoDeCanal,
-  type RespostaDosCanais,
 } from '@/lib/trafego/canais';
 import { CartaoDoPlanoDeMensuracao } from '@/components/trafego/canais/PlanoDeMensuracao';
 import { PortoesDoCanal } from '@/components/trafego/canais/PortoesDoCanal';
+import { Fato } from '@/components/trafego/canais/Fato';
 import { useCanais } from '@/components/trafego/canais/useCanais';
 
-/** Um par rótulo/valor em que o valor pode legitimamente ser desconhecido. */
-function Fato({
-  rotulo,
-  valor,
-  ressalva,
-}: {
-  rotulo: string;
-  valor: React.ReactNode;
-  ressalva?: string | null;
-}) {
-  return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
-        {rotulo}
-      </dt>
-      <dd className="text-sm text-slate-800 dark:text-slate-200">{valor}</dd>
-      {ressalva ? (
-        <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
-          {ressalva}
-        </p>
-      ) : null}
-    </div>
-  );
-}
+/** O poço padrão de um bloco interno do cartão do canal. Sem sombra, sempre. */
+const POCO = 'rounded-md border border-border bg-muted/20 p-3';
+
+/** O título de um poço: 14px, tinta de texto, glifo à esquerda. */
+const TITULO_DO_POCO =
+  'flex items-center gap-1.5 text-sm font-medium text-foreground';
 
 /**
  * A mensuração do canal.
@@ -88,24 +80,24 @@ function Mensuracao({ c }: { c: ContratoDeCanal }) {
     `${ROTULO_DA_MENSURACAO[e]} (${e})`;
   if (!m.lida) {
     return (
-      <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+      <div className={POCO}>
+        <p className={TITULO_DO_POCO}>
           <Target className="h-3.5 w-3.5" aria-hidden />
           Mensuração — não lida
         </p>
-        <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+        <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
           {m.fonte}
         </p>
       </div>
     );
   }
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
-      <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className={POCO}>
+      <p className={TITULO_DO_POCO}>
         <Target className="h-3.5 w-3.5" aria-hidden />
         Mensuração — {rotulo(m.measurement_readiness)}
       </p>
-      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+      <dl className="mt-2 grid gap-3 sm:grid-cols-2">
         <Fato
           rotulo="meta de conversão"
           valor={rotulo(m.conversion_goal_status)}
@@ -135,7 +127,7 @@ function Mensuracao({ c }: { c: ContratoDeCanal }) {
         <Fato rotulo="procedência da leitura" valor={m.fonte ?? '—'} />
       </dl>
       {m.plano ? (
-        <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+        <div className="mt-3 border-t border-border pt-3">
           <CartaoDoPlanoDeMensuracao plano={m.plano} />
         </div>
       ) : null}
@@ -147,12 +139,12 @@ function Mensuracao({ c }: { c: ContratoDeCanal }) {
 function Observabilidade({ c }: { c: ContratoDeCanal }) {
   const o = c.observabilidade;
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
-      <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className={POCO}>
+      <p className={TITULO_DO_POCO}>
         <Eye className="h-3.5 w-3.5" aria-hidden />
         Observabilidade — {o.estado}
       </p>
-      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+      <dl className="mt-2 grid gap-3 sm:grid-cols-2">
         <Fato
           rotulo="campanhas lidas de volta"
           // ⚠️ `null` vira `—`, nunca `0`. Um zero inventado no lugar de uma
@@ -170,7 +162,7 @@ function Observabilidade({ c }: { c: ContratoDeCanal }) {
         <Fato rotulo="quem lê" valor={o.coletor ?? '—'} />
       </dl>
       {o.causa ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground text-pretty">
           {o.causa}
         </p>
       ) : null}
@@ -182,8 +174,8 @@ function Observabilidade({ c }: { c: ContratoDeCanal }) {
 function Assets({ c }: { c: ContratoDeCanal }) {
   const a = c.assets;
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
-      <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className={POCO}>
+      <p className={TITULO_DO_POCO}>
         <ImageIcon className="h-3.5 w-3.5" aria-hidden />
         Assets — {a.estado}
       </p>
@@ -192,7 +184,7 @@ function Assets({ c }: { c: ContratoDeCanal }) {
           {a.recursos.map((r) => (
             <li
               key={r}
-              className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground"
             >
               {r}
             </li>
@@ -200,14 +192,14 @@ function Assets({ c }: { c: ContratoDeCanal }) {
         </ul>
       ) : null}
       {a.causa ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground text-pretty">
           {a.causa}
         </p>
       ) : null}
       {a.fonte ? (
-        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-600">
-          fonte: {a.fonte}
-        </p>
+        // Era ardósia clara sobre o poço — cinza sobre cinza, abaixo de 3:1 no
+        // tema claro. `text-muted-foreground` é o token já calibrado.
+        <p className="mt-1 text-xs text-muted-foreground">fonte: {a.fonte}</p>
       ) : null}
     </div>
   );
@@ -219,16 +211,16 @@ function Canario({ c }: { c: ContratoDeCanal }) {
   if (!k) return null;
   const leitura = k.leitura_de_campo;
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className={POCO}>
+      <p className="text-sm font-medium text-foreground">
         Campanha canário {k.campaign_id} — {k.estado_declarado}
       </p>
-      <p className="text-xs text-slate-500 dark:text-slate-500">
+      <p className="text-sm text-muted-foreground">
         {k.conta_label} ({k.conta})
       </p>
 
       {leitura ? (
-        <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+        <dl className="mt-2 grid gap-3 sm:grid-cols-2">
           <Fato
             rotulo="estratégia de lance"
             valor={leitura.estrategia_de_lance.valor}
@@ -249,54 +241,66 @@ function Canario({ c }: { c: ContratoDeCanal }) {
       {leitura?.primary_status_reasons?.length ? (
         <ul className="mt-2 space-y-1">
           {leitura.primary_status_reasons.map((r) => (
-            <li key={r.codigo} className="flex items-start gap-1.5 text-xs">
+            <li key={r.codigo} className="flex items-start gap-1.5 text-sm">
               {r.natureza === 'em_revisao' ? (
                 // ⚠️ Nem verde nem vermelho. "Em revisão" é o terceiro estado —
                 // o Google ainda não decidiu —, e pintá-lo de verde afirmaria
                 // uma aprovação que não houve.
+                //
+                // `info` é o token do vocabulário fechado (`design.md:105`) que
+                // preserva isso: informa sem julgar. `success` afirmaria a
+                // aprovação, `warning` mandaria o operador agir sobre uma
+                // decisão que não é dele.
                 <CircleHelp
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-400"
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info"
                   aria-hidden
                 />
               ) : (
                 <CircleCheck
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400"
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                   aria-hidden
                 />
               )}
-              <span className="text-slate-600 dark:text-slate-400">
-                <strong className="font-medium">{r.codigo}</strong> · {r.texto}
+              <span className="leading-6 text-muted-foreground text-pretty">
+                <strong className="font-medium text-foreground">
+                  {r.codigo}
+                </strong>{' '}
+                · {r.texto}
               </span>
             </li>
           ))}
         </ul>
       ) : null}
 
-      <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-400">
+      <p className="mt-3 text-sm font-semibold text-foreground">
         Onde ele aparece
       </p>
       <ul className="mt-1 space-y-1">
         {k.superficies.map((s) => (
-          <li key={s.nome} className="flex items-start gap-1.5 text-xs">
-            {/* TRI-ESTADO na tela também: visto, ausente, e NÃO LIDO. */}
+          <li key={s.nome} className="flex items-start gap-1.5 text-sm">
+            {/* TRI-ESTADO na tela também: visto, ausente, e NÃO LIDO. A palavra
+                — `sim` / `não` / `?` — é o portador primário; a tinta é o
+                terceiro sinal, e agora vem do vocabulário fechado. */}
             <span
               className={cn(
-                'mt-0.5 shrink-0 font-mono text-[11px]',
-                s.visivel === true && 'text-emerald-700 dark:text-emerald-400',
-                s.visivel === false && 'text-amber-700 dark:text-amber-400',
-                s.visivel === null && 'text-slate-500',
+                'mt-0.5 shrink-0 font-mono text-sm',
+                s.visivel === true && 'text-success',
+                s.visivel === false && 'text-warning',
+                s.visivel === null && 'text-muted-foreground',
               )}
             >
               {s.visivel === true ? 'sim' : s.visivel === false ? 'não' : '?'}
             </span>
-            <span className="text-slate-600 dark:text-slate-400">
-              <strong className="font-medium">{s.descricao}</strong>
+            <span className="leading-6 text-muted-foreground text-pretty">
+              <strong className="font-medium text-foreground">
+                {s.descricao}
+              </strong>
               {s.causa ? ` — ${s.causa}` : ''}
             </span>
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs italic text-slate-500 dark:text-slate-500">
+      <p className="mt-2 text-sm italic leading-6 text-muted-foreground text-pretty">
         {k.resumo}
       </p>
     </div>
@@ -309,23 +313,23 @@ function ObservabilidadeDePMax({ c }: { c: ContratoDeCanal }) {
   const exigidos = c.operacional.assets_exigidos;
   if (!o && !exigidos) return null;
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+    <div className={POCO}>
+      <p className="text-sm font-medium text-foreground">
         Estrutura observada — {o?.estado_da_coleta ?? '—'}
       </p>
       {o?.causa ? (
-        <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+        <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
           {o.causa}
         </p>
       ) : null}
       {/* ⚠️ `quantidade: null` é "não coletei"; `0` seria "coletei e não há".
           O `numeroOuTraco` preserva a diferença. */}
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         campanhas observadas: {numeroOuTraco(o?.quantidade ?? null)}
       </p>
       {exigidos?.papeis?.length ? (
         <>
-          <p className="mt-3 text-xs font-medium text-slate-600 dark:text-slate-400">
+          <p className="mt-3 text-sm font-semibold text-foreground">
             Assets que o canal exige
           </p>
           <ul className="mt-1 flex flex-wrap gap-1">
@@ -334,7 +338,7 @@ function ObservabilidadeDePMax({ c }: { c: ContratoDeCanal }) {
               .map((p) => (
                 <li
                   key={p.papel}
-                  className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground"
                   title={p.descricao}
                 >
                   {p.papel} ({p.minimo}–{p.maximo})
@@ -351,17 +355,18 @@ function Canal({ c }: { c: ContratoDeCanal }) {
   const abertos = portoesAbertos(c);
   const incoerencias = incoerenciasDoContrato(c);
   return (
-    <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+    // A superfície de trabalho — a única elevada desta tela (`design.md:146`).
+    <section className="rounded-lg border border-border bg-card p-4 shadow-card">
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          <h3 className="font-display text-base font-semibold text-foreground">
             {c.rotulo}
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {c.manifesto.hierarquia.join(' › ')}
           </p>
         </div>
-        <p className="text-xs text-slate-600 dark:text-slate-400">
+        <p className="tabular text-sm text-muted-foreground">
           {abertos} de {c.portoes.length} portões liberados
         </p>
       </header>
@@ -370,13 +375,20 @@ function Canal({ c }: { c: ContratoDeCanal }) {
           de recusa, ou fechado sem causa —, a tela DIZ isso em vez de escolher
           uma das duas metades. Escolher seria inventar um veredito. */}
       {incoerencias.length > 0 ? (
-        <div className="mb-3 rounded-md border border-rose-300 bg-rose-50 p-2 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+        // ⚠️ A tinta vermelha está no leito, na borda e no glifo — nunca na
+        // frase. Escrever a explicação com a cor do estado é o jeito mais
+        // eficiente de tornar ilegível exatamente o texto que decide
+        // (`ChipDeEstado.tsx:25-28`).
+        <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground">
           <p className="flex items-center gap-1.5 font-medium">
-            <CircleAlert className="h-3.5 w-3.5" aria-hidden />
+            <CircleAlert
+              className="h-3.5 w-3.5 shrink-0 text-destructive"
+              aria-hidden
+            />
             A resposta do servidor está incoerente e não pode ser lida como
             veredito:
           </p>
-          <ul className="ml-5 mt-1 list-disc">
+          <ul className="ml-5 mt-1 list-disc leading-6">
             {incoerencias.map((i) => (
               <li key={i}>{i}</li>
             ))}
@@ -396,11 +408,11 @@ function Canal({ c }: { c: ContratoDeCanal }) {
 
       {c.manifesto.indisponibilidades.length > 0 ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-xs text-slate-600 dark:text-slate-400">
+          <summary className="cursor-pointer text-sm text-muted-foreground">
             O que este canal declaradamente não faz (
             {c.manifesto.indisponibilidades.length})
           </summary>
-          <ul className="ml-5 mt-1 list-disc space-y-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+          <ul className="ml-5 mt-1 list-disc space-y-1 text-sm leading-6 text-muted-foreground">
             {c.manifesto.indisponibilidades.map((i) => (
               <li key={i}>{i}</li>
             ))}
@@ -418,28 +430,27 @@ export function PainelDeCanais() {
     // ⚠️ "Lendo", e não quatro portões fechados. Um contrato de mentira
     // enquanto a resposta não chega faria a tela afirmar recusas que ninguém
     // avaliou.
-    return (
-      <p className="p-4 text-sm text-slate-500 dark:text-slate-500">
-        Lendo o que cada canal pode fazer…
-      </p>
-    );
+    return <p className="p-4 text-sm text-muted-foreground">Lendo o que cada canal pode fazer…</p>;
   }
 
   if (isError || !data) {
     return (
-      <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-slate-800 dark:text-slate-200">
-          <CircleAlert className="h-4 w-4" aria-hidden />
+      <div className="rounded-lg border border-border bg-card p-4 shadow-card">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          <CircleAlert
+            className="h-4 w-4 shrink-0 text-destructive"
+            aria-hidden
+          />
           Não foi possível ler o estado dos canais.
         </p>
         {/* ⚠️ A falha NÃO vira "nenhum canal disponível". Não saber e não haver
             são coisas diferentes, e só uma delas é motivo para parar. */}
-        <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+        <p className="mt-1 max-w-[70ch] text-sm leading-6 text-muted-foreground text-pretty">
           Isto é uma falha de leitura, e não uma afirmação sobre os canais: eles
           continuam existindo, e o que cada um pode fazer segue desconhecido
           nesta tela até a leitura voltar.
         </p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {(error as Error | undefined)?.message}
         </p>
         <Button
@@ -459,10 +470,10 @@ export function PainelDeCanais() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <h2 className="font-display text-xl font-semibold text-foreground">
             Canais
           </h2>
-          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-500">
+          <p className="max-w-[70ch] text-sm leading-6 text-muted-foreground text-pretty">
             O que cada canal pode fazer agora, decidido no servidor. Quatro
             perguntas distintas por canal — montar, conferir, criar pausada e
             ativar —, com o motivo de cada recusa.
@@ -485,7 +496,7 @@ export function PainelDeCanais() {
       {/* ⚠️ A procedência da resposta, dita em voz alta. Sem ela, um
           `INDETERMINADO` na tela pareceria um defeito; com ela, ele é uma
           escolha explícita de não gastar quota da conta para pintar um cockpit. */}
-      <p className="rounded-md bg-slate-50 p-2 text-[11px] leading-relaxed text-slate-500 dark:bg-slate-900 dark:text-slate-500">
+      <p className="rounded-md border border-border bg-muted/40 p-3 text-sm leading-6 text-muted-foreground text-pretty">
         {data.fontes.por_que_sem_leitura_viva}
         {data.fontes.espelho_lido
           ? ' O registro operacional foi consultado.'

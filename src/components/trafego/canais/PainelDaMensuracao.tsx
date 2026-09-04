@@ -32,9 +32,32 @@
  * ⚠️ Nenhum `gclid`, `wbraid` ou `gbraid`: são dado de usuário. O que aparece é
  * o TIPO suportado. E nenhum `chave_intencao` inteira nem impressão completa —
  * doze caracteres bastam para reconciliar e não convidam a copiar identidade.
+ *
+ * ## Por que a tabela de tom não mora mais aqui
+ *
+ * O `TOM` local (linhas 66-74 da versão anterior) discordava do painel irmão
+ * sobre o MESMO veredito: aqui `BLOQUEADO` era vermelho e `INDETERMINADO` era
+ * ardósia-de-ignorância; em `PortoesDoCanal.tsx:57-62` `BLOQUEADO` era âmbar e
+ * `INDETERMINADO` era ardósia. A correspondência única agora vem de
+ * `bancada/paradas/portoesVisual.ts`.
+ *
+ * ⚠️ Isso mudou um SIGNIFICADO, e de propósito: `PARCIAL` e `INDETERMINADO`
+ * eram cinza e passaram a âmbar. O comentário antigo argumentava que amarelo
+ * sugeriria um problema conhecido enquanto o problema é que ninguém olhou — mas
+ * cinza é a cor de "neutro/não se aplica" no resto do produto, e usá-la para
+ * ignorância fazia "ninguém leu" parecer um degrau vencido ao lado de um
+ * `NAO_APLICAVEL`. Âmbar é a cor de "não sei" na tabela canônica
+ * (`portoesVisual.ts:19-22`), e a palavra e o glifo continuam separando os dois
+ * casos sem depender da tinta.
  */
 import React from 'react';
 
+import { cn } from '@/lib/utils';
+import { ChipDeEstado } from '@/components/trafego/bancada/ChipDeEstado';
+import {
+  GLIFO_DO_ESTADO,
+  TOM_DO_ESTADO,
+} from '@/components/trafego/bancada/paradas/portoesVisual';
 import {
   EXIGENCIA_DO_PORTAO,
   ORDEM_DOS_PORTOES,
@@ -48,30 +71,32 @@ import {
   textoDoConsentimento,
   textoDoDonoDaAcao,
   textoDoEstado,
-  tomDoEstado,
   type EstadoDePortao,
   type PerfilDeMensuracao,
   type PortoesDaMensuracao,
-  type TomDoPortao,
 } from '@/lib/trafego/portoes';
 import type { PlanoDeMensuracao } from '@/lib/trafego/canais';
+import { Fato } from '@/components/trafego/canais/Fato';
+import {
+  DESCRICAO_DA_MENSURACAO,
+  FIO_DE_CARTAO,
+  FIO_DO_BLOQUEIO,
+  FIO_DO_TOM,
+} from '@/components/trafego/canais/tonsDoCockpit';
+import {
+  textoDaProcedenciaDaMeta,
+  textoDoUltimoMomento,
+} from '@/components/trafego/canais/textosDaMensuracao';
 
-/**
- * As quatro cores, e o que cada uma afirma.
- *
- * ⚠️ `ignorado` NÃO é amarelo-de-atenção: é cinza-de-ignorância. Amarelo dá a
- * entender que alguém precisa agir sobre um problema conhecido, e o problema
- * aqui é que ninguém olhou.
- */
-const TOM: Record<TomDoPortao, string> = {
-  provado:
-    'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300',
-  negado: 'border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-300',
-  ignorado:
-    'border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-400',
-  ausente:
-    'border-slate-500/20 bg-transparent text-slate-500 dark:text-slate-500',
-};
+/* ⚠️ Re-export de compatibilidade. As duas funções moram em
+   `./textosDaMensuracao.ts` porque tradução de estado em frase é lógica pura, e
+   não JSX; mas quem as consome hoje as importa DAQUI
+   (`__tests__/painel-da-mensuracao.test.tsx:41-45`), e esse arquivo de teste não
+   é propriedade desta entrega. A advertência do `react-refresh` está silenciada
+   com o motivo à vista em vez de escondida atrás de um `--max-warnings` frouxo:
+   o custo real é o fast-refresh deste módulo, e ele já existia antes. */
+// eslint-disable-next-line react-refresh/only-export-components
+export { textoDaProcedenciaDaMeta, textoDoUltimoMomento };
 
 function Portao({
   nome,
@@ -80,50 +105,45 @@ function Portao({
   nome: keyof PortoesDaMensuracao;
   estado: EstadoDePortao;
 }) {
-  const tom = tomDoEstado(estado);
+  // ⚠️ O `??` não inventa estado: ele cobre um servidor que mande um valor fora
+  // do contrato, e o desenha como IGNORÂNCIA — nunca como prova.
+  const tom = TOM_DO_ESTADO[estado] ?? TOM_DO_ESTADO.INDETERMINADO;
+  const Glifo = GLIFO_DO_ESTADO[estado] ?? GLIFO_DO_ESTADO.INDETERMINADO;
   return (
     <li
-      className={`rounded-md border px-2.5 py-2 ${TOM[tom]}`}
+      // Poço com fio de 2px no topo (`design.md:99`), e não cartão elevado:
+      // esta lista já vive dentro de uma superfície de trabalho.
+      className={cn(
+        'rounded-md border border-border bg-muted/20 p-3',
+        FIO_DE_CARTAO,
+        FIO_DO_TOM[tom],
+      )}
       data-portao={nome}
       data-estado={estado}
     >
-      <p className="text-xs font-medium leading-tight">{ROTULO_DO_PORTAO[nome]}</p>
-      <p className="mt-0.5 text-[11px] uppercase tracking-wide opacity-80">
-        {textoDoEstado(estado)}
+      <p className="text-sm font-medium leading-tight text-foreground">
+        {ROTULO_DO_PORTAO[nome]}
       </p>
+      {/* Glifo + palavra + descrição: cor nunca é o único portador
+          (`design.md:105`). A palavra é a mesma que `textoDoEstado` já dava. */}
+      <ChipDeEstado
+        className="mt-2"
+        glifo={Glifo}
+        palavra={textoDoEstado(estado)}
+        descricao={
+          DESCRICAO_DA_MENSURACAO[estado] ?? DESCRICAO_DA_MENSURACAO.INDETERMINADO
+        }
+        tom={tom}
+      />
       {/* ⚠️ A exigência aparece SÓ quando o portão não está provado. Repeti-la
           num portão aberto viraria ruído, e o operador aprenderia a pular a
           linha justamente onde ela importa. */}
       {estado !== 'PRONTO' ? (
-        <p className="mt-1 text-[11px] leading-snug opacity-90">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground text-pretty">
           {EXIGENCIA_DO_PORTAO[nome]}
         </p>
       ) : null}
     </li>
-  );
-}
-
-function Fato({
-  rotulo,
-  valor,
-  ressalva,
-}: {
-  rotulo: string;
-  valor: React.ReactNode;
-  ressalva?: string | null;
-}) {
-  return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
-        {rotulo}
-      </dt>
-      <dd className="text-sm text-slate-800 dark:text-slate-200">{valor}</dd>
-      {ressalva ? (
-        <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
-          {ressalva}
-        </p>
-      ) : null}
-    </div>
   );
 }
 
@@ -146,7 +166,9 @@ function BlocoDoPerfil({
     return (
       <p
         data-testid="perfil-ausente"
-        className="rounded-md border border-white/10 bg-black/10 p-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400"
+        // `border-white/10 bg-black/10` só existia no tema escuro: no claro, que
+        // é o padrão desta cena (`design.md:139`), virava mancha sem borda.
+        className="rounded-md border border-border bg-muted/20 p-3 text-sm leading-6 text-muted-foreground text-pretty"
       >
         Nenhum perfil de mensuração foi declarado para este lançamento. Isso não
         significa que a campanha não mede — significa que ninguém disse qual
@@ -156,7 +178,7 @@ function BlocoDoPerfil({
     );
   }
   return (
-    <dl className="grid gap-2 sm:grid-cols-2" data-testid="perfil">
+    <dl className="grid gap-3 sm:grid-cols-2" data-testid="perfil">
       <Fato
         rotulo="perfil de mensuração"
         valor={`${perfil.negocio} · ${perfil.intencao}`}
@@ -225,17 +247,26 @@ function Bloqueadores({
   const { medicao, outros } = separarBloqueadores(todos, materiais);
   if (todos.length === 0) return null;
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2">
       {medicao.length > 0 ? (
         <div data-testid="bloqueadores-medicao">
-          <p className="text-[11px] uppercase tracking-wide text-rose-700 dark:text-rose-400">
+          {/* ⚠️ A palavra do título NÃO é vermelha. A cor semântica vive na
+              borda e no glifo — escrever o rótulo com a cor do estado é o jeito
+              mais eficiente de tornar ilegível exatamente o que decide
+              (`ChipDeEstado.tsx:25-28`). O vermelho está no fio de cada item. */}
+          <p className="text-sm font-semibold text-foreground">
             O que impede medir ou observar
           </p>
-          <ul className="mt-1 space-y-1">
+          <ul className="mt-1.5 space-y-1.5">
             {medicao.map((b) => (
               <li
                 key={b}
-                className="border-l-2 border-l-rose-400 pl-3 text-xs leading-relaxed text-slate-700 dark:border-l-rose-600 dark:text-slate-300"
+                // `border-l` de 1px: `design.md:130` proíbe faixa lateral
+                // colorida acima disso, e a versão anterior usava `border-l-2`.
+                className={cn(
+                  'border-l pl-3 text-sm leading-6 text-foreground text-pretty',
+                  FIO_DO_BLOQUEIO.sem_prova,
+                )}
               >
                 {b}
               </li>
@@ -245,14 +276,20 @@ function Bloqueadores({
       ) : null}
       {outros.length > 0 ? (
         <div data-testid="bloqueadores-outros">
-          <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
+          <p className="text-sm font-semibold text-foreground">
             O que impede ativar, e não é sobre medir
           </p>
-          <ul className="mt-1 space-y-1">
+          <ul className="mt-1.5 space-y-1.5">
             {outros.map((b) => (
               <li
                 key={b}
-                className="border-l-2 border-l-slate-400 pl-3 text-xs leading-relaxed text-slate-700 dark:border-l-slate-600 dark:text-slate-300"
+                // Neutro de propósito: não é falha de medição, é autorização —
+                // e pintá-lo de vermelho ensinaria o operador a tentar
+                // consertar política com instrumentação.
+                className={cn(
+                  'border-l pl-3 text-sm leading-6 text-foreground text-pretty',
+                  FIO_DO_BLOQUEIO.ausencia,
+                )}
               >
                 {b}
               </li>
@@ -290,9 +327,7 @@ export function PainelDaMensuracao({
   return (
     <section className="space-y-4" data-testid="painel-da-mensuracao">
       <div>
-        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
-          Portões
-        </p>
+        <p className="text-sm font-semibold text-foreground">Portões</p>
         <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {ORDEM_DOS_PORTOES.map((nome) => (
             <Portao key={nome} nome={nome} estado={portoes[nome]} />
@@ -303,7 +338,7 @@ export function PainelDaMensuracao({
       <BlocoDoPerfil perfil={perfil} customerId={customerId} />
 
       {plano ? (
-        <dl className="grid gap-2 sm:grid-cols-2" data-testid="observacao">
+        <dl className="grid gap-3 sm:grid-cols-2" data-testid="observacao">
           <Fato
             rotulo="último momento observado"
             // ⚠️ TRÊS frases distintas, e nenhuma delas é "sem dados". O
@@ -342,54 +377,6 @@ export function PainelDaMensuracao({
       <Bloqueadores todos={bloqueadores} materiais={bloqueadoresMateriais} />
     </section>
   );
-}
-
-/**
- * Quando chegou a última conversão — em três frases que não se confundem.
- *
- * ⚠️ `conversoes_na_janela === 0` com `vazio_confirmado` é um zero MEDIDO: a
- * ação existe, a janela foi consultada e nada chegou. É um fato caro, e escrevê-lo
- * como "sem dados" jogaria fora justamente a informação que custou a consulta.
- */
-export function textoDoUltimoMomento(plano: PlanoDeMensuracao): string {
-  const f = plano.frescor;
-  if (f.estado === 'vazio_confirmado') {
-    return 'nenhuma conversão — zero MEDIDO, não ausência de leitura';
-  }
-  if (f.estado === 'falhou') return 'a leitura do frescor falhou';
-  if (f.estado === 'nao_coletado') return 'ninguém leu o frescor desta conta';
-  if (f.estado === 'inelegivel') return 'a pergunta não cabe nesta conta';
-  if (f.estado === 'nao_suportado') return 'a API não suporta esta leitura aqui';
-  if (!f.ultima_conversao_em) return 'leitura parcial: sem data da última conversão';
-  const dias =
-    // ⚠️ `null` NUNCA vira um número grande. "Faz muito tempo" e "não sei" são
-    // coisas diferentes, e um `999` viraria um gráfico com cara de dado.
-    f.dias_desde_a_ultima === null
-      ? 'há quantos dias, não se sabe'
-      : `há ${f.dias_desde_a_ultima} d`;
-  return `${f.ultima_conversao_em} (${dias})`;
-}
-
-/**
- * A meta é da conta ou da campanha? E foi LIDA ou INFERIDA?
- *
- * ⚠️ As duas perguntas viajam juntas porque a resposta honesta muda com as
- * duas. Antes do nascimento o nível é INFERIDO pela herança documentada — a
- * campanha não existe e o recurso não pode ser consultado —, e chamar isso de
- * "lido" afirmaria uma consulta que ninguém fez.
- */
-export function textoDaProcedenciaDaMeta(plano: PlanoDeMensuracao): string {
-  const m = plano.meta_efetiva;
-  if (m.usa_meta_customizada) {
-    return 'meta CUSTOMIZADA: ela não respeita primary_for_goal e este sistema não lê o recurso dela';
-  }
-  if (!m.nivel_decidido) {
-    return 'não se sabe qual nível manda';
-  }
-  const onde = m.nivel === 'CAMPAIGN' ? 'da campanha' : 'herdada da conta';
-  return m.nivel_herdado
-    ? `${onde} — INFERIDA pela herança documentada, não lida do recurso`
-    : `${onde} — lida do recurso`;
 }
 
 export default PainelDaMensuracao;

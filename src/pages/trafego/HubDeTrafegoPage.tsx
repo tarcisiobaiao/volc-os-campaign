@@ -59,7 +59,21 @@ import { Chip, type Tom } from '@/components/trafego/inventario/Selos';
 import { useContadorDeAtencao } from '@/components/trafego/atencao/useAtencao';
 import { PainelDeCanais } from '@/components/trafego/canais/PainelDeCanais';
 import { EixosDoHub, SeletorDeCanal } from '@/components/trafego/hub/EixosDoHub';
-import { EstudioLigado } from '@/components/trafego/estudio/EstudioLigado';
+// ⚠️ `EstudioLigado` SAIU DA MOLDURA em 03/09/2026 e o arquivo NÃO foi apagado.
+//
+// Ele derivava a capacidade de canal no cliente (`canal/jornada.ts`) sobre seis
+// canais, sem consultar a janela do canário — e era essa derivação que produzia
+// a simetria falsa de Display: `jornada.ts:644` liberava o cockpit porque
+// `plataforma.py:373` declara `sabe_criar=True`, enquanto o servidor recusa
+// `criavel_pausada` com `fora_da_janela_do_canario`. A aba passou a ler o
+// veredito pronto do servidor.
+//
+// Ele fica como CANDIDATO A REMOÇÃO com evidência registrada, e não como
+// exclusão silenciosa: dois testes de segurança varrem o ARQUIVO em busca de
+// chamada de mutação (`estudio/__tests__/sem-mutate.test.ts:11` e
+// `hub/__tests__/seguranca-hub.test.ts:12`), e apagá-lo junto com uma mudança
+// funcional ampla misturaria dois lotes que precisam poder ser revertidos
+// separadamente.
 import { MetaNaoConfigurada } from '@/components/trafego/hub/MetaNaoConfigurada';
 import { totaisHistoricas, totaisOperacionais } from '@/components/trafego/hub/adaptacao';
 import type { AbaDoHub } from '@/components/trafego/hub/contrato';
@@ -106,11 +120,28 @@ const RotuloDaAba: React.FC<{ texto: string; contador?: number | null }> = ({
   </span>
 );
 
+/**
+ * ⚠️ ABAS SEGMENTADAS, e não sublinhado.
+ *
+ * `design.md` §Surfaces é explícito: "**Segmented tabs**, not underlines" e
+ * "Never recreate a third tab style (underline, contained pills outside the
+ * well, equal-weight bars)". O Hub neutralizava o primitivo — `TabsList` com
+ * `bg-transparent p-0 rounded-none border-b` e gatilho com
+ * `data-[state=active]:border-primary` — e desenhava justamente o sublinhado
+ * que o contrato proíbe. Era a terceira gramática de aba do produto.
+ *
+ * O poço é `bg-muted` SÓLIDO (não `/60`, senão ele some no canvas) e a pílula
+ * selecionada é `bg-card` + `shadow-card`. **Nunca `bg-background`**: esse token
+ * É o canvas (`#F3F5F7`), e a pílula pintada com ele mede 1,025:1 contra o poço
+ * — indistinguível. Essa correção já foi feita no primitivo
+ * (`src/components/ui/tabs.tsx:42`) depois de uma revisão adversarial; o Hub a
+ * desfazia por cima.
+ */
 const gatilho = cn(
-  'rounded-none border-b-2 border-transparent bg-transparent px-1 py-2.5 text-sm font-medium',
-  'min-h-11 text-muted-foreground shadow-none',
-  'data-[state=active]:border-primary data-[state=active]:bg-transparent',
-  'data-[state=active]:text-foreground data-[state=active]:shadow-none',
+  'rounded-sm px-3 py-1.5 text-sm font-medium',
+  'min-h-9 text-muted-foreground',
+  'data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-card',
+  'transition-[background-color,color] duration-[180ms]',
   'focus-visible:ring-offset-1',
 );
 
@@ -569,21 +600,13 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
         <Tabs value={aba} onValueChange={trocarAba} className="mt-0">
           <TabsList
             aria-label="seções do tráfego"
-            className="h-auto w-full justify-start gap-6 rounded-none border-b border-border bg-transparent p-0"
+            className="h-auto w-full justify-start gap-1 rounded-lg border border-border bg-muted p-1"
           >
             <TabsTrigger value="campanhas" className={gatilho}>
               <RotuloDaAba
                 texto="campanhas"
                 contador={google ? totaisOperacionais(operacional.inventario?.totais) : null}
               />
-            </TabsTrigger>
-            {/* ⚠️ Canais fica logo depois de Campanhas, e antes de Preparar, por
-                uma razão de ordem de trabalho: a pergunta "este canal pode?"
-                precede a de montar um pedido nele. Descobrir a recusa depois de
-                montar é o desperdício que os quatro portões existem para
-                evitar. */}
-            <TabsTrigger value="canais" className={gatilho}>
-              Canais
             </TabsTrigger>
             <TabsTrigger value="preparar" className={gatilho}>
               <RotuloDaAba texto="preparar" contador={contadorDeOportunidades} />
@@ -651,28 +674,20 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
               O seletor some sozinho no dia em que aquela página deixar de trazer
               recuo próprio; enquanto ela trouxer, é aqui que a moldura se
               defende. */}
-          <TabsContent value="canais" className="mt-6">
-            <PainelDeCanais />
-          </TabsContent>
-
           <TabsContent value="preparar" className="mt-6 [&>div]:p-0">
             {google ? (oportunidades ?? <TrafegoPage />) : <MetaNaoConfigurada nivel={estado.nivel} />}
           </TabsContent>
 
+          {/* ⚠️ A ANTESSALA MULTICANAL — uma aba só, e ela lê o SERVIDOR.
+              Ver o comentário de `AbaDoHub` em `hub/contrato.ts`: esta aba e a
+              extinta `canais` respondiam à mesma pergunta de fontes diferentes,
+              e a derivação no cliente produzia simetria falsa em Display.
+
+              ⚠️ O painel busca os PRÓPRIOS dados, e só quando esta aba é aberta.
+              Buscá-los na moldura faria toda visita ao Hub pagar uma leitura que
+              só esta aba usa. */}
           <TabsContent value="criar" className="mt-6">
-            {google ? (
-              /* ⚠️ O estúdio busca os PRÓPRIOS dados, e só quando esta aba é
-                 aberta. Buscá-los na moldura faria toda visita ao Hub pagar
-                 duas leituras que só esta aba usa — e faria as outras três
-                 abas dependerem de um cliente de consulta que elas não têm
-                 por que conhecer. */
-              <EstudioLigado
-                canal={estado.canal}
-                aoMudarCanal={(canal) => aplicar({ canal: canal as typeof estado.canal })}
-              />
-            ) : (
-              <MetaNaoConfigurada nivel={estado.nivel} />
-            )}
+            {google ? <PainelDeCanais /> : <MetaNaoConfigurada nivel={estado.nivel} />}
           </TabsContent>
 
           <TabsContent value="atencao" className="mt-6">

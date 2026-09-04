@@ -27,6 +27,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { CriterioDeKeyword } from '@/types/trafego';
+
 /** Só o que o operador digitou. Nada lido da conta entra neste tipo. */
 export interface RascunhoDaBancada {
   orcamento: string;
@@ -34,8 +36,21 @@ export interface RascunhoDaBancada {
   estrategia: string;
   graduacao: number;
   certificacoes: string[];
-  negativasCampanha: string[];
-  negativasAdgroup: string[];
+  /**
+   * ⚠️ AS EXCLUSÕES INTEIRAS, e não os textos delas.
+   *
+   * A primeira versão deste rascunho guardava `string[]` e remontava o critério
+   * com `match_type: 'PHRASE'` fixo. Isso PERDIA duas coisas que o operador
+   * declarou: a correspondência — excluir `simulador` em EXACT bloqueia um
+   * termo, em PHRASE bloqueia uma família inteira, e a diferença muda o que a
+   * campanha compra — e o `motivo`, que é a frase que aparece na revisão e
+   * responde "por que este termo está fora?" três meses depois.
+   *
+   * Guardar o objeto custa alguns bytes de `sessionStorage` e preserva a
+   * decisão. `CriterioDeKeyword` é serializável por construção: só primitivos,
+   * mais uma `evidencia` que também é.
+   */
+  negativas: CriterioDeKeyword[];
   matchPorKeyword: Record<string, string>;
   /** Os termos que o operador tirou do conjunto aprovado, por texto exato. */
   keywordsFora: string[];
@@ -52,8 +67,7 @@ export const RASCUNHO_VAZIO: RascunhoDaBancada = {
   estrategia: 'MANUAL_CPC',
   graduacao: 30,
   certificacoes: [],
-  negativasCampanha: [],
-  negativasAdgroup: [],
+  negativas: [],
   matchPorKeyword: {},
   keywordsFora: [],
   vertical: null,

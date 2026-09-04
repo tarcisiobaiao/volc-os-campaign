@@ -251,11 +251,24 @@ export const ReciboDaBancada: React.FC<ReciboDaBancadaProps> = ({
       {/* ⚠️ NENHUM CAMINHO DE REENVIO É OFERECIDO AQUI, em nenhum desfecho.
           Corrigir e reenviar acontece voltando à Bancada e montando outro
           pedido — nunca por um botão dentro do recibo de um pedido que já
-          partiu. */}
+          partiu.
+
+          ⚠️ O cartão completo fica RECOLHIDO, e não é economia de espaço: ele
+          repete `request_id` e o id da campanha, que a grade acima já mostra —
+          e lá eles são COPIÁVEIS, que é o que serve para reconciliar. Dois
+          lugares com o mesmo identificador, um copiável e outro não, ensinam a
+          procurar no lugar errado. Aberto, ele acrescenta o que só ele tem:
+          motivo declarado, impressão do pedido, contagem por tipo e a
+          conferência entre a impressão aprovada e a enviada. */}
       {detalhado && (
-        <div className="mt-5">
-          <CartaoDeRecibo recibo={detalhado} />
-        </div>
+        <details className="mt-5 group">
+          <summary className="inline-flex cursor-pointer items-center rounded-md px-2 py-1 text-sm font-medium text-foreground transition-volc duration-[180ms] hover:bg-muted">
+            Ver o recibo completo
+          </summary>
+          <div className="mt-3">
+            <CartaoDeRecibo recibo={detalhado} />
+          </div>
+        </details>
       )}
     </section>
   );

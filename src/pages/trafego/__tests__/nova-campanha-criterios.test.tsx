@@ -167,8 +167,7 @@ function cockpitLimpo(): Cockpit {
 function comEconomiaDeclarada() {
   window.sessionStorage.setItem('volc.bancada.rascunho.73.sem-run', JSON.stringify({
     orcamento: '10', lance: '0,12', estrategia: 'MANUAL_CPC', graduacao: 30,
-    certificacoes: [], negativasCampanha: [], negativasAdgroup: [],
-    matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
+    certificacoes: [],     matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
   }));
 }
 
@@ -215,6 +214,12 @@ describe('o pedido que a Bancada monta', () => {
     fireEvent.change(screen.getByLabelText('Termo a excluir'), {
       target: { value: 'simulador' },
     });
+    fireEvent.change(screen.getByLabelText('Correspondência da exclusão'), {
+      target: { value: 'EXACT' },
+    });
+    fireEvent.change(screen.getByLabelText(/^Motivo/), {
+      target: { value: 'nao vendemos simulacao' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Adicionar exclusão/ }));
 
     // Navega para a Revisão e prova.
@@ -225,9 +230,42 @@ describe('o pedido que a Bancada monta', () => {
     await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
 
     const negativas = (pedidoEspiado.atual!.criterios ?? []).filter((c) => c.negativa);
-    expect(negativas.map((c) => c.texto)).toContain('simulador');
-    expect(negativas.every((c) => c.negativa)).toBe(true);
-    expect(negativas.every((c) => c.origem === 'MANUAL')).toBe(true);
+    expect(negativas).toHaveLength(1);
+    // ⚠️ A CORRESPONDÊNCIA E O MOTIVO SOBREVIVEM ATÉ O PEDIDO.
+    //
+    // A primeira versão do rascunho guardava `string[]` e remontava o critério
+    // com `match_type: 'PHRASE'` fixo — o que trocava silenciosamente a decisão
+    // do operador: excluir `simulador` em EXACT bloqueia um termo, em PHRASE
+    // bloqueia uma família inteira. E o motivo, que é a frase que responde "por
+    // que este termo está fora?" três meses depois, sumia junto.
+    expect(negativas[0]).toMatchObject({
+      texto: 'simulador', match_type: 'EXACT', nivel: 'CAMPAIGN',
+      grupo: null, origem: 'MANUAL', motivo: 'nao vendemos simulacao',
+    });
+    expect(negativas[0].evidencia).toBeNull();
+  });
+
+  it('a exclusão declarada sobrevive ao refresh, com correspondência e motivo', async () => {
+    // O rascunho é da ABA, e o F5 não pode desfazer uma decisão de exclusão.
+    window.sessionStorage.setItem('volc.bancada.rascunho.73.sem-run', JSON.stringify({
+      orcamento: '10', lance: '0,12', estrategia: 'MANUAL_CPC', graduacao: 30,
+      certificacoes: [],
+      negativas: [{
+        texto: 'simulador', match_type: 'EXACT', negativa: true, nivel: 'CAMPAIGN',
+        grupo: null, origem: 'MANUAL', motivo: 'nao vendemos simulacao',
+        evidencia: null, observado_em: null, aprovado_por: null,
+      }],
+      matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
+    }));
+    cockpitDeTrafego.mockResolvedValue(cockpitLimpo());
+    renderizar('revisao');
+    const botao = await screen.findByRole('button', { name: /Provar contra a conta/ });
+    await waitFor(() => expect((botao as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(botao);
+    await waitFor(() => expect(pedidoEspiado.atual).toBeTruthy());
+
+    const negativas = (pedidoEspiado.atual!.criterios ?? []).filter((c) => c.negativa);
+    expect(negativas[0]).toMatchObject({ match_type: 'EXACT', motivo: 'nao vendemos simulacao' });
   });
 
   it('continua mandando `match_type` como padrão do pedido', async () => {

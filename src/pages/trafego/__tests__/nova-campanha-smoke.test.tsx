@@ -364,8 +364,7 @@ describe('a Bancada Guiada', () => {
     // Simula o que a sessão anterior gravou: orçamento e lance digitados.
     window.sessionStorage.setItem('volc.bancada.rascunho.73.6', JSON.stringify({
       orcamento: '15,50', lance: '0,40', estrategia: 'MANUAL_CPC', graduacao: 30,
-      certificacoes: [], negativasCampanha: [], negativasAdgroup: [],
-      matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
+      certificacoes: [],       matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
     }));
 
     renderizar('economia');

@@ -129,8 +129,21 @@ export function faltasDaParada(
       // `bloqueadores.length` ignoraria os `desconhecidos` — a verificação
       // exigida que não pôde ser concluída.
       if (!f.destino.apto_para_campanha) {
-        if (f.destino.sem_recibo) add('avaliar o destino desta campanha', true);
+        // ⚠️ SEM RECIBO É IGNORÂNCIA INTEIRA, e não uma lista de tarefas.
+        //
+        // Quando `sem_recibo`, TODAS as faltas do destino são indeterminadas: o
+        // portão não avaliou nada, então nenhuma delas é "você deixou de fazer
+        // X" — são todas "ninguém apurou". Marcar uma como tarefa faria o
+        // operador "cumpri-la" sem que nada tivesse sido lido, que é exatamente
+        // como uma falha de leitura vira um verde.
+        if (f.destino.sem_recibo) {
+          add('avaliar o destino desta campanha', true);
+          for (const p of f.destino.pendencias) add(p, true);
+          break;
+        }
         for (const p of f.destino.pendencias) {
+          // Com recibo, `desconhecidos` sem `bloqueadores` é verificação que não
+          // concluiu; qualquer bloqueador declarado é fato apurado.
           add(p, f.destino.desconhecidos.length > 0 && f.destino.bloqueadores.length === 0);
         }
       }
@@ -257,13 +270,51 @@ export function projetarParadas(
 /**
  * A primeira parada que ainda não está confirmada. É o destino do `?etapa=`
  * ausente.
+ *
+ * ⚠️ A PROJEÇÃO PRECISA VIR SEM VIÉS DE `atual`, e este era um defeito real.
+ *
+ * `projetarParadas` promove a parada em que o operador está para `atual`, o que
+ * a torna diferente de `confirmada`. Se alguém projetar com `atual: 'destino'` e
+ * perguntar aqui qual é a primeira não confirmada, a resposta é sempre
+ * `'destino'` — mesmo com o destino resolvido. A entrada sem `?etapa` ficaria
+ * presa na primeira parada para sempre.
+ *
+ * Por isso existe `SEM_PARADA_ATUAL`: uma projeção que não promove ninguém.
  */
 export function primeiraNaoConfirmada(paradas: ParadaProjetada[]): ParadaDaBancada {
-  const p = paradas.find((x) => x.estado !== 'confirmada');
+  const p = paradas.find((x) => x.estado !== 'confirmada' && x.estado !== 'atual');
   return p?.parada ?? 'revisao';
 }
 
-/** Se a parada pode ser aberta. Bloqueada não é alcançável; o resto é. */
+/**
+ * O valor a passar em `projetarParadas` quando não se quer promover parada
+ * nenhuma a `atual` — ver `primeiraNaoConfirmada`.
+ */
+export const SEM_PARADA_ATUAL = '__nenhuma__' as unknown as ParadaDaBancada;
+
+/**
+ * Se a parada pode ser aberta.
+ *
+ * ⚠️ HOJE, NO CANAL SEARCH, ISTO É SEMPRE VERDADEIRO — e o fato merece ser dito
+ * em vez de escondido atrás de um ramo que nunca roda.
+ *
+ * `projetarParadas` não produz `bloqueada` para nenhuma das seis paradas, e a
+ * decisão é deliberada: cada parada é o lugar onde se descobre POR QUE ela não
+ * está pronta, e trancar a porta esconderia a explicação de quem precisa dela.
+ * Quem bloqueia é sempre a AÇÃO — a aprovação do conjunto, a escrita da copy, a
+ * prova —, com as faltas enumeradas ao lado.
+ *
+ * Os dois estados que fecham a porta continuam existindo no contrato porque têm
+ * consumidor previsto e não hipotético:
+ *
+ * - `nao_se_aplica` nasce quando a Bancada atender canal que o manifesto declare
+ *   sem aquela etapa (Performance Max não tem mesa de termos como Search tem);
+ * - `bloqueada` nasce quando o manifesto do servidor declarar a etapa inoperável
+ *   para o canal — que é diferente de "falta fazer" e de "não consegui ler".
+ *
+ * Enquanto só Search estiver implementado, este predicado é uma guarda que não
+ * dispara. `MapaDeParadas` já sabe desenhar os dois estados, com teste próprio.
+ */
 export function paradaAlcancavel(p: ParadaProjetada): boolean {
   return p.estado !== 'bloqueada' && p.estado !== 'nao_se_aplica';
 }

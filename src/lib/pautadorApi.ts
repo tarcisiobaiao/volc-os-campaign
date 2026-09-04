@@ -874,6 +874,31 @@ export const pautadorApi = {
     return request(`/api/trafego/candidatos/${opportunityId}${s ? `?${s}` : ''}`);
   },
 
+  // ⚠️ LÊ A CONTA E FECHA O MESMO RECIBO. NUNCA REENVIA O MUTATE.
+  //
+  // É a saída de um desfecho indeterminado — o caso em que a resposta se perdeu
+  // e ninguém sabe se a campanha existe. Reenviar ali seria a forma mais fácil
+  // de criar a campanha duas vezes no mesmo leilão; por isso a operação é ler,
+  // não escrever de novo.
+  //
+  // `campaign_id` é OPCIONAL de propósito: o item que MAIS precisa de
+  // reconciliação é justamente o que não tem id externo, porque a chamada nunca
+  // respondeu. Sem id, o servidor busca pela marca `VOLC-CANARY-<impressao>`.
+  //
+  // ⚠️ Exige ADMIN (`routers/trafego.py:4444`), enquanto o resto do fluxo exige
+  // só usuário — logo o operador não fecha o próprio recibo. A tela diz isso em
+  // vez de oferecer um botão que voltaria 403.
+  reconciliarLancamento(pedido: {
+    item_id: string;
+    customer_id: string;
+    campaign_id?: string | null;
+    marca?: string | null;
+  }): Promise<Record<string, unknown>> {
+    return request('/api/trafego/reconciliar', {
+      method: 'POST', body: JSON.stringify(pedido),
+    });
+  },
+
   // O plano de mensuração GRAVADO desta conta, com os sete portões.
   //
   // ⚠️ ZERO REDE ao Google — o backend lê o que já está persistido. É por isso

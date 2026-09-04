@@ -41,6 +41,10 @@ export function canalParaContrato(canal: CanalDoHub): Canal {
 
 export function abaDaUrl(valor: string | null): AbaDoHub {
   if (valor === 'oportunidades') return 'preparar';
+  // ⚠️ `canais` foi consolidada em `criar` (ver o comentário de `AbaDoHub`). O
+  // alias existe para um link colado ontem não cair na aba padrão em silêncio —
+  // que é pior que abrir a aba errada, porque não deixa rastro.
+  if (valor === 'canais') return 'criar';
   if (valor && (ABAS_DO_HUB as readonly string[]).includes(valor)) {
     return valor as AbaDoHub;
   }

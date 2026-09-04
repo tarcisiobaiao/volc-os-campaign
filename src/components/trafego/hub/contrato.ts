@@ -20,7 +20,28 @@ export type RedeDoHub = 'google' | 'meta';
  * o alias continua lendo o endereço velho para um link colado ontem não
  * abrir a aba errada.
  */
-export type AbaDoHub = 'campanhas' | 'canais' | 'preparar' | 'criar' | 'atencao';
+/**
+ * ⚠️ `canais` SAIU, e a razão é que ela e `criar` respondiam à MESMA pergunta —
+ * "o que cada canal pode?" — a partir de fontes diferentes, que podiam se
+ * contradizer.
+ *
+ * `canais` lia o veredito PRONTO do servidor (`GET /api/trafego/canais`: quatro
+ * portões por canal, quatro canais). `criar` DERIVAVA no cliente a partir de
+ * manifesto + capacidades + trava (`canal/jornada.ts`), sobre seis canais, e
+ * nunca consultava a janela do canário.
+ *
+ * A divergência era mensurável e cara: `plataforma.py:373` declara
+ * `sabe_criar=True` para Display, então `jornada.ts:644` liberava o cockpit e a
+ * bancada oferecia o botão primário "Começar campanha" — com o mesmo desenho de
+ * Search. Só que o servidor RECUSA `criavel_pausada` de Display com
+ * `fora_da_janela_do_canario` (`contrato_canais.py:946`), porque a janela
+ * autorizada é de um canal só. Simetria falsa: dois canais desenhados iguais,
+ * um cria e o outro não.
+ *
+ * Agora existe uma aba só, e ela lê o servidor. O alias continua atendendo
+ * `?aba=canais` para um link colado ontem não abrir a aba errada.
+ */
+export type AbaDoHub = 'campanhas' | 'preparar' | 'criar' | 'atencao';
 
 /**
  * ⚠️ A ORDEM é a do trabalho, não a do alfabeto: o que já gasta dinheiro, o que
@@ -29,7 +50,7 @@ export type AbaDoHub = 'campanhas' | 'canais' | 'preparar' | 'criar' | 'atencao'
  * sobreviver ao recarregamento sem tocar no parser.
  */
 export const ABAS_DO_HUB: readonly AbaDoHub[] = [
-  'campanhas', 'canais', 'preparar', 'criar', 'atencao',
+  'campanhas', 'preparar', 'criar', 'atencao',
 ];
 
 /** Nível da árvore Meta. Nunca traduzir conjunto (ad set) para ad group. */

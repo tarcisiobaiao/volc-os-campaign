@@ -18,22 +18,42 @@
  * ações opostas — uma pede permissão, a outra pede uma leitura — e pintar
  * ignorância de vermelho ensina o operador a tratar todo vermelho como ruído.
  *
+ * ## Por que a tabela de desenho não mora mais aqui
+ *
+ * Ela morava — em `DESENHO`, linhas 51-80 da versão anterior — e discordava da
+ * tabela do painel irmão sobre o MESMO veredito: aqui `BLOQUEADO` era âmbar e
+ * `INDETERMINADO` era ardósia; em `PainelDaMensuracao.tsx:67-74` `BLOQUEADO`
+ * era vermelho e `INDETERMINADO` era âmbar. O operador que aprende "âmbar =
+ * bloqueado" numa aba e vê "vermelho = bloqueado" na outra deixa de confiar na
+ * cor, que era o ponto de usá-la.
+ *
+ * A correspondência única agora vem de
+ * `bancada/paradas/portoesVisual.ts` — `TOM_DO_PORTAO_DE_CANAL`,
+ * `GLIFO_DO_PORTAO_DE_CANAL` e `PALAVRA_DO_PORTAO_DE_CANAL`. Duas palavras
+ * mudaram junto com a unificação, porque a tabela canônica é quem manda:
+ * `PERMITIDO` diz "permitido" (era "liberado") e `INDETERMINADO` diz "não se
+ * sabe" (era "não medido").
+ *
+ * ⚠️ E `BLOQUEADO` deixou de ser âmbar: um portão de canal fechado é uma recusa
+ * DECLARADA pelo servidor, não uma dúvida, e o âmbar desta tela é agora a cor
+ * exclusiva de "não sei".
+ *
  * ## Cor é o terceiro sinal, nunca o primeiro
  *
  * Glifo, palavra e descrição vêm antes, como no resto do inventário. Um
  * operador com deuteranopia, um monitor mal calibrado e um print em preto e
- * branco precisam ler o mesmo fato.
+ * branco precisam ler o mesmo fato. É por isso que o `ChipDeEstado` carrega os
+ * três, e não só a tinta.
  */
 import React from 'react';
-import {
-  CircleCheck,
-  CircleHelp,
-  CircleSlash,
-  Lock,
-  MinusCircle,
-} from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { ChipDeEstado } from '@/components/trafego/bancada/ChipDeEstado';
+import {
+  GLIFO_DO_PORTAO_DE_CANAL,
+  PALAVRA_DO_PORTAO_DE_CANAL,
+  TOM_DO_PORTAO_DE_CANAL,
+} from '@/components/trafego/bancada/paradas/portoesVisual';
 import {
   A_QUEM_PEDIR,
   ORDEM_DOS_PORTOES,
@@ -41,79 +61,45 @@ import {
   ROTULO_DO_PORTAO,
   type BloqueadorDeCanal,
   type ContratoDeCanal,
-  type EstadoDePortao,
   type PortaoDeCanal,
   portao,
   tomDoBloqueio,
 } from '@/lib/trafego/canais';
-
-/** Glifo, palavra e classe — nesta ordem de importância. */
-const DESENHO: Record<
-  EstadoDePortao,
-  { Icone: React.ElementType; palavra: string; classe: string; borda: string }
-> = {
-  PERMITIDO: {
-    Icone: CircleCheck,
-    palavra: 'liberado',
-    classe: 'text-emerald-700 dark:text-emerald-400',
-    borda: 'border-emerald-300 dark:border-emerald-800',
-  },
-  BLOQUEADO: {
-    Icone: Lock,
-    palavra: 'bloqueado',
-    classe: 'text-amber-700 dark:text-amber-400',
-    borda: 'border-amber-300 dark:border-amber-800',
-  },
-  // ⚠️ Tom PRÓPRIO, e deliberadamente neutro. "Não sei" não é uma recusa.
-  INDETERMINADO: {
-    Icone: CircleHelp,
-    palavra: 'não medido',
-    classe: 'text-slate-600 dark:text-slate-400',
-    borda: 'border-slate-300 dark:border-slate-700',
-  },
-  NAO_APLICAVEL: {
-    Icone: MinusCircle,
-    palavra: 'não se aplica',
-    classe: 'text-slate-500 dark:text-slate-500',
-    borda: 'border-dashed border-slate-300 dark:border-slate-700',
-  },
-};
-
-/**
- * O tom de um bloqueio — que **não** é o tom do portão.
- *
- * ⚠️ "Não habilitado nesta versão" não é falha, não é ausência e não é zero. É
- * uma decisão registrada, e desenhá-la em vermelho de erro diria ao operador
- * que algo quebrou quando alguém apenas ainda não abriu uma porta.
- */
-const TOM_DO_BLOQUEIO: Record<string, string> = {
-  decidido: 'border-l-sky-400 dark:border-l-sky-600',
-  permissao: 'border-l-amber-400 dark:border-l-amber-600',
-  ausencia: 'border-l-slate-400 dark:border-l-slate-600',
-  sem_prova: 'border-l-violet-400 dark:border-l-violet-600',
-};
+import {
+  DESCRICAO_DO_PORTAO_DE_CANAL,
+  FIO_DE_CARTAO,
+  FIO_DO_BLOQUEIO,
+  FIO_DO_TOM,
+} from '@/components/trafego/canais/tonsDoCockpit';
 
 function Bloqueio({ b }: { b: BloqueadorDeCanal }) {
   return (
     <li
+      // ⚠️ `border-l` de 1px, e não os `border-l-2` de antes: `design.md:130`
+      // proíbe faixa lateral colorida com mais de 1px. O tom vem de
+      // `FIO_DO_BLOQUEIO`, que é o tom do BLOQUEIO — nunca o do portão.
       className={cn(
-        'border-l-2 pl-3 py-1 text-xs leading-relaxed',
-        TOM_DO_BLOQUEIO[tomDoBloqueio(b.origem)] ?? TOM_DO_BLOQUEIO.ausencia,
+        'border-l py-1 pl-3',
+        FIO_DO_BLOQUEIO[tomDoBloqueio(b.origem)] ?? FIO_DO_BLOQUEIO.ausencia,
       )}
     >
-      <p className="text-slate-700 dark:text-slate-300">{b.causa}</p>
-      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-500">
+      {/* Causa de bloqueio é texto que sustenta decisão: 14px é o piso
+          (`design.md:172`, `VISUAL-DIRECTION.md §3`). Era 12px. */}
+      <p className="text-sm leading-6 text-foreground text-pretty">{b.causa}</p>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
         {A_QUEM_PEDIR[b.origem]}
         {/* A data existe só para os bloqueios que vêm de uma LEITURA. Regra não
             tem data de observação: ela vale enquanto estiver escrita. */}
         {b.observado_em ? ` · observado em ${b.observado_em}` : ''}
       </p>
       {b.revalidacao ? (
-        <p className="mt-0.5 text-[11px] italic text-slate-500 dark:text-slate-500">
+        <p className="mt-0.5 text-sm italic leading-6 text-muted-foreground">
           Como conferir de novo: {b.revalidacao}
         </p>
       ) : null}
-      <code className="mt-1 block text-[10px] text-slate-400 dark:text-slate-600">
+      {/* O código é metadado — estável, e é a ele que a UI se liga. 12px é o
+          piso de `VISUAL-DIRECTION.md §3`; era 10px, ilegível de propósito. */}
+      <code className="mt-1 block text-xs text-muted-foreground">
         {b.codigo}
       </code>
     </li>
@@ -121,28 +107,54 @@ function Bloqueio({ b }: { b: BloqueadorDeCanal }) {
 }
 
 function Portao({ p }: { p: PortaoDeCanal }) {
-  const d = DESENHO[p.estado] ?? DESENHO.INDETERMINADO;
-  const { Icone } = d;
+  // ⚠️ O `??` não inventa estado: ele cobre um servidor que mande um valor fora
+  // do contrato, e o desenha como IGNORÂNCIA — nunca como permissão.
+  const tom = TOM_DO_PORTAO_DE_CANAL[p.estado] ?? TOM_DO_PORTAO_DE_CANAL.INDETERMINADO;
+  const Glifo =
+    GLIFO_DO_PORTAO_DE_CANAL[p.estado] ?? GLIFO_DO_PORTAO_DE_CANAL.INDETERMINADO;
+  const palavra =
+    PALAVRA_DO_PORTAO_DE_CANAL[p.estado] ??
+    PALAVRA_DO_PORTAO_DE_CANAL.INDETERMINADO;
+  const descricao =
+    DESCRICAO_DO_PORTAO_DE_CANAL[p.estado] ??
+    DESCRICAO_DO_PORTAO_DE_CANAL.INDETERMINADO;
   return (
-    <div className={cn('rounded-md border p-3', d.borda)}>
-      <div className="flex items-start gap-2">
-        <Icone className={cn('mt-0.5 h-4 w-4 shrink-0', d.classe)} aria-hidden />
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            {ROTULO_DO_PORTAO[p.nome]}
-          </p>
-          {/* A palavra vem antes da cor, e o estado cru vem junto: quem lê o
-              contrato na API e quem lê a tela precisam ver o mesmo nome. */}
-          <p className={cn('text-xs font-medium', d.classe)}>
-            {d.palavra} <span className="font-normal opacity-70">({p.estado})</span>
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-500">
-            {PERGUNTA_DO_PORTAO[p.nome]}
-          </p>
-        </div>
+    <div
+      // Poço dentro do cartão do canal — `bg-muted/20` e sem sombra.
+      // `design.md:100`: cartão dentro de cartão é sempre errado.
+      className={cn(
+        'rounded-md border border-border bg-muted/20 p-3',
+        FIO_DE_CARTAO,
+        FIO_DO_TOM[tom],
+        // A borda tracejada sobrevive como QUARTO portador de "a pergunta não
+        // cabe": forma, e não tinta, é o que atravessa um print em cinza.
+        p.estado === 'NAO_APLICAVEL' && 'border-dashed',
+      )}
+      data-portao={p.nome}
+      data-estado={p.estado}
+    >
+      <p className="text-sm font-medium text-foreground">
+        {ROTULO_DO_PORTAO[p.nome]}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <ChipDeEstado
+          glifo={Glifo}
+          palavra={palavra}
+          descricao={descricao}
+          tom={tom}
+        />
+        {/* ⚠️ O estado CRU continua na tela. Quem lê o contrato na API e quem lê
+            a tela precisam ver o mesmo nome, e o operador não deveria precisar
+            aprender o vocabulário do backend para entender a própria tela. */}
+        <span className="font-mono text-xs text-muted-foreground">
+          ({p.estado})
+        </span>
       </div>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground text-pretty">
+        {PERGUNTA_DO_PORTAO[p.nome]}
+      </p>
       {p.bloqueadores.length > 0 ? (
-        <ul className="mt-2 space-y-2">
+        <ul className="mt-3 space-y-3">
           {p.bloqueadores.map((b) => (
             <Bloqueio key={`${p.nome}-${b.codigo}`} b={b} />
           ))}
@@ -167,25 +179,34 @@ export function PortoesDoCanal({ contrato }: { contrato: ContratoDeCanal }) {
         if (!p) {
           // O servidor não mandou este portão. Isso é ignorância, não recusa —
           // e dizê-lo é melhor que desenhar um portão inventado.
+          //
+          // ⚠️ Ele reusa o vocabulário de `INDETERMINADO` de propósito, em vez
+          // de ganhar um quinto estado: "ninguém mediu" é o mesmo fato
+          // operacional, e inventar um estado que o contrato não tem seria
+          // afirmar uma distinção que o servidor não fez. O que separa os dois
+          // casos é a frase abaixo e a borda tracejada, não um tom novo.
           return (
             <div
               key={nome}
-              className="rounded-md border border-dashed border-slate-300 p-3 dark:border-slate-700"
+              className={cn(
+                'rounded-md border border-dashed border-border bg-muted/20 p-3',
+                FIO_DE_CARTAO,
+                FIO_DO_TOM[TOM_DO_PORTAO_DE_CANAL.INDETERMINADO],
+              )}
             >
-              <div className="flex items-start gap-2">
-                <CircleSlash
-                  className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
-                  aria-hidden
-                />
-                <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {ROTULO_DO_PORTAO[nome]}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    o servidor não respondeu sobre este portão
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm font-medium text-foreground">
+                {ROTULO_DO_PORTAO[nome]}
+              </p>
+              <ChipDeEstado
+                className="mt-2"
+                glifo={GLIFO_DO_PORTAO_DE_CANAL.INDETERMINADO}
+                palavra={PALAVRA_DO_PORTAO_DE_CANAL.INDETERMINADO}
+                descricao="o servidor não mandou este portão nesta leitura"
+                tom={TOM_DO_PORTAO_DE_CANAL.INDETERMINADO}
+              />
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                o servidor não respondeu sobre este portão
+              </p>
             </div>
           );
         }

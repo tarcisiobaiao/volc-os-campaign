@@ -18,9 +18,19 @@
  * ⚠️ `plano: null` NÃO é "não há plano": é "ninguém leu os três recursos que
  * decidem a meta efetiva". Quem chama decide o que fazer com a ausência; este
  * componente só é montado quando há um plano.
+ *
+ * ## O que mudou na superfície
+ *
+ * O `Fato` que morava aqui (linhas 33-55 da versão anterior) era a terceira
+ * cópia byte a byte do mesmo componente e foi consolidado em `./Fato.tsx`. A
+ * paleta crua saiu inteira: ardósia no texto, preto a 10% no poço e violeta na
+ * faixa lateral. O poço de preto sobre borda branca só funciona no tema escuro
+ * — no claro ele é uma mancha cinza sem borda —, e o vocabulário semântico de
+ * `design.md:105` é fechado, sem violeta.
  */
 import React from 'react';
 
+import { cn } from '@/lib/utils';
 import {
   textoDaFonteDoSinal,
   textoDaMetaEfetiva,
@@ -28,31 +38,8 @@ import {
   type PlanoDeMensuracao,
 } from '@/lib/trafego/canais';
 import type { PlanoPersistido, VinculoDoPlano } from '@/types/trafego';
-
-/** Um par rótulo/valor em que o valor pode legitimamente ser desconhecido. */
-function Fato({
-  rotulo,
-  valor,
-  ressalva,
-}: {
-  rotulo: string;
-  valor: React.ReactNode;
-  ressalva?: string | null;
-}) {
-  return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
-        {rotulo}
-      </dt>
-      <dd className="text-sm text-slate-800 dark:text-slate-200">{valor}</dd>
-      {ressalva ? (
-        <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
-          {ressalva}
-        </p>
-      ) : null}
-    </div>
-  );
-}
+import { Fato } from '@/components/trafego/canais/Fato';
+import { FIO_DO_BLOQUEIO } from '@/components/trafego/canais/tonsDoCockpit';
 
 /**
  * O registro do plano — CALCULADO, PERSISTIDO e VINCULADO são três coisas.
@@ -71,12 +58,13 @@ function Registro({
 }) {
   if (!persistencia && !vinculo) return null;
   return (
-    <div className="mt-2 rounded-md border border-white/10 bg-black/10 p-2">
-      <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
-        Registro
-      </p>
+    // Poço, não cartão: `bg-muted/20` + `border-border`, sem sombra
+    // (`design.md:100`). Era `border-white/10 bg-black/10`, que só existia no
+    // tema escuro e sumia no claro, que é o padrão desta cena.
+    <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
+      <p className="text-sm font-semibold text-foreground">Registro</p>
       {persistencia ? (
-        <p className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+        <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
           {persistencia.persistido
             ? `gravado · ${persistencia.plano_id ?? 'sem id'}`
             : 'ainda não gravado'}
@@ -84,7 +72,7 @@ function Registro({
         </p>
       ) : null}
       {vinculo ? (
-        <p className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+        <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
           {vinculo.vinculado
             ? `vinculado à campanha ${vinculo.campaign_id ?? '—'}${
                 vinculo.ja_estava ? ' (já estava)' : ''
@@ -101,7 +89,7 @@ function Registro({
            de a campanha existir: `metas_da_campanha_estado` é `inelegivel`
            porque a pergunta não cabia naquele instante, e não porque a campanha
            tenha metas inelegíveis. */
-        <p className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-500">
+        <p className="mt-1 text-sm leading-snug text-muted-foreground text-pretty">
           Esta leitura foi feita antes de a campanha existir; os estados acima
           descrevem aquele instante, não o de agora.
         </p>
@@ -125,7 +113,7 @@ export function CartaoDoPlanoDeMensuracao({
 }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
+      <p className="text-sm font-semibold text-foreground">
         {titulo}
         {/* ⚠️ Campanha ainda não nascida é o caso NORMAL — o plano existe ANTES
             do nascimento, e é esse o ponto. Omitir a informação faria o
@@ -134,7 +122,7 @@ export function CartaoDoPlanoDeMensuracao({
           ? ` · campanha ${plano.campaign_id}`
           : ' · antes do nascimento'}
       </p>
-      <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+      <dl className="mt-2 grid gap-3 sm:grid-cols-2">
         <Fato
           rotulo="meta efetiva"
           valor={textoDaMetaEfetiva(plano.meta_efetiva)}
@@ -174,18 +162,29 @@ export function CartaoDoPlanoDeMensuracao({
       </dl>
       <Registro persistencia={persistencia} vinculo={vinculo} />
       {plano.bloqueadores.length > 0 ? (
-        <div className="mt-2">
-          <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
+        <div className="mt-3">
+          <p className="text-sm font-semibold text-foreground">
             O que ainda impede
           </p>
           {/* ⚠️ TODAS as razões, e não só a primeira. Fechar uma não abre o
               portão, e uma lista truncada faria o operador consertar uma coisa
               por vez sem nunca ver o tamanho do caminho. */}
-          <ul className="mt-1 space-y-1">
+          <ul className="mt-1.5 space-y-1.5">
             {plano.bloqueadores.map((b) => (
               <li
                 key={b}
-                className="border-l-2 border-l-violet-400 pl-3 text-xs leading-relaxed text-slate-700 dark:border-l-violet-600 dark:text-slate-300"
+                // ⚠️ O violeta saiu por dois motivos, e só um deles é de cor:
+                // `design.md:105` fecha o vocabulário semântico em seis tokens,
+                // e nenhum é violeta; e `design.md:130` proíbe faixa lateral
+                // colorida acima de 1px — este `border-l` é de 1px.
+                //
+                // O tom é o de `sem_prova`: o que impede um plano de mensuração
+                // é sempre falta de prova de medição, que é a mesma classe de
+                // bloqueio que `PainelDaMensuracao` já pintava de vermelho.
+                className={cn(
+                  'border-l pl-3 text-sm leading-6 text-foreground text-pretty',
+                  FIO_DO_BLOQUEIO.sem_prova,
+                )}
               >
                 {b}
               </li>
