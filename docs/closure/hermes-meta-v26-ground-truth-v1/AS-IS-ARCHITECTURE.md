@@ -1,9 +1,11 @@
 # AS-IS Architecture
 
+> Historical snapshot captured from base `0aa090eb6a97e66b5ebdeb1c288d214003b06cbf`. It is evidence for the Hermes branch, not a claim about the later operational HEAD. Re-adjudicate changed paths before implementation.
+
 ## What is already multichannel
 
 - `backend/app/trafego/plataforma.py` declares `GOOGLE_ADS` and `META_ADS`, provider/channel hierarchy labels, and the read/propose/write vocabulary.
-- `trafego_*` migrations establish provider-neutral identity, mirror, account snapshots, links, events, intent/blueprint/lote/validation/receipt patterns.
+- `trafego_*` migrations establish useful freshness, mirror, snapshot, event and intent/blueprint/lote/validation/receipt patterns; their concrete v9 identity remains Google-shaped.
 - Frontend has a Traffic Hub component tree and Meta placeholder state.
 
 ## What is Google-coupled

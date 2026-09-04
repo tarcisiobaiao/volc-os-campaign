@@ -23,12 +23,17 @@
     "declared_rights_license",
     "validation_status",
     "incompatibilities",
-    "meta_image_hash",
-    "meta_video_id",
+    "criativo_master_id",
+    "meta_upload_association_ids",
     "lineage",
     "timestamp"
   ],
-  "output": "same typed manifest future Creative Studio will produce; upload to Meta is separate capability",
+  "asset_authority": {
+    "master": "criativo_master",
+    "meta_upload_association": "trafego_meta_asset_upload",
+    "rule": "Import creates or reuses criativo_master by content hash. Meta image hash/video ID belongs only to an account-scoped upload association; this contract does not create a second asset master."
+  },
+  "output": "typed manifest containing criativo_master references; Meta upload remains the separate META_UPLOAD_ASSET capability",
   "purpose": "Temporary official intake for images/videos until Creative Studio emits same manifest",
   "validations": [
     "zip_bomb",

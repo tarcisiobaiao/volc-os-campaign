@@ -8,7 +8,8 @@
     "does not ignore policy",
     "does not reuse creative without lineage"
   ],
-  "local_sources_status": "LOCAL_INPUT_NOT_AVAILABLE",
+  "local_sources_status": "AVAILABLE_NOT_IMPORTED",
+  "local_sources_rule": "Two local input sets are available to the executor. Inventory and hash selected files before reuse; do not publish absolute workstation paths.",
   "typed_outputs": [
     "psychological_state",
     "consciousness_level",

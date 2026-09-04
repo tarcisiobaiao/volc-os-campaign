@@ -1,5 +1,7 @@
 # Meta Operator Experience PDR
 
+Canonical entry: `/trafego?rede=meta`. `/trafego?plataforma=meta` is an input-only compatibility alias and must normalize once to the canonical URL.
+
 ## Hub Meta
 Surfaces: account selector, Campaigns, Ad Sets, Ads, Creatives, Insights, Alerts, History, freshness, provenance, next action, editability, receipt.
 
@@ -18,3 +20,5 @@ Every number shows source + read time. Failed read is not zero. Not configured i
 10. Criação em PAUSED e read-back — future separate mission.
 
 Frontend never decides: token readiness, account access, objective/goal compatibility, Special Ad Category omission, placement compatibility, monetary caps, approval state, idempotency, read-back success.
+
+The complete field ownership, conditional requirements, states and endpoints are normative in `META-UI-FIELD-CONTRACT.json` and `META-UI-API-BINDING.json`.

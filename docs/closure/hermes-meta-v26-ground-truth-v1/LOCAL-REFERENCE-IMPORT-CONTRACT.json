@@ -6,9 +6,17 @@
     "record provenance",
     "do not claim content until read locally"
   ],
-  "expected_paths": [
-    "/Users/mac/Downloads/Co-Piloto de Criação Meta Ads",
-    "/Users/mac/Downloads/Meta MVP Webgo"
+  "available_input_sets": [
+    {
+      "label": "Co-Piloto de Criacao Meta Ads",
+      "observed_file_count": 12,
+      "availability": "AVAILABLE_TO_LOCAL_EXECUTOR"
+    },
+    {
+      "label": "Meta MVP Webgo",
+      "observed_file_count": 2,
+      "availability": "AVAILABLE_TO_LOCAL_EXECUTOR"
+    }
   ],
   "output_schema": [
     "source_path",
@@ -20,5 +28,7 @@
     "risks",
     "reuse_route"
   ],
-  "status": "LOCAL_INPUT_NOT_AVAILABLE"
+  "privacy_rule": "Absolute workstation paths are operational input and must not be copied into public artifacts.",
+  "ingestion_scope": "No bulk ingestion performed in this documentation correction. The executor must inventory and hash each selected file before citing or reusing it.",
+  "status": "AVAILABLE_NOT_IMPORTED"
 }

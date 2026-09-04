@@ -1,6 +1,7 @@
 {
   "base": "0aa090eb6a97e66b5ebdeb1c288d214003b06cbf",
   "branch": "sprint/hermes-meta-v26-ground-truth-v1",
+  "snapshot_scope": "Historical AS-IS at base 0aa090e. Paths changed after this base must be re-read at the implementation HEAD; this inventory is not a live capability registry.",
   "capability_states": {
     "AUSENTE": [
       "Meta Marketing API adapter",

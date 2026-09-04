@@ -275,7 +275,7 @@
     "META_DUPLICATE",
     "META_ARCHIVE"
   ],
-  "local_refs": "LOCAL_INPUT_NOT_AVAILABLE",
+  "local_refs": "AVAILABLE_NOT_IMPORTED; executor must inventory/hash selected files before reuse and must not publish absolute workstation paths",
   "mcp_boundary": "MCP not data/mutation plane; prompt injection risk",
   "mission": "Meta Ads Marketing API v26 ground truth + execution contract for VOLC OS",
   "n8n_status": "N8N_READ_NOT_AVAILABLE",

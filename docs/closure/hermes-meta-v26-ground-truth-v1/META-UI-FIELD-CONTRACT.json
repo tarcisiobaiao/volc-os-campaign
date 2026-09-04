@@ -1,164 +1,125 @@
 {
+  "schema_version": 2,
+  "routing": {
+    "canonical": {"path": "/trafego", "query": {"rede": "meta"}, "url": "/trafego?rede=meta"},
+    "accepted_alias": {"path": "/trafego", "query": {"plataforma": "meta"}, "url": "/trafego?plataforma=meta"},
+    "normalization": "Aceitar o alias apenas na entrada, substituir por rede=meta uma vez e nunca emitir links, analytics ou estado persistido com plataforma=meta."
+  },
   "field_rules": [
-    {
-      "id": "V26_ADVANTAGE_AUDIENCE_HECF",
-      "rule": "If special_ad_categories intersects HEC-F and targeting is constrained/relaxable, require explicit advantage_audience in targeting_automation; omission is stable error META_V26_ADVANTAGE_AUDIENCE_REQUIRED.",
-      "source": {
-        "endpoint_or_field": "targeting_automation.advantage_audience",
-        "object": "AdSet",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "Frontend/backend must require explicit 1/0 for Housing, Employment, Financial Products/Services with constrained targeting."
-      }
-    },
-    {
-      "id": "V26_INSTAGRAM_EXPLORE_REMOVED",
-      "rule": "Reject instagram_positions containing explore; suggest eligible alternatives; never silently send removed placement.",
-      "source": {
-        "endpoint_or_field": "instagram_positions=explore",
-        "object": "AdSet targeting",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "Do not offer Instagram Explore Feed placement."
-      }
-    },
-    {
-      "id": "V26_MESSENGER_STORIES_DEPRECATED",
-      "rule": "Warn/block messenger_positions story in manual placements unless explicitly modeled as unsupported; read-back effective placements is mandatory.",
-      "source": {
-        "endpoint_or_field": "messenger_positions=story",
-        "object": "AdSet targeting",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "Do not rely on Messenger Stories; v26 silently removes story."
-      }
-    },
-    {
-      "id": "V26_POLL_CREATIVE_REJECTED",
-      "rule": "Reject poll_spec and interactive_components_spec.type=poll in local validation.",
-      "source": {
-        "endpoint_or_field": "interactive_components_spec.poll_spec/type=poll",
-        "object": "AdCreative",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "Creative copilot and ZIP manifest must reject poll creatives."
-      }
-    },
-    {
-      "id": "V26_WEB_APP_WEB_ONLY_RESTRICTED",
-      "rule": "If campaign conversion locations are Website+App, creative.applink_treatment cannot be web_only.",
-      "source": {
-        "endpoint_or_field": "applink_treatment=web_only with Website+App",
-        "object": "Ad/AdCreative",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "UI must not allow incompatible destination combination."
-      }
-    },
-    {
-      "id": "V26_DELIVERY_ESTIMATE_FIELDS_REMOVED",
-      "rule": "Contracts may read delivery_estimate only without removed fields; no replacement API; no outcome promise.",
-      "source": {
-        "endpoint_or_field": "daily_outcomes_curve,budget_guardrail,estimate_dau",
-        "object": "Delivery Estimate",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "Do not build UI promises/reach forecasts on removed fields."
-      }
-    },
-    {
-      "id": "V26_SHOP_ADS_DEFAULTING",
-      "rule": "For eligible shop advertisers, require explicit destination choice; do not inherit WEBSITE_AND_SHOP silently.",
-      "source": {
-        "endpoint_or_field": "destination_spec.destination_type",
-        "object": "AdCreative/Ad",
-        "read_date_utc": "2026-09-04",
-        "stability": "current",
-        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
-        "version": "v26.0",
-        "volc_impact": "Future Sales/shop work must make opt-out explicit when advertiser has shop."
-      }
-    }
+    {"id": "V26_ADVANTAGE_AUDIENCE_HECF", "rule": "Em HEC-F com targeting restrito/relaxavel, advantage_audience e obrigatorio e explicito (1/0).", "error": "META_V26_ADVANTAGE_AUDIENCE_REQUIRED", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"},
+    {"id": "V26_INSTAGRAM_EXPLORE_REMOVED", "rule": "Rejeitar instagram_positions=explore; nunca remover silenciosamente.", "error": "META_V26_PLACEMENT_REMOVED", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"},
+    {"id": "V26_MESSENGER_STORIES_DEPRECATED", "rule": "Bloquear messenger_positions=story e exigir read-back de placements efetivos.", "error": "META_V26_PLACEMENT_DEPRECATED", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"},
+    {"id": "V26_POLL_CREATIVE_REJECTED", "rule": "Rejeitar poll_spec e interactive_components_spec.type=poll.", "error": "META_V26_POLL_UNSUPPORTED", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"},
+    {"id": "V26_WEB_APP_WEB_ONLY_RESTRICTED", "rule": "Website+App nao aceita creative.applink_treatment=web_only.", "error": "META_V26_DESTINATION_INCOMPATIBLE", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"},
+    {"id": "V26_DELIVERY_ESTIMATE_FIELDS_REMOVED", "rule": "Nao solicitar nem prometer UI baseada em daily_outcomes_curve, budget_guardrail ou estimate_dau.", "error": "META_V26_ESTIMATE_FIELD_REMOVED", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"},
+    {"id": "V26_SHOP_ADS_DEFAULTING", "rule": "Exigir destination_type explicito para anunciante elegivel a Shop.", "error": "META_V26_DESTINATION_REQUIRED", "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0"}
   ],
   "surfaces": [
-    "/trafego?plataforma=meta",
-    "/trafego/meta/campanhas",
-    "/trafego/campanhas/:volcCampaignId",
-    "/settings/campaigns",
-    "/settings/cofre-ativos"
+    {"id": "meta_hub", "route": "/trafego?rede=meta", "reads": ["readiness", "overview", "sync_run"], "empty_state": "not_configured|never_synced|empty|error"},
+    {"id": "meta_campaigns", "route": "/trafego/meta/campanhas", "reads": ["campaign_list"]},
+    {"id": "campaign_detail", "route": "/trafego/campanhas/:volcCampaignId", "reads": ["campaign_detail", "insights"]},
+    {"id": "meta_wizard", "route": "/settings/campaigns", "reads": ["readiness", "asset_import", "blueprint", "lote", "receipt"]},
+    {"id": "cofre_assets", "route": "/settings/cofre-ativos", "reads": ["safe_account_choices", "binding"]}
   ],
   "wizard_steps": [
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Conta e projeto",
-      "server_authority": true,
-      "step": 1
+      "step": 1, "id": "account_project", "name": "Conta e projeto", "endpoint": "POST /api/trafego/meta/bindings",
+      "fields": [
+        {"name": "project_id", "type": "positive bigint", "required": true, "source": "authenticated project membership"},
+        {"name": "business_ativo_id", "type": "opaque cofre_ativo_id", "required": true, "source": "safe Cofre read model"},
+        {"name": "ad_account_ativo_id", "type": "opaque cofre_ativo_id", "required": true, "source": "safe Cofre read model"}
+      ],
+      "server_authority": ["membership", "account access", "binding uniqueness", "credential readiness"], "success_state": "binding_ready", "failure_state": "not_configured|unauthorized|conflict"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Objetivo e mensuração",
-      "server_authority": true,
-      "step": 2
+      "step": 2, "id": "objective_measurement", "name": "Objetivo e mensuracao", "endpoint": "POST /api/trafego/meta/blueprints",
+      "fields": [
+        {"name": "objective", "type": "enum", "required": true, "source": "versioned server allowlist"},
+        {"name": "conversion_location", "type": "enum", "required": true, "source": "objective-dependent server allowlist"},
+        {"name": "promoted_object", "type": "object", "required": "conditional", "source": "safe account inventory"},
+        {"name": "attribution_spec", "type": "array", "required": true, "source": "server policy"}
+      ],
+      "server_authority": ["objective compatibility", "promoted object ownership", "attribution availability"], "success_state": "draft_saved", "failure_state": "invalid|stale"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Destino e compliance",
-      "server_authority": true,
-      "step": 3
+      "step": 3, "id": "destination_compliance", "name": "Destino e compliance", "endpoint": "POST /api/trafego/meta/blueprints",
+      "fields": [
+        {"name": "destination_type", "type": "enum", "required": true, "source": "versioned server allowlist"},
+        {"name": "destination_url", "type": "url", "required": "conditional", "source": "operator"},
+        {"name": "special_ad_categories", "type": "array", "required": true, "source": "operator plus server policy"},
+        {"name": "applink_treatment", "type": "enum", "required": "conditional", "source": "server compatibility matrix"}
+      ],
+      "server_authority": ["domain policy", "special category rules", "shop eligibility", "destination compatibility"], "success_state": "draft_saved", "failure_state": "invalid|policy_blocked"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Estratégia criativa",
-      "server_authority": true,
-      "step": 4
+      "step": 4, "id": "creative_strategy", "name": "Estrategia criativa", "endpoint": "POST /api/trafego/meta/blueprints",
+      "fields": [
+        {"name": "creative_mode", "type": "enum:single|dynamic", "required": true, "source": "operator"},
+        {"name": "page_id", "type": "opaque external id", "required": true, "source": "safe account inventory"},
+        {"name": "instagram_actor_id", "type": "opaque external id", "required": "conditional", "source": "safe account inventory"},
+        {"name": "messages", "type": "array", "required": true, "source": "operator/copilot"},
+        {"name": "headlines", "type": "array", "required": true, "source": "operator/copilot"},
+        {"name": "call_to_action_type", "type": "enum", "required": true, "source": "server allowlist"}
+      ],
+      "server_authority": ["actor ownership", "asset-feed limits", "v26 poll rejection"], "success_state": "draft_saved", "failure_state": "invalid|unsupported"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "ZIP/assets",
-      "server_authority": true,
-      "step": 5
+      "step": 5, "id": "assets", "name": "ZIP/assets", "endpoint": "POST /api/trafego/meta/assets/import-zip",
+      "fields": [
+        {"name": "zip", "type": "file", "required": true, "source": "operator", "client_validation": ["extension", "size ceiling"]},
+        {"name": "manifest_version", "type": "string", "required": true, "source": "manifest.json"},
+        {"name": "rights_attestation", "type": "boolean", "required": true, "source": "operator"}
+      ],
+      "server_authority": ["zip safety", "hash", "MIME sniffing", "dimensions", "rights", "criativo_master reuse"], "success_state": "imported_local", "failure_state": "rejected|partial", "external_upload": "separate future capability META_UPLOAD_ASSET"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Público e placements",
-      "server_authority": true,
-      "step": 6
+      "step": 6, "id": "audience_placements", "name": "Publico e placements", "endpoint": "POST /api/trafego/meta/blueprints",
+      "fields": [
+        {"name": "targeting", "type": "object", "required": true, "source": "operator plus server policy"},
+        {"name": "targeting_automation.advantage_audience", "type": "boolean", "required": "HEC-F conditional", "source": "explicit operator choice"},
+        {"name": "publisher_platforms", "type": "array", "required": true, "source": "versioned server allowlist"},
+        {"name": "facebook_positions", "type": "array", "required": "conditional", "source": "versioned server allowlist"},
+        {"name": "instagram_positions", "type": "array", "required": "conditional", "source": "versioned server allowlist"},
+        {"name": "messenger_positions", "type": "array", "required": "conditional", "source": "versioned server allowlist"}
+      ],
+      "server_authority": ["v26 placements", "special-category targeting", "account eligibility"], "success_state": "draft_saved", "failure_state": "invalid|policy_blocked"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Orçamento, lance e agenda",
-      "server_authority": true,
-      "step": 7
+      "step": 7, "id": "budget_bid_schedule", "name": "Orcamento, lance e agenda", "endpoint": "POST /api/trafego/meta/blueprints",
+      "fields": [
+        {"name": "budget_scope", "type": "enum:campaign|adset", "required": true, "source": "operator"},
+        {"name": "daily_budget_minor", "type": "integer", "required": "daily conditional", "source": "operator"},
+        {"name": "lifetime_budget_minor", "type": "integer", "required": "lifetime conditional", "source": "operator"},
+        {"name": "bid_strategy", "type": "enum", "required": true, "source": "versioned server allowlist"},
+        {"name": "bid_amount_minor", "type": "integer", "required": "strategy conditional", "source": "operator"},
+        {"name": "start_time", "type": "datetime", "required": true, "source": "operator with account timezone"},
+        {"name": "end_time", "type": "datetime", "required": "lifetime conditional", "source": "operator with account timezone"}
+      ],
+      "server_authority": ["currency", "timezone", "minimums", "spend caps", "strategy compatibility"], "success_state": "draft_saved", "failure_state": "invalid|limit_exceeded"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Revisão do payload",
-      "server_authority": true,
-      "step": 8
+      "step": 8, "id": "review", "name": "Revisao do payload", "endpoint": "POST /api/trafego/meta/lotes",
+      "fields": [
+        {"name": "blueprint_id", "type": "uuid", "required": true, "source": "saved blueprint"},
+        {"name": "expected_blueprint_version", "type": "integer", "required": true, "source": "saved blueprint"},
+        {"name": "idempotency_key", "type": "string", "required": true, "source": "server-generated per item"}
+      ],
+      "server_authority": ["canonical payload", "redacted diff", "freshness", "idempotency"], "success_state": "awaiting_approval", "failure_state": "stale|conflict|invalid"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Validação",
-      "server_authority": true,
-      "step": 9
+      "step": 9, "id": "validation", "name": "Validacao", "endpoint": "POST /api/trafego/meta/blueprints/{blueprintId}/validate-local",
+      "fields": [{"name": "blueprint_version", "type": "integer", "required": true, "source": "saved blueprint"}],
+      "server_authority": ["all deterministic rules", "capability availability", "account snapshot freshness"], "success_state": "locally_valid", "failure_state": "invalid|stale", "remote_validation": "future separate action; never implied by local validation"
     },
     {
-      "frontend_cannot_decide_alone": true,
-      "name": "Criação em PAUSED e read-back",
-      "server_authority": true,
-      "step": 10
+      "step": 10, "id": "create_paused", "name": "Criacao em PAUSED e read-back", "endpoint": "POST /api/trafego/meta/lotes/{loteId}/execute-create-paused",
+      "fields": [
+        {"name": "approval_id", "type": "uuid", "required": true, "source": "server-side human approval"},
+        {"name": "expected_lote_version", "type": "integer", "required": true, "source": "server"}
+      ],
+      "server_authority": ["META_CREATE_PAUSED", "approval", "freshness", "idempotency", "ordered execution", "receipt", "read-back"], "success_state": "created_paused|partially_created_compensated", "failure_state": "unauthorized|stale|conflict|external_error|readback_mismatch", "enable_is_separate": true
     }
-  ]
+  ],
+  "global_states": ["loading", "ready", "empty", "not_configured", "unauthorized", "stale", "validating", "awaiting_approval", "executing", "partial", "error", "success"],
+  "browser_must_never_decide": ["tenant/account authorization", "credential readiness", "object ownership", "Graph API field eligibility", "monetary cap", "idempotency", "approval validity", "mutation success", "read-back equality"]
 }

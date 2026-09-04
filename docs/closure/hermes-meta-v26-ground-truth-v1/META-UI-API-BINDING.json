@@ -1,28 +1,30 @@
 {
+  "schema_version": 2,
+  "implementation_status": "CONTRACT_ONLY_NO_ROUTES_IMPLEMENTED",
+  "route_contract": {
+    "canonical": "/trafego?rede=meta",
+    "accepted_alias": "/trafego?plataforma=meta",
+    "rule": "Normalize alias to canonical once; responses and generated links emit only rede=meta."
+  },
+  "common_response": {"success": ["data", "receipt_id", "read_at"], "error": ["error.code", "error.message", "error.retryable", "receipt_id"]},
   "bindings": [
-    {
-      "endpoint": "GET /api/trafego/meta/overview",
-      "notes": "read model only; no browser-invented zero campaigns",
-      "state": "PLANNED",
-      "surface": "/trafego?plataforma=meta"
-    },
-    {
-      "endpoint": "POST /api/trafego/meta/bindings",
-      "notes": "metadata only; secret locator opaque",
-      "state": "PLANNED",
-      "surface": "/settings/cofre-ativos"
-    },
-    {
-      "endpoint": "POST /api/trafego/meta/blueprints/validate-local",
-      "notes": "local deterministic validation; remote validate only separate authorization",
-      "state": "PLANNED",
-      "surface": "wizard validation"
-    },
-    {
-      "endpoint": "POST /api/trafego/meta/lotes/{id}/execute-create-paused",
-      "notes": "requires approval, idempotency, receipt, read-back",
-      "state": "FUTURE_AUTH_REQUIRED",
-      "surface": "future create paused"
-    }
+    {"method": "GET", "path": "/api/trafego/meta/readiness", "surface": ["meta_hub", "meta_wizard"], "capability": "META_READ_INVENTORY", "request": ["project_id"], "response": ["binding_state", "credential_state", "account_state", "last_sync_at", "blocking_reasons"], "state": "PLANNED", "safe_semantics": "No credential locator or raw external token."},
+    {"method": "POST", "path": "/api/trafego/meta/bindings", "surface": ["cofre_assets", "meta_wizard.step_1"], "capability": "META_MANAGE_BINDING", "request": ["project_id", "business_ativo_id", "ad_account_ativo_id"], "response": ["binding_id", "state", "receipt_id"], "state": "PLANNED", "safe_semantics": "Metadata IDs only; server derives/verifies the Business parent and validates tenancy plus Cofre readiness."},
+    {"method": "POST", "path": "/api/trafego/meta/sync-runs", "surface": ["meta_hub"], "capability": "META_READ_INVENTORY", "request": ["project_id", "levels", "date_range"], "response": ["sync_run_id", "status", "receipt_id"], "state": "PLANNED", "safe_semantics": "Starts bounded account-scoped read; no mutation."},
+    {"method": "GET", "path": "/api/trafego/meta/sync-runs/{syncRunId}", "surface": ["meta_hub"], "capability": "META_READ_INVENTORY", "request": ["sync_run_id"], "response": ["status", "progress", "read_counts", "finished_at", "stable_error"], "state": "PLANNED", "safe_semantics": "Tenant-scoped status only."},
+    {"method": "GET", "path": "/api/trafego/meta/overview", "surface": ["meta_hub"], "capability": "META_READ_INVENTORY", "request": ["project_id", "date_range", "object_level"], "response": ["readiness", "freshness", "totals", "campaigns", "currency", "timezone"], "state": "PLANNED", "safe_semantics": "Missing data is null/empty with reason; browser never invents zero."},
+    {"method": "GET", "path": "/api/trafego/meta/campaigns", "surface": ["meta_campaigns"], "capability": "META_READ_INVENTORY", "request": ["project_id", "cursor", "status"], "response": ["items", "next_cursor", "freshness"], "state": "PLANNED", "safe_semantics": "Only account-bound mirrors."},
+    {"method": "GET", "path": "/api/trafego/meta/campaigns/{volcCampaignId}", "surface": ["campaign_detail"], "capability": "META_READ_INVENTORY", "request": ["volc_campaign_id", "date_range", "object_level"], "response": ["campaign", "adsets", "ads", "insights", "actions", "freshness"], "state": "PLANNED", "safe_semantics": "volcCampaignId resolves server-side to an authorized Meta account/object."},
+    {"method": "POST", "path": "/api/trafego/meta/assets/import-zip", "surface": ["meta_wizard.step_5"], "capability": "META_VALIDATE_BLUEPRINT", "request": ["zip_multipart", "rights_attestation"], "response": ["import_id", "criativo_master_ids", "warnings", "errors"], "state": "PLANNED", "safe_semantics": "Local import only; no Meta upload."},
+    {"method": "GET", "path": "/api/trafego/meta/assets/imports/{importId}", "surface": ["meta_wizard.step_5"], "capability": "META_READ_INVENTORY", "request": ["import_id"], "response": ["state", "assets", "warnings", "errors"], "state": "PLANNED", "safe_semantics": "Returns master IDs and validation, not storage secrets."},
+    {"method": "POST", "path": "/api/trafego/meta/assets/{criativoMasterId}/uploads", "surface": ["meta_wizard.step_10"], "capability": "META_UPLOAD_ASSET", "request": ["criativo_master_id", "ad_account_ativo_id", "approval_id", "idempotency_key"], "response": ["upload_id", "state", "receipt_id", "read_back"], "state": "FUTURE_AUTH_REQUIRED", "safe_semantics": "Separate authorized upload; result stored as account-scoped association."},
+    {"method": "POST", "path": "/api/trafego/meta/blueprints", "surface": ["meta_wizard.steps_2_7"], "capability": "META_VALIDATE_BLUEPRINT", "request": ["project_id", "expected_version", "draft"], "response": ["blueprint_id", "version", "canonical_draft", "validation_summary"], "state": "PLANNED", "safe_semantics": "Local persistence only; optimistic concurrency."},
+    {"method": "POST", "path": "/api/trafego/meta/blueprints/{blueprintId}/validate-local", "surface": ["meta_wizard.step_9"], "capability": "META_VALIDATE_BLUEPRINT", "request": ["blueprint_id", "version"], "response": ["valid", "errors", "warnings", "account_snapshot_at"], "state": "PLANNED", "safe_semantics": "Deterministic local validation; no Graph call."},
+    {"method": "POST", "path": "/api/trafego/meta/blueprints/{blueprintId}/validate-remote", "surface": ["meta_wizard.step_9"], "capability": "META_VALIDATE_BLUEPRINT_REMOTE", "request": ["blueprint_id", "version", "approval_id"], "response": ["valid", "errors", "receipt_id"], "state": "FUTURE_AUTH_REQUIRED", "safe_semantics": "Never implied by local validation; only if supported by pinned API."},
+    {"method": "POST", "path": "/api/trafego/meta/lotes", "surface": ["meta_wizard.step_8"], "capability": "META_VALIDATE_BLUEPRINT", "request": ["blueprint_id", "expected_blueprint_version"], "response": ["lote_id", "version", "redacted_diff", "approval_state"], "state": "PLANNED", "safe_semantics": "Builds canonical ordered items with per-item idempotency."},
+    {"method": "POST", "path": "/api/trafego/meta/lotes/{loteId}/approve", "surface": ["meta_wizard.step_8"], "capability": "META_CREATE_PAUSED", "request": ["lote_id", "expected_version", "approval_assertion"], "response": ["approval_id", "expires_at", "receipt_id"], "state": "FUTURE_AUTH_REQUIRED", "safe_semantics": "Approval is actor-, scope-, version- and expiry-bound."},
+    {"method": "GET", "path": "/api/trafego/meta/lotes/{loteId}", "surface": ["meta_wizard.steps_8_10"], "capability": "META_READ_INVENTORY", "request": ["lote_id"], "response": ["state", "items", "validation", "approval", "receipts"], "state": "PLANNED", "safe_semantics": "Redacted tenant-scoped read model."},
+    {"method": "POST", "path": "/api/trafego/meta/lotes/{loteId}/execute-create-paused", "surface": ["meta_wizard.step_10"], "capability": "META_CREATE_PAUSED", "request": ["lote_id", "expected_version", "approval_id"], "response": ["state", "object_refs", "receipts", "read_back", "compensations"], "state": "FUTURE_AUTH_REQUIRED", "safe_semantics": "Creates PAUSED only; enable is a separate capability."},
+    {"method": "GET", "path": "/api/trafego/meta/receipts/{receiptId}", "surface": ["meta_wizard", "campaign_detail"], "capability": "META_READ_INVENTORY", "request": ["receipt_id"], "response": ["operation", "before_redacted", "proposed_redacted", "result_redacted", "read_back", "timestamps"], "state": "PLANNED", "safe_semantics": "Append-only redacted receipt; no credential material."}
   ]
 }

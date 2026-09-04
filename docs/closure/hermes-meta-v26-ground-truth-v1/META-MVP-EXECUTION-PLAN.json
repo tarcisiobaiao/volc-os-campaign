@@ -38,14 +38,16 @@
     "statuses": "campaign/adset/ad PAUSED"
   },
   "sequence": [
-    "schema draft review",
-    "safe onboarding metadata",
+    "approve additive identity, tenancy and secret-broker decisions",
+    "review migration against exact v9/v10/v11/v13 schema",
+    "safe onboarding metadata using existing Cofre authority",
     "read adapter",
-    "sync run/read models",
-    "ZIP manifest",
+    "account/object-level sync and Insights read models",
+    "ZIP manifest into criativo_master",
     "blueprint builder",
     "local validator",
     "receipts/idempotency",
+    "future account-scoped asset upload association",
     "future create paused executor"
   ]
 }

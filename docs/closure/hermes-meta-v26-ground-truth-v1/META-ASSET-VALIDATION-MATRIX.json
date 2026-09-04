@@ -13,6 +13,13 @@
   },
   "rules": [
     {
+      "check": "reuse criativo_master by content hash and record only an account-scoped trafego_meta_asset_upload association",
+      "failure": "META_ASSET_MASTER_CONFLICT",
+      "id": "ASSET_MASTER_REUSE",
+      "phase": "MVP_NOW",
+      "type": "image_video"
+    },
+    {
       "check": "sha256 over bytes required",
       "failure": "META_ASSET_HASH_REQUIRED",
       "id": "ASSET_SHA256",
@@ -33,5 +40,6 @@
       "phase": "MVP_NEXT",
       "type": "image_video"
     }
-  ]
+  ],
+  "storage_rule": "The ZIP importer may create/reuse criativo_master locally. meta_image_hash and meta_video_id are never master fields; they are outputs of separately authorized uploads."
 }

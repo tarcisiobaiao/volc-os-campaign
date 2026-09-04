@@ -1,672 +1,159 @@
 {
-  "decision": "C_REUSE_PROVIDER_NEUTRAL_CORE_WITH_META_EXTENSIONS",
-  "decision_status": "CONFIRMADO_COM_ESCOPO",
+  "schema_version": 2,
+  "status": "CONFIRMADO_COM_PRECONDICOES",
+  "decision": "C_ISOLATED_META_READ_MODEL_PLUS_V10_WORKFLOW_REUSE",
+  "snapshot_base": "0aa090eb6a97e66b5ebdeb1c288d214003b06cbf",
+  "implementation_warning": "This contract distinguishes the v9-v13 truth at the package base, the current v15_01 read-only slice, and NEXT schema. It does not claim that a migration was applied to any database.",
   "global_rules": [
-    "do not use name as identity",
-    "do not store Meta token",
-    "do not expose System User token to browser",
-    "browser does not write operational plan",
-    "authenticated backend is authority",
-    "1Password reference is opaque",
-    "absence does not become zero",
-    "raw ids not in public docs",
-    "sync requires cursor/freshness/receipt/error state",
-    "frontend reads views/read models"
+    "Keep v9 Google IDs and semantics unchanged; Meta identity lives in isolated account-scoped tables.",
+    "Reuse the exact v10 intent-blueprint-lote-item-validation-receipt workflow; do not invent absent columns or foreign keys.",
+    "Every Meta external identity is scoped by its account or parent object.",
+    "Secrets remain in Cofre references and never appear in browser payloads, logs or receipts.",
+    "criativo_master is the canonical asset; a Meta upload is an account-scoped association.",
+    "Do not describe observation/absence tracking as temporal relationship history."
   ],
-  "rejected_options": {
-    "A_add_meta_to_legacy_campaigns": "Rejected: legacy campaigns/daily_campaign_metrics and settings UI are Google/GAM-coupled and browser/action unsafe.",
-    "B_parallel_campaigns_meta_only": "Rejected alone: would duplicate provider-neutral identity, receipts, freshness and events already designed in trafego_*."
-  },
-  "tables": [
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_linhagem?"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "volc_campaign_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Provider-neutral campaign identity reused for Meta campaign instances",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_campanha",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "plataforma,conta_externa,id_externo"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+  "existing_schema_truth": {
+    "trafego_campanha": {
+      "source": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "primary_key": ["volc_campaign_id"],
+      "external_identity": ["customer_id", "campaign_id"],
+      "note": "Google-shaped; customer_id and campaign_id cannot store Meta identity."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_campanha"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "volc_campaign_id + lido_em",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Latest campaign mirror/read-back per external campaign",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_campanha_espelho",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "volc_campaign_id,lido_em"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_campanha_espelho": {
+      "source": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "primary_key": ["volc_campaign_id"],
+      "not_primary_key": ["volc_campaign_id", "lido_em"],
+      "mode": "current mirror"
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "snapshot_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Read attempt per ad account with freshness/error",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_snapshot_conta",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "plataforma,conta_externa,iniciado_em"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_snapshot_conta": {
+      "source": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "primary_key": ["customer_id"],
+      "note": "Current account snapshot, not snapshot_id history."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_campanha"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "vinculo_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Project/funnel/site binding",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_vinculo",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "volc_campaign_id,alvo_tipo,alvo_id,desfeito_em"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_vinculo": {
+      "source": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "note": "Google campaign/project linkage; do not reuse for Meta without a provider-aware contract."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "evento_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Append-only traffic audit events",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_evento",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "correlation_id,event_type"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_evento": {
+      "source": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "note": "Reusable audit pattern, but its concrete campaign identity remains v9-shaped."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "intencao_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Provider-neutral intent for future Meta blueprint",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_intencao",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "project_id,intent_hash"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_intencao": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["intencao_id"],
+      "present_identity": ["plataforma", "conta_externa", "campaign_lineage_id"],
+      "absent_fields": ["project_id", "intent_hash"]
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_intencao"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "blueprint_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Versioned proposed payload before validation",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_blueprint",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "blueprint_hash"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_blueprint": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["blueprint_id"],
+      "unique": ["chave", "versao"],
+      "current_unique": "UNIQUE (chave) WHERE retirado_em IS NULL",
+      "absent_fields": ["intencao_id", "blueprint_hash"]
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_blueprint"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "lote_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Execution batch envelope",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_lote",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "idempotency_key"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_lote": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["lote_id"],
+      "links": ["intencao_id", "blueprint_id"],
+      "note": "The batch itself has no idempotency key."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_lote"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "lote_item_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Per-object proposed operation",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_lote_item",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "lote_id,ordem"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_lote_item": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["item_id"],
+      "idempotency": "idempotency_key",
+      "unique": ["idempotency_key"]
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_lote_item"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "lote_asset_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Asset participation in lote",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_lote_asset",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "lote_item_id,asset_id"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_lote_asset": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["asset_id"],
+      "unique": ["item_id", "papel", "ordem"]
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_blueprint"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "validacao_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Local/Meta validation result",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_validacao",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "blueprint_id,validator,version"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_validacao": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["validacao_id"],
+      "links": ["lote_id", "item_id"],
+      "absent_fields": ["blueprint_id"]
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_lote_item"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "recibo_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "External call receipt/read-back",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_recibo",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "lote_item_id,operation,attempt_open_unique"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "trafego_recibo": {
+      "source": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "primary_key": ["recibo_id"],
+      "links": ["item_id"],
+      "idempotency_copy": "idempotency_key",
+      "note": "Preserve exact v10 attempt/desfecho constraints and indexes."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "meta_business_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Meta Business Portfolio reference",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_business",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "business_external_id"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "criativo_master": {
+      "source": "supabase/migrations/v11_01_estudio_criativo.sql",
+      "primary_key": ["id"],
+      "authority": "Canonical immutable asset with content_hash, MIME, measured dimensions/storage, rights and lineage."
     },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_meta_business"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "meta_ad_account_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Meta Ad Account reference/readiness",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_ad_account",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "account_external_id"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_meta_business",
-        "trafego_meta_ad_account"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "binding_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Project/site to Meta business/account/page/pixel binding",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_project_binding",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "project_id,meta_ad_account_id,active"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_campanha"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "meta_adset_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Meta Ad Set mirror/extension",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_adset",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "ad_account_external_id,adset_external_id"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_meta_adset"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "meta_ad_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Meta Ad mirror/extension",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_ad",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "ad_account_external_id,ad_external_id"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "meta_creative_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Meta Creative mirror/extension",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_creative",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "ad_account_external_id,creative_external_id"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_meta_ad",
-        "trafego_meta_creative"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "binding_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Ad ↔ Creative association history",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_ad_creative_binding",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "meta_ad_id,meta_creative_id,active"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "asset_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Meta image/video asset registry",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_asset",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "sha256,ad_account_external_id,purpose"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_campanha"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "meta_insight_daily_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Normalized daily insights",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_insight_daily",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "level,external_id,date_start,date_stop,attribution_window"
-      ],
-      "write_owner": "authenticated backend service, never browser"
-    },
-    {
-      "currency": "store account currency; money as minor units",
-      "deletion_archival": "remote delete/archive becomes presence/status, not row DELETE",
-      "external_identity": "store raw external id only in private DB fields; public docs use redacted examples",
-      "foreign_keys": [
-        "trafego_meta_ad_account"
-      ],
-      "grants": "service_role/backend-only writes; authenticated reads only through safe views/RPCs when later approved",
-      "idempotency": "unique provider/account/external id or VOLC blueprint hash",
-      "normalized_payload": "typed columns for status/objective/budget/timezone/currency/freshness",
-      "pk": "sync_run_id",
-      "project_relation": "through trafego_meta_project_binding and provider-neutral trafego_vinculo",
-      "purpose": "Sync cursor/freshness/error state",
-      "raw_payload_policy": "allowed only in private DB JSONB with redaction guard; prohibited in public docs",
-      "retention": "append receipts/events; raw sync payload retention bounded by policy",
-      "rls": "ENABLE + FORCE RLS; zero browser write policies",
-      "shared_objects": "creative/assets may be shared across campaigns via binding tables",
-      "state": "draft",
-      "table": "trafego_meta_sync_run",
-      "timestamps": [
-        "created_at",
-        "updated_at",
-        "last_seen_at where sync object"
-      ],
-      "timezone": "store account timezone and UTC read timestamp",
-      "unique_constraints": [
-        "ad_account_external_id,started_at"
-      ],
-      "write_owner": "authenticated backend service, never browser"
+    "cofre_meta": {
+      "source": "supabase/migrations/v13_01_cofre_de_ativos.sql",
+      "asset_kinds": ["meta_business_portfolio", "meta_ad_account"],
+      "credential_table": "cofre_credencial_referencia",
+      "constraint": "No safe view or function returns localizador; a privileged broker must resolve it."
     }
-  ]
+  },
+  "current_v15_read_only_slice": {
+    "source": "supabase/migrations/v15_01_meta_ads_read_model.sql",
+    "state": "CURRENT_WORKTREE_SLICE_NOT_A_DATABASE_APPLY_CLAIM",
+    "scope": "Hierarchy read model and sync receipts only; no Insights, asset upload or mutation plan.",
+    "objects": [
+      {"name": "trafego_meta_business", "primary_key": ["cofre_ativo_id"], "external_unique": ["business_external_id"]},
+      {"name": "trafego_meta_ad_account", "primary_key": ["cofre_ativo_id"], "parent": "trafego_meta_business", "external_unique": ["account_external_id"]},
+      {"name": "trafego_meta_project_binding", "primary_key": ["binding_id"], "current_uniqueness": "UNIQUE (ad_account_ativo_id) WHERE desfeito_em IS NULL", "temporal_semantics": "confirmed interval: confirmado_em -> desfeito_em; one open project binding per ad account"},
+      {"name": "trafego_meta_campaign", "primary_key": ["meta_campaign_id"], "external_unique": ["ad_account_ativo_id", "external_id"], "presence": "ultima_vez_visto_em/ausente_desde/ausencia_causa"},
+      {"name": "trafego_meta_adset", "primary_key": ["meta_adset_id"], "external_unique": ["meta_campaign_id", "external_id"], "presence": "ultima_vez_visto_em/ausente_desde/ausencia_causa"},
+      {"name": "trafego_meta_ad", "primary_key": ["meta_ad_id"], "external_unique": ["meta_adset_id", "external_id"], "presence": "ultima_vez_visto_em/ausente_desde/ausencia_causa"},
+      {"name": "trafego_meta_creative", "primary_key": ["meta_creative_id"], "external_unique": ["ad_account_ativo_id", "external_id"], "presence": "ultima_vez_visto_em/ausente_desde/ausencia_causa"},
+      {"name": "trafego_meta_ad_creative_binding", "primary_key": ["meta_ad_id", "meta_creative_id"], "semantics": "current observed association with observado_em/ausente_desde; this is not full relationship history"},
+      {"name": "trafego_meta_sync_run", "primary_key": ["run_id"], "successful_idempotency": "UNIQUE (chave_de_idempotencia) WHERE resultado='ok'"}
+    ],
+    "security": "RLS forced; browser roles receive no table grant; service_role is the backend path."
+  },
+  "next_schema": [
+    {
+      "name": "trafego_meta_ad_creative_binding_history",
+      "priority": "P1_NEXT",
+      "purpose": "Preserve actual association intervals when relationship history is required.",
+      "fields": ["binding_id", "meta_ad_id", "meta_creative_id", "iniciado_em", "encerrado_em", "observado_em"],
+      "current_uniqueness": "UNIQUE (meta_ad_id) WHERE encerrado_em IS NULL",
+      "rule": "Do not retrofit the current absence row as if it were historical."
+    },
+    {
+      "name": "trafego_meta_asset_upload",
+      "priority": "MVP_NEXT",
+      "purpose": "Associate criativo_master with an upload result in one Meta ad account.",
+      "fields": ["upload_id", "criativo_master_id", "ad_account_ativo_id", "asset_kind", "meta_image_hash", "meta_video_id", "status", "erro_codigo", "criado_em", "atualizado_em"],
+      "constraints": ["FK criativo_master_id -> criativo_master(id)", "exactly one of meta_image_hash/meta_video_id for its kind", "uniqueness includes criativo_master_id and ad_account_ativo_id"]
+    },
+    {
+      "name": "trafego_meta_insight_daily",
+      "priority": "MVP_NOW_NEXT_MIGRATION",
+      "grain": ["provider", "ad_account_ativo_id", "object_level", "object_external_id", "date_start", "date_stop", "attribution_window_key", "breakdown_key"],
+      "enums": {"provider": ["META_ADS"], "object_level": ["ACCOUNT", "CAMPAIGN", "ADSET", "AD"]},
+      "required_context": ["account_timezone", "account_currency", "lido_em"],
+      "nullable_metrics": ["spend", "impressions", "reach", "clicks", "inline_link_clicks", "landing_page_views", "cpm", "cpc", "ctr", "frequency"],
+      "note": "NULL is not zero. Attribution and breakdown keys are canonical serializations."
+    },
+    {
+      "name": "trafego_meta_insight_action_daily",
+      "priority": "MVP_NOW_NEXT_MIGRATION",
+      "parent": "trafego_meta_insight_daily",
+      "grain": ["insight_id", "action_type", "action_breakdown_key", "value_kind"],
+      "fields": ["value", "action_attribution_windows_json"],
+      "note": "Preserves actions/action_values without collapsing types or attribution windows."
+    }
+  ],
+  "unresolved_preconditions": [
+    {"id": "META_INSIGHTS_FIELDS_PIN", "decision": "Reverify fields, action types, windows and breakdown compatibility against the pinned Graph API version."},
+    {"id": "META_SECRET_BROKER", "decision": "Implement and test server-side credential resolution/redaction."},
+    {"id": "META_TEMPORAL_HISTORY_P1", "decision": "Choose whether full ad-creative history is required; current v15 records current observation/absence only."},
+    {"id": "META_RETENTION", "decision": "Set TTL/purge policy for raw errors, cursors and Insights before migration."}
+  ],
+  "security": {
+    "rls": "Mandatory on every new table with tenant/account isolation.",
+    "grants": "No direct browser mutation grants.",
+    "safe_reads": "Exclude credential references and unnecessary raw provider payloads.",
+    "raw_payloads": "Only with redaction, declared purpose and retention."
+  }
 }

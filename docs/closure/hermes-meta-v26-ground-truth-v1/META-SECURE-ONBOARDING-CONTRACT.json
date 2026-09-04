@@ -12,6 +12,22 @@
     "frontend never receives token",
     "logs never record token"
   ],
+  "existing_authorities": {
+    "schema_source": "supabase/migrations/20260327100000_cofre_credenciais_v13.sql",
+    "metadata_objects": ["meta_business_portfolio", "meta_ad_account"],
+    "credential_reference": "cofre_credencial_referencia",
+    "rule": "Reuse these authorities; do not introduce a parallel token table."
+  },
+  "secret_broker_contract": {
+    "trust_boundary": "privileged backend process only",
+    "input": ["authenticated actor", "project_id", "ad_account_ativo_id", "requested_capability"],
+    "resolution": "Resolve the opaque credential reference only after tenant, binding and capability checks; keep the secret in memory for the shortest operation window.",
+    "output": ["readiness/result", "redacted receipt"],
+    "forbidden_output": ["credential locator", "access token", "authorization header", "raw provider error containing token"],
+    "logging": "Allowlist structured fields; redact headers, query strings and provider payload fragments before persistence.",
+    "cache": "No browser cache and no durable plaintext cache. Any in-process cache needs bounded TTL and explicit invalidation.",
+    "failure": "Fail closed with stable codes; never fall back to another account, credential or Supabase authority."
+  },
   "minimum_permissions_by_action": {
     "create_paused": [
       "ads_management"

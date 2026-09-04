@@ -1,9 +1,48 @@
--- DRAFT ONLY — NOT A MIGRATION, DO NOT APPLY
--- Proposed sequence:
--- 1. create trafego_meta_business, trafego_meta_ad_account, trafego_meta_project_binding
--- 2. create trafego_meta_adset, trafego_meta_ad, trafego_meta_creative, trafego_meta_ad_creative_binding
--- 3. create trafego_meta_asset, trafego_meta_insight_daily, trafego_meta_sync_run
--- 4. enable + force RLS, revoke anon/authenticated direct writes, grant backend/service_role only
--- 5. create safe read views/RPCs for frontend after policy review
--- 6. add constraints: unique(account_external_id, external_id), no empty ids, no raw token columns
--- 7. never apply from this file; convert to numbered migration only in an implementation mission.
+-- META v26 MIGRATION PLAN — DESIGN ONLY; NOT EXECUTABLE SQL
+-- No migration was created or applied by this package.
+
+PHASE 0 — RE-ADJUDICATE
+  Pin the Graph API version and re-check exact field names, permissions and object availability.
+  Approve tenant scope, retention and the server-side secret broker.
+
+PHASE 1 — REVIEW THE CURRENT v15 READ-ONLY SLICE
+  Keep v9 customer_id/campaign_id untouched; Meta identity remains in isolated v15 tables.
+  Review v15_01 hierarchy, account/project binding, current observed ad-creative association,
+  sync receipt, RLS/grants and v15_99 rollback. Do not claim database apply from file presence.
+
+PHASE 2 — PROJECT/ACCOUNT BINDING
+  Reuse v15 trafego_meta_project_binding backed by Cofre asset IDs.
+  Keep one open project association per ad account with desfeito_em IS NULL.
+
+PHASE 3 — CURRENT META MIRRORS
+  Reuse v15 trafego_meta_campaign/adset/ad/creative and their exact parent-scoped uniqueness.
+  Preserve observado_em, ultima_vez_visto_em and explicit absence; never turn failed reads into absence.
+
+PHASE 4 — CREATIVE RELATIONSHIPS
+  Treat v15 trafego_meta_ad_creative_binding as current observed association, not temporal history.
+  If history is approved, add a separate interval table with encerrado_em and partial current-row uniqueness.
+
+PHASE 5 — UPLOAD ASSOCIATION
+  Create trafego_meta_asset_upload referencing criativo_master and meta_ad_account.
+  Store account-scoped Meta image hash or video ID only as upload results.
+
+PHASE 6 — INSIGHTS
+  Create trafego_meta_insight_daily at provider/account/object-level/date/window/breakdown grain.
+  Create trafego_meta_insight_action_daily for actions and action_values.
+  Preserve NULL-vs-zero, account timezone, currency and read timestamp.
+
+PHASE 7 — SYNC RUNS AND RECEIPTS
+  Create trafego_meta_sync_run with cursor, stable state/error codes and receipt linkage.
+  Reuse v10 lote/item/validacao/recibo exactly as migrated; do not invent absent FKs or hashes.
+
+PHASE 8 — SECURITY
+  Enable RLS, tenant isolation, least-privilege grants and safe views/RPCs.
+  Browser roles receive no direct mutation grant and never receive credential references.
+
+PHASE 9 — BACKFILL AND CUTOVER
+  Backfill only from an approved, account-scoped read; record counts and checksums.
+  Cut over reads behind a feature flag. Roll back by disabling the flag, not by deleting evidence.
+
+PHASE 10 — ACCEPTANCE
+  Run schema, RLS, cross-tenant, Google-regression, idempotency and receipt/read-back tests.
+  Only then may runtime implementation claim the contract as available.
