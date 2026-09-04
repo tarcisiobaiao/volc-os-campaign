@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "model_requested": "gemini-3.1-pro-preview",
+    "model_effective": "gemini-3.1-pro-preview",
+    "cli_version": "0.58.0",
+    "session_id": "a1b3e896-5208-4a67-b6c6-da6126b5c42b",
+    "tool_calls": 0,
+    "response_usable": true
+  },
+  "verdict": "REVERT_PREMATURE_PROMOTION_KEEP_PMAX_URL_OPTOUT",
+  "confirmed": [
+    "Display já possui builder, validate_only e criação PAUSED no engine.",
+    "Demand Gen possui builder e validate_only, com mutação real fechada.",
+    "PMax possui builder local completo e o proto v25 aceita o opt-out explícito de expansão de URL."
+  ],
+  "refuted": [
+    "Demand Gen e PMax estavam prontos para mutação real no checkpoint.",
+    "A fronteira HTTP já conseguia formar ConfiguracaoPMax, ImagensPMax e ReciboDeMensuracao."
+  ],
+  "minimal_patch": [
+    "Manter Demand Gen fora de CONSTRUTORES_POR_CANAL.",
+    "Manter PMax fora dos registros HTTP genéricos até existir a ponte tipada.",
+    "Preservar FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION=OPTED_OUT em PMax.",
+    "Preservar status PAUSED em todos os builders."
+  ],
+  "allowed_claims": {
+    "DISPLAY": "BUILDER_PROVADOR_CRIADOR_PAUSED_EXISTENTES",
+    "DEMAND_GEN": "BUILDER_VALIDATE_ONLY_READY_MUTATE_CLOSED",
+    "PERFORMANCE_MAX": "LOCAL_GRAPH_READY_FOR_MEDIA_WITH_EXACT_URL_OPTOUT"
+  }
+}

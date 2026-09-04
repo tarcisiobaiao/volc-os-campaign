@@ -859,6 +859,9 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str):
 #: Ausências DECLARADAS de Demand Gen — a MESMA tupla que
 #: `campanha/perfil.py` publica como `DEMAND_GEN.acoes_indisponiveis`.
 NAO_OPERADO: tuple[str, ...] = (
+    "subir: o engine monta e prova por validate_only, mas a mutação real "
+    "permanece fechada até o contrato HTTP e o canário aceitarem o mesmo "
+    "payload de assets sem reconstrução divergente.",
     "formatos carrossel, vídeo responsivo e produto não entram: cada um "
     "tem outro contrato de assets e imutáveis.",
     "intenção textual e exclusão de audiência ficam separadas, mas não "

@@ -173,19 +173,20 @@ def _brief_pmax() -> Brief:
     )
 
 
-def test_birth_v1_pmax_entra_na_mesma_autoridade_de_prova_e_criacao() -> None:
-    assert perfil.PERFORMANCE_MAX.construtor is pmax.construir
-    assert perfil.PERFORMANCE_MAX.validador is pmax.validar
-    assert perfil.PERFORMANCE_MAX.permite_mutacao_real is True
-    assert "PERFORMANCE_MAX" in motor.PROVADORES_POR_CANAL
-    assert "PERFORMANCE_MAX" in motor.CONSTRUTORES_POR_CANAL
+def test_birth_v1_pmax_fica_fora_da_porta_generica_sem_perder_o_builder() -> None:
+    assert perfil.PERFORMANCE_MAX.construtor is None
+    assert perfil.PERFORMANCE_MAX.validador is None
+    assert perfil.PERFORMANCE_MAX.permite_mutacao_real is False
+    assert callable(pmax.construir) and callable(pmax.validar)
+    assert "PERFORMANCE_MAX" not in motor.PROVADORES_POR_CANAL
+    assert "PERFORMANCE_MAX" not in motor.CONSTRUTORES_POR_CANAL
 
 
 def test_birth_v1_pmax_planeja_sem_bloqueio_de_executor_e_com_url_exata() -> None:
     plano = pmax.planejar(CID, _brief_pmax(), login_customer_id=MCC)
-    assert plano.prontidao.pode_provar is True
-    assert plano.prontidao.pode_criar is True
-    assert not [b for b in plano.bloqueios if b.codigo == "PMAX_FORA_DO_EXECUTOR"]
+    assert plano.prontidao.pode_provar is False
+    assert plano.prontidao.pode_criar is False
+    assert [b for b in plano.bloqueios if b.codigo == "PMAX_FORA_DO_EXECUTOR"]
     grupo = next(u for u in plano.unidades if u.tipo == "asset_group")
     assert grupo.status == "PAUSED"
     assert grupo.urls_finais == ("https://example.invalid/lp/",)
@@ -204,7 +205,6 @@ def test_birth_v1_pmax_payload_desabilita_expansao_de_url_final() -> None:
     assert campanha.status.name == "PAUSED"
 
 
-def test_birth_v1_subir_nao_recusa_pmax_por_politica_de_canal() -> None:
-    # O caminho de escrita continua protegido por selo + trava ambiente; este
-    # teste prova só que PMax não morre mais no portão antigo de canal sem mutate.
-    motor._recusar_canal_sem_mutacao("PERFORMANCE_MAX")
+def test_birth_v1_subir_recusa_pmax_antes_de_trava_ou_mutate() -> None:
+    with pytest.raises(motor.CanalSemMutacaoReal, match="criação real"):
+        motor._recusar_canal_sem_mutacao("PERFORMANCE_MAX")

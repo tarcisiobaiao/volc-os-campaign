@@ -62,13 +62,10 @@ de Demand Gen encontrou.
 
 ## O que este módulo NÃO faz, e é declarado
 
-- **Não cria nada.** `perfil.PERFORMANCE_MAX.construtor` continua `None` de
-  propósito, então `subir.py` não tem por onde encaminhar PMax ao mutate.
-  Promovê-lo mudaria `perfil.canais_que_provam()` e a guarda de import de
-  `subir.py:133-148` derrubaria a rota HTTP dos QUATRO canais.
-- **Não roda `validate_only` sozinho.** `validar()` existe e é chamável, mas
-  `planejar()` marca `pode_provar=False` com código próprio enquanto o canal
-  estiver fora do executor. Ver `plano.PMAX_FORA_DO_EXECUTOR`.
+- **Não cria nada.** `perfil.PERFORMANCE_MAX.construtor` continua `None`, então
+  a porta genérica não consegue encaminhar PMax ao mutate.
+- **O módulo sabe validar diretamente**, mas a rota HTTP genérica permanece
+  fechada até transportar o brief tipado sem reconstrução divergente.
 - **Não monta retail** (`ShoppingSetting`, `AssetGroupListingGroupFilter`),
   nem `CampaignConversionGoal`, nem `text_guidelines`, nem `TRAVEL_GOALS`.
   A automação de expansão de URL final é a exceção deliberada: nasce com
@@ -1056,14 +1053,20 @@ def _prontidao(cfg, r: validacao.Resultado, ops) -> plano.Prontidao:
     monta = bool(ops) and r.ok
     return plano.Prontidao(
         monta=monta,
-        pode_provar=monta,
-        pode_criar=monta,
+        pode_provar=False,
+        pode_criar=False,
         motivo_nao_monta=("" if monta else
                           "o brief não passou na validação local; veja bloqueios"),
-        motivo_nao_prova=("" if monta else
-                          "sem payload local aprovado não há validate_only seguro"),
-        motivo_nao_cria=("" if monta else
-                         "sem payload local aprovado e selado não há criação PAUSED segura"),
+        motivo_nao_prova=(
+            "Performance Max monta e serializa offline, mas a rota HTTP ainda "
+            "não transporta ConfiguracaoPMax, ImagensPMax e o recibo de "
+            "mensuração emitido pela conta"
+        ),
+        motivo_nao_cria=(
+            "criação real permanece fora de CONSTRUTORES_POR_CANAL até o "
+            "contrato HTTP transportar ConfiguracaoPMax, ImagensPMax e o "
+            "recibo de mensuração emitido pela conta"
+        ),
     )
 
 
@@ -1096,6 +1099,12 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDe
     )
 
     bloqueios = list(p.bloqueios)
+    bloqueios.append(plano.Achado(
+        codigo=plano.PMAX_FORA_DO_EXECUTOR,
+        campo="canal",
+        causa=p.prontidao.motivo_nao_prova,
+        valor=CANAL,
+    ))
 
     if ops:
         relatorio = evaluate_asset_group_coverage(

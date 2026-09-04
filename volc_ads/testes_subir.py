@@ -156,10 +156,8 @@ def test_canal_sem_construtor_falha_antes_de_montar(
 ):
     """Inventariar um canal nunca autoriza criá-lo com o builder de outro.
 
-    ⚠️ DISPLAY saiu desta lista quando ganhou construtor real. DEMAND_GEN saiu
-    quando ganhou builder de prova/validate_only: continua proibido em
-    ``subir()``, e essa fronteira vive em ``testes_demand_gen.py``. O portão
-    segue fechado aqui para canais sem nem mesmo um builder provável.
+    PMax monta pelo módulo próprio, mas a porta genérica continua fechada até
+    carregar seu contrato tipado de assets e mensuração.
     """
     with pytest.raises(subir.CanalSemConstrutor) as erro:
         subir.preparar(
