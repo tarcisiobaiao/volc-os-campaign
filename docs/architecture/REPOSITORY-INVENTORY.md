@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-04T14:01:34-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-04T16:10:02-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 638 arquivos: 466 Markdown e 172 SQL;
-- 638 versionados e 0 ainda não versionados;
+- 645 arquivos: 471 Markdown e 174 SQL;
+- 640 versionados e 5 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 111 SQL com palavras de mutação de alto risco.
+- 113 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-04T14:01:34-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 23 |
-| `documentation` | 318 |
+| `documentation` | 323 |
 | `generated` | 2 |
 | `module-guide` | 36 |
 | `product-document` | 23 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-04T14:01:34-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 59 |
+| `sql-needs-review` | 61 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -113,6 +113,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/volc-sync/03_display_roi.sql` | `sql-migration-line` | 4 | 11 |
 | `src/sql/volc-sync/04_monthly_exchange_rate.BLOQUEADO.sql` | `sql-migration-line` | 6 | 10 |
 | `src/sql/volc-sync/APLICAR_NO_STUDIO.sql` | `sql-migration-line` | 14 | 49 |
+| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | 9 | 19 |
+| `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
@@ -138,7 +140,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v14_01_publicacao_organica.sql` | `sql-needs-review` | 30 | 114 |
 | `supabase/migrations/v14_99_publicacao_organica_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v15_01_meta_ads_read_model.sql` | `sql-needs-review` | 8 | 25 |
-| `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | 3 | 7 |
+| `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | 5 | 13 |
 | `supabase/migrations/v15_98_meta_ads_insights_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v15_99_meta_ads_read_model_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
@@ -243,6 +245,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/timezone-trigger.sql` | `sql-needs-lineage` | high | 6 | 18 |
 | `src/sql/update_sync_gam_function.sql` | `sql-needs-lineage` | medium | 2 | 2 |
 | `src/sql/update_user_roles_remove_viewer.sql` | `sql-needs-lineage` | high | 1 | 0 |
+| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | high | 9 | 19 |
+| `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | high | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | high | 33 | 126 |
@@ -271,12 +275,10 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v14_01_publicacao_organica.sql` | `sql-needs-review` | high | 30 | 114 |
 | `supabase/migrations/v14_99_publicacao_organica_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v15_01_meta_ads_read_model.sql` | `sql-needs-review` | high | 8 | 25 |
-| `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | high | 3 | 7 |
+| `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | high | 5 | 13 |
 | `supabase/migrations/v15_98_meta_ads_insights_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v15_99_meta_ads_read_model_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
-| `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

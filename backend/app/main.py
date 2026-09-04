@@ -21,6 +21,7 @@ from app.routers import (
     entities,
     pautador,
     meta_local,
+    trafego_meta_validacao,
     trafego,
     trafego_diagnostico,
     trafego_inventario,
@@ -184,6 +185,9 @@ app.include_router(trafego_diagnostico.router)
 # Ponte provisoria Meta, restrita a localhost/macOS e ADMIN. O token fica no
 # Keychain local; nao toca o Cofre, o Supabase nem oferece qualquer mutate.
 app.include_router(meta_local.router)
+# Compilacao e validate_only do primeiro plano Meta PAUSED. Este router nao
+# possui endpoint de create, aprovacao persistente ou ativacao.
+app.include_router(trafego_meta_validacao.router)
 # Inventário operacional (Fase 1B). `registrar()` inclui DOIS routers com o
 # mesmo prefixo: o de sessão (`exigir_usuario`) e o de serviço
 # (`exigir_servico`), que o agendador usa. Separados porque a origem da

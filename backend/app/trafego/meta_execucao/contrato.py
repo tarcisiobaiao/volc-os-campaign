@@ -14,10 +14,6 @@ class ErroDeNascimentoMeta(ValueError):
         self.codigo = codigo
 
 
-_CATEGORIAS = {
-    "CREDIT", "EMPLOYMENT", "FINANCIAL_PRODUCTS_SERVICES", "HOUSING",
-    "ISSUES_ELECTIONS_POLITICS", "ONLINE_GAMBLING_AND_GAMING",
-}
 _CTA = {"LEARN_MORE", "APPLY_NOW", "SIGN_UP", "GET_QUOTE", "CONTACT_US"}
 
 
@@ -131,9 +127,11 @@ class PlanoMetaPausado:
                 "META_SPECIAL_CATEGORY_NOT_CONFIRMED",
                 "o operador precisa confirmar explicitamente as categorias especiais")
         categorias = tuple(dict.fromkeys(self.special_ad_categories))
-        if any(c not in _CATEGORIAS for c in categorias):
+        if categorias:
             raise ErroDeNascimentoMeta(
-                "META_SPECIAL_CATEGORY_INVALID", "categoria especial fora da allowlist")
+                "META_SPECIAL_CATEGORY_RECIPE_UNPROVEN",
+                "categorias especiais exigem receita, targeting e read-back proprios",
+            )
         object.__setattr__(self, "special_ad_categories", categorias)
         if self.call_to_action_type not in _CTA:
             raise ErroDeNascimentoMeta("META_CTA_INVALID", "CTA fora da allowlist P0")

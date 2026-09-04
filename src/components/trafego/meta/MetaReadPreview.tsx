@@ -150,7 +150,8 @@ const Resultado: React.FC<{ prova: ResultadoDoPreflightMetaLocal }> = ({ prova }
 
 const SnapshotPersistido: React.FC<{ inventario: InventarioMetaPersistido | null; recibo: InventarioMetaPersistido | null }> = ({ inventario, recibo }) => {
   if (!inventario?.has_snapshot) {
-    return <div className="mt-5 rounded-xl border border-dashed border-border bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Ainda não sincronizado. Nenhum dado fictício substitui a ausência de snapshot real.</div>;
+    const semSchema = inventario?.motivo === 'meta_schema_not_applied';
+    return <div className="mt-5 rounded-xl border border-dashed border-border bg-muted/10 px-4 py-4 text-sm text-muted-foreground">{semSchema ? 'Persistência Meta ainda não instalada no Supabase oficial. A leitura local continua disponível, mas nenhum snapshot pode ser gravado até uma migration separadamente autorizada.' : 'Ainda não sincronizado. Nenhum dado fictício substitui a ausência de snapshot real.'}</div>;
   }
   const contas = inventario.contas ?? [];
   return (

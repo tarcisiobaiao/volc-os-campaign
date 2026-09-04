@@ -15,6 +15,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
 
+import httpx
+
 from . import dominio as dom
 from .persistencia import linhas_da_leitura, linhas_de_contas, linhas_de_insights
 
@@ -155,6 +157,19 @@ class RepositorioMetaReadModelSupabase:
     def __init__(self, supabase: Any) -> None:
         self._supa = supabase
 
+    async def _select_seguro(
+        self, tabela: str, params: Mapping[str, Any],
+    ) -> tuple[list[Mapping[str, Any]], bool]:
+        try:
+            return list(await self._supa.select(tabela, dict(params))), True
+        except httpx.HTTPStatusError as exc:
+            # Until the separately-authorized v15 migrations are applied,
+            # PostgREST returns 404 for these tables. Absence is a readiness
+            # state, not a backend crash and never an empty measured inventory.
+            if exc.response is not None and exc.response.status_code == 404:
+                return [], False
+            raise
+
     async def persistir_snapshot(self, snapshot: SnapshotMetaCanonico) -> dict[str, Any]:
         if os.environ.get("META_READ_MODEL_WRITE_ENABLED") != "1":
             recibo = snapshot.recibo_sanitizado(escrita="bloqueada")
@@ -174,7 +189,9 @@ class RepositorioMetaReadModelSupabase:
     async def contas(self) -> dict[str, Any]:
         if not getattr(self._supa, "enabled", False):
             return {"ok": True, "has_snapshot": False, "contas": [], "motivo": "supabase_indisponivel"}
-        rows = await self._supa.select("trafego_meta_ad_account", {"select": "cofre_ativo_id,nome_observado,moeda,timezone_name,account_status,readiness_state,observado_em,ultima_leitura_ok_em", "order": "atualizado_em.desc"})
+        rows, schema_ready = await self._select_seguro("trafego_meta_ad_account", {"select": "cofre_ativo_id,nome_observado,moeda,timezone_name,account_status,readiness_state,observado_em,ultima_leitura_ok_em", "order": "atualizado_em.desc"})
+        if not schema_ready:
+            return {"ok": True, "has_snapshot": False, "contas": [], "motivo": "meta_schema_not_applied"}
         return {"ok": True, "has_snapshot": bool(rows), "contas": _sanitize_rows(rows)}
 
     async def listar(self, entidade: str, conta_opaca: str | None = None) -> dict[str, Any]:
@@ -193,7 +210,9 @@ class RepositorioMetaReadModelSupabase:
         params = {"select": "*", "limit": 500, "order": "observado_em.desc"}
         if conta_opaca and entidade in {"campanhas", "criativos", "insights"}:
             params["ad_account_ativo_id"] = f"eq.meta_account_{conta_opaca}"
-        rows = await self._supa.select(tabelas[entidade], params)
+        rows, schema_ready = await self._select_seguro(tabelas[entidade], params)
+        if not schema_ready:
+            return {"ok": True, "has_snapshot": False, "entidade": entidade, "items": [], "motivo": "meta_schema_not_applied"}
         return {"ok": True, "has_snapshot": bool(rows), "entidade": entidade, "items": _sanitize_rows(rows)}
 
     async def detalhe(self, entidade: str, opaque_id: str) -> dict[str, Any]:
@@ -208,11 +227,15 @@ class RepositorioMetaReadModelSupabase:
         if not getattr(self._supa, "enabled", False):
             return {"ok": True, "has_snapshot": False, "entidade": entidade, "item": None, "motivo": "supabase_indisponivel"}
         tabela, coluna = colunas[entidade]
-        rows = await self._supa.select(tabela, {"select": "*", coluna: f"eq.{opaque_id}", "limit": 1})
+        rows, schema_ready = await self._select_seguro(tabela, {"select": "*", coluna: f"eq.{opaque_id}", "limit": 1})
+        if not schema_ready:
+            return {"ok": True, "has_snapshot": False, "entidade": entidade, "item": None, "motivo": "meta_schema_not_applied"}
         return {"ok": True, "has_snapshot": bool(rows), "entidade": entidade, "item": _sanitize_rows(rows)[0] if rows else None}
 
     async def ultimo_recibo(self) -> dict[str, Any]:
         if not getattr(self._supa, "enabled", False):
             return {"ok": True, "has_snapshot": False, "recibo": None, "motivo": "supabase_indisponivel"}
-        rows = await self._supa.select("trafego_meta_sync_run", {"select": "run_id,resultado,concluido_em,paginas_lidas,contagens,snapshot_hash,escrita_executada,erro_codigo,erro_mensagem", "order": "concluido_em.desc", "limit": 1})
+        rows, schema_ready = await self._select_seguro("trafego_meta_sync_run", {"select": "run_id,resultado,concluido_em,paginas_lidas,contagens,snapshot_hash,escrita_executada,erro_codigo,erro_mensagem", "order": "concluido_em.desc", "limit": 1})
+        if not schema_ready:
+            return {"ok": True, "has_snapshot": False, "recibo": None, "motivo": "meta_schema_not_applied"}
         return {"ok": True, "has_snapshot": bool(rows), "recibo": _sanitize_rows(rows)[0] if rows else None}

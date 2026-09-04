@@ -1,0 +1,23 @@
+{
+  "verdict": "META_P0_COMPILE_AND_VALIDATE_ONLY_READY",
+  "roadmap_tasks": [
+    {
+      "id": "P11-T05",
+      "state": "partial",
+      "evidence": "A lane operacional agora resolve conta Meta ativa, Page e imagem por referências opacas; compila a receita P0 OUTCOME_TRAFFIC/WEBSITE/LANDING_PAGE_VIEWS com campanha, conjunto e anúncio PAUSED; e oferece validate_only remoto somente após clique e flag efêmera. A criação continua sem rota e as migrations de saga não foram aplicadas."
+    }
+  ],
+  "graph_nodes": [
+    "cap_meta_ads",
+    "concept:meta_direct_traffic",
+    "concept:media_hub"
+  ],
+  "prohibitions_preserved": [
+    "no Meta mutate",
+    "no Supabase official write",
+    "no official migration",
+    "no deploy",
+    "no n8n",
+    "no WordPress"
+  ]
+}

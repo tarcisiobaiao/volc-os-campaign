@@ -39,9 +39,9 @@ describe('Meta demonstrativa navegável', () => {
     for (const etapa of ['Base', 'Campanha', 'Orçamento', 'Conjunto', 'Público', 'Anúncio', 'Mensuração', 'Revisão']) {
       expect(screen.getByRole('button', { name: new RegExp(etapa, 'i') })).toBeTruthy();
     }
-    fireEvent.click(screen.getByRole('button', { name: /revisãopedido pausado/i }));
-    expect(screen.getByText('Pedido que seria criado pausado')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /revisãoplano verificável/i }));
+    expect(screen.getByText('Pedido verificável para nascimento pausado')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Criar campanha pausada' }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText(/criação real bloqueada/i)).toBeTruthy();
+    expect(screen.getByText(/criação real não está montada/i)).toBeTruthy();
   });
 });

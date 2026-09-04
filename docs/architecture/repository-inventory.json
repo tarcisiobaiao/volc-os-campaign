@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-04T14:01:34-03:00",
+  "generated_at": "2026-09-04T16:10:02-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 638,
-    "markdown": 466,
-    "sql": 172,
-    "tracked": 638,
-    "untracked": 0,
+    "files": 645,
+    "markdown": 471,
+    "sql": 174,
+    "tracked": 640,
+    "untracked": 5,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 23,
-      "documentation": 318,
+      "documentation": 323,
       "generated": 2,
       "module-guide": 36,
       "product-document": 23,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 59,
+      "sql-needs-review": 61,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 111,
+      "high": 113,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -1099,9 +1099,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 20404,
-      "lines": 281,
-      "sha256": "1d9a76c83c2f8a2a3492adb83021d68b4c306cd38c90e2d722b5f99c9b0a8974",
+      "bytes": 20599,
+      "lines": 283,
+      "sha256": "3f4e993dcd261a8c1b05f2536f82a57b1e1cfc73b45f6d499871e57c18640927",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3219,6 +3219,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/meta-paused-birth-candidate-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 1255,
+      "lines": 40,
+      "sha256": "bd4f56bd8dbd867dfaf6e482242b9b0a5b32a3fcf54f4ea2186b8e67a3c98e6a",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-paused-birth-candidate-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3190,
+      "lines": 69,
+      "sha256": "e00ec34cb3bd303bfd2e457129d2869de76b2a9e8875e78277bea263f01c6987",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/meta-real-read-integration-v1/GATES.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3238,6 +3262,42 @@
       "bytes": 2281,
       "lines": 50,
       "sha256": "b06a9e377aa30a325ce7b1b3d1cce8614ee779a5bf116a983da89f90f2a4ed99",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-safe-validation-and-paused-birth-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 722,
+      "lines": 19,
+      "sha256": "219f080006e234d44341a3dcad061a1a9daef07ef80446cc1cbe73c8a55735db",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-safe-validation-and-paused-birth-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 2499,
+      "lines": 60,
+      "sha256": "faa281486c40b2855d12134b8659c238b4aa1b184493822743450d55b184005f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-safe-validation-and-paused-birth-v1/REMAINING-RISKS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 703,
+      "lines": 15,
+      "sha256": "f3ec1d9f37faee2d7727f8bca6db5a1828598bf69665e431f94c338a62935505",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6819,6 +6879,30 @@
       "sql_risk": null
     },
     {
+      "path": "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": false,
+      "bytes": 14808,
+      "lines": 354,
+      "sha256": "a1e1bb06e04204afef8dc1d8c0e8cb02c6bd1c0caa08a000003eccafa4945f08",
+      "graph_nodes": 9,
+      "graph_degree": 19,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": false,
+      "bytes": 958,
+      "lines": 24,
+      "sha256": "7373c37c0112794d64ed01c52d443d9d623281559b518ac0960b41a6c85be25e",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/PLANO-v11_03.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7171,9 +7255,9 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 14573,
-      "lines": 306,
-      "sha256": "a21187f6fb91ec2d9fee753551ebabcea1acf6a2b66466c4c5aa2bb8a904f2d4",
+      "bytes": 14989,
+      "lines": 314,
+      "sha256": "2343deefdf82f7b641ed68996d833ddfda1a4a632b34fe8bb27e0500af2e595d",
       "graph_nodes": 8,
       "graph_degree": 25,
       "sql_risk": "high"
@@ -7183,11 +7267,11 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 4908,
-      "lines": 111,
-      "sha256": "b69e809b323391ca47c22b6163e5f3e7f55345f616b7fe6269a5249cba51b45d",
-      "graph_nodes": 3,
-      "graph_degree": 7,
+      "bytes": 18763,
+      "lines": 236,
+      "sha256": "a459984edeea4cc6273fe93d77bbd603fd033a8ca1d510ab47b6f610513c59f1",
+      "graph_nodes": 5,
+      "graph_degree": 13,
       "sql_risk": "high"
     },
     {
@@ -7195,9 +7279,9 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 698,
-      "lines": 22,
-      "sha256": "cd5ceb7b2697330fcdeb71e86df859958464f71238346c86627c5401a54840d2",
+      "bytes": 830,
+      "lines": 24,
+      "sha256": "22f5d6eff09f63ee8b3ad41df46b757f7990a0b40a6f028e4f0817e10af5acf6",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"
@@ -7207,9 +7291,9 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 1895,
-      "lines": 39,
-      "sha256": "8045f03a8b2a477559d30411a69d2a776a9c3ea02ea9fd2a70e52a50c30d8f7f",
+      "bytes": 2140,
+      "lines": 43,
+      "sha256": "c8a0cf86a67babf708f490c74e737f9c91c8d803d187c2d947cb76a49237eb52",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"

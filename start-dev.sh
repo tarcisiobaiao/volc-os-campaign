@@ -12,6 +12,10 @@
 #   ./start-dev.sh --demand-gen-validate-only
 #                                  abre SOMENTE a conferência Demand Gen. A
 #                                  chamada ainda exige clique e nunca cria.
+#   ./start-dev.sh --meta-validate-only
+#                                  abre SOMENTE execution_options=validate_only
+#                                  da receita Meta P0. Ainda exige clique e a
+#                                  rota não possui create, approve nem enable.
 #
 # Portas: front 8080  ·  api Node 3001  ·  backend Pautador 8010
 # O Vite faz proxy de /api e /health -> Express (3001), que fala com o Supabase
@@ -47,9 +51,11 @@ libera_porta() {
 # Ela não sobrevive ao próximo boot: reiniciar sem a flag fecha a trava.
 PERMITIR_ESCRITA=0
 PERMITIR_PROVA_DEMAND_GEN=0
+PERMITIR_PROVA_META=0
 for arg in "$@"; do
   if [ "$arg" = "--permitir-escrita" ]; then PERMITIR_ESCRITA=1; fi
   if [ "$arg" = "--demand-gen-validate-only" ]; then PERMITIR_PROVA_DEMAND_GEN=1; fi
+  if [ "$arg" = "--meta-validate-only" ]; then PERMITIR_PROVA_META=1; fi
 done
 if [ "$PERMITIR_ESCRITA" -eq 1 ]; then
   export FORGE_PERMITIR_ESCRITA=1
@@ -63,6 +69,10 @@ fi
 if [ "$PERMITIR_PROVA_DEMAND_GEN" -eq 1 ]; then
   export VOLC_DEMAND_GEN_VALIDATE_ONLY=on
   echo "  ✓ Demand Gen validate_only habilitado: somente após clique; zero criação."
+fi
+if [ "$PERMITIR_PROVA_META" -eq 1 ]; then
+  export META_VALIDATE_ONLY_ENABLED=1
+  echo "  ✓ Meta validate_only habilitado: somente após clique; zero criação."
 fi
 
 # --stop: encerra tudo e sai

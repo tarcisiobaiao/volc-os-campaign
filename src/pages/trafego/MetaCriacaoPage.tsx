@@ -1,18 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CircleDollarSign,
-  Crosshair,
-  FileCheck2,
-  Image,
-  Info,
-  Layers3,
-  LockKeyhole,
-  Megaphone,
-  Settings2,
-  Users,
+  ArrowLeft, ArrowRight, Check, CheckCircle2, CircleDollarSign, Crosshair,
+  FileCheck2, Image, Info, Layers3, Loader2, LockKeyhole, Megaphone,
+  Settings2, ShieldCheck, Users,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -22,217 +12,265 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AtivoCriacaoMeta, ContaMetaLocal, pautadorApi, PlanoMetaPausadoInput,
+  ResultadoCompilacaoMeta, ResultadoValidacaoPlanoMeta,
+} from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
 
 const ETAPAS = [
-  { id: 'base', nome: 'Base', resumo: 'conta e projeto', icone: Layers3 },
-  { id: 'campanha', nome: 'Campanha', resumo: 'objetivo e identidade', icone: Megaphone },
-  { id: 'orcamento', nome: 'Orçamento', resumo: 'verba, lance e agenda', icone: CircleDollarSign },
+  { id: 'base', nome: 'Base', resumo: 'conta e página', icone: Layers3 },
+  { id: 'campanha', nome: 'Campanha', resumo: 'objetivo e política', icone: Megaphone },
+  { id: 'orcamento', nome: 'Orçamento', resumo: 'verba e agenda', icone: CircleDollarSign },
   { id: 'conjunto', nome: 'Conjunto', resumo: 'otimização e entrega', icone: Crosshair },
-  { id: 'publico', nome: 'Público', resumo: 'quem pode receber', icone: Users },
-  { id: 'criativo', nome: 'Anúncio', resumo: 'identidade e mensagem', icone: Image },
-  { id: 'mensuracao', nome: 'Mensuração', resumo: 'pixel e evento', icone: Settings2 },
-  { id: 'revisao', nome: 'Revisão', resumo: 'pedido pausado', icone: FileCheck2 },
+  { id: 'publico', nome: 'Público', resumo: 'alcance permitido', icone: Users },
+  { id: 'criativo', nome: 'Anúncio', resumo: 'peça e mensagem', icone: Image },
+  { id: 'mensuracao', nome: 'Mensuração', resumo: 'LPV e destino', icone: Settings2 },
+  { id: 'revisao', nome: 'Revisão', resumo: 'plano verificável', icone: FileCheck2 },
 ] as const;
 
 type Etapa = typeof ETAPAS[number]['id'];
+type Draft = {
+  accountRef: string; pageRef: string; assetRef: string;
+  campaignName: string; adsetName: string; creativeName: string; adName: string;
+  destinationUrl: string; message: string; headline: string; description: string;
+  budgetBrl: string; startTime: string;
+  categoryConfirmed: boolean; cta: string;
+};
 
-const campo = 'h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+const inicioPadrao = () => {
+  const data = new Date(Date.now() + 30 * 60 * 1000);
+  data.setSeconds(0, 0);
+  const local = new Date(data.getTime() - data.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+};
+
+const DRAFT_INICIAL: Draft = {
+  accountRef: '', pageRef: '', assetRef: '',
+  campaignName: 'VOLC · Meta · Tráfego · LPV',
+  adsetName: 'Brasil · Amplo · LPV · Automático',
+  creativeName: 'Criativo estático · v1', adName: 'Anúncio estático · v1',
+  destinationUrl: 'https://focogenial.com/',
+  message: 'Descubra as informações importantes antes de decidir.',
+  headline: 'Entenda como funciona', description: 'Conteúdo informativo e independente.',
+  budgetBrl: '10,00', startTime: inicioPadrao(),
+  categoryConfirmed: false, cta: 'LEARN_MORE',
+};
+
+const campo = 'h-11 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35';
 
 const Grupo: React.FC<{ titulo: string; ajuda?: string; children: React.ReactNode }> = ({ titulo, ajuda, children }) => (
-  <section className="border-b border-border py-5 first:pt-0 last:border-0 last:pb-0">
-    <h2 className="font-display text-lg font-semibold text-foreground">{titulo}</h2>
-    {ajuda && <p className="mt-1 max-w-[70ch] text-sm leading-relaxed text-muted-foreground">{ajuda}</p>}
-    <div className="mt-4 grid gap-4 md:grid-cols-2">{children}</div>
+  <section className="border-b border-border/70 py-6 first:pt-0 last:border-0 last:pb-0">
+    <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">{titulo}</h2>
+    {ajuda && <p className="mt-1.5 max-w-[72ch] text-sm leading-relaxed text-muted-foreground">{ajuda}</p>}
+    <div className="mt-5 grid gap-4 md:grid-cols-2">{children}</div>
   </section>
 );
 
 const Campo: React.FC<{ id: string; rotulo: string; ajuda?: string; children: React.ReactNode; largo?: boolean }> = ({ id, rotulo, ajuda, children, largo }) => (
   <div className={cn('space-y-2', largo && 'md:col-span-2')}>
-    <Label htmlFor={id}>{rotulo}</Label>
-    {children}
+    <Label htmlFor={id}>{rotulo}</Label>{children}
     {ajuda && <p className="text-xs leading-relaxed text-muted-foreground">{ajuda}</p>}
   </div>
 );
 
-const Resumo: React.FC<{ rotulo: string; valor: string; pendente?: boolean }> = ({ rotulo, valor, pendente }) => (
-  <div className="flex items-start justify-between gap-5 border-b border-border py-3 last:border-0">
-    <dt className="text-sm text-muted-foreground">{rotulo}</dt>
-    <dd className={cn('max-w-[65%] text-right text-sm font-medium', pendente ? 'text-warning' : 'text-foreground')}>{valor}</dd>
+const Fixo: React.FC<{ rotulo: string; valor: string; detalhe: string }> = ({ rotulo, valor, detalhe }) => (
+  <div className="rounded-xl border border-primary/15 bg-primary/[0.035] p-4">
+    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{rotulo}</p>
+    <p className="mt-2 font-semibold text-foreground">{valor}</p>
+    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detalhe}</p>
   </div>
 );
 
-const Conteudo: React.FC<{ etapa: Etapa }> = ({ etapa }) => {
-  switch (etapa) {
-    case 'base':
-      return (
-        <Grupo titulo="Onde esta campanha vai viver?" ajuda="A conta é autoridade externa; o projeto mantém a linhagem com funil, domínio e ativos.">
-          <Campo id="meta-conta" rotulo="Conta de anúncios">
-            <select id="meta-conta" className={campo} defaultValue="demo"><option value="demo">Conta Meta demonstrativa · ••••2048</option></select>
-          </Campo>
-          <Campo id="meta-projeto" rotulo="Projeto VOLC">
-            <select id="meta-projeto" className={campo} defaultValue="foco"><option value="foco">Foco Genial</option><option value="credito">Crédito Up</option></select>
-          </Campo>
-          <Campo id="meta-pagina" rotulo="Página do Facebook">
-            <select id="meta-pagina" className={campo} defaultValue="foco"><option value="foco">Foco Genial · demonstração</option></select>
-          </Campo>
-          <Campo id="meta-instagram" rotulo="Identidade do Instagram" ajuda="Opcional quando o posicionamento não exige identidade Instagram.">
-            <select id="meta-instagram" className={campo} defaultValue="auto"><option value="auto">Usar identidade vinculada à Página</option></select>
-          </Campo>
-        </Grupo>
-      );
-    case 'campanha':
-      return (
-        <Grupo titulo="O que a campanha precisa alcançar?" ajuda="O objetivo é estrutural na Meta: ele determina eventos, otimização e campos permitidos nos próximos níveis.">
-          <Campo id="meta-nome" rotulo="Nome da campanha" largo><Input id="meta-nome" defaultValue="FG · Encceja 2026 · Tráfego · 202609" /></Campo>
-          <Campo id="meta-objetivo" rotulo="Objetivo">
-            <select id="meta-objetivo" className={campo} defaultValue="traffic"><option value="traffic">Tráfego</option><option value="engagement">Engajamento</option><option value="sales">Vendas</option><option value="leads">Cadastros</option></select>
-          </Campo>
-          <Campo id="meta-buying" rotulo="Tipo de compra"><select id="meta-buying" className={campo} defaultValue="auction"><option value="auction">Leilão</option></select></Campo>
-          <Campo id="meta-special" rotulo="Categoria especial de anúncio" ajuda="Deve ser declarada, mesmo quando não se aplica.">
-            <select id="meta-special" className={campo} defaultValue="none"><option value="none">Nenhuma</option><option value="credit">Crédito</option><option value="employment">Emprego</option><option value="housing">Moradia</option><option value="issues">Temas sociais, eleições ou política</option></select>
-          </Campo>
-          <Campo id="meta-status" rotulo="Estado ao nascer"><Input id="meta-status" value="PAUSADA" readOnly aria-readonly /></Campo>
-        </Grupo>
-      );
-    case 'orcamento':
-      return (
-        <Grupo titulo="Quanto pode ser investido?" ajuda="A escolha entre orçamento na campanha e no conjunto é explícita; o motor nunca migra verba silenciosamente.">
-          <Campo id="meta-budget-level" rotulo="Onde controlar o orçamento"><select id="meta-budget-level" className={campo} defaultValue="campaign"><option value="campaign">Campanha · Advantage campaign budget</option><option value="adset">Cada conjunto</option></select></Campo>
-          <Campo id="meta-budget-type" rotulo="Período"><select id="meta-budget-type" className={campo} defaultValue="daily"><option value="daily">Diário</option><option value="lifetime">Vitalício</option></select></Campo>
-          <Campo id="meta-budget" rotulo="Orçamento diário"><Input id="meta-budget" inputMode="decimal" defaultValue="120,00" /></Campo>
-          <Campo id="meta-bid" rotulo="Estratégia de lance"><select id="meta-bid" className={campo} defaultValue="lowest"><option value="lowest">Maior volume · menor custo</option><option value="cost-cap">Meta de custo</option><option value="bid-cap">Limite de lance</option></select></Campo>
-          <Campo id="meta-start" rotulo="Início"><Input id="meta-start" type="datetime-local" /></Campo>
-          <Campo id="meta-end" rotulo="Término" ajuda="Sem data deixa a campanha contínua."><Input id="meta-end" type="datetime-local" /></Campo>
-        </Grupo>
-      );
-    case 'conjunto':
-      return (
-        <Grupo titulo="Como a Meta deve entregar?" ajuda="Este é o nível que liga evento de otimização, cobrança, público e posicionamentos.">
-          <Campo id="meta-adset-name" rotulo="Nome do conjunto" largo><Input id="meta-adset-name" defaultValue="Brasil · Amplo · 18–54 · Landing page view" /></Campo>
-          <Campo id="meta-performance" rotulo="Meta de desempenho"><select id="meta-performance" className={campo} defaultValue="landing"><option value="landing">Maximizar visualizações da página de destino</option><option value="link">Maximizar cliques no link</option><option value="impressions">Maximizar impressões</option></select></Campo>
-          <Campo id="meta-billing" rotulo="Evento de cobrança"><select id="meta-billing" className={campo} defaultValue="impressions"><option value="impressions">Impressões</option><option value="link">Clique no link · quando elegível</option></select></Campo>
-          <Campo id="meta-conversion" rotulo="Local de conversão"><select id="meta-conversion" className={campo} defaultValue="website"><option value="website">Site</option><option value="instant">Experiência instantânea</option></select></Campo>
-          <Campo id="meta-promoted" rotulo="Objeto promovido" ajuda="Derivado do pixel/dataset e evento quando o objetivo exigir."><Input id="meta-promoted" value="Site · evento de destino" readOnly /></Campo>
-        </Grupo>
-      );
-    case 'publico':
-      return (
-        <Grupo titulo="Quem pode receber o anúncio?" ajuda="Público amplo é uma decisão visível. Inclusões e exclusões permanecem auditáveis no blueprint.">
-          <Campo id="meta-location" rotulo="Localização"><Input id="meta-location" defaultValue="Brasil" /></Campo>
-          <Campo id="meta-age" rotulo="Faixa etária"><select id="meta-age" className={campo} defaultValue="18-54"><option value="18-54">18 a 54 anos</option><option value="18-65">18 a 65+ anos</option></select></Campo>
-          <Campo id="meta-language" rotulo="Idiomas"><Input id="meta-language" defaultValue="Português (Brasil)" /></Campo>
-          <Campo id="meta-advantage" rotulo="Expansão Advantage+"><select id="meta-advantage" className={campo} defaultValue="on"><option value="on">Ligada · manter exclusões</option><option value="off">Desligada</option></select></Campo>
-          <Campo id="meta-includes" rotulo="Públicos incluídos" largo><Input id="meta-includes" placeholder="Pesquisar público salvo, personalizado ou semelhante" /></Campo>
-          <Campo id="meta-excludes" rotulo="Públicos excluídos" largo><Input id="meta-excludes" defaultValue="Visitantes convertidos · 180 dias" /></Campo>
-          <Campo id="meta-placements" rotulo="Posicionamentos" largo><select id="meta-placements" className={campo} defaultValue="advantage"><option value="advantage">Advantage+ · automáticos</option><option value="manual">Manuais · revisar inventário</option></select></Campo>
-        </Grupo>
-      );
-    case 'criativo':
-      return (
-        <Grupo titulo="O que a pessoa vai ver?" ajuda="Identidade, texto, destino e peças ficam juntos; o anúncio referencia um criativo, não duplica a mídia sem recibo.">
-          <Campo id="meta-ad-name" rotulo="Nome do anúncio" largo><Input id="meta-ad-name" defaultValue="Certificado Encceja · Imagem A · v1" /></Campo>
-          <Campo id="meta-primary" rotulo="Texto principal" largo><Textarea id="meta-primary" rows={4} defaultValue="Entenda como consultar o certificado do Encceja e quais documentos podem ser necessários." /></Campo>
-          <Campo id="meta-headline" rotulo="Título"><Input id="meta-headline" defaultValue="Certificado Encceja 2026" /></Campo>
-          <Campo id="meta-cta" rotulo="Chamada para ação"><select id="meta-cta" className={campo} defaultValue="learn"><option value="learn">Saiba mais</option><option value="none">Sem botão</option></select></Campo>
-          <Campo id="meta-url" rotulo="URL de destino" largo><Input id="meta-url" type="url" defaultValue="https://focogenial.com/encceja-2026-certificado-ensino-medio/" /></Campo>
-          <Campo id="meta-media" rotulo="Peça do Estúdio" largo><button id="meta-media" type="button" className="flex min-h-20 w-full items-center justify-between rounded-md border border-dashed border-border bg-muted/20 px-4 text-left text-sm hover:bg-muted/40"><span><strong className="block text-foreground">Encceja · estudante no notebook</strong><span className="mt-1 block text-xs text-muted-foreground">Imagem 1:1 · aprovada localmente · demonstração</span></span><ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden /></button></Campo>
-        </Grupo>
-      );
-    case 'mensuracao':
-      return (
-        <Grupo titulo="Como a entrega será medida?" ajuda="A ausência de pixel, evento ou UTMs bloqueia a pretensão de mensuração; não vira zero nem sucesso implícito.">
-          <Campo id="meta-dataset" rotulo="Pixel ou dataset"><select id="meta-dataset" className={campo} defaultValue="demo"><option value="demo">Dataset Foco Genial · ••••0184</option></select></Campo>
-          <Campo id="meta-event" rotulo="Evento"><select id="meta-event" className={campo} defaultValue="view"><option value="view">ViewContent</option><option value="landing">LandingPageView · otimização de tráfego</option></select></Campo>
-          <Campo id="meta-domain" rotulo="Domínio"><Input id="meta-domain" value="focogenial.com" readOnly /></Campo>
-          <Campo id="meta-attribution" rotulo="Janela de atribuição"><select id="meta-attribution" className={campo} defaultValue="7d"><option value="7d">7 dias após clique · 1 dia após visualização</option><option value="1d">1 dia após clique</option></select></Campo>
-          <Campo id="meta-utm" rotulo="Parâmetros de URL" largo><Input id="meta-utm" defaultValue="utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}" /></Campo>
-        </Grupo>
-      );
-    case 'revisao':
-      return (
-        <>
-          <Grupo titulo="Pedido que seria criado pausado" ajuda="Esta revisão mostra consequências e lacunas antes de qualquer escrita externa.">
-            <dl className="md:col-span-2">
-              <Resumo rotulo="Conta" valor="Conta Meta demonstrativa · ••••2048" />
-              <Resumo rotulo="Campanha" valor="FG · Encceja 2026 · Tráfego · 202609" />
-              <Resumo rotulo="Objetivo" valor="Tráfego · visualização da página de destino" />
-              <Resumo rotulo="Orçamento" valor="R$ 120,00/dia · campanha" />
-              <Resumo rotulo="Estrutura" valor="1 campanha · 1 conjunto · 1 anúncio · 1 criativo" />
-              <Resumo rotulo="Estado ao nascer" valor="PAUSADA" />
-              <Resumo rotulo="Validação externa" valor="não executada" pendente />
-            </dl>
-          </Grupo>
-          <div className="mt-5 flex items-start gap-2 rounded-md border border-warning/25 bg-warning/5 p-3 text-sm">
-            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
-            <p><strong>Criação real bloqueada.</strong> Esta bancada demonstra o contrato. Falta ligar o blueprint ao executor, validar na conta e emitir recibo idempotente.</p>
-          </div>
-        </>
-      );
-  }
-};
+const Resumo: React.FC<{ rotulo: string; valor: string; pendente?: boolean }> = ({ rotulo, valor, pendente }) => (
+  <div className="flex items-start justify-between gap-5 border-b border-border/70 py-3.5 last:border-0">
+    <dt className="text-sm text-muted-foreground">{rotulo}</dt>
+    <dd className={cn('max-w-[68%] break-words text-right text-sm font-semibold', pendente ? 'text-warning' : 'text-foreground')}>{valor}</dd>
+  </div>
+);
+
+function reaisParaMinor(valor: string): number {
+  const numero = Number(valor.trim().replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(numero) ? Math.round(numero * 100) : 0;
+}
+
+function paraPlano(draft: Draft): PlanoMetaPausadoInput {
+  return {
+    account_ref: draft.accountRef, page_ref: draft.pageRef, asset_ref: draft.assetRef,
+    campaign_name: draft.campaignName, adset_name: draft.adsetName,
+    creative_name: draft.creativeName, ad_name: draft.adName,
+    destination_url: draft.destinationUrl, message: draft.message,
+    headline: draft.headline, description: draft.description,
+    daily_budget_minor: reaisParaMinor(draft.budgetBrl),
+    start_time: new Date(draft.startTime).toISOString(),
+    special_ad_categories: [],
+    special_categories_confirmed: draft.categoryConfirmed,
+    call_to_action_type: draft.cta,
+  };
+}
 
 const MetaCriacaoPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const pedida = params.get('etapa') as Etapa | null;
   const etapa = ETAPAS.some((item) => item.id === pedida) ? pedida! : 'base';
   const indice = ETAPAS.findIndex((item) => item.id === etapa);
+  const [draft, setDraft] = useState<Draft>(DRAFT_INICIAL);
+  const [contas, setContas] = useState<ContaMetaLocal[]>([]);
+  const [paginas, setPaginas] = useState<AtivoCriacaoMeta[]>([]);
+  const [imagens, setImagens] = useState<AtivoCriacaoMeta[]>([]);
+  const [validateEnabled, setValidateEnabled] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [ocupado, setOcupado] = useState<'assets' | 'compile' | 'validate' | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [compilacao, setCompilacao] = useState<ResultadoCompilacaoMeta | null>(null);
+  const [validacao, setValidacao] = useState<ResultadoValidacaoPlanoMeta | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    Promise.all([pautadorApi.contasMetaLocal(), pautadorApi.capacidadesCriacaoMeta()])
+      .then(([inventario, capacidades]) => {
+        if (!vivo) return;
+        setContas(inventario.contas);
+        setValidateEnabled(capacidades.validate_only === 'ENABLED');
+        if (inventario.contas.length === 1) {
+          setDraft((atual) => ({ ...atual, accountRef: inventario.contas[0].referencia_opaca }));
+        }
+      })
+      .catch((exc) => vivo && setErro(exc instanceof Error ? exc.message : 'Não foi possível ler as contas Meta.'))
+      .finally(() => vivo && setCarregando(false));
+    return () => { vivo = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!draft.accountRef) { setPaginas([]); setImagens([]); return; }
+    let vivo = true;
+    setOcupado('assets');
+    pautadorApi.ativosCriacaoMeta(draft.accountRef)
+      .then((resultado) => {
+        if (!vivo) return;
+        setPaginas(resultado.paginas); setImagens(resultado.imagens);
+        setDraft((atual) => ({
+          ...atual,
+          pageRef: resultado.paginas.some((item) => item.referencia_opaca === atual.pageRef) ? atual.pageRef : (resultado.paginas[0]?.referencia_opaca || ''),
+          assetRef: resultado.imagens.some((item) => item.referencia_opaca === atual.assetRef) ? atual.assetRef : (resultado.imagens[0]?.referencia_opaca || ''),
+        }));
+      })
+      .catch((exc) => vivo && setErro(exc instanceof Error ? exc.message : 'Não foi possível ler páginas e imagens.'))
+      .finally(() => vivo && setOcupado(null));
+    return () => { vivo = false; };
+  }, [draft.accountRef]);
+
+  const mudar = <K extends keyof Draft>(chave: K, valor: Draft[K]) => {
+    setDraft((atual) => ({ ...atual, [chave]: valor }));
+    setCompilacao(null); setValidacao(null); setErro(null);
+  };
   const navegar = (proxima: Etapa) => {
     const novos = new URLSearchParams(params);
-    novos.set('modo', 'demo');
-    novos.set('etapa', proxima);
-    setParams(novos);
+    novos.set('etapa', proxima); novos.delete('modo'); setParams(novos);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
-    <Layout>
-      <main className="p-4 md:p-8">
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <Link to="/trafego?rede=meta&aba=preparar" className="inline-flex min-h-9 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" aria-hidden /> Tráfego · Meta Ads</Link>
-            <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"><span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary"><Megaphone className="h-3.5 w-3.5" aria-hidden /></span>criação guiada · demonstração</div>
-            <h1 className="mt-2 font-display text-[2rem] font-bold leading-[1.05] tracking-tight md:text-[2.4rem]">Nova campanha Meta</h1>
-            <div className="aurora-rule mt-3 w-16" aria-hidden />
-            <p className="mt-3 max-w-[70ch] text-sm text-muted-foreground">Uma decisão por vez, preservando a hierarquia campanha → conjunto → anúncio → criativo.</p>
-          </div>
-          <MetaConfiguracaoLocal />
-        </header>
+  const conta = contas.find((item) => item.referencia_opaca === draft.accountRef);
+  const pagina = paginas.find((item) => item.referencia_opaca === draft.pageRef);
+  const imagem = imagens.find((item) => item.referencia_opaca === draft.assetRef);
+  const prontoLocal = useMemo(() => Boolean(
+    draft.accountRef && draft.pageRef && draft.assetRef && draft.campaignName.trim()
+    && draft.adsetName.trim() && draft.adName.trim() && draft.destinationUrl.startsWith('https://')
+    && draft.message.trim() && draft.headline.trim() && reaisParaMinor(draft.budgetBrl) > 0
+    && draft.startTime && draft.categoryConfirmed
+  ), [draft]);
 
-        <div className="mb-5 flex items-start gap-2 rounded-md border border-verified/25 bg-verified/5 px-3 py-2.5 text-xs"><Info className="mt-0.5 h-4 w-4 shrink-0 text-verified" aria-hidden /><p><strong>Modo demonstrativo.</strong> Os campos representam o contrato v26; nada será enviado ou salvo fora desta página.</p></div>
+  const compilar = async () => {
+    setOcupado('compile'); setErro(null);
+    try { setCompilacao(await pautadorApi.compilarPlanoMeta(paraPlano(draft))); setValidacao(null); }
+    catch (exc) { setErro(exc instanceof Error ? exc.message : 'O plano não pôde ser compilado.'); }
+    finally { setOcupado(null); }
+  };
+  const validar = async () => {
+    setOcupado('validate'); setErro(null);
+    try { setValidacao(await pautadorApi.validarPlanoMeta(paraPlano(draft))); }
+    catch (exc) { setErro(exc instanceof Error ? exc.message : 'A Meta recusou a validação remota.'); }
+    finally { setOcupado(null); }
+  };
 
-        <div className="grid gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
-          <nav aria-label="Etapas da criação Meta" className="h-fit rounded-md border border-border bg-card p-2 shadow-card">
-            {ETAPAS.map((item, posicao) => {
-              const Icone = item.icone;
-              const atual = item.id === etapa;
-              const passou = posicao < indice;
-              return (
-                <button key={item.id} type="button" onClick={() => navegar(item.id)} aria-current={atual ? 'step' : undefined} className={cn('flex min-h-12 w-full items-center gap-3 rounded-md px-3 text-left transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', atual ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-                  <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs', atual ? 'border-primary-foreground/40' : passou ? 'border-success/30 bg-success/10 text-success' : 'border-border')}>
-                    {passou ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Icone className="h-3.5 w-3.5" aria-hidden />}
-                  </span>
-                  <span className="min-w-0"><strong className="block truncate text-sm font-medium">{item.nome}</strong><span className={cn('block truncate text-[11px]', atual ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{item.resumo}</span></span>
-                </button>
-              );
-            })}
-          </nav>
-
-          <form className="rounded-md border border-border bg-card p-5 shadow-card md:p-6" onSubmit={(evento) => evento.preventDefault()}>
-            <Conteudo etapa={etapa} />
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
-              <Button type="button" variant="outline" disabled={indice === 0} onClick={() => navegar(ETAPAS[indice - 1].id)}><ArrowLeft className="mr-2 h-4 w-4" aria-hidden /> Voltar</Button>
-              {indice < ETAPAS.length - 1 ? (
-                <Button type="button" onClick={() => navegar(ETAPAS[indice + 1].id)}>Continuar <ArrowRight className="ml-2 h-4 w-4" aria-hidden /></Button>
-              ) : (
-                <Button type="button" disabled title="Executor Meta ainda não ligado">Criar campanha pausada</Button>
-              )}
-            </div>
-          </form>
+  const conteudo = (() => {
+    switch (etapa) {
+      case 'base': return <Grupo titulo="Escolha a autoridade desta campanha" ajuda="Conta, Página e imagem são relidas da Meta. O navegador recebe apenas referências opacas.">
+        <Campo id="meta-conta" rotulo="Conta de anúncios"><select id="meta-conta" className={campo} value={draft.accountRef} onChange={(e) => mudar('accountRef', e.target.value)} disabled={carregando}><option value="">Selecione uma conta real</option>{contas.map((item) => <option key={item.referencia_opaca} value={item.referencia_opaca}>{item.nome} · {item.id_mascarado || 'ID protegido'} · {item.moeda || 'moeda não lida'}</option>)}</select></Campo>
+        <Campo id="meta-pagina" rotulo="Página do Facebook"><select id="meta-pagina" className={campo} value={draft.pageRef} onChange={(e) => mudar('pageRef', e.target.value)} disabled={!draft.accountRef || ocupado === 'assets'}><option value="">Selecione uma Página desta conta</option>{paginas.map((item) => <option key={item.referencia_opaca} value={item.referencia_opaca}>{item.nome} · {item.id_mascarado}</option>)}</select></Campo>
+        <Fixo rotulo="Conta efetiva" valor={conta?.nome || 'Ainda não escolhida'} detalhe="BRL é obrigatório no primeiro canário. A conta é resolvida novamente em cada ato." />
+        <Fixo rotulo="Página efetiva" valor={pagina?.nome || 'Ainda não escolhida'} detalhe="A Página precisa estar disponível para promoção na conta selecionada." />
+      </Grupo>;
+      case 'campanha': return <Grupo titulo="Defina identidade e enquadramento" ajuda="O primeiro contrato é estreito: tráfego para site, em leilão e sempre pausado.">
+        <Campo id="meta-nome" rotulo="Nome da campanha" largo><Input id="meta-nome" value={draft.campaignName} onChange={(e) => mudar('campaignName', e.target.value)} /></Campo>
+        <Fixo rotulo="Objetivo" valor="Tráfego" detalhe="OUTCOME_TRAFFIC · fixado pelo servidor" />
+        <Fixo rotulo="Compra e estado" valor="Leilão · PAUSADA" detalhe="Nenhum caminho de ativação existe nesta bancada." />
+        <Fixo rotulo="Categoria especial" valor="Nenhuma" detalhe="A receita P0 não aceita crédito, emprego, moradia ou política até seus contratos próprios serem provados." />
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 text-sm"><input type="checkbox" checked={draft.categoryConfirmed} onChange={(e) => mudar('categoryConfirmed', e.target.checked)} className="mt-0.5 h-4 w-4" /><span><strong className="block">Confirmo o enquadramento acima</strong><span className="text-xs text-muted-foreground">A ausência de categoria também é uma declaração explícita.</span></span></label>
+      </Grupo>;
+      case 'orcamento': return <Grupo titulo="Defina o limite do canário" ajuda="A verba fica no conjunto e usa menor custo sem limite de lance.">
+        <Campo id="meta-budget" rotulo="Orçamento diário · BRL"><Input id="meta-budget" inputMode="decimal" value={draft.budgetBrl} onChange={(e) => mudar('budgetBrl', e.target.value)} /></Campo>
+        <Campo id="meta-start" rotulo="Início"><Input id="meta-start" type="datetime-local" value={draft.startTime} onChange={(e) => mudar('startTime', e.target.value)} /></Campo>
+        <Fixo rotulo="Escopo" valor="Conjunto de anúncios" detalhe="daily_budget no AdSet · sem Advantage campaign budget" />
+        <Fixo rotulo="Lance" valor="Maior volume · menor custo" detalhe="LOWEST_COST_WITHOUT_CAP · sem bid_amount" />
+      </Grupo>;
+      case 'conjunto': return <Grupo titulo="Configure a unidade de entrega" ajuda="A meta e o evento de cobrança formam uma única receita validada pelo engine.">
+        <Campo id="meta-adset-name" rotulo="Nome do conjunto" largo><Input id="meta-adset-name" value={draft.adsetName} onChange={(e) => mudar('adsetName', e.target.value)} /></Campo>
+        <Fixo rotulo="Meta de desempenho" valor="Visualizações da página de destino" detalhe="LANDING_PAGE_VIEWS" />
+        <Fixo rotulo="Cobrança" valor="Impressões" detalhe="IMPRESSIONS · sujeito ao validate_only da conta" />
+        <Fixo rotulo="Destino" valor="Site" detalhe="WEBSITE · não cria experiência instantânea" />
+        <Fixo rotulo="Mensuração promovida" valor="Nenhuma nesta receita" detalhe="Pixel e conversão personalizada pertencem à futura receita Sales/Leads." />
+      </Grupo>;
+      case 'publico': return <Grupo titulo="Público e inventário do primeiro canário" ajuda="Automático por omissão não significa Advantage+ inferido.">
+        <Fixo rotulo="País" valor="Brasil" detalhe="geo_locations.countries = BR" /><Fixo rotulo="Idade" valor="18 a 65+" detalhe="Faixa ampla e explícita" />
+        <Fixo rotulo="Posicionamentos" valor="Automáticos" detalhe="Nenhuma lista manual é enviada" /><Fixo rotulo="Advantage Audience" valor="Não declarado" detalhe="Não afirmamos ligado nem desligado sem read-back próprio." />
+      </Grupo>;
+      case 'criativo': return <Grupo titulo="Monte o anúncio estático" ajuda="A imagem precisa existir na conta; o hash real permanece no backend.">
+        <Campo id="meta-ad-name" rotulo="Nome do anúncio"><Input id="meta-ad-name" value={draft.adName} onChange={(e) => mudar('adName', e.target.value)} /></Campo>
+        <Campo id="meta-creative-name" rotulo="Nome do criativo"><Input id="meta-creative-name" value={draft.creativeName} onChange={(e) => mudar('creativeName', e.target.value)} /></Campo>
+        <Campo id="meta-primary" rotulo="Texto principal" largo><Textarea id="meta-primary" rows={4} value={draft.message} onChange={(e) => mudar('message', e.target.value)} /></Campo>
+        <Campo id="meta-headline" rotulo="Título"><Input id="meta-headline" value={draft.headline} onChange={(e) => mudar('headline', e.target.value)} /></Campo>
+        <Campo id="meta-description" rotulo="Descrição"><Input id="meta-description" value={draft.description} onChange={(e) => mudar('description', e.target.value)} /></Campo>
+        <Campo id="meta-cta" rotulo="Chamada para ação"><select id="meta-cta" className={campo} value={draft.cta} onChange={(e) => mudar('cta', e.target.value)}><option value="LEARN_MORE">Saiba mais</option><option value="APPLY_NOW">Inscreva-se</option><option value="SIGN_UP">Cadastre-se</option><option value="GET_QUOTE">Solicitar cotação</option><option value="CONTACT_US">Fale conosco</option></select></Campo>
+        <Campo id="meta-media" rotulo="Imagem da conta"><select id="meta-media" className={campo} value={draft.assetRef} onChange={(e) => mudar('assetRef', e.target.value)} disabled={!draft.accountRef || ocupado === 'assets'}><option value="">Selecione uma imagem existente</option>{imagens.map((item) => <option key={item.referencia_opaca} value={item.referencia_opaca}>{item.nome}{item.largura && item.altura ? ` · ${item.largura}×${item.altura}` : ''}</option>)}</select></Campo>
+        <Fixo rotulo="Peça escolhida" valor={imagem?.nome || 'Ainda não escolhida'} detalhe="O hash real permanece somente no backend." />
+      </Grupo>;
+      case 'mensuracao': return <Grupo titulo="Feche destino e mensuração" ajuda="Traffic/LPV não exige promoted_object; conversões não entram escondidas neste canário.">
+        <Campo id="meta-url" rotulo="URL final HTTPS" largo><Input id="meta-url" type="url" value={draft.destinationUrl} onChange={(e) => mudar('destinationUrl', e.target.value)} /></Campo>
+        <Fixo rotulo="Otimização" valor="Landing Page Views" detalhe="A Meta valida a compatibilidade; o VOLC não presume aprovação." />
+        <Fixo rotulo="Objeto promovido" valor="Omitido" detalhe="Nenhum pixel, dataset ou custom conversion é criado ou selecionado." />
+        <Fixo rotulo="Atribuição" valor="Padrão efetivo da conta" detalhe="Nenhuma janela é forçada sem contrato específico." />
+        <Fixo rotulo="URL final" valor={draft.destinationUrl || 'Pendente'} detalhe="Inclua UTMs diretamente nesta URL quando necessárias." />
+      </Grupo>;
+      case 'revisao': return <>
+        <Grupo titulo="Pedido verificável para nascimento pausado" ajuda="Primeiro compile; depois valide as raízes sem criar nenhum objeto.">
+          <dl className="md:col-span-2">
+            <Resumo rotulo="Conta" valor={conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : 'não selecionada'} pendente={!conta} />
+            <Resumo rotulo="Página" valor={pagina?.nome || 'não selecionada'} pendente={!pagina} />
+            <Resumo rotulo="Campanha" valor={draft.campaignName || 'não informada'} pendente={!draft.campaignName} />
+            <Resumo rotulo="Receita" valor="Tráfego · Website · LPV · imagem estática" /><Resumo rotulo="Orçamento" valor={`R$ ${draft.budgetBrl}/dia · conjunto`} />
+            <Resumo rotulo="Estrutura" valor="1 campanha · 1 conjunto · 1 criativo · 1 anúncio" /><Resumo rotulo="Estado ao nascer" valor="PAUSADA em todos os níveis veiculáveis" />
+            <Resumo rotulo="Plano" valor={compilacao ? `${compilacao.plano.plano_sha256.slice(0, 16)}…` : 'ainda não compilado'} pendente={!compilacao} />
+            <Resumo rotulo="Validação externa" valor={validacao?.ok ? `aceita · ${validacao.operacoes_validadas.join(', ')}` : 'não executada'} pendente={!validacao?.ok} />
+          </dl>
+        </Grupo>
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <Button type="button" variant="outline" className="min-h-12" disabled={!prontoLocal || ocupado !== null} onClick={compilar}>{ocupado === 'compile' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}Conferir plano</Button>
+          <Button type="button" className="min-h-12" disabled={!compilacao || !validateEnabled || ocupado !== null} onClick={validar} title={validateEnabled ? 'Executa somente execution_options=validate_only' : 'Flag META_VALIDATE_ONLY_ENABLED fechada'}>{ocupado === 'validate' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}Validar na Meta · zero criação</Button>
         </div>
-      </main>
-    </Layout>
-  );
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-warning/25 bg-warning/5 p-4 text-sm"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-warning" /><p><strong>Criação real não está montada nesta rota.</strong> O compilador e o executor pausado existem, mas o transporte final aguarda autorização separada para Supabase write e Meta mutate.</p></div>
+        <Button type="button" className="mt-3 w-full" disabled>Criar campanha pausada</Button>
+      </>;
+    }
+  })();
+
+  return <Layout><main className="p-4 md:p-8">
+    <header className="relative mb-6 overflow-hidden rounded-2xl border border-white/10 bg-[#101524] p-6 text-white shadow-xl md:p-8"><div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-cyan-400 via-violet-500 to-red-500" /><div className="relative flex flex-wrap items-start justify-between gap-5"><div><Link to="/trafego?rede=meta&aba=preparar" className="inline-flex min-h-9 items-center gap-2 text-sm text-white/60 hover:text-white"><ArrowLeft className="h-4 w-4" /> Tráfego · Meta Ads</Link><div className="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300"><Megaphone className="h-3.5 w-3.5" /> nascimento controlado · v26</div><h1 className="mt-2 font-display text-[2rem] font-bold leading-tight tracking-tight md:text-[2.65rem]">Nova campanha Meta</h1><p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-white/60">Traffic → Website → LPV, peça existente e tudo veiculável nascendo pausado.</p></div><MetaConfiguracaoLocal /></div></header>
+    {erro && <div role="alert" className="mb-5 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">{erro}</div>}
+    <div className="mb-5 flex items-start gap-2 rounded-xl border border-verified/25 bg-verified/5 px-4 py-3 text-xs"><Info className="mt-0.5 h-4 w-4 shrink-0 text-verified" /><p><strong>Contrato ligado.</strong> Contas, Páginas e imagens vêm da Meta; o plano é compilado pelo Python. Apenas validate_only pode sair daqui, após clique explícito e flag do servidor.</p></div>
+    <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]"><nav aria-label="Etapas da criação Meta" className="h-fit rounded-xl border border-border bg-card p-2 shadow-card lg:sticky lg:top-4">{ETAPAS.map((item, posicao) => { const Icone = item.icone; const atual = item.id === etapa; const passou = posicao < indice; return <button key={item.id} type="button" onClick={() => navegar(item.id)} aria-current={atual ? 'step' : undefined} className={cn('flex min-h-13 w-full items-center gap-3 rounded-lg px-3 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', atual ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs', atual ? 'border-primary-foreground/35' : passou ? 'border-success/30 bg-success/10 text-success' : 'border-border')}>{passou ? <Check className="h-4 w-4" /> : <Icone className="h-4 w-4" />}</span><span className="min-w-0"><strong className="block truncate text-sm font-semibold">{item.nome}</strong><span className={cn('block truncate text-[11px]', atual ? 'text-primary-foreground/70' : 'text-muted-foreground')}>{item.resumo}</span></span></button>; })}</nav>
+      <form className="rounded-xl border border-border bg-card p-5 shadow-card md:p-7" onSubmit={(evento) => evento.preventDefault()}>{conteudo}<div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5"><Button type="button" variant="outline" disabled={indice === 0} onClick={() => navegar(ETAPAS[indice - 1].id)}><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Button>{indice < ETAPAS.length - 1 && <Button type="button" onClick={() => navegar(ETAPAS[indice + 1].id)}>Continuar <ArrowRight className="ml-2 h-4 w-4" /></Button>}</div></form></div>
+  </main></Layout>;
 };
 
 export default MetaCriacaoPage;

@@ -233,6 +233,72 @@ export interface InventarioMetaPersistido<T = Record<string, unknown>> {
   motivo?: string;
 }
 
+export interface AtivoCriacaoMeta {
+  referencia_opaca: string;
+  nome: string;
+  tipo: 'page' | 'image_asset';
+  id_mascarado: string | null;
+  largura: number | null;
+  altura: number | null;
+}
+
+export interface InventarioCriacaoMeta {
+  ok: true;
+  api_version: 'v26.0';
+  account_ref: string;
+  conta: ContaMetaLocal;
+  paginas: AtivoCriacaoMeta[];
+  imagens: AtivoCriacaoMeta[];
+  receita: 'OUTCOME_TRAFFIC_WEBSITE_LPV_STATIC_PAUSED';
+}
+
+export interface PlanoMetaPausadoInput {
+  account_ref: string;
+  page_ref: string;
+  asset_ref: string;
+  campaign_name: string;
+  adset_name: string;
+  creative_name: string;
+  ad_name: string;
+  destination_url: string;
+  message: string;
+  headline: string;
+  description: string;
+  daily_budget_minor: number;
+  start_time: string;
+  special_ad_categories: string[];
+  special_categories_confirmed: boolean;
+  call_to_action_type: string;
+}
+
+export interface ResultadoCompilacaoMeta {
+  ok: true;
+  efeito_externo: 'NENHUM';
+  plano: {
+    account_ref: string;
+    destination_url: string;
+    api_version: 'v26.0';
+    plano_sha256: string;
+    estado_ao_nascer: 'PAUSED';
+    operacoes: Array<{
+      nome: 'campaign' | 'adset' | 'creative' | 'ad';
+      endpoint: string;
+      depende_de: string[];
+      validavel_sem_criar_pai: boolean;
+      status: 'PAUSED' | null;
+    }>;
+  };
+}
+
+export interface ResultadoValidacaoPlanoMeta {
+  ok: boolean;
+  cobertura: 'INDEPENDENT_ROOTS_ONLY';
+  operacoes_validadas: string[];
+  operacoes_dependentes_pendentes: string[];
+  plano_sha256: string;
+  objetos_criados: 0;
+}
+
 function url(path: string): string {
   return `${API_BASE}${path}`;
 }
@@ -377,6 +443,30 @@ export const pautadorApi = {
 
   removerMetaLocal(): Promise<{ removido: boolean }> {
     return request('/api/trafego/meta/local/configuracao', { method: 'DELETE' });
+  },
+
+  capacidadesCriacaoMeta(): Promise<Record<string, string | boolean>> {
+    return request('/api/trafego/meta/local/criacao/capacidades');
+  },
+
+  ativosCriacaoMeta(accountRef: string): Promise<InventarioCriacaoMeta> {
+    return request(
+      `/api/trafego/meta/local/criacao/ativos?account_ref=${encodeURIComponent(accountRef)}`,
+    );
+  },
+
+  compilarPlanoMeta(plano: PlanoMetaPausadoInput): Promise<ResultadoCompilacaoMeta> {
+    return request('/api/trafego/meta/local/criacao/compilar', {
+      method: 'POST',
+      body: JSON.stringify(plano),
+    });
+  },
+
+  validarPlanoMeta(plano: PlanoMetaPausadoInput): Promise<ResultadoValidacaoPlanoMeta> {
+    return request('/api/trafego/meta/local/criacao/validar', {
+      method: 'POST',
+      body: JSON.stringify({ plano, confirmar_validate_only: true }),
+    });
   },
 
   workRoad(): Promise<WorkRoadLive> {

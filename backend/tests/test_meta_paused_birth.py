@@ -29,10 +29,11 @@ class RegistroEmMemoria:
         self.eventos: list[tuple[str, str]] = []
 
     async def preparar_passo(
-        self, *, plano_sha256: str, approval_id: str, nome: str, payload_sha256: str,
+        self, *, plano_sha256: str, approval_id: str, ator: str, nome: str, payload_sha256: str,
     ) -> PassoPreparadoMeta:
         assert len(plano_sha256) == 64
         assert approval_id == "approval_meta_01"
+        assert ator == "operador@example.com"
         assert len(payload_sha256) == 64
         self.eventos.append(("preparar", nome))
         if nome in self.retomados:
@@ -199,6 +200,7 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
         ({"promoted_object": {"pixel_id": "1"}}, "META_MEASUREMENT_RECIPE_UNPROVEN"),
         ({"advantage_audience": True}, "META_ADVANTAGE_AUDIENCE_UNPROVEN"),
         ({"special_categories_confirmed": False}, "META_SPECIAL_CATEGORY_NOT_CONFIRMED"),
+        ({"special_ad_categories": ("CREDIT",)}, "META_SPECIAL_CATEGORY_RECIPE_UNPROVEN"),
     ],
 )
 def test_contrato_recusa_receitas_nao_provadas(mudancas: dict[str, object], codigo: str) -> None:

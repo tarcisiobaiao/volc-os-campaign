@@ -152,6 +152,7 @@ class ExecutorMetaPausado:
                 passo = await self._registro.preparar_passo(
                     plano_sha256=plano.plano_sha256,
                     approval_id=autorizacao.approval_id,
+                    ator=autorizacao.ator,
                     nome=operacao.nome,
                     payload_sha256=payload_sha256,
                 )

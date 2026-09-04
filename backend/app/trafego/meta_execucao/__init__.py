@@ -12,7 +12,8 @@ from .contrato import (
     ReferenciasMetaResolvidas,
 )
 from .compilador import PlanoCompiladoMeta, compilar_plano_pausado
-from .registro import PassoPreparadoMeta, RegistroSagaMeta
+from .ativos import AtivoDeCriacaoMeta, ResolvedorAtivosMeta
+from .registro import PassoPreparadoMeta, RegistroSagaMeta, RegistroSagaMetaSupabase
 
 __all__ = [
     "AutorizacaoMeta",
@@ -21,6 +22,9 @@ __all__ = [
     "ReferenciasMetaResolvidas",
     "PlanoCompiladoMeta",
     "compilar_plano_pausado",
+    "AtivoDeCriacaoMeta",
+    "ResolvedorAtivosMeta",
     "PassoPreparadoMeta",
     "RegistroSagaMeta",
+    "RegistroSagaMetaSupabase",
 ]
