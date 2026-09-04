@@ -1,0 +1,49 @@
+{
+  "verdict": "GEMINI_FINDINGS_ADJUDICATED",
+  "model": "gemini-3.1-pro-preview",
+  "adjudications": [
+    {
+      "finding_id": "F-001",
+      "status": "CONFIRMADO",
+      "evidence": [
+        "supabase/migrations/v10_01_intencao_e_lote.sql introduces provider-neutral operational plan structures.",
+        "supabase/migrations/v10_03_recibo_atomico.sql documents and guards atomic receipts / one in-flight operation per item.",
+        "PRODUCT.md requires deterministic proof and no automated spend without human decision."
+      ],
+      "contract_action": "SECURITY-AND-MUTATION-CAPABILITIES.json requires approval, idempotency, receipt and read-back for META_CREATE_PAUSED; META-MVP-EXECUTION-PLAN.json routes future creation after blueprint/local validation."
+    },
+    {
+      "finding_id": "F-002",
+      "status": "CONFIRMADO",
+      "evidence": [
+        "src/pages/settings/CampaignsSettings.tsx has pause/activate handlers for legacy campaigns settings.",
+        "META_CREATE_PAUSED and META_ENABLE are separate capabilities in SECURITY-AND-MUTATION-CAPABILITIES.json."
+      ],
+      "contract_action": "META-UI-API-BINDING.json marks future create-paused as separate future-auth endpoint; Meta mutations are not routed through legacy settings UI."
+    },
+    {
+      "finding_id": "F-003",
+      "status": "CONFIRMADO_COM_ESCOPO",
+      "evidence": [
+        "supabase/migrations/v9_01_trafego_inventario.sql establishes no-number-without-freshness and NULL-not-zero rules.",
+        "src/sql and v12_04 materials show existing daily campaign facts are Google/GAM-oriented."
+      ],
+      "contract_action": "META-DATA-MODEL.json proposes trafego_meta_insight_daily and trafego_meta_sync_run rather than silently overloading daily_campaign_metrics."
+    },
+    {
+      "finding_id": "F-004",
+      "status": "CONFIRMADO",
+      "evidence": [
+        "src/sql/v7_13_meta_capi_sites.sql and api/_lib/metaCapiSites.js are Meta CAPI/site event surfaces, not Marketing API media-buying surfaces.",
+        "Official Marketing API source distinguishes Marketing API campaign/adset/ad/creative endpoints from Conversions API as a related API."
+      ],
+      "contract_action": "EXECUTIVE-DECISIONS.md and META-SECURE-ONBOARDING-CONTRACT.json keep CAPI and Meta Ads credentials/data planes separate."
+    }
+  ],
+  "non_actions": [
+    "No Meta credential was resolved.",
+    "No Meta account was read.",
+    "No Meta validate_only or mutation occurred.",
+    "No UI/backend implementation was added."
+  ]
+}

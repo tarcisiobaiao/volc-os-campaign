@@ -1,0 +1,87 @@
+{
+  "_meta": {
+    "model_effective": "gemini-3.1-pro-preview",
+    "model_requested": "gemini-3.1-pro-preview",
+    "sdk": "google-genai",
+    "sdk_version": "2.22.0"
+  },
+  "findings": [
+    {
+      "area": "Architecture",
+      "claim": "Meta creation should enter provider-neutral intent/blueprint/lote/validacao/recibo path, not legacy campaigns.",
+      "consequence": "Using legacy campaign creation paths will bypass the required human approval, idempotency, and atomic receipt mechanisms, risking unauthorized spend and duplicate campaigns.",
+      "endpoint_or_field": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "id": "F-001",
+      "recommendation": "Strictly route all Meta CREATE_PAUSED operations through the v10 intent/blueprint/lote/validacao/recibo pipeline.",
+      "severity": "CRITICAL",
+      "source_needed": "v10 series intent/blueprint",
+      "status": "OPEN"
+    },
+    {
+      "area": "Security",
+      "claim": "Settings page can call updateCampaignStatus active/paused and labels Google Ads.",
+      "consequence": "Legacy UI might inadvertently expose Meta campaign mutation (like ENABLE) without the required v10 approval and read-back contracts.",
+      "endpoint_or_field": "src/pages/settings/CampaignsSettings.tsx",
+      "id": "F-002",
+      "recommendation": "Isolate Meta mutations from legacy settings UI. Ensure META_ENABLE requires explicit, separate authorization from META_CREATE_PAUSED.",
+      "severity": "HIGH",
+      "source_needed": "Legacy settings campaign actions",
+      "status": "OPEN"
+    },
+    {
+      "area": "Data Model",
+      "claim": "Meta daily insights need parallel normalized table or provider-keyed fact model; do not overload legacy daily_campaign_metrics silently.",
+      "consequence": "Overloading legacy Google Ads daily metrics with Meta data will corrupt canonical facts and violate the freshness/null rules (absence is NULL, never zero).",
+      "endpoint_or_field": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+      "id": "F-003",
+      "recommendation": "Implement a provider-keyed fact model specifically for Meta daily insights that strictly adheres to the freshness and null rules.",
+      "severity": "HIGH",
+      "source_needed": "Google daily fact model",
+      "status": "OPEN"
+    },
+    {
+      "area": "Integration",
+      "claim": "Existing Meta code is CAPI/site event integration, not Marketing API.",
+      "consequence": "Confusing CAPI credentials with Marketing API credentials could lead to token leakage or incorrect permission scopes being requested.",
+      "endpoint_or_field": "api/_lib/metaCapiSites.js",
+      "id": "F-004",
+      "recommendation": "Maintain strict separation between Meta CAPI (server event sending) and Meta Ads (media buying) credentials and data planes.",
+      "severity": "MEDIUM",
+      "source_needed": "Meta CAPI API lib",
+      "status": "OPEN"
+    }
+  ],
+  "mvp_gaps": [
+    "Server-side resolution of System User tokens via 1Password references is not yet implemented (currently AUSENTE).",
+    "Provider-keyed fact model for Meta daily insights is missing, risking overload of legacy Google Ads tables.",
+    "Frontend multichannel fixtures need to be replaced with actual server read models for Meta states.",
+    "Implementation of the atomic receipt (trafego_recibo) specifically for Meta's CREATE_PAUSED idempotency keys."
+  ],
+  "schema_risks": [
+    "Overloading legacy 'daily_campaign_metrics' instead of creating a dedicated or provider-neutral fact model for Meta insights.",
+    "Failing to distinguish between NULL (absent/failed sync) and zero in freshness tracking, leading to false zero-spend reports.",
+    "Not utilizing 'trafego_recibo' for atomic creation, which could result in race conditions and duplicate Meta campaigns."
+  ],
+  "security_risks": [
+    "Exposing raw Meta tokens in the browser or logs instead of resolving them strictly server-side via 1Password references.",
+    "Assuming the META_CREATE_PAUSED capability implicitly grants META_ENABLE capability, leading to unauthorized live spend.",
+    "Allowing external mutation (e.g., via legacy settings UI) that bypasses the v10 intent/blueprint human approval workflow."
+  ],
+  "smallest_paused_campaign_mvp": [
+    "1. READ/SYNC: Authenticate via server-side System User token to GET Business, Ad Account, Page, and Pixel references, storing them in trafego_inventario.",
+    "2. INTENT/BLUEPRINT: Operator creates a v10 intent/blueprint for a single Campaign (objective: Traffic), single AdSet (Traffic LPV, explicit advantage_audience if HEC-F, no IG Explore), and single AdCreative (Link/Image, no polls).",
+    "3. LOCAL VALIDATION: Backend validates the blueprint against v26 breaking rules (HEC-F, placements, creative types) without calling Meta.",
+    "4. EXECUTION (PAUSED): Backend executes POST /campaigns (status=PAUSED) -> POST /adsets (status=PAUSED) -> POST /adcreatives -> POST /ads (status=PAUSED), using trafego_recibo and blueprint hashes for idempotency.",
+    "5. READ-BACK: Backend performs mandatory GET on the created entities to verify status=PAUSED and stores the external IDs in trafego_linhagem."
+  ],
+  "v26_rule_risks": [
+    "V26_ADVANTAGE_AUDIENCE_HECF: Failing to explicitly set targeting_automation.advantage_audience to 1/0 for Housing, Employment, and Financial categories will cause stable error META_V26_ADVANTAGE_AUDIENCE_REQUIRED.",
+    "V26_INSTAGRAM_EXPLORE_REMOVED: Sending instagram_positions=explore in AdSet targeting will result in API rejection.",
+    "V26_MESSENGER_STORIES_DEPRECATED: Relying on messenger_positions=story will fail as v26 silently removes it; read-back of effective placements is mandatory.",
+    "V26_POLL_CREATIVE_REJECTED: Allowing interactive_components_spec.type=poll in local validation or ZIP manifests will cause creative creation to fail.",
+    "V26_WEB_APP_WEB_ONLY_RESTRICTED: Permitting applink_treatment=web_only on creatives attached to Website+App campaigns will be rejected.",
+    "V26_DELIVERY_ESTIMATE_FIELDS_REMOVED: Building UI reach forecasts on daily_outcomes_curve, budget_guardrail, or estimate_dau will break as these fields are removed.",
+    "V26_SHOP_ADS_DEFAULTING: Failing to require explicit destination choice for shop advertisers will cause unintended inheritance of WEBSITE_AND_SHOP."
+  ],
+  "verdict": "APPROVED_WITH_CONDITIONS"
+}
