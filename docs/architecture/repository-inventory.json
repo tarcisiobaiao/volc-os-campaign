@@ -1,32 +1,32 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-04T12:55:49-03:00",
+  "generated_at": "2026-09-04T14:01:34-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 631,
-    "markdown": 461,
-    "sql": 170,
-    "tracked": 631,
+    "files": 638,
+    "markdown": 466,
+    "sql": 172,
+    "tracked": 638,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 23,
-      "documentation": 314,
+      "documentation": 318,
       "generated": 2,
       "module-guide": 36,
-      "product-document": 22,
+      "product-document": 23,
       "project-control": 4,
       "reference": 12,
       "runtime-contract": 20,
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 57,
+      "sql-needs-review": 59,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 109,
+      "high": 111,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 20404,
       "lines": 281,
-      "sha256": "a2285ae9a927529544b4a4ba6feecc76887464e90bd5ed24c78ff74776215db6",
+      "sha256": "1d9a76c83c2f8a2a3492adb83021d68b4c306cd38c90e2d722b5f99c9b0a8974",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -2715,6 +2715,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/hermes-meta-real-read-model-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 1604,
+      "lines": 46,
+      "sha256": "00a220a5344ac975409322e21d4bd397543879358f0beb4ce87b488d981ed18d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/hermes-meta-real-read-model-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2841,
+      "lines": 63,
+      "sha256": "436df9be38a7e18bf7aa2b1e2b945403c87f6ddd129d0330f1833769dab1fead",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/hermes-meta-v26-ground-truth-v1/AS-IS-ARCHITECTURE.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3190,6 +3214,30 @@
       "bytes": 2526,
       "lines": 68,
       "sha256": "84333471984fcceee61848bd4390a557b94dfc637e530ebcb0755769b6121e14",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-real-read-integration-v1/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 452,
+      "lines": 14,
+      "sha256": "7e0ba6a94016e788a4b6cea81eaba1bdc3e1cc7739e8cd7986379de77f20ee69",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-real-read-integration-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2281,
+      "lines": 50,
+      "sha256": "b06a9e377aa30a325ce7b1b3d1cce8614ee779a5bf116a983da89f90f2a4ed99",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4402,6 +4450,18 @@
       "bytes": 9411,
       "lines": 216,
       "sha256": "415bd94f0cb3e865252d0feecea3301fda45388481f85f46b9d4cec5e885b3ce",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/specs/meta-measurement-advantage-v1/MASTER-SPEC.md",
+      "extension": ".md",
+      "classification": "product-document",
+      "tracked": true,
+      "bytes": 12896,
+      "lines": 301,
+      "sha256": "55ab92aa64adcba4558473171c44f8f91bbac08e090698ae6864a55fa8cee1e2",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7111,11 +7171,35 @@
       "extension": ".sql",
       "classification": "sql-needs-review",
       "tracked": true,
-      "bytes": 14582,
+      "bytes": 14573,
       "lines": 306,
-      "sha256": "1fc9d401c9bdb52435c6d1d100602d2062e7924e1fe67e0af097a71ca6bd93e2",
+      "sha256": "a21187f6fb91ec2d9fee753551ebabcea1acf6a2b66466c4c5aa2bb8a904f2d4",
       "graph_nodes": 8,
       "graph_degree": 25,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v15_02_meta_ads_insights.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4908,
+      "lines": 111,
+      "sha256": "b69e809b323391ca47c22b6163e5f3e7f55345f616b7fe6269a5249cba51b45d",
+      "graph_nodes": 3,
+      "graph_degree": 7,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v15_98_meta_ads_insights_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 698,
+      "lines": 22,
+      "sha256": "cd5ceb7b2697330fcdeb71e86df859958464f71238346c86627c5401a54840d2",
+      "graph_nodes": 1,
+      "graph_degree": 0,
       "sql_risk": "high"
     },
     {
