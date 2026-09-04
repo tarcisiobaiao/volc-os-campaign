@@ -1,0 +1,175 @@
+{
+  "base": "0aa090eb6a97e66b5ebdeb1c288d214003b06cbf",
+  "branch": "sprint/hermes-meta-v26-ground-truth-v1",
+  "capability_states": {
+    "AUSENTE": [
+      "Meta Marketing API adapter",
+      "Meta account sync",
+      "Meta campaign/adset/ad/creative read models",
+      "Meta create paused"
+    ],
+    "BLOQUEADA_EXTERNAMENTE": [
+      "real Meta account read",
+      "Meta credentials resolution",
+      "n8n workflow read unavailable"
+    ],
+    "PARCIAL": [
+      "provider-neutral traffic inventory schema",
+      "creative studio/parque assets",
+      "Google multichannel manifests/builders"
+    ],
+    "PLACEHOLDER": [
+      "Meta Ads manifest/navigation state"
+    ],
+    "REAL": [
+      "Google Search traffic inventory/proposal/write paths in existing code",
+      "Meta CAPI site event configuration (not Ads buying)"
+    ]
+  },
+  "documents_read": [
+    "AGENTS.md",
+    "PRODUCT.md",
+    "docs/volc-os-graph/curadoria-operacional.json",
+    "docs/volc-os-graph/volc-os-graph.json",
+    "volc-os-workbook/ROADMAP-VIVO.json",
+    "supabase/migrations/v9_01_trafego_inventario.sql",
+    "backend/app/trafego/plataforma.py"
+  ],
+  "graph_freshness": "GRAPHIFY_CLI_AND_GRAPHIFY_OUT_NOT_AVAILABLE; curation/generated graph/roadmap read-only were used",
+  "items": [
+    {
+      "evidence": "Requires graphify query/explain/affected when available; fallback to JSON when venv unavailable.",
+      "impact": "graphify CLI unavailable; use curation and generated operational graph read-only.",
+      "line": 8,
+      "path": "AGENTS.md",
+      "symbol": "graphify policy"
+    },
+    {
+      "evidence": "Hub must prove campaigns against deterministic rules and real account, without inventing data or automating spend without human decision.",
+      "impact": "Meta contract must separate observation/proposal/validation/mutation and declare absence.",
+      "line": 13,
+      "path": "PRODUCT.md",
+      "symbol": "Hub de Tráfego purpose"
+    },
+    {
+      "evidence": "GOOGLE_ADS and META_ADS are the only declared media-buying platforms.",
+      "impact": "Meta already exists as navigation/platform vocabulary, not implementation.",
+      "line": 73,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "META_ADS"
+    },
+    {
+      "evidence": "Meta manifest has capacidades=() and says no credential, adapter, or linked account exists; zero campaigns would be false.",
+      "impact": "Current Meta Ads operation is PLACEHOLDER/BLOQUEADA_EXTERNAMENTE.",
+      "line": 460,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "META ManifestoDeCanal"
+    },
+    {
+      "evidence": "Search supports fields, proofs, and mutation real for Google Ads.",
+      "impact": "Existing action ladder/proofs are reusable for Meta, but Google-specific adapter is not.",
+      "line": 350,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "SEARCH ManifestoDeCanal"
+    },
+    {
+      "evidence": "Display has fields and permits mutation real in current manifest.",
+      "impact": "Manifest-driven UI pattern reusable; contents are Google-specific.",
+      "line": 373,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "DISPLAY ManifestoDeCanal"
+    },
+    {
+      "evidence": "Demand Gen has fields/proof but permite_mutacao_real=False in base.",
+      "impact": "Demonstrates a channel can be proposed/validated without write authorization.",
+      "line": 408,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "DEMAND_GEN ManifestoDeCanal"
+    },
+    {
+      "evidence": "PMax capabilities=(LER,) and no constructor in base.",
+      "impact": "Do not infer Meta write from platform listing.",
+      "line": 436,
+      "path": "backend/app/trafego/plataforma.py",
+      "symbol": "PERFORMANCE_MAX ManifestoDeCanal"
+    },
+    {
+      "evidence": "Creates trafego_linhagem, trafego_campanha, trafego_campanha_espelho, trafego_snapshot_conta, trafego_vinculo, trafego_evento and read projections.",
+      "impact": "Provider-neutral identity/snapshot/event foundation should be reused for Meta.",
+      "line": 16,
+      "path": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "symbol": "trafego_* inventory tables"
+    },
+    {
+      "evidence": "No number without freshness; absence is NULL, never zero; account failures isolated per row.",
+      "impact": "Meta insights and sync must carry read timestamp and distinguish absent/failed/zero.",
+      "line": 51,
+      "path": "supabase/migrations/v9_01_trafego_inventario.sql",
+      "symbol": "freshness and null rules"
+    },
+    {
+      "evidence": "v10 series introduces proposal/execution structures for traffic operations.",
+      "impact": "Meta creation should enter provider-neutral intent/blueprint/lote/validacao/recibo path, not legacy campaigns.",
+      "line": 1,
+      "path": "supabase/migrations/v10_01_intencao_e_lote.sql",
+      "symbol": "intenção/lote/blueprint family"
+    },
+    {
+      "evidence": "Atomic receipt prevents concurrent creation attempts for the same item.",
+      "impact": "Meta CREATE_PAUSED must use idempotency key + receipt + read-back.",
+      "line": 17,
+      "path": "supabase/migrations/v10_03_recibo_atomico.sql",
+      "symbol": "trafego_recibo / one in-flight receipt"
+    },
+    {
+      "evidence": "Canonical daily facts exist for GAds.",
+      "impact": "Meta daily insights need parallel normalized table or provider-keyed fact model; do not overload legacy daily_campaign_metrics silently.",
+      "line": 1,
+      "path": "supabase/migrations/v12_04_gads_fato_canonico_dia.sql",
+      "symbol": "Google daily fact model"
+    },
+    {
+      "evidence": "Settings page can call updateCampaignStatus active/paused and labels Google Ads.",
+      "impact": "Legacy campaigns UI is not safe surface for Meta mutations.",
+      "line": 254,
+      "path": "src/pages/settings/CampaignsSettings.tsx",
+      "symbol": "legacy settings campaign actions"
+    },
+    {
+      "evidence": "Settings exposes Google Ads and Meta CAPI; CAPI is server event sending, not paid media buying.",
+      "impact": "Do not confuse Meta CAPI with Meta Ads operation.",
+      "line": 75,
+      "path": "src/pages/settings/IntegrationsSettings.tsx",
+      "symbol": "Meta CAPI tab"
+    },
+    {
+      "evidence": "Meta placeholder component exists in traffic hub component tree.",
+      "impact": "UI can render blocked/not configured state; must not show zero synced campaigns.",
+      "line": 1,
+      "path": "src/components/trafego/hub/MetaNaoConfigurada.tsx",
+      "symbol": "Meta placeholder component"
+    },
+    {
+      "evidence": "Frontend has multichannel fixtures/tests for traffic hub.",
+      "impact": "Executor should replace fixture-driven Meta states with server read models.",
+      "line": 1,
+      "path": "src/components/trafego/hub/fixtureMulticanal.ts",
+      "symbol": "multichannel fixtures"
+    },
+    {
+      "evidence": "Existing Meta code is CAPI/site event integration, not Marketing API.",
+      "impact": "Reusable only for credential/reference/security patterns, not campaign hierarchy.",
+      "line": 1,
+      "path": "src/sql/v7_13_meta_capi_sites.sql",
+      "symbol": "Meta CAPI sites"
+    },
+    {
+      "evidence": "Existing JS lib handles Meta CAPI sites.",
+      "impact": "Not an Ads data plane; keep separate from Meta Ads credentials.",
+      "line": 1,
+      "path": "api/_lib/metaCapiSites.js",
+      "symbol": "Meta CAPI API lib"
+    }
+  ],
+  "verdict": "META_ADS_AS_IS_PLACEHOLDER"
+}
