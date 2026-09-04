@@ -12,7 +12,7 @@ import { OperatorRedirect } from "@/components/OperatorRedirect";
 import Index from "./pages/Index";
 import GeneralDashboard from "./pages/GeneralDashboard";
 import SimpleTest from "./pages/SimpleTest";
-import CampaignDetailDashboard from "./pages/CampaignDetailDashboard";
+import CampaignDetailRouter from "./pages/CampaignDetailRouter";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import Reports from "./pages/Reports";
 import ProjectsSettings from "./pages/settings/ProjectsSettings";
@@ -100,7 +100,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><OperatorRedirect><GeneralDashboard /></OperatorRedirect></ProtectedRoute>} />
             <Route path="/test" element={<ProtectedRoute><SimpleTest /></ProtectedRoute>} />
             <Route path="/dashboard/projects" element={<ProtectedRoute><ProjectsSettings /></ProtectedRoute>} />
-            <Route path="/dashboard/campaign/:campaignId" element={<ProtectedRoute><CampaignDetailDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/campaign/:campaignId" element={<ProtectedRoute><CampaignDetailRouter /></ProtectedRoute>} />
             <Route path="/dashboard/project/:projectId" element={<ProtectedRoute><ProjectDashboard /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/settings/projects" element={<ProtectedRoute><ProjectsSettings /></ProtectedRoute>} />

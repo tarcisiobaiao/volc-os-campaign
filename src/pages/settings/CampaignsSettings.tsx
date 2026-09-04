@@ -9,7 +9,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Search, Edit, Copy, Pause, Trash2, RefreshCw, Play, Settings, AlertTriangle, User, FolderOpen, Calendar, Circle, BarChart3, Coins, DollarSign, Hash, Zap, CheckCircle2 } from "lucide-react";
 import { useSupabaseData, Campaign, Project, supabaseDataService } from "@/services/supabaseDataService";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { DateFilter } from "@/components/dashboard/DateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import { format } from "date-fns";
@@ -22,8 +22,10 @@ import { sortCampaigns, type CampaignSortKey } from "@/lib/campaignSort";
 import { MetricDelta } from "@/components/campaign/MetricDelta";
 import { useCampaignComparisons } from "@/hooks/useCampaignComparisons";
 import { IdentidadeDeCanal } from "@/components/trafego/hub/IdentidadeDeCanal";
+import { SeletorRedeCampanhas, type RedeDeCampanhas } from "@/components/campaign/SeletorRedeCampanhas";
+import MetaCampaignsSettingsDemo from "./MetaCampaignsSettingsDemo";
 
-const CampaignsSettings = () => {
+const GoogleCampaignsSettings: React.FC<{ onNetworkChange: (rede: RedeDeCampanhas) => void }> = ({ onNetworkChange }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { userProfile } = useAuth();
@@ -391,6 +393,8 @@ const CampaignsSettings = () => {
               </p>
             </div>
           </div>
+
+          <SeletorRedeCampanhas rede="google" onChange={onNetworkChange} />
           
           {/* Filters and Actions Section */}
           <div className={`flex ${isMobile ? 'flex-col w-full' : 'items-center'} gap-3 flex-wrap`}>
@@ -754,6 +758,22 @@ const CampaignsSettings = () => {
       </div>
     </Layout>
   );
+};
+
+const CampaignsSettings = () => {
+  const [params, setParams] = useSearchParams();
+  const rede: RedeDeCampanhas = params.get('rede') === 'meta' ? 'meta' : 'google';
+
+  const mudarRede = (proximaRede: RedeDeCampanhas) => {
+    const proximos = new URLSearchParams(params);
+    if (proximaRede === 'meta') proximos.set('rede', 'meta');
+    else proximos.delete('rede');
+    setParams(proximos, { replace: true });
+  };
+
+  return rede === 'meta'
+    ? <MetaCampaignsSettingsDemo onNetworkChange={mudarRede} />
+    : <GoogleCampaignsSettings onNetworkChange={mudarRede} />;
 };
 
 export default CampaignsSettings;
