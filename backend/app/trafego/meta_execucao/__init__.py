@@ -1,0 +1,26 @@
+"""First isolated Meta campaign-birth seam.
+
+This package is intentionally isolated from routes, credentials and Supabase.
+It compiles one narrow website-traffic recipe and exposes an injected Graph
+transport. Importing it cannot call Meta or mutate external state.
+"""
+
+from .contrato import (
+    AutorizacaoMeta,
+    ErroDeNascimentoMeta,
+    PlanoMetaPausado,
+    ReferenciasMetaResolvidas,
+)
+from .compilador import PlanoCompiladoMeta, compilar_plano_pausado
+from .registro import PassoPreparadoMeta, RegistroSagaMeta
+
+__all__ = [
+    "AutorizacaoMeta",
+    "ErroDeNascimentoMeta",
+    "PlanoMetaPausado",
+    "ReferenciasMetaResolvidas",
+    "PlanoCompiladoMeta",
+    "compilar_plano_pausado",
+    "PassoPreparadoMeta",
+    "RegistroSagaMeta",
+]

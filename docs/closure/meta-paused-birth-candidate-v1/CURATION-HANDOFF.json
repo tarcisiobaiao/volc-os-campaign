@@ -1,0 +1,38 @@
+{
+  "do_not_apply_here": true,
+  "verdict": "META_PAUSED_BIRTH_ENGINE_LOCAL_CANDIDATE",
+  "roadmap_tasks": [
+    {
+      "id": "P11-T05",
+      "suggested_state": "partial",
+      "evidence": "Compilador e executor isolados da receita Meta OUTCOME_TRAFFIC/LANDING_PAGE_VIEWS PAUSED implementados com validate_only por degrau, recibo durável obrigatório, retomada sem POST duplicado, timeout ambíguo e read-back. Continuam ausentes adapter persistente, rota autenticada, integração com blueprint, validate_only real e primeiro canário Meta PAUSED."
+    },
+    {
+      "id": "P11-T02",
+      "suggested_state": "partial",
+      "evidence": "A primeira receita exige image_hash já existente; briefing e geração/upload de asset Meta permanecem fora deste slice."
+    }
+  ],
+  "graph_nodes": [
+    "cap_meta_ads",
+    "concept:meta_direct_traffic",
+    "concept:media_hub"
+  ],
+  "proofs": [
+    "backend/tests/test_meta_paused_birth.py",
+    "docs/closure/meta-paused-birth-candidate-v1/GATES.md",
+    "docs/closure/meta-paused-birth-candidate-v1/HANDOFF.md"
+  ],
+  "prohibitions_preserved": [
+    "no Roadmap edit",
+    "no graph edit",
+    "no curation edit",
+    "no Meta real read",
+    "no Meta validate_only real",
+    "no Meta mutate",
+    "no Supabase write",
+    "no migration applied",
+    "no route mounted",
+    "no deploy"
+  ]
+}
