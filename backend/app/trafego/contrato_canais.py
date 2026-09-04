@@ -535,11 +535,9 @@ _MODULO_DO_CANAL: Dict[str, str] = {
 def planeja_offline(canal: str) -> Optional[bool]:
     """Este canal sabe montar um plano SEM falar com o Google?
 
-    ⚠️ Pergunta diferente de "sabe provar" e de "sabe criar", e é a diferença
-    que faz Performance Max deixar de ser "indisponível". Ele planeja offline —
-    `pmax.planejar()` existe, monta o grafo e serializa protos v25 — e mesmo
-    assim não está no registro do executor. Um booleano só não tem como dizer
-    isso, e a tela precisa dizer.
+    ⚠️ Pergunta diferente de "sabe provar" e de "sabe criar". Performance Max
+    planeja offline e o módulo possui validador direto, mas a porta HTTP
+    genérica continua fechada.
 
     `None` quando o engine não pôde ser consultado. Ele NÃO vira `False`:
     "não consegui perguntar" e "não planeja" levam a ações opostas.
@@ -607,8 +605,8 @@ def assets_do_canal(canal: str) -> Assets:
         # `AssetFieldType` —, e continuar respondendo `NAO_APLICAVEL` esconderia
         # a exigência mais dura do canal atrás de uma frase sobre ausência.
         #
-        # O registro de `perfil.PERFORMANCE_MAX.recursos_criativos` continua
-        # vazio, e por isso a lista vem de onde ela de fato está declarada.
+        # A lista vem do contrato de papéis do próprio builder, a fonte mais
+        # estrita para AssetGroupAsset.
         return _assets_de_pmax()
     try:
         import sys
@@ -755,12 +753,10 @@ def _portao_planejavel(m: plat.ManifestoDeCanal, c: cap.Capacidades,
     """
     # ⚠️ O PLANEJADOR DO ENGINE VEM PRIMEIRO, E O MANIFESTO É O RECUO.
     #
-    # `plataforma.PERFORMANCE_MAX.campos_do_pedido` continua vazio, e o
-    # manifesto por si só responderia "não há o que montar". `pmax.planejar()`
-    # existe e monta o plano inteiro offline — o manifesto é que envelheceu.
-    # Trocá-lo aqui seria mexer no registro que a tela antiga já consome para
-    # decidir se desenha formulário; perguntar ao engine responde a verdade sem
-    # mudar o comportamento de quem lê o registro.
+    # `plataforma.PERFORMANCE_MAX.campos_do_pedido` continua vazio porque a
+    # fronteira HTTP ainda não carrega o brief tipado. `pmax.planejar()` existe
+    # e monta o plano inteiro offline; perguntar ao engine preserva essa verdade
+    # sem fazer a tela oferecer um formulário que ainda não consegue enviar.
     #
     # `planeja is None` — engine não consultável — cai no manifesto, que é a
     # única resposta disponível, e não em `False`.

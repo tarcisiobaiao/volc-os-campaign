@@ -572,9 +572,7 @@ def test_o_registro_de_subir_e_uma_vista_do_perfil_e_nao_uma_segunda_lista():
     assert perfil.DISPLAY.validador is display.validar
     assert set(motor.PROVADORES_POR_CANAL) == set(perfil.canais_que_provam())
     assert "DEMAND_GEN" in motor.PROVADORES_POR_CANAL
-    assert "DEMAND_GEN" in motor.CONSTRUTORES_POR_CANAL
-    assert "PERFORMANCE_MAX" in motor.PROVADORES_POR_CANAL
-    assert "PERFORMANCE_MAX" in motor.CONSTRUTORES_POR_CANAL
+    assert "DEMAND_GEN" not in motor.CONSTRUTORES_POR_CANAL
 
 
 def test_o_perfil_referencia_o_canal_em_vez_de_copiar_os_fatos_dele():
@@ -625,12 +623,12 @@ def test_todo_canal_que_cria_declara_validador_prova_e_lance():
         assert p.coletor, f"{p.canal} cria e ninguém declara quem lê de volta"
 
 
-def test_os_canais_multichannel_declaram_ausencias_sem_bloquear_o_executor():
+def test_o_canal_que_nao_cria_declara_a_ausencia_em_vez_de_ficar_vazio():
     for canal in ("DEMAND_GEN", "PERFORMANCE_MAX"):
         p = perfil.PERFIS[canal]
-        assert p.sabe_criar
-        assert p.acoes_indisponiveis
-
+        assert not p.sabe_criar
+        assert p.acoes_indisponiveis, f"{canal} não explica por que não cria"
+    assert perfil.DEMAND_GEN.sabe_provar is True
     assert perfil.PERFORMANCE_MAX.sabe_provar is False
 
 

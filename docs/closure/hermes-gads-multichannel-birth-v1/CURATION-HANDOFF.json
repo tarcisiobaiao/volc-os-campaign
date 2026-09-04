@@ -1,0 +1,44 @@
+{
+  "status": "GADS_MULTICHANNEL_BIRTH_V1_PARTIAL_READY_FOR_INTEGRATION",
+  "source_branch": "sprint/hermes-gads-multichannel-birth-v1",
+  "base_commit": "0aa090eb6a97e66b5ebdeb1c288d214003b06cbf",
+  "roadmap_deltas": [
+    {
+      "task_id": "P04-T04",
+      "state": "partial",
+      "proof": "Display permanece operacional no engine; Demand Gen permanece em validate_only; PMax ganhou controle explícito de URL no grafo local.",
+      "remaining": "Ponte HTTP PMax, assets/mensuração tipados e prova real autorizada."
+    },
+    {
+      "task_id": "P04-T05",
+      "state": "partial",
+      "proof": "PMax exige ImagensPMax com linhagem; nenhum asset real foi enviado.",
+      "remaining": "Ligar o motor de mídia ao contrato PMax/Demand Gen sem bytes ou procedência inventados."
+    },
+    {
+      "task_id": "P04-T07",
+      "state": "partial",
+      "proof": "O builder PMax reutiliza a régua de cobertura da observabilidade e bloqueia mensuração ausente.",
+      "remaining": "Releitura real de asset groups/assets e cobertura após um futuro canário autorizado."
+    },
+    {
+      "task_id": "P04-T09",
+      "state": "partial",
+      "proof": "Demand Gen continua montável e provável por validate_only, com /subir e mutate fechados.",
+      "remaining": "Contrato de criação real, canário e read-back em janela separada."
+    }
+  ],
+  "graph_nodes": [
+    "cap_google_multichannel",
+    "channel:DISPLAY",
+    "channel:DEMAND_GEN",
+    "channel:PERFORMANCE_MAX",
+    "concept:pmax_observability",
+    "concept:visual_asset_governance"
+  ],
+  "graph_freshness": {
+    "status": "not_checked_in_feature_worktree",
+    "reason": "graphify-out/UPDATE_STATUS.json e o venv graphify não existem nesta worktree; a autoridade compartilhada não foi editada por uma lane não integrada."
+  },
+  "external_mutation": false
+}

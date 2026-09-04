@@ -170,7 +170,7 @@ def test_recusa_de_canal_sem_construtor_diz_o_que_existe():
         plat.exigir_construtor(plat.GOOGLE_ADS, "PERFORMANCE_MAX")
     mensagem = str(exc.value)
     assert "Search" in mensagem, "a recusa não diz o que existe"
-    assert "exceção" in mensagem or "excecao" in mensagem
+    assert "HTTP" in mensagem
 
     with pytest.raises(ValueError) as exc2:
         plat.exigir_construtor(plat.GOOGLE_ADS, "TIKTOK")

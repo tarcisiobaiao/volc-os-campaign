@@ -122,8 +122,6 @@ CanalSemConstrutor = perfil.CanalSemConstrutor
 CONSTRUTORES_POR_CANAL = {
     "SEARCH": perfil.SEARCH.construtor,
     "DISPLAY": perfil.DISPLAY.construtor,
-    "DEMAND_GEN": perfil.DEMAND_GEN.construtor,
-    "PERFORMANCE_MAX": perfil.PERFORMANCE_MAX.construtor,
 }
 
 # Vista separada da porta de prova. Demand Gen aparece aqui porque possui
@@ -132,7 +130,6 @@ PROVADORES_POR_CANAL = {
     "SEARCH": perfil.SEARCH.validador,
     "DISPLAY": perfil.DISPLAY.validador,
     "DEMAND_GEN": perfil.DEMAND_GEN.validador,
-    "PERFORMANCE_MAX": perfil.PERFORMANCE_MAX.validador,
 }
 
 _esperado = set(perfil.canais_que_criam())

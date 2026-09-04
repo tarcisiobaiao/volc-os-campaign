@@ -1,5 +1,8 @@
 # GADS_MULTICHANNEL_BIRTH_V1_PARTIAL_CHECKPOINT
 
+> Checkpoint histórico, superado pelo `FINAL-HANDOFF.md`. As falhas abaixo
+> descrevem o estado de `9c92e381`, não o fechamento adjudicado posterior.
+
 Este documento preserva um checkpoint parcial para retomada por Codex + Gemini 3.1 Pro Preview. Não é aceitação de engine, não é suíte verde, não é produção pronta e não torna nenhum canário elegível.
 
 ## Base e branch

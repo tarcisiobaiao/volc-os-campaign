@@ -5,7 +5,7 @@
 O sistema reconhece quatro canais do Google. Isso não significa que as mesmas
 ações existam nos quatro: Search e Display montam, provam e podem chegar ao
 executor real; Demand Gen monta e prova, mas não pode chegar à mutação real;
-Performance Max levanta exceção ([E-21](../../../docs/EVIDENCIAS-TRAFEGO.md)).
+Performance Max planeja fora da porta HTTP genérica.
 
 Sem essa distinção declarada, a tela oferece "criar campanha" por simetria
 visual — quatro canais na lista, quatro botões — e o operador descobre a
@@ -51,8 +51,7 @@ operador lê —, e não como tipos que o núcleo manipula.
 | `sincronizador.PerfilDeCanal` | **comportamento**: como a varredura lê as entidades filhas |
 
 O primeiro é lido pela tela e pela porta de criação; o segundo é chamado pela
-varredura. Um canal completo tem os dois. Um canal que só sabemos inventariar —
-como Performance Max hoje — tem só o primeiro, e ele declara isso.
+varredura. Um canal pode planejar fora da porta genérica, como PMax hoje.
 """
 from __future__ import annotations
 
@@ -440,9 +439,9 @@ PERFORMANCE_MAX = ManifestoDeCanal(
     hierarquia=(CAMPANHA, ASSET_GROUP, ASSET),
     capacidades=(LER,),
     indisponibilidades=(
-        "não há construtor de campanha para Performance Max — o engine levanta "
-        "exceção. O canal existe no inventário porque a conta pode ter "
-        "campanhas dele, e escondê-las seria mentir sobre o que está gastando.",
+        "o módulo PMax monta e serializa offline, mas a porta HTTP não possui "
+        "o contrato tipado de assets e mensuração; por isso não oferece prova "
+        "nem criação nesta versão.",
     ),
 )
 

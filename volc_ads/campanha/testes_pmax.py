@@ -884,12 +884,7 @@ def test_sdk_ausente_rebaixa_capacidade_sem_construir_cliente(
 
 
 def test_pmax_continua_sem_construtor_no_perfil_e_no_executor() -> None:
-    """A decisão de 01/09/2026, medida onde ela vive.
-
-    Promover `construtor` mudaria `canais_que_provam()`, e a guarda de import de
-    `subir.py` derrubaria a rota HTTP dos QUATRO canais. Este teste é o que faz
-    a promoção acidental falhar aqui, e não em produção.
-    """
+    """A porta genérica continua fechada até existir o contrato HTTP PMax."""
     p = perfil.PERFORMANCE_MAX
     assert p.construtor is None
     assert p.validador is None
@@ -904,7 +899,7 @@ def test_pmax_continua_sem_construtor_no_perfil_e_no_executor() -> None:
 
 
 def test_pmax_planeja_mesmo_sem_construtor() -> None:
-    """Planejar e provar são perguntas diferentes, e o perfil as separa."""
+    """Planejar e provar pela porta HTTP são perguntas diferentes."""
     assert perfil.PERFORMANCE_MAX.sabe_planejar is True
     assert "PERFORMANCE_MAX" in perfil.canais_que_planejam()
     assert set(perfil.canais_que_provam()) < set(perfil.canais_que_planejam())
@@ -915,13 +910,13 @@ def test_pmax_planeja_mesmo_sem_construtor() -> None:
 
 
 def test_o_plano_de_pmax_carrega_codigo_proprio_e_nao_o_de_canal_inexistente() -> None:
-    """"O canal não existe" e "a porta ainda não abriu" são leituras opostas."""
+    """O canal existe, mas a fronteira HTTP ainda não carrega seu brief."""
     p = pmax.planejar(CID, _brief(), login_customer_id=MCC)
     assert plano.PMAX_FORA_DO_EXECUTOR in _codigos(p)
     assert plano.CANAL_SEM_BUILDER not in _codigos(p)
     assert p.prontidao.pode_provar is False
     assert p.prontidao.pode_criar is False
-    assert "subir.py" in p.prontidao.motivo_nao_prova
+    assert "rota HTTP" in p.prontidao.motivo_nao_prova
 
 
 def test_exigir_prova_recusa_pmax_e_exigir_planejador_aceita() -> None:
@@ -943,7 +938,7 @@ def test_o_plano_declara_as_ausencias_em_vez_de_escondê_las() -> None:
     p = pmax.planejar(CID, _brief(), login_customer_id=MCC)
     assert p.nao_operado is pmax.NAO_OPERADO
     assert any("retail" in linha for linha in p.nao_operado)
-    assert any("asset_automation_settings" in linha for linha in p.nao_operado)
+    assert not any("asset_automation_settings" in linha for linha in p.nao_operado)
     # E a ausência de segmentação positiva é dita com todas as letras.
     assert any("não tem targeting positivo" in linha
                for linha in p.segmentacao.aberto_por_ausencia)

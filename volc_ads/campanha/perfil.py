@@ -289,15 +289,16 @@ DEMAND_GEN = PerfilDeCanal(
     opcoes=demand_gen.OPCOES,
     provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
-    permite_mutacao_real=True,
-    acoes_permitidas=("inventariar", "montar", "provar", "subir"),
+    permite_mutacao_real=False,
+    acoes_permitidas=("inventariar", "montar", "provar"),
     acoes_indisponiveis=demand_gen.NAO_OPERADO,
 )
 
-#: PMax entra no mesmo executor de prova/criação que Search, Display e Demand
-#: Gen. O portão que continua protegendo o canal é de conteúdo: mensuração lida,
-#: asset bundle tipado e controle explícito de URL final. Sem esses fatos o
-#: builder retorna bloqueios locais e nada chega a `validate_only`.
+#: PMax continua fora do registro genérico do executor. O módulo próprio monta
+#: e serializa o grafo v25, inclusive o opt-out de expansão de URL, mas a porta
+#: HTTP ainda não transporta `ConfiguracaoPMax`, `ImagensPMax` e o recibo de
+#: mensuração emitido pela conta. Registrá-lo antes dessa ponte faria `/provar`
+#: aceitar um envelope que não consegue formar o brief tipado.
 PERFORMANCE_MAX = PerfilDeCanal(
     canal=pmax.CANAL,
     rotulo="Performance Max",
@@ -313,8 +314,6 @@ PERFORMANCE_MAX = PerfilDeCanal(
         "pmax.nome_do_asset_group", "url_final", "budget_diario", "tcpa",
         "target_roas", "estrategia_lance",
     ),
-    construtor=pmax.construir,
-    validador=pmax.validar,
     planejador=pmax.planejar,
     coletor="volc_ads/observabilidade_pmax (kernel read-only, GAQL v25)",
     recursos_criativos=(
@@ -323,11 +322,15 @@ PERFORMANCE_MAX = PerfilDeCanal(
     ),
     lances_permitidos=pmax.LANCES_PERMITIDOS,
     opcoes=pmax.OPCOES,
-    provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
-    permite_mutacao_real=True,
-    acoes_permitidas=("inventariar", "montar", "provar", "subir"),
-    acoes_indisponiveis=pmax.NAO_OPERADO,
+    permite_mutacao_real=False,
+    acoes_permitidas=("inventariar", "planejar"),
+    acoes_indisponiveis=(
+        "criar: Performance Max não está no registro do executor "
+        "(`subir.CONSTRUTORES_POR_CANAL`).",
+        "provar pela rota HTTP: falta a ponte tipada de assets e mensuração; "
+        "o módulo PMax pode montar e validar diretamente, sem autorizar mutate.",
+    ) + pmax.NAO_OPERADO,
 )
 
 PERFIS: Dict[str, PerfilDeCanal] = {
@@ -363,7 +366,8 @@ def canais_que_provam() -> Tuple[str, ...]:
 def canais_que_planejam() -> Tuple[str, ...]:
     """Canais que montam offline e devolvem plano serializável.
 
-    Superconjunto de `canais_que_provam()`: Performance Max planeja e não prova.
+    Superconjunto de `canais_que_provam()`: Performance Max planeja fora da
+    porta HTTP genérica.
     """
     return tuple(sorted(c for c, p in PERFIS.items() if p.sabe_planejar))
 
