@@ -43,6 +43,10 @@ CREATE TABLE public.trafego_meta_create_approval (
   actor_id             text NOT NULL,
   daily_budget_minor   bigint NOT NULL,
   currency             text NOT NULL DEFAULT 'BRL',
+  -- O manifesto imutavel do plano aprovado: quais passos existem e em que
+  -- ordem. Sem ele, um approval_id valido para quatro operacoes aceitaria
+  -- preparar um "creative:extra" que o operador nunca viu.
+  steps_expected       text[] NOT NULL,
   state                text NOT NULL DEFAULT 'APPROVED',
   expires_at           timestamptz NOT NULL,
   approved_at          timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -56,6 +60,13 @@ CREATE TABLE public.trafego_meta_create_approval (
   CONSTRAINT trafego_meta_create_approval_budget CHECK (daily_budget_minor > 0),
   CONSTRAINT trafego_meta_create_approval_currency CHECK (currency = 'BRL'),
   CONSTRAINT trafego_meta_create_approval_state CHECK (state IN ('APPROVED','REVOKED')),
+  -- CHECK nao aceita subconsulta, entao o tamanho mora aqui e a unicidade e o
+  -- formato de cada passo sao validados em trafego_meta_create_approve — a
+  -- UNICA porta de escrita, ja que nenhum papel tem INSERT nesta tabela.
+  CONSTRAINT trafego_meta_create_approval_manifesto CHECK (
+    array_length(steps_expected, 1) BETWEEN 1 AND 22
+    AND array_ndims(steps_expected) = 1
+  ),
   CONSTRAINT trafego_meta_create_approval_expiry CHECK (expires_at > approved_at),
   CONSTRAINT trafego_meta_create_approval_revocation CHECK (
     (state = 'APPROVED' AND revoked_at IS NULL AND revoke_reason IS NULL)
@@ -105,8 +116,12 @@ ALTER TABLE public.trafego_meta_create_approval FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.trafego_meta_create_step ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trafego_meta_create_step FORCE ROW LEVEL SECURITY;
 
-REVOKE ALL ON public.trafego_meta_create_approval FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON public.trafego_meta_create_step FROM PUBLIC, anon, authenticated;
+-- ⚠️ service_role tambem entra no REVOKE. O default ACL do Supabase concede
+-- ALL em public, e sem esta linha o backend poderia gravar recibo direto na
+-- tabela, contornando as RPCs transacionais que sao a unica autoridade da
+-- saga. Ler o recibo continua permitido; escrever, so pela funcao.
+REVOKE ALL ON public.trafego_meta_create_approval FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON public.trafego_meta_create_step FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON public.trafego_meta_create_approval TO service_role;
 GRANT SELECT ON public.trafego_meta_create_step TO service_role;
 
@@ -130,27 +145,42 @@ CREATE FUNCTION public.trafego_meta_create_approve(
   p_account_ref text,
   p_actor_id text,
   p_daily_budget_minor bigint,
-  p_expires_at timestamptz
+  p_expires_at timestamptz,
+  p_steps_expected text[]
 )
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
-DECLARE v_id uuid;
+DECLARE
+  v_id uuid;
+  v_distintos integer;
 BEGIN
   PERFORM public.trafego_meta_exigir_service_role();
+  SELECT count(DISTINCT passo) INTO v_distintos FROM unnest(p_steps_expected) AS passo;
+  IF v_distintos <> coalesce(array_length(p_steps_expected, 1), 0) THEN
+    RAISE EXCEPTION 'META_APPROVAL_MANIFEST_DUPLICATE';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM unnest(p_steps_expected) AS passo
+     WHERE passo !~ '^(campaign|adset|creative(?::[a-z0-9][a-z0-9_-]{0,31})?|ad(?::[a-z0-9][a-z0-9_-]{0,31})?)$'
+  ) THEN
+    RAISE EXCEPTION 'META_APPROVAL_MANIFEST_INVALID';
+  END IF;
   INSERT INTO public.trafego_meta_create_approval (
-    plan_sha256, account_ref, actor_id, daily_budget_minor, expires_at
+    plan_sha256, account_ref, actor_id, daily_budget_minor, expires_at, steps_expected
   ) VALUES (
-    p_plan_sha256, p_account_ref, p_actor_id, p_daily_budget_minor, p_expires_at
+    p_plan_sha256, p_account_ref, p_actor_id, p_daily_budget_minor, p_expires_at,
+    p_steps_expected
   ) RETURNING approval_id INTO v_id;
   RETURN jsonb_build_object(
     'ok', true,
     'approval_id', v_id::text,
     'plan_sha256', p_plan_sha256,
     'capability', 'META_CREATE_PAUSED',
-    'expires_at', p_expires_at
+    'expires_at', p_expires_at,
+    'steps_expected', to_jsonb(p_steps_expected)
   );
 END
 $$;
@@ -195,6 +225,14 @@ BEGIN
     RAISE EXCEPTION 'META_STEP_UNKNOWN';
   END IF;
 
+  -- O passo precisa pertencer ao manifesto aprovado, e o ordinal e a POSICAO
+  -- dele no manifesto: nao o proximo numero livre. Assim um passo extra nao
+  -- entra e a ordem nao pode ser invertida entre duas tentativas.
+  v_ordinal := array_position(v_approval.steps_expected, p_step_name)::smallint;
+  IF v_ordinal IS NULL THEN
+    RAISE EXCEPTION 'META_STEP_OUTSIDE_APPROVED_PLAN';
+  END IF;
+
   SELECT * INTO v_step
     FROM public.trafego_meta_create_step
    WHERE approval_id = p_approval_id AND step_name = p_step_name
@@ -221,11 +259,13 @@ BEGIN
     RAISE EXCEPTION 'META_STEP_PREVIOUSLY_FAILED';
   END IF;
 
-  SELECT (coalesce(max(ordinal), 0) + 1)::smallint INTO v_ordinal
-    FROM public.trafego_meta_create_step
-   WHERE approval_id = p_approval_id;
-  IF v_ordinal > 22 THEN
-    RAISE EXCEPTION 'META_STEP_LIMIT_EXCEEDED';
+  -- O degrau anterior do manifesto precisa estar CRIADO. Uma saga so avanca
+  -- sobre objetos que existem de verdade.
+  IF v_ordinal > 1 AND NOT EXISTS (
+    SELECT 1 FROM public.trafego_meta_create_step
+     WHERE approval_id = p_approval_id AND ordinal = v_ordinal - 1 AND state = 'CREATED'
+  ) THEN
+    RAISE EXCEPTION 'META_STEP_OUT_OF_ORDER';
   END IF;
 
   INSERT INTO public.trafego_meta_create_step (
@@ -342,14 +382,14 @@ END
 $$;
 
 REVOKE ALL ON FUNCTION public.trafego_meta_exigir_service_role() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,timestamptz) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,timestamptz,text[]) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_close_step(uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_receipt(uuid) FROM PUBLIC, anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,timestamptz) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,timestamptz,text[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_close_step(uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) TO service_role;

@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Mapping, Protocol
+from typing import Any, Literal, Mapping, Protocol, Sequence
 
 import httpx
 
@@ -100,13 +100,27 @@ class RegistroSagaMetaSupabase:
         ator: str,
         daily_budget_minor: int,
         expires_at: datetime,
+        passos_esperados: Sequence[str],
     ) -> Mapping[str, Any]:
+        """Registra a aprovação junto do manifesto imutável de passos.
+
+        O manifesto é a lista ordenada de operações do plano compilado. Sem
+        ele, uma aprovação válida para quatro operações aceitaria preparar uma
+        quinta que o operador nunca viu.
+        """
+        manifesto = [str(passo) for passo in passos_esperados]
+        if not manifesto or len(set(manifesto)) != len(manifesto):
+            raise ErroDeNascimentoMeta(
+                "META_APPROVAL_MANIFEST_INVALID",
+                "o manifesto de passos precisa ser não vazio e sem repetição",
+            )
         return await self._rpc("trafego_meta_create_approve", {
             "p_plan_sha256": plano_sha256,
             "p_account_ref": account_ref,
             "p_actor_id": ator,
             "p_daily_budget_minor": daily_budget_minor,
             "p_expires_at": expires_at.isoformat(),
+            "p_steps_expected": manifesto,
         })
 
     async def preparar_passo(
