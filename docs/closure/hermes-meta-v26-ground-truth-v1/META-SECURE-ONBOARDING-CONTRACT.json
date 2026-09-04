@@ -1,0 +1,42 @@
+{
+  "flow": [
+    "operator registers metadata",
+    "secret remains in 1Password",
+    "VOLC stores opaque reference only",
+    "backend resolves reference at operation time",
+    "frontend never receives token",
+    "logs never record token"
+  ],
+  "minimum_permissions_by_action": {
+    "create_paused": [
+      "ads_management"
+    ],
+    "enable": [
+      "ads_management plus separate activation approval"
+    ],
+    "read_inventory": [
+      "ads_read",
+      "business_management for business/account inventory as needed"
+    ],
+    "upload_asset": [
+      "ads_management"
+    ],
+    "validate_blueprint": [
+      "ads_read",
+      "ads_management only if Meta remote validation is explicitly authorized"
+    ]
+  },
+  "readiness_states": [
+    "CONFIG_MISSING",
+    "REFERENCE_PRESENT",
+    "RESOLUTION_UNTESTED",
+    "RESOLUTION_FAILED",
+    "PERMISSIONS_INSUFFICIENT",
+    "ACCOUNT_INACCESSIBLE",
+    "READY_FOR_READ",
+    "READY_FOR_VALIDATION",
+    "READY_FOR_CREATE_PAUSED",
+    "READY_FOR_ACTIVATION"
+  ],
+  "token_policy": "No Meta token in DB/browser/log/public docs; store only opaque 1Password locator and readiness receipts."
+}
