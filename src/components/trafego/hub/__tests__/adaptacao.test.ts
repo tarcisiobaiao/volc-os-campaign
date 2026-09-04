@@ -27,6 +27,11 @@ describe('URL ↔ estado do Hub', () => {
     expect(abaDaUrl('preparar')).toBe('preparar');
   });
 
+  it('antessalas técnicas antigas agora desembocam em Preparar', () => {
+    expect(abaDaUrl('criar')).toBe('preparar');
+    expect(abaDaUrl('canais')).toBe('preparar');
+  });
+
   it('o canal canônico é PERFORMANCE_MAX; PMAX só entra como alias legado', () => {
     expect(canalDaUrl('PERFORMANCE_MAX')).toBe('PERFORMANCE_MAX');
     expect(canalDaUrl('PMAX')).toBe('PERFORMANCE_MAX');

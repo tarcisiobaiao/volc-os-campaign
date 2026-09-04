@@ -108,13 +108,26 @@ export const MapaDeParadas: React.FC<{
     return () => observador.disconnect();
   }, [atual, paradas]);
 
-  // Telefone: a faixa rola dentro de si e a parada atual é trazida à vista
-  // (`RESPONSIVE-AND-A11Y.md:71`). `block: 'nearest'` para não arrastar a
-  // página na vertical. O `typeof` existe porque jsdom não implementa isto.
+  // A faixa rola DENTRO de si e a parada atual é centralizada nela.
+  //
+  // `scrollIntoView` parece a ferramenta certa, mas ele também pode rolar
+  // ancestrais. Na bancada ampla isso deslocava o documento inteiro para a
+  // esquerda quando o operador chegava a Economia/Revisão — o cabeçalho
+  // parecia quebrado embora o defeito estivesse no stepper. Calcular o
+  // `scrollLeft` mantém o movimento confinado ao trilho.
   useEffect(() => {
     const li = atualRef.current;
-    if (!li || typeof li.scrollIntoView !== 'function') return;
-    li.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const lista = listaRef.current;
+    if (!li || !lista) return;
+    const esquerda = Math.max(
+      0,
+      li.offsetLeft - Math.max(0, (lista.clientWidth - li.offsetWidth) / 2),
+    );
+    if (typeof lista.scrollTo === 'function') {
+      lista.scrollTo({ left: esquerda, behavior: 'smooth' });
+      return;
+    }
+    lista.scrollLeft = esquerda;
   }, [atual]);
 
   const aplicaveis = paradas.filter((p) => p.estado !== 'nao_se_aplica');
@@ -127,13 +140,17 @@ export const MapaDeParadas: React.FC<{
   return (
     <nav
       aria-label="paradas do lançamento"
-      className="sticky top-0 z-20 border-b border-border bg-card"
+      className="bancada-route"
     >
+      <div className="bancada-route-heading">
+        <span>Plano de lançamento</span>
+        <span>{progresso}</span>
+      </div>
       <ol
         ref={listaRef}
-        className="relative flex items-stretch gap-1 overflow-x-auto px-2"
+        className="bancada-route-track"
       >
-        {paradas.map((p) => {
+        {paradas.map((p, indice) => {
           const desenho = DESENHO[p.estado] ?? RESERVA;
           const { Glifo } = desenho;
           const ehAtual = p.parada === atual;
@@ -154,8 +171,19 @@ export const MapaDeParadas: React.FC<{
 
           const miolo = (
             <>
-              <Glifo className={cn('h-4 w-4 shrink-0', desenho.tinta)} aria-hidden />
-              <span className="truncate">{p.rotulo}</span>
+              <span className="bancada-route-index" aria-hidden>
+                {p.estado === 'confirmada' ? (
+                  <Glifo className="h-3.5 w-3.5" />
+                ) : (
+                  String(indice + 1).padStart(2, '0')
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{p.rotulo}</span>
+                <span className={cn('block truncate text-[0.6875rem]', desenho.tinta)}>
+                  {desenho.palavra}
+                </span>
+              </span>
               {/* Cor e glifo não bastam: a palavra do estado vai para quem ouve. */}
               <span className="sr-only">
                 {' '}
@@ -166,13 +194,13 @@ export const MapaDeParadas: React.FC<{
           );
 
           const base =
-            'inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm md:min-h-10';
+            'bancada-route-step';
 
           return (
             <li
               key={p.parada}
               ref={ehAtual ? atualRef : undefined}
-              className="relative shrink-0 py-1"
+              className="relative shrink-0"
             >
               {alcancavel(p.estado) ? (
                 <Link
@@ -181,11 +209,11 @@ export const MapaDeParadas: React.FC<{
                   title={causa ?? undefined}
                   className={cn(
                     base,
-                    'transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                    'transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                     ehAtual
-                      ? 'font-semibold text-foreground'
-                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                      ? 'bancada-route-step-active'
+                      : 'bancada-route-step-idle',
                   )}
                 >
                   {miolo}
@@ -196,7 +224,7 @@ export const MapaDeParadas: React.FC<{
                     aria-disabled="true"
                     aria-describedby={causa ? idCausa : undefined}
                     title={causa ?? undefined}
-                    className={cn(base, 'cursor-not-allowed text-muted-foreground')}
+                    className={cn(base, 'bancada-route-step-locked cursor-not-allowed')}
                   >
                     {miolo}
                   </span>
@@ -221,12 +249,6 @@ export const MapaDeParadas: React.FC<{
           />
         )}
       </ol>
-
-      {/* ⚠️ Não é `aria-live`. O orçamento de regiões vivas da Bancada é de três
-          (`RESPONSIVE-AND-A11Y.md:220-226`) e o anúncio da troca de parada é da
-          página, que sabe quando a troca aconteceu. Duas regiões dizendo a
-          mesma frase falam por cima uma da outra. */}
-      <p className="px-3 pb-1 text-[0.8125rem] text-muted-foreground">{progresso}</p>
     </nav>
   );
 };

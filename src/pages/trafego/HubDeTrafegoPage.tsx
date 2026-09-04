@@ -57,7 +57,6 @@ import FilaDeAtencao from '@/components/trafego/inventario/FilaDeAtencao';
 import { InventarioDeCampanhas } from '@/components/trafego/inventario/InventarioDeCampanhas';
 import { Chip, type Tom } from '@/components/trafego/inventario/Selos';
 import { useContadorDeAtencao } from '@/components/trafego/atencao/useAtencao';
-import { PainelDeCanais } from '@/components/trafego/canais/PainelDeCanais';
 import { EixosDoHub, SeletorDeCanal } from '@/components/trafego/hub/EixosDoHub';
 // ⚠️ `EstudioLigado` SAIU DA MOLDURA em 03/09/2026 e o arquivo NÃO foi apagado.
 //
@@ -68,12 +67,9 @@ import { EixosDoHub, SeletorDeCanal } from '@/components/trafego/hub/EixosDoHub'
 // `criavel_pausada` com `fora_da_janela_do_canario`. A aba passou a ler o
 // veredito pronto do servidor.
 //
-// Ele fica como CANDIDATO A REMOÇÃO com evidência registrada, e não como
-// exclusão silenciosa: dois testes de segurança varrem o ARQUIVO em busca de
-// chamada de mutação (`estudio/__tests__/sem-mutate.test.ts:11` e
-// `hub/__tests__/seguranca-hub.test.ts:12`), e apagá-lo junto com uma mudança
-// funcional ampla misturaria dois lotes que precisam poder ser revertidos
-// separadamente.
+// Ele fica como CANDIDATO A REMOÇÃO com evidência registrada. A antiga aba
+// técnica também saiu da navegação: preparar uma campanha é a tarefa; ler a
+// matriz de capacidades é uma responsabilidade interna da bancada.
 import { MetaNaoConfigurada } from '@/components/trafego/hub/MetaNaoConfigurada';
 import { totaisHistoricas, totaisOperacionais } from '@/components/trafego/hub/adaptacao';
 import type { AbaDoHub } from '@/components/trafego/hub/contrato';
@@ -529,13 +525,13 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
             visualmente com "REDE" e com as abas — três barras equivalentes é
             exatamente o que a SPEC §5 proíbe. Canal desceu para a linha de
             filtros, onde ele é o que sempre foi: um recorte do inventário. */}
-        <header className="border-b border-border pb-0">
+        <header className="traffic-hub-command">
           <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
             <div className="min-w-0">
               {tituloEhDoHub && (
                 <>
-                  <div className="kicker">compra de tráfego</div>
-                  <h1 className="mt-0.5 text-balance font-display text-[28px] font-bold leading-tight tracking-tight md:text-[32px]">
+                  <div className="kicker text-slate-400">compra de tráfego</div>
+                  <h1 className="mt-1 text-balance font-display text-[2rem] font-bold leading-tight tracking-tight text-white md:text-[2.5rem]">
                     Tráfego
                   </h1>
                 </>
@@ -553,7 +549,7 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
                 <Button
                   type="button"
                   className="min-h-11 px-4 font-semibold shadow-sm"
-                  onClick={() => aplicar({ aba: 'criar' })}
+                  onClick={() => aplicar({ aba: 'preparar' })}
                 >
                   Nova campanha
                 </Button>
@@ -582,9 +578,16 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
             </div>
           )}
 
+          <div className="traffic-hub-signal" aria-hidden>
+            <span />
+            <span />
+            <span />
+          </div>
+        </header>
+
           {/* Rede define o ECOSSISTEMA — some quando não há segunda rede a
               escolher, e nunca ganha uma faixa própria de largura inteira. */}
-          <div className="mt-3">
+          <div className="mt-4">
             <EixosDoHub
               rede={estado.rede}
               canal={estado.canal}
@@ -595,7 +598,6 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
               mostrarCanal={false}
             />
           </div>
-        </header>
 
         <Tabs value={aba} onValueChange={trocarAba} className="mt-0">
           <TabsList
@@ -615,11 +617,6 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
             </TabsTrigger>
             <TabsTrigger value="preparar" className={gatilho}>
               <RotuloDaAba texto="preparar" contador={contadorDeOportunidades} />
-            </TabsTrigger>
-            <TabsTrigger value="criar" className={gatilho}>
-              {/* Sem contador: "quantas campanhas dá para criar" não é um
-                  número que exista. Um contador aqui teria de inventar um. */}
-              <RotuloDaAba texto="criar" />
             </TabsTrigger>
             <TabsTrigger value="atencao" className={gatilho}>
               <RotuloDaAba
@@ -681,18 +678,6 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
               defende. */}
           <TabsContent value="preparar" className="mt-6 [&>div]:p-0">
             {google ? (oportunidades ?? <TrafegoPage />) : <MetaNaoConfigurada nivel={estado.nivel} />}
-          </TabsContent>
-
-          {/* ⚠️ A ANTESSALA MULTICANAL — uma aba só, e ela lê o SERVIDOR.
-              Ver o comentário de `AbaDoHub` em `hub/contrato.ts`: esta aba e a
-              extinta `canais` respondiam à mesma pergunta de fontes diferentes,
-              e a derivação no cliente produzia simetria falsa em Display.
-
-              ⚠️ O painel busca os PRÓPRIOS dados, e só quando esta aba é aberta.
-              Buscá-los na moldura faria toda visita ao Hub pagar uma leitura que
-              só esta aba usa. */}
-          <TabsContent value="criar" className="mt-6">
-            {google ? <PainelDeCanais /> : <MetaNaoConfigurada nivel={estado.nivel} />}
           </TabsContent>
 
           <TabsContent value="atencao" className="mt-6">

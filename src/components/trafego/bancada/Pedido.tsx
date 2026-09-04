@@ -25,7 +25,7 @@
  * travessão para quem ouve (`RESPONSIVE-AND-A11Y.md §5.5`).
  */
 import React, { useId } from 'react';
-import { TriangleAlert } from 'lucide-react';
+import { ChevronDown, ShieldCheck, TriangleAlert } from 'lucide-react';
 
 import { horaDeLeitura } from '../inventario/formato';
 
@@ -50,12 +50,15 @@ export const Pedido: React.FC<{
   return (
     <section
       aria-labelledby={idTitulo}
-      className="rounded-lg border border-border bg-card p-5 shadow-card"
+      className="bancada-order-card shadow-card"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 id={idTitulo} className="font-display text-lg font-semibold tracking-tight text-foreground">
-          O pedido
-        </h2>
+      <div className="bancada-order-head">
+        <div>
+          <span className="kicker text-muted-foreground">Resumo persistente</span>
+          <h2 id={idTitulo} className="mt-1 font-display text-xl font-semibold tracking-tight text-foreground">
+            O pedido
+          </h2>
+        </div>
         {lista.length > 0 && (
           // ⚠️ Caixa de sentença. `VISUAL-DIRECTION.md §8` proíbe caixa alta
           // fora do `.kicker`, e o chip de estado é 13px em caixa de sentença
@@ -70,42 +73,51 @@ export const Pedido: React.FC<{
         )}
       </div>
 
-      <div className="mt-3 divide-y divide-border/60">
-        {linhas.length === 0 ? (
-          // Lista vazia não é "tudo certo" e não é zero: é um pedido sem
-          // nenhuma decisão registrada ainda, e a tela diz isso.
-          <p className="py-1 text-sm text-muted-foreground">
-            nenhuma decisão registrada ainda neste pedido
-          </p>
-        ) : (
-          linhas.map((l, i) => (
-            <LinhaDeFato
-              key={`${l.rotulo}-${i}`}
-              rotulo={l.rotulo}
-              valor={l.valor}
-              fonte={l.fonte}
-              // ⚠️ Frescor SÓ nas linhas em que ele veio. Repetir um carimbo de
-              // outra linha, ou carimbar "agora", inventaria frescor — que
-              // `design.md:247` proíbe por nome.
-              frescor={l.frescor ?? null}
-              ausencia="—"
-            />
-          ))
-        )}
+      <div className="bancada-order-safety">
+        <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-hidden />
+        <p>
+          <strong>Nasce pausada.</strong> Esta bancada prepara e prova; ativar é outro ato.
+        </p>
       </div>
 
-      {lista.length > 0 && (
-        <div className="mt-4 rounded-md border border-border/60 bg-muted/20 p-3">
-          <p className="text-sm font-medium text-foreground">O que o servidor ainda exige</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm leading-relaxed text-pretty text-muted-foreground">
-            {lista.map((f, i) => (
-              <li key={`${f}-${i}`}>{f}</li>
-            ))}
-          </ul>
+      <details className="bancada-order-details" open={linhas.length <= 4}>
+        <summary>
+          <span>Decisões do pedido</span>
+          <ChevronDown className="h-4 w-4" aria-hidden />
+        </summary>
+        <div className="divide-y divide-border/60 pb-1 pt-2">
+          {linhas.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">
+              nenhuma decisão registrada ainda neste pedido
+            </p>
+          ) : (
+            linhas.map((l, i) => (
+              <LinhaDeFato
+                key={`${l.rotulo}-${i}`}
+                rotulo={l.rotulo}
+                valor={l.valor}
+                fonte={l.fonte}
+                frescor={l.frescor ?? null}
+                ausencia="—"
+              />
+            ))
+          )}
         </div>
+      </details>
+
+      {lista.length > 0 && (
+        <details className="bancada-order-details bancada-order-missing bg-muted/20">
+          <summary>
+            <span>O que ainda falta ({lista.length})</span>
+            <ChevronDown className="h-4 w-4" aria-hidden />
+          </summary>
+          <ul className="list-disc space-y-1 pb-1 pl-5 pt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+            {lista.map((f, i) => <li key={`${f}-${i}`}>{f}</li>)}
+          </ul>
+        </details>
       )}
 
-      <div className="mt-4 space-y-1">
+      <div className="bancada-order-next">
         <p className="text-sm leading-relaxed text-pretty text-foreground">
           <span className="text-muted-foreground">Próximo ato: </span>
           {/* Ausência DECLARADA. Uma frase que some lê-se como "não há mais

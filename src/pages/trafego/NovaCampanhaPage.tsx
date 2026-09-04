@@ -497,6 +497,8 @@ const NovaCampanhaPage: React.FC = () => {
   // ── render ────────────────────────────────────────────────────────────────
   const titulo = cockpit?.origem?.nicho || (oid ? `oportunidade ${oid}` : 'oportunidade');
   const lancadas = cockpit?.campanhas_lancadas ?? [];
+  const paradasAplicaveis = paradas.filter((p) => p.estado !== 'nao_se_aplica');
+  const indiceDaEtapa = Math.max(0, paradasAplicaveis.findIndex((p) => p.parada === etapa));
 
   if (erro && !cockpit) {
     return (
@@ -516,34 +518,53 @@ const NovaCampanhaPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="bancada-shell mx-auto max-w-6xl px-4 pb-20 pt-6 md:px-6">
-        {/* Cabeçalho de identidade — kicker, H1, fio aurora, propósito. */}
-        <header className="space-y-3 pb-6">
-          <Link to="/trafego"
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-volc hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" aria-hidden /> Voltar ao Hub
-          </Link>
-          <div className="flex items-center gap-2 pt-1">
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <Rocket className="h-3.5 w-3.5" aria-hidden />
-            </span>
-            <span className="kicker">Lançamento · {canal}</span>
-          </div>
-          <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight text-foreground text-balance md:text-[2.5rem]">
-            {titulo}
-          </h1>
-          <div className="aurora-rule w-16" aria-hidden />
-          <p className="max-w-[70ch] text-sm text-muted-foreground text-pretty">
-            Seis paradas até um pedido que a conta aceita. Nada aqui gasta dinheiro:
-            a campanha nasce pausada, e ativar é uma decisão que não acontece nesta tela.
-          </p>
-        </header>
+      <div className="bancada-shell mx-auto max-w-[1480px] px-4 pb-24 pt-4 md:px-6 md:pt-6">
+        <section className="bancada-command-deck">
+          <div className="bancada-command-topline" aria-hidden />
+          <header className="bancada-command-header">
+            <div className="min-w-0">
+              <Link to="/trafego" className="bancada-back-link">
+                <ArrowLeft className="h-4 w-4" aria-hidden /> Central de tráfego
+              </Link>
+              <div className="mt-5 flex items-center gap-2">
+                <span className="bancada-command-icon">
+                  <Rocket className="h-3.5 w-3.5" aria-hidden />
+                </span>
+                <span className="kicker text-slate-400">Missão de lançamento · {canal}</span>
+              </div>
+              <h1 className="mt-2 max-w-[22ch] font-display text-[2rem] font-bold leading-[1.02] tracking-[-0.035em] text-white text-balance md:text-[2.75rem]">
+                {titulo}
+              </h1>
+            </div>
+            <div className="bancada-safety-contract">
+              <span className="bancada-safety-dot" aria-hidden />
+              <div>
+                <p className="font-semibold text-white">Criação segura</p>
+                <p>A campanha nasce pausada</p>
+              </div>
+            </div>
+          </header>
 
-        <MapaDeParadas paradas={paradas} atual={etapa} hrefDaParada={hrefDaParada} />
+          <MapaDeParadas paradas={paradas} atual={etapa} hrefDaParada={hrefDaParada} />
+        </section>
 
         <div className="bancada-grid mt-6 grid gap-6">
-          <main className="min-w-0 space-y-5">
-            <h2 className="text-lg font-semibold text-foreground">{PERGUNTA_DA_PARADA[etapa]}</h2>
+          <main className="bancada-stage min-w-0">
+            <header className="bancada-stage-header">
+              <div>
+                <p className="kicker text-primary">
+                  Etapa {indiceDaEtapa + 1} de {paradasAplicaveis.length}
+                </p>
+                <h2 className="mt-2 max-w-[30ch] font-display text-2xl font-semibold leading-tight tracking-tight text-foreground text-balance md:text-[2rem]">
+                  {PERGUNTA_DA_PARADA[etapa]}
+                </h2>
+              </div>
+              <p className="bancada-stage-hint">
+                Decida uma coisa por vez. Evidências técnicas ficam disponíveis sem disputar sua atenção.
+              </p>
+            </header>
+
+            <div className="space-y-5 p-4 md:p-6">
 
             {/* Os bloqueios do servidor ficam PERTO da decisão, e não no rodapé.
                 Fora da Revisão, que já os desenha por dentro. */}
@@ -670,6 +691,7 @@ const NovaCampanhaPage: React.FC = () => {
                 campaignId={campanhaCriada}
               />
             )}
+            </div>
           </main>
 
           <Pedido

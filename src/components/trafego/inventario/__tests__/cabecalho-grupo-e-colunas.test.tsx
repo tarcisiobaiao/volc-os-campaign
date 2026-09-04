@@ -348,6 +348,17 @@ describe('o grupo de conta identifica sem expor', () => {
     expect(within(grupo).getByText('leitura recente')).toBeTruthy();
     expect(within(grupo).getAllByText(/lido há 6 min/).length).toBeGreaterThan(0);
   });
+
+  it('a conta é o primeiro nível e recolhe a própria lista de campanhas', () => {
+    render(<InventarioDeCampanhas />);
+    const grupo = screen.getByLabelText('conta Crédito Up');
+    const alternador = within(grupo).getByRole('button', { name: /conta de anúncios.*Crédito Up/i });
+    expect(alternador.getAttribute('aria-expanded')).toBe('true');
+    expect(within(grupo).getByText('BR - Maquininha de Cartão')).toBeTruthy();
+    fireEvent.click(alternador);
+    expect(alternador.getAttribute('aria-expanded')).toBe('false');
+    expect(within(grupo).queryByText('BR - Maquininha de Cartão')).toBeNull();
+  });
 });
 
 // ── as colunas do monitor ───────────────────────────────────────────────────

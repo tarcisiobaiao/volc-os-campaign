@@ -21,9 +21,9 @@ export type RedeDoHub = 'google' | 'meta';
  * abrir a aba errada.
  */
 /**
- * ⚠️ `canais` SAIU, e a razão é que ela e `criar` respondiam à MESMA pergunta —
- * "o que cada canal pode?" — a partir de fontes diferentes, que podiam se
- * contradizer.
+ * ⚠️ `canais` e `criar` SAÍRAM da navegação principal. As duas respondiam à
+ * pergunta técnica "o que cada canal pode?", mas o trabalho real do operador
+ * começa em Preparar e continua na bancada de uma campanha.
  *
  * `canais` lia o veredito PRONTO do servidor (`GET /api/trafego/canais`: quatro
  * portões por canal, quatro canais). `criar` DERIVAVA no cliente a partir de
@@ -38,19 +38,19 @@ export type RedeDoHub = 'google' | 'meta';
  * autorizada é de um canal só. Simetria falsa: dois canais desenhados iguais,
  * um cria e o outro não.
  *
- * Agora existe uma aba só, e ela lê o servidor. O alias continua atendendo
- * `?aba=canais` para um link colado ontem não abrir a aba errada.
+ * O veredito do servidor continua sendo autoridade na bancada. Os aliases
+ * `?aba=canais` e `?aba=criar` desembocam em Preparar para preservar links.
  */
-export type AbaDoHub = 'campanhas' | 'preparar' | 'criar' | 'atencao';
+export type AbaDoHub = 'campanhas' | 'preparar' | 'atencao';
 
 /**
  * ⚠️ A ORDEM é a do trabalho, não a do alfabeto: o que já gasta dinheiro, o que
- * está pronto para virar campanha, como criar, e o que pede decisão hoje.
+ * está pronto para virar campanha e o que pede decisão hoje.
  * `abaDaUrl` deriva a validação desta lista — uma aba nova entra aqui e passa a
  * sobreviver ao recarregamento sem tocar no parser.
  */
 export const ABAS_DO_HUB: readonly AbaDoHub[] = [
-  'campanhas', 'preparar', 'criar', 'atencao',
+  'campanhas', 'preparar', 'atencao',
 ];
 
 /** Nível da árvore Meta. Nunca traduzir conjunto (ad set) para ad group. */

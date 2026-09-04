@@ -148,28 +148,12 @@ describe('as quatro abas', () => {
     expect(screen.queryByText('quadro de oportunidades')).toBeNull();
   });
 
-  it('tem exatamente quatro abas, na ordem do fluxo de trabalho', () => {
+  it('tem exatamente três tarefas primárias, na ordem do fluxo de trabalho', () => {
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    // A ordem é a do trabalho: o que já gasta, o que está pronto para virar
-    // campanha, como criar, e o que pede decisão hoje.
-    //
-    // ⚠️ `Canais` SAIU em 03/09/2026, e a razão é que ela e `criar` respondiam
-    // à MESMA pergunta — "o que cada canal pode?" — de fontes que podiam se
-    // contradizer. `canais` lia o veredito pronto do servidor; `criar` derivava
-    // no cliente por `canal/jornada.ts`, sobre seis canais, sem consultar a
-    // janela do canário. A divergência era medível: Display saía com botão
-    // primário "Começar campanha" porque `plataforma.py:373` declara
-    // `sabe_criar=True`, enquanto o servidor recusa `criavel_pausada` com
-    // `fora_da_janela_do_canario`. Simetria falsa entre um canal que cria e um
-    // que não cria. Agora existe uma aba só, e ela lê o servidor.
-    //
-    // ⚠️ `criar` não tem contador, e a ausência é conteúdo: "quantas campanhas
-    // dá para criar" não é um número que exista. As outras duas só têm porque a
-    // leitura as mediu.
-    expect(abas).toEqual([
-      'campanhas7', 'preparar', 'criar', 'atenção2',
-    ]);
+    // "Criar" era uma antessala técnica de capacidades, não uma tarefa. O ato
+    // começa em Preparar e segue para a bancada da campanha.
+    expect(abas).toEqual(['campanhas7', 'preparar', 'atenção2']);
   });
 
   it('o contador vive no rótulo da aba — não numa faixa de números no topo', () => {
@@ -186,7 +170,7 @@ describe('as quatro abas', () => {
     contadorDeAtencao = null;
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    expect(abas).toEqual(['campanhas', 'preparar', 'criar', 'atenção']);
+    expect(abas).toEqual(['campanhas', 'preparar', 'atenção']);
   });
 
   it('troca de aba pelo ponteiro e preserva o quadro de oportunidades', () => {
@@ -202,15 +186,13 @@ describe('as quatro abas', () => {
     expect(screen.getByText('quadro de oportunidades')).toBeTruthy();
   });
 
-  it('Nova campanha é ação primária visível e abre a aba criar', () => {
+  it('Nova campanha é ação primária visível e abre o trabalho em Preparar', () => {
     montar();
     const nova = screen.getByRole('button', { name: 'Nova campanha' });
     expect(nova.className).toMatch(/bg-primary/);
     fireEvent.click(nova);
-    expect(screen.getByRole('tab', { name: /criar/ }).getAttribute('aria-selected')).toBe('true');
-    // ⚠️ A aba `criar` passou a montar o veredito do SERVIDOR, e não mais o
-    // estúdio derivado no cliente. Ver o ⚠️ da contagem de abas acima.
-    expect(screen.getByText('painel dos canais')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /preparar/ }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('quadro de oportunidades')).toBeTruthy();
   });
 });
 
@@ -222,7 +204,7 @@ describe('navegação por teclado', () => {
     montar();
     // ⚠️ A seta anda UMA casa. Com `Canais` consolidada em `criar`, a casa
     // seguinte a Campanhas voltou a ser Preparar.
-    const [campanhas, preparar, criar] = screen.getAllByRole('tab');
+    const [campanhas, preparar, atencao] = screen.getAllByRole('tab');
     campanhas.focus();
     fireEvent.keyDown(campanhas, { key: 'ArrowRight' });
 
@@ -240,9 +222,9 @@ describe('navegação por teclado', () => {
     preparar.focus();
     fireEvent.keyDown(preparar, { key: 'ArrowRight' });
     await waitFor(() => {
-      expect(criar.getAttribute('aria-selected')).toBe('true');
+      expect(atencao.getAttribute('aria-selected')).toBe('true');
     });
-    expect(screen.getByText('painel dos canais')).toBeTruthy();
+    expect(atencao.getAttribute('tabindex')).toBe('0');
   });
 
   it('a lista de abas se anuncia, e o painel ativo pertence à aba ativa', () => {

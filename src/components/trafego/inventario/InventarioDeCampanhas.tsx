@@ -128,6 +128,22 @@ export const InventarioDeCampanhas: React.FC<{
   const leituraHistorico = historicoExterno ?? historicoInterno;
   const pedido = usePedirLeituraDaConta();
   const { inventario } = leitura;
+  const [contaEscolhida, setContaEscolhida] = React.useState<string | null | undefined>(undefined);
+
+  const primeiraContaComCampanhas = React.useMemo(
+    () => inventario?.contas.find((conta) => conta.campanhas.length > 0)?.customer_id ?? null,
+    [inventario],
+  );
+  const contaAberta = React.useMemo(() => {
+    if (contaEscolhida === null) return null;
+    if (
+      contaEscolhida != null &&
+      inventario?.contas.some((conta) => conta.customer_id === contaEscolhida)
+    ) {
+      return contaEscolhida;
+    }
+    return primeiraContaComCampanhas;
+  }, [contaEscolhida, inventario, primeiraContaComCampanhas]);
 
   // Quantas instâncias da mesma intenção estão carregadas. É contagem sobre o
   // que está na mão — por isso a frase na tela diz "neste inventário", e não
@@ -182,6 +198,15 @@ export const InventarioDeCampanhas: React.FC<{
         aoPedirLeitura={pedido.pedir}
         pedindoLeitura={pedido.contaEmLeitura === conta.customer_id}
         recadoDaLeitura={pedido.recados[conta.customer_id] ?? null}
+        aberta={contaAberta === conta.customer_id}
+        aoAlternarConta={
+          conta.campanhas.length > 0
+            ? () => setContaEscolhida((atual) => {
+                const abertaAgora = atual === undefined ? primeiraContaComCampanhas : atual;
+                return abertaAgora === conta.customer_id ? null : conta.customer_id;
+              })
+            : undefined
+        }
       />
     ));
 

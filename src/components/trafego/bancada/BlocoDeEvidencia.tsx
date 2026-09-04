@@ -61,12 +61,12 @@ export const BlocoDeEvidencia: React.FC<{
   return (
     <section
       className={cn(
-        'relative overflow-hidden rounded-md border border-border/60 bg-muted/20 p-3',
+        'relative min-w-0 overflow-hidden rounded-lg border border-border/70 bg-muted/20 p-4',
         tom && "before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:content-['']",
         tom && (HAIRLINE[tom] ?? HAIRLINE.neutro),
       )}
     >
-      <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2 gap-y-3">
+      <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-3 gap-y-3">
         <div className="flex h-5 items-center justify-center">
           {desenho ? (
             <desenho.Icone className={cn('h-4 w-4', desenho.tinta)} aria-hidden />
@@ -130,13 +130,13 @@ export const LinhaDeFato: React.FC<{
     // no `children` livre de `BlocoDeEvidencia`. Um `<dl>` por linha resolveria
     // a validade e criaria outro problema — o leitor de tela anunciaria "lista
     // com 1 item" a cada fato, dez vezes por parada.
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 py-1">
-      <span className="text-sm text-pretty text-muted-foreground">{rotulo}</span>
+    <div className="grid min-w-0 grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] items-start gap-x-4 py-1.5">
+      <span className="min-w-0 text-sm text-pretty text-muted-foreground">{rotulo}</span>
       <span
         className={cn(
           // `tabular` força numerais tabulares (`src/index.css:369-372`): sem
           // eles um valor que atualiza muda de largura e a coluna dança.
-          'tabular text-right text-sm',
+          'tabular min-w-0 break-words text-right text-sm',
           ausente ? 'text-muted-foreground' : 'font-medium text-foreground',
         )}
       >
@@ -150,7 +150,7 @@ export const LinhaDeFato: React.FC<{
         )}
       </span>
       {(fonte || frescor) && (
-        <p className="col-span-2 text-[0.8125rem] leading-5 text-muted-foreground">
+        <p className="col-span-2 min-w-0 break-words text-[0.75rem] leading-5 text-muted-foreground">
           {fonte ? `fonte: ${fonte}` : null}
           {/* ⚠️ Frescor só quando VEIO. Carimbar "agora" numa linha sem leitura
               seria inventar frescor, que `design.md:247` proíbe por nome. */}

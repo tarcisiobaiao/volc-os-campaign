@@ -59,7 +59,7 @@ export const PainelDeBloqueio: React.FC<{
   return (
     <section
       aria-labelledby={idTitulo}
-      className="relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-card before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-destructive before:content-['']"
+      className="relative overflow-hidden rounded-lg border border-destructive/25 bg-destructive/[0.045] p-4 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-destructive before:content-['']"
     >
       <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-2 gap-y-3">
         <div className="flex h-6 items-center justify-center">
@@ -76,7 +76,7 @@ export const PainelDeBloqueio: React.FC<{
           {bloqueios.map((b, i) => (
             <li
               key={`${b.codigo}-${i}`}
-              className="rounded-md border border-border/60 bg-muted/20 p-3"
+              className="border-t border-destructive/15 pt-2 first:border-0 first:pt-0"
             >
               {/* 14px: é texto que decide (`design.md:172`). O detalhe fica na
                   mesma frase do título porque separá-los em duas linhas fazia o

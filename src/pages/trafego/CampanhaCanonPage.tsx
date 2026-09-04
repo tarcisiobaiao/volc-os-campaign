@@ -8,6 +8,7 @@
  */
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { Gauge, ShieldCheck } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
@@ -150,23 +151,34 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
   const c = campanha;
 
   return (
-    <>
+    <article className="campaign-cockpit">
       {/* ── 1 · IDENTIDADE ──────────────────────────────────────────────── */}
-      <header className="mt-4 border-b border-border pb-4">
-        <p className="kicker">campanha</p>
-        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight md:text-3xl">
+      <header className="campaign-cockpit-hero">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="kicker">central da campanha</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <SeloDeEstadoExterno estado={c.estado_externo} />
+            <SeloDePresenca presenca={c.presenca} />
+          </div>
+        </div>
+        <h1 className="mt-4 max-w-[26ch] text-balance font-display text-2xl font-bold tracking-[-0.03em] text-white md:text-4xl">
           {c.nome}
         </h1>
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <IdentidadeDeCanal rede="google" canal={c.canal} />
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-[12px] text-slate-300">
             Google Ads · conta {identidade.conta_externa ?? conta.customer_id ?? AUSENTE}
           </span>
+          {palavraDaVeiculacao(c.veiculacao) && (
+            <span className="text-[12px] font-medium text-slate-200">
+              {palavraDaVeiculacao(c.veiculacao)}
+            </span>
+          )}
         </div>
 
         {/* Os identificadores ficam no cabeçalho, em linha, porque são
             resposta de conferência — não decisão. */}
-        <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[12px]">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-slate-300">
           <IdentificadorEmLinha rotulo="identificador interno" valor={identidade.volc_campaign_id} />
           <IdentificadorEmLinha rotulo="id no Google" valor={identidade.id_externo} />
           <IdentificadorEmLinha
@@ -175,10 +187,13 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
             ausenteDiz="não declarada no lançamento"
           />
         </dl>
+        <div className="campaign-cockpit-signal" aria-hidden><span /><span /><span /></div>
       </header>
 
-      {/* ── 2 · ENTREGA, FRESCOR E FONTE ────────────────────────────────── */}
-      <Secao titulo="Entrega e frescor" kicker="estado observado" id="entrega">
+      <div className="campaign-cockpit-grid">
+        <main className="min-w-0 space-y-4">
+          {/* ── 2 · ENTREGA, FRESCOR E FONTE ────────────────────────────── */}
+          <Secao titulo="Entrega e frescor" kicker="estado observado" id="entrega">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <SeloDeEstadoExterno estado={c.estado_externo} />
           <SeloDePresenca presenca={c.presenca} />
@@ -194,10 +209,10 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
           {frescorLegivel(conta.frescor).palavra} ·{' '}
           {procedenciaLegivel(c.procedencia).palavra}.
         </p>
-      </Secao>
+          </Secao>
 
-      {/* ── 3 · RESUMO MEDIDO ───────────────────────────────────────────── */}
-      <Secao titulo="Resumo medido" kicker="numeros" id="resumo">
+          {/* ── 3 · RESUMO MEDIDO ───────────────────────────────────────── */}
+          <Secao titulo="Resumo medido" kicker="números" id="resumo">
         {/* ⚠️ Estes campos JÁ CHEGAVAM no contrato e não eram desenhados em
             lugar nenhum desta página. O operador via o inventário, abria a
             campanha, e a página sabia menos que a lista de onde ele veio. */}
@@ -254,36 +269,38 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
             </p>
           </>
         )}
-      </Secao>
+          </Secao>
 
-      {/* ── 4 · DIAGNÓSTICO ─────────────────────────────────────────────── */}
-      <Diagnostico volcCampaignId={identidade.volc_campaign_id} />
+          {/* ── 4 · DIAGNÓSTICO ─────────────────────────────────────────── */}
+          <div className="campaign-cockpit-panel campaign-cockpit-diagnostic">
+            <Diagnostico volcCampaignId={identidade.volc_campaign_id} />
+          </div>
 
-      {/* ── 5 · VÍNCULO E LINHAGEM ──────────────────────────────────────── */}
-      <div className="mt-10 border-t border-border pt-6">
-        <RevisarCorrespondencia
-          volcCampaignId={identidade.volc_campaign_id}
-          nomeDaCampanha={c.nome}
-          contaExterna={identidade.conta_externa ?? conta.customer_id}
-          idExterno={identidade.id_externo}
-          estadoExterno={c.estado_externo}
-        />
-      </div>
+          {/* ── 5 · VÍNCULO E LINHAGEM ──────────────────────────────────── */}
+          <section className="campaign-cockpit-panel" aria-label="vínculo com o funil">
+            <RevisarCorrespondencia
+              volcCampaignId={identidade.volc_campaign_id}
+              nomeDaCampanha={c.nome}
+              contaExterna={identidade.conta_externa ?? conta.customer_id}
+              idExterno={identidade.id_externo}
+              estadoExterno={c.estado_externo}
+            />
+          </section>
 
-      {/* ── 6 · ESTRUTURA DO CANAL ──────────────────────────────────────── */}
-      {manifesto && (
-        <Secao titulo="Estrutura deste canal" kicker="como é feita por dentro" id="estrutura">
-          <EstruturaDoCanal
-            rede="google"
-            canal={c.canal}
-            aba="estrutura"
-            manifesto={manifesto}
-          />
-        </Secao>
-      )}
+          {/* ── 6 · ESTRUTURA DO CANAL ──────────────────────────────────── */}
+          {manifesto && (
+            <Secao titulo="Estrutura deste canal" kicker="como é feita por dentro" id="estrutura">
+              <EstruturaDoCanal
+                rede="google"
+                canal={c.canal}
+                aba="estrutura"
+                manifesto={manifesto}
+              />
+            </Secao>
+          )}
 
-      {/* ── 7 · HISTÓRICO E RECIBOS ─────────────────────────────────────── */}
-      <Secao titulo="Histórico e recibos" kicker="o que já aconteceu" id="historico">
+          {/* ── 7 · HISTÓRICO E RECIBOS ─────────────────────────────────── */}
+          <Secao titulo="Histórico e recibos" kicker="o que já aconteceu" id="historico">
         {/* ⚠️ Ausência DECLARADA, e não seção omitida.
             Uma página que simplesmente não mostra histórico lê-se como "nada
             aconteceu com esta campanha" — que é uma afirmação, e não a que se
@@ -297,26 +314,39 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
           </strong>
           . Mudanças feitas no painel do Google aparecem lá, no histórico de alterações da conta.
         </p>
-      </Secao>
+          </Secao>
+        </main>
 
-      {/* ── 8 · TRILHO DE AÇÕES ─────────────────────────────────────────── */}
-      <Secao titulo="O que dá para fazer aqui" kicker="ações" id="acoes">
-        <VisaoDoCanal
-          manifesto={manifesto}
-          rotuloDeReserva={palavraDoCanal(c.canal) ?? 'este canal'}
-        />
-        {c.cockpit_href && (
-          <p className="mt-4 text-[13px]">
-            <Link
-              to={c.cockpit_href}
-              className="text-primary underline-offset-2 hover:underline"
-            >
-              Abrir o cockpit de lançamento desta campanha
-            </Link>
-          </p>
-        )}
-      </Secao>
-    </>
+        {/* ── 8 · TRILHO DE AÇÕES ──────────────────────────────────────── */}
+        <aside className="campaign-cockpit-rail" aria-labelledby="sec-acoes">
+          <section className="campaign-cockpit-actions">
+            <div className="flex items-center gap-2 text-primary">
+              <ShieldCheck className="h-4 w-4" aria-hidden />
+              <p className="kicker">autoridade do motor</p>
+            </div>
+            <h2 id="sec-acoes" className="mt-2 font-display text-xl font-bold tracking-tight">
+              Controles disponíveis
+            </h2>
+            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+              Esta coluna mostra somente o que o backend declara. Ausência de controle aqui não vira botão decorativo.
+            </p>
+            <VisaoDoCanal
+              manifesto={manifesto}
+              rotuloDeReserva={palavraDoCanal(c.canal) ?? 'este canal'}
+              className="mt-5"
+            />
+            {c.cockpit_href && (
+              <div className="mt-6 border-t border-border pt-5">
+                <Link to={c.cockpit_href} className="campaign-cockpit-primary-action">
+                  <Gauge className="h-4 w-4" aria-hidden />
+                  Abrir cockpit operacional
+                </Link>
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
+    </article>
   );
 };
 
@@ -338,7 +368,7 @@ const Secao: React.FC<{
   id: string;
   children: React.ReactNode;
 }> = ({ titulo, kicker, id, children }) => (
-  <section className="mt-10 border-t border-border pt-6" aria-labelledby={`sec-${id}`}>
+  <section className="campaign-cockpit-panel" aria-labelledby={`sec-${id}`}>
     <p className="kicker">{kicker}</p>
     <h2
       id={`sec-${id}`}
