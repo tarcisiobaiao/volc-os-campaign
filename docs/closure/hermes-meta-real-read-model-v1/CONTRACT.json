@@ -1,0 +1,86 @@
+{
+  "verdict_target": [
+    "META_REAL_READ_PREVIEW_READY",
+    "META_READ_MODEL_RUNTIME_READY"
+  ],
+  "scope": "read-only Meta Ads real-read foundation; no Meta mutation, no real Meta call in tests, no Supabase write/migration applied",
+  "branch": "sprint/hermes-meta-real-read-model-v1",
+  "base": "462e2ff9f7e9c4638d84e6f6adfcfccd1e75037d",
+  "local_keychain_contract": {
+    "module": "backend/app/trafego/meta/configuracao_local.py",
+    "service": "br.com.agenciavolc.volc-os.meta-system-user",
+    "account_name_pattern": "supabase-user:{sub}",
+    "token_policy": [
+      "token remains in macOS Keychain",
+      "token is read only into backend memory",
+      "token is never sent to browser",
+      "token is never passed as subprocess argument",
+      "token is never written to Supabase, fixture, log or report"
+    ]
+  },
+  "opaque_account_reference": {
+    "function": "dominio.referencia_opaca_conta",
+    "format": "metaacct_{sha256-prefix}",
+    "resolution_rule": "backend re-reads /me/adaccounts using the local token, resolves the opaque handle internally, and rejects unknown references",
+    "browser_map_policy": "browser never receives or stores a raw account-id map"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/trafego/meta/local/contas",
+      "purpose": "discover accessible Meta ad accounts with opaque references and sanitized metadata",
+      "mutates": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/trafego/meta/local/preflight",
+      "purpose": "read-only preflight for one opaque account reference; returns counts, capability states, freshness and sanitized errors; persists nothing",
+      "mutates": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/trafego/meta/local/sincronizacao/preparar",
+      "purpose": "prepare/summarize synchronization without persistence; Supabase write remains blocked until separately authorized",
+      "mutates": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/trafego/meta/local/recibo/ultimo",
+      "purpose": "read last in-memory preview receipt when available",
+      "mutates": false
+    }
+  ],
+  "domain_objects": [
+    "BusinessMeta",
+    "ContaMetaDescoberta",
+    "ObjetoMeta",
+    "LeituraDaHierarquia",
+    "InsightMeta",
+    "AcaoInsightMeta",
+    "ReciboDeSync"
+  ],
+  "adapter_contract": {
+    "class": "AdaptadorMetaSomenteLeitura",
+    "read_edges": ["campaigns", "adsets", "ads", "adcreatives"],
+    "preflight_edges": ["campaigns", "adsets", "ads", "adcreatives", "promote_pages", "instagram_accounts", "adspixels", "insights"],
+    "pagination": "all pages are read up to the configured safety limit; cursor loops and duplicate objects fail safely",
+    "failure_rule": "remote incomplete read occurs before repository transaction and cannot mark objects absent or erase last good projection"
+  },
+  "insights_schema": {
+    "migration_draft": "supabase/migrations/v15_02_meta_ads_insights.sql",
+    "rollback_draft": "supabase/migrations/v15_98_meta_ads_insights_rollback.sql",
+    "grain": ["provider", "account", "object level", "external object", "period", "attribution window", "breakdown", "observed_at"],
+    "nullable_metrics": ["spend", "impressions", "reach", "frequency", "clicks", "inline_link_clicks", "landing_page_views", "cpm", "cpc", "ctr"],
+    "actions_policy": "actions are stored as separate rows with action_type, value, attribution_window, object_level and date range; not flattened into metric columns",
+    "null_policy": "NULL never becomes zero"
+  },
+  "security_guards": [
+    "localhost + macOS guard on local router",
+    "ADMIN dependency on every endpoint",
+    "httpx timeouts",
+    "GET-only adapter; no mutate endpoint added",
+    "safe error codes/messages",
+    "no raw Meta payload returned or persisted",
+    "no frontend changes"
+  ]
+}

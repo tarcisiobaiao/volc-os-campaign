@@ -1,0 +1,45 @@
+{
+  "do_not_apply_here": true,
+  "branch": "sprint/hermes-meta-real-read-model-v1",
+  "base": "462e2ff9f7e9c4638d84e6f6adfcfccd1e75037d",
+  "roadmap_tasks": [
+    {
+      "id": "P11-T03",
+      "suggested_state": "partial",
+      "evidence": "Meta local Keychain credential is now connected to opaque account discovery and read-only preflight endpoints. Runtime persistence and official Supabase migration remain pending."
+    },
+    {
+      "id": "P11-T05",
+      "suggested_state": "partial",
+      "evidence": "No creation executor was implemented. Read model now prepares the evidence substrate and keeps META_CREATE_PAUSED blocked."
+    },
+    {
+      "id": "P11-T06",
+      "suggested_state": "partial",
+      "evidence": "Backend read model can return real hierarchy counts and parent/binding contracts for Campaign → Ad Set → Ad → Creative. Frontend remains untouched in this lane."
+    }
+  ],
+  "graph_nodes": [
+    "cap_meta_ads",
+    "concept:meta_direct_traffic",
+    "cap_capi",
+    "concept:media_hub"
+  ],
+  "proofs": [
+    "backend/tests/test_meta_real_read_model.py",
+    "backend/tests/test_meta_configuracao_local.py",
+    "supabase/migrations/v15_02_meta_ads_insights.sql",
+    "supabase/migrations/v15_98_meta_ads_insights_rollback.sql",
+    "docs/closure/hermes-meta-real-read-model-v1/GATES.md"
+  ],
+  "prohibitions_preserved": [
+    "no Roadmap edit",
+    "no graph edit",
+    "no curation edit",
+    "no frontend edit",
+    "no Meta real read in tests",
+    "no Meta mutate",
+    "no Supabase write",
+    "no migration applied"
+  ]
+}
