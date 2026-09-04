@@ -1,0 +1,2014 @@
+{
+  "capabilities": [
+    {
+      "conditional_fields": [
+        "system user/app/ad accounts/pages"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /{business-id}; business management edges",
+      "id": "META_BUSINESS_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Business Portfolio/Business Manager",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /{business-id}; business management edges",
+        "object": "Business Portfolio/Business Manager",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Business Management API is related API for business presence."
+      },
+      "permissions_needed": [
+        "business_management"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "business_id reference"
+      ],
+      "risk": "HIGH",
+      "support": "READ_ONLY",
+      "v26_notes": "Business Management API is related API for business presence.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "app business binding"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "Business Management API system user token reference",
+      "id": "META_SYSTEM_USER_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "System User",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "Business Management API system user token reference",
+        "object": "System User",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Token resolved server-side only; 1Password ref stored, never token."
+      },
+      "permissions_needed": [
+        "business_management"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "opaque_credential_reference"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Token resolved server-side only; 1Password ref stored, never token.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "app mode, scopes"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET app metadata / permissions readiness",
+      "id": "META_APP_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "App",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET app metadata / permissions readiness",
+        "object": "App",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/mcp",
+        "version": "v26.0",
+        "volc_impact": "MCP uses OAuth Read/Manage scopes; app scopes must be controlled."
+      },
+      "permissions_needed": [
+        "business_management"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "app_id reference"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "MCP uses OAuth Read/Manage scopes; app scopes must be controlled.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "currency, timezone, business"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}",
+      "id": "META_AD_ACCOUNT_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Account",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}",
+        "object": "Ad Account",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Marketing API operates under ad accounts."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "ad_account_id reference"
+      ],
+      "risk": "HIGH",
+      "support": "READ_ONLY",
+      "v26_notes": "Marketing API operates under ad accounts.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "new pages fields unavailable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /{page-id} minimal identity",
+      "id": "META_PAGE_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Page",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /{page-id} minimal identity",
+        "object": "Page",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "v26 removes legacy Page fields for New Pages Experience; avoid deprecated fields."
+      },
+      "permissions_needed": [
+        "pages_read_engagement"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "page_id reference"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "v26 removes legacy Page fields for New Pages Experience; avoid deprecated fields.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "page binding"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET connected IG identity",
+      "id": "META_INSTAGRAM_ACCOUNT_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Instagram Account",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET connected IG identity",
+        "object": "Instagram Account",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Needed for Instagram identity in creative/spec."
+      },
+      "permissions_needed": [
+        "instagram_basic",
+        "pages_read_engagement"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "instagram_actor_id or ig_user_id"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Needed for Instagram identity in creative/spec.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "events availability"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET pixel/dataset reference",
+      "id": "META_PIXEL_DATASET_REFERENCE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Pixel/Dataset",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET pixel/dataset reference",
+        "object": "Pixel/Dataset",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Conversions API is related but not Marketing API campaign operation."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "dataset_or_pixel_id"
+      ],
+      "risk": "HIGH",
+      "support": "READ_ONLY",
+      "v26_notes": "Conversions API is related but not Marketing API campaign operation.",
+      "volc_os_state": "PARCIAL"
+    },
+    {
+      "conditional_fields": [
+        "page, instagram, pixel"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "backend VOLC binding, no Meta endpoint",
+      "id": "META_PROJECT_BINDING",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "VOLC project ↔ business/account",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "backend VOLC binding, no Meta endpoint",
+        "object": "VOLC project ↔ business/account",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Server authority maps project/site to business/account without exposing tokens."
+      },
+      "permissions_needed": [
+        "VOLC authenticated backend"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "mutation_local",
+      "required_fields": [
+        "project_id",
+        "business_ref_id",
+        "ad_account_ref_id"
+      ],
+      "risk": "HIGH",
+      "support": "SUPPORTED",
+      "v26_notes": "Server authority maps project/site to business/account without exposing tokens.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "effective_status, configured_status"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/campaigns",
+      "id": "META_CAMPAIGN_READ",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/campaigns",
+        "object": "Campaign",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+        "version": "v26.0",
+        "volc_impact": "Campaign endpoint creates/manages campaigns; read path needed for sync."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "fields id,name,status,objective,buying_type,special_ad_categories"
+      ],
+      "risk": "LOW",
+      "support": "READ_ONLY",
+      "v26_notes": "Campaign endpoint creates/manages campaigns; read path needed for sync.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "buying_type",
+        "daily_budget/lifetime_budget for Advantage Campaign Budget"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/campaigns",
+      "id": "META_CAMPAIGN_CREATE_PAUSED",
+      "idempotency": "idempotency key over VOLC blueprint + account + objective + name slug; never by name alone",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/campaigns",
+        "object": "Campaign",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+        "version": "v26.0",
+        "volc_impact": "MVP future creation starts PAUSED; no enable implied."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET campaign and verify PAUSED, objective, special_ad_categories",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "name",
+        "objective",
+        "status=PAUSED",
+        "special_ad_categories"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "MVP future creation starts PAUSED; no enable implied.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "bid_strategy"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/campaigns with daily_budget/lifetime_budget",
+      "id": "META_CAMPAIGN_ADVANTAGE_BUDGET",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/campaigns with daily_budget/lifetime_budget",
+        "object": "Campaign",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Advantage campaign budget distributes budget across ad sets; do not choose silently."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "budget chosen by operator"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Advantage campaign budget distributes budget across ad sets; do not choose silently.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "promoted_object,budget,schedule"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/adsets",
+      "id": "META_ADSET_READ",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Set",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/adsets",
+        "object": "Ad Set",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+        "version": "v26.0",
+        "volc_impact": "Ad sets organize ads by targeting/budget."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "fields id,name,campaign_id,status,optimization_goal,billing_event,targeting"
+      ],
+      "risk": "LOW",
+      "support": "READ_ONLY",
+      "v26_notes": "Ad sets organize ads by targeting/budget.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "promoted_object",
+        "start_time/end_time",
+        "targeting_automation.advantage_audience",
+        "placements"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/adsets",
+      "id": "META_ADSET_CREATE_TRAFFIC_LPV",
+      "idempotency": "blueprint hash + campaign external id + adset role",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Set",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/adsets",
+        "object": "Ad Set",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/audiences/reference/basic-targeting",
+        "version": "v26.0",
+        "volc_impact": "At least one country required unless Custom Audience; HEC-F needs explicit advantage_audience in constrained targeting."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET ad set and compare PAUSED/targeting/effective placements",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "name",
+        "campaign_id",
+        "daily_budget or lifetime_budget",
+        "billing_event",
+        "optimization_goal",
+        "targeting.geo_locations",
+        "status=PAUSED"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "At least one country required unless Custom Audience; HEC-F needs explicit advantage_audience in constrained targeting.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "tracking_specs,url_tags"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/ads",
+      "id": "META_AD_READ",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/ads",
+        "object": "Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+        "version": "v26.0",
+        "volc_impact": "Ad links creative to ad set."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "fields id,name,adset_id,creative,status"
+      ],
+      "risk": "LOW",
+      "support": "READ_ONLY",
+      "v26_notes": "Ad links creative to ad set.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "tracking_specs,url_tags"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/ads",
+      "id": "META_AD_CREATE_PAUSED",
+      "idempotency": "blueprint/ad variation hash",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/ads",
+        "object": "Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+        "version": "v26.0",
+        "volc_impact": "Docs example uses ads endpoint; VOLC must always create PAUSED in future mission."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET ad and verify creative/status/adset",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "name",
+        "adset_id",
+        "creative.creative_id",
+        "status=PAUSED"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Docs example uses ads endpoint; VOLC must always create PAUSED in future mission.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "image_hash,video_id,asset_feed_spec"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/adcreatives",
+      "id": "META_CREATIVE_READ",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Creative",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/adcreatives",
+        "object": "Ad Creative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/basic-ad-creation",
+        "version": "v26.0",
+        "volc_impact": "Creative is separate object associated by ads endpoint."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "fields id,name,object_story_spec,effective_object_story_id"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Creative is separate object associated by ads endpoint.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "instagram_actor_id",
+        "call_to_action",
+        "applink_treatment",
+        "url_tags"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/adcreatives",
+      "id": "META_CREATIVE_CREATE_LINK_IMAGE",
+      "idempotency": "creative lineage hash + asset hash + copy hash",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Creative",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/adcreatives",
+        "object": "Ad Creative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0",
+        "version": "v26.0",
+        "volc_impact": "Poll creatives rejected in v26; web_only creative cannot attach to Website+App campaign."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET creative and compare asset/hash/story spec",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "name",
+        "object_story_spec.link_data",
+        "page_id",
+        "image_hash or video_id"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Poll creatives rejected in v26; web_only creative cannot attach to Website+App campaign.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "bodies,titles,images,videos,call_to_action_types"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "asset_feed_spec / dynamic creative",
+      "id": "META_DYNAMIC_CREATIVE_ASSET_FEED",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Creative",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "asset_feed_spec / dynamic creative",
+        "object": "Ad Creative",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Useful later; MVP should prefer single link/image/video creative to reduce variable surface."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "asset_feed_spec"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Useful later; MVP should prefer single link/image/video creative to reduce variable surface.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "creative placement compatibility"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/adimages",
+      "id": "META_IMAGE_UPLOAD",
+      "idempotency": "sha256 + account + purpose",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Image",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/adimages",
+        "object": "Ad Image",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Upload future returns image_hash; ZIP import itself remains local until upload capability approved."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET/reuse image hash where API allows",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "bytes or filename",
+        "sha256 manifest"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Upload future returns image_hash; ZIP import itself remains local until upload capability approved.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "duration,codec,thumbnail"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /act_{ad-account-id}/advideos",
+      "id": "META_VIDEO_UPLOAD",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ad Video",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /act_{ad-account-id}/advideos",
+        "object": "Ad Video",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "version": "v26.0",
+        "volc_impact": "Future upload returns video_id; validate locally before upload."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "video file",
+        "sha256 manifest"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Future upload returns video_id; validate locally before upload.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_SPEND",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; spend must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; spend must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_IMPRESSIONS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; impressions must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; impressions must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_CLICKS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; clicks must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; clicks must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_REACH",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; reach must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; reach must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_FREQUENCY",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; frequency must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; frequency must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_CPM",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; cpm must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; cpm must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_CPC",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; cpc must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; cpc must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_CTR",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; ctr must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; ctr must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_ACTIONS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; actions must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; actions must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_ACTION_VALUES",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; action_values must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; action_values must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_LANDING_PAGE_VIEWS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; landing_page_views must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; landing_page_views must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_CURRENCY",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; currency must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; currency must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_TIMEZONE",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; timezone must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; timezone must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_BREAKDOWNS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; breakdowns must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; breakdowns must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_ASYNC_INSIGHTS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; async_insights must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; async_insights must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_PAGINATION",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; pagination must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; pagination must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "breakdowns",
+        "time_increment",
+        "async job for large ranges"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "GET /act_{ad-account-id}/insights",
+      "id": "META_INSIGHTS_FRESHNESS",
+      "idempotency": "store external id + request hash + receipt before retrying",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Ads Insights",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "GET /act_{ad-account-id}/insights",
+        "object": "Ads Insights",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "version": "v26.0",
+        "volc_impact": "Insights endpoint provides campaign performance; freshness must carry freshness and absence-vs-zero semantics."
+      },
+      "permissions_needed": [
+        "ads_read"
+      ],
+      "phase": "MVP_NOW",
+      "read_back": "GET object by returned id and compare status/key fields",
+      "read_or_mutation": "read",
+      "required_fields": [
+        "level",
+        "time_range",
+        "fields"
+      ],
+      "risk": "MEDIUM",
+      "support": "READ_ONLY",
+      "v26_notes": "Insights endpoint provides campaign performance; freshness must carry freshness and absence-vs-zero semantics.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} status=PAUSED",
+      "id": "META_PAUSE",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} status=PAUSED",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_PAUSE not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "MVP_NEXT",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_PAUSE not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} status=ACTIVE",
+      "id": "META_ENABLE",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} status=ACTIVE",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_ENABLE not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_ENABLE not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} daily_budget/lifetime_budget",
+      "id": "META_CHANGE_BUDGET",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} daily_budget/lifetime_budget",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_CHANGE_BUDGET not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_CHANGE_BUDGET not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} bid_amount/bid_strategy",
+      "id": "META_CHANGE_BID",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} bid_amount/bid_strategy",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_CHANGE_BID not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_CHANGE_BID not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} name",
+      "id": "META_RENAME",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} name",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_RENAME not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_RENAME not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} copies",
+      "id": "META_DUPLICATE",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} copies",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_DUPLICATE not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_DUPLICATE not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    },
+    {
+      "conditional_fields": [
+        "monetary limit where applicable"
+      ],
+      "dependencies": [],
+      "endpoint_operation": "POST /{object-id} status=ARCHIVED",
+      "id": "META_ARCHIVE",
+      "idempotency": "capability-specific idempotency key",
+      "local_validations": [
+        "no raw token in browser/logs",
+        "stable VOLC project binding",
+        "ids are opaque in public docs",
+        "absence != zero"
+      ],
+      "meta_object": "Campaign/AdSet/Ad",
+      "meta_validations": [
+        "Graph API v26 object validation",
+        "permissions and ad-account access",
+        "policy review where applicable"
+      ],
+      "official_source": {
+        "endpoint_or_field": "POST /{object-id} status=ARCHIVED",
+        "object": "Campaign/AdSet/Ad",
+        "read_date_utc": "2026-09-04",
+        "stability": "current",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/manage-campaigns",
+        "version": "v26.0",
+        "volc_impact": "Operation must be separate capability; META_ARCHIVE not implied by create paused."
+      },
+      "permissions_needed": [
+        "ads_management"
+      ],
+      "phase": "LATER",
+      "read_back": "GET object after mutation and record receipt",
+      "read_or_mutation": "mutation",
+      "required_fields": [
+        "object_id",
+        "approval",
+        "before_state",
+        "proposed_state"
+      ],
+      "risk": "HIGH",
+      "support": "PLANNED",
+      "v26_notes": "Operation must be separate capability; META_ARCHIVE not implied by create paused.",
+      "volc_os_state": "AUSENTE"
+    }
+  ],
+  "read_date_utc": "2026-09-04",
+  "version": "v26.0"
+}
