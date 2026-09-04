@@ -58,6 +58,7 @@ def _leitura_valida() -> dict[str, Any]:
 
 
 def test_rota_valida_antes_de_salvar_e_nunca_devolve_token(monkeypatch) -> None:
+    monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     chaveiro = _ChaveiroEmMemoria()
 
     async def testar(token: str) -> dict[str, Any]:
@@ -77,6 +78,7 @@ def test_rota_valida_antes_de_salvar_e_nunca_devolve_token(monkeypatch) -> None:
 
 
 def test_token_recusado_nao_e_persistido(monkeypatch) -> None:
+    monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     chaveiro = _ChaveiroEmMemoria()
 
     async def recusar(_: str) -> dict[str, Any]:

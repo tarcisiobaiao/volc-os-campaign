@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, SecretStr
 
 from app.seguranca.identidade import Identidade, exigir_admin
+from app.trafego.meta import dominio as dom
+from app.trafego.meta.adaptador import AdaptadorMetaSomenteLeitura, ErroDeLeituraMeta
 from app.trafego.meta.configuracao_local import (
     ChaveiroMacOS,
     ConfiguracaoLocalIndisponivel,
@@ -20,16 +22,23 @@ from app.trafego.meta.configuracao_local import (
     SegredoLocalNaoEncontrado,
     nome_da_conta_local,
 )
+from app.trafego.meta.credenciais import SegredoEfemero
+from app.trafego.meta.persistencia import RepositorioMetaEmMemoria
 
 
 router = APIRouter(prefix="/api/trafego/meta/local", tags=["meta-local"])
 GRAPH_BASE = "https://graph.facebook.com/v26.0"
 TIMEOUT_META = 15.0
 HOSTS_LOCAIS = {"127.0.0.1", "::1", "localhost", "testclient"}
+_REPOSITORIO_PREVIEW = RepositorioMetaEmMemoria()
 
 
 class PedidoDeToken(BaseModel):
     token: SecretStr = Field(min_length=20, max_length=4096)
+
+
+class PedidoPorReferencia(BaseModel):
+    referencia_opaca: str = Field(min_length=12, max_length=80)
 
 
 def _exigir_host_local(request: Request) -> None:
@@ -54,10 +63,7 @@ def _chaveiro() -> ChaveiroMacOS:
 
 
 def _mascarar_id(valor: Any) -> str | None:
-    texto = str(valor or "").removeprefix("act_")
-    if not texto:
-        return None
-    return f"••••{texto[-4:]}"
+    return dom.mascarar_id(valor)
 
 
 def _erro_meta(corpo: Any, status: int) -> HTTPException:
@@ -75,6 +81,23 @@ def _erro_meta(corpo: Any, status: int) -> HTTPException:
     return HTTPException(status_code=422 if status < 500 else 502, detail=mensagem)
 
 
+async def _descobrir_contas_com_token(token: str) -> list[dom.ContaMetaDescoberta]:
+    async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+        adaptador = AdaptadorMetaSomenteLeitura(cliente, limite_por_pagina=100, max_paginas_por_edge=20)
+        return list(await adaptador.descobrir_contas(SegredoEfemero(token)))
+
+
+async def _preflight_com_token(token: str, referencia_opaca: str) -> dict[str, Any]:
+    async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+        adaptador = AdaptadorMetaSomenteLeitura(cliente, limite_por_pagina=100, max_paginas_por_edge=20)
+        try:
+            return dict(await adaptador.preflight_conta(referencia_opaca, SegredoEfemero(token)))
+        except dom.ContratoMetaInvalido as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from None
+        except ErroDeLeituraMeta as exc:
+            raise HTTPException(status_code=502, detail=exc.mensagem_segura) from None
+
+
 async def _testar_token(token: str) -> dict[str, Any]:
     headers = {"Authorization": f"Bearer {token}"}
     try:
@@ -87,20 +110,6 @@ async def _testar_token(token: str) -> dict[str, Any]:
                 except ValueError:
                     corpo = None
                 raise _erro_meta(corpo, identidade.status_code)
-            contas = await cliente.get(
-                f"{GRAPH_BASE}/me/adaccounts",
-                params={
-                    "fields": "id,name,account_status,currency,timezone_name,business{id,name}",
-                    "limit": 100,
-                },
-                headers=headers,
-            )
-            if contas.status_code >= 400:
-                try:
-                    corpo = contas.json()
-                except ValueError:
-                    corpo = None
-                raise _erro_meta(corpo, contas.status_code)
     except HTTPException:
         raise
     except httpx.HTTPError:
@@ -111,11 +120,11 @@ async def _testar_token(token: str) -> dict[str, Any]:
 
     try:
         ator = identidade.json()
-        linhas = contas.json().get("data", [])
+        contas = await _descobrir_contas_com_token(token)
     except (AttributeError, ValueError):
         raise HTTPException(status_code=502, detail="A Meta devolveu uma resposta inesperada.") from None
-    if not isinstance(linhas, list):
-        raise HTTPException(status_code=502, detail="A Meta devolveu uma resposta inesperada.")
+    except ErroDeLeituraMeta as exc:
+        raise HTTPException(status_code=502, detail=exc.mensagem_segura) from None
     return {
         "ok": True,
         "api_version": "v26.0",
@@ -123,19 +132,16 @@ async def _testar_token(token: str) -> dict[str, Any]:
             "nome": str(ator.get("name") or "Usuário de sistema"),
             "id_mascarado": _mascarar_id(ator.get("id")),
         },
-        "contas": [
-            {
-                "nome": str(linha.get("name") or "Conta sem nome"),
-                "id_mascarado": _mascarar_id(linha.get("id")),
-                "status": linha.get("account_status"),
-                "moeda": linha.get("currency"),
-                "fuso": linha.get("timezone_name"),
-            }
-            for linha in linhas
-            if isinstance(linha, dict)
-        ],
-        "contas_acessiveis": len(linhas),
+        "contas": [dict(conta.publico()) for conta in contas],
+        "contas_acessiveis": len(contas),
     }
+
+
+def _credencial_salva(quem: Identidade) -> CredencialLocal:
+    try:
+        return CredencialLocal.de(_chaveiro().ler(nome_da_conta_local(quem.sub)))
+    except SegredoLocalNaoEncontrado:
+        raise HTTPException(status_code=409, detail="Nenhum token Meta está salvo neste Mac.") from None
 
 
 @router.get("/configuracao")
@@ -182,11 +188,89 @@ async def testar_salvo(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    try:
-        credencial = CredencialLocal.de(_chaveiro().ler(nome_da_conta_local(quem.sub)))
-    except SegredoLocalNaoEncontrado:
-        raise HTTPException(status_code=409, detail="Nenhum token Meta está salvo neste Mac.") from None
+    credencial = _credencial_salva(quem)
     return await _testar_token(credencial.token)
+
+
+@router.get("/contas")
+async def descobrir_contas(
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    _exigir_host_local(request)
+    credencial = _credencial_salva(quem)
+    try:
+        contas = await _descobrir_contas_com_token(credencial.token)
+    except ErroDeLeituraMeta as exc:
+        raise HTTPException(status_code=502, detail=exc.mensagem_segura) from None
+    return {
+        "ok": True,
+        "api_version": "v26.0",
+        "armazenamento": "macOS Keychain",
+        "contas": [dict(conta.publico()) for conta in contas],
+        "contas_acessiveis": len(contas),
+        "proxima_acao": "preflight_somente_leitura",
+    }
+
+
+@router.post("/preflight")
+async def preflight_somente_leitura(
+    payload: PedidoPorReferencia,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    _exigir_host_local(request)
+    credencial = _credencial_salva(quem)
+    return await _preflight_com_token(credencial.token, payload.referencia_opaca)
+
+
+@router.post("/sincronizacao/preparar")
+async def preparar_sincronizacao(
+    payload: PedidoPorReferencia,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    _exigir_host_local(request)
+    credencial = _credencial_salva(quem)
+    contas = await _descobrir_contas_com_token(credencial.token)
+    try:
+        conta = AdaptadorMetaSomenteLeitura.resolver_referencia_opaca(tuple(contas), payload.referencia_opaca)
+    except dom.ContratoMetaInvalido as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from None
+    return {
+        "ok": True,
+        "modo": "PREVIEW_ONLY_NO_PERSISTENCE",
+        "persistencia": "BLOQUEADA_ATE_AUTORIZACAO_DE_MIGRATION_E_SUPABASE_WRITE",
+        "referencia_opaca": conta.referencia_opaca,
+        "conta": conta.publico(),
+        "capacidades_disponiveis": ["META_REAL_READ_PREVIEW"],
+        "capacidades_bloqueadas": ["META_PERSIST_SYNC", "META_CREATE_PAUSED", "META_ENABLE"],
+        "proxima_acao": "autorizar_migration_e_supabase_write_em_missao_separada",
+    }
+
+
+@router.get("/recibo/ultimo")
+async def ultimo_recibo(
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    del quem
+    _exigir_host_local(request)
+    recibo = await _REPOSITORIO_PREVIEW.ultimo_recibo()
+    if recibo is None:
+        return {"ok": True, "recibo": None, "persistencia": "NAO_EXECUTADA"}
+    return {
+        "ok": True,
+        "recibo": {
+            "run_id": recibo.run_id,
+            "resultado": recibo.resultado,
+            "conta_mascarada": _mascarar_id(recibo.conta_externa),
+            "contagens": dict(recibo.contagens),
+            "paginas_lidas": recibo.paginas_lidas,
+            "erro_codigo": recibo.erro_codigo,
+            "erro_mensagem": recibo.erro_mensagem,
+        },
+    }
 
 
 @router.delete("/configuracao")
