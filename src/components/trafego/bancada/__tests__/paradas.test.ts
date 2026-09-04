@@ -32,7 +32,7 @@ const DESTINO_SEM_RECIBO = leituraDoDestinoPago(
 
 const cockpit = (over: Record<string, unknown> = {}): Cockpit => ({
   opportunity_id: 73, cluster_id: 4,
-  origem: { vertical: 'informativo', pais: 'BR', status_wp: 'publish' },
+  origem: { vertical: 'informativo', pais: 'BR', idioma: 'pt', status_wp: 'publish' },
   triagem: null, grupos: [], descartadas: [], procedencia: null,
   avisos: [],
   conta: { project_id: 2, dominio: 'x', customer_id: '1', login_customer_id: '2',
@@ -270,5 +270,42 @@ describe('o mapa das paradas', () => {
       }),
     };
     expect(faltasDaBancada(f).map((x) => x.texto)).toContain('sem lp');
+  });
+});
+
+describe('os canais visuais usam a completude do contrato, não cards decorativos', () => {
+  const multicanalVazio = {
+    displayCriativo: false, displayEconomia: false,
+    demandSuperficies: false, demandAudiencia: false, demandKit: false,
+    demandMensagem: false, demandEconomia: false,
+    pmaxObjetivo: false, pmaxAssetGroup: false, pmaxSinais: false,
+    pmaxMarca: false, pmaxEconomia: false,
+  };
+
+  it('Display aponta exatamente criativo e economia quando os campos não chegaram', () => {
+    const f = { ...TUDO_PRONTO, multicanal: multicanalVazio };
+    const faltas = faltasDaBancada(f, [
+      'display_destino', 'display_geografia', 'display_audiencia',
+      'display_criativo', 'display_inventario', 'display_economia', 'display_revisao',
+    ]);
+    expect(faltas.map((item) => item.texto)).toEqual([
+      'completar texto e imagens obrigatórias do anúncio Display',
+      'declarar orçamento e CPA-alvo válido, quando usado',
+    ]);
+  });
+
+  it('Demand Gen e PMax ficam completos somente com todas as decisões explícitas', () => {
+    const tudo = Object.fromEntries(
+      Object.keys(multicanalVazio).map((chave) => [chave, true]),
+    ) as unknown as NonNullable<FatosDaBancada['multicanal']>;
+    const f = { ...TUDO_PRONTO, multicanal: tudo };
+    expect(faltasDaBancada(f, [
+      'demand_resultado', 'demand_superficies', 'demand_audiencia', 'demand_kit',
+      'demand_mensagem', 'demand_economia', 'demand_revisao',
+    ])).toHaveLength(0);
+    expect(faltasDaBancada(f, [
+      'pmax_objetivo', 'pmax_lp', 'pmax_asset_group', 'pmax_sinais',
+      'pmax_marca', 'pmax_economia', 'pmax_revisao',
+    ])).toHaveLength(0);
   });
 });

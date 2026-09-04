@@ -75,9 +75,9 @@ export const PERGUNTA_DA_PARADA: Record<ParadaDaBancada, string> = {
   revisao: 'É isto que você quer criar?',
   display_destino: 'Qual a conta, o objetivo e o destino aprovado?',
   display_geografia: 'Onde, em qual idioma e em quais redes o anúncio aparece?',
-  display_audiencia: 'Qual é o contexto e o público-alvo?',
+  display_audiencia: 'Como o engine trata audiência nesta versão?',
   display_criativo: 'Quais imagens e textos formam o criativo responsivo?',
-  display_inventario: 'Quais exclusões de inventário protegem a marca?',
+  display_inventario: 'Que proteção de inventário o engine realmente aplica?',
   display_economia: 'Qual o orçamento e a conversão observada?',
   display_revisao: 'O criativo e as segmentações estão prontos?',
   demand_resultado: 'Qual o resultado, a conta e o destino?',
@@ -121,6 +121,22 @@ export interface FatosDaBancada {
   /** As habilitações que o operador declarou. Elas SATISFAZEM o portão da
    *  vertical — sem elas aqui, a Bancada criaria um bloqueio sem saída. */
   certificacoes: string[];
+  /** Completude dos contratos verticais. Cada booleano é calculado a partir
+   *  dos mesmos campos que compõem o pedido; não é um segundo contrato. */
+  multicanal?: {
+    displayCriativo: boolean;
+    displayEconomia: boolean;
+    demandSuperficies: boolean;
+    demandAudiencia: boolean;
+    demandKit: boolean;
+    demandMensagem: boolean;
+    demandEconomia: boolean;
+    pmaxObjetivo: boolean;
+    pmaxAssetGroup: boolean;
+    pmaxSinais: boolean;
+    pmaxMarca: boolean;
+    pmaxEconomia: boolean;
+  };
 }
 
 /**
@@ -266,10 +282,21 @@ export function faltasDaParada(
       }
       break;
     case 'display_geografia':
+      if (!f.cockpit?.origem?.pais) add('resolver o país da oportunidade', true);
+      if (!f.cockpit?.origem?.idioma) add('resolver o idioma da oportunidade', true);
+      break;
     case 'display_audiencia':
-    case 'display_criativo':
     case 'display_inventario':
+      // Não operados nesta fatia: a tela explica a ausência e não exige um
+      // campo que o payload descartaria.
+      break;
+    case 'display_criativo':
+      if (!f.multicanal?.displayCriativo) add('completar texto e imagens obrigatórias do anúncio Display');
+      break;
     case 'display_economia':
+      if (!f.cockpit?.conta?.vinculada) add('vincular a conta de anúncio ao projeto');
+      if (!f.multicanal?.displayEconomia) add('declarar orçamento e CPA-alvo válido, quando usado');
+      break;
     case 'display_revisao':
       break;
 
@@ -281,15 +308,28 @@ export function faltasDaParada(
       }
       break;
     case 'demand_superficies':
+      if (!f.multicanal?.demandSuperficies) add('escolher explicitamente as superfícies Demand Gen');
+      break;
     case 'demand_audiencia':
+      if (!f.multicanal?.demandAudiencia) add('declarar targeting e confirmar a lista de audiências');
+      break;
     case 'demand_kit':
+      if (!f.multicanal?.demandKit) add('anexar ao menos uma imagem de marketing e um logo quadrado');
+      break;
     case 'demand_mensagem':
+      if (!f.multicanal?.demandMensagem) add('completar nome, títulos e descrições do anúncio');
+      break;
     case 'demand_economia':
+      if (!f.cockpit?.conta?.vinculada) add('vincular a conta de anúncio ao projeto');
+      if (!f.multicanal?.demandEconomia) add('declarar o orçamento diário');
+      break;
     case 'demand_revisao':
       break;
 
     // -- PMax
     case 'pmax_objetivo':
+      if (!f.multicanal?.pmaxObjetivo) add('resolver uma meta de conversão válida na conta', true);
+      break;
     case 'pmax_lp':
       if (!f.destino.apto_para_campanha) {
         if (f.destino.sem_recibo) { add('avaliar o destino desta campanha', true); }
@@ -297,9 +337,18 @@ export function faltasDaParada(
       }
       break;
     case 'pmax_asset_group':
+      if (!f.multicanal?.pmaxAssetGroup) add('completar a cobertura mínima do asset group');
+      break;
     case 'pmax_sinais':
+      if (!f.multicanal?.pmaxSinais) add('confirmar sinais e negativas, mesmo quando vazios');
+      break;
     case 'pmax_marca':
+      if (!f.multicanal?.pmaxMarca) add('decidir o uso imutável de brand guidelines');
+      break;
     case 'pmax_economia':
+      if (!f.cockpit?.conta?.vinculada) add('vincular a conta de anúncio ao projeto');
+      if (!f.multicanal?.pmaxEconomia) add('declarar orçamento e estratégia PMax');
+      break;
     case 'pmax_revisao':
       break;
   }

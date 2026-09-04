@@ -1180,7 +1180,22 @@ export interface PedidoDeProvaDemandGen extends PedidoDeProvaBase {
   graduacao_em_conversoes?: never;
 }
 
-export type PedidoDeProva = PedidoDeProvaSearch | PedidoDeProvaDemandGen;
+export interface PedidoDeProvaDisplay extends PedidoDeProvaBase {
+  canal: 'DISPLAY';
+  estrategia_lance: 'MAXIMIZE_CONVERSIONS';
+  assets_display: AssetDemandGen[];
+  /** Ausente = Maximize Conversions puro; presente = tCPA dentro da mesma estratégia. */
+  tcpa?: number | null;
+  cpc_inicial?: never;
+  match_type?: never;
+  demand_gen?: never;
+  assets_demand_gen?: never;
+}
+
+export type PedidoDeProva =
+  | PedidoDeProvaSearch
+  | PedidoDeProvaDisplay
+  | PedidoDeProvaDemandGen;
 
 /** Onde a mídia é comprada. Uma terceira entra quando houver conta,
  *  credencial e leitura — não quando alguém a mencionar. */
@@ -1348,7 +1363,8 @@ export interface AssetDemandGen {
     | 'imagem_marketing_quadrada'
     | 'imagem_marketing_retrato'
     | 'imagem_marketing_retrato_alto'
-    | 'logo_quadrado';
+    | 'logo_quadrado'
+    | 'logo_paisagem';
   nome: string;
   dados_base64: string;
   conteudo_hash: `sha256:${string}`;

@@ -83,3 +83,43 @@
 | Ausência não é zero | `partial` | Ponta a ponta no caminho da Bancada; a montante (mining) segue aberto. |
 
 **Nenhuma tarefa deve ir para `done` antes da inspeção do proprietário.**
+
+---
+
+## 5. Pente-fino de contrato multicanal — 04/09/2026
+
+Delta proposto para **P04-T05**, **P04-T07** e **P04-T09**, sem promoção de
+estado nesta branch:
+
+- Display: a Bancada passou a editar o contrato efetivo do builder — nome da
+  empresa, títulos, título longo, descrições, imagens por papel, vídeos por
+  resource name, orçamento e tCPA opcional. A ponte HTTP agora transporta tCPA
+  e remonta `assets_display` também no caminho `/subir`.
+- Demand Gen: channel controls, `upgraded_targeting`, lista explícita de
+  audiences, cobertura de mídia, copy e orçamento alimentam um
+  `PedidoDeProvaDemandGen` discriminado. Intenções textuais, exclusões,
+  carrossel, vídeo responsivo e produto seguem nomeados como não operados.
+- Performance Max: asset group, brand guidelines, audience signals, search
+  themes, negativas, cobertura por papel, bidding e alvo econômico ficaram
+  editáveis no rascunho. Final URL expansion continua travada em OFF. Não há
+  CTA de prova/criação porque a ponte HTTP e o executor PMax ainda não existem.
+- Display não ganhou seletores falsos de audience/placement/brand safety: o
+  próprio builder declara essas superfícies como não operadas e inventário
+  aberto. A interface agora diz isso literalmente.
+- Assets vivem apenas na montagem da página; metadados do formulário ficam no
+  `sessionStorage`, mas bytes precisam ser reanexados após F5. Nenhuma peça ou
+  id de conta é inventado.
+- Nesta execução, a CTA multicanal apenas confere a completude e a montagem do
+  contrato local. `validate_only` real permanece um ato externo separado, não
+  autorizado por este pente-fino.
+- Bloqueante descoberto e **não afrouxado**: `/provar` ainda atravessa o portão
+  do conjunto pago antes de bifurcar por canal. Isso é coerente com Search,
+  mas cria um requisito de keywords para Demand Gen que o próprio adaptador
+  declara irrelevante. A correção precisa de autorização separada porque muda
+  a alcançabilidade do `validate_only` real; até lá, o botão faz somente a
+  conferência local e não promete que a prova remota está liberada.
+
+Evidência mínima: build Vite verde; 43 testes focais frontend verdes; 104
+testes dos builders Display/Demand Gen/multicanal verdes; 98 testes das pontes
+HTTP e nascimento verdes; `git diff --check` limpo. Nenhuma chamada Google Ads,
+Supabase, n8n ou WordPress ocorreu.

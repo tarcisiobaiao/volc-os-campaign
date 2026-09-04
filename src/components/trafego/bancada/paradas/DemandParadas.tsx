@@ -5,9 +5,16 @@ import {
 } from 'lucide-react';
 
 import type { Cockpit } from '@/types/trafego';
+import type {
+  AssetDemandGen, CanalSelecionavelDemandGen, EstrategiaDeCanaisDemandGen,
+} from '@/types/trafego';
 import type { LeituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { cn } from '@/lib/utils';
 import { LinhaDeFato } from '../BlocoDeEvidencia';
+import { Input } from '@/components/ui/input';
+import {
+  AcaoDeProva, CampoDeTexto, EditorDeLista, EscolhaExplicita, IrParaEstudio, SeletorDeAsset,
+} from './ControlesMulticanal';
 
 const Superficie: React.FC<{ nome: string; detalhe: string }> = ({ nome, detalhe }) => (
   <li className="flex min-h-20 items-center gap-3 border-b border-border/80 py-3 last:border-0">
@@ -51,7 +58,22 @@ export const ParadaDemandResultado: React.FC<{
   </div>
 );
 
-export const ParadaDemandSuperficies: React.FC = () => (
+const CANAIS: Array<{ id: CanalSelecionavelDemandGen; nome: string }> = [
+  { id: 'youtube_in_stream', nome: 'YouTube In-stream' },
+  { id: 'youtube_in_feed', nome: 'YouTube In-feed' },
+  { id: 'youtube_shorts', nome: 'YouTube Shorts' },
+  { id: 'discover', nome: 'Discover' },
+  { id: 'gmail', nome: 'Gmail' },
+  { id: 'display', nome: 'Display' },
+  { id: 'maps', nome: 'Maps' },
+];
+
+export const ParadaDemandSuperficies: React.FC<{
+  estrategia: EstrategiaDeCanaisDemandGen | null;
+  onEstrategia: (valor: EstrategiaDeCanaisDemandGen) => void;
+  selecionados: CanalSelecionavelDemandGen[];
+  onSelecionados: (valor: CanalSelecionavelDemandGen[]) => void;
+}> = ({ estrategia, onEstrategia, selecionados, onSelecionados }) => (
   <section>
     <div className="flex items-start gap-4">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info/10 text-info">
@@ -65,15 +87,60 @@ export const ParadaDemandSuperficies: React.FC = () => (
         </p>
       </div>
     </div>
-    <ul className="mt-5 border-y border-border" aria-label="superfícies Demand Gen">
-      <Superficie nome="YouTube" detalhe="In-stream, In-feed e Shorts dependem da seleção do pedido." />
-      <Superficie nome="Discover e Gmail" detalhe="Superfícies próprias do Google, separadas de Display de terceiros." />
-      <Superficie nome="Display e Maps" detalhe="Só entram quando o ramo de canais selecionados os declarar." />
-    </ul>
+    <div className="mt-5 grid gap-2 sm:grid-cols-3" role="group" aria-label="estratégia de superfícies">
+      {([
+        ['ALL_CHANNELS', 'Todos os canais'],
+        ['ALL_OWNED_AND_OPERATED_CHANNELS', 'Superfícies próprias'],
+        ['SELECTED_CHANNELS', 'Escolher canais'],
+      ] as const).map(([valor, nome]) => (
+        <button
+          key={valor}
+          type="button"
+          aria-pressed={estrategia === valor}
+          onClick={() => onEstrategia(valor)}
+          className={cn(
+            'min-h-12 rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors',
+            estrategia === valor ? 'border-primary/45 bg-primary/[0.07]' : 'border-border bg-background text-muted-foreground hover:border-primary/25',
+          )}
+        >{nome}</button>
+      ))}
+    </div>
+    {estrategia === 'SELECTED_CHANNELS' && (
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {CANAIS.map(({ id, nome }) => {
+          const ativo = selecionados.includes(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={ativo}
+              onClick={() => onSelecionados(ativo ? selecionados.filter((item) => item !== id) : [...selecionados, id])}
+              className={cn(
+                'flex min-h-11 items-center gap-3 rounded-lg border px-3 text-sm transition-colors',
+                ativo ? 'border-primary/40 bg-primary/[0.06] font-semibold' : 'border-border bg-background text-muted-foreground',
+              )}
+            >
+              <span className={cn('h-2.5 w-2.5 rounded-full', ativo ? 'bg-primary' : 'bg-muted-foreground/30')} />
+              {nome}
+            </button>
+          );
+        })}
+      </div>
+    )}
   </section>
 );
 
-export const ParadaDemandAudiencia: React.FC = () => (
+export const ParadaDemandAudiencia: React.FC<{
+  upgradedTargeting: boolean | null;
+  onUpgradedTargeting: (valor: boolean) => void;
+  audiencias: string;
+  onAudiencias: (valor: string) => void;
+  audienciasConfirmadas: boolean;
+  onAudienciasConfirmadas: (valor: boolean) => void;
+}> = ({
+  upgradedTargeting, onUpgradedTargeting, audiencias, onAudiencias,
+  audienciasConfirmadas, onAudienciasConfirmadas,
+}) => (
   <section className="space-y-5">
     <div className="flex items-start gap-4">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -87,18 +154,45 @@ export const ParadaDemandAudiencia: React.FC = () => (
         </p>
       </div>
     </div>
-    <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
-      {['Audiência positiva', 'Intenção', 'Exclusões'].map((item) => (
-        <div key={item} className="bg-card p-4">
+    <EscolhaExplicita
+      rotulo="Onde geo e idioma serão aplicados?"
+      valor={upgradedTargeting}
+      onChange={onUpgradedTargeting}
+      positivo="No grupo (upgraded targeting ligado)"
+      negativo="Na campanha (upgraded targeting desligado)"
+      ajuda="É uma decisão imutável na criação; o VOLC nunca aceita o default remoto silenciosamente."
+    />
+    <EditorDeLista
+      id="demand-audiences"
+      rotulo="Audiências positivas"
+      valor={audiencias}
+      onChange={onAudiencias}
+      placeholder="customers/123/audiences/456"
+      ajuda="resource names de Audience existentes na mesma conta; vazio confirmado é aceito"
+      linhas={4}
+    />
+    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-background px-4 text-sm">
+      <input type="checkbox" checked={audienciasConfirmadas} onChange={(e) => onAudienciasConfirmadas(e.target.checked)} className="h-4 w-4 accent-primary" />
+      <span><strong>Confirmo esta lista</strong> — vazia significa Demand Gen sem Audience anexada.</span>
+    </label>
+    <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+      {[
+        ['Intenção textual', 'visível, mas fechada: materialize em Audience aprovada'],
+        ['Exclusão de audiência', 'visível, mas fechada até o contrato v25 ser comprovado'],
+      ].map(([item, detalhe]) => (
+        <div key={item} className="bg-muted/25 p-4">
           <p className="text-sm font-semibold">{item}</p>
-          <p className="mt-1 text-xs text-muted-foreground">não informado</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detalhe}</p>
         </div>
       ))}
     </div>
   </section>
 );
 
-export const ParadaDemandKit: React.FC = () => (
+export const ParadaDemandKit: React.FC<{
+  assets: AssetDemandGen[];
+  onAssets: (assets: AssetDemandGen[]) => void;
+}> = ({ assets, onAssets }) => (
   <section>
     <div className="flex items-start gap-4">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-verified/10 text-verified">
@@ -110,29 +204,28 @@ export const ParadaDemandKit: React.FC = () => (
         <p className="mt-2 text-sm text-muted-foreground">A cobertura só será medida quando o Estúdio entregar assets com recibo e geometria válidos.</p>
       </div>
     </div>
-    <div className="mt-6 grid gap-3 sm:grid-cols-3">
-      {[
-        ['Paisagem', '1.91:1', 'aspect-[1.91/1]'],
-        ['Quadrado', '1:1', 'aspect-square'],
-        ['Retrato', '4:5 / 9:16', 'aspect-[4/5]'],
-      ].map(([nome, proporcao, aspect]) => (
-        <div key={nome} className="min-w-0">
-          <div className={cn('grid place-items-center rounded-lg border border-dashed border-border bg-muted/30', aspect)}>
-            <ImageIcon className="h-5 w-5 text-muted-foreground/60" aria-hidden />
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-            <span className="font-semibold">{nome}</span><span className="text-muted-foreground">{proporcao}</span>
-          </div>
-        </div>
-      ))}
+    <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <SeletorDeAsset id="demand-marketing" rotulo="Paisagem" tipo="imagem_marketing" detalhe="1.91:1 · compõe o mínimo de marketing" assets={assets} onChange={onAssets} maximo={20} />
+      <SeletorDeAsset id="demand-square" rotulo="Quadrado" tipo="imagem_marketing_quadrada" detalhe="1:1 · compõe o mínimo de marketing" assets={assets} onChange={onAssets} maximo={20} />
+      <SeletorDeAsset id="demand-portrait" rotulo="Retrato" tipo="imagem_marketing_retrato" detalhe="4:5 · inventário vertical" assets={assets} onChange={onAssets} maximo={20} />
+      <SeletorDeAsset id="demand-tall" rotulo="Retrato alto" tipo="imagem_marketing_retrato_alto" detalhe="9:16 · Shorts" assets={assets} onChange={onAssets} maximo={20} />
+      <SeletorDeAsset id="demand-logo" rotulo="Logo quadrado" tipo="logo_quadrado" detalhe="1:1 · ao menos um obrigatório" assets={assets} onChange={onAssets} maximo={5} />
     </div>
-    <div className="mt-5 flex items-center gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
-      <Film className="h-4 w-4" aria-hidden /> Vídeo e logos continuam não lidos nesta oportunidade.
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
+      <span className="flex items-center gap-3"><Film className="h-4 w-4" aria-hidden /> Vídeo responsivo pertence a outra modalidade e não entra nesta onda.</span>
+      <IrParaEstudio canal="DEMAND_GEN" />
     </div>
   </section>
 );
 
-export const ParadaDemandMensagem: React.FC = () => (
+export const ParadaDemandMensagem: React.FC<{
+  nomeEmpresa: string;
+  onNomeEmpresa: (valor: string) => void;
+  titulos: string;
+  onTitulos: (valor: string) => void;
+  descricoes: string;
+  onDescricoes: (valor: string) => void;
+}> = ({ nomeEmpresa, onNomeEmpresa, titulos, onTitulos, descricoes, onDescricoes }) => (
   <section className="space-y-5">
     <div className="flex items-start gap-4">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info/10 text-info">
@@ -146,10 +239,22 @@ export const ParadaDemandMensagem: React.FC = () => (
         </p>
       </div>
     </div>
+    <div className="grid gap-5 border-t border-border pt-5 lg:grid-cols-2">
+      <div className="lg:col-span-2">
+        <CampoDeTexto id="demand-business-name" rotulo="Nome da empresa" valor={nomeEmpresa} onChange={onNomeEmpresa} limite={25} placeholder="Ex.: Portal Mundo Mais" />
+      </div>
+      <EditorDeLista id="demand-headlines" rotulo="Títulos" valor={titulos} onChange={onTitulos} minimo={1} maximo={5} limitePorItem={30} placeholder={'Título 1\nTítulo 2'} />
+      <EditorDeLista id="demand-descriptions" rotulo="Descrições" valor={descricoes} onChange={onDescricoes} minimo={1} maximo={5} limitePorItem={90} placeholder={'Descrição 1\nDescrição 2'} />
+    </div>
   </section>
 );
 
-export const ParadaDemandEconomia: React.FC<{ cockpit: Cockpit; orcamento: number | null }> = ({ cockpit, orcamento }) => (
+export const ParadaDemandEconomia: React.FC<{
+  cockpit: Cockpit;
+  orcamento: number | null;
+  orcamentoBruto: string;
+  onOrcamento: (valor: string) => void;
+}> = ({ cockpit, orcamento, orcamentoBruto, onOrcamento }) => (
   <section className="space-y-5">
     <div>
       <p className="kicker text-muted-foreground">prova antes da criação</p>
@@ -161,10 +266,21 @@ export const ParadaDemandEconomia: React.FC<{ cockpit: Cockpit; orcamento: numbe
       <LinhaDeFato rotulo="Orçamento" valor={orcamento == null ? null : `R$ ${orcamento.toFixed(2).replace('.', ',')}/dia`} fonte="rascunho" />
       <LinhaDeFato rotulo="Mutação real" valor="fechada" fonte="contrato do canal" />
     </dl>
+    <label className="block max-w-sm space-y-2 text-sm font-semibold">
+      <span>Orçamento diário</span>
+      <Input inputMode="decimal" value={orcamentoBruto} onChange={(e) => onOrcamento(e.target.value)} placeholder="10,00" className="h-11 bg-background" />
+      <span className="block text-xs font-normal text-muted-foreground">Estratégia fixa nesta onda: maximizar conversões, sem CPA-alvo.</span>
+    </label>
   </section>
 );
 
-export const ParadaDemandRevisao: React.FC<{ url: string | null; faltas: string[] }> = ({ url, faltas }) => (
+export const ParadaDemandRevisao: React.FC<{
+  url: string | null;
+  faltas: string[];
+  estadoDaProva: 'ociosa' | 'provando' | 'aprovada' | 'recusada';
+  mensagemDaProva: string | null;
+  onProvar: () => void;
+}> = ({ url, faltas, estadoDaProva, mensagemDaProva, onProvar }) => (
   <section className="space-y-6">
     <div className="flex items-start gap-4 border-b border-border pb-5">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><ScanSearch className="h-5 w-5" /></span>
@@ -179,5 +295,6 @@ export const ParadaDemandRevisao: React.FC<{ url: string | null; faltas: string[
       <LinhaDeFato rotulo="Ato disponível" valor="preparar" fonte="interface local" />
     </dl>
     {faltas.length > 0 && <p className="text-sm text-muted-foreground">Próximo: {faltas[0]}</p>}
+    <AcaoDeProva estado={estadoDaProva} mensagem={mensagemDaProva} desabilitada={faltas.length > 0} motivo={faltas[0] ?? null} onProvar={onProvar} somenteLocal />
   </section>
 );

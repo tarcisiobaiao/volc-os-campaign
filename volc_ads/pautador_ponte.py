@@ -385,6 +385,9 @@ class Escolha:
     grupos_usar_todas: frozenset[str] = frozenset()
     budget_diario: float | None = None
     cpc_inicial: float | None = None
+    # Maximize Conversions de Display pode carregar tCPA. Search ignora este
+    # campo nesta onda; ausência preserva MaxConv puro.
+    tcpa: float | None = None
     # Lance por sub-intenção, {tipo: cpc}. Mesma regra do `cpc_inicial`: só
     # entra CPC medido na conta. É o campo que a separação em ad groups existe
     # para servir — o spread medido entre as sub-intenções é de 9×.
@@ -1295,6 +1298,7 @@ def montar_brief(cockpit: Cockpit, escolha: Escolha | None = None,
     for nome, valor in (
         ("budget_diario", escolha.budget_diario),
         ("cpc_inicial", escolha.cpc_inicial),
+        ("tcpa", escolha.tcpa),
         ("match_type", escolha.match_type),
         ("prefixo_nome", escolha.prefixo_nome),
         ("carimbo_nome", escolha.carimbo_nome),

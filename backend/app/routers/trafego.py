@@ -1411,6 +1411,10 @@ class ProvarEntrada(BaseModel):
 
     budget_diario: float = 10.0
     cpc_inicial: float = 0.12
+    # Display aceita Maximize Conversions puro ou com tCPA. Era campo do
+    # engine sem ponte HTTP: a interface podia mostrá-lo, mas qualquer valor
+    # desaparecia antes do Brief. Ausência continua sendo MaxConv puro.
+    tcpa: Optional[float] = None
     match_type: str = "PHRASE"
 
     # ── como a campanha NASCE ───────────────────────────────────────────────
@@ -3009,6 +3013,7 @@ async def provar(
             carimbo_nome=body.carimbo_nome,
             conversao=body.conversao,
             estrategia_lance=body.estrategia_lance,
+            tcpa=body.tcpa,
             # A doutrina P7 é do sistema, não do chamador: um conjunto, sempre.
             # A sub-intenção continua servindo à triagem no cockpit.
             conjunto_unico=True,
@@ -3571,11 +3576,23 @@ async def subir(
             carimbo_nome=body.carimbo_nome,
             conversao=body.conversao,
             estrategia_lance=body.estrategia_lance,
+            tcpa=body.tcpa,
             # A doutrina P7 é do sistema, não do chamador: um conjunto, sempre.
             # A sub-intenção continua servindo à triagem no cockpit.
             conjunto_unico=True,
         )
         plano = pp.montar_brief(cockpit, escolha, copy=_copy_do_corpo(body.texto_do_anuncio))
+        if canal_resolvido == "DISPLAY":
+            origem = getattr(cockpit, "origem", None)
+            imagens, avisos_da_ponte = _imagens_de_display(
+                body,
+                nicho=getattr(origem, "nicho", None) or "sem nicho declarado",
+            )
+            plano.brief.imagens_display = imagens
+            if avisos_da_ponte:
+                plano = _dataclasses.replace(
+                    plano, avisos=plano.avisos + avisos_da_ponte
+                )
         # A MESMA pós-condição de `/provar`, sobre o brief que vai ser ESCRITO.
         # `/subir` remonta o plano, então precisa reconferir o que remontou —
         # herdar a recusa da entrada não prova nada sobre a saída.

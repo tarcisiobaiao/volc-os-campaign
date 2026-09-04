@@ -8,6 +8,11 @@ import type { Cockpit } from '@/types/trafego';
 import type { LeituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { cn } from '@/lib/utils';
 import { LinhaDeFato } from '../BlocoDeEvidencia';
+import { Input } from '@/components/ui/input';
+import type { AssetDemandGen } from '@/types/trafego';
+import {
+  AcaoDeProva, CampoDeTexto, EditorDeLista, IrParaEstudio, SeletorDeAsset,
+} from './ControlesMulticanal';
 
 const LinhaDeRequisito: React.FC<{
   titulo: string;
@@ -99,20 +104,36 @@ export const ParadaDisplayAudiencia: React.FC = () => (
       </span>
       <div>
         <p className="kicker text-muted-foreground">controle de alcance</p>
-        <h3 className="mt-1 font-display text-xl font-semibold">Audiência não é um chute por interesse</h3>
+        <h3 className="mt-1 font-display text-xl font-semibold">Inventário aberto, sem segmentação inventada</h3>
         <p className="mt-2 max-w-[65ch] text-sm leading-relaxed text-muted-foreground">
-          Esta oportunidade ainda não trouxe um recibo de audiência. O VOLC preserva o estado como não lido, sem inventar público ou transformar ausência em segmentação ampla.
+          O builder atual não opera user lists, tópicos, custom audiences, intenção ou demografia. A campanha nasce em inventário aberto, escolhido pelo lance; adicionar um campo aqui faria a interface prometer algo que o payload descarta.
         </p>
       </div>
     </div>
     <div className="flex items-center gap-3 border-y border-border py-4 text-sm">
       <CircleDashed className="h-4 w-4 text-warning" aria-hidden />
-      <span className="font-medium">Audiência e contexto ainda não medidos</span>
+      <span className="font-medium">Segmentação positiva indisponível nesta fatia do engine</span>
     </div>
   </section>
 );
 
-export const ParadaDisplayCriativo: React.FC = () => (
+export const ParadaDisplayCriativo: React.FC<{
+  nomeEmpresa: string;
+  onNomeEmpresa: (valor: string) => void;
+  titulos: string;
+  onTitulos: (valor: string) => void;
+  tituloLongo: string;
+  onTituloLongo: (valor: string) => void;
+  descricoes: string;
+  onDescricoes: (valor: string) => void;
+  videos: string;
+  onVideos: (valor: string) => void;
+  assets: AssetDemandGen[];
+  onAssets: (assets: AssetDemandGen[]) => void;
+}> = ({
+  nomeEmpresa, onNomeEmpresa, titulos, onTitulos, tituloLongo, onTituloLongo,
+  descricoes, onDescricoes, videos, onVideos, assets, onAssets,
+}) => (
   <section>
     <div className="flex items-start gap-4">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-verified/10 text-verified">
@@ -124,12 +145,22 @@ export const ParadaDisplayCriativo: React.FC = () => (
         <p className="mt-2 text-sm text-muted-foreground">O Estúdio precisa entregar recursos aprovados; esta bancada não substitui arquivos ausentes por placeholders.</p>
       </div>
     </div>
-    <ul className="mt-5 border-y border-border" aria-label="requisitos do criativo Display">
-      <LinhaDeRequisito titulo="Imagem horizontal" detalhe="Marketing image na proporção aceita pelo contrato." estado="obrigatorio" />
-      <LinhaDeRequisito titulo="Imagem quadrada" detalhe="Variação para inventários responsivos." estado="obrigatorio" />
-      <LinhaDeRequisito titulo="Logo e identidade" detalhe="Somente assets aprovados no Estúdio." />
-      <LinhaDeRequisito titulo="Mensagem" detalhe="Headlines, long headline, descriptions e nome da empresa." estado="obrigatorio" />
-    </ul>
+    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <SeletorDeAsset id="display-marketing" rotulo="Imagem horizontal" tipo="imagem_marketing" detalhe="1.91:1 · mínimo 600×314 · obrigatória" assets={assets} onChange={onAssets} maximo={15} />
+      <SeletorDeAsset id="display-square" rotulo="Imagem quadrada" tipo="imagem_marketing_quadrada" detalhe="1:1 · mínimo 300×300 · obrigatória" assets={assets} onChange={onAssets} maximo={15} />
+      <SeletorDeAsset id="display-logo-landscape" rotulo="Logo horizontal" tipo="logo_paisagem" detalhe="4:1 · opcional · até 5 logos no total" assets={assets} onChange={onAssets} maximo={5} />
+      <SeletorDeAsset id="display-logo-square" rotulo="Logo quadrado" tipo="logo_quadrado" detalhe="1:1 · opcional · até 5 logos no total" assets={assets} onChange={onAssets} maximo={5} />
+    </div>
+    <div className="mt-4 flex justify-end"><IrParaEstudio canal="DISPLAY" /></div>
+    <div className="mt-6 grid gap-5 border-t border-border pt-6 lg:grid-cols-2">
+      <CampoDeTexto id="display-business-name" rotulo="Nome da empresa" valor={nomeEmpresa} onChange={onNomeEmpresa} limite={25} placeholder="Ex.: Portal Mundo Mais" />
+      <CampoDeTexto id="display-long-headline" rotulo="Título longo" valor={tituloLongo} onChange={onTituloLongo} limite={90} placeholder="Uma promessa editorial clara" />
+      <EditorDeLista id="display-headlines" rotulo="Títulos" valor={titulos} onChange={onTitulos} minimo={1} maximo={5} limitePorItem={30} placeholder={'Título 1\nTítulo 2'} />
+      <EditorDeLista id="display-descriptions" rotulo="Descrições" valor={descricoes} onChange={onDescricoes} minimo={1} maximo={5} limitePorItem={90} placeholder={'Descrição 1\nDescrição 2'} />
+      <div className="lg:col-span-2">
+        <EditorDeLista id="display-videos" rotulo="Vídeos do YouTube (opcional)" valor={videos} onChange={onVideos} maximo={5} placeholder="customers/123/assets/456" ajuda="resource name de asset já existente na mesma conta" linhas={3} />
+      </div>
+    </div>
   </section>
 );
 
@@ -143,18 +174,25 @@ export const ParadaDisplayInventario: React.FC = () => (
         <p className="kicker text-muted-foreground">brand safety</p>
         <h3 className="mt-1 font-display text-xl font-semibold">Proteções antes de ganhar alcance</h3>
         <p className="mt-2 max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
-          Posicionamentos, exclusões e inventário sensível só ficam verdes com evidência da conta. O construtor não converte “não lido” em configuração segura.
+          A fatia atual ainda não monta exclusões de placement nem filtros de inventário. O plano declara essa ausência; a interface não exibe seletores sem efeito.
         </p>
       </div>
     </div>
     <div className="flex items-center gap-3 border-y border-border py-4 text-sm">
       <Eye className="h-4 w-4 text-muted-foreground" aria-hidden />
-      <span>Configuração da conta ainda não lida nesta oportunidade.</span>
+      <span>Brand safety customizada ainda não é operada pelo builder Display.</span>
     </div>
   </section>
 );
 
-export const ParadaDisplayEconomia: React.FC<{ cockpit: Cockpit; orcamento: number | null }> = ({ cockpit, orcamento }) => (
+export const ParadaDisplayEconomia: React.FC<{
+  cockpit: Cockpit;
+  orcamento: number | null;
+  orcamentoBruto: string;
+  onOrcamento: (valor: string) => void;
+  tcpa: string;
+  onTcpa: (valor: string) => void;
+}> = ({ cockpit, orcamento, orcamentoBruto, onOrcamento, tcpa, onTcpa }) => (
   <section className="space-y-5">
     <div>
       <p className="kicker text-muted-foreground">economia da impressão</p>
@@ -166,10 +204,28 @@ export const ParadaDisplayEconomia: React.FC<{ cockpit: Cockpit; orcamento: numb
       <LinhaDeFato rotulo="Orçamento" valor={orcamento == null ? null : `R$ ${orcamento.toFixed(2).replace('.', ',')}/dia`} fonte="rascunho" />
       <LinhaDeFato rotulo="Conversão" valor={cockpit.conta?.meta_conversao?.primaria?.nome ?? null} fonte="conta" />
     </dl>
+    <div className="grid gap-5 sm:grid-cols-2">
+      <label className="space-y-2 text-sm font-semibold">
+        <span>Orçamento diário</span>
+        <Input inputMode="decimal" value={orcamentoBruto} onChange={(e) => onOrcamento(e.target.value)} placeholder="10,00" className="h-11 bg-background" />
+        <span className="block text-xs font-normal text-muted-foreground">Moeda da conta · a campanha nasce pausada.</span>
+      </label>
+      <label className="space-y-2 text-sm font-semibold">
+        <span>CPA-alvo (opcional)</span>
+        <Input inputMode="decimal" value={tcpa} onChange={(e) => onTcpa(e.target.value)} placeholder="Deixe vazio para MaxConv puro" className="h-11 bg-background" />
+        <span className="block text-xs font-normal text-muted-foreground">Estratégia fixa: maximizar conversões. O motor não aceita CPC manual em Display.</span>
+      </label>
+    </div>
   </section>
 );
 
-export const ParadaDisplayRevisao: React.FC<{ url: string | null; faltas: string[] }> = ({ url, faltas }) => (
+export const ParadaDisplayRevisao: React.FC<{
+  url: string | null;
+  faltas: string[];
+  estadoDaProva: 'ociosa' | 'provando' | 'aprovada' | 'recusada';
+  mensagemDaProva: string | null;
+  onProvar: () => void;
+}> = ({ url, faltas, estadoDaProva, mensagemDaProva, onProvar }) => (
   <section className="space-y-6">
     <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
       <div>
@@ -186,5 +242,6 @@ export const ParadaDisplayRevisao: React.FC<{ url: string | null; faltas: string
       <LinhaDeFato rotulo="Criação real" valor={null} fonte="depende do portão do servidor" />
     </dl>
     {faltas.length > 0 && <p className="text-sm text-muted-foreground">Próximo: {faltas[0]}</p>}
+    <AcaoDeProva estado={estadoDaProva} mensagem={mensagemDaProva} desabilitada={faltas.length > 0} motivo={faltas[0] ?? null} onProvar={onProvar} somenteLocal />
   </section>
 );

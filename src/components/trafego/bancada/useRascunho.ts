@@ -27,7 +27,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { CriterioDeKeyword } from '@/types/trafego';
+import type {
+  CanalSelecionavelDemandGen, CriterioDeKeyword, EstrategiaDeCanaisDemandGen,
+} from '@/types/trafego';
 
 /** Só o que o operador digitou. Nada lido da conta entra neste tipo. */
 export interface RascunhoDaBancada {
@@ -56,6 +58,40 @@ export interface RascunhoDaBancada {
   keywordsFora: string[];
   vertical: string | null;
   modeloDaCopy: string;
+
+  // ── Display ─────────────────────────────────────────────────────────────
+  displayNomeEmpresa: string;
+  displayTitulos: string;
+  displayTituloLongo: string;
+  displayDescricoes: string;
+  displayVideosYoutube: string;
+  displayTcpa: string;
+
+  // ── Demand Gen ──────────────────────────────────────────────────────────
+  demandNomeEmpresa: string;
+  demandTitulos: string;
+  demandDescricoes: string;
+  demandUpgradedTargeting: boolean | null;
+  demandEstrategiaCanais: EstrategiaDeCanaisDemandGen | null;
+  demandCanaisSelecionados: CanalSelecionavelDemandGen[];
+  demandAudiencias: string;
+  demandAudienciasConfirmadas: boolean;
+
+  // ── Performance Max ─────────────────────────────────────────────────────
+  pmaxNomeEmpresa: string;
+  pmaxTitulos: string;
+  pmaxTitulosLongos: string;
+  pmaxDescricoes: string;
+  pmaxNomeAssetGroup: string;
+  pmaxBrandGuidelines: boolean | null;
+  pmaxAudiencias: string;
+  pmaxSearchThemes: string;
+  pmaxSinaisConfirmados: boolean;
+  pmaxNegativas: string;
+  pmaxNegativasConfirmadas: boolean;
+  pmaxVideosYoutube: string;
+  pmaxEstrategia: 'MAXIMIZE_CONVERSIONS' | 'MAXIMIZE_CONVERSION_VALUE';
+  pmaxMeta: string;
 }
 
 export const RASCUNHO_VAZIO: RascunhoDaBancada = {
@@ -72,6 +108,34 @@ export const RASCUNHO_VAZIO: RascunhoDaBancada = {
   keywordsFora: [],
   vertical: null,
   modeloDaCopy: '',
+  displayNomeEmpresa: '',
+  displayTitulos: '',
+  displayTituloLongo: '',
+  displayDescricoes: '',
+  displayVideosYoutube: '',
+  displayTcpa: '',
+  demandNomeEmpresa: '',
+  demandTitulos: '',
+  demandDescricoes: '',
+  demandUpgradedTargeting: null,
+  demandEstrategiaCanais: null,
+  demandCanaisSelecionados: [],
+  demandAudiencias: '',
+  demandAudienciasConfirmadas: false,
+  pmaxNomeEmpresa: '',
+  pmaxTitulos: '',
+  pmaxTitulosLongos: '',
+  pmaxDescricoes: '',
+  pmaxNomeAssetGroup: '',
+  pmaxBrandGuidelines: null,
+  pmaxAudiencias: '',
+  pmaxSearchThemes: '',
+  pmaxSinaisConfirmados: false,
+  pmaxNegativas: '',
+  pmaxNegativasConfirmadas: false,
+  pmaxVideosYoutube: '',
+  pmaxEstrategia: 'MAXIMIZE_CONVERSIONS',
+  pmaxMeta: '',
 };
 
 const PREFIXO = 'volc.bancada.rascunho';

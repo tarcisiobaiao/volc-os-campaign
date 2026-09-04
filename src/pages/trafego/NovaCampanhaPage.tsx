@@ -81,6 +81,7 @@ import {
   ParadaPMaxAssetGroup, ParadaPMaxEconomia, ParadaPMaxLp, ParadaPMaxMarca,
   ParadaPMaxObjetivo, ParadaPMaxRevisao, ParadaPMaxSinais,
 } from '@/components/trafego/bancada/paradas/PMaxParadas';
+import { itensDoTexto } from '@/components/trafego/bancada/paradas/ControlesMulticanal';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { idExternoDaCampanha } from '@/lib/trafego/lancamento';
@@ -90,8 +91,9 @@ import {
   PARADAS_DA_BANCADA,
 } from '@/types/trafego';
 import type {
-  CanalComManifesto, Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword, EstadoDaTrava,
+  AssetDemandGen, CanalComManifesto, Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword, EstadoDaTrava,
   EstrategiaDeLance, LinhaDoPedido, MatchType, ParadaDaBancada,
+  PedidoDeProva, PedidoDeProvaDemandGen, PedidoDeProvaDisplay,
   PedidoDeProvaSearch, ReciboDeLancamento, RevisaoDoConjuntoPago, VerticalDePolitica,
 } from '@/types/trafego';
 
@@ -154,6 +156,16 @@ const NovaCampanhaPage: React.FC = () => {
    *  recusado. Ver `DesfechoDeclarado`: e o caso em que os ids mais importam. */
   const [declarado, setDeclarado] = useState<DesfechoDeclarado | null>(null);
   const [campanhaCriada, setCampanhaCriada] = useState<string | null>(null);
+  // Bytes de mídia não entram no sessionStorage. Eles vivem só nesta montagem
+  // e precisam ser reanexados depois de um F5; o restante do formulário segue
+  // persistido pelo rascunho.
+  const [assetsDisplay, setAssetsDisplay] = useState<AssetDemandGen[]>([]);
+  const [assetsDemand, setAssetsDemand] = useState<AssetDemandGen[]>([]);
+  const [assetsPMax, setAssetsPMax] = useState<AssetDemandGen[]>([]);
+  const [estadoDaProvaMulticanal, setEstadoDaProvaMulticanal] = useState<
+    'ociosa' | 'provando' | 'aprovada' | 'recusada'
+  >('ociosa');
+  const [mensagemDaProvaMulticanal, setMensagemDaProvaMulticanal] = useState<string | null>(null);
 
   // ── carga ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -261,11 +273,76 @@ const NovaCampanhaPage: React.FC = () => {
   const lance = numeroDigitado(rascunho.lance);
   const estrategia = rascunho.estrategia as EstrategiaDeLance;
 
+  const copyDisplay = useMemo<CopyGerada>(() => ({
+    headlines: itensDoTexto(rascunho.displayTitulos),
+    long_headlines: rascunho.displayTituloLongo.trim() ? [rascunho.displayTituloLongo.trim()] : [],
+    descriptions: itensDoTexto(rascunho.displayDescricoes),
+    business_name: rascunho.displayNomeEmpresa.trim(),
+    sitelinks: [], callouts: [], snippet: null,
+  }), [rascunho.displayTitulos, rascunho.displayTituloLongo,
+      rascunho.displayDescricoes, rascunho.displayNomeEmpresa]);
+  const copyDemand = useMemo<CopyGerada>(() => ({
+    headlines: itensDoTexto(rascunho.demandTitulos),
+    descriptions: itensDoTexto(rascunho.demandDescricoes),
+    long_headlines: [],
+    business_name: rascunho.demandNomeEmpresa.trim(),
+    sitelinks: [], callouts: [], snippet: null,
+  }), [rascunho.demandTitulos, rascunho.demandDescricoes, rascunho.demandNomeEmpresa]);
+
+  const multicanal = useMemo(() => {
+    const displayTitulos = copyDisplay.headlines;
+    const displayDescricoes = copyDisplay.descriptions;
+    const demandTitulos = copyDemand.headlines;
+    const demandDescricoes = copyDemand.descriptions;
+    const demandSelecionadosOk = rascunho.demandEstrategiaCanais !== 'SELECTED_CHANNELS'
+      || rascunho.demandCanaisSelecionados.length > 0;
+    const pmaxTitulos = itensDoTexto(rascunho.pmaxTitulos);
+    const pmaxLongos = itensDoTexto(rascunho.pmaxTitulosLongos);
+    const pmaxDescricoes = itensDoTexto(rascunho.pmaxDescricoes);
+    const valido = (itens: string[], min: number, max: number, chars: number) =>
+      itens.length >= min && itens.length <= max && itens.every((item) => item.length <= chars);
+    return {
+      displayCriativo:
+        valido(displayTitulos, 1, 5, 30)
+        && valido(displayDescricoes, 1, 5, 90)
+        && Boolean(copyDisplay.long_headlines?.[0])
+        && (copyDisplay.long_headlines?.[0]?.length ?? 0) <= 90
+        && Boolean(copyDisplay.business_name) && (copyDisplay.business_name?.length ?? 0) <= 25
+        && assetsDisplay.some((a) => a.tipo === 'imagem_marketing')
+        && assetsDisplay.some((a) => a.tipo === 'imagem_marketing_quadrada'),
+      displayEconomia: orcamento != null && orcamento > 0
+        && (rascunho.displayTcpa.trim() === '' || (numeroDigitado(rascunho.displayTcpa) ?? 0) > 0),
+      demandSuperficies: Boolean(rascunho.demandEstrategiaCanais) && demandSelecionadosOk,
+      demandAudiencia: rascunho.demandUpgradedTargeting != null && rascunho.demandAudienciasConfirmadas,
+      demandKit: assetsDemand.some((a) => a.tipo.startsWith('imagem_marketing'))
+        && assetsDemand.some((a) => a.tipo === 'logo_quadrado'),
+      demandMensagem: valido(demandTitulos, 1, 5, 30)
+        && valido(demandDescricoes, 1, 5, 90)
+        && Boolean(copyDemand.business_name) && (copyDemand.business_name?.length ?? 0) <= 25,
+      demandEconomia: orcamento != null && orcamento > 0,
+      pmaxObjetivo: Boolean(cockpit?.conta?.meta_conversao?.primaria),
+      pmaxAssetGroup: rascunho.pmaxNomeAssetGroup.length <= 128
+        && valido(pmaxTitulos, 3, 15, 30)
+        && valido(pmaxLongos, 1, 5, 90)
+        && valido(pmaxDescricoes, 2, 5, 90)
+        && pmaxDescricoes.some((item) => item.length <= 60)
+        && Boolean(rascunho.pmaxNomeEmpresa.trim()) && rascunho.pmaxNomeEmpresa.trim().length <= 25
+        && assetsPMax.some((a) => a.tipo === 'imagem_marketing')
+        && assetsPMax.some((a) => a.tipo === 'imagem_marketing_quadrada')
+        && assetsPMax.some((a) => a.tipo === 'logo_quadrado'),
+      pmaxSinais: rascunho.pmaxSinaisConfirmados && rascunho.pmaxNegativasConfirmadas,
+      pmaxMarca: rascunho.pmaxBrandGuidelines != null,
+      pmaxEconomia: orcamento != null && orcamento > 0
+        && (rascunho.pmaxMeta.trim() === '' || (numeroDigitado(rascunho.pmaxMeta) ?? 0) > 0),
+    };
+  }, [copyDisplay, copyDemand, assetsDisplay, assetsDemand, assetsPMax, orcamento,
+    cockpit?.conta?.meta_conversao?.primaria, rascunho]);
+
   const paradasDoCanal: readonly ParadaDaBancada[] = useMemo(() => {
     switch (canal) {
-      case 'DISPLAY': return ['display_destino', 'display_geografia', 'display_audiencia', 'display_criativo', 'display_inventario', 'display_economia', 'display_revisao'];
-      case 'DEMAND_GEN': return ['demand_resultado', 'demand_superficies', 'demand_audiencia', 'demand_kit', 'demand_mensagem', 'demand_economia', 'demand_revisao'];
-      case 'PERFORMANCE_MAX': return ['pmax_objetivo', 'pmax_lp', 'pmax_asset_group', 'pmax_sinais', 'pmax_marca', 'pmax_economia', 'pmax_revisao'];
+      case 'DISPLAY': return ['display_destino', 'politica', 'display_geografia', 'display_audiencia', 'display_criativo', 'display_inventario', 'display_economia', 'display_revisao'];
+      case 'DEMAND_GEN': return ['demand_resultado', 'politica', 'demand_superficies', 'demand_audiencia', 'demand_kit', 'demand_mensagem', 'demand_economia', 'demand_revisao'];
+      case 'PERFORMANCE_MAX': return ['pmax_objetivo', 'pmax_lp', 'politica', 'pmax_asset_group', 'pmax_sinais', 'pmax_marca', 'pmax_economia', 'pmax_revisao'];
       default: return ['destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao'];
     }
   }, [canal]);
@@ -273,8 +350,9 @@ const NovaCampanhaPage: React.FC = () => {
   const fatos: FatosDaBancada = useMemo(() => ({
     cockpit, destino, conjunto, copy, verticais, orcamento, lance,
     certificacoes: rascunho.certificacoes,
+    multicanal,
   }), [cockpit, destino, conjunto, copy, verticais, orcamento, lance,
-       rascunho.certificacoes]);
+       rascunho.certificacoes, multicanal]);
 
   const faltas = useMemo(() => faltasDaBancada(fatos, paradasDoCanal), [fatos, paradasDoCanal]);
   const bloqueios = useMemo(() => bloqueiosDoCockpit(cockpit), [cockpit]);
@@ -357,14 +435,39 @@ const NovaCampanhaPage: React.FC = () => {
         { rotulo: 'conta', valor: c?.customer_id ?? null, fonte: 'o projeto' },
         { rotulo: 'canal', valor: canal.replace('_', ' '), fonte: 'esta rota' },
         { rotulo: 'destino', valor: cockpit?.origem?.url_final ?? null, fonte: 'o funil' },
-        { rotulo: 'kit de mídia', valor: null, fonte: 'o Estúdio ainda não entregou recibo' },
+        { rotulo: 'peças anexadas', valor: String(
+          canal === 'DISPLAY' ? assetsDisplay.length
+            : canal === 'DEMAND_GEN' ? assetsDemand.length : assetsPMax.length,
+        ), fonte: 'esta aba; bytes não persistem após F5' },
         { rotulo: 'orçamento diário', valor: brl(orcamento), fonte: 'rascunho local' },
         { rotulo: 'estado ao nascer', valor: 'PAUSED', fonte: 'contrato do engine' },
       ];
+      if (canal === 'DISPLAY') {
+        linhas.splice(4, 0,
+          { rotulo: 'mensagem', valor: `${copyDisplay.headlines.length} títulos · ${copyDisplay.descriptions.length} descrições`, fonte: 'você, agora' },
+          { rotulo: 'estratégia', valor: 'MAXIMIZE_CONVERSIONS', fonte: 'contrato Display' },
+          { rotulo: 'CPA-alvo', valor: brl(numeroDigitado(rascunho.displayTcpa)), fonte: 'opcional; você, agora' },
+        );
+      }
+      if (canal === 'DEMAND_GEN') {
+        linhas.splice(4, 0,
+          { rotulo: 'superfícies', valor: rascunho.demandEstrategiaCanais, fonte: 'você, agora' },
+          { rotulo: 'audiências', valor: rascunho.demandAudienciasConfirmadas ? String(itensDoTexto(rascunho.demandAudiencias).length) : null, fonte: 'lista confirmada' },
+          { rotulo: 'mensagem', valor: `${copyDemand.headlines.length} títulos · ${copyDemand.descriptions.length} descrições`, fonte: 'você, agora' },
+          { rotulo: 'mutação real', valor: 'FECHADA', fonte: 'contrato Demand Gen v1' },
+        );
+      }
       if (canal === 'PERFORMANCE_MAX') {
         linhas.splice(3, 0, {
           rotulo: 'expansão da URL final', valor: 'DESLIGADA', fonte: 'trava do contrato PMax',
         });
+        linhas.splice(5, 0,
+          { rotulo: 'asset group', valor: rascunho.pmaxNomeAssetGroup || null, fonte: 'você, agora' },
+          { rotulo: 'sinais', valor: rascunho.pmaxSinaisConfirmados ? `${itensDoTexto(rascunho.pmaxAudiencias).length} audiências · ${itensDoTexto(rascunho.pmaxSearchThemes).length} temas` : null, fonte: 'lista confirmada' },
+          { rotulo: 'estratégia', valor: rascunho.pmaxEstrategia, fonte: 'você, agora' },
+          { rotulo: rascunho.pmaxEstrategia === 'MAXIMIZE_CONVERSION_VALUE' ? 'ROAS-alvo' : 'CPA-alvo', valor: rascunho.pmaxMeta || null, fonte: 'opcional; você, agora' },
+          { rotulo: 'ponte HTTP', valor: 'AINDA FECHADA', fonte: 'contrato PMax v1' },
+        );
       }
       return linhas;
     }
@@ -407,12 +510,14 @@ const NovaCampanhaPage: React.FC = () => {
         fonte: 'a conta',
       },
     ];
-  }, [cockpit, canal, conjunto, copy, orcamento, lance, estrategia]);
+  }, [cockpit, canal, conjunto, copy, orcamento, lance, estrategia,
+    assetsDisplay.length, assetsDemand.length, assetsPMax.length, copyDisplay,
+    copyDemand, rascunho]);
 
   const proximoAto = useMemo(() => {
     if (faltas.length > 0) return `Resolver: ${faltas[0].texto}.`;
-    if (canal === 'DISPLAY') return 'Completar o kit de mídia e reler o portão de criação pausada.';
-    if (canal === 'DEMAND_GEN') return 'Completar o kit de mídia para preparar a conferência; criação real segue fechada.';
+    if (canal === 'DISPLAY') return 'Conferir o contrato local; validate_only e criação pausada são atos separados.';
+    if (canal === 'DEMAND_GEN') return 'Conferir o contrato local; validate_only e criação real seguem separados.';
     if (canal === 'PERFORMANCE_MAX') return 'Completar o asset group e a ponte tipada; criação real segue fechada.';
     return 'Provar o pedido contra a conta. A prova não cria nada.';
   }, [faltas, canal]);
@@ -500,6 +605,86 @@ const NovaCampanhaPage: React.FC = () => {
     copy?.copy, negativas, estrategia, rascunho.keywordsFora, rascunho.graduacao,
     rascunho.vertical, rascunho.certificacoes,
   ]);
+
+  /** Payloads tipados dos canais visuais. Eles são montados pelos mesmos
+   * campos que a bancada exibe; nenhum valor decisório nasce escondido. A
+   * chamada `validate_only` continua um ato separado e não é disparada por
+   * montagem, navegação ou render. */
+  const pedidoDisplay: PedidoDeProvaDisplay | null = useMemo(() => (
+    (canal === 'DISPLAY' && cockpit && oid && orcamento != null
+      && multicanal.displayCriativo && multicanal.displayEconomia)
+      ? {
+        opportunity_id: oid,
+        run_id: runId ?? null,
+        customer_id: cockpit.conta?.customer_id ?? '',
+        login_customer_id: cockpit.conta?.login_customer_id ?? '',
+        copy: copyDisplay,
+        budget_diario: orcamento,
+        canal: 'DISPLAY',
+        estrategia_lance: 'MAXIMIZE_CONVERSIONS',
+        assets_display: assetsDisplay,
+        tcpa: numeroDigitado(rascunho.displayTcpa),
+        criterios: negativas,
+        keywords_fora: rascunho.keywordsFora,
+        vertical: rascunho.vertical || cockpit.origem?.vertical,
+        certificacoes: rascunho.certificacoes,
+        url_final: cockpit.origem?.url_final,
+      }
+      : null
+  ), [canal, cockpit, oid, runId, orcamento, multicanal.displayCriativo,
+    multicanal.displayEconomia, copyDisplay, assetsDisplay, rascunho.displayTcpa,
+    rascunho.keywordsFora, rascunho.vertical, rascunho.certificacoes, negativas]);
+
+  const pedidoDemand: PedidoDeProvaDemandGen | null = useMemo(() => {
+    if (canal !== 'DEMAND_GEN' || !cockpit || !oid || orcamento == null
+        || !multicanal.demandSuperficies || !multicanal.demandAudiencia
+        || !multicanal.demandKit || !multicanal.demandMensagem
+        || !multicanal.demandEconomia) return null;
+    const estrategiaCanais = rascunho.demandEstrategiaCanais;
+    if (!estrategiaCanais || rascunho.demandUpgradedTargeting == null) return null;
+    return {
+      opportunity_id: oid,
+      run_id: runId ?? null,
+      customer_id: cockpit.conta?.customer_id ?? '',
+      login_customer_id: cockpit.conta?.login_customer_id ?? '',
+      copy: copyDemand,
+      budget_diario: orcamento,
+      canal: 'DEMAND_GEN',
+      estrategia_lance: 'MAXIMIZE_CONVERSIONS',
+      demand_gen: {
+        upgraded_targeting: rascunho.demandUpgradedTargeting,
+        controles_de_canal: {
+          estrategia: estrategiaCanais,
+          selected_channels: estrategiaCanais === 'SELECTED_CHANNELS'
+            ? rascunho.demandCanaisSelecionados
+            : null,
+        },
+        audiencias: itensDoTexto(rascunho.demandAudiencias),
+        intencoes: [],
+        exclusoes_de_audiencia: [],
+      },
+      assets_demand_gen: assetsDemand,
+      criterios: negativas,
+      keywords_fora: rascunho.keywordsFora,
+      vertical: rascunho.vertical || cockpit.origem?.vertical,
+      certificacoes: rascunho.certificacoes,
+      url_final: cockpit.origem?.url_final,
+    };
+  }, [canal, cockpit, oid, runId, orcamento, multicanal, rascunho,
+    copyDemand, assetsDemand, negativas]);
+
+  const prepararProvaMulticanal = () => {
+    const montado = canal === 'DISPLAY' ? pedidoDisplay : pedidoDemand;
+    if (!montado) {
+      setEstadoDaProvaMulticanal('recusada');
+      setMensagemDaProvaMulticanal('O pedido ainda tem campos obrigatórios incompletos.');
+      return;
+    }
+    setEstadoDaProvaMulticanal('aprovada');
+    setMensagemDaProvaMulticanal(
+      'Contrato local completo. O validate_only na conta real não foi executado nesta sessão.',
+    );
+  };
 
   // ── atos ──────────────────────────────────────────────────────────────────
   const aprovarConjunto = async (motivo: string) => {
@@ -639,45 +824,133 @@ const NovaCampanhaPage: React.FC = () => {
             ) : etapa === 'display_audiencia' ? (
               <ParadaDisplayAudiencia />
             ) : etapa === 'display_criativo' ? (
-              <ParadaDisplayCriativo />
+              <ParadaDisplayCriativo
+                nomeEmpresa={rascunho.displayNomeEmpresa}
+                onNomeEmpresa={(v) => alterar('displayNomeEmpresa', v)}
+                titulos={rascunho.displayTitulos}
+                onTitulos={(v) => alterar('displayTitulos', v)}
+                tituloLongo={rascunho.displayTituloLongo}
+                onTituloLongo={(v) => alterar('displayTituloLongo', v)}
+                descricoes={rascunho.displayDescricoes}
+                onDescricoes={(v) => alterar('displayDescricoes', v)}
+                videos={rascunho.displayVideosYoutube}
+                onVideos={(v) => alterar('displayVideosYoutube', v)}
+                assets={assetsDisplay}
+                onAssets={setAssetsDisplay}
+              />
             ) : etapa === 'display_inventario' ? (
               <ParadaDisplayInventario />
             ) : etapa === 'display_economia' ? (
-              <ParadaDisplayEconomia cockpit={cockpit} orcamento={orcamento} />
+              <ParadaDisplayEconomia
+                cockpit={cockpit}
+                orcamento={orcamento}
+                orcamentoBruto={rascunho.orcamento}
+                onOrcamento={(v) => alterar('orcamento', v)}
+                tcpa={rascunho.displayTcpa}
+                onTcpa={(v) => alterar('displayTcpa', v)}
+              />
             ) : etapa === 'display_revisao' ? (
               <ParadaDisplayRevisao
                 url={cockpit.origem?.url_final ?? null}
                 faltas={faltas.map((f) => f.texto)}
+                estadoDaProva={estadoDaProvaMulticanal}
+                mensagemDaProva={mensagemDaProvaMulticanal}
+                onProvar={prepararProvaMulticanal}
               />
             ) : etapa === 'demand_resultado' ? (
               <ParadaDemandResultado cockpit={cockpit} destino={destino} />
             ) : etapa === 'demand_superficies' ? (
-              <ParadaDemandSuperficies />
+              <ParadaDemandSuperficies
+                estrategia={rascunho.demandEstrategiaCanais}
+                onEstrategia={(v) => alterar('demandEstrategiaCanais', v)}
+                selecionados={rascunho.demandCanaisSelecionados}
+                onSelecionados={(v) => alterar('demandCanaisSelecionados', v)}
+              />
             ) : etapa === 'demand_audiencia' ? (
-              <ParadaDemandAudiencia />
+              <ParadaDemandAudiencia
+                upgradedTargeting={rascunho.demandUpgradedTargeting}
+                onUpgradedTargeting={(v) => alterar('demandUpgradedTargeting', v)}
+                audiencias={rascunho.demandAudiencias}
+                onAudiencias={(v) => alterar('demandAudiencias', v)}
+                audienciasConfirmadas={rascunho.demandAudienciasConfirmadas}
+                onAudienciasConfirmadas={(v) => alterar('demandAudienciasConfirmadas', v)}
+              />
             ) : etapa === 'demand_kit' ? (
-              <ParadaDemandKit />
+              <ParadaDemandKit assets={assetsDemand} onAssets={setAssetsDemand} />
             ) : etapa === 'demand_mensagem' ? (
-              <ParadaDemandMensagem />
+              <ParadaDemandMensagem
+                nomeEmpresa={rascunho.demandNomeEmpresa}
+                onNomeEmpresa={(v) => alterar('demandNomeEmpresa', v)}
+                titulos={rascunho.demandTitulos}
+                onTitulos={(v) => alterar('demandTitulos', v)}
+                descricoes={rascunho.demandDescricoes}
+                onDescricoes={(v) => alterar('demandDescricoes', v)}
+              />
             ) : etapa === 'demand_economia' ? (
-              <ParadaDemandEconomia cockpit={cockpit} orcamento={orcamento} />
+              <ParadaDemandEconomia
+                cockpit={cockpit}
+                orcamento={orcamento}
+                orcamentoBruto={rascunho.orcamento}
+                onOrcamento={(v) => alterar('orcamento', v)}
+              />
             ) : etapa === 'demand_revisao' ? (
               <ParadaDemandRevisao
                 url={cockpit.origem?.url_final ?? null}
                 faltas={faltas.map((f) => f.texto)}
+                estadoDaProva={estadoDaProvaMulticanal}
+                mensagemDaProva={mensagemDaProvaMulticanal}
+                onProvar={prepararProvaMulticanal}
               />
             ) : etapa === 'pmax_objetivo' ? (
               <ParadaPMaxObjetivo cockpit={cockpit} />
             ) : etapa === 'pmax_lp' ? (
               <ParadaPMaxLp cockpit={cockpit} destino={destino} />
             ) : etapa === 'pmax_asset_group' ? (
-              <ParadaPMaxAssetGroup />
+              <ParadaPMaxAssetGroup
+                nomeAssetGroup={rascunho.pmaxNomeAssetGroup}
+                onNomeAssetGroup={(v) => alterar('pmaxNomeAssetGroup', v)}
+                nomeEmpresa={rascunho.pmaxNomeEmpresa}
+                onNomeEmpresa={(v) => alterar('pmaxNomeEmpresa', v)}
+                titulos={rascunho.pmaxTitulos}
+                onTitulos={(v) => alterar('pmaxTitulos', v)}
+                titulosLongos={rascunho.pmaxTitulosLongos}
+                onTitulosLongos={(v) => alterar('pmaxTitulosLongos', v)}
+                descricoes={rascunho.pmaxDescricoes}
+                onDescricoes={(v) => alterar('pmaxDescricoes', v)}
+                videos={rascunho.pmaxVideosYoutube}
+                onVideos={(v) => alterar('pmaxVideosYoutube', v)}
+                assets={assetsPMax}
+                onAssets={setAssetsPMax}
+              />
             ) : etapa === 'pmax_sinais' ? (
-              <ParadaPMaxSinais />
+              <ParadaPMaxSinais
+                audiencias={rascunho.pmaxAudiencias}
+                onAudiencias={(v) => alterar('pmaxAudiencias', v)}
+                searchThemes={rascunho.pmaxSearchThemes}
+                onSearchThemes={(v) => alterar('pmaxSearchThemes', v)}
+                sinaisConfirmados={rascunho.pmaxSinaisConfirmados}
+                onSinaisConfirmados={(v) => alterar('pmaxSinaisConfirmados', v)}
+                negativas={rascunho.pmaxNegativas}
+                onNegativas={(v) => alterar('pmaxNegativas', v)}
+                negativasConfirmadas={rascunho.pmaxNegativasConfirmadas}
+                onNegativasConfirmadas={(v) => alterar('pmaxNegativasConfirmadas', v)}
+              />
             ) : etapa === 'pmax_marca' ? (
-              <ParadaPMaxMarca />
+              <ParadaPMaxMarca
+                brandGuidelines={rascunho.pmaxBrandGuidelines}
+                onBrandGuidelines={(v) => alterar('pmaxBrandGuidelines', v)}
+              />
             ) : etapa === 'pmax_economia' ? (
-              <ParadaPMaxEconomia cockpit={cockpit} orcamento={orcamento} />
+              <ParadaPMaxEconomia
+                cockpit={cockpit}
+                orcamento={orcamento}
+                orcamentoBruto={rascunho.orcamento}
+                onOrcamento={(v) => alterar('orcamento', v)}
+                estrategia={rascunho.pmaxEstrategia}
+                onEstrategia={(v) => alterar('pmaxEstrategia', v)}
+                meta={rascunho.pmaxMeta}
+                onMeta={(v) => alterar('pmaxMeta', v)}
+              />
             ) : etapa === 'pmax_revisao' ? (
               <ParadaPMaxRevisao
                 url={cockpit.origem?.url_final ?? null}
