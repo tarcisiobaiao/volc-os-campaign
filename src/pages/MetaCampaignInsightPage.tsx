@@ -55,7 +55,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
   if (!campanha || !leitura) return <Navigate to="/settings/campaigns?rede=meta" replace />;
 
   const lucro = leitura.gasto !== null && leitura.receitaGam !== null ? leitura.receitaGam - leitura.gasto : null;
-  const roasExcedente = leitura.gasto !== null && leitura.receitaGam !== null && leitura.gasto > 0 ? calculateROAS(leitura.receitaGam, leitura.gasto) : null;
+  const roasExcedente = leitura.gasto !== null && leitura.receitaGam !== null ? calculateROAS(leitura.receitaGam, leitura.gasto) : null;
   const ctr = leitura.impressoes !== null && leitura.cliquesNoLink !== null && leitura.impressoes > 0 ? (leitura.cliquesNoLink / leitura.impressoes) * 100 : null;
   const cpc = leitura.gasto !== null && leitura.cliquesNoLink !== null && leitura.cliquesNoLink > 0 ? leitura.gasto / leitura.cliquesNoLink : null;
   const cpm = leitura.gasto !== null && leitura.impressoes !== null && leitura.impressoes > 0 ? (leitura.gasto / leitura.impressoes) * 1000 : null;
