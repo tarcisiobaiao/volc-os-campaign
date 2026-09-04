@@ -1,0 +1,51 @@
+{
+  "classes": {
+    "LATER": [
+      "budget/bid changes",
+      "enable",
+      "duplicate",
+      "archive",
+      "dynamic creative",
+      "WhatsApp Status"
+    ],
+    "MVP_NEXT": [
+      "asset upload",
+      "Meta remote validation if authorized",
+      "create PAUSED with read-back"
+    ],
+    "MVP_NOW": [
+      "reference credential",
+      "readiness state machine",
+      "read-only sync contracts",
+      "hierarchy read model",
+      "ZIP manifest import",
+      "local blueprint validation"
+    ],
+    "UNSUPPORTED": [
+      "poll creatives",
+      "Instagram Explore Feed",
+      "Delivery Estimate removed fields",
+      "browser token handling"
+    ]
+  },
+  "objective_candidate": {
+    "activation": "never automatic",
+    "budget": "declared by operator",
+    "destination": "website",
+    "objective": "OUTCOME_TRAFFIC",
+    "optimization_goal": "LANDING_PAGE_VIEWS",
+    "placements": "compatible subset, no removed Explore/Messenger story reliance",
+    "statuses": "campaign/adset/ad PAUSED"
+  },
+  "sequence": [
+    "schema draft review",
+    "safe onboarding metadata",
+    "read adapter",
+    "sync run/read models",
+    "ZIP manifest",
+    "blueprint builder",
+    "local validator",
+    "receipts/idempotency",
+    "future create paused executor"
+  ]
+}

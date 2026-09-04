@@ -1,0 +1,28 @@
+{
+  "bindings": [
+    {
+      "endpoint": "GET /api/trafego/meta/overview",
+      "notes": "read model only; no browser-invented zero campaigns",
+      "state": "PLANNED",
+      "surface": "/trafego?plataforma=meta"
+    },
+    {
+      "endpoint": "POST /api/trafego/meta/bindings",
+      "notes": "metadata only; secret locator opaque",
+      "state": "PLANNED",
+      "surface": "/settings/cofre-ativos"
+    },
+    {
+      "endpoint": "POST /api/trafego/meta/blueprints/validate-local",
+      "notes": "local deterministic validation; remote validate only separate authorization",
+      "state": "PLANNED",
+      "surface": "wizard validation"
+    },
+    {
+      "endpoint": "POST /api/trafego/meta/lotes/{id}/execute-create-paused",
+      "notes": "requires approval, idempotency, receipt, read-back",
+      "state": "FUTURE_AUTH_REQUIRED",
+      "surface": "future create paused"
+    }
+  ]
+}
