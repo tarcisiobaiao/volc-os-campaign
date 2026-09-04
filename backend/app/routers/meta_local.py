@@ -6,10 +6,11 @@ integracao no Mac do operador, exigem papel ADMIN e nunca oferecem mutate.
 from __future__ import annotations
 
 import sys
+from datetime import date, datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, SecretStr
 
 from app.seguranca.identidade import Identidade, exigir_admin
@@ -24,6 +25,14 @@ from app.trafego.meta.configuracao_local import (
 )
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta.persistencia import RepositorioMetaEmMemoria
+from app.trafego.meta.read_model import (
+    PersistenciaMetaBloqueada,
+    RepositorioMetaReadModelSupabase,
+    SnapshotMetaCanonico,
+    montar_snapshot_canonico,
+)
+from app.services.supabase_service import SupabaseService
+from app.config import get_settings
 
 
 router = APIRouter(prefix="/api/trafego/meta/local", tags=["meta-local"])
@@ -39,6 +48,11 @@ class PedidoDeToken(BaseModel):
 
 class PedidoPorReferencia(BaseModel):
     referencia_opaca: str = Field(min_length=12, max_length=80)
+
+
+class PedidoPersistirSnapshot(BaseModel):
+    referencia_opaca: str = Field(min_length=12, max_length=80)
+    janela: str = Field(default="preview", min_length=1, max_length=80)
 
 
 def _exigir_host_local(request: Request) -> None:
@@ -96,6 +110,48 @@ async def _preflight_com_token(token: str, referencia_opaca: str) -> dict[str, A
             raise HTTPException(status_code=404, detail=str(exc)) from None
         except ErroDeLeituraMeta as exc:
             raise HTTPException(status_code=502, detail=exc.mensagem_segura) from None
+
+
+async def _preparar_snapshot_com_token(
+    token: str,
+    referencia_opaca: str,
+    *,
+    janela: str = "preview",
+) -> SnapshotMetaCanonico:
+    async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+        adaptador = AdaptadorMetaSomenteLeitura(cliente, limite_por_pagina=100, max_paginas_por_edge=100)
+        segredo = SegredoEfemero(token)
+        contas = await adaptador.descobrir_contas(segredo)
+        try:
+            conta = AdaptadorMetaSomenteLeitura.resolver_referencia_opaca(contas, referencia_opaca)
+        except dom.ContratoMetaInvalido as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from None
+        leitura = await adaptador.ler_hierarquia(conta.id_externo, segredo)
+        hoje = date.today()
+        insights, _ = await adaptador.ler_insights(
+            conta.id_externo,
+            segredo,
+            nivel="account",
+            periodo_inicio=hoje,
+            periodo_fim=hoje,
+        )
+        preflight = await adaptador.preflight_conta(referencia_opaca, segredo)
+        mensuracao = {
+            "pixels_ou_datasets": preflight.get("mensuracao", {}).get("pixels_ou_datasets") if isinstance(preflight.get("mensuracao"), dict) else None,
+            "custom_conversions": len(preflight.get("mensuracao", {}).get("conversoes_personalizadas", [])) if isinstance(preflight.get("mensuracao"), dict) else None,
+        }
+        return montar_snapshot_canonico(
+            conta=conta,
+            leitura=leitura,
+            insights=insights,
+            mensuracao=mensuracao,
+            janela=janela,
+            observado_em=datetime.now(timezone.utc),
+        )
+
+
+def _repositorio_read_model() -> RepositorioMetaReadModelSupabase:
+    return RepositorioMetaReadModelSupabase(SupabaseService(get_settings()))
 
 
 async def _testar_token(token: str) -> dict[str, Any]:
@@ -256,11 +312,15 @@ async def ultimo_recibo(
 ) -> dict[str, Any]:
     del quem
     _exigir_host_local(request)
+    remoto = await _repositorio_read_model().ultimo_recibo()
+    if remoto.get("recibo"):
+        return remoto
     recibo = await _REPOSITORIO_PREVIEW.ultimo_recibo()
     if recibo is None:
-        return {"ok": True, "recibo": None, "persistencia": "NAO_EXECUTADA"}
+        return {"ok": True, "has_snapshot": False, "recibo": None, "persistencia": "NAO_EXECUTADA"}
     return {
         "ok": True,
+        "has_snapshot": True,
         "recibo": {
             "run_id": recibo.run_id,
             "resultado": recibo.resultado,
@@ -271,6 +331,62 @@ async def ultimo_recibo(
             "erro_mensagem": recibo.erro_mensagem,
         },
     }
+
+
+@router.post("/sincronizacao/persistir")
+async def persistir_snapshot(
+    payload: PedidoPersistirSnapshot,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    _exigir_host_local(request)
+    credencial = _credencial_salva(quem)
+    snapshot = await _preparar_snapshot_com_token(
+        credencial.token, payload.referencia_opaca, janela=payload.janela)
+    try:
+        return await _repositorio_read_model().persistir_snapshot(snapshot)
+    except PersistenciaMetaBloqueada as exc:
+        raise HTTPException(status_code=409, detail=exc.recibo) from None
+
+
+@router.get("/read-model/contas")
+async def inventario_contas_persistidas(
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    del quem
+    _exigir_host_local(request)
+    return await _repositorio_read_model().contas()
+
+
+@router.get("/read-model/{entidade}")
+async def inventario_persistido(
+    entidade: str,
+    request: Request,
+    conta_opaca: str | None = Query(default=None),
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    del quem
+    _exigir_host_local(request)
+    try:
+        return await _repositorio_read_model().listar(entidade, conta_opaca)
+    except dom.ContratoMetaInvalido as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from None
+
+
+@router.get("/read-model/{entidade}/{opaque_id}")
+async def detalhe_persistido(
+    entidade: str,
+    opaque_id: str,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    del quem
+    _exigir_host_local(request)
+    try:
+        return await _repositorio_read_model().detalhe(entidade, opaque_id)
+    except dom.ContratoMetaInvalido as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from None
 
 
 @router.delete("/configuracao")

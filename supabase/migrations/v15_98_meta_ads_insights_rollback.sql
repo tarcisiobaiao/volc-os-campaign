@@ -15,7 +15,9 @@ BEGIN
 END
 $guarda$;
 
+DROP TABLE IF EXISTS public.trafego_meta_custom_measurement;
 DROP TABLE IF EXISTS public.trafego_meta_insight_action;
 DROP TABLE IF EXISTS public.trafego_meta_insight_daily;
+DROP FUNCTION IF EXISTS public.trafego_meta_persistir_snapshot(jsonb);
 
 COMMIT;

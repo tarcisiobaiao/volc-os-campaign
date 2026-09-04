@@ -209,6 +209,30 @@ export interface ResultadoDoPreflightMetaLocal {
   proxima_acao: string;
 }
 
+export interface ReciboMetaReadModel {
+  ok: boolean;
+  conta_opaca?: string;
+  contagens?: Record<string, number | null>;
+  paginas_lidas?: number;
+  snapshot_hash?: string;
+  observado_em?: string;
+  escrita?: 'bloqueada' | 'executada';
+  repetido?: boolean;
+  run_id?: string | null;
+  proxima_acao?: string;
+}
+
+export interface InventarioMetaPersistido<T = Record<string, unknown>> {
+  ok: true;
+  has_snapshot: boolean;
+  entidade?: string;
+  items?: T[];
+  item?: T | null;
+  contas?: T[];
+  recibo?: T | null;
+  motivo?: string;
+}
+
 function url(path: string): string {
   return `${API_BASE}${path}`;
 }
@@ -322,6 +346,33 @@ export const pautadorApi = {
       method: 'POST',
       body: JSON.stringify({ referencia_opaca: referenciaOpaca }),
     });
+  },
+
+  prepararSyncMetaLocal(referenciaOpaca: string): Promise<Record<string, unknown>> {
+    return request('/api/trafego/meta/local/sincronizacao/preparar', {
+      method: 'POST',
+      body: JSON.stringify({ referencia_opaca: referenciaOpaca }),
+    });
+  },
+
+  persistirSnapshotMetaLocal(referenciaOpaca: string): Promise<ReciboMetaReadModel> {
+    return request('/api/trafego/meta/local/sincronizacao/persistir', {
+      method: 'POST',
+      body: JSON.stringify({ referencia_opaca: referenciaOpaca }),
+    });
+  },
+
+  contasMetaReadModel(): Promise<InventarioMetaPersistido> {
+    return request('/api/trafego/meta/local/read-model/contas');
+  },
+
+  inventarioMetaReadModel(entidade: string, contaOpaca?: string): Promise<InventarioMetaPersistido> {
+    const qs = contaOpaca ? `?conta_opaca=${encodeURIComponent(contaOpaca)}` : '';
+    return request(`/api/trafego/meta/local/read-model/${encodeURIComponent(entidade)}${qs}`);
+  },
+
+  ultimoReciboMetaLocal(): Promise<InventarioMetaPersistido> {
+    return request('/api/trafego/meta/local/recibo/ultimo');
   },
 
   removerMetaLocal(): Promise<{ removido: boolean }> {

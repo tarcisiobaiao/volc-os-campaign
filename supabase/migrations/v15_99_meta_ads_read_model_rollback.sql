@@ -24,6 +24,10 @@ DROP TRIGGER IF EXISTS trafego_meta_project_binding_sem_delete ON public.trafego
 DROP TRIGGER IF EXISTS trafego_meta_ad_account_sem_delete ON public.trafego_meta_ad_account;
 DROP TRIGGER IF EXISTS trafego_meta_business_sem_delete ON public.trafego_meta_business;
 
+DROP FUNCTION IF EXISTS public.trafego_meta_persistir_snapshot(jsonb);
+DROP TABLE IF EXISTS public.trafego_meta_custom_measurement;
+DROP TABLE IF EXISTS public.trafego_meta_insight_action;
+DROP TABLE IF EXISTS public.trafego_meta_insight_daily;
 DROP TABLE IF EXISTS public.trafego_meta_sync_run;
 DROP TABLE IF EXISTS public.trafego_meta_ad_creative_binding;
 DROP TABLE IF EXISTS public.trafego_meta_ad;

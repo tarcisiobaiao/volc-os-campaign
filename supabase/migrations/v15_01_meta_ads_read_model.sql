@@ -61,6 +61,7 @@ CREATE TABLE public.trafego_meta_business (
 CREATE TABLE public.trafego_meta_ad_account (
   cofre_ativo_id       text PRIMARY KEY REFERENCES public.cofre_ativo (ativo_id) ON DELETE RESTRICT,
   business_ativo_id    text REFERENCES public.trafego_meta_business (cofre_ativo_id) ON DELETE RESTRICT,
+  credential_ativo_id  text REFERENCES public.cofre_ativo (ativo_id) ON DELETE RESTRICT,
   account_external_id  text NOT NULL UNIQUE,
   nome_observado       text,
   moeda                text,
@@ -226,6 +227,9 @@ CREATE TABLE public.trafego_meta_sync_run (
   paginas_lidas          integer NOT NULL DEFAULT 0,
   contagens              jsonb NOT NULL DEFAULT '{}'::jsonb,
   cursor_final           jsonb NOT NULL DEFAULT '{}'::jsonb,
+  snapshot_hash          text,
+  escrita_executada      boolean NOT NULL DEFAULT false,
+  parcialidade           jsonb NOT NULL DEFAULT '[]'::jsonb,
   erro_codigo            text,
   erro_mensagem          text,
   criado_em              timestamptz NOT NULL DEFAULT now(),
@@ -236,7 +240,11 @@ CREATE TABLE public.trafego_meta_sync_run (
   CONSTRAINT trafego_meta_sync_tempo_coerente CHECK (concluido_em >= iniciado_em),
   CONSTRAINT trafego_meta_sync_paginas_nao_negativas CHECK (paginas_lidas >= 0),
   CONSTRAINT trafego_meta_sync_json_objetos CHECK (
-    jsonb_typeof(contagens) = 'object' AND jsonb_typeof(cursor_final) = 'object'),
+    jsonb_typeof(contagens) = 'object'
+    AND jsonb_typeof(cursor_final) = 'object'
+    AND jsonb_typeof(parcialidade) = 'array'),
+  CONSTRAINT trafego_meta_sync_hash_valido CHECK (
+    snapshot_hash IS NULL OR snapshot_hash ~ '^meta_snapshot_[a-f0-9]{32}$'),
   CONSTRAINT trafego_meta_sync_erro_coerente CHECK (
     (resultado = 'ok' AND erro_codigo IS NULL AND erro_mensagem IS NULL)
     OR (resultado = 'falhou' AND btrim(coalesce(erro_codigo,'')) <> '')

@@ -10,6 +10,10 @@ const { api } = vi.hoisted(() => ({
     estadoMetaLocal: vi.fn(),
     contasMetaLocal: vi.fn(),
     preflightMetaLocal: vi.fn(),
+    prepararSyncMetaLocal: vi.fn(),
+    persistirSnapshotMetaLocal: vi.fn(),
+    contasMetaReadModel: vi.fn(),
+    ultimoReciboMetaLocal: vi.fn(),
   },
 }));
 
@@ -71,6 +75,10 @@ beforeEach(() => {
     },
     proxima_acao: 'revisar_e_persistir_em_janela_separada',
   });
+  api.prepararSyncMetaLocal.mockReset().mockResolvedValue({ ok: true, persistencia: 'NAO_PERSISTIDO' });
+  api.persistirSnapshotMetaLocal.mockReset().mockRejectedValue(Object.assign(new Error('bloqueada'), { corpo: { escrita: 'bloqueada', snapshot_hash: 'meta_snapshot_abc123' } }));
+  api.contasMetaReadModel.mockReset().mockResolvedValue({ ok: true, has_snapshot: false, contas: [] });
+  api.ultimoReciboMetaLocal.mockReset().mockResolvedValue({ ok: true, has_snapshot: false, recibo: null });
 });
 
 afterEach(cleanup);
@@ -91,6 +99,11 @@ describe('MetaReadPreview', () => {
     expect(screen.getByText('disparando')).toBeTruthy();
     expect(screen.getByText('somente leitura')).toBeTruthy();
     expect(api.preflightMetaLocal).toHaveBeenCalledWith('meta-account:opaque');
+    fireEvent.click(screen.getByRole('button', { name: 'Preparar sincronização' }));
+    await waitFor(() => expect(api.prepararSyncMetaLocal).toHaveBeenCalledWith('meta-account:opaque'));
+    fireEvent.click(screen.getByRole('button', { name: 'Persistir snapshot' }));
+    await waitFor(() => expect(screen.getByText(/Persistência bloqueada/)).toBeTruthy());
+    expect(api.persistirSnapshotMetaLocal).toHaveBeenCalledWith('meta-account:opaque');
   });
 
   it('não fica travado após a configuração ser concluída em outra superfície', async () => {
