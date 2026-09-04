@@ -6,9 +6,9 @@ Supabase oficial ou com a rede de produção.
 
 | # | Gate | Comando | Resultado |
 |---|------|---------|-----------|
-| 1 | Testes focais Meta (novos) | `backend/.venv/bin/python -m pytest backend/tests/test_meta_contrato_endurecido.py -q` | 15 passaram |
-| 2 | Suíte Meta do backend | `backend/.venv/bin/python -m pytest backend/tests -k meta -q` | 158 passaram, 0 falharam |
-| 3 | Testes de UI da criação Meta | `./node_modules/.bin/vitest run src/pages/trafego/__tests__/meta-criacao-bancada.test.tsx src/pages/trafego/__tests__/meta-operacao-demo.test.tsx src/components/trafego/meta/__tests__/meta-read-preview.test.tsx src/pages/__tests__/meta-campaign-insights.test.tsx` | 13 passaram |
+| 1 | Testes focais Meta (novos) | `backend/.venv/bin/python -m pytest backend/tests/test_meta_contrato_endurecido.py -q` | 23 passaram |
+| 2 | Suíte Meta do backend | `backend/.venv/bin/python -m pytest backend/tests -k meta -q` | 174 passaram, 0 falharam |
+| 3 | Testes de UI da criação Meta | `./node_modules/.bin/vitest run src/pages/trafego/__tests__/meta-criacao-bancada.test.tsx src/pages/trafego/__tests__/meta-operacao-demo.test.tsx src/components/trafego/meta/__tests__/meta-read-preview.test.tsx src/pages/__tests__/meta-campaign-insights.test.tsx` | 16 passaram |
 | 4 | TypeScript | `npx tsc --noEmit -p tsconfig.app.json` | 77 erros — **exatamente os mesmos 77 do HEAD**, medidos numa cópia limpa via `git archive HEAD`. Zero erros introduzidos. Ver Ressalvas. |
 | 5 | Build Vite | `npm run build` | ✓ built in 6.42s |
 | 6 | Ciclo da migration candidata | `./scripts/provar-ciclo-meta-create-paused.sh` | ✓ aplicar → **usar** → reverter → reaplicar, em PostgreSQL 15 descartável |
@@ -40,3 +40,18 @@ perseguido nesta lane.
 - **Nenhuma chamada real à Meta.** Todo HTTP dos testes é `httpx.MockTransport`
   ou mock de `pautadorApi`. A forma exata do form-urlencoded aceita pela Graph
   API v26 continua sem confirmação contra a conta real.
+
+## Rodada corretiva
+
+Codex (`gpt-5.6-sol`, reasoning high, sandbox read-only) revisou os cinco
+primeiros commits e devolveu **doze achados**. Cada um foi verificado no código
+antes de qualquer ação; **os doze eram reais** e foram fechados no commit
+`fix(meta): fechar os doze achados da revisão adversarial corretiva`, com teste
+para cada correção. Os gates acima foram rodados de novo depois disso.
+
+O mesmo revisor confirmou como corretos, entre outros: ausência de
+`destination_type` em OUTCOME_TRAFFIC, `advantage_audience` explícito no
+payload determinístico, comparação de `start_time` por instante, cobertura dos
+três caminhos de dependência, ordem e ordinalidade dos passos no banco, ausência
+de rota de criação/aprovação/ativação, `criar_pausada` sem chamador de produção,
+e nenhum vazamento novo de identificador Meta na interface.
