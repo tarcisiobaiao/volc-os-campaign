@@ -22,6 +22,15 @@ describe('URL ↔ estado do Hub', () => {
     expect(estado.canal).toBeNull();
   });
 
+  it('aceita plataforma=meta como alias de entrada e só emite rede=meta', () => {
+    const legado = new URLSearchParams('plataforma=meta');
+    expect(lerEstadoDoHub(legado).rede).toBe('meta');
+
+    const canonico = escreverEstadoDoHub(legado, {});
+    expect(canonico.get('rede')).toBe('meta');
+    expect(canonico.get('plataforma')).toBeNull();
+  });
+
   it('aba=oportunidades continua abrindo Preparar', () => {
     expect(abaDaUrl('oportunidades')).toBe('preparar');
     expect(abaDaUrl('preparar')).toBe('preparar');
@@ -73,7 +82,7 @@ describe('URL ↔ estado do Hub', () => {
     });
   });
 
-  it('rede, canal, busca e atenção persistem no endereço', () => {
+  it('Meta preserva o recorte comum, mas remove o canal exclusivo do Google', () => {
     const params = escreverEstadoDoHub(new URLSearchParams(), {
       ...ESTADO_PADRAO,
       rede: 'meta',
@@ -82,11 +91,19 @@ describe('URL ↔ estado do Hub', () => {
       filtros: { busca: 'FGTS', atencao: true, conta: ['8017851692'] },
     });
     expect(params.get('rede')).toBe('meta');
-    expect(params.get('canal')).toBe('SEARCH');
+    expect(params.get('canal')).toBeNull();
     expect(params.get('historico')).toBe('1');
     expect(params.get('busca')).toBe('FGTS');
     expect(params.get('atencao')).toBe('1');
     expect(params.get('conta')).toBe('8017851692');
+  });
+
+  it('ignora canal Google recebido junto de uma URL Meta', () => {
+    const estado = lerEstadoDoHub(new URLSearchParams('rede=meta&canal=SEARCH'));
+    expect(estado.rede).toBe('meta');
+    expect(estado.canal).toBeNull();
+    expect(estado.filtros.canal).toBeUndefined();
+    expect(consultaOperacional(estado).canal).toBeUndefined();
   });
 
   it('VIDEO e SHOPPING são reconhecidos; HOTEL não', () => {

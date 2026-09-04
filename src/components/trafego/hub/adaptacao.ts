@@ -67,6 +67,7 @@ export function nivelDaUrl(valor: string | null): NivelMeta {
 }
 
 export function lerEstadoDoHub(params: URLSearchParams): EstadoDoHub {
+  const rede = redeDaUrl(params.get('rede') ?? params.get('plataforma'));
   const filtros: FiltrosDoInventario = {};
   const busca = params.get('busca');
   if (busca) filtros.busca = busca;
@@ -76,11 +77,13 @@ export function lerEstadoDoHub(params: URLSearchParams): EstadoDoHub {
   if (estado) filtros.estado_externo = [estado];
   if (params.get('atencao') === '1') filtros.atencao = true;
 
-  const canal = canalDaUrl(params.get('canal'));
+  // Canal é um eixo Google. Um link antigo que combine Meta com SEARCH não
+  // pode carregar esse recorte para a outra rede.
+  const canal = rede === 'google' ? canalDaUrl(params.get('canal')) : null;
   if (canal) filtros.canal = [canalParaContrato(canal)];
 
   return {
-    rede: redeDaUrl(params.get('rede')),
+    rede,
     aba: abaDaUrl(params.get('aba')),
     canal,
     nivel: nivelDaUrl(params.get('nivel')),
@@ -157,6 +160,15 @@ export function escreverEstadoDoHub(
     estado.filtros = patch.filtros;
   }
 
+  if (estado.rede === 'meta') {
+    estado.canal = null;
+    estado.filtros = { ...estado.filtros };
+    delete estado.filtros.canal;
+  }
+
+  // `plataforma=meta` é apenas uma porta de entrada legada. Toda escrita
+  // converge para o eixo canônico `rede`.
+  proximo.delete('plataforma');
   setOuApaga(proximo, 'rede', estado.rede === 'google' ? null : estado.rede);
   setOuApaga(proximo, 'aba', estado.aba === 'campanhas' ? null : abaParaUrl(estado.aba));
   setOuApaga(proximo, 'canal', estado.canal ? canalParaUrl(estado.canal) : null);

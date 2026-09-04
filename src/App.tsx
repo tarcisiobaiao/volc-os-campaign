@@ -127,6 +127,7 @@ const App = () => (
                 montá-la aqui desenhava a aba mais estreita e mais baixa que as
                 outras duas, e o operador via a tela pular a cada troca de aba. */}
             <Route path="/trafego" element={<ProtectedRoute><HubDeTrafegoPage oportunidades={<QuadroDeOportunidades />} /></ProtectedRoute>} />
+            <Route path="/trafego/meta/campanhas" element={<Navigate to="/trafego?rede=meta&nivel=campanhas" replace />} />
             <Route path="/trafego/laboratorio/inteligencia/:scenarioId" element={<ProtectedRoute><DecisionIntelligenceLabPage /></ProtectedRoute>} />
             <Route path="/trafego/campanhas/:volcCampaignId" element={<ProtectedRoute><CampanhaCanonPage /></ProtectedRoute>} />
             <Route path="/trafego/nova/:opportunityId" element={<ProtectedRoute><NovaCampanhaPage /></ProtectedRoute>} />

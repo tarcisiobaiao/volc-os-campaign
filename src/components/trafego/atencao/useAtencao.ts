@@ -34,7 +34,9 @@
  * forma que estar montado em todo lugar não multiplica a consulta.
  */
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 
+import { lerEstadoDoHub } from '@/components/trafego/hub/adaptacao';
 import { useInventario } from '@/hooks/useInventario';
 import { useNotificacoes } from '@/hooks/useNotificacoes';
 import type { OcorrenciaOperacional } from '@/components/trafego/inventario/erros';
@@ -82,12 +84,19 @@ export interface LeituraDaAtencao extends Projecao {
  */
 const RECORTE_DA_ATENCAO = { atencao: true } as const;
 
-export function useAtencao(): LeituraDaAtencao {
-  const notificacoes = useNotificacoes();
-  const inventario = useInventario(RECORTE_DA_ATENCAO);
+export function useAtencao(habilitado = true): LeituraDaAtencao {
+  const localizacao = useLocation();
+  const metaPelaRota = localizacao.pathname.startsWith('/trafego/meta/');
+  const googlePelaUrl = lerEstadoDoHub(new URLSearchParams(localizacao.search)).rede === 'google';
+  const leituraHabilitada = habilitado && googlePelaUrl && !metaPelaRota;
 
-  const quadro = notificacoes.data ?? null;
-  const registro = inventario.inventario ?? null;
+  const notificacoes = useNotificacoes({ habilitado: leituraHabilitada });
+  const inventario = useInventario(RECORTE_DA_ATENCAO, { habilitado: leituraHabilitada });
+
+  // Uma query desabilitada ainda pode carregar cache Google. Sob Meta esse
+  // cache não é uma leitura válida: ignorá-lo evita projetar a outra rede.
+  const quadro = leituraHabilitada ? notificacoes.data ?? null : null;
+  const registro = leituraHabilitada ? inventario.inventario ?? null : null;
 
   const projecao = React.useMemo(
     () => projetarAtencao({ alertas: quadro, inventario: registro }),
@@ -105,6 +114,20 @@ export function useAtencao(): LeituraDaAtencao {
   if (inventario.falhou) motivos.push('a conferência do registro de campanhas não respondeu');
   if (inventario.temMais) {
     motivos.push('parte do registro ainda não foi carregada nesta sessão');
+  }
+
+  if (!leituraHabilitada) {
+    return {
+      ...projecao,
+      carregando: false,
+      atualizando: false,
+      indisponivel: true,
+      ultimoEstadoConhecido: false,
+      parcial: false,
+      motivos: ['a central de atenção ainda não está disponível para Meta Ads'],
+      ocorrencia: null,
+      conferirDeNovo: () => undefined,
+    };
   }
 
   return {
@@ -129,8 +152,8 @@ export function useAtencao(): LeituraDaAtencao {
  * `null` enquanto não se sabe — nunca `0`. Mostrar zero antes da resposta é
  * afirmar "não há nada", que é exatamente o que ainda não foi apurado.
  */
-export function useContadorDeAtencao(): number | null {
-  const atencao = useAtencao();
+export function useContadorDeAtencao(habilitado = true): number | null {
+  const atencao = useAtencao(habilitado);
   if (atencao.carregando || atencao.indisponivel) return null;
 
   // ⚠️ O contador conta CAMPANHAS, não itens da fila.

@@ -29,14 +29,15 @@ import { pautadorApi } from '@/lib/pautadorApi';
 export const INTERVALO_NOTIFICACOES_MS = 10 * 60 * 1000;
 export const CHAVE_NOTIFICACOES = ['notificacoes', 'trafego'] as const;
 
-export function useNotificacoes() {
+export function useNotificacoes(opcoes?: { habilitado?: boolean }) {
+  const habilitado = opcoes?.habilitado ?? true;
   return useQuery({
     queryKey: CHAVE_NOTIFICACOES,
     queryFn: () => pautadorApi.alertasDeTrafego(),
     staleTime: INTERVALO_NOTIFICACOES_MS,
-    refetchInterval: INTERVALO_NOTIFICACOES_MS,
-    refetchOnWindowFocus: true,
+    refetchInterval: habilitado ? INTERVALO_NOTIFICACOES_MS : false,
+    refetchOnWindowFocus: habilitado,
+    enabled: habilitado,
     retry: 1,
   });
 }
-

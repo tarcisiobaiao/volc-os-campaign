@@ -465,15 +465,22 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
   // ⚠️ O recorte mora na URL, e é a PÁGINA que o guarda — não o inventário.
   // Rede, tarefa, canal e nível são eixos distintos; busca/conta/estado/
   // atenção continuam na barra. Limpar a barra não apaga o canal.
-  const { estado, aplicar } = useEstadoDoHub();
-  const leituras = useLeiturasDoHub(estado);
+  const { estado, aplicar, params } = useEstadoDoHub();
+  const google = estado.rede === 'google';
+  const leituras = useLeiturasDoHub(estado, { habilitado: google });
   const { recorte, consulta, consultaHistorico } = leituras;
+
+  React.useEffect(() => {
+    // `plataforma=meta` continua abrindo o lugar certo, mas não permanece no
+    // endereço: uma única escrita converge links antigos para `rede=meta`.
+    if (params.has('plataforma')) aplicar({ rede: estado.rede });
+  }, [aplicar, estado.rede, params]);
 
   const aplicarRecorte = React.useCallback((proximos: FiltrosDoInventario) => {
     aplicar({ filtros: proximos });
   }, [aplicar]);
 
-  const contadorDeAtencao = useContadorDeAtencao();
+  const contadorDeAtencao = useContadorDeAtencao(google);
   const foco = estado.foco;
   const aba: Aba = estado.aba;
 
@@ -487,12 +494,13 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
 
   const inventario = leituras.situacao;
   const operacional = leituras.operacional;
-  const notificacoes = useNotificacoes();
+  const notificacoes = useNotificacoes({ habilitado: google });
 
   const atualizarTudo = React.useCallback(() => {
+    if (!google) return;
     leituras.recarregar();
     void notificacoes.refetch();
-  }, [leituras, notificacoes]);
+  }, [google, leituras, notificacoes]);
 
   /**
    * Quem é dono do TÍTULO desta tela.
@@ -508,8 +516,6 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
    * ao ceder é só o título, e não mais a resposta para "quando isso foi lido?".
    */
   const tituloEhDoHub = aba !== 'preparar' || oportunidades != null;
-  const google = estado.rede === 'google';
-
   return (
     <Layout>
       <div className="overflow-x-clip p-4 md:p-8">
@@ -554,11 +560,13 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
                   Nova campanha
                 </Button>
               )}
-              <FaixaDeSituacao
-                leitura={inventario}
-                aoAtualizar={atualizarTudo}
-                ocupado={inventario.atualizando || notificacoes.isFetching}
-              />
+              {google && (
+                <FaixaDeSituacao
+                  leitura={inventario}
+                  aoAtualizar={atualizarTudo}
+                  ocupado={inventario.atualizando || notificacoes.isFetching}
+                />
+              )}
             </div>
           </div>
 

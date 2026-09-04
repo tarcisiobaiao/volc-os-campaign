@@ -23,11 +23,16 @@ import {
   quadroDeAlertasDeProva,
 } from '@/components/trafego/inventario/fixtureDeProvas';
 
-const { escolher } = vi.hoisted(() => ({
+const { escolher, chamadas } = vi.hoisted(() => ({
   escolher: {
     fn: (_filtros?: FiltrosDoInventario): LeituraDoInventario => {
       throw new Error('dublê do inventário ainda não configurado');
     },
+  },
+  chamadas: {
+    inventario: [] as Array<boolean | undefined>,
+    notificacoes: [] as Array<boolean | undefined>,
+    atencao: [] as Array<boolean | undefined>,
   },
 }));
 
@@ -67,26 +72,38 @@ const universo = inventarioDeProva({
 });
 
 vi.mock('@/hooks/useInventario', () => ({
-  useInventario: (filtros?: FiltrosDoInventario) => escolher.fn(filtros),
+  useInventario: (
+    filtros?: FiltrosDoInventario,
+    opcoes?: { habilitado?: boolean },
+  ) => {
+    chamadas.inventario.push(opcoes?.habilitado);
+    return escolher.fn(filtros);
+  },
   usePedirLeituraDaConta: () => ({ pedir: vi.fn(), contaEmLeitura: null, recados: {} }),
 }));
 
 vi.mock('@/hooks/useNotificacoes', () => ({
-  useNotificacoes: () => ({
-    data: quadroDeAlertasDeProva() as QuadroDeAlertas,
-    isLoading: false,
-    isError: false,
-    isFetching: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
+  useNotificacoes: (opcoes?: { habilitado?: boolean }) => {
+    chamadas.notificacoes.push(opcoes?.habilitado);
+    return {
+      data: quadroDeAlertasDeProva() as QuadroDeAlertas,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  },
   INTERVALO_NOTIFICACOES_MS: 600000,
   CHAVE_NOTIFICACOES: ['notificacoes', 'trafego'],
 }));
 
 vi.mock('@/components/trafego/atencao/useAtencao', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/components/trafego/atencao/useAtencao')>()),
-  useContadorDeAtencao: () => 2,
+  useContadorDeAtencao: (habilitado?: boolean) => {
+    chamadas.atencao.push(habilitado);
+    return habilitado === false ? null : 2;
+  },
 }));
 
 vi.mock('@/components/layout/Layout', () => ({
@@ -108,6 +125,9 @@ function montar(endereco = '/trafego') {
 }
 
 beforeEach(() => {
+  chamadas.inventario.length = 0;
+  chamadas.notificacoes.length = 0;
+  chamadas.atencao.length = 0;
   escolher.fn = (filtros?: FiltrosDoInventario) => {
     const estados = filtros?.estado_externo ?? [];
     if (filtros?.incluir_historico || (estados.length === 1 && estados[0] === 'REMOVED')) {
@@ -152,9 +172,10 @@ describe('1–4 · campanhas operacionais e histórico', () => {
 
 describe('8–9 · seletor e filtros persistem na URL', () => {
   it('Google/Meta persiste na URL', () => {
-    montar();
+    montar('/trafego?canal=SEARCH');
     fireEvent.click(screen.getByRole('button', { name: 'Meta Ads' }));
     expect(screen.getByTestId('endereco').textContent).toMatch(/rede=meta/);
+    expect(screen.getByTestId('endereco').textContent).not.toMatch(/canal=/);
   });
 
   it('canal e busca do Google persistem', () => {
@@ -181,6 +202,20 @@ describe('11 · Meta não finge integração', () => {
     expect(screen.getByText(/não há número de desempenho/)).toBeTruthy();
     expect(screen.queryByText(/ROAS/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Carregar mais' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Atualizar dados' })).toBeNull();
+    expect(chamadas.inventario.length).toBeGreaterThan(0);
+    expect(chamadas.inventario.every((habilitado) => habilitado === false)).toBe(true);
+    expect(chamadas.notificacoes).toEqual([false]);
+    expect(chamadas.atencao).toEqual([false]);
+  });
+
+  it('aceita plataforma=meta sem projetar a situação do Google', () => {
+    montar('/trafego?plataforma=meta');
+    expect(screen.getByRole('heading', { name: 'Integração ainda não configurada' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Atualizar dados' })).toBeNull();
+    expect(chamadas.inventario.every((habilitado) => habilitado === false)).toBe(true);
+    expect(screen.getByTestId('endereco').textContent).toContain('rede=meta');
+    expect(screen.getByTestId('endereco').textContent).not.toContain('plataforma=');
   });
 });
 

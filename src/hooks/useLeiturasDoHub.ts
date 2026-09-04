@@ -33,7 +33,11 @@ export interface LeiturasDoHub {
   recarregar: () => void;
 }
 
-export function useLeiturasDoHub(estado: EstadoDoHub): LeiturasDoHub {
+export function useLeiturasDoHub(
+  estado: EstadoDoHub,
+  opcoes?: { habilitado?: boolean },
+): LeiturasDoHub {
+  const habilitado = opcoes?.habilitado ?? true;
   const recorte = React.useMemo(() => filtrosDaBarra(estado), [estado]);
   const consulta = React.useMemo(() => consultaOperacional(estado), [estado]);
   const consultaHistorico = React.useMemo(() => consultaDoHistorico(estado), [estado]);
@@ -45,12 +49,16 @@ export function useLeiturasDoHub(estado: EstadoDoHub): LeiturasDoHub {
   const situacaoSemRecorte = filtrosVazios(consulta);
   const universoCoincide = filtrosEquivalentes(consultaUniverso, consulta);
 
-  const situacao = useInventario();
-  const operacionalFiltrado = useInventario(consulta, { habilitado: !situacaoSemRecorte });
-  const universoFiltrado = useInventario(consultaUniverso, {
-    habilitado: !filtrosVazios(consultaUniverso) && !universoCoincide,
+  const situacao = useInventario(undefined, { habilitado });
+  const operacionalFiltrado = useInventario(consulta, {
+    habilitado: habilitado && !situacaoSemRecorte,
   });
-  const historico = useInventario(consultaHistorico, { habilitado: estado.historico });
+  const universoFiltrado = useInventario(consultaUniverso, {
+    habilitado: habilitado && !filtrosVazios(consultaUniverso) && !universoCoincide,
+  });
+  const historico = useInventario(consultaHistorico, {
+    habilitado: habilitado && estado.historico,
+  });
 
   const operacional = situacaoSemRecorte ? situacao : operacionalFiltrado;
   const universoFiltros = filtrosVazios(consultaUniverso)
@@ -60,6 +68,7 @@ export function useLeiturasDoHub(estado: EstadoDoHub): LeiturasDoHub {
       : universoFiltrado;
 
   const recarregar = React.useCallback(() => {
+    if (!habilitado) return;
     situacao.recarregar();
     if (!situacaoSemRecorte) operacionalFiltrado.recarregar();
     if (!filtrosVazios(consultaUniverso) && !universoCoincide) universoFiltrado.recarregar();
@@ -73,6 +82,7 @@ export function useLeiturasDoHub(estado: EstadoDoHub): LeiturasDoHub {
     consultaUniverso,
     universoCoincide,
     estado.historico,
+    habilitado,
   ]);
 
   return {

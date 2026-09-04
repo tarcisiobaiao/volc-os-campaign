@@ -53,14 +53,22 @@ interface DubleDeNotificacoes {
 
 let inventario: LeituraDoInventario = inventarioBase;
 let notificacoes: DubleDeNotificacoes;
+let inventarioHabilitado: boolean | undefined;
+let notificacoesHabilitadas: boolean | undefined;
 
 vi.mock('@/hooks/useInventario', () => ({
-  useInventario: () => inventario,
+  useInventario: (_filtros?: unknown, opcoes?: { habilitado?: boolean }) => {
+    inventarioHabilitado = opcoes?.habilitado;
+    return inventario;
+  },
   usePedirLeituraDaConta: () => ({ pedir: vi.fn(), contaEmLeitura: null, recados: {} }),
 }));
 
 vi.mock('@/hooks/useNotificacoes', () => ({
-  useNotificacoes: () => notificacoes,
+  useNotificacoes: (opcoes?: { habilitado?: boolean }) => {
+    notificacoesHabilitadas = opcoes?.habilitado;
+    return notificacoes;
+  },
   INTERVALO_NOTIFICACOES_MS: 600_000,
   CHAVE_NOTIFICACOES: ['notificacoes', 'trafego'],
 }));
@@ -83,9 +91,9 @@ function notificacao(
   };
 }
 
-function montar() {
+function montar(endereco = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[endereco]}>
       <SinoDeAlertas side="bottom" />
     </MemoryRouter>,
   );
@@ -95,11 +103,25 @@ beforeEach(() => {
   // Base neutra: as duas fontes responderam e nada pede atenção.
   inventario = { ...inventarioBase, inventario: inventarioSaudavel() };
   notificacoes = notificacao(semCondicao);
+  inventarioHabilitado = undefined;
+  notificacoesHabilitadas = undefined;
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+describe('isolamento por rede', () => {
+  it.each(['/trafego?rede=meta', '/trafego?plataforma=meta', '/trafego/meta/campanhas'])(
+    'não consulta nem projeta fontes Google em %s',
+    (endereco) => {
+      montar(endereco);
+      expect(inventarioHabilitado).toBe(false);
+      expect(notificacoesHabilitadas).toBe(false);
+      expect(screen.getByRole('button', { name: /não foi possível consultar/i })).toBeTruthy();
+    },
+  );
 });
 
 // ── 1 · nenhuma condição ativa ───────────────────────────────────────────────
