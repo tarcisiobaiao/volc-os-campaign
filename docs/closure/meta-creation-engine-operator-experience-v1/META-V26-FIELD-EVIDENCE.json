@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "lane": "meta-creation-engine-operator-experience-v1",
+  "read_date_utc": "2026-09-04",
+  "api_version": "v26.0",
+  "metodo": "Leitura direta de developers.facebook.com. Cada linha COMPROVADO carrega a URL aberta e a citação literal. Blogs, respostas de fórum e memória de modelo não foram aceitos como autoridade de payload.",
+  "confianca": {
+    "COMPROVADO": "página oficial aberta nesta missão e trecho citado literalmente",
+    "INFERIDO": "a doc trata o assunto de forma indireta; a conclusão é composição, não citação",
+    "NAO_COMPROVADO": "não foi possível confirmar; nenhuma capacidade foi habilitada com base nisto"
+  },
+  "matriz": [
+    {
+      "campo": "is_adset_budget_sharing_enabled",
+      "objeto": "Campaign",
+      "endpoint": "POST /act_{ad_account_id}/campaigns",
+      "requiredness": "conditionally_required",
+      "condicao": "A tabela de referência não marca [required]. A conta real recusou a criação sem o campo quando o orçamento fica no conjunto — erro reproduzido pelo operador antes desta missão.",
+      "valor_enum": "boolean",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/",
+        "trecho": "Whether the child ad sets are managed under ad set budget sharing. With ad set budget sharing, advertisers can now share up to 20% of their budget with other ad sets in the same campaign.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A frase oficial dos 20% é exatamente a que a bancada mostra ao operador. Não confundir com Advantage campaign budget, que é orçamento NA campanha e esta receita não usa."
+    },
+    {
+      "campo": "special_ad_categories",
+      "objeto": "Campaign",
+      "endpoint": "POST /act_{ad_account_id}/campaigns",
+      "requiredness": "required",
+      "condicao": "Marcado Required na tabela de criação.",
+      "valor_enum": "array<enum {NONE, EMPLOYMENT, HOUSING, CREDIT, ISSUES_ELECTIONS_POLITICS, ONLINE_GAMBLING_AND_GAMING, FINANCIAL_PRODUCTS_SERVICES}>",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/",
+        "trecho": "special_ad_categories | array<enum> | Required",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A receita envia lista vazia e exige confirmação explícita do operador. Categorias especiais continuam fora da receita provada."
+    },
+    {
+      "campo": "special_ad_category_country",
+      "objeto": "Campaign",
+      "endpoint": "POST /act_{ad_account_id}/campaigns",
+      "requiredness": "optional",
+      "condicao": "Campo de país para categoria especial.",
+      "valor_enum": "array<enum> de códigos de país",
+      "suporte_atual_volc": "NAO_APLICAVEL",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/",
+        "trecho": "Country field for Special Ad Category.",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "status",
+      "objeto": "Campaign",
+      "endpoint": "POST /act_{ad_account_id}/campaigns",
+      "requiredness": "optional",
+      "condicao": "Na criação só ACTIVE e PAUSED são válidos.",
+      "valor_enum": "enum {ACTIVE, PAUSED, DELETED, ARCHIVED}",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/",
+        "trecho": "Only `ACTIVE` and `PAUSED` are valid during creation. Other statuses can be used for update.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A receita fixa PAUSED e o executor recusa qualquer payload veiculável que não esteja PAUSED."
+    },
+    {
+      "campo": "destination_type",
+      "objeto": "Ad Set",
+      "endpoint": "POST /act_{ad_account_id}/adsets",
+      "requiredness": "optional",
+      "condicao": "Para objective=OUTCOME_TRAFFIC os destinos disponíveis são UNDEFINED, MESSENGER, WHATSAPP e PHONE_CALL. WEBSITE pertence a OUTCOME_AWARENESS, OUTCOME_LEADS e OUTCOME_SALES.",
+      "valor_enum": "enum",
+      "suporte_atual_volc": "REMOVIDO_NESTA_MISSAO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/adset/destination_type/",
+        "trecho": "Destination type is optional. ... OUTCOME_TRAFFIC | UNDEFINED, MESSENGER, WHATSAPP, PHONE_CALL",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "DEFEITO CORRIGIDO. O compilador enviava destination_type=WEBSITE num plano OUTCOME_TRAFFIC, combinação que a tabela oficial não permite. O campo deixou de ser emitido; tráfego para site é o comportamento padrão do objetivo."
+    },
+    {
+      "campo": "targeting.targeting_automation.advantage_audience",
+      "objeto": "Ad Set",
+      "endpoint": "POST /act_{ad_account_id}/adsets",
+      "requiredness": "conditionally_required",
+      "condicao": "A partir da v23.0 o parâmetro assume 1 ao criar um Ad Set novo; a API devolve erro quando o setup não é default nem relaxado e o valor não é declarado.",
+      "valor_enum": "1 (aceitar) ou 0 (recusar)",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/audiences/reference/targeting-expansion/advantage-audience/",
+        "trecho": "Beginning with v23.0, the `advantage_audience` parameter within `targeting_automation` defaults to `1` ... This behavior applies only when creating a new ad set ... To opt out, set the `advantage_audience` parameter within `targeting_automation` to `0`.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "DEFEITO CORRIGIDO. A receita omitia o campo e o contrato recusava declará-lo. Omitir NÃO é neutro: a Meta ligaria o Advantage+ Audience sozinha. Agora a escolha é do operador, viaja sempre como 0 ou 1, entra no hash do plano e é conferida no read-back quando a leitura devolve o campo."
+    },
+    {
+      "campo": "daily_budget",
+      "objeto": "Ad Set",
+      "endpoint": "POST /act_{ad_account_id}/adsets",
+      "requiredness": "conditionally_required",
+      "condicao": "daily_budget ou lifetime_budget precisa ser maior que zero, salvo quando o orçamento fica na campanha.",
+      "valor_enum": "int64 na moeda da conta",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/",
+        "trecho": "The daily budget defined in your account currency ... Either `daily_budget` or `lifetime_budget` must be greater than 0.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A doc diz 'account currency'; a prova de subunidade vem por composição com a descrição de bid_amount ('The bid amount's unit is cents for currencies like USD, EUR'). A bancada envia centavos e mostra ao operador o valor interpretado antes de compilar."
+    },
+    {
+      "campo": "promoted_object",
+      "objeto": "Ad Set",
+      "endpoint": "POST /act_{ad_account_id}/adsets",
+      "requiredness": "conditionally_required",
+      "condicao": "A doc afirma condicionalidade genérica ('Required with certain campaign objectives') e NÃO lista quais objetivos. Nenhuma página acessível mapeia objective + optimization_goal para promoted_object obrigatório.",
+      "valor_enum": "objeto com pixel_id, custom_event_type, page_id conforme o caso",
+      "suporte_atual_volc": "NAO_ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-promoted-object/",
+        "trecho": "The campaign's `objective` and the ad set's `promoted_object` provide intent for your ads. When you create ad sets for campaigns with the certain objectives, `promoted_object` is required.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A obrigatoriedade para OUTCOME_TRAFFIC + LANDING_PAGE_VIEWS é NAO_COMPROVADA. A receita continua sem promoted_object e a validação remota do operador é quem decidirá o assunto contra a conta real."
+    },
+    {
+      "campo": "conversion_domain",
+      "objeto": "Ad",
+      "endpoint": "POST /act_{ad_account_id}/ads",
+      "requiredness": "conditionally_required",
+      "condicao": "A única condição escrita na doc é a campanha compartilhar dados com um pixel. Não há condição documentada por objective, por optimization_goal nem por destination_type.",
+      "valor_enum": "domínio de primeiro e segundo nível, sem protocolo nem caminho",
+      "suporte_atual_volc": "NAO_ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/adgroup/",
+        "trecho": "Required to create or update an ad in a campaign that shares data with a pixel.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "Esta receita não promove pixel algum, então o campo não é enviado. A etapa Mensuração declara isso ao operador em vez de deixar a ausência sem explicação."
+    },
+    {
+      "campo": "creative",
+      "objeto": "Ad",
+      "endpoint": "POST /act_{ad_account_id}/ads",
+      "requiredness": "required",
+      "condicao": "Obrigatório na criação; aceita referência por id dentro de um objeto.",
+      "valor_enum": "{\"creative_id\": <id>} ou creative spec inline",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/adgroup/",
+        "trecho": "This field is required for create. The ID or creative spec of the ad creative to be used by this ad ... You may supply the ID within an object as follows: {\"creative_id\": <CREATIVE_ID>}",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "adset_id",
+      "objeto": "Ad",
+      "endpoint": "POST /act_{ad_account_id}/ads",
+      "requiredness": "required",
+      "condicao": "Obrigatório na criação.",
+      "valor_enum": "id numérico",
+      "suporte_atual_volc": "ENVIADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/adgroup/",
+        "trecho": "The ID of the ad set, required on creation.",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "asset_feed_spec.ad_formats",
+      "objeto": "Ad Creative",
+      "endpoint": "POST /act_{ad_account_id}/adcreatives",
+      "requiredness": "required",
+      "condicao": "Um único formato por conjunto de peças; o formato conta como um dos 30 assets.",
+      "valor_enum": "SINGLE_IMAGE, CAROUSEL, SINGLE_VIDEO, AUTOMATIC_FORMAT",
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options",
+        "trecho": "**Required.** Array of Facebook ad formats to create the ads in. Supported formats are: `SINGLE_IMAGE`, `CAROUSEL`, `SINGLE_VIDEO`, `AUTOMATIC_FORMAT`.",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "asset_feed_spec.link_urls",
+      "objeto": "Ad Creative",
+      "endpoint": "POST /act_{ad_account_id}/adcreatives",
+      "requiredness": "required",
+      "condicao": "Máximo 5 links.",
+      "valor_enum": "array de {\"website_url\": \"...\"}",
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options",
+        "trecho": "**Required.** Array of link URLs. Provide this field as an array of objects, each `{\"website_url\": \"{URL}\"}`.",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "asset_feed_spec.images[].hash",
+      "objeto": "Ad Creative",
+      "endpoint": "POST /act_{ad_account_id}/adcreatives",
+      "requiredness": "conditionally_required",
+      "condicao": "Obrigatório para os formatos SINGLE_IMAGE e CAROUSEL_IMAGE; máximo 10 imagens; a chave é `hash`, não `image_hash`.",
+      "valor_enum": "hash da biblioteca de imagens da conta",
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options",
+        "trecho": "**Required for `SINGLE_IMAGE` and `CAROUSEL_IMAGE` format.** Array of **eligible** images.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A diferença de chave (`hash` no asset feed, `image_hash` em link_data) é exatamente o tipo de detalhe que um payload inferido erraria."
+    },
+    {
+      "campo": "is_dynamic_creative",
+      "objeto": "Ad Set",
+      "endpoint": "POST /act_{ad_account_id}/adsets",
+      "requiredness": "conditionally_required",
+      "condicao": "true para Dynamic Creative; false para Asset Customization. Não acompanha obrigatoriamente todo asset_feed_spec.",
+      "valor_enum": "boolean, default false",
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/dynamic-creative/",
+        "trecho": "Then set `is_dynamic_creative` to `true`. ... -F 'is_dynamic_creative=true' ... act_<AD_ACCOUNT_ID>/adsets",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "asset_feed_spec + object_story_spec.page_id",
+      "objeto": "Ad Creative",
+      "endpoint": "POST /act_{ad_account_id}/adcreatives",
+      "requiredness": "unknown",
+      "condicao": "Como a Página viaja junto do asset_feed_spec não está documentado: nenhum exemplo oficial acessível mostra object_story_spec e asset_feed_spec no mesmo criativo.",
+      "valor_enum": null,
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/dynamic-creative/",
+        "trecho": "Provide your creative through the `asset_feed_spec` field, also known as Asset Feed.",
+        "confianca": "NAO_COMPROVADO"
+      },
+      "nota": "ESTE É O BLOQUEIO DO CRIATIVO FLEXÍVEL. Todo o resto do contrato está provado; falta só isto, e a bancada diz isso ao operador em vez de esconder a capacidade ou fingir suporte."
+    },
+    {
+      "campo": "video_data.video_id",
+      "objeto": "Ad Creative",
+      "endpoint": "POST /act_{ad_account_id}/adcreatives",
+      "requiredness": "conditionally_required",
+      "condicao": "Identifica o vídeo na biblioteca da conta.",
+      "valor_enum": "id numérico",
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-video-data/",
+        "trecho": "ID of video that user has permission to or a video in ad account video library.",
+        "confianca": "COMPROVADO"
+      }
+    },
+    {
+      "campo": "video_data.image_url",
+      "objeto": "Ad Creative",
+      "endpoint": "POST /act_{ad_account_id}/adcreatives",
+      "requiredness": "conditionally_required",
+      "condicao": "URL da miniatura, e a doc proíbe explicitamente usar URLs devolvidas pelo CDN da Meta.",
+      "valor_enum": "URL hospedada por quem cria o anúncio",
+      "suporte_atual_volc": "BLOQUEADO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-video-data/",
+        "trecho": "URL of image to use as thumbnail. You should not use image URLs returned from the FB CDN but instead have the image hosted on your own servers.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "ESTE É O BLOQUEIO DO CRIATIVO DE VÍDEO. A única miniatura que a leitura devolve é justamente uma URL do CDN da Meta (Video.picture). A alternativa, image_hash, exigiria subir uma imagem para a biblioteca — escrita de ativo não autorizada nesta missão."
+    },
+    {
+      "campo": "Video.name / Video.picture",
+      "objeto": "Video",
+      "endpoint": "GET /act_{ad_account_id}/advideos",
+      "requiredness": "not_applicable",
+      "condicao": "Campos legíveis do nó Video. O título chama-se `name`; `status` NÃO aparece entre os campos legíveis desta referência.",
+      "valor_enum": "string",
+      "suporte_atual_volc": "LIDO",
+      "evidencia": {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/video/",
+        "trecho": "`name` | string | The video title or caption. ... `picture` | string | The URL for the thumbnail picture of the video.",
+        "confianca": "COMPROVADO"
+      },
+      "nota": "A leitura pede apenas id,name,created_time,updated_time,picture — todos comprovados nesta página. `status` não é pedido justamente porque não está provado nesta edge, e por isso a bancada NÃO afirma que um vídeo está pronto para virar anúncio."
+    }
+  ],
+  "nao_comprovado": [
+    "Tabela oficial mapeando objective + optimization_goal para promoted_object obrigatório.",
+    "Obrigatoriedade de conversion_domain por objetivo ou por destino (a doc só cita compartilhamento de dados com pixel).",
+    "Como object_story_spec.page_id viaja junto de asset_feed_spec num mesmo AdCreative.",
+    "Se degrees_of_freedom_spec é obrigatório para criativo dinâmico.",
+    "Se o campo status/video_status é legível na edge /act_{id}/advideos.",
+    "Forma exata do payload x-www-form-urlencoded aceito pela Graph API v26: nenhum teste desta missão falou com a Meta."
+  ]
+}
