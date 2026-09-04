@@ -324,6 +324,17 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
                 # ausência. `target_cpa_micros = 0` diria que alguém escolheu
                 # zero, e o oneof precisa apenas ser selecionado.
                 _selecionar_ramo_vazio(alvo, "MaximizeConversions")
+
+        # Controle explícito de destino: o asset group carrega a URL final exata
+        # e a campanha declara opt-out da expansão automática dessa URL. A API
+        # v25 expõe a mensagem como tipo aninhado de Campaign; por isso não há
+        # `client.get_type("AssetAutomationSetting")` separado.
+        camp.asset_automation_settings.append({
+            "asset_automation_type": (
+                c.enums.AssetAutomationTypeEnum.FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION
+            ),
+            "asset_automation_status": c.enums.AssetAutomationStatusEnum.OPTED_OUT,
+        })
     else:
         raise ValueError(f"canal desconhecido: {canal}")
 

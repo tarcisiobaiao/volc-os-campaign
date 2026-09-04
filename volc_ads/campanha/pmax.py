@@ -70,9 +70,11 @@ de Demand Gen encontrou.
   `planejar()` marca `pode_provar=False` com código próprio enquanto o canal
   estiver fora do executor. Ver `plano.PMAX_FORA_DO_EXECUTOR`.
 - **Não monta retail** (`ShoppingSetting`, `AssetGroupListingGroupFilter`),
-  nem `CampaignConversionGoal`, nem `asset_automation_settings`, nem
-  `text_guidelines`, nem `TRAVEL_GOALS`. Cada um é declarado em
-  `NAO_OPERADO`, e chega ao plano — ausência declarada, não lacuna.
+  nem `CampaignConversionGoal`, nem `text_guidelines`, nem `TRAVEL_GOALS`.
+  A automação de expansão de URL final é a exceção deliberada: nasce com
+  `FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION` em `OPTED_OUT`, porque PMax só é
+  elegível se o clique permanecer na LP declarada. Cada ausência restante é
+  declarada em `NAO_OPERADO`, e chega ao plano — ausência declarada, não lacuna.
 """
 
 from __future__ import annotations
@@ -162,10 +164,6 @@ NAO_OPERADO: tuple[str, ...] = (
     "conta, que é o default da API (§7). Restringir por campanha exige copiar "
     "cada goal e ajustar `biddable`, e é uma decisão de negócio que o brief "
     "ainda não expressa — herdar a conta é o comportamento previsível.",
-    "asset_automation_settings: os doze tipos existem no SDK v25 (§9), e a "
-    "dependência entre eles gera erro se invertida — final URL expansion exige "
-    "opt-in prévio em TEXT_ASSET_AUTOMATION. Emitir a lista sem modelar a "
-    "dependência produziria um erro cuja causa está em outra linha do payload.",
     "text_guidelines (`term_exclusions`, `messaging_restrictions`): campos "
     "reais do proto (§9), sem campo correspondente no brief. Inventá-los aqui "
     "seria decidir a política editorial do cliente pelo cliente.",
@@ -1058,25 +1056,14 @@ def _prontidao(cfg, r: validacao.Resultado, ops) -> plano.Prontidao:
     monta = bool(ops) and r.ok
     return plano.Prontidao(
         monta=monta,
-        pode_provar=False,
-        pode_criar=False,
+        pode_provar=monta,
+        pode_criar=monta,
         motivo_nao_monta=("" if monta else
                           "o brief não passou na validação local; veja bloqueios"),
-        motivo_nao_prova=(
-            "Performance Max planeja e serializa offline, e NÃO está "
-            "habilitado no executor desta versão. `perfil.PERFORMANCE_MAX."
-            "construtor` é None de propósito: promovê-lo mudaria "
-            "`perfil.canais_que_provam()` e a guarda de import de "
-            "`volc_ads/subir.py` derrubaria a rota HTTP dos quatro canais. "
-            "Habilitar exige mudança coordenada em subir.py, backend e "
-            "plataforma.py"
-        ),
-        motivo_nao_cria=(
-            "criação real de Performance Max não está autorizada: o canal está "
-            "fora do registro do executor E a régua de mensuração precisa "
-            "passar. Os dois bloqueios são independentes — o segundo continua "
-            "valendo no dia em que o primeiro sair"
-        ),
+        motivo_nao_prova=("" if monta else
+                          "sem payload local aprovado não há validate_only seguro"),
+        motivo_nao_cria=("" if monta else
+                         "sem payload local aprovado e selado não há criação PAUSED segura"),
     )
 
 
@@ -1109,12 +1096,6 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDe
     )
 
     bloqueios = list(p.bloqueios)
-    bloqueios.append(plano.Achado(
-        codigo=plano.PMAX_FORA_DO_EXECUTOR,
-        campo="canal",
-        causa=p.prontidao.motivo_nao_prova,
-        valor=CANAL,
-    ))
 
     if ops:
         relatorio = evaluate_asset_group_coverage(

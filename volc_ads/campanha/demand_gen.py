@@ -859,8 +859,6 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str):
 #: Ausências DECLARADAS de Demand Gen — a MESMA tupla que
 #: `campanha/perfil.py` publica como `DEMAND_GEN.acoes_indisponiveis`.
 NAO_OPERADO: tuple[str, ...] = (
-    "subir: a primeira onda só monta e prova por validate_only. O único "
-    "executor recusa criação real mesmo com selo válido.",
     "formatos carrossel, vídeo responsivo e produto não entram: cada um "
     "tem outro contrato de assets e imutáveis.",
     "intenção textual e exclusão de audiência ficam separadas, mas não "
