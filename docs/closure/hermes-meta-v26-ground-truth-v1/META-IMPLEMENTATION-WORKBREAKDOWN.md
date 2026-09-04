@@ -12,3 +12,13 @@
 | 8 | Future create PAUSED executor | separate authorization | L | no | receipt/read-back/idempotency in sandbox/real approved mission |
 
 First useful proof: mocked read-only sync of Campaign → Ad Set → Ad → Creative into private read model with freshness and no tokens.
+
+## Corrections from delegated AS-IS audit
+
+Add before schema migration:
+
+| Order | Work | Files candidates | Size | Sequential reason |
+|---|---|---|---|---|
+| 0 | Decide v9-vs-v10 integration seam | `supabase/migrations/v9_*`, `v10_*`, `backend/app/trafego/ledger.py` | M | v9 identity is Google-shaped; v10 is Meta-aware. |
+| 0.5 | Implement Meta identity derivation/read closing | `backend/app/trafego/ledger.py`, Meta synchronizer | M | Successful Meta receipts cannot close canonical campaigns while ledger is Google-only. |
+| 0.6 | Preserve no-fake Meta UI states | `src/components/trafego/hub/adaptacao.ts`, server read models | S | Browser must not invent zero inventory for unread Meta accounts. |

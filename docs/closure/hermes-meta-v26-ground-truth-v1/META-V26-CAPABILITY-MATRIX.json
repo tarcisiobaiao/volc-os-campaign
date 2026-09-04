@@ -1,4 +1,14 @@
 {
+  "access_tier_notes": {
+    "facts": [
+      "ads_read required for insights/read",
+      "ads_management required for creation/management",
+      "Limited access is development/heavily rate-limited",
+      "Full access requires App Review and ongoing quality/call-volume requirements"
+    ],
+    "source": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authorization",
+    "volc_impact": "Separate read-only MVP from write mode; production advertiser operation needs App Review/Full Access planning."
+  },
   "capabilities": [
     {
       "conditional_fields": [
@@ -352,7 +362,7 @@
         "effective_status, configured_status"
       ],
       "dependencies": [],
-      "endpoint_operation": "GET /act_{ad-account-id}/campaigns",
+      "endpoint_operation": "GET /v26.0/act_{ad_account_id}/campaigns",
       "id": "META_CAMPAIGN_READ",
       "idempotency": "store external id + request hash + receipt before retrying",
       "local_validations": [
@@ -387,7 +397,7 @@
       ],
       "risk": "LOW",
       "support": "READ_ONLY",
-      "v26_notes": "Campaign endpoint creates/manages campaigns; read path needed for sync.",
+      "v26_notes": "Campaign endpoint creates/manages campaigns; read path needed for sync. Use explicit versioned URL and ad-account edges; store configured_status/effective_status/issues_info when available.",
       "volc_os_state": "AUSENTE"
     },
     {
@@ -485,7 +495,7 @@
         "promoted_object,budget,schedule"
       ],
       "dependencies": [],
-      "endpoint_operation": "GET /act_{ad-account-id}/adsets",
+      "endpoint_operation": "GET /v26.0/act_{ad_account_id}/adsets",
       "id": "META_ADSET_READ",
       "idempotency": "store external id + request hash + receipt before retrying",
       "local_validations": [
@@ -520,7 +530,7 @@
       ],
       "risk": "LOW",
       "support": "READ_ONLY",
-      "v26_notes": "Ad sets organize ads by targeting/budget.",
+      "v26_notes": "Ad sets organize ads by targeting/budget. Use explicit versioned URL and ad-account edges; store configured_status/effective_status/issues_info when available.",
       "volc_os_state": "AUSENTE"
     },
     {
@@ -580,7 +590,7 @@
         "tracking_specs,url_tags"
       ],
       "dependencies": [],
-      "endpoint_operation": "GET /act_{ad-account-id}/ads",
+      "endpoint_operation": "GET /v26.0/act_{ad_account_id}/ads",
       "id": "META_AD_READ",
       "idempotency": "store external id + request hash + receipt before retrying",
       "local_validations": [
@@ -615,7 +625,7 @@
       ],
       "risk": "LOW",
       "support": "READ_ONLY",
-      "v26_notes": "Ad links creative to ad set.",
+      "v26_notes": "Ad links creative to ad set. Use explicit versioned URL and ad-account edges; store configured_status/effective_status/issues_info when available.",
       "volc_os_state": "AUSENTE"
     },
     {
@@ -669,7 +679,7 @@
         "image_hash,video_id,asset_feed_spec"
       ],
       "dependencies": [],
-      "endpoint_operation": "GET /act_{ad-account-id}/adcreatives",
+      "endpoint_operation": "GET /v26.0/act_{ad_account_id}/adcreatives",
       "id": "META_CREATIVE_READ",
       "idempotency": "store external id + request hash + receipt before retrying",
       "local_validations": [
@@ -704,7 +714,7 @@
       ],
       "risk": "MEDIUM",
       "support": "READ_ONLY",
-      "v26_notes": "Creative is separate object associated by ads endpoint.",
+      "v26_notes": "Creative is separate object associated by ads endpoint. Use explicit versioned URL and ad-account edges; store configured_status/effective_status/issues_info when available.",
       "volc_os_state": "AUSENTE"
     },
     {
@@ -768,7 +778,13 @@
         "no raw token in browser/logs",
         "stable VOLC project binding",
         "ids are opaque in public docs",
-        "absence != zero"
+        "absence != zero",
+        "asset_feed_spec total assets <= 30",
+        "images <= 10",
+        "videos <= 10",
+        "bodies <= 5",
+        "titles <= 5",
+        "call_to_action_types <= 5"
       ],
       "meta_object": "Ad Creative",
       "meta_validations": [
@@ -781,7 +797,7 @@
         "object": "Ad Creative",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ad-creative/asset-feed-spec/options",
         "version": "v26.0",
         "volc_impact": "Useful later; MVP should prefer single link/image/video creative to reduce variable surface."
       },
@@ -796,7 +812,7 @@
       ],
       "risk": "HIGH",
       "support": "PLANNED",
-      "v26_notes": "Useful later; MVP should prefer single link/image/video creative to reduce variable surface.",
+      "v26_notes": "Useful later; MVP should prefer single link/image/video creative to reduce variable surface. Delegated official read found asset-feed limits: total assets 30, images/videos 10 each, bodies/titles/CTAs 5 each.",
       "volc_os_state": "AUSENTE"
     },
     {
@@ -891,7 +907,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -914,7 +936,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; spend must carry freshness and absence-vs-zero semantics."
       },
@@ -938,7 +960,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -961,7 +989,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; impressions must carry freshness and absence-vs-zero semantics."
       },
@@ -985,7 +1013,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1008,7 +1042,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; clicks must carry freshness and absence-vs-zero semantics."
       },
@@ -1032,7 +1066,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1055,7 +1095,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; reach must carry freshness and absence-vs-zero semantics."
       },
@@ -1079,7 +1119,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1102,7 +1148,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; frequency must carry freshness and absence-vs-zero semantics."
       },
@@ -1126,7 +1172,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1149,7 +1201,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; cpm must carry freshness and absence-vs-zero semantics."
       },
@@ -1173,7 +1225,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1196,7 +1254,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; cpc must carry freshness and absence-vs-zero semantics."
       },
@@ -1220,7 +1278,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1243,7 +1307,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; ctr must carry freshness and absence-vs-zero semantics."
       },
@@ -1267,7 +1331,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1290,7 +1360,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; actions must carry freshness and absence-vs-zero semantics."
       },
@@ -1314,7 +1384,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1337,7 +1413,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; action_values must carry freshness and absence-vs-zero semantics."
       },
@@ -1361,7 +1437,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1384,7 +1466,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; landing_page_views must carry freshness and absence-vs-zero semantics."
       },
@@ -1408,7 +1490,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1431,7 +1519,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; currency must carry freshness and absence-vs-zero semantics."
       },
@@ -1455,7 +1543,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1478,7 +1572,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; timezone must carry freshness and absence-vs-zero semantics."
       },
@@ -1502,7 +1596,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1525,7 +1625,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; breakdowns must carry freshness and absence-vs-zero semantics."
       },
@@ -1549,7 +1649,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1572,7 +1678,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; async_insights must carry freshness and absence-vs-zero semantics."
       },
@@ -1596,7 +1702,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1619,7 +1731,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; pagination must carry freshness and absence-vs-zero semantics."
       },
@@ -1643,7 +1755,13 @@
       "conditional_fields": [
         "breakdowns",
         "time_increment",
-        "async job for large ranges"
+        "async job for large ranges",
+        "date_preset",
+        "time_increment",
+        "action_breakdowns",
+        "action_attribution_windows",
+        "filtering",
+        "sort"
       ],
       "dependencies": [],
       "endpoint_operation": "GET /act_{ad-account-id}/insights",
@@ -1666,7 +1784,7 @@
         "object": "Ads Insights",
         "read_date_utc": "2026-09-04",
         "stability": "current",
-        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/ad-optimization-basics",
+        "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
         "version": "v26.0",
         "volc_impact": "Insights endpoint provides campaign performance; freshness must carry freshness and absence-vs-zero semantics."
       },
@@ -2008,6 +2126,18 @@
       "v26_notes": "Operation must be separate capability; META_ARCHIVE not implied by create paused.",
       "volc_os_state": "AUSENTE"
     }
+  ],
+  "official_sources_added_from_delegated_research": [
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authorization",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/overview",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-account/campaigns",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-account/adsets",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-account/ads",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-account/adcreatives",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ad-creative/asset-feed-spec/options",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-campaign-delivery-estimate",
+    "https://developers.facebook.com/documentation/mcp/devtools-mcp"
   ],
   "read_date_utc": "2026-09-04",
   "version": "v26.0"

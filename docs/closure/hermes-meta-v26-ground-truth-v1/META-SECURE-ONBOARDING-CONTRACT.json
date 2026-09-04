@@ -1,4 +1,9 @@
 {
+  "access_tier_policy": {
+    "full_access": "required target for production advertiser operation after App Review",
+    "limited_access": "development only / rate-limited; do not represent as production-ready",
+    "quality_gate": "track error rate and API usage before requesting/maintaining access"
+  },
   "flow": [
     "operator registers metadata",
     "secret remains in 1Password",
@@ -13,6 +18,12 @@
     ],
     "enable": [
       "ads_management plus separate activation approval"
+    ],
+    "insights": [
+      "ads_read"
+    ],
+    "production_advertiser_management": [
+      "ads_management advanced/full access as applicable"
     ],
     "read_inventory": [
       "ads_read",

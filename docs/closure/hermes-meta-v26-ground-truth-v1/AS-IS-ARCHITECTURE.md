@@ -37,3 +37,13 @@
 ## Server authority
 
 The backend authenticated service owns operational writes and external reads. The browser renders read models and submits proposals; it does not resolve tokens or write operational plan state.
+
+## Delegated evidence correction
+
+A later read-only AS-IS audit refined the schema picture:
+
+- v9 inventory is **not fully provider-neutral** in concrete identity columns: it is Google-shaped (`customer_id`, `campaign_id`, Google channel checks). Reuse its patterns — freshness, mirror, snapshots, links, events — but do not insert Meta directly into v9 tables without migration/extension.
+- v10 intent/blueprint/lote/receipt layer is materially more Meta-ready because `plataforma` already allows `META_ADS` and receipt/idempotency/human approval are provider-neutral.
+- `backend/app/trafego/contrato_canais.py` is still Google-only for channel cockpit contracts.
+- `backend/app/trafego/ledger.py` blocks Meta because `volc_campaign_id_de()` is Google-only.
+- Hub UI correctly avoids faking Meta by reading Google inventory; this no-fake-data behavior is a requirement.

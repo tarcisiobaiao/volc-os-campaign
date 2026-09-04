@@ -1,4 +1,16 @@
 {
+  "asset_feed_spec_limits": {
+    "limits": {
+      "bodies": 5,
+      "call_to_action_types": 5,
+      "images": 10,
+      "titles": 5,
+      "total_assets": 30,
+      "videos": 10
+    },
+    "rule": "Validate before any adcreative submission; MVP single-creative path should avoid dynamic asset-feed unless explicitly enabled.",
+    "source": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ad-creative/asset-feed-spec/options"
+  },
   "rules": [
     {
       "check": "sha256 over bytes required",
