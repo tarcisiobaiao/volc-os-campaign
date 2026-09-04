@@ -196,10 +196,12 @@ describe('8–9 · seletor e filtros persistem na URL', () => {
 });
 
 describe('11 · Meta não finge integração', () => {
-  it('escolhe Meta e declara que a leitura ainda não existe', () => {
+  it('escolhe Meta, mostra demo inequívoca e não consulta inventário Google', () => {
     montar('/trafego?rede=meta');
-    expect(screen.getByRole('heading', { name: 'Fundação instalada · conexão real pendente' })).toBeTruthy();
-    expect(screen.getByText(/não inventa campanhas ou desempenho/)).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Inventário demonstrativo de campanhas' })).toBeTruthy();
+    expect(screen.getByText(/nenhum nome, status, orçamento ou desempenho desta tabela veio da Meta/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Configurar integração Meta neste Mac' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Guia Encceja · Descoberta' })).toBeTruthy();
     expect(screen.queryByText(/ROAS/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Carregar mais' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Atualizar dados' })).toBeNull();
@@ -211,7 +213,7 @@ describe('11 · Meta não finge integração', () => {
 
   it('aceita plataforma=meta sem projetar a situação do Google', () => {
     montar('/trafego?plataforma=meta');
-    expect(screen.getByRole('heading', { name: 'Fundação instalada · conexão real pendente' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Inventário demonstrativo de campanhas' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Atualizar dados' })).toBeNull();
     expect(chamadas.inventario.every((habilitado) => habilitado === false)).toBe(true);
     expect(screen.getByTestId('endereco').textContent).toContain('rede=meta');

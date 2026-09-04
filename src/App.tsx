@@ -39,6 +39,8 @@ import QuadroDeOportunidades from "./components/trafego/oportunidades/QuadroDeOp
 import NovaCampanhaPage from "./pages/trafego/NovaCampanhaPage";
 import CampanhaCanonPage from "./pages/trafego/CampanhaCanonPage";
 import DecisionIntelligenceLabPage from "./pages/trafego/DecisionIntelligenceLabPage";
+import MetaCriacaoPage from "./pages/trafego/MetaCriacaoPage";
+import MetaObjetoPage from "./pages/trafego/MetaObjetoPage";
 // Estúdio Criativo — área de PRODUÇÃO, não subaba de Tráfego (SPEC §6).
 // Carregado sob demanda: quem nunca abre `/criativos` não baixa o chunk.
 const EstudioHomePage = lazy(() => import("./pages/criativos/EstudioHomePage"));
@@ -128,6 +130,8 @@ const App = () => (
                 outras duas, e o operador via a tela pular a cada troca de aba. */}
             <Route path="/trafego" element={<ProtectedRoute><HubDeTrafegoPage oportunidades={<QuadroDeOportunidades />} /></ProtectedRoute>} />
             <Route path="/trafego/meta/campanhas" element={<Navigate to="/trafego?rede=meta&nivel=campanhas" replace />} />
+            <Route path="/trafego/meta/nova" element={<ProtectedRoute><MetaCriacaoPage /></ProtectedRoute>} />
+            <Route path="/trafego/meta/:tipo/:objetoId" element={<ProtectedRoute><MetaObjetoPage /></ProtectedRoute>} />
             <Route path="/trafego/laboratorio/inteligencia/:scenarioId" element={<ProtectedRoute><DecisionIntelligenceLabPage /></ProtectedRoute>} />
             <Route path="/trafego/campanhas/:volcCampaignId" element={<ProtectedRoute><CampanhaCanonPage /></ProtectedRoute>} />
             <Route path="/trafego/nova/:opportunityId" element={<ProtectedRoute><NovaCampanhaPage /></ProtectedRoute>} />

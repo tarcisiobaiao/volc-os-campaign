@@ -71,6 +71,7 @@ import { EixosDoHub, SeletorDeCanal } from '@/components/trafego/hub/EixosDoHub'
 // técnica também saiu da navegação: preparar uma campanha é a tarefa; ler a
 // matriz de capacidades é uma responsabilidade interna da bancada.
 import { MetaNaoConfigurada } from '@/components/trafego/hub/MetaNaoConfigurada';
+import { MetaConfiguracaoLocal } from '@/components/trafego/meta/MetaConfiguracaoLocal';
 import { totaisHistoricas, totaisOperacionais } from '@/components/trafego/hub/adaptacao';
 import type { AbaDoHub } from '@/components/trafego/hub/contrato';
 import type { FiltrosDoInventario } from '@/types/trafego';
@@ -560,6 +561,12 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
                   Nova campanha
                 </Button>
               )}
+              {!google && (
+                <Button asChild className="min-h-10 px-4 font-semibold">
+                  <Link to="/trafego/meta/nova?modo=demo">Nova campanha Meta</Link>
+                </Button>
+              )}
+              {!google && <MetaConfiguracaoLocal />}
               {google && (
                 <FaixaDeSituacao
                   leitura={inventario}
@@ -670,7 +677,7 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
                 />
               </>
             ) : (
-              <MetaNaoConfigurada nivel={estado.nivel} />
+              <MetaNaoConfigurada nivel={estado.nivel} secao="campanhas" />
             )}
           </TabsContent>
 
@@ -685,11 +692,11 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
               recuo próprio; enquanto ela trouxer, é aqui que a moldura se
               defende. */}
           <TabsContent value="preparar" className="mt-6 [&>div]:p-0">
-            {google ? (oportunidades ?? <TrafegoPage />) : <MetaNaoConfigurada nivel={estado.nivel} />}
+            {google ? (oportunidades ?? <TrafegoPage />) : <MetaNaoConfigurada nivel={estado.nivel} secao="preparar" />}
           </TabsContent>
 
           <TabsContent value="atencao" className="mt-6">
-            {google ? <FilaDeAtencao foco={foco} /> : <MetaNaoConfigurada nivel={estado.nivel} />}
+            {google ? <FilaDeAtencao foco={foco} /> : <MetaNaoConfigurada nivel={estado.nivel} secao="atencao" />}
           </TabsContent>
         </Tabs>
       </div>

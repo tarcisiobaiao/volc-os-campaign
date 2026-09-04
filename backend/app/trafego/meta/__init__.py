@@ -5,6 +5,8 @@ first slice is hermetic by design: callers must inject both an HTTP client and
 a secret resolver, and the production application does neither yet.
 """
 
-from . import adaptador, credenciais, dominio, persistencia, sincronizador
+from . import adaptador, configuracao_local, credenciais, dominio, persistencia, sincronizador
 
-__all__ = ("adaptador", "credenciais", "dominio", "persistencia", "sincronizador")
+__all__ = (
+    "adaptador", "configuracao_local", "credenciais", "dominio", "persistencia", "sincronizador",
+)

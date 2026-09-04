@@ -1500,11 +1500,11 @@
           "status": "partial",
           "proof": "Em 04/09/2026, o pacote hermes-meta-v26-ground-truth-v1 foi incorporado e adjudicado contra o runtime: contrato de intake criativo, ZIP, validação de assets, 10 etapas do operador e 18 ligações UI/API ficaram documentados com matriz bidirecional de 44 capacidades. Os materiais locais Co-Piloto Meta e Meta MVP Webgo foram localizados, mas permanecem AVAILABLE_NOT_IMPORTED. Continua partial porque o briefing Meta ainda não atravessa o Estúdio, blueprint e executor canônico em runtime."
         },
-        {
-          "id": "P11-T03",
-          "title": "Configurar system user e integração segura",
-          "status": "partial",
-          "proof": "Em 04/09/2026 foi integrada a fundação hermética v15_01: referências opacas do Cofre, prontidão fail-closed, resolvedor host-only sem fallback, adaptador Graph v26 GET-only com paginação limitada e erros sanitizados, read model Meta isolado com RLS forçada e recusa de DELETE. O ciclo apply→constraints→RLS/grants→rollback→reapply passou em PostgreSQL 15 descartável. Continua partial: nenhum system user/token real foi configurado, o resolvedor real não existe, a migration não foi aplicada no Supabase oficial e nenhuma conta Meta foi lida."
+    {
+      "id": "P11-T03",
+      "title": "Configurar system user e integração segura",
+      "status": "partial",
+      "proof": "Em 04/09/2026 foi integrada a fundação hermética v15_01: referências opacas do Cofre, prontidão fail-closed, adaptador Graph v26 GET-only e read model Meta isolado. Na lane operacional, foi acrescentado um atalho provisório explícito para ADMIN em localhost/macOS: o token é validado por leitura de /me e /me/adaccounts e somente então cifrado no Chaveiro do macOS, sem browser storage, Supabase, arquivo, log ou mutate. A rota e a UI estão testadas, mas nenhum token real foi fornecido e nenhuma conta Meta foi lida; o Cofre definitivo, a migration oficial e o resolvedor produtivo continuam pendentes."
         },
         {
           "id": "P11-T04",
@@ -1512,17 +1512,17 @@
           "status": "partial",
           "proof": "A porta e o contrato interno existem. A convergência 4da6a26 integrou parque criativo, bancada local, motor tipográfico, lifecycle monotônico de storage, recibo reproduzível, cancelamento/retomada e interface de laboratório; 226 provas frontend, 234 backend e ciclo v11_03 com 129/129. Imagem mantém seis rotas documentadas; vídeo tem 17 formatos, 15 skins e 38 renders observados. Continua parcial: Aprova, Positivo, PRENSA e Motor de Vídeo ainda precisam de adapters produtivos; Remotion não é hermético; não há worker remoto; v11_03 não foi aplicada."
         },
-        {
-          "id": "P11-T05",
-          "title": "Criar campanha, conjunto e anúncio em modo seguro",
-          "status": "todo",
-          "proof": "O contrato v26 de criação PAUSED, aprovação, idempotência, recibo e read-back está adjudicado, e a hierarquia campaign→adset→ad→creative ganhou domínio e leitura hermética. Ainda não existe executor Meta de criação nem validate remoto; nenhuma criação real ocorreu pelo Hub."
+    {
+      "id": "P11-T05",
+      "title": "Criar campanha, conjunto e anúncio em modo seguro",
+      "status": "partial",
+      "proof": "O contrato v26 de criação PAUSED, aprovação, idempotência, recibo e read-back está adjudicado. Em 04/09/2026, a lane operacional ganhou uma bancada demonstrativa navegável em oito decisões — base, campanha, orçamento, conjunto, público, anúncio, mensuração e revisão — cobrindo a hierarquia campaign→adset→ad→creative e deixando a ação final explicitamente bloqueada. Continua partial: os campos ainda não persistem em blueprint, não existe executor Meta nem validação remota e nenhuma criação real ocorreu pelo Hub."
         },
-        {
-          "id": "P11-T06",
-          "title": "Criar página canônica Meta por campanha/conjunto/anúncio",
-          "status": "partial",
-          "proof": "Em 04/09/2026 o Hub passou a reconhecer rede=meta como eixo canônico, convergir o alias plataforma=meta, remover filtros de canal Google e impedir leituras, notificações, frescor e atualização Google dentro da superfície Meta. A rota legada /trafego/meta/campanhas redireciona para o endereço canônico e a UI declara Meta não configurada sem fabricar inventário. Continua partial: o read model Meta ainda não tem adapter Supabase/rotas públicas e não há páginas reais por campanha, conjunto ou anúncio."
+    {
+      "id": "P11-T06",
+      "title": "Criar página canônica Meta por campanha/conjunto/anúncio",
+      "status": "partial",
+      "proof": "Em 04/09/2026 o Hub passou a reconhecer rede=meta como eixo canônico e a impedir leituras Google na superfície Meta. Depois, a lane operacional criou inventários demonstrativos inequivocamente rotulados e páginas canônicas navegáveis para campanha, conjunto, anúncio e criativo, com visão geral, estrutura subordinada, configuração, histórico vazio honesto e ações reais bloqueadas. Continua partial: as entidades exibidas são fictícias; falta ligar as páginas ao adapter/read model e provar inventário Meta real."
         }
       ]
     },

@@ -141,6 +141,29 @@ export class PautadorApiError extends Error {
   }
 }
 
+export interface EstadoDaConfiguracaoMetaLocal {
+  configurado: boolean;
+  armazenamento: 'macOS Keychain';
+  api_version: 'v26.0';
+  salvo_em?: string;
+}
+
+export interface ResultadoDoTesteMetaLocal {
+  ok: true;
+  configurado?: boolean;
+  api_version: 'v26.0';
+  salvo_em?: string;
+  ator: { nome: string; id_mascarado: string | null };
+  contas: Array<{
+    nome: string;
+    id_mascarado: string | null;
+    status: number | null;
+    moeda: string | null;
+    fuso: string | null;
+  }>;
+  contas_acessiveis: number;
+}
+
 function url(path: string): string {
   return `${API_BASE}${path}`;
 }
@@ -228,6 +251,25 @@ export const pautadorApi = {
   },
   get configured() {
     return Boolean(API_BASE);
+  },
+
+  estadoMetaLocal(): Promise<EstadoDaConfiguracaoMetaLocal> {
+    return request('/api/trafego/meta/local/configuracao');
+  },
+
+  salvarETestarMetaLocal(token: string): Promise<ResultadoDoTesteMetaLocal> {
+    return request('/api/trafego/meta/local/configuracao', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  testarMetaLocal(): Promise<ResultadoDoTesteMetaLocal> {
+    return request('/api/trafego/meta/local/testar', { method: 'POST' });
+  },
+
+  removerMetaLocal(): Promise<{ removido: boolean }> {
+    return request('/api/trafego/meta/local/configuracao', { method: 'DELETE' });
   },
 
   workRoad(): Promise<WorkRoadLive> {
