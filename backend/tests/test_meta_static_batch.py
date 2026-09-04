@@ -172,6 +172,11 @@ async def test_resolvedor_lote_le_inventario_uma_vez_e_resolve_refs_opacas() -> 
                 {"hash": "hash_lote_001", "name": "Um"},
                 {"hash": "hash_lote_002", "name": "Dois"},
             ]})
+        if request.url.path.endswith("/advideos"):
+            return httpx.Response(200, json={"data": [
+                {"id": "55443322", "name": "Video existente",
+                 "picture": "https://scontent.example.fbcdn.net/thumb.jpg"},
+            ]})
         raise AssertionError(request.url)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(responder)) as cliente:
@@ -234,10 +239,11 @@ async def test_executor_lote_resolve_cada_criativo_e_readback_por_tipo() -> None
             return httpx.Response(200, json={"id": identificador})
         identificador = request.url.path.rsplit("/", 1)[-1]
         edge, dados = criados[identificador]
-        base: dict[str, object] = {"id": identificador, "name": dados["name"]}
+        base: dict[str, object] = {
+            "id": identificador, "name": dados["name"], "account_id": "1234567890"}
         if edge == "campaigns":
             base.update({
-                "objective": "OUTCOME_TRAFFIC", "status": "PAUSED",
+                "objective": "OUTCOME_TRAFFIC", "buying_type": "AUCTION", "status": "PAUSED",
                 "configured_status": "PAUSED", "effective_status": "PAUSED",
                 "special_ad_categories": [], "is_adset_budget_sharing_enabled": False,
             })
@@ -246,11 +252,16 @@ async def test_executor_lote_resolve_cada_criativo_e_readback_por_tipo() -> None
                 "campaign_id": dados["campaign_id"], "daily_budget": dados["daily_budget"],
                 "billing_event": dados["billing_event"],
                 "optimization_goal": dados["optimization_goal"],
-                "bid_strategy": dados["bid_strategy"], "destination_type": dados["destination_type"],
+                "bid_strategy": dados["bid_strategy"],
+                "start_time": dados["start_time"],
+                "targeting": json.loads(dados["targeting"]),
                 "status": "PAUSED", "configured_status": "PAUSED", "effective_status": "PAUSED",
             })
         elif edge == "adcreatives":
-            base.update({"status": "ACTIVE", "effective_status": "ACTIVE"})
+            base.update({
+                "status": "ACTIVE", "effective_status": "ACTIVE",
+                "object_story_spec": json.loads(dados["object_story_spec"]),
+            })
         else:
             base.update({
                 "adset_id": dados["adset_id"],

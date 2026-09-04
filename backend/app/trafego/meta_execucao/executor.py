@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import hashlib
 import re
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, Mapping
 from urllib.parse import urlparse
@@ -45,6 +46,7 @@ class ErroRemotoMeta(RuntimeError):
         retryable: bool = False,
         objetos_criados: tuple[str, ...] = (),
         detalhe_provedor: Mapping[str, Any] | None = None,
+        criacao_descartada: bool = False,
     ) -> None:
         super().__init__(mensagem)
         self.codigo = codigo
@@ -52,6 +54,10 @@ class ErroRemotoMeta(RuntimeError):
         # Names only. Provider ids remain backend-private even on failures.
         self.objetos_criados = objetos_criados
         self.detalhe_provedor = dict(detalhe_provedor or {})
+        # True apenas quando a própria Meta recusou o pedido: só nesse caso é
+        # provado que nada foi criado. Transporte, corpo inválido ou resposta
+        # sem id deixam o passo AMBÍGUO, nunca FALHO.
+        self.criacao_descartada = criacao_descartada
 
 
 def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
@@ -59,11 +65,58 @@ def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
     texto = str(valor or "").strip()
     if not texto:
         return None
+    # Segredos primeiro: um token pode conter dígitos e seria apenas mascarado
+    # parcialmente pelas regras de ID se a ordem fosse invertida.
+    texto = re.sub(r"(?i)\bbearer\s+[A-Za-z0-9._\-]+", "Bearer [redacted]", texto)
     texto = re.sub(
-        r"(?i)(access_token(?:=|\s+))[^&\s]+", r"\1[redacted]", texto)
+        r"(?i)(access[_ ]?token\s*(?:=|:|\s)\s*)[^&\s\"']+", r"\1[redacted]", texto)
+    texto = re.sub(r"\bEAA[A-Za-z0-9_\-]{8,}\b", "[redacted]", texto)
+    # Qualquer cadeia opaca longa — token, image_hash, assinatura de CDN.
+    texto = re.sub(r"\b[A-Za-z0-9_\-]{28,}\b", "[redacted]", texto)
     texto = re.sub(r"\bact_([0-9]{4,40})\b", lambda m: f"act_••••{m.group(1)[-4:]}", texto)
     texto = re.sub(r"\b([0-9]{7,40})\b", lambda m: f"••••{m.group(1)[-4:]}", texto)
     return texto[:limite]
+
+
+def _paises(alvo: Mapping[str, Any]) -> tuple[str, ...]:
+    geo = alvo.get("geo_locations")
+    paises = geo.get("countries") if isinstance(geo, Mapping) else None
+    if not isinstance(paises, (list, tuple)):
+        return ()
+    return tuple(sorted(str(item).upper() for item in paises))
+
+
+def _advantage_audience(alvo: Any) -> int | None:
+    if not isinstance(alvo, Mapping):
+        return None
+    automacao = alvo.get("targeting_automation")
+    if not isinstance(automacao, Mapping) or "advantage_audience" not in automacao:
+        return None
+    valor = automacao["advantage_audience"]
+    if isinstance(valor, bool):
+        return int(valor)
+    try:
+        return int(str(valor))
+    except (TypeError, ValueError):
+        return None
+
+
+def _mesmo_instante(lido: Any, enviado: Any) -> bool:
+    """A Meta devolve o horário no fuso da conta; o instante é que precisa bater."""
+    if enviado in (None, ""):
+        return True
+    def instante(valor: Any) -> datetime | None:
+        texto = str(valor or "").strip()
+        if not texto:
+            return None
+        try:
+            return datetime.fromisoformat(texto.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    a, b = instante(lido), instante(enviado)
+    if a is None or b is None or a.tzinfo is None or b.tzinfo is None:
+        return False
+    return a == b
 
 
 def _form(payload: Mapping[str, Any]) -> dict[str, str]:
@@ -190,8 +243,18 @@ class ExecutorMetaPausado:
                             pass
                         raise
                     except ErroRemotoMeta as exc:
-                        await self._registro.falhar_passo(
-                            passo_ref=passo.passo_ref, codigo=exc.codigo)
+                        # Só a recusa explícita da Meta prova que o objeto não
+                        # nasceu. Qualquer outra falha depois do despacho fica
+                        # AMBÍGUA para não bloquear a reconciliação por leitura.
+                        if exc.criacao_descartada:
+                            await self._registro.falhar_passo(
+                                passo_ref=passo.passo_ref, codigo=exc.codigo)
+                        else:
+                            try:
+                                await self._registro.marcar_ambiguo(
+                                    passo_ref=passo.passo_ref)
+                            except Exception:
+                                pass
                         raise
                     ids[operacao.chave] = str(resposta["id"])
                     try:
@@ -218,6 +281,7 @@ class ExecutorMetaPausado:
                     payload=payload,
                     identificador=ids[operacao.chave],
                     ids=ids,
+                    conta_externa=plano.conta_externa,
                 )
                 read_back[operacao.chave] = dados
                 tipos[operacao.chave] = operacao.tipo_objeto
@@ -237,10 +301,9 @@ class ExecutorMetaPausado:
                 retryable=False,
                 objetos_criados=tuple(ids),
             ) from exc
-        conta_externa = plano.operacoes[0].endpoint.split("/act_", 1)[1].split("/", 1)[0]
         opacas = {
             chave: meta_dom.referencia_opaca_objeto(
-                conta_externa, tipos[chave], identificador)
+                plano.conta_externa, tipos[chave], identificador)
             for chave, identificador in ids.items()
         }
         return ResultadoNascimentoMeta(
@@ -249,11 +312,16 @@ class ExecutorMetaPausado:
             referencias_opacas=opacas,
             read_back={
                 chave: {
+                    # O AdCreative não é veiculável: ele nasce ACTIVE por
+                    # construção e só entrega através de um Ad PAUSED. Declarar
+                    # isso evita afirmar "tudo pausado" sobre um objeto que a
+                    # Meta nunca pausa.
+                    "veiculavel": tipos[chave] in {"campaign", "adset", "ad"},
                     "status": dados.get("configured_status") or dados.get("status"),
                     "effective_status": dados.get("effective_status"),
                     "objective": dados.get("objective"),
                     "optimization_goal": dados.get("optimization_goal"),
-                    "destination_type": dados.get("destination_type"),
+                    "advantage_audience_lido": _advantage_audience(dados.get("targeting")),
                     "advantage_state_info": dados.get("advantage_state_info"),
                 }
                 for chave, dados in read_back.items()
@@ -300,6 +368,9 @@ class ExecutorMetaPausado:
                 "META_REMOTE_VALIDATION_FAILED" if "execution_options" in payload else "META_REMOTE_CREATE_FAILED",
                 f"a Meta recusou {operacao.chave} (código {codigo}{f'/{subcodigo}' if subcodigo else ''}){complemento}",
                 retryable=resposta.status_code >= 500,
+                # 4xx com corpo de erro é recusa provada: nada foi criado.
+                # 5xx pode ter criado antes de falhar e continua ambíguo.
+                criacao_descartada=400 <= resposta.status_code < 500,
                 detalhe_provedor={
                     "code": codigo,
                     "error_subcode": subcodigo,
@@ -323,8 +394,8 @@ class ExecutorMetaPausado:
         self, nome: str, identificador: str, segredo: SegredoEfemero,
     ) -> Mapping[str, Any]:
         campos = {
-            "campaign": "id,account_id,name,objective,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info",
-            "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,bid_strategy,billing_event,optimization_goal,destination_type,targeting,promoted_object",
+            "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info",
+            "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec",
             "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
             "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative",
         }
@@ -360,6 +431,7 @@ class ExecutorMetaPausado:
         payload: Mapping[str, Any],
         identificador: str,
         ids: Mapping[str, str],
+        conta_externa: str,
     ) -> None:
         def divergiu(campo: str) -> None:
             raise ErroRemotoMeta(
@@ -367,8 +439,24 @@ class ExecutorMetaPausado:
                 f"read-back de {nome} divergiu no campo {campo}",
             )
 
+        def booleano(campo: str) -> bool:
+            """Ausência não é `false`. A Meta precisa devolver o campo lido."""
+            if campo not in dados:
+                divergiu(campo)
+            valor = dados[campo]
+            if isinstance(valor, bool):
+                return valor
+            if isinstance(valor, str) and valor.strip().lower() in {"true", "false"}:
+                return valor.strip().lower() == "true"
+            divergiu(campo)
+            raise AssertionError  # pragma: no cover - divergiu sempre levanta
+
         if str(dados.get("id") or "") != identificador:
             divergiu("id")
+        # O objeto precisa pertencer à mesma conta que o plano resolveu.
+        conta_lida = str(dados.get("account_id") or "").removeprefix("act_").strip()
+        if conta_lida and conta_lida != conta_externa:
+            divergiu("account_id")
         if nome in {"campaign", "adset", "ad"}:
             estado = dados.get("configured_status") or dados.get("status")
             if estado != "PAUSED":
@@ -377,6 +465,9 @@ class ExecutorMetaPausado:
             if efetivo not in {None, "PAUSED", "PENDING_REVIEW", "IN_PROCESS"}:
                 divergiu("effective_status")
         if nome == "creative":
+            # O AdCreative não é um objeto veiculável: ele só entrega através de
+            # um Ad, e a Meta o devolve ACTIVE por construção. O que precisa ser
+            # recusado é o criativo inutilizável.
             if dados.get("status") in {"DELETED", "WITH_ISSUES"}:
                 divergiu("status")
             if dados.get("effective_status") in {"DELETED", "WITH_ISSUES"}:
@@ -384,12 +475,13 @@ class ExecutorMetaPausado:
         if str(dados.get("name") or "") != str(payload.get("name") or ""):
             divergiu("name")
         if nome == "campaign":
-            if dados.get("objective") != payload.get("objective"):
-                divergiu("objective")
+            for campo in ("objective", "buying_type"):
+                if payload.get(campo) is not None and dados.get(campo) != payload.get(campo):
+                    divergiu(campo)
             categorias = tuple(dados.get("special_ad_categories") or ())
             if categorias != tuple(payload.get("special_ad_categories") or ()):
                 divergiu("special_ad_categories")
-            if bool(dados.get("is_adset_budget_sharing_enabled")) is not bool(
+            if booleano("is_adset_budget_sharing_enabled") is not bool(
                 payload.get("is_adset_budget_sharing_enabled")
             ):
                 divergiu("is_adset_budget_sharing_enabled")
@@ -399,7 +491,9 @@ class ExecutorMetaPausado:
             for campo in (
                 "billing_event", "optimization_goal", "bid_strategy", "destination_type",
             ):
-                if dados.get(campo) != payload.get(campo):
+                # Só confere o que foi realmente enviado: destination_type não
+                # pertence a esta receita e a Meta pode devolver o dela.
+                if campo in payload and dados.get(campo) != payload.get(campo):
                     divergiu(campo)
             try:
                 verba_lida = int(str(dados.get("daily_budget")))
@@ -408,6 +502,29 @@ class ExecutorMetaPausado:
                 return
             if verba_lida != payload.get("daily_budget"):
                 divergiu("daily_budget")
+            if not _mesmo_instante(dados.get("start_time"), payload.get("start_time")):
+                divergiu("start_time")
+            alvo_lido = dados.get("targeting")
+            alvo_enviado = payload.get("targeting")
+            if isinstance(alvo_enviado, Mapping):
+                if not isinstance(alvo_lido, Mapping):
+                    divergiu("targeting")
+                    return
+                paises_enviados = _paises(alvo_enviado)
+                if _paises(alvo_lido) != paises_enviados:
+                    divergiu("targeting.geo_locations.countries")
+                for campo in ("age_min", "age_max"):
+                    if campo in alvo_enviado and str(alvo_lido.get(campo)) != str(
+                        alvo_enviado[campo]
+                    ):
+                        divergiu(f"targeting.{campo}")
+                # Advantage+ Audience: confere quando a Meta devolve o campo.
+                # A leitura pode omiti-lo, e nesse caso o recibo declara que a
+                # escolha não foi confirmada em vez de fingir confirmação.
+                esperado = _advantage_audience(alvo_enviado)
+                lido = _advantage_audience(alvo_lido)
+                if lido is not None and esperado is not None and lido != esperado:
+                    divergiu("targeting.targeting_automation.advantage_audience")
         elif nome == "ad":
             if str(dados.get("adset_id") or "") != ids.get("adset"):
                 divergiu("adset_id")
@@ -420,3 +537,29 @@ class ExecutorMetaPausado:
             )
             if str(creative_id or "") != str(esperado or ""):
                 divergiu("creative.id")
+        if nome == "creative":
+            # Nunca emitimos asset_feed_spec. Se a Meta devolver um, o objeto
+            # criado não é o criativo estático que foi aprovado.
+            if "asset_feed_spec" not in payload and dados.get("asset_feed_spec"):
+                divergiu("asset_feed_spec")
+            historia_lida = dados.get("object_story_spec")
+            historia_enviada = payload.get("object_story_spec")
+            if isinstance(historia_enviada, Mapping):
+                if not isinstance(historia_lida, Mapping):
+                    divergiu("object_story_spec")
+                    return
+                if str(historia_lida.get("page_id") or "") != str(
+                    historia_enviada.get("page_id") or ""
+                ):
+                    divergiu("object_story_spec.page_id")
+                enviado = historia_enviada.get("link_data")
+                lido = historia_lida.get("link_data")
+                if isinstance(enviado, Mapping):
+                    if not isinstance(lido, Mapping):
+                        divergiu("object_story_spec.link_data")
+                        return
+                    for campo in ("image_hash", "link", "message", "name", "description"):
+                        if campo in enviado and str(lido.get(campo) or "") != str(
+                            enviado[campo] or ""
+                        ):
+                            divergiu(f"object_story_spec.link_data.{campo}")

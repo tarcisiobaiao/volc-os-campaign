@@ -16,12 +16,23 @@ class ErroDeNascimentoMeta(ValueError):
 
 _CTA = {"LEARN_MORE", "APPLY_NOW", "SIGN_UP", "GET_QUOTE", "CONTACT_US"}
 
+# Gramática dos marcadores que o compilador resolve para IDs reais entre os
+# passos da saga. Texto do operador nunca pode assumir essa forma: o payload
+# aprovado e hasheado ficaria diferente do payload efetivamente enviado.
+PLACEHOLDER_DE_DEPENDENCIA = re.compile(
+    r"\$(?:campaign|adset|creative|ad)(?::[a-z0-9][a-z0-9_-]{0,31})?\.id")
+
 
 def _texto(valor: str, campo: str, *, maximo: int) -> str:
     saida = str(valor or "").strip()
     if not saida or len(saida) > maximo:
         raise ErroDeNascimentoMeta(
             "META_BLUEPRINT_INVALID", f"{campo} precisa ter entre 1 e {maximo} caracteres")
+    if PLACEHOLDER_DE_DEPENDENCIA.fullmatch(saida):
+        raise ErroDeNascimentoMeta(
+            "META_PLACEHOLDER_SYNTAX_RESERVED",
+            f"{campo} não pode ser exatamente um marcador de dependência do compilador",
+        )
     return saida
 
 
@@ -104,6 +115,11 @@ class PlanoMetaPausado:
     optimization_goal: str = "LANDING_PAGE_VIEWS"
     billing_event: str = "IMPRESSIONS"
     bid_strategy: str = "LOWEST_COST_WITHOUT_CAP"
+    # Rótulo VOLC da receita, NÃO um campo de payload. A tabela oficial de
+    # destination_type lista, para OUTCOME_TRAFFIC, apenas UNDEFINED, MESSENGER,
+    # WHATSAPP e PHONE_CALL — WEBSITE pertence a AWARENESS, LEADS e SALES. O
+    # compilador por isso não envia destination_type para esta receita.
+    # https://developers.facebook.com/docs/marketing-api/adset/destination_type/
     destination_type: str = "WEBSITE"
     budget_scope: str = "ADSET"
     placements_mode: str = "AUTOMATIC"
@@ -112,7 +128,12 @@ class PlanoMetaPausado:
     age_max: int = 65
     currency: str = "BRL"
     promoted_object: Mapping[str, Any] | None = None
-    advantage_audience: bool | None = None
+    # Desde a v23.0 a ausência NÃO é neutra: `advantage_audience` assume 1 ao
+    # criar um Ad Set novo. Omitir ligaria o Advantage+ Audience em silêncio,
+    # então a receita exige um booleano explícito, como o compartilhamento de
+    # orçamento. O padrão compatível é a recusa (0).
+    # https://developers.facebook.com/docs/marketing-api/audiences/reference/targeting-expansion/advantage-audience/
+    advantage_audience: bool = False
     variacoes_estaticas: tuple[VariacaoEstaticaMeta, ...] = ()
 
     def __post_init__(self) -> None:
@@ -145,10 +166,11 @@ class PlanoMetaPausado:
             raise ErroDeNascimentoMeta(
                 "META_MEASUREMENT_RECIPE_UNPROVEN",
                 "promoted_object nao e necessario para o canario de trafego e exige receita propria")
-        if self.advantage_audience is not None:
+        if not isinstance(self.advantage_audience, bool):
             raise ErroDeNascimentoMeta(
-                "META_ADVANTAGE_AUDIENCE_UNPROVEN",
-                "Advantage Audience precisa de receita e read-back proprios")
+                "META_ADVANTAGE_AUDIENCE_INVALID",
+                "advantage_audience precisa ser True ou False; a omissão liga o Advantage+",
+            )
         if not isinstance(self.daily_budget_minor, int) or isinstance(self.daily_budget_minor, bool) or self.daily_budget_minor <= 0:
             raise ErroDeNascimentoMeta(
                 "META_BUDGET_INVALID", "daily_budget_minor precisa ser inteiro positivo")

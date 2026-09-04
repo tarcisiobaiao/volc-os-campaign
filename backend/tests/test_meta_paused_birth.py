@@ -117,6 +117,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
     if nome == "campaign":
         comum.update({
             "objective": "OUTCOME_TRAFFIC",
+            "buying_type": "AUCTION",
             "status": "PAUSED",
             "configured_status": "PAUSED",
             "effective_status": "PAUSED",
@@ -131,13 +132,32 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
             "billing_event": "IMPRESSIONS",
             "optimization_goal": "LANDING_PAGE_VIEWS",
             "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
-            "destination_type": "WEBSITE",
+            "start_time": "2027-01-02T09:00:00-0300",
+            "targeting": {
+                "geo_locations": {"countries": ["BR"]},
+                "age_min": 18,
+                "age_max": 65,
+                "brand_safety_content_filter_levels": ["FACEBOOK_STANDARD"],
+            },
             "status": "PAUSED",
             "configured_status": "PAUSED",
             "effective_status": "PAUSED",
         })
     elif nome == "creative":
-        comum.update({"status": "ACTIVE", "effective_status": "ACTIVE"})
+        comum.update({
+            "status": "ACTIVE",
+            "effective_status": "ACTIVE",
+            "object_story_spec": {
+                "page_id": "2222222222",
+                "link_data": {
+                    "image_hash": "imagemHash_123456",
+                    "link": "https://example.com/oferta/",
+                    "message": "Descubra as informacoes importantes antes de decidir.",
+                    "name": "Entenda como funciona",
+                    "description": "Conteudo informativo e independente.",
+                },
+            },
+        })
     else:
         comum.update({
             "campaign_id": "1001",
@@ -201,7 +221,7 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
         ({"daily_budget_minor": True}, "META_BUDGET_INVALID"),
         ({"placements_mode": "MANUAL"}, "META_PLACEMENT_RECIPE_UNPROVEN"),
         ({"promoted_object": {"pixel_id": "1"}}, "META_MEASUREMENT_RECIPE_UNPROVEN"),
-        ({"advantage_audience": True}, "META_ADVANTAGE_AUDIENCE_UNPROVEN"),
+        ({"advantage_audience": None}, "META_ADVANTAGE_AUDIENCE_INVALID"),
         ({"special_categories_confirmed": False}, "META_SPECIAL_CATEGORY_NOT_CONFIRMED"),
         ({"special_ad_categories": ("CREDIT",)}, "META_SPECIAL_CATEGORY_RECIPE_UNPROVEN"),
     ],

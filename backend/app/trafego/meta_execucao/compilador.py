@@ -3,11 +3,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .contrato import PlanoMetaPausado, ReferenciasMetaResolvidas, VariacaoEstaticaMeta
+from .contrato import (
+    PLACEHOLDER_DE_DEPENDENCIA,
+    ErroDeNascimentoMeta,
+    PlanoMetaPausado,
+    ReferenciasMetaResolvidas,
+    VariacaoEstaticaMeta,
+)
 
 
 _CAMPAIGN = "$campaign.id"
@@ -44,6 +49,11 @@ class PlanoCompiladoMeta:
     plano_sha256: str
     estado_ao_nascer: str = "PAUSED"
     api_version: str = "v26.0"
+
+    @property
+    def conta_externa(self) -> str:
+        """Conta resolvida, derivada do endpoint. Nunca sai em resposta pública."""
+        return self.operacoes[0].endpoint.split("/act_", 1)[1].split("/", 1)[0]
 
     def publico(self) -> Mapping[str, Any]:
         return {
@@ -87,6 +97,12 @@ def compilar_plano_pausado(
         "geo_locations": {"countries": list(plano.countries)},
         "age_min": plano.age_min,
         "age_max": plano.age_max,
+        # A ausência deste campo não é neutra desde a v23.0: a Meta assume 1 e
+        # liga o Advantage+ Audience sozinha. A escolha do operador viaja
+        # sempre explícita, como 1 ou 0.
+        "targeting_automation": {
+            "advantage_audience": 1 if plano.advantage_audience else 0,
+        },
     }
     adset = {
         "name": plano.adset_name,
@@ -95,7 +111,9 @@ def compilar_plano_pausado(
         "billing_event": plano.billing_event,
         "optimization_goal": plano.optimization_goal,
         "bid_strategy": plano.bid_strategy,
-        "destination_type": plano.destination_type,
+        # `destination_type` não entra: para OUTCOME_TRAFFIC a tabela oficial
+        # aceita apenas UNDEFINED, MESSENGER, WHATSAPP e PHONE_CALL. O campo é
+        # opcional e o tráfego para site é o comportamento padrão do objetivo.
         "start_time": plano.start_time.isoformat(),
         "targeting": targeting,
         "status": "PAUSED",
@@ -187,20 +205,58 @@ def compilar_plano_pausado(
     )
 
 
+# Os únicos lugares estruturais onde o compilador escreve um marcador. Resolver
+# apenas aqui impede que um texto do operador com a mesma sintaxe — um nome de
+# conjunto igual a "$campaign.id", por exemplo — seja trocado por um ID real
+# depois de o plano já ter sido aprovado e hasheado.
+CAMINHOS_DE_DEPENDENCIA: tuple[tuple[str, ...], ...] = (
+    ("campaign_id",),
+    ("adset_id",),
+    ("creative", "creative_id"),
+)
+
+
+def _copia_simples(valor: Any) -> Any:
+    if isinstance(valor, Mapping):
+        return {str(chave): _copia_simples(item) for chave, item in valor.items()}
+    if isinstance(valor, (list, tuple)):
+        return [_copia_simples(item) for item in valor]
+    return valor
+
+
+def _exigir_sem_marcador(valor: Any) -> None:
+    if isinstance(valor, str):
+        if PLACEHOLDER_DE_DEPENDENCIA.fullmatch(valor):
+            raise ErroDeNascimentoMeta(
+                "META_UNRESOLVED_DEPENDENCY",
+                "o payload ainda contém um marcador de dependência não resolvido",
+            )
+        return
+    if isinstance(valor, Mapping):
+        for item in valor.values():
+            _exigir_sem_marcador(item)
+        return
+    if isinstance(valor, (list, tuple)):
+        for item in valor:
+            _exigir_sem_marcador(item)
+
+
 def resolver_dependencias(payload: Mapping[str, Any], ids: Mapping[str, str]) -> dict[str, Any]:
-    """Resolve only compiler-owned placeholders, recursively and without eval."""
-    def visitar(valor: Any) -> Any:
-        if isinstance(valor, str) and valor.startswith("$") and valor.endswith(".id"):
-            chave = valor[1:-3]
-            if chave in ids:
-                return ids[chave]
-            if chave in {"campaign", "adset", "creative"} or re.fullmatch(
-                r"(?:creative|ad):[a-z0-9][a-z0-9_-]{0,31}", chave
-            ):
-                raise KeyError(chave)
-        if isinstance(valor, Mapping):
-            return {str(k): visitar(v) for k, v in valor.items()}
-        if isinstance(valor, (list, tuple)):
-            return [visitar(v) for v in valor]
-        return valor
-    return visitar(payload)
+    """Resolve compiler-owned placeholders at their structural paths only."""
+    saida = _copia_simples(payload)
+    for caminho in CAMINHOS_DE_DEPENDENCIA:
+        alvo: Any = saida
+        for chave in caminho[:-1]:
+            alvo = alvo.get(chave) if isinstance(alvo, dict) else None
+        if not isinstance(alvo, dict):
+            continue
+        folha = caminho[-1]
+        bruto = alvo.get(folha)
+        if not isinstance(bruto, str) or not PLACEHOLDER_DE_DEPENDENCIA.fullmatch(bruto):
+            continue
+        referencia = bruto[1:-3]
+        if referencia not in ids:
+            raise KeyError(referencia)
+        alvo[folha] = ids[referencia]
+    _exigir_sem_marcador(saida)
+    return saida
