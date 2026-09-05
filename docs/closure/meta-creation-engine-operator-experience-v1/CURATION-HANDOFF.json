@@ -1,0 +1,70 @@
+{
+  "do_not_apply_here": true,
+  "verdict": "META_ROOTS_VALIDATE_ONLY_ACCEPTED_REAL",
+  "lane": "meta-creation-engine-operator-experience-v1",
+  "worktree": "/private/tmp/volc-os-operacao-80-20",
+  "branch": "execution/volc-os-operacao-80-20",
+  "roadmap_tasks": [
+    {
+      "id": "P11-T05",
+      "suggested_state": "partial",
+      "evidence": "validate_only REAL contra a Marketing API v26.0 aceito para Campaign e AdCreative estatico, por clique explicito do operador em 05/09/2026. cobertura=INDEPENDENT_ROOTS_ONLY, plano_sha256=10e5b56aaf0d1d4c4b87bc309532c148463f40ab721ac44de6b60cfcb061d767, 4 operacoes compiladas, operacoes_validadas=[campaign, creative:variation-001], operacoes_dependentes_pendentes=[adset, ad:variation-001], objetos_criados=0. NAO e aceitacao do plano inteiro: AdSet e Ad nunca chegaram a Meta porque carregam marcadores de dependencia, entao advantage_audience, ausencia de destination_type, optimization_goal LANDING_PAGE_VIEWS, daily_budget, billing_event, bid_strategy, start_time e targeting seguem sem validacao remota. Uma recusa real anterior (codigo 100 subcodigo 4005, no HEAD 17b40f8) fixou a receita em is_adset_budget_sharing_enabled=false, com recusa local de true e sem adicionar bid_strategy ao Campaign. Continuam ausentes: migration oficial aplicada, primeiro canario Meta PAUSED, validacao remota de AdSet e Ad, e inspecao visual no navegador."
+    }
+  ],
+  "graph_nodes": [
+    "cap_meta_ads",
+    "concept:meta_direct_traffic"
+  ],
+  "proofs": [
+    "docs/closure/meta-creation-engine-operator-experience-v1/PROVA-VALIDATE-ONLY-REAL.md",
+    "docs/closure/meta-creation-engine-operator-experience-v1/RUNBOOK-MIGRATION-META-CREATE-PAUSED.md",
+    "docs/closure/meta-creation-engine-operator-experience-v1/GATES.md",
+    "docs/closure/meta-creation-engine-operator-experience-v1/REMAINING-RISKS.md",
+    "backend/tests/test_meta_paused_validation_routes.py",
+    "scripts/provar-ciclo-meta-create-paused.sh",
+    "src/pages/trafego/__tests__/meta-criacao-bancada.test.tsx"
+  ],
+  "prohibitions_preserved": [
+    "no push",
+    "no Roadmap edit",
+    "no graph edit",
+    "no curation edit",
+    "no Meta mutate",
+    "no Meta create",
+    "no Meta activation",
+    "no official Supabase write",
+    "no official migration apply",
+    "no deploy",
+    "no n8n",
+    "no WordPress",
+    "no main or volc-os-v2 change"
+  ],
+  "real_meta_calls": [
+    {
+      "head": "17b40f8cdbfa03c6c5c502d3ccb8c46c5552acc9",
+      "status": 422,
+      "outcome": "META_REAL_ROOT_VALIDATION_REJECTED",
+      "provider_code": 100,
+      "provider_subcode": 4005,
+      "object": "campaign",
+      "objects_created": 0
+    },
+    {
+      "head": "c46f0cded9b03455ba56c7e4996c01f4f7ca5441",
+      "status": 200,
+      "outcome": "ROOTS_VALIDATE_ONLY_ACCEPTED",
+      "coverage": "INDEPENDENT_ROOTS_ONLY",
+      "plan_sha256": "10e5b56aaf0d1d4c4b87bc309532c148463f40ab721ac44de6b60cfcb061d767",
+      "operations_compiled": 4,
+      "operations_validated": ["campaign", "creative:variation-001"],
+      "operations_pending": ["adset", "ad:variation-001"],
+      "objects_created": 0
+    }
+  ],
+  "still_blocked": [
+    "official migration 20260904183418_meta_create_paused_executor.sql never applied anywhere",
+    "first Meta PAUSED canary not executed and not mounted",
+    "AdSet and Ad field contracts never validated remotely",
+    "no browser visual inspection: Chrome extension was not connected"
+  ]
+}
