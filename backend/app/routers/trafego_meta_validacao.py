@@ -38,11 +38,13 @@ from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
 from app.trafego.meta_execucao.capacidades import (
     criacao_liberada,
+    ledger_liberado,
     motivo_da_criacao_fechada,
 )
 from app.trafego.meta_execucao.compilador import PlanoCompiladoMeta, compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
     AutorizacaoMeta,
+    DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
     PlanoMetaPausado,
     VariacaoEstaticaMeta,
@@ -81,6 +83,9 @@ class PedidoVariacaoEstaticaMeta(BaseModel):
     headline: str = Field(min_length=1, max_length=255)
     description: str = Field(min_length=1, max_length=255)
     call_to_action_type: str = Field(default="LEARN_MORE", min_length=3, max_length=40)
+    asset_rights_confirmed: bool = False
+    third_party_identity_cleared: bool = False
+    asset_policy_confirmed_at: datetime | None = None
 
 
 class PedidoPlanoMetaPausado(BaseModel):
@@ -108,6 +113,9 @@ class PedidoPlanoMetaPausado(BaseModel):
     # recusa explícita, nunca a omissão.
     advantage_audience: bool = False
     call_to_action_type: str = Field(default="LEARN_MORE", min_length=3, max_length=40)
+    asset_rights_confirmed: bool = False
+    third_party_identity_cleared: bool = False
+    asset_policy_confirmed_at: datetime | None = None
     variations: list[PedidoVariacaoEstaticaMeta] = Field(default_factory=list, max_length=10)
 
 
@@ -186,13 +194,34 @@ async def _compilar(
     """
     async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
         asset_refs = [item.asset_ref for item in payload.variations] or [payload.asset_ref]
+        declaracoes = _declaracoes_de_politica(payload)
         referencias = await ResolvedorAtivosMeta(cliente).resolver_lote(
             account_ref=payload.account_ref,
             page_ref=payload.page_ref,
             asset_refs=asset_refs,
             segredo=segredo,
+            declaracoes=declaracoes,
         )
     return compilar_plano_pausado(plano, referencias)
+
+
+def _declaracoes_de_politica(
+    payload: PedidoPlanoMetaPausado,
+) -> dict[str, DeclaracaoPoliticaAtivoMeta]:
+    """Julga as declarações antes de Keychain, inventário e download."""
+    declaracoes: dict[str, DeclaracaoPoliticaAtivoMeta] = {}
+    for item in payload.variations or [payload]:
+        if item.asset_policy_confirmed_at is None:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_MISSING",
+                "confirme direitos e identidade de cada peça antes de compilar",
+            )
+        declaracoes[item.asset_ref] = DeclaracaoPoliticaAtivoMeta(
+            direitos_confirmados=item.asset_rights_confirmed,
+            identidade_de_terceiro_liberada=item.third_party_identity_cleared,
+            confirmada_em=item.asset_policy_confirmed_at,
+        )
+    return declaracoes
 
 
 @router.get("/capacidades")
@@ -322,6 +351,7 @@ async def compilar(
     _exigir_host_local(request)
     try:
         plano = _plano(payload)
+        _declaracoes_de_politica(payload)
         compilado = await _compilar(
             payload, plano, SegredoEfemero(_credencial_salva(quem).token))
         return {"ok": True, "plano": compilado.publico(), "efeito_externo": "NENHUM"}
@@ -350,6 +380,7 @@ async def validar(
         # O contrato do plano é puro. Ele julga primeiro, e só um plano que
         # passa chega perto do Keychain ou da rede.
         pedido = _plano(payload.plano)
+        _declaracoes_de_politica(payload.plano)
         segredo = SegredoEfemero(_credencial_salva(quem).token)
         plano = await _compilar(payload.plano, pedido, segredo)
         autorizacao = AutorizacaoMeta(
@@ -394,24 +425,17 @@ async def _gravar_prova_da_validacao(
     """
     if not resultado.aceito:
         return {"registrada": False, "motivo": "a Meta não aceitou este plano"}
-    # ⚠️ O recibo de validação pertence à cadeia de autoridade da CRIAÇÃO, e por
-    # isso ele só é gravado quando a criação está aberta neste servidor. Gravar
-    # com a criação fechada produziria linhas que ninguém pode usar — elas
-    # ficariam velhas em 30 minutos — e faria a lane de criação escrever no
-    # Supabase sem as duas autorizações que ela exige.
-    #
-    # A validação em si NÃO depende disso: ela já aconteceu, a Meta respondeu, e
-    # a resposta continua verdadeira. O que muda é a resposta declarar, com
-    # todas as letras, que não há prova durável — e é a aprovação que falha
-    # fechada depois, por não encontrar recibo nenhum.
-    if not criacao_liberada():
+    # A prova durável exige somente a autoridade do ledger. A flag de criação
+    # governa o POST que pode nascer objetos; reutilizá-la aqui transformava
+    # "registrar o que a Meta respondeu" em "autorizar despacho".
+    if not ledger_liberado():
         return {
             "registrada": False,
             "motivo": (
-                "a criação PAUSED está fechada neste servidor, então a prova durável "
+                "o registro durável Meta está fechado neste servidor, então a prova "
                 "desta validação não foi gravada"
             ),
-            "codigo": "META_CREATE_PAUSED_BLOCKED",
+            "codigo": "META_CREATE_LEDGER_WRITE_BLOCKED",
         }
     try:
         gravado = await _registro_saga().registrar_validacao(

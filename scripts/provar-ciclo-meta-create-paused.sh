@@ -84,6 +84,14 @@ aplicar "$READ_MODEL"
 echo "▶ aplicar a migration candidata"
 aplicar "$MIGRATION"
 
+# Fixture sanitizada do gate: representa o recibo de uma única imagem cuja
+# expiração ainda está no futuro. Não pertence à migration.
+executar <<'SQL'
+CREATE FUNCTION public.prova_supply() RETURNS jsonb
+LANGUAGE sql IMMUTABLE
+AS $$ SELECT '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb $$;
+SQL
+
 echo "▶ forma: tabelas, RLS, grants"
 executar <<'SQL'
 DO $prova$
@@ -130,8 +138,8 @@ BEGIN
   SELECT count(*) INTO n FROM information_schema.role_routine_grants
    WHERE routine_schema='public' AND routine_name LIKE 'trafego_meta_create_%'
      AND grantee='service_role' AND privilege_type='EXECUTE';
-  IF n <> 11 THEN
-    RAISE EXCEPTION 'esperava 11 RPCs executaveis pelo service_role; encontrou %', n;
+  IF n <> 10 THEN
+    RAISE EXCEPTION 'esperava 10 RPCs executaveis pelo service_role; encontrou %', n;
   END IF;
 END
 $prova$;
@@ -177,7 +185,8 @@ BEGIN
     p_validation_id => v_vid,
     p_validation_max_age_seconds => 1800,
     p_paused_birth_confirmed => true,
-    p_plan_request => '{"account_ref":"metaacct_prova_local"}'::jsonb);
+    p_plan_request => '{"account_ref":"metaacct_prova_local"}'::jsonb,
+    p_asset_supply_receipts => '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb);
   v_id := (v_aprovacao->>'approval_id')::uuid;
   IF v_aprovacao->'steps_expected' IS NULL THEN
     RAISE EXCEPTION 'aprovacao nao devolveu o manifesto';
@@ -223,7 +232,8 @@ BEGIN
       p_validation_id => v_vid,
       p_validation_max_age_seconds => 1800,
       p_paused_birth_confirmed => true,
-      p_plan_request => '{}'::jsonb);
+      p_plan_request => '{}'::jsonb,
+      p_asset_supply_receipts => '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb);
     RAISE EXCEPTION 'manifesto vazio foi aceito';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'META_APPROVAL_MANIFEST_EMPTY' THEN RAISE; END IF;
@@ -242,7 +252,8 @@ BEGIN
       p_validation_id => v_vid,
       p_validation_max_age_seconds => 1800,
       p_paused_birth_confirmed => true,
-      p_plan_request => '{}'::jsonb);
+      p_plan_request => '{}'::jsonb,
+      p_asset_supply_receipts => '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb);
     RAISE EXCEPTION 'manifesto com passo repetido foi aceito';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'META_APPROVAL_MANIFEST_DUPLICATE' THEN RAISE; END IF;
@@ -382,27 +393,11 @@ BEGIN
     p_validation_id => v_vid,
     p_validation_max_age_seconds => 1800,
     p_paused_birth_confirmed => true,
-    p_plan_request => '{"account_ref":"metaacct_prova_local"}'::jsonb);
+    p_plan_request => '{"account_ref":"metaacct_prova_local"}'::jsonb,
+    p_asset_supply_receipts => '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb);
 END
 $ajuda$;
 
--- ⚠️ Fixture, e SECURITY DEFINER de proposito: `service_role` NAO tem UPDATE
--- nesta tabela — so as RPCs escrevem, e a prova de grants acima depende disso.
--- Envelhecer um passo e a unica forma de exercitar o piso temporal da
--- reconciliacao sem fazer o script dormir dois minutos.
-CREATE FUNCTION public.prova_envelhecer_passo(p_step_ref uuid, p_idade interval)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, public
-AS $velho$
-BEGIN
-  UPDATE public.trafego_meta_create_step
-     SET prepared_at = clock_timestamp() - p_idade,
-         updated_at = clock_timestamp() - p_idade
-   WHERE step_id = p_step_ref;
-END
-$velho$;
 SQL
 
 echo "▶ o recibo de validacao e a condicao da aprovacao, campo a campo"
@@ -422,7 +417,8 @@ BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
       clock_timestamp() + interval '15 minutes', v_manifesto,
-      '00000000-0000-0000-0000-000000000000'::uuid, 1800, true, '{}'::jsonb);
+      '00000000-0000-0000-0000-000000000000'::uuid, 1800, true, '{}'::jsonb,
+      public.prova_supply());
     RAISE EXCEPTION 'recibo inexistente foi aceito';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_VALIDATION_RECEIPT_NOT_FOUND' THEN RAISE; END IF;
@@ -432,7 +428,8 @@ BEGIN
   BEGIN
     PERFORM public.trafego_meta_create_approve(
       repeat('8', 64), 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
-      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true, '{}'::jsonb);
+      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true, '{}'::jsonb,
+      public.prova_supply());
     RAISE EXCEPTION 'plano diferente do validado foi aceito';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_VALIDATION_PLAN_DIVERGED' THEN RAISE; END IF;
@@ -442,7 +439,8 @@ BEGIN
   BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_outra_conta', 'operador-local', 1000, 'BRL',
-      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true, '{}'::jsonb);
+      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true, '{}'::jsonb,
+      public.prova_supply());
     RAISE EXCEPTION 'conta diferente da validada foi aceita';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_VALIDATION_ACCOUNT_DIVERGED' THEN RAISE; END IF;
@@ -452,7 +450,8 @@ BEGIN
   BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_prova_local', 'outro-operador', 1000, 'BRL',
-      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true, '{}'::jsonb);
+      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true, '{}'::jsonb,
+      public.prova_supply());
     RAISE EXCEPTION 'ator diferente do validador foi aceito';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_VALIDATION_ACTOR_DIVERGED' THEN RAISE; END IF;
@@ -463,7 +462,7 @@ BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
       clock_timestamp() + interval '15 minutes', ARRAY['campaign','adset','creative'],
-      v_vid, 1800, true, '{}'::jsonb);
+      v_vid, 1800, true, '{}'::jsonb, public.prova_supply());
     RAISE EXCEPTION 'manifesto diferente do validado foi aceito';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_VALIDATION_MANIFEST_DIVERGED' THEN RAISE; END IF;
@@ -473,7 +472,8 @@ BEGIN
   BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
-      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, false, '{}'::jsonb);
+      clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, false, '{}'::jsonb,
+      public.prova_supply());
     RAISE EXCEPTION 'aprovacao sem confirmacao PAUSED foi aceita';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_PAUSED_BIRTH_NOT_CONFIRMED' THEN RAISE; END IF;
@@ -483,7 +483,8 @@ BEGIN
   BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
-      clock_timestamp() + interval '2 hours', v_manifesto, v_vid, 1800, true, '{}'::jsonb);
+      clock_timestamp() + interval '2 hours', v_manifesto, v_vid, 1800, true, '{}'::jsonb,
+      public.prova_supply());
     RAISE EXCEPTION 'expiracao de duas horas foi aceita';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_APPROVAL_EXPIRY_TOO_LONG' THEN RAISE; END IF;
@@ -514,13 +515,13 @@ BEGIN
   PERFORM public.trafego_meta_create_approve(
     v_hash, 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
     clock_timestamp() + interval '1 second', v_manifesto, v_vid, 1800, true,
-    '{"a":1}'::jsonb);
+    '{"a":1}'::jsonb, public.prova_supply());
   PERFORM pg_sleep(1.2);
   BEGIN
     PERFORM public.trafego_meta_create_approve(
       v_hash, 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
       clock_timestamp() + interval '15 minutes', v_manifesto, v_vid, 1800, true,
-      '{"a":1}'::jsonb);
+      '{"a":1}'::jsonb, public.prova_supply());
     RAISE EXCEPTION 'o mesmo recibo autorizou duas aprovacoes';
   EXCEPTION WHEN unique_violation THEN NULL;
   END;
@@ -606,9 +607,9 @@ BEGIN
     IF SQLERRM <> 'META_APPROVAL_ALREADY_LIVE' THEN RAISE; END IF;
   END;
 
-  -- 6. RECONCILIACAO: o unico caminho de AMBIGUOUS para FALHO, e ele exige que
-  --    a ausencia tenha sido provada por leitura. `fail_step` continua recusando
-  --    o estado ambiguo, que e o que impede fechar um recibo sem prova.
+  -- 6. AUSENCIA NAO FECHA AMBIGUIDADE. `fail_step` recusa o estado ambiguo e
+  --    nao existe RPC resolve_absent. O unico fechamento automatico seguro e
+  --    por PRESENCA provada no read-back; ausencia/duvida pede adjudicacao.
   BEGIN
     PERFORM public.trafego_meta_create_fail_step(
       p_step_ref => v_ref, p_error_code => 'META_REMOTE_CREATE_FAILED');
@@ -616,21 +617,10 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_STEP_CANNOT_FAIL' THEN RAISE; END IF;
   END;
-  -- ⚠️ O passo precisa ENVELHECER antes de a ausencia poder ser fechada: quem
-  -- o despachou pode estar dentro do `await` do POST neste instante. O piso
-  -- temporal em si e provado no bloco seguinte; aqui ele so e satisfeito.
-  PERFORM public.prova_envelhecer_passo(v_ref, interval '10 minutes');
-  IF (public.trafego_meta_create_resolve_absent(
-        p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT'))->>'state' <> 'FAILED' THEN
-    RAISE EXCEPTION 'a reconciliacao por ausencia nao fechou o passo';
+  IF to_regprocedure('public.trafego_meta_create_resolve_absent(uuid,text,integer)') IS NOT NULL
+     OR to_regprocedure('public.trafego_meta_create_resolve_absent(uuid,text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'resolve_absent reapareceu e pode liberar duplicacao por ausencia';
   END IF;
-  BEGIN
-    PERFORM public.trafego_meta_create_resolve_absent(
-      p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT');
-    RAISE EXCEPTION 'resolve_absent aceitou um passo que ja estava fechado';
-  EXCEPTION WHEN raise_exception THEN
-    IF SQLERRM <> 'META_STEP_NOT_AMBIGUOUS' THEN RAISE; END IF;
-  END;
 
   -- 7. Reconciliar por PRESENCA nao precisa de funcao nova: close_step ja aceita
   --    AMBIGUOUS -> CREATED, e continua recusando um id diferente do gravado.
@@ -654,7 +644,8 @@ BEGIN
     PERFORM public.trafego_meta_create_approve(
       'nao-e-hash', 'metaacct_prova_local', 'operador-local', 1000, 'BRL',
       clock_timestamp() + interval '15 minutes', ARRAY['campaign'],
-      gen_random_uuid(), 1800, true, '{}'::jsonb);
+      gen_random_uuid(), 1800, true, '{}'::jsonb,
+      '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb);
     RAISE EXCEPTION 'hash invalido foi aceito';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_APPROVAL_PLAN_HASH_INVALID' THEN RAISE; END IF;
@@ -746,7 +737,7 @@ $duplicacao$;
 RESET ROLE;
 SQL
 
-echo "▶ reconciliacao: idade minima, e a marca do read-back divergente"
+echo "▶ reconciliacao: ausencia permanece ambigua, e marca de read-back divergente"
 executar <<'SQL'
 SET ROLE service_role;
 DO $tempo$
@@ -762,34 +753,9 @@ BEGIN
   v_ref := (v_passo->>'step_ref')::uuid;
   PERFORM public.trafego_meta_create_mark_ambiguous(p_step_ref => v_ref);
 
-  -- ⚠️ O passo acabou de virar ambiguo. Quem o despachou pode estar dentro do
-  -- `await` do POST agora mesmo; fechar como ausente gravaria "nao existe"
-  -- sobre um objeto prestes a nascer.
-  BEGIN
-    PERFORM public.trafego_meta_create_resolve_absent(
-      p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT',
-      p_idade_minima_s => 120);
-    RAISE EXCEPTION 'ausencia foi fechada com o despacho possivelmente em voo';
-  EXCEPTION WHEN raise_exception THEN
-    IF SQLERRM <> 'META_RECONCILE_TOO_SOON' THEN RAISE; END IF;
-  END;
-
-  -- Uma janela abaixo do piso nao e negociavel por parametro.
-  BEGIN
-    PERFORM public.trafego_meta_create_resolve_absent(
-      p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT',
-      p_idade_minima_s => 1);
-    RAISE EXCEPTION 'janela de 1 segundo foi aceita';
-  EXCEPTION WHEN raise_exception THEN
-    IF SQLERRM <> 'META_RECONCILE_WINDOW_INVALID' THEN RAISE; END IF;
-  END;
-
-  -- Envelhecido o bastante, a ausencia provada fecha.
-  PERFORM public.prova_envelhecer_passo(v_ref, interval '10 minutes');
-  IF (public.trafego_meta_create_resolve_absent(
-        p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT',
-        p_idade_minima_s => 120))->>'state' <> 'FAILED' THEN
-    RAISE EXCEPTION 'a ausencia provada nao fechou o passo';
+  IF (SELECT state FROM public.trafego_meta_create_step WHERE step_id = v_ref)
+       <> 'AMBIGUOUS' THEN
+    RAISE EXCEPTION 'a ausencia/duvida nao preservou o estado ambiguo';
   END IF;
 
   -- A marca do read-back divergente so pousa em passo CRIADO.
@@ -880,7 +846,7 @@ BEGIN
     PERFORM public.trafego_meta_create_approve(
       repeat('d', 64), 'metaacct_prova_local', 'invasor', 1000, 'BRL',
       clock_timestamp() + interval '15 minutes', ARRAY['campaign'],
-      gen_random_uuid(), 1800, true, '{}'::jsonb);
+      gen_random_uuid(), 1800, true, '{}'::jsonb, public.prova_supply());
     RAISE EXCEPTION 'papel de browser conseguiu aprovar criacao Meta';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
@@ -901,7 +867,7 @@ echo "▶ reverter"
 # A fixture do script sai antes: ela nao pertence a migration, e deixa-la viva
 # faria a prova de limpeza do rollback julgar um objeto que nao e dela.
 executar -c 'DROP FUNCTION IF EXISTS public.prova_aprovar(text,text,interval,text[]);
-             DROP FUNCTION IF EXISTS public.prova_envelhecer_passo(uuid,interval);'
+             DROP FUNCTION IF EXISTS public.prova_supply();'
 aplicar "$ROLLBACK"
 executar <<'SQL'
 DO $limpo$
@@ -937,7 +903,8 @@ BEGIN
   v := public.trafego_meta_create_approve(
     repeat('e', 64), 'metaacct_prova_local', 'operador-local', 500, 'BRL',
     clock_timestamp() + interval '15 minutes', ARRAY['campaign','adset'],
-    v_vid, 1800, true, '{"account_ref":"metaacct_prova_local"}'::jsonb);
+    v_vid, 1800, true, '{"account_ref":"metaacct_prova_local"}'::jsonb,
+    '[{"asset_ref":"metaasset_prova","content_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","supply_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","policy_receipt_ref":"metapolicy_cccccccccccccccccccccccc","policy_state":"AUTHORIZED","policy_expires_at":"2099-01-01T00:00:00+00:00","lifecycle":"READY_FOR_PAID_MEDIA","image_hash_bound":true}]'::jsonb);
   IF (v->>'ok')::boolean IS NOT TRUE THEN
     RAISE EXCEPTION 'reaplicacao nao deixou a autoridade utilizavel';
   END IF;

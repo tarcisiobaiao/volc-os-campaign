@@ -181,7 +181,7 @@ def _mesmo_instante(lido: Any, enviado: Any) -> bool:
 CAMPOS_DE_LEITURA: Mapping[str, str] = {
     "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info,created_time",
     "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec,created_time",
-    "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
+    "creative": "id,account_id,name,status,effective_status,object_story_spec,destination_spec,asset_feed_spec,degrees_of_freedom_spec",
     "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,created_time",
 }
 
@@ -650,6 +650,9 @@ class ExecutorMetaPausado:
                         alvo_enviado[campo]
                     ):
                         divergiu(f"targeting.{campo}")
+                plataformas = tuple(alvo_lido.get("publisher_platforms") or ())
+                if plataformas != tuple(alvo_enviado.get("publisher_platforms") or ()):
+                    divergiu("targeting.publisher_platforms")
                 # Advantage+ Audience: confere quando a Meta devolve o campo.
                 # A leitura pode omiti-lo, e nesse caso o recibo declara que a
                 # escolha não foi confirmada em vez de fingir confirmação.
@@ -674,6 +677,13 @@ class ExecutorMetaPausado:
             # criado não é o criativo estático que foi aprovado.
             if "asset_feed_spec" not in payload and dados.get("asset_feed_spec"):
                 divergiu("asset_feed_spec")
+            destino_enviado = payload.get("destination_spec")
+            destino_lido = dados.get("destination_spec")
+            if not isinstance(destino_enviado, Mapping) or not isinstance(destino_lido, Mapping):
+                divergiu("destination_spec")
+                return
+            if destino_lido.get("destination_type") != destino_enviado.get("destination_type"):
+                divergiu("destination_spec.destination_type")
             historia_lida = dados.get("object_story_spec")
             historia_enviada = payload.get("object_story_spec")
             if isinstance(historia_enviada, Mapping):

@@ -67,6 +67,15 @@ def criacao_liberada() -> bool:
     return not autorizacoes_ausentes()
 
 
+def ledger_liberado() -> bool:
+    """Autoriza recibos/aprovação/reconciliação, mas nunca o despacho Meta."""
+    return os.environ.get(FLAG_LEDGER) == "1"
+
+
+def motivos_do_ledger_ausente() -> list[str]:
+    return [] if ledger_liberado() else [MOTIVO_DA_FLAG[FLAG_LEDGER]]
+
+
 def motivo_da_criacao_fechada() -> str:
     """Uma frase só, para o painel de bloqueios das capacidades."""
     faltando = motivos_ausentes()

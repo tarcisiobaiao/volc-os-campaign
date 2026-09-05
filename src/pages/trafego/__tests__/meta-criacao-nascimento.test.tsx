@@ -201,6 +201,9 @@ async function ateAValidacao() {
   await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
   fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Anúncios/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
   fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
   fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
   await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalled());

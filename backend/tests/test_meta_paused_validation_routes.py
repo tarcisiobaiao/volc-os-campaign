@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -18,9 +19,11 @@ from app.trafego.meta.read_model import RepositorioMetaReadModelSupabase
 
 
 class _Resposta:
-    def __init__(self, body: dict[str, Any]) -> None:
+    def __init__(self, body: dict[str, Any], *, content: bytes = b"", headers=None) -> None:
         self.status_code = 200
         self._body = body
+        self.content = content
+        self.headers = dict(headers or {})
 
     def json(self) -> dict[str, Any]:
         return self._body
@@ -33,6 +36,8 @@ class _GraphFake:
     async def get(self, url: str, *, params=None, headers=None):
         del params
         self.chamadas.append((url, dict(headers or {})))
+        if url.endswith('.fbcdn.net/preview.jpg'):
+            return _Resposta({}, content=b'bytes-imagem-meta', headers={'content-type': 'image/jpeg'})
         if url.endswith('/me/adaccounts'):
             return _Resposta({'data': [{
                 'id': 'act_123456789', 'name': 'Conta teste', 'account_status': 1,
@@ -411,6 +416,9 @@ def _plano_base(**extra: Any) -> dict[str, Any]:
         'headline': 'Titulo', 'description': 'Descricao', 'daily_budget_minor': 1000,
         'start_time': '2027-01-01T12:00:00Z', 'special_ad_categories': [],
         'special_categories_confirmed': True, 'call_to_action_type': 'LEARN_MORE',
+        'asset_rights_confirmed': True,
+        'third_party_identity_cleared': True,
+        'asset_policy_confirmed_at': datetime.now(timezone.utc).isoformat(),
     }
     base.update(extra)
     return base
@@ -444,6 +452,25 @@ def test_compartilhamento_ligado_e_recusado_localmente_sem_tocar_a_meta(monkeypa
         'META_BUDGET_SHARING_REQUIRES_MULTI_ADSET_RECIPE')
 
 
+def test_politica_da_peca_incompleta_recusa_antes_de_token_e_rede(monkeypatch) -> None:
+    monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
+    monkeypatch.setenv('META_VALIDATE_ONLY_ENABLED', '1')
+    monkeypatch.setattr(
+        trafego_meta_validacao, '_credencial_salva',
+        lambda *_: pytest.fail('nao deveria ler token sem liberar a peça'))
+
+    def _sem_rede(*_a: Any, **_k: Any):
+        pytest.fail('nenhuma chamada HTTP pode sair sem liberar a peça')
+
+    monkeypatch.setattr(trafego_meta_validacao.httpx, 'AsyncClient', _sem_rede)
+    resposta = _cliente().post('/api/trafego/meta/local/criacao/validar', json={
+        'confirmar_validate_only': True,
+        'plano': _plano_base(third_party_identity_cleared=False),
+    })
+    assert resposta.status_code == 409
+    assert resposta.json()['detail']['codigo'] == 'META_THIRD_PARTY_IDENTITY_UNVERIFIED'
+
+
 def test_contrato_recusa_true_em_vez_de_converter_para_false() -> None:
     """CONTRAPROVA 3: recusa explícita, nunca conversão silenciosa.
 
@@ -460,11 +487,20 @@ def test_contrato_recusa_true_em_vez_de_converter_para_false() -> None:
 
 def _campanha_compilada() -> dict[str, Any]:
     from app.trafego.meta_execucao.ativos import ReferenciasMetaResolvidas
+    from app.trafego.meta_execucao.contrato import ManifestoSupplyMeta
     from app.trafego.meta_execucao.compilador import compilar_plano_pausado
     pedido = trafego_meta_validacao.PedidoPlanoMetaPausado.model_validate(_plano_base())
+    manifesto = ManifestoSupplyMeta(
+        asset_ref=pedido.asset_ref, content_sha256='a' * 64, item_sha256='a' * 64,
+        supply_sha256='b' * 64, policy_receipt_ref='metapolicy_' + 'c' * 24,
+        policy_state='AUTHORIZED', policy_expires_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
+        lifecycle='READY_FOR_PAID_MEDIA', provider_image_hash='hashImagem_123456',
+        mime_type='image/png', width=1080, height=1080)
     referencias = ReferenciasMetaResolvidas(
         account_id='123456789', page_id='99887766',
         image_hash='hashImagem_123456', instagram_actor_id=None,
+        page_permission_proven=True, placement_identity_mode='FACEBOOK_ONLY_PAGE_PROVEN',
+        asset_supply_manifests={pedido.asset_ref: manifesto},
     )
     compilado = compilar_plano_pausado(trafego_meta_validacao._plano(pedido), referencias)
     campanha = next(op for op in compilado.operacoes if op.chave == 'campaign')

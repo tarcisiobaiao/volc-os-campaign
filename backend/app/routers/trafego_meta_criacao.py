@@ -68,6 +68,7 @@ from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.routers.trafego_meta_validacao import (
     PedidoPlanoMetaPausado,
     _compilar,
+    _declaracoes_de_politica,
     _plano,
 )
 from app.seguranca.identidade import Identidade, exigir_admin
@@ -77,7 +78,9 @@ from app.trafego.meta_execucao.capacidades import (
     FLAG_CRIACAO,
     FLAG_LEDGER,
     autorizacoes_ausentes,
+    ledger_liberado,
     motivos_ausentes,
+    motivos_do_ledger_ausente,
 )
 from app.trafego.meta_execucao.compilador import PlanoCompiladoMeta
 from app.trafego.meta_execucao.contrato import AutorizacaoMeta, ErroDeNascimentoMeta
@@ -162,6 +165,17 @@ def _exigir_capacidade_de_criacao() -> None:
         "codigo": "META_CREATE_PAUSED_BLOCKED",
         "mensagem": "a criação PAUSED permanece fechada neste servidor",
         "autorizacoes_ausentes": motivos_ausentes(),
+    })
+
+
+def _exigir_capacidade_do_ledger() -> None:
+    """Portão dos atos duráveis/read-only; não autoriza nenhum POST à Meta."""
+    if ledger_liberado():
+        return
+    raise HTTPException(status_code=409, detail={
+        "codigo": "META_CREATE_LEDGER_WRITE_BLOCKED",
+        "mensagem": "o registro durável Meta permanece fechado neste servidor",
+        "autorizacoes_ausentes": motivos_do_ledger_ausente(),
     })
 
 
@@ -374,7 +388,7 @@ async def aprovar(
             "codigo": "META_PAUSED_BIRTH_NOT_CONFIRMED",
             "mensagem": "confirme que os objetos nascem em estado PAUSED",
         })
-    _exigir_capacidade_de_criacao()
+    _exigir_capacidade_do_ledger()
     registro = _registro_saga()
     try:
         # ⚠️ O RECIBO DE VALIDAÇÃO É CONFERIDO ANTES DO KEYCHAIN.
@@ -392,6 +406,7 @@ async def aprovar(
         # O contrato do plano é puro e julga primeiro: uma receita recusável
         # para aqui sem que o Keychain seja aberto.
         pedido = _plano(payload.plano)
+        _declaracoes_de_politica(payload.plano)
         segredo = SegredoEfemero(_credencial_salva(quem).token)
         compilado = await _compilar(payload.plano, pedido, segredo)
         if compilado.plano_sha256 != payload.plano_sha256_esperado:
@@ -416,6 +431,13 @@ async def aprovar(
             # O pedido do operador — referências opacas e texto dele. É isto que
             # a criação relê para recompilar sem receber payload do navegador.
             pedido_do_operador=payload.plano.model_dump(mode="json"),
+            # O ledger materializa a prova de supply por peça. O hash do plano
+            # já a sela; persistir também os recibos permite auditoria direta,
+            # sem exigir que alguém reconstrua o hash para saber o que aprovou.
+            recibos_de_supply=[
+                manifesto.prova_publica()
+                for manifesto in compilado.asset_supply_manifests
+            ],
         )
         return {
             "ok": True,
@@ -522,16 +544,16 @@ async def reconciliar(
 ) -> dict[str, Any]:
     """Decide um recibo AMBÍGUO **por leitura**, e nunca por reenvio.
 
-    Percorre o plano aprovado contra a conta real. Só duas conclusões fecham um
-    passo: objeto encontrado e conferido (fecha CRIADO) ou ausência provada por
-    listagem completa (fecha FALHO). Tudo o mais permanece AMBIGUO — inclusive
-    "não consegui ler", que é diferente de "não existe".
+    Percorre o plano aprovado contra a conta real. Só objeto encontrado e
+    conferido fecha CRIADO. Ausência, dúvida ou erro de leitura permanecem
+    AMBIGUOS: no P0, uma listagem vazia depois do despacho nunca vira licença
+    automática para tentar de novo.
 
     Nenhum `POST` sai desta rota. Reenviar continua sendo uma decisão humana,
     tomada depois de o recibo estar fechado.
     """
     _exigir_host_local(request)
-    _exigir_capacidade_de_criacao()
+    _exigir_capacidade_do_ledger()
     registro = _registro_saga()
     try:
         manifesto = await registro.manifesto(payload.approval_id)
@@ -614,13 +636,14 @@ async def _fechar_conclusao(
             "explicacao": "o objeto existe na conta e confere com o plano aprovado",
         }
     if conclusao.conclusao == AUSENTE:
-        await registro.resolver_ausente(
-            passo_ref=passo_ref, codigo="META_RECONCILED_ABSENT")
         return {
             "passo": conclusao.passo,
             "tipo": conclusao.tipo,
-            "conclusao": "FECHADO_COMO_NAO_ENCONTRADO",
-            "explicacao": conclusao.motivo or "a listagem completa da conta não tem este objeto",
+            "conclusao": "PERMANECE_AMBIGUO",
+            "explicacao": (
+                conclusao.motivo
+                or "a leitura não encontrou o objeto, mas ausência pós-despacho não prova inexistência"
+            ),
         }
     # ⚠️ Permanece AMBIGUO. Não provar a ausência não é prová-la, e fechar aqui
     # seria autorizar um reenvio sobre um objeto que pode existir.
@@ -640,7 +663,7 @@ async def recibo(
 ) -> dict[str, Any]:
     """O recibo sanitizado de uma aprovação. Nunca devolve id externo."""
     _exigir_host_local(request)
-    _exigir_capacidade_de_criacao()
+    _exigir_capacidade_do_ledger()
     registro = _registro_saga()
     try:
         manifesto = await registro.manifesto(payload.approval_id)

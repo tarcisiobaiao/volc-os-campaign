@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Sequence
+from urllib.parse import urlparse
 
 import httpx
 
@@ -11,7 +14,12 @@ from app.trafego.meta import dominio as dom
 from app.trafego.meta.adaptador import AdaptadorMetaSomenteLeitura, ErroDeLeituraMeta
 from app.trafego.meta.credenciais import SegredoEfemero
 
-from .contrato import ErroDeNascimentoMeta, ReferenciasMetaResolvidas
+from .contrato import (
+    DeclaracaoPoliticaAtivoMeta,
+    ErroDeNascimentoMeta,
+    ManifestoSupplyMeta,
+    ReferenciasMetaResolvidas,
+)
 
 
 @dataclass(frozen=True)
@@ -173,7 +181,10 @@ class ResolvedorAtivosMeta:
             image_hash = str(item.get("hash") or "").strip()
             if not image_hash:
                 continue
-            preview_url = str(item.get("url_128") or item.get("url") or "").strip() or None
+            # `url` representa a peça da biblioteca; `url_128` é apenas a
+            # miniatura. O manifesto de conteúdo nunca pode hashear a miniatura
+            # e afirmar que ela são os bytes aprovados do image_hash.
+            preview_url = str(item.get("url") or item.get("url_128") or "").strip() or None
             # image hashes are not numeric, so the opaque handle is derived
             # from a stable digest and never exposes the provider hash.
             digest = hashlib.sha256(
@@ -253,6 +264,7 @@ class ResolvedorAtivosMeta:
         page_ref: str,
         asset_refs: Sequence[str],
         segredo: SegredoEfemero,
+        declaracoes: Mapping[str, DeclaracaoPoliticaAtivoMeta] | None = None,
     ) -> ReferenciasMetaResolvidas:
         referencias = tuple(dict.fromkeys(str(item or "").strip() for item in asset_refs))
         if not referencias or len(referencias) > 10 or any(not item for item in referencias):
@@ -272,6 +284,16 @@ class ResolvedorAtivosMeta:
                 "META_ASSET_REFERENCE_UNKNOWN",
                 "uma imagem do lote nao pertence a conta Meta selecionada",
             )
+        declaracoes = dict(declaracoes or {})
+        if set(declaracoes) != set(referencias):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_MISSING",
+                "cada peça do lote precisa de confirmação própria de direitos e identidade",
+            )
+        manifestos: dict[str, ManifestoSupplyMeta] = {}
+        for referencia in referencias:
+            manifestos[referencia] = await self._manifestar_imagem(
+                imagens_por_ref[referencia], declaracoes[referencia])
         primeira = imagens_por_ref[referencias[0]]
         return ReferenciasMetaResolvidas(
             account_id=conta.id_externo,
@@ -281,6 +303,79 @@ class ResolvedorAtivosMeta:
                 referencia: imagens_por_ref[referencia].id_externo
                 for referencia in referencias
             },
+            page_permission_proven=True,
+            placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+            asset_supply_manifests=manifestos,
+        )
+
+    async def _manifestar_imagem(
+        self,
+        ativo: _AtivoResolvido,
+        declaracao: DeclaracaoPoliticaAtivoMeta,
+    ) -> ManifestoSupplyMeta:
+        """Lê os bytes no backend e sela a correspondência peça↔image_hash."""
+        agora = datetime.now(timezone.utc)
+        confirmado = declaracao.confirmada_em.astimezone(timezone.utc)
+        if confirmado > agora + timedelta(minutes=5) or confirmado < agora - timedelta(hours=1):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_EXPIRED",
+                "a confirmação de direitos/identidade da peça expirou; confira novamente",
+            )
+        if not ativo.preview_url:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_BYTES_UNAVAILABLE",
+                "a biblioteca Meta não devolveu uma URL para conferir os bytes da peça",
+            )
+        partes = urlparse(ativo.preview_url)
+        host = (partes.hostname or "").lower()
+        if partes.scheme != "https" or not host.endswith(".fbcdn.net"):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_BYTES_HOST_REJECTED",
+                "os bytes da peça não vieram do CDN Meta permitido",
+            )
+        try:
+            resposta = await self._cliente.get(ativo.preview_url)
+        except httpx.HTTPError:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_BYTES_READ_FAILED", "não foi possível ler os bytes da peça") from None
+        tipo = resposta.headers.get("content-type", "").split(";", 1)[0].lower()
+        conteudo = bytes(resposta.content)
+        if resposta.status_code >= 400 or not conteudo or len(conteudo) > 12_000_000 \
+                or not tipo.startswith("image/"):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_BYTES_INVALID", "a peça não retornou uma imagem válida dentro do limite")
+        content_sha = hashlib.sha256(conteudo).hexdigest()
+        materia = {
+            "asset_ref": ativo.publico.referencia_opaca,
+            "content_sha256": content_sha,
+            "item_sha256": content_sha,
+            "provider_image_hash": ativo.id_externo,
+            "mime_type": tipo,
+            "width": ativo.publico.largura,
+            "height": ativo.publico.altura,
+            "policy_state": "AUTHORIZED",
+            "confirmed_at": confirmado.isoformat(),
+            "lifecycle": "READY_FOR_PAID_MEDIA",
+        }
+        canonico = json.dumps(
+            materia, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        supply_sha = hashlib.sha256(canonico).hexdigest()
+        policy_ref = "metapolicy_" + hashlib.sha256(
+            (content_sha + confirmado.isoformat() + ativo.publico.referencia_opaca).encode("utf-8")
+        ).hexdigest()[:24]
+        return ManifestoSupplyMeta(
+            asset_ref=ativo.publico.referencia_opaca,
+            content_sha256=content_sha,
+            item_sha256=content_sha,
+            supply_sha256=supply_sha,
+            policy_receipt_ref=policy_ref,
+            policy_state="AUTHORIZED",
+            policy_expires_at=confirmado + timedelta(hours=1),
+            lifecycle="READY_FOR_PAID_MEDIA",
+            provider_image_hash=ativo.id_externo,
+            mime_type=tipo,
+            width=ativo.publico.largura,
+            height=ativo.publico.altura,
         )
 
     async def preview_url(

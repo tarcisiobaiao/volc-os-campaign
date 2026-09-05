@@ -30,6 +30,9 @@ export interface VariacaoDraft {
   headline: string;
   description: string;
   cta: string;
+  assetRightsConfirmed: boolean;
+  thirdPartyIdentityCleared: boolean;
+  assetPolicyConfirmedAt: string;
 }
 
 export interface Draft {
@@ -180,6 +183,9 @@ export function variacaoInicial(chave: string, numero: number): VariacaoDraft {
     headline: 'Entenda como funciona',
     description: 'Conteúdo informativo e independente.',
     cta: 'LEARN_MORE',
+    assetRightsConfirmed: false,
+    thirdPartyIdentityCleared: false,
+    assetPolicyConfirmedAt: '',
   };
 }
 
@@ -190,7 +196,9 @@ export function variacaoCompleta(variacao: VariacaoDraft): boolean {
   return Boolean(
     midiaOk && variacao.creativeName.trim() && variacao.adName.trim()
     && variacao.message.trim() && variacao.headline.trim()
-    && variacao.description.trim() && variacao.cta,
+    && variacao.description.trim() && variacao.cta
+    && variacao.assetRightsConfirmed && variacao.thirdPartyIdentityCleared
+    && variacao.assetPolicyConfirmedAt,
   );
 }
 
@@ -249,6 +257,9 @@ export function paraPlano(draft: Draft): PlanoMetaPausadoInput {
     is_adset_budget_sharing_enabled: draft.budgetSharing,
     advantage_audience: draft.advantageAudience,
     call_to_action_type: primeira?.cta ?? 'LEARN_MORE',
+    asset_rights_confirmed: primeira?.assetRightsConfirmed ?? false,
+    third_party_identity_cleared: primeira?.thirdPartyIdentityCleared ?? false,
+    asset_policy_confirmed_at: primeira?.assetPolicyConfirmedAt || null,
     variations: emitidas.map((item) => ({
       variation_key: item.key,
       asset_ref: item.assetRef,
@@ -258,6 +269,9 @@ export function paraPlano(draft: Draft): PlanoMetaPausadoInput {
       headline: item.headline,
       description: item.description,
       call_to_action_type: item.cta,
+      asset_rights_confirmed: item.assetRightsConfirmed,
+      third_party_identity_cleared: item.thirdPartyIdentityCleared,
+      asset_policy_confirmed_at: item.assetPolicyConfirmedAt || null,
     })),
   };
 }

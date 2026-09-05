@@ -107,9 +107,16 @@ function confirmarEnquadramento() {
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
 }
 
+function confirmarPeca() {
+  fireEvent.click(screen.getByRole('button', { name: /^Anúncios/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
+}
+
 /** Vai até a revisão e dispara a conferência do plano no backend. */
 async function compilarPelaRevisao() {
   confirmarEnquadramento();
+  confirmarPeca();
   fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
   fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
   await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalled());
@@ -215,6 +222,7 @@ describe('Bancada de criação Meta — correções adversariais', () => {
     await esperarAtivos();
     await esperarAtivos();
     confirmarEnquadramento();
+    confirmarPeca();
     fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
     fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
     const alerta = await screen.findByRole('alert');

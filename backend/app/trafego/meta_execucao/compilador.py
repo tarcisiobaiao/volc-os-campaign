@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from .contrato import (
     PLACEHOLDER_DE_DEPENDENCIA,
     ErroDeNascimentoMeta,
+    ManifestoSupplyMeta,
     PlanoMetaPausado,
     ReferenciasMetaResolvidas,
     VariacaoEstaticaMeta,
@@ -47,6 +48,7 @@ class PlanoCompiladoMeta:
     destination_url: str
     operacoes: tuple[OperacaoMeta, ...]
     plano_sha256: str
+    asset_supply_manifests: tuple[ManifestoSupplyMeta, ...] = ()
     estado_ao_nascer: str = "PAUSED"
     api_version: str = "v26.0"
 
@@ -73,6 +75,7 @@ class PlanoCompiladoMeta:
             "api_version": self.api_version,
             "plano_sha256": self.plano_sha256,
             "estado_ao_nascer": self.estado_ao_nascer,
+            "asset_supply": [item.prova_publica() for item in self.asset_supply_manifests],
             "operacoes": [
                 {
                     "nome": op.nome,
@@ -108,6 +111,9 @@ def compilar_plano_pausado(
         "geo_locations": {"countries": list(plano.countries)},
         "age_min": plano.age_min,
         "age_max": plano.age_max,
+        # Sem Instagram provado, o P0 não deixa a Meta escolher placements que
+        # poderiam exigir outra identidade. A Page veio de /promote_pages.
+        "publisher_platforms": ["facebook"],
         # A ausência deste campo não é neutra desde a v23.0: a Meta assume 1 e
         # liga o Advantage+ Audience sozinha. A escolha do operador viaja
         # sempre explícita, como 1 ou 0.
@@ -170,7 +176,13 @@ def compilar_plano_pausado(
         }
         if referencias.instagram_actor_id is not None:
             story["instagram_actor_id"] = referencias.instagram_actor_id
-        creative = {"name": variacao.creative_name, "object_story_spec": story}
+        creative = {
+            "name": variacao.creative_name,
+            "object_story_spec": story,
+            # v26: contas elegíveis com Shop passam a WEBSITE_AND_SHOP por
+            # padrão. O opt-out oficial mantém todo clique no website aprovado.
+            "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
+        }
         ad = {
             "name": variacao.ad_name,
             "adset_id": _ADSET,
@@ -194,10 +206,15 @@ def compilar_plano_pausado(
             ),
         ))
     operacoes = operacoes_base + tuple(operacoes_variacoes)
+    manifestos = tuple(
+        referencias.manifesto_for(ref)
+        for ref in dict.fromkeys(item.asset_ref for item in variacoes)
+    )
     materia = {
         "api_version": "v26.0",
         "account_ref": plano.account_ref,
         "destination_url": plano.destination_url,
+        "asset_supply": [item.prova_publica() for item in manifestos],
         "operations": [
             {
                 "key": op.chave,
@@ -212,6 +229,7 @@ def compilar_plano_pausado(
         account_ref=plano.account_ref,
         destination_url=plano.destination_url,
         operacoes=operacoes,
+        asset_supply_manifests=manifestos,
         plano_sha256=hashlib.sha256(_canonico(materia).encode("utf-8")).hexdigest(),
     )
 

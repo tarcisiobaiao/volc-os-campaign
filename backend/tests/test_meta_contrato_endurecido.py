@@ -28,6 +28,7 @@ from app.trafego.meta_execucao.compilador import (
 from app.trafego.meta_execucao.contrato import (
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
+    ManifestoSupplyMeta,
     PlanoMetaPausado,
     ReferenciasMetaResolvidas,
 )
@@ -66,8 +67,18 @@ def _plano(**mudancas: object) -> PlanoMetaPausado:
 
 
 def _refs() -> ReferenciasMetaResolvidas:
+    manifesto = ManifestoSupplyMeta(
+        asset_ref="metaasset_exemplo", content_sha256="a" * 64,
+        item_sha256="a" * 64, supply_sha256="b" * 64,
+        policy_receipt_ref="metapolicy_" + "c" * 24,
+        policy_state="AUTHORIZED", policy_expires_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
+        lifecycle="READY_FOR_PAID_MEDIA", provider_image_hash="imagemHash_123456",
+        mime_type="image/png", width=1080, height=1080,
+    )
     return ReferenciasMetaResolvidas(
-        account_id="1234567890", page_id="2222222222", image_hash="imagemHash_123456")
+        account_id="1234567890", page_id="2222222222", image_hash="imagemHash_123456",
+        page_permission_proven=True, placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        asset_supply_manifests={"metaasset_exemplo": manifesto})
 
 
 class _Registro:
@@ -239,6 +250,27 @@ def test_manifesto_de_passos_espelha_o_plano_e_serve_a_migration() -> None:
     assert 1 <= len(lote.manifesto_de_passos) <= 22
 
 
+def test_recibo_de_politica_expirado_nao_compila() -> None:
+    manifesto = ManifestoSupplyMeta(
+        asset_ref="metaasset_exemplo", content_sha256="a" * 64,
+        item_sha256="a" * 64, supply_sha256="b" * 64,
+        policy_receipt_ref="metapolicy_" + "c" * 24,
+        policy_state="AUTHORIZED",
+        policy_expires_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        lifecycle="READY_FOR_PAID_MEDIA", provider_image_hash="imagemHash_123456",
+        mime_type="image/png",
+    )
+    refs = ReferenciasMetaResolvidas(
+        account_id="1234567890", page_id="2222222222",
+        image_hash="imagemHash_123456", page_permission_proven=True,
+        placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        asset_supply_manifests={"metaasset_exemplo": manifesto},
+    )
+    with pytest.raises(ErroDeNascimentoMeta) as erro:
+        compilar_plano_pausado(_plano(), refs)
+    assert erro.value.codigo == "META_ASSET_POLICY_RECEIPT_EXPIRED"
+
+
 @pytest.mark.parametrize(
     ("lido", "enviado", "igual"),
     [
@@ -329,6 +361,7 @@ async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica()
     from app.trafego.meta.credenciais import SegredoEfemero as Segredo
     from app.trafego.meta import dominio as meta_dom
     from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
+    from app.trafego.meta_execucao.contrato import DeclaracaoPoliticaAtivoMeta
 
     async def responder(request: httpx.Request) -> httpx.Response:
         caminho = request.url.path
@@ -339,9 +372,15 @@ async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica()
         if caminho.endswith("/promote_pages"):
             return httpx.Response(200, json={"data": [{"id": "2222222222", "name": "Pagina"}]})
         if caminho.endswith("/adimages"):
-            return httpx.Response(200, json={"data": [{"hash": "hash_um", "name": "Um"}]})
+            return httpx.Response(200, json={"data": [{
+                "hash": "hash_um", "name": "Um",
+                "url": "https://preview.example.fbcdn.net/hash_um.png",
+            }]})
         if caminho.endswith("/advideos"):
             return httpx.Response(403, json={"error": {"code": 200, "message": "sem permissao"}})
+        if request.url.host.endswith(".fbcdn.net"):
+            return httpx.Response(200, content=b"imagem-exata-hash-um", headers={
+                "content-type": "image/png"})
         raise AssertionError(request.url)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(responder)) as cliente:
@@ -352,10 +391,16 @@ async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica()
         assert len(inventario["imagens"]) == 1
         assert inventario["videos"] == []
         assert inventario["videos_indisponiveis"] == "META_ASSET_READ_FAILED"
+        asset_ref = inventario["imagens"][0]["referencia_opaca"]
         resolvidas = await resolvedor.resolver_lote(
             account_ref=inventario["account_ref"],
             page_ref=inventario["paginas"][0]["referencia_opaca"],
-            asset_refs=(inventario["imagens"][0]["referencia_opaca"],),
+            asset_refs=(asset_ref,),
             segredo=Segredo(TOKEN),
+            declaracoes={asset_ref: DeclaracaoPoliticaAtivoMeta(
+                direitos_confirmados=True,
+                identidade_de_terceiro_liberada=True,
+                confirmada_em=datetime.now(timezone.utc),
+            )},
         )
     assert resolvidas.image_hash == "hash_um"

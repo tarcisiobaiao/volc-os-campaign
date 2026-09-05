@@ -128,6 +128,10 @@ CREATE TABLE public.trafego_meta_create_approval (
   -- `approval_id` e recompilar o plano no servidor, em vez de aceitar um
   -- payload Meta vindo do navegador.
   plan_request         jsonb NOT NULL,
+  -- Prova sanitizada de cada peça aprovada. O hash do plano já sela estes
+  -- dados; a coluna torna a auditoria direta e impede uma aprovação sem
+  -- content/supply hash e recibo de política CLEAR/AUTHORIZED.
+  asset_supply_receipts jsonb NOT NULL,
   state                text NOT NULL DEFAULT 'APPROVED',
   expires_at           timestamptz NOT NULL,
   approved_at          timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -159,6 +163,10 @@ CREATE TABLE public.trafego_meta_create_approval (
   CONSTRAINT trafego_meta_create_approval_paused CHECK (paused_birth_confirmed),
   CONSTRAINT trafego_meta_create_approval_pedido CHECK (
     jsonb_typeof(plan_request) = 'object' AND length(plan_request::text) <= 60000),
+  CONSTRAINT trafego_meta_create_approval_supply CHECK (
+    jsonb_typeof(asset_supply_receipts) = 'array'
+    AND jsonb_array_length(asset_supply_receipts) BETWEEN 1 AND 10
+    AND length(asset_supply_receipts::text) <= 30000),
   -- ⚠️ EXPIRACAO CURTA, com teto no proprio banco. `expires_at > approved_at`
   -- sozinho aceitaria uma aprovacao valida por um ano — uma autorizacao de
   -- gasto esquecida numa aba. Uma hora e o teto absoluto; a rota escolhe uma
@@ -355,7 +363,8 @@ CREATE FUNCTION public.trafego_meta_create_approve(
   p_validation_id uuid,
   p_validation_max_age_seconds integer,
   p_paused_birth_confirmed boolean,
-  p_plan_request jsonb
+  p_plan_request jsonb,
+  p_asset_supply_receipts jsonb
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -414,6 +423,23 @@ BEGIN
   END IF;
   IF p_plan_request IS NULL OR jsonb_typeof(p_plan_request) <> 'object' THEN
     RAISE EXCEPTION 'META_APPROVAL_PLAN_REQUEST_INVALID';
+  END IF;
+  IF p_asset_supply_receipts IS NULL
+     OR jsonb_typeof(p_asset_supply_receipts) <> 'array'
+     OR jsonb_array_length(p_asset_supply_receipts) NOT BETWEEN 1 AND 10
+     OR EXISTS (
+       SELECT 1 FROM jsonb_array_elements(p_asset_supply_receipts) AS recibo
+        WHERE jsonb_typeof(recibo) <> 'object'
+           OR recibo->>'asset_ref' !~ '^[A-Za-z0-9:_-]{8,180}$'
+           OR recibo->>'content_sha256' !~ '^[a-f0-9]{64}$'
+           OR recibo->>'supply_sha256' !~ '^[a-f0-9]{64}$'
+           OR recibo->>'policy_receipt_ref' !~ '^metapolicy_[a-f0-9]{24}$'
+           OR recibo->>'policy_state' NOT IN ('CLEAR','AUTHORIZED')
+           OR recibo->>'lifecycle' <> 'READY_FOR_PAID_MEDIA'
+           OR coalesce((recibo->>'image_hash_bound')::boolean, false) IS NOT TRUE
+           OR (recibo->>'policy_expires_at')::timestamptz <= clock_timestamp()
+     ) THEN
+    RAISE EXCEPTION 'META_ASSET_SUPPLY_RECEIPTS_INVALID';
   END IF;
   IF p_expires_at IS NULL OR p_expires_at <= clock_timestamp() THEN
     RAISE EXCEPTION 'META_APPROVAL_EXPIRY_INVALID';
@@ -493,11 +519,12 @@ BEGIN
 
   INSERT INTO public.trafego_meta_create_approval (
     plan_sha256, account_ref, actor_id, daily_budget_minor, currency, expires_at,
-    steps_expected, operations_expected, validation_id, paused_birth_confirmed, plan_request
+    steps_expected, operations_expected, validation_id, paused_birth_confirmed, plan_request,
+    asset_supply_receipts
   ) VALUES (
     p_plan_sha256, p_account_ref, p_actor_id, p_daily_budget_minor, p_currency, p_expires_at,
     p_steps_expected, cardinality(p_steps_expected)::smallint, p_validation_id,
-    p_paused_birth_confirmed, p_plan_request
+    p_paused_birth_confirmed, p_plan_request, p_asset_supply_receipts
   ) RETURNING approval_id INTO v_id;
   RETURN jsonb_build_object(
     'ok', true,
@@ -735,67 +762,10 @@ BEGIN
 END
 $$;
 
--- ⚠️ RECONCILIACAO: o unico caminho de AMBIGUOUS para FAILED.
---
--- `trafego_meta_create_fail_step` so aceita IN_FLIGHT, e isso e correto: um
--- passo em voo que a Meta recusou por escrito e uma falha provada. AMBIGUOUS e
--- outra coisa — pode existir objeto do outro lado — e so pode ser encerrado
--- depois de alguem PROVAR a ausencia por leitura. Esta funcao e o registro
--- dessa prova, e o unico caminho de volta.
---
--- O caminho oposto — provar que o objeto EXISTE — nao precisa de funcao nova:
--- `trafego_meta_create_close_step` ja aceita AMBIGUOUS -> CREATED com o id
--- lido, e ja recusa um id diferente do gravado.
-CREATE FUNCTION public.trafego_meta_create_resolve_absent(
-  p_step_ref uuid, p_error_code text, p_idade_minima_s integer DEFAULT 120
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, public
-AS $$
-DECLARE v_step public.trafego_meta_create_step%ROWTYPE;
-BEGIN
-  PERFORM public.trafego_meta_exigir_service_role();
-  IF p_error_code !~ '^[A-Z0-9_]{3,100}$' THEN
-    RAISE EXCEPTION 'META_STEP_ERROR_CODE_INVALID';
-  END IF;
-  IF p_idade_minima_s IS NULL OR p_idade_minima_s < 60 OR p_idade_minima_s > 3600 THEN
-    RAISE EXCEPTION 'META_RECONCILE_WINDOW_INVALID';
-  END IF;
-
-  SELECT * INTO v_step FROM public.trafego_meta_create_step
-   WHERE step_id = p_step_ref FOR UPDATE;
-  IF NOT FOUND OR v_step.state <> 'AMBIGUOUS' THEN
-    RAISE EXCEPTION 'META_STEP_NOT_AMBIGUOUS';
-  END IF;
-
-  -- ⚠️ AUSENCIA NAO PODE SER PROVADA ENQUANTO ALGUEM AINDA PODE DESPACHAR.
-  --
-  -- O passo vira AMBIGUOUS assim que uma segunda chamada reentra nele — e isso
-  -- pode acontecer com a PRIMEIRA ainda dentro do `await` do POST, antes de a
-  -- Meta receber qualquer coisa. Uma reconciliacao imediata listaria a conta,
-  -- nao acharia nada, fecharia FALHO, e o POST original criaria o objeto
-  -- depois, com o livro ja dizendo que ele nao existe. O resultado seria
-  -- exatamente o que esta lane existe para impedir: uma nova aprovacao
-  -- liberada sobre um objeto vivo.
-  --
-  -- O cliente HTTP da criacao tem timeout de 20 s. Dois minutos e folga
-  -- suficiente para que nenhum despachante ainda tenha autoridade para enviar.
-  -- Nao e um lease — e um piso temporal, e o risco residual (uma requisicao
-  -- patologicamente lenta) esta declarado em REMAINING-RISKS.
-  IF greatest(v_step.prepared_at, v_step.updated_at)
-     > clock_timestamp() - make_interval(secs => p_idade_minima_s) THEN
-    RAISE EXCEPTION 'META_RECONCILE_TOO_SOON';
-  END IF;
-
-  UPDATE public.trafego_meta_create_step
-     SET state = 'FAILED', error_code = p_error_code,
-         closed_at = clock_timestamp(), updated_at = clock_timestamp()
-   WHERE step_id = p_step_ref;
-  RETURN jsonb_build_object('ok', true, 'state', 'FAILED');
-END
-$$;
+-- P0 intencionalmente NÃO possui AMBIGUOUS -> FAILED por ausência. Depois do
+-- despacho, uma listagem sem resultado não prova inexistência; liberar nova
+-- aprovação aqui é o caminho direto para campanha duplicada. Somente presença
+-- congruente fecha AMBIGUOUS -> CREATED. Todo o resto exige adjudicação manual.
 
 -- ⚠️ Registro duravel de um read-back que divergiu DEPOIS de o recibo fechar.
 --
@@ -893,6 +863,7 @@ BEGIN
     'operations_expected', a.operations_expected,
     'paused_birth_confirmed', a.paused_birth_confirmed,
     'plan_request', a.plan_request,
+    'asset_supply_receipts', a.asset_supply_receipts,
     'validation_id', a.validation_id::text,
     'state', CASE WHEN a.expires_at <= clock_timestamp() THEN 'EXPIRED' ELSE a.state END,
     'expires_at', a.expires_at,
@@ -964,24 +935,22 @@ $$;
 
 REVOKE ALL ON FUNCTION public.trafego_meta_exigir_service_role() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_record_validation(text,text,text,text,text[],text[],integer,integer) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb,jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_close_step(uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_flag_readback(uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_validation_lookup(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_approval_manifest(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_receipt(uuid) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_record_validation(text,text,text,text,text[],text[],integer,integer) TO service_role;
-GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb,jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_close_step(uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_flag_readback(uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_validation_lookup(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approval_manifest(uuid) TO service_role;

@@ -14,7 +14,9 @@ from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
 from app.trafego.meta_execucao.compilador import compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
     AutorizacaoMeta,
+    DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
+    ManifestoSupplyMeta,
     PlanoMetaPausado,
     ReferenciasMetaResolvidas,
     VariacaoEstaticaMeta,
@@ -61,14 +63,31 @@ def _plano(*variacoes: VariacaoEstaticaMeta) -> PlanoMetaPausado:
 
 
 def _refs(quantidade: int = 0) -> ReferenciasMetaResolvidas:
+    hashes = {
+        f"metaasset_{indice}": f"hash_lote_{indice:03d}"
+        for indice in range(1, quantidade + 1)
+    }
+    if not quantidade:
+        hashes["metaasset_legado"] = "hash_legado_123"
+    manifestos = {
+        ref: ManifestoSupplyMeta(
+            asset_ref=ref, content_sha256=f"{indice + 1:064x}",
+            item_sha256=f"{indice + 1:064x}", supply_sha256=f"{indice + 101:064x}",
+            policy_receipt_ref="metapolicy_" + f"{indice + 201:024x}",
+            policy_state="AUTHORIZED", policy_expires_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
+            lifecycle="READY_FOR_PAID_MEDIA", provider_image_hash=image_hash,
+            mime_type="image/png", width=1080, height=1080,
+        )
+        for indice, (ref, image_hash) in enumerate(hashes.items())
+    }
     return ReferenciasMetaResolvidas(
         account_id="1234567890",
         page_id="2222222222",
         image_hash="hash_legado_123",
-        image_hashes_by_ref={
-            f"metaasset_{indice}": f"hash_lote_{indice:03d}"
-            for indice in range(1, quantidade + 1)
-        },
+        image_hashes_by_ref=hashes,
+        page_permission_proven=True,
+        placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        asset_supply_manifests=manifestos,
     )
 
 
@@ -169,14 +188,20 @@ async def test_resolvedor_lote_le_inventario_uma_vez_e_resolve_refs_opacas() -> 
             return httpx.Response(200, json={"data": [{"id": "2222222222", "name": "Pagina"}]})
         if request.url.path.endswith("/adimages"):
             return httpx.Response(200, json={"data": [
-                {"hash": "hash_lote_001", "name": "Um"},
-                {"hash": "hash_lote_002", "name": "Dois"},
+                {"hash": "hash_lote_001", "name": "Um",
+                 "url": "https://preview.example.fbcdn.net/hash_lote_001.png"},
+                {"hash": "hash_lote_002", "name": "Dois",
+                 "url": "https://preview.example.fbcdn.net/hash_lote_002.png"},
             ]})
         if request.url.path.endswith("/advideos"):
             return httpx.Response(200, json={"data": [
                 {"id": "55443322", "name": "Video existente",
                  "picture": "https://scontent.example.fbcdn.net/thumb.jpg"},
             ]})
+        if request.url.host.endswith(".fbcdn.net"):
+            return httpx.Response(
+                200, content=f"bytes:{request.url.path}".encode(),
+                headers={"content-type": "image/png"})
         raise AssertionError(request.url)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(responder)) as cliente:
@@ -192,6 +217,14 @@ async def test_resolvedor_lote_le_inventario_uma_vez_e_resolve_refs_opacas() -> 
             page_ref=page_ref,
             asset_refs=asset_refs,
             segredo=SegredoEfemero(TOKEN),
+            declaracoes={
+                asset_ref: DeclaracaoPoliticaAtivoMeta(
+                    direitos_confirmados=True,
+                    identidade_de_terceiro_liberada=True,
+                    confirmada_em=datetime.now(timezone.utc),
+                )
+                for asset_ref in asset_refs
+            },
         )
     assert set(resolvidas.image_hashes_by_ref) == set(asset_refs)
     assert set(resolvidas.image_hashes_by_ref.values()) == {
@@ -260,6 +293,7 @@ async def test_executor_lote_resolve_cada_criativo_e_readback_por_tipo() -> None
         elif edge == "adcreatives":
             base.update({
                 "status": "ACTIVE", "effective_status": "ACTIVE",
+                "destination_spec": json.loads(dados["destination_spec"]),
                 # A leitura devolve a história inteira, como a Meta devolve.
                 "object_story_spec": json.loads(dados["object_story_spec"]),
             })

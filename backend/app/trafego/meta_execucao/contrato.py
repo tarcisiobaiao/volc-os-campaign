@@ -85,6 +85,89 @@ class VariacaoEstaticaMeta:
 
 
 @dataclass(frozen=True)
+class DeclaracaoPoliticaAtivoMeta:
+    """Atestação humana mínima; os bytes e hashes continuam sendo do backend."""
+
+    direitos_confirmados: bool
+    identidade_de_terceiro_liberada: bool
+    confirmada_em: datetime
+
+    def __post_init__(self) -> None:
+        if not self.direitos_confirmados:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_RIGHTS_UNCONFIRMED",
+                "confirme que a peça é própria ou licenciada antes de usá-la em mídia paga",
+            )
+        if not self.identidade_de_terceiro_liberada:
+            raise ErroDeNascimentoMeta(
+                "META_THIRD_PARTY_IDENTITY_UNVERIFIED",
+                "a peça ainda pode conter marca ou identidade de terceiro não autorizada",
+            )
+        if self.confirmada_em.tzinfo is None or self.confirmada_em.utcoffset() is None:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_INVALID", "o carimbo da confirmação precisa ter fuso")
+
+
+@dataclass(frozen=True)
+class ManifestoSupplyMeta:
+    """Manifesto emitido pelo backend para uma imagem exata da biblioteca Meta."""
+
+    asset_ref: str
+    content_sha256: str
+    item_sha256: str
+    supply_sha256: str
+    policy_receipt_ref: str
+    policy_state: str
+    policy_expires_at: datetime
+    lifecycle: str
+    provider_image_hash: str
+    mime_type: str
+    width: int | None = None
+    height: int | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "asset_ref", _referencia(self.asset_ref, "asset_ref"))
+        for campo in ("content_sha256", "item_sha256", "supply_sha256"):
+            if not re.fullmatch(r"[a-f0-9]{64}", str(getattr(self, campo) or "")):
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_SUPPLY_MANIFEST_INVALID", f"{campo} invalido")
+        if self.policy_state not in {"CLEAR", "AUTHORIZED"}:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_BLOCKED", "o recibo da peça não está CLEAR/AUTHORIZED")
+        if self.lifecycle != "READY_FOR_PAID_MEDIA":
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_LIFECYCLE_BLOCKED", "a peça não está pronta para mídia paga")
+        if self.policy_expires_at.tzinfo is None or self.policy_expires_at.utcoffset() is None:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_INVALID", "o recibo da peça precisa ter expiração com fuso")
+        if not re.fullmatch(r"metapolicy_[a-f0-9]{24}", self.policy_receipt_ref):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_INVALID", "referência do recibo da peça inválida")
+        if not re.fullmatch(r"[A-Za-z0-9_-]{6,160}", self.provider_image_hash):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_INVALID", "image_hash Meta inválido")
+        if not self.mime_type.startswith("image/"):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_INVALID", "a peça selecionada não é uma imagem")
+
+    def prova_publica(self) -> Mapping[str, Any]:
+        return {
+            "asset_ref": self.asset_ref,
+            "content_sha256": self.content_sha256,
+            "item_sha256": self.item_sha256,
+            "supply_sha256": self.supply_sha256,
+            "policy_receipt_ref": self.policy_receipt_ref,
+            "policy_state": self.policy_state,
+            "policy_expires_at": self.policy_expires_at.isoformat(),
+            "lifecycle": self.lifecycle,
+            "mime_type": self.mime_type,
+            "width": self.width,
+            "height": self.height,
+            "image_hash_bound": True,
+        }
+
+
+@dataclass(frozen=True)
 class PlanoMetaPausado:
     """Operator-approved, account-opaque blueprint for the P0 recipe.
 
@@ -122,7 +205,8 @@ class PlanoMetaPausado:
     # https://developers.facebook.com/docs/marketing-api/adset/destination_type/
     destination_type: str = "WEBSITE"
     budget_scope: str = "ADSET"
-    placements_mode: str = "AUTOMATIC"
+    placements_mode: str = "FACEBOOK_ONLY"
+    shop_destination_mode: str = "WEBSITE_ONLY"
     countries: tuple[str, ...] = ("BR",)
     age_min: int = 18
     age_max: int = 65
@@ -159,9 +243,18 @@ class PlanoMetaPausado:
         if self.destination_type != "WEBSITE" or self.budget_scope != "ADSET":
             raise ErroDeNascimentoMeta(
                 "META_RECIPE_NOT_PROVEN", "o P0 aceita destino WEBSITE e budget no AdSet")
-        if self.placements_mode != "AUTOMATIC":
+        if self.placements_mode != "FACEBOOK_ONLY":
             raise ErroDeNascimentoMeta(
-                "META_PLACEMENT_RECIPE_UNPROVEN", "placements manuais nao pertencem ao P0")
+                "META_PLACEMENT_RECIPE_UNPROVEN",
+                "o P0 aceita somente o subconjunto Facebook explicitamente restringido")
+        if self.instagram_actor_ref is not None:
+            raise ErroDeNascimentoMeta(
+                "META_INSTAGRAM_IDENTITY_UNPROVEN",
+                "o P0 não usa Instagram sem uma identidade explicitamente provada")
+        if self.shop_destination_mode != "WEBSITE_ONLY":
+            raise ErroDeNascimentoMeta(
+                "META_SHOP_DESTINATION_UNPROVEN",
+                "o primeiro canário aceita somente destino externo website-only")
         if self.promoted_object:
             raise ErroDeNascimentoMeta(
                 "META_MEASUREMENT_RECIPE_UNPROVEN",
@@ -258,6 +351,9 @@ class ReferenciasMetaResolvidas:
     image_hash: str
     instagram_actor_id: str | None = None
     image_hashes_by_ref: Mapping[str, str] = field(default_factory=dict)
+    page_permission_proven: bool = False
+    placement_identity_mode: str = "UNPROVEN"
+    asset_supply_manifests: Mapping[str, ManifestoSupplyMeta] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for campo in ("account_id", "page_id"):
@@ -284,17 +380,58 @@ class ReferenciasMetaResolvidas:
                     "META_RESOLVED_REFERENCE_INVALID", "image_hash do lote invalido")
             hashes[ref] = valor
         object.__setattr__(self, "image_hashes_by_ref", hashes)
+        if not self.page_permission_proven:
+            raise ErroDeNascimentoMeta(
+                "META_PAGE_PERMISSION_UNPROVEN",
+                "a Página não foi provada na lista de Páginas promovíveis da conta")
+        if self.placement_identity_mode != "FACEBOOK_ONLY_PAGE_PROVEN":
+            raise ErroDeNascimentoMeta(
+                "META_PLACEMENT_IDENTITY_UNPROVEN",
+                "os posicionamentos não estão restritos à identidade de Página provada")
+        manifestos = dict(self.asset_supply_manifests)
+        for referencia, manifesto in manifestos.items():
+            ref = _referencia(str(referencia), "asset_ref")
+            if not isinstance(manifesto, ManifestoSupplyMeta) or manifesto.asset_ref != ref:
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_SUPPLY_MANIFEST_INVALID", "manifesto da peça inválido")
+        object.__setattr__(self, "asset_supply_manifests", manifestos)
 
     def image_hash_for(self, asset_ref: str, *, fallback_ref: str) -> str:
         if asset_ref == fallback_ref:
-            return self.image_hashes_by_ref.get(asset_ref, self.image_hash)
+            valor = self.image_hashes_by_ref.get(asset_ref, self.image_hash)
+            manifesto = self.asset_supply_manifests.get(asset_ref)
+            if manifesto is None or manifesto.provider_image_hash != valor:
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_IMAGE_HASH_DIVERGED",
+                    "o image_hash não corresponde aos bytes aprovados da peça",
+                )
+            return valor
         try:
-            return self.image_hashes_by_ref[asset_ref]
+            valor = self.image_hashes_by_ref[asset_ref]
+            manifesto = self.asset_supply_manifests[asset_ref]
+            if manifesto.provider_image_hash != valor:
+                raise KeyError(asset_ref)
+            return valor
         except KeyError:
             raise ErroDeNascimentoMeta(
                 "META_ASSET_REFERENCE_UNRESOLVED",
                 "uma imagem do lote nao foi resolvida pelo backend",
             ) from None
+
+    def manifesto_for(self, asset_ref: str) -> ManifestoSupplyMeta:
+        try:
+            manifesto = self.asset_supply_manifests[asset_ref]
+        except KeyError:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_MISSING",
+                "a peça não possui manifesto de bytes e política emitido pelo backend",
+            ) from None
+        if manifesto.policy_expires_at <= datetime.now(timezone.utc):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_EXPIRED",
+                "o recibo de política da peça expirou; confira a peça novamente",
+            )
+        return manifesto
 
     def __repr__(self) -> str:
         return "ReferenciasMetaResolvidas(<ocultas>)"

@@ -276,6 +276,9 @@ export interface PlanoMetaPausadoInput {
   /** Desde a v23.0 a Meta assume 1 quando o campo não viaja: a escolha é sempre explícita. */
   advantage_audience: boolean;
   call_to_action_type: string;
+  asset_rights_confirmed: boolean;
+  third_party_identity_cleared: boolean;
+  asset_policy_confirmed_at: string | null;
   variations?: Array<{
     variation_key: string;
     asset_ref: string;
@@ -285,6 +288,9 @@ export interface PlanoMetaPausadoInput {
     headline: string;
     description: string;
     call_to_action_type: string;
+    asset_rights_confirmed: boolean;
+    third_party_identity_cleared: boolean;
+    asset_policy_confirmed_at: string | null;
   }>;
 }
 

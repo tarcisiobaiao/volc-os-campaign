@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -69,6 +70,8 @@ class _Resposta:
     def __init__(self, corpo: Any, status: int = 200) -> None:
         self.status_code = status
         self._corpo = corpo
+        self.content = b""
+        self.headers: dict[str, str] = {}
 
     def json(self) -> Any:
         return self._corpo
@@ -123,6 +126,12 @@ class _GraphFalso:
 
     # -- leitura ------------------------------------------------------------
     async def get(self, url: str, *, params: Any = None, headers: Any = None):
+        if url.endswith(".fbcdn.net/preview.jpg"):
+            CENARIO.gets.append(url)
+            resposta = _Resposta({})
+            resposta.content = b"bytes-imagem-meta"
+            resposta.headers = {"content-type": "image/jpeg"}
+            return resposta
         assert headers == {"Authorization": f"Bearer {TOKEN}"}
         CENARIO.gets.append(url)
         if url.endswith("/me/adaccounts"):
@@ -214,12 +223,14 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
                 "start_time": PLANO["start_time"],
                 "targeting": {
                     "geo_locations": {"countries": ["BR"]}, "age_min": 18, "age_max": 65,
+                    "publisher_platforms": ["facebook"],
                     "targeting_automation": {"advantage_audience": 0},
                 }}
     if tipo == "creative":
         variacao = PLANO["variations"][0]
         return {**comum, "name": variacao["creative_name"], "status": "ACTIVE",
                 "effective_status": "ACTIVE",
+                "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
                 "object_story_spec": {
                     "page_id": PAGINA_EXTERNA,
                     "link_data": {
@@ -453,6 +464,9 @@ PLANO: dict[str, Any] = {
     "is_adset_budget_sharing_enabled": False,
     "advantage_audience": False,
     "call_to_action_type": "LEARN_MORE",
+    "asset_rights_confirmed": True,
+    "third_party_identity_cleared": True,
+    "asset_policy_confirmed_at": datetime.now(timezone.utc).isoformat(),
     "variations": [],
 }
 
@@ -478,6 +492,9 @@ def _plano_para_envio() -> dict[str, Any]:
         "creative_name": PLANO["creative_name"], "ad_name": PLANO["ad_name"],
         "message": PLANO["message"], "headline": PLANO["headline"],
         "description": PLANO["description"], "call_to_action_type": "LEARN_MORE",
+        "asset_rights_confirmed": True,
+        "third_party_identity_cleared": True,
+        "asset_policy_confirmed_at": datetime.now(timezone.utc).isoformat(),
     }]
     PLANO["variations"] = plano["variations"]
     return plano
@@ -551,8 +568,18 @@ async def _aprovar(cliente: TestClient, ledger: _LedgerEmMemoria, plano: dict[st
 # 1. FLAGS FECHADAS — zero Keychain, zero banco, zero Meta
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("rota", ["aprovar", "criar-pausada", "reconciliar", "recibo"])
-def test_flags_fechadas_recusam_antes_de_keychain_banco_ou_rede(monkeypatch, rota) -> None:
+@pytest.mark.parametrize(
+    ("rota", "codigo", "quantidade"),
+    [
+        ("aprovar", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
+        ("criar-pausada", "META_CREATE_PAUSED_BLOCKED", 2),
+        ("reconciliar", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
+        ("recibo", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
+    ],
+)
+def test_flags_fechadas_recusam_antes_de_keychain_banco_ou_rede(
+    monkeypatch, rota, codigo, quantidade,
+) -> None:
     _fechar_tudo(monkeypatch)
     corpos = {
         "aprovar": {
@@ -567,12 +594,12 @@ def test_flags_fechadas_recusam_antes_de_keychain_banco_ou_rede(monkeypatch, rot
     resposta = _cliente().post(f"/api/trafego/meta/local/criacao/{rota}", json=corpos[rota])
     assert resposta.status_code == 409
     detalhe = resposta.json()["detail"]
-    assert detalhe["codigo"] == "META_CREATE_PAUSED_BLOCKED"
+    assert detalhe["codigo"] == codigo
     # A causa chega em linguagem de operador; o nome da variável, nunca.
     texto = json.dumps(detalhe, ensure_ascii=False)
     assert "META_CREATE_PAUSED_ENABLED" not in texto
     assert "META_CREATE_LEDGER_WRITE_ENABLED" not in texto
-    assert len(detalhe["autorizacoes_ausentes"]) == 2
+    assert len(detalhe["autorizacoes_ausentes"]) == quantidade
 
 
 def test_uma_flag_aberta_nao_basta_para_criar(monkeypatch) -> None:
@@ -726,29 +753,21 @@ def test_aprovacao_sem_recibo_duravel_falha_fechado(monkeypatch) -> None:
     assert ledger.aprovacoes == {}
 
 
-def test_validate_only_com_criacao_fechada_nao_grava_prova_e_diz_isso(monkeypatch) -> None:
-    """A validação continua verdadeira; o que ela NÃO faz é fingir durabilidade.
-
-    ⚠️ O recibo de validação pertence à cadeia de autoridade da CRIAÇÃO. Gravá-lo
-    com a criação fechada produziria linhas que ninguém pode usar — elas ficam
-    velhas em 30 minutos — e faria a lane de criação escrever no Supabase sem as
-    duas autorizações que ela exige. Achado 7 da revisão adversarial.
-    """
+def test_validate_only_grava_recibo_com_ledger_aberto_e_create_fechado(monkeypatch) -> None:
+    """Registrar evidência não concede autoridade para despachar criação."""
     ledger = _LedgerEmMemoria()
-    _abrir(monkeypatch, ledger, ledger_flag=False)
-    monkeypatch.setattr(
-        ledger, "registrar_validacao",
-        lambda **_: pytest.fail("gravou recibo com a criação fechada"))
+    _abrir(monkeypatch, ledger, criacao=False, ledger_flag=True)
     corpo = _cliente().post("/api/trafego/meta/local/criacao/validar", json={
         "confirmar_validate_only": True, "plano": _plano_para_envio()}).json()
-    # A Meta respondeu e nada foi criado: isso continua sendo dito.
     assert corpo["ok"] is True
     assert corpo["objetos_criados"] == 0
-    assert corpo["cobertura"] == "INDEPENDENT_ROOTS_ONLY"
-    # E a ausência de prova durável é declarada, não escondida.
-    assert corpo["prova_duravel"]["registrada"] is False
-    assert corpo["prova_duravel"]["codigo"] == "META_CREATE_PAUSED_BLOCKED"
-    assert ledger.validacoes == {}
+    assert corpo["prova_duravel"]["registrada"] is True
+    assert len(ledger.validacoes) == 1
+    # Mesmo após o recibo, a flag de despacho continua fechada.
+    criar = _cliente().post("/api/trafego/meta/local/criacao/criar-pausada", json={
+        "approval_id": "approval-0001", "plano_sha256_esperado": corpo["plano_sha256"]})
+    assert criar.status_code == 409
+    assert criar.json()["detail"]["codigo"] == "META_CREATE_PAUSED_BLOCKED"
 
 
 def test_validate_only_com_ledger_indisponivel_declara_a_falha(monkeypatch) -> None:
@@ -812,6 +831,13 @@ def test_saga_nasce_na_ordem_com_recibo_antes_de_cada_chamada(monkeypatch) -> No
         assert corpo_aprovacao["orcamento_diario_minor"] == 1000
         assert corpo_aprovacao["moeda"] == "BRL"
         assert corpo_aprovacao["nascimento_pausado_confirmado"] is True
+        registro_aprovado = ledger.aprovacoes[corpo_aprovacao["approval_id"]]
+        recibos = registro_aprovado["recibos_de_supply"]
+        assert len(recibos) == 1
+        assert recibos[0]["policy_state"] == "AUTHORIZED"
+        assert recibos[0]["image_hash_bound"] is True
+        assert len(recibos[0]["content_sha256"]) == 64
+        assert len(recibos[0]["supply_sha256"]) == 64
 
         resposta = cliente.post("/api/trafego/meta/local/criacao/criar-pausada", json={
             "approval_id": corpo_aprovacao["approval_id"],
@@ -1135,7 +1161,7 @@ def test_reconciliacao_fecha_como_criado_quando_a_leitura_encontra_o_objeto(
     asyncio.run(cenario())
 
 
-def test_reconciliacao_fecha_como_nao_encontrado_com_listagem_completa(monkeypatch) -> None:
+def test_reconciliacao_mantem_ambiguo_mesmo_com_listagem_sem_resultado(monkeypatch) -> None:
     ledger = _LedgerEmMemoria()
     _abrir(monkeypatch, ledger)
     cliente = _cliente()
@@ -1155,9 +1181,9 @@ def test_reconciliacao_fecha_como_nao_encontrado_com_listagem_completa(monkeypat
             "approval_id": aprovacao["approval_id"]})
         assert resposta.status_code == 200, resposta.text
         conclusao = resposta.json()["conclusoes"][0]
-        assert conclusao["conclusao"] == "FECHADO_COMO_NAO_ENCONTRADO"
-        assert ledger.passos["passo-adset"]["state"] == "FAILED"
-        assert ledger.passos["passo-adset"]["codigo"] == "META_RECONCILED_ABSENT"
+        assert conclusao["conclusao"] == "PERMANECE_AMBIGUO"
+        assert ledger.passos["passo-adset"]["state"] == "AMBIGUOUS"
+        assert ("ausente", "passo-adset") not in ledger.eventos
         assert CENARIO.criados == ["campaign"]
 
     asyncio.run(cenario())
@@ -1416,7 +1442,7 @@ def test_criativo_nunca_e_fechado_por_leitura(monkeypatch) -> None:
     asyncio.run(cenario())
 
 
-def test_ausencia_nao_pode_ser_fechada_enquanto_alguem_ainda_pode_despachar(
+def test_ausencia_jovem_tambem_permanece_ambigua_sem_tocar_resolucao(
     monkeypatch,
 ) -> None:
     """ACHADO 2 — o passo vira ambíguo antes de o POST original sair.
@@ -1442,10 +1468,10 @@ def test_ausencia_nao_pode_ser_fechada_enquanto_alguem_ainda_pode_despachar(
         }
         resposta = cliente.post("/api/trafego/meta/local/criacao/reconciliar", json={
             "approval_id": aprovacao["approval_id"]})
-        # A leitura concluiu AUSENTE, mas o ledger recusou fechar.
-        assert resposta.status_code == 409
-        assert "META_RECONCILE_TOO_SOON" in resposta.json()["detail"]["mensagem"]
+        assert resposta.status_code == 200
+        assert resposta.json()["conclusoes"][0]["conclusao"] == "PERMANECE_AMBIGUO"
         assert ledger.passos["passo-adset"]["state"] == "AMBIGUOUS"
+        assert ("ausente", "passo-adset") not in ledger.eventos
 
     asyncio.run(cenario())
 

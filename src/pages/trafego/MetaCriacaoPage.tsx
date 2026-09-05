@@ -371,8 +371,35 @@ const MetaCriacaoPage: React.FC = () => {
     setDraft((atual) => ({
       ...atual,
       variations: atual.variations.map((item, posicao) => (
-        posicao === posicaoAlvo ? { ...item, [chave]: valor } : item
+        posicao === posicaoAlvo ? {
+          ...item,
+          [chave]: valor,
+          ...((chave === 'assetRef' || chave === 'videoRef' || chave === 'midia') ? {
+            assetRightsConfirmed: false,
+            thirdPartyIdentityCleared: false,
+            assetPolicyConfirmedAt: '',
+          } : {}),
+        } : item
       )),
+    }));
+    invalidar();
+  };
+  const mudarPoliticaDaPeca = (
+    posicaoAlvo: number,
+    chave: 'assetRightsConfirmed' | 'thirdPartyIdentityCleared',
+    valor: boolean,
+  ) => {
+    setDraft((atual) => ({
+      ...atual,
+      variations: atual.variations.map((item, posicao) => {
+        if (posicao !== posicaoAlvo) return item;
+        const proximo = { ...item, [chave]: valor };
+        return {
+          ...proximo,
+          assetPolicyConfirmedAt: proximo.assetRightsConfirmed
+            && proximo.thirdPartyIdentityCleared ? new Date().toISOString() : '',
+        };
+      }),
     }));
     invalidar();
   };
@@ -711,7 +738,8 @@ const MetaCriacaoPage: React.FC = () => {
           <BlocoDeEvidencia titulo="O público desta receita" tom="info">
             <LinhaDeFato rotulo="País" valor="Brasil" fonte="a receita provada" />
             <LinhaDeFato rotulo="Idade" valor="18 a 65+" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Posicionamentos" valor="Automáticos, sem lista manual" fonte="a receita provada" />
+            <LinhaDeFato rotulo="Posicionamentos" valor="Somente Facebook no primeiro canário" fonte="o contrato P0" />
+            <LinhaDeFato rotulo="Identidade" valor="Página provada pela conta; Instagram não utilizado" fonte="a Meta e o backend" />
             <LinhaDeFato rotulo="Públicos salvos" valor="Nenhum incluído ou excluído" fonte="a receita provada" />
             <LinhaDeFato rotulo="Advantage+ público" valor={draft.advantageAudience ? 'Aceito (1)' : 'Recusado (0)'} fonte="você, agora" />
           </BlocoDeEvidencia>
@@ -885,6 +913,24 @@ const MetaCriacaoPage: React.FC = () => {
                             ))}
                           </select>
                         </Campo>
+                        <div className="grid gap-3 md:col-span-2">
+                          <Escolha
+                            marcado={variacao.assetRightsConfirmed}
+                            onChange={(valor) => mudarPoliticaDaPeca(
+                              posicao, 'assetRightsConfirmed', valor)}
+                            titulo="Confirmo que esta peça é própria ou licenciada para mídia paga">
+                            O backend ainda lê os bytes da imagem, calcula o hash e vincula esta
+                            declaração ao image_hash exato usado no anúncio.
+                          </Escolha>
+                          <Escolha
+                            marcado={variacao.thirdPartyIdentityCleared}
+                            onChange={(valor) => mudarPoliticaDaPeca(
+                              posicao, 'thirdPartyIdentityCleared', valor)}
+                            titulo="Confirmei marcas, logos e identidades de terceiros nesta peça">
+                            Marque somente se não houver identidade de terceiro sem autorização.
+                            Sem esta confirmação, a peça não compila para mídia paga.
+                          </Escolha>
+                        </div>
                       </div>
                     </div>
                   </section>
@@ -913,6 +959,7 @@ const MetaCriacaoPage: React.FC = () => {
           </div>
           <BlocoDeEvidencia titulo="O que será medido" tom="info">
             <LinhaDeFato rotulo="Domínio do destino" valor={dominioDoDestino(draft.destinationUrl)} fonte="você, agora" ausencia="URL ainda inválida" />
+            <LinhaDeFato rotulo="Destino de comércio" valor="Somente website · Shop desativada explicitamente" fonte="Meta Marketing API v26" />
             <LinhaDeFato rotulo="Otimização" valor="Visualizações da página de destino" fonte="a receita provada" />
             <LinhaDeFato rotulo="Pixel, conjunto de dados ou conversão personalizada" valor="Nenhum" fonte="a receita provada" />
             <LinhaDeFato rotulo="Janela de atribuição" valor="Padrão efetivo da conta" fonte="a Meta" />

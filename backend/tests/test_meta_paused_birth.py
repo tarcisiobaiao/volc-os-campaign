@@ -13,6 +13,7 @@ from app.trafego.meta_execucao.compilador import compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
+    ManifestoSupplyMeta,
     PlanoMetaPausado,
     ReferenciasMetaResolvidas,
 )
@@ -75,10 +76,21 @@ def plano(**mudancas: object) -> PlanoMetaPausado:
 
 
 def referencias() -> ReferenciasMetaResolvidas:
+    manifesto = ManifestoSupplyMeta(
+        asset_ref="metaasset_exemplo", content_sha256="a" * 64,
+        item_sha256="a" * 64, supply_sha256="b" * 64,
+        policy_receipt_ref="metapolicy_" + "c" * 24,
+        policy_state="AUTHORIZED", policy_expires_at=datetime(2030, 1, 1, tzinfo=timezone.utc),
+        lifecycle="READY_FOR_PAID_MEDIA", provider_image_hash="imagemHash_123456",
+        mime_type="image/png", width=1080, height=1080,
+    )
     return ReferenciasMetaResolvidas(
         account_id="1234567890",
         page_id="2222222222",
         image_hash="imagemHash_123456",
+        page_permission_proven=True,
+        placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        asset_supply_manifests={"metaasset_exemplo": manifesto},
     )
 
 
@@ -137,6 +149,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
                 "geo_locations": {"countries": ["BR"]},
                 "age_min": 18,
                 "age_max": 65,
+                "publisher_platforms": ["facebook"],
                 "brand_safety_content_filter_levels": ["FACEBOOK_STANDARD"],
             },
             "status": "PAUSED",
@@ -147,6 +160,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
         comum.update({
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
+            "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
             "object_story_spec": {
                 "page_id": "2222222222",
                 "link_data": {
@@ -205,9 +219,11 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
     assert "daily_budget" not in campanha.payload
     assert conjunto.payload["daily_budget"] == 1000
     assert conjunto.payload["status"] == "PAUSED"
-    assert "publisher_platforms" not in conjunto.payload["targeting"]
+    assert conjunto.payload["targeting"]["publisher_platforms"] == ["facebook"]
     assert "promoted_object" not in conjunto.payload
     assert "status" not in criativo.payload
+    assert criativo.payload["destination_spec"] == {
+        "destination_type": "WEBSITE_AND_SHOP_OPT_OUT"}
     assert anuncio.payload["status"] == "PAUSED"
     assert saida.plano_sha256 == compilado().plano_sha256
     publico = json.dumps(saida.publico(), ensure_ascii=False)
@@ -224,6 +240,8 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
         ({"daily_budget_minor": 10.5}, "META_BUDGET_INVALID"),
         ({"daily_budget_minor": True}, "META_BUDGET_INVALID"),
         ({"placements_mode": "MANUAL"}, "META_PLACEMENT_RECIPE_UNPROVEN"),
+        ({"instagram_actor_ref": "metaobj_instagram"}, "META_INSTAGRAM_IDENTITY_UNPROVEN"),
+        ({"shop_destination_mode": "WEBSITE_AND_SHOP"}, "META_SHOP_DESTINATION_UNPROVEN"),
         ({"promoted_object": {"pixel_id": "1"}}, "META_MEASUREMENT_RECIPE_UNPROVEN"),
         ({"advantage_audience": None}, "META_ADVANTAGE_AUDIENCE_INVALID"),
         ({"special_categories_confirmed": False}, "META_SPECIAL_CATEGORY_NOT_CONFIRMED"),
