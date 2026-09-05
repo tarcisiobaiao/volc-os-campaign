@@ -195,6 +195,19 @@ def _selecionar_ramo_vazio(mensagem, rotulo: str) -> None:
     selecionar()
 
 
+#: As automações de criativo/destino que a receita PMax recusa, na ordem em que
+#: viajam no payload. Ordem estável: o selo do plano cobre a lista, e duas
+#: provas semanticamente iguais não podem gerar protobufs diferentes.
+#:
+#: Todas conferidas no enum `AssetAutomationTypeEnum` do proto v25 instalado.
+AUTOMACOES_PMAX_RECUSADAS: tuple[str, ...] = (
+    "FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",
+    "TEXT_ASSET_AUTOMATION",
+    "GENERATE_IMAGE_ENHANCEMENT",
+    "GENERATE_ENHANCED_YOUTUBE_VIDEOS",
+)
+
+
 def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: bool = False):
     """Campanha base. `canal` ∈ SEARCH | DISPLAY | DEMAND_GEN | PERFORMANCE_MAX."""
     o = c.get_type("MutateOperation")
@@ -325,16 +338,42 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
                 # zero, e o oneof precisa apenas ser selecionado.
                 _selecionar_ramo_vazio(alvo, "MaximizeConversions")
 
-        # Controle explícito de destino: o asset group carrega a URL final exata
-        # e a campanha declara opt-out da expansão automática dessa URL. A API
-        # v25 expõe a mensagem como tipo aninhado de Campaign; por isso não há
-        # `client.get_type("AssetAutomationSetting")` separado.
-        camp.asset_automation_settings.append({
-            "asset_automation_type": (
-                c.enums.AssetAutomationTypeEnum.FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION
-            ),
-            "asset_automation_status": c.enums.AssetAutomationStatusEnum.OPTED_OUT,
-        })
+        # ── destino exclusivo: as QUATRO automações, todas OPTED_OUT ────────
+        #
+        # PMax só é elegível para esta receita enquanto o clique permanecer na
+        # LP aprovada e a peça veiculada for a peça aprovada. As quatro
+        # automações abaixo quebram uma dessas duas coisas, e todas nascem
+        # LIGADAS quando ninguém fala — omitir não é neutro:
+        #
+        #   FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION  manda o clique para outra
+        #       página do site, escolhida pelo Google. O destino aprovado deixa
+        #       de ser o destino servido.
+        #   TEXT_ASSET_AUTOMATION                      gera texto novo. A copy
+        #       aprovada deixa de ser a copy servida.
+        #   GENERATE_IMAGE_ENHANCEMENT                 altera a imagem aprovada,
+        #       e o `supply_sha256` do selo deixa de descrever o que veicula.
+        #   GENERATE_ENHANCED_YOUTUBE_VIDEOS           gera vídeo a partir dos
+        #       assets, sem aprovação de peça nenhuma.
+        #
+        # ⚠️ `url_expansion_opt_out` NÃO EXISTE em v25 — conferido no proto
+        # instalado: `Campaign` não tem esse campo. O único caminho comprovado
+        # é `asset_automation_settings`, e é por ele que a trava viaja.
+        #
+        # A API v25 expõe a mensagem como tipo aninhado de Campaign; por isso
+        # não há `client.get_type("AssetAutomationSetting")` separado.
+        for automacao in AUTOMACOES_PMAX_RECUSADAS:
+            camp.asset_automation_settings.append({
+                "asset_automation_type": getattr(
+                    c.enums.AssetAutomationTypeEnum, automacao),
+                "asset_automation_status": c.enums.AssetAutomationStatusEnum.OPTED_OUT,
+            })
+
+        # Sem feed de páginas: um PAGE_FEED anexado à campanha reabre, por
+        # outra porta, exatamente a expansão de URL que as automações acima
+        # fecham. Declarar a exclusão é mais forte do que não anexar — o feed
+        # pode ser anexado depois, por outra rota, e a exclusão continua valendo.
+        camp.excluded_parent_asset_set_types.append(
+            c.enums.AssetSetTypeEnum.PAGE_FEED)
     else:
         raise ValueError(f"canal desconhecido: {canal}")
 
@@ -379,8 +418,15 @@ def op_adgroup(
     indice: int = 0,
     cpc_inicial: float | None = None,
     tcpa: float | None = None,
+    status: str = "ENABLED",
 ):
     """Um ad group. `indice` escolhe o id temporário dentro da faixa reservada.
+
+    ⚠️ `status` tem default `"ENABLED"` e o default é COMPATIBILIDADE, não
+    opinião. Search nasce assim desde sempre — o grupo ligado dentro de uma
+    campanha PAUSED, que não veicula — e trocar o default mudaria o payload
+    provado do único canal que já tem canário aceito. Quem quer o grupo pausado
+    pede: Display pede, e é a tarefa T03 que manda pedir.
 
     `cpc_inicial` e `tcpa` sobrescrevem os do brief quando vêm preenchidos —
     é o que permite a cada sub-intenção ter lance próprio. Sem eles, o grupo
@@ -402,7 +448,7 @@ def op_adgroup(
     ag.resource_name = temp_adgroup(cid, indice)
     ag.name = nome
     ag.campaign = temp(cid, "campaigns", T_CAMPANHA)
-    ag.status = c.enums.AdGroupStatusEnum.ENABLED
+    ag.status = getattr(c.enums.AdGroupStatusEnum, status)
     if tipo:
         ag.type_ = getattr(c.enums.AdGroupTypeEnum, tipo)
     ag.cpc_bid_micros = brief.micros(

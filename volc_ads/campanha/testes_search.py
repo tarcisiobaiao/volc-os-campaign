@@ -723,3 +723,19 @@ def teste_mudar_a_rede_muda_a_impressao_do_payload() -> None:
     com, _ = search.construir(CID, _brief(rede=RedeDePesquisa(True, True, False)),
                               login_customer_id="x")
     assert sb._impressao(sem) != sb._impressao(com)
+
+
+def test_search_continua_nascendo_com_o_ad_group_ligado():
+    """REGRESSÃO T03: parametrizar o status do ad group NÃO pode tocar Search.
+
+    `comum.op_adgroup` ganhou um parâmetro `status` para que Display possa
+    nascer PAUSED por objeto. O default é COMPATIBILIDADE: se ele mudasse, o
+    payload provado do único canal com canário aceito mudaria junto, e o selo
+    de tudo que já subiu deixaria de descrever o que sobe hoje.
+    """
+    ops, r = search.construir(CID, _brief(), login_customer_id="x")
+    assert r.ok, _erros(r)
+    grupos = _adgroups(ops)
+    assert grupos, "Search precisa continuar montando ad group"
+    for ag in grupos:
+        assert ag.status.name == "ENABLED"

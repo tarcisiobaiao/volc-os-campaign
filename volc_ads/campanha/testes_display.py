@@ -1237,3 +1237,54 @@ def test_artes_diferentes_por_papel_continuam_passando():
     ops, r = display.construir(CID, b, login_customer_id="6016739364")
     assert r.ok, [str(a) for a in r.erros]
     assert len(ops) == 9
+
+
+# ── T03 · nada nasce ligado, nenhuma automação de criativo nasce ligada ──────
+#
+# Duas famílias de defeito que só aparecem DEPOIS de a campanha existir:
+#
+#   1. um filho ENABLED dentro de campanha PAUSED não veicula hoje, mas fica
+#      armado: despausar a campanha no painel liga o anúncio sem que ninguém
+#      tenha decidido isso por objeto;
+#   2. `control_spec` omitido deixa o Google gerar peça nova a partir dos
+#      assets aprovados — e o que veicula deixa de ser o que foi aprovado.
+
+
+def test_nenhum_objeto_display_nasce_ligado():
+    """CONTRAPROVA T03: campanha, ad group e anúncio, os três PAUSED."""
+    ops, r = display.construir(CID, _brief(), login_customer_id="x")
+    assert r.ok, _erros(r)
+
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    ag = _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+    ada = _por_tipo(ops, "ad_group_ad_operation")[0].ad_group_ad_operation.create
+
+    assert camp.status.name == "PAUSED"
+    assert ag.status.name == "PAUSED"
+    assert ada.status.name == "PAUSED"
+
+    # E a varredura, não a lista: um objeto novo amanhã não pode escapar por
+    # ninguém ter lembrado de acrescentá-lo aqui.
+    for o in ops:
+        criado = getattr(getattr(o, o._pb.WhichOneof("operation")), "create", None)
+        estado = getattr(criado, "status", None)
+        nome = getattr(estado, "name", None)
+        if nome is not None:
+            assert nome != "ENABLED", f"{o._pb.WhichOneof('operation')} nasceu ENABLED"
+
+
+def test_o_rda_declara_as_duas_automacoes_de_criativo_desligadas():
+    """CONTRAPROVA T03: `control_spec` explícito, os dois campos em false.
+
+    Omitir não é neutro — o Google liga por conta própria. Os dois campos são
+    exatamente os que `ResponsiveDisplayAdControlSpec` expõe no proto v25.
+    """
+    ops, _ = display.construir(CID, _brief(), login_customer_id="x")
+    rda = _por_tipo(
+        ops, "ad_group_ad_operation")[0].ad_group_ad_operation.create.ad.responsive_display_ad
+
+    assert rda.control_spec.enable_asset_enhancements is False
+    assert rda.control_spec.enable_autogen_video is False
+    # Presente de verdade no protobuf, não apenas "lido como false" por ser o
+    # default de um campo ausente.
+    assert rda._pb.HasField("control_spec")

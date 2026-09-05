@@ -207,9 +207,13 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
 
     # UM ad group. `indice=0` mantém o id temporário -3, o mesmo primeiro id que
     # Search usa — a faixa é compartilhada e a disciplina também.
+    # ⚠️ PAUSED, e explícito. Um ad group ENABLED dentro de campanha PAUSED não
+    # veicula — mas basta alguém despausar a campanha no painel para que ele
+    # passe a veicular sem que ninguém tenha decidido isso por objeto. O canário
+    # Display existe para provar payload, não para deixar um gatilho armado.
     ops.append(
         comum.op_adgroup(c, cid, brief, f"AdGroup_{ts}", "DISPLAY_STANDARD",
-                         indice=0)
+                         indice=0, status="PAUSED")
     )
     ag = comum.temp_adgroup(cid, 0)
 
@@ -221,9 +225,24 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     o = c.get_type("MutateOperation")
     ada = o.ad_group_ad_operation.create
     ada.ad_group = ag
-    ada.status = c.enums.AdGroupAdStatusEnum.ENABLED
+    # Mesma disciplina do ad group: o anúncio nasce PAUSED, por objeto.
+    ada.status = c.enums.AdGroupAdStatusEnum.PAUSED
     ada.ad.final_urls.append(url)
     rda = ada.ad.responsive_display_ad
+
+    # ── as duas automações de criativo do RDA, explicitamente DESLIGADAS ────
+    #
+    # `ResponsiveDisplayAdControlSpec` tem exatamente dois campos, e ambos são
+    # booleanos que o Google liga por conta própria quando o anunciante não
+    # fala. Ligados, eles produzem PEÇA NOVA a partir dos assets aprovados —
+    # recorte, realce, vídeo gerado — e a peça que veicula deixa de ser a peça
+    # que o operador aprovou e cujo `supply_sha256` entrou no selo.
+    #
+    # Omitir não é neutro; declarar `false` é. Conferido no proto v25 instalado:
+    # `ResponsiveDisplayAdControlSpec` expõe `enable_asset_enhancements` e
+    # `enable_autogen_video`, e nada mais.
+    rda.control_spec.enable_asset_enhancements = False
+    rda.control_spec.enable_autogen_video = False
 
     for t in headlines:
         a = c.get_type("AdTextAsset")

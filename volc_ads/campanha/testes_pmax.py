@@ -944,3 +944,102 @@ def test_o_plano_declara_as_ausencias_em_vez_de_escondê_las() -> None:
                for linha in p.segmentacao.aberto_por_ausencia)
     assert any("sem opt-out" in linha
                for linha in p.segmentacao.aberto_por_ausencia)
+
+
+# ── T09 · a trava de URL exclusiva, inteira ─────────────────────────────────
+#
+# PMax só é elegível para esta receita enquanto o clique fica na LP aprovada e
+# a peça veiculada é a peça aprovada. Quatro automações quebram uma dessas duas
+# coisas, e as quatro nascem LIGADAS quando ninguém fala.
+
+
+def test_as_quatro_automacoes_de_pmax_viajam_desligadas():
+    """CONTRAPROVA T09: as 4, todas OPTED_OUT, na ordem estável do payload."""
+    ops, r = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+
+    lidas = [
+        (s.asset_automation_type.name, s.asset_automation_status.name)
+        for s in camp.asset_automation_settings
+    ]
+    assert lidas == [
+        ("FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION", "OPTED_OUT"),
+        ("TEXT_ASSET_AUTOMATION", "OPTED_OUT"),
+        ("GENERATE_IMAGE_ENHANCEMENT", "OPTED_OUT"),
+        ("GENERATE_ENHANCED_YOUTUBE_VIDEOS", "OPTED_OUT"),
+    ]
+    # Nenhuma delas pode viajar LIGADA, nem por acidente de ordem.
+    assert all(estado == "OPTED_OUT" for _, estado in lidas)
+
+
+def test_pmax_exclui_page_feed_da_campanha():
+    """CONTRAPROVA T09: PAGE_FEED excluído, não apenas "não anexado".
+
+    Não anexar é um estado; excluir é uma regra. O feed pode ser anexado depois
+    por outra rota — a exclusão continua valendo, e é ela que fecha a porta
+    lateral para a expansão de URL.
+    """
+    ops, _ = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+
+    excluidos = [t.name for t in camp.excluded_parent_asset_set_types]
+    assert excluidos == ["PAGE_FEED"]
+
+
+def test_pmax_nao_emite_o_campo_que_nao_existe_na_v25():
+    """CONTRAPROVA T09: `url_expansion_opt_out` não existe em v25 e não é emitido.
+
+    A tentação óbvia é procurar um booleano com esse nome. Conferido no proto
+    instalado: `Campaign` não o tem. Emitir um campo inexistente faria a API
+    recusar o mutate inteiro — depois de o operador ter aprovado o plano.
+    """
+    from google.ads.googleads.v25.resources.types.campaign import Campaign
+
+    campos = {f.name for f in Campaign.pb(Campaign()).DESCRIPTOR.fields}
+    assert "url_expansion_opt_out" not in campos
+    assert "asset_automation_settings" in campos
+    assert "excluded_parent_asset_set_types" in campos
+
+    ops, _ = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert not camp._pb.HasField("network_settings"), (
+        "PMax não tem controle de rede; emitir o campo declararia um controle "
+        "que não existe"
+    )
+
+
+def test_o_asset_group_tem_uma_url_so_e_nenhum_caminho_de_exibicao():
+    """CONTRAPROVA T09: uma única URL final, sem mobile e sem path1/path2.
+
+    `final_mobile_urls` mandaria o celular para outro lugar; `path1`/`path2`
+    mudam o endereço EXIBIDO sem mudar o servido, e as duas coisas afastam o
+    que o operador aprovou do que o usuário vê e recebe.
+    """
+    ops, r = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    grupos = _por_tipo(ops, "asset_group_operation")
+    assert len(grupos) == 1
+
+    ag = grupos[0].asset_group_operation.create
+    assert len(ag.final_urls) == 1
+    assert list(ag.final_mobile_urls) == []
+    assert ag.path1 == ""
+    assert ag.path2 == ""
+    assert ag.status.name == "PAUSED"
+
+
+def test_nenhum_objeto_pmax_nasce_ligado():
+    """CONTRAPROVA T09/invariante: varredura, não lista.
+
+    Um objeto novo amanhã não pode escapar por ninguém ter lembrado de
+    acrescentá-lo a uma lista de verificação escrita hoje.
+    """
+    ops, r = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    for o in ops:
+        qual = o._pb.WhichOneof("operation")
+        criado = getattr(getattr(o, qual), "create", None)
+        estado = getattr(criado, "status", None)
+        nome = getattr(estado, "name", None)
+        if nome is not None:
+            assert nome != "ENABLED", f"{qual} nasceu ENABLED"
