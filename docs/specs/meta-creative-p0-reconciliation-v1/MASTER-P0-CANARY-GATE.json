@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_id": "MASTER-P0-CANARY-GATE",
+  "CANARY_READY": false,
+  "why_not_ready": [
+    "C01 website-only/Shop proof unresolved.",
+    "C03/OCC-01 selected image lacks mandatory AssetSupply bytes/hash/policy/identity receipt in the Meta engine contract.",
+    "C04 P0 ambiguity/absence policy must be hardened before migration.",
+    "C06 validate receipt/reconciliation flags must be separated from create dispatch flag.",
+    "C07 Page/Instagram/placements identity must be proved or safely restricted.",
+    "Official migration and real canary are not authorized/executed."
+  ],
+  "external_authorizations_needed": [
+    "authorization to implement local runtime tasks P0-RT-01..P0-RT-05",
+    "separate authorization to apply official migration",
+    "separate authorization to run validate_only if repeated",
+    "separate authorization to open create flags and run one create_paused canary",
+    "no activation authorization is requested or accepted here"
+  ],
+  "objects_meta_may_create": [
+    "Campaign",
+    "AdSet",
+    "AdCreative",
+    "Ad"
+  ],
+  "expected_states": {
+    "Campaign": "PAUSED",
+    "AdSet": "PAUSED",
+    "AdCreative": "no PAUSED state; non-veiculable creative object may exist",
+    "Ad": "PAUSED"
+  },
+  "timeout_behavior": "Before dispatch: retry only if no durable step was opened and no HTTP dispatch occurred. After dispatch: mark/keep AMBIGUOUS, no retry, reconcile by read only.",
+  "divergence_behavior": "Record readback_error/divergence, stop the lot, preserve sanitized receipt, do not re-send.",
+  "zero_retry_policy": "No automatic retry or new approval after a dispatched ambiguous step; manual adjudication required for P0.",
+  "flag_closure_procedure": [
+    "Open ledger/validate/create flags only for the separately authorized act.",
+    "After validate/create act completes or aborts, close META_CREATE_PAUSED_ENABLED first.",
+    "Keep only the minimum read/ledger authority needed for receipt/reconciliation.",
+    "Close ledger/read flags after receipt/reconciliation is captured.",
+    "Never open or add activation/ENABLE flags in this scope."
+  ]
+}
